@@ -1,6 +1,9 @@
 
+//interface Connection#(type a);
+//  method 
+//endinterface
 
-interface FM_Unit(type tick_T, type token_T, type req_T, type resp_T, type next_T);
+interface FM_Unit(type tick_T, type init_T, type token_T, type req_T, type resp_T, type next_T);
 
   method Action                                     putPrevFM(Tuple2#(token_T, init_T) x);
   

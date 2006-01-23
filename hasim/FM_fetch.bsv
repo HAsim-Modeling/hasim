@@ -6,14 +6,14 @@ import RWire::*;
 import Interfaces::*;
 
 
-typedef UInt#(64) Token;
+typedef UInt#(9) Token;
 typedef UInt#(64) Tick;
 typedef Bit#(32)  Addr;
 typedef Bit#(5) RName;
 typedef Bit#(32) Value;
 
-interface Memory#(type addr_T, type data_T);
-  method Action request(addr_T a);
+interface Memory#(type req_T, type data_T);
+  method Action request(req_T a);
   method ActionValue#(data_T) response();
 endinterface
 
@@ -280,6 +280,155 @@ module mkFM_execute (FM_Unit#(Tick,
   method ActionValue#(Tuple2#(Token, Tuple3#(Inst, DecodedInst, Value))) getNextFM();
     
     return next;
+    
+  endmethod
+  
+  method Action killToken(Token t);
+    noAction;
+  endmethod
+  
+endmodule
+
+
+typedef union tagged
+{
+  Addr LoadReq;
+  Tuple2#(Addr, Value) StoreReq;
+}
+  MemReq deriving (Eq, Bits);
+
+
+module mkFM_mem#(Memory#(MemReq, Value) dmem)
+                
+		(FM_Unit#(Tick, 
+                          Tuple3#(Inst, DecodedInst, Value), 
+			  Token, 
+			  Token, 
+			  Value, 
+			  Tuple4#(Inst, DecodedInst, Value, Value)));
+
+  RegFile#(Token, Tuple3#(Inst, DecodedInst, Value)) tbl <- mkRegFileFull();
+  FIFO#(Tuple2#(Token, Tuple3#(Inst, DecodedInst, Value))) f1 <- mkFIFO();
+  FIFO#(Tuple2#(Token, Tuple4#(Inst, DecodedInst, Value, Value))) f2 <- mkFIFO();
+
+  rule memResp (True);
+    match {.tok, {.i, .dec, .v}} = f1.first();
+    Value loadval <- dmem.response();
+    f2.enq(tuple2(tok, tuple4(i, dec, v, loadval)));
+  endrule
+
+  method Action putPrevFM(Tuple2#(Token, Tuple3#(Inst, DecodedInst, Value)) x);
+  
+    tbl.upd(x.fst, x.snd);
+    
+  endmethod 
+  
+  method ActionValue#(Token) putTM(Tuple2#(Token, Tick) t);
+    match {.tok, .lsreq} = t;
+    
+    let cur = tbl.sub(tok);
+    
+    match {.i, .dec, .val} = cur;
+
+    case (dec) matches
+      tagged DLoad .*:
+      begin
+        MemReq r = LoadReq val;
+        dmem.request(r);
+	f1.enq(tuple2(tok, cur));
+      end
+      tagged DStore {value: .v, idx: .idx, offset: .o}:
+      begin
+	MemReq r = StoreReq tuple2(val, v);
+	dmem.request(r);
+	f2.enq(tuple2(tok, tuple4(i, dec, val, 0)));
+      end
+      default:
+	f2.enq(tuple2(tok, tuple4(i, dec, val, 0)));
+    endcase
+       
+    return tok;
+  endmethod
+  
+  method ActionValue#(Tuple2#(Token, Value)) getTM(Tick tick);
+    match {.t, {.i, .dec, .v, .lv}} = f2.first();
+    
+    return tuple2(t, lv);
+    
+  endmethod
+  
+  method ActionValue#(Tuple2#(Token, Tuple4#(Inst, DecodedInst, Value, Value))) getNextFM();
+    
+    
+    f2.deq();
+    return f2.first();
+    
+  endmethod
+  
+  method Action killToken(Token t);
+    noAction;
+  endmethod
+  
+endmodule
+
+
+
+module mkFM_commit#(RegFile#(RName, Value) rf)
+                
+		(FM_Unit#(Tick, 
+                          Tuple4#(Inst, DecodedInst, Value, Value), 
+			  Token, 
+			  Token, 
+			  void, 
+			  void));
+
+  RegFile#(Token, Tuple4#(Inst, DecodedInst, Value, Value)) tbl <- mkRegFileFull();
+  Wire#(Token) next <- mkWire();
+  
+  method Action putPrevFM(Tuple2#(Token, Tuple4#(Inst, DecodedInst, Value, Value)) x);
+  
+    tbl.upd(x.fst, x.snd);
+    
+  endmethod 
+  
+  method ActionValue#(Token) putTM(Tuple2#(Token, Tick) t);
+    match {.tok, .lsreq} = t;
+    
+    let cur = tbl.sub(tok);
+    
+    match {.i, .dec, .val, .loadval} = cur;
+
+    case (dec) matches
+       tagged DAdd {dest: .rd, op1: .ra, op2: .rb}:
+         rf.upd(rd, val);
+       tagged DSub {dest: .rd, op1: .ra, op2: .rb}:
+         rf.upd(rd, val);
+       tagged DBz  {cond: .c , addr: .a}:
+         noAction;
+       tagged DLoad {dest: .rd, idx: .idx, offset: .o}:
+         rf.upd(rd, loadval);
+       tagged DLoadImm {dest: .rd, value: .v}:
+         rf.upd(rd, v);
+       tagged DStore {value: .v, idx: .idx, offset: .o}:
+         noAction;
+       tagged DTerminate .v:
+         noAction;
+    endcase
+    
+    next <= tok;
+    
+    return tok;
+  endmethod
+  
+  method ActionValue#(Tuple2#(Token, void)) getTM(Tick tick);
+  
+    return ?;
+    
+  endmethod
+  
+  method ActionValue#(Tuple2#(Token, void)) getNextFM();
+    
+    return tuple2(next, ?);
     
   endmethod
   

@@ -7,7 +7,7 @@ import Interfaces::*;
 
 
 typedef UInt#(64) Token;
-typedef UInt#(64) EM_CLK;
+typedef UInt#(64) Tick;
 typedef Bit#(32)  Addr;
 typedef Bit#(5) RName;
 typedef Bit#(32) Value;
@@ -19,14 +19,14 @@ endinterface
 
 
 
-module [Module] mkFM_fetch(FM_Unit#(EM_CLK, void, Token, Addr, Inst, Inst));
+module [Module] mkFM_fetch(FM_Unit#(Tick, void, Token, Addr, Inst, Inst));
 
   Memory#(Addr, Inst)  mem <- ?; //mkMemory(); //XXX
   FIFO#(Token)       tfifo <- mkSizedFIFO(10); //parameterize
   FIFO#(Token)      t2fifo <- mkSizedFIFO(10); //parameterize
 			   
-  FIFO#(EM_CLK)      cfifo <- mkSizedFIFO(10);
-  FIFO#(EM_CLK)     c2fifo <- mkSizedFIFO(10);
+  FIFO#(Tick)      cfifo <- mkSizedFIFO(10);
+  FIFO#(Tick)     c2fifo <- mkSizedFIFO(10);
 
   FIFO#(Inst)        ififo <- mkSizedFIFO(10);
   FIFO#(Inst)       i2fifo <- mkSizedFIFO(10);
@@ -43,7 +43,7 @@ module [Module] mkFM_fetch(FM_Unit#(EM_CLK, void, Token, Addr, Inst, Inst));
     t2fifo.enq(tok);							      
   endmethod
 
-  method ActionValue#(Token)                        putTM(Tuple2#(Addr, EM_CLK) x);
+  method ActionValue#(Token)                        putTM(Tuple2#(Addr, Tick) x);
     match {.a, .clk} = x;
 
     cfifo.enq(clk);
@@ -51,7 +51,7 @@ module [Module] mkFM_fetch(FM_Unit#(EM_CLK, void, Token, Addr, Inst, Inst));
     return ?;
   endmethod
 							      
-  method ActionValue#(Tuple2#(Token, Inst))     getTM(EM_CLK t);
+  method ActionValue#(Tuple2#(Token, Inst))     getTM(Tick t);
 
     c2fifo.enq(t);							      
 
@@ -131,7 +131,7 @@ endmodule
 
 module mkFM_decode#(Tuple2#(Put#(Inst), Get#(DecodedInst)) decoder, 
                     RegFile#(RName, Value) rf)                                    
-		                 (FM_Unit#(EM_CLK, Inst, Token, Token, DecodedInst, Tuple2#(Inst, DecodedInst)));
+		                 (FM_Unit#(Tick, Inst, Token, Token, DecodedInst, Tuple2#(Inst, DecodedInst)));
 
    function DecodedInst decodeInst(Inst inst) =
      case (inst) matches
@@ -162,13 +162,13 @@ module mkFM_decode#(Tuple2#(Put#(Inst), Get#(DecodedInst)) decoder,
     
   endmethod 
   
-  method ActionValue#(Token) putTM(Tuple2#(Token, EM_CLK) t);
+  method ActionValue#(Token) putTM(Tuple2#(Token, Tick) t);
     let tok = t.fst;
     next <= tuple2(tok, tbl.sub(tok));
     return tok;
   endmethod
   
-  method ActionValue#(Tuple2#(Token, DecodedInst)) getTM(EM_CLK tick);
+  method ActionValue#(Tuple2#(Token, DecodedInst)) getTM(Tick tick);
     match {.t, {.i, .dec}} = next;
     
     return tuple2(t, dec);
@@ -176,9 +176,110 @@ module mkFM_decode#(Tuple2#(Put#(Inst), Get#(DecodedInst)) decoder,
   endmethod
   
   method ActionValue#(Tuple2#(Token, Tuple2#(Inst, DecodedInst))) getNextFM();
-    match {.t, .n} = next;
     
-    return tuple2(t, n);
+    return next;
+    
+  endmethod
+  
+  method Action killToken(Token t);
+    noAction;
+  endmethod
+  
+endmodule
+
+
+
+module mkFM_execute (FM_Unit#(Tick, 
+                              Tuple2#(Inst, DecodedInst), 
+			      Token, 
+			      Token, 
+			      Value, 
+			      Tuple3#(Inst, DecodedInst, Value)));
+
+   function ActionValue#(Value) execInst(DecodedInst dec);
+   actionvalue
+     case (dec) matches
+       tagged DAdd {dest: .rd, op1: .ra, op2: .rb}:
+       begin
+	 $display("Add:        R%0d := 0x%0h + 0x%0h", rd, ra, rb);
+         return ra + rb;
+       end
+
+       tagged DSub {dest: .rd, op1: .ra, op2: .rb}:
+       begin
+	 $display("Sub:        R%0d := 0x%0h - 0x%0h", rd, ra, rb);
+	 return ra - rb;
+       end
+
+       tagged DBz  {cond: .c , addr: .a} &&& (c != 0):
+       begin
+	 $display("Not taken:  GOTO 0x%0h IF 0x%0h == 0", a, c);
+	 return 0;
+       end
+
+       tagged DBz {cond: .c , addr: .a} &&& (c == 0):
+       begin
+	 $display("Taken:      GOTO 0x%0h IF 0x%0h == 0", a, c);
+	 return 1;
+       end
+
+       tagged DLoad {dest: .rd, idx: .idx, offset: .o}:
+       begin
+	 $display("LoadReq:       R%0d := [0x%0h + 0x%0h]", rd, idx, o);
+	 return idx + o;
+       end
+
+       tagged DLoadImm {dest: .rd, value: .val}:
+       begin
+	 $display("LoadImm:    R%0d := 0x%0h", rd, val);
+	 return val;
+       end
+
+       tagged DStore {value: .v, idx: .idx, offset: .o}:
+       begin
+	 $display("StoreReq:      [0x%0h + 0x%0h] := 0x%0h", idx, o, v);
+	 return idx + o;
+       end
+
+       tagged DTerminate .v:
+       begin
+	 $display("Halt:       0x%0h", v);
+	 return v;
+       end
+       
+     endcase
+  endactionvalue
+  endfunction
+
+
+  RegFile#(Token, Tuple3#(Inst, DecodedInst, Value)) tbl <- mkRegFileFull();
+  Wire#(Tuple2#(Token, Tuple3#(Inst, DecodedInst, Value))) next <- mkWire();
+
+
+  method Action putPrevFM(Tuple2#(Token, Tuple2#(Inst, DecodedInst)) x);
+  
+    Value res <- execInst(x.snd.snd);
+  
+    tbl.upd(x.fst, tuple3(x.snd.fst, x.snd.snd, res));
+    
+  endmethod 
+  
+  method ActionValue#(Token) putTM(Tuple2#(Token, Tick) t);
+    let tok = t.fst;
+    next <= tuple2(tok, tbl.sub(tok));
+    return tok;
+  endmethod
+  
+  method ActionValue#(Tuple2#(Token, Value)) getTM(Tick tick);
+    match {.t, {.i, .dec, .v}} = next;
+    
+    return tuple2(t, v);
+    
+  endmethod
+  
+  method ActionValue#(Tuple2#(Token, Tuple3#(Inst, DecodedInst, Value))) getNextFM();
+    
+    return next;
     
   endmethod
   

@@ -51,14 +51,14 @@ module [Module] mkFM_fetch(FM_Unit#(EM_CLK, void, Token, Addr, Inst, Inst));
     return ?;
   endmethod
 							      
-  method ActionValue#(Tuple2#(Inst, Token))     getTM(EM_CLK t);
+  method ActionValue#(Tuple2#(Token, Inst))     getTM(EM_CLK t);
 
     c2fifo.enq(t);							      
 
     ififo.deq();			
     tfifo.deq();
 		      
-    return(tuple2(ififo.first(), tfifo.first()));
+    return(tuple2(tfifo.first(), ififo.first()));
   endmethod 							      
 							      
   method ActionValue#(Tuple2#(Token, Inst))     getNextFM();
@@ -109,11 +109,30 @@ typedef union tagged
 }
   DecodedInst deriving (Eq,Bits);
 
-  
+/*  
 module mkDecoder#(RegFile#(RName, Value) rf) (Tuple2#(Put#(Inst), Get#(DecodedInst)));
 
    Wire#(Inst) w <- mkWire();
    
+   interface Put fst;
+     method Action put(Inst i);
+       w <= i;
+     endmethod
+   endinterface
+   
+   interface Get snd;
+     method ActionValue#(DecodedInst) get();
+       return decodeInst(w);
+     endmethod
+   endinterface
+   
+endmodule
+*/
+
+module mkFM_decode#(Tuple2#(Put#(Inst), Get#(DecodedInst)) decoder, 
+                    RegFile#(RName, Value) rf)                                    
+		                 (FM_Unit#(EM_CLK, Inst, Token, Token, DecodedInst, Tuple2#(Inst, DecodedInst)));
+
    function DecodedInst decodeInst(Inst inst) =
      case (inst) matches
       tagged IAdd {dest: .rd, src1: .ra, src2: .rb}:
@@ -132,48 +151,35 @@ module mkDecoder#(RegFile#(RName, Value) rf) (Tuple2#(Put#(Inst), Get#(DecodedIn
 	return DTerminate rf.sub(rsrc);
      endcase;
 
-   interface Put fst;
-     method Action put(Inst i);
-       w <= i;
-     endmethod
-   endinterface
-   
-   interface Get snd;
-     method ActionValue#(DecodedInst) get();
-       return decodeInst(w);
-     endmethod
-   endinterface
-   
-endmodule
-
-/*
-module mkFM_decode#(Tuple2#(Put#(Inst), Get#(DecodedInst)) decoder, 
-                    RegFile rf)                                    
-		                 (FM_Unit#(EM_CLK, Inst, Token, Token));
-
   
-
-   
+  RegFile#(Token, Tuple2#(Inst, DecodedInst)) tbl <- mkRegFileFull();
+  Wire#(Tuple2#(Token, Tuple2#(Inst, DecodedInst))) next <- mkWire();
+  
+  
   method Action putPrevFM(Tuple2#(Token, Inst) x);
   
-    tbl.upd(x._1, decodeInst(x._2));
+    tbl.upd(x.fst, tuple2(x.snd, decodeInst(x.snd)));
     
   endmethod 
   
   method ActionValue#(Token) putTM(Tuple2#(Token, EM_CLK) t);
-    let tok = t._1;
-    next.wset(tuple2(tok, tbl.sub(tok)));
+    let tok = t.fst;
+    next <= tuple2(tok, tbl.sub(tok));
     return tok;
   endmethod
   
-  method ActionValue#(Tuple2#(Inst, Token)) getTM(EM_CLK tick);
-    match {.t, .i, .dec} = next.wget();
+  method ActionValue#(Tuple2#(Token, DecodedInst)) getTM(EM_CLK tick);
+    match {.t, {.i, .dec}} = next;
     
-    return tuple2(t, i);
+    return tuple2(t, dec);
+    
   endmethod
   
-  method ActionValue#(Tuple2#(Token, DecodedInst)) getNextFM();
-    return ?;
+  method ActionValue#(Tuple2#(Token, Tuple2#(Inst, DecodedInst))) getNextFM();
+    match {.t, .n} = next;
+    
+    return tuple2(t, n);
+    
   endmethod
   
   method Action killToken(Token t);
@@ -181,4 +187,4 @@ module mkFM_decode#(Tuple2#(Put#(Inst), Get#(DecodedInst)) decoder,
   endmethod
   
 endmodule
-*/
+

@@ -1,0 +1,4 @@
+package Primitive(primBitToInteger) where
+
+primitive primBitToInteger :: Bit n -> Integer
+

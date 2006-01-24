@@ -65,11 +65,11 @@ module mkFM_Unit#(Unit#(token_T, init_T, req_T, resp_T, next_T) u, Integer sz) /
            Bits#(resp_T,psz),
            Bits#(next_T,nsz));
 
-//  token_T tminT = minBound;
-//  token_T tmaxT = maxBound;
+  token_T tminT = minBound;
+  token_T tmaxT = maxBound;
    
-//  Integer minT = primBitToInteger(pack(tminT));
-//  Integer maxT = primBitToInteger(pack(tmaxT));
+  Integer minT = primBitToInteger(pack(tminT)) + 1;
+  Integer maxT = primBitToInteger(pack(tmaxT)) + 1;
 
   FIFO#(Tuple3#(token_T,resp_T,next_T))          unitRespQ <- mkSizedFIFO(sz);
   FIFO#(Tuple2#(token_T,next_T))                 nextQ     <- mkSizedFIFO(sz);
@@ -77,9 +77,13 @@ module mkFM_Unit#(Unit#(token_T, init_T, req_T, resp_T, next_T) u, Integer sz) /
   //SRAM tables
   RegFile#(token_T, init_T)                      tbl_init <- mkRegFileFull();
 
-  List#(Reg#(Bool))                               valids  <- Monad::replicateM(16,mkReg(False));
-  List#(Reg#(Bool))                               dones   <- Monad::replicateM(16,mkReg(False));
+  List#(Reg#(Bool))                               valids  <- Monad::replicateM(maxT, mkReg(False));
+  List#(Reg#(Bool))                               dones   <- Monad::replicateM(maxT, mkReg(False));
 
+
+  match {.respQToken,.*,.*} = unitRespQ.first();
+  Bool respValid = (List::select(valids,respQToken))._read();
+   
   rule getUnitResponse(True);
     Tuple3#(token_T, resp_T, next_T) tup <- u.response();
     match {.tok, .resp, .next} = tup;
@@ -92,9 +96,8 @@ module mkFM_Unit#(Unit#(token_T, init_T, req_T, resp_T, next_T) u, Integer sz) /
         done <= True;
       end       
   endrule
-
-  rule tossDeadResps(unitRespQ.first matches {.tok,.*,.*} &&&
-                     ((List::select(valids,tok))._read == False));
+    
+  rule tossDeadResps(respValid == False);
     unitRespQ.deq();
   endrule
            
@@ -109,10 +112,12 @@ module mkFM_Unit#(Unit#(token_T, init_T, req_T, resp_T, next_T) u, Integer sz) /
        $display("ERROR: reinserting allocated token %h", tok);
      end
    else
-   //Set valid to true and done to false
-   valid <= True;
-   done  <= False;
-   tbl_init.upd(tok, iVal);
+     begin
+       //Set valid to true and done to false
+       valid <= True;
+       done  <= False;
+       tbl_init.upd(tok, iVal);
+     end
   endmethod
 
   method Action                                                   putTM(Tuple3#(token_T, req_T, tick_T) tup);
@@ -134,11 +139,10 @@ module mkFM_Unit#(Unit#(token_T, init_T, req_T, resp_T, next_T) u, Integer sz) /
 
   //rule getUnitResponse
   //rule tossDeadResps
+    
+  method ActionValue#(Tuple2#(token_T, resp_T)) getTM(tick_T t) if (respValid);
 
-  method ActionValue#(Tuple2#(token_T, resp_T)) getTM(tick_T t) if (unitRespQ.first matches {.tok,.*,.*} &&&
-                                                                    (List::select(valids,tok))._read == True);
-
-   match {.tok, .resp,.next} = unitRespQ.first;
+   match {.tok, .resp, .next} = unitRespQ.first();
    unitRespQ.deq();
    nextQ.enq(tuple2(tok,next));
    return tuple2(tok,resp);

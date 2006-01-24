@@ -2,11 +2,13 @@ import GetPut::*;
 import RegFile::*;
 import FIFO::*;
 import RWire::*;
-import Monad::*;
-import List::*;
+//import Monad::*;
+//import List::*;
+import Vector::*;
 
 import Interfaces::*;
 import Primitive::*;
+import ValueVector::*;
 
 typedef UInt#(8) Token;
 typedef UInt#(64) Tick;
@@ -51,12 +53,22 @@ typedef union tagged {
  struct {Value val;   Value addr;}  EStore;
 }
   ExecedInst deriving (Eq,Bits);
+
+//-----------------------------------------------------------------------------------------------------------//
+// General Unit (in-order unit)                                                                              //
+//-----------------------------------------------------------------------------------------------------------//
+
+
+   
 		 
 //-----------------------------------------------------------------------------------------------------------//
 // General Unit (in-order unit)                                                                              //
 //-----------------------------------------------------------------------------------------------------------//
 
-module mkFM_Unit#(Unit#(token_T, init_T, req_T, resp_T, next_T) u, Integer sz) // parameters
+module mkFM_Unit#(ValueVector#(Bool, token_T) valids,
+                  ValueVector#(Bool, token_T) dones,
+                  Unit#(token_T, init_T, req_T, resp_T, next_T) u,
+                   Integer sz) // parameters
                  (FM_Unit#(tick_T, token_T, init_T, req_T, resp_T, next_T)) //inf
         provisos
           (Bits#(token_T, tsz),Bounded#(token_T),Eq#(token_T),Literal#(token_T),
@@ -77,23 +89,22 @@ module mkFM_Unit#(Unit#(token_T, init_T, req_T, resp_T, next_T) u, Integer sz) /
   //SRAM tables
   RegFile#(token_T, init_T)                      tbl_init <- mkRegFileFull();
 
-  List#(Reg#(Bool))                               valids  <- Monad::replicateM(maxT, mkReg(False));
-  List#(Reg#(Bool))                               dones   <- Monad::replicateM(maxT, mkReg(False));
-
+//  Vector#(256,Reg#(Bool))                         valids  <- Vector::replicateM(mkReg(False));
+//  Vector#(256,Reg#(Bool))                         dones   <- Vector::replicateM(mkReg(False));
 
   match {.respQToken,.*,.*} = unitRespQ.first();
-  Bool respValid = (List::select(valids,respQToken))._read();
+  Bool respValid = valids.read1(respQToken);
    
   rule getUnitResponse(True);
     Tuple3#(token_T, resp_T, next_T) tup <- u.response();
     match {.tok, .resp, .next} = tup;
 
-    Reg#(Bool) valid = List::select(valids,tok);
-    Reg#(Bool) done  = List::select(dones,tok);  
-    if(valid)
+   Bool valid = valids.read2(tok);
+   
+   if(valid)
       begin // don't insert it was killed
 	unitRespQ.enq(tup);
-        done <= True;
+        dones.write1(tok,True);
       end       
   endrule
     
@@ -104,8 +115,7 @@ module mkFM_Unit#(Unit#(token_T, init_T, req_T, resp_T, next_T) u, Integer sz) /
   method Action                                                   putPrevFM(Tuple2#(token_T, init_T) tup);
    match {.tok,.iVal} = tup;
 
-   Reg#(Bool) valid = List::select(valids,tok);
-   Reg#(Bool) done  = List::select(dones,tok);
+   Bool valid = valids.read3(tok);
 
    if(valid)
      begin	  
@@ -114,17 +124,18 @@ module mkFM_Unit#(Unit#(token_T, init_T, req_T, resp_T, next_T) u, Integer sz) /
    else
      begin
        //Set valid to true and done to false
-       valid <= True;
-       done  <= False;
+       valids.write2(tok,True);
+       dones.write2(tok,False);
        tbl_init.upd(tok, iVal);
      end
   endmethod
 
   method Action                                                   putTM(Tuple3#(token_T, req_T, tick_T) tup);
    match {.tok, .req, .tick} = tup;
-      
-   Reg#(Bool) valid = List::select(valids,tok);
-   Reg#(Bool) done  = List::select(dones,tok);
+
+
+   Bool valid = valids.read4(tok);      
+   Bool done  =  dones.read1(tok);  
 
    init_T iVal = tbl_init.sub(tok);
    
@@ -156,8 +167,7 @@ module mkFM_Unit#(Unit#(token_T, init_T, req_T, resp_T, next_T) u, Integer sz) /
   endmethod
 
   method Action                                     killToken(token_T tok);
-    Reg#(Bool) valid = List::select(valids,tok);
-    valid <= False;
+    valids.write2(tok,False);
   endmethod
 
 endmodule
@@ -173,6 +183,18 @@ module mkRegisterFile(RegisterFile);
   let r <- mkRegFileFull();
    
   return r;
+endmodule
+
+//-----------------------------------------------------------------------------------------------------------//
+// BoolVector                                                                                                //
+//-----------------------------------------------------------------------------------------------------------//
+
+(* synthesize *)
+module mkBoolVector_Token(ValueVector#(Bool, Token));
+
+  let v <- mkBoolVector();
+   
+  return v;
 endmodule
 
 //-----------------------------------------------------------------------------------------------------------//
@@ -197,9 +219,12 @@ endmodule
 
 /* synthesize */
 module mkFM_Fetch(FM_Unit#(Tick,Token, void, Addr, Inst, Tuple2#(Addr,Inst)));
+  let valids <- mkBoolVector_Token();
+  let dones  <- mkBoolVector_Token(); 
+    
   Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)) mem <- mkIMemory();
   
-  let i <- mkFM_Unit(mem,2);
+  let i <- mkFM_Unit(valids, dones, mem,2);
 
   return i;	
 endmodule
@@ -208,8 +233,6 @@ endmodule
 //-----------------------------------------------------------------------------------------------------------//
 // Decode Unit (in-order _unit_)                                                                             //
 //-----------------------------------------------------------------------------------------------------------//
-
-
 
 module mkDecode#(RegisterFile rf)
            (Unit#(Token, Tuple2#(Addr,Inst), void, DepInfo, Tuple2#(Addr, DecodedInst)));
@@ -267,9 +290,13 @@ endmodule
 
 module mkFM_Decode#(RegisterFile rf)(FM_Unit#(Tick, Token,   Tuple2#(Addr,Inst),
                                               void, DepInfo, Tuple2#(Addr,DecodedInst)));
+
+  let valids <- mkBoolVector_Token();
+  let dones  <- mkBoolVector_Token();
+   
   Unit#(Token, Tuple2#(Addr,Inst), void, DepInfo, Tuple2#(Addr, DecodedInst)) dec <- mkDecode(rf);
   
-  let i <- mkFM_Unit(dec,2);
+  let i <- mkFM_Unit(valids, dones, dec,2);
   return i;	
 endmodule
 
@@ -321,9 +348,12 @@ endmodule
 
 (* synthesize *)
 module mkFM_Execute(FM_Unit#(Tick, Token, Tuple2#(Addr,DecodedInst),void, Maybe#(Addr), ExecedInst));
-    Unit#(Token, Tuple2#(Addr,DecodedInst),void, Maybe#(Addr), ExecedInst) exe <- mkExecute();
-  
-  let i <- mkFM_Unit(exe,2);
+
+  let valids <- mkBoolVector_Token();
+  let dones  <- mkBoolVector_Token(); 
+  Unit#(Token, Tuple2#(Addr,DecodedInst),void, Maybe#(Addr), ExecedInst) exe <- mkExecute();
+
+  let i <- mkFM_Unit(valids, dones, exe,2);
   return i;	
 endmodule
 
@@ -358,9 +388,12 @@ endmodule
 
 (* synthesize *)
 module mkFM_Memory(FM_Unit#(Tick,Token, ExecedInst, void, void, ExecedInst));
-    Unit#(Token, ExecedInst, void, void, ExecedInst) mem <- mkDMemory();
+  let valids <- mkBoolVector_Token();
+  let dones  <- mkBoolVector_Token();
+   
+  Unit#(Token, ExecedInst, void, void, ExecedInst) mem <- mkDMemory();
   
-  let i <- mkFM_Unit(mem,2);
+  let i <- mkFM_Unit(valids, dones, mem, 2);
   return i;	
 endmodule
 
@@ -392,9 +425,13 @@ endmodule
 
 module mkFM_Commit#(RegisterFile rf)
                    (FM_Unit#(Tick,Token, ExecedInst, void, void,void));
+
+  let valids <- mkBoolVector_Token();
+  let dones  <- mkBoolVector_Token(); 
+
   Unit#(Token, ExecedInst, void, void,void) com <- mkCommit(rf);
   
-  let i <- mkFM_Unit(com,2);
+  let i <- mkFM_Unit(valids, dones, com,2);
   return i;	
 endmodule
 		    

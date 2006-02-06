@@ -538,56 +538,6 @@ endmodule
 // Top                                                                                                       //
 //-----------------------------------------------------------------------------------------------------------//
 
-(* synthesize *)
-module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
-  provisos(
-    Bits#(RName,rsz),
-    Bits#(PRName,psz)
-    );
-
-/*  
-
-  Vector#(TExp#(rsz), 
-
-
-  //new old
-  method ActionValue#(Tuple2#(PRName,PRName)) makeMapping(Maybe#(RName) x, Token tok); //token is the ref name
-    
-   return(?);
-  endmethod
-
-
-
-
-
-
-
-
-  method preg_T lookup1(vreg_T v);
-  method preg_T lookup2(vreg_T v);
-
-  method Maybe#(value_T) read1(preg_T i);
-  method Maybe#(value_T) read2(preg_T i);
-
-  method Action write(preg_T i, value_T v);
-
-  method Action freePReg(preg_T x);
-  method Action rewindtoToken(token_T tok);
-
-
-*/
-
-
-  return (?);
-
-
-
-
-
-
-endmodule
-
-
 
 
 

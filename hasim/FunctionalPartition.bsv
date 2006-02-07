@@ -9,6 +9,7 @@ import Interfaces::*;
 import ValueVector::*;
 import Types::*;
 import DMem::*;
+import BypassUnit::*;
                  
 //-----------------------------------------------------------------------------------------------------------//
 // General Unit (in-order unit)                                                                              //
@@ -303,42 +304,42 @@ module [Module] mkDecode#(BypassUnit#(RName, PRName, Value, Token) b)
       case (inst) matches
 	tagged IAdd {dest: .rd, src1: .ra, src2: .rb}:
           begin
-            let rtup <- b.makeMapping(Just(rd), t);
+            let rtup <- b.makeMapping(Just(rd), t, False);
             match {.prd, .oprd} = rtup;
             di =      DAdd {pdest: prd, opdest: oprd, op1: pra, op2: prb};
             depInfo = DepInfo {dest: Just(tuple2(rd, prd)), src1: Just(tuple2(ra, pra)), src2: Just(tuple2(rb,prb))};
           end
 	tagged ISub {dest: .rd, src1: .ra, src2: .rb}:
           begin
-            let rtup <- b.makeMapping(Just(rd), t);
+            let rtup <- b.makeMapping(Just(rd), t, False);
             match {.prd, .oprd} = rtup;
             di =      DSub {pdest: prd, opdest: oprd, op1: pra, op2: prb};
             depInfo = DepInfo {dest: Just(tuple2(rd, prd)), src1: Just(tuple2(ra, pra)), src2: Just(tuple2(rb,prb))};
           end
 	tagged IBz {cond: .c , addr:  .addr}:
           begin
-            let rtup <- b.makeMapping(Nothing, t);
+            let rtup <- b.makeMapping(Nothing, t, True);// likely rewind candidate
             match {.prd, .oprd} = rtup;
             di =      DBz {opdest: oprd, cond: pra, addr: prb};
             depInfo = DepInfo {dest: Nothing, src1: Just(tuple2(c,pra)), src2: Just(tuple2(addr,prb))};
           end
 	tagged ILoad {dest: .rd, idx: .ri, offset: .ro}:
           begin
-            let rtup <- b.makeMapping(Just(rd), t);
+            let rtup <- b.makeMapping(Just(rd), t, False);
             match {.prd, .oprd} = rtup;
             di =      DLoad{pdest: prd, opdest: oprd, idx: pra, offset: zeroExtend(ro)};
             depInfo = DepInfo {dest: Just(tuple2(rd,prd)), src1: Just(tuple2(ri,pra)), src2: Nothing};
           end
 	tagged ILoadImm {dest: .rd, imm: .i}:
           begin
-            let rtup <- b.makeMapping(Just(rd), t);
+            let rtup <- b.makeMapping(Just(rd), t, False);
             match {.prd, .oprd} = rtup;
             di =      DLoadImm {pdest: prd, opdest: oprd, value: signExtend(i)};
             depInfo = DepInfo {dest: Just(tuple2(rd,prd)), src1: Nothing, src2: Nothing};
           end
 	tagged IStore {src: .rsrc, idx: .ri, offset: .ro}:
           begin
-	    let rtup <- b.makeMapping(Nothing, t);
+	    let rtup <- b.makeMapping(Nothing, t, False);
             match {.prd, .oprd} = rtup;
             di =      DStore{value: pra, opdest: oprd, idx: prb, offset: zeroExtend(ro)};
             depInfo = DepInfo {dest: Nothing, src1: Just(tuple2(ri,prb)), src2: Just(tuple2(rsrc,pra))};
@@ -635,7 +636,7 @@ module [Module] mkLocalCommit#(BypassUnit#(RName, PRName, Value, Token) b)
 		   tagged ELoad   .x: return(x.opdest);
 		   tagged EStore  .x: return(x.opdest);
 		 endcase;
-      b.freePReg(p);
+      b.freePReg(t, p);
     endmethod
   
   endinterface
@@ -709,65 +710,6 @@ endmodule
 //-----------------------------------------------------------------------------------------------------------//
 
 (* synthesize *)
-module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
-  provisos(
-    Bits#(RName,rsz),
-    Bits#(PRName,psz)
-    );
-
-/*  
-
-  Vector#(TExp#(rsz), 
-
-
-  //new old
-  method ActionValue#(Tuple2#(PRName,PRName)) makeMapping(Maybe#(RName) x, Token tok); //token is the ref name
-    
-   return(?);
-  endmethod
-
-
-
-
-
-
-
-
-  method preg_T lookup1(vreg_T v);
-  method preg_T lookup2(vreg_T v);
-
-  method Maybe#(value_T) read1(preg_T i);
-  method Maybe#(value_T) read2(preg_T i);
-
-  method Action write(preg_T i, value_T v);
-
-  method Action freePReg(preg_T x);
-  method Action rewindtoToken(token_T tok);
-
-
-*/
-
-
-  return (?);
-
-
-
-
-
-
-endmodule
-
-
-
-
-
-
-
-
-
-
-
-(* synthesize *)
 module [Module] mkFP_Test (FunctionalPartition#(Tick, Token,
                                         	Addr, Inst,
 						void, DepInfo,
@@ -811,7 +753,7 @@ module [Module] mkFP_Test (FunctionalPartition#(Tick, Token,
     mem.killToken(t);
     lco.killToken(t);
     gco.killToken(t);
- 
+    b.rewindtoToken(t-1); //so we catch the branch
   endmethod
 
 endmodule

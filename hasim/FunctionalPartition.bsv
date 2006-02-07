@@ -148,6 +148,81 @@ endmodule
 
 
 //-----------------------------------------------------------------------------------------------------------//
+// Token Generation Unit (head/tail pointer)                                                                              //
+//-----------------------------------------------------------------------------------------------------------//
+
+(* synthesize *)
+module [Module] mkFM_TokGen(FM_Unit#(Tick, Token, void, void, void, void));
+
+
+  Reg#(Token) r_first <- mkReg(0);
+  Reg#(Token) r_free <- mkReg(0);
+  
+  //Killing tokens can never result in free tokens being taken.
+  //Therefore we never need to worry about the responses being invalid.
+  FIFO#(Token) respQ <- mkFIFO();
+  
+  interface Put in;
+           
+    method Action put(Tuple2#(Token, void) tup);
+      match {.t, .*} = tup;
+      
+      //complete token t
+      
+      if (r_first != t) 
+        $display("ERROR: Tokens completing out of order");
+     
+      r_first <= r_first + 1;
+      
+    endmethod
+  endinterface
+
+  interface Server server;
+  
+    interface Put request;
+  
+      method Action put(Tuple3#(Token, void, Tick) tup);
+      
+       match {.*, .*, .tick} = tup;
+       
+       //allocate a new token
+       respQ.enq(r_free);
+       r_free <= r_free + 1;
+
+      endmethod
+
+    endinterface
+
+    interface Get response;
+
+      method ActionValue#(Tuple2#(Token, void)) get();
+
+        //return allocated token
+	respQ.deq();
+	return tuple2(respQ.first(), ?);
+      endmethod 
+
+    endinterface
+    
+  endinterface
+  
+  interface Get out;
+
+    method ActionValue#(Tuple2#(Token, void)) get();
+      return tuple2(?, ?); //This Does Not Exist.
+    endmethod
+
+  endinterface
+
+  method Action killToken(Token tok);
+    //free tok a and all tokens before it
+    r_free <= tok;
+  endmethod
+  
+endmodule
+                  
+
+//-----------------------------------------------------------------------------------------------------------//
 // Fetch Unit (in-order _unit_)                                                                              //
 //-----------------------------------------------------------------------------------------------------------//
 
@@ -204,14 +279,30 @@ module [Module] mkDecode#(BypassUnit#(RName, PRName, Value, Token) b)
     method Action put(Tuple3#(Token, Tuple2#(Addr,Inst), void) tup);
       match {.t, {.a,.inst}, .*} = tup;
 
-      DepInfo depInfo;
-      DecodedInst di;
+      DepInfo depInfo = ?;
+      DecodedInst di = ?;
 
+      match {.ara, .arb} = case (inst) matches
+	tagged IAdd {dest: .rd, src1: .ra, src2: .rb}:
+            return tuple2(ra, rb);
+	tagged ISub {dest: .rd, src1: .ra, src2: .rb}:
+            return tuple2(ra, rb);
+	tagged IBz {cond: .c , addr:  .addr}:
+            return tuple2(c, addr);
+	tagged ILoad {dest: .rd, idx: .ri, offset: .ro}:
+	    return tuple2(ri, ?);
+	tagged ILoadImm {dest: .rd, imm: .i}:
+            return tuple2(?, ?);
+	tagged IStore {src: .rsrc, idx: .ri, offset: .ro}:
+            return tuple2(rsrc, ri);
+        endcase;
+      
+      let pra = b.lookup1(ara);
+      let prb = b.lookup2(arb);
+      
       case (inst) matches
 	tagged IAdd {dest: .rd, src1: .ra, src2: .rb}:
           begin
-            let pra = b.lookup1(ra);
-            let prb = b.lookup2(rb);
             let rtup <- b.makeMapping(Just(rd), t);
             match {.prd, .oprd} = rtup;
             di =      DAdd {pdest: prd, opdest: oprd, op1: pra, op2: prb};
@@ -219,8 +310,6 @@ module [Module] mkDecode#(BypassUnit#(RName, PRName, Value, Token) b)
           end
 	tagged ISub {dest: .rd, src1: .ra, src2: .rb}:
           begin
-            let pra = b.lookup1(ra);
-            let prb = b.lookup2(rb);
             let rtup <- b.makeMapping(Just(rd), t);
             match {.prd, .oprd} = rtup;
             di =      DSub {pdest: prd, opdest: oprd, op1: pra, op2: prb};
@@ -228,8 +317,6 @@ module [Module] mkDecode#(BypassUnit#(RName, PRName, Value, Token) b)
           end
 	tagged IBz {cond: .c , addr:  .addr}:
           begin
-            let pra = b.lookup1(c);
-            let prb = b.lookup2(addr);
             let rtup <- b.makeMapping(Nothing, t);
             match {.prd, .oprd} = rtup;
             di =      DBz {opdest: oprd, cond: pra, addr: prb};
@@ -237,7 +324,6 @@ module [Module] mkDecode#(BypassUnit#(RName, PRName, Value, Token) b)
           end
 	tagged ILoad {dest: .rd, idx: .ri, offset: .ro}:
           begin
-            let pra = b.lookup1(ri);
             let rtup <- b.makeMapping(Just(rd), t);
             match {.prd, .oprd} = rtup;
             di =      DLoad{pdest: prd, opdest: oprd, idx: pra, offset: zeroExtend(ro)};
@@ -252,8 +338,6 @@ module [Module] mkDecode#(BypassUnit#(RName, PRName, Value, Token) b)
           end
 	tagged IStore {src: .rsrc, idx: .ri, offset: .ro}:
           begin
-            let pra = b.lookup1(rsrc);
-            let prb = b.lookup2(ri);
 	    let rtup <- b.makeMapping(Nothing, t);
             match {.prd, .oprd} = rtup;
             di =      DStore{value: pra, opdest: oprd, idx: prb, offset: zeroExtend(ro)};
@@ -294,9 +378,9 @@ endmodule
 //-----------------------------------------------------------------------------------------------------------//
 
 module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
-	    (Unit#(Token, Tuple2#(Addr,DecodedInst),void, Maybe#(Addr), ExecedInst));
+	    (Unit#(Token, Tuple2#(Addr,DecodedInst),void, InstResult, ExecedInst));
 
-  FIFO#(Tuple3#(Token,Maybe#(Addr), ExecedInst)) f   <- mkFIFO();
+  FIFO#(Tuple3#(Token,InstResult, ExecedInst)) f   <- mkFIFO();
   FIFO#(Tuple3#(Token,Addr, DecodedInst))       iq   <- mkFIFO();
 
   rule execute(True);
@@ -335,41 +419,50 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
              if (isJust(mva) && isJust(mvb))
                begin
                  b.write1(prd,unJust(mva) + unJust(mvb));
-                 f.enq(tuple3(t, Nothing, EWB {pdest: prd, opdest: oprd}));
+                 f.enq(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
                  iq.deq();
                end
          tagged DSub {pdest: .prd, opdest: .oprd, op1: .ra, op2: .rb}:
              if (isJust(mva) && isJust(mvb))
                begin
                  b.write1(prd,unJust(mva) - unJust(mvb));
-                 f.enq(tuple3(t, Nothing, EWB {pdest: prd, opdest: oprd}));
+                 f.enq(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
                  iq.deq();
                end
          tagged DBz {opdest: .oprd, cond: .c, addr: .a}:
-           if (isJust(mva) && unJust(mva) != 0)
-             begin
-                 f.enq(tuple3(t, Nothing, ENop{opdest: oprd}));
-                 iq.deq();                
-               end 
-             else if (isJust(mva) && isJust(mvb)) // condition must be zero
-               begin
-                 f.enq(tuple3(t,mvb, ENop{opdest: oprd}));
-                 iq.deq();
-               end
+	   case (mva) matches
+	     tagged Valid .cval:
+	       if (cval != 0)
+	       begin
+		 f.enq(tuple3(t, RBranchNotTaken, ENop {opdest: oprd}));
+		 iq.deq();
+	       end
+	       else case (mvb) matches // condition must be zero
+	         tagged Valid .dest:
+		 begin
+                   f.enq(tuple3(t, RBranchTaken dest, ENop{opdest: oprd}));
+                   iq.deq();
+                 end
+	         default:
+		   noAction;
+		 endcase
+	     default:
+	       noAction;
+	   endcase
          tagged DLoad {pdest: .prd, opdest: .oprd, idx: .idx, offset: .o}:
            begin
-             f.enq(tuple3(t, Nothing, ELoad {idx: idx, offset: o, pdest:prd, opdest: oprd}));
+             f.enq(tuple3(t, RNop, ELoad {idx: idx, offset: o, pdest:prd, opdest: oprd}));
              iq.deq();
            end
          tagged DLoadImm {pdest: .prd, opdest: .oprd, value: .val}:
            begin
              b.write1(prd, signExtend(val));
-             f.enq(tuple3(t, Nothing, EWB {pdest: prd, opdest: oprd}));
+             f.enq(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
              iq.deq();
            end
          tagged DStore {value: .v, opdest: .oprd, idx: .idx, offset: .o}:
            begin
-             f.enq(tuple3(t,Nothing,EStore {idx: idx, offset: o, val: v, opdest: oprd}));
+             f.enq(tuple3(t,RNop,EStore {idx: idx, offset: o, val: v, opdest: oprd}));
              iq.deq();
            end
     endcase
@@ -387,7 +480,7 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
 
   interface Get response;
 
-    method ActionValue#(Tuple3#(Token,Maybe#(Addr),ExecedInst)) get();
+    method ActionValue#(Tuple3#(Token,InstResult,ExecedInst)) get();
       f.deq();
       return f.first(); 
     endmethod
@@ -397,11 +490,11 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
 endmodule  
 
 module [Module] mkFM_Execute#(BypassUnit#(RName, PRName, Value, Token) b)
-	    (FM_Unit#(Tick, Token, Tuple2#(Addr,DecodedInst),void, Maybe#(Addr), ExecedInst));
+	    (FM_Unit#(Tick, Token, Tuple2#(Addr,DecodedInst),void, InstResult, ExecedInst));
 
   let valids <- mkBoolVector_Token();
   let dones  <- mkBoolVector_Token(); 
-  Unit#(Token, Tuple2#(Addr,DecodedInst),void, Maybe#(Addr), ExecedInst) exe <- mkExecute(b);
+  Unit#(Token, Tuple2#(Addr,DecodedInst),void, InstResult, ExecedInst) exe <- mkExecute(b);
 
   let i <- mkFM_Unit(valids, dones, exe,3);
   return i;     
@@ -675,16 +768,17 @@ endmodule
 
 
 (* synthesize *)
-module [Module] mkFM_Test (FunctionalPartition#(Tick, Token,
+module [Module] mkFP_Test (FunctionalPartition#(Tick, Token,
                                         	Addr, Inst,
 						void, DepInfo,
-						void, Maybe#(Addr),
+						void, InstResult,
 						void, void,
 						void, void,
 						void, void));
 
   let b    <- mkBypassUnit();
   let dmem <- mkDMem();
+  let tok  <- mkFM_TokGen();
   let fet  <- mkFM_Fetch();
   let dec  <- mkFM_Decode(b);
   let exe  <- mkFM_Execute(b);
@@ -692,12 +786,15 @@ module [Module] mkFM_Test (FunctionalPartition#(Tick, Token,
   let lco  <- mkFM_LocalCommit(b);
   let gco  <- mkFM_GlobalCommit(dmem);
 
+  mkConnection(tok.out, fet.in);
   mkConnection(fet.out, dec.in);
   mkConnection(dec.out, exe.in);
   mkConnection(exe.out, mem.in);
   mkConnection(mem.out, lco.in);
   mkConnection(lco.out, gco.in);
+  mkConnection(gco.out, tok.in);
   
+  interface tokgen = tok.server;
   interface fetch = fet.server;
   interface decode = dec.server;
   interface execute = exe.server;
@@ -707,6 +804,7 @@ module [Module] mkFM_Test (FunctionalPartition#(Tick, Token,
   
   method Action killToken(Token t);
     
+    tok.killToken(t);
     fet.killToken(t);
     dec.killToken(t);
     exe.killToken(t);

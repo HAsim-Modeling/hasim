@@ -5,14 +5,27 @@ import FIFO::*;
 import Vector::*;
 
 import Interfaces::*;
-import Primitive::*;
-import ValueVector::*;
+import Types::*;
 
 
-typedef Maybe#(Tuple3#(Token, Tick, data_T)) Pipe#(parameter type data_T);
+typedef enum
+{
+  FETCH, DECODE, EXECUTE, MEMORY, LCOMMIT, GCOMMIT
+}
+  Phase;
+
+typedef struct
+{
+  Phase phase;
+  Tick tick;
+  Inst inst;
+  DepInfo depinfo;
+  InstResult instresult;
+}
+  InstInfo deriving (Eq, Bits);
 
 (* synthesize *)
-module [Module] mkTimingParition ();
+module [Module] mkTP_Test();
   
   //Latencies
   Tick fet_L = 1;
@@ -21,92 +34,62 @@ module [Module] mkTimingParition ();
   Tick mem_L = 1;
   Tick wb_L = 1;
   
-  Reg#(Token) hd_tok <- mkReg(0);
-  Reg#(Token) tl_tok <- mkReg(0);
-  
-  FM_Test fm <- mkFM();
-  
+
   Reg#(Addr) pc <- mkReg(0);
+  Reg#(Tick) baseTick <- mkReg(0);
   
-  Reg#(Tick) curTick <- mkReg(0);
+  RegFile#(Token, Maybe#(InstInfo)) <- mkRegFileFull();
   
-  Reg#(Pipe#(Inst)) pr_fet <- mkReg(Nothing);
+
+  FunctionalPartition#(Tick, Token,
+                       Addr, Inst,
+		       void, DepInfo,
+		       void, InstResult,
+		       void, void,
+		       void, void,
+		       void, void) func <- mkFP_Test();
+ 
+ 
+  function InstInfo newInstInfo(Token t);
   
-  Reg#(Pipe#(DecodedInst)) pr_dec <- mkReg(Nothing);
+    return InstInfo
+           {
+	     token: t,
+	     tick: ?,
+	     inst: ?,
+	     depinfo: ?,
+	     instresult: ?
+	   };
+	   
+  endfunction
   
-  Reg#(Pipe#(InstResult)) pr_exec <- mkReg(Nothing);
+  rule tok_req (True);
+    func.tokgen.request.put(?, ?, baseTick);
+  endrule
   
-  Reg#(Pipe#(InstResult)) pr_mem <- mkReg(Nothing);
+  rule tok_resp (True);
+    match {.tok, .*} <- func.tokgen.response.get();
+    newtokens.enq(newInstInfo(tok));
+  endrule
   
-  Reg#(Pipe#(void)) pr_wb <- mkReg(Nothing);
-  
-  rule fetchReq (True);
-  
-    let tok <- fm.fetch.putTM(tuple3(hd_tok, pc, curTick));
-    let res <- fm.fetch.getTM(curTick);
+  rule fet_req (True);
     
-    match {.*, .inst} = res;
+    func.fetch.request.put(newtokens.first(), pc, baseTick);
+    
+    pipe_fet.enq(newtokens.first());
+    newtokens.deq();
     
     pc <= pc + 1;
-    curTick <= curTick + 1;
-    hd_tok <= hd_tok + 1;
-    
-    pr_fet <= Valid tuple3(hd_tok, curTick, inst);
-  
-  endrule
-  
-  rule decodeReq (pr_fet matches tagged Valid {.tok, .tck, .inst});
-  
-    let t2 <- fm.decode.putTM(tuple3(tok, ?, tck));
-    let res <- fm.decode.getTM(tck);
-    
-    match {.*, .dec} = res;
-    
-    pr_dec <= Valid tuple3(tok, tck + dec_L, dec);
-  
-  endrule
-  
-  rule execReq (pr_dec matches tagged Valid {.tok, .tck, .dec});
-  
-    let t2 <- fm.execute.putTM(tuple3(tok, ?, tck));
-    let res <- fm.execute.getTM(tck);
-    
-    match {.*, .r} = res;
-    
-    case (r) matches
-      tagged RBranchTaken .addr:
-        pc <= addr;
-      default:
-        noAction;
-    endcase
-    
-    pr_exec <= Valid tuple3(tok, tck + exec_L, r);
-  
-  endrule
-
-  rule memReq (pr_exec matches tagged Valid {.tok, .tck, .r});
-  
-    let t2 <- fm.memory.putTM(tuple3(tok, ?, tck));
-    let res <- fm.memory.getTM(tck);
-    
-    match {.*, .rf} = res;
-    
-    
-    pr_mem <= Valid tuple3(tok, tck + mem_L, rf);
-  
-  endrule
-
-  rule wbReq (pr_exec matches tagged Valid {.tok, .tck, .rf});
-  
-    let t2 <- fm.memory.putTM(tuple3(tok, ?, tck));
-    let res <- fm.memory.getTM(tck);
-    
-    pr_dec <= Valid tuple3(tok, tck + mem_L, ?);
-  
-    tl_tok <= tl_tok + 1;
+    baseTick <= baseTick + 1;
     
   endrule
-
-
+  
+  rule fet_resp (True);
+  
+    match {.tok, .inst} <- func.fetch.response.get();
+    
+    InstInfo ii = pipe_fet.first();
+    
+    if (ii.token != tok) $display("ERROR: Out of order return in Fetch");
 
 endmodule

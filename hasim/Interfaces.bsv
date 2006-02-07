@@ -72,6 +72,7 @@ interface FunctionalPartition#(type tick_T, type token_T,
 			       type lcm_req_T, type lcm_resp_T,
 			       type gcm_req_T, type gcm_resp_T);
 
+  interface Server#(Tuple3#(token_T, void, tick_T), Tuple2#(token_T, void))            tokgen;
   interface Server#(Tuple3#(token_T, fet_req_T, tick_T), Tuple2#(token_T, fet_resp_T)) fetch;
   interface Server#(Tuple3#(token_T, dec_req_T, tick_T), Tuple2#(token_T, dec_resp_T)) decode;
   interface Server#(Tuple3#(token_T, exe_req_T, tick_T), Tuple2#(token_T, exe_resp_T)) execute;

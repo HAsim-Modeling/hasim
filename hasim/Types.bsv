@@ -42,6 +42,13 @@ typedef union tagged {
   ExecedInst deriving (Eq,Bits);
 
 typedef union tagged {
+  Addr RBranchTaken;
+  void RBranchNotTaken;
+  void RNop;
+}
+  InstResult deriving (Eq, Bits);
+
+typedef union tagged {
   struct {           Addr addr; Token token;} Ld;
   struct {Value val; Addr addr; Token token;} St;
 }

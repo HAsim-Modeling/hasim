@@ -1,4 +1,6 @@
 import GetPut::*;
+import ClientServer::*;
+import Connectable::*;
 import RegFile::*;
 import FIFO::*;
 import Vector::*;
@@ -13,10 +15,11 @@ import DMem::*;
 //-----------------------------------------------------------------------------------------------------------//
 
 module [Module] mkFM_Unit#(ValueVector#(Bool, token_T) valids,
-                  ValueVector#(Bool, token_T) dones,
-                  Unit#(token_T, init_T, req_T, resp_T, next_T) u,
-                   Integer sz) // parameters
-                 (FM_Unit#(tick_T, token_T, init_T, req_T, resp_T, next_T)) //inf
+                           ValueVector#(Bool, token_T) dones,
+                           Unit#(token_T, init_T, req_T, resp_T, next_T) u,
+                           Integer sz) // parameters
+
+               (FM_Unit#(tick_T, token_T, init_T, req_T, resp_T, next_T)) //interface
         provisos
           (Bits#(token_T, tsz),Bounded#(token_T),Eq#(token_T),Literal#(token_T),
            Bits#(init_T, isz),
@@ -37,7 +40,7 @@ module [Module] mkFM_Unit#(ValueVector#(Bool, token_T) valids,
   Bool respValid = valids.read1(respQToken);
    
   rule getUnitResponse(True);
-    Tuple3#(token_T, resp_T, next_T) tup <- u.response();
+    Tuple3#(token_T, resp_T, next_T) tup <- u.response.get();
     match {.tok, .resp, .next} = tup;
 
    Bool valid = valids.read2(tok);
@@ -52,60 +55,78 @@ module [Module] mkFM_Unit#(ValueVector#(Bool, token_T) valids,
   rule tossDeadResps(respValid == False);
     unitRespQ.deq();
   endrule
+  
+  interface Put in;
            
-  method Action                                                   putPrevFM(Tuple2#(token_T, init_T) tup);
-   match {.tok,.iVal} = tup;
+    method Action put(Tuple2#(token_T, init_T) tup);
 
-   Bool valid = valids.read3(tok);
+     match {.tok,.iVal} = tup;
 
-   if(valid)
-     begin        
-       $display("ERROR: reinserting allocated token %h", tok);
-     end
-   else
-     begin
-       //Set valid to true and done to false
-       valids.write2(tok,True);
-       dones.write2(tok,False);
-       tbl_init.upd(tok, iVal);
-     end
-  endmethod
+     Bool valid = valids.read3(tok);
 
-  method Action                                                   putTM(Tuple3#(token_T, req_T, tick_T) tup);
-   match {.tok, .req, .tick} = tup;
+     if(valid)
+       begin        
+	 $display("ERROR: reinserting allocated token %h", tok);
+       end
+     else
+       begin
+	 //Set valid to true and done to false
+	 valids.write2(tok,True);
+	 dones.write2(tok,False);
+	 tbl_init.upd(tok, iVal);
+       end
+    endmethod
+  endinterface
 
-
-   Bool valid = valids.read4(tok);      
-   Bool done  =  dones.read1(tok);  
-
-   init_T iVal = tbl_init.sub(tok);
-   
-    if (!valid)
-      $display("ERROR: requesting unallocated token %h", tok);
-    else if (done)
-      $display("ERROR: re-requesting finished token %h", tok);            
-    else // !done
-      u.request(tok, iVal, req);
-  endmethod
+  interface Server server;
+  
+    interface Put request;
+  
+      method Action put(Tuple3#(token_T, req_T, tick_T) tup);
+       match {.tok, .req, .tick} = tup;
 
 
-  //rule getUnitResponse
-  //rule tossDeadResps
+       Bool valid = valids.read4(tok);      
+       Bool done  =  dones.read1(tok);  
+
+       init_T iVal = tbl_init.sub(tok);
+
+	if (!valid)
+	  $display("ERROR: requesting unallocated token %h", tok);
+	else if (done)
+	  $display("ERROR: re-requesting finished token %h", tok);            
+	else // !done
+	  u.request.put(tuple3(tok, iVal, req));
+      endmethod
+
+    endinterface
+
+    //rule getUnitResponse
+    //rule tossDeadResps
+
+    interface Get response;
+
+      method ActionValue#(Tuple2#(token_T, resp_T)) get() if (respValid);
+
+       match {.tok, .resp, .next} = unitRespQ.first();
+       unitRespQ.deq();
+       nextQ.enq(tuple2(tok,next));
+       return tuple2(tok,resp);
+      endmethod
+
+    endinterface
     
-  method ActionValue#(Tuple2#(token_T, resp_T)) getTM(tick_T t) if (respValid);
-
-   match {.tok, .resp, .next} = unitRespQ.first();
-   unitRespQ.deq();
-   nextQ.enq(tuple2(tok,next));
-   return tuple2(tok,resp);
-  endmethod
-
+  endinterface
   // rule tossDeadNexts
+  
+  interface Get out;
 
-  method ActionValue#(Tuple2#(token_T, next_T))     getNextFM();
-   nextQ.deq();
-   return nextQ.first;
-  endmethod
+    method ActionValue#(Tuple2#(token_T, next_T)) get();
+     nextQ.deq();
+     return nextQ.first;
+    endmethod
+
+  endinterface
 
   method Action                                     killToken(token_T tok);
     valids.write2(tok,False);
@@ -134,16 +155,26 @@ endmodule
 module [Module] mkIMemory(Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)));
   RegFile#(Addr, Inst)                 m   <- mkRegFileFull();
   FIFO#(Tuple3#(Token,Addr,Inst))           f   <- mkFIFO();
-                
-  method Action request(Token t, void v, Addr a);
-    f.enq(tuple3(t,a,m.sub(a)));
-  endmethod
-  
-  method ActionValue#(Tuple3#(Token,Inst,Tuple2#(Addr,Inst))) response();
-    f.deq();
-    match {.tok,.addr,.resp} = f.first();
-    return tuple3(tok, resp, tuple2(addr,resp)); 
-  endmethod
+
+  interface Put request;
+
+    method Action put(Tuple3#(Token, void, Addr) tup);
+      match {.t, .*, .a} = tup;
+      f.enq(tuple3(t,a,m.sub(a)));
+    endmethod
+
+  endinterface
+
+  interface Get response;
+
+    method ActionValue#(Tuple3#(Token,Inst,Tuple2#(Addr,Inst))) get();
+      f.deq();
+      match {.tok,.addr,.resp} = f.first();
+      return tuple3(tok, resp, tuple2(addr,resp)); 
+    endmethod
+
+  endinterface
+
 endmodule  
 
 (* synthesize *)
@@ -167,74 +198,82 @@ module [Module] mkDecode#(BypassUnit#(RName, PRName, Value, Token) b)
            (Unit#(Token, Tuple2#(Addr,Inst), void, DepInfo, Tuple2#(Addr, DecodedInst)));
                  
   FIFO#(Tuple3#(Token,DepInfo,Tuple2#(Addr, DecodedInst)))           f   <- mkFIFO();
-                
-  method Action request(Token t, Tuple2#(Addr,Inst) tup, void v);
-    match {.a,.inst} = tup;
-
-    DepInfo depInfo;
-    DecodedInst di;
-
-    case (inst) matches
-      tagged IAdd {dest: .rd, src1: .ra, src2: .rb}:
-        begin
-          let pra = b.lookup1(ra);
-          let prb = b.lookup2(rb);
-          let rtup <- b.makeMapping(Just(rd), t);
-          match {.prd, .oprd} = rtup;
-          di =      DAdd {pdest: prd, opdest: oprd, op1: pra, op2: prb};
-          depInfo = DepInfo {dest: Just(tuple2(rd, prd)), src1: Just(tuple2(ra, pra)), src2: Just(tuple2(rb,prb))};
-        end
-      tagged ISub {dest: .rd, src1: .ra, src2: .rb}:
-        begin
-          let pra = b.lookup1(ra);
-          let prb = b.lookup2(rb);
-          let rtup <- b.makeMapping(Just(rd), t);
-          match {.prd, .oprd} = rtup;
-          di =      DSub {pdest: prd, opdest: oprd, op1: pra, op2: prb};
-          depInfo = DepInfo {dest: Just(tuple2(rd, prd)), src1: Just(tuple2(ra, pra)), src2: Just(tuple2(rb,prb))};
-        end
-      tagged IBz {cond: .c , addr:  .addr}:
-        begin
-          let pra = b.lookup1(c);
-          let prb = b.lookup2(addr);
-          let rtup <- b.makeMapping(Nothing, t);
-          match {.prd, .oprd} = rtup;
-          di =      DBz {opdest: oprd, cond: pra, addr: prb};
-          depInfo = DepInfo {dest: Nothing, src1: Just(tuple2(c,pra)), src2: Just(tuple2(addr,prb))};
-        end
-      tagged ILoad {dest: .rd, idx: .ri, offset: .ro}:
-        begin
-          let pra = b.lookup1(ri);
-          let rtup <- b.makeMapping(Just(rd), t);
-          match {.prd, .oprd} = rtup;
-          di =      DLoad{pdest: prd, opdest: oprd, idx: pra, offset: zeroExtend(ro)};
-          depInfo = DepInfo {dest: Just(tuple2(rd,prd)), src1: Just(tuple2(ri,pra)), src2: Nothing};
-        end
-      tagged ILoadImm {dest: .rd, imm: .i}:
-        begin
-          let rtup <- b.makeMapping(Just(rd), t);
-          match {.prd, .oprd} = rtup;
-          di =      DLoadImm {pdest: prd, opdest: oprd, value: signExtend(i)};
-          depInfo = DepInfo {dest: Just(tuple2(rd,prd)), src1: Nothing, src2: Nothing};
-        end
-      tagged IStore {src: .rsrc, idx: .ri, offset: .ro}:
-        begin
-          let pra = b.lookup1(rsrc);
-          let prb = b.lookup2(ri);
-	  let rtup <- b.makeMapping(Nothing, t);
-          match {.prd, .oprd} = rtup;
-          di =      DStore{value: pra, opdest: oprd, idx: prb, offset: zeroExtend(ro)};
-          depInfo = DepInfo {dest: Nothing, src1: Just(tuple2(ri,prb)), src2: Just(tuple2(rsrc,pra))};
-        end
-    endcase
-       
-    f.enq(tuple3(t,depInfo,tuple2(a,di)));
-  endmethod
   
-  method ActionValue#(Tuple3#(Token, DepInfo,Tuple2#(Addr, DecodedInst))) response();
-    f.deq();
-    return f.first(); 
-  endmethod
+  interface Put request;
+
+    method Action put(Tuple3#(Token, Tuple2#(Addr,Inst), void) tup);
+      match {.t, {.a,.inst}, .*} = tup;
+
+      DepInfo depInfo;
+      DecodedInst di;
+
+      case (inst) matches
+	tagged IAdd {dest: .rd, src1: .ra, src2: .rb}:
+          begin
+            let pra = b.lookup1(ra);
+            let prb = b.lookup2(rb);
+            let rtup <- b.makeMapping(Just(rd), t);
+            match {.prd, .oprd} = rtup;
+            di =      DAdd {pdest: prd, opdest: oprd, op1: pra, op2: prb};
+            depInfo = DepInfo {dest: Just(tuple2(rd, prd)), src1: Just(tuple2(ra, pra)), src2: Just(tuple2(rb,prb))};
+          end
+	tagged ISub {dest: .rd, src1: .ra, src2: .rb}:
+          begin
+            let pra = b.lookup1(ra);
+            let prb = b.lookup2(rb);
+            let rtup <- b.makeMapping(Just(rd), t);
+            match {.prd, .oprd} = rtup;
+            di =      DSub {pdest: prd, opdest: oprd, op1: pra, op2: prb};
+            depInfo = DepInfo {dest: Just(tuple2(rd, prd)), src1: Just(tuple2(ra, pra)), src2: Just(tuple2(rb,prb))};
+          end
+	tagged IBz {cond: .c , addr:  .addr}:
+          begin
+            let pra = b.lookup1(c);
+            let prb = b.lookup2(addr);
+            let rtup <- b.makeMapping(Nothing, t);
+            match {.prd, .oprd} = rtup;
+            di =      DBz {opdest: oprd, cond: pra, addr: prb};
+            depInfo = DepInfo {dest: Nothing, src1: Just(tuple2(c,pra)), src2: Just(tuple2(addr,prb))};
+          end
+	tagged ILoad {dest: .rd, idx: .ri, offset: .ro}:
+          begin
+            let pra = b.lookup1(ri);
+            let rtup <- b.makeMapping(Just(rd), t);
+            match {.prd, .oprd} = rtup;
+            di =      DLoad{pdest: prd, opdest: oprd, idx: pra, offset: zeroExtend(ro)};
+            depInfo = DepInfo {dest: Just(tuple2(rd,prd)), src1: Just(tuple2(ri,pra)), src2: Nothing};
+          end
+	tagged ILoadImm {dest: .rd, imm: .i}:
+          begin
+            let rtup <- b.makeMapping(Just(rd), t);
+            match {.prd, .oprd} = rtup;
+            di =      DLoadImm {pdest: prd, opdest: oprd, value: signExtend(i)};
+            depInfo = DepInfo {dest: Just(tuple2(rd,prd)), src1: Nothing, src2: Nothing};
+          end
+	tagged IStore {src: .rsrc, idx: .ri, offset: .ro}:
+          begin
+            let pra = b.lookup1(rsrc);
+            let prb = b.lookup2(ri);
+	    let rtup <- b.makeMapping(Nothing, t);
+            match {.prd, .oprd} = rtup;
+            di =      DStore{value: pra, opdest: oprd, idx: prb, offset: zeroExtend(ro)};
+            depInfo = DepInfo {dest: Nothing, src1: Just(tuple2(ri,prb)), src2: Just(tuple2(rsrc,pra))};
+          end
+      endcase
+
+      f.enq(tuple3(t,depInfo,tuple2(a,di)));
+    endmethod
+  
+  endinterface
+  
+  interface Get response;
+
+    method ActionValue#(Tuple3#(Token, DepInfo,Tuple2#(Addr, DecodedInst))) get();
+      f.deq();
+      return f.first(); 
+    endmethod
+  
+  endinterface
 endmodule  
 
 
@@ -336,16 +375,25 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
     endcase
   endrule
 
-  method Action request(Token t, Tuple2#(Addr, DecodedInst) tup, void v);
-    match {.addr, .dec} = tup;
+  interface Put request;
 
-    iq.enq(tuple3(t,addr,dec));
-  endmethod
+    method Action put(Tuple3#(Token, Tuple2#(Addr, DecodedInst), void) tup);
+      match {.t, {.addr, .dec}, .*} = tup;
 
-  method ActionValue#(Tuple3#(Token,Maybe#(Addr),ExecedInst)) response();
-    f.deq();
-    return f.first(); 
-  endmethod
+      iq.enq(tuple3(t,addr,dec));
+    endmethod
+
+  endinterface
+
+  interface Get response;
+
+    method ActionValue#(Tuple3#(Token,Maybe#(Addr),ExecedInst)) get();
+      f.deq();
+      return f.first(); 
+    endmethod
+
+  endinterface
+  
 endmodule  
 
 module [Module] mkFM_Execute#(BypassUnit#(RName, PRName, Value, Token) b)
@@ -394,7 +442,7 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
       tagged ELoad {idx: .idx, offset: .o, pdest: .prd, opdest: .oprd}:
         if (isJust(mva))
            begin
-             dmem.request(Ld{addr: unJust(mva) + zeroExtend(o), token: t});
+             dmem.server.request.put(Ld{addr: unJust(mva) + zeroExtend(o), token: t});
              wResp.enq(tuple3(t,?,EWB{pdest: prd, opdest: oprd}));
              reqs.deq();
            end
@@ -403,7 +451,7 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
           let addr = unJust(mva) + zeroExtend(o);
           if (isJust(mva) && isJust(mvb))
              begin
-               dmem.request(St{val: unJust(mvb), addr: addr, token: t});
+               dmem.server.request.put(St{val: unJust(mvb), addr: addr, token: t});
                wResp.enq(tuple3(t,?,ENop{opdest: oprd}));
                reqs.deq();
              end
@@ -421,7 +469,7 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
     case (i) matches
       tagged ELoad {idx: .idx, offset: .o, pdest: .prd, opdest: .oprd}:
         begin
-          let resp <- dmem.response();
+          let resp <- dmem.server.response.get();
           Value v = case (resp) matches
                       tagged LdResp .v: return v;
                       tagged StResp .*: return ?; // impossible
@@ -432,7 +480,7 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
         end
       tagged EStore .*:
         begin
-          let resp <- dmem.response();
+          let resp <- dmem.server.response.get();
           wResp.deq();
           f.enq(wResp.first());
         end
@@ -444,14 +492,24 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
     endcase
   endrule
 
-  method Action request(Token t, ExecedInst i, void j);
-    reqs.enq(tuple2(t,i));
-  endmethod
+  interface Put request;
+
+    method Action put(Tuple3#(Token, ExecedInst, void) tup);
+      match {.t, .i, .*} = tup;
+      reqs.enq(tuple2(t,i));
+    endmethod
   
-  method ActionValue#(Tuple3#(Token, void, ExecedInst)) response();
-    f.deq();
-    return f.first(); 
-  endmethod
+  endinterface
+  
+  interface Get response;
+  
+    method ActionValue#(Tuple3#(Token, void, ExecedInst)) get();
+      f.deq();
+      return f.first(); 
+    endmethod
+  
+  endinterface
+  
 endmodule  
 
 module [Module] mkFM_Memory#(BypassUnit#(RName, PRName, Value, Token) b, Memory#(MemReq, MemResp,Token) dmem)(FM_Unit#(Tick, Token, ExecedInst, void, void, ExecedInst));
@@ -472,22 +530,32 @@ module [Module] mkLocalCommit#(BypassUnit#(RName, PRName, Value, Token) b)
                 (Unit#(Token, ExecedInst, void, void,void));
 
   FIFO#(Tuple3#(Token, void, void)) f   <- mkFIFO();
-                
-  method Action request(Token t, ExecedInst ei, void j);
-    f.enq(tuple3(t,?,?)); //? == unit
-    PRName p = case (ei) matches
-                 tagged ENop    .x: return(x.opdest);
-		 tagged EWB     .x: return(x.opdest);
-		 tagged ELoad   .x: return(x.opdest);
-		 tagged EStore  .x: return(x.opdest);
-	       endcase;
-    b.freePReg(p);
-  endmethod
   
-  method ActionValue#(Tuple3#(Token, void, void)) response();
-    f.deq();
-    return f.first(); 
-  endmethod
+  interface Put request;
+
+    method Action put(Tuple3#(Token, ExecedInst, void) tup);
+      match {.t, .ei, .*} = tup;
+      f.enq(tuple3(t,?,?)); //? == unit
+      PRName p = case (ei) matches
+                   tagged ENop    .x: return(x.opdest);
+		   tagged EWB     .x: return(x.opdest);
+		   tagged ELoad   .x: return(x.opdest);
+		   tagged EStore  .x: return(x.opdest);
+		 endcase;
+      b.freePReg(p);
+    endmethod
+  
+  endinterface
+  
+  interface Get response;
+  
+    method ActionValue#(Tuple3#(Token, void, void)) get();
+      f.deq();
+      return f.first(); 
+    endmethod
+  
+  endinterface
+  
 endmodule  
 
 module [Module] mkFM_LocalCommit#(BypassUnit#(RName, PRName, Value, Token) b)
@@ -509,16 +577,25 @@ endmodule
 module [Module] mkGlobalCommit#(Memory#(MemReq, MemResp,Token) dmem)(Unit#(Token, void, void, void,void));
 
   FIFO#(Tuple3#(Token, void, void)) f   <- mkFIFO();
-                
-  method Action request(Token t, void v, void j);
-    f.enq(tuple3(t,?,?)); //? == unit
-    dmem.commit(t);
-  endmethod
   
-  method ActionValue#(Tuple3#(Token, void, void)) response();
-    f.deq();
-    return f.first(); 
-  endmethod
+  interface Put request;
+                
+    method Action put(Tuple3#(Token, void, void) t);
+      f.enq(t);
+      dmem.commit(t.fst());
+    endmethod
+  
+  endinterface
+  
+  interface Get response;
+
+    method ActionValue#(Tuple3#(Token, void, void)) get();
+      f.deq();
+      return f.first(); 
+    endmethod
+
+  endinterface
+  
 endmodule  
 
 module [Module] mkFM_GlobalCommit#(Memory#(MemReq,MemResp,Token) dmem)
@@ -598,7 +675,13 @@ endmodule
 
 
 (* synthesize *)
-module [Module] mkFM_Test(Empty);
+module [Module] mkFM_Test (FunctionalPartition#(Tick, Token,
+                                        	Addr, Inst,
+						void, DepInfo,
+						void, Maybe#(Addr),
+						void, void,
+						void, void,
+						void, void));
 
   let b    <- mkBypassUnit();
   let dmem <- mkDMem();
@@ -609,28 +692,28 @@ module [Module] mkFM_Test(Empty);
   let lco  <- mkFM_LocalCommit(b);
   let gco  <- mkFM_GlobalCommit(dmem);
 
-  rule fet_dec(True);
-     let x <- fet.getNextFM();
-     dec.putPrevFM(x);
-  endrule
+  mkConnection(fet.out, dec.in);
+  mkConnection(dec.out, exe.in);
+  mkConnection(exe.out, mem.in);
+  mkConnection(mem.out, lco.in);
+  mkConnection(lco.out, gco.in);
+  
+  interface fetch = fet.server;
+  interface decode = dec.server;
+  interface execute = exe.server;
+  interface memory = mem.server;
+  interface local_commit = lco.server;
+  interface global_commit = gco.server;
+  
+  method Action killToken(Token t);
     
-  rule dec_exe(True);
-     let x <- dec.getNextFM();
-     exe.putPrevFM(x);
-  endrule 
+    fet.killToken(t);
+    dec.killToken(t);
+    exe.killToken(t);
+    mem.killToken(t);
+    lco.killToken(t);
+    gco.killToken(t);
+ 
+  endmethod
 
-  rule exe_mem(True);
-     let x <- exe.getNextFM();
-     mem.putPrevFM(x);
-  endrule 
-
-  rule mem_lco(True);
-     let x <- mem.getNextFM();
-     lco.putPrevFM(x);
-  endrule
-
-  rule lco_gco(True);
-     let x <- lco.getNextFM();
-     gco.putPrevFM(x);
-  endrule
 endmodule

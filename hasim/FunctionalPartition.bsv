@@ -5,22 +5,21 @@ import RegFile::*;
 import FIFO::*;
 import Vector::*;
 
-import Interfaces::*;
+import Datatypes::*;
 import ValueVector::*;
-import Types::*;
-import DMem::*;
+import Mem::*;
 import BypassUnit::*;
                  
 //-----------------------------------------------------------------------------------------------------------//
 // General Unit (in-order unit)                                                                              //
 //-----------------------------------------------------------------------------------------------------------//
 
-module [Module] mkFM_Unit#(ValueVector#(Bool, token_T) valids,
+module [Module] mkFP_Unit#(ValueVector#(Bool, token_T) valids,
                            ValueVector#(Bool, token_T) dones,
                            Unit#(token_T, init_T, req_T, resp_T, next_T) u,
                            Integer sz) // parameters
 
-               (FM_Unit#(tick_T, token_T, init_T, req_T, resp_T, next_T)) //interface
+               (FP_Unit#(tick_T, token_T, init_T, req_T, resp_T, next_T)) //interface
         provisos
           (Bits#(token_T, tsz),Bounded#(token_T),Eq#(token_T),Literal#(token_T),
            Bits#(init_T, isz),
@@ -152,8 +151,7 @@ endmodule
 // Token Generation Unit (head/tail pointer)                                                                              //
 //-----------------------------------------------------------------------------------------------------------//
 
-(* synthesize *)
-module [Module] mkFM_TokGen(FM_Unit#(Tick, Token, void, void, void, void));
+module [Module] mkFP_TokGen(FP_Unit#(Tick, Token, void, void, void, void));
 
 
   Reg#(Token) r_first <- mkReg(0);
@@ -227,16 +225,29 @@ endmodule
 // Fetch Unit (in-order _unit_)                                                                              //
 //-----------------------------------------------------------------------------------------------------------//
 
-(* synthesize *)
-module [Module] mkIMemory(Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)));
-  RegFile#(Addr, Inst)                 m   <- mkRegFileFull();
-  FIFO#(Tuple3#(Token,Addr,Inst))           f   <- mkFIFO();
+module [Module] mkIMemory#(Server#(Addr, Inst) imem) (Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)));
+  
+  FIFO#(Tuple2#(Token, Addr)) freqs <- mkFIFO();
+  FIFO#(Tuple3#(Token, Addr, Inst)) fresps <- mkFIFO();
+
+
+  rule getMemResp (True);
+  
+    Inst i <- imem.response.get();
+    
+    match {.tok, .addr} = freqs.first();
+    freqs.deq();
+    
+    fresps.enq(tuple3(tok, addr, i));
+  
+  endrule
 
   interface Put request;
 
     method Action put(Tuple3#(Token, void, Addr) tup);
       match {.t, .*, .a} = tup;
-      f.enq(tuple3(t,a,m.sub(a)));
+      imem.request.put(a);
+      freqs.enq(tuple2(t,a));
     endmethod
 
   endinterface
@@ -244,8 +255,8 @@ module [Module] mkIMemory(Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)));
   interface Get response;
 
     method ActionValue#(Tuple3#(Token,Inst,Tuple2#(Addr,Inst))) get();
-      f.deq();
-      match {.tok,.addr,.resp} = f.first();
+      fresps.deq();
+      match {.tok,.addr,.resp} = fresps.first();
       return tuple3(tok, resp, tuple2(addr,resp)); 
     endmethod
 
@@ -253,14 +264,13 @@ module [Module] mkIMemory(Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)));
 
 endmodule  
 
-(* synthesize *)
-module [Module] mkFM_Fetch(FM_Unit#(Tick,Token, void, Addr, Inst, Tuple2#(Addr,Inst)));
+module [Module] mkFP_Fetch#(Server#(Addr, Inst) imem) (FP_Unit#(Tick,Token, void, Addr, Inst, Tuple2#(Addr,Inst)));
   let valids <- mkBoolVector_Token();
   let dones  <- mkBoolVector_Token(); 
     
-  Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)) mem <- mkIMemory();
+  Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)) memunit <- mkIMemory(imem);
   
-  let i <- mkFM_Unit(valids, dones, mem,2);
+  let i <- mkFP_Unit(valids, dones, memunit,2);
 
   return i;     
 endmodule
@@ -362,7 +372,7 @@ module [Module] mkDecode#(BypassUnit#(RName, PRName, Value, Token) b)
 endmodule  
 
 
-module [Module] mkFM_Decode#(BypassUnit#(RName, PRName, Value, Token) b)(FM_Unit#(Tick, Token,   Tuple2#(Addr,Inst),
+module [Module] mkFP_Decode#(BypassUnit#(RName, PRName, Value, Token) b)(FP_Unit#(Tick, Token,   Tuple2#(Addr,Inst),
                                               void, DepInfo, Tuple2#(Addr,DecodedInst)));
 
   let valids <- mkBoolVector_Token();
@@ -370,7 +380,7 @@ module [Module] mkFM_Decode#(BypassUnit#(RName, PRName, Value, Token) b)(FM_Unit
    
   Unit#(Token, Tuple2#(Addr,Inst), void, DepInfo, Tuple2#(Addr, DecodedInst)) dec <- mkDecode(b);
   
-  let i <- mkFM_Unit(valids, dones, dec,2);
+  let i <- mkFP_Unit(valids, dones, dec,2);
   return i;     
 endmodule
 
@@ -490,14 +500,14 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
   
 endmodule  
 
-module [Module] mkFM_Execute#(BypassUnit#(RName, PRName, Value, Token) b)
-	    (FM_Unit#(Tick, Token, Tuple2#(Addr,DecodedInst),void, InstResult, ExecedInst));
+module [Module] mkFP_Execute#(BypassUnit#(RName, PRName, Value, Token) b)
+	    (FP_Unit#(Tick, Token, Tuple2#(Addr,DecodedInst),void, InstResult, ExecedInst));
 
   let valids <- mkBoolVector_Token();
   let dones  <- mkBoolVector_Token(); 
   Unit#(Token, Tuple2#(Addr,DecodedInst),void, InstResult, ExecedInst) exe <- mkExecute(b);
 
-  let i <- mkFM_Unit(valids, dones, exe,3);
+  let i <- mkFP_Unit(valids, dones, exe,3);
   return i;     
 endmodule
 
@@ -506,7 +516,7 @@ endmodule
 //-----------------------------------------------------------------------------------------------------------//
 
 module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
-	                    Memory#(MemReq, MemResp, Token) dmem)
+	                    Memory#(Addr, Inst, Value, Token) mem)
   (Unit#(Token, ExecedInst, void, void, ExecedInst));
 
   FIFO#(Tuple2#(Token, ExecedInst))       reqs  <- mkFIFO();
@@ -536,7 +546,7 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
       tagged ELoad {idx: .idx, offset: .o, pdest: .prd, opdest: .oprd}:
         if (isJust(mva))
            begin
-             dmem.server.request.put(Ld{addr: unJust(mva) + zeroExtend(o), token: t});
+             mem.dmem.request.put(Ld{addr: unJust(mva) + zeroExtend(o), token: t});
              wResp.enq(tuple3(t,?,EWB{pdest: prd, opdest: oprd}));
              reqs.deq();
            end
@@ -545,7 +555,7 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
           let addr = unJust(mva) + zeroExtend(o);
           if (isJust(mva) && isJust(mvb))
              begin
-               dmem.server.request.put(St{val: unJust(mvb), addr: addr, token: t});
+               mem.dmem.request.put(St{val: unJust(mvb), addr: addr, token: t});
                wResp.enq(tuple3(t,?,ENop{opdest: oprd}));
                reqs.deq();
              end
@@ -563,7 +573,7 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
     case (i) matches
       tagged ELoad {idx: .idx, offset: .o, pdest: .prd, opdest: .oprd}:
         begin
-          let resp <- dmem.server.response.get();
+          let resp <- mem.dmem.response.get();
           Value v = case (resp) matches
                       tagged LdResp .v: return v;
                       tagged StResp .*: return ?; // impossible
@@ -574,7 +584,7 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
         end
       tagged EStore .*:
         begin
-          let resp <- dmem.server.response.get();
+          let resp <- mem.dmem.response.get();
           wResp.deq();
           f.enq(wResp.first());
         end
@@ -606,13 +616,13 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
   
 endmodule  
 
-module [Module] mkFM_Memory#(BypassUnit#(RName, PRName, Value, Token) b, Memory#(MemReq, MemResp,Token) dmem)(FM_Unit#(Tick, Token, ExecedInst, void, void, ExecedInst));
+module [Module] mkFP_Memory#(BypassUnit#(RName, PRName, Value, Token) b, Memory#(Addr, Inst, Value, Token) mem)(FP_Unit#(Tick, Token, ExecedInst, void, void, ExecedInst));
   let valids <- mkBoolVector_Token();
   let dones  <- mkBoolVector_Token();
    
-  Unit#(Token, ExecedInst, void, void, ExecedInst) mem <- mkDMemory(b,dmem);
+  Unit#(Token, ExecedInst, void, void, ExecedInst) memunit <- mkDMemory(b, mem);
   
-  let i <- mkFM_Unit(valids, dones, mem, 2);
+  let i <- mkFP_Unit(valids, dones, memunit, 2);
   return i;     
 endmodule
 
@@ -652,15 +662,15 @@ module [Module] mkLocalCommit#(BypassUnit#(RName, PRName, Value, Token) b)
   
 endmodule  
 
-module [Module] mkFM_LocalCommit#(BypassUnit#(RName, PRName, Value, Token) b)
-                   (FM_Unit#(Tick,Token, ExecedInst, void, void,void));
+module [Module] mkFP_LocalCommit#(BypassUnit#(RName, PRName, Value, Token) b)
+                   (FP_Unit#(Tick,Token, ExecedInst, void, void,void));
 
   let valids <- mkBoolVector_Token();
   let dones  <- mkBoolVector_Token(); 
 
   Unit#(Token, ExecedInst, void, void,void) com <- mkLocalCommit(b);
   
-  let i <- mkFM_Unit(valids, dones, com,2);
+  let i <- mkFP_Unit(valids, dones, com,2);
   return i;     
 endmodule
 
@@ -668,7 +678,7 @@ endmodule
 // Global Commit Unit (in-order _unit_)                                                                      //
 //-----------------------------------------------------------------------------------------------------------//
 
-module [Module] mkGlobalCommit#(Memory#(MemReq, MemResp,Token) dmem)(Unit#(Token, void, void, void,void));
+module [Module] mkGlobalCommit#(Memory#(Addr, Inst, Value, Token) mem)(Unit#(Token, void, void, void,void));
 
   FIFO#(Tuple3#(Token, void, void)) f   <- mkFIFO();
   
@@ -676,7 +686,7 @@ module [Module] mkGlobalCommit#(Memory#(MemReq, MemResp,Token) dmem)(Unit#(Token
                 
     method Action put(Tuple3#(Token, void, void) t);
       f.enq(t);
-      dmem.commit(t.fst());
+      mem.commit(t.fst());
     endmethod
   
   endinterface
@@ -692,15 +702,15 @@ module [Module] mkGlobalCommit#(Memory#(MemReq, MemResp,Token) dmem)(Unit#(Token
   
 endmodule  
 
-module [Module] mkFM_GlobalCommit#(Memory#(MemReq,MemResp,Token) dmem)
-                   (FM_Unit#(Tick,Token, void, void, void,void));
+module [Module] mkFP_GlobalCommit#(Memory#(Addr, Inst, Value, Token) mem)
+                   (FP_Unit#(Tick,Token, void, void, void,void));
 
   let valids <- mkBoolVector_Token();
   let dones  <- mkBoolVector_Token(); 
 
-  Unit#(Token, void, void, void,void) com <- mkGlobalCommit(dmem);
+  Unit#(Token, void, void, void,void) com <- mkGlobalCommit(mem);
   
-  let i <- mkFM_Unit(valids, dones, com,2);
+  let i <- mkFP_Unit(valids, dones, com,2);
   return i;     
 endmodule
                    
@@ -709,8 +719,9 @@ endmodule
 // Top                                                                                                       //
 //-----------------------------------------------------------------------------------------------------------//
 
-(* synthesize *)
-module [Module] mkFP_Test (FunctionalPartition#(Tick, Token,
+module [Module] mkFP_Test#(Memory#(Addr, Inst, Value, Token) memsystem)
+
+                          (FunctionalPartition#(Tick, Token,
                                         	Addr, Inst,
 						void, DepInfo,
 						void, InstResult,
@@ -719,14 +730,13 @@ module [Module] mkFP_Test (FunctionalPartition#(Tick, Token,
 						void, void));
 
   let b    <- mkBypassUnit();
-  let dmem <- mkDMem();
-  let tok  <- mkFM_TokGen();
-  let fet  <- mkFM_Fetch();
-  let dec  <- mkFM_Decode(b);
-  let exe  <- mkFM_Execute(b);
-  let mem  <- mkFM_Memory(b, dmem);
-  let lco  <- mkFM_LocalCommit(b);
-  let gco  <- mkFM_GlobalCommit(dmem);
+  let tok  <- mkFP_TokGen();
+  let fet  <- mkFP_Fetch(memsystem.imem);
+  let dec  <- mkFP_Decode(b);
+  let exe  <- mkFP_Execute(b);
+  let mem  <- mkFP_Memory(b, memsystem);
+  let lco  <- mkFP_LocalCommit(b);
+  let gco  <- mkFP_GlobalCommit(memsystem);
 
   mkConnection(tok.out, fet.in);
   mkConnection(fet.out, dec.in);

@@ -1,5 +1,4 @@
-import Interfaces::*;
-import Types::*;
+import Datatypes::*;
 
 import GetPut::*;
 import ClientServer::*;
@@ -8,11 +7,14 @@ import FIFO::*;
 import Vector::*;
 
 (* synthesize *)
-module [Module] mkDMem(Memory#(MemReq, MemResp, Token)) provisos(Bits#(PRName, psz));
+module [Module] mkMem(Memory#(Addr, Inst, Value, Token)) provisos(Bits#(PRName, psz));
 
-  FIFO#(MemResp)        f <- mkFIFO();
+  FIFO#(MemResp#(Value))        f <- mkFIFO();
 
-  RegFile#(Addr, Value) m <- mkRegFileFull();
+  RegFile#(Addr, Inst)  imemory <- mkRegFileFull();
+  Wire#(Inst) iresp <- mkWire();
+  
+  RegFile#(Addr, Value) dmemory <- mkRegFileFull();
 
   Reg#(Vector#(TExp#(psz), Bool))                              tvalids <- mkReg(Vector::replicate(False));
   Reg#(Vector#(TExp#(psz), Tuple3#(Token,Addr,Value)))          tokens <- mkRegU();
@@ -28,11 +30,27 @@ module [Module] mkDMem(Memory#(MemReq, MemResp, Token)) provisos(Bits#(PRName, p
     return (b && (a == addr)) ? Just(x) : Nothing;
   endfunction
  
-  interface Server server;
+  interface Server imem;
+   
+    interface Put request;
+      method Action put(Addr a);
+        iresp <= imemory.sub(a);
+      endmethod
+    endinterface
+ 
+    interface Get response;
+      method ActionValue#(Inst) get();
+        return iresp;
+      endmethod
+    endinterface
+  
+  endinterface
+ 
+  interface Server dmem;
     
     interface Put request;
 
-      method Action put(MemReq req);// if (canStore(tvalids));
+      method Action put(MemReq#(Addr, Token, Value) req);// if (canStore(tvalids));
 
 	function Value getResult(Token youngest, Addr a);
 	  function youngerToken(Token x, Token y) = (youngest - x) < (youngest - y);
@@ -45,7 +63,7 @@ module [Module] mkDMem(Memory#(MemReq, MemResp, Token)) provisos(Bits#(PRName, p
 	  let finalChoice = Vector::fold(pickYoungest, mmtokens);
 
 	  case(finalChoice) matches
-            tagged Nothing: return m.sub(a); // goto memory
+            tagged Nothing: return dmemory.sub(a); // goto memory
             tagged Just {.*,.*,.v}: return v;
 	  endcase
 	endfunction
@@ -92,7 +110,7 @@ module [Module] mkDMem(Memory#(MemReq, MemResp, Token)) provisos(Bits#(PRName, p
   
     interface Get response;
 
-      method ActionValue#(MemResp) get();
+      method ActionValue#(MemResp#(Value)) get();
 	f.deq();
 	return f.first();
       endmethod
@@ -114,7 +132,7 @@ module [Module] mkDMem(Memory#(MemReq, MemResp, Token)) provisos(Bits#(PRName, p
 
     case (mresult) matches
       tagged Just {.*,.addr,.val}:
-        m.upd(addr, val);
+        dmemory.upd(addr, val);
       tagged Nothing:
         noAction;
     endcase
@@ -136,5 +154,8 @@ module [Module] mkDMem(Memory#(MemReq, MemResp, Token)) provisos(Bits#(PRName, p
 
      tvalids <= Vector::zipWith(flattenToken, tvalids,tokens);
   endmethod
+
+  interface magic_imem = imemory;
+  interface magic_dmem = dmemory;
 
 endmodule

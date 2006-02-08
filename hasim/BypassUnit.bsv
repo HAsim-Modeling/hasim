@@ -1,5 +1,4 @@
-import Interfaces::*;
-import Types::*;
+import Datatypes::*;
 
 import GetPut::*;
 import RegFile::*;
@@ -196,7 +195,7 @@ module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
 
     rob_old <= rob_old + 1;
 
-    function f(x,t) = x && (t != tok);
+    function f(s,t) = s && (t != tok);
 
     let newvals = zipWith(f, snap_valids, snap_ids);
 

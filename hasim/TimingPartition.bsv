@@ -18,7 +18,198 @@ module [Module] mkCPU_Test#(Memory#(Addr, Inst, Value, Token) mem) (CPU);
 endmodule
 
 
+typedef enum 
+{ 
+  TOK, FET, DEC, EXE, MEM, LCO, GCO 
+} 
+  Stage deriving (Eq, Bits);
+
+ 
+
 module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
+                				Addr, Inst,
+						void, DepInfo,
+						void, InstResult,
+						void, void,
+						void, void,
+						void, void) func) (TimingPartition);
+  
+  Reg#(Bool) running <- mkReg(False);
+  
+  Reg#(Bool) madeReq <- mkReg(False);
+  
+  Reg#(Stage) stage <- mkReg(TOK);
+  
+  Reg#(Token) cur_tok <- mkReg(0);
+  Reg#(Inst)  cur_inst <- mkRegU();
+  
+  Reg#(Addr) pc <- mkReg(0);
+  
+  Reg#(Tick) baseTick <- mkReg(0);
+  
+  rule process (running);
+   $display("WHEEE!");
+    
+    baseTick <= baseTick + 1;
+
+    case (stage)
+      TOK:
+        if (!madeReq)
+	  begin
+	    //Request a token
+	    $display("Requesting a new token.");
+	    func.tokgen.request.put(tuple3(?, ?, baseTick));
+	    madeReq <= True;
+	  end
+	else
+	  begin
+	    //Get the response
+	    match {.tok, .*} <- func.tokgen.response.get();
+	    $display("Responded with token %0d.", tok);
+	    cur_tok <= tok;
+	    
+	    stage <= FET;
+	    madeReq <= False;
+	  end
+      FET:
+        if (!madeReq)
+	  begin
+	    //Fetch next instruction
+	    $display("Fetching token %0d at address %h", cur_tok, pc);
+            func.fetch.request.put(tuple3(cur_tok, pc, baseTick));
+	    madeReq <= True;
+	  end
+	else
+	  begin
+	    //Get the response
+            match {.tok, .inst} <- func.fetch.response.get();
+	    
+	    if (tok != cur_tok) $display ("FET ERROR");
+	    
+	    stage <= DEC;
+	    madeReq <= False;
+	  end
+      DEC:
+        if (!madeReq)
+	  begin
+	    //Decode current inst
+            func.decode.request.put(tuple3(cur_tok, ?, baseTick));
+	    madeReq <= True;
+	  end
+	else
+	  begin
+ 	    //Get the response
+            match {.tok, .deps} <- func.decode.response.get();
+	    
+	    if (tok != cur_tok) $display ("DEC ERROR");
+	    
+	    stage <= EXE;
+	    madeReq <= False;
+	  end
+      EXE:
+        if (!madeReq)
+	  begin
+	    //Execute instruction
+            func.execute.request.put(tuple3(cur_tok, ?, baseTick));
+	    madeReq <= True;
+	  end
+	else
+	  begin
+ 	    //Get the response
+            match {.tok, .res} <- func.execute.response.get();
+	    
+	    if (tok != cur_tok) $display ("EXE ERROR");
+	   	
+	    case (res) matches
+	      tagged RBranchTaken .addr:
+	      begin
+	        $display("Branch taken to address %h", addr);
+	   	pc <= addr;
+	      end
+              tagged RBranchNotTaken:
+	   	pc <= pc + 1;
+              tagged RNop:
+	   	pc <= pc + 1;
+              tagged RTerminate:
+	   	running <= False;
+	    endcase
+	    
+	    stage <= MEM;
+	    madeReq <= False;
+	  end
+      MEM:
+        if (!madeReq)
+	  begin
+	    //Request memory ops
+            func.memory.request.put(tuple3(cur_tok, ?, baseTick));
+	    madeReq <= True;
+	  end
+	else
+	  begin
+ 	    //Get the response
+	    match {.tok, .*} <- func.memory.response.get();
+	    
+	    if (tok != cur_tok) $display ("MEM ERROR");
+	    
+	    stage <= LCO;
+	    madeReq <= False;
+	  end
+      LCO:
+        if (!madeReq)
+	  begin
+	    //Request memory ops
+            func.local_commit.request.put(tuple3(cur_tok, ?, baseTick));
+	    madeReq <= True;
+	  end
+	else
+	  begin
+ 	    //Get the response
+  
+            match {.tok, .*} <- func.local_commit.response.get();
+	    
+	    if (tok != cur_tok) $display ("LCO ERROR");
+	    
+	    stage <= GCO;
+	    madeReq <= False;
+	  end
+      GCO:
+        if (!madeReq)
+	  begin
+	    //Request memory ops
+            func.global_commit.request.put(tuple3(cur_tok, ?, baseTick));
+	    madeReq <= True;
+	  end
+	else
+	  begin
+ 	    //Get the response
+  
+            match {.tok, .*} <- func.global_commit.response.get();
+	    
+	    if (tok != cur_tok) $display ("GCO ERROR");
+	    
+	    $display("Committed token %0d", cur_tok);
+	    
+	    stage <= GCO;
+	    madeReq <= False;
+	  end
+    endcase    
+  endrule
+  
+  method Action start();
+  
+    running <= True;
+    
+  endmethod
+  
+  method Bool done();
+  
+    return !running;
+    
+  endmethod
+
+endmodule
+
+module [Module] mkTP_TestOld#(FunctionalPartition#(Tick, Token,
                 				Addr, Inst,
 						void, DepInfo,
 						void, InstResult,
@@ -196,7 +387,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
     Token tok = retireQ.first();
     retireQ.deq();
     
-    $display("Committed:\t%0d\t%0d%0\t0d%0\t0d%0\t0d%0\t0d%0\t0d", 
+    $display("Committed:\t%0d\t%0d\t%0d\t%0d\t%0d\t%0d\t%0d", 
               validValue(tbl_valids.sub(tok)),
               validValue(tbl_fetch.sub(tok)), 
               validValue(tbl_decode.sub(tok)), 

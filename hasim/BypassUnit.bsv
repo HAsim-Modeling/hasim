@@ -26,7 +26,6 @@ interface RFile_4_2#(type addr_T, type value_T);
   method Action alloc(addr_T a);
 endinterface
 
-(* synthesize *)
 module [Module] mkRFile_4_2(RFile_4_2#(PRName, Value)) provisos (Bits#(PRName, psz));
 
   //RegisterFile
@@ -67,7 +66,6 @@ endmodule
 // Bypass
 //----------------------------------------------------------------------------------
 
-(* synthesize *)
 module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
   provisos(
     Bits#(RName, rsz), Eq#(RName), Bounded#(RName), 

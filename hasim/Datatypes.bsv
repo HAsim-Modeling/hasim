@@ -5,9 +5,9 @@ import RegFile::*;
 
 //Basic datatypes
 
-typedef UInt#(8) Token;
-typedef UInt#(64) Tick;
-typedef Bit#(32)  Addr;
+typedef Bit#(8) Token;
+typedef Bit#(64) Tick;
+typedef Bit#(8)  Addr;
 typedef Bit#(5)   RName;
 typedef Bit#(6)   PRName;
 typedef Bit#(32)  Value;

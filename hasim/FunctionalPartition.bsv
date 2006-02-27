@@ -451,7 +451,7 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
 	       else case (mvb) matches // condition must be zero
 	         tagged Valid .dest:
 		 begin
-                   f.enq(tuple3(t, RBranchTaken dest, ENop{opdest: oprd}));
+                   f.enq(tuple3(t, RBranchTaken truncate(dest), ENop{opdest: oprd}));
                    iq.deq();
                  end
 	         default:
@@ -546,7 +546,7 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
       tagged ELoad {idx: .idx, offset: .o, pdest: .prd, opdest: .oprd}:
         if (isJust(mva))
            begin
-             mem.dmem.request.put(Ld{addr: unJust(mva) + zeroExtend(o), token: t});
+             mem.dmem.request.put(Ld{addr: truncate(unJust(mva)) + zeroExtend(o), token: t});
              wResp.enq(tuple3(t,?,EWB{pdest: prd, opdest: oprd}));
              reqs.deq();
            end
@@ -555,7 +555,7 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
           let addr = unJust(mva) + zeroExtend(o);
           if (isJust(mva) && isJust(mvb))
              begin
-               mem.dmem.request.put(St{val: unJust(mvb), addr: addr, token: t});
+               mem.dmem.request.put(St{val: unJust(mvb), addr: truncate(addr), token: t});
                wResp.enq(tuple3(t,?,ENop{opdest: oprd}));
                reqs.deq();
              end

@@ -207,10 +207,10 @@ module mkTestbench_EQ#(TestHarness th1, TestHarness th2, TestCase tc) ();
   Reg#(Bool) running <- mkReg(False);
 
 
-  Reg#(Nat) icur <- mkReg(0);
-  Reg#(Nat) dcur <- mkReg(0);
-  Reg#(Nat) ecur <- mkReg(0);
-  Reg#(Nat) eqcur <- mkReg(0);
+  Reg#(Addr) icur <- mkReg(0);
+  Reg#(Addr) dcur <- mkReg(0);
+  Reg#(Addr) ecur <- mkReg(0);
+  Reg#(Addr) eqcur <- mkReg(0);
   
   Bool i_loading = icur < fromInteger(primArrayLength(tc.imem_init));
   Bool d_loading = dcur < fromInteger(primArrayLength(tc.dmem_init));
@@ -294,9 +294,9 @@ endmodule
 module mkTestbench#(TestHarness th, TestCase tc) ();
 
 
-  Reg#(Nat) icur <- mkReg(0);
-  Reg#(Nat) dcur <- mkReg(0);
-  Reg#(Nat) ecur <- mkReg(0);
+  Reg#(Addr) icur <- mkReg(0);
+  Reg#(Addr) dcur <- mkReg(0);
+  Reg#(Addr) ecur <- mkReg(0);
 
   Reg#(Bool) running <- mkReg(False);
   Reg#(Bool) passed <- mkReg(True);

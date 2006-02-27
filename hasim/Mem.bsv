@@ -6,7 +6,6 @@ import RegFile::*;
 import FIFO::*;
 import Vector::*;
 
-(* synthesize *)
 module [Module] mkMem(Memory#(Addr, Inst, Value, Token)) provisos(Bits#(PRName, psz));
 
   FIFO#(MemResp#(Value))        f <- mkFIFO();

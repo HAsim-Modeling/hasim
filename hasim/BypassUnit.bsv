@@ -9,6 +9,7 @@ import ConfigReg::*;
 
 typedef Bit#(4) SnapShotPtr;
 
+
 //----------------------------------------------------------------------------------
 // Physical Register File
 //----------------------------------------------------------------------------------
@@ -31,7 +32,15 @@ module [Module] mkRFile_4_2(RFile_4_2#(PRName, Value)) provisos (Bits#(PRName, p
   //RegisterFile
 
   Vector#(TExp#(psz), Reg#(Value))            rf_regs <- replicateM(mkConfigRegU);
-  Vector#(TExp#(psz), Reg#(Bool))           rf_valids <- replicateM(mkConfigReg(False));
+
+  function initiallyValid(Integer x);
+    RName rmax = maxBound ;
+    return(toIndex(x) < toIndex(rmax));
+  endfunction
+
+  Vector#(TExp#(psz), Reg#(Bool))           rf_valids <-
+            mapM(compose(mkConfigReg, initiallyValid), genVector);
+//            replicateM(mkConfigReg, mapM(initiallyValid, genVector));
 
   function Maybe#(Value) read(PRName x);
      return (rf_valids[x]._read) ? Just((rf_regs[x])._read): Nothing;
@@ -75,8 +84,6 @@ module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
 
   RFile_4_2#(PRName, Value)                         prf <- mkRFile_4_2();
 
-  //rob
-
   //map table 
 
   RName maxR = maxBound;
@@ -100,11 +107,13 @@ module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
   Reg #(PRName)                                 rob_old <- mkReg(0);
   Reg #(PRName)                                rob_new  <- mkReg(0);
 
-  Reg#(Vector#(TExp#(ssz), Bool))              snap_valids <- mkReg(unpack(0));
-  Reg#(Vector#(TExp#(ssz), Token))                snap_ids <- mkRegU();
-  Reg#(Vector#(TExp#(ssz), PRName))        snap_flreadptrs <- mkRegU();
-  RegFile#(SnapShotPtr, Vector#(TExp#(rsz), PRName)) snaps <- mkRegFileFull();
-  
+  Reg#(Vector#(TExp#(ssz), Bool))              snap_valids   <- mkReg(unpack(0));
+  Reg#(Vector#(TExp#(ssz), Token))                snap_ids   <- mkRegU();
+  RegFile#(SnapShotPtr, PRName)            snap_flreadptrs   <- mkRegFileFull();
+  RegFile#(SnapShotPtr, PRName)            snap_robnewptrs   <- mkRegFileFull(); 
+  RegFile#(SnapShotPtr, Vector#(TExp#(rsz), PRName)) snaps   <- mkRegFileFull();
+
+
   Reg#(Bool) 		                              busy <- mkReg(False);
   Reg#(Token) 	  				 stopToken <- mkRegU();
 
@@ -160,16 +169,31 @@ module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
   rob.upd(rob_new, tuple3(tok, mx, newPReg));
 
   // make snapshot if needed
-  if (ss && free_ss()) // can and should make snapshot
-    begin
-      PRName idx = 0;
-      for(Integer i = 0; i < valueOf(TExp#(ssz)); i = i + 1) // 
-        if(!snap_valids[i])
-          idx = fromInteger(i);
+  Maybe#(SnapShotPtr) midx = Nothing;
 
+//INDEX sequence
+  SnapShotPtr ti = truncate(pack(tok));
+  if(!snap_valids[ti])
+    midx = Just(ti);
+
+  //for(Integer i = 0; i < valueOf(TExp#(ssz)); i = i + 1) // 
+  //  if(!snap_valids[i])
+  //    midx = Just(fromInteger(i));
+//END INDEX sequence
+
+
+  //snapshot only when it makes sense
+
+  midx = (ss) ? midx: Nothing;
+
+  if (isJust(midx))
+    begin
+      let idx = unJust(midx);
       snap_valids     <= update(snap_valids, idx, True);
       snap_ids        <= update(snap_ids   , idx, tok);
-      snap_flreadptrs <= update(snap_flreadptrs, idx, fl_read);
+      snap_flreadptrs.upd(idx, fl_read);
+      snap_robnewptrs.upd(idx, rob_new);
+                snaps.upd(idx, map);
     end
     
     // return value
@@ -205,16 +229,24 @@ module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
     //NO!!!!!
      
     //see if token is snapshotted
+  //INDEX function 
     Maybe#(SnapShotPtr) midx = Nothing;
-    for(Integer i = 0; i < valueOf(TExp#(ssz)); i = i + 1) // 
-      if(!snap_valids[i] && (snap_ids[i] == tok))
-        midx = Just(fromInteger(i));
+
+    SnapShotPtr idx = truncate(pack(tok));
+    if (snap_valids[idx])
+       midx = Just(idx);
+
+    //for(Integer i = 0; i < valueOf(TExp#(ssz)); i = i + 1) // 
+    //  if(!snap_valids[i] && (snap_ids[i] == tok))
+    //    midx = Just(fromInteger(i));
+  //END INDEX function
 
     case (midx) matches
       tagged Just .idx:
         begin
-          map <= snaps.sub(idx);
-          fl_read <= snap_flreadptrs[idx];
+          map     <=           snaps.sub(idx);
+          fl_read <= snap_flreadptrs.sub(idx);
+          rob_new <= snap_robnewptrs.sub(idx);
         end
       tagged Nothing:   //if not write busy and record token
         begin
@@ -226,12 +258,11 @@ module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
     //flatten dead snaps
     match {.oldTok, .*, .*} = rob.sub(rob_old);
 
-    function flatten(x, t) = x && (tok-oldTok > t - oldTok); //valid and older than tok
+    function flatten(x, t) = x && (tok-oldTok > t - oldTok); //valid and older than tok stay
      
     snap_valids <= zipWith(flatten, snap_valids, snap_ids);
 
   endmethod
 
 endmodule
-
 

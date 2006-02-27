@@ -70,7 +70,7 @@ typedef struct {
 //Exec-->TP
 typedef union tagged {
   Addr RBranchTaken;
-  void RBranchNotTaken;
+  void RBranchNotTaken; // XXX should be address at some point. 
   void RNop;
   void RTerminate;
 }

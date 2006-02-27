@@ -160,7 +160,8 @@ module [Module] mkFP_TokGen(FP_Unit#(Tick, Token, void, void, void, void));
   //Killing tokens can never result in free tokens being taken.
   //Therefore we never need to worry about the responses being invalid.
   FIFO#(Token) respQ <- mkFIFO();
-  
+  FIFO#(Token) nextQ <- mkFIFO();
+ 
   interface Put in;
            
     method Action put(Tuple2#(Token, void) tup);
@@ -186,6 +187,7 @@ module [Module] mkFP_TokGen(FP_Unit#(Tick, Token, void, void, void, void));
        
        //allocate a new token
        respQ.enq(r_free);
+       nextQ.enq(r_free);
        r_free <= r_free + 1;
 
       endmethod
@@ -208,7 +210,8 @@ module [Module] mkFP_TokGen(FP_Unit#(Tick, Token, void, void, void, void));
   interface Get out;
 
     method ActionValue#(Tuple2#(Token, void)) get();
-      return tuple2(?, ?); //This Does Not Exist.
+      nextQ.deq();
+      return tuple2(nextQ.first, ?); //This Does Not Exist.
     endmethod
 
   endinterface
@@ -225,7 +228,7 @@ endmodule
 // Fetch Unit (in-order _unit_)                                                                              //
 //-----------------------------------------------------------------------------------------------------------//
 
-module [Module] mkIMemory#(Server#(Addr, Inst) imem) (Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)));
+module [Module] mkFetch#(Server#(Addr, Inst) imem) (Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)));
   
   FIFO#(Tuple2#(Token, Addr)) freqs <- mkFIFO();
   FIFO#(Tuple3#(Token, Addr, Inst)) fresps <- mkFIFO();
@@ -268,7 +271,7 @@ module [Module] mkFP_Fetch#(Server#(Addr, Inst) imem) (FP_Unit#(Tick,Token, void
   let valids <- mkBoolVector_Token();
   let dones  <- mkBoolVector_Token(); 
     
-  Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)) memunit <- mkIMemory(imem);
+  Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)) memunit <- mkFetch(imem);
   
   let i <- mkFP_Unit(valids, dones, memunit,2);
 
@@ -392,7 +395,7 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
 	    (Unit#(Token, Tuple2#(Addr,DecodedInst),void, InstResult, ExecedInst));
 
   FIFO#(Tuple3#(Token,InstResult, ExecedInst)) f   <- mkFIFO();
-  FIFO#(Tuple3#(Token,Addr, DecodedInst))       iq   <- mkFIFO();
+  FIFO#(Tuple3#(Token,Addr, DecodedInst))     iq   <- mkFIFO();
 
   rule execute(True);
 
@@ -444,8 +447,8 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
 	   case (mva) matches
 	     tagged Valid .cval:
 	       if (cval != 0)
-	       begin
-		 f.enq(tuple3(t, RBranchNotTaken, ENop {opdest: oprd}));
+	       begin // XXX extra cleverness needed
+		 f.enq(tuple3(t, RBranchNotTaken , ENop {opdest: oprd}));
 		 iq.deq();
 	       end
 	       else case (mvb) matches // condition must be zero
@@ -460,7 +463,7 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
 	     default:
 	       noAction;
 	   endcase
-         tagged DLoad {pdest: .prd, opdest: .oprd, idx: .idx, offset: .o}:
+         tagged DLoad {pdest: .prd, opdest: .oprd, idx: .idx, offset: .o}: // XXX do offset calc
            begin
              f.enq(tuple3(t, RNop, ELoad {idx: idx, offset: o, pdest:prd, opdest: oprd}));
              iq.deq();
@@ -471,7 +474,7 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
              f.enq(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
              iq.deq();
            end
-         tagged DStore {value: .v, opdest: .oprd, idx: .idx, offset: .o}:
+         tagged DStore {value: .v, opdest: .oprd, idx: .idx, offset: .o}:// XXX do offset calc
            begin
              f.enq(tuple3(t,RNop,EStore {idx: idx, offset: o, val: v, opdest: oprd}));
              iq.deq();

@@ -9,12 +9,15 @@ import Datatypes::*;
 import ValueVector::*;
 import Mem::*;
 import BypassUnit::*;
+import BypassFIFO::*;
+
                  
 //-----------------------------------------------------------------------------------------------------------//
 // General Unit (in-order unit)                                                                              //
 //-----------------------------------------------------------------------------------------------------------//
 
-module [Module] mkFP_Unit#(ValueVector#(Bool, token_T) valids,
+module [Module] mkFP_Unit#(String phase,
+                           ValueVector#(Bool, token_T) valids,
                            ValueVector#(Bool, token_T) dones,
                            Unit#(token_T, init_T, req_T, resp_T, next_T) u,
                            Integer sz) // parameters
@@ -22,13 +25,16 @@ module [Module] mkFP_Unit#(ValueVector#(Bool, token_T) valids,
                (FP_Unit#(tick_T, token_T, init_T, req_T, resp_T, next_T)) //interface
         provisos
           (Bits#(token_T, tsz),Bounded#(token_T),Eq#(token_T),Literal#(token_T),
+           Bits#(Tuple3#(token_T, req_T, tick_T), tuple_sz), 
            Bits#(init_T, isz),
            Bits#(req_T, qsz),
            Bits#(resp_T,psz),
            Bits#(next_T,nsz));
 
+
+   FIFO#(Tuple3#(token_T, req_T, tick_T))         reqQ      <- mkFIFO();
    FIFO#(Tuple3#(token_T,resp_T,next_T))          unitRespQ <- mkSizedFIFO(sz);
-   FIFO#(Tuple2#(token_T,next_T))                 nextQ     <- mkSizedFIFO(sz);
+   FIFO#(Tuple2#(token_T,next_T))                 nextQ     <- mkBypassSizedFIFO(sz);
                  
    //SRAM tables
    RegFile#(token_T, init_T)                      tbl_init <- mkRegFileFull();
@@ -38,7 +44,10 @@ module [Module] mkFP_Unit#(ValueVector#(Bool, token_T) valids,
 
   match {.respQToken,.*,.*} = unitRespQ.first();
   Bool respValid = valids.read1(respQToken);
-   
+
+  match {.reqTok, .reqReq, .reqTick} = reqQ.first();
+  Bool reqValid = valids.read4(reqTok);  
+
   rule getUnitResponse(True);
     Tuple3#(token_T, resp_T, next_T) tup <- u.response.get();
     match {.tok, .resp, .next} = tup;
@@ -55,7 +64,24 @@ module [Module] mkFP_Unit#(ValueVector#(Bool, token_T) valids,
   rule tossDeadResps(respValid == False);
     unitRespQ.deq();
   endrule
-  
+
+  rule reqMake(reqValid);
+
+    reqQ.deq();
+   
+    Bool done  =  dones.read1(reqTok); 
+
+    init_T iVal = tbl_init.sub(reqTok);
+
+    if (!reqValid)
+       $display("%s ERROR: requesting unallocated token %h", phase, reqTok);
+     else if (done)
+       $display("%s ERROR: re-requesting finished token %h", phase, reqTok);            
+     else // !done
+       u.request.put(tuple3(reqTok, iVal, reqReq));
+  endrule
+
+
   interface Put in;
            
     method Action put(Tuple2#(token_T, init_T) tup);
@@ -66,7 +92,7 @@ module [Module] mkFP_Unit#(ValueVector#(Bool, token_T) valids,
 
      if(valid)
        begin        
-	 $display("ERROR: reinserting allocated token %h", tok);
+	 $display("%s ERROR: reinserting allocated token %h", phase, tok);
        end
      else
        begin
@@ -81,22 +107,9 @@ module [Module] mkFP_Unit#(ValueVector#(Bool, token_T) valids,
   interface Server server;
   
     interface Put request;
-  
+
       method Action put(Tuple3#(token_T, req_T, tick_T) tup);
-       match {.tok, .req, .tick} = tup;
-
-
-       Bool valid = valids.read4(tok);      
-       Bool done  =  dones.read1(tok);  
-
-       init_T iVal = tbl_init.sub(tok);
-
-	if (!valid)
-	  $display("ERROR: requesting unallocated token %h", tok);
-	else if (done)
-	  $display("ERROR: re-requesting finished token %h", tok);            
-	else // !done
-	  u.request.put(tuple3(tok, iVal, req));
+        reqQ.enq(tup);
       endmethod
 
     endinterface
@@ -160,7 +173,7 @@ module [Module] mkFP_TokGen(FP_Unit#(Tick, Token, void, void, void, void));
   //Killing tokens can never result in free tokens being taken.
   //Therefore we never need to worry about the responses being invalid.
   FIFO#(Token) respQ <- mkFIFO();
-  FIFO#(Token) nextQ <- mkFIFO();
+  FIFO#(Token) nextQ <- mkBypassFIFO();
  
   interface Put in;
            
@@ -170,7 +183,7 @@ module [Module] mkFP_TokGen(FP_Unit#(Tick, Token, void, void, void, void));
       //complete token t
       
       if (r_first != t) 
-        $display("ERROR: Tokens completing out of order");
+        $display("TGen ERROR: Tokens completing out of order");
      
       r_first <= r_first + 1;
       
@@ -273,7 +286,7 @@ module [Module] mkFP_Fetch#(Server#(Addr, Inst) imem) (FP_Unit#(Tick,Token, void
     
   Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)) memunit <- mkFetch(imem);
   
-  let i <- mkFP_Unit(valids, dones, memunit,2);
+  let i <- mkFP_Unit("FET", valids, dones, memunit,2);
 
   return i;     
 endmodule
@@ -383,7 +396,7 @@ module [Module] mkFP_Decode#(BypassUnit#(RName, PRName, Value, Token) b)(FP_Unit
    
   Unit#(Token, Tuple2#(Addr,Inst), void, DepInfo, Tuple2#(Addr, DecodedInst)) dec <- mkDecode(b);
   
-  let i <- mkFP_Unit(valids, dones, dec,2);
+  let i <- mkFP_Unit("DEC",valids, dones, dec,2);
   return i;     
 endmodule
 
@@ -510,7 +523,7 @@ module [Module] mkFP_Execute#(BypassUnit#(RName, PRName, Value, Token) b)
   let dones  <- mkBoolVector_Token(); 
   Unit#(Token, Tuple2#(Addr,DecodedInst),void, InstResult, ExecedInst) exe <- mkExecute(b);
 
-  let i <- mkFP_Unit(valids, dones, exe,3);
+  let i <- mkFP_Unit("EXE", valids, dones, exe,3);
   return i;     
 endmodule
 
@@ -625,7 +638,7 @@ module [Module] mkFP_Memory#(BypassUnit#(RName, PRName, Value, Token) b, Memory#
    
   Unit#(Token, ExecedInst, void, void, ExecedInst) memunit <- mkDMemory(b, mem);
   
-  let i <- mkFP_Unit(valids, dones, memunit, 2);
+  let i <- mkFP_Unit("MEM", valids, dones, memunit, 2);
   return i;     
 endmodule
 
@@ -673,7 +686,7 @@ module [Module] mkFP_LocalCommit#(BypassUnit#(RName, PRName, Value, Token) b)
 
   Unit#(Token, ExecedInst, void, void,void) com <- mkLocalCommit(b);
   
-  let i <- mkFP_Unit(valids, dones, com,2);
+  let i <- mkFP_Unit("LCO", valids, dones, com,2);
   return i;     
 endmodule
 
@@ -713,7 +726,7 @@ module [Module] mkFP_GlobalCommit#(Memory#(Addr, Inst, Value, Token) mem)
 
   Unit#(Token, void, void, void,void) com <- mkGlobalCommit(mem);
   
-  let i <- mkFP_Unit(valids, dones, com,2);
+  let i <- mkFP_Unit("GCO", valids, dones, com,2);
   return i;     
 endmodule
                    

@@ -322,6 +322,8 @@ module [Module] mkDecode#(BypassUnit#(RName, PRName, Value, Token) b)
             return tuple2(?, ?);
 	tagged IStore {src: .rsrc, idx: .ri, offset: .ro}:
             return tuple2(rsrc, ri);
+        tagged ITerminate:
+            return tuple2(?,?);
         endcase;
       
       let pra = b.lookup1(ara);
@@ -369,6 +371,13 @@ module [Module] mkDecode#(BypassUnit#(RName, PRName, Value, Token) b)
             match {.prd, .oprd} = rtup;
             di =      DStore{value: pra, opdest: oprd, idx: prb, offset: zeroExtend(ro)};
             depInfo = DepInfo {dest: Nothing, src1: Just(tuple2(ri,prb)), src2: Just(tuple2(rsrc,pra))};
+          end
+        tagged ITerminate:
+          begin
+	    let rtup <- b.makeMapping(Nothing, t, False); // only to simplify logic
+            match {.prd, .oprd} = rtup;
+            di = DTerminate;
+            depInfo = DepInfo {dest: Nothing, src1: Nothing, src2: Nothing};
           end
       endcase
 
@@ -441,10 +450,21 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
     Maybe#(Value) mva = b.read1(va);
     Maybe#(Value) mvb = b.read2(vb);
 
+ 
+    $display("Execute Read1[%d] -> %s[%d]", va,
+                                            (isJust(mva) ? "Just":"Nothing"),
+                                            unJust(mva));
+
+    $display("Execute Read2[%d] -> %s[%d]", vb,
+                                            (isJust(mvb) ? "Just":"Nothing"),
+                                            unJust(mvb));
+
+
     case (dec) matches
          tagged DAdd {pdest: .prd, opdest: .oprd, op1: .ra, op2: .rb}:
              if (isJust(mva) && isJust(mvb))
                begin
+                 $display("Executing Add %d: (old %d)[%d] <= 0x%h", t, oprd, prd, unJust(mva) + unJust(mvb));
                  b.write1(prd,unJust(mva) + unJust(mvb));
                  f.enq(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
                  iq.deq();
@@ -452,6 +472,7 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
          tagged DSub {pdest: .prd, opdest: .oprd, op1: .ra, op2: .rb}:
              if (isJust(mva) && isJust(mvb))
                begin
+                 $display("Executing Sub %d: (old %d)[%d] <= 0x%h", t, oprd, prd, unJust(mva) - unJust(mvb));
                  b.write1(prd,unJust(mva) - unJust(mvb));
                  f.enq(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
                  iq.deq();
@@ -478,6 +499,7 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
 	   endcase
          tagged DLoad {pdest: .prd, opdest: .oprd, idx: .idx, offset: .o}: // XXX do offset calc
            begin
+             $display("Executing Load %d: (old %d)[%d]", t, oprd, prd);
              f.enq(tuple3(t, RNop, ELoad {idx: idx, offset: o, pdest:prd, opdest: oprd}));
              iq.deq();
            end
@@ -489,7 +511,14 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
            end
          tagged DStore {value: .v, opdest: .oprd, idx: .idx, offset: .o}:// XXX do offset calc
            begin
+             $display("Executing Store %d: (old %d)", t, oprd);
              f.enq(tuple3(t,RNop,EStore {idx: idx, offset: o, val: v, opdest: oprd}));
+             iq.deq();
+           end
+         tagged DTerminate:
+           begin
+             $display("Executing Terminate %d: ", t);
+             f.enq(tuple3(t,RTerminate,ETerminate));
              iq.deq();
            end
     endcase
@@ -557,13 +586,20 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
 
     let mva = b.read3(va);
     let mvb = b.read4(vb);
+    $display("MEM Read1[%d] -> %s[%d]", va,
+                                        (isJust(mva) ? "Just":"Nothing"),
+                                        unJust(mva));
 
+    $display("MEM Read2[%d] -> %s[%d]", vb,
+                                        (isJust(mvb) ? "Just":"Nothing"),
+                                        unJust(mvb));
+
+    wResp.enq(tuple3(t,?,i));
     case (i) matches
       tagged ELoad {idx: .idx, offset: .o, pdest: .prd, opdest: .oprd}:
         if (isJust(mva))
            begin
              mem.dmem.request.put(Ld{addr: truncate(unJust(mva)) + zeroExtend(o), token: t});
-             wResp.enq(tuple3(t,?,EWB{pdest: prd, opdest: oprd}));
              reqs.deq();
            end
       tagged EStore{opdest: .oprd, val: .v, idx: .idx, offset: .o}:
@@ -572,15 +608,11 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
           if (isJust(mva) && isJust(mvb))
              begin
                mem.dmem.request.put(St{val: unJust(mvb), addr: truncate(addr), token: t});
-               wResp.enq(tuple3(t,?,ENop{opdest: oprd}));
                reqs.deq();
              end
         end
       default: // push
-        begin
-          wResp.enq(tuple3(t,?,i));
-          reqs.deq();
-        end
+        reqs.deq();
     endcase
   endrule
 
@@ -591,21 +623,24 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
         begin
           let resp <- mem.dmem.response.get();
           Value v = case (resp) matches
-                      tagged LdResp .v: return v;
-                      tagged StResp .*: return ?; // impossible
+                      tagged LdResp .val: return val;
+                      tagged StResp .*  : return ?; // impossible
                     endcase;
           wResp.deq();
-          f.enq(wResp.first());
+          $display("MEM LdResp from Mem: %d Writing [%d] <= %h", tok, prd, v);
+          f.enq(tuple3(tok,?,EWB{pdest: prd, opdest: oprd}));
           b.write2(prd, v);
         end
-      tagged EStore .*:
+      tagged EStore {opdest: .oprd, val: .*, idx: .*, offset: .*}:
         begin
+          $display("MEM StResp from Mem: %d", tok);
           let resp <- mem.dmem.response.get();
           wResp.deq();
-          f.enq(wResp.first());
+          f.enq(tuple3(tok,?,ENop{opdest: oprd}));
         end
       default:
         begin
+          $display("MEM Non-Mem Op: %d", tok);
           wResp.deq();
           f.enq(wResp.first());
         end
@@ -661,6 +696,7 @@ module [Module] mkLocalCommit#(BypassUnit#(RName, PRName, Value, Token) b)
 		   tagged EWB     .x: return(x.opdest);
 		   tagged ELoad   .x: return(x.opdest);
 		   tagged EStore  .x: return(x.opdest);
+                   tagged ETerminate: return(?);
 		 endcase;
       b.freePReg(t, p);
     endmethod

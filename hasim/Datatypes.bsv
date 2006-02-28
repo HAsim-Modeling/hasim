@@ -33,7 +33,7 @@ typedef union tagged {
  struct {RName dest; RName idx; Bit#(5) offset;} ILoad;
  struct {RName dest; Bit#(10) imm;}              ILoadImm;
  struct {RName src;  RName idx; Bit#(5) offset;} IStore;
- RName                                           ITerminate; //Terminate and return value in RName
+ void                                            ITerminate; //Terminate and return value in RName
 }
  Inst deriving (Eq,Bits);
 
@@ -45,7 +45,7 @@ typedef union tagged {
   struct       {PRName pdest; PRName opdest; PRName idx; Bit#(6) offset;} DLoad;
   struct       {PRName pdest; PRName opdest;   Bit#(12)  value;}          DLoadImm;
   struct       {PRName value; PRName opdest; PRName idx; Bit#(6) offset;} DStore;
-  PRName                                                                  DTerminate;
+  void                                                                    DTerminate;
 }
   DecodedInst deriving (Eq,Bits);
 
@@ -55,7 +55,7 @@ typedef union tagged {
   struct {                                          PRName opdest;}  ENop;
   struct { PRName idx; Bit#(6) offset;PRName pdest; PRName opdest;}  ELoad;
   struct { PRName idx; Bit#(6) offset;PRName val;   PRName opdest;}  EStore;
-  PRName                                                             ETerminate;
+  void                                                               ETerminate;
 }
   ExecedInst deriving (Eq,Bits);
 

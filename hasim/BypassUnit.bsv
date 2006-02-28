@@ -244,11 +244,11 @@ module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
   //END INDEX function
 
     case (midx) matches
-      tagged Just .idx:
+      tagged Just .i:
         begin
-          map     <=           snaps.sub(idx);
-          fl_read <= snap_flreadptrs.sub(idx);
-          rob_new <= snap_robnewptrs.sub(idx);
+          map     <=           snaps.sub(i);
+          fl_read <= snap_flreadptrs.sub(i);
+          rob_new <= snap_robnewptrs.sub(i);
         end
       tagged Nothing:   //if not write busy and record token
         begin

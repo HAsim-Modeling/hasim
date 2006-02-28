@@ -51,7 +51,7 @@ function TestCase testAddition (Integer x, Integer y);
       ILoad  {dest: r2, idx: r0, offset: 1},
       IAdd   {dest: r4, src1: r1, src2: r2},
       IStore {src: r4, idx: r0, offset: 2}, 
-      ITerminate r4
+      ITerminate
     };
 
   Value dmem_i[2] = {fromInteger(x), fromInteger(y)};
@@ -75,7 +75,7 @@ function TestCase testSubtraction (Integer x, Integer y);
       ILoad  {dest: r2, idx: r0, offset: 1},
       ISub   {dest: r4, src1: r1, src2: r2},
       IStore {src: r4, idx: r0, offset: 2}, 
-      ITerminate r4
+      ITerminate
     };
 
   Value dmem_i[2] = {fromInteger(x), fromInteger(y)};
@@ -129,7 +129,7 @@ function TestCase testBranch (Integer x, Integer y);
       IBz      {cond: r2, addr: 20},             //	if y = 0 GOTO End
       IBz      {cond: r0, addr: 4},             //	GOTO Loop
       IStore   {src: r3, idx: r0, offset: 0},   //      Store res
-      ITerminate r3                             //End:  finish(res)
+      ITerminate                                //End:  finish(res)
     };
 
   Value dmem_i[1] = {0};
@@ -167,7 +167,7 @@ function TestCase testStalls (Integer x);
       IAdd     {dest: r8, src1: r8, src2: r1},    //       addr = addr + 1
       IBz      {cond: r9, addr: 12},              //       if x == 0 GOTO end
       IBz      {cond: r0, addr: 4},               //       GOTO loop
-      ITerminate r3                               //  end: Halt.
+      ITerminate                                  //  end: Halt.
     };
 
   PrimArray#(Value) dmem_i = primArrayNewU(x);

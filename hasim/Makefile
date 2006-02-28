@@ -1,6 +1,6 @@
 BSC?=bsc
 
-FLAGS= -u -v -steps 100000 +RTS -k500M -RTS -keep-fires -aggressive-conditions -no-opt-bool -no-opt-ATS -dschedule  
+FLAGS= -u -v -steps 100000 +RTS -K1000M -RTS -keep-fires -aggressive-conditions -no-opt-bool -no-opt-ATS -dschedule  
 
 BSs=
 BSVs=Datatypes.bsv DMem.bsv BypassUnit.bsv ValueVector.bsv FunctionalPartition.bsv TimingPartition.bsv Testbench.bsv
@@ -68,7 +68,7 @@ tp:
 test%: Datatypes.bi FunctionalPartition.bi TimingPartition.bi
 	 $(BSC) -verilog $(FLAGS) -g $@ Testbench.bsv
 	 $(VCOMP) -DTOP=$@ -o $@ $(VERIMAIN) *.v
-	 ./$@ +bscvcd
+	 ./$@ +bscvcd | tee logfile
 
 # compile and elaborate with Verilog simulator 
 mk%_v: mk%.v mk%.v 
@@ -76,7 +76,7 @@ mk%_v: mk%.v mk%.v
 
 # produce a VCD file from Verilog simulator
 mk%.vcd: mk%_v
-	$(VSCR)$< +bscvcd
+	$(VSCR)$< +bscvcd | tee logfile
 
 .PHONY: clean
 clean:

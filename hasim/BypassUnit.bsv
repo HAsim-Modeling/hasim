@@ -100,7 +100,7 @@ module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
   endfunction 
 
   // XXX initialized with max+1 to maxBound ..
-  RegFile#(PRName,PRName)                      freelist <- mkRegFileFull(); //XXX
+  RegFile#(PRName,PRName)                      freelist <- mkRegFileFullLoad("freelist.hex");
   Reg #(PRName)                                 fl_read <- mkReg(minInitFL);
   Reg #(PRName)                                fl_write <- mkReg(maxInitFL); 
 

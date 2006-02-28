@@ -57,7 +57,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
         if (!madeReq)
 	  begin
 	    //Request a token
-	    $display("Requesting a new token.");
+	    $display("%h: Requesting a new token.", baseTick);
 	    func.tokgen.request.put(tuple3(?, ?, baseTick));
 	    madeReq <= True;
 	  end
@@ -65,7 +65,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
 	  begin
 	    //Get the response
 	    match {.tok, .*} <- func.tokgen.response.get();
-	    $display("Responded with token %0d.", tok);
+	    $display("%h: TOK Responded with token %0d.", baseTick, tok);
 	    cur_tok <= tok;
 	    
 	    stage <= FET;
@@ -75,7 +75,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
         if (!madeReq)
 	  begin
 	    //Fetch next instruction
-	    $display("Fetching token %0d at address %h", cur_tok, pc);
+	    $display("%h: Fetching token %0d at address %h", baseTick, cur_tok, pc);
             func.fetch.request.put(tuple3(cur_tok, pc, baseTick));
 	    madeReq <= True;
 	  end
@@ -83,6 +83,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
 	  begin
 	    //Get the response
             match {.tok, .inst} <- func.fetch.response.get();
+	    $display("%h: FET Responded with token %0d.", baseTick, tok);
 	    
 	    if (tok != cur_tok) $display ("FET ERROR");
 	    
@@ -93,6 +94,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
         if (!madeReq)
 	  begin
 	    //Decode current inst
+	    $display("%h: Decoding token %0d", baseTick, cur_tok);
             func.decode.request.put(tuple3(cur_tok, ?, baseTick));
 	    madeReq <= True;
 	  end
@@ -100,6 +102,25 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
 	  begin
  	    //Get the response
             match {.tok, .deps} <- func.decode.response.get();
+	    $display("%h: DEC Responded with token %0d.", baseTick, tok);
+	    case (deps.dest) matches
+	      tagged Valid {.rname, .prname}:
+	        $display("Destination: (%d, %d)", rname, prname);
+	      tagged Invalid:
+	        $display("No destination.");
+	    endcase
+	    case (deps.src1) matches
+	      tagged Valid {.rname, .prname}:
+	        $display("Source 1: (%d, %d)", rname, prname);
+	      tagged Invalid:
+	        $display("No Source 1.");
+	    endcase
+	    case (deps.src2) matches
+	      tagged Valid {.rname, .prname}:
+	        $display("Source 2: (%d, %d)", rname, prname);
+	      tagged Invalid:
+	        $display("No Source 2.");
+	    endcase
 	    
 	    if (tok != cur_tok) $display ("DEC ERROR");
 	    
@@ -110,6 +131,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
         if (!madeReq)
 	  begin
 	    //Execute instruction
+	    $display("%h: Executing token %0d", baseTick, cur_tok);
             func.execute.request.put(tuple3(cur_tok, ?, baseTick));
 	    madeReq <= True;
 	  end
@@ -117,6 +139,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
 	  begin
  	    //Get the response
             match {.tok, .res} <- func.execute.response.get();
+	    $display("%h: EXE Responded with token %0d.", baseTick, tok);
 	    
 	    if (tok != cur_tok) $display ("EXE ERROR");
 	   	
@@ -141,6 +164,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
         if (!madeReq)
 	  begin
 	    //Request memory ops
+	    $display("%h: Memory ops for token %0d", baseTick, cur_tok);
             func.memory.request.put(tuple3(cur_tok, ?, baseTick));
 	    madeReq <= True;
 	  end
@@ -148,6 +172,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
 	  begin
  	    //Get the response
 	    match {.tok, .*} <- func.memory.response.get();
+	    $display("%h: MEM Responded with token %0d.", baseTick, tok);
 	    
 	    if (tok != cur_tok) $display ("MEM ERROR");
 	    
@@ -158,6 +183,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
         if (!madeReq)
 	  begin
 	    //Request memory ops
+	    $display("%h: Locally committing token %0d", baseTick, cur_tok);
             func.local_commit.request.put(tuple3(cur_tok, ?, baseTick));
 	    madeReq <= True;
 	  end
@@ -166,6 +192,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
  	    //Get the response
   
             match {.tok, .*} <- func.local_commit.response.get();
+	    $display("%h: LCO Responded with token %0d.", baseTick, tok);
 	    
 	    if (tok != cur_tok) $display ("LCO ERROR");
 	    
@@ -176,6 +203,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
         if (!madeReq)
 	  begin
 	    //Request memory ops
+	    $display("%h: Globally decoding token %0d", baseTick, cur_tok);
             func.global_commit.request.put(tuple3(cur_tok, ?, baseTick));
 	    madeReq <= True;
 	  end
@@ -184,12 +212,13 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
  	    //Get the response
   
             match {.tok, .*} <- func.global_commit.response.get();
+	    $display("%h: GCO Responded with token %0d.", baseTick, tok);
 	    
 	    if (tok != cur_tok) $display ("GCO ERROR");
 	    
 	    $display("Committed token %0d", cur_tok);
 	    
-	    stage <= GCO;
+	    stage <= TOK;
 	    madeReq <= False;
 	  end
     endcase    

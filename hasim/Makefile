@@ -1,6 +1,6 @@
 BSC?=bsc
 
-FLAGS= -u -v -steps 100000 +RTS -k500M -RTS -keep-fires -no-opt-bool -no-opt-ATS -dschedule  
+FLAGS= -u -v -steps 100000 +RTS -k500M -RTS -keep-fires -aggressive-conditions -no-opt-bool -no-opt-ATS -dschedule  
 
 BSs=
 BSVs=Datatypes.bsv DMem.bsv BypassUnit.bsv ValueVector.bsv FunctionalPartition.bsv TimingPartition.bsv Testbench.bsv

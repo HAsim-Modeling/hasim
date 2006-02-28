@@ -32,7 +32,7 @@ module [Module] mkRFile_4_2(RFile_4_2#(PRName, Value)) provisos (Bits#(PRName, p
 
   //RegisterFile
 
-  Vector#(TExp#(psz), Reg#(Value))            rf_regs <- replicateM(mkConfigRegU);
+  Vector#(TExp#(psz), Reg#(Value))            rf_regs <- mapM(compose(mkConfigReg,fromInteger), genVector);
 
   function initiallyValid(Integer x);
     RName rmax = maxBound ;

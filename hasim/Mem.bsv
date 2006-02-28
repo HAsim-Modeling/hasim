@@ -12,7 +12,7 @@ module [Module] mkMem(Memory#(Addr, Inst, Value, Token)) provisos(Bits#(PRName, 
   FIFO#(MemResp#(Value))        f <- mkFIFO();
 
   RegFile#(Addr, Inst)  imemory <- mkRegFileFull();
-  BypassFIFO#(Inst)       iresp <- mkBypassFIFO();
+  FIFO#(Inst)       iresp <- mkBypassFIFO();
   
   RegFile#(Addr, Value) dmemory <- mkRegFileFull();
 
@@ -34,13 +34,14 @@ module [Module] mkMem(Memory#(Addr, Inst, Value, Token)) provisos(Bits#(PRName, 
    
     interface Put request;
       method Action put(Addr a);
-        iresp <= imemory.sub(a);
+        iresp.enq(imemory.sub(a));
       endmethod
     endinterface
  
     interface Get response;
       method ActionValue#(Inst) get();
-        return iresp;
+        iresp.deq();
+        return iresp.first();
       endmethod
     endinterface
   

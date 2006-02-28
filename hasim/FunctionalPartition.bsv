@@ -32,7 +32,7 @@ module [Module] mkFP_Unit#(String phase,
            Bits#(next_T,nsz));
 
 
-   FIFO#(Tuple3#(token_T, req_T, tick_T))         reqQ      <- mkFIFO();
+   FIFO#(Tuple3#(token_T, req_T, tick_T))         reqQ      <- mkFIFO(); // YYY: ndave make Bypass
    FIFO#(Tuple3#(token_T,resp_T,next_T))          unitRespQ <- mkSizedFIFO(sz);
    FIFO#(Tuple2#(token_T,next_T))                 nextQ     <- mkBypassSizedFIFO(sz);
                  

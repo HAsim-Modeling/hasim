@@ -5,13 +5,14 @@ import ClientServer::*;
 import RegFile::*;
 import FIFO::*;
 import Vector::*;
+import BypassFIFO::*;
 
 module [Module] mkMem(Memory#(Addr, Inst, Value, Token)) provisos(Bits#(PRName, psz));
 
   FIFO#(MemResp#(Value))        f <- mkFIFO();
 
   RegFile#(Addr, Inst)  imemory <- mkRegFileFull();
-  Wire#(Inst) iresp <- mkWire();
+  BypassFIFO#(Inst)       iresp <- mkBypassFIFO();
   
   RegFile#(Addr, Value) dmemory <- mkRegFileFull();
 

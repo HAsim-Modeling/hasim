@@ -6,6 +6,13 @@ import Vector::*;
 
 import Datatypes::*;
 import FunctionalPartition::*;
+import Debug::*;
+
+`ifdef PARTITION_NAME
+`undef PARTITION_NAME
+`endif
+
+`define PARTITION_NAME "Timing"
 
 module [Module] mkCPU_Test#(Memory#(Addr, Inst, Value, Token) mem) (CPU);
 
@@ -26,6 +33,7 @@ typedef enum
 
  
 
+`define MODULE_NAME "mkTP_Test"
 module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
                 				Addr, Inst,
 						void, DepInfo,
@@ -48,78 +56,109 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
   Reg#(Tick) baseTick <- mkReg(0);
   
   rule process (running);
-   $display("WHEEE!");
+    
+    debug_rule("process");
     
     baseTick <= baseTick + 1;
 
     case (stage)
       TOK:
+      begin
+        debug_case("stage", "TOK");
+	
         if (!madeReq)
 	  begin
+	    debug_then("!madeReq");
+	    
 	    //Request a token
-	    $display("%h: Requesting a new token.", baseTick);
+	    debug(2, $display("%h: Requesting a new token.", baseTick));
 	    func.tokgen.request.put(tuple3(?, ?, baseTick));
+	    
 	    madeReq <= True;
+	    
 	  end
 	else
 	  begin
+	    debug_else("!madeReq");
+	    
 	    //Get the response
 	    match {.tok, .*} <- func.tokgen.response.get();
-	    $display("%h: TOK Responded with token %0d.", baseTick, tok);
+	    debug(2, $display("%h: TOK Responded with token %0d.", baseTick, tok));
+	    
 	    cur_tok <= tok;
 	    
 	    stage <= FET;
 	    madeReq <= False;
 	  end
+      end
       FET:
+      begin
+        debug_case("stage", "FET");
+	
         if (!madeReq)
 	  begin
+	    debug_then("!madeReq");
+	    
 	    //Fetch next instruction
-	    $display("%h: Fetching token %0d at address %h", baseTick, cur_tok, pc);
+	    debug(2, $display("%h: Fetching token %0d at address %h", baseTick, cur_tok, pc));
             func.fetch.request.put(tuple3(cur_tok, pc, baseTick));
+	    
 	    madeReq <= True;
 	  end
 	else
 	  begin
+	    debug_else("!madeReq");
+	    
 	    //Get the response
             match {.tok, .inst} <- func.fetch.response.get();
-	    $display("%h: FET Responded with token %0d.", baseTick, tok);
+	    debug(2, $display("%h: FET Responded with token %0d.", baseTick, tok));
 	    
 	    if (tok != cur_tok) $display ("FET ERROR");
 	    
 	    stage <= DEC;
 	    madeReq <= False;
 	  end
+      end
       DEC:
+      begin
+        debug_case("stage", "DEC");
         if (!madeReq)
 	  begin
+	    debug_then("!madeReq");
+	    
 	    //Decode current inst
-	    $display("%h: Decoding token %0d", baseTick, cur_tok);
+	    debug(2, $display("%h: Decoding token %0d", baseTick, cur_tok));
             func.decode.request.put(tuple3(cur_tok, ?, baseTick));
+	    
 	    madeReq <= True;
 	  end
 	else
 	  begin
+	    debug_else("!madeReq");
+	    
  	    //Get the response
             match {.tok, .deps} <- func.decode.response.get();
-	    $display("%h: DEC Responded with token %0d.", baseTick, tok);
+	    debug(2, $display("%h: DEC Responded with token %0d.", baseTick, tok));
+	    
 	    case (deps.dest) matches
 	      tagged Valid {.rname, .prname}:
-	        $display("Destination: (%d, %d)", rname, prname);
+	        debug(2, $display("Destination: (%d, %d)", rname, prname));
 	      tagged Invalid:
-	        $display("No destination.");
+	        debug(2, $display("No destination."));
 	    endcase
+	    
 	    case (deps.src1) matches
 	      tagged Valid {.rname, .prname}:
-	        $display("Source 1: (%d, %d)", rname, prname);
+	        debug(2, $display("Source 1: (%d, %d)", rname, prname));
 	      tagged Invalid:
-	        $display("No Source 1.");
+	        debug(2, $display("No Source 1."));
 	    endcase
+	    
 	    case (deps.src2) matches
 	      tagged Valid {.rname, .prname}:
-	        $display("Source 2: (%d, %d)", rname, prname);
+	        debug(2, $display("Source 2: (%d, %d)", rname, prname));
 	      tagged Invalid:
-	        $display("No Source 2.");
+	        debug(2, $display("No Source 2."));
 	    endcase
 	    
 	    if (tok != cur_tok) $display ("DEC ERROR");
@@ -127,105 +166,145 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
 	    stage <= EXE;
 	    madeReq <= False;
 	  end
+      end
       EXE:
+      begin
+        debug_case("stage", "EXE");
         if (!madeReq)
 	  begin
+	    debug_then("!madeReq");
 	    //Execute instruction
-	    $display("%h: Executing token %0d", baseTick, cur_tok);
+	    debug(2, $display("%h: Executing token %0d", baseTick, cur_tok));
             func.execute.request.put(tuple3(cur_tok, ?, baseTick));
 	    madeReq <= True;
 	  end
 	else
 	  begin
+	    debug_else("!madeReq");
+	    
  	    //Get the response
             match {.tok, .res} <- func.execute.response.get();
-	    $display("%h: EXE Responded with token %0d.", baseTick, tok);
+	    debug(2, $display("%h: EXE Responded with token %0d.", baseTick, tok));
 	    
 	    if (tok != cur_tok) $display ("EXE ERROR");
 	   	
 	    case (res) matches
 	      tagged RBranchTaken .addr:
 	      begin
-	        $display("Branch taken to address %h", addr);
+	        debug(2, $display("Branch taken to address %h", addr));
 	   	pc <= addr;
 	      end
               tagged RBranchNotTaken:
+	      begin
+	        debug(2, $display("Branch not taken"));
 	   	pc <= pc + 1;
+	      end
               tagged RNop:
+	      begin
+	        debug(2, $display("Nop"));
 	   	pc <= pc + 1;
+	      end
               tagged RTerminate:
+	      begin
+	        debug(2, $display("Terminating Execution"));
 	   	running <= False;
+	      end
 	    endcase
 	    
 	    stage <= MEM;
 	    madeReq <= False;
 	  end
+      end
       MEM:
+      begin
+        debug_case("stage", "MEM");
         if (!madeReq)
 	  begin
+	    debug_then("!madeReq");
+	    
 	    //Request memory ops
-	    $display("%h: Memory ops for token %0d", baseTick, cur_tok);
+	    debug(2, $display("%h: Memory ops for token %0d", baseTick, cur_tok));
             func.memory.request.put(tuple3(cur_tok, ?, baseTick));
+	    
 	    madeReq <= True;
 	  end
 	else
 	  begin
+	    debug_else("!madeReq");
+	    
  	    //Get the response
 	    match {.tok, .*} <- func.memory.response.get();
-	    $display("%h: MEM Responded with token %0d.", baseTick, tok);
+	    debug(2, $display("%h: MEM Responded with token %0d.", baseTick, tok));
 	    
 	    if (tok != cur_tok) $display ("MEM ERROR");
 	    
 	    stage <= LCO;
 	    madeReq <= False;
 	  end
+      end
       LCO:
+      begin
+        debug_case("stage", "LCO");
         if (!madeReq)
 	  begin
+	    debug_then("!madeReq");
+	    
 	    //Request memory ops
-	    $display("%h: Locally committing token %0d", baseTick, cur_tok);
+	    debug(2, $display("%h: Locally committing token %0d", baseTick, cur_tok));
             func.local_commit.request.put(tuple3(cur_tok, ?, baseTick));
+	    
 	    madeReq <= True;
 	  end
 	else
 	  begin
+	    debug_else("!madeReq");
+	    
  	    //Get the response
   
             match {.tok, .*} <- func.local_commit.response.get();
-	    $display("%h: LCO Responded with token %0d.", baseTick, tok);
+	    debug(2, $display("%h: LCO Responded with token %0d.", baseTick, tok));
 	    
 	    if (tok != cur_tok) $display ("LCO ERROR");
 	    
 	    stage <= GCO;
 	    madeReq <= False;
 	  end
+      end
       GCO:
+      begin
+        debug_case("stage", "GCO");
         if (!madeReq)
 	  begin
+	    debug_then("!madeReq");
+	    
 	    //Request memory ops
-	    $display("%h: Globally decoding token %0d", baseTick, cur_tok);
+	    debug(2, $display("%h: Globally committing token %0d", baseTick, cur_tok));
             func.global_commit.request.put(tuple3(cur_tok, ?, baseTick));
+	    
 	    madeReq <= True;
 	  end
 	else
 	  begin
+	    debug_else("!madeReq");
+	    
  	    //Get the response
-  
             match {.tok, .*} <- func.global_commit.response.get();
-	    $display("%h: GCO Responded with token %0d.", baseTick, tok);
+	    debug(2, $display("%h: GCO Responded with token %0d.", baseTick, tok));
 	    
 	    if (tok != cur_tok) $display ("GCO ERROR");
 	    
-	    $display("Committed token %0d", cur_tok);
+	    debug(1, $display("Committed token %0d", cur_tok));
 	    
 	    stage <= TOK;
 	    madeReq <= False;
 	  end
+      end
     endcase    
   endrule
   
   method Action start();
-  
+
+    debug_method("start");
     running <= True;
     
   endmethod
@@ -237,6 +316,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
   endmethod
 
 endmodule
+`undef MODULE_NAME
 
 module [Module] mkTP_TestOld#(FunctionalPartition#(Tick, Token,
                 				Addr, Inst,

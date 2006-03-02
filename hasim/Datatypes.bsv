@@ -184,3 +184,4 @@ interface CPU;
   method Bool done();
 
 endinterface
+

@@ -3,6 +3,7 @@ import Mem::*;
 import BypassUnit::*;
 import FunctionalPartition::*;
 import TimingPartition::*;
+import TimingPartition_Pipeline::*;
 
 import PrimArray::*;
 import List::*;
@@ -25,7 +26,7 @@ module [Module] mkTestHarness#(function Module#(CPU) mkCPU(Memory#(Addr, Inst, V
     
     let mem <- mkMem();
     
-    CPU dut <- mkCPU(mem);
+    CPU dut <- mkCPU(mem); //YYY mkCPU_Pipe
     
     interface imem = mem.magic_imem;
     interface dmem = mem.magic_dmem;

@@ -67,8 +67,8 @@ tp:
 	 $(BSC) -u -verilog $(FLAGS)  TimingPartition.bsv
 test%: Datatypes.bi FunctionalPartition.bi TimingPartition.bi
 	 $(BSC) -verilog $(FLAGS) -g $@ Testbench.bsv
-	 $(VCOMP) -DTOP=$@ -o $@ $(VERIMAIN) *.v
-	 ./$@ +bscvcd | tee logfile
+	 $(VCOMP) -DTOP=$@ -o $@.exe $(VERIMAIN) *.v
+	 ./$@.exe +bscvcd | tee logfile
 
 # compile and elaborate with Verilog simulator 
 mk%_v: mk%.v mk%.v 

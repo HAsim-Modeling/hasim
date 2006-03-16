@@ -56,7 +56,7 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
   Reg#(Tick) baseTick <- mkReg(0);
   
   rule process (running);
-    
+   $display("Process Tick: %d\t\t ---------------", baseTick);
     debug_rule("process");
     
     baseTick <= baseTick + 1;

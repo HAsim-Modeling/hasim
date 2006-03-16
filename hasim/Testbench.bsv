@@ -26,7 +26,7 @@ module [Module] mkTestHarness#(function Module#(CPU) mkCPU(Memory#(Addr, Inst, V
     
     let mem <- mkMem();
     
-    CPU dut <- mkCPU(mem); //YYY mkCPU_Pipe
+    CPU dut <- mkCPU(mem);
     
     interface imem = mem.magic_imem;
     interface dmem = mem.magic_dmem;
@@ -97,10 +97,24 @@ module [Module] testAddition_1();
 
   Empty test <- mkTestbench(th, testAddition(11, 5));
 endmodule
+
+module [Module] testAddition_1_Pipe();
+  
+  TestHarness th <- mkTestHarness(mkCPU_Pipe);
+
+  Empty test <- mkTestbench(th, testAddition(11, 5));
+endmodule
   
 module [Module] testSubtraction_1();
   
   TestHarness th <- mkTestHarness(mkCPU_Test);
+
+  Empty test <- mkTestbench(th, testSubtraction(11, 5));
+endmodule
+
+module [Module] testSubtraction_1_Pipe();
+  
+  TestHarness th <- mkTestHarness(mkCPU_Pipe);
 
   Empty test <- mkTestbench(th, testSubtraction(11, 5));
 endmodule
@@ -148,6 +162,13 @@ endfunction
 module [Module] testBranch_1 ();
   
   TestHarness th <- mkTestHarness(mkCPU_Test);
+
+  Empty test <- mkTestbench(th, testBranch(17, 12));
+endmodule
+
+module [Module] testBranch_1_Pipe();
+  
+  TestHarness th <- mkTestHarness(mkCPU_Pipe);
 
   Empty test <- mkTestbench(th, testBranch(17, 12));
 endmodule

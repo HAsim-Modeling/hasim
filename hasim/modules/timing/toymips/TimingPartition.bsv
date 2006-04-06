@@ -4,8 +4,9 @@ import RegFile::*;
 import FIFO::*;
 import Vector::*;
 
-import Datatypes::*;
-import FunctionalPartition::*;
+import HASim::*;
+import ToyMIPS::*;
+import TOY_FunctionalPartition::*;
 import Debug::*;
 
 `ifdef PARTITION_NAME
@@ -14,7 +15,7 @@ import Debug::*;
 
 `define PARTITION_NAME "Timing"
 
-module [Module] mkCPU_Test#(Memory#(Addr, Inst, Value, Token) mem) (CPU);
+module [Module] mkCPU_Test#(Memory#(TOY_Addr, TOY_Inst, Value, TOY_Token) mem) (CPU);
 
   let fp <- mkFP_Test(mem);
   let tp <- mkTP_Test(fp);
@@ -34,10 +35,10 @@ typedef enum
  
 
 `define MODULE_NAME "mkTP_Test"
-module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
-                				Addr, Inst,
-						void, DepInfo,
-						void, InstResult,
+module [Module] mkTP_Test#(FunctionalPartition#(TOY_Tick, TOY_Token,
+                				TOY_Addr, TOY_Inst,
+						void, TOY_DepInfo,
+						void, TOY_InstResult,
 						void, void,
 						void, void,
 						void, void) func) (TimingPartition);
@@ -48,15 +49,14 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
   
   Reg#(Stage) stage <- mkReg(TOK);
   
-  Reg#(Token) cur_tok <- mkReg(0);
-  Reg#(Inst)  cur_inst <- mkRegU();
+  Reg#(TOY_Token) cur_tok <- mkReg(0);
+  Reg#(TOY_Inst)  cur_inst <- mkRegU();
   
-  Reg#(Addr) pc <- mkReg(0);
+  Reg#(TOY_Addr) pc <- mkReg(0);
   
-  Reg#(Tick) baseTick <- mkReg(0);
+  Reg#(TOY_Tick) baseTick <- mkReg(0);
   
   rule process (running);
-   $display("Process Tick: %d\t\t ---------------", baseTick);
     debug_rule("process");
     
     baseTick <= baseTick + 1;
@@ -318,40 +318,40 @@ module [Module] mkTP_Test#(FunctionalPartition#(Tick, Token,
 endmodule
 `undef MODULE_NAME
 
-module [Module] mkTP_TestOld#(FunctionalPartition#(Tick, Token,
-                				Addr, Inst,
-						void, DepInfo,
-						void, InstResult,
+module [Module] mkTP_TestOld#(FunctionalPartition#(TOY_Tick, TOY_Token,
+                				TOY_Addr, TOY_Inst,
+						void, TOY_DepInfo,
+						void, TOY_InstResult,
 						void, void,
 						void, void,
 						void, void) func) (TimingPartition);
   
   //Latencies
-  Tick fet_L = 1;
-  Tick dec_L = 1;
-  Tick exe_L = 1;
-  Tick mem_L = 1;
-  Tick lco_L = 1;
-  Tick gco_L = 1;
+  TOY_Tick fet_L = 1;
+  TOY_Tick dec_L = 1;
+  TOY_Tick exe_L = 1;
+  TOY_Tick mem_L = 1;
+  TOY_Tick lco_L = 1;
+  TOY_Tick gco_L = 1;
   
 
   Reg#(Bool) running <- mkReg(False);
 
-  Reg#(Addr) pc <- mkReg(0);
-  Reg#(Tick) baseTick <- mkReg(0);
+  Reg#(TOY_Addr) pc <- mkReg(0);
+  Reg#(TOY_Tick) baseTick <- mkReg(0);
   
-  RegFile#(Token, Maybe#(Tick))   tbl_valids   <- mkRegFileFull();	  
-  RegFile#(Token, Maybe#(Tick))   tbl_fetch    <- mkRegFileFull();	  
-  RegFile#(Token, Maybe#(Tick))   tbl_decode   <- mkRegFileFull();	  
-  RegFile#(Token, Maybe#(Tick))   tbl_execute  <- mkRegFileFull();	  
-  RegFile#(Token, Maybe#(Tick))   tbl_memory   <- mkRegFileFull();	  
-  RegFile#(Token, Maybe#(Tick))   tbl_lcommit  <- mkRegFileFull();	  
-  RegFile#(Token, Maybe#(Tick))   tbl_gcommit  <- mkRegFileFull();	  
-  RegFile#(Token, Inst)           tbl_inst     <- mkRegFileFull();
-  RegFile#(Token, DepInfo)        tbl_depinfo  <- mkRegFileFull();
-  RegFile#(Token, InstResult)     tbl_result   <- mkRegFileFull();
+  RegFile#(TOY_Token, Maybe#(TOY_Tick))   tbl_valids   <- mkRegFileFull();	  
+  RegFile#(TOY_Token, Maybe#(TOY_Tick))   tbl_fetch    <- mkRegFileFull();	  
+  RegFile#(TOY_Token, Maybe#(TOY_Tick))   tbl_decode   <- mkRegFileFull();	  
+  RegFile#(TOY_Token, Maybe#(TOY_Tick))   tbl_execute  <- mkRegFileFull();	  
+  RegFile#(TOY_Token, Maybe#(TOY_Tick))   tbl_memory   <- mkRegFileFull();	  
+  RegFile#(TOY_Token, Maybe#(TOY_Tick))   tbl_lcommit  <- mkRegFileFull();	  
+  RegFile#(TOY_Token, Maybe#(TOY_Tick))   tbl_gcommit  <- mkRegFileFull();	  
+  RegFile#(TOY_Token, TOY_Inst)           tbl_inst     <- mkRegFileFull();
+  RegFile#(TOY_Token, TOY_DepInfo)        tbl_depinfo  <- mkRegFileFull();
+  RegFile#(TOY_Token, TOY_InstResult)     tbl_result   <- mkRegFileFull();
   
-  FIFO#(Token) retireQ <- mkFIFO();
+  FIFO#(TOY_Token) retireQ <- mkFIFO();
   
   rule tok_req (running);
     func.tokgen.request.put(tuple3(?, ?, baseTick));
@@ -382,7 +382,7 @@ module [Module] mkTP_TestOld#(FunctionalPartition#(Tick, Token,
         $display("ERROR: No valid tick for fetch on token %0h", tok);
       tagged Valid .oldtick: 
       begin
-        Tick newTick = oldtick + fet_L;
+        TOY_Tick newTick = oldtick + fet_L;
         tbl_fetch.upd(tok, Just newTick);
         tbl_inst.upd(tok, inst);
         func.decode.request.put(tuple3(tok, ?, newTick));
@@ -401,7 +401,7 @@ module [Module] mkTP_TestOld#(FunctionalPartition#(Tick, Token,
         $display("ERROR: No fetch tick for decode on token %0h", tok);
       tagged Valid .oldtick: 
       begin
-        Tick newTick = oldtick + dec_L;
+        TOY_Tick newTick = oldtick + dec_L;
         tbl_decode.upd(tok, Just newTick);
         tbl_depinfo.upd(tok, deps);
         func.execute.request.put(tuple3(tok, ?, newTick));
@@ -420,7 +420,7 @@ module [Module] mkTP_TestOld#(FunctionalPartition#(Tick, Token,
         $display("ERROR: No decode tick for exec on token %0h", tok);
       tagged Valid .oldtick: 
       begin
-        Tick newTick = oldtick + exe_L;
+        TOY_Tick newTick = oldtick + exe_L;
         tbl_execute.upd(tok, Just newTick);
         tbl_result.upd(tok, res);
         func.memory.request.put(tuple3(tok, ?, newTick));
@@ -449,7 +449,7 @@ module [Module] mkTP_TestOld#(FunctionalPartition#(Tick, Token,
         $display("ERROR: No exec tick for mem on token %0h", tok);
       tagged Valid .oldtick: 
       begin
-        Tick newTick = oldtick + mem_L;
+        TOY_Tick newTick = oldtick + mem_L;
         tbl_memory.upd(tok, Just newTick);
         func.local_commit.request.put(tuple3(tok, ?, newTick));
       end
@@ -466,7 +466,7 @@ module [Module] mkTP_TestOld#(FunctionalPartition#(Tick, Token,
         $display("ERROR: No mem tick for lcommit on token %0h", tok);
       tagged Valid .oldtick: 
       begin
-        Tick newTick = oldtick + lco_L;
+        TOY_Tick newTick = oldtick + lco_L;
         tbl_lcommit.upd(tok, Just newTick);
         func.global_commit.request.put(tuple3(tok, ?, newTick));
       end
@@ -483,7 +483,7 @@ module [Module] mkTP_TestOld#(FunctionalPartition#(Tick, Token,
         $display("ERROR: No lcommit tick for gcommit on token %0h", tok);
       tagged Valid .oldtick: 
       begin
-        Tick newTick = oldtick + gco_L;
+        TOY_Tick newTick = oldtick + gco_L;
         tbl_gcommit.upd(tok, Just newTick);
 	retireQ.enq(tok);
       end
@@ -493,7 +493,7 @@ module [Module] mkTP_TestOld#(FunctionalPartition#(Tick, Token,
   
   rule retire (running);
     
-    Token tok = retireQ.first();
+    TOY_Token tok = retireQ.first();
     retireQ.deq();
     
     $display("Committed:\t%0d\t%0d\t%0d\t%0d\t%0d\t%0d\t%0d", 

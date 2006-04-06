@@ -5,309 +5,111 @@ import RegFile::*;
 import FIFO::*;
 import Vector::*;
 
-import Datatypes::*;
-import ValueVector::*;
+import HASim::*;
+import ToyMIPS::*;
+import FunctionalPartition::*;
+import TOY_ValueVector::*;
 import Mem::*;
 import BypassUnit::*;
 import BypassFIFO::*;
 
-                 
-//-----------------------------------------------------------------------------------------------------------//
-// General Unit (in-order unit)                                                                              //
-//-----------------------------------------------------------------------------------------------------------//
-
-module [Module] mkFP_Unit#(String phase,
-                           ValueVector#(Bool, token_T) valids,
-                           ValueVector#(Bool, token_T) dones,
-                           Unit#(token_T, init_T, req_T, resp_T, next_T) u,
-                           Integer sz) // parameters
-
-               (FP_Unit#(tick_T, token_T, init_T, req_T, resp_T, next_T)) //interface
-        provisos
-          (Bits#(token_T, tsz),Bounded#(token_T),Eq#(token_T),Literal#(token_T),
-           Bits#(Tuple3#(token_T, req_T, tick_T), tuple_sz), 
-           Bits#(init_T, isz),
-           Bits#(req_T, qsz),
-           Bits#(resp_T,psz),
-           Bits#(next_T,nsz));
-
-
-   FIFO#(Tuple3#(token_T, req_T, tick_T))         reqQ      <- mkFIFO(); // YYY: ndave make Bypass
-   FIFO#(Tuple3#(token_T,resp_T,next_T))          unitRespQ <- mkSizedFIFO(sz);
-   FIFO#(Tuple2#(token_T,next_T))                 nextQ     <- mkBypassSizedFIFO(sz);
-                 
-   //SRAM tables
-   RegFile#(token_T, init_T)                      tbl_init <- mkRegFileFull();
-
-//  Vector#(256,Reg#(Bool))                         valids  <- Vector::replicateM(mkReg(False));
-//  Vector#(256,Reg#(Bool))                         dones   <- Vector::replicateM(mkReg(False));
-
-  match {.respQToken,.*,.*} = unitRespQ.first();
-  Bool respValid = valids.read1(respQToken);
-
-  match {.reqTok, .reqReq, .reqTick} = reqQ.first();
-  Bool reqValid = valids.read4(reqTok);  
-
-  rule getUnitResponse(True);
-    Tuple3#(token_T, resp_T, next_T) tup <- u.response.get();
-    match {.tok, .resp, .next} = tup;
-
-   Bool valid = valids.read2(tok);
-   
-   if(valid)
-      begin // don't insert it was killed
-        unitRespQ.enq(tup);
-        dones.write1(tok,True);
-      end       
-  endrule
+// ToyMIPS is an extremely simple ISA designed to work as a proof of concept.
     
-  rule tossDeadResps(respValid == False);
-    unitRespQ.deq();
-  endrule
 
-  rule reqMake(reqValid);
+//-------------------------------------------------------------------------//
+// Fetch Unit                                                              //
+//-------------------------------------------------------------------------//
 
-    reqQ.deq();
-   
-    Bool done  =  dones.read1(reqTok); 
+//mkTOY_Fetch :: IMem -> FP_Unit
 
-    init_T iVal = tbl_init.sub(reqTok);
+module [Module] mkTOY_Fetch#(Server#(TOY_Addr, TOY_Inst) imem) 
 
-    if (!reqValid)
-       $display("%s ERROR: requesting unallocated token %h", phase, reqTok);
-     else if (done)
-       $display("%s ERROR: re-requesting finished token %h", phase, reqTok);            
-     else // !done
-       u.request.put(tuple3(reqTok, iVal, reqReq));
-  endrule
-
-
-  interface Put in;
-           
-    method Action put(Tuple2#(token_T, init_T) tup);
-
-     match {.tok,.iVal} = tup;
-
-     Bool valid = valids.read3(tok);
-
-     if(valid)
-       begin        
-	 $display("%s ERROR: reinserting allocated token %h", phase, tok);
-       end
-     else
-       begin
-	 //Set valid to true and done to false
-	 valids.write2(tok,True);
-	 dones.write2(tok,False);
-	 tbl_init.upd(tok, iVal);
-       end
-    endmethod
-  endinterface
-
-  interface Server server;
+       //interface:
+                   (FP_Unit#(TOY_Token,                     // token type
+		             void,                          // type from prev stage
+			     TOY_Addr,                      // request type
+			     TOY_Inst,                      // response type
+			     Tuple2#(TOY_Addr, TOY_Inst))); // type to next stage
   
-    interface Put request;
+  FIFO#(Tuple2#(TOY_Token, TOY_Addr))           reqQ  <- mkFIFO();
+  FIFO#(Tuple3#(TOY_Token, TOY_Addr, TOY_Inst)) respQ <- mkFIFO();
 
-      method Action put(Tuple3#(token_T, req_T, tick_T) tup);
-        reqQ.enq(tup);
-      endmethod
-
-    endinterface
-
-    //rule getUnitResponse
-    //rule tossDeadResps
-
-    interface Get response;
-
-      method ActionValue#(Tuple2#(token_T, resp_T)) get() if (respValid);
-
-       match {.tok, .resp, .next} = unitRespQ.first();
-       unitRespQ.deq();
-       nextQ.enq(tuple2(tok,next));
-       return tuple2(tok,resp);
-      endmethod
-
-    endinterface
-    
-  endinterface
-  // rule tossDeadNexts
-  
-  interface Get out;
-
-    method ActionValue#(Tuple2#(token_T, next_T)) get();
-     nextQ.deq();
-     return nextQ.first;
-    endmethod
-
-  endinterface
-
-  method Action                                     killToken(token_T tok);
-    valids.write2(tok,False);
-  endmethod
-
-endmodule
-
-//-----------------------------------------------------------------------------------------------------------//
-// BoolVector                                                                                                //
-//-----------------------------------------------------------------------------------------------------------//
-
-(* synthesize *)
-module [Module] mkBoolVector_Token(ValueVector#(Bool, Token));
-
-  let v <- mkBoolVector();
-   
-  return v;
-endmodule
-
-
-//-----------------------------------------------------------------------------------------------------------//
-// Token Generation Unit (head/tail pointer)                                                                              //
-//-----------------------------------------------------------------------------------------------------------//
-
-module [Module] mkFP_TokGen(FP_Unit#(Tick, Token, void, void, void, void));
-
-
-  Reg#(Token) r_first <- mkReg(0);
-  Reg#(Token) r_free <- mkReg(0);
-  
-  //Killing tokens can never result in free tokens being taken.
-  //Therefore we never need to worry about the responses being invalid.
-  FIFO#(Token) respQ <- mkFIFO();
-  FIFO#(Token) nextQ <- mkBypassFIFO();
- 
-  interface Put in;
-           
-    method Action put(Tuple2#(Token, void) tup);
-      match {.t, .*} = tup;
-      
-      //complete token t
-      
-      if (r_first != t) 
-        $display("TGen ERROR: Tokens completing out of order");
-     
-      r_first <= r_first + 1;
-      
-    endmethod
-  endinterface
-
-  interface Server server;
-  
-    interface Put request;
-  
-      method Action put(Tuple3#(Token, void, Tick) tup);
-      
-       match {.*, .*, .tick} = tup;
-       
-       //allocate a new token
-       respQ.enq(r_free);
-       nextQ.enq(r_free);
-       r_free <= r_free + 1;
-
-      endmethod
-
-    endinterface
-
-    interface Get response;
-
-      method ActionValue#(Tuple2#(Token, void)) get();
-
-        //return allocated token
-	respQ.deq();
-	return tuple2(respQ.first(), ?);
-      endmethod 
-
-    endinterface
-    
-  endinterface
-  
-  interface Get out;
-
-    method ActionValue#(Tuple2#(Token, void)) get();
-      nextQ.deq();
-      return tuple2(nextQ.first, ?); //This Does Not Exist.
-    endmethod
-
-  endinterface
-
-  method Action killToken(Token tok);
-    //free tok a and all tokens before it
-    r_free <= tok;
-  endmethod
-  
-endmodule
-                  
-
-//-----------------------------------------------------------------------------------------------------------//
-// Fetch Unit (in-order _unit_)                                                                              //
-//-----------------------------------------------------------------------------------------------------------//
-
-module [Module] mkFetch#(Server#(Addr, Inst) imem) (Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)));
-  
-  FIFO#(Tuple2#(Token, Addr)) freqs <- mkFIFO();
-  FIFO#(Tuple3#(Token, Addr, Inst)) fresps <- mkFIFO();
-
+  //getMemResp
 
   rule getMemResp (True);
   
-    Inst i <- imem.response.get();
+    TOY_Inst i <- imem.response.get();
     
-    match {.tok, .addr} = freqs.first();
-    freqs.deq();
+    match {.tok, .addr} = reqQ.first();
+    reqQ.deq();
     
-    fresps.enq(tuple3(tok, addr, i));
+    respQ.enq(tuple3(tok, addr, i));
   
   endrule
 
+  //From FP_Stage
+
   interface Put request;
 
-    method Action put(Tuple3#(Token, void, Addr) tup);
+    method Action put(Tuple3#(TOY_Token, void, TOY_Addr) tup);
+    
       match {.t, .*, .a} = tup;
+      
       imem.request.put(a);
+      
       freqs.enq(tuple2(t,a));
+      
     endmethod
 
   endinterface
 
+  //To FP_Stage
+
   interface Get response;
 
-    method ActionValue#(Tuple3#(Token,Inst,Tuple2#(Addr,Inst))) get();
+    method ActionValue#(Tuple3#(TOY_Token, TOY_Inst, Tuple2#(TOY_Addr, TOY_Inst))) get();
+    
       fresps.deq();
+      
       match {.tok,.addr,.resp} = fresps.first();
-      return tuple3(tok, resp, tuple2(addr,resp)); 
+      
+      return tuple3(tok, resp, tuple2(addr, resp)); 
+      
     endmethod
 
   endinterface
 
 endmodule  
 
-module [Module] mkFP_Fetch#(Server#(Addr, Inst) imem) (FP_Unit#(Tick,Token, void, Addr, Inst, Tuple2#(Addr,Inst)));
-  let valids <- mkBoolVector_Token();
-  let dones  <- mkBoolVector_Token(); 
-    
-  Unit#(Token, void, Addr, Inst, Tuple2#(Addr,Inst)) memunit <- mkFetch(imem);
-  
-  let i <- mkFP_Unit("FET", valids, dones, memunit,2);
 
-  return i;     
-endmodule
-                  
+//-------------------------------------------------------------------------//
+// Decode Stage                                                            //
+//-------------------------------------------------------------------------//
 
-//-----------------------------------------------------------------------------------------------------------//
-// Decode Unit (in-order _unit_)                                                                             //
-//-----------------------------------------------------------------------------------------------------------//
+// Also lookup physical register from BypassUnit
 
-module [Module] mkDecode#(BypassUnit#(RName, PRName, Value, Token) b)
-           (Unit#(Token, Tuple2#(Addr,Inst), void, DepInfo, Tuple2#(Addr, DecodedInst)));
+// mkTOY_Decode :: BypassUnit -> FP_Unit
+
+module [Module] mkTOY_Decode#(BypassUnit#(RName, PRName, TOY_Value, TOY_Token) bypass)
+     //interface:
+                (FP_Unit#(TOY_Token,                            //token type
+		          Tuple2#(TOY_Addr, TOY_Inst),          //type from prev stage (fetch)
+			  void,                                 //request type
+			  TOY_DepInfo,                          //response type
+			  Tuple2#(TOY_Addr, TOY_DecodedInst))); //type to next stage (exec)
                  
-  FIFO#(Tuple3#(Token,DepInfo,Tuple2#(Addr, DecodedInst)))           f   <- mkFIFO();
+  FIFO#(Tuple3#(TOY_Token, TOY_DepInfo, Tuple2#(TOY_Addr, TOY_DecodedInst))) respQ <- mkFIFO();
+  
+  //From FP_Stage
   
   interface Put request;
 
-    method Action put(Tuple3#(Token, Tuple2#(Addr,Inst), void) tup);
-      match {.t, {.a,.inst}, .*} = tup;
+    method Action put(Tuple3#(TOY_Token, Tuple2#(TOY_Addr, TOY_Inst), void) tup);
+    
+      match {.t, {.a, .inst}, .*} = tup;
 
-      DepInfo depInfo = ?;
-      DecodedInst di = ?;
+      TOY_DepInfo depinfo = ?;
+      TOY_DecodedInst decinst = ?;
 
       match {.ara, .arb} = case (inst) matches
 	tagged IAdd {dest: .rd, src1: .ra, src2: .rb}:
@@ -326,105 +128,108 @@ module [Module] mkDecode#(BypassUnit#(RName, PRName, Value, Token) b)
             return tuple2(?,?);
         endcase;
       
-      let pra = b.lookup1(ara);
-      let prb = b.lookup2(arb);
+      let pra = bypass.lookup1(ara);
+      let prb = bypass.lookup2(arb);
       
       case (inst) matches
 	tagged IAdd {dest: .rd, src1: .ra, src2: .rb}:
           begin
-            let rtup <- b.makeMapping(Just(rd), t, False);
+            let rtup <- bypass.makeMapping(Just(rd), t, False);
             match {.prd, .oprd} = rtup;
-            di =      DAdd {pdest: prd, opdest: oprd, op1: pra, op2: prb};
-            depInfo = DepInfo {dest: Just(tuple2(rd, prd)), src1: Just(tuple2(ra, pra)), src2: Just(tuple2(rb,prb))};
+            decinst = DAdd {pdest: prd, opdest: oprd, op1: pra, op2: prb};
+            depinfo = TOY_DepInfo {dest: Just(tuple2(rd, prd)), src1: Just(tuple2(ra, pra)), src2: Just(tuple2(rb,prb))};
           end
 	tagged ISub {dest: .rd, src1: .ra, src2: .rb}:
           begin
             let rtup <- b.makeMapping(Just(rd), t, False);
             match {.prd, .oprd} = rtup;
-            di =      DSub {pdest: prd, opdest: oprd, op1: pra, op2: prb};
-            depInfo = DepInfo {dest: Just(tuple2(rd, prd)), src1: Just(tuple2(ra, pra)), src2: Just(tuple2(rb,prb))};
+            decinst = DSub {pdest: prd, opdest: oprd, op1: pra, op2: prb};
+            depinfo = TOY_DepInfo {dest: Just(tuple2(rd, prd)), src1: Just(tuple2(ra, pra)), src2: Just(tuple2(rb,prb))};
           end
 	tagged IBz {cond: .c , addr:  .addr}:
           begin
             let rtup <- b.makeMapping(Nothing, t, True);// likely rewind candidate
             match {.prd, .oprd} = rtup;
-            di =      DBz {opdest: oprd, cond: pra, addr: prb};
-            depInfo = DepInfo {dest: Nothing, src1: Just(tuple2(c,pra)), src2: Just(tuple2(addr,prb))};
+            decinst = DBz {opdest: oprd, cond: pra, addr: prb};
+            depinfo = TOY_DepInfo {dest: Nothing, src1: Just(tuple2(c,pra)), src2: Just(tuple2(addr,prb))};
           end
 	tagged ILoad {dest: .rd, idx: .ri, offset: .ro}:
           begin
             let rtup <- b.makeMapping(Just(rd), t, False);
             match {.prd, .oprd} = rtup;
-            di =      DLoad{pdest: prd, opdest: oprd, idx: pra, offset: zeroExtend(ro)};
-            depInfo = DepInfo {dest: Just(tuple2(rd,prd)), src1: Just(tuple2(ri,pra)), src2: Nothing};
+            decinst = DLoad{pdest: prd, opdest: oprd, idx: pra, offset: zeroExtend(ro)};
+            depinfo = TOY_DepInfo {dest: Just(tuple2(rd,prd)), src1: Just(tuple2(ri,pra)), src2: Nothing};
           end
 	tagged ILoadImm {dest: .rd, imm: .i}:
           begin
             let rtup <- b.makeMapping(Just(rd), t, False);
             match {.prd, .oprd} = rtup;
-            di =      DLoadImm {pdest: prd, opdest: oprd, value: signExtend(i)};
-            depInfo = DepInfo {dest: Just(tuple2(rd,prd)), src1: Nothing, src2: Nothing};
+            decinst = DLoadImm {pdest: prd, opdest: oprd, TOY_Value: signExtend(i)};
+            depinfo = TOY_DepInfo {dest: Just(tuple2(rd,prd)), src1: Nothing, src2: Nothing};
           end
 	tagged IStore {src: .rsrc, idx: .ri, offset: .ro}:
           begin
 	    let rtup <- b.makeMapping(Nothing, t, False);
             match {.prd, .oprd} = rtup;
-            di =      DStore{value: pra, opdest: oprd, idx: prb, offset: zeroExtend(ro)};
-            depInfo = DepInfo {dest: Nothing, src1: Just(tuple2(ri,prb)), src2: Just(tuple2(rsrc,pra))};
+            decinst = DStore{TOY_Value: pra, opdest: oprd, idx: prb, offset: zeroExtend(ro)};
+            depinfo = TOY_DepInfo {dest: Nothing, src1: Just(tuple2(ri,prb)), src2: Just(tuple2(rsrc,pra))};
           end
         tagged ITerminate:
           begin
 	    let rtup <- b.makeMapping(Nothing, t, False); // only to simplify logic
             match {.prd, .oprd} = rtup;
-            di = DTerminate;
-            depInfo = DepInfo {dest: Nothing, src1: Nothing, src2: Nothing};
+            decinst = DTerminate;
+            depinfo = TOY_DepInfo {dest: Nothing, src1: Nothing, src2: Nothing};
           end
       endcase
 
-      f.enq(tuple3(t,depInfo,tuple2(a,di)));
+      respQ.enq(tuple3(t, decinst, tuple2(a, decinst)));
     endmethod
   
   endinterface
   
+  //To FP_Stage
+ 
   interface Get response;
 
-    method ActionValue#(Tuple3#(Token, DepInfo,Tuple2#(Addr, DecodedInst))) get();
-      f.deq();
-      return f.first(); 
+    method ActionValue#(Tuple3#(TOY_Token, TOY_DepInfo, Tuple2#(TOY_Addr, TOY_DecodedInst))) get();
+    
+      respQ.deq();
+      return respQ.first(); 
+      
     endmethod
   
   endinterface
 endmodule  
 
 
-module [Module] mkFP_Decode#(BypassUnit#(RName, PRName, Value, Token) b)(FP_Unit#(Tick, Token,   Tuple2#(Addr,Inst),
-                                              void, DepInfo, Tuple2#(Addr,DecodedInst)));
+//-------------------------------------------------------------------------//
+// Execute Unit                                                            //
+//-------------------------------------------------------------------------//
 
-  let valids <- mkBoolVector_Token();
-  let dones  <- mkBoolVector_Token();
-   
-  Unit#(Token, Tuple2#(Addr,Inst), void, DepInfo, Tuple2#(Addr, DecodedInst)) dec <- mkDecode(b);
-  
-  let i <- mkFP_Unit("DEC",valids, dones, dec,2);
-  return i;     
-endmodule
+// Also reads physical register file
 
-//-----------------------------------------------------------------------------------------------------------//
-// Execute Unit (in-order _unit_)                                                                            //
-//-----------------------------------------------------------------------------------------------------------//
+// mkTOY_Execute :: BypassUnit -> FP_Unit
 
-module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
-	    (Unit#(Token, Tuple2#(Addr,DecodedInst),void, InstResult, ExecedInst));
+module [Module] mkTOY_Execute#(BypassUnit#(RName, PRName, TOY_Value, TOY_Token) bypass)
+    //interface:
+                (Unit#(TOY_Token,                          //token type
+		       Tuple2#(TOY_Addr, TOY_DecodedInst), //type from prev stage (decode)
+		       void,                               //request type
+		       TOY_InstResult,                     //response type
+		       TOY_ExecedInst));                   //type to next stage (mem)
 
-  FIFO#(Tuple3#(Token,InstResult, ExecedInst)) f   <- mkFIFO();
-  FIFO#(Tuple3#(Token,Addr, DecodedInst))     iq   <- mkFIFO();
+  FIFO#(Tuple3#(TOY_Token, TOY_Addr, TOY_DecodedInst))      reqQ    <- mkFIFO();
+  FIFO#(Tuple3#(TOY_Token, TOY_InstResult, TOY_ExecedInst)) respQ   <- mkFIFO();
 
-  rule execute(True);
+  //execute
 
-   ExecedInst ei = ?;
-   Maybe#(Addr) branchResult = Nothing;
+  rule execute (True);
 
-   match {.t,.addr,.dec} = iq.first();
+   TOY_ExecedInst ei = ?;
+   Maybe#(TOY_Addr) branchResult = Nothing;
+
+   match {.t, .addr, .dec} = reqQ.first();
 
    PRName va = ?;
    PRName vb = ?;
@@ -447,8 +252,8 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
            end
     endcase
 
-    Maybe#(Value) mva = b.read1(va);
-    Maybe#(Value) mvb = b.read2(vb);
+    Maybe#(TOY_Value) mva = bypass.read1(va);
+    Maybe#(TOY_Value) mvb = bypass.read2(vb);
 
  
     $display("Execute Read1[%d] -> %s[%d]", va,
@@ -465,31 +270,31 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
              if (isJust(mva) && isJust(mvb))
                begin
                  $display("Executing Add %d: (old %d)[%d] <= 0x%h", t, oprd, prd, unJust(mva) + unJust(mvb));
-                 b.write1(prd,unJust(mva) + unJust(mvb));
-                 f.enq(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
-                 iq.deq();
+                 bypass.write1(prd,unJust(mva) + unJust(mvb));
+                 respQ.enq(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
+                 reqQ.deq();
                end
          tagged DSub {pdest: .prd, opdest: .oprd, op1: .ra, op2: .rb}:
              if (isJust(mva) && isJust(mvb))
                begin
                  $display("Executing Sub %d: (old %d)[%d] <= 0x%h", t, oprd, prd, unJust(mva) - unJust(mvb));
-                 b.write1(prd,unJust(mva) - unJust(mvb));
-                 f.enq(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
-                 iq.deq();
+                 bypass.write1(prd,unJust(mva) - unJust(mvb));
+                 respQ.enq(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
+                 reqQ.deq();
                end
          tagged DBz {opdest: .oprd, cond: .c, addr: .a}:
 	   case (mva) matches
 	     tagged Valid .cval:
 	       if (cval != 0)
 	       begin // XXX extra cleverness needed
-		 f.enq(tuple3(t, RBranchNotTaken , ENop {opdest: oprd}));
-		 iq.deq();
+		 respQ.enq(tuple3(t, RBranchNotTaken , ENop {opdest: oprd}));
+		 reqQ.deq();
 	       end
 	       else case (mvb) matches // condition must be zero
 	         tagged Valid .dest:
 		 begin
-                   f.enq(tuple3(t, RBranchTaken truncate(dest), ENop{opdest: oprd}));
-                   iq.deq();
+                   respQ.enq(tuple3(t, RBranchTaken truncate(dest), ENop{opdest: oprd}));
+                   reqQ.deq();
                  end
 	         default:
 		   noAction;
@@ -500,43 +305,47 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
          tagged DLoad {pdest: .prd, opdest: .oprd, idx: .idx, offset: .o}: // XXX do offset calc
            begin
              $display("Executing Load %d: (old %d)[%d]", t, oprd, prd);
-             f.enq(tuple3(t, RNop, ELoad {idx: idx, offset: o, pdest:prd, opdest: oprd}));
-             iq.deq();
+             respQ.enq(tuple3(t, RNop, ELoad {idx: idx, offset: o, pdest:prd, opdest: oprd}));
+             reqQ.deq();
            end
-         tagged DLoadImm {pdest: .prd, opdest: .oprd, value: .val}:
+         tagged DLoadImm {pdest: .prd, opdest: .oprd, TOY_Value: .val}:
            begin
-             b.write1(prd, signExtend(val));
-             f.enq(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
-             iq.deq();
+             bypass.write1(prd, signExtend(val));
+             respQ.enq(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
+             reqQ.deq();
            end
-         tagged DStore {value: .v, opdest: .oprd, idx: .idx, offset: .o}:// XXX do offset calc
+         tagged DStore {TOY_Value: .v, opdest: .oprd, idx: .idx, offset: .o}:// XXX do offset calc
            begin
              $display("Executing Store %d: (old %d)", t, oprd);
-             f.enq(tuple3(t,RNop,EStore {idx: idx, offset: o, val: v, opdest: oprd}));
-             iq.deq();
+             respQ.enq(tuple3(t, RNop, EStore {idx: idx, offset: o, val: v, opdest: oprd}));
+             reqQ.deq();
            end
          tagged DTerminate:
            begin
              $display("Executing Terminate %d: ", t);
-             f.enq(tuple3(t,RTerminate,ETerminate));
-             iq.deq();
+             respQ.enq(tuple3(t, RTerminate, ETerminate));
+             reqQ.deq();
            end
     endcase
   endrule
 
+  //From FP_Stage
+
   interface Put request;
 
-    method Action put(Tuple3#(Token, Tuple2#(Addr, DecodedInst), void) tup);
+    method Action put(Tuple3#(TOY_Token, Tuple2#(TOY_Addr, TOY_DecodedInst), void) tup);
       match {.t, {.addr, .dec}, .*} = tup;
 
-      iq.enq(tuple3(t,addr,dec));
+      reqQ.enq(tuple3(t, addr, dec));
     endmethod
 
   endinterface
 
+  //From FP_Stage
+
   interface Get response;
 
-    method ActionValue#(Tuple3#(Token,InstResult,ExecedInst)) get();
+    method ActionValue#(Tuple3#(TOY_Token,TOY_InstResult,TOY_ExecedInst)) get();
       f.deq();
       return f.first(); 
     endmethod
@@ -545,31 +354,31 @@ module [Module] mkExecute#(BypassUnit#(RName, PRName, Value, Token) b)
   
 endmodule  
 
-module [Module] mkFP_Execute#(BypassUnit#(RName, PRName, Value, Token) b)
-	    (FP_Unit#(Tick, Token, Tuple2#(Addr,DecodedInst),void, InstResult, ExecedInst));
 
-  let valids <- mkBoolVector_Token();
-  let dones  <- mkBoolVector_Token(); 
-  Unit#(Token, Tuple2#(Addr,DecodedInst),void, InstResult, ExecedInst) exe <- mkExecute(b);
+//-------------------------------------------------------------------------//
+// Memory Unit                                                             //
+//-------------------------------------------------------------------------//
 
-  let i <- mkFP_Unit("EXE", valids, dones, exe,3);
-  return i;     
-endmodule
+// mkTOY_Mem :: BypassUnit -> Memory -> FP_Unit
 
-//-----------------------------------------------------------------------------------------------------------//
-// Memory Unit (in-order _unit_)                                                                             //
-//-----------------------------------------------------------------------------------------------------------//
+module [Module] mkTOY_Mem#(BypassUnit#(RName, PRName, TOY_Value, TOY_Token) bypass,
+	                   Memory#(TOY_Addr, TOY_Inst, TOY_Value, TOY_Token) mem)
+    //interface:
+	        (FP_Unit#(TOY_Token,        //token type
+		          TOY_ExecedInst,   //type from prev stage (exec)
+			  void,             //request type
+			  void,             //response type
+			  TOY_ExecedInst)); //type to next stage (lcommit)
 
-module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
-	                    Memory#(Addr, Inst, Value, Token) mem)
-  (Unit#(Token, ExecedInst, void, void, ExecedInst));
+  FIFO#(Tuple2#(TOY_Token, TOY_ExecedInst))       reqQ     <- mkFIFO();
+  FIFO#(Tuple3#(TOY_Token, void, TOY_ExecedInst)) respQ    <- mkFIFO();
+  FIFO#(Tuple2#(TOY_Token, TOY_ExecedInst))       waitingQ <- mkFIFO();
 
-  FIFO#(Tuple2#(Token, ExecedInst))       reqs  <- mkFIFO();
-  FIFO#(Tuple3#(Token, void, ExecedInst))  f    <- mkFIFO();
-  FIFO#(Tuple3#(Token, void, ExecedInst)) wResp <- mkFIFO();
+  //doReq
 
-  rule doReq(True);
-    match {.t,.i} = reqs.first();
+  rule doReq (True);
+  
+    match {.t,.i} = reqQ.first();
 
     PRName va = ?;
     PRName vb = ?;
@@ -584,8 +393,8 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
         end
     endcase
 
-    let mva = b.read3(va);
-    let mvb = b.read4(vb);
+    let mva = bypass.read3(va);
+    let mvb = bypass.read4(vb);
     $display("MEM Read1[%d] -> %s[%d]", va,
                                         (isJust(mva) ? "Just":"Nothing"),
                                         unJust(mva));
@@ -594,12 +403,12 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
                                         (isJust(mvb) ? "Just":"Nothing"),
                                         unJust(mvb));
 
-    wResp.enq(tuple3(t,?,i));
+    waitingQ.enq(tuple3(t, ?, i));
     case (i) matches
       tagged ELoad {idx: .idx, offset: .o, pdest: .prd, opdest: .oprd}:
         if (isJust(mva))
            begin
-             mem.dmem.request.put(Ld{addr: truncate(unJust(mva)) + zeroExtend(o), token: t});
+             mem.dmem.request.put(Ld {addr: truncate(unJust(mva)) + zeroExtend(o), token: t});
              reqs.deq();
            end
       tagged EStore{opdest: .oprd, val: .v, idx: .idx, offset: .o}:
@@ -607,7 +416,7 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
           let addr = unJust(mva) + zeroExtend(o);
           if (isJust(mva) && isJust(mvb))
              begin
-               mem.dmem.request.put(St{val: unJust(mvb), addr: truncate(addr), token: t});
+               mem.dmem.request.put(St {val: unJust(mvb), addr: truncate(addr), token: t});
                reqs.deq();
              end
         end
@@ -616,13 +425,16 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
     endcase
   endrule
 
+  //getResp
+
   rule getResp(True);
+  
     match {.tok,.*,.i} = wResp.first();
     case (i) matches
       tagged ELoad {idx: .idx, offset: .o, pdest: .prd, opdest: .oprd}:
         begin
           let resp <- mem.dmem.response.get();
-          Value v = case (resp) matches
+          TOY_Value v = case (resp) matches
                       tagged LdResp .val: return val;
                       tagged StResp .*  : return ?; // impossible
                     endcase;
@@ -647,50 +459,61 @@ module [Module]  mkDMemory#(BypassUnit#(RName, PRName, Value, Token) b,
     endcase
   endrule
 
+  //To FP_Stage
+
   interface Put request;
 
-    method Action put(Tuple3#(Token, ExecedInst, void) tup);
+    method Action put(Tuple3#(TOY_Token, TOY_ExecedInst, void) tup);
+    
       match {.t, .i, .*} = tup;
       reqs.enq(tuple2(t,i));
+      
     endmethod
   
   endinterface
   
+  //From FP_Stage
+  
   interface Get response;
   
-    method ActionValue#(Tuple3#(Token, void, ExecedInst)) get();
+    method ActionValue#(Tuple3#(TOY_Token, void, TOY_ExecedInst)) get();
+    
       f.deq();
       return f.first(); 
+      
     endmethod
   
   endinterface
   
 endmodule  
 
-module [Module] mkFP_Memory#(BypassUnit#(RName, PRName, Value, Token) b, Memory#(Addr, Inst, Value, Token) mem)(FP_Unit#(Tick, Token, ExecedInst, void, void, ExecedInst));
-  let valids <- mkBoolVector_Token();
-  let dones  <- mkBoolVector_Token();
-   
-  Unit#(Token, ExecedInst, void, void, ExecedInst) memunit <- mkDMemory(b, mem);
+
+//-------------------------------------------------------------------------//
+// Local Commit Unit                                                       //
+//-------------------------------------------------------------------------//
+
+//mkTOY_LocalCommit :: BypassUnit -> FP_Unit
+
+module [Module] mkTOY_LocalCommit#(BypassUnit#(RName, PRName, TOY_Value, TOY_Token) bypass)
+    //interface:
+                (FP_Unit#(TOY_Token,      //token type
+		          TOY_ExecedInst, //type from prev stage (mem)
+			  void,           //request type
+			  void,           //response type
+			  void));         //type to next stage (gcommit)
+
+  FIFO#(TOY_Token) respQ   <- mkFIFO();
   
-  let i <- mkFP_Unit("MEM", valids, dones, memunit, 2);
-  return i;     
-endmodule
-
-//-----------------------------------------------------------------------------------------------------------//
-// Local Commit Unit (in-order _unit_)                                                                             //
-//-----------------------------------------------------------------------------------------------------------//
-
-module [Module] mkLocalCommit#(BypassUnit#(RName, PRName, Value, Token) b)
-                (Unit#(Token, ExecedInst, void, void,void));
-
-  FIFO#(Tuple3#(Token, void, void)) f   <- mkFIFO();
+  //From FP_Stage
   
   interface Put request;
 
-    method Action put(Tuple3#(Token, ExecedInst, void) tup);
+    method Action put(Tuple3#(TOY_Token, TOY_ExecedInst, void) tup);
+    
       match {.t, .ei, .*} = tup;
-      f.enq(tuple3(t,?,?)); //? == unit
+      
+      f.enq(t);
+      
       PRName p = case (ei) matches
                    tagged ENop    .x: return(x.opdest);
 		   tagged EWB     .x: return(x.opdest);
@@ -698,124 +521,100 @@ module [Module] mkLocalCommit#(BypassUnit#(RName, PRName, Value, Token) b)
 		   tagged EStore  .x: return(x.opdest);
                    tagged ETerminate: return(?);
 		 endcase;
-      b.freePReg(t, p);
+		 
+      bypass.freePReg(t, p);
     endmethod
   
   endinterface
   
+  //To FP_Stage
+  
   interface Get response;
   
-    method ActionValue#(Tuple3#(Token, void, void)) get();
-      f.deq();
-      return f.first(); 
+    method ActionValue#(Tuple3#(TOY_Token, void, void)) get();
+    
+      respQ.deq();
+      return respQ.first(); 
+      
     endmethod
   
   endinterface
   
 endmodule  
 
-module [Module] mkFP_LocalCommit#(BypassUnit#(RName, PRName, Value, Token) b)
-                   (FP_Unit#(Tick,Token, ExecedInst, void, void,void));
 
-  let valids <- mkBoolVector_Token();
-  let dones  <- mkBoolVector_Token(); 
+//-------------------------------------------------------------------------//
+// Global Commit Unit                                                      //
+//-------------------------------------------------------------------------//
 
-  Unit#(Token, ExecedInst, void, void,void) com <- mkLocalCommit(b);
+//mkToy_GlobalCommit :: Memory -> FP_Unit
+
+module [Module] mkTOY_GlobalCommit#(Memory#(TOY_Addr, TOY_Inst, TOY_Value, TOY_Token) mem)
+    //interface:
+                (FP_Unit#(TOY_Token, //token type
+		          void,      //type from prev stage (lcommit)
+			  void,      //request type
+			  void,      //response type
+			  void));    //type for next stage (tokgen)
+
+  FIFO#(TOY_Token) respQ <- mkFIFO();
   
-  let i <- mkFP_Unit("LCO", valids, dones, com,2);
-  return i;     
-endmodule
-
-//-----------------------------------------------------------------------------------------------------------//
-// Global Commit Unit (in-order _unit_)                                                                      //
-//-----------------------------------------------------------------------------------------------------------//
-
-module [Module] mkGlobalCommit#(Memory#(Addr, Inst, Value, Token) mem)(Unit#(Token, void, void, void,void));
-
-  FIFO#(Tuple3#(Token, void, void)) f   <- mkFIFO();
+  //From FP_Stage
   
   interface Put request;
                 
-    method Action put(Tuple3#(Token, void, void) t);
-      f.enq(t);
+    method Action put(Tuple3#(TOY_Token, void, void) t);
+    
+      respQ.enq(t);
       mem.commit(t.fst());
+      
     endmethod
   
   endinterface
   
+  //To FP_Stage
+  
   interface Get response;
 
-    method ActionValue#(Tuple3#(Token, void, void)) get();
-      f.deq();
-      return f.first(); 
+    method ActionValue#(Tuple3#(TOY_Token, void, void)) get();
+    
+      respQ.deq();
+      return respQ.first(); 
+      
     endmethod
 
   endinterface
   
 endmodule  
 
-module [Module] mkFP_GlobalCommit#(Memory#(Addr, Inst, Value, Token) mem)
-                   (FP_Unit#(Tick,Token, void, void, void,void));
+//-------------------------------------------------------------------------//
+// Toy Functional Partition                                                //
+//-------------------------------------------------------------------------//
 
-  let valids <- mkBoolVector_Token();
-  let dones  <- mkBoolVector_Token(); 
+//mkTOY_FP :: Memory -> FunctionalPartition
 
-  Unit#(Token, void, void, void,void) com <- mkGlobalCommit(mem);
+module [Module] mkTOY_FP#(Memory#(TOY_Addr, TOY_Inst, TOY_Value, TOY_Token) memsystem)
+    //interface:						       
+  		(FunctionalPartition#(TOY_Tick, TOY_Token,  //tick type, token type
+  				      TOY_Addr, TOY_Inst,   //fetchReq, fetchResp
+  				      void, TOY_DepInfo,    //decodeReq, decodeResp
+  				      void, TOY_InstResult, //execReq, execResp
+  				      void, void,           //memReq, memResp
+  				      void, void,           //lcommitReq, lcommitResp
+  				      void, void));         //gcommitReq, gcommitResp  
+
+  let bypass <- mkBypassUnit();
   
-  let i <- mkFP_Unit("GCO", valids, dones, com,2);
-  return i;     
-endmodule
-                   
-
-//-----------------------------------------------------------------------------------------------------------//
-// Top                                                                                                       //
-//-----------------------------------------------------------------------------------------------------------//
-
-module [Module] mkFP_Test#(Memory#(Addr, Inst, Value, Token) memsystem)
-
-                          (FunctionalPartition#(Tick, Token,
-                                        	Addr, Inst,
-						void, DepInfo,
-						void, InstResult,
-						void, void,
-						void, void,
-						void, void));
-
-  let b    <- mkBypassUnit();
-  let tok  <- mkFP_TokGen();
-  let fet  <- mkFP_Fetch(memsystem.imem);
-  let dec  <- mkFP_Decode(b);
-  let exe  <- mkFP_Execute(b);
-  let mem  <- mkFP_Memory(b, memsystem);
-  let lco  <- mkFP_LocalCommit(b);
-  let gco  <- mkFP_GlobalCommit(memsystem);
-
-  mkConnection(tok.out, fet.in);
-  mkConnection(fet.out, dec.in);
-  mkConnection(dec.out, exe.in);
-  mkConnection(exe.out, mem.in);
-  mkConnection(mem.out, lco.in);
-  mkConnection(lco.out, gco.in);
-  mkConnection(gco.out, tok.in);
+  let tok  <- mkTOY_TokGen();
+  let fet  <- mkTOY_Fetch(memsystem.imem);
+  let dec  <- mkTOY_Decode(b);
+  let exe  <- mkTOY_Execute(b);
+  let mem  <- mkTOY_Memory(b, memsystem);
+  let lco  <- mkTOY_LocalCommit(b);
+  let gco  <- mkTOY_GlobalCommit(memsystem);
   
-  interface tokgen = tok.server;
-  interface fetch = fet.server;
-  interface decode = dec.server;
-  interface execute = exe.server;
-  interface memory = mem.server;
-  interface local_commit = lco.server;
-  interface global_commit = gco.server;
-  
-  method Action killToken(Token t);
-    
-    tok.killToken(t);
-    fet.killToken(t);
-    dec.killToken(t);
-    exe.killToken(t);
-    mem.killToken(t);
-    lco.killToken(t);
-    gco.killToken(t);
-    b.rewindtoToken(t-1); //so we catch the branch
-  endmethod
+  let fp <- mkFP(tok, fet, dec, exe, mem, lco, gco, 8);
+
+  return fp;
 
 endmodule

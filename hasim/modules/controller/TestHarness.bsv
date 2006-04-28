@@ -1,26 +1,46 @@
 import HASim::*;
 
-interface TestHarness#(addr_T, inst_T, val_T);
+import GetPut::*;
+import ClientServer::*;
+import RegFile::*;
+import Connectable::*;
 
-  interface RegFile#(addr_T, inst_T) imem;
-  interface RegFile#(addr_T, val_T) dmem;
-  interface CPU cpu;
+interface TestHarness#(type addr_T, type inst_T, type value_T);
+
+  //Magic memory interface
+  interface RegFile#(addr_T, inst_T)  imem;
+  interface RegFile#(addr_T, value_T) dmem;
   
+  //CPU interface for controller
+  interface Put#(void) start;
+  interface Get#(Bool) done;
 endinterface
 
-//Given a CPU module, and a memory module, make a simple controller
+//Given a CPU module, and a memory module, make a test harness
 
-module [Module] mkTestHarness#(function Module#(CPU) 
-                               mkCPU(Memory#(addr_T, inst_T, val_T, token_T) m),
-			       function Mem#(addr_T, inst_T, val_T, token_T) mkMem()) 
-  (TestHarness#(addr_T, inst_T, val_T));
+module [Module] mkTestHarness#(function Module#(CPU#(token_T, addr_T, inst_T, value_T)) mkCPU(),
+			       function Module#(Memory#(token_T, addr_T, inst_T, value_T)) mkMem())
+    //interface:
+                (TestHarness#(addr_T, inst_T, value_T));
     
-    let mem <- mkMem();
+    Memory#(token_T, addr_T, inst_T, value_T) mem <- mkMem();
     
-    CPU dut <- mkCPU(mem);
+    CPU#(token_T, addr_T, inst_T, value_T) dut <- mkCPU();
+    
+    //Connect up the CPU and the Memory
+    
+    //Connect the CPU to the memory
+
+    mkConnection(dut.to_imem,   mem.imem);
+    mkConnection(dut.to_dmem,   mem.dmem);
+    mkConnection(dut.commit,    mem.commit);
+    mkConnection(dut.killRange, mem.killRange);
+  
+    //Expose the interfaces to the Controller
     
     interface imem = mem.magic_imem;
     interface dmem = mem.magic_dmem;
-    interface cpu = dut;
+    interface start = dut.start;
+    interface done = dut.done;
 
 endmodule

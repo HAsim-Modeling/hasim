@@ -5,42 +5,50 @@ import RegFile::*;
 import FIFO::*;
 import Vector::*;
 
-import Datatypes::*;
-import FunctionalPartition::*;
+import HASim::*;
+import TOY_Datatypes::*;
+import TOY_FunctionalPartition::*;
 
-module [Module] mkCPU_Pipe#(Memory#(Addr, Inst, Value, Token) mem) (CPU);
+//mkTOY_CPU_Pipe :: Memory -> CPU
 
-  let fp <- mkFP_Test(mem);
-  let tp <- mkTP_Test_Pipe(fp);
+module [Module] mkTOY_CPU_Pipe#(Memory#(TOY_Token, TOY_Addr, TOY_Inst, TOY_Value) mem) (CPU);
+
+  let fp <- mkTOY_FP(mem);
+  let tp <- mkTOY_TP_Pipe(fp);
   
   method start = tp.start;
   method done = tp.done;
 
 endmodule
 
-module [Module] mkTP_Test_Pipe#(FunctionalPartition#(Tick, Token,
-                				Addr, Inst,
-						void, DepInfo,
-						void, InstResult,
-						void, void,
-						void, void,
-						void, void) func) (TimingPartition);
+//mkTOY_TP_Pipe :: FunctionalPartition -> TimingPartition
+
+module [Module] mkTOY_TP_Pipe#(FunctionalPartition#(TOY_Tick, TOY_Token,
+                                                    void, void,
+                			            TOY_Addr, TOY_Inst,
+					            void, TOY_DepInfo,
+					            void, TOY_InstResult,
+					            void, void,
+					            void, void,
+					            void, void) func) 
+    //interface:
+                (TimingPartition);
 
 
   void unit = ?;
-  Reg#(Tick) baseTick <- mkReg(0);
+  Reg#(TOY_Tick) baseTick <- mkReg(0);
 
-  Reg#(Maybe#(Token)) mstopToken <- mkConfigReg(Nothing);
+  Reg#(Maybe#(TOY_Token)) mstopToken <- mkConfigReg(Nothing);
   Reg#(Bool) running <- mkReg(False);
-  Reg#(Addr) pc <- mkReg(0);
+  Reg#(TOY_Addr) pc <- mkReg(0);
 
-  FIFO#(Token) tok2fetQ <- mkLFIFO();
-  FIFO#(Tuple2#(Token,Addr)) fet2decQ <- mkFIFO();
-  FIFO#(Tuple3#(Token,Addr,DepInfo)) dec2exeQ <- mkFIFO();
-  FIFO#(Tuple2#(Token,DepInfo)) exe2memQ <- mkLFIFO();
-  FIFO#(Tuple2#(Token,DepInfo)) mem2lcoQ <- mkLFIFO();
-  FIFO#(Token) lco2gcoQ <- mkLFIFO();
-  FIFO#(Token) gco2tokQ <- mkLFIFO();
+  FIFO#(TOY_Token) tok2fetQ <- mkLFIFO();
+  FIFO#(Tuple2#(TOY_Token, TOY_Addr)) fet2decQ <- mkFIFO();
+  FIFO#(Tuple3#(TOY_Token, TOY_Addr,TOY_DepInfo)) dec2exeQ <- mkFIFO();
+  FIFO#(Tuple2#(TOY_Token, TOY_DepInfo)) exe2memQ <- mkLFIFO();
+  FIFO#(Tuple2#(TOY_Token, TOY_DepInfo)) mem2lcoQ <- mkLFIFO();
+  FIFO#(TOY_Token) lco2gcoQ <- mkLFIFO();
+  FIFO#(TOY_Token) gco2tokQ <- mkLFIFO();
 
   rule tick(True);
     baseTick <= baseTick + 1;   

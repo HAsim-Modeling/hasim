@@ -1,4 +1,12 @@
-import ValueVector::*;
+import HASim::*;
+import BypassFIFO::*;
+import Ports::*;
+
+import Connectable::*;
+import GetPut::*;
+import ClientServer::*;
+import FIFO::*;
+import RegFile::*;
 
 /************* Functional Partition Stage Interface *************/
 
@@ -65,7 +73,8 @@ typedef Server#(Tuple3#(token_T, init_T, req_T),
 interface BypassUnit#(type vreg_T, 
                       type preg_T, 
 		      type value_T, 
-		      type token_T);
+		      type token_T,
+		      type shapshotptr_T);
 		      
   // first is new pointer, second is old. if no new pointer, the first will be undefined
   method ActionValue#(Tuple2#(preg_T,preg_T)) makeMapping(Maybe#(vreg_T) x, token_T tok,Bool snapshot); //token is the ref name
@@ -151,7 +160,7 @@ module [Module] mkFP_Stage#(String stagename,
   
   rule getUnitResponse (True);
   
-    Tuple3#(token_T, resp_T, next_T) tup <- u.response.get();
+    Tuple3#(token_T, resp_T, next_T) tup <- unit.response.get();
     match {.tok, .resp, .next} = tup;
 
     Bool valid = valids.sub(tok);
@@ -177,14 +186,14 @@ module [Module] mkFP_Stage#(String stagename,
    
     Bool done  =  dones.sub(reqTok); 
 
-    init_T iVal = tbl_init.sub(reqTok);
+    init_T iVal = values.sub(reqTok);
 
     if (!reqValid)
        $display("%s ERROR: requesting unallocated token %h", stagename, reqTok);
      else if (done)
        $display("%s ERROR: re-requesting finished token %h", stagename, reqTok);            
      else // !done
-       u.request.put(tuple3(reqTok, iVal, reqReq));
+       unit.request.put(tuple3(reqTok, iVal, reqReq));
   endrule
 
   //From Previous Stage
@@ -206,7 +215,7 @@ module [Module] mkFP_Stage#(String stagename,
 	 //Set valid to true and done to false
 	 valids.upd(tok,True);
 	 dones.upd(tok,False);
-	 tbl_init.upd(tok, iVal);
+	 values.upd(tok, iVal);
        end
     endmethod
   endinterface
@@ -288,12 +297,13 @@ module [Module] mkFP_TokGen
 			   void,     //Type from previous stage
 			   void,     //Request Type
 			   void,     //Response Type
-			   void));   //Type to next stage
+			   void))    //Type to next stage
         provisos
 	        (Bits#(token_T, token_SZ),
 		 Bounded#(token_T),
 		 Arith#(token_T),
-		 Bits#(tick_T, tick_SZ));
+		 Bits#(tick_T, tick_SZ),
+		 Eq#(token_T));
 		         
 
   Reg#(token_T) r_first <- mkReg(minBound);
@@ -369,7 +379,7 @@ module [Module] mkFP_TokGen
 
   //killToken
 
-  method Action killtoken_T(token_T tok);
+  method Action killToken(token_T tok);
     //free tok and all tokens after it
     r_free <= tok;
   endmethod
@@ -396,8 +406,14 @@ endmodule
 //	      FP_Unit e f  ->      #Mem
 //	      FP_Unit f g  ->      #Local Commit
 //	      FP_Unit g a  ->      #Global Commit
+//            BypassUnit   ->      #Bypass unit and map table
+//            Port_Client  ->      #Port to IMem
+//            Port_Client  ->      #Port to DMem
+//            Port_Send    ->      #Port to DMem commit
+//            Port_Send    ->      #Port to DMem killRange
 //            Integer      ->      #Table size
 //	      FunctionalPartition
+
 
 module [Module] mkFunctionalPartition#(FP_Stage#(tick_T, token_T, tok_data_T, tok_req_T, tok_resp_T, fet_data_T) tok,
                                        FP_Unit#(token_T, fet_data_T, fet_req_T, fet_resp_T, dec_data_T) fet,
@@ -406,15 +422,56 @@ module [Module] mkFunctionalPartition#(FP_Stage#(tick_T, token_T, tok_data_T, to
 				       FP_Unit#(token_T, mem_data_T, mem_req_T, mem_resp_T, lco_data_T) mem,
 				       FP_Unit#(token_T, lco_data_T, lco_req_T, lco_resp_T, gco_data_T) lco,
 				       FP_Unit#(token_T, gco_data_T, gco_req_T, gco_resp_T, tok_data_T) gco,
+				       BypassUnit#(rname_T, prname_T, value_T, token_T, snapshotptr_T) bypass, 
+				       Port_Client#(addr_T, inst_T) port_to_imem,
+				       Port_Client#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) port_to_dmem,
+				       Port_Send#(token_T) port_to_mem_commit,
+				       Port_Send#(Tuple2#(token_T, token_T)) port_to_mem_killRange,
 				       Integer sz)
     //interface:						       
-  		(FunctionalPartition#(tick_T,    token_T,      //tick type, token type
+  		(FunctionalPartition#(tick_T,                  //tick type
+		                      token_T,                 //token type
+		                      addr_T,                  //address type
+				      inst_T,                  //instruction type
+				      value_T,                 //value type
+		                      tok_req_T, tok_resp_T,   //tokenReq, tokenResp
   				      fet_req_T, fet_resp_T,   //fetchReq, fetchResp
   				      dec_req_T, dec_resp_T,   //decodeReq, decodeResp
   				      exe_req_T, exe_resp_T,   //execReq, execResp
   				      mem_req_T, mem_resp_T,   //memReq, memResp
   				      lco_req_T, lco_resp_T,   //lcommitReq, lcommitResp
-  				      gco_req_T, gco_resp_T)); //gcommitReq, gcommitResp  
+  				      gco_req_T, gco_resp_T))  //gcommitReq, gcommitResp
+    provisos
+            (Bits#(token_T, token_SZ), 
+	     Bounded#(token_T),
+	     Eq#(token_T),
+	     Arith#(token_T),
+	     Literal#(token_T),
+	     Bits#(addr_T, addr_SZ), 
+	     Bits#(value_T, value_SZ), 
+	     Bits#(inst_T, inst_SZ),
+             Bits#(tick_T,     tick_SZ),
+	     Bits#(tok_data_T, tok_data_SZ),
+	     Bits#(fet_data_T, fet_data_SZ),
+	     Bits#(dec_data_T, dec_data_SZ),
+	     Bits#(exe_data_T, exe_data_SZ),
+	     Bits#(mem_data_T, mem_data_SZ),
+	     Bits#(lco_data_T, lco_data_SZ),
+	     Bits#(gco_data_T, gco_data_SZ),
+	     Bits#(tok_req_T,  tok_req_SZ),
+	     Bits#(fet_req_T,  fet_req_SZ),
+	     Bits#(dec_req_T,  dec_req_SZ),
+	     Bits#(exe_req_T,  exe_req_SZ),
+	     Bits#(mem_req_T,  mem_req_SZ),
+	     Bits#(lco_req_T,  lco_req_SZ),
+	     Bits#(gco_req_T,  gco_req_SZ),
+	     Bits#(tok_resp_T, tok_resp_SZ),
+	     Bits#(fet_resp_T, fet_resp_SZ),
+	     Bits#(dec_resp_T, dec_resp_SZ),
+	     Bits#(exe_resp_T, exe_resp_SZ),
+	     Bits#(mem_resp_T, mem_resp_SZ),
+	     Bits#(lco_resp_T, lco_resp_SZ),
+	     Bits#(gco_resp_T, gco_resp_SZ));
   
   
   //Instantiate the stage wrappers
@@ -451,18 +508,31 @@ module [Module] mkFunctionalPartition#(FP_Stage#(tick_T, token_T, tok_data_T, to
   
   //This is broadcast to every stage
   
-  method Action killToken(token_T t);
-    
-    tok_stage.killToken(t);
-    fet_stage.killToken(t);
-    dec_stage.killToken(t);
-    exe_stage.killToken(t);
-    mem_stage.killToken(t);
-    lco_stage.killToken(t);
-    gco_stage.killToken(t);
-    
-    b.rewindtoToken(t-1); //so we catch the branch
-    
-  endmethod
+  interface Put killToken;
+
+    method Action put(token_T t);
+
+      tok_stage.killToken(t);
+      fet_stage.killToken(t);
+      dec_stage.killToken(t);
+      exe_stage.killToken(t);
+      mem_stage.killToken(t);
+      lco_stage.killToken(t);
+      gco_stage.killToken(t);
+
+      bypass.rewindtoToken(t-1); //so we catch the branch
+      port_to_mem_killRange.send(tuple2(t, t));
+
+    endmethod
+
+  endinterface
+
+  //interfaces to Memory
+  
+  interface to_dmem = port_to_dmem.client;
+  interface to_imem = port_to_imem.client;
+  
+  interface commit = port_to_mem_commit.outgoing;
+  interface killRange = port_to_mem_killRange.outgoing; 
 
 endmodule

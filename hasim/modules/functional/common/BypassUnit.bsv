@@ -1,13 +1,11 @@
-import Datatypes::*;
+import HASim::*;
+import FunctionalPartition::*;
 
 import GetPut::*;
 import RegFile::*;
 import FIFO::*;
 import Vector::*;
 import ConfigReg::*;
-
-
-typedef Bit#(4) SnapShotPtr;
 
 
 //----------------------------------------------------------------------------------
@@ -27,36 +25,45 @@ interface RFile_4_2#(type addr_T, type value_T);
   method Action alloc(addr_T a);
 endinterface
 
-(* synthesize *)
-module [Module] mkRFile_4_2(RFile_4_2#(PRName, Value)) provisos (Bits#(PRName, psz));
+module [Module] mkRFile_4_2
+    //interface:
+                (RFile_4_2#(prname_T, value_T)) 
+    provisos
+            (Bits#(prname_T, prname_SZ),
+	     Bits#(value_T,  value_SZ),
+	     Bounded#(prname_T),
+	     Literal#(value_T),
+	     Literal#(prname_T),
+	     Ord#(prname_T),
+	     Eq#(prname_T));
 
   //RegisterFile
 
-  Vector#(TExp#(psz), Reg#(Value))            rf_regs <- mapM(compose(mkConfigReg,fromInteger), genVector);
+  Vector#(TExp#(prname_SZ), Reg#(value_T)) rf_regs <- mapM(compose(mkConfigReg,fromInteger), genVector);
 
   function initiallyValid(Integer x);
-    RName rmax = maxBound ;
-    return(toIndex(x) < toIndex(rmax));
+    prname_T rmax = maxBound ;
+    return(fromInteger(x) < rmax);
   endfunction
 
-  Vector#(TExp#(psz), Reg#(Bool))           rf_valids <-
+  Vector#(TExp#(prname_SZ), Reg#(Bool))           rf_valids <-
             mapM(compose(mkConfigReg, initiallyValid), genVector);
 //            replicateM(mkConfigReg, mapM(initiallyValid, genVector));
 
-  function Maybe#(Value) read(PRName x);
-     return (rf_valids[x]._read) ? Just((rf_regs[x])._read): Nothing;
+  function Maybe#(value_T) read(prname_T x);
+     return (select(rf_valids, x)._read()) ? Just((select(rf_regs, x))._read()) : Nothing;
   endfunction
 
-  function Action write(PRName x, Value v);
+  function Action write(prname_T x, value_T v);
     action 
-      (rf_valids[x]) <= True;
-      (rf_regs[x])   <= v;
+      (select(rf_valids, x)) <= True;
+      (select(rf_regs, x))   <= v;
     endaction
   endfunction
 
-  function Action allocF(PRName x);
+  function Action allocF(prname_T x);
     action
-      (rf_valids[x]) <= False;
+      (select(rf_valids, x)) <= False;
     endaction
   endfunction
 
@@ -76,144 +83,192 @@ endmodule
 // Bypass
 //----------------------------------------------------------------------------------
 
-(* synthesize *)
-module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
-  provisos(
-    Bits#(RName, rsz), Eq#(RName), Bounded#(RName), 
-    Bits#(PRName,psz),
-    Bits#(SnapShotPtr, ssz) 
-    );
+module [Module] mkBypassUnit
+    //interface:
+                (BypassUnit#(rname_T,        //Register Name type
+		             prname_T,       //Physical Register Name type
+			     value_T,        //Value type
+			     token_T,        //Token type
+			     snapshotptr_T)) //SnapShot Ptr type
+    provisos
+            (Bits#(rname_T, rname_SZ), 
+	     Eq#(rname_T), 
+	     Bounded#(rname_T),
+	     Literal#(rname_T),
+	     Bits#(prname_T, prname_SZ),
+	     Bounded#(prname_T),
+	     Ord#(prname_T),
+	     Eq#(prname_T),
+	     Arith#(prname_T),
+	     Literal#(prname_T),
+	     Bits#(value_T, value_SZ),
+	     Literal#(value_T),
+	     Bits#(token_T, token_SZ),
+	     Eq#(token_T),
+	     Ord#(token_T),
+	     Arith#(token_T),
+             Bits#(snapshotptr_T, snapshotptr_SZ),
+	     Bounded#(snapshotptr_T),
+	     Literal#(snapshotptr_T),
+	     Eq#(snapshotptr_T),
+	     Add#(rname_SZ, rdiff_TMP, prname_SZ),
+	     Add#(snapshotptr_SZ, sdiff_TMP, token_SZ));
 
-  RFile_4_2#(PRName, Value)                         prf <- mkRFile_4_2();
+  RFile_4_2#(prname_T, value_T) prf <- mkRFile_4_2();
 
   //map table 
 
-  RName maxR = maxBound;
-  PRName minInitFL = zeroExtend(maxR) + 1;
-  PRName maxInitFL = maxBound;
+  rname_T maxR = maxBound;
+  Bit#(prname_SZ) minInitFL_bits = zeroExtend(pack(maxR)) + 1;
+  prname_T minInitFL = unpack(minInitFL_bits);
+  prname_T maxInitFL = maxBound;
+  
+  Vector#(TExp#(rname_SZ), prname_T) initmap = map(fromInteger, genVector);
+  Reg#(Vector#(TExp#(rname_SZ), prname_T)) maptbl <- mkReg(initmap); // init with [0 .. max]
 
-  Vector#(TExp#(rsz), PRName) initmap = map(fromInteger,genVector);
-  Reg#(Vector#(TExp#(rsz), PRName)) map <- mkReg(initmap); // init with [0 .. max]
-
-  function PRName lookup(RName r);
-     return(map[r]);
+  function prname_T lookup(rname_T r);
+     return select(maptbl._read(), r);
   endfunction 
 
   // XXX initialized with max+1 to maxBound ..
-  RegFile#(PRName,PRName)                      freelist <- mkRegFileFullLoad("freelist.hex");
-  Reg #(PRName)                                 fl_read <- mkReg(minInitFL);
-  Reg #(PRName)                                fl_write <- mkReg(maxInitFL); 
+  RegFile#(prname_T, prname_T)  freelist  <- mkRegFileFullLoad("freelist.hex");
+  Reg #(prname_T)               fl_read   <- mkReg(minInitFL);
+  Reg #(prname_T)               fl_write  <- mkReg(maxInitFL); 
 
   //rob                                   old
-  RegFile#(PRName, Tuple3#(Token, Maybe#(RName), PRName)) rob <- mkRegFileFull();
-  Reg #(PRName)                                 rob_old <- mkReg(0);
-  Reg #(PRName)                                rob_new  <- mkReg(0);
+  RegFile#(prname_T, Tuple3#(token_T, Maybe#(rname_T), prname_T)) rob      <- mkRegFileFull();
+  Reg#(prname_T)   						  rob_old  <- mkReg(0);
+  Reg#(prname_T) 						  rob_new  <- mkReg(0);
 
-  Reg#(Vector#(TExp#(ssz), Bool))              snap_valids   <- mkReg(unpack(0));
-  Reg#(Vector#(TExp#(ssz), Token))                snap_ids   <- mkRegU();
-  RegFile#(SnapShotPtr, PRName)            snap_flreadptrs   <- mkRegFileFull();
-  RegFile#(SnapShotPtr, PRName)            snap_robnewptrs   <- mkRegFileFull(); 
-  RegFile#(SnapShotPtr, Vector#(TExp#(rsz), PRName)) snaps   <- mkRegFileFull();
+  Reg#(Vector#(TExp#(snapshotptr_SZ), Bool))     snap_valids        <- mkReg(unpack(0));
+  Reg#(Vector#(TExp#(snapshotptr_SZ), token_T))  snap_ids           <- mkRegU();
+  RegFile#(snapshotptr_T, prname_T)              snap_flreadptrs    <- mkRegFileFull();
+  RegFile#(snapshotptr_T, prname_T)              snap_robnewptrs    <- mkRegFileFull(); 
+  RegFile#(snapshotptr_T, Vector#(TExp#(rname_SZ), prname_T)) snaps <- mkRegFileFull();
 
 
-  Reg#(Bool) 		                              busy <- mkReg(False);
-  Reg#(Token) 	  				 stopToken <- mkRegU();
+  Reg#(Bool)  busy <- mkReg(False);
+  Reg#(token_T) stopToken <- mkRegU();
 
   Bool free_ss = pack(snap_valids) != ~0;
 
-  rule unBusy(busy);
+  //unBusy
+  
+  rule unBusy (busy);
+  
     //if newest token is stopToken or we ran out unbusy
-    match {.tok,.mx,.oldp} = rob.sub(rob_new);
+    match {.tok, .mx, .oldp} = rob.sub(rob_new);
+    
     if (tok == stopToken || (rob_new == rob_old + 1))
        busy <= False;
+       
    //back up maptable
    if (isJust(mx))
-     map <= update(map, unJust(mx), oldp);
+     maptbl <= update(maptbl, unJust(mx), oldp);
 
    //back up (freelist)
-   fl_read <= fl_read -1;
+   fl_read <= fl_read - 1;
  
    //backup (rob)
    rob_new <= rob_new - 1;
+   
   endrule
 
+
+  //makeMapping (used by Decode)
+
   //                          new    old
-  method ActionValue#(Tuple2#(PRName,PRName)) makeMapping(Maybe#(RName) mx, Token tok, Bool ss)
-    if (!busy && (fl_read + 1 != fl_write));
-  
-  PRName oldPReg; 
-  PRName newPReg;
+  method ActionValue#(Tuple2#(prname_T, prname_T)) makeMapping(Maybe#(rname_T) mx, token_T tok, Bool ss)
+         //guard:
+                 if (!busy && (fl_read + 1 != fl_write));
 
-  if (isJust(mx))
-    begin
-      oldPReg = map[unJust(mx)];
-      newPReg = freelist.sub(fl_read);
-    end
-  else
-    begin
-      oldPReg = freelist.sub(fl_read);
-      newPReg = ?;
-     end
+    prname_T oldPReg; 
+    prname_T newPReg;
 
-  //take off freelist
-  fl_read <= fl_read + 1;
+    if (isJust(mx))
+      begin
+	oldPReg = select(maptbl, unJust(mx));
+	newPReg = freelist.sub(fl_read);
+      end
+    else
+      begin
+	oldPReg = freelist.sub(fl_read);
+	newPReg = ?;
+       end
 
-  // update map
-  if (isJust(mx))
-    begin
-      Vector#(TExp#(rsz), PRName) new_map = map;
-      new_map[unJust(mx)] = newPReg;
-      map <= new_map;
-    end
- 
-  // write rob
-  rob_new <= rob_new + 1;
-  rob.upd(rob_new, tuple3(tok, mx, newPReg));
+    //take off freelist
+    fl_read <= fl_read + 1;
 
-  // make snapshot if needed
-  Maybe#(SnapShotPtr) midx = Nothing;
+    // update map
+    if (isJust(mx))
+      begin
+	Vector#(TExp#(rname_SZ), prname_T) new_map = maptbl;
+	new_map = update(new_map, unJust(mx), newPReg);
+	maptbl <= new_map;
+      end
 
-//INDEX sequence
-  SnapShotPtr ti = truncate(pack(tok));
-  if(!snap_valids[ti])
-    midx = Just(ti);
+    // write rob
+    rob_new <= rob_new + 1;
+    rob.upd(rob_new, tuple3(tok, mx, newPReg));
 
-  //for(Integer i = 0; i < valueOf(TExp#(ssz)); i = i + 1) // 
-  //  if(!snap_valids[i])
-  //    midx = Just(fromInteger(i));
-//END INDEX sequence
+    // make snapshot if needed
+    Maybe#(snapshotptr_T) midx = Nothing;
+
+  //INDEX sequence
+    Bit#(snapshotptr_SZ) ti_bits = truncate(pack(tok));
+    snapshotptr_T ti = unpack(ti_bits);
+    if(!select(snap_valids, ti))
+      midx = Just(ti);
+
+    //for(Integer i = 0; i < valueOf(TExp#(ssz)); i = i + 1) // 
+    //  if(!snap_valids[i])
+    //    midx = Just(fromInteger(i));
+  //END INDEX sequence
 
 
-  //snapshot only when it makes sense
+    //snapshot only when it makes sense
 
-  midx = (ss) ? midx: Nothing;
+    midx = (ss) ? midx : Nothing;
 
-  if (isJust(midx))
-    begin
-      let idx = unJust(midx);
-      snap_valids     <= update(snap_valids, idx, True);
-      snap_ids        <= update(snap_ids   , idx, tok);
-      snap_flreadptrs.upd(idx, fl_read);
-      snap_robnewptrs.upd(idx, rob_new);
-                snaps.upd(idx, map);
-    end
+    if (isJust(midx))
+      begin
+	let idx = unJust(midx);
+	snap_valids     <= update(snap_valids, idx, True);
+	snap_ids        <= update(snap_ids   , idx, tok);
+	snap_flreadptrs.upd(idx, fl_read);
+	snap_robnewptrs.upd(idx, rob_new);
+                  snaps.upd(idx, maptbl);
+      end
     
     // return value
-    return(tuple2(newPReg,oldPReg));
+    return(tuple2(newPReg, oldPReg));
+    
   endmethod
+  
+  //lookup{1, 2} used by Decode
 
   method lookup1 = lookup;
   method lookup2 = lookup;
+
+  //read{1,2,3,4} 
+  //{1,2} used by Exec
+  //{3,4} used by Mem
 
   method read1 = prf.read1;
   method read2 = prf.read2;
   method read3 = prf.read3;
   method read4 = prf.read4;
 
+  //write{1,2}
+  //1 used by Execute
+  //2 used by Mem
+
   method write1 = prf.write1;
   method write2 = prf.write2;
 
-  method Action freePReg(Token tok,PRName x) if (!busy);
+  //freePReg (used by Local Commit)
+
+  method Action freePReg(token_T tok,prname_T x) if (!busy);
     freelist.upd(fl_write,x);
     fl_write <= fl_write + 1;
 
@@ -227,15 +282,19 @@ module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
     
   endmethod
 
-  method Action rewindtoToken(Token tok) if (!busy);
+  //rewindToToken (used by FunctionalPartition.killToken)
+
+  method Action rewindtoToken(token_T tok) if (!busy);
     //NO!!!!!
      
     //see if token is snapshotted
   //INDEX function 
-    Maybe#(SnapShotPtr) midx = Nothing;
+    Maybe#(snapshotptr_T) midx = Nothing;
 
-    SnapShotPtr idx = truncate(pack(tok));
-    if (snap_valids[idx])
+    Bit#(snapshotptr_SZ) idx_bits = truncate(pack(tok));
+    snapshotptr_T idx = unpack(idx_bits);
+    
+    if (select(snap_valids, idx))
        midx = Just(idx);
 
     //for(Integer i = 0; i < valueOf(TExp#(ssz)); i = i + 1) // 
@@ -246,7 +305,7 @@ module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
     case (midx) matches
       tagged Just .i:
         begin
-          map     <=           snaps.sub(i);
+          maptbl  <=           snaps.sub(i);
           fl_read <= snap_flreadptrs.sub(i);
           rob_new <= snap_robnewptrs.sub(i);
         end
@@ -260,7 +319,7 @@ module [Module] mkBypassUnit(BypassUnit#(RName, PRName, Value, Token))
     //flatten dead snaps
     match {.oldTok, .*, .*} = rob.sub(rob_old);
 
-    function flatten(x, t) = x && (tok-oldTok > t - oldTok); //valid and older than tok stay
+    function Bool flatten(Bool x, token_T t) = x && (tok-oldTok > t - oldTok); //valid and older than tok stay
      
     snap_valids <= zipWith(flatten, snap_valids, snap_ids);
 

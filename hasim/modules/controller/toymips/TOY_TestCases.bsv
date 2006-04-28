@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 //                                                                           //
-// TOY_TestCases.bsv                                                           //
+// TOY_TestCases.bsv                                                         //
 //                                                                           //
 // Test cases for the ToyMIPS ISA. To be used while verifying timing         //
 // partitions.                                                               //
@@ -10,62 +10,80 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 import TestCase::*;
-import ToyMIPS::*;
+import TestHarness::*;
+import SimpleController::*;
 import Mem::*;
 import BypassUnit::*;
-import FunctionalPartition::*;
-import TimingPartition::*;
-import TimingPartition_Pipeline::*;
 
+import HASim::*;
+import Ports::*;
+import TOY_Datatypes::*;
+import TOY_FunctionalPartition::*;
+import TOY_TimingPartition::*;
+
+import PrimArray::*;
+import RegFile::*;
+import GetPut::*;
+import Connectable::*;
+
+/************* Test Case Datatypes *************/
+
+typedef Program#(TOY_Inst) TOY_Program;
+
+typedef TestHarness#(TOY_Addr, TOY_Inst, TOY_Value) TOY_TestHarness;
+
+
+
+/************* Test Cases *************/
 
 // A simple test that of x + y
 
-function TestCase testAddition (Integer x, Integer y);
+function TestCase#(TOY_Inst, TOY_Value) testAddition (Integer x, Integer y);
 
   
-  Inst prog[5] = 
+  TOY_Inst prog[5] = 
     {
-      ILoad  {dest: r1, idx: r0, offset: 0},
-      ILoad  {dest: r2, idx: r0, offset: 1},
-      IAdd   {dest: r4, src1: r1, src2: r2},
-      IStore {src: r4, idx: r0, offset: 2}, 
+      ILoad  {dest: r1, idx:  r0, offset: 0  },
+      ILoad  {dest: r2, idx:  r0, offset: 1  },
+      IAdd   {dest: r4, src1: r1, src2:   r2 },
+      IStore {src:  r4, idx:  r0, offset: 2  },
       ITerminate
     };
 
-  Value dmem_i[2] = {fromInteger(x), fromInteger(y)};
-  Value dmem_e[3] = {fromInteger(x), fromInteger(y), fromInteger(x + y)};
+  TOY_Value dmem_i[2] = {fromInteger(x), fromInteger(y)};
+  TOY_Value dmem_e[3] = {fromInteger(x), fromInteger(y), fromInteger(x + y)};
   
   return TestCase
          {
            imem_init: prog, 
 	   dmem_init: dmem_i, 
-	   dmem_exp: dmem_e
+	   dmem_exp:  dmem_e
 	 };
 	 
 endfunction
 
 // A simple test of x - y
 
-function TestCase testSubtraction (Integer x, Integer y);
+function TestCase#(TOY_Inst, TOY_Value) testSubtraction (Integer x, Integer y);
 
   
-  Inst prog[5] = 
+  TOY_Inst prog[5] = 
     {
-      ILoad  {dest: r1, idx: r0, offset: 0},
-      ILoad  {dest: r2, idx: r0, offset: 1},
-      ISub   {dest: r4, src1: r1, src2: r2},
-      IStore {src: r4, idx: r0, offset: 2}, 
+      ILoad  {dest: r1, idx:  r0, offset: 0  },
+      ILoad  {dest: r2, idx:  r0, offset: 1  },
+      ISub   {dest: r4, src1: r1, src2:   r2 },
+      IStore {src:  r4, idx:  r0, offset: 2  },
       ITerminate
     };
 
-  Value dmem_i[2] = {fromInteger(x), fromInteger(y)};
-  Value dmem_e[3] = {fromInteger(x), fromInteger(y), fromInteger(x - y)};
+  TOY_Value dmem_i[2] = {fromInteger(x), fromInteger(y)};
+  TOY_Value dmem_e[3] = {fromInteger(x), fromInteger(y), fromInteger(x - y)};
   
   return TestCase
          {
            imem_init: prog, 
 	   dmem_init: dmem_i, 
-	   dmem_exp: dmem_e
+	   dmem_exp:  dmem_e
 	 };
 	 
 endfunction
@@ -73,9 +91,9 @@ endfunction
 // A more complex, branching test
 // Tests x * y without using Mul instruction
 
-function TestCase testBranch (Integer x, Integer y);
+function TestCase#(TOY_Inst, TOY_Value) testBranch (Integer x, Integer y);
 
-  Inst prog[22] = 
+  TOY_Inst prog[22] = 
     { 
       ILoadImm {dest: r1, imm: fromInteger(x)}, //      Set x
       ILoadImm {dest: r2, imm: fromInteger(y)}, //      Set y	    
@@ -101,14 +119,14 @@ function TestCase testBranch (Integer x, Integer y);
       ITerminate                                //End:  finish(res)
     };
 
-  Value dmem_i[1] = {0};
-  Value dmem_e[1] = {fromInteger(x * y)};
+  TOY_Value dmem_i[1] = {0};
+  TOY_Value dmem_e[1] = {fromInteger(x * y)};
   
   return TestCase
          {
            imem_init: prog, 
-	   dmem_init: dmem_i, 
-	   dmem_exp: dmem_e
+	   dmem_init: dmem_i,
+	   dmem_exp:  dmem_e
 	 };
 	 
 endfunction
@@ -117,9 +135,9 @@ endfunction
 // A branching test with data dependencies that ensures 
 // we are stalling correctly
 
-function TestCase testStalls (Integer x);
+function TestCase#(TOY_Inst, TOY_Value) testStalls (Integer x);
 
-  Inst prog[13] = 
+  TOY_Inst prog[13] = 
     { 
       ILoadImm {dest: r0, imm: 0},                //       Set 0
       ILoadImm {dest: r1, imm: 1},                //       Set 1
@@ -135,74 +153,95 @@ function TestCase testStalls (Integer x);
       IBz      {cond: r0, addr: 4},               //       GOTO loop
       ITerminate                                  //  end: Halt.
     };
-
-  List#(Value) dmem_i = genList();
-  List#(Value) dmem_e = replicate(x, ?);
     
+  TOY_Value dmem_i[x];
+  TOY_Value dmem_e[x];
+  
+  for(Integer k = 0; k < x; k = k + 1)
+    dmem_i[k] = fromInteger(k);
+  
   for(Integer k = 0; k < (x-1); k = k + 1)
     dmem_e[k] = fromInteger(k + k + 1);
     
   dmem_e[x-1] = fromInteger(x-1);
-  
+
   return TestCase
          {
            imem_init: prog, 
-	   dmem_init: dmem_i, 
-	   dmem_exp: dmem_e
+	   dmem_init: dmem_i,
+	   dmem_exp:  dmem_e
 	 };
 	 
 endfunction
 
 //Instantiations of these tests with specific timing partitions
 
+module [Module] mkTOY_Mem (Memory#(TOY_Token, TOY_Addr, TOY_Inst, TOY_Value));
+
+  let m <- mkMem();
+  
+  return m;
+  
+endmodule
+
+//mkTOY_CPU :: CPU
+
+(* synthesize *)
+module [Module] mkTOY_CPU (CPU#(TOY_Token, TOY_Addr, TOY_Inst, TOY_Value));
+
+  let fp <- mkTOY_FP();
+  let tp <- mkTOY_TP_Simple();
+  
+  //Connect up the partitions
+  mkConnection(tp.tokgen,        fp.tokgen);
+  mkConnection(tp.fetch,         fp.fetch);
+  mkConnection(tp.decode,        fp.decode);
+  mkConnection(tp.execute,       fp.execute);
+  mkConnection(tp.memory,        fp.memory);
+  mkConnection(tp.local_commit,  fp.local_commit);
+  mkConnection(tp.global_commit, fp.global_commit);
+  
+  //Interface for Test Harness
+  
+  interface start = tp.start;
+  interface done  = tp.done;
+
+  //Interface For Memory Ports
+  
+  interface to_dmem = fp.to_dmem;
+  interface to_imem = fp.to_imem;
+  
+  interface commit    = fp.commit;
+  interface killRange = fp.killRange; 
+endmodule
+
+
 module [Module] testAddition_1();
   
-  TestHarness th <- mkTestHarness(mkCPU_Test);
+  TOY_TestHarness th <- mkTestHarness(mkTOY_CPU, mkTOY_Mem)();
 
-  Empty test <- mkTestbench(th, testAddition(11, 5));
+  Empty test <- mkController_SimpleTest(th, testAddition(11, 5));
 endmodule
 
-module [Module] testAddition_1_Pipe();
-  
-  TestHarness th <- mkTestHarness(mkCPU_Pipe);
-
-  Empty test <- mkTestbench(th, testAddition(11, 5));
-endmodule
-  
 module [Module] testSubtraction_1();
   
-  TestHarness th <- mkTestHarness(mkCPU_Test);
+  TOY_TestHarness th <- mkTestHarness(mkTOY_CPU, mkTOY_Mem)();
 
-  Empty test <- mkTestbench(th, testSubtraction(11, 5));
-endmodule
-
-module [Module] testSubtraction_1_Pipe();
-  
-  TestHarness th <- mkTestHarness(mkCPU_Pipe);
-
-  Empty test <- mkTestbench(th, testSubtraction(11, 5));
+  Empty test <- mkController_SimpleTest(th, testSubtraction(11, 5));
 endmodule
   
 
 module [Module] testBranch_1 ();
   
-  TestHarness th <- mkTestHarness(mkCPU_Test);
+  TOY_TestHarness th <- mkTestHarness(mkTOY_CPU, mkTOY_Mem)();
 
-  Empty test <- mkTestbench(th, testBranch(17, 12));
+  Empty test <- mkController_SimpleTest(th, testBranch(17, 12));
 endmodule
-
-module [Module] testBranch_1_Pipe();
-  
-  TestHarness th <- mkTestHarness(mkCPU_Pipe);
-
-  Empty test <- mkTestbench(th, testBranch(17, 12));
-endmodule
-  
 
 module [Module] testStalls_1 ();
   
-  TestHarness th <- mkTestHarness(mkCPU_Test);
+  TOY_TestHarness th <- mkTestHarness(mkTOY_CPU, mkTOY_Mem)();
 
-  Empty test <- mkTestbench(th, testStalls(17));
+  Empty test <- mkController_SimpleTest(th, testStalls(17));
 endmodule
 

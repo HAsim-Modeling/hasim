@@ -37,7 +37,7 @@ typedef enum
 //mkTOY_TP_Simple :: FunctionalPartition -> Timing Partition 
 
 (* synthesize *)
-`define MODULE_NAME "mkTP_Test"
+`define MODULE_NAME "mkTOY_TP_Simple"
 module [Module] mkTOY_TP_Simple
      //interface:
                  (TimingPartition#(TOY_Tick, TOY_Token,  //tick type, token type

@@ -71,6 +71,15 @@ action
 endaction
 endfunction
 
+function Action debug_case_default (String sw);
+action
+
+  
+  debug_enter("case default branch for", sw);
+
+endaction
+endfunction
+
 function Action debug_then (String cond);
 action
 

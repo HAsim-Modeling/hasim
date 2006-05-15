@@ -1,6 +1,6 @@
 import HASim::*;
 import BypassFIFO::*;
-import Ports::*;
+import Mem::*;
 
 import Connectable::*;
 import GetPut::*;
@@ -407,13 +407,13 @@ endmodule
 //	      FP_Unit f g  ->      #Local Commit
 //	      FP_Unit g a  ->      #Global Commit
 //            BypassUnit   ->      #Bypass unit and map table
-//            Port_Client  ->      #Port to IMem
-//            Port_Client  ->      #Port to DMem
-//            Port_Send    ->      #Port to DMem commit
-//            Port_Send    ->      #Port to DMem killRange
+//            Link_Client  ->      #Link to IMem
+//            Link_Client  ->      #Link to DMem
+//            Link_Send    ->      #Link to DMem commit
+//            Link_Send    ->      #Link to DMem killRange
 //            Integer      ->      #Table size
 //	      FunctionalPartition
-
+/*
 
 module [Module] mkFunctionalPartition#(FP_Stage#(tick_T, token_T, tok_data_T, tok_req_T, tok_resp_T, fet_data_T) tok,
                                        FP_Unit#(token_T, fet_data_T, fet_req_T, fet_resp_T, dec_data_T) fet,
@@ -423,10 +423,10 @@ module [Module] mkFunctionalPartition#(FP_Stage#(tick_T, token_T, tok_data_T, to
 				       FP_Unit#(token_T, lco_data_T, lco_req_T, lco_resp_T, gco_data_T) lco,
 				       FP_Unit#(token_T, gco_data_T, gco_req_T, gco_resp_T, tok_data_T) gco,
 				       BypassUnit#(rname_T, prname_T, value_T, token_T, snapshotptr_T) bypass, 
-				       Port_Client#(addr_T, inst_T) port_to_imem,
-				       Port_Client#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) port_to_dmem,
-				       Port_Send#(token_T) port_to_mem_commit,
-				       Port_Send#(Tuple2#(token_T, token_T)) port_to_mem_killRange,
+				       Link_Client#(addr_T, inst_T) link_to_imem,
+				       Link_Client#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) link_to_dmem,
+				       Link_Send#(token_T) link_to_mem_commit,
+				       Link_Send#(Tuple2#(token_T, token_T)) link_to_mem_killRange,
 				       Integer sz)
     //interface:						       
   		(FunctionalPartition#(tick_T,                  //tick type
@@ -521,7 +521,7 @@ module [Module] mkFunctionalPartition#(FP_Stage#(tick_T, token_T, tok_data_T, to
       gco_stage.killToken(t);
 
       bypass.rewindtoToken(t-1); //so we catch the branch
-      port_to_mem_killRange.send(tuple2(t, t));
+      link_to_mem_killRange.send(tuple2(t, t));
 
     endmethod
 
@@ -529,10 +529,11 @@ module [Module] mkFunctionalPartition#(FP_Stage#(tick_T, token_T, tok_data_T, to
 
   //interfaces to Memory
   
-  interface to_dmem = port_to_dmem.client;
-  interface to_imem = port_to_imem.client;
+  interface to_dmem = link_to_dmem.client;
+  interface to_imem = link_to_imem.client;
   
-  interface commit = port_to_mem_commit.outgoing;
-  interface killRange = port_to_mem_killRange.outgoing; 
+  interface commit = link_to_mem_commit.outgoing;
+  interface killRange = link_to_mem_killRange.outgoing; 
 
 endmodule
+*/

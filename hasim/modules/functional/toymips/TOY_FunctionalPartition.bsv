@@ -7,12 +7,17 @@ import Vector::*;
 
 import HASim::*;
 import Ports::*;
-import TOY_Datatypes::*;
 import FunctionalPartition::*;
-import ValueVector::*;
-import Mem::*;
 import BypassUnit::*;
-import BypassFIFO::*;
+import Debug::*;
+
+import TOY_Datatypes::*;
+
+`ifdef PARTITION_NAME
+`undef PARTITION_NAME
+`endif
+
+`define PARTITION_NAME "Functional"
 
 // ToyMIPS is an extremely simple ISA designed to work as a proof of concept.
     
@@ -23,6 +28,7 @@ import BypassFIFO::*;
 
 //mkTOY_Fetch :: IMem Port -> FP_Unit
 
+`define MODULE_NAME "mkTOY_Fetch"
 module [Module] mkTOY_Fetch#(Port_Client#(TOY_Addr, TOY_Inst) port_to_imem) 
 
        //interface:
@@ -41,13 +47,15 @@ module [Module] mkTOY_Fetch#(Port_Client#(TOY_Addr, TOY_Inst) port_to_imem)
   
   //Just pass the request on to the IMem
 
-  rule handleReq (True);
+  rule handleFetch (True);
+  
+    debug_rule("handleFetch");
     
     Tuple3#(TOY_Token, void, TOY_Addr) tup <- port_fet.getReq();
     match {.t, .*, .a} = tup;
     
     port_to_imem.makeReq(a);
-    waitingQ.enq(tuple2(t,a));
+    waitingQ.enq(tuple2(t, a));
     
   endrule
 
@@ -57,6 +65,8 @@ module [Module] mkTOY_Fetch#(Port_Client#(TOY_Addr, TOY_Inst) port_to_imem)
 
   rule getMemResp (True);
   
+    debug_rule("getMemResp");
+    
     TOY_Inst resp <- port_to_imem.getResp();
     
     match {.tok, .addr} = waitingQ.first();
@@ -68,7 +78,8 @@ module [Module] mkTOY_Fetch#(Port_Client#(TOY_Addr, TOY_Inst) port_to_imem)
   //Interface to FPStage
   return port_fet.server;
 
-endmodule  
+endmodule
+`undef MODULE_NAME
 
 
 //-------------------------------------------------------------------------//
@@ -79,6 +90,7 @@ endmodule
 
 // mkTOY_Decode :: BypassUnit -> FP_Unit
 
+`define MODULE_NAME "mkTOY_Decode"
 module [Module] mkTOY_Decode#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass)
      //interface:
                 (FP_Unit#(TOY_Token,                            //token type
@@ -98,6 +110,8 @@ module [Module] mkTOY_Decode#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_
   
   rule handleDecode (True);
   
+    debug_rule("handleDecode");
+    
     Tuple3#(TOY_Token, Tuple2#(TOY_Addr, TOY_Inst), void) tup <- port_dec.getReq();
     
     match {.t, {.a, .inst}, .*} = tup;
@@ -113,11 +127,11 @@ module [Module] mkTOY_Decode#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_
           return tuple2(ra, rb);
       tagged IBz {cond: .c , addr:  .addr}:
           return tuple2(c, addr);
-      tagged ILoad {dest: .rd, idx: .ri, offset: .ro}:
+      tagged ILoad {dest: .rd, idx: .ri, offset: .off}:
 	  return tuple2(ri, ?);
       tagged ILoadImm {dest: .rd, imm: .i}:
           return tuple2(?, ?);
-      tagged IStore {src: .rsrc, idx: .ri, offset: .ro}:
+      tagged IStore {src: .rsrc, idx: .ri, offset: .off}:
           return tuple2(rsrc, ri);
       tagged ITerminate:
           return tuple2(?,?);
@@ -131,60 +145,84 @@ module [Module] mkTOY_Decode#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_
     case (inst) matches
       tagged IAdd {dest: .rd, src1: .ra, src2: .rb}:
         begin
+	  debug_case("inst", "IAdd");
+	  
           let rtup <- bypass.makeMapping(Just(rd), t, False);
           match {.prd, .oprd} = rtup;
           decinst = DAdd {pdest: prd, opdest: oprd, op1: pra, op2: prb};
           depinfo = TOY_DepInfo {dep_dest: Just(tuple2(rd, prd)), dep_src1: Just(tuple2(ra, pra)), dep_src2: Just(tuple2(rb,prb))};
+	  
+          debug(2, $display("DEC: [%d]: IAdd R%d := R%d + R%d", t, rd, ra, rb));
         end
       tagged ISub {dest: .rd, src1: .ra, src2: .rb}:
         begin
+	  debug_case("inst", "ISub");
+	  
           let rtup <- bypass.makeMapping(Just(rd), t, False);
           match {.prd, .oprd} = rtup;
           decinst = DSub {pdest: prd, opdest: oprd, op1: pra, op2: prb};
           depinfo = TOY_DepInfo {dep_dest: Just(tuple2(rd, prd)), dep_src1: Just(tuple2(ra, pra)), dep_src2: Just(tuple2(rb,prb))};
+
+          debug(2, $display("DEC: [%d]: ISub R%d := R%d - R%d", t, rd, ra, rb));
         end
       tagged IBz {cond: .c , addr:  .addr}:
         begin
+	  debug_case("inst", "IBz");
+	  
           let rtup <- bypass.makeMapping(Nothing, t, True);// likely rewind candidate
           match {.prd, .oprd} = rtup;
           decinst = DBz {opdest: oprd, cond: pra, addr: prb};
           depinfo = TOY_DepInfo {dep_dest: Nothing, dep_src1: Just(tuple2(c,pra)), dep_src2: Just(tuple2(addr,prb))};
+
+          debug(2, $display("DEC: [%d]: IBz (R%d == 0)? pc := (R%d)", t, c, addr));
         end
-      tagged ILoad {dest: .rd, idx: .ri, offset: .ro}:
+      tagged ILoad {dest: .rd, idx: .ri, offset: .off}:
         begin
+	  debug_case("inst", "ILoad");
+	  
           let rtup <- bypass.makeMapping(Just(rd), t, False);
           match {.prd, .oprd} = rtup;
-          decinst = DLoad{pdest: prd, opdest: oprd, idx: pra, offset: zeroExtend(ro)};
+          decinst = DLoad {pdest: prd, opdest: oprd, idx: pra, offset: zeroExtend(off)};
           depinfo = TOY_DepInfo {dep_dest: Just(tuple2(rd,prd)), dep_src1: Just(tuple2(ri,pra)), dep_src2: Nothing};
+
+          debug(2, $display("DEC: [%d]: ILoad R%d := (R%d + %h)", t, rd, ri, off));
         end
       tagged ILoadImm {dest: .rd, imm: .i}:
         begin
+	  debug_case("inst", "ILoadImm");
+	  
           let rtup <- bypass.makeMapping(Just(rd), t, False);
           match {.prd, .oprd} = rtup;
           decinst = DLoadImm {pdest: prd, opdest: oprd, value: signExtend(i)};
           depinfo = TOY_DepInfo {dep_dest: Just(tuple2(rd,prd)), dep_src1: Nothing, dep_src2: Nothing};
+
+          debug(2, $display("DEC: [%d]: ILoadImm R%d := %d", t, rd, i));
         end
-      tagged IStore {src: .rsrc, idx: .ri, offset: .ro}:
+      tagged IStore {src: .rsrc, idx: .ri, offset: .off}:
         begin
+	  debug_case("inst", "IStore");
+	  
 	  let rtup <- bypass.makeMapping(Nothing, t, False);
           match {.prd, .oprd} = rtup;
-          decinst = DStore{value: pra, opdest: oprd, idx: prb, offset: zeroExtend(ro)};
+          decinst = DStore{value: pra, opdest: oprd, idx: prb, offset: zeroExtend(off)};
           depinfo = TOY_DepInfo {dep_dest: Nothing, dep_src1: Just(tuple2(ri,prb)), dep_src2: Just(tuple2(rsrc,pra))};
+	  
+          debug(2, $display("DEC: [%d]: IStore (R%d + %h) := R%d", t, ri, off, rsrc));
         end
       tagged ITerminate:
         begin
+	  debug_case("inst", "ITerminate");
+	  
 	  let rtup <- bypass.makeMapping(Nothing, t, False); // only to simplify logic
           match {.prd, .oprd} = rtup;
           decinst = DTerminate;
           depinfo = TOY_DepInfo {dep_dest: Nothing, dep_src1: Nothing, dep_src2: Nothing};
+
+          debug(2, $display("DEC: [%d]: ITerminate"));
         end
     endcase
-
-    $display("Decode Packed Instruction: %h", pack(inst));
-    $display("Decode Read1[%d] -> [%d]", ara, pra);
-
-    $display("Decode Read2[%d] -> [%d]", arb, prb);
-
+        
+    debug(2, $display("DEC: Physical Sources: (PR%d, PR%d)", pra, prb));
     
     port_dec.makeResp(tuple3(t, depinfo, tuple2(a, decinst)));
     
@@ -193,7 +231,8 @@ module [Module] mkTOY_Decode#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_
   //Interface to FP_Stage
   return port_dec.server;
   
-endmodule  
+endmodule
+`undef MODULE_NAME  
 
 
 //-------------------------------------------------------------------------//
@@ -204,6 +243,7 @@ endmodule
 
 // mkTOY_Execute :: BypassUnit -> FP_Unit
 
+`define MODULE_NAME "mkTOY_Execute"
 module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass)
     //interface:
                 (FP_Unit#(TOY_Token,                          //token type
@@ -224,123 +264,193 @@ module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY
    
   rule handleExec (True);
   
+    debug_rule("handleExec");
+
     let tup <- port_exe.getReq();
     waitingQ.enq(tup);
-    
+
   endrule
   
   //execute
 
   rule execute (True);
-   
-   match {.t, {.addr, .dec}, .*} = waitingQ.first();
-   
-   TOY_ExecedInst ei = ?;
-   Maybe#(TOY_Addr) branchResult = Nothing;
-   TOY_PRName va = ?;
-   TOY_PRName vb = ?;
+  
+    debug_rule("execute");
 
-   //Get the registers which hold the values
-   case (dec) matches
-         tagged DAdd {pdest: .prd, opdest: .oprd, op1: .ra, op2: .rb}:
-           begin
-             va = ra;
-             vb = rb;
-           end
-         tagged DSub {pdest: .prd, opdest: .oprd, op1: .ra, op2: .rb}:
-           begin
-             va = ra;
-             vb = rb;
-           end       
-         tagged DBz {opdest: .oprd, cond: .c, addr: .a}:
-           begin
-             va = c;
-             vb = a;
-           end
-    endcase
+    match {.t, {.addr, .dec}, .*} = waitingQ.first();
 
-    //Try to get the values from the Bypass unit
-    Maybe#(TOY_Value) mva = bypass.read1(va);
-    Maybe#(TOY_Value) mvb = bypass.read2(vb);
+    TOY_ExecedInst ei = ?;
+    Maybe#(TOY_Addr) branchResult = Nothing;
+    TOY_PRName va = ?;
+    TOY_PRName vb = ?;
 
- 
-    $display("Execute Read1[%d] -> %s[%d]", va,
-                                            (isJust(mva) ? "Just":"Nothing"),
-                                            unJust(mva));
-
-    $display("Execute Read2[%d] -> %s[%d]", vb,
-                                            (isJust(mvb) ? "Just":"Nothing"),
-                                            unJust(mvb));
-
-    //Actually do the execute
+    //Get the registers which hold the values
     case (dec) matches
-         tagged DAdd {pdest: .prd, opdest: .oprd, op1: .ra, op2: .rb}:
-             if (isJust(mva) && isJust(mvb))
-               begin
-                 $display("Executing Add %d: (old %d)[%d] <= 0x%h", t, oprd, prd, unJust(mva) + unJust(mvb));
-                 bypass.write1(prd,unJust(mva) + unJust(mvb));
-                 port_exe.makeResp(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
-                 waitingQ.deq();
-               end
-         tagged DSub {pdest: .prd, opdest: .oprd, op1: .ra, op2: .rb}:
-             if (isJust(mva) && isJust(mvb))
-               begin
-                 $display("Executing Sub %d: (old %d)[%d] <= 0x%h", t, oprd, prd, unJust(mva) - unJust(mvb));
-                 bypass.write1(prd,unJust(mva) - unJust(mvb));
-                 port_exe.makeResp(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
-                 waitingQ.deq();
-               end
-         tagged DBz {opdest: .oprd, cond: .c, addr: .a}:
-	   case (mva) matches
-	     tagged Valid .cval:
-	       if (cval != 0)
-	       begin // XXX extra cleverness needed
-		 port_exe.makeResp(tuple3(t, RBranchNotTaken , ENop {opdest: oprd}));
-		 waitingQ.deq();
-	       end
-	       else case (mvb) matches // condition must be zero
-	         tagged Valid .dest:
+          tagged DAdd {pdest: .prd, opdest: .oprd, op1: .ra, op2: .rb}:
+            begin
+              va = ra;
+              vb = rb;
+            end
+          tagged DSub {pdest: .prd, opdest: .oprd, op1: .ra, op2: .rb}:
+            begin
+              va = ra;
+              vb = rb;
+            end       
+          tagged DBz {opdest: .oprd, cond: .c, addr: .a}:
+            begin
+              va = c;
+              vb = a;
+            end
+     endcase
+
+     //Try to get the values from the Bypass unit
+     Maybe#(TOY_Value) mva = bypass.read1(va);
+     Maybe#(TOY_Value) mvb = bypass.read2(vb);
+
+
+     debug(2, $display("EXE: [%d] read1 PR%d -> %s %d", va,
+                        (isJust(mva) ? "Just" : "Nothing"), unJust(mva)));
+
+     debug(2, $display("EXE: [%d] read2 PR%d -> %s %d", vb,
+                        (isJust(mvb) ? "Just" : "Nothing"), unJust(mvb)));
+
+     //Actually do the execute
+     case (dec) matches
+       tagged DAdd {pdest: .prd, opdest: .oprd, op1: .ra, op2: .rb}:
+       begin
+       
+	 debug_case("dec", "DAdd");
+	 
+         if (isJust(mva) && isJust(mvb))
+         begin
+	 
+	   debug_then("isJust(mva) && isJust(mvb)");
+	   
+	   let result = unJust(mva) + unJust(mvb);
+	   
+           bypass.write1(prd, result);
+           port_exe.makeResp(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
+           waitingQ.deq();
+
+	   debug(2, $display("EXE: [%d] DAdd (old PR%d) PR%d <= 0x%h", t, oprd, prd, result));
+	   
+         end
+       end
+       tagged DSub {pdest: .prd, opdest: .oprd, op1: .ra, op2: .rb}:
+       begin
+       
+	 debug_case("dec", "DSub");
+	 
+         if (isJust(mva) && isJust(mvb))
+         begin
+	 
+	   debug_then("isJust(mva) && isJust(mvb)");
+	   
+	   let result = unJust(mva) - unJust(mvb);
+	   
+           bypass.write1(prd, result);
+           port_exe.makeResp(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
+           waitingQ.deq();
+	   
+	   debug(2, $display("EXE: [%d] DAdd (old PR%d) PR%d <= 0x%h", t, oprd, prd, result));
+	   
+         end
+       end
+       tagged DBz {opdest: .oprd, cond: .c, addr: .a}:
+       begin
+       
+	 debug_case("dec", "DBz");
+	 
+	 case (mva) matches
+	   tagged Valid .cval:
+	   begin
+	   
+	     debug_case("mva", "Valid");
+	     
+	     if (cval != 0)
+	     begin // XXX extra cleverness needed
+	     
+	       debug_then("cval != 0");
+	       
+	       port_exe.makeResp(tuple3(t, RBranchNotTaken, ENop {opdest: oprd}));
+	       waitingQ.deq();
+
+	       debug(2, $display("EXE: [%d] DBz Not Taken (cval == %d) (old PR%d)", t, cval, oprd));
+	       
+	     end
+	     else   // condition must be zero
+	     begin
+	     
+	       debug_else("cval != 0");
+	       
+	       case (mvb) matches
+		 tagged Valid .dest:
 		 begin
+		 
+		   debug_case("mvb", "Valid");
+		   
                    port_exe.makeResp(tuple3(t, RBranchTaken truncate(dest), ENop{opdest: oprd}));
                    waitingQ.deq();
-                 end
-	         default:
-		   noAction;
-		 endcase
-	     default:
-	       noAction;
-	   endcase
-         tagged DLoad {pdest: .prd, opdest: .oprd, idx: .idx, offset: .o}: // XXX do offset calc
-           begin
-             $display("Executing Load %d: (old %d)[%d]", t, oprd, prd);
-             port_exe.makeResp(tuple3(t, RNop, ELoad {idx: idx, offset: o, pdest:prd, opdest: oprd}));
-             waitingQ.deq();
-           end
-         tagged DLoadImm {pdest: .prd, opdest: .oprd, value: .val}:
-           begin
-             bypass.write1(prd, signExtend(val));
-             port_exe.makeResp(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
-             waitingQ.deq();
-           end
-         tagged DStore {value: .v, opdest: .oprd, idx: .idx, offset: .o}:// XXX do offset calc
-           begin
-             $display("Executing Store %d: (old %d)", t, oprd);
-             port_exe.makeResp(tuple3(t, RNop, EStore {idx: idx, offset: o, val: v, opdest: oprd}));
-             waitingQ.deq();
-           end
-         tagged DTerminate:
-           begin
-             $display("Executing Terminate %d: ", t);
-             port_exe.makeResp(tuple3(t, RTerminate, ETerminate));
-             waitingQ.deq();
-           end
+        	 end
+		 default:
+		   debug_case_default("mvb");
+	       endcase
+	       
+	     end
+	   end
+	   default:
+	     debug_case_default("mva");
+	 endcase
+       end
+       tagged DLoad {pdest: .prd, opdest: .oprd, idx: .idx, offset: .o}: // XXX do offset calc here?
+       begin
+         
+	 debug_case("dec", "DLoad");
+	 
+         port_exe.makeResp(tuple3(t, RNop, ELoad {idx: idx, offset: o, pdest:prd, opdest: oprd}));
+         waitingQ.deq();
+	 
+	 debug(2, $display("EXE: [%d] DLoad (old PR%d) PR%d := (PR%d + 0x%h)", t, oprd, prd, idx, o));
+       end
+       tagged DLoadImm {pdest: .prd, opdest: .oprd, value: .val}:
+       begin
+
+	 debug_case("dec", "DLoadImm");
+
+         bypass.write1(prd, signExtend(val));
+         port_exe.makeResp(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
+         waitingQ.deq();
+	 
+	 debug(2, $display("EXE: [%d] DLoadImm (old PR%d) PR%d := 0x%h", t, oprd, prd, val));
+       end
+       tagged DStore {value: .v, opdest: .oprd, idx: .idx, offset: .o}:// XXX do offset calc here?
+       begin
+
+	 debug_case("dec", "DLoadImm");
+
+         port_exe.makeResp(tuple3(t, RNop, EStore {idx: idx, offset: o, val: v, opdest: oprd}));
+         waitingQ.deq();
+	 
+	 debug(2, $display("EXE: [%d] DStore (old PR%d) (PR%d + 0x%h) := PR%d", t, oprd, idx, o, v));
+       end
+       tagged DTerminate:
+       begin
+
+	 debug_case("dec", "DTerminate");
+	 
+         port_exe.makeResp(tuple3(t, RTerminate, ETerminate));
+         waitingQ.deq();
+
+	 debug(2, $display("EXE: [%d] DTerminate", t)); 
+       end
     endcase
   endrule
 
   //Interface to FP_Stage
   return port_exe.server;
   
-endmodule  
+endmodule
+`undef MODULE_NAME  
 
 
 //-------------------------------------------------------------------------//
@@ -349,6 +459,8 @@ endmodule
 
 // mkTOY_Mem :: BypassUnit -> Memory -> FP_Unit
 
+
+`define MODULE_NAME "mkTOY_Mem"
 module [Module] mkTOY_Mem#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass,
 	                   Port_Client#(MemReq#(TOY_Addr, TOY_Token, TOY_Value), MemResp#(TOY_Value)) port_to_dmem)
     //interface:
@@ -361,11 +473,13 @@ module [Module] mkTOY_Mem#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Tok
   
   let port_mem <- mkPort_Server("port_mem");
   
-  FIFO#(Tuple2#(TOY_Token, TOY_ExecedInst))       waitingQ <- mkFIFO();
+  FIFO#(Tuple2#(TOY_Token, TOY_ExecedInst)) waitingQ <- mkFIFO();
 
   //doReq
 
   rule doReq (True);
+       
+    debug_rule("doReq");
   
     match {.t, .i, .*} <- port_mem.getReq();
 
@@ -385,66 +499,98 @@ module [Module] mkTOY_Mem#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Tok
 
     
     let mva = bypass.read3(va);
-    let mvb = bypass.read4(vb);
-    $display("MEM Read1[%d] -> %s[%d]", va,
-                                        (isJust(mva) ? "Just":"Nothing"),
-                                        unJust(mva));
+    let mvb = bypass.read4(vb);	 
 
-    $display("MEM Read2[%d] -> %s[%d]", vb,
-                                        (isJust(mvb) ? "Just":"Nothing"),
-                                        unJust(mvb));
+    debug(2, $display("MEM: read1 PR%d -> %s PR%d", va,
+                       isJust(mva) ? "Just" : "Nothing", unJust(mva)));
+
+
+    debug(2, $display("MEM: read2 PR%d -> %s PR%d", vb,
+                       isJust(mvb) ? "Just" : "Nothing", unJust(mvb)));
 
     waitingQ.enq(tuple2(t, i));
+    
     case (i) matches
       tagged ELoad {idx: .idx, offset: .o, pdest: .prd, opdest: .oprd}:
+      begin
+        debug_case("i", "ELoad");
+       
         if (isJust(mva))
-           begin
-             port_to_dmem.makeReq(Ld {addr: truncate(unJust(mva)) + zeroExtend(o), token: t});
-           end
-      tagged EStore{opdest: .oprd, val: .v, idx: .idx, offset: .o}:
         begin
-          let addr = unJust(mva) + zeroExtend(o);
-          if (isJust(mva) && isJust(mvb))
-             begin
-               port_to_dmem.makeReq(St {val: unJust(mvb), addr: truncate(addr), token: t});
-             end
+	  debug_then("isJust(mva)");
+	  
+	  TOY_Addr a = truncate(unJust(mva)) + zeroExtend(o);
+          port_to_dmem.makeReq(Ld {addr: a, token: t});
+	  
+          debug(2, $display("MEM: [%d] Load Request: 0x%h", t, a));
         end
+      end
+      tagged EStore{opdest: .oprd, val: .v, idx: .idx, offset: .o}:
+      begin
+        debug_case("i", "EStore");
+	
+        let addr = unJust(mva) + zeroExtend(o);
+	
+        if (isJust(mva) && isJust(mvb))
+        begin
+	  debug_then("(isJust(mva) && isJust(mvb))");
+          port_to_dmem.makeReq(St {val: unJust(mvb), addr: truncate(addr), token: t});
+	  
+          debug(2, $display("MEM: [%d] Store Request: 0x%h := %d", t, addr, unJust(mvb)));
+        end
+      end
       default: // push
-        noAction;
+        debug_case_default("i");
     endcase
   endrule
 
   //getResp
 
   rule getResp(True);
+       
+    debug_rule("getResp");
   
     match {.tok, .i} = waitingQ.first();
+    
     case (i) matches
       tagged ELoad {idx: .idx, offset: .o, pdest: .prd, opdest: .oprd}:
         begin
+	
+	  debug_case("i", "ELoad");
+	  
           let resp <- port_to_dmem.getResp();
 	  
           TOY_Value v = case (resp) matches
                       tagged LdResp .val: return val;
                       tagged StResp .*  : return 0; // impossible
                     endcase;
+		    
           waitingQ.deq();
-          $display("MEM LdResp from Mem: %d Writing [%d] <= %h", tok, prd, v);
           port_mem.makeResp(tuple3(tok,?,EWB{pdest: prd, opdest: oprd}));
           bypass.write2(prd, v);
+	  
+	  
         end
       tagged EStore {opdest: .oprd, val: .*, idx: .*, offset: .*}:
         begin
-          $display("MEM StResp from Mem: %d", tok);
+	
+	  debug_case("i", "EStore");
+	  
           let resp <- port_to_dmem.getResp();
           waitingQ.deq();
           port_mem.makeResp(tuple3(tok, ?, ENop {opdest: oprd}));
+	  
+          debug(2, $display("MEM: [%d] StResp", tok));
         end
       default:
         begin
-          $display("MEM Non-Mem Op: %d", tok);
+	
+	  debug_case_default("i");
+	  
           waitingQ.deq();
           port_mem.makeResp(tuple3(tok, ?, i));
+	  
+          debug(2, $display("MEM: [%d] Non-Memory op", tok));
         end
     endcase
   endrule
@@ -452,7 +598,8 @@ module [Module] mkTOY_Mem#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Tok
   //Interface to FP_Stage
   return port_mem.server;
   
-endmodule  
+endmodule
+`undef MODULE_NAME  
 
 
 //-------------------------------------------------------------------------//
@@ -461,6 +608,7 @@ endmodule
 
 //mkTOY_LocalCommit :: BypassUnit -> FP_Unit
 
+`define MODULE_NAME "mkTOY_LocalCommit"
 module [Module] mkTOY_LocalCommit#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass)
     //interface:
                 (FP_Unit#(TOY_Token,      //token type
@@ -492,7 +640,8 @@ module [Module] mkTOY_LocalCommit#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value,
   //Interface to FP_Stage
   return port_lco.server;
   
-endmodule  
+endmodule
+`undef MODULE_NAME  
 
 
 //-------------------------------------------------------------------------//
@@ -501,6 +650,7 @@ endmodule
 
 //mkToy_GlobalCommit :: Memory -> FP_Unit
 
+`define MODULE_NAME "mkTOY_GlobalCommit"
 module [Module] mkTOY_GlobalCommit#(Port_Send#(TOY_Token) port_to_mem_commit)
     //interface:
                 (FP_Unit#(TOY_Token, //token type
@@ -525,7 +675,8 @@ module [Module] mkTOY_GlobalCommit#(Port_Send#(TOY_Token) port_to_mem_commit)
   //Interface to FP_Stage
   return port_gco.server;
   
-endmodule  
+endmodule
+`undef MODULE_NAME  
 
 //-------------------------------------------------------------------------//
 // Toy Functional Partition                                                //

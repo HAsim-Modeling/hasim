@@ -1,7 +1,6 @@
-//Memory system with ports
+//Memory system with links
 
 import HASim::*;
-import Ports::*;
 
 import GetPut::*;
 import ClientServer::*;
@@ -10,7 +9,68 @@ import FIFO::*;
 import SVector::*;
 import BypassFIFO::*;
 
-module [Module] mkMem
+/************* Memory System Interface *************/
+
+
+// Data Memory request
+
+typedef union tagged 
+{
+  struct {token_T token; addr_T addr;              } Ld;
+  struct {token_T token; addr_T addr; value_T val; } St;
+}
+  MemReq#(parameter type token_T,
+          parameter type addr_T,
+	  parameter type value_T) 
+    deriving
+            (Eq,Bits);
+
+
+// Data Memory Response
+
+typedef union tagged {
+  value_T LdResp;
+  void    StResp;
+}
+  MemResp#(parameter type value_T) 
+    deriving
+            (Eq, Bits);
+
+
+// Memory System Interface
+
+// The memory system consists of two major parts: the IMem and DMem.
+// The IMem is a simple Server (Address, Instruction)
+// The DMem uses the above MemReq/MemResp types
+// Additionally requests can be committed or killed in the DMem
+// They are committed by Global Commit and killed by killToken
+
+// For now the memory also has a "magic" link for the controller to
+// load the test case. This may disappear in the future.
+
+interface Memory#(type token_T,  //Token tye
+                  type addr_T,   //Address t,ype
+                  type inst_T,   //Instruction type
+		  type value_T); //Value type
+
+  interface Server#(addr_T, inst_T) imem;
+  interface Server#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) dmem;
+  
+  interface Put#(token_T) commit;
+  interface Put#(Tuple2#(token_T, token_T)) killRange; 
+  
+  //Magic link for the test harness to load the program
+  interface RegFile#(addr_T, inst_T) magic_imem;
+  interface RegFile#(addr_T, value_T) magic_dmem;
+
+endinterface
+
+/************* Simple Memory System Implementation *************/
+
+// This is intended for software simulation. An FPGA version would
+// be a memory controller.
+
+module [Module] mkMem_Software
     //interface:
                 (Memory#(token_T,   //Token type
 		         addr_T,    //Address type
@@ -43,12 +103,12 @@ module [Module] mkMem
   Reg#(SVector#(TExp#(token_SZ), Bool)) tvalids <- mkReg(SVector::replicate(False));
   Reg#(SVector#(TExp#(token_SZ), Tuple3#(token_T, addr_T, value_T))) tokens <- mkRegU();
 
-  //Ports
+  //Links
   
-  Port_Server#(addr_T, inst_T) port_imem <- mkPort_Server("mem_imem");
-  Port_Server#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) port_dmem <- mkPort_Server("mem_dmem");
-  Port_Receive#(token_T) port_commit <- mkPort_Receive("mem_commit");
-  Port_Receive#(Tuple2#(token_T, token_T)) port_killRange <- mkPort_Receive("mem_killRange");
+  Link_Server#(addr_T, inst_T) link_imem <- mkLink_Server("mem_imem");
+  Link_Server#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) link_dmem <- mkLink_Server("mem_dmem");
+  Link_Receive#(token_T) link_commit <- mkLink_Receive("mem_commit");
+  Link_Receive#(Tuple2#(token_T, token_T)) link_killRange <- mkLink_Receive("mem_killRange");
 
   //maybify :: Bool -> any -> Maybe any
 
@@ -93,8 +153,8 @@ module [Module] mkMem
 
   rule handleIMEM (True);
   
-    addr_T a <- port_imem.getReq();
-    port_imem.makeResp(imemory.sub(a));
+    addr_T a <- link_imem.getReq();
+    link_imem.makeResp(imemory.sub(a));
     
   endrule
  
@@ -137,19 +197,19 @@ module [Module] mkMem
      endcase
    endfunction
     
-    MemReq#(token_T, addr_T, value_T) req <- port_dmem.getReq();
+    MemReq#(token_T, addr_T, value_T) req <- link_dmem.getReq();
     
     case (req) matches
       tagged Ld .ld_info:
         begin
           let v = getResult(ld_info.token, ld_info.addr);
-          port_dmem.makeResp(LdResp v);
+          link_dmem.makeResp(LdResp v);
         end
       tagged St .st_info:
         begin
           //Response
           let v = getResult(st_info.token, st_info.addr); // use this as the "old value"
-          port_dmem.makeResp(StResp);
+          link_dmem.makeResp(StResp);
           //drop in Buffer
 
 	  let num_tvalids = SVector::zip(tvalids, genSVector);
@@ -171,7 +231,7 @@ module [Module] mkMem
  
   rule handleCommit (True);
   
-    token_T token <- port_commit.receive();
+    token_T token <- link_commit.receive();
 
     //matchToken :: token -> Maybe (token, addr, value) -> Bool
 
@@ -224,7 +284,7 @@ module [Module] mkMem
   
   rule handleKillRange (True);
   
-    Tuple2#(token_T, token_T) tup <- port_killRange.receive();
+    Tuple2#(token_T, token_T) tup <- link_killRange.receive();
     match {.lb, .ub} = tup;
 
     function flattenToken(b, x);
@@ -236,17 +296,17 @@ module [Module] mkMem
   endrule
  
   //IMem interface (used by FP Fetch)
-  interface imem = port_imem.server;
+  interface imem = link_imem.server;
   
   //DMem interface (used by FP Mem)
-  interface dmem = port_dmem.server;
+  interface dmem = link_dmem.server;
  
   //commit (used by FP Global Commit)
-  interface commit = port_commit.incoming;
+  interface commit = link_commit.incoming;
 
 
   //killRange (used by FP.killToken)
-  interface killRange = port_killRange.incoming;
+  interface killRange = link_killRange.incoming;
   
   //Magic interface for testharness
 

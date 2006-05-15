@@ -29,3 +29,36 @@ Directory modules/common
  BypassFIFO.bsv            Locally Removed            42 
 
 Minor restructuring of common files.
+
+----------
+jsemer      Date: Mon May 15 16:07:12 EDT 2006  CSN: CSN-hasim-44
+                  Mon May 15 20:07:12 UTC 2006
+
+
+Directory modules
+ common/                   Locally Removed            43 
+
+Directory modules/common
+ toymips/                  Locally Removed            43 
+
+Directory modules/common/toymips
+ TOY_Datatypes.bsv         Locally Removed            43 
+
+Directory modules/common
+ common/                   Locally Removed            43 
+
+Directory modules/common/common
+ Debug.bsv                 Locally Removed            43 
+ ValueVector.bsv           Locally Removed            43 
+ Links.bsv                 Locally Removed            43 
+ BypassFIFO.bsv            Locally Removed            43 
+
+Directory modules/common
+ smips/                    Locally Removed            43 
+
+Directory modules/common/smips
+ SMIPS_Datatypes.bsv       Locally Removed            43 
+ SMIPS_Interfaces.bsv      Locally Removed            43 
+ SMIPS_Linker.bsv          Locally Removed            43 
+
+Renamed common to base.

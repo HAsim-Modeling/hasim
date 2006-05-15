@@ -7,3 +7,25 @@ Directory /
 
 Added a changes file.
 
+
+----------
+jsemer      Date: Mon May 15 16:01:24 EDT 2006  CSN: CSN-hasim-43
+                  Mon May 15 20:01:24 UTC 2006
+
+
+Directory modules/common
+ Debug.bsv                 Locally Removed            42 
+ ValueVector.bsv           Locally Removed            42 
+ common/                   Locally Added               0 
+
+Directory modules/common/common
+ Debug.bsv                 Locally Added               - 
+ ValueVector.bsv           Locally Added               - 
+ Links.bsv                 Locally Added               - 
+ BypassFIFO.bsv            Locally Added               - 
+
+Directory modules/common
+ Links.bsv                 Locally Removed            42 
+ BypassFIFO.bsv            Locally Removed            42 
+
+Minor restructuring of common files.

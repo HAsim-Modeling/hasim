@@ -62,3 +62,42 @@ Directory modules/common/smips
  SMIPS_Linker.bsv          Locally Removed            43 
 
 Renamed common to base.
+
+----------
+jsemer      Date: Thu May 18 19:07:11 EDT 2006  CSN: CSN-hasim-45
+                  Thu May 18 23:07:11 UTC 2006
+
+
+Directory config/pm/hasim/toymips
+ hasim_5stage_toymips.apm  Locally Added               0 
+ hasim_simple_toymips.apm  Locally Added               0 
+
+Directory modules/functional/toymips
+ hasim_toymips_functional_partition.awb Locally Added               0 
+
+Directory modules/functional/common
+ hasim_functional_partition_base.awb Locally Added               0 
+
+Directory modules/functional/smips
+ hasim_smips_functional_partition.awb Locally Added               0 
+
+Directory modules/controller/toymips
+ toymips_testcases.awb     Locally Added               0 
+
+Directory modules/system
+ hasim_system.awb          Locally Added               0 
+
+Directory modules/timing/toymips
+ hasim_5stage_timing_partition.awb Locally Added               0 
+ hasim_simple_timing_partition.awb Locally Added               0 
+
+Directory modules/cpu
+ hasim_cpu.awb             Locally Added               0 
+
+Directory modules/base/common
+ hasim_base.awb            Locally Added               0 
+
+
+Added asim module files and a couple of models as initial versions
+of what a hasim model could look like.
+

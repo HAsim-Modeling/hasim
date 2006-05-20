@@ -12,14 +12,15 @@
 
 import HASim::*;
 import TestCase::*;
-import TestHarness::*;
 import SimpleController::*;
+import System::*;
 
 import TOY_Datatypes::*;
 import TOY_FunctionalPartition::*;
-import TOY_TimingPartition::*;
 import TOY_Mem::*;
-import TOY_CPU::*;
+
+import TOY_TimingPartition::*;
+import TOY_System::*;
 
 import PrimArray::*;
 import RegFile::*;
@@ -30,7 +31,6 @@ import Connectable::*;
 
 typedef Program#(TOY_Inst) TOY_Program;
 
-typedef TestHarness#(TOY_Addr, TOY_Inst, TOY_Value) TOY_TestHarness;
 
 
 
@@ -176,30 +176,30 @@ endfunction
 
 module [Module] testAddition_1();
   
-  TOY_TestHarness th <- mkTestHarness(mkTOY_CPU, mkTOY_Mem)();
+  TOY_System th <- mkSystem_Simple(mkTOY_CPU, mkTOY_Mem)();
 
-  Empty test <- mkController_SimpleTest(th, testAddition(11, 5));
+  Empty test <- mkController_Software_OneTest(th, testAddition(11, 5));
 endmodule
 
 module [Module] testSubtraction_1();
   
-  TOY_TestHarness th <- mkTestHarness(mkTOY_CPU, mkTOY_Mem)();
+  TOY_System th <- mkSystem_Simple(mkTOY_CPU, mkTOY_Mem)();
 
-  Empty test <- mkController_SimpleTest(th, testSubtraction(11, 5));
+  Empty test <- mkController_Software_OneTest(th, testSubtraction(11, 5));
 endmodule
   
 
 module [Module] testBranch_1 ();
   
-  TOY_TestHarness th <- mkTestHarness(mkTOY_CPU, mkTOY_Mem)();
+  TOY_System th <- mkSystem_Simple(mkTOY_CPU, mkTOY_Mem)();
 
-  Empty test <- mkController_SimpleTest(th, testBranch(17, 12));
+  Empty test <- mkController_Software_OneTest(th, testBranch(17, 12));
 endmodule
 
 module [Module] testStalls_1 ();
   
-  TOY_TestHarness th <- mkTestHarness(mkTOY_CPU, mkTOY_Mem)();
+  TOY_System th <- mkSystem_Simple(mkTOY_CPU, mkTOY_Mem)();
 
-  Empty test <- mkController_SimpleTest(th, testStalls(17));
+  Empty test <- mkController_Software_OneTest(th, testStalls(17));
 endmodule
 

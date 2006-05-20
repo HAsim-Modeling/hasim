@@ -88,7 +88,7 @@ module [Module] mkMem_Software
 	     Bounded#(addr_T),
 	     Arith#(token_T),
 	     Ord#(token_T),
-	     PrimIndex#(token_T),
+	     PrimIndex#(token_T, token_PK),
 	     Add#(1, n1, TExp#(token_SZ))); //Token size must be greater than one.
 
   //State elements
@@ -274,7 +274,7 @@ module [Module] mkMem_Software
     tvalids <= SVector::zipWith(flattenToken, tvalids, tokens);
     */
     
-    tvalids <= unpack(pack(tvalids) & ~(1 << toIndex(token)));
+    tvalids <= unpack(pack(tvalids) & ~(1 << token));
 
   endrule
   

@@ -111,6 +111,135 @@ endinterface
 
 // mkFP_Stage :: StageName -> FP_Unit -> TableSize -> FP_Stage
 
+interface FP_Stage_Link#(type tick_T, 
+                	 type token_T,
+			 type init_T,
+			 type req_T,
+			 type resp_T,
+			 type next_T);
+
+endinterface
+
+module [Module] mkFP_Stage_Link#(String stagename,
+                                 String linkname, 
+                                 String servername,
+				 String prevname,
+				 String nextname,
+				 Integer sz) 
+    //interface:
+               (FP_Stage_Link#(tick_T, 
+	                       token_T, 
+			       init_T, 
+			       req_T, 
+			       resp_T, 
+			       next_T))
+        provisos
+          (Bits#(token_T, token_SZ), 
+	   Bounded#(token_T),
+	   Eq#(token_T),
+	   Literal#(token_T),
+           Bits#(tick_T, tick_SZ), 
+           Bits#(init_T, init_SZ),
+           Bits#(req_T, req_SZ),
+           Bits#(resp_T, resp_SZ),
+           Bits#(next_T, next_SZ));
+
+  //Local definitions
+  token_T tableMin = minBound;
+  token_T tableMax = fromInteger(sz - 1);
+
+  //Links
+  Link_Client#(Tuple3#(token_T, init_T, req_T),
+               Tuple3#(token_T, resp_T, next_T)) link_to_unit <- mkLink_Client(linkname);
+  
+  Link_Server#(Tuple3#(token_T, tick_T, req_T),
+               Tuple2#(token_T, resp_T))         link_from_tp <- mkLink_Server(servername);
+  
+  Link_Receive#(Tuple2#(token_T, init_T))        link_from_prev <- mkLink_Receive(prevname);
+  
+  Link_Send#(Tuple2#(token_T, next_T))           link_to_next <- mkLink_Send(nextname);
+  
+  Link_Receive#(token_T)                         link_killToken <- mkLink_Receive("link_killToken");
+
+  		
+  //SRAM tables
+  RegFile#(token_T, init_T)		  values    <- mkRegFile(tableMin, tableMax);
+  RegFile#(token_T, Bool)		  valids    <- mkRegFile(tableMin, tableMax); 
+  RegFile#(token_T, Bool)		  dones     <- mkRegFile(tableMin, tableMax); 
+
+  //Rules
+  
+  //insert
+
+  rule insert (True);
+  
+    match {.tok,.iVal} <- link_from_prev.receive();
+    
+    Bool valid = valids.sub(tok);
+    
+    if (valid)
+      begin        
+	$display("%s ERROR: reinserting allocated token %h", stagename, tok);
+      end
+    else
+      begin
+	//Set valid to true and done to false
+	valids.upd(tok,True);
+	dones.upd(tok,False);
+	values.upd(tok, iVal);
+      end
+  
+  endrule
+
+
+  //handleReq
+  
+  rule handleReq (True);
+
+    match {.tok, .tick, .req} <- link_from_tp.getReq();
+   
+    Bool done   =  dones.sub(tok);
+    Bool valid  =  valids.sub(tok);  
+
+    init_T iVal = values.sub(tok);
+
+    if (!valid)
+       $display("%s ERROR: requesting unallocated token %h", stagename, tok);
+     else if (done)
+       $display("%s ERROR: re-requesting finished token %h", stagename, tok);            
+     else // !done
+       link_to_unit.makeReq(tuple3(tok, iVal, req));
+  endrule
+
+  //getResponse
+  
+  rule getResponse (True);
+  
+    match {.tok, .resp, .next} <- link_to_unit.getResp();
+    
+    Bool valid = valids.sub(tok);
+    
+    if (valid) // don't insert if it was killed
+      begin
+        dones.upd(tok, True);
+	link_from_tp.makeResp(tuple2(tok, resp));
+	link_to_next.send(tuple2(tok, next));
+      end
+      
+  endrule
+  
+  //killToken
+  
+  rule killToken (True);
+    
+    let tok <- link_killToken.receive();
+  
+    valids.upd(tok, False);
+  
+  endrule
+
+endmodule
+
 module [Module] mkFP_Stage#(String stagename,
                             FP_Unit#(token_T, init_T, req_T, resp_T, next_T) unit,
                             Integer sz)
@@ -289,6 +418,7 @@ endmodule
 
 // TODO: This could be a bit smarter. Currently it assumes that tokens commit
 // inorder. Actually, this is probably a pretty reasonable assumption.
+
 
 module [Module] mkFP_TokGen
     //interface:

@@ -6,7 +6,6 @@ import Vector::*;
 
 import HASim::*;
 import TOY_Datatypes::*;
-import Ports::*;
 import Debug::*;
 
 `ifdef PARTITION_NAME
@@ -40,20 +39,16 @@ typedef enum
 `define MODULE_NAME "mkTOY_TP_Simple"
 module [Module] mkTOY_TP_Simple
      //interface:
-                 (TimingPartition#(TOY_Tick, TOY_Token,  //tick type, token type
-		                   void, void,  	 //tokenReq, tokenResp,
-  				   TOY_Addr, TOY_Inst,   //fetchReq, fetchResp
-  				   void, TOY_DepInfo,	 //decodeReq, decodeResp
-  				   void, TOY_InstResult, //execReq, execResp
-  				   void, void,  	 //memReq, memResp
-  				   void, void,  	 //lcommitReq, lcommitResp
-  				   void, void));	 //gcommitReq, gcommitResp  
+                 (TimingPartition#(TOY_Tick, void, void));
 
   
   //********* State Elements *********//
   
-  //Are we running or not?
+  //Are we running the program or not?
   Reg#(Bool) running <- mkReg(False);
+  
+  //Are we in the middle of simulating a clock cycle or not?
+  Reg#(Bool) simulating <- mkReg(False);
   
   //Have we made a req to FP and are waiting for a response?
   Reg#(Bool) madeReq <- mkReg(False);
@@ -75,26 +70,31 @@ module [Module] mkTOY_TP_Simple
   
   //********* Ports *********//
   
-  let port_to_tok <- mkPort_Client("fp_tok");
-  let port_to_fet <- mkPort_Client("fp_fet");
-  let port_to_dec <- mkPort_Client("fp_dec");
-  let port_to_exe <- mkPort_Client("fp_exe");
-  let port_to_mem <- mkPort_Client("fp_mem");
-  let port_to_lco <- mkPort_Client("fp_lco");
-  let port_to_gco <- mkPort_Client("fp_gco");
+  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
+               Tuple2#(TOY_Token, void))             link_to_tok <- mkLink_Client("fp_tok");
+  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, TOY_Addr),
+               Tuple2#(TOY_Token, TOY_Inst))       link_to_fet <- mkLink_Client("fp_fet");
+  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
+               Tuple2#(TOY_Token, TOY_DepInfo))    link_to_dec <- mkLink_Client("fp_dec");
+  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
+               Tuple2#(TOY_Token, TOY_InstResult)) link_to_exe <- mkLink_Client("fp_exe");
+  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
+               Tuple2#(TOY_Token, void))             link_to_mem <- mkLink_Client("fp_mem");
+  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
+               Tuple2#(TOY_Token, void))             link_to_lco <- mkLink_Client("fp_lco");
+  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
+               Tuple2#(TOY_Token, void))             link_to_gco <- mkLink_Client("fp_gco");
 
-  let port_to_killToken <- mkPort_Send("fp_killToken");
+  Link_Send#(TOY_Token) link_to_killToken <- mkLink_Send("fp_killToken");
 
   
   //********* Rules *********//
   
   //process
   
-  rule process (running);
+  rule process (running && simulating);
     debug_rule("process");
     
-    baseTick <= baseTick + 1;
-
     case (stage)
       TOK:
       begin
@@ -106,7 +106,7 @@ module [Module] mkTOY_TP_Simple
 	    
 	    //Request a token
 	    debug(2, $display("%h: Requesting a new token.", baseTick));
-	    port_to_tok.makeReq(tuple3(?, ?, baseTick));
+	    link_to_tok.makeReq(tuple3(?, baseTick, ?));
 	    
 	    madeReq <= True;
 	    
@@ -116,7 +116,7 @@ module [Module] mkTOY_TP_Simple
 	    debug_else("!madeReq");
 	    
 	    //Get the response
-	    match {.tok, .*} <- port_to_tok.getResp();
+	    match {.tok, .*} <- link_to_tok.getResp();
 	    debug(2, $display("%h: TOK Responded with token %0d.", baseTick, tok));
 	    
 	    cur_tok <= tok;
@@ -135,7 +135,7 @@ module [Module] mkTOY_TP_Simple
 	    
 	    //Fetch next instruction
 	    debug(2, $display("%h: Fetching token %0d at address %h", baseTick, cur_tok, pc));
-            port_to_fet.makeReq(tuple3(cur_tok, pc, baseTick));
+            link_to_fet.makeReq(tuple3(cur_tok, baseTick, pc));
 	    
 	    madeReq <= True;
 	  end
@@ -144,7 +144,7 @@ module [Module] mkTOY_TP_Simple
 	    debug_else("!madeReq");
 	    
 	    //Get the response
-            match {.tok, .inst} <- port_to_fet.getResp();
+            match {.tok, .inst} <- link_to_fet.getResp();
 	    debug(2, $display("%h: FET Responded with token %0d.", baseTick, tok));
 	    
 	    if (tok != cur_tok) $display ("FET ERROR");
@@ -162,7 +162,7 @@ module [Module] mkTOY_TP_Simple
 	    
 	    //Decode current inst
 	    debug(2, $display("%h: Decoding token %0d", baseTick, cur_tok));
-            port_to_dec.makeReq(tuple3(cur_tok, ?, baseTick));
+            link_to_dec.makeReq(tuple3(cur_tok, baseTick, ?));
 	    
 	    madeReq <= True;
 	  end
@@ -171,7 +171,7 @@ module [Module] mkTOY_TP_Simple
 	    debug_else("!madeReq");
 	    
  	    //Get the response
-            match {.tok, .deps} <- port_to_dec.getResp();
+            match {.tok, .deps} <- link_to_dec.getResp();
 	    debug(2, $display("%h: DEC Responded with token %0d.", baseTick, tok));
 	    
 	    case (deps.dep_dest) matches
@@ -209,7 +209,7 @@ module [Module] mkTOY_TP_Simple
 	    debug_then("!madeReq");
 	    //Execute instruction
 	    debug(2, $display("%h: Executing token %0d", baseTick, cur_tok));
-            port_to_exe.makeReq(tuple3(cur_tok, ?, baseTick));
+            link_to_exe.makeReq(tuple3(cur_tok, baseTick, ?));
 	    madeReq <= True;
 	  end
 	else
@@ -217,7 +217,7 @@ module [Module] mkTOY_TP_Simple
 	    debug_else("!madeReq");
 	    
  	    //Get the response
-            match {.tok, .res} <- port_to_exe.getResp();
+            match {.tok, .res} <- link_to_exe.getResp();
 	    debug(2, $display("%h: EXE Responded with token %0d.", baseTick, tok));
 	    
 	    if (tok != cur_tok) $display ("EXE ERROR");
@@ -258,7 +258,7 @@ module [Module] mkTOY_TP_Simple
 	    
 	    //Request memory ops
 	    debug(2, $display("%h: Memory ops for token %0d", baseTick, cur_tok));
-            port_to_mem.makeReq(tuple3(cur_tok, ?, baseTick));
+            link_to_mem.makeReq(tuple3(cur_tok, baseTick, ?));
 	    
 	    madeReq <= True;
 	  end
@@ -267,7 +267,7 @@ module [Module] mkTOY_TP_Simple
 	    debug_else("!madeReq");
 	    
  	    //Get the response
-	    match {.tok, .*} <- port_to_mem.getResp();
+	    match {.tok, .*} <- link_to_mem.getResp();
 	    debug(2, $display("%h: MEM Responded with token %0d.", baseTick, tok));
 	    
 	    if (tok != cur_tok) $display ("MEM ERROR");
@@ -285,7 +285,7 @@ module [Module] mkTOY_TP_Simple
 	    
 	    //Request memory ops
 	    debug(2, $display("%h: Locally committing token %0d", baseTick, cur_tok));
-            port_to_lco.makeReq(tuple3(cur_tok, ?, baseTick));
+            link_to_lco.makeReq(tuple3(cur_tok, baseTick, ?));
 	    
 	    madeReq <= True;
 	  end
@@ -295,7 +295,7 @@ module [Module] mkTOY_TP_Simple
 	    
  	    //Get the response
   
-            match {.tok, .*} <- port_to_lco.getResp();
+            match {.tok, .*} <- link_to_lco.getResp();
 	    debug(2, $display("%h: LCO Responded with token %0d.", baseTick, tok));
 	    
 	    if (tok != cur_tok) $display ("LCO ERROR");
@@ -313,7 +313,7 @@ module [Module] mkTOY_TP_Simple
 	    
 	    //Request memory ops
 	    debug(2, $display("%h: Globally committing token %0d", baseTick, cur_tok));
-            port_to_gco.makeReq(tuple3(cur_tok, ?, baseTick));
+            link_to_gco.makeReq(tuple3(cur_tok, baseTick, ?));
 	    
 	    madeReq <= True;
 	  end
@@ -322,7 +322,7 @@ module [Module] mkTOY_TP_Simple
 	    debug_else("!madeReq");
 	    
  	    //Get the response
-            match {.tok, .*} <- port_to_gco.getResp();
+            match {.tok, .*} <- link_to_gco.getResp();
 	    debug(2, $display("%h: GCO Responded with token %0d.", baseTick, tok));
 	    
 	    if (tok != cur_tok) $display ("GCO ERROR");
@@ -331,47 +331,38 @@ module [Module] mkTOY_TP_Simple
 	    
 	    stage <= TOK;
 	    madeReq <= False;
+	    simulating <= False;
 	  end
       end
     endcase    
   endrule
   
-  //Interface for CPU Ports
-  interface Put start;
+  //TModule Interface
+  method Action tick(TOY_Tick t);
 
-    method Action put(void v);
+    simulating <= True;
+    baseTick <= t;
 
-      debug_method("start");
-      running <= True;
+  endmethod
 
-    endmethod
+  method Bool done();
+
+    return !simulating;
+
+  endmethod
+
+  method Action exec(void v);
+
+    running <= True;
+
+  endmethod
+
+  method void exec_response() if (!running);
+
+    return ?;
+
+  endmethod
+
   
-  endinterface
-  
-  
-  interface Get done;
-
-    method ActionValue#(Bool) get();
-
-      noAction;
-      return !running;
-
-    endmethod
-
-  endinterface
-
-  
-  //Interface for Functional Partition Ports
-  
-  interface tokgen = port_to_tok.client;
-  interface fetch = port_to_fet.client;
-  interface decode = port_to_dec.client;
-  interface execute = port_to_exe.client;
-  interface memory = port_to_mem.client;
-  interface local_commit = port_to_lco.client;
-  interface global_commit = port_to_gco.client;
-  
-  interface killToken = port_to_killToken.outgoing;
-
 endmodule
 `undef MODULE_NAME

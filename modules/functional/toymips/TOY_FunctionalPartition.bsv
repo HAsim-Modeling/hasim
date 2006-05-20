@@ -6,7 +6,7 @@ import FIFO::*;
 import Vector::*;
 
 import HASim::*;
-import Ports::*;
+import Mem::*;
 import FunctionalPartition::*;
 import BypassUnit::*;
 import Debug::*;
@@ -29,20 +29,15 @@ import TOY_Datatypes::*;
 //mkTOY_Fetch :: IMem Port -> FP_Unit
 
 `define MODULE_NAME "mkTOY_Fetch"
-module [Module] mkTOY_Fetch#(Port_Client#(TOY_Addr, TOY_Inst) port_to_imem) 
+module [Module] mkTOY_Fetch ();
 
-       //interface:
-                   (FP_Unit#(TOY_Token,                     // token type
-		             void,                          // type from prev stage
-			     TOY_Addr,                      // request type
-			     TOY_Inst,                      // response type
-			     Tuple2#(TOY_Addr, TOY_Inst))); // type to next stage
-  //State elements
   FIFO#(Tuple2#(TOY_Token, TOY_Addr)) waitingQ <- mkFIFO();
 
   //Ports
-  let port_fet <- mkPort_Server("port_fet");
-
+  Link_Server#(Tuple3#(TOY_Token, void, TOY_Addr), 
+               Tuple3#(TOY_Token, TOY_Inst, Tuple2#(TOY_Addr, TOY_Inst))) link_fet <- mkLink_Server("link_fet");
+  Link_Client#(TOY_Addr, TOY_Inst) link_to_imem <- mkLink_Client("fet_to_imem");
+  
   //handleReq
   
   //Just pass the request on to the IMem
@@ -51,10 +46,10 @@ module [Module] mkTOY_Fetch#(Port_Client#(TOY_Addr, TOY_Inst) port_to_imem)
   
     debug_rule("handleFetch");
     
-    Tuple3#(TOY_Token, void, TOY_Addr) tup <- port_fet.getReq();
+    Tuple3#(TOY_Token, void, TOY_Addr) tup <- link_fet.getReq();
     match {.t, .*, .a} = tup;
     
-    port_to_imem.makeReq(a);
+    link_to_imem.makeReq(a);
     waitingQ.enq(tuple2(t, a));
     
   endrule
@@ -67,16 +62,13 @@ module [Module] mkTOY_Fetch#(Port_Client#(TOY_Addr, TOY_Inst) port_to_imem)
   
     debug_rule("getMemResp");
     
-    TOY_Inst resp <- port_to_imem.getResp();
+    TOY_Inst resp <- link_to_imem.getResp();
     
     match {.tok, .addr} = waitingQ.first();
     waitingQ.deq();
     
-    port_fet.makeResp(tuple3(tok, resp, tuple2(addr, resp)));
+    link_fet.makeResp(tuple3(tok, resp, tuple2(addr, resp)));
   endrule
-
-  //Interface to FPStage
-  return port_fet.server;
 
 endmodule
 `undef MODULE_NAME
@@ -91,16 +83,11 @@ endmodule
 // mkTOY_Decode :: BypassUnit -> FP_Unit
 
 `define MODULE_NAME "mkTOY_Decode"
-module [Module] mkTOY_Decode#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass)
-     //interface:
-                (FP_Unit#(TOY_Token,                            //token type
-		          Tuple2#(TOY_Addr, TOY_Inst),          //type from prev stage (fetch)
-			  void,                                 //request type
-			  TOY_DepInfo,                          //response type
-			  Tuple2#(TOY_Addr, TOY_DecodedInst))); //type to next stage (exec)
-  
+module [Module] mkTOY_Decode#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass) ();
+
   //Ports
-  let port_dec <- mkPort_Server("port_dec");
+  Link_Server#(Tuple3#(TOY_Token, Tuple2#(TOY_Addr, TOY_Inst), void), 
+               Tuple3#(TOY_Token, TOY_DepInfo, Tuple2#(TOY_Addr, TOY_DecodedInst))) link_dec <- mkLink_Server("link_dec");
   
   FIFO#(Tuple3#(TOY_Token, TOY_DepInfo, Tuple2#(TOY_Addr, TOY_DecodedInst))) respQ <- mkFIFO();
   
@@ -112,7 +99,7 @@ module [Module] mkTOY_Decode#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_
   
     debug_rule("handleDecode");
     
-    Tuple3#(TOY_Token, Tuple2#(TOY_Addr, TOY_Inst), void) tup <- port_dec.getReq();
+    Tuple3#(TOY_Token, Tuple2#(TOY_Addr, TOY_Inst), void) tup <- link_dec.getReq();
     
     match {.t, {.a, .inst}, .*} = tup;
     
@@ -224,12 +211,9 @@ module [Module] mkTOY_Decode#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_
         
     debug(2, $display("DEC: Physical Sources: (PR%d, PR%d)", pra, prb));
     
-    port_dec.makeResp(tuple3(t, depinfo, tuple2(a, decinst)));
+    link_dec.makeResp(tuple3(t, depinfo, tuple2(a, decinst)));
     
   endrule
-  
-  //Interface to FP_Stage
-  return port_dec.server;
   
 endmodule
 `undef MODULE_NAME  
@@ -244,16 +228,11 @@ endmodule
 // mkTOY_Execute :: BypassUnit -> FP_Unit
 
 `define MODULE_NAME "mkTOY_Execute"
-module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass)
-    //interface:
-                (FP_Unit#(TOY_Token,                          //token type
-		       Tuple2#(TOY_Addr, TOY_DecodedInst), //type from prev stage (decode)
-		       void,                               //request type
-		       TOY_InstResult,                     //response type
-		       TOY_ExecedInst));                   //type to next stage (mem)
-
+module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass) ();
+  
   //Ports
-  let port_exe <- mkPort_Server("port_exe");
+  Link_Server#(Tuple3#(TOY_Token, Tuple2#(TOY_Addr, TOY_DecodedInst), void),
+               Tuple3#(TOY_Token, TOY_InstResult, TOY_ExecedInst)) link_exe <- mkLink_Server("link_exe");
   
   //State elements
   FIFO#(Tuple3#(TOY_Token, Tuple2#(TOY_Addr, TOY_DecodedInst), void)) waitingQ <- mkFIFO();
@@ -266,7 +245,7 @@ module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY
   
     debug_rule("handleExec");
 
-    let tup <- port_exe.getReq();
+    let tup <- link_exe.getReq();
     waitingQ.enq(tup);
 
   endrule
@@ -329,7 +308,7 @@ module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY
 	   let result = unJust(mva) + unJust(mvb);
 	   
            bypass.write1(prd, result);
-           port_exe.makeResp(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
+           link_exe.makeResp(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
            waitingQ.deq();
 
 	   debug(2, $display("EXE: [%d] DAdd (old PR%d) PR%d <= 0x%h", t, oprd, prd, result));
@@ -349,7 +328,7 @@ module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY
 	   let result = unJust(mva) - unJust(mvb);
 	   
            bypass.write1(prd, result);
-           port_exe.makeResp(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
+           link_exe.makeResp(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
            waitingQ.deq();
 	   
 	   debug(2, $display("EXE: [%d] DAdd (old PR%d) PR%d <= 0x%h", t, oprd, prd, result));
@@ -372,7 +351,7 @@ module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY
 	     
 	       debug_then("cval != 0");
 	       
-	       port_exe.makeResp(tuple3(t, RBranchNotTaken, ENop {opdest: oprd}));
+	       link_exe.makeResp(tuple3(t, RBranchNotTaken, ENop {opdest: oprd}));
 	       waitingQ.deq();
 
 	       debug(2, $display("EXE: [%d] DBz Not Taken (cval == %d) (old PR%d)", t, cval, oprd));
@@ -389,7 +368,7 @@ module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY
 		 
 		   debug_case("mvb", "Valid");
 		   
-                   port_exe.makeResp(tuple3(t, RBranchTaken truncate(dest), ENop{opdest: oprd}));
+                   link_exe.makeResp(tuple3(t, RBranchTaken truncate(dest), ENop{opdest: oprd}));
                    waitingQ.deq();
         	 end
 		 default:
@@ -407,7 +386,7 @@ module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY
          
 	 debug_case("dec", "DLoad");
 	 
-         port_exe.makeResp(tuple3(t, RNop, ELoad {idx: idx, offset: o, pdest:prd, opdest: oprd}));
+         link_exe.makeResp(tuple3(t, RNop, ELoad {idx: idx, offset: o, pdest:prd, opdest: oprd}));
          waitingQ.deq();
 	 
 	 debug(2, $display("EXE: [%d] DLoad (old PR%d) PR%d := (PR%d + 0x%h)", t, oprd, prd, idx, o));
@@ -418,7 +397,7 @@ module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY
 	 debug_case("dec", "DLoadImm");
 
          bypass.write1(prd, signExtend(val));
-         port_exe.makeResp(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
+         link_exe.makeResp(tuple3(t, RNop, EWB {pdest: prd, opdest: oprd}));
          waitingQ.deq();
 	 
 	 debug(2, $display("EXE: [%d] DLoadImm (old PR%d) PR%d := 0x%h", t, oprd, prd, val));
@@ -428,7 +407,7 @@ module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY
 
 	 debug_case("dec", "DLoadImm");
 
-         port_exe.makeResp(tuple3(t, RNop, EStore {idx: idx, offset: o, val: v, opdest: oprd}));
+         link_exe.makeResp(tuple3(t, RNop, EStore {idx: idx, offset: o, val: v, opdest: oprd}));
          waitingQ.deq();
 	 
 	 debug(2, $display("EXE: [%d] DStore (old PR%d) (PR%d + 0x%h) := PR%d", t, oprd, idx, o, v));
@@ -438,7 +417,7 @@ module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY
 
 	 debug_case("dec", "DTerminate");
 	 
-         port_exe.makeResp(tuple3(t, RTerminate, ETerminate));
+         link_exe.makeResp(tuple3(t, RTerminate, ETerminate));
          waitingQ.deq();
 
 	 debug(2, $display("EXE: [%d] DTerminate", t)); 
@@ -446,9 +425,6 @@ module [Module] mkTOY_Execute#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY
     endcase
   endrule
 
-  //Interface to FP_Stage
-  return port_exe.server;
-  
 endmodule
 `undef MODULE_NAME  
 
@@ -461,17 +437,16 @@ endmodule
 
 
 `define MODULE_NAME "mkTOY_Mem"
-module [Module] mkTOY_Mem#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass,
-	                   Port_Client#(MemReq#(TOY_Addr, TOY_Token, TOY_Value), MemResp#(TOY_Value)) port_to_dmem)
-    //interface:
-	        (FP_Unit#(TOY_Token,        //token type
-		          TOY_ExecedInst,   //type from prev stage (exec)
-			  void,             //request type
-			  void,             //response type
-			  TOY_ExecedInst)); //type to next stage (lcommit)
+module [Module] mkTOY_Mem#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass) ();
 
   
-  let port_mem <- mkPort_Server("port_mem");
+  //Links
+  Link_Server#(Tuple3#(TOY_Token, TOY_ExecedInst, void),
+               Tuple3#(TOY_Token, void, TOY_ExecedInst)) link_mem <- mkLink_Server("link_mem");
+	  
+  Link_Client#(MemReq#(TOY_Token, TOY_Addr, TOY_Value), 
+               MemResp#(TOY_Value)) link_to_dmem <- mkLink_Client("link_to_dmem");
+
   
   FIFO#(Tuple2#(TOY_Token, TOY_ExecedInst)) waitingQ <- mkFIFO();
 
@@ -481,7 +456,7 @@ module [Module] mkTOY_Mem#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Tok
        
     debug_rule("doReq");
   
-    match {.t, .i, .*} <- port_mem.getReq();
+    match {.t, .i, .*} <- link_mem.getReq();
 
     TOY_PRName va = ?;
     TOY_PRName vb = ?;
@@ -520,7 +495,7 @@ module [Module] mkTOY_Mem#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Tok
 	  debug_then("isJust(mva)");
 	  
 	  TOY_Addr a = truncate(unJust(mva)) + zeroExtend(o);
-          port_to_dmem.makeReq(Ld {addr: a, token: t});
+          link_to_dmem.makeReq(Ld {addr: a, token: t});
 	  
           debug(2, $display("MEM: [%d] Load Request: 0x%h", t, a));
         end
@@ -534,7 +509,7 @@ module [Module] mkTOY_Mem#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Tok
         if (isJust(mva) && isJust(mvb))
         begin
 	  debug_then("(isJust(mva) && isJust(mvb))");
-          port_to_dmem.makeReq(St {val: unJust(mvb), addr: truncate(addr), token: t});
+          link_to_dmem.makeReq(St {val: unJust(mvb), addr: truncate(addr), token: t});
 	  
           debug(2, $display("MEM: [%d] Store Request: 0x%h := %d", t, addr, unJust(mvb)));
         end
@@ -558,7 +533,7 @@ module [Module] mkTOY_Mem#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Tok
 	
 	  debug_case("i", "ELoad");
 	  
-          let resp <- port_to_dmem.getResp();
+          let resp <- link_to_dmem.getResp();
 	  
           TOY_Value v = case (resp) matches
                       tagged LdResp .val: return val;
@@ -566,7 +541,7 @@ module [Module] mkTOY_Mem#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Tok
                     endcase;
 		    
           waitingQ.deq();
-          port_mem.makeResp(tuple3(tok,?,EWB{pdest: prd, opdest: oprd}));
+          link_mem.makeResp(tuple3(tok,?,EWB{pdest: prd, opdest: oprd}));
           bypass.write2(prd, v);
 	  
 	  
@@ -576,9 +551,9 @@ module [Module] mkTOY_Mem#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Tok
 	
 	  debug_case("i", "EStore");
 	  
-          let resp <- port_to_dmem.getResp();
+          let resp <- link_to_dmem.getResp();
           waitingQ.deq();
-          port_mem.makeResp(tuple3(tok, ?, ENop {opdest: oprd}));
+          link_mem.makeResp(tuple3(tok, ?, ENop {opdest: oprd}));
 	  
           debug(2, $display("MEM: [%d] StResp", tok));
         end
@@ -588,15 +563,12 @@ module [Module] mkTOY_Mem#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Tok
 	  debug_case_default("i");
 	  
           waitingQ.deq();
-          port_mem.makeResp(tuple3(tok, ?, i));
+          link_mem.makeResp(tuple3(tok, ?, i));
 	  
           debug(2, $display("MEM: [%d] Non-Memory op", tok));
         end
     endcase
   endrule
-
-  //Interface to FP_Stage
-  return port_mem.server;
   
 endmodule
 `undef MODULE_NAME  
@@ -609,19 +581,15 @@ endmodule
 //mkTOY_LocalCommit :: BypassUnit -> FP_Unit
 
 `define MODULE_NAME "mkTOY_LocalCommit"
-module [Module] mkTOY_LocalCommit#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass)
-    //interface:
-                (FP_Unit#(TOY_Token,      //token type
-		          TOY_ExecedInst, //type from prev stage (mem)
-			  void,           //request type
-			  void,           //response type
-			  void));         //type to next stage (gcommit)
+module [Module] mkTOY_LocalCommit#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass) ();
   
-  let port_lco <- mkPort_Server("port_lco");
+   
+  Link_Server#(Tuple3#(TOY_Token, TOY_ExecedInst, void),
+               Tuple3#(TOY_Token, void, TOY_ExecedInst)) link_lco <- mkLink_Server("link_lco");
   
   rule handleLCO (True);
   
-    match {.t, .ei, .*} <- port_lco.getReq();
+    match {.t, .ei, .*} <- link_lco.getReq();
     
     TOY_PRName p = case (ei) matches
                  tagged ENop    .x: return(x.opdest);
@@ -633,12 +601,9 @@ module [Module] mkTOY_LocalCommit#(BypassUnit#(TOY_RName, TOY_PRName, TOY_Value,
 
     bypass.freePReg(t, p);
 
-    port_lco.makeResp(tuple3(t, ?, ?));
+    link_lco.makeResp(tuple3(t, ?, ?));
 
   endrule
-  
-  //Interface to FP_Stage
-  return port_lco.server;
   
 endmodule
 `undef MODULE_NAME  
@@ -651,29 +616,23 @@ endmodule
 //mkToy_GlobalCommit :: Memory -> FP_Unit
 
 `define MODULE_NAME "mkTOY_GlobalCommit"
-module [Module] mkTOY_GlobalCommit#(Port_Send#(TOY_Token) port_to_mem_commit)
-    //interface:
-                (FP_Unit#(TOY_Token, //token type
-		          void,      //type from prev stage (lcommit)
-			  void,      //request type
-			  void,      //response type
-			  void));    //type for next stage (tokgen)
+module [Module] mkTOY_GlobalCommit ();
 
+  Link_Send#(TOY_Token) link_mem_commit <- mkLink_Send("link_mem_commit");
   
-  let port_gco <- mkPort_Server("port_gco");
+  Link_Server#(Tuple3#(TOY_Token, TOY_ExecedInst, void),
+               Tuple3#(TOY_Token, void, void)) link_gco <- mkLink_Server("link_gco");
   
   rule handleGCO (True);
   
-    match {.tok, .*, .*} <- port_gco.getReq();
+    match {.tok, .*, .*} <- link_gco.getReq();
     
-    port_to_mem_commit.send(tok);
+    link_mem_commit.send(tok);
     
-    port_gco.makeResp(tuple3(tok, ?, ?));
+    link_gco.makeResp(tuple3(tok, ?, ?));
   
   endrule
   
-  //Interface to FP_Stage
-  return port_gco.server;
   
 endmodule
 `undef MODULE_NAME  
@@ -682,50 +641,224 @@ endmodule
 // Toy Functional Partition                                                //
 //-------------------------------------------------------------------------//
 
+module [Module] mkTOY_TOK_Stage
+    //interface:
+                (FP_Stage_Link#(TOY_Tick,  //Tick type
+		                TOY_Token, //Token type
+			        void,	 //Type from previous stage
+			        void,	 //Request Type
+			        void,	 //Response Type
+			        void));  //Type to next stage
+		 
+  Reg#(TOY_Token) r_first <- mkReg(minBound);
+  Reg#(TOY_Token) r_free <- mkReg(minBound);
+  
+  //Links
+  Link_Server#(Tuple3#(TOY_Token, TOY_Tick, void),
+               Tuple2#(TOY_Token, void))           link_from_tp <- mkLink_Server("tok_server");
+  
+  Link_Receive#(Tuple2#(TOY_Token, void))          link_from_prev <- mkLink_Receive("gco_to_tok");
+  
+  Link_Send#(Tuple2#(TOY_Token, void))             link_to_next <- mkLink_Send("tok_to_fet");
+  
+  Link_Receive#(TOY_Token)                         link_killToken <- mkLink_Receive("link_killToken");
+
+
+  //handleReq
+  
+  rule handleReq (True);
+  
+    match {.*, .*, .tick} <- link_from_tp.getReq();
+
+    //allocate a new token
+    r_free <= r_free + 1;
+
+    link_from_tp.makeResp(tuple2(r_free, ?));
+    link_to_next.send(tuple2(r_free, ?));
+    
+  
+  endrule
+  
+ 
+  //recycle
+ 
+  rule recycle (True);
+
+    match {.t, .*} <- link_from_prev.receive();
+
+    //complete token t
+
+    if (r_first != t) 
+      $display("TGen ERROR: tokens completing out of order");
+
+    r_first <= r_first + 1;
+
+  endrule
+   
+  //killToken
+  
+  rule killToken (True);
+    
+    let tok <- link_killToken.receive();
+    
+    //free tok and all tokens after it
+    r_free <= tok;
+    
+  endrule
+  
+endmodule
+
 //mkTOY_FP :: Memory -> FunctionalPartition
 
-(* synthesize *)
-module [Module] mkTOY_FP
-    //interface:						       
-  		(FunctionalPartition#(TOY_Tick,             //tick type
-		                      TOY_Token,            //token type
-		                      TOY_Addr,             //address type
-				      TOY_Inst,             //instruction type
-				      TOY_Value,            //value type
-		                      void, void,           //tokenReq, tokenResp,
-  				      TOY_Addr, TOY_Inst,   //fetchReq, fetchResp
-  				      void, TOY_DepInfo,    //decodeReq, decodeResp
-  				      void, TOY_InstResult, //execReq, execResp
-  				      void, void,           //memReq, memResp
-  				      void, void,           //lcommitReq, lcommitResp
-  				      void, void));         //gcommitReq, gcommitResp  
+module [Module] mkTOY_FET_Stage 
+    //interface:
+                (FP_Stage_Link#(TOY_Tick, 
+	                	TOY_Token, 
+				void, 
+				TOY_Addr, 
+				TOY_Inst, 
+				Tuple2#(TOY_Addr, TOY_Inst)));
 
-  let bypass <- mkBypassUnit();
+  let s <- mkFP_Stage_Link("FET", 
+                           "link_fet",
+			   "fet_server",
+			   "tok_to_fet",
+			   "fet_to_dec", 
+			   8);
   
-  let port_to_imem           <- mkPort_Client("mem_imem");
-  let port_to_dmem           <- mkPort_Client("mem_dmem");
-  let port_to_mem_commit     <- mkPort_Send("mem_commit");
-  let port_to_mem_killRange  <- mkPort_Send("mem_killRange");
-  
-  let tok <- mkFP_TokGen();  //TokGen is from library
-  let fet <- mkTOY_Fetch(port_to_imem);
-  let dec <- mkTOY_Decode(bypass);
-  let exe <- mkTOY_Execute(bypass);
-  let mem <- mkTOY_Mem(bypass, port_to_dmem);
-  let lco <- mkTOY_LocalCommit(bypass);
-  let gco <- mkTOY_GlobalCommit(port_to_mem_commit);
-  
-  let fp <- mkFunctionalPartition(tok, fet, 
-                                  dec, exe, 
-				  mem, lco, 
-				  gco, 
-				  bypass, 
-				  port_to_imem,
-				  port_to_dmem,
-				  port_to_mem_commit,
-				  port_to_mem_killRange,
-				  8);
+  return s;
 
-  return fp;
+endmodule
 
+module [Module] mkTOY_DEC_Stage 
+    //interface:
+                (FP_Stage_Link#(TOY_Tick, 
+	                	TOY_Token, 
+				Tuple2#(TOY_Addr, TOY_Inst), 
+				void, 
+				TOY_DepInfo, 
+				Tuple2#(TOY_Addr, TOY_DecodedInst)));
+
+  let s <- mkFP_Stage_Link("DEC", 
+                           "link_dec",
+			   "dec_server",
+			   "fet_to_dec",
+			   "dec_to_exe", 
+			   8);
+  
+  return s;
+
+endmodule
+
+module [Module] mkTOY_EXE_Stage 
+    //interface:
+                (FP_Stage_Link#(TOY_Tick, 
+	                	TOY_Token, 
+				Tuple2#(TOY_Addr, TOY_DecodedInst), 
+				void, 
+				TOY_InstResult, 
+				TOY_ExecedInst));
+
+  let s <- mkFP_Stage_Link("EXE", 
+                           "link_exe",
+			   "exe_server",
+			   "dec_to_exe",
+			   "exe_to_mem", 
+			   8);
+  
+  return s;
+
+endmodule
+
+module [Module] mkTOY_MEM_Stage 
+    //interface:
+                (FP_Stage_Link#(TOY_Tick, 
+	                	TOY_Token, 
+				TOY_ExecedInst, 
+				void, 
+				void, 
+				TOY_ExecedInst));
+
+  let s <- mkFP_Stage_Link("MEM", 
+                           "link_mem",
+			   "mem_server",
+			   "exe_to_mem",
+			   "mem_to_lco", 
+			   8);
+  
+  return s;
+
+endmodule
+
+module [Module] mkTOY_LCO_Stage 
+    //interface:
+                (FP_Stage_Link#(TOY_Tick, 
+	                	TOY_Token, 
+				TOY_ExecedInst, 
+				void, 
+				void, 
+				TOY_ExecedInst));
+
+  let s <- mkFP_Stage_Link("LCO", 
+                           "link_lco",
+			   "lco_server",
+			   "mem_to_lco",
+			   "lco_to_gco", 
+			   8);
+  
+  return s;
+
+endmodule
+
+module [Module] mkTOY_GCO_Stage 
+    //interface:
+                (FP_Stage_Link#(TOY_Tick, 
+	                	TOY_Token, 
+				TOY_ExecedInst, 
+				void, 
+				void, 
+				void));
+
+  let s <- mkFP_Stage_Link("GCO", 
+                           "link_gco",
+			   "gco_server",
+			   "lco_to_gco",
+			   "gco_to_tok", 
+			   8);
+  
+  return s;
+
+endmodule
+
+module [Module] mkTOY_FP (); 
+
+  BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass <- mkBypassUnit();
+  
+  Empty fet <- mkTOY_Fetch();
+  Empty dec <- mkTOY_Decode(bypass);
+  Empty exe <- mkTOY_Execute(bypass);
+  Empty mem <- mkTOY_Mem(bypass);
+  Empty lco <- mkTOY_LocalCommit(bypass);
+  Empty gco <- mkTOY_GlobalCommit();
+
+  
+  FP_Stage_Link#(TOY_Tick, 
+		 TOY_Token,
+		 void, 
+		 void, 
+		 void, 
+		 void) tok_stage <- mkTOY_TOK_Stage();
+		  
+  let fet_stage <- mkTOY_FET_Stage();
+  let dec_stage <- mkTOY_DEC_Stage();
+  let exe_stage <- mkTOY_EXE_Stage();
+  let mem_stage <- mkTOY_MEM_Stage();
+  let lco_stage <- mkTOY_LCO_Stage();
+  FP_Stage_Link#(TOY_Tick, 
+	         TOY_Token, 
+		 TOY_ExecedInst, 
+		 void, 
+		 void, 
+		 void) gco_stage <- mkTOY_GCO_Stage();
+  
 endmodule

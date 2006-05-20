@@ -60,9 +60,25 @@ endinterface
 /************* Timing Partition Heirarchy *************/
 
 // Top-level TModule is a System.
+// Currently it includes magic links to the IMem/DMem 
+// so that the controller can load the program
 
-typedef TModule#(tick_T, command_T, result_T) 
-        System#(type tick_T, type command_T, type result_T);
+interface System#(type tick_T, 
+                  type command_T, 
+		  type result_T, 
+		  type addr_T,
+		  type inst_T,
+		  type value_T);
+
+  //TModule interface
+  interface TModule#(tick_T, command_T, result_T) tmod;
+
+  //Magic Memory interfaces
+  interface RegFile#(addr_T, inst_T)  imem;
+  interface RegFile#(addr_T, value_T) dmem;
+
+endinterface
+        
 
 // A System contains Boards
 

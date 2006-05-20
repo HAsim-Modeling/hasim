@@ -2,15 +2,16 @@
 import Connectable::*;
 
 import HASim::*;
-import Ports::*;
 import Mem::*;
 
 import TOY_Datatypes::*;
 import TOY_FunctionalPartition::*;
 import TOY_TimingPartition::*;
 
-(* synthesize *)
-module [Module] mkTOY_Mem (Memory#(TOY_Token, TOY_Addr, TOY_Inst, TOY_Value));
+
+typedef Memory#(TOY_Token, TOY_Addr, TOY_Inst, TOY_Value) TOY_Mem;
+
+module [Module] mkTOY_Mem (TOY_Mem);
 
   let m <- mkMem_Software();
   

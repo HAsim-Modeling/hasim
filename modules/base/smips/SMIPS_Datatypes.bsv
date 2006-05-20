@@ -349,6 +349,7 @@ typedef union tagged
   SMIPS_Addr RBranchTaken;
   void     RBranchNotTaken; // Possibly should also include address. 
   void     RNop;
+  void     RTerminate;
 }
   SMIPS_InstResult 
     deriving 

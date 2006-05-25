@@ -101,3 +101,17 @@ Directory modules/base/common
 Added asim module files and a couple of models as initial versions
 of what a hasim model could look like.
 
+
+----------
+jsemer      Date: Thu May 25 13:54:45 EDT 2006  CSN: CSN-hasim-48
+                  Thu May 25 17:54:45 UTC 2006
+
+
+Directory config/pm/hasim/toymips
+ hasim_5stage_toymips.apm  Locally Modified           47 
+ hasim_simple_toymips.apm  Locally Modified           47 
+
+Directory modules/controller/common
+ hasim_simple_controller.awb Locally Added               0 
+
+Added missing file

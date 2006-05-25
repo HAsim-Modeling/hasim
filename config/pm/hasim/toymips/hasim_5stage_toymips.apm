@@ -23,7 +23,7 @@ File=modules/cpu/hasim_cpu.awb
 
 [Hasim simple controller]
 Packagehint=hasim
-File=modules/controller/hasim_simple_controller.awb
+File=modules/controller/common/hasim_simple_controller.awb
 
 [Hasim cpu/Requires]
 hasim_functional_partition=Hasim toymips functional model

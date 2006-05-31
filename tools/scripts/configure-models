@@ -1,21 +1,19 @@
 #!/usr/bin/perl -w
-(our $usageMsg = <<'ENDMSG') =~ s/^\#//gm;
 #
-# This script reads in a HASim model configuration (.hmc) file and creates
+# This script reads in a list of BSV files (provided by another tool) and creates
 # a build directory, including appropiate sym links and Makefile.
 #
-ENDMSG
 
 use strict "vars";
 use warnings;
 no  warnings("once");
-use Getopt::Long;
+use File::Spec;
+use File::Spec::Unix;
 
 #--------------------------------------------------------------------------
 # Command line processing
 #--------------------------------------------------------------------------
 
-our %opts;
 
 sub ERROR
 {
@@ -24,47 +22,6 @@ sub ERROR
   exit;
 }
 
-sub usage()
-{
-
-  print "\n";
-  print " Usage: configure-models [options] filename.hmc\n";
-  print "\n";
-  print " Options:\n";
-  print "  --help  print this message\n";
-  print "$usageMsg";
-
-  exit();
-}
-
-sub processCommandLine()
-{
-
-  $opts{"help"} = 0;
-  $opts{"prefix"} = "";
-  Getopt::Long::GetOptions( \%opts, 'help|?', 'prefix:s') or usage();
-  ($opts{"filename"}     = shift(@ARGV)) or usage();
-  
-  $opts{"help"} and usage();
-
-}
-
-sub readConfigFile
-{
-  my $fname = $_[0];
-
-  my @mods;
-  open( TEST_DATA, "<$fname" ) or ERROR( "Could not open $fname!" );
-  while ( my $line = <TEST_DATA> ) {
-
-    chomp($line);
-    push(@mods, $line);
-
-  }
-  close( TEST_DATA );
-
-  return @mods;
-}
 
 sub makeMakefile
 {
@@ -74,28 +31,25 @@ sub makeMakefile
 
 sub main()
 {
-  processCommandLine();
+
+  #Something might need to be done here with relative paths
   
-  # Open module file
-  
-  my @modules = readConfigFile($opts{"filename"});
   
   # Create simlinks
   
-  
-  foreach my $mod (@modules) 
+  foreach my $modloc (@ARGV)
   {
-    my $modloc = $opts{"prefix"} . $mod;
+    my ($volume, $directories, $mod) = File::Spec->splitpath( $modloc );
   
-    `ln -s $mod $modloc`;
+    `ln -s $modloc`;
     if ($? != 0)
     {
-      ERROR("Error creating symlink from $mod to $modloc");
+      ERROR("Error creating symlink from $modloc to $mod");
     }
   }
   # Create Makefile
   
-  my $makefile = makeMakefile(@modules);
+  my $makefile = makeMakefile(@ARGV);
   
   open(MFILE, ">Makefile") or ERROR("Could not create Makefile");
   print MFILE $makefile;

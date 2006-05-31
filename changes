@@ -115,3 +115,14 @@ Directory modules/controller/common
  hasim_simple_controller.awb Locally Added               0 
 
 Added missing file
+
+----------
+mpellaue    Date: Wed May 31 17:01:28 EDT 2006  CSN: CSN-hasim-49
+                  Wed May 31 21:01:28 UTC 2006
+
+
+Directory tools/scripts
+ configure-models          Locally Modified           48 
+
+configure-models script now accepts a list of files as input. Still needs to
+generate the actual Makefile.

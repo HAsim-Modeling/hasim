@@ -1,4 +1,4 @@
-//Memory system with links
+//Memory system with connections
 
 import HASim::*;
 
@@ -6,7 +6,7 @@ import GetPut::*;
 import ClientServer::*;
 import RegFile::*;
 import FIFO::*;
-import SVector::*;
+import Vector::*;
 import BypassFIFO::*;
 
 /************* Memory System Interface *************/
@@ -70,7 +70,7 @@ endinterface
 // This is intended for software simulation. An FPGA version would
 // be a memory controller.
 
-module [Module] mkMem_Software
+module [Connected_Module] mkMem_Software
     //interface:
                 (Memory#(token_T,   //Token type
 		         addr_T,    //Address type
@@ -88,8 +88,10 @@ module [Module] mkMem_Software
 	     Bounded#(addr_T),
 	     Arith#(token_T),
 	     Ord#(token_T),
-	     PrimIndex#(token_T, token_PK),
-	     Add#(1, n1, TExp#(token_SZ))); //Token size must be greater than one.
+	     //PrimIndex#(token_T, token_PK),
+	     PrimIndex#(token_T),
+	     Add#(1, n1, TExp#(token_SZ)) //Token size must be greater than one.
+	    ); 
 
   //State elements
 
@@ -100,15 +102,15 @@ module [Module] mkMem_Software
   
   RegFile#(addr_T, value_T) dmemory <- mkRegFileFull();
 
-  Reg#(SVector#(TExp#(token_SZ), Bool)) tvalids <- mkReg(SVector::replicate(False));
-  Reg#(SVector#(TExp#(token_SZ), Tuple3#(token_T, addr_T, value_T))) tokens <- mkRegU();
+  Reg#(Vector#(TExp#(token_SZ), Bool)) tvalids <- mkReg(Vector::replicate(False));
+  Reg#(Vector#(TExp#(token_SZ), Tuple3#(token_T, addr_T, value_T))) tokens <- mkRegU();
 
-  //Links
+  //Connections
   
-  Link_Server#(addr_T, inst_T) link_imem <- mkLink_Server("mem_imem");
-  Link_Server#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) link_dmem <- mkLink_Server("mem_dmem");
-  Link_Receive#(token_T) link_commit <- mkLink_Receive("mem_commit");
-  Link_Receive#(Tuple2#(token_T, token_T)) link_killRange <- mkLink_Receive("mem_killRange");
+  Connection_Server#(addr_T, inst_T) link_imem <- mkConnection_Server("mem_imem");
+  Connection_Server#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) link_dmem <- mkConnection_Server("mem_dmem");
+  Connection_Receive#(token_T) link_commit <- mkConnection_Receive("mem_commit");
+  Connection_Receive#(Tuple2#(token_T, token_T)) link_killRange <- mkConnection_Receive("mem_killRange");
 
   //maybify :: Bool -> any -> Maybe any
 
@@ -118,9 +120,9 @@ module [Module] mkMem_Software
   
   endfunction
 
-  //getNextFree :: SVector n Bool -> Integer
+  //getNextFree :: Vector n Bool -> Integer
   
-  function Nat getNextFree(SVector#(n, Bool) vs);
+  function Nat getNextFree(Vector#(n, Bool) vs);
 
     Integer k = valueof(n) - 1;
 
@@ -134,7 +136,7 @@ module [Module] mkMem_Software
   endfunction
 
 
-  SVector#(TExp#(token_SZ), Maybe#(Tuple3#(token_T, addr_T, value_T))) mtokens = SVector::zipWith(maybify, tvalids, tokens);
+  Vector#(TExp#(token_SZ), Maybe#(Tuple3#(token_T, addr_T, value_T))) mtokens = Vector::zipWith(maybify, tvalids, tokens);
  
  
   //matchAddr :: Maybe (token, addr, value) -> addr -> Bool -> Maybe (token, addr, value)
@@ -176,7 +178,7 @@ module [Module] mkMem_Software
 
      endfunction
 
-     let mmtokens = SVector::zipWith(matchAddr(a), tvalids, tokens);
+     let mmtokens = Vector::zipWith(matchAddr(a), tvalids, tokens);
 
      //pickYoungest :: Maybe (Bool, token) -> Maybe (Bool, token) -> Maybe#(Bool, token)
 
@@ -189,7 +191,7 @@ module [Module] mkMem_Software
 
      endfunction
 
-     Maybe#(Tuple3#(token_T, addr_T, value_T)) finalChoice = SVector::fold(pickYoungest, mmtokens);
+     Maybe#(Tuple3#(token_T, addr_T, value_T)) finalChoice = Vector::fold(pickYoungest, mmtokens);
 
      case (finalChoice) matches
        tagged Nothing: return dmemory.sub(a); // goto memory
@@ -212,7 +214,7 @@ module [Module] mkMem_Software
           link_dmem.makeResp(StResp);
           //drop in Buffer
 
-	  let num_tvalids = SVector::zip(tvalids, genSVector);
+	  let num_tvalids = Vector::zip(tvalids, genVector);
 
 	  Nat i = getNextFree(tvalids);
 
@@ -271,10 +273,10 @@ module [Module] mkMem_Software
       return (token == tok) ? False: b;
     endfunction
 
-    tvalids <= SVector::zipWith(flattenToken, tvalids, tokens);
+    tvalids <= Vector::zipWith(flattenToken, tvalids, tokens);
     */
     
-    tvalids <= unpack(pack(tvalids) & ~(1 << token));
+    tvalids <= unpack(pack(tvalids) & ~(1 << toIndex(token)));
 
   endrule
   
@@ -292,21 +294,21 @@ module [Module] mkMem_Software
       return (ub-lb > (tok - lb)) ? False: b;
     endfunction
 
-    tvalids <= SVector::zipWith(flattenToken, tvalids, tokens);
+    tvalids <= Vector::zipWith(flattenToken, tvalids, tokens);
   endrule
  
   //IMem interface (used by FP Fetch)
-  interface imem = link_imem.server;
+  //interface imem = link_imem.server;
   
   //DMem interface (used by FP Mem)
-  interface dmem = link_dmem.server;
+  //interface dmem = link_dmem.server;
  
   //commit (used by FP Global Commit)
-  interface commit = link_commit.incoming;
+  //interface commit = link_commit.incoming;
 
 
   //killRange (used by FP.killToken)
-  interface killRange = link_killRange.incoming;
+  //interface killRange = link_killRange.incoming;
   
   //Magic interface for testharness
 

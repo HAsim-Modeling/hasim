@@ -13,7 +13,7 @@ import GetPut::*;
 import ClientServer::*;
 import RegFile::*;
 
-/************* Basic Datatypes *************/
+//************ Basic Datatypes ************//
 
 typedef Bit#(8)  TOY_Token;
 typedef Bit#(32) TOY_Tick;

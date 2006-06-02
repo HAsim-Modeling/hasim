@@ -8,7 +8,7 @@ import ClientServer::*;
 import FIFO::*;
 import RegFile::*;
 
-/************* Functional Partition Stage Interface *************/
+//************ Functional Partition Stage Interface ************//
 
 // This is a generalized wrapper which wraps around a stage in the functional
 // partition. It handles interfacing that stage with the next stage,
@@ -111,28 +111,28 @@ endinterface
 
 // mkFP_Stage :: StageName -> FP_Unit -> TableSize -> FP_Stage
 
-interface FP_Stage_Link#(type tick_T, 
-                	 type token_T,
-			 type init_T,
-			 type req_T,
-			 type resp_T,
-			 type next_T);
+interface FP_Stage_Con#(type tick_T, 
+                	type token_T,
+			type init_T,
+			type req_T,
+			type resp_T,
+			type next_T);
 
 endinterface
 
-module [Module] mkFP_Stage_Link#(String stagename,
-                                 String linkname, 
-                                 String servername,
-				 String prevname,
-				 String nextname,
-				 Integer sz) 
+module [Connected_Module] mkFP_Stage_Con#(String stagename,
+                                	  String linkname, 
+                                	  String servername,
+					  String prevname,
+					  String nextname,
+					  Integer sz) 
     //interface:
-               (FP_Stage_Link#(tick_T, 
-	                       token_T, 
-			       init_T, 
-			       req_T, 
-			       resp_T, 
-			       next_T))
+               (FP_Stage_Con#(tick_T, 
+	                      token_T, 
+			      init_T, 
+			      req_T, 
+			      resp_T, 
+			      next_T))
         provisos
           (Bits#(token_T, token_SZ), 
 	   Bounded#(token_T),
@@ -149,17 +149,17 @@ module [Module] mkFP_Stage_Link#(String stagename,
   token_T tableMax = fromInteger(sz - 1);
 
   //Links
-  Link_Client#(Tuple3#(token_T, init_T, req_T),
-               Tuple3#(token_T, resp_T, next_T)) link_to_unit <- mkLink_Client(linkname);
+  Connection_Client#(Tuple3#(token_T, init_T, req_T),
+               Tuple3#(token_T, resp_T, next_T))       link_to_unit   <- mkConnection_Client(linkname);
   
-  Link_Server#(Tuple3#(token_T, tick_T, req_T),
-               Tuple2#(token_T, resp_T))         link_from_tp <- mkLink_Server(servername);
+  Connection_Server#(Tuple3#(token_T, tick_T, req_T),
+               Tuple2#(token_T, resp_T))               link_from_tp   <- mkConnection_Server(servername);
   
-  Link_Receive#(Tuple2#(token_T, init_T))        link_from_prev <- mkLink_Receive(prevname);
+  Connection_Receive#(Tuple2#(token_T, init_T))        link_from_prev <- mkConnection_Receive(prevname);
   
-  Link_Send#(Tuple2#(token_T, next_T))           link_to_next <- mkLink_Send(nextname);
+  Connection_Send#(Tuple2#(token_T, next_T))           link_to_next   <- mkConnection_Send(nextname);
   
-  Link_Receive#(token_T)                         link_killToken <- mkLink_Receive("link_killToken");
+  Connection_Receive#(token_T)                         link_killToken <- mkConnection_Receive("link_killToken");
 
   		
   //SRAM tables
@@ -537,10 +537,10 @@ endmodule
 //	      FP_Unit f g  ->      #Local Commit
 //	      FP_Unit g a  ->      #Global Commit
 //            BypassUnit   ->      #Bypass unit and map table
-//            Link_Client  ->      #Link to IMem
-//            Link_Client  ->      #Link to DMem
-//            Link_Send    ->      #Link to DMem commit
-//            Link_Send    ->      #Link to DMem killRange
+//            Connection_Client  ->      #Link to IMem
+//            Connection_Client  ->      #Link to DMem
+//            Connection_Send    ->      #Link to DMem commit
+//            Connection_Send    ->      #Link to DMem killRange
 //            Integer      ->      #Table size
 //	      FunctionalPartition
 /*
@@ -553,10 +553,10 @@ module [Module] mkFunctionalPartition#(FP_Stage#(tick_T, token_T, tok_data_T, to
 				       FP_Unit#(token_T, lco_data_T, lco_req_T, lco_resp_T, gco_data_T) lco,
 				       FP_Unit#(token_T, gco_data_T, gco_req_T, gco_resp_T, tok_data_T) gco,
 				       BypassUnit#(rname_T, prname_T, value_T, token_T, snapshotptr_T) bypass, 
-				       Link_Client#(addr_T, inst_T) link_to_imem,
-				       Link_Client#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) link_to_dmem,
-				       Link_Send#(token_T) link_to_mem_commit,
-				       Link_Send#(Tuple2#(token_T, token_T)) link_to_mem_killRange,
+				       Connection_Client#(addr_T, inst_T) link_to_imem,
+				       Connection_Client#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) link_to_dmem,
+				       Connection_Send#(token_T) link_to_mem_commit,
+				       Connection_Send#(Tuple2#(token_T, token_T)) link_to_mem_killRange,
 				       Integer sz)
     //interface:						       
   		(FunctionalPartition#(tick_T,                  //tick type

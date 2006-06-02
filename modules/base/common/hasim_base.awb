@@ -13,7 +13,7 @@
 #
 # %attributes hasim
 #
-# %private BypassFIFO.bsv Debug.bsv Links.bsv ValueVector.bsv
+# %private BypassFIFO.bsv Debug.bsv Links.bsv HASim.bsv
 #
 # %AWB_END
 # */

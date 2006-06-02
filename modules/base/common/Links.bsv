@@ -1,4 +1,4 @@
-
+//XXX THIS FILE IS OBSOLETE.
 import GetPut::*;
 import ClientServer::*;
 

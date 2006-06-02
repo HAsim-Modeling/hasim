@@ -1,4 +1,6 @@
-
+//Debugging facilities for software simulation.
+//Needs to be expanded to include some way to debug in hardware, using
+//Controller.
 //Debug
 //Level 0: No messages except when absolutely necessary
 //Level 1: High-Level execution trace

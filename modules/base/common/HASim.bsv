@@ -9,16 +9,21 @@
 //                                                                           //
 ///////////////////////////////////////////////////////////////////////////////
 
+//BSV Library imports
 import GetPut::*;
 import ClientServer::*;
 import RegFile::*;
+import Vector::*;
+import List::*;
 import FIFO::*;
+import ModuleCollect::*;
+import Connectable::*;
 
-// Global top-level is a Model.
+// A Model is the global top-level, with no wires in or out.
 
 typedef Empty Model;
 
-/************* Controller Interface *************/
+//************ Controller Interface ************//
 
 // A Controller is the part of the Model which controls the
 // simulation. All communication with the "outside world" passes
@@ -33,7 +38,7 @@ typedef Empty Model;
 
 typedef Empty Controller;
 
-/************* TModule Interface *************/
+//************ TModule Interface ************//
 
 // A TModule is a Timing Partition Module. 
 // This is a module which is controlled by a controller. It has the
@@ -57,7 +62,7 @@ interface TModule#(type tick_T, type command_T, type result_T);
 
 endinterface
 
-/************* Timing Partition Heirarchy *************/
+//************ Timing Partition Heirarchy ************//
 
 // Top-level TModule is a System.
 // Currently it includes magic links to the IMem/DMem 
@@ -104,44 +109,44 @@ typedef TModule#(tick_T, command_T, result_T)
 
 
 
-/************************** Links **************************/
-/*                                                         */
-/* Links are the plumbing of HASim. They represent basic   */
-/* point-to-point communication. The advantage over        */
-/* traditional Bluespec Connectables is that they are      */
-/* easier to use, and can easily be extended to include    */
-/* model latency (ASim Ports).                             */
-/*                                                         */
-/* These might eventually be donated to the Bluespec       */
-/* library.                                                */
-/*                                                         */
-/***********************************************************/
+//************************* Connections **************************//
+//                                                                //
+// Connections are the plumbing of HASim. They represent basic	  //
+// point-to-point communication. The advantage over traditional   //
+// Bluespec Connectables is that they are easier to use, are	  //
+// connected automatically, and can easily be extended to include //
+// model latency (ASim Ports).  				  //
+// 								  //
+// These might eventually be donated to the Bluespec library.	  //
+// 								  //
+//                                                                //
+//****************************************************************//
 
 
-//The basic sending link.
+//The basic sending half of a connection.
 
-interface Link_Send#(type msg_T);
+interface Connection_Send#(type msg_T);
   
   //For the user
   method Action send(msg_T data);
 
   //The outgoing connection
   //Hooked up by the system
-  interface Get#(msg_T) outgoing;
+  //interface Get#(msg_T) outgoing;
   
 endinterface
 
 
-//The basic receiving link.
+//The basic receiving connection.
 
-interface Link_Receive#(type msg_T);
+interface Connection_Receive#(type msg_T);
   
   //For the user
   method ActionValue#(msg_T) receive();
 
   //The incoming connection
   //Hooked up by the system
-  interface Put#(msg_T) incoming;
+  //interface Put#(msg_T) incoming;
   
 endinterface
 
@@ -149,7 +154,7 @@ endinterface
 // A client sends requests and receives responses
 // (which may not come instantly)
 
-interface Link_Client#(type req_T, type resp_T);
+interface Connection_Client#(type req_T, type resp_T);
 
   //For the user
   method Action               makeReq(req_T data);
@@ -157,7 +162,7 @@ interface Link_Client#(type req_T, type resp_T);
 
   //The outgoing req and incoming resp
   //Hooked up by the system
-  interface Client#(req_T, resp_T) client;
+  //interface Client#(req_T, resp_T) client;
   
 endinterface
 
@@ -166,7 +171,7 @@ endinterface
 // It can take any amount of time, and there is no assumption
 // that the responses are FIFO.
 
-interface Link_Server#(type req_T, type resp_T);
+interface Connection_Server#(type req_T, type resp_T);
 
   //For the user
   method ActionValue#(req_T) getReq();
@@ -174,34 +179,59 @@ interface Link_Server#(type req_T, type resp_T);
 
   //The outgoing req and incoming resp
   //Hooked up by the system
-  interface Server#(req_T, resp_T) server;
+  //interface Server#(req_T, resp_T) server;
   
 endinterface
 
-//Link Implementations
+`define ConnectionWidth 32
 
-// These might live in a different file.
+interface WithConnections#(type in_W, type out_W, type orig_T);
 
-// Currently all requests are buffered until we are 100% sure
-// about correctness.
+  interface orig_T original;
 
-module [Module] mkLink_Send#(String portname)
+  interface Vector#(in_W, Put#(Bit#(`ConnectionWidth))) incoming;
+  interface Vector#(out_W, Get#(Bit#(`ConnectionWidth))) outgoing;
+
+endinterface
+
+
+typedef union tagged
+{
+  Tuple2#(String, Get#(Bit#(`ConnectionWidth))) LSend;
+  Tuple2#(String, Put#(Bit#(`ConnectionWidth))) LRec;
+}
+  ConnectionData;
+
+typedef ModuleCollect#(ConnectionData) Connected_Module;
+
+typedef Connected_Module HASim_Module;
+
+
+module [Connected_Module] mkConnection_Send#(String portname)
     //interface:
-                (Link_Send#(msg_T))
+                (Connection_Send#(msg_T))
     provisos
-            (Bits#(msg_T, msg_SZ));
+            (Bits#(msg_T, msg_SZ),
+	     Add#(msg_SZ, k_TMP, `ConnectionWidth));
 
-  FIFO#(msg_T) q <- mkFIFO();
-
-
-  interface Get outgoing;
+  //This queue is here for correctness until the system is confirmed to work
+  //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-    method ActionValue#(msg_T) get();
-      q.deq();
-      return q.first();
-    endmethod
-    
-  endinterface
+  FIFO#(msg_T) q <- mkFIFO();
+  
+  //Bind the interface to a name so we can refer to it twice.
+  let outg = (interface Get;
+		method ActionValue#(Bit#(`ConnectionWidth)) get();
+		  q.deq();
+		  return zeroExtend(pack(q.first()));
+		endmethod
+	      endinterface);
+  
+  //Add our interface to the ModuleCollect collection
+  addToCollection(LSend tuple2(portname, outg));
+
+  //Expose our interface to the outside world
+  //interface outgoing = outg;
 
   method Action send(msg_T data);
     q.enq(data);
@@ -209,124 +239,330 @@ module [Module] mkLink_Send#(String portname)
 
 endmodule
 
-module [Module] mkLink_Receive#(String portname)
+module [Connected_Module] mkConnection_Receive#(String portname)
     //interface:
-                (Link_Receive#(msg_T))
+                (Connection_Receive#(msg_T))
     provisos
-            (Bits#(msg_T, msg_SZ));
+            (Bits#(msg_T, msg_SZ),
+	     Add#(msg_SZ, k_TMP, `ConnectionWidth));
 
-  Wire#(msg_T) w <- mkWire();
+  Wire#(Bit#(`ConnectionWidth)) w <- mkWire();
+  let inc = (interface Put;
+	       method Action put(Bit#(`ConnectionWidth) data);
+	         w <= data;
+	       endmethod
+	     endinterface);
 
-
-  interface Put incoming;
+  //Bind the interface to a name so we can refer to it twice.
+  addToCollection(LRec tuple2(portname, inc));
   
-    method Action put(msg_T data);
-      w <= data;
-    endmethod
-    
-  endinterface
+   
+  //Expose our interface to the outside world
+  //interface incoming = inc;
 
   method ActionValue#(msg_T) receive();
     noAction;
-    return w;
+    return unpack(truncate(w));
   endmethod
 
 endmodule
 
-module [Module] mkLink_Client#(String portname)
+module [Connected_Module] mkConnection_Client#(String portname)
     //interface:
-                (Link_Client#(req_T, resp_T))
+                (Connection_Client#(req_T, resp_T))
     provisos
-            (Bits#(req_T, req_SZ),
-	     Bits#(resp_T, resp_SZ));
+            (Bits#(req_T,  req_SZ),
+	     Bits#(resp_T, resp_SZ),
+	     //These provisos express that the message is small enough
+	     //Later this restriction could be lifted:
+	     Add#(req_SZ,  k_TMP,  `ConnectionWidth),
+	     Add#(resp_SZ, k2_TMP, `ConnectionWidth));
 
-  FIFO#(req_T)  reqQ  <- mkFIFO();
-  Wire#(resp_T) respW <- mkWire();
+  //This queue is here for correctness until the system is confirmed to work
+  //Later it could be removed or turned into a BypassFIFO to reduce latency.
+  
+  FIFO#(req_T) q <- mkFIFO();
+  Wire#(Bit#(`ConnectionWidth)) w <- mkWire();
+  
+  //Bind the interface to a name so we can refer to it twice.
+  let outg = (interface Get;
+		method ActionValue#(Bit#(`ConnectionWidth)) get();
+		  q.deq();
+		  return zeroExtend(pack(q.first()));
+		endmethod
+	      endinterface);
+	      
+  let inc = (interface Put;
+	       method Action put(Bit#(`ConnectionWidth) data);
+	         w <= data;
+	       endmethod
+	     endinterface);
+  
+  //Add our interface to the ModuleCollect collection
+  addToCollection(LSend tuple2(portname, outg));
+
+  //Expose our interface to the outside world
+  //interface outgoing = outg;
 
   method Action makeReq(req_T data);
-    reqQ.enq(data);
+    q.enq(data);
   endmethod
   
   method ActionValue#(resp_T) getResp;
     noAction;
-    return respW;
+    return unpack(truncate(w));
   endmethod
 
-  interface Client client;
-
-    interface Get request;
-
-      method ActionValue#(req_T) get();
-
-	reqQ.deq();
-	return reqQ.first();
-
-      endmethod
-
-    endinterface
-
-    interface Put response;
-
-      method Action put(resp_T data);
-
-	respW <= data;
-
-      endmethod
-
-    endinterface
-
-  endinterface
-  
 endmodule
 
-module [Module] mkLink_Server#(String portname)
+module [Connected_Module] mkConnection_Server#(String portname)
     //interface:
-                (Link_Server#(req_T, resp_T))
+                (Connection_Server#(req_T, resp_T))
     provisos
-            (Bits#(req_T, req_SZ),
-	     Bits#(resp_T, resp_SZ));
+            (Bits#(req_T,  req_SZ),
+	     Bits#(resp_T, resp_SZ),
+	     //These provisos express that the message is small enough
+	     //Later this restriction could be lifted:
+	     Add#(req_SZ,  k_TMP,  `ConnectionWidth),
+	     Add#(resp_SZ, k2_TMP, `ConnectionWidth));
 
-  Wire#(req_T)  reqW  <- mkWire();
-  FIFO#(resp_T) respQ <- mkFIFO();
+  //This queue is here for correctness until the system is confirmed to work
+  //Later it could be removed or turned into a BypassFIFO to reduce latency.
+  
+  FIFO#(resp_T) q <- mkFIFO();
+  Wire#(Bit#(`ConnectionWidth)) w <- mkWire();
+  
+  //Bind the interface to a name so we can refer to it twice.
+  let outg = (interface Get;
+		method ActionValue#(Bit#(`ConnectionWidth)) get();
+		  q.deq();
+		  return zeroExtend(pack(q.first()));
+		endmethod
+	      endinterface);
+	      
+  let inc = (interface Put;
+	       method Action put(Bit#(`ConnectionWidth) data);
+	         w <= data;
+	       endmethod
+	     endinterface);
+  
+  //Add our interface to the ModuleCollect collection
+  addToCollection(LSend tuple2(portname, outg));
 
-  method ActionValue#(req_T) getReq();
-    
-    noAction;
-    return reqW;
-    
-  endmethod
-  
-  
+  //Expose our interface to the outside world
+  //interface outgoing = outg;
+
   method Action makeResp(resp_T data);
+    q.enq(data);
+  endmethod
   
-    respQ.enq(data);
-  
+  method ActionValue#(req_T) getReq;
+    noAction;
+    return unpack(truncate(w));
   endmethod
 
-  interface Server server;
+endmodule
 
-    interface Put request;
+//************** Hookup functions **************//
 
-      method Action put(req_T data);
+//lookup :: Eq a => a -> [(a, b)] -> Maybe b
 
-	reqW <= data;
+function Maybe#(b) lookup (a data, List#(Tuple2#(a, b)) l)
+  provisos (Eq#(a));
+  
+  case (l) matches
+    tagged Nil:
+      return Invalid;
+    default:
+    begin
+      match {.d, .v} = List::head(l);
+      return (d == data) ? (Valid v) : lookup(data, List::tail(l));
+    end
+  endcase
 
-      endmethod
+endfunction
 
-    endinterface
+//removeItem :: Eq a => a -> [(a, b)] -> [(a,b)]  
 
-    interface Get response;
+function List#(Tuple2#(a, b)) removeItem(a s, List#(Tuple2#(a, b)) l)
+  provisos (Eq#(a));
 
-      method ActionValue#(resp_T) get();
+  case (l) matches
+    tagged Nil: return Nil;
+    default:
+    begin
+      match {.nm, .v} = List::head(l);
+      if (nm == s) 
+	return List::tail(l);
+      else
+	return List::cons(tuple2(nm, v), removeItem(s, List::tail(l)));
+    end
+  endcase
+endfunction
 
-	respQ.deq();
-	return respQ.first();
+//groupByName :: Eq a => [(a, b)] -> [(a, c)] -> ([(a, b)], [(a, c)], [(a, b, c)])
 
-      endmethod
+function Tuple3#(List#(Tuple2#(a, b)),
+	         List#(Tuple2#(a, c)),
+		 List#(Tuple3#(a, b, c))) groupByName(List#(Tuple2#(a, b)) xs,
+		                                      List#(Tuple2#(a, c)) ys)
+     provisos
+             (Eq#(a));
 
-    endinterface
+  if (isNull(xs) || isNull(ys))
+    return tuple3(xs, ys, List::nil); //Return dangling items
+  else
+    begin
+      match {.try, .x} = List::head(xs);
 
-  endinterface
+      //XXX Add duplicate name check
+
+      case (lookup(try, ys)) matches
+	tagged Valid .y:
+	begin
+	  match {.das, .dbs, .gs} = groupByName(List::tail(xs), removeItem(try, ys));
+	  return tuple3(das, dbs, List::cons(tuple3(try, x, y), gs));
+	end
+	default:
+	begin
+	  match {.das, .dbs, .gs} = groupByName(List::tail(xs), ys);
+	  return tuple3(List::cons(tuple2(try, x), das), dbs, gs);
+	end
+      endcase
+    end
+    
+endfunction
+
+//splitConnections :: [ConnectionData] -> ([(String, Get)], [(String, Put)])
+
+function Tuple2#(List#(Tuple2#(String, Get#(Bit#(`ConnectionWidth)))), 
+                 List#(Tuple2#(String, Put#(Bit#(`ConnectionWidth))))) splitConnections(List#(ConnectionData) l);
+
+  case (l) matches
+    tagged Nil: return tuple2(Nil, Nil);
+    default:
+    begin
+      match {.sends, .recs} = splitConnections(List::tail(l));
+      case (List::head(l)) matches
+	tagged LSend .t:
+	  return tuple2(List::cons(t,sends), recs);
+	tagged LRec .t:
+	  return tuple2(sends, List::cons(t, recs));
+      endcase
+    end
+  endcase
+
+endfunction
+ 
+//connectDangling :: [ConnectionData] -> ifc -> Module (WithConnections in out ifc)
+ 
+module [Module] connectDangling#(List#(ConnectionData) ld, inter_T i) (WithConnections#(in_W, out_W, inter_T));
+    
+  match {.sends, .recs} = splitConnections(ld);
+  
+  
+  match {.dsends, .drecs, .cncts} = groupByName(sends, recs);
+    
+  let numout = length(dsends);
+  let numin  = length(drecs);
+  
+  let nCncts = length(cncts);
+  
+  for (Integer x = 0; x < nCncts; x = x + 1)
+  begin
+    match {.nm, .cin, .cout} = cncts[x];
+    
+    messageM(strConcat("Connecting: ", nm));
+    mkConnection(cin, cout);
+  
+  end
+  
+  let nDSends = length(dsends);
+  
+  List#(Get#(Bit#(`ConnectionWidth))) outg = List::nil;
+  for (Integer x = 0; x < nDSends; x = x + 1)
+  begin
+    match {.nm, .cout} = dsends[x];
+    messageM(strConcat("Dangling Send: ", nm));
+    outg = List::cons(cout, outg);
+  end
+  
+  let nDRecs = length(drecs);
+  
+  List#(Put#(Bit#(`ConnectionWidth))) inc = List::nil;
+  for (Integer x = 0; x < nDRecs; x = x + 1)
+  begin
+    match {.nm, .cin} = drecs[x];
+    messageM(strConcat("Dangling Rec: ", nm));
+    inc = List::cons(cin, inc);
+  end
+  
+  interface original = i;
+  interface outgoing = Vector::toVector(outg);
+  interface incoming = Vector::toVector(inc);
   
 endmodule
 
+//connectTopLevel :: [ConnectionData] -> Module () 
+
+module [Module] connectTopLevel#(List#(ConnectionData) ld) ();
+  
+  match {.sends, .recs} = splitConnections(ld);
+  
+  match {.dsends, .drecs, .cncts} = groupByName(sends, recs);
+  
+  let nCncts = length(cncts);
+  
+  for (Integer x = 0; x < nCncts; x = x + 1)
+  begin
+    match {.nm, .cin, .cout} = cncts[x];
+    
+    messageM(strConcat("Connecting: ", nm));
+    mkConnection(cin, cout);
+  
+  end
+  
+  let nDSends = length(dsends);
+  
+  for (Integer x = 0; x < nDSends; x = x + 1)
+  begin
+    match {.nm, .cout} = dsends[x];
+    messageM(strConcat("Dangling Send: ", nm));
+  end
+  
+  let nDRecs = length(drecs);
+  
+  for (Integer x = 0; x < nDRecs; x = x + 1)
+  begin
+    match {.nm, .cin} = drecs[x];
+    messageM(strConcat("Dangling Rec: ", nm));
+  end
+  
+  if ((nDSends != 0) || (nDRecs != 0))
+    error("Dangling connections at top-level!");
+  
+endmodule
+ 
+module [Module] instantiateDangling#(Connected_Module#(inter_T) m) (WithConnections#(in_W, out_W, inter_T));
+
+  match {.m, .col} <- getCollection(m);
+  
+  //connectDangling(col, m);
+
+endmodule
+
+module [Module] synth#(Connected_Module#(inter_T) m) (inter_T);
+
+  match {.m, .col} <- getCollection(m);
+  
+  return m;
+
+endmodule
+
+module [Module] instantiateTopLevel#(Connected_Module#(Empty) m) (Empty);
+
+  match {.m, .col} <- getCollection(m);
+  
+  connectTopLevel(col);
+
+endmodule

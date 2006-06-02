@@ -15,15 +15,15 @@ import Debug::*;
 `define PARTITION_NAME "Timing"
 
 
-/************************** Simple Timing Partition ************************/
-/*                                                    `                    */
-/* This is about the simplest timing partition you can conceive of. It     */
-/* simply fetches one instruction at a time, executes it, then moves to    */
-/* the next instruction. This can serve as a good mechanism to verify      */
-/* the functional partition and can serve as a "golden model" for more     */
-/* complex timing partitions.                                              */
-/*                                                    `                    */
-/***************************************************************************/
+//************************* Simple Timing Partition ***********************//
+//                                                    `                    //
+// This is about the simplest timing partition you can conceive of. It     //
+// simply fetches one instruction at a time, executes it, then moves to    //
+// the next instruction. This can serve as a good mechanism to verify      //
+// the functional partition and can serve as a "golden model" for more     //
+// complex timing partitions.                                              //
+//                                                    `                    //
+//*************************************************************************//
 
 
 
@@ -35,9 +35,8 @@ typedef enum
 
 //mkTOY_TP_Simple :: FunctionalPartition -> Timing Partition 
 
-(* synthesize *)
 `define MODULE_NAME "mkTOY_TP_Simple"
-module [Module] mkTOY_TP_Simple
+module [Connected_Module] mkTOY_TP_Simple
      //interface:
                  (TimingPartition#(TOY_Tick, void, void));
 
@@ -70,22 +69,43 @@ module [Module] mkTOY_TP_Simple
   
   //********* Ports *********//
   
-  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
-               Tuple2#(TOY_Token, void))             link_to_tok <- mkLink_Client("fp_tok");
-  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, TOY_Addr),
-               Tuple2#(TOY_Token, TOY_Inst))       link_to_fet <- mkLink_Client("fp_fet");
-  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
-               Tuple2#(TOY_Token, TOY_DepInfo))    link_to_dec <- mkLink_Client("fp_dec");
-  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
-               Tuple2#(TOY_Token, TOY_InstResult)) link_to_exe <- mkLink_Client("fp_exe");
-  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
-               Tuple2#(TOY_Token, void))             link_to_mem <- mkLink_Client("fp_mem");
-  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
-               Tuple2#(TOY_Token, void))             link_to_lco <- mkLink_Client("fp_lco");
-  Link_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
-               Tuple2#(TOY_Token, void))             link_to_gco <- mkLink_Client("fp_gco");
+  Connection_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
+                     Tuple2#(TOY_Token, void))
+  //...
+  link_to_tok <- mkConnection_Client("fp_tok");
+  
+  Connection_Client#(Tuple3#(TOY_Token, TOY_Tick, TOY_Addr),
+                     Tuple2#(TOY_Token, TOY_Inst)
+  //...
+  link_to_fet <- mkConnection_Client("fp_fet");
+  Connection_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
+                     Tuple2#(TOY_Token, TOY_DepInfo))
+  //...
+  link_to_dec <- mkConnection_Client("fp_dec");
+  
+  Connection_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
+                     Tuple2#(TOY_Token, TOY_InstResult))
+  //...
+  link_to_exe <- mkConnection_Client("fp_exe");
+  
+  Connection_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
+                     Tuple2#(TOY_Token, void))
+  //...
+  link_to_mem <- mkConnection_Client("fp_mem");
+  
+  Connection_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
+                     Tuple2#(TOY_Token, void))
+  //...
+  link_to_lco <- mkConnection_Client("fp_lco");
+  
+  Connection_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
+                     Tuple2#(TOY_Token, void))
+  //...
+  link_to_gco <- mkConnection_Client("fp_gco");
 
-  Link_Send#(TOY_Token) link_to_killToken <- mkLink_Send("fp_killToken");
+  Connection_Send#(TOY_Token) 
+  //...
+  link_to_killToken <- mkConnection_Send("fp_killToken");
 
   
   //********* Rules *********//

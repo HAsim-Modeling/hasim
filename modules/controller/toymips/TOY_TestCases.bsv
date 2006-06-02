@@ -27,14 +27,14 @@ import RegFile::*;
 import GetPut::*;
 import Connectable::*;
 
-/************* Test Case Datatypes *************/
+//************ Test Case Datatypes ************//
 
 typedef Program#(TOY_Inst) TOY_Program;
 
 
 
 
-/************* Test Cases *************/
+//************ Test Cases ************//
 
 // A simple test that of x + y
 

@@ -126,3 +126,37 @@ Directory tools/scripts
 
 configure-models script now accepts a list of files as input. Still needs to
 generate the actual Makefile.
+
+----------
+mpellaue    Date: Fri Jun  2 17:23:17 EDT 2006  CSN: CSN-hasim-50
+                  Fri Jun  2 21:23:17 UTC 2006
+
+
+Directory tools/scripts
+ configure-models          Locally Modified           49 
+
+Directory modules/functional/toymips
+ TOY_FunctionalPartition.bsv Locally Modified           48 
+
+Directory modules/functional/common
+ FunctionalPartition.bsv   Locally Modified           48 
+ Mem.bsv                   Locally Modified           48 
+
+Directory modules/controller/toymips
+ TOY_TestCases.bsv         Locally Modified           48 
+
+Directory modules/timing/toymips
+ TOY_TimingPartition.bsv   Locally Modified           48 
+
+Directory modules/base/toymips
+ TOY_Datatypes.bsv         Locally Modified           48 
+
+Directory modules/base/common
+ Debug.bsv                 Locally Modified           48 
+ hasim_base.awb            Locally Modified           48 
+ Links.bsv                 Locally Modified           48 
+ HASim.bsv                 Locally Modified           48 
+ BypassFIFO.bsv            Locally Modified           48 
+
+
+Merging Links/Connections with TOYMips. Still a lot of work to bd done. TBD: add a "transmittable" typeclass.

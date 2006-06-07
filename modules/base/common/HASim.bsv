@@ -183,7 +183,7 @@ interface Connection_Server#(type req_T, type resp_T);
   
 endinterface
 
-`define ConnectionWidth 32
+`define ConnectionWidth 200
 
 interface WithConnections#(type in_W, type out_W, type orig_T);
 
@@ -207,12 +207,36 @@ typedef ModuleCollect#(ConnectionData) Connected_Module;
 typedef Connected_Module HASim_Module;
 
 
+typeclass Transmittable#(type any_T);
+
+  function Bit#(`ConnectionWidth) marshall(any_T data);
+  
+  function any_T unmarshall(Bit#(`ConnectionWidth) data);
+  
+endtypeclass
+
+instance Transmittable#(any_T)
+      provisos
+              (Bits#(any_T, any_SZ),
+	       Add#(any_SZ, k_TMP, `ConnectionWidth));
+
+  function Bit#(`ConnectionWidth) marshall(any_T data);
+    return zeroExtend(pack(data));
+  endfunction
+  
+  function any_T unmarshall(Bit#(`ConnectionWidth) data);
+    return unpack(truncate(data));
+  endfunction
+  
+endinstance
+
+
 module [Connected_Module] mkConnection_Send#(String portname)
     //interface:
                 (Connection_Send#(msg_T))
     provisos
             (Bits#(msg_T, msg_SZ),
-	     Add#(msg_SZ, k_TMP, `ConnectionWidth));
+	     Transmittable#(msg_T));
 
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
@@ -223,7 +247,7 @@ module [Connected_Module] mkConnection_Send#(String portname)
   let outg = (interface Get;
 		method ActionValue#(Bit#(`ConnectionWidth)) get();
 		  q.deq();
-		  return zeroExtend(pack(q.first()));
+		  return marshall(q.first());
 		endmethod
 	      endinterface);
   
@@ -244,7 +268,7 @@ module [Connected_Module] mkConnection_Receive#(String portname)
                 (Connection_Receive#(msg_T))
     provisos
             (Bits#(msg_T, msg_SZ),
-	     Add#(msg_SZ, k_TMP, `ConnectionWidth));
+	     Transmittable#(msg_T));
 
   Wire#(Bit#(`ConnectionWidth)) w <- mkWire();
   let inc = (interface Put;
@@ -262,7 +286,7 @@ module [Connected_Module] mkConnection_Receive#(String portname)
 
   method ActionValue#(msg_T) receive();
     noAction;
-    return unpack(truncate(w));
+    return unmarshall(w);
   endmethod
 
 endmodule
@@ -275,8 +299,8 @@ module [Connected_Module] mkConnection_Client#(String portname)
 	     Bits#(resp_T, resp_SZ),
 	     //These provisos express that the message is small enough
 	     //Later this restriction could be lifted:
-	     Add#(req_SZ,  k_TMP,  `ConnectionWidth),
-	     Add#(resp_SZ, k2_TMP, `ConnectionWidth));
+	     Transmittable#(req_T),
+	     Transmittable#(resp_T));
 
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
@@ -288,7 +312,7 @@ module [Connected_Module] mkConnection_Client#(String portname)
   let outg = (interface Get;
 		method ActionValue#(Bit#(`ConnectionWidth)) get();
 		  q.deq();
-		  return zeroExtend(pack(q.first()));
+		  return marshall(q.first());
 		endmethod
 	      endinterface);
 	      
@@ -310,7 +334,7 @@ module [Connected_Module] mkConnection_Client#(String portname)
   
   method ActionValue#(resp_T) getResp;
     noAction;
-    return unpack(truncate(w));
+    return unmarshall(w);
   endmethod
 
 endmodule
@@ -323,8 +347,8 @@ module [Connected_Module] mkConnection_Server#(String portname)
 	     Bits#(resp_T, resp_SZ),
 	     //These provisos express that the message is small enough
 	     //Later this restriction could be lifted:
-	     Add#(req_SZ,  k_TMP,  `ConnectionWidth),
-	     Add#(resp_SZ, k2_TMP, `ConnectionWidth));
+	     Transmittable#(req_T),
+	     Transmittable#(resp_T));
 
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
@@ -336,7 +360,7 @@ module [Connected_Module] mkConnection_Server#(String portname)
   let outg = (interface Get;
 		method ActionValue#(Bit#(`ConnectionWidth)) get();
 		  q.deq();
-		  return zeroExtend(pack(q.first()));
+		  return marshall(q.first());
 		endmethod
 	      endinterface);
 	      
@@ -358,7 +382,7 @@ module [Connected_Module] mkConnection_Server#(String portname)
   
   method ActionValue#(req_T) getReq;
     noAction;
-    return unpack(truncate(w));
+    return unmarshall(w);
   endmethod
 
 endmodule

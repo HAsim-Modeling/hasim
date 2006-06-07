@@ -53,11 +53,11 @@ interface Memory#(type token_T,  //Token tye
                   type inst_T,   //Instruction type
 		  type value_T); //Value type
 
-  interface Server#(addr_T, inst_T) imem;
-  interface Server#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) dmem;
+  //interface Server#(addr_T, inst_T) imem;
+  //interface Server#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) dmem;
   
-  interface Put#(token_T) commit;
-  interface Put#(Tuple2#(token_T, token_T)) killRange; 
+  //interface Put#(token_T) commit;
+  //interface Put#(Tuple2#(token_T, token_T)) killRange; 
   
   //Magic link for the test harness to load the program
   interface RegFile#(addr_T, inst_T) magic_imem;
@@ -70,7 +70,7 @@ endinterface
 // This is intended for software simulation. An FPGA version would
 // be a memory controller.
 
-module [Connected_Module] mkMem_Software
+module [HASim_Module] mkMem_Software
     //interface:
                 (Memory#(token_T,   //Token type
 		         addr_T,    //Address type
@@ -90,6 +90,13 @@ module [Connected_Module] mkMem_Software
 	     Ord#(token_T),
 	     //PrimIndex#(token_T, token_PK),
 	     PrimIndex#(token_T),
+	     Transmittable#(addr_T),
+	     Transmittable#(inst_T),
+	     Transmittable#(value_T),
+	     Transmittable#(token_T),
+	     Transmittable#(MemReq#(token_T, addr_T, value_T)),
+	     Transmittable#(MemResp#(value_T)),
+	     Transmittable#(Tuple2#(token_T, token_T)),
 	     Add#(1, n1, TExp#(token_SZ)) //Token size must be greater than one.
 	    ); 
 

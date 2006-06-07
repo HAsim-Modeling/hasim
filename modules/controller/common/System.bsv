@@ -8,8 +8,8 @@ import Connectable::*;
 
 //The simplest system is a CPU and a memory
 
-module [Module] mkSystem_Simple#(function Module#(CPU#(tick_T, command_T, result_T)) mkCPU(),
-			         function Module#(Memory#(token_T, addr_T, inst_T, value_T)) mkMem())
+module [HASim_Module] mkSystem_Simple#(function HASim_Module#(CPU#(tick_T, command_T, result_T)) mkCPU(),
+			               function HASim_Module#(Memory#(token_T, addr_T, inst_T, value_T)) mkMem())
     //interface:
                 (System#(tick_T, command_T, result_T, addr_T, inst_T, value_T));
     

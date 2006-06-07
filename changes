@@ -160,3 +160,34 @@ Directory modules/base/common
 
 
 Merging Links/Connections with TOYMips. Still a lot of work to bd done. TBD: add a "transmittable" typeclass.
+
+----------
+mpellaue    Date: Wed Jun  7 16:51:12 EDT 2006  CSN: CSN-hasim-51
+                  Wed Jun  7 20:51:12 UTC 2006
+
+
+Directory modules/functional/toymips
+ TOY_Mem.bsv               Locally Modified           48 
+ TOY_FunctionalPartition.bsv Locally Modified           50 
+
+Directory modules/functional/common
+ FunctionalPartition.bsv   Locally Modified           50 
+ Mem.bsv                   Locally Modified           50 
+ BypassUnit.bsv            Locally Modified           48 
+
+Directory modules/controller/toymips
+ TOY_TestCases.bsv         Locally Modified           50 
+
+Directory modules/controller/common
+ SimpleController.bsv      Locally Modified           48 
+ System.bsv                Locally Modified           48 
+
+Directory modules/timing/toymips
+ TOY_TimingPartition.bsv   Locally Modified           50 
+ TOY_System.bsv            Locally Modified           48 
+
+Directory modules/base/common
+ HASim.bsv                 Locally Modified           50 
+
+Updated HASim to work with new Connections methodology, 
+with point-to-point connections of limited bit-width.

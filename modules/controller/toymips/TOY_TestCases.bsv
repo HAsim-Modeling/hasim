@@ -173,15 +173,15 @@ function TestCase#(TOY_Inst, TOY_Value) testStalls (Integer x);
 	 };
 	 
 endfunction
-
-module [Module] testAddition_1();
+/*
+module [HASim_Module] testAddition_1();
   
   TOY_System th <- mkSystem_Simple(mkTOY_CPU, mkTOY_Mem)();
 
   Empty test <- mkController_Software_OneTest(th, testAddition(11, 5));
 endmodule
 
-module [Module] testSubtraction_1();
+module [HASim_Module] testSubtraction_1();
   
   TOY_System th <- mkSystem_Simple(mkTOY_CPU, mkTOY_Mem)();
 
@@ -189,17 +189,17 @@ module [Module] testSubtraction_1();
 endmodule
   
 
-module [Module] testBranch_1 ();
+module [HASim_Module] testBranch_1 ();
   
   TOY_System th <- mkSystem_Simple(mkTOY_CPU, mkTOY_Mem)();
 
   Empty test <- mkController_Software_OneTest(th, testBranch(17, 12));
 endmodule
 
-module [Module] testStalls_1 ();
+module [HASim_Module] testStalls_1 ();
   
   TOY_System th <- mkSystem_Simple(mkTOY_CPU, mkTOY_Mem)();
 
   Empty test <- mkController_Software_OneTest(th, testStalls(17));
 endmodule
-
+*/

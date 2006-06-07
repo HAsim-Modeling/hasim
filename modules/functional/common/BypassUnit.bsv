@@ -25,13 +25,14 @@ interface RFile_4_2#(type addr_T, type value_T);
   method Action alloc(addr_T a);
 endinterface
 
-module [Module] mkRFile_4_2
+module [HASim_Module] mkRFile_4_2
     //interface:
                 (RFile_4_2#(prname_T, value_T)) 
     provisos
             (Bits#(prname_T, prname_SZ),
 	     Bits#(value_T,  value_SZ),
-	     PrimIndex#(prname_T, prname_DY),
+	     //PrimIndex#(prname_T, prname_DY),
+	     PrimIndex#(prname_T),
 	     Bounded#(prname_T),
 	     Literal#(value_T),
 	     Literal#(prname_T),
@@ -84,7 +85,7 @@ endmodule
 // Bypass
 //----------------------------------------------------------------------------------
 
-module [Module] mkBypassUnit
+module [HASim_Module] mkBypassUnit
     //interface:
                 (BypassUnit#(rname_T,        //Register Name type
 		             prname_T,       //Physical Register Name type
@@ -96,14 +97,16 @@ module [Module] mkBypassUnit
 	     Eq#(rname_T), 
 	     Bounded#(rname_T),
 	     Literal#(rname_T),
-	     PrimIndex#(rname_T, rname_DY),
+	     //PrimIndex#(rname_T, rname_DY),
+	     PrimIndex#(rname_T),
 	     Bits#(prname_T, prname_SZ),
 	     Bounded#(prname_T),
 	     Ord#(prname_T),
 	     Eq#(prname_T),
 	     Arith#(prname_T),
 	     Literal#(prname_T),
-	     PrimIndex#(prname_T, prname_DY),
+	     //PrimIndex#(prname_T, prname_DY),
+	     PrimIndex#(prname_T),
 	     Bits#(value_T, value_SZ),
 	     Literal#(value_T),
 	     Bits#(token_T, token_SZ),
@@ -111,7 +114,8 @@ module [Module] mkBypassUnit
 	     Ord#(token_T),
 	     Arith#(token_T),
              Bits#(snapshotptr_T, snapshotptr_SZ),
-	     PrimIndex#(snapshotptr_T, snapshotptr_DY),
+	     //PrimIndex#(snapshotptr_T, snapshotptr_DY),
+	     PrimIndex#(snapshotptr_T),
 	     Bounded#(snapshotptr_T),
 	     Literal#(snapshotptr_T),
 	     Eq#(snapshotptr_T),

@@ -142,7 +142,14 @@ module [Connected_Module] mkFP_Stage_Con#(String stagename,
            Bits#(init_T, init_SZ),
            Bits#(req_T, req_SZ),
            Bits#(resp_T, resp_SZ),
-           Bits#(next_T, next_SZ));
+           Bits#(next_T, next_SZ),
+	   Transmittable#(Tuple3#(token_T, init_T, req_T)),
+	   Transmittable#(Tuple3#(token_T, resp_T, next_T)),
+	   Transmittable#(Tuple3#(token_T, tick_T, req_T)),
+	   Transmittable#(Tuple2#(token_T, resp_T)),
+	   Transmittable#(Tuple2#(token_T, init_T)),
+	   Transmittable#(Tuple2#(token_T, next_T)),
+	   Transmittable#(token_T));
 
   //Local definitions
   token_T tableMin = minBound;
@@ -150,22 +157,32 @@ module [Connected_Module] mkFP_Stage_Con#(String stagename,
 
   //Links
   Connection_Client#(Tuple3#(token_T, init_T, req_T),
-               Tuple3#(token_T, resp_T, next_T))       link_to_unit   <- mkConnection_Client(linkname);
+                     Tuple3#(token_T, resp_T, next_T))
+  //...
+  link_to_unit   <- mkConnection_Client(linkname);
   
   Connection_Server#(Tuple3#(token_T, tick_T, req_T),
-               Tuple2#(token_T, resp_T))               link_from_tp   <- mkConnection_Server(servername);
+                     Tuple2#(token_T, resp_T))
+  //...
+  link_from_tp   <- mkConnection_Server(servername);
   
-  Connection_Receive#(Tuple2#(token_T, init_T))        link_from_prev <- mkConnection_Receive(prevname);
+  Connection_Receive#(Tuple2#(token_T, init_T))
+  //...
+  link_from_prev <- mkConnection_Receive(prevname);
   
-  Connection_Send#(Tuple2#(token_T, next_T))           link_to_next   <- mkConnection_Send(nextname);
+  Connection_Send#(Tuple2#(token_T, next_T))
+  //...
+  link_to_next   <- mkConnection_Send(nextname);
   
-  Connection_Receive#(token_T)                         link_killToken <- mkConnection_Receive("link_killToken");
+  Connection_Receive#(token_T)
+  //...
+  link_killToken <- mkConnection_Receive("link_killToken");
 
   		
   //SRAM tables
-  RegFile#(token_T, init_T)		  values    <- mkRegFile(tableMin, tableMax);
-  RegFile#(token_T, Bool)		  valids    <- mkRegFile(tableMin, tableMax); 
-  RegFile#(token_T, Bool)		  dones     <- mkRegFile(tableMin, tableMax); 
+  RegFile#(token_T, init_T) values <- mkRegFile(tableMin, tableMax);
+  RegFile#(token_T, Bool)   valids <- mkRegFile(tableMin, tableMax); 
+  RegFile#(token_T, Bool)   dones  <- mkRegFile(tableMin, tableMax); 
 
   //Rules
   

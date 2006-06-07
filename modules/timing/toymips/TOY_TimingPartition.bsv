@@ -75,9 +75,10 @@ module [Connected_Module] mkTOY_TP_Simple
   link_to_tok <- mkConnection_Client("fp_tok");
   
   Connection_Client#(Tuple3#(TOY_Token, TOY_Tick, TOY_Addr),
-                     Tuple2#(TOY_Token, TOY_Inst)
+                     Tuple2#(TOY_Token, TOY_Inst))
   //...
   link_to_fet <- mkConnection_Client("fp_fet");
+  
   Connection_Client#(Tuple3#(TOY_Token, TOY_Tick, void),
                      Tuple2#(TOY_Token, TOY_DepInfo))
   //...

@@ -669,12 +669,12 @@ endmodule
 
 module [HASim_Module] mkTOY_TOK_Stage
     //interface:
-                (FP_Stage_Link#(TOY_Tick,  //Tick type
-		                TOY_Token, //Token type
-			        void,	 //Type from previous stage
-			        void,	 //Request Type
-			        void,	 //Response Type
-			        void));  //Type to next stage
+                (FP_Stage_Con#(TOY_Tick,  //Tick type
+		               TOY_Token, //Token type
+			       void,	  //Type from previous stage
+			       void,	  //Request Type
+			       void,	  //Response Type
+			       void));    //Type to next stage
 		 
   Reg#(TOY_Token) r_first <- mkReg(minBound);
   Reg#(TOY_Token) r_free <- mkReg(minBound);
@@ -746,12 +746,12 @@ endmodule
 
 module [HASim_Module] mkTOY_FET_Stage 
     //interface:
-                (FP_Stage_Link#(TOY_Tick, 
-	                	TOY_Token, 
-				void, 
-				TOY_Addr, 
-				TOY_Inst, 
-				Tuple2#(TOY_Addr, TOY_Inst)));
+                (FP_Stage_Con#(TOY_Tick, 
+	                       TOY_Token, 
+			       void, 
+			       TOY_Addr, 
+			       TOY_Inst, 
+			       Tuple2#(TOY_Addr, TOY_Inst)));
 
   let s <- mkFP_Stage_Con("FET", 
                           "link_fet",
@@ -766,12 +766,12 @@ endmodule
 
 module [HASim_Module] mkTOY_DEC_Stage 
     //interface:
-                (FP_Stage_Link#(TOY_Tick, 
-	                	TOY_Token, 
-				Tuple2#(TOY_Addr, TOY_Inst), 
-				void, 
-				TOY_DepInfo, 
-				Tuple2#(TOY_Addr, TOY_DecodedInst)));
+                (FP_Stage_Con#(TOY_Tick, 
+	                       TOY_Token, 
+			       Tuple2#(TOY_Addr, TOY_Inst), 
+			       void, 
+			       TOY_DepInfo, 
+			       Tuple2#(TOY_Addr, TOY_DecodedInst)));
 
   let s <- mkFP_Stage_Con("DEC", 
                           "link_dec",
@@ -786,12 +786,12 @@ endmodule
 
 module [HASim_Module] mkTOY_EXE_Stage 
     //interface:
-                (FP_Stage_Link#(TOY_Tick, 
-	                	TOY_Token, 
-				Tuple2#(TOY_Addr, TOY_DecodedInst), 
-				void, 
-				TOY_InstResult, 
-				TOY_ExecedInst));
+                (FP_Stage_Con#(TOY_Tick, 
+	                       TOY_Token, 
+			       Tuple2#(TOY_Addr, TOY_DecodedInst), 
+			       void, 
+			       TOY_InstResult, 
+			       TOY_ExecedInst));
 
   let s <- mkFP_Stage_Con("EXE", 
                            "link_exe",
@@ -806,12 +806,12 @@ endmodule
 
 module [HASim_Module] mkTOY_MEM_Stage 
     //interface:
-                (FP_Stage_Link#(TOY_Tick, 
-	                	TOY_Token, 
-				TOY_ExecedInst, 
-				void, 
-				void, 
-				TOY_ExecedInst));
+                (FP_Stage_Con#(TOY_Tick, 
+	                       TOY_Token, 
+			       TOY_ExecedInst, 
+			       void, 
+			       void, 
+			       TOY_ExecedInst));
 
   let s <- mkFP_Stage_Con("MEM", 
                           "link_mem",
@@ -826,12 +826,12 @@ endmodule
 
 module [HASim_Module] mkTOY_LCO_Stage 
     //interface:
-                (FP_Stage_Link#(TOY_Tick, 
-	                	TOY_Token, 
-				TOY_ExecedInst, 
-				void, 
-				void, 
-				TOY_ExecedInst));
+                (FP_Stage_Con#(TOY_Tick, 
+	                       TOY_Token, 
+			       TOY_ExecedInst, 
+			       void, 
+			       void, 
+			       TOY_ExecedInst));
 
   let s <- mkFP_Stage_Con("LCO", 
                           "link_lco",
@@ -846,12 +846,12 @@ endmodule
 
 module [HASim_Module] mkTOY_GCO_Stage 
     //interface:
-                (FP_Stage_Link#(TOY_Tick, 
-	                	TOY_Token, 
-				TOY_ExecedInst, 
-				void, 
-				void, 
-				void));
+                (FP_Stage_Con#(TOY_Tick, 
+	                       TOY_Token, 
+			       TOY_ExecedInst, 
+			       void, 
+			       void, 
+			       void));
 
   let s <- mkFP_Stage_Con("GCO", 
                           "link_gco",
@@ -866,9 +866,7 @@ endmodule
 
 module [HASim_Module] mkTOY_FP (); 
 
-  BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) 
-  //...
-  bypass <- mkBypassUnit();
+  BypassUnit#(TOY_RName, TOY_PRName, TOY_Value, TOY_Token, TOY_SnapshotPtr) bypass <- mkBypassUnit();
   
   Empty fet <- mkTOY_Fetch();
   Empty dec <- mkTOY_Decode(bypass);
@@ -878,9 +876,9 @@ module [HASim_Module] mkTOY_FP ();
   Empty gco <- mkTOY_GlobalCommit();
 
   
-  FP_Stage_Link#(TOY_Tick, TOY_Token,
-		 void, void, 
-		 void, void)
+  FP_Stage_Con#(TOY_Tick, TOY_Token,
+		void, void, 
+		void, void)
   //...
   tok_stage <- mkTOY_TOK_Stage();
 		  
@@ -889,9 +887,9 @@ module [HASim_Module] mkTOY_FP ();
   let exe_stage <- mkTOY_EXE_Stage();
   let mem_stage <- mkTOY_MEM_Stage();
   let lco_stage <- mkTOY_LCO_Stage();
-  FP_Stage_Link#(TOY_Tick, TOY_Token, 
-		 TOY_ExecedInst, void, 
-		 void, void) 
+  FP_Stage_Con#(TOY_Tick, TOY_Token, 
+		TOY_ExecedInst, void, 
+		void, void) 
   //...
   gco_stage <- mkTOY_GCO_Stage();
   

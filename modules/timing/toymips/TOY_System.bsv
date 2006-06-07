@@ -16,7 +16,7 @@ typedef CPU#(TOY_Tick, void, void) TOY_CPU;
 
 //mkTOY_CPU :: CPU
 
-module [Module] mkTOY_CPU (TOY_CPU);
+module [HASim_Module] mkTOY_CPU (TOY_CPU);
 
   let fp <- mkTOY_FP();
   let tp <- mkTOY_TP_Simple();
@@ -26,7 +26,7 @@ module [Module] mkTOY_CPU (TOY_CPU);
 endmodule
 
 
-module [Module] mkTOY_System (TOY_System);
+module [HASim_Module] mkTOY_System (TOY_System);
 
   TOY_CPU cpu <- mkTOY_CPU();
   TOY_Mem mem <- mkTOY_Mem();

@@ -1,0 +1,68 @@
+
+[Hasim simple controller]
+File=modules/controller/simple/hasim_simple_controller.awb
+Packagehint=hasim
+
+[Global]
+SaveParameters=0
+Description=Hasim simple smips model
+File=hasim_simple_smips
+Version=2.0
+Name=Hasim simple smips model
+
+[Hasim - Hardware (fpga) based system/Requires]
+hasim_functional_partition=Hasim smips functional parition
+hasim_chip=Hasim simple timing partition
+hasim_isa=Hasim - SMIPS ISA
+
+[Hasim base library]
+Packagehint=hasim
+File=modules/common/hasim_common.awb
+
+[Model]
+DefaultAttributes=simple smips hasim
+model=HAsim Model Foundation
+
+[Hasim - Hardware (fpga) based system]
+Packagehint=hasim
+File=modules/system/hasim_system.awb
+
+[Hasim functional model base]
+Packagehint=hasim
+File=modules/functional/common/hasim_functional_partition_common.awb
+
+[Hasim simple timing partition]
+Packagehint=hasim
+File=modules/chip/toymips/simple/hasim_simple_chip.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/model.awb
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - Hardware (fpga) based system
+hasim_controller=Hasim simple controller
+hasim_common=Hasim base library
+
+[Hasim smips functional parition]
+Packagehint=hasim
+File=modules/functional/smips/hasim_smips_functional_partition.awb
+
+[Hasim - SMIPS ISA]
+Packagehint=hasim
+File=modules/isa/smips/hasim_smips_isa.awb
+
+[Hasim test case harness]
+Packagehint=hasim
+File=modules/functional/test-cases/common/testcase_harness.awb
+
+[Hasim smips functional parition/Requires]
+testcase_harness=Hasim test case harness
+hasim_functional_partition_common=Hasim functional model base
+
+[Hasim toymips test cases]
+Packagehint=hasim
+File=modules/functional/test-cases/toymips/toymips_testcases.awb
+
+[Hasim test case harness/Requires]
+test_cases=Hasim toymips test cases

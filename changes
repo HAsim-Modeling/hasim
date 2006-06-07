@@ -312,3 +312,219 @@ Directory modules/system
 Another partial reorganization.
 
 Michael/Martha/Joel
+
+----------
+jsemer      Date: Wed Jun  7 18:29:27 EDT 2006  CSN: CSN-hasim-54
+                  Wed Jun  7 22:29:27 UTC 2006
+
+
+Directory modules/functional/toymips
+ hasim_toymips_functional_partition.awb Locally Modified           53 
+
+Directory modules/functional/smips
+ hasim_smips_functional_partition.awb Locally Modified           53 
+
+Directory modules/functional/test-cases/toymips
+ TOY_TestCases.bsv         Locally Removed            52 
+ TestCases.bsv             Locally Added               - 
+ toymips_testcases.awb     Locally Modified           52 
+
+Directory modules/functional/test-cases/common
+ TestCase.bsv              Locally Removed            53 
+ TestCaseHarness.bsv       Locally Added               - 
+
+Directory modules/controller
+ common/                   Locally Removed            51 
+
+Directory modules/chip/toymips
+ hasim_5stage_timing_partition.awb Locally Removed            53 
+ hasim_simple_timing_partition.awb Locally Removed            53 
+ TOY_TimingPartition.bsv   Locally Removed            53 
+ TOY_System.bsv            Locally Removed            53 
+ 5stage/                   Locally Added               0 
+
+Directory modules/chip/toymips/5stage
+ hasim_5stage_chip.awb     Locally Added               - 
+ Chip.bsv                  Locally Added               - 
+
+Directory modules/chip/toymips/simple
+ hasim_simple_chip.awb     Locally Added               - 
+ Chip.bsv                  Locally Added               - 
+
+Directory modules/chip/toymips
+ TOY_TimingPartition_Pipeline.bsv Locally Removed            53 
+
+Directory models
+ toymips/                  Locally Removed            51 
+
+Directory models/toymips
+ unpipelined.hmc           Locally Removed            51 
+
+Directory .
+ models/                   Locally Removed            51 
+
+Directory config/pm/hasim/toymips
+ hasim_5stage_toymips.apm  Locally Modified           51 
+ hasim_simple_toymips.apm  Locally Modified           51 
+
+Last step of this reorganization
+
+Martha/Joel/Michael
+
+----------
+jsemer      Date: Wed Jun  7 18:31:49 EDT 2006  CSN: CSN-hasim-54
+                  Wed Jun  7 22:31:49 UTC 2006
+
+
+Directory admin/packages
+ hasim                     Locally Modified           53 
+
+Directory admin
+ mytags                    Locally Modified           53 
+
+Directory modules/functional/toymips
+ hasim_toymips_functional_partition.awb Locally Modified           53 
+
+Directory modules/functional/smips
+ hasim_smips_functional_partition.awb Locally Modified           53 
+
+Directory modules/functional/test-cases/toymips
+ TOY_TestCases.bsv         Locally Removed            52 
+ TestCases.bsv             Locally Added               - 
+ toymips_testcases.awb     Locally Modified           52 
+
+Directory modules/functional/test-cases/common
+ TestCase.bsv              Locally Removed            53 
+ testcase_harness.awb      Locally Added               0 
+ TestCaseHarness.bsv       Locally Added               - 
+
+Directory modules/controller
+ common/                   Locally Removed            51 
+
+Directory modules/isa/toymips
+ hasim_toymips_isa.awb     Locally Added               0 
+
+Directory modules/model
+ model.awb                 Locally Added               0 
+
+Directory modules
+ model/                    Locally Added               0 
+
+Directory modules/chip/toymips
+ hasim_5stage_timing_partition.awb Locally Removed            53 
+ hasim_simple_timing_partition.awb Locally Removed            53 
+ TOY_TimingPartition.bsv   Locally Removed            53 
+ TOY_System.bsv            Locally Removed            53 
+ 5stage/                   Locally Added               0 
+
+Directory modules/chip/toymips/5stage
+ hasim_5stage_chip.awb     Locally Added               - 
+ Chip.bsv                  Locally Added               - 
+
+Directory modules/chip/toymips/simple
+ hasim_simple_chip.awb     Locally Added               - 
+ Chip.bsv                  Locally Added               - 
+
+Directory modules/chip/toymips
+ TOY_TimingPartition_Pipeline.bsv Locally Removed            53 
+
+Directory models
+ toymips/                  Locally Removed            51 
+
+Directory models/toymips
+ unpipelined.hmc           Locally Removed            51 
+
+Directory .
+ models/                   Locally Removed            51 
+
+Directory config/pm/hasim/toymips
+ hasim_5stage_toymips.apm  Locally Modified           51 
+ hasim_simple_toymips.apm  Locally Modified           51 
+
+Directory .
+ changes                   Locally Modified           53 
+
+Last commit of this reoganization
+
+Martha/Joel/Michael
+
+----------
+jsemer      Date: Wed Jun  7 18:33:16 EDT 2006  CSN: CSN-hasim-54
+                  Wed Jun  7 22:33:16 UTC 2006
+
+
+Directory admin/packages
+ hasim                     Locally Modified           53 
+
+Directory admin
+ mytags                    Locally Modified           53 
+
+Directory models
+ toymips/                  Locally Removed            51 
+
+Directory models/toymips
+ unpipelined.hmc           Locally Removed            51 
+
+Directory .
+ models/                   Locally Removed            51 
+
+Directory config/pm/hasim/toymips
+ hasim_5stage_toymips.apm  Locally Modified           51 
+ hasim_simple_toymips.apm  Locally Modified           51 
+
+Directory modules
+ model/                    Locally Added               0 
+
+Directory modules/model
+ model.awb                 Locally Added               0 
+
+Directory modules/functional/toymips
+ hasim_toymips_functional_partition.awb Locally Modified           53 
+
+Directory modules/functional/smips
+ hasim_smips_functional_partition.awb Locally Modified           53 
+
+Directory modules/functional/test-cases/toymips
+ TOY_TestCases.bsv         Locally Removed            53 
+ TestCases.bsv             Locally Added               - 
+ toymips_testcases.awb     Locally Modified           53 
+
+Directory modules/functional/test-cases/common
+ TestCase.bsv              Locally Removed            53 
+ testcase_harness.awb      Locally Added               0 
+ TestCaseHarness.bsv       Locally Added               - 
+
+Directory modules/controller
+ common/                   Locally Removed            53 
+
+Directory modules/controller/common
+ hasim_simple_controller.awb Locally Removed            53 
+ Controller.bsv            Locally Removed            53 
+
+Directory modules/chip/toymips
+ hasim_5stage_timing_partition.awb Locally Removed            53 
+ hasim_simple_timing_partition.awb Locally Removed            53 
+ TOY_TimingPartition.bsv   Locally Removed            53 
+ TOY_System.bsv            Locally Removed            53 
+ 5stage/                   Locally Added               0 
+
+Directory modules/chip/toymips/5stage
+ hasim_5stage_chip.awb     Locally Added               - 
+ Chip.bsv                  Locally Added               - 
+
+Directory modules/chip/toymips/simple
+ hasim_simple_chip.awb     Locally Added               - 
+ Chip.bsv                  Locally Added               - 
+
+Directory modules/chip/toymips
+ TOY_TimingPartition_Pipeline.bsv Locally Removed            53 
+
+Directory modules/isa/toymips
+ hasim_toymips_isa.awb     Locally Added               0 
+
+Directory .
+ changes                   Locally Modified           53 
+
+Last step of this reorganization
+
+Martha/Joel/Michael

@@ -7,13 +7,15 @@
 #/*
 # %AWB_START
 #
-# %name Hasim simple timing partition
-# %desc Hasim simple timing partition
-# %provides hasim_timing_partition
+# %name Hasim test case harness
+# %desc Hasim test case harness
+# %provides testcase_harness
 #
-# %attributes simple toymips hasim
+# %requires test_cases
 #
-# %private TOY_TimingPartition.bsv  
+# %attributes hasim
+#
+# %private TestCaseHarness.bsv
 #
 # %AWB_END
 # */

@@ -7,13 +7,13 @@
 #/*
 # %AWB_START
 #
-# %name Hasim toymips test cases
-# %desc Hasim toymips test cases
-# %provides test_cases
+# %name Hasim simple timing partition
+# %desc Hasim simple timing partition
+# %provides hasim_chip
 #
-# %attributes toymips hasim
+# %attributes simple toymips hasim
 #
-# %private TestCases.bsv
+# %public Chip.bsv
 #
 # %AWB_END
 # */

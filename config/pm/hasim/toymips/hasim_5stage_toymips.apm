@@ -1,65 +1,68 @@
 
 [Global]
 SaveParameters=0
-Description=Hasim simple toymips model
+Description=Hasim 5stage toymips model
 File=hasim_5stage_toymips
 Version=2.0
-Name=Hasim simple toymips model
+Name=Hasim 5stage toymips model
 
 [Model]
 DefaultAttributes=5stage toymips hasim  
-model=Default Model Foundation
-
-[Default Model Foundation]
-Packagehint=simcore
-File=pm/model.awb
-
-[Hasim simple controller/Requires]
-test_cases=Hasim toymips test cases
-
-[Hasim cpu]
-Packagehint=hasim
-File=modules/cpu/hasim_cpu.awb
+model=HAsim Model Foundation
 
 [Hasim simple controller]
 Packagehint=hasim
-File=modules/controller/common/hasim_simple_controller.awb
-
-[Hasim cpu/Requires]
-hasim_functional_partition=Hasim toymips functional model
-hasim_timing_partition=Hasim 5 stage pipelined timing partition
+File=modules/controller/simple/hasim_simple_controller.awb
 
 [Hasim - Hardware (fpga) based system/Requires]
-cpu=Hasim cpu
-hasim_base=Hasim base library
-
-[Hasim 5 stage pipelined timing partition]
-Packagehint=hasim
-File=modules/timing/toymips/hasim_5stage_timing_partition.awb
+hasim_functional_partition=Hasim toymips functional model
+hasim_chip=Hasim 5 stage pipelined timing partition
+hasim_isa=Hasim - TOYMIPS ISA
 
 [Hasim base library]
 Packagehint=hasim
-File=modules/base/common/hasim_base.awb
-
-[Default Model Foundation/Requires]
-controller=Hasim simple controller
-system=Hasim - Hardware (fpga) based system
+File=modules/common/hasim_common.awb
 
 [Hasim - Hardware (fpga) based system]
 Packagehint=hasim
 File=modules/system/hasim_system.awb
 
-[Hasim toymips test cases]
-Packagehint=hasim
-File=modules/controller/toymips/toymips_testcases.awb
-
 [Hasim functional model base]
 Packagehint=hasim
-File=modules/functional/common/hasim_functional_partition_base.awb
+File=modules/functional/common/hasim_functional_partition_common.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/model.awb
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - Hardware (fpga) based system
+hasim_controller=Hasim simple controller
+hasim_common=Hasim base library
+
+[Hasim - TOYMIPS ISA]
+Packagehint=hasim
+File=modules/isa/toymips/hasim_toymips_isa.awb
 
 [Hasim toymips functional model/Requires]
-hasim_functional_partition_base=Hasim functional model base
+hasim_functional_partition_common=Hasim functional model base
+testcase_harness=Hasim test case harness
 
 [Hasim toymips functional model]
 Packagehint=hasim
 File=modules/functional/toymips/hasim_toymips_functional_partition.awb
+
+[Hasim 5 stage pipelined timing partition]
+Packagehint=hasim
+File=modules/chip/toymips/5stage/hasim_5stage_chip.awb
+
+[Hasim toymips test cases]
+Packagehint=hasim
+File=modules/functional/test-cases/toymips/toymips_testcases.awb
+
+[Hasim test case harness/Requires]
+test_cases=Hasim toymips test cases
+
+[Hasim test case harness]
+Packagehint=hasim
+File=modules/functional/test-cases/common/testcase_harness.awb

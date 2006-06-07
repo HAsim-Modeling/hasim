@@ -11,7 +11,7 @@
 # %desc Hasim toymips functional model
 # %provides hasim_functional_partition
 #
-# %requires hasim_functional_partition_common
+# %requires hasim_functional_partition_common testcase_harness
 #
 # %attributes toymips hasim
 #

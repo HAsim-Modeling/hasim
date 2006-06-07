@@ -1,0 +1,17 @@
+********************************************************************
+* Awb module specification
+********************************************************************
+
+%AWB_START
+
+%name HAsim Model Foundation
+%desc HAsim foundation module for ASIM models
+%provides model
+
+%requires hasim_controller
+%requires hasim_system
+%requires hasim_common
+
+%attributes model
+
+%AWB_END

@@ -1,14 +1,7 @@
 
-[Hasim simple controller/Requires]
-test_cases=Hasim toymips test cases
-
-[Hasim cpu]
-Packagehint=hasim
-File=modules/cpu/hasim_cpu.awb
-
 [Hasim simple controller]
+File=modules/controller/simple/hasim_simple_controller.awb
 Packagehint=hasim
-File=modules/controller/common/hasim_simple_controller.awb
 
 [Global]
 SaveParameters=0
@@ -17,49 +10,47 @@ File=hasim_simple_toymips
 Version=2.0
 Name=Hasim simple toymips model
 
-[Hasim cpu/Requires]
-hasim_functional_partition=Hasim toymips functional model
-hasim_timing_partition=Hasim simple timing partition
-
 [Hasim - Hardware (fpga) based system/Requires]
-cpu=Hasim cpu
-hasim_base=Hasim base library
+hasim_functional_partition=Hasim toymips functional model
+hasim_chip=Hasim simple timing partition
+hasim_isa=Hasim - TOYMIPS ISA
 
 [Hasim base library]
 Packagehint=hasim
-File=modules/base/common/hasim_base.awb
+File=modules/common/hasim_common.awb
 
 [Model]
 DefaultAttributes=simple toymips hasim
-model=Default Model Foundation
-
-[Default Model Foundation/Requires]
-controller=Hasim simple controller
-system=Hasim - Hardware (fpga) based system
+model=HAsim Model Foundation
 
 [Hasim - Hardware (fpga) based system]
 Packagehint=hasim
 File=modules/system/hasim_system.awb
 
-[Hasim toymips test cases]
-Packagehint=hasim
-File=modules/controller/toymips/toymips_testcases.awb
-
 [Hasim functional model base]
 Packagehint=hasim
-File=modules/functional/common/hasim_functional_partition_base.awb
+File=modules/functional/common/hasim_functional_partition_common.awb
 
 [Hasim toymips functional model/Requires]
-hasim_functional_partition_base=Hasim functional model base
+hasim_functional_partition_common=Hasim functional model base
 
 [Hasim toymips functional model]
 Packagehint=hasim
 File=modules/functional/toymips/hasim_toymips_functional_partition.awb
 
-[Default Model Foundation]
-Packagehint=simcore
-File=pm/model.awb
-
 [Hasim simple timing partition]
 Packagehint=hasim
-File=modules/timing/toymips/hasim_simple_timing_partition.awb
+File=modules/chip/toymips/simple/hasim_simple_chip.awb
+
+[Hasim - TOYMIPS ISA]
+Packagehint=hasim
+File=modules/isa/toymips/hasim_toymips_isa.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/model.awb
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - Hardware (fpga) based system
+hasim_controller=Hasim simple controller
+hasim_common=Hasim base library

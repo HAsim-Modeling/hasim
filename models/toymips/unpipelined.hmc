@@ -1,9 +1,0 @@
-modules/functional/toymips/FunctionalPartition.bsv
-modules/functional/common/BypassUnit.bsv
-modules/functional/common/Mem.bsv
-modules/controller/toymips/SimpleController.bsv
-modules/timing/toymips/TimingPartition.bsv
-modules/common/Datatypes.bsv
-modules/common/Debug.bsv
-modules/common/ValueVector.bsv
-modules/common/BypassFIFO.bsv

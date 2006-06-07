@@ -7,14 +7,13 @@
 #/*
 # %AWB_START
 #
-# %name Hasim toymips test cases
-# %desc Hasim toymips test cases
-# %provides test_cases
+# %name Hasim - TOYMIPS ISA
+# %desc Hasim - TOYMIPS ISA
+# %provides hasim_isa
 #
-# %attributes toymips hasim
+# %attributes hasim
 #
-# %private TestCases.bsv
+# %private Isa.bsv
 #
 # %AWB_END
 # */
-

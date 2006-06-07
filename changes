@@ -191,3 +191,50 @@ Directory modules/base/common
 
 Updated HASim to work with new Connections methodology, 
 with point-to-point connections of limited bit-width.
+
+----------
+jsemer      Date: Wed Jun  7 17:20:01 EDT 2006  CSN: CSN-hasim-52
+                  Wed Jun  7 21:20:01 UTC 2006
+
+
+Directory modules/functional
+ test-cases/               Locally Added               0 
+
+Directory modules/controller
+ toymips/                  Locally Removed            51 
+
+Directory modules/controller/toymips
+ TOY_TestCases.bsv         Locally Removed            51 
+ toymips_testcases.awb     Locally Removed            51 
+
+Directory modules
+ base/                     Locally Removed            51 
+
+Directory modules/base
+ toymips/                  Locally Removed            51 
+
+Directory modules/base/toymips
+ TOY_Datatypes.bsv         Locally Removed            51 
+
+Directory modules/base
+ common/                   Locally Removed            51 
+
+Directory modules/base/common
+ Debug.bsv                 Locally Removed            51 
+ hasim_base.awb            Locally Removed            51 
+ ValueVector.bsv           Locally Removed            51 
+ Links.bsv                 Locally Removed            51 
+ HASim.bsv                 Locally Removed            51 
+ BypassFIFO.bsv            Locally Removed            51 
+
+Directory modules/base
+ smips/                    Locally Removed            51 
+
+Directory modules/base/smips
+ SMIPS_Datatypes.bsv       Locally Removed            51 
+ SMIPS_Interfaces.bsv      Locally Removed            51 
+ SMIPS_Linker.bsv          Locally Removed            51 
+
+Partial commit of reorganization of hasim model.
+
+Joel/Michael/Martha

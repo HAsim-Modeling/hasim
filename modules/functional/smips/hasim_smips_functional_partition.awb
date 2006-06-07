@@ -9,13 +9,14 @@
 #
 # %name Hasim smips functional parition
 # %desc Hasim smips functional parition
-# %provides hasim_functional_parition
+# %provides hasim_functional_partition
 #
-# %requires hasim_functional_partition_base
+# %requires hasim_functional_partition_common
 #
 # %attributes smips hasim
 #
-# %private  SMIPS_FunctionalPartition.bsv SMIPS_Mem.bsv          
+# %public  FunctionalPartition.bsv
+# %private SMIPS_Mem.bsv          
 #
 # %AWB_END
 # */

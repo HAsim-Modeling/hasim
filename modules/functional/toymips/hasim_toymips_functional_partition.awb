@@ -11,11 +11,12 @@
 # %desc Hasim toymips functional model
 # %provides hasim_functional_partition
 #
-# %requires hasim_functional_partition_base
+# %requires hasim_functional_partition_common
 #
 # %attributes toymips hasim
 #
-# %private TOY_FunctionalPartition.bsv
+# %public  FunctionalParttion.bsv
+# %private TOY_Mem.bsv
 #
 # %AWB_END
 # */

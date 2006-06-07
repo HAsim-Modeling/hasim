@@ -9,11 +9,11 @@
 #
 # %name Hasim base library
 # %desc Hasim base libarary
-# %provides hasim_base
+# %provides hasim_common
 #
 # %attributes hasim
 #
-# %private BypassFIFO.bsv Debug.bsv Links.bsv HASim.bsv
+# %private BypassFIFO.bsv Debug.bsv HASim.bsv
 #
 # %AWB_END
 # */

@@ -238,3 +238,77 @@ Directory modules/base/smips
 Partial commit of reorganization of hasim model.
 
 Joel/Michael/Martha
+
+----------
+jsemer      Date: Wed Jun  7 17:59:42 EDT 2006  CSN: CSN-hasim-53
+                  Wed Jun  7 21:59:42 UTC 2006
+
+
+Directory modules/functional/common
+ FunctionalPartitionBase.bsv Locally Added               - 
+ FunctionalPartition.bsv   Locally Removed            51 
+ hasim_functional_partition_common.awb Locally Added               - 
+ hasim_functional_partition_base.awb Locally Removed            51 
+
+Directory modules/functional/smips
+ hasim_smips_functional_partition.awb Locally Modified           51 
+ SMIPS_FunctionalPartition.bsv Locally Removed            51 
+ FunctionalPartition.bsv   Locally Added               - 
+
+Directory modules/functional/test-cases
+ common/                   Locally Added               0 
+
+Directory modules/functional/test-cases/common
+ TestCase.bsv              Locally Added               - 
+
+Directory modules/functional/toymips
+ TOY_FunctionalPartition.bsv Locally Removed            51 
+ FunctionalPartition.bsv   Locally Added               - 
+ hasim_toymips_functional_partition.awb Locally Modified           51 
+
+Directory modules/controller/common
+ TestCase.bsv              Locally Removed            51 
+ hasim_simple_controller.awb Locally Modified           51 
+ SimpleController.bsv      Locally Removed            51 
+ Controller.bsv            Locally Added               - 
+ System.bsv                Locally Removed            51 
+
+Directory modules/timing
+ toymips/                  Locally Removed            51 
+
+Directory modules/timing/toymips
+ hasim_5stage_timing_partition.awb Locally Removed            51 
+ hasim_simple_timing_partition.awb Locally Removed            51 
+ TOY_TimingPartition.bsv   Locally Removed            51 
+ TOY_System.bsv            Locally Removed            51 
+ TOY_TimingPartition_Pipeline.bsv Locally Removed            51 
+
+Directory modules
+ timing/                   Locally Removed            51 
+
+Directory modules/common
+ hasim_common.awb          Locally Added               - 
+ hasim_base.awb            Locally Removed            52 
+ Links.bsv                 Locally Removed            52 
+
+Directory modules/isa/toymips
+ TOY_Datatypes.bsv         Locally Removed            52 
+ isa.bsv                   Locally Added               - 
+
+Directory modules/isa/smips
+ hasim_smips_isa.awb       Locally Added               0 
+ SMIPS_Datatypes.bsv       Locally Removed            52 
+ Isa.bsv                   Locally Added               - 
+ SMIPS_Interfaces.bsv      Locally Removed            52 
+ SMIPS_Linker.bsv          Locally Removed            52 
+
+Directory modules/chip/toymips
+ simple/                   Locally Added               0 
+
+Directory modules/system
+ hasim_system.awb          Locally Modified           51 
+ System.bsv                Locally Added               - 
+
+Another partial reorganization.
+
+Michael/Martha/Joel

@@ -7,14 +7,13 @@
 #/*
 # %AWB_START
 #
-# %name Hasim simple controller
-# %desc Hasim simple controller
-# %provides hasim_controller
-#
+# %name Hasim functional model base
+# %desc Hasim functional model base
+# %provides hasim_functional_partition_common
 #
 # %attributes hasim
 #
-# %private Controller.bsv
+# %public   FunctionalPartitionBase.bsv BypassUnit.bsv Mem.bsv freelist.hex
 #
 # %AWB_END
 # */

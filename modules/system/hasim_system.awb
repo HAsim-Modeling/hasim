@@ -9,10 +9,12 @@
 #
 # %name Hasim - Hardware (fpga) based system
 # %desc Hasim - Hardware (fpga) based system
-# %provides system
-# %requires hasim_base cpu
+# %provides hasim_system
+# %requires hasim_functional_partition hasim_isa hasim_chip
 #
 # %attributes hasim
+#
+# %private System.bsv
 #
 # %AWB_END
 # */

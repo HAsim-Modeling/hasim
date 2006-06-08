@@ -23,7 +23,7 @@ import Connectable::*;
 
 typedef Empty Model;
 
-//************ Controller Interface ************//
+//------------ Controller Interface ------------//
 
 // A Controller is the part of the Model which controls the
 // simulation. All communication with the "outside world" passes
@@ -38,7 +38,7 @@ typedef Empty Model;
 
 typedef Empty Controller;
 
-//************ TModule Interface ************//
+//------------ TModule Interface ------------//
 
 // A TModule is a Timing Partition Module. 
 // This is a module which is controlled by a controller. It has the
@@ -62,28 +62,14 @@ interface TModule#(type tick_T, type command_T, type result_T);
 
 endinterface
 
-//************ Timing Partition Heirarchy ************//
+//------------ Timing Partition Heirarchy ------------//
 
 // Top-level TModule is a System.
 // Currently it includes magic links to the IMem/DMem 
 // so that the controller can load the program
 
-interface System#(type tick_T, 
-                  type command_T, 
-		  type result_T, 
-		  type addr_T,
-		  type inst_T,
-		  type value_T);
-
-  //TModule interface
-  interface TModule#(tick_T, command_T, result_T) tmod;
-
-  //Magic Memory interfaces
-  interface RegFile#(addr_T, inst_T)  imem;
-  interface RegFile#(addr_T, value_T) dmem;
-
-endinterface
-        
+typedef TModule#(tick_T, command_T, result_T) 
+        System#(type tick_T, type command_T, type result_T);
 
 // A System contains Boards
 
@@ -109,7 +95,7 @@ typedef TModule#(tick_T, command_T, result_T)
 
 
 
-//************************* Connections **************************//
+//------------------------- Connections --------------------------//
 //                                                                //
 // Connections are the plumbing of HASim. They represent basic	  //
 // point-to-point communication. The advantage over traditional   //
@@ -120,19 +106,14 @@ typedef TModule#(tick_T, command_T, result_T)
 // These might eventually be donated to the Bluespec library.	  //
 // 								  //
 //                                                                //
-//****************************************************************//
+//----------------------------------------------------------------//
 
 
 //The basic sending half of a connection.
 
 interface Connection_Send#(type msg_T);
   
-  //For the user
   method Action send(msg_T data);
-
-  //The outgoing connection
-  //Hooked up by the system
-  //interface Get#(msg_T) outgoing;
   
 endinterface
 
@@ -144,10 +125,6 @@ interface Connection_Receive#(type msg_T);
   //For the user
   method ActionValue#(msg_T) receive();
 
-  //The incoming connection
-  //Hooked up by the system
-  //interface Put#(msg_T) incoming;
-  
 endinterface
 
 
@@ -159,10 +136,6 @@ interface Connection_Client#(type req_T, type resp_T);
   //For the user
   method Action               makeReq(req_T data);
   method ActionValue#(resp_T) getResp;
-
-  //The outgoing req and incoming resp
-  //Hooked up by the system
-  //interface Client#(req_T, resp_T) client;
   
 endinterface
 
@@ -176,10 +149,6 @@ interface Connection_Server#(type req_T, type resp_T);
   //For the user
   method ActionValue#(req_T) getReq();
   method Action              makeResp(resp_T data);
-
-  //The outgoing req and incoming resp
-  //Hooked up by the system
-  //interface Server#(req_T, resp_T) server;
   
 endinterface
 
@@ -243,7 +212,7 @@ module [Connected_Module] mkConnection_Send#(String portname)
   
   FIFO#(msg_T) q <- mkFIFO();
   
-  //Bind the interface to a name so we can refer to it twice.
+  //Bind the interface to a name for convenience.
   let outg = (interface Get;
 		method ActionValue#(Bit#(`ConnectionWidth)) get();
 		  q.deq();
@@ -253,9 +222,6 @@ module [Connected_Module] mkConnection_Send#(String portname)
   
   //Add our interface to the ModuleCollect collection
   addToCollection(LSend tuple2(portname, outg));
-
-  //Expose our interface to the outside world
-  //interface outgoing = outg;
 
   method Action send(msg_T data);
     q.enq(data);
@@ -277,13 +243,9 @@ module [Connected_Module] mkConnection_Receive#(String portname)
 	       endmethod
 	     endinterface);
 
-  //Bind the interface to a name so we can refer to it twice.
+  //Bind the interface to a name for convenience
   addToCollection(LRec tuple2(portname, inc));
   
-   
-  //Expose our interface to the outside world
-  //interface incoming = inc;
-
   method ActionValue#(msg_T) receive();
     noAction;
     return unmarshall(w);
@@ -297,8 +259,6 @@ module [Connected_Module] mkConnection_Client#(String portname)
     provisos
             (Bits#(req_T,  req_SZ),
 	     Bits#(resp_T, resp_SZ),
-	     //These provisos express that the message is small enough
-	     //Later this restriction could be lifted:
 	     Transmittable#(req_T),
 	     Transmittable#(resp_T));
 
@@ -308,7 +268,7 @@ module [Connected_Module] mkConnection_Client#(String portname)
   FIFO#(req_T) q <- mkFIFO();
   Wire#(Bit#(`ConnectionWidth)) w <- mkWire();
   
-  //Bind the interface to a name so we can refer to it twice.
+  //Bind the interfaces to names.
   let outg = (interface Get;
 		method ActionValue#(Bit#(`ConnectionWidth)) get();
 		  q.deq();
@@ -324,9 +284,6 @@ module [Connected_Module] mkConnection_Client#(String portname)
   
   //Add our interface to the ModuleCollect collection
   addToCollection(LSend tuple2(portname, outg));
-
-  //Expose our interface to the outside world
-  //interface outgoing = outg;
 
   method Action makeReq(req_T data);
     q.enq(data);
@@ -345,8 +302,6 @@ module [Connected_Module] mkConnection_Server#(String portname)
     provisos
             (Bits#(req_T,  req_SZ),
 	     Bits#(resp_T, resp_SZ),
-	     //These provisos express that the message is small enough
-	     //Later this restriction could be lifted:
 	     Transmittable#(req_T),
 	     Transmittable#(resp_T));
 
@@ -356,7 +311,7 @@ module [Connected_Module] mkConnection_Server#(String portname)
   FIFO#(resp_T) q <- mkFIFO();
   Wire#(Bit#(`ConnectionWidth)) w <- mkWire();
   
-  //Bind the interface to a name so we can refer to it twice.
+  //Bind the interface to names for convenience
   let outg = (interface Get;
 		method ActionValue#(Bit#(`ConnectionWidth)) get();
 		  q.deq();
@@ -372,9 +327,6 @@ module [Connected_Module] mkConnection_Server#(String portname)
   
   //Add our interface to the ModuleCollect collection
   addToCollection(LSend tuple2(portname, outg));
-
-  //Expose our interface to the outside world
-  //interface outgoing = outg;
 
   method Action makeResp(resp_T data);
     q.enq(data);

@@ -8,7 +8,7 @@
 # %AWB_START
 #
 # %name Hasim base library
-# %desc Hasim base libarary
+# %desc Hasim base library
 # %provides hasim_common
 #
 # %attributes hasim

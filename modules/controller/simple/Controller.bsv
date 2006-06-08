@@ -1,9 +1,11 @@
+//HASim imports
 import HASim::*;
 import System::*;
 import TestCase::*;
 import Loader::*;
 import Checker::*;
 
+//BSV library imports
 import PrimArray::*;
 import RegFile::*;
 import Connectable::*;

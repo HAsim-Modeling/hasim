@@ -7,7 +7,7 @@ import Vector::*;
 
 import HASim::*;
 import Mem::*;
-import FunctionalPartition::*;
+import FunctionalPartitionBase::*;
 import BypassUnit::*;
 import Debug::*;
 

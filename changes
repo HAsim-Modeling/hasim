@@ -428,3 +428,56 @@ Directory modules/common
 Partial cleanup from previous reorganization.
 
 Michael
+
+----------
+mpellaue    Date: Fri Jun  9 17:19:22 EDT 2006  CSN: CSN-hasim-57
+                  Fri Jun  9 21:19:22 UTC 2006
+
+
+Directory modules/functional/test-cases/toymips/simple_subtraction
+ TestCase.bsv              Locally Added               0 
+ toymips_testcase_simple_subtraction.awb Locally Added               0 
+
+Directory modules/functional/test-cases/toymips
+ simple_subtraction/       Locally Added               0 
+ TestCases.bsv             Locally Removed            56 
+
+Directory modules/functional/test-cases/toymips/branch
+ TestCase.bsv              Locally Added               0 
+ toymips_testcase_branch.awb Locally Added               0 
+
+Directory modules/functional/test-cases/toymips
+ branch/                   Locally Added               0 
+
+Directory modules/functional/test-cases/toymips/stalls
+ TestCase.bsv              Locally Added               0 
+ toymips_testcase_branch.awb Locally Added               0 
+
+Directory modules/functional/test-cases/toymips
+ stalls/                   Locally Added               0 
+
+Directory modules/functional/test-cases/toymips/simple_addition
+ TestCase.bsv              Locally Added               0 
+ toymips_testcase_simple_addition.awb Locally Added               0 
+
+Directory modules/functional/test-cases/common
+ TestCaseBase.bsv          Locally Added               - 
+ testcase_harness.awb      Locally Removed            55 
+ TestCaseHarness.bsv       Locally Removed            55 
+ hasim_testcase_common.awb Locally Added               - 
+
+Directory modules/functional/common
+ FunctionalPartitionBase.bsv Locally Modified           55 
+ TokGen.bsv                Locally Added               0 
+ hasim_tokgen.awb          Locally Added               0 
+ FUNCP_Pipeline.bsv        Locally Added               0 
+ hasim_funcp_pipeline.awb  Locally Added               0 
+
+Directory modules/functional/toymips
+ FunctionalPartition.bsv   Locally Modified           55 
+ hasim_toymips_functional_partition.awb Locally Modified           55 
+
+
+Partial commit of ongoing reorg.
+
+Michael

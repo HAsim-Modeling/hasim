@@ -11,11 +11,11 @@
 # %desc Hasim toymips functional model
 # %provides hasim_functional_partition
 #
-# %requires hasim_functional_partition_common testcase_harness
+# %requires hasim_functional_partition_common hasim_testcase_common hasim_toymips_testcase
 #
 # %attributes toymips hasim
 #
-# %public  FunctionalParttion.bsv
+# %public  FunctionalPartition.bsv
 # %private TOY_Mem.bsv
 #
 # %AWB_END

@@ -1,18 +1,14 @@
-///////////////////////////////////////////////////////////////////////////////
-//                                                                           //
-// TOY_TestCases.bsv                                                         //
-//                                                                           //
-// Test cases for the ToyMIPS ISA. To be used while verifying timing         //
-// partitions.                                                               //
-//                                                                           //
-//                                                                           //
-//                                                                           //
-///////////////////////////////////////////////////////////////////////////////
+//HASim library imports
+import HASim::*;
+import TestCaseBase::*;
 
 //Model-specific imports
 import Isa::*;
 
-
+//This file provides the following HASim-required names:
+//     Name:             Type:
+//     -----             -----
+//     test_case         TestCase#(inst, val) 
 
 
 // A branching test with data dependencies that ensures 
@@ -57,19 +53,5 @@ function TestCase#(TOY_Inst, TOY_Value) testStalls (Integer x);
 	 
 endfunction
 
-/*
-module [HASim_Module] testSubtraction_1();
-  
-  TOY_System th <- mkSystem_Simple(mkTOY_CPU, mkTOY_Mem)();
-
-  Empty test <- mkController_Software_OneTest(th, testSubtraction(11, 5));
-endmodule
-  
-
-module [HASim_Module] testStalls_1 ();
-  
-  TOY_System th <- mkSystem_Simple(mkTOY_CPU, mkTOY_Mem)();
-
-  Empty test <- mkController_Software_OneTest(th, testStalls(17));
-endmodule
-*/
+//Eventually this could be set as a parameter
+TestCase#(TOY_Inst, TOY_Value) test_case = testStalls(17);

@@ -7,15 +7,15 @@
 #/*
 # %AWB_START
 #
-# %name Hasim test case harness
-# %desc Hasim test case harness
-# %provides testcase_harness
+# %name Hasim test case common
+# %desc Hasim test case common
+# %provides hasim_testcase_base
 #
-# %requires test_cases
+# %requires hasim_testcase
 #
 # %attributes hasim
 #
-# %private TestCaseHarness.bsv
+# %private TestCaseBase.bsv
 #
 # %AWB_END
 # */

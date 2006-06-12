@@ -11,8 +11,6 @@
 # %desc Hasim functional partition testcase loader
 # %provides hasim_funcp_loader
 #
-# %requires hasim_testcase
-# 
 # %attributes hasim
 #
 # %public FUNCP_Loader.bsv

@@ -10,8 +10,6 @@
 # %name Hasim functional partition checker
 # %desc Hasim functional partition testcase result checker
 # %provides hasim_funcp_checker
-#
-# %requires hasim_testcase
 # 
 # %attributes hasim
 #

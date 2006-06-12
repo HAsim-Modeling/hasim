@@ -574,3 +574,30 @@ Directory modules/system
 Partial commit of reorganization, including TOYMIPS model. Some final cleanup remains.
 
 Michael
+
+----------
+mpellaue    Date: Mon Jun 12 14:08:36 EDT 2006  CSN: CSN-hasim-59
+                  Mon Jun 12 18:08:36 UTC 2006
+
+
+Directory modules/functional/common
+ hasim_funcp_checker.awb   Locally Modified           58 
+ hasim_funcp_loader.awb    Locally Modified           58 
+ hasim_functional_partition_common.awb Locally Removed            58 
+ hasim_funcp.awb           Locally Modified           58 
+
+Directory modules/cpu
+ hasim_cpu.awb             Locally Removed            55 
+
+Directory modules
+ cpu/                      Locally Removed            55 
+
+Directory config/pm/hasim/toymips
+ hasim_simple_smips.apm    Locally Removed            55 
+ hasim_5stage_toymips.apm  Locally Removed            55 
+ hasim_simple_toymips.apm  Locally Removed            55 
+ hasim_toymips_simple.apm  Locally Added               0 
+
+HASim reorganization complete. The TOYMIPS simple model should now be buildable (although there's a bug in global commit which is currently causing it to deadlock.)
+
+Michael

@@ -11,7 +11,7 @@
 # %desc Hasim functional partition
 # %provides hasim_funcp
 # 
-# %requires hasim_funcp_base, hasim_funcp_pipeline, hasim_funcp_regstate, hasim_funcp_memstate, hasim_funcp_loader, hasim_funcp_checker
+# %requires hasim_funcp_base hasim_funcp_pipeline hasim_funcp_regstate hasim_funcp_memstate hasim_funcp_loader hasim_funcp_checker hasim_testcase
 #
 # %attributes hasim
 #

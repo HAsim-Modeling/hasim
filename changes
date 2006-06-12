@@ -481,3 +481,96 @@ Directory modules/functional/toymips
 Partial commit of ongoing reorg.
 
 Michael
+
+----------
+mpellaue    Date: Mon Jun 12 13:47:31 EDT 2006  CSN: CSN-hasim-58
+                  Mon Jun 12 17:47:31 UTC 2006
+
+
+Directory modules/functional/toymips
+ FUNCP_GlobalCommitAlg.bsv Locally Added               0 
+ FUNCP_FetchAlg.bsv        Locally Added               0 
+ TOY_Mem.bsv               Locally Removed            55 
+ toymips_funcp_globalcommit_alg.awb Locally Added               0 
+ toymips_funcp_fetch_alg.awb Locally Added               0 
+ FunctionalPartition.bsv   Locally Removed            57 
+ FUNCP_MemAlg.bsv          Locally Added               0 
+ toymips_funcp_mem_alg.awb Locally Added               0 
+ hasim_toymips_functional_partition.awb Locally Removed            57 
+ FUNCP_ExecuteAlg.bsv      Locally Added               0 
+ FUNCP_DecodeAlg.bsv       Locally Added               0 
+ FUNCP_LocalCommitAlg.bsv  Locally Added               0 
+ toymips_funcp_execute_alg.awb Locally Added               0 
+ toymips_funcp_decode_alg.awb Locally Added               0 
+ toymips_funcp_localcommit_alg.awb Locally Added               0 
+
+Directory modules/functional/common
+ hasim_tokgen.awb          Locally Removed            57 
+ TokGen.bsv                Locally Removed            57 
+ FunctionalPartitionBase.bsv Locally Removed            57 
+ FUNCP_Checker.bsv         Locally Added               0 
+ hasim_funcp_checker.awb   Locally Added               0 
+ hasim_funcp_pipeline.awb  Locally Modified           57 
+ FUNCP_Pipeline.bsv        Locally Modified           57 
+ hasim_funcp_loader.awb    Locally Added               0 
+ FUNCP_Loader.bsv          Locally Added               0 
+ BypassUnit.bsv            Locally Removed            55 
+ hasim_functional_partition_common.awb Locally Modified           55 
+ FUNCP_Base.bsv            Locally Added               - 
+ hasim_funcp_base.awb      Locally Added               0 
+ FUNCP_RegState.bsv        Locally Added               - 
+ FUNCP_Mem.bsv             Locally Added               - 
+ hasim_funcp_regstate.awb  Locally Added               0 
+ hasim_funcp_memstate.awb  Locally Added               0 
+ hasim_funcp.awb           Locally Added               0 
+ FUNCP.bsv                 Locally Added               0 
+ Mem.bsv                   Locally Removed            55 
+ FUNCP_TokGen.bsv          Locally Added               - 
+
+Directory modules/functional/test-cases/toymips/simple_addition
+ TestCase.bsv              Locally Modified           57 
+ toymips_testcase_simple_addition.awb Locally Modified           57 
+
+Directory modules/functional/test-cases/toymips/simple_subtraction
+ TestCase.bsv              Locally Modified           57 
+ toymips_testcase_simple_subtraction.awb Locally Modified           57 
+
+Directory modules/functional/test-cases/toymips/branch
+ TestCase.bsv              Locally Modified           57 
+ toymips_testcase_branch.awb Locally Modified           57 
+
+Directory modules/functional/test-cases/toymips/stalls
+ TestCase.bsv              Locally Modified           57 
+ toymips_testcase_branch.awb Locally Modified           57 
+
+Directory modules/functional/test-cases/common
+ hasim_testcase_common.awb Locally Modified           57 
+ TestCase_Base.bsv         Locally Added               - 
+ TestCaseBase.bsv          Locally Removed            57 
+
+Directory modules/controller/simple
+ Controller.bsv            Locally Modified           56 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified           56 
+
+Directory modules/isa/toymips
+ isa.bsv                   Locally Removed            55 
+ ISA.bsv                   Locally Added               - 
+ hasim_toymips_isa.awb     Locally Modified           55 
+
+Directory modules/model
+ model.awb                 Locally Removed            55 
+ Model.bsv                 Locally Added               0 
+ hasim_model.awb           Locally Added               - 
+
+Directory modules/chip/toymips/simple
+ Chip.bsv                  Locally Modified           55 
+
+Directory modules/system
+ hasim_system.awb          Locally Modified           55 
+ System.bsv                Locally Modified           55 
+
+Partial commit of reorganization, including TOYMIPS model. Some final cleanup remains.
+
+Michael

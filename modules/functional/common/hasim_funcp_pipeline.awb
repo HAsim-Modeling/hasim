@@ -7,11 +7,11 @@
 #/*
 # %AWB_START
 #
-# %name Hasim functional model pipeline
-# %desc Hasim functional model pipeline
+# %name Hasim functional partition pipeline
+# %desc Hasim functional partition pipeline
 # %provides hasim_funcp_pipeline
 # 
-# %requires hasim_fetch_alg hasim_decode_alg hasim_execute_alg hasim_mem_alg hasim_localcommit_alg hasim_globalcommit_alg
+# %requires hasim_funcp_fetch_alg hasim_funcp_decode_alg hasim_funcp_execute_alg hasim_funcp_mem_alg hasim_funcp_localcommit_alg hasim_funcp_globalcommit_alg
 #
 # %attributes hasim
 #

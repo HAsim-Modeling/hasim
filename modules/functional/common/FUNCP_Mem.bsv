@@ -1,6 +1,7 @@
 //Memory system with connections
 
 import HASim::*;
+import ISA::*;
 
 import GetPut::*;
 import ClientServer::*;
@@ -16,23 +17,21 @@ import BypassFIFO::*;
 
 typedef union tagged 
 {
-  struct {token_T token; addr_T addr;              } Ld;
-  struct {token_T token; addr_T addr; value_T val; } St;
+  struct {Token token; Addr addr;            } Ld;
+  struct {Token token; Addr addr; Value val; } St;
 }
-  MemReq#(parameter type token_T,
-          parameter type addr_T,
-	  parameter type value_T) 
+  MemReq 
     deriving
-            (Eq,Bits);
+            (Eq, Bits);
 
 
 // Data Memory Response
 
 typedef union tagged {
-  value_T LdResp;
-  void    StResp;
+  Value LdResp;
+  void  StResp;
 }
-  MemResp#(parameter type value_T) 
+  MemResp 
     deriving
             (Eq, Bits);
 
@@ -48,20 +47,17 @@ typedef union tagged {
 // For now the memory also has a "magic" link for the controller to
 // load the test case. This may disappear in the future.
 
-interface Memory#(type token_T,  //Token tye
-                  type addr_T,   //Address t,ype
-                  type inst_T,   //Instruction type
-		  type value_T); //Value type
+interface Memory;
 
-  //interface Server#(addr_T, inst_T) imem;
-  //interface Server#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) dmem;
+  //interface Server#(Addr, inst_T) imem;
+  //interface Server#(MemReq#(Token, Addr, Value), MemResp#(Value)) dmem;
   
-  //interface Put#(token_T) commit;
-  //interface Put#(Tuple2#(token_T, token_T)) killRange; 
+  //interface Put#(Token) commit;
+  //interface Put#(Tuple2#(Token, Token)) killRange; 
   
   //Magic link for the test harness to load the program
-  interface RegFile#(addr_T, inst_T) magic_imem;
-  interface RegFile#(addr_T, value_T) magic_dmem;
+  interface RegFile#(Addr, Inst)  magic_imem;
+  interface RegFile#(Addr, Value) magic_dmem;
 
 endinterface
 
@@ -72,52 +68,36 @@ endinterface
 
 module [HASim_Module] mkMem_Software
     //interface:
-                (Memory#(token_T,   //Token type
-		         addr_T,    //Address type
-		         inst_T,    //Instruction type
-			 value_T))  //Value type
+                (Memory)
     provisos
-            (Bits#(addr_T, addr_SZ),
-	     Bits#(inst_T, inst_SZ),
-	     Bits#(value_T, value_SZ),
-	     Bits#(token_T, token_SZ),
-	     Bits#(MemReq#(token_T, addr_T, value_T), memreq_SZ),
-	     Bits#(MemResp#(value_T), memresp_SZ),
-	     Eq#(addr_T),
-	     Eq#(token_T),
-	     Bounded#(addr_T),
-	     Arith#(token_T),
-	     Ord#(token_T),
-	     //PrimIndex#(token_T, token_PK),
-	     PrimIndex#(token_T),
-	     Transmittable#(addr_T),
-	     Transmittable#(inst_T),
-	     Transmittable#(value_T),
-	     Transmittable#(token_T),
-	     Transmittable#(MemReq#(token_T, addr_T, value_T)),
-	     Transmittable#(MemResp#(value_T)),
-	     Transmittable#(Tuple2#(token_T, token_T)),
-	     Add#(1, n1, TExp#(token_SZ)) //Token size must be greater than one.
-	    ); 
+            (Bits#(Token, token_SZ),
+	     Transmittable#(Addr),
+	     Transmittable#(Inst),
+	     Transmittable#(Value),
+	     Transmittable#(Token),
+	     Transmittable#(MemReq),
+	     Transmittable#(MemResp),
+	     Transmittable#(Tuple2#(Token, Token)),
+	     Add#(1, n1, TExp#(token_SZ)));  //Token size must be greater than one.
+	    
 
   //State elements
 
-  FIFO#(MemResp#(value_T)) f <- mkFIFO();
+  FIFO#(MemResp) f <- mkFIFO();
 
-  RegFile#(addr_T, inst_T) imemory <- mkRegFileFull();
-  FIFO#(inst_T) iresp <- mkBypassFIFO();
+  RegFile#(Addr, Inst) imemory <- mkRegFileFull();
   
-  RegFile#(addr_T, value_T) dmemory <- mkRegFileFull();
+  RegFile#(Addr, Value) dmemory <- mkRegFileFull();
 
   Reg#(Vector#(TExp#(token_SZ), Bool)) tvalids <- mkReg(Vector::replicate(False));
-  Reg#(Vector#(TExp#(token_SZ), Tuple3#(token_T, addr_T, value_T))) tokens <- mkRegU();
+  Reg#(Vector#(TExp#(token_SZ), Tuple3#(Token, Addr, Value))) tokens <- mkRegU();
 
   //Connections
   
-  Connection_Server#(addr_T, inst_T) link_imem <- mkConnection_Server("mem_imem");
-  Connection_Server#(MemReq#(token_T, addr_T, value_T), MemResp#(value_T)) link_dmem <- mkConnection_Server("mem_dmem");
-  Connection_Receive#(token_T) link_commit <- mkConnection_Receive("mem_commit");
-  Connection_Receive#(Tuple2#(token_T, token_T)) link_killRange <- mkConnection_Receive("mem_killRange");
+  Connection_Server#(Addr, Inst)             link_imem <- mkConnection_Server("mem_imem");
+  Connection_Server#(MemReq, MemResp)        link_dmem <- mkConnection_Server("mem_dmem");
+  Connection_Receive#(Token)                 link_commit <- mkConnection_Receive("mem_commit");
+  //Connection_Receive#(Tuple2#(Token, Token)) link_killRange <- mkConnection_Receive("mem_killRange");
 
   //maybify :: Bool -> any -> Maybe any
 
@@ -143,12 +123,12 @@ module [HASim_Module] mkMem_Software
   endfunction
 
 
-  Vector#(TExp#(token_SZ), Maybe#(Tuple3#(token_T, addr_T, value_T))) mtokens = Vector::zipWith(maybify, tvalids, tokens);
+  Vector#(TExp#(token_SZ), Maybe#(Tuple3#(Token, Addr, Value))) mtokens = Vector::zipWith(maybify, tvalids, tokens);
  
  
   //matchAddr :: Maybe (token, addr, value) -> addr -> Bool -> Maybe (token, addr, value)
 
-  function Maybe#(Tuple3#(token_T, addr_T, value_T)) matchAddr(addr_T a, Bool b, Tuple3#(token_T, addr_T, value_T) x);
+  function Maybe#(Tuple3#(Token, Addr, Value)) matchAddr(Addr a, Bool b, Tuple3#(Token, Addr, Value) x);
   
     match {.*, .addr, .*} = x;
     
@@ -162,7 +142,7 @@ module [HASim_Module] mkMem_Software
 
   rule handleIMEM (True);
   
-    addr_T a <- link_imem.getReq();
+    Addr a <- link_imem.getReq();
     link_imem.makeResp(imemory.sub(a));
     
   endrule
@@ -173,13 +153,13 @@ module [HASim_Module] mkMem_Software
  
   rule handleDMEM (True);
 
-   function value_T getResult(token_T youngest, addr_T a);
+   function Value getResult(Token youngest, Addr a);
 
      //youngerToken :: token -> token -> Bool
 
-     function Bool youngerToken(token_T x, token_T y)
+     function Bool youngerToken(Token x, Token y)
 	            provisos 
-	                    (Ord#(token_T));
+	                    (Ord#(Token));
 
 	return (youngest - x) < (youngest - y);
 
@@ -189,8 +169,8 @@ module [HASim_Module] mkMem_Software
 
      //pickYoungest :: Maybe (Bool, token) -> Maybe (Bool, token) -> Maybe#(Bool, token)
 
-     function Maybe#(Tuple3#(token_T, addr_T, value_T)) pickYoungest(Maybe#(Tuple3#(token_T, addr_T, value_T)) mta, 
-	                                                             Maybe#(Tuple3#(token_T, addr_T, value_T)) mtb);
+     function Maybe#(Tuple3#(Token, Addr, Value)) pickYoungest(Maybe#(Tuple3#(Token, Addr, Value)) mta, 
+	                                                             Maybe#(Tuple3#(Token, Addr, Value)) mtb);
 
        return (!isJust(mta)) ? mtb :
 	      (!isJust(mtb)) ? Nothing :
@@ -198,7 +178,7 @@ module [HASim_Module] mkMem_Software
 
      endfunction
 
-     Maybe#(Tuple3#(token_T, addr_T, value_T)) finalChoice = Vector::fold(pickYoungest, mmtokens);
+     Maybe#(Tuple3#(Token, Addr, Value)) finalChoice = Vector::fold(pickYoungest, mmtokens);
 
      case (finalChoice) matches
        tagged Nothing: return dmemory.sub(a); // goto memory
@@ -206,7 +186,7 @@ module [HASim_Module] mkMem_Software
      endcase
    endfunction
     
-    MemReq#(token_T, addr_T, value_T) req <- link_dmem.getReq();
+    MemReq req <- link_dmem.getReq();
     
     case (req) matches
       tagged Ld .ld_info:
@@ -240,11 +220,11 @@ module [HASim_Module] mkMem_Software
  
   rule handleCommit (True);
   
-    token_T token <- link_commit.receive();
+    Token token <- link_commit.receive();
 
     //matchToken :: token -> Maybe (token, addr, value) -> Bool
 
-    function Bool matchToken(token_T t, Maybe#(Tuple3#(token_T, addr_T, value_T)) mx);
+    function Bool matchToken(Token t, Maybe#(Tuple3#(Token, Addr, Value)) mx);
 
       return case (mx) matches
 	tagged Just {.tok,.*,.*}: return (t == tok);
@@ -255,13 +235,13 @@ module [HASim_Module] mkMem_Software
 
     //ff :: Maybe (token, addr, value) -> Maybe (token, addr, value) -> Maybe (token, addr, value)
 
-    function Maybe#(Tuple3#(token_T, addr_T, value_T)) ff(Maybe#(Tuple3#(token_T, addr_T, value_T)) ma, Maybe#(Tuple3#(token_T, addr_T, value_T)) mb);
+    function Maybe#(Tuple3#(Token, Addr, Value)) ff(Maybe#(Tuple3#(Token, Addr, Value)) ma, Maybe#(Tuple3#(Token, Addr, Value)) mb);
 
       return matchToken(token, ma) ? ma: mb;
 
     endfunction
 
-    Maybe#(Tuple3#(token_T, addr_T, value_T)) mresult = fold(ff, mtokens); // the value
+    Maybe#(Tuple3#(Token, Addr, Value)) mresult = fold(ff, mtokens); // the value
 
     case (mresult) matches
 
@@ -275,7 +255,7 @@ module [HASim_Module] mkMem_Software
     //XXX Commented out because this is expensive
     /*
     //flattenToken :: Bool -> (token, addr, value) -> Bool
-    function Bool flattenToken(Bool b, Tuple3#(token_T, addr_T, value_T) x);
+    function Bool flattenToken(Bool b, Tuple3#(Token, Addr, Value) x);
       match {.tok,.*,.*} = x;
       return (token == tok) ? False: b;
     endfunction
@@ -283,17 +263,17 @@ module [HASim_Module] mkMem_Software
     tvalids <= Vector::zipWith(flattenToken, tvalids, tokens);
     */
     
-    tvalids <= unpack(pack(tvalids) & ~(1 << toIndex(token)));
+    tvalids <= unpack(pack(tvalids) & ~(1 << token));
 
   endrule
   
   //handleKillRange
   
   //Rolls back killed tokens
-  
+  /*
   rule handleKillRange (True);
   
-    Tuple2#(token_T, token_T) tup <- link_killRange.receive();
+    Tuple2#(Token, Token) tup <- link_killRange.receive();
     match {.lb, .ub} = tup;
 
     function flattenToken(b, x);
@@ -303,7 +283,7 @@ module [HASim_Module] mkMem_Software
 
     tvalids <= Vector::zipWith(flattenToken, tvalids, tokens);
   endrule
- 
+ */
   //IMem interface (used by FP Fetch)
   //interface imem = link_imem.server;
   

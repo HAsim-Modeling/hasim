@@ -1,6 +1,6 @@
 //HASim library imports
 import HASim::*;
-import TestCaseBase::*;
+import TestCase_Base::*;
 
 //Model-specific imports
 import Isa::*;
@@ -8,14 +8,14 @@ import Isa::*;
 //This file provides the following HASim-required names:
 //     Name:             Type:
 //     -----             -----
-//     test_case         TestCase#(inst, val) 
+//     test_case         TestCase
 
 // A more complex, branching test
 // Tests x * y without using Mul instruction
 
-function TestCase#(TOY_Inst, TOY_Value) testBranch (Integer x, Integer y);
+function TestCase testBranch (Integer x, Integer y);
 
-  TOY_Inst prog[22] = 
+  Inst prog[22] = 
     { 
       ILoadImm {dest: r1, imm: fromInteger(x)}, //      Set x
       ILoadImm {dest: r2, imm: fromInteger(y)}, //      Set y	    
@@ -41,8 +41,8 @@ function TestCase#(TOY_Inst, TOY_Value) testBranch (Integer x, Integer y);
       ITerminate                                //End:  finish(res)
     };
 
-  TOY_Value dmem_i[1] = {0};
-  TOY_Value dmem_e[1] = {fromInteger(x * y)};
+  Value dmem_i[1] = {0};
+  Value dmem_e[1] = {fromInteger(x * y)};
   
   return TestCase
          {
@@ -54,4 +54,4 @@ function TestCase#(TOY_Inst, TOY_Value) testBranch (Integer x, Integer y);
 endfunction
 
 //Eventually these should be parameters
-TestCase#(TOY_Inst, TOY_Value) test_case = testBranch(17, 12));
+TestCase test_case = testBranch(17, 12));

@@ -3,15 +3,16 @@
 import HASim::*;
 import FUNCP_Base::*;
 import FUNCP_TokGen::*;
-import FUNCP_BypassUnit::*;
+import FUNCP_RegState::*;
 
 //Model-specific imports
-import FUNCP_Fetch_Alg::*;
-import FUNCP_Decode_Alg::*;
-import FUNCP_Execute_Alg::*;
-import FUNCP_Mem_Alg::*;
-import FUNCP_LocalCommit_Alg::*;
-import FUNCP_GlobalCommit_Alg::*;
+import ISA::*;
+import FUNCP_FetchAlg::*;
+import FUNCP_DecodeAlg::*;
+import FUNCP_ExecuteAlg::*;
+import FUNCP_MemAlg::*;
+import FUNCP_LocalCommitAlg::*;
+import FUNCP_GlobalCommitAlg::*;
 
 
 module [HASim_Module] mkFUNCP_Pipeline (); 
@@ -28,78 +29,89 @@ endmodule
 
 module [HASim_Module] mkFUNCP_Stage_FET ();
 
-  let s <- mkFUNCP_Stage("FET", 
-                         "link_fet",
-			 "fet_server",
-			 "tok_to_fet",
-			 "fet_to_dec", 
-			 8);  
-  mkFUNCP_Fetch_Alg();
+  FUNCP_Stage#(void, Addr, Inst, Tuple2#(Addr, Inst))
+  //...
+       stage <- mkFUNCP_Stage("FET", 
+                              "link_fet",
+			      "fp_fet",
+			      "tok_to_fet",
+			      "fet_to_dec", 
+			      8);  
+  mkFUNCP_FetchAlg();
 
 endmodule
 
 module [HASim_Module] mkFUNCP_Stage_DEC ();
 
-  let s <- mkFUNCP_Stage("DEC", 
-                         "link_dec",
-			 "dec_server",
-			 "fet_to_dec",
-			 "dec_to_exe", 
-			 8);
-  
-  mkFUNCP_Decode_Alg();
+  FUNCP_Stage#(Tuple2#(Addr, Inst), void, DepInfo, Tuple2#(Addr, DecodedInst))
+  //...
+       stage <- mkFUNCP_Stage("DEC", 
+                              "link_dec",
+			      "fp_dec",
+			      "fet_to_dec",
+			      "dec_to_exe", 
+			      8);  
+  mkFUNCP_DecodeAlg();
 
 endmodule
 
 module [HASim_Module] mkFUNCP_Stage_EXE ();
 
-  let s <- mkFUNCP_Stage("EXE", 
-                         "link_exe",
-		         "exe_server",
-		         "dec_to_exe",
-		         "exe_to_mem", 
-		         8);
+  FUNCP_Stage#(Tuple2#(Addr, DecodedInst), void, InstResult, ExecedInst)
+  //...
+       stage <- mkFUNCP_Stage("EXE", 
+                              "link_exe",
+		              "fp_exe",
+		              "dec_to_exe",
+		              "exe_to_mem", 
+		              8);
   
-  mkFUNCP_Execute_Alg();
+  mkFUNCP_ExecuteAlg();
 
 endmodule
 
 module [HASim_Module] mkFUNCP_Stage_MEM ();
 
-  let s <- mkFUNCP_Stage("MEM", 
-                	 "link_mem",
-			 "mem_server",
-			 "exe_to_mem",
-			 "mem_to_lco", 
-			 8);
+  FUNCP_Stage#(ExecedInst, void, void, ExecedInst)
+  //...
+       stage <- mkFUNCP_Stage("MEM", 
+                	      "link_mem",
+			      "fp_mem",
+			      "exe_to_mem",
+			      "mem_to_lco", 
+			      8);
 
-  mkFUNCP_Mem_Alg();
+  mkFUNCP_MemAlg();
 
 endmodule
 
 module [HASim_Module] mkFUNCP_Stage_LCO ();
 
-  let s <- mkFUNCP_Stage("LCO", 
-                         "link_lco",
-			 "lco_server",
-			 "mem_to_lco",
-			 "lco_to_gco", 
-			 8);
-  
-  mkFUNCP_LocalCommit_Alg();
+  FUNCP_Stage#(ExecedInst, void, void, ExecedInst)
+  //...
+       stage <- mkFUNCP_Stage("LCO", 
+                              "link_lco",
+			      "fp_lco",
+			      "mem_to_lco",
+			      "lco_to_gco", 
+			      8);
+
+  mkFUNCP_LocalCommitAlg();
 
 endmodule
 
 module [HASim_Module] mkFUNCP_Stage_GCO ();
 
-  let s <- mkFUNCP_Stage("GCO", 
-                         "link_gco",
-			 "gco_server",
-			 "lco_to_gco",
-			 "gco_to_tok", 
-			 8);
+  FUNCP_Stage#(ExecedInst, void, void, ExecedInst)
+  //...
+       stage <- mkFUNCP_Stage("GCO", 
+                              "link_gco",
+			      "fp_gco",
+			      "lco_to_gco",
+			      "gco_to_tok", 
+			      8);
   
-  mkFUNCP_GlobalCommit_Alg();
+  mkFUNCP_GlobalCommitAlg();
 
 endmodule
 

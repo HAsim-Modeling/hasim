@@ -1,22 +1,22 @@
 //HASim library imports
 import HASim::*;
-import TestCaseBase::*;
+import TestCase_Base::*;
 
 //Model-specific imports
-import Isa::*;
+import ISA::*;
 
 //This file provides the following HASim-required names:
 //     Name:             Type:
 //     -----             -----
-//     test_case         TestCase#(inst, val) 
+//     test_case         TestCase
 
 
 // A branching test with data dependencies that ensures 
 // we are stalling correctly
 
-function TestCase#(TOY_Inst, TOY_Value) testStalls (Integer x);
+function TestCase#(Inst, Value) testStalls (Integer x);
 
-  TOY_Inst prog[13] = 
+  Inst prog[13] = 
     { 
       ILoadImm {dest: r0, imm: 0},                //       Set 0
       ILoadImm {dest: r1, imm: 1},                //       Set 1
@@ -33,8 +33,8 @@ function TestCase#(TOY_Inst, TOY_Value) testStalls (Integer x);
       ITerminate                                  //  end: Halt.
     };
     
-  TOY_Value dmem_i[x];
-  TOY_Value dmem_e[x];
+  Value dmem_i[x];
+  Value dmem_e[x];
   
   for(Integer k = 0; k < x; k = k + 1)
     dmem_i[k] = fromInteger(k);
@@ -54,4 +54,4 @@ function TestCase#(TOY_Inst, TOY_Value) testStalls (Integer x);
 endfunction
 
 //Eventually this could be set as a parameter
-TestCase#(TOY_Inst, TOY_Value) test_case = testStalls(17);
+TestCase test_case = testStalls(17);

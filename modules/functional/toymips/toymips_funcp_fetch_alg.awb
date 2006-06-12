@@ -7,13 +7,13 @@
 #/*
 # %AWB_START
 #
-# %name Hasim test case base
-# %desc Hasim test case base
-# %provides hasim_testcase_base
-##
-# %attributes hasim
+# %name Hasim toymips funcp fetch algorithm
+# %desc Hasim toymips funcp fetch algorithm
+# %provides hasim_funcp_fetch_alg
 #
-# %private TestCase_Base.bsv
+# %attributes toymips hasim
+#
+# %public FUNCP_FetchAlg.bsv
 #
 # %AWB_END
 # */

@@ -13,7 +13,7 @@
 #
 # %attributes hasim
 #
-# %private Isa.bsv
+# %private ISA.bsv
 #
 # %AWB_END
 # */

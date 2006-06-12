@@ -1,26 +1,54 @@
 import HASim::*;
-import Mem::*;
+import FUNCP::*;
+import Chip::*;
+
+import ISA::*;
 
 import GetPut::*;
 import ClientServer::*;
 import RegFile::*;
 import Connectable::*;
+import FIFO::*;
 
-//The simplest system is a CPU and a memory
 
-module [HASim_Module] mkSystem_Simple#(function HASim_Module#(CPU#(tick_T, command_T, result_T)) mkCPU(),
-			               function HASim_Module#(Memory#(token_T, addr_T, inst_T, value_T)) mkMem())
+//The simplest system is a Chip and a Timing Partition
+
+
+module [HASim_Module] mkSystem
     //interface:
-                (System#(tick_T, command_T, result_T, addr_T, inst_T, value_T));
+                (TModule#(Command, Response));
     
-    Memory#(token_T, addr_T, inst_T, value_T) mem <- mkMem();
+    TModule#(Command, Response) funcp <- mkFUNCP();
     
-    CPU#(tick_T, command_T, result_T) cpu <- mkCPU();
+    TModule#(Command, Response) chip <- mkChip();
     
-    //Expose the interfaces to the Controller
+    FIFO#(Response) respQ <- mkFIFO();
     
-    interface imem = mem.magic_imem;
-    interface dmem = mem.magic_dmem;
-    interface tmod = cpu;
+    rule getFuncResp (True);
+      let res <- funcp.response();
+      respQ.enq(res);
+    endrule
+    
+    rule getChipResp (True);
+      let res <- chip.response();
+      respQ.enq(res);
+    endrule
+    
+    method Action exec(Command com);
+    
+      case (com) matches
+        tagged COM_RunProgram:
+	  chip.exec(com);
+	default:
+	  funcp.exec(com);
+      endcase
+    endmethod
+    
+    method ActionValue#(Response) response();
+    
+      respQ.deq();
+      return respQ.first();
+    
+    endmethod
 
 endmodule

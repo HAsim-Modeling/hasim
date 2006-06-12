@@ -7,13 +7,13 @@
 #/*
 # %AWB_START
 #
-# %name Hasim functional model TokGen
-# %desc Hasim functional model Token Generator
-# %provides hasim_fp_stage_tokgen
-#
+# %name Hasim functional partition memstate software
+# %desc Hasim functional partition memory state software
+# %provides hasim_funcp_memstate
+# 
 # %attributes hasim
 #
-# %public Stage_TOK.bsv
+# %public FUNCP_MemState.bsv
 #
 # %AWB_END
 # */

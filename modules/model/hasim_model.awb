@@ -13,5 +13,6 @@
 %requires hasim_common
 
 %attributes model
+%public Model.bsv
 
 %AWB_END

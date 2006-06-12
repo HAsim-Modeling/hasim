@@ -1,14 +1,14 @@
-//HASim imports
-import HASim::*;
-import System::*;
-import TestCase::*;
-import Loader::*;
-import Checker::*;
 
 //BSV library imports
 import PrimArray::*;
 import RegFile::*;
 import Connectable::*;
+
+//HASim library imports
+import HASim::*;
+
+//HASim model-specific imports
+import ISA::*;
 
 //************* OneTest Controller **************
 
@@ -22,102 +22,105 @@ import Connectable::*;
 
 typedef enum
 {
-  Init,
-  Loading,
-  Running,
-  Checking,
-  Finished
+  CON_Init,
+  CON_Loading,
+  CON_Running,
+  CON_Checking,
+  CON_Finished
 }
   ConState
            deriving (Eq, Bits);
 
-module [Module] mkController_Software_OneTest#(System#(tick_T, command_T, result_T, addr_T, inst_T, value_T) th, 
-                                               TestCase#(inst_T, value_T) tc) 
-    //interface:
-                ()
-    provisos
-            (Bits#(addr_T,  addr_SZ),
-	     Bits#(inst_T,  inst_SZ),
-	     Bits#(value_T, value_SZ),
-	     Bits#(tick_T, tick_SZ),
-	     Bounded#(tick_T),
-	     Arith#(tick_T),
-	     //PrimIndex#(addr_T, addr_DY),
-	     PrimIndex#(addr_T),
-	     Bounded#(addr_T),
-	     Literal#(addr_T),
-	     Eq#(addr_T),
-	     Arith#(addr_T),
-	     Ord#(addr_T),
-	     Eq#(value_T));
+module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
 
 
   //*********** State ***********
-
-  Loader loader <- mkLoader(th.imem, th.dmem, tc);
-  Checker#(addr_T, value_T) checker <- mkChecker(th.dmem, tc);
   
-  Reg#(tick_T) curTick <- mkReg(minBound);
+  Reg#(Tick) curTick <- mkReg(minBound);
 
-  Reg#(ConState) state <- mkReg(Loading);
+  Reg#(ConState) state <- mkReg(CON_Init);
   
   //*********** Rules ***********
   
   //load_imem
   
-  rule load_prog(state == Init);
+  rule load_prog(state == CON_Init);
   
-    loader.loadProgram();
-    state <= Loading;
+    th.exec(COM_LoadState);
+    state <= CON_Loading;
   
   endrule
   
   //run_prog
   
-  rule run_prog (state == Loading && loader.done());
+  rule run_prog (state == CON_Loading);
   
-    th.tmod.exec(?);
-    state <= Running;
-    
+    let resp <- th.response();
+    case (resp) matches
+      tagged RESP_DoneLoading:
+	begin
+          th.exec(COM_RunProgram);
+          state <= CON_Running;
+	end
+      default:
+        begin
+          $display("Unexpected FP response.");
+	  $finish(1);
+	end
+    endcase 
     //$display("Staring Program...");
   endrule
   
-  rule tick (th.tmod.done && state == Running);
-    th.tmod.tick(curTick);
-    curTick <= curTick + 1;
+  rule run_ends (state == CON_Running);
+  
+    let resp <- th.response();
+  
+    case (resp) matches
+      tagged RESP_DoneRunning:
+	begin
+          th.exec(COM_CheckResult);
+          state <= CON_Checking;
+	end
+      default:
+        begin
+          $display("Unexpected TModule response.");
+	  $finish(1);
+	end
+    endcase
   endrule
   
-  rule run_ends (state == Running);
-    let x = th.tmod.exec_response();
-    checker.checkResult();
-    state <= Checking;
-  endrule
+  rule getFails (state == CON_Checking);
+    
+    let resp <- th.response();
   
-  rule getFails (state == Checking);
-    
-    match {.a, .exp_v, .found_v} <- checker.getFailure();
+    case (resp) matches
+      tagged RESP_Failure .f:
+	begin
+	  $display("Controller: ERROR: Memory location 0x%0h does not match expected result", f.addr);
+	  $display("            Expected Value: 0x%0h", f.exp_v);
+	  $display("            Actual Value: 0x%0h", f.found_v);
+	end
+      tagged RESP_CheckPassed:
+        begin
+	  state <= CON_Finished;
 
-    $display("Controller: ERROR: Memory location 0x%0h does not match expected result", a);
-    $display("            Expected Value: 0x%0h", exp_v);
-    $display("            Actual Value: 0x%0h", found_v);
-    
-  endrule
- 
-  rule runPassed (state == Checking && checker.done() && checker.passed());
+	  $display("Controller: Test program finished succesfully.");
+	  $finish(0);
+	end
+      tagged RESP_CheckFailed:
+        begin
+	  state <= CON_Finished;
 
-    state <= Finished;
+	  $display("Controller: Test program finished. One or more failures occurred.");
+	  $finish(1);
+	end
+      default:
+        begin
+          $display("Unexpected TModule response.");
+	  $finish(1);
+	end
+    endcase
 
-    $display("Controller: Test program finished succesfully.");
-    $finish(0);
-    
-  endrule
- 
-  rule runFailed (state == Checking && checker.done() && !checker.passed());
-
-    state <= Finished;
-
-    $display("Controller: Test programs finished. One or more failures occurred.");
-    $finish(1);
     
   endrule
  

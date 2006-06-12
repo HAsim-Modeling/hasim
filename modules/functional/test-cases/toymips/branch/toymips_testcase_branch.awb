@@ -11,7 +11,7 @@
 # %desc Hasim toymips testcase branch
 # %provides hasim_testcase
 #
-# %requires hasim_testcase_common
+# %requires hasim_testcase_base
 #
 # %attributes toymips hasim
 #

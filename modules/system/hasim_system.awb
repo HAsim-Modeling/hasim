@@ -10,7 +10,7 @@
 # %name Hasim - Hardware (fpga) based system
 # %desc Hasim - Hardware (fpga) based system
 # %provides hasim_system
-# %requires hasim_functional_partition hasim_isa hasim_chip
+# %requires hasim_funcp hasim_isa hasim_chip
 #
 # %attributes hasim
 #

@@ -49,49 +49,13 @@ typedef Empty Controller;
 // In order to reduce sequentialization. The RAMP project could
 // play a role here.
 
-interface TModule#(type tick_T, type command_T, type result_T);
-
+interface TModule#(type com_T, type resp_T);
   
-  method Action tick(tick_T cc);
-  method Bool   done();
-
-  //Commands are an infrastructure for the future.
-  //Might include things like entering debug mode.
-  method Action   exec(command_T c);
-  method result_T exec_response();
+  method Action               exec(com_T c);
+  method ActionValue#(resp_T) response();
 
 endinterface
 
-//------------ Timing Partition Heirarchy ------------//
-
-// Top-level TModule is a System.
-// Currently it includes magic links to the IMem/DMem 
-// so that the controller can load the program
-
-typedef TModule#(tick_T, command_T, result_T) 
-        System#(type tick_T, type command_T, type result_T);
-
-// A System contains Boards
-
-typedef TModule#(tick_T, command_T, result_T) 
-        Board#(type tick_T, type command_T, type result_T);
-
-// A Board contains Chips
-
-typedef TModule#(tick_T, command_T, result_T) 
-        Chip#(type tick_T, type command_T, type result_T);
-
-// A Chip contains one or more CPU models
-
-typedef TModule#(tick_T, command_T, result_T) 
-        CPU#(type tick_T, type command_T, type result_T);
-
-// A CPU contains a Timing Partition
-
-typedef TModule#(tick_T, command_T, result_T) 
-        TimingPartition#(type tick_T, type command_T, type result_T);
-
-// Other things that could go here might include Caches, Memory Controllers, etc.
 
 
 
@@ -282,8 +246,12 @@ module [Connected_Module] mkConnection_Client#(String portname)
 	       endmethod
 	     endinterface);
   
+  let sendname = strConcat(portname, "_req");
+  let recname = strConcat(portname, "_resp");
+
   //Add our interface to the ModuleCollect collection
-  addToCollection(LSend tuple2(portname, outg));
+  addToCollection(LSend tuple2(sendname, outg));
+  addToCollection(LRec tuple2(recname, inc));
 
   method Action makeReq(req_T data);
     q.enq(data);
@@ -325,8 +293,12 @@ module [Connected_Module] mkConnection_Server#(String portname)
 	       endmethod
 	     endinterface);
   
+  let sendname = strConcat(portname, "_resp");
+  let recname = strConcat(portname, "_req");
+  
   //Add our interface to the ModuleCollect collection
-  addToCollection(LSend tuple2(portname, outg));
+  addToCollection(LSend tuple2(sendname, outg));
+  addToCollection(LRec tuple2(recname, inc));
 
   method Action makeResp(resp_T data);
     q.enq(data);

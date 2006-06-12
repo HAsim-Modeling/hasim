@@ -601,3 +601,22 @@ Directory config/pm/hasim/toymips
 HASim reorganization complete. The TOYMIPS simple model should now be buildable (although there's a bug in global commit which is currently causing it to deadlock.)
 
 Michael
+
+----------
+mpellaue    Date: Mon Jun 12 18:13:43 EDT 2006  CSN: CSN-hasim-60
+                  Mon Jun 12 22:13:43 UTC 2006
+
+
+Directory modules/functional/common
+ FUNCP_Checker.bsv         Locally Modified           58 
+ FUNCP_Loader.bsv          Locally Modified           58 
+ FUNCP_Mem.bsv             Locally Removed            58 
+ FUNCP_RegState.bsv        Locally Modified           58 
+ FUNCP_MemState.bsv        Locally Added               - 
+
+Directory tools/scripts
+ configure-models          Locally Modified           55 
+
+A few final changes to the reorg.
+
+Michael

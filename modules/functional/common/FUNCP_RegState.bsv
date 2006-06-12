@@ -1,5 +1,7 @@
 import HASim::*;
-import FunctionalPartition::*;
+import FUNCP_Base::*;
+
+import ISA::*;
 
 import GetPut::*;
 import RegFile::*;
@@ -12,39 +14,32 @@ import ConfigReg::*;
 // Physical Register File
 //----------------------------------------------------------------------------------
 
-interface RFile_4_2#(type addr_T, type value_T);
-  method Maybe#(value_T) read1(addr_T a);
-  method Maybe#(value_T) read2(addr_T a);
-  method Maybe#(value_T) read3(addr_T a);
-  method Maybe#(value_T) read4(addr_T a);
+interface RFile_4_2;
+  method Maybe#(Value) read1(PRName a);
+  method Maybe#(Value) read2(PRName a);
+  method Maybe#(Value) read3(PRName a);
+  method Maybe#(Value) read4(PRName a);
 
 
-  method Action write1(addr_T a, value_T v);
-  method Action write2(addr_T a, value_T v);
+  method Action write1(PRName a, Value v);
+  method Action write2(PRName a, Value v);
 
-  method Action alloc(addr_T a);
+  method Action alloc(PRName a);
 endinterface
 
 module [HASim_Module] mkRFile_4_2
     //interface:
-                (RFile_4_2#(prname_T, value_T)) 
+                (RFile_4_2) 
     provisos
-            (Bits#(prname_T, prname_SZ),
-	     Bits#(value_T,  value_SZ),
-	     //PrimIndex#(prname_T, prname_DY),
-	     PrimIndex#(prname_T),
-	     Bounded#(prname_T),
-	     Literal#(value_T),
-	     Literal#(prname_T),
-	     Ord#(prname_T),
-	     Eq#(prname_T));
+            (Bits#(PRName,  prname_SZ),
+	     Bits#(Value,  value_SZ));
 
   //RegisterFile
 
-  Vector#(TExp#(prname_SZ), Reg#(value_T)) rf_regs <- mapM(compose(mkConfigReg,fromInteger), genVector);
+  Vector#(TExp#(prname_SZ), Reg#(Value)) rf_regs <- mapM(compose(mkConfigReg,fromInteger), genVector);
 
   function initiallyValid(Integer x);
-    prname_T rmax = maxBound ;
+    PRName rmax = maxBound ;
     return(fromInteger(x) < rmax);
   endfunction
 
@@ -52,18 +47,18 @@ module [HASim_Module] mkRFile_4_2
             mapM(compose(mkConfigReg, initiallyValid), genVector);
 //            replicateM(mkConfigReg, mapM(initiallyValid, genVector));
 
-  function Maybe#(value_T) read(prname_T x);
+  function Maybe#(Value) read(PRName x);
      return (select(rf_valids, x)._read()) ? Just((select(rf_regs, x))._read()) : Nothing;
   endfunction
 
-  function Action write(prname_T x, value_T v);
+  function Action write(PRName x, Value v);
     action 
       (select(rf_valids, x)) <= True;
       (select(rf_regs, x))   <= v;
     endaction
   endfunction
 
-  function Action allocF(prname_T x);
+  function Action allocF(PRName x);
     action
       (select(rf_valids, x)) <= False;
     endaction
@@ -87,78 +82,99 @@ endmodule
 
 module [HASim_Module] mkBypassUnit
     //interface:
-                (BypassUnit#(rname_T,        //Register Name type
-		             prname_T,       //Physical Register Name type
-			     value_T,        //Value type
-			     token_T,        //Token type
-			     snapshotptr_T)) //SnapShot Ptr type
+                ()
     provisos
-            (Bits#(rname_T, rname_SZ), 
-	     Eq#(rname_T), 
-	     Bounded#(rname_T),
-	     Literal#(rname_T),
-	     //PrimIndex#(rname_T, rname_DY),
-	     PrimIndex#(rname_T),
-	     Bits#(prname_T, prname_SZ),
-	     Bounded#(prname_T),
-	     Ord#(prname_T),
-	     Eq#(prname_T),
-	     Arith#(prname_T),
-	     Literal#(prname_T),
-	     //PrimIndex#(prname_T, prname_DY),
-	     PrimIndex#(prname_T),
-	     Bits#(value_T, value_SZ),
-	     Literal#(value_T),
-	     Bits#(token_T, token_SZ),
-	     Eq#(token_T),
-	     Ord#(token_T),
-	     Arith#(token_T),
-             Bits#(snapshotptr_T, snapshotptr_SZ),
-	     //PrimIndex#(snapshotptr_T, snapshotptr_DY),
-	     PrimIndex#(snapshotptr_T),
-	     Bounded#(snapshotptr_T),
-	     Literal#(snapshotptr_T),
-	     Eq#(snapshotptr_T),
+            (Bits#(RName,       rname_SZ),
+ 	     Bits#(PRName,      prname_SZ),
+	     Bits#(Value,       value_SZ),
+	     Bits#(Token,       token_SZ),
+             Bits#(SnapshotPtr, snapshotptr_SZ),
 	     Add#(rname_SZ, rdiff_TMP, prname_SZ),
 	     Add#(snapshotptr_SZ, sdiff_TMP, token_SZ));
 
-  RFile_4_2#(prname_T, value_T) prf <- mkRFile_4_2();
+  RFile_4_2 prf <- mkRFile_4_2();
 
   //map table 
 
-  rname_T maxR = maxBound;
+  RName maxR = maxBound;
   Bit#(prname_SZ) minInitFL_bits = zeroExtend(pack(maxR)) + 1;
-  prname_T minInitFL = unpack(minInitFL_bits);
-  prname_T maxInitFL = maxBound;
+  PRName minInitFL = unpack(minInitFL_bits);
+  PRName maxInitFL = maxBound;
   
-  Vector#(TExp#(rname_SZ), prname_T) initmap = map(fromInteger, genVector);
-  Reg#(Vector#(TExp#(rname_SZ), prname_T)) maptbl <- mkReg(initmap); // init with [0 .. max]
+  Vector#(TExp#(rname_SZ), PRName) initmap = map(fromInteger, genVector);
+  Reg#(Vector#(TExp#(rname_SZ), PRName)) maptbl <- mkReg(initmap); // init with [0 .. max]
 
-  function prname_T lookup(rname_T r);
+  function PRName lookup(RName r);
      return select(maptbl._read(), r);
   endfunction 
 
   // XXX initialized with max+1 to maxBound ..
-  RegFile#(prname_T, prname_T)  freelist  <- mkRegFileFullLoad("freelist.hex");
-  Reg #(prname_T)               fl_read   <- mkReg(minInitFL);
-  Reg #(prname_T)               fl_write  <- mkReg(maxInitFL); 
+  RegFile#(PRName, PRName)  freelist  <- mkRegFileFullLoad("freelist.hex");
+  Reg #(PRName)               fl_read   <- mkReg(minInitFL);
+  Reg #(PRName)               fl_write  <- mkReg(maxInitFL); 
 
   //rob                                   old
-  RegFile#(prname_T, Tuple3#(token_T, Maybe#(rname_T), prname_T)) rob      <- mkRegFileFull();
-  Reg#(prname_T)   						  rob_old  <- mkReg(0);
-  Reg#(prname_T) 						  rob_new  <- mkReg(0);
+  RegFile#(PRName, Tuple3#(Token, Maybe#(RName), PRName)) rob      <- mkRegFileFull();
+  Reg#(PRName)   						  rob_old  <- mkReg(0);
+  Reg#(PRName) 						  rob_new  <- mkReg(0);
 
   Reg#(Vector#(TExp#(snapshotptr_SZ), Bool))     snap_valids        <- mkReg(unpack(0));
-  Reg#(Vector#(TExp#(snapshotptr_SZ), token_T))  snap_ids           <- mkRegU();
-  RegFile#(snapshotptr_T, prname_T)              snap_flreadptrs    <- mkRegFileFull();
-  RegFile#(snapshotptr_T, prname_T)              snap_robnewptrs    <- mkRegFileFull(); 
-  RegFile#(snapshotptr_T, Vector#(TExp#(rname_SZ), prname_T)) snaps <- mkRegFileFull();
+  Reg#(Vector#(TExp#(snapshotptr_SZ), Token))  snap_ids           <- mkRegU();
+  RegFile#(SnapshotPtr, PRName)              snap_flreadptrs    <- mkRegFileFull();
+  RegFile#(SnapshotPtr, PRName)              snap_robnewptrs    <- mkRegFileFull(); 
+  RegFile#(SnapshotPtr, Vector#(TExp#(rname_SZ), PRName)) snaps <- mkRegFileFull();
 
 
   Reg#(Bool)  busy <- mkReg(False);
-  Reg#(token_T) stopToken <- mkRegU();
+  Reg#(Token) stopToken <- mkRegU();
 
   Bool free_ss = pack(snap_valids) != ~0;
+
+  //Connections
+  Connection_Server#(Tuple3#(Maybe#(RName), Token, Bool), 
+                     Tuple2#(PRName, PRName)) 
+  //...
+        link_mapping <- mkConnection_Server("dec_to_bypass_mapping");
+
+  Connection_Server#(RName, PRName) 
+  //...
+        link_lookup1 <- mkConnection_Server("dec_to_bypass_lookup1");
+
+  Connection_Server#(RName, PRName) 
+  //...
+        link_lookup2 <- mkConnection_Server("dec_to_bypass_lookup2");
+
+  Connection_Server#(PRName, Maybe#(Value)) 
+  //...
+        link_read1 <- mkConnection_Server("exe_to_bypass_read1");
+
+  Connection_Server#(PRName, Maybe#(Value)) 
+  //...
+        link_read2 <- mkConnection_Server("exe_to_bypass_read2");
+
+  Connection_Server#(PRName, Maybe#(Value)) 
+  //...
+        link_read3 <- mkConnection_Server("mem_to_bypass_read3");
+
+  Connection_Server#(PRName, Maybe#(Value)) 
+  //...
+        link_read4 <- mkConnection_Server("mem_to_bypass_read4");
+
+  Connection_Receive#(Tuple2#(PRName, Value)) 
+  //...
+        link_write1 <- mkConnection_Receive("exe_to_bypass_write1");
+
+  Connection_Receive#(Tuple2#(PRName, Value)) 
+  //...
+        link_write2 <- mkConnection_Receive("mem_to_bypass_write2");
+
+  Connection_Receive#(Tuple2#(Token, PRName)) 
+  //...
+        link_freePReg <- mkConnection_Receive("lco_to_bypass_free");
+
+  Connection_Receive#(Token) 
+  //...
+        link_rewindToToken <- mkConnection_Receive("lco_to_bypass_rewind");
 
   //unBusy
   
@@ -183,15 +199,16 @@ module [HASim_Module] mkBypassUnit
   endrule
 
 
-  //makeMapping (used by Decode)
+  //makeMapping
 
-  //                          new    old
-  method ActionValue#(Tuple2#(prname_T, prname_T)) makeMapping(Maybe#(rname_T) mx, token_T tok, Bool ss)
-         //guard:
-                 if (!busy && (fl_read + 1 != fl_write));
 
-    prname_T oldPReg; 
-    prname_T newPReg;
+  rule makeMapping (!busy && (fl_read + 1 != fl_write));
+  
+    //{Maybe#(RName), Token, Bool} 
+    match {.mx, .tok, .ss} <- link_mapping.getReq();
+
+    PRName oldPReg; 
+    PRName newPReg;
 
     if (isJust(mx))
       begin
@@ -210,7 +227,7 @@ module [HASim_Module] mkBypassUnit
     // update map
     if (isJust(mx))
       begin
-	Vector#(TExp#(rname_SZ), prname_T) new_map = maptbl;
+	Vector#(TExp#(rname_SZ), PRName) new_map = maptbl;
 	new_map = update(new_map, unJust(mx), newPReg);
 	maptbl <= new_map;
       end
@@ -220,11 +237,11 @@ module [HASim_Module] mkBypassUnit
     rob.upd(rob_new, tuple3(tok, mx, newPReg));
 
     // make snapshot if needed
-    Maybe#(snapshotptr_T) midx = Nothing;
+    Maybe#(SnapshotPtr) midx = Nothing;
 
   //INDEX sequence
     Bit#(snapshotptr_SZ) ti_bits = truncate(pack(tok));
-    snapshotptr_T ti = unpack(ti_bits);
+    SnapshotPtr ti = unpack(ti_bits);
     if(!select(snap_valids, ti))
       midx = Just(ti);
 
@@ -249,34 +266,82 @@ module [HASim_Module] mkBypassUnit
       end
     
     // return value
-    return(tuple2(newPReg, oldPReg));
+    link_mapping.makeResp(tuple2(newPReg, oldPReg));
     
-  endmethod
-  
-  //lookup{1, 2} used by Decode
+  endrule
 
-  method lookup1 = lookup;
-  method lookup2 = lookup;
+  //lookup{1, 2} used by Decode
+  rule lookup1 (True);
+    
+    let rnm <- link_lookup1.getReq();
+    link_lookup1.makeResp(lookup(rnm));
+    
+  endrule
+  
+  rule lookup2 (True);
+    
+    let rnm <- link_lookup2.getReq();
+    link_lookup2.makeResp(lookup(rnm));
+    
+  endrule
 
   //read{1,2,3,4} 
   //{1,2} used by Exec
   //{3,4} used by Mem
 
-  method read1 = prf.read1;
-  method read2 = prf.read2;
-  method read3 = prf.read3;
-  method read4 = prf.read4;
+  rule read1 (True);
+  
+    let prnm <- link_read1.getReq();
+    link_read1.makeResp(prf.read1(prnm));
+  
+  endrule
+
+  rule read2 (True);
+  
+    let prnm <- link_read2.getReq();
+    link_read2.makeResp(prf.read2(prnm));
+  
+  endrule
+
+  rule read3 (True);
+  
+    let prnm <- link_read3.getReq();
+    link_read3.makeResp(prf.read3(prnm));
+  
+  endrule
+
+  rule read4 (True);
+  
+    let prnm <- link_read4.getReq();
+    link_read4.makeResp(prf.read4(prnm));
+  
+  endrule
 
   //write{1,2}
   //1 used by Execute
   //2 used by Mem
 
-  method write1 = prf.write1;
-  method write2 = prf.write2;
+  rule write1 (True);
+  
+    match {.prnm, .val} <- link_write1.receive();
+    prf.write1(prnm, val);
+  
+  endrule
+  
+  rule write2 (True);
+  
+    match {.prnm, .val} <- link_write2.receive();
+    prf.write2(prnm, val);
+  
+  endrule
 
   //freePReg (used by Local Commit)
-
-  method Action freePReg(token_T tok,prname_T x) if (!busy);
+  
+  rule freePReg (!busy);
+  
+    // {Token, PRName}
+    match {.tok, .x} <- link_freePReg.receive();
+  
     freelist.upd(fl_write,x);
     fl_write <= fl_write + 1;
 
@@ -287,20 +352,20 @@ module [HASim_Module] mkBypassUnit
     let newvals = zipWith(f, snap_valids, snap_ids);
 
     snap_valids <= newvals;
+  
+  endrule
+  
+  rule rewindToToken (!busy);
     
-  endmethod
-
-  //rewindToToken (used by FunctionalPartition.killToken)
-
-  method Action rewindtoToken(token_T tok) if (!busy);
+    let tok <- link_rewindToToken.receive();
     //NO!!!!!
      
     //see if token is snapshotted
   //INDEX function 
-    Maybe#(snapshotptr_T) midx = Nothing;
+    Maybe#(SnapshotPtr) midx = Nothing;
 
     Bit#(snapshotptr_SZ) idx_bits = truncate(pack(tok));
-    snapshotptr_T idx = unpack(idx_bits);
+    SnapshotPtr idx = unpack(idx_bits);
     
     if (select(snap_valids, idx))
        midx = Just(idx);
@@ -327,11 +392,11 @@ module [HASim_Module] mkBypassUnit
     //flatten dead snaps
     match {.oldTok, .*, .*} = rob.sub(rob_old);
 
-    function Bool flatten(Bool x, token_T t) = x && (tok-oldTok > t - oldTok); //valid and older than tok stay
+    function Bool flatten(Bool x, Token t) = x && (tok-oldTok > t - oldTok); //valid and older than tok stay
      
     snap_valids <= zipWith(flatten, snap_valids, snap_ids);
-
-  endmethod
-
+    
+  endrule
+    
 endmodule
 

@@ -1,10 +1,12 @@
 
 import RegFile::*;
+import PrimArray::*;
 
 import HASim::*;
-import TestCaseBase::*;
+import TestCase_Base::*;
 import ISA::*;
 import TestCase::*;
+
 
 interface Loader;
 
@@ -35,7 +37,7 @@ module [HASim_Module] mkFUNCP_Loader#(RegFile#(Addr, Inst)  imem,
   
   rule load_imem (started && i_loading);
   
-    imem.upd(icur, tc.imem_init[icur]);
+    imem.upd(icur, primArrayDynamicSelect(tc.imem_init, icur));
     
     icur <= icur + 1;
     //$display("Loading IMem");
@@ -47,7 +49,7 @@ module [HASim_Module] mkFUNCP_Loader#(RegFile#(Addr, Inst)  imem,
   
   rule load_dmem (started && d_loading);
   
-    dmem.upd(dcur, tc.dmem_init[dcur]);
+    dmem.upd(dcur, primArrayDynamicSelect(tc.dmem_init, dcur));
     
     dcur <= dcur + 1;
     //$display("Loading DMem");

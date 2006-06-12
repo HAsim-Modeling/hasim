@@ -263,7 +263,7 @@ module [HASim_Module] mkMem_Software
     tvalids <= Vector::zipWith(flattenToken, tvalids, tokens);
     */
     
-    tvalids <= unpack(pack(tvalids) & ~(1 << token));
+    tvalids <= unpack(pack(tvalids) & ~(1 << toIndex(token)));
 
   endrule
   

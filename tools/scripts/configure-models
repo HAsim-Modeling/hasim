@@ -114,7 +114,7 @@ endif
 	 $(BSC) $(FLAGS) $<
 
 all: $(BIS)
-	 $(BSC) -u -verilog $(FLAGS) $(TopLevel)
+	 $(BSC) -u -verilog $(FLAGS) TopLevel.bsv
 
 
 

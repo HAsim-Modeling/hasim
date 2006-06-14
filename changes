@@ -641,3 +641,107 @@ Directory modules/chip/toymips/simple
 Fixed a deadlock in the toymips model. Preparing to separate mips models into hasim-mips repository.
 
 Michael
+
+----------
+mpellaue    Date: Wed Jun 14 17:06:15 EDT 2006  CSN: CSN-hasim-62
+                  Wed Jun 14 21:06:15 UTC 2006
+
+
+Directory modules/functional
+ toymips/                  Locally Removed            55 
+
+Directory modules/functional/smips
+ hasim_smips_functional_partition.awb Locally Removed            55 
+ SMIPS_Mem.bsv             Locally Removed            55 
+ FunctionalPartition.bsv   Locally Removed            55 
+
+Directory modules/functional
+ smips/                    Locally Removed            55 
+
+Directory modules
+ chip/                     Locally Removed            55 
+ isa/                      Locally Removed            55 
+
+TOYMIPS/SMIPS files removed and moved to the hasim-mips repository.
+
+Michael
+
+----------
+mpellaue    Date: Wed Jun 14 17:13:44 EDT 2006  CSN: CSN-hasim-62
+                  Wed Jun 14 21:13:45 UTC 2006
+
+
+Directory admin/packages
+ hasim                     Locally Modified           61 
+
+Directory admin
+ mytags                    Locally Modified           61 
+
+Directory modules/functional
+ toymips/                  Locally Removed            61 
+
+Directory modules/functional/toymips
+ FUNCP_GlobalCommitAlg.bsv Locally Removed            61 
+ FUNCP_FetchAlg.bsv        Locally Removed            61 
+ toymips_funcp_globalcommit_alg.awb Locally Removed            61 
+ toymips_funcp_fetch_alg.awb Locally Removed            61 
+ FUNCP_MemAlg.bsv          Locally Removed            61 
+ toymips_funcp_mem_alg.awb Locally Removed            61 
+ FUNCP_ExecuteAlg.bsv      Locally Removed            61 
+ FUNCP_DecodeAlg.bsv       Locally Removed            61 
+ FUNCP_LocalCommitAlg.bsv  Locally Removed            61 
+ toymips_funcp_execute_alg.awb Locally Removed            61 
+ toymips_funcp_decode_alg.awb Locally Removed            61 
+ toymips_funcp_localcommit_alg.awb Locally Removed            61 
+
+Directory modules/functional
+ smips/                    Locally Removed            61 
+
+Directory modules/functional/smips
+ hasim_smips_functional_partition.awb Locally Removed            61 
+ SMIPS_Mem.bsv             Locally Removed            61 
+ FunctionalPartition.bsv   Locally Removed            61 
+
+Directory modules
+ chip/                     Locally Removed            61 
+
+Directory modules/chip
+ toymips/                  Locally Removed            61 
+
+Directory modules/chip/toymips
+ 5stage/                   Locally Removed            61 
+
+Directory modules/chip/toymips/5stage
+ hasim_5stage_chip.awb     Locally Removed            61 
+ Chip.bsv                  Locally Removed            61 
+
+Directory modules/chip/toymips
+ simple/                   Locally Removed            61 
+
+Directory modules/chip/toymips/simple
+ hasim_simple_chip.awb     Locally Removed            61 
+ Chip.bsv                  Locally Removed            61 
+
+Directory modules
+ isa/                      Locally Removed            61 
+
+Directory modules/isa
+ toymips/                  Locally Removed            61 
+
+Directory modules/isa/toymips
+ ISA.bsv                   Locally Removed            61 
+ hasim_toymips_isa.awb     Locally Removed            61 
+
+Directory modules/isa
+ smips/                    Locally Removed            61 
+
+Directory modules/isa/smips
+ hasim_smips_isa.awb       Locally Removed            61 
+ Isa.bsv                   Locally Removed            61 
+
+Directory .
+ changes                   Locally Modified           61 
+
+Removed TOYMIPS/SMIPS files. They have been transferred to the hasim-mips repository.
+
+Michael

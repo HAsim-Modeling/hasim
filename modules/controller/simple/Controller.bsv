@@ -64,7 +64,8 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
 	end
       default:
         begin
-          $display("Unexpected FP response.");
+          $display("Unexpected TModule response [0]: %0h", pack(resp));
+
 	  $finish(1);
 	end
     endcase 
@@ -83,7 +84,8 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
 	end
       default:
         begin
-          $display("Unexpected TModule response.");
+          $display("Unexpected TModule response [1]: %0h", pack(resp));
+
 	  $finish(1);
 	end
     endcase
@@ -116,7 +118,7 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
 	end
       default:
         begin
-          $display("Unexpected TModule response.");
+          $display("Unexpected TModule response [2]: %0h", pack(resp));
 	  $finish(1);
 	end
     endcase

@@ -98,6 +98,7 @@ module [HASim_Module] mkFUNCP_DecodeAlg ();
     debug_rule("handleResponse");
     
     match {.t, .a, .inst} = waitingQ.first();
+    waitingQ.deq();
     
     DepInfo depinfo = ?;
     DecodedInst decinst = ?;
@@ -171,7 +172,7 @@ module [HASim_Module] mkFUNCP_DecodeAlg ();
           decinst = DTerminate;
           depinfo = DepInfo {dep_dest: Nothing, dep_src1: Nothing, dep_src2: Nothing};
 
-          debug(2, $display("DEC: [%d]: ITerminate"));
+          debug(2, $display("DEC: [%d]: ITerminate", t));
         end
     endcase
 

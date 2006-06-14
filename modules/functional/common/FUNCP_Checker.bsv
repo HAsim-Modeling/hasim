@@ -61,13 +61,13 @@ module [HASim_Module] mkFUNCP_Checker#(RegFile#(Addr, Value) dmem)
    
   endmethod
   
-  method Bool passed() if (started);
+  method Bool passed() if (started && !d_checking);
   
     return passedR;
   
   endmethod
 
-  method Bool done();
+  method Bool done() if (started);
   
     return !d_checking;
     

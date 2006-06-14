@@ -169,7 +169,7 @@ module [HASim_Module] mkChip
             match {.tok, .inst} <- link_to_fet.getResp();
 	    debug(2, $display("%h: FET Responded with token %0d.", baseTick, tok));
 	    
-	    if (tok != cur_tok) $display ("FET ERROR");
+	    if (tok != cur_tok) $display ("FET ERROR: Token Mismatch. Expected: %0d Received: %0d", cur_tok, tok);
 	    
 	    stage <= DEC;
 	    madeReq <= False;
@@ -217,7 +217,7 @@ module [HASim_Module] mkChip
 	        debug(2, $display("No Source 2."));
 	    endcase
 	    
-	    if (tok != cur_tok) $display ("DEC ERROR");
+	    if (tok != cur_tok) $display ("DEC ERROR: Token Mismatch. Expected: %0d Received: %0d", cur_tok, tok);
 	    
 	    stage <= EXE;
 	    madeReq <= False;
@@ -242,7 +242,7 @@ module [HASim_Module] mkChip
             match {.tok, .res} <- link_to_exe.getResp();
 	    debug(2, $display("%h: EXE Responded with token %0d.", baseTick, tok));
 	    
-	    if (tok != cur_tok) $display ("EXE ERROR");
+	    if (tok != cur_tok) $display ("EXE ERROR: Token Mismatch. Expected: %0d Received: %0d", cur_tok, tok);
 	   	
 	    case (res) matches
 	      tagged RBranchTaken .addr:
@@ -292,7 +292,7 @@ module [HASim_Module] mkChip
 	    match {.tok, .*} <- link_to_mem.getResp();
 	    debug(2, $display("%h: MEM Responded with token %0d.", baseTick, tok));
 	    
-	    if (tok != cur_tok) $display ("MEM ERROR");
+	    if (tok != cur_tok) $display ("MEM ERROR: Token Mismatch. Expected: %0d Received: %0d", cur_tok, tok);
 	    
 	    stage <= LCO;
 	    madeReq <= False;
@@ -320,7 +320,7 @@ module [HASim_Module] mkChip
             match {.tok, .*} <- link_to_lco.getResp();
 	    debug(2, $display("%h: LCO Responded with token %0d.", baseTick, tok));
 	    
-	    if (tok != cur_tok) $display ("LCO ERROR");
+	    if (tok != cur_tok) $display ("LCO ERROR: Token Mismatch. Expected: %0d Received: %0d", cur_tok, tok);
 	    
 	    stage <= GCO;
 	    madeReq <= False;
@@ -347,7 +347,7 @@ module [HASim_Module] mkChip
             match {.tok, .*} <- link_to_gco.getResp();
 	    debug(2, $display("%h: GCO Responded with token %0d.", baseTick, tok));
 	    
-	    if (tok != cur_tok) $display ("GCO ERROR");
+	    if (tok != cur_tok) $display ("GCO ERROR: Token Mismatch. Expected: %0d Received: %0d", cur_tok, tok);
 	    
 	    debug(1, $display("Committed token %0d", cur_tok));
 	    
@@ -367,7 +367,7 @@ module [HASim_Module] mkChip
   endmethod
 
   method ActionValue#(Response) response() if (ran && !running);
-    noAction;
+    ran <= False;
     return RESP_DoneRunning;
 
   endmethod

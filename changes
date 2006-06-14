@@ -620,3 +620,24 @@ Directory tools/scripts
 A few final changes to the reorg.
 
 Michael
+
+----------
+mpellaue    Date: Wed Jun 14 11:42:29 EDT 2006  CSN: CSN-hasim-61
+                  Wed Jun 14 15:42:29 UTC 2006
+
+
+Directory modules/functional/toymips
+ FUNCP_DecodeAlg.bsv       Locally Modified           58 
+
+Directory modules/functional/common
+ FUNCP_Checker.bsv         Locally Modified           60 
+
+Directory modules/controller/simple
+ Controller.bsv            Locally Modified           58 
+
+Directory modules/chip/toymips/simple
+ Chip.bsv                  Locally Modified           58 
+
+Fixed a deadlock in the toymips model. Preparing to separate mips models into hasim-mips repository.
+
+Michael

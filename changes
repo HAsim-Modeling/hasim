@@ -745,3 +745,22 @@ Directory .
 Removed TOYMIPS/SMIPS files. They have been transferred to the hasim-mips repository.
 
 Michael
+
+----------
+mpellaue    Date: Tue Jun 27 18:19:23 EDT 2006  CSN: CSN-hasim-63
+                  Tue Jun 27 22:19:23 UTC 2006
+
+
+Directory modules/functional/common
+ FUNCP_Checker.bsv         Locally Modified           62 
+ FUNCP_Pipeline.bsv        Locally Modified           62 
+ FUNCP_Loader.bsv          Locally Modified           62 
+ FUNCP_MemState.bsv        Locally Modified           62 
+
+Directory modules/common
+ Debug.bsv                 Locally Modified           62 
+ HASim.bsv                 Locally Modified           62 
+
+Modified HAsim to wrk with bsc 3.8.68. Please use this version or later.
+
+Michael

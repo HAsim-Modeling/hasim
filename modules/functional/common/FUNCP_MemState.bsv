@@ -80,17 +80,19 @@ module [HASim_Module] mkMem_Software
 	     Transmittable#(Tuple2#(Token, Token)),
 	     Add#(1, n1, TExp#(token_SZ)));  //Token size must be greater than one.
 	    
+  SoftAddr maxSoftAddr = maxBound();
+  Addr maxAddr = zeroExtend(maxSoftAddr);
 
   //State elements
 
   FIFO#(MemResp) f <- mkFIFO();
 
-  RegFile#(Addr, Inst) imemory <- mkRegFileFull();
+  RegFile#(SoftAddr, Inst) imemory <- mkRegFileFull();
   
-  RegFile#(Addr, Value) dmemory <- mkRegFileFull();
+  RegFile#(SoftAddr, Value) dmemory <- mkRegFileFull();
 
   Reg#(Vector#(TExp#(token_SZ), Bool)) tvalids <- mkReg(Vector::replicate(False));
-  Reg#(Vector#(TExp#(token_SZ), Tuple3#(Token, Addr, Value))) tokens <- mkRegU();
+  Reg#(Vector#(TExp#(token_SZ), Tuple3#(Token, SoftAddr, Value))) tokens <- mkRegU();
 
   //Connections
   
@@ -123,12 +125,12 @@ module [HASim_Module] mkMem_Software
   endfunction
 
 
-  Vector#(TExp#(token_SZ), Maybe#(Tuple3#(Token, Addr, Value))) mtokens = Vector::zipWith(maybify, tvalids, tokens);
+  Vector#(TExp#(token_SZ), Maybe#(Tuple3#(Token, SoftAddr, Value))) mtokens = Vector::zipWith(maybify, tvalids, tokens);
  
  
   //matchAddr :: Maybe (token, addr, value) -> addr -> Bool -> Maybe (token, addr, value)
 
-  function Maybe#(Tuple3#(Token, Addr, Value)) matchAddr(Addr a, Bool b, Tuple3#(Token, Addr, Value) x);
+  function Maybe#(Tuple3#(Token, SoftAddr, Value)) matchAddr(SoftAddr a, Bool b, Tuple3#(Token, SoftAddr, Value) x);
   
     match {.*, .addr, .*} = x;
     
@@ -143,7 +145,12 @@ module [HASim_Module] mkMem_Software
   rule handleIMEM (True);
   
     Addr a <- link_imem.getReq();
-    link_imem.makeResp(imemory.sub(a));
+    
+    if (a > maxAddr)
+      $display("WARNING [0]: Address 0x%h out of bounds. Increase software address length!");
+    
+    SoftAddr sa = truncate(a);
+    link_imem.makeResp(imemory.sub(sa));
     
   endrule
  
@@ -153,7 +160,7 @@ module [HASim_Module] mkMem_Software
  
   rule handleDMEM (True);
 
-   function Value getResult(Token youngest, Addr a);
+   function Value getResult(Token youngest, SoftAddr a);
 
      //youngerToken :: token -> token -> Bool
 
@@ -169,8 +176,8 @@ module [HASim_Module] mkMem_Software
 
      //pickYoungest :: Maybe (Bool, token) -> Maybe (Bool, token) -> Maybe#(Bool, token)
 
-     function Maybe#(Tuple3#(Token, Addr, Value)) pickYoungest(Maybe#(Tuple3#(Token, Addr, Value)) mta, 
-	                                                             Maybe#(Tuple3#(Token, Addr, Value)) mtb);
+     function Maybe#(Tuple3#(Token, SoftAddr, Value)) pickYoungest(Maybe#(Tuple3#(Token, SoftAddr, Value)) mta, 
+	                                                             Maybe#(Tuple3#(Token, SoftAddr, Value)) mtb);
 
        return (!isJust(mta)) ? mtb :
 	      (!isJust(mtb)) ? Nothing :
@@ -178,7 +185,7 @@ module [HASim_Module] mkMem_Software
 
      endfunction
 
-     Maybe#(Tuple3#(Token, Addr, Value)) finalChoice = Vector::fold(pickYoungest, mmtokens);
+     Maybe#(Tuple3#(Token, SoftAddr, Value)) finalChoice = Vector::fold(pickYoungest, mmtokens);
 
      case (finalChoice) matches
        tagged Nothing: return dmemory.sub(a); // goto memory
@@ -191,13 +198,24 @@ module [HASim_Module] mkMem_Software
     case (req) matches
       tagged Ld .ld_info:
         begin
-          let v = getResult(ld_info.token, ld_info.addr);
+	  if (ld_info.addr > maxAddr)
+            $display("WARNING [1]: Address 0x%h out of bounds. Increase software address length!");
+
+	  SoftAddr sa = truncate(ld_info.addr);
+          
+	  let v = getResult(ld_info.token, sa);
           link_dmem.makeResp(LdResp v);
+	  
         end
       tagged St .st_info:
         begin
+	  if (st_info.addr > maxAddr)
+            $display("WARNING [2]: Address 0x%h out of bounds. Increase software address length!");
+          
+	  SoftAddr sa = truncate(st_info.addr);
+	  
           //Response
-          let v = getResult(st_info.token, st_info.addr); // use this as the "old value"
+          let v = getResult(st_info.token, sa); // use this as the "old value"
           link_dmem.makeResp(StResp);
           //drop in Buffer
 
@@ -207,7 +225,7 @@ module [HASim_Module] mkMem_Software
 
 	  //tvalids <= update(tvalids, i, True); //XXX
 	  tvalids <= unpack(pack(tvalids) | 1 << i);
-	  tokens <= update(tokens, i, tuple3(st_info.token, st_info.addr, st_info.val));
+	  tokens <= update(tokens, i, tuple3(st_info.token, sa, st_info.val));
 
         end
     endcase
@@ -224,7 +242,7 @@ module [HASim_Module] mkMem_Software
 
     //matchToken :: token -> Maybe (token, addr, value) -> Bool
 
-    function Bool matchToken(Token t, Maybe#(Tuple3#(Token, Addr, Value)) mx);
+    function Bool matchToken(Token t, Maybe#(Tuple3#(Token, SoftAddr, Value)) mx);
 
       return case (mx) matches
 	tagged Just {.tok,.*,.*}: return (t == tok);
@@ -235,13 +253,13 @@ module [HASim_Module] mkMem_Software
 
     //ff :: Maybe (token, addr, value) -> Maybe (token, addr, value) -> Maybe (token, addr, value)
 
-    function Maybe#(Tuple3#(Token, Addr, Value)) ff(Maybe#(Tuple3#(Token, Addr, Value)) ma, Maybe#(Tuple3#(Token, Addr, Value)) mb);
+    function Maybe#(Tuple3#(Token, SoftAddr, Value)) ff(Maybe#(Tuple3#(Token, SoftAddr, Value)) ma, Maybe#(Tuple3#(Token, SoftAddr, Value)) mb);
 
       return matchToken(token, ma) ? ma: mb;
 
     endfunction
 
-    Maybe#(Tuple3#(Token, Addr, Value)) mresult = fold(ff, mtokens); // the value
+    Maybe#(Tuple3#(Token, SoftAddr, Value)) mresult = fold(ff, mtokens); // the value
 
     case (mresult) matches
 
@@ -263,7 +281,7 @@ module [HASim_Module] mkMem_Software
     tvalids <= Vector::zipWith(flattenToken, tvalids, tokens);
     */
     
-    tvalids <= unpack(pack(tvalids) & ~(1 << toIndex(token)));
+    tvalids <= unpack(pack(tvalids) & ~(1 << token));
 
   endrule
   
@@ -299,7 +317,18 @@ module [HASim_Module] mkMem_Software
   
   //Magic interface for testharness
 
-  interface magic_imem = imemory;
-  interface magic_dmem = dmemory;
+  interface RegFile magic_imem;
+  
+    method upd(a,v) = imemory.upd(truncate(a), v);
+    method sub(a) = imemory.sub(truncate(a));
+  
+  endinterface
+  
+  interface RegFile magic_dmem;
+
+    method upd(a,v) = dmemory.upd(truncate(a), v);
+    method sub(a) = dmemory.sub(truncate(a));
+  
+  endinterface
 
 endmodule

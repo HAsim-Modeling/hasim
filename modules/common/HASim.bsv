@@ -200,10 +200,11 @@ module [Connected_Module] mkConnection_Receive#(String portname)
             (Bits#(msg_T, msg_SZ),
 	     Transmittable#(msg_T));
 
-  Wire#(Bit#(`ConnectionWidth)) w <- mkWire();
+  Wire#(msg_T) w <- mkWire();
+  
   let inc = (interface Put;
 	       method Action put(Bit#(`ConnectionWidth) data);
-	         w <= data;
+	         w <= unmarshall(data);
 	       endmethod
 	     endinterface);
 
@@ -212,7 +213,7 @@ module [Connected_Module] mkConnection_Receive#(String portname)
   
   method ActionValue#(msg_T) receive();
     noAction;
-    return unmarshall(w);
+    return w;
   endmethod
 
 endmodule
@@ -230,7 +231,7 @@ module [Connected_Module] mkConnection_Client#(String portname)
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
   FIFO#(req_T) q <- mkFIFO();
-  Wire#(Bit#(`ConnectionWidth)) w <- mkWire();
+  Wire#(resp_T) w <- mkWire();
   
   //Bind the interfaces to names.
   let outg = (interface Get;
@@ -242,7 +243,7 @@ module [Connected_Module] mkConnection_Client#(String portname)
 	      
   let inc = (interface Put;
 	       method Action put(Bit#(`ConnectionWidth) data);
-	         w <= data;
+	         w <= unmarshall(data);
 	       endmethod
 	     endinterface);
   
@@ -259,7 +260,7 @@ module [Connected_Module] mkConnection_Client#(String portname)
   
   method ActionValue#(resp_T) getResp;
     noAction;
-    return unmarshall(w);
+    return w;
   endmethod
 
 endmodule
@@ -277,7 +278,7 @@ module [Connected_Module] mkConnection_Server#(String portname)
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
   FIFO#(resp_T) q <- mkFIFO();
-  Wire#(Bit#(`ConnectionWidth)) w <- mkWire();
+  Wire#(req_T) w <- mkWire();
   
   //Bind the interface to names for convenience
   let outg = (interface Get;
@@ -289,7 +290,7 @@ module [Connected_Module] mkConnection_Server#(String portname)
 	      
   let inc = (interface Put;
 	       method Action put(Bit#(`ConnectionWidth) data);
-	         w <= data;
+	         w <= unmarshall(data);
 	       endmethod
 	     endinterface);
   
@@ -306,7 +307,7 @@ module [Connected_Module] mkConnection_Server#(String portname)
   
   method ActionValue#(req_T) getReq;
     noAction;
-    return unmarshall(w);
+    return w;
   endmethod
 
 endmodule
@@ -495,7 +496,7 @@ module [Module] instantiateDangling#(Connected_Module#(inter_T) m) (WithConnecti
 
   match {.m, .col} <- getCollection(m);
   
-  //connectDangling(col, m);
+  connectDangling(col, m);
 
 endmodule
 

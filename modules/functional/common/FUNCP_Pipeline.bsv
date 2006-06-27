@@ -102,7 +102,7 @@ endmodule
 
 module [HASim_Module] mkFUNCP_Stage_GCO ();
 
-  FUNCP_Stage#(ExecedInst, void, void, ExecedInst)
+  FUNCP_Stage#(ExecedInst, void, void, void)
   //...
        stage <- mkFUNCP_Stage("GCO", 
                               "link_gco",

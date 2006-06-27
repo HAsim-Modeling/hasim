@@ -8,7 +8,7 @@
 //Level 3+: Every rule and method traced, with conditionals
 
 `ifndef DEBUG_LEVEL
-`define DEBUG_LEVEL 0
+`define DEBUG_LEVEL 2
 `endif
 
 `ifndef PARTITION_NAME
@@ -32,7 +32,7 @@ function Action debug_enter (String thing, String name);
 action
 
 
-  debug(3, $display("%s Partition: Module %s entering %s: %s", `PARTITION_NAME, `MODULE_NAME, thing, name));
+  debug(3, $display("Entering %s: %s", thing, name));
 
 endaction
 endfunction
@@ -41,7 +41,7 @@ function Action debug_enter_val (String thing, String name, String val);
 action
 
 
-  debug(3, $display("%s Partition: Module %s entering %s: %s == %s", `PARTITION_NAME, `MODULE_NAME, thing, name, val));
+  debug(3, $display("Entering %s: %s == %s", thing, name, val));
 
 endaction
 endfunction

@@ -36,7 +36,7 @@ module [HASim_Module] mkFUNCP_Checker#(RegFile#(Addr, Value) dmem)
   rule check_dmem (started && d_checking);
   
     Value v = dmem.sub(ecur);
-    Value exp_v = primArrayDynamicSelect(tc.dmem_exp, ecur);
+    Value exp_v = tc.dmem_exp[ecur];
      
     if (v != exp_v)
     begin

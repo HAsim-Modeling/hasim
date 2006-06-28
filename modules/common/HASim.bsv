@@ -56,9 +56,6 @@ interface TModule#(type com_T, type resp_T);
 
 endinterface
 
-
-
-
 //------------------------- Connections --------------------------//
 //                                                                //
 // Connections are the plumbing of HASim. They represent basic	  //
@@ -116,22 +113,59 @@ interface Connection_Server#(type req_T, type resp_T);
   
 endinterface
 
-`define ConnectionWidth 200
+`define CON_WIDTH 200
+
+typedef Bit#(8) CON_Addr;
+typedef Bit#(`CON_WIDTH) CON_Data;
 
 interface WithConnections#(type in_W, type out_W, type orig_T);
 
   interface orig_T original;
 
-  interface Vector#(in_W, Put#(Bit#(`ConnectionWidth))) incoming;
-  interface Vector#(out_W, Get#(Bit#(`ConnectionWidth))) outgoing;
+  interface Put#(Tuple2#(CON_Addr, CON_Data)) incoming;
+  interface Get#(Tuple2#(CON_Addr, CON_Data)) outgoing;
 
 endinterface
 
+interface AntiGet#(type a);
+
+  method Action get_TRY(a x);
+  method Bool   get_SUCCESS();
+
+endinterface
+
+instance Connectable#(FIFO#(a), AntiGet#(a));
+
+  function m#(Empty) mkConnection(FIFO#(a) q, AntiGet#(a) p)
+    provisos (IsModule#(m, c));
+  
+    return connectFIFOtoAntiGet(q, p);
+    
+  endfunction
+
+endinstance
+
+module connectFIFOtoAntiGet#(FIFO#(a) q, AntiGet#(a) g) ();
+
+  rule trySend (True);
+  
+    let x = q.first();
+    g.get_TRY(x);
+  
+  endrule
+
+  rule success (g.get_SUCCESS());
+  
+    q.deq();
+    
+  endrule
+
+endmodule
 
 typedef union tagged
 {
-  Tuple2#(String, Get#(Bit#(`ConnectionWidth))) LSend;
-  Tuple2#(String, Put#(Bit#(`ConnectionWidth))) LRec;
+  Tuple2#(String,    FIFO#(CON_Data)) LSend;
+  Tuple2#(String, AntiGet#(CON_Data)) LRec;
 }
   ConnectionData;
 
@@ -142,22 +176,22 @@ typedef Connected_Module HASim_Module;
 
 typeclass Transmittable#(type any_T);
 
-  function Bit#(`ConnectionWidth) marshall(any_T data);
+  function CON_Data marshall(any_T data);
   
-  function any_T unmarshall(Bit#(`ConnectionWidth) data);
+  function any_T unmarshall(CON_Data data);
   
 endtypeclass
 
 instance Transmittable#(any_T)
       provisos
               (Bits#(any_T, any_SZ),
-	       Add#(any_SZ, k_TMP, `ConnectionWidth));
+	       Add#(any_SZ, k_TMP, `CON_WIDTH));
 
-  function Bit#(`ConnectionWidth) marshall(any_T data);
+  function CON_Data marshall(any_T data);
     return zeroExtend(pack(data));
   endfunction
   
-  function any_T unmarshall(Bit#(`ConnectionWidth) data);
+  function any_T unmarshall(CON_Data data);
     return unpack(truncate(data));
   endfunction
   
@@ -174,21 +208,13 @@ module [Connected_Module] mkConnection_Send#(String portname)
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-  FIFO#(msg_T) q <- mkFIFO();
-  
-  //Bind the interface to a name for convenience.
-  let outg = (interface Get;
-		method ActionValue#(Bit#(`ConnectionWidth)) get();
-		  q.deq();
-		  return marshall(q.first());
-		endmethod
-	      endinterface);
-  
+  FIFO#(CON_Data) q <- mkFIFO();
+    
   //Add our interface to the ModuleCollect collection
-  addToCollection(LSend tuple2(portname, outg));
+  addToCollection(LSend tuple2(portname, q));
 
   method Action send(msg_T data);
-    q.enq(data);
+    q.enq(marshall(data));
   endmethod
 
 endmodule
@@ -200,20 +226,28 @@ module [Connected_Module] mkConnection_Receive#(String portname)
             (Bits#(msg_T, msg_SZ),
 	     Transmittable#(msg_T));
 
-  Wire#(msg_T) w <- mkWire();
+  PulseWire en_w  <- mkPulseWire();
+  Wire#(msg_T) data_w  <- mkWire();
   
-  let inc = (interface Put;
-	       method Action put(Bit#(`ConnectionWidth) data);
-	         w <= unmarshall(data);
+  //Bind the interface to a name for convenience
+  let inc = (interface AntiGet;
+  
+	       method Action get_TRY(CON_Data x);
+	         data_w <= unmarshall(x);
 	       endmethod
+	       
+	       method Bool get_SUCCESS();
+	         return en_w;
+	       endmethod
+
 	     endinterface);
 
-  //Bind the interface to a name for convenience
+  //Add our interface to the ModuleCollect collection
   addToCollection(LRec tuple2(portname, inc));
   
   method ActionValue#(msg_T) receive();
-    noAction;
-    return w;
+    en_w.send();
+    return data_w;
   endmethod
 
 endmodule
@@ -230,37 +264,37 @@ module [Connected_Module] mkConnection_Client#(String portname)
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-  FIFO#(req_T) q <- mkFIFO();
-  Wire#(resp_T) w <- mkWire();
+  FIFO#(CON_Data) q <- mkFIFO();
+  PulseWire en_w  <- mkPulseWire();
+  Wire#(resp_T) data_w  <- mkWire();
+  	      
+  //Bind the interface to a name for convenience
+  let inc = (interface AntiGet;
   
-  //Bind the interfaces to names.
-  let outg = (interface Get;
-		method ActionValue#(Bit#(`ConnectionWidth)) get();
-		  q.deq();
-		  return marshall(q.first());
-		endmethod
-	      endinterface);
-	      
-  let inc = (interface Put;
-	       method Action put(Bit#(`ConnectionWidth) data);
-	         w <= unmarshall(data);
+	       method Action get_TRY(CON_Data x);
+	         data_w <= unmarshall(x);
 	       endmethod
+	       
+	       method Bool get_SUCCESS();
+	         return en_w;
+	       endmethod
+
 	     endinterface);
   
   let sendname = strConcat(portname, "_req");
   let recname = strConcat(portname, "_resp");
 
-  //Add our interface to the ModuleCollect collection
-  addToCollection(LSend tuple2(sendname, outg));
+  //Add our interfaces to the ModuleCollect collection
+  addToCollection(LSend tuple2(sendname, q));
   addToCollection(LRec tuple2(recname, inc));
 
   method Action makeReq(req_T data);
-    q.enq(data);
+    q.enq(marshall(data));
   endmethod
   
   method ActionValue#(resp_T) getResp;
-    noAction;
-    return w;
+    en_w.send();
+    return data_w;
   endmethod
 
 endmodule
@@ -277,37 +311,37 @@ module [Connected_Module] mkConnection_Server#(String portname)
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-  FIFO#(resp_T) q <- mkFIFO();
-  Wire#(req_T) w <- mkWire();
+  FIFO#(CON_Data) q <- mkFIFO();
+  PulseWire en_w  <- mkPulseWire();
+  Wire#(req_T) data_w  <- mkWire();
   
   //Bind the interface to names for convenience
-  let outg = (interface Get;
-		method ActionValue#(Bit#(`ConnectionWidth)) get();
-		  q.deq();
-		  return marshall(q.first());
-		endmethod
-	      endinterface);
-	      
-  let inc = (interface Put;
-	       method Action put(Bit#(`ConnectionWidth) data);
-	         w <= unmarshall(data);
-	       endmethod
-	     endinterface);
+  let inc = (interface AntiGet;
   
+	       method Action get_TRY(CON_Data x);
+	         data_w <= unmarshall(x);
+	       endmethod
+	       
+	       method Bool get_SUCCESS();
+	         return en_w;
+	       endmethod
+
+	     endinterface);
+	     
   let sendname = strConcat(portname, "_resp");
   let recname = strConcat(portname, "_req");
   
-  //Add our interface to the ModuleCollect collection
-  addToCollection(LSend tuple2(sendname, outg));
+  //Add our interfaces to the ModuleCollect collection
+  addToCollection(LSend tuple2(sendname, q));
   addToCollection(LRec tuple2(recname, inc));
 
   method Action makeResp(resp_T data);
-    q.enq(data);
+    q.enq(marshall(data));
   endmethod
   
   method ActionValue#(req_T) getReq;
-    noAction;
-    return w;
+    en_w.send();
+    return data_w;
   endmethod
 
 endmodule
@@ -384,8 +418,8 @@ endfunction
 
 //splitConnections :: [ConnectionData] -> ([(String, Get)], [(String, Put)])
 
-function Tuple2#(List#(Tuple2#(String, Get#(Bit#(`ConnectionWidth)))), 
-                 List#(Tuple2#(String, Put#(Bit#(`ConnectionWidth))))) splitConnections(List#(ConnectionData) l);
+function Tuple2#(List#(Tuple2#(String, FIFO#(CON_Data))), 
+                 List#(Tuple2#(String, AntiGet#(CON_Data)))) splitConnections(List#(ConnectionData) l);
 
   case (l) matches
     tagged Nil: return tuple2(Nil, Nil);
@@ -402,7 +436,26 @@ function Tuple2#(List#(Tuple2#(String, Get#(Bit#(`ConnectionWidth)))),
   endcase
 
 endfunction
- 
+
+//danglingIns :: [AntiGet a] -> Module (Put (addr, a))
+
+module danglingIns#(List#(AntiGet#(CON_Data)) gs) (Put#(Tuple2#(CON_Addr, CON_Data)));
+
+  //XXX write this
+  return ?;
+
+endmodule
+
+//danglingOuts :: [FIFO a] -> Module (Get (addr, a))
+
+module danglingOuts#(List#(FIFO#(CON_Data)) fs) (Get#(Tuple2#(CON_Addr, CON_Data)));
+
+  //XXX write this
+  return ?;
+
+endmodule
+
+
 //connectDangling :: [ConnectionData] -> ifc -> Module (WithConnections in out ifc)
  
 module [Module] connectDangling#(List#(ConnectionData) ld, inter_T i) (WithConnections#(in_W, out_W, inter_T));
@@ -428,27 +481,30 @@ module [Module] connectDangling#(List#(ConnectionData) ld, inter_T i) (WithConne
   
   let nDSends = length(dsends);
   
-  List#(Get#(Bit#(`ConnectionWidth))) outg = List::nil;
+  List#(FIFO#(CON_Data)) outs = List::nil;
   for (Integer x = 0; x < nDSends; x = x + 1)
   begin
     match {.nm, .cout} = dsends[x];
     messageM(strConcat("Dangling Send: ", nm));
-    outg = List::cons(cout, outg);
+    outs = List::cons(cout, outs);
   end
   
   let nDRecs = length(drecs);
   
-  List#(Put#(Bit#(`ConnectionWidth))) inc = List::nil;
+  List#(AntiGet#(CON_Data)) ins = List::nil;
   for (Integer x = 0; x < nDRecs; x = x + 1)
   begin
     match {.nm, .cin} = drecs[x];
     messageM(strConcat("Dangling Rec: ", nm));
-    inc = List::cons(cin, inc);
+    ins = List::cons(cin, ins);
   end
   
+  let outg <- danglingOuts(outs);
+  let inc <- danglingIns(ins);
+  
   interface original = i;
-  interface outgoing = Vector::toVector(outg);
-  interface incoming = Vector::toVector(inc);
+  interface outgoing = outg;
+  interface incoming = inc;
   
 endmodule
 
@@ -496,7 +552,8 @@ module [Module] instantiateDangling#(Connected_Module#(inter_T) m) (WithConnecti
 
   match {.m, .col} <- getCollection(m);
   
-  connectDangling(col, m);
+  let x <- connectDangling(col, m);
+  return x;
 
 endmodule
 

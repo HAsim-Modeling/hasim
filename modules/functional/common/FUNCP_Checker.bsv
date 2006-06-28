@@ -7,6 +7,7 @@ import HASim::*;
 import ISA::*;
 import TestCase_Base::*;
 import TestCase::*;
+import Debug::*;
 
 interface Checker;
 
@@ -40,6 +41,7 @@ module [HASim_Module] mkFUNCP_Checker#(RegFile#(Addr, Value) dmem)
      
     if (v != exp_v)
     begin
+      debug(2, $display("Checker: Failure at Location %h: Expected %0h. Found %0h", ecur, exp_v, v));
       failQ.enq(tuple3(ecur, exp_v, v));
       passedR <= False;
     end

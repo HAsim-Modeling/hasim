@@ -764,3 +764,18 @@ Directory modules/common
 Modified HAsim to wrk with bsc 3.8.68. Please use this version or later.
 
 Michael
+
+----------
+mpellaue    Date: Thu Jun 29 18:02:33 EDT 2006  CSN: CSN-hasim-65
+                  Thu Jun 29 22:02:33 UTC 2006
+
+
+Directory tools/scripts
+
+Directory modules/functional/common
+ FUNCP_MemState.bsv        Locally Modified           64 
+
+
+Fixed tiny bug in MemState.
+
+Michael

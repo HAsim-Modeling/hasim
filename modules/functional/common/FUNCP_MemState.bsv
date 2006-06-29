@@ -147,7 +147,7 @@ module [HASim_Module] mkMem_Software
     Addr a <- link_imem.getReq();
     
     if (a > maxAddr)
-      $display("WARNING [0]: Address 0x%h out of bounds. Increase software address length!");
+      $display("WARNING [0]: Address 0x%h out of bounds. Increase software address length!", a);
     
     SoftAddr sa = truncate(a);
     link_imem.makeResp(imemory.sub(sa));
@@ -199,7 +199,7 @@ module [HASim_Module] mkMem_Software
       tagged Ld .ld_info:
         begin
 	  if (ld_info.addr > maxAddr)
-            $display("WARNING [1]: Address 0x%h out of bounds. Increase software address length!");
+            $display("WARNING [1]: Address 0x%h out of bounds. Increase software address length!", ld_info.addr);
 
 	  SoftAddr sa = truncate(ld_info.addr);
           
@@ -210,7 +210,7 @@ module [HASim_Module] mkMem_Software
       tagged St .st_info:
         begin
 	  if (st_info.addr > maxAddr)
-            $display("WARNING [2]: Address 0x%h out of bounds. Increase software address length!");
+            $display("WARNING [2]: Address 0x%h out of bounds. Increase software address length!", st_info.addr);
           
 	  SoftAddr sa = truncate(st_info.addr);
 	  

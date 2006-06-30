@@ -167,15 +167,16 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   //SRAM tables
   RegFile#(Token, init_T) values <- mkRegFile(tableMin, tableMax);
   RegFile#(Token, Bool)   valids <- mkRegFile(tableMin, tableMax); 
-  RegFile#(Token, Bool)   dones  <- mkRegFile(tableMin, tableMax); 
+  RegFile#(Token, Bool)   starteds  <- mkRegFile(tableMin, tableMax); 
 
   //Rules
   
   //insert
-
+  (* descending_urgency = "insert, handleReq, getResponse" *)
+  
   rule insert (True);
   
-    match {.tok,.iVal} <- link_from_prev.receive();
+    match {.tok, .iVal} <- link_from_prev.receive();
     
     Bool valid = valids.sub(tok);
     
@@ -185,9 +186,9 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
       end
     else
       begin
-	//Set valid to true and done to false
-	valids.upd(tok,True);
-	dones.upd(tok,False);
+	//Set valid to true and started to false
+	valids.upd(tok, True);
+	starteds.upd(tok, False);
 	values.upd(tok, iVal);
       end
   
@@ -200,17 +201,21 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
 
     match {.tok, .tick, .req} <- link_from_tp.getReq();
    
-    Bool done   =  dones.sub(tok);
-    Bool valid  =  valids.sub(tok);  
+    Bool started   = starteds.sub(tok);
+    Bool valid  = valids.sub(tok);  
 
     init_T iVal = values.sub(tok);
 
     if (!valid)
        $display("%s ERROR: requesting unallocated token %h", stagename, tok);
-     else if (done)
-       $display("%s ERROR: re-requesting finished token %h", stagename, tok);            
-     else // !done
+     else if (started)
+       $display("%s ERROR: re-requesting token %h", stagename, tok);            
+     else
+     begin
        link_to_unit.makeReq(tuple3(tok, iVal, req));
+       starteds.upd(tok, True);
+    end
+    
   endrule
 
   //getResponse
@@ -223,7 +228,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
     
     if (valid) // don't insert if it was killed
       begin
-        dones.upd(tok, True);
+        valids.upd(tok, False);
 	link_from_tp.makeResp(tuple2(tok, resp));
 	link_to_next.send(tuple2(tok, next));
       end

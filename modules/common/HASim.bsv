@@ -226,18 +226,18 @@ module [Connected_Module] mkConnection_Receive#(String portname)
             (Bits#(msg_T, msg_SZ),
 	     Transmittable#(msg_T));
 
-  PulseWire en_w  <- mkPulseWire();
-  Wire#(msg_T) data_w  <- mkWire();
+  VRWire#(Bool)  en_w    <- vMkRWire();
+  VRWire#(msg_T) data_w  <- vMkRWire();
   
   //Bind the interface to a name for convenience
   let inc = (interface AntiGet;
   
 	       method Action get_TRY(CON_Data x);
-	         data_w <= unmarshall(x);
+	         data_w.wset(unmarshall(x));
 	       endmethod
 	       
 	       method Bool get_SUCCESS();
-	         return en_w;
+	         return en_w.whas() && en_w.wget();
 	       endmethod
 
 	     endinterface);
@@ -245,9 +245,9 @@ module [Connected_Module] mkConnection_Receive#(String portname)
   //Add our interface to the ModuleCollect collection
   addToCollection(LRec tuple2(portname, inc));
   
-  method ActionValue#(msg_T) receive();
-    en_w.send();
-    return data_w;
+  method ActionValue#(msg_T) receive() if (data_w.whas());
+    en_w.wset(data_w.whas());
+    return data_w.wget();
   endmethod
 
 endmodule
@@ -265,18 +265,18 @@ module [Connected_Module] mkConnection_Client#(String portname)
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
   FIFO#(CON_Data) q <- mkFIFO();
-  PulseWire en_w  <- mkPulseWire();
-  Wire#(resp_T) data_w  <- mkWire();
+  VRWire#(Bool)  en_w    <- vMkRWire();
+  VRWire#(resp_T) data_w  <- vMkRWire();
   	      
   //Bind the interface to a name for convenience
   let inc = (interface AntiGet;
   
 	       method Action get_TRY(CON_Data x);
-	         data_w <= unmarshall(x);
+	         data_w.wset(unmarshall(x));
 	       endmethod
 	       
 	       method Bool get_SUCCESS();
-	         return en_w;
+	         return en_w.whas() && en_w.wget();
 	       endmethod
 
 	     endinterface);
@@ -292,9 +292,9 @@ module [Connected_Module] mkConnection_Client#(String portname)
     q.enq(marshall(data));
   endmethod
   
-  method ActionValue#(resp_T) getResp;
-    en_w.send();
-    return data_w;
+  method ActionValue#(resp_T) getResp() if (data_w.whas());
+    en_w.wset(data_w.whas());
+    return data_w.wget();
   endmethod
 
 endmodule
@@ -312,18 +312,18 @@ module [Connected_Module] mkConnection_Server#(String portname)
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
   FIFO#(CON_Data) q <- mkFIFO();
-  PulseWire en_w  <- mkPulseWire();
-  Wire#(req_T) data_w  <- mkWire();
+  VRWire#(Bool)  en_w    <- vMkRWire();
+  VRWire#(req_T) data_w  <- vMkRWire();
   
   //Bind the interface to names for convenience
   let inc = (interface AntiGet;
   
 	       method Action get_TRY(CON_Data x);
-	         data_w <= unmarshall(x);
+	         data_w.wset(unmarshall(x));
 	       endmethod
 	       
 	       method Bool get_SUCCESS();
-	         return en_w;
+	         return en_w.whas() && en_w.wget();
 	       endmethod
 
 	     endinterface);
@@ -339,9 +339,9 @@ module [Connected_Module] mkConnection_Server#(String portname)
     q.enq(marshall(data));
   endmethod
   
-  method ActionValue#(req_T) getReq;
-    en_w.send();
-    return data_w;
+  method ActionValue#(req_T) getReq() if (data_w.whas());
+    en_w.wset(data_w.whas());
+    return data_w.wget();
   endmethod
 
 endmodule

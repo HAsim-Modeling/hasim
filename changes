@@ -779,3 +779,20 @@ Directory modules/functional/common
 Fixed tiny bug in MemState.
 
 Michael
+
+----------
+mpellaue    Date: Fri Jun 30 17:26:38 EDT 2006  CSN: CSN-hasim-66
+                  Fri Jun 30 21:26:38 UTC 2006
+
+
+Directory modules/functional/common
+ FUNCP_Base.bsv            Locally Modified           64 
+ FUNCP_RegState.bsv        Locally Modified           64 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified           64 
+
+Directory tools/scripts
+
+
+Bugfixes in the RegState, and Pipeline connections.

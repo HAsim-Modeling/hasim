@@ -38,9 +38,12 @@ module [HASim_Module] mkRFile_4_2
 
   Vector#(TExp#(prname_SZ), Reg#(Value)) rf_regs <- mapM(compose(mkConfigReg,fromInteger), genVector);
 
-  function initiallyValid(Integer x);
-    PRName rmax = maxBound ;
-    return(fromInteger(x) < rmax);
+  function Bool initiallyValid(Integer x);
+    //Only r0 is valid, and set to zero:
+    return (x == 0);
+    //All registers are valid:
+    //PRName rmax = maxBound ;
+    //return(fromInteger(x) < rmax);
   endfunction
 
   Vector#(TExp#(prname_SZ), Reg#(Bool))           rf_valids <-

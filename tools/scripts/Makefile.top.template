@@ -28,11 +28,12 @@ wave: dump.vcd
 vcd: $(APM_NAME).vexe
 	$(APM_NAME).vexe +bscvcd
 
-$(APM_NAME).vexe: make_root_v
+.PHONY: vexe
+vexe: v
 	$(BSC) $(BSCFLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ROOT_V)
 
-.PHONY: make_root_v
-make_root_v: 
+.PHONY: v
+v:
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
 
 ################################################################
@@ -43,11 +44,12 @@ make_root_v:
 run_exe:
 	$(APM_NAME).exe
 
-$(APM_NAME).exe: make_root_ba
+.PHONY: exe
+exe: ba
 	$(BSC) $(BSCFLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ROOT_BA)
 
-.PHONY: make_root_ba
-make_root_ba: 
+.PHONY: ba
+ba: 
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
 
 
@@ -59,8 +61,10 @@ help:
 	@echo "make targets:"	
 	@echo "\twave"
 	@echo "\tvcd"
-	@echo "\t$(APM_NAME).vexe"
-	@echo "\t$(APM_NAME).exe (default)"
+	@echo "\tv"
+	@echo "\tvexe"
+	@echo "\tba"
+	@echo "\t.exe (default)"
 	@echo "\thelp"
 	@echo "\tclean"
 	@echo "\trealclean"

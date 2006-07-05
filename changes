@@ -886,3 +886,13 @@ Directory tools/scripts
  hasim-configure           Locally Modified           69 
 
 Little thing.
+----------
+mamercal    Date: Wed Jul  5 16:22:33 EDT 2006  CSN: CSN-hasim-71
+                  Wed Jul  5 20:22:33 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.top.template     Locally Modified           68 
+ hasim-configure           Locally Modified           70 
+
+Modified top level make targets

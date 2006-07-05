@@ -275,7 +275,7 @@ sub __generate_makefile_sub {
     # on the way up, possibly generate makefile
     if (is_synthesis_boundary($module)) {
 	my $template = Asim::resolve("Makefile.sub.template");
-    DEBUG(">>> TEMPLATE 3: $template\n");
+	DEBUG(">>> TEMPLATE 3: $template\n");
 	my $makefile = path_append($model->build_dir(),$my_dir,"Makefile");
 	do_template_replacements($template,$makefile,$current_replacements_r);
     }

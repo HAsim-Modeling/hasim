@@ -157,6 +157,7 @@ sub generate_makefile_include {
     __generate_makefile_include($model->modelroot(),"arch",$replacements_r);
 
     my $template = Asim::resolve("Makefile.include.template");
+    DEBUG(">>> TEMPLATE 1: $template\n");
     my $makefile = path_append($model->build_dir(),"Makefile.include");
     do_template_replacements($template,$makefile,$replacements_r);
 }
@@ -197,6 +198,7 @@ sub generate_makefile_top {
     }
 
     my $template = Asim::resolve("Makefile.top.template");
+    DEBUG(">>> TEMPLATE 2: $template\n");
     my $makefile = path_append($model->build_dir(),"Makefile");
     do_template_replacements($template,$makefile,$replacements_r);
 }
@@ -273,6 +275,7 @@ sub __generate_makefile_sub {
     # on the way up, possibly generate makefile
     if (is_synthesis_boundary($module)) {
 	my $template = Asim::resolve("Makefile.sub.template");
+    DEBUG(">>> TEMPLATE 3: $template\n");
 	my $makefile = path_append($model->build_dir(),$my_dir,"Makefile");
 	do_template_replacements($template,$makefile,$current_replacements_r);
     }

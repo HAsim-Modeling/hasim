@@ -796,3 +796,59 @@ Directory tools/scripts
 
 
 Bugfixes in the RegState, and Pipeline connections.
+
+----------
+mamercal    Date: Wed Jul  5 14:32:44 EDT 2006  CSN: CSN-hasim-67
+                  Wed Jul  5 18:32:44 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Added               0 
+ hasim-configure           Locally Added               0 
+ Makefile.top.template     Locally Added               0 
+ hasim-connect             Locally Added               0 
+ Makefile.include.template Locally Added               0 
+
+Directory config/pm/hasim
+ traffic_light/            Locally Added               0 
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Added               0 
+
+Directory modules/model
+ Model.bsv                 Locally Modified           66 
+ hasim_model.awb           Locally Modified           66 
+
+Directory modules/controller
+ null/                     Locally Added               0 
+
+Directory modules/controller/null
+ hasim_null_controller.awb Locally Added               0 
+
+Directory modules/system
+ single_chip_system/       Locally Added               0 
+
+Directory modules/system/single_chip_system
+ System.bsv                Locally Added               - 
+ hasim_system.awb          Locally Added               - 
+
+Directory modules/system
+ traffic_light_system/     Locally Added               0 
+
+Directory modules/system/traffic_light_system
+ traffic_light_system.awb  Locally Added               0 
+ hasim_traffic_light_function/ Locally Added               0 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Added               0 
+ TL0.bsv                   Locally Added               0 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Added               0 
+
+Directory modules/system
+ System.bsv                Locally Removed            66 
+ hasim_system.awb          Locally Removed            66 
+
+Adding configure script (hasim-configure), a braindead connection script
+(hasim-connect) and Makefile templates.

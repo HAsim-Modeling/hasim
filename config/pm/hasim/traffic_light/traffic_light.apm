@@ -1,0 +1,39 @@
+
+[Global]
+SaveParameters=0
+Description=Traffic Light from Bluespec Tutorial
+File=traffic_light
+Version=2.0
+Name=Traffic Light Model
+
+[Hasim null controller]
+Packagehint=hasim
+File=modules/controller/null/hasim_null_controller.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/hasim_model.awb
+
+[Hasim - Traffic light system/Requires]
+hasim_traffic_light_function=Hasim - Traffic light function
+
+[Hasim base library]
+Packagehint=hasim
+File=modules/common/hasim_common.awb
+
+[Hasim - Traffic light system]
+Packagehint=hasim
+File=modules/system/traffic_light_system/traffic_light_system.awb
+
+[Model]
+DefaultAttributes=traffic-light hasim
+model=HAsim Model Foundation
+
+[Hasim - Traffic light function]
+Packagehint=hasim
+File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function.awb
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - Traffic light system
+hasim_controller=Hasim null controller
+hasim_common=Hasim base library

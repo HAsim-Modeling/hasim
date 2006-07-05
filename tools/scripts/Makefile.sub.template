@@ -1,0 +1,91 @@
+#!/usr/bin/make -f
+
+include @DOTS_TO_MAKEFILE_INCL@/Makefile.include
+
+DIR = @DIR@
+SUBDIRS = @SUBDIRS@
+PARENT_PATH = @PARENT_PATH@
+BSVS = @BSVS@
+
+WRAPPER = $(DIR)_Wrapper
+WRAPPER_SYNTH_ID = mk_$(WRAPPER)
+
+SUBDIR_BAS = @SUBDIR_BAS@
+SUBDIR_VS = $(SUBDIR_BAS:%.ba=%.v)
+
+BIS = $(BSVS:%.bsv=%.bi)
+BOS = $(BSVS:%.bsv=%.bo)
+
+################################################################
+## 
+
+.PHONY: all
+all: ba
+
+################################################################
+## 
+
+.PHONY: ba
+ba: make_subdir_bas $(WRAPPER_SYNTH_ID).ba
+
+.PHONY: make_subdir_bas
+make_subdir_bas: 
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir ba; \
+	done
+
+$(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(BSVS)
+	$(BSC) $(BSCFLAGS) -u -sim -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $<
+
+$(WRAPPER).bsv: $(SUBDIR_BAS)
+	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
+
+################################################################
+## 
+
+.PHONY: v
+v: make_subdir_vs $(WRAPPER_SYNTH_ID).v
+
+.PHONY: make_subdir_vs
+make_subdir_vs: 
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir v; \
+	done
+
+$(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(BSVS)
+	$(BSC) $(BSCFLAGS) -u -verilog -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $<
+
+# MMMMMM: this rule conflicts with the one to make the other WRAPPER.bsv using bas
+#$(WRAPPER).bsv: $(SUBDIR_VS)
+#	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
+
+################################################################
+## Misc.
+
+.PHONY: help
+help:
+	@echo "ba : "
+	@echo "help : "
+	@echo "clean : "
+	@echo "realclean : "
+
+.PHONY: clean
+clean: clean_subdirs
+	rm -f $(BOS) $(BIS) $(WRAPPER).{bo,bi} *~	
+
+.PHONY: clean_subdirs
+clean_subdirs:
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir clean; \
+	done
+
+.PHONY: realclean
+realclean: clean realclean_subdirs
+	rm -f $(WRAPPER).bsv $(WRAPPER_SYNTH_ID).ba
+
+.PHONY: realclean_subdirs
+realclean_subdirs:
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir realclean; \
+	done
+

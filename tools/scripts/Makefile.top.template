@@ -1,0 +1,81 @@
+#!/usr/bin/make -f
+
+# Must always invoke this makefile from its own directory
+include ./Makefile.include
+
+ROOT_DIR = @ROOT_DIR@
+ROOT_WRAPPER = $(ROOT_DIR)_Wrapper
+ROOT_WRAPPER_SYNTH_ID = mk_$(ROOT_WRAPPER)
+
+CXXS = $(ROOT_WRAPPER_SYNTH_ID).cxx schedule.cxx
+HS = $(CXXS:%.cxx=%.h)
+OS = $(CXXS:%.cxx=%.o)
+
+ROOT_BA = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).ba
+ROOT_V = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).v
+
+.PHONY: all
+all: $(APM_NAME).exe
+
+################################################################
+## Verilog route
+
+.PHONY: wave
+wave: dump.vcd
+	gtkwave dump.vcd
+
+.PHONY: vcd
+vcd: $(APM_NAME).vexe
+	$(APM_NAME).vexe +bscvcd
+
+$(APM_NAME).vexe: 
+	$(BSC) $(BSCFLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ROOT_V)
+
+.PHONY: make_root_v
+make_root_v: 
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+
+################################################################
+## C route
+
+
+.PHONY: run_exe
+run_exe:
+	$(APM_NAME).exe
+
+$(APM_NAME).exe: make_root_ba
+	$(BSC) $(BSCFLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ROOT_BA)
+
+.PHONY: make_root_ba
+make_root_ba: 
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
+
+
+################################################################
+## Misc.
+
+.PHONY: help
+help:
+	@echo "wave"
+	@echo "vcd"
+	@echo "$(APM_NAME).vexe"
+	@echo "$(APM_NAME).exe (default)"
+	@echo "help"
+	@echo "clean"
+	@echo "realclean"
+
+.PHONY: clean
+clean: clean_root
+	rm -f $(HS) $(OS) $(CXXS) *~
+
+.PHONY: clean_root
+clean_root:
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) clean; 
+
+.PHONY: realclean
+realclean: clean realclean_root
+	rm -f $(APM_NAME).exe $(APM_NAME).vexe dump.vcd
+
+.PHONY: realclean_root
+realclean_root:
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) realclean; 

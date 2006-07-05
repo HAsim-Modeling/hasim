@@ -1,0 +1,496 @@
+
+eval 'exec perl -w "$0" ${1+"$@"}'
+    if 0;
+
+# *****************************************************************
+# *                                                               *
+# *   Copyright (c) (Fill in here)                                *
+# *                                                               *
+# *****************************************************************
+
+#
+# Author:  Martha Mercaldi
+#
+
+#
+# MMMMMM:
+#   does not yet handle sub-models
+#
+
+use File::Basename;
+use Getopt::Long;
+#use Text::ParseWords;
+
+use Asim;
+use AsimShell;
+
+############################################################
+# main routine
+
+my $status;
+
+my $help = 0;
+my $debug = 0;
+
+# only one of the following command flags should be set
+my $configure = 0;
+my $delete = 0;
+my $clean = 0;
+my $nuke = 0;
+
+my $private = 1;
+my $public = 1;
+my $relative = 0;
+
+$status = GetOptions( "private!"   => \$private,
+                      "public!"    => \$public,
+                      "relative!"  => \$relative,
+                      "debug"      => \$debug,
+                      "configure"      => \$configure,
+                      "delete"      => \$delete,
+                      "clean"      => \$clean,
+                      "nuke"      => \$nuke,
+                      "help"       => \$help
+		      );
+
+my $prog = basename($0);
+
+if (!$status) {
+    print STDERR "$prog: Illegal argument, try '$prog --help'\n";
+    exit 0;
+}
+
+if ($help) {
+    system "perldoc $0";
+    exit 0;
+}
+
+
+my $num_commands = $configure + $delete + $clean + $nuke;
+if ($num_commands != 1) {
+    print STDERR "$prog: Must supply exactly one command:\n";
+    print STDERR "\t-configure\n";
+    print STDERR "\t-delete\n";
+    print STDERR "\t-clean\n";
+    print STDERR "\t-nuke\n";
+    exit 0;
+}
+
+
+############################################################
+# main body of script
+
+Asim::init()
+    || die("Unable to initialize Asim::\n");
+
+foreach my $apmfile (@ARGV) {
+
+    DEBUG("Opening... $apmfile\n");
+
+    if ($configure) {
+	configure_build_tree($apmfile);
+    } elsif ($delete) {
+	delete_build_tree($apmfile);
+    } elsif ($clean) {
+	print STDERR "$prog: clean command not yet implemented\n";
+	exit 0;
+    } elsif ($nuke) {
+	print STDERR "$prog: nuke command not yet implemented\n";
+	exit 0;
+    }
+    
+}
+
+exit 0;
+
+############################################################
+# delete_build_tree
+sub delete_build_tree {
+    my $modelfile = shift;
+    my $model = Asim::Model->new($modelfile);
+    my $build_dir = $model->build_dir();
+    my $above_build_dir = $build_dir;
+    $above_build_dir =~ s/\/pm$//g; # strip off pm directory to make parent first
+    $status = system("rm -fr $above_build_dir");
+    return 1;
+}
+
+############################################################
+# Open a model produce build tree for it
+sub configure_build_tree {
+    my $modelfile = shift;
+    my $model = Asim::Model->new($modelfile);
+
+    # (1) make directories
+    make_dirs($model);
+
+    # (2) make symlinks
+    make_symlinks($model);
+
+    # (3) populate makefile replacement info
+    generate_makefile_include($model);
+    generate_makefile_top($model);
+    generate_makefile_sub($model);
+    
+    return 1;
+}
+
+############################################################
+# 
+sub generate_makefile_include {
+    my $model = shift;
+    
+    my $replacements_r = empty_hash_ref();
+
+    # @BUILD_DIR@
+    hash_set($replacements_r,'@BUILD_DIR@',$model->build_dir());
+
+    # @APM_NAME@
+    my $apm = file_only($model->filename());
+    $apm =~ s/.apm//g;
+    hash_set($replacements_r,'@APM_NAME@',$apm);
+
+    # gather other info recursively
+    __generate_makefile_include($model->modelroot(),"arch",$replacements_r);
+
+    my $template = "Makefile.include.template";
+    my $makefile = path_append($model->build_dir(),"Makefile");
+    do_template_replacements($template,$makefile,$replacements_r);
+}
+
+############################################################
+# 
+sub __generate_makefile_include {
+    my $module = shift;
+    my $parent_dir = shift;
+    my $replacements_r = shift;
+
+    my $my_dir = $parent_dir;
+    if (is_synthesis_boundary($module)) {
+	# @ALL_DIRS@
+	$my_dir = path_append($parent_dir,$module->provides());
+	hash_append($replacements_r,":",'@ALL_DIRS',$my_dir);
+    }
+
+    # recurse
+    foreach $child (get_and_check_children($module)) {
+	__generate_makefile_include($child,$my_dir,$replacements_r);
+    }
+
+}
+
+############################################################
+# 
+sub generate_makefile_top {
+    my $model = shift;
+    
+    my $replacements_r = empty_hash_ref();
+    
+    #@ROOT_DIR@
+    my $root = $model->modelroot();
+    if (is_synthesis_boundary($root)) {
+	hash_set($replacements_r,'@ROOT_DIR@',$root->provides());
+    } else {
+	die "$prog (model_generate_makefile_top): root module must be a synthesis boundary\n";
+    }
+
+    my $template = "Makefile.top.template";
+    my $makefile = path_append($model->build_dir(),"Makefile");
+    do_template_replacements($template,$makefile,$replacements_r);
+}
+
+
+############################################################
+# 
+sub generate_makefile_sub {
+    my $model = shift;
+    
+    my $replacements_r = empty_hash_ref();
+    __generate_makefile_sub($model,$model->modelroot(),"arch",$replacements_r);
+}
+
+############################################################
+# 
+sub __generate_makefile_sub {
+    my $model = shift;
+    my $module = shift;
+    my $parent_dir = shift;
+    my $replacements_r = shift;
+
+    # non-synth-boundary settings
+    my $current_replacements_r = $replacements_r;
+    my $my_dir = $parent_dir;
+
+    if (is_synthesis_boundary($module)) {
+	# OVERRIDE non-synth-boundary settings
+        $current_replacements_r = empty_hash_ref();
+	$my_dir = path_append($parent_dir,$module->provides());
+
+	## @DIR@
+	hash_set($current_replacements_r,'@DIR@',$module->provides());
+		
+	## @PARENT_PATH@
+	hash_set($current_replacements_r,'@PARENT_PATH@',$parent_dir);
+	
+	## @DOTS_TO_MAKEFILE_INCL@
+	my $dots_path = $my_dir;
+	$dots_path =~ s/([^\/])+/../g;
+	hash_set($current_replacements_r,'@DOTS_TO_MAKEFILE_INCL@',$dots_path);
+
+	## @SUBDIRS@ & @SUBDIR_BAS@
+	foreach $child (get_and_check_children($module)) {
+	    if (is_synthesis_boundary($child)) {
+		my $subdir = $child->provides();
+		hash_append($current_replacements_r," ",'@SUBDIRS@',$subdir);
+		my $child_ba = path_append($subdir,"mk_" . $subdir . "_Wrapper.ba");
+		hash_append($current_replacements_r," ",'@SUBDIR_BAS@',$child_ba);
+		my $child_v = path_append($subdir,"mk_" . $subdir . "_Wrapper.v");
+		hash_append($current_replacements_r," ",'@SUBDIR_VS@',$child_v);
+	    }
+	}
+    }
+
+    ## FOR BOTH SYNTH & NON_SYNTH
+    ## @BSVS@
+    my @l = ();
+    if ($private) { push(@l, $module->private()); }
+    if ($public) { push(@l, $module->public()); }
+    foreach my $f (@l) {
+	hash_append($current_replacements_r, " ", '@BSVS@', $f);
+    }
+
+    #recurse
+    foreach $child (get_and_check_children($module)) {
+	__generate_makefile_sub($model,$child,$my_dir,$current_replacements_r);
+    }
+
+    # on the way up, possibly generate makefile
+    if (is_synthesis_boundary($module)) {
+	my $template = "Makefile.sub.template";
+	my $makefile = path_append($model->build_dir(),$my_dir,"Makefile");
+	do_template_replacements($template,$makefile,$current_replacements_r);
+    }
+
+}
+
+############################################################
+#
+sub make_symlinks {
+    my $model = shift;
+
+    my $root = $model->modelroot();
+    my $build_dir = $model->build_dir();
+
+    # put link to apm file in build/$(APM)/pm
+    my $src = $model->filename();
+    my $tgt = path_append($build_dir,file_only($src));
+    $status = system("ln -f -s $src $tgt");
+
+    my $arch_dir = path_append($build_dir,"arch");
+    __make_symlinks($root,$arch_dir);
+    
+    return 1;
+}
+
+############################################################
+# 
+sub __make_symlinks {
+    my $module = shift;
+    my $parent_dir = shift;
+
+    # identify correct directory in build tree
+    my $my_dir = get_module_build_dir($module,$parent_dir);
+
+    # for each src file, generate symlink in $my_dir
+    my $base_dir = $module->base_dir();
+    my @l = ();
+    if ($private) {	push(@l, $module->private());    }
+    if ($public) {	push(@l, $module->public());    }
+    foreach my $f (@l) {
+	my $src = Asim::resolve(path_append($base_dir,$f));
+	my $tgt = path_append($my_dir,$f);
+	$status = system("ln -f -s $src $tgt");
+    }
+
+    # recurse
+    foreach $child (get_and_check_children($module)) {
+	__make_symlinks($child,$my_dir);
+    }
+
+    return 1;
+}
+
+############################################################
+# 
+sub make_dirs {
+    my $model = shift;
+    my $root = $model->modelroot();
+    __make_dirs($root,path_append($model->build_dir(),"arch"));
+    return 1;
+}
+
+############################################################
+# 
+sub __make_dirs {
+    my $module = shift;
+    my $parent_dir = shift;
+
+    my $my_dir = get_module_build_dir($module,$parent_dir);
+    if (is_synthesis_boundary($module)) {
+	$status = system("mkdir -p $my_dir");
+    } 
+    
+    ## recurse
+    foreach $child (get_and_check_children($module)) {
+	__make_dirs($child,$my_dir);
+    }
+    
+    return 1;
+}
+
+############################################################
+# 
+sub do_template_replacements {
+    my $template = shift;
+    my $dst = shift;
+    my $replacements_r = shift;
+
+#    DEBUG("================================\n");
+#    DEBUG("$template --> $dst\n");
+#    DEBUG("--------------------------------\n");
+#    while ( my ($key, $value) = each %$replacements_r ) {
+#	DEBUG("$key => $value\n");
+#    }
+#    DEBUG("================================\n");
+
+
+    CORE::open(DST, "> $dst") || return undef;
+    CORE::open(TEMPLATE, "< $template") || return undef;
+    while (my $line = <TEMPLATE>) {
+	# check for each possible substitution
+	while ( my ($key, $value) = each %$replacements_r ) {
+	    $line =~ s/$key/$value/g;
+	}
+	
+	# remove any unmatched replacements
+	while ($line =~ /@.+@/) {
+	    $line =~ s/@.+@//g;
+	}
+	print DST $line;
+    }
+    CORE::close(TEMPLATE);
+    CORE::close(DST);
+
+    return 1;
+}
+
+
+############################################################
+# helper routines
+
+sub empty_hash_ref {
+    my %hash = ();
+    return \%hash;
+}
+
+sub hash_set {
+    my $hash_r = shift;
+    my $key = shift;
+    my $value = shift;
+
+    $hash_r->{$key} = $value;
+
+    return 1;
+}
+
+sub hash_append {
+    my $hash_r = shift;
+    my $separator = shift;
+    my $key = shift;
+    my $value = shift;
+    
+    if (exists $hash_r->{$key}) { 
+	$hash_r->{$key} = $hash_r->{$key} . $separator . $value;
+    } else {
+	$hash_r->{$key} = $value;
+    }
+
+    return 1;
+}
+
+
+sub get_and_check_children {
+    my $module = shift;
+
+    my @children = ();
+
+    my @requires = $module->requires();
+    my @submodules = $module->submodules();
+    foreach my $index (0 .. $#requires) {
+	my $m = $submodules[$index];
+	my $r = $requires[$index];
+	if (defined($m)) {
+	    push(@children,$m);
+	} else {
+	    print STDERR "$prog: (make_build_directory_tree) No implementation specified for module of type $r...";
+	}
+    }
+
+    return @children;
+}
+
+sub get_module_build_dir {
+    my $module = shift;
+    my $parent_dir = shift;
+    my $my_dir;
+    if (is_synthesis_boundary($module)) {
+	$my_dir = path_append($parent_dir, $module->provides());
+    } else {
+	$my_dir = $parent_dir;
+    }
+    return $my_dir;
+}
+
+
+sub path_append {
+    my @parts = @_;
+
+    my $result = "";
+    foreach $part (@parts) {
+	if ($result eq "") {
+	    $result = $part;
+	} elsif ($part eq "") {
+	    # skip this part
+	} else {
+	    $result = $result . "/" . $part;
+	}
+    }
+
+    return $result;
+}
+
+sub is_synthesis_boundary {
+    my $module = shift;
+
+    foreach $param_r ($module->parameters()) {
+	my %param = %{$param_r};
+	if ($param{'name'} eq "SYNTH_BOUNDARY") {
+	    return 1;
+	}
+    }
+    return 0;
+}
+
+sub file_only {
+    my $path = shift;
+    my @segments = split(/\//,$path);
+    return $segments[$#segments];
+}
+
+
+sub DEBUG {
+    my $str = $_[0];
+    print "$str" if $debug;
+    return 1;
+}
+

@@ -1,0 +1,160 @@
+
+eval 'exec perl -w "$0" ${1+"$@"}'
+    if 0;
+
+# *****************************************************************
+# *                                                               *
+# *   Copyright (c) (Fill in here)                                *
+# *                                                               *
+# *****************************************************************
+
+#
+# Author:  
+#
+
+
+use File::Basename;
+use Getopt::Long;
+
+use Asim;
+use AsimShell;
+
+############################################################
+# handle command line
+
+my $status;
+
+my $help = 0;
+my $debug = 0;
+
+
+$status = GetOptions( "debug"      => \$debug,
+                      "help"       => \$help
+		      );
+
+my $prog = basename($0);
+
+if (!$status) {
+    print STDERR "$prog: Illegal argument, try '$prog --help'\n";
+    exit 0;
+}
+
+if ($help) {
+    system "perldoc $0";
+    exit 0;
+}
+
+############################################################
+# main body of script
+
+my $modelfile = shift;
+my $metatype = shift;
+
+Asim::init()
+    || die("Unable to initialize Asim::\n");
+
+my $model = Asim::Model->new($modelfile);
+my $root = $model->modelroot();
+my $providing_module = get_provider($root,$metatype);
+my $synth_id = get_synthesis_boundary_name($providing_module);
+my @bsvs = get_bsvs_below($root,$providing_module,0);
+my $wrapper = $metatype . "_Wrapper.bsv";
+
+CORE::open(WRAPPER, "> $wrapper") || return undef;
+
+print WRAPPER "import ModuleCollect::*;\n";
+print WRAPPER "import HASim::*;\n";
+print WRAPPER "\n";
+
+print WRAPPER "// import all packages\n";
+foreach my $bsv (@bsvs) {
+    $bsv =~ s/.bsv//g;
+    print WRAPPER "import $bsv\::*;\n";
+}
+
+print WRAPPER "\n";
+print WRAPPER "(* synthesize *)\n";
+print WRAPPER "module [Module] mk_" . $metatype . "_Wrapper ();\n";
+print WRAPPER "\t\n";
+print WRAPPER "\tinstantiateDangling(" . $synth_id . "());\n";
+print WRAPPER "\t\n";
+print WRAPPER "\t// connect children\n";
+print WRAPPER "\t\n";
+print WRAPPER "endmodule\n";
+
+CORE::close(WRAPPER);
+
+exit 0;
+
+
+############################################################
+# 
+
+sub get_bsvs_below {
+    my $module = shift;
+    my $ancestor = shift;
+    my $below_ancestor = shift;
+
+    # at ancestor
+    if ($module->provides() eq $ancestor->provides()) {
+	$below_ancestor = 1;
+    }
+
+    my @bsvs = ();
+    if ($below_ancestor) {
+	push(@bsvs,$module->public());
+	push(@bsvs,$module->private());
+    }
+
+    # recurse
+    foreach my $submodule ($module->submodules()) {
+	if (!is_synthesis_boundary($submodule) || !$below_ancestor) {
+	    my @result = get_bsvs_below($submodule,$ancestor,$below_ancestor);
+	    push(@bsvs,@result);
+	}
+    }
+
+    return @bsvs;
+}
+
+sub get_provider {
+    my $module = shift;
+    my $metatype = shift;
+
+    if ($module->provides() eq $metatype) {
+	return $module;
+    }
+
+    # recurse
+    foreach my $submodule ($module->submodules()) {
+	my $result = get_provider($submodule,$metatype);
+	if ($result != 0) {
+	    return $result;
+	}
+    }
+
+    return 0;
+}
+
+sub get_synthesis_boundary_name {
+    my $module = shift;
+    foreach $param_r ($module->parameters()) {
+	my %param = %{$param_r};
+	if ($param{'name'} eq "SYNTH_BOUNDARY") {
+	    return $param{'default'};
+	}
+    }
+    die "$prog: get_synthesis_boundary_name called on non-synthesis boundary module\n";
+}
+
+sub is_synthesis_boundary {
+    my $module = shift;
+
+    foreach $param_r ($module->parameters()) {
+	my %param = %{$param_r};
+	if ($param{'name'} eq "SYNTH_BOUNDARY") {
+	    return 1;
+	}
+    }
+    return 0;
+}

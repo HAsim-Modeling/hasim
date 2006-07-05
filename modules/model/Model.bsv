@@ -2,7 +2,6 @@ import HASim::*;
 import Controller::*;
 import System::*;
 
-
 module [HASim_Module] mkModel ();
 
   let system <- mkSystem();

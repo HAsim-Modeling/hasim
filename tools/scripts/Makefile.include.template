@@ -1,0 +1,27 @@
+################################################################
+## Common macros for all Makefiles in build tree
+
+BSC = bsc
+
+BSCFLAGS = -steps 1000000 \
+	   +RTS -K1000M -RTS \
+           -keep-fires \
+           -aggressive-conditions \
+           -no-opt-bool \
+           -no-opt-ATS 
+
+APM_NAME = @APM_NAME@
+ALL_DIRS = @ALL_DIRS@
+BUILD_DIR = @BUILD_DIR@
+
+ARCH_DIR = $(BUILD_DIR)/arch
+APM_FILE = $(BUILD_DIR)/$(APM_NAME).apm
+CONNECTION_SCRIPT = /proj/vssad2/users/mamercal/asim/axp/src/asim-hasim/tools/scripts/hasim-connect
+
+.SUFFIXES: .bsv .ba .v
+
+#.bsv.ba:
+#	$(BSC) $(BSCFLAGS) -u -sim -p +:$(ALL_DIRS) -g $(WRAPPER_MODULE) $<
+
+#.bsv.v:
+#	$(BSC) $(BSCFLAGS) -u -verilog -p +:$(ALL_DIRS) -g $(WRAPPER_MODULE) $<

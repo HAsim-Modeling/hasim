@@ -13,6 +13,9 @@
 %requires hasim_common
 
 %attributes model
+
 %public Model.bsv
+
+%param SYNTH_BOUNDARY mkModel "name of synthesis boundary"
 
 %AWB_END

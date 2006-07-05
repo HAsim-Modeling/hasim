@@ -28,7 +28,7 @@ wave: dump.vcd
 vcd: $(APM_NAME).vexe
 	$(APM_NAME).vexe +bscvcd
 
-$(APM_NAME).vexe: 
+$(APM_NAME).vexe: make_root_v
 	$(BSC) $(BSCFLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ROOT_V)
 
 .PHONY: make_root_v
@@ -56,13 +56,14 @@ make_root_ba:
 
 .PHONY: help
 help:
-	@echo "wave"
-	@echo "vcd"
-	@echo "$(APM_NAME).vexe"
-	@echo "$(APM_NAME).exe (default)"
-	@echo "help"
-	@echo "clean"
-	@echo "realclean"
+	@echo "make targets:"	
+	@echo "\twave"
+	@echo "\tvcd"
+	@echo "\t$(APM_NAME).vexe"
+	@echo "\t$(APM_NAME).exe (default)"
+	@echo "\thelp"
+	@echo "\tclean"
+	@echo "\trealclean"
 
 .PHONY: clean
 clean: clean_root

@@ -13,8 +13,8 @@ eval 'exec perl -w "$0" ${1+"$@"}'
 #
 
 #
-# MMMMMM:
-#   does not yet handle sub-models
+# TODO:
+#   - script does not yet handle sub-models
 #
 
 use File::Basename;
@@ -139,7 +139,7 @@ sub configure_build_tree {
 # 
 sub generate_makefile_include {
     my $model = shift;
-    
+
     my $replacements_r = empty_hash_ref();
 
     # @BUILD_DIR@
@@ -150,11 +150,14 @@ sub generate_makefile_include {
     $apm =~ s/.apm//g;
     hash_set($replacements_r,'@APM_NAME@',$apm);
 
+    # @CONNECTION_SCRIPT@
+    hash_set($replacements_r,'@CONNECTION_SCRIPT@',Asim::resolve("hasim-connect"));
+
     # gather other info recursively
     __generate_makefile_include($model->modelroot(),"arch",$replacements_r);
 
     my $template = "Makefile.include.template";
-    my $makefile = path_append($model->build_dir(),"Makefile");
+    my $makefile = path_append($model->build_dir(),"Makefile.include");
     do_template_replacements($template,$makefile,$replacements_r);
 }
 
@@ -165,10 +168,9 @@ sub __generate_makefile_include {
     my $parent_dir = shift;
     my $replacements_r = shift;
 
-    my $my_dir = $parent_dir;
+    my $my_dir = get_module_build_dir($module,$parent_dir);
     if (is_synthesis_boundary($module)) {
 	# @ALL_DIRS@
-	$my_dir = path_append($parent_dir,$module->provides());
 	hash_append($replacements_r,":",'@ALL_DIRS',$my_dir);
     }
 
@@ -251,12 +253,16 @@ sub __generate_makefile_sub {
     }
 
     ## FOR BOTH SYNTH & NON_SYNTH
-    ## @BSVS@
+    ## @BSVS@ & @SRCS@
     my @l = ();
     if ($private) { push(@l, $module->private()); }
     if ($public) { push(@l, $module->public()); }
     foreach my $f (@l) {
-	hash_append($current_replacements_r, " ", '@BSVS@', $f);
+	if ($f =~ /.bsv/) {
+	    hash_append($current_replacements_r, " ", '@BSVS@', $f);
+	} else {
+	    hash_append($current_replacements_r, " ", '@SRCS@', $f);
+	}
     }
 
     #recurse
@@ -355,6 +361,7 @@ sub do_template_replacements {
     my $dst = shift;
     my $replacements_r = shift;
 
+    DEBUG("Generating... $dst\n");
 #    DEBUG("================================\n");
 #    DEBUG("$template --> $dst\n");
 #    DEBUG("--------------------------------\n");

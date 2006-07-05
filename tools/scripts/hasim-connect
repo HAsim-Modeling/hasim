@@ -57,7 +57,7 @@ my $model = Asim::Model->new($modelfile);
 my $root = $model->modelroot();
 my $providing_module = get_provider($root,$metatype);
 my $synth_id = get_synthesis_boundary_name($providing_module);
-my @bsvs = get_bsvs_below($root,$providing_module,0);
+my @srcs = get_srcs_below($root,$providing_module,0);
 my $wrapper = $metatype . "_Wrapper.bsv";
 
 CORE::open(WRAPPER, "> $wrapper") || return undef;
@@ -67,9 +67,11 @@ print WRAPPER "import HASim::*;\n";
 print WRAPPER "\n";
 
 print WRAPPER "// import all packages\n";
-foreach my $bsv (@bsvs) {
-    $bsv =~ s/.bsv//g;
-    print WRAPPER "import $bsv\::*;\n";
+foreach my $src (@srcs) {
+    if ($src =~ /.bsv/) {
+	$src =~ s/.bsv//g;
+	print WRAPPER "import $src\::*;\n";
+    }
 }
 
 print WRAPPER "\n";
@@ -90,7 +92,7 @@ exit 0;
 ############################################################
 # 
 
-sub get_bsvs_below {
+sub get_srcs_below {
     my $module = shift;
     my $ancestor = shift;
     my $below_ancestor = shift;
@@ -100,21 +102,21 @@ sub get_bsvs_below {
 	$below_ancestor = 1;
     }
 
-    my @bsvs = ();
+    my @srcs = ();
     if ($below_ancestor) {
-	push(@bsvs,$module->public());
-	push(@bsvs,$module->private());
+	push(@srcs,$module->public());
+	push(@srcs,$module->private());
     }
 
     # recurse
     foreach my $submodule ($module->submodules()) {
 	if (!is_synthesis_boundary($submodule) || !$below_ancestor) {
-	    my @result = get_bsvs_below($submodule,$ancestor,$below_ancestor);
-	    push(@bsvs,@result);
+	    my @result = get_srcs_below($submodule,$ancestor,$below_ancestor);
+	    push(@srcs,@result);
 	}
     }
 
-    return @bsvs;
+    return @srcs;
 }
 
 sub get_provider {

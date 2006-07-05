@@ -1,6 +1,6 @@
 
 [Hasim toymips funcp decode algorithm]
-Packagehint=hasim
+Packagehint=hasim-mips
 File=modules/functional/toymips/toymips_funcp_decode_alg.awb
 
 [Hasim test case base]
@@ -11,10 +11,6 @@ File=modules/functional/test-cases/common/hasim_testcase_common.awb
 Packagehint=hasim
 File=modules/functional/common/hasim_funcp_loader.awb
 
-[Hasim toymips funcp mem algorithm]
-Packagehint=hasim
-File=modules/functional/toymips/toymips_funcp_mem_alg.awb
-
 [Hasim functional partition regstate]
 Packagehint=hasim
 File=modules/functional/common/hasim_funcp_regstate.awb
@@ -24,10 +20,10 @@ Packagehint=hasim
 File=modules/functional/common/hasim_funcp_memstate.awb
 
 [Hasim functional partition pipeline/Requires]
-hasim_funcp_localcommit_alg=Hasim toymips funcp local commit algorithm
-hasim_funcp_mem_alg=Hasim toymips funcp mem algorithm
-hasim_funcp_fetch_alg=Hasim toymips funcp fetch algorithm
-hasim_funcp_globalcommit_alg=Hasim toymips funcp global commit algorithm
+hasim_funcp_localcommit_alg=Hasim mips funcp local commit algorithm
+hasim_funcp_mem_alg=Hasim mips funcp mem algorithm
+hasim_funcp_fetch_alg=Hasim mips funcp fetch algorithm
+hasim_funcp_globalcommit_alg=Hasim mips funcp global commit algorithm
 hasim_funcp_decode_alg=Hasim toymips funcp decode algorithm
 hasim_funcp_execute_alg=Hasim toymips funcp execute algorithm
 
@@ -35,28 +31,24 @@ hasim_funcp_execute_alg=Hasim toymips funcp execute algorithm
 Packagehint=hasim
 File=modules/controller/simple/hasim_simple_controller.awb
 
-[Hasim toymips funcp local commit algorithm]
-Packagehint=hasim
-File=modules/functional/toymips/toymips_funcp_localcommit_alg.awb
-
 [Global]
 SaveParameters=0
-Description=TOYMIPS proof of concept, 1-stage pipeline model
+Description=Simple HASim Toymips Model
 File=hasim_toymips_simple
 Version=2.0
-Name=TOYMIPS simple model
+Name=Simple HASim Toymips Model
 
 [Hasim functional partition/Requires]
 hasim_funcp_checker=Hasim functional partition checker
 hasim_funcp_loader=Hasim functional partition loader
 hasim_funcp_memstate=Hasim functional partition memstate software
 hasim_funcp_base=Hasim functional partition base
-hasim_testcase=Hasim toymips test case simple addition
+hasim_testcase=Hasim toymips testcase branch
 hasim_funcp_regstate=Hasim functional partition regstate
 hasim_funcp_pipeline=Hasim functional partition pipeline
 
 [Hasim toymips funcp execute algorithm]
-Packagehint=hasim
+Packagehint=hasim-mips
 File=modules/functional/toymips/toymips_funcp_execute_alg.awb
 
 [Hasim - Hardware (fpga) based system/Requires]
@@ -77,31 +69,39 @@ Packagehint=hasim
 File=modules/common/hasim_common.awb
 
 [Model]
-DefaultAttributes=
+DefaultAttributes=hasim toymips simpel
 model=HAsim Model Foundation
 
-[Hasim toymips test case simple addition/Requires]
-hasim_testcase_base=Hasim test case base
+[Hasim mips funcp global commit algorithm]
+Packagehint=hasim-mips
+File=modules/functional/mips/mips_funcp_globalcommit_alg.awb
+
+[Hasim mips funcp mem algorithm]
+Packagehint=hasim-mips
+File=modules/functional/mips/mips_funcp_mem_alg.awb
+
+[Hasim mips funcp fetch algorithm]
+Packagehint=hasim-mips
+File=modules/functional/mips/mips_funcp_fetch_alg.awb
 
 [Hasim simple timing partition]
-Packagehint=hasim
-File=modules/chip/toymips/simple/hasim_simple_chip.awb
+Packagehint=hasim-mips
+File=modules/chip/mips/simple/hasim_simple_chip.awb
 
 [Hasim - TOYMIPS ISA]
-Packagehint=hasim
+Packagehint=hasim-mips
 File=modules/isa/toymips/hasim_toymips_isa.awb
+
+[Hasim toymips testcase branch/Requires]
+hasim_testcase_base=Hasim test case base
 
 [Hasim - Hardware (fpga) based system]
 Packagehint=hasim
-File=modules/system/hasim_system.awb
+File=modules/system/single_chip_system/hasim_system.awb
 
 [HAsim Model Foundation]
 Packagehint=hasim
 File=modules/model/hasim_model.awb
-
-[Hasim toymips test case simple addition]
-Packagehint=hasim
-File=modules/functional/test-cases/toymips/simple_addition/toymips_testcase_simple_addition.awb
 
 [Hasim functional partition base]
 Packagehint=hasim
@@ -116,10 +116,10 @@ hasim_system=Hasim - Hardware (fpga) based system
 hasim_controller=Hasim simple controller
 hasim_common=Hasim base library
 
-[Hasim toymips funcp global commit algorithm]
-Packagehint=hasim
-File=modules/functional/toymips/toymips_funcp_globalcommit_alg.awb
+[Hasim mips funcp local commit algorithm]
+Packagehint=hasim-mips
+File=modules/functional/mips/mips_funcp_localcommit_alg.awb
 
-[Hasim toymips funcp fetch algorithm]
-Packagehint=hasim
-File=modules/functional/toymips/toymips_funcp_fetch_alg.awb
+[Hasim toymips testcase branch]
+Packagehint=hasim-mips
+File=modules/functional/test-cases/toymips/branch/toymips_testcase_branch.awb

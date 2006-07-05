@@ -852,3 +852,19 @@ Directory modules/system
 
 Adding configure script (hasim-configure), a braindead connection script
 (hasim-connect) and Makefile templates.
+----------
+mamercal    Date: Wed Jul  5 15:52:10 EDT 2006  CSN: CSN-hasim-68
+                  Wed Jul  5 19:52:10 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           67 
+ hasim-configure           Locally Modified           67 
+ Makefile.top.template     Locally Modified           67 
+ hasim-connect             Locally Modified           67 
+ Makefile.include.template Locally Modified           67 
+
+Directory config/pm/hasim/toymips
+ hasim_toymips_simple.apm  Locally Modified           67 
+
+Added support for non-BSV source files.  Some bug fixes.

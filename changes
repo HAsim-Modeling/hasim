@@ -905,3 +905,31 @@ Directory tools/scripts
  hasim-configure           Locally Modified           71 
 
 Fixed bug w. file resolution in hasim-connect.
+----------
+mpellaue    Date: Wed Jul  5 18:15:01 EDT 2006  CSN: CSN-hasim-73
+                  Wed Jul  5 22:15:01 UTC 2006
+
+
+Directory tools/scripts
+
+Directory config/pm/hasim/toymips
+ hasim_toymips_simple.apm  Locally Modified           72 
+
+Directory config/pm/hasim
+ smips/                    Locally Added               0 
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage.apm    Locally Added               0 
+
+Directory modules/functional/common
+ FUNCP_Pipeline.bsv        Locally Modified           72 
+ FUNCP_RegState.bsv        Locally Modified           72 
+ hasim_funcp_memstate.awb  Locally Modified           72 
+ FUNCP_MemState.bsv        Locally Modified           72 
+ FUNCP_StoreBuffer.bsv     Locally Added               0 
+ hasim_funcp_storebuffer.awb Locally Added               0 
+
+
+Added initial store buffer. You may need to re-configure from the APM to use it.
+
+Michael

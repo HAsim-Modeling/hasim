@@ -1,7 +1,4 @@
 
-[Hasim toymips funcp decode algorithm]
-Packagehint=hasim-mips
-File=modules/functional/toymips/toymips_funcp_decode_alg.awb
 
 [Hasim test case base]
 Packagehint=hasim
@@ -24,8 +21,8 @@ hasim_funcp_localcommit_alg=Hasim mips funcp local commit algorithm
 hasim_funcp_mem_alg=Hasim mips funcp mem algorithm
 hasim_funcp_fetch_alg=Hasim mips funcp fetch algorithm
 hasim_funcp_globalcommit_alg=Hasim mips funcp global commit algorithm
-hasim_funcp_decode_alg=Hasim toymips funcp decode algorithm
-hasim_funcp_execute_alg=Hasim toymips funcp execute algorithm
+hasim_funcp_decode_alg=Hasim smips funcp decode algorithm
+hasim_funcp_execute_alg=Hasim smips funcp execute algorithm
 
 [Hasim simple controller]
 Packagehint=hasim
@@ -33,28 +30,25 @@ File=modules/controller/simple/hasim_simple_controller.awb
 
 [Global]
 SaveParameters=0
-Description=Simple HASim Toymips Model
-File=hasim_toymips_simple
+Description=5-Stage HASim SMIPS Model
+File=hasim_smips_5stage
 Version=2.0
-Name=Simple HASim Toymips Model
+Name=5-Stage HASim SMIPS Model
 
 [Hasim functional partition/Requires]
 hasim_funcp_checker=Hasim functional partition checker
 hasim_funcp_loader=Hasim functional partition loader
 hasim_funcp_memstate=Hasim functional partition memstate software
 hasim_funcp_base=Hasim functional partition base
-hasim_testcase=Hasim toymips testcase branch
+hasim_testcase=Hasim toymips test case simple addition
 hasim_funcp_regstate=Hasim functional partition regstate
 hasim_funcp_pipeline=Hasim functional partition pipeline
 
-[Hasim toymips funcp execute algorithm]
-Packagehint=hasim-mips
-File=modules/functional/toymips/toymips_funcp_execute_alg.awb
 
 [Hasim - Hardware (fpga) based system/Requires]
 hasim_funcp=Hasim functional partition
-hasim_chip=Hasim simple timing partition
-hasim_isa=Hasim - TOYMIPS ISA
+hasim_chip=Hasim 5 stage pipelined timing partition
+hasim_isa=Hasim - SMIPS ISA
 
 [Hasim functional partition checker]
 Packagehint=hasim
@@ -69,7 +63,7 @@ Packagehint=hasim
 File=modules/common/hasim_common.awb
 
 [Model]
-DefaultAttributes=hasim toymips simple
+DefaultAttributes=hasim smips 5-stage
 model=HAsim Model Foundation
 
 [Hasim mips funcp global commit algorithm]
@@ -84,16 +78,8 @@ File=modules/functional/mips/mips_funcp_mem_alg.awb
 Packagehint=hasim-mips
 File=modules/functional/mips/mips_funcp_fetch_alg.awb
 
-[Hasim simple timing partition]
-Packagehint=hasim-mips
-File=modules/chip/mips/simple/hasim_simple_chip.awb
 
-[Hasim - TOYMIPS ISA]
-Packagehint=hasim-mips
-File=modules/isa/toymips/hasim_toymips_isa.awb
 
-[Hasim toymips testcase branch/Requires]
-hasim_testcase_base=Hasim test case base
 
 [Hasim - Hardware (fpga) based system]
 Packagehint=hasim
@@ -120,9 +106,6 @@ hasim_common=Hasim base library
 Packagehint=hasim-mips
 File=modules/functional/mips/mips_funcp_localcommit_alg.awb
 
-[Hasim toymips testcase branch]
-Packagehint=hasim-mips
-File=modules/functional/test-cases/toymips/branch/toymips_testcase_branch.awb
 
 [Hasim functional partition storebuffer software]
 Packagehint=hasim
@@ -130,3 +113,26 @@ File=modules/functional/common/hasim_funcp_storebuffer.awb
 
 [Hasim functional partition memstate software/Requires]
 hasim_funcp_storebuffer=Hasim functional partition storebuffer software
+
+[Hasim smips funcp decode algorithm]
+Packagehint=hasim-mips
+File=modules/functional/smips/smips_funcp_decode_alg.awb
+
+[Hasim smips funcp execute algorithm]
+Packagehint=hasim-mips
+File=modules/functional/smips/smips_funcp_execute_alg.awb
+
+[Hasim - SMIPS ISA]
+Packagehint=hasim-mips
+File=modules/isa/smips/hasim_smips_isa.awb
+
+[Hasim 5 stage pipelined timing partition]
+Packagehint=hasim-mips
+File=modules/chip/mips/5stage/hasim_5stage_chip.awb
+
+[Hasim toymips test case simple addition/Requires]
+hasim_testcase_base=Hasim test case base
+
+[Hasim toymips test case simple addition]
+Packagehint=hasim-mips
+File=modules/functional/test-cases/smips/simple-addition/smips_testcase_simple_addition.awb

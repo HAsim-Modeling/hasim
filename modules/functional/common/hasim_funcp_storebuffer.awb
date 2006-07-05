@@ -7,15 +7,13 @@
 #/*
 # %AWB_START
 #
-# %name Hasim functional partition memstate software
-# %desc Hasim functional partition memory state software
-# %provides hasim_funcp_memstate
+# %name Hasim functional partition storebuffer software
+# %desc Hasim functional partition store buffer software
+# %provides hasim_funcp_storebuffer
 # 
-# %requires hasim_funcp_storebuffer
-#
 # %attributes hasim
 #
-# %public FUNCP_MemState.bsv
+# %public FUNCP_StoreBuffer.bsv
 #
 # %AWB_END
 # */

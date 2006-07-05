@@ -10,6 +10,8 @@ import FIFO::*;
 import Vector::*;
 import BypassFIFO::*;
 
+import FUNCP_StoreBuffer::*;
+
 /************* Memory System Interface *************/
 
 
@@ -48,12 +50,6 @@ typedef union tagged {
 // load the test case. This may disappear in the future.
 
 interface Memory;
-
-  //interface Server#(Addr, inst_T) imem;
-  //interface Server#(MemReq#(Token, Addr, Value), MemResp#(Value)) dmem;
-  
-  //interface Put#(Token) commit;
-  //interface Put#(Tuple2#(Token, Token)) killRange; 
   
   //Magic link for the test harness to load the program
   interface RegFile#(Addr, Inst)  magic_imem;
@@ -77,6 +73,163 @@ module [HASim_Module] mkMem_Software
 	     Transmittable#(Token),
 	     Transmittable#(MemReq),
 	     Transmittable#(MemResp),
+	     Transmittable#(Tuple2#(Token, Token)));
+	    
+  SoftAddr maxSoftAddr = maxBound();
+  Addr maxAddr = zeroExtend(maxSoftAddr);
+
+  //State elements
+
+  RegFile#(SoftAddr, Inst)  imemory <- mkRegFileFull();
+  RegFile#(SoftAddr, Value) dmemory <- mkRegFileFull();
+
+  FIFO#(Tuple2#(Token, Value))  waitingQ <- mkFIFO();
+
+  StoreBuffer st_buffer <- mkFUNCP_StoreBuffer();
+
+  //Connections
+  
+  Connection_Server#(Addr, Inst)      link_imem      <- mkConnection_Server("mem_imem");
+  Connection_Server#(MemReq, MemResp) link_dmem      <- mkConnection_Server("mem_dmem");
+  Connection_Receive#(Token)          link_commit    <- mkConnection_Receive("mem_commit");
+  Connection_Receive#(Token)          link_killToken <- mkConnection_Receive("mem_kill");
+
+  //handleIMEM
+  
+  //Handles all IMem requests
+
+  rule handleIMEM (True);
+  
+    Addr a <- link_imem.getReq();
+    
+    if (a > maxAddr)
+      $display("WARNING [0]: Address 0x%h out of bounds. Increase software address length!", a);
+    
+    SoftAddr sa = truncate(a);
+    link_imem.makeResp(imemory.sub(sa));
+    
+  endrule
+ 
+  //handleDMEM
+  
+  //handles Dmem loads/stores but not commits/rollbacks
+ 
+  rule handleDMEM (True);
+
+    MemReq req <- link_dmem.getReq();
+    
+    case (req) matches
+      tagged Ld .ld_info:
+        begin
+	  if (ld_info.addr > maxAddr)
+            $display("WARNING [1]: Address 0x%h out of bounds. Increase software address length!", ld_info.addr);
+
+	  SoftAddr sa = truncate(ld_info.addr);
+	  
+	  if (st_buffer.mayHaveAddress(ld_info.addr))
+	  begin  
+	    //Store buffer may have addr. Take the slow path
+	    waitingQ.enq(tuple2(ld_info.token, dmemory.sub(sa)));
+	    st_buffer.retrieve(ld_info.token, ld_info.addr);
+	  end
+	  else
+	      //Store buffer does not have addr, return.
+	      link_dmem.makeResp(LdResp dmemory.sub(sa));  
+        end
+      tagged St .st_info:
+        begin
+		  
+	  //place value in store buffer	  	  
+	  st_buffer.insert(st_info.token, st_info.addr, st_info.val);
+	    
+          link_dmem.makeResp(StResp);
+	  
+        end
+    endcase
+  
+  endrule
+ 
+  //handleCommit
+  
+  //Actually commits stores
+ 
+  rule handleCommit (True);
+  
+    Token tok <- link_commit.receive();
+    
+    match {.a, .v} <- st_buffer.commit(tok);
+    
+    SoftAddr sa = truncate(a);
+
+    if (a > maxAddr)
+        $display("WARNING [2]: Address 0x%h out of bounds. Increase software address length!", a);
+    
+    dmemory.upd(sa, v);
+
+  endrule
+  
+  //handleKillRange
+  
+  //Rolls back killed tokens
+  
+  rule handleKill (True);
+  
+    Token tok <- link_killToken.receive();
+    
+    st_buffer.kill(tok);
+
+  endrule
+
+  //finishSlowPath
+  
+  rule finishSlowPath (True);
+  
+    match {.tok, .cur_val} = waitingQ.first();
+    waitingQ.deq();
+    
+    match {.t2, .mnew_val} <- st_buffer.result();
+    
+    if (tok != t2)
+      $display("ERROR, unexpected response from Store Buffer!");
+    
+    case (mnew_val) matches
+      tagged Invalid:  //All that work for nothing.
+        link_dmem.makeResp(LdResp cur_val);
+      tagged Valid .new_val:
+	link_dmem.makeResp(LdResp new_val);
+    endcase
+        
+  endrule
+
+  //Magic interface for testharness
+
+  interface RegFile magic_imem;
+  
+    method upd(a,v) = imemory.upd(truncate(a), v);
+    method sub(a) = imemory.sub(truncate(a));
+  
+  endinterface
+  
+  interface RegFile magic_dmem;
+
+    method upd(a,v) = dmemory.upd(truncate(a), v);
+    method sub(a) = dmemory.sub(truncate(a));
+  
+  endinterface
+
+endmodule
+
+module [HASim_Module] mkMem_Software_Old
+    //interface:
+                (Memory)
+    provisos
+            (Bits#(Token, token_SZ),
+	     Transmittable#(Addr),
+	     Transmittable#(Inst),
+	     Transmittable#(Value),
+	     Transmittable#(Token),
+	     Transmittable#(MemReq),
+	     Transmittable#(MemResp),
 	     Transmittable#(Tuple2#(Token, Token)),
 	     Add#(1, n1, TExp#(token_SZ)));  //Token size must be greater than one.
 	    
@@ -85,21 +238,19 @@ module [HASim_Module] mkMem_Software
 
   //State elements
 
-  FIFO#(MemResp) f <- mkFIFO();
-
-  RegFile#(SoftAddr, Inst) imemory <- mkRegFileFull();
+  RegFile#(SoftAddr, Inst)  imemory <- mkRegFileFull();
   
   RegFile#(SoftAddr, Value) dmemory <- mkRegFileFull();
 
   Reg#(Vector#(TExp#(token_SZ), Bool)) tvalids <- mkReg(Vector::replicate(False));
   Reg#(Vector#(TExp#(token_SZ), Tuple3#(Token, SoftAddr, Value))) tokens <- mkRegU();
-
+  
   //Connections
   
   Connection_Server#(Addr, Inst)             link_imem <- mkConnection_Server("mem_imem");
   Connection_Server#(MemReq, MemResp)        link_dmem <- mkConnection_Server("mem_dmem");
   Connection_Receive#(Token)                 link_commit <- mkConnection_Receive("mem_commit");
-  //Connection_Receive#(Tuple2#(Token, Token)) link_killRange <- mkConnection_Receive("mem_killRange");
+  Connection_Receive#(Tuple2#(Token, Token)) link_killRange <- mkConnection_Receive("mem_killRange");
 
   //maybify :: Bool -> any -> Maybe any
 
@@ -288,7 +439,7 @@ module [HASim_Module] mkMem_Software
   //handleKillRange
   
   //Rolls back killed tokens
-  /*
+  
   rule handleKillRange (True);
   
     Tuple2#(Token, Token) tup <- link_killRange.receive();
@@ -301,20 +452,7 @@ module [HASim_Module] mkMem_Software
 
     tvalids <= Vector::zipWith(flattenToken, tvalids, tokens);
   endrule
- */
-  //IMem interface (used by FP Fetch)
-  //interface imem = link_imem.server;
-  
-  //DMem interface (used by FP Mem)
-  //interface dmem = link_dmem.server;
  
-  //commit (used by FP Global Commit)
-  //interface commit = link_commit.incoming;
-
-
-  //killRange (used by FP.killToken)
-  //interface killRange = link_killRange.incoming;
-  
   //Magic interface for testharness
 
   interface RegFile magic_imem;

@@ -112,20 +112,22 @@ module [HASim_Module] mkBypassUnit
   endfunction 
 
   // XXX initialized with max+1 to maxBound ..
-  RegFile#(PRName, PRName)  freelist  <- mkRegFileFullLoad("freelist.hex");
+  RegFile#(PRName, PRName)    freelist  <- mkRegFileFullLoad("freelist.hex");
   Reg #(PRName)               fl_read   <- mkReg(minInitFL);
   Reg #(PRName)               fl_write  <- mkReg(maxInitFL); 
+  
+  RegFile#(Token, PRName)     old_pregs <- mkRegFileFull();
 
   //rob                                   old
   RegFile#(PRName, Tuple3#(Token, Maybe#(RName), PRName)) rob      <- mkRegFileFull();
-  Reg#(PRName)   						  rob_old  <- mkReg(0);
+  Reg#(PRName)   					  rob_old  <- mkReg(0);
   Reg#(PRName) 						  rob_new  <- mkReg(0);
 
-  Reg#(Vector#(TExp#(snapshotptr_SZ), Bool))     snap_valids        <- mkReg(unpack(0));
-  Reg#(Vector#(TExp#(snapshotptr_SZ), Token))  snap_ids           <- mkRegU();
-  RegFile#(SnapshotPtr, PRName)              snap_flreadptrs    <- mkRegFileFull();
-  RegFile#(SnapshotPtr, PRName)              snap_robnewptrs    <- mkRegFileFull(); 
-  RegFile#(SnapshotPtr, Vector#(TExp#(rname_SZ), PRName)) snaps <- mkRegFileFull();
+  Reg#(Vector#(TExp#(snapshotptr_SZ), Bool))  snap_valids        <- mkReg(unpack(0));
+  Reg#(Vector#(TExp#(snapshotptr_SZ), Token)) snap_ids           <- mkRegU();
+  RegFile#(SnapshotPtr, PRName)               snap_flreadptrs    <- mkRegFileFull();
+  RegFile#(SnapshotPtr, PRName)               snap_robnewptrs    <- mkRegFileFull(); 
+  RegFile#(SnapshotPtr, Vector#(TExp#(rname_SZ), PRName))  snaps <- mkRegFileFull();
 
 
   Reg#(Bool)  busy <- mkReg(False);
@@ -135,7 +137,7 @@ module [HASim_Module] mkBypassUnit
 
   //Connections
   Connection_Server#(Tuple3#(Maybe#(RName), Token, Bool), 
-                     Tuple2#(PRName, PRName)) 
+                     PRName) 
   //...
         link_mapping <- mkConnection_Server("dec_to_bypass_mapping");
 
@@ -155,14 +157,6 @@ module [HASim_Module] mkBypassUnit
   //...
         link_read2 <- mkConnection_Server("exe_to_bypass_read2");
 
-  Connection_Server#(PRName, Maybe#(Value)) 
-  //...
-        link_read3 <- mkConnection_Server("mem_to_bypass_read3");
-
-  Connection_Server#(PRName, Maybe#(Value)) 
-  //...
-        link_read4 <- mkConnection_Server("mem_to_bypass_read4");
-
   Connection_Receive#(Tuple2#(PRName, Value)) 
   //...
         link_write1 <- mkConnection_Receive("exe_to_bypass_write1");
@@ -171,7 +165,7 @@ module [HASim_Module] mkBypassUnit
   //...
         link_write2 <- mkConnection_Receive("mem_to_bypass_write2");
 
-  Connection_Receive#(Tuple2#(Token, PRName)) 
+  Connection_Receive#(Token) 
   //...
         link_freePReg <- mkConnection_Receive("lco_to_bypass_free");
 
@@ -268,8 +262,10 @@ module [HASim_Module] mkBypassUnit
                   snaps.upd(idx, maptbl);
       end
     
+    old_pregs.upd(tok, oldPReg);
+    
     // return value
-    link_mapping.makeResp(tuple2(newPReg, oldPReg));
+    link_mapping.makeResp(newPReg);
     
   endrule
 
@@ -288,9 +284,7 @@ module [HASim_Module] mkBypassUnit
     
   endrule
 
-  //read{1,2,3,4} 
-  //{1,2} used by Exec
-  //{3,4} used by Mem
+  //read{1, 2} used by Execute
 
   rule read1 (True);
   
@@ -303,20 +297,6 @@ module [HASim_Module] mkBypassUnit
   
     let prnm <- link_read2.getReq();
     link_read2.makeResp(prf.read2(prnm));
-  
-  endrule
-
-  rule read3 (True);
-  
-    let prnm <- link_read3.getReq();
-    link_read3.makeResp(prf.read3(prnm));
-  
-  endrule
-
-  rule read4 (True);
-  
-    let prnm <- link_read4.getReq();
-    link_read4.makeResp(prf.read4(prnm));
   
   endrule
 
@@ -342,10 +322,11 @@ module [HASim_Module] mkBypassUnit
   
   rule freePReg (!busy);
   
-    // {Token, PRName}
-    match {.tok, .x} <- link_freePReg.receive();
+    let tok <- link_freePReg.receive();
   
-    freelist.upd(fl_write,x);
+    PRName reg_to_free = old_pregs.sub(tok);
+  
+    freelist.upd(fl_write, reg_to_free);
     fl_write <= fl_write + 1;
 
     rob_old <= rob_old + 1;

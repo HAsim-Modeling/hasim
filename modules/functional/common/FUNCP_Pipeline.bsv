@@ -72,7 +72,7 @@ endmodule
 
 module [HASim_Module] mkFUNCP_Stage_MEM ();
 
-  FUNCP_Stage#(ExecedInst, void, void, ExecedInst)
+  FUNCP_Stage#(ExecedInst, void, void, InstWBInfo)
   //...
        stage <- mkFUNCP_Stage("MEM", 
                 	      "link_mem",
@@ -87,7 +87,7 @@ endmodule
 
 module [HASim_Module] mkFUNCP_Stage_LCO ();
 
-  FUNCP_Stage#(ExecedInst, void, void, ExecedInst)
+  FUNCP_Stage#(InstWBInfo, void, void, InstWBInfo)
   //...
        stage <- mkFUNCP_Stage("LCO", 
                               "link_lco",
@@ -102,7 +102,7 @@ endmodule
 
 module [HASim_Module] mkFUNCP_Stage_GCO ();
 
-  FUNCP_Stage#(ExecedInst, void, void, void)
+  FUNCP_Stage#(InstWBInfo, void, void, void)
   //...
        stage <- mkFUNCP_Stage("GCO", 
                               "link_gco",

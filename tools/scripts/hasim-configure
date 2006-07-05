@@ -156,7 +156,7 @@ sub generate_makefile_include {
     # gather other info recursively
     __generate_makefile_include($model->modelroot(),"arch",$replacements_r);
 
-    my $template = "Makefile.include.template";
+    my $template = Asim::resolve("Makefile.include.template");
     my $makefile = path_append($model->build_dir(),"Makefile.include");
     do_template_replacements($template,$makefile,$replacements_r);
 }
@@ -196,7 +196,7 @@ sub generate_makefile_top {
 	die "$prog (model_generate_makefile_top): root module must be a synthesis boundary\n";
     }
 
-    my $template = "Makefile.top.template";
+    my $template = Asim::resolve("Makefile.top.template");
     my $makefile = path_append($model->build_dir(),"Makefile");
     do_template_replacements($template,$makefile,$replacements_r);
 }
@@ -272,7 +272,7 @@ sub __generate_makefile_sub {
 
     # on the way up, possibly generate makefile
     if (is_synthesis_boundary($module)) {
-	my $template = "Makefile.sub.template";
+	my $template = Asim::resolve("Makefile.sub.template");
 	my $makefile = path_append($model->build_dir(),$my_dir,"Makefile");
 	do_template_replacements($template,$makefile,$current_replacements_r);
     }

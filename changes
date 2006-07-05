@@ -868,3 +868,12 @@ Directory config/pm/hasim/toymips
  hasim_toymips_simple.apm  Locally Modified           67 
 
 Added support for non-BSV source files.  Some bug fixes.
+----------
+mamercal    Date: Wed Jul  5 16:03:30 EDT 2006  CSN: CSN-hasim-69
+                  Wed Jul  5 20:03:30 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified           68 
+
+Minor fix.

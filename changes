@@ -896,3 +896,12 @@ Directory tools/scripts
  hasim-configure           Locally Modified           70 
 
 Modified top level make targets
+----------
+mamercal    Date: Wed Jul  5 16:36:31 EDT 2006  CSN: CSN-hasim-72
+                  Wed Jul  5 20:36:31 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified           71 
+
+Fixed bug w. file resolution in hasim-connect.

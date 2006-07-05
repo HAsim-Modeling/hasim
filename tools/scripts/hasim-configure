@@ -151,13 +151,12 @@ sub generate_makefile_include {
     hash_set($replacements_r,'@APM_NAME@',$apm);
 
     # @CONNECTION_SCRIPT@
-    hash_set($replacements_r,'@CONNECTION_SCRIPT@',Asim::resolve("hasim-connect"));
+    hash_set($replacements_r,'@CONNECTION_SCRIPT@',Asim::resolve("tools/scripts/hasim-connect"));
 
     # gather other info recursively
     __generate_makefile_include($model->modelroot(),"arch",$replacements_r);
 
-    my $template = Asim::resolve("Makefile.include.template");
-    DEBUG(">>> TEMPLATE 1: $template\n");
+    my $template = Asim::resolve("tools/scripts/Makefile.include.template");
     my $makefile = path_append($model->build_dir(),"Makefile.include");
     do_template_replacements($template,$makefile,$replacements_r);
 }
@@ -197,8 +196,7 @@ sub generate_makefile_top {
 	die "$prog (model_generate_makefile_top): root module must be a synthesis boundary\n";
     }
 
-    my $template = Asim::resolve("Makefile.top.template");
-    DEBUG(">>> TEMPLATE 2: $template\n");
+    my $template = Asim::resolve("tools/scripts/Makefile.top.template");
     my $makefile = path_append($model->build_dir(),"Makefile");
     do_template_replacements($template,$makefile,$replacements_r);
 }
@@ -274,8 +272,7 @@ sub __generate_makefile_sub {
 
     # on the way up, possibly generate makefile
     if (is_synthesis_boundary($module)) {
-	my $template = Asim::resolve("Makefile.sub.template");
-	DEBUG(">>> TEMPLATE 3: $template\n");
+	my $template = Asim::resolve("tools/scripts/Makefile.sub.template");
 	my $makefile = path_append($model->build_dir(),$my_dir,"Makefile");
 	do_template_replacements($template,$makefile,$current_replacements_r);
     }

@@ -26,12 +26,12 @@ import ISA::*;
 module [HASim_Module] mkFUNCP (TModule#(Command, Response));
 
   Empty   bypass  <- mkBypassUnit();
-  Memory  mem     <- mkMem_Software();
+  Empty   mem     <- mkMem_Software();
   
   Empty   pipe    <- mkFUNCP_Pipeline();
   
-  Loader  loader  <- mkFUNCP_Loader(mem.magic_imem, mem.magic_dmem);
-  Checker checker <- mkFUNCP_Checker(mem.magic_dmem);
+  Loader  loader  <- mkFUNCP_Loader();
+  Checker checker <- mkFUNCP_Checker();
   
   Reg#(Bool)      loading  <- mkReg(False);
   Reg#(Bool)      checking <- mkReg(False);

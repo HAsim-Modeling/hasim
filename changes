@@ -974,3 +974,25 @@ Directory modules/functional/common
  FUNCP_MemState.bsv        Locally Modified           75 
 
 Bug fix in hasim-configure, plus slight change to makefile build flow.
+----------
+mpellaue    Date: Thu Jul  6 18:32:04 EDT 2006  CSN: CSN-hasim-77
+                  Thu Jul  6 22:32:04 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified           76 
+
+Directory modules/functional/common
+ FUNCP_Checker.bsv         Locally Modified           76 
+ FUNCP_Loader.bsv          Locally Modified           76 
+ hasim_funcp_memstate.awb  Locally Modified           76 
+ FUNCP_MemState.bsv        Locally Modified           76 
+ FUNCP.bsv                 Locally Modified           76 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified           76 
+
+
+Updated HASim connections and MemState in preparation for separate synthesis boundaries.
+
+Michael

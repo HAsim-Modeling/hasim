@@ -76,12 +76,13 @@ foreach my $src (@srcs) {
 
 print WRAPPER "\n";
 print WRAPPER "(* synthesize *)\n";
-print WRAPPER "module [Module] mk_" . $metatype . "_Wrapper ();\n";
+print WRAPPER "module [Module] mk_" . $metatype . "_Wrapper (WithConnections#(Empty));\n";
 print WRAPPER "\t\n";
-print WRAPPER "\tinstantiateDangling(" . $synth_id . "());\n";
+print WRAPPER "\tlet m <- instantiateDangling(" . $synth_id . "());\n";
 print WRAPPER "\t\n";
 print WRAPPER "\t// connect children\n";
 print WRAPPER "\t\n";
+print WRAPPER "\treturn m;\n";
 print WRAPPER "endmodule\n";
 
 CORE::close(WRAPPER);

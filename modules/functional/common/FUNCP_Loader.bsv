@@ -16,10 +16,12 @@ interface Loader;
 endinterface
 
 
-module [HASim_Module] mkFUNCP_Loader#(RegFile#(Addr, Inst)  imem,
-                                      RegFile#(Addr, Value) dmem)
+module [HASim_Module] mkFUNCP_Loader
     //interface:
                 (Loader);
+
+  Connection_Send#(Tuple2#(Addr, Inst))  magic_imem_write <- mkConnection_Send("magic_imem");
+  Connection_Send#(Tuple2#(Addr, Value)) magic_dmem_write <- mkConnection_Send("magic_dmem_write");
 
   let tc = test_case;
 
@@ -37,7 +39,7 @@ module [HASim_Module] mkFUNCP_Loader#(RegFile#(Addr, Inst)  imem,
   
   rule load_imem (started && i_loading);
   
-    imem.upd(icur, tc.imem_init[icur]);
+    magic_imem_write.send(tuple2(icur, tc.imem_init[icur]));
     
     icur <= icur + 1;
     //$display("Loading IMem");
@@ -49,7 +51,7 @@ module [HASim_Module] mkFUNCP_Loader#(RegFile#(Addr, Inst)  imem,
   
   rule load_dmem (started && d_loading);
   
-    dmem.upd(dcur, tc.dmem_init[dcur]);
+    magic_dmem_write.send(tuple2(dcur, tc.dmem_init[dcur]));
     
     dcur <= dcur + 1;
     //$display("Loading DMem");

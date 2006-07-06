@@ -118,11 +118,14 @@ endinterface
 typedef Bit#(8) CON_Addr;
 typedef Bit#(`CON_WIDTH) CON_Data;
 
-interface WithConnections#(type in_W, type out_W, type orig_T);
+//Change to BypassFIFO here.
+function m#(FIFO#(a)) mkCON_FIFO() provisos (Bits#(a, a_SZ), IsModule#(m, m2)) = mkFIFO();
+
+interface WithConnections#(type orig_T);
 
   interface orig_T original;
 
-  interface Put#(Tuple2#(CON_Addr, CON_Data)) incoming;
+  interface AntiGet#(Tuple2#(CON_Addr, CON_Data)) incoming;
   interface Get#(Tuple2#(CON_Addr, CON_Data)) outgoing;
 
 endinterface
@@ -208,7 +211,7 @@ module [Connected_Module] mkConnection_Send#(String portname)
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-  FIFO#(CON_Data) q <- mkFIFO();
+  FIFO#(CON_Data) q <- mkCON_FIFO();
     
   //Add our interface to the ModuleCollect collection
   addToCollection(LSend tuple2(portname, q));
@@ -264,7 +267,7 @@ module [Connected_Module] mkConnection_Client#(String portname)
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-  FIFO#(CON_Data) q <- mkFIFO();
+  FIFO#(CON_Data) q <- mkCON_FIFO();
   VRWire#(Bool)  en_w    <- vMkRWire();
   VRWire#(resp_T) data_w  <- vMkRWire();
   	      
@@ -311,7 +314,7 @@ module [Connected_Module] mkConnection_Server#(String portname)
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-  FIFO#(CON_Data) q <- mkFIFO();
+  FIFO#(CON_Data) q <- mkCON_FIFO();
   VRWire#(Bool)  en_w    <- vMkRWire();
   VRWire#(req_T) data_w  <- vMkRWire();
   
@@ -416,7 +419,7 @@ function Tuple3#(List#(Tuple2#(a, b)),
     
 endfunction
 
-//splitConnections :: [ConnectionData] -> ([(String, Get)], [(String, Put)])
+//splitConnections :: [ConnectionData] -> ([(String, Get)], [(String, AntiGet)])
 
 function Tuple2#(List#(Tuple2#(String, FIFO#(CON_Data))), 
                  List#(Tuple2#(String, AntiGet#(CON_Data)))) splitConnections(List#(ConnectionData) l);
@@ -437,28 +440,55 @@ function Tuple2#(List#(Tuple2#(String, FIFO#(CON_Data))),
 
 endfunction
 
-//danglingIns :: [AntiGet a] -> Module (Put (addr, a))
+//danglingIns :: [AntiGet a] -> Module (AntiGet (addr, a))
 
-module danglingIns#(List#(AntiGet#(CON_Data)) gs) (Put#(Tuple2#(CON_Addr, CON_Data)));
+module danglingIns#(List#(AntiGet#(CON_Data)) gs) (AntiGet#(Tuple2#(CON_Addr, CON_Data)));
 
-  //XXX write this
-  return ?;
-
+  VRWire#(Bool) en_w <- vMkRWire();
+  
+  method Action get_TRY(Tuple2#(CON_Addr, CON_Data) tup);
+  
+    match {.a, .d} = tup;
+    
+    List::select(gs, a).get_TRY(d);
+    en_w.wset(List::select(gs, a).get_SUCCESS());
+  
+  endmethod
+  
+  method Bool get_SUCCESS() = en_w.whas() && en_w.wget();
+  
 endmodule
 
 //danglingOuts :: [FIFO a] -> Module (Get (addr, a))
 
 module danglingOuts#(List#(FIFO#(CON_Data)) fs) (Get#(Tuple2#(CON_Addr, CON_Data)));
 
-  //XXX write this
-  return ?;
+  Integer n = length(fs);
+  FIFO#(Tuple2#(CON_Addr, CON_Data)) q <- mkCON_FIFO();
+  
+  for (Integer k = 0; k < n; k = k + 1)
+  begin
+  
+    rule arbitrate (True);
+  
+      q.enq(tuple2(fromInteger(k), List::select(fs, k).first()));
+      List::select(fs, k).deq();
+  
+    endrule
+  
+  end
 
+  method ActionValue#(Tuple2#(CON_Addr, CON_Data)) get();
+    q.deq();
+    return q.first();
+  endmethod
+  
 endmodule
 
 
 //connectDangling :: [ConnectionData] -> ifc -> Module (WithConnections in out ifc)
  
-module [Module] connectDangling#(List#(ConnectionData) ld, inter_T i) (WithConnections#(in_W, out_W, inter_T));
+module [Module] connectDangling#(List#(ConnectionData) ld, inter_T i) (WithConnections#(inter_T));
     
   match {.sends, .recs} = splitConnections(ld);
   
@@ -484,8 +514,8 @@ module [Module] connectDangling#(List#(ConnectionData) ld, inter_T i) (WithConne
   List#(FIFO#(CON_Data)) outs = List::nil;
   for (Integer x = 0; x < nDSends; x = x + 1)
   begin
-    match {.nm, .cout} = dsends[x];
-    messageM(strConcat("Dangling Send: ", nm));
+    match {.nm, .cout} = dsends[x]; 
+    messageM(strConcat(strConcat(strConcat("Dangling Send [", integerToString(x)), "]: "), nm));
     outs = List::cons(cout, outs);
   end
   
@@ -494,8 +524,9 @@ module [Module] connectDangling#(List#(ConnectionData) ld, inter_T i) (WithConne
   List#(AntiGet#(CON_Data)) ins = List::nil;
   for (Integer x = 0; x < nDRecs; x = x + 1)
   begin
-    match {.nm, .cin} = drecs[x];
-    messageM(strConcat("Dangling Rec: ", nm));
+    match {.nm, .cin} = drecs[x]; 
+    messageM(strConcat(strConcat(strConcat("Dangling Rec [", integerToString(x)), "]: "), nm));
+
     ins = List::cons(cin, ins);
   end
   
@@ -532,7 +563,7 @@ module [Module] connectTopLevel#(List#(ConnectionData) ld) ();
   for (Integer x = 0; x < nDSends; x = x + 1)
   begin
     match {.nm, .cout} = dsends[x];
-    messageM(strConcat("Dangling Send: ", nm));
+    messageM(strConcat(strConcat(strConcat("Dangling Send [", integerToString(x)), "]: "), nm));
   end
   
   let nDRecs = length(drecs);
@@ -540,7 +571,7 @@ module [Module] connectTopLevel#(List#(ConnectionData) ld) ();
   for (Integer x = 0; x < nDRecs; x = x + 1)
   begin
     match {.nm, .cin} = drecs[x];
-    messageM(strConcat("Dangling Rec: ", nm));
+    messageM(strConcat(strConcat(strConcat("Dangling Rec [", integerToString(x)), "]: "), nm));
   end
   
   if ((nDSends != 0) || (nDRecs != 0))
@@ -548,7 +579,7 @@ module [Module] connectTopLevel#(List#(ConnectionData) ld) ();
   
 endmodule
  
-module [Module] instantiateDangling#(Connected_Module#(inter_T) m) (WithConnections#(in_W, out_W, inter_T));
+module [Module] instantiateDangling#(Connected_Module#(inter_T) m) (WithConnections#(inter_T));
 
   match {.m, .col} <- getCollection(m);
   

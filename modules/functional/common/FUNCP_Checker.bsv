@@ -19,10 +19,12 @@ interface Checker;
 endinterface
 
 
-module [HASim_Module] mkFUNCP_Checker#(RegFile#(Addr, Value) dmem)
+module [HASim_Module] mkFUNCP_Checker
     //interface:
                 (Checker);
 
+  Connection_Client#(Addr, Value) magic_dmem <- mkConnection_Client("magic_dmem_read");
+  
   let tc = test_case;
 
   Reg#(Bool) started <- mkReg(False);
@@ -31,13 +33,26 @@ module [HASim_Module] mkFUNCP_Checker#(RegFile#(Addr, Value) dmem)
   Reg#(Addr) ecur <- mkReg(minBound);
   
   FIFO#(Tuple3#(Addr, Value, Value)) failQ <- mkFIFO();
+  FIFO#(Addr) locQ <- mkFIFO();
   
   Bool d_checking = ecur < fromInteger(primArrayLength(tc.dmem_exp));
   
   rule check_dmem (started && d_checking);
   
-    Value v = dmem.sub(ecur);
-    Value exp_v = tc.dmem_exp[ecur];
+    magic_dmem.makeReq(ecur);
+    locQ.enq(ecur);
+
+    ecur <= ecur + 1;
+    
+  endrule
+  
+  rule dmem_resp (True);
+  
+    Value v <- magic_dmem.getResp();
+    let cur = locQ.first();
+    locQ.deq();
+    
+    Value exp_v = tc.dmem_exp[cur];
      
     if (v != exp_v)
     begin
@@ -45,8 +60,6 @@ module [HASim_Module] mkFUNCP_Checker#(RegFile#(Addr, Value) dmem)
       failQ.enq(tuple3(ecur, exp_v, v));
       passedR <= False;
     end
-    
-    ecur <= ecur + 1;
     
   endrule
 

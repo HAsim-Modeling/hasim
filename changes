@@ -933,3 +933,19 @@ Directory modules/functional/common
 Added initial store buffer. You may need to re-configure from the APM to use it.
 
 Michael
+
+----------
+mamercal    Date: Thu Jul  6 15:01:49 EDT 2006  CSN: CSN-hasim-74
+                  Thu Jul  6 19:01:49 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           73 
+ hasim-configure           Locally Modified           73 
+ Makefile.top.template     Locally Modified           73 
+ Makefile.include.template Locally Modified           73 
+
+Directory config/pm/hasim/toymips
+ hasim_toymips_simple.apm  Locally Modified           73 
+
+Minor fixes + comments.

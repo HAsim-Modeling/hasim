@@ -33,7 +33,7 @@ vexe: v
 	$(BSC) $(BSCFLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ROOT_V)
 
 .PHONY: v
-v:
+v: 
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
 
 ################################################################
@@ -58,16 +58,15 @@ ba:
 
 .PHONY: help
 help:
-	@echo "make targets:"	
-	@echo "\twave"
-	@echo "\tvcd"
-	@echo "\tv"
-	@echo "\tvexe"
-	@echo "\tba"
-	@echo "\t.exe (default)"
-	@echo "\thelp"
-	@echo "\tclean"
-	@echo "\trealclean"
+	@echo "  [wave] open vcd in waveform viewer"
+	@echo "  [vcd] generate signal dump file"
+	@echo "  [v] generate verilog source"
+	@echo "  [vexe] generate executable for Verilog simulation"
+	@echo "  [ba] generate ba for design"
+	@echo "  [exe] (default) generate executable for C simulation"
+	@echo "  [help] display this message"
+	@echo "  [clean] remove intermediate files ($(HS) $(OS) $(CXXS))"
+	@echo "  [realclean] remove target files ($(APM_NAME).exe $(APM_NAME).vexe dump.vcd)"  
 
 .PHONY: clean
 clean: clean_root

@@ -35,7 +35,7 @@ make_subdir_bas:
 		$(MAKE) -C $$dir ba; \
 	done
 
-$(WRAPPER_SYNTH_ID).ba: bsv_from_ba $(SRCS)
+$(WRAPPER_SYNTH_ID).ba: bsv_from_ba $(WRAPPER).bsv $(SRCS)
 	$(BSC) $(BSCFLAGS) -u -sim -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv
 
 .PHONY: bsv_from_ba
@@ -54,8 +54,11 @@ make_subdir_vs:
 		$(MAKE) -C $$dir v; \
 	done
 
-$(WRAPPER_SYNTH_ID).v: bsv_from_v $(SRCS)
+$(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(SRCS)
 	$(BSC) $(BSCFLAGS) -u -verilog -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv
+
+$(WRAPPER).bsv: $(SUBDIR_VS)
+	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
 
 .PHONY: bsv_from_v
 bsv_from_v: $(SUBDIR_VS)
@@ -66,12 +69,11 @@ bsv_from_v: $(SUBDIR_VS)
 
 .PHONY: help
 help:
-	@echo "make targets:"	
-	@echo "\tba"
-	@echo "\tv"
-	@echo "\thelp"
-	@echo "\tclean"
-	@echo "\trealclean"
+	@echo "  [v] generate verilog source"
+	@echo "  [ba] (default) generate ba for design"
+	@echo "  [help] display this message"
+	@echo "  [clean] remove intermediate files ($(BIS) $(BOS) $(WRAPPER).{bo,bi})"
+	@echo "  [realclean] remove target files ($(WRAPPER).bsv $(WRAPPER_SYNTH_ID).ba)"
 
 .PHONY: clean
 clean: clean_subdirs

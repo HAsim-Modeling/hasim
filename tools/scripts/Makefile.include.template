@@ -13,9 +13,7 @@ BSCFLAGS = -steps 1000000 \
 APM_NAME = @APM_NAME@
 ALL_DIRS = @ALL_DIRS@
 BUILD_DIR = @BUILD_DIR@
-
 ARCH_DIR = $(BUILD_DIR)/arch
-APM_FILE = $(BUILD_DIR)/$(APM_NAME).apm
 
-# TODO: this too should probably be added to asimstarter
 CONNECTION_SCRIPT = @CONNECTION_SCRIPT@
+APM_FILE = @APM_FILE@

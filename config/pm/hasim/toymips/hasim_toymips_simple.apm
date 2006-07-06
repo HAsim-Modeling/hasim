@@ -37,6 +37,7 @@ Description=Simple HASim Toymips Model
 File=hasim_toymips_simple
 Version=2.0
 Name=Simple HASim Toymips Model
+Type=HAsim
 
 [Hasim functional partition/Requires]
 hasim_funcp_checker=Hasim functional partition checker

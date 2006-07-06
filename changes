@@ -949,3 +949,13 @@ Directory config/pm/hasim/toymips
  hasim_toymips_simple.apm  Locally Modified           73 
 
 Minor fixes + comments.
+----------
+mamercal    Date: Thu Jul  6 15:13:30 EDT 2006  CSN: CSN-hasim-75
+                  Thu Jul  6 19:13:30 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.include.template Locally Modified           74 
+ hasim-configure           Locally Modified           74 
+
+Made include directory paths absolute for bsc.

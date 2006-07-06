@@ -183,7 +183,7 @@ sub __generate_makefile_include {
     my $my_dir = get_module_build_dir($module,$parent_dir);
     if (is_synthesis_boundary($module)) {
 	# @ALL_DIRS@
-	hash_append($replacements_r,":",'@ALL_DIRS@',$my_dir);
+	hash_append($replacements_r,":",'@ALL_DIRS@',path_append("\$(BUILD_DIR)",$my_dir));
     }
 
     # recurse
@@ -333,7 +333,7 @@ sub __make_symlinks {
     if ($public) {	push(@l, $module->public());    }
     foreach my $f (@l) {
 	my $src = Asim::resolve(path_append($base_dir,$f));
-	my $tgt = path_append($my_dir,$f);
+	my $tgt = Asim::resolve(path_append($my_dir,$f));
 	$status = system("ln -f -s $src $tgt");
     }
 

@@ -15,7 +15,7 @@ ROOT_BA = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).ba
 ROOT_V = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).v
 
 .PHONY: all
-all: $(APM_NAME).exe
+all: exe
 
 ################################################################
 ## Verilog route

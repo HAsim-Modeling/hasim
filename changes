@@ -959,3 +959,18 @@ Directory tools/scripts
  hasim-configure           Locally Modified           74 
 
 Made include directory paths absolute for bsc.
+----------
+mamercal    Date: Thu Jul  6 17:16:35 EDT 2006  CSN: CSN-hasim-76
+                  Thu Jul  6 21:16:35 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           75 
+ hasim-configure           Locally Modified           75 
+ Makefile.top.template     Locally Modified           75 
+ Makefile.include.template Locally Modified           75 
+
+Directory modules/functional/common
+ FUNCP_MemState.bsv        Locally Modified           75 
+
+Bug fix in hasim-configure, plus slight change to makefile build flow.

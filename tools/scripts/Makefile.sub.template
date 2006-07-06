@@ -35,12 +35,12 @@ make_subdir_bas:
 		$(MAKE) -C $$dir ba; \
 	done
 
-$(WRAPPER_SYNTH_ID).ba: bsv_from_ba $(WRAPPER).bsv $(SRCS)
+$(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(SRCS) $(SUBDIR_BAS)
 	$(BSC) $(BSCFLAGS) -u -sim -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv
 
-.PHONY: bsv_from_ba
-bsv_from_ba: $(SUBDIR_BAS)
-	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
+#.PHONY: bsv_from_ba
+#bsv_from_ba: $(SUBDIR_BAS)
+#	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
 
 ################################################################
 ## 
@@ -54,15 +54,19 @@ make_subdir_vs:
 		$(MAKE) -C $$dir v; \
 	done
 
-$(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(SRCS)
+$(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(SRCS) $(SUBDIR_VS)
 	$(BSC) $(BSCFLAGS) -u -verilog -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv
 
-$(WRAPPER).bsv: $(SUBDIR_VS)
+#.PHONY: bsv_from_v
+#bsv_from_v: $(SUBDIR_VS)
+#	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
+
+################################################################
+## 
+
+$(WRAPPER).bsv:
 	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
 
-.PHONY: bsv_from_v
-bsv_from_v: $(SUBDIR_VS)
-	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
 
 ################################################################
 ## Misc.
@@ -87,7 +91,7 @@ clean_subdirs:
 
 .PHONY: realclean
 realclean: clean realclean_subdirs
-	rm -f $(WRAPPER).bsv $(WRAPPER_SYNTH_ID).ba
+	rm -f $(WRAPPER).bsv $(WRAPPER_SYNTH_ID).ba $(WRAPPER_SYNTH_ID).v
 
 .PHONY: realclean_subdirs
 realclean_subdirs:

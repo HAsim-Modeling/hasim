@@ -333,7 +333,7 @@ sub __make_symlinks {
     if ($public) {	push(@l, $module->public());    }
     foreach my $f (@l) {
 	my $src = Asim::resolve(path_append($base_dir,$f));
-	my $tgt = Asim::resolve(path_append($my_dir,$f));
+	my $tgt = path_append($my_dir,$f);
 	$status = system("ln -f -s $src $tgt");
     }
 

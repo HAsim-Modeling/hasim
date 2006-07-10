@@ -195,7 +195,7 @@ sub __generate_makefile_include {
 }
 
 ############################################################
-# generate_makefile_top: Collect template replacement values
+# __generate_makefile_top: Collect template replacement values
 #                        for model, and generate 
 #                        $(APM)/pm/Makefile
 sub generate_makefile_top {
@@ -211,10 +211,41 @@ sub generate_makefile_top {
 	die "$prog (model_generate_makefile_top): root module must be a synthesis boundary\n";
     }
 
+    # gather other info recursively
+    __generate_makefile_top($root,"arch",$replacements_r);
+
     my $template = Asim::resolve("tools/scripts/Makefile.top.template");
     my $makefile = path_append($model->build_dir(),"Makefile");
     do_template_replacements($template,$makefile,$replacements_r);
 }
+
+############################################################
+# __generate_makefile_top: Recursively collect replacements
+#                          for Makefile.top
+sub __generate_makefile_top {
+    my $module = shift;
+    my $parent_dir = shift;
+    my $replacements_r = shift;
+
+    my $my_dir = get_module_build_dir($module,$parent_dir);
+    if (is_synthesis_boundary($module)) {
+	# @ALL_VS@
+	my $fileroot = "mk_" . $module->provides() . "_Wrapper";
+	my $v_file = "$fileroot.v";
+	hash_append($replacements_r," ",'@ALL_VS@',path_append("\$(BUILD_DIR)",$my_dir,$v_file));
+	# @ALL_BAS@
+	my $ba_file = "$fileroot.ba";
+	hash_append($replacements_r," ",'@ALL_BAS@',path_append("\$(BUILD_DIR)",$my_dir,$ba_file));
+    }
+
+    # recurse
+    check_submodules_defined($module);
+    foreach my $child ($module->submodules()) {
+	__generate_makefile_top($child,$my_dir,$replacements_r);
+    }
+
+}
+
 
 ############################################################
 # generate_makefile_sub: Collect template replacement values

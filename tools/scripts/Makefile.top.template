@@ -14,7 +14,8 @@ HS = $(CXXS:%.cxx=%.h)
 OS = $(CXXS:%.cxx=%.o)
 
 ROOT_BA = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).ba
-ROOT_V = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).v
+ALL_BAS = @ALL_BAS@
+ALL_VS = @ALL_VS@
 
 .PHONY: all
 all: exe
@@ -32,7 +33,7 @@ vcd: $(APM_NAME).vexe
 
 .PHONY: vexe
 vexe: v
-	$(BSC) $(BSCFLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ROOT_V) > $(LOGFILE) 2>&1
+	$(BSC) $(BSCFLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 2>&1 | tee $(LOGFILE)
 
 .PHONY: v
 v: 
@@ -48,7 +49,7 @@ run_exe:
 
 .PHONY: exe
 exe: ba
-	$(BSC) $(BSCFLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ROOT_BA) > $(LOGFILE) 2>&1
+	$(BSC) $(BSCFLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 2>&1 | tee $(LOGFILE)
 
 .PHONY: ba
 ba: 

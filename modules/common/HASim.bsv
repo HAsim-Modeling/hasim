@@ -19,6 +19,26 @@ import FIFO::*;
 import ModuleCollect::*;
 import Connectable::*;
 
+//Note: make these ASim parameters
+typedef Bit#(8) TokIndex;
+typedef Bit#(1) TokEpoch;
+typedef Bit#(0) TokContext;
+
+// A Token has support for associated data like epochs and contexts
+typedef struct
+{
+  TokEpoch   epoch;
+  TokContext ctxt;
+}
+  TokInfo deriving (Eq, Bits);
+
+typedef struct
+{
+  TokIndex   index;
+  TokInfo    info;
+}
+  Token deriving (Eq, Bits);
+
 // A Model is the global top-level, with no wires in or out.
 
 typedef Empty Model;
@@ -649,49 +669,6 @@ module [Module] connectDangling#(List#(ConnectionData) ld,
   interface incoming = ins;
   
 endmodule
-
-//connectTopLevel :: [ConnectionData] -> Module () 
-
-module [Module] connectTopLevel#(List#(ConnectionData) ld,
-                                 List#(DanglingInfo) children) ();
-  /*
-  match {.sends, .recs} = splitConnections(ld);
-  
-  match {.dsends, .drecs, .cncts} = groupByName(sends, recs);
-  
-  let nCncts = length(cncts);
-  
-  for (Integer x = 0; x < nCncts; x = x + 1)
-  begin
-    match {.nm, .cin, .cout} = cncts[x];
-    
-    messageM(strConcat("Connecting: ", nm));
-    mkConnection(cin, cout);
-  
-  end
-  
-  let nDSends = length(dsends);
-  
-  for (Integer x = 0; x < nDSends; x = x + 1)
-  begin
-    match {.nm, .cout} = dsends[x];
-    messageM(strConcat(strConcat(strConcat("Dangling Send [", integerToString(x)), "]: "), nm));
-  end
-  
-  let nDRecs = length(drecs);
-  
-  for (Integer x = 0; x < nDRecs; x = x + 1)
-  begin
-    match {.nm, .cin} = drecs[x];
-    messageM(strConcat(strConcat(strConcat("Dangling Rec [", integerToString(x)), "]: "), nm));
-  end
-  
-  if ((nDSends != 0) || (nDRecs != 0))
-    error("Dangling connections at top-level!");
-  */
-  
-  return ?;
-endmodule
  
 module [Module] instantiateDangling#(Connected_Module#(inter_T) m,
                                      List#(DanglingInfo) children) (WithConnections);
@@ -716,6 +693,6 @@ module [Module] instantiateTopLevel#(Connected_Module#(Empty) m,
 
   match {.m, .col} <- getCollection(m);
   
-  connectTopLevel(col, children);
+  let x <- connectDangling(col, m, children);
 
 endmodule

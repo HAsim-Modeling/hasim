@@ -36,6 +36,7 @@ module [HASim_Module] mkFUNCP_Stage_FET ();
 			      "fp_fet",
 			      "tok_to_fet",
 			      "fet_to_dec", 
+			      "fet_kill",
 			      8);  
   mkFUNCP_FetchAlg();
 
@@ -49,7 +50,8 @@ module [HASim_Module] mkFUNCP_Stage_DEC ();
                               "link_dec",
 			      "fp_dec",
 			      "fet_to_dec",
-			      "dec_to_exe", 
+			      "dec_to_exe",
+			      "dec_kill", 
 			      8);  
   mkFUNCP_DecodeAlg();
 
@@ -63,7 +65,8 @@ module [HASim_Module] mkFUNCP_Stage_EXE ();
                               "link_exe",
 		              "fp_exe",
 		              "dec_to_exe",
-		              "exe_to_mem", 
+		              "exe_to_mem",
+			      "exe_kill", 
 		              8);
   
   mkFUNCP_ExecuteAlg();
@@ -79,6 +82,7 @@ module [HASim_Module] mkFUNCP_Stage_MEM ();
 			      "fp_mem",
 			      "exe_to_mem",
 			      "mem_to_lco", 
+			      "mem_kill",
 			      8);
 
   mkFUNCP_MemAlg();
@@ -94,6 +98,7 @@ module [HASim_Module] mkFUNCP_Stage_LCO ();
 			      "fp_lco",
 			      "mem_to_lco",
 			      "lco_to_gco", 
+			      "lco_kill",
 			      8);
 
   mkFUNCP_LocalCommitAlg();
@@ -109,6 +114,7 @@ module [HASim_Module] mkFUNCP_Stage_GCO ();
 			      "fp_gco",
 			      "lco_to_gco",
 			      "gco_to_tok", 
+			      "gco_kill",
 			      8);
   
   mkFUNCP_GlobalCommitAlg();

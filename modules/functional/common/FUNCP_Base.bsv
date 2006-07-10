@@ -32,61 +32,6 @@ import RegFile::*;
 //                          |                       |               |
 //                          V                       |               |
 
-interface FP_Stage#(type init_T,
-		    type req_T,
-		    type resp_T,
-		    type next_T);
-
-  interface Put#(Tuple2#(Token, init_T)) in;
-  
-  interface Server#(Tuple3#(Token, req_T, Tick), Tuple2#(Token, resp_T)) server;
- 
-  interface Get#(Tuple2#(Token, next_T)) out;
- 
-  method Action killToken(Token t);
-
-endinterface
-
-
-/************* Functional Partition Unit Interface *************/
-
-// A Unit is a bundled computation. It can be multicycle, and out-of-order.
-// Standard units like Decode and Execute can be wrapped by the above FP_Stage.
-
-//  Token    DataFromPrevStage     RequestFromTP
-//    |              |  	      |
-//    V              V  	      V
-//  Token    DataForNextStage      ResponseToTP
-
-
-typedef Server#(Tuple3#(Token, init_T, req_T), 
-                Tuple3#(Token, resp_T, next_T))
-        FUNCP_Alg#(type init_T, 
-		   type req_T, 
-		   type resp_T, 
-		   type next_T);
-
-/************* Bypass Unit Interface *************/
-
-interface BypassUnit;
-		      
-  // first is new pointer, second is old. if no new pointer, the first will be undefined
-  method ActionValue#(Tuple2#(PRName,PRName)) makeMapping(Maybe#(RName) x, Token tok, Bool snapshot); //token is the ref name
-  method PRName lookup1(RName v);
-  method PRName lookup2(RName v);
-
-  method Maybe#(Value) read1(PRName i);
-  method Maybe#(Value) read2(PRName i);
-  method Maybe#(Value) read3(PRName i);
-  method Maybe#(Value) read4(PRName i);
-
-  method Action write1(PRName i, Value v);
-  method Action write2(PRName i, Value v);
-
-  method Action freePReg(Token tok, PRName x);
-  method Action rewindtoToken(Token tok); // exception
-endinterface
-
                  
 //---------------------------------------------------------------------//
 // General FP_Stage                                                    //
@@ -117,6 +62,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
                                          String servername,
 				         String prevname,
 				         String nextname,
+				         String killname,
 				         Integer sz) 
     //interface:
                (FUNCP_Stage#(init_T, 
@@ -137,8 +83,8 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
 	   Transmittable#(Token));
 
   //Local definitions
-  Token tableMin = minBound;
-  Token tableMax = maxBound; //fromInteger(sz - 1);
+  TokIndex tableMin = minBound;
+  TokIndex tableMax = maxBound; //fromInteger(sz - 1);
 
   //Links
   Connection_Client#(Tuple3#(Token, init_T, req_T),
@@ -159,15 +105,16 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   //...
   link_to_next   <- mkConnection_Send(nextname);
   
-  //Connection_Receive#(Token)
+  Connection_Receive#(Token)
   //...
-  //link_killToken <- mkConnection_Receive("fp_killToken");
+  link_killToken <- mkConnection_Receive(killname);
 
   		
   //SRAM tables
-  RegFile#(Token, init_T) values <- mkRegFile(tableMin, tableMax);
-  RegFile#(Token, Bool)   valids <- mkRegFile(tableMin, tableMax); 
-  RegFile#(Token, Bool)   starteds  <- mkRegFile(tableMin, tableMax); 
+  RegFile#(TokIndex, init_T)  values <- mkRegFile(tableMin, tableMax);
+  RegFile#(TokIndex, TokInfo) infos <- mkRegFile(tableMin, tableMax);
+  RegFile#(TokIndex, Bool)    valids <- mkRegFile(tableMin, tableMax); 
+  RegFile#(TokIndex, Bool)    starteds  <- mkRegFile(tableMin, tableMax); 
 
   //Rules
   
@@ -178,7 +125,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   
     match {.tok, .iVal} <- link_from_prev.receive();
     
-    Bool valid = valids.sub(tok);
+    Bool valid = valids.sub(tok.index);
     
     if (valid)
       begin        
@@ -187,9 +134,10 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
     else
       begin
 	//Set valid to true and started to false
-	valids.upd(tok, True);
-	starteds.upd(tok, False);
-	values.upd(tok, iVal);
+	valids.upd(tok.index, True);
+	starteds.upd(tok.index, False);
+	values.upd(tok.index, iVal);
+	infos.upd(tok.index, tok.info);
       end
   
   endrule
@@ -201,10 +149,10 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
 
     match {.tok, .tick, .req} <- link_from_tp.getReq();
    
-    Bool started   = starteds.sub(tok);
-    Bool valid  = valids.sub(tok);  
+    Bool started   = starteds.sub(tok.index);
+    Bool valid  = valids.sub(tok.index);  
 
-    init_T iVal = values.sub(tok);
+    init_T iVal = values.sub(tok.index);
 
     if (!valid)
        $display("%s ERROR: requesting unallocated token %h", stagename, tok);
@@ -213,7 +161,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
      else
      begin
        link_to_unit.makeReq(tuple3(tok, iVal, req));
-       starteds.upd(tok, True);
+       starteds.upd(tok.index, True);
     end
     
   endrule
@@ -224,11 +172,11 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   
     match {.tok, .resp, .next} <- link_to_unit.getResp();
     
-    Bool valid = valids.sub(tok);
+    Bool valid = valids.sub(tok.index);
     
     if (valid) // don't insert if it was killed
       begin
-        valids.upd(tok, False);
+        valids.upd(tok.index, False);
 	link_from_tp.makeResp(tuple2(tok, resp));
 	link_to_next.send(tuple2(tok, next));
       end
@@ -237,13 +185,13 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   
   //killToken
   
-  //rule killToken (True);
+  rule killToken (True);
     
-    //let tok <- link_killToken.receive();
+    let tok <- link_killToken.receive();
   
-    //valids.upd(tok, False);
+    valids.upd(tok.index, False);
   
-  //endrule
+  endrule
 
 endmodule
 

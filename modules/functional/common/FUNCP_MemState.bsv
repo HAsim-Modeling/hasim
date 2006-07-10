@@ -92,6 +92,7 @@ module [HASim_Module] mkMem_Software ()
   //handleIMEM
   
   //Handles all IMem requests
+
   rule handleIMEM (True);
   
     Addr a <- link_imem.getReq();

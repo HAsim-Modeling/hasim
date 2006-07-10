@@ -28,9 +28,11 @@ import ISA::*;
 // inorder. Actually, this is probably a pretty reasonable assumption.
 
 module [HASim_Module] mkFUNCP_Stage_TOK ();
-		 
-  Reg#(Token) r_first <- mkReg(minBound);
-  Reg#(Token) r_free <- mkReg(minBound);
+  
+  RegFile#(TokIndex, Bool) valids <- mkReg(minBound);
+  Reg#(TokIndex) next <- mkReg(0);
+  Reg#(Bool) nextValid <- mkReg(False);
+  
   
   //Links
   Connection_Server#(Tuple2#(Bit#(8), Tick), Token)
@@ -45,28 +47,42 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
   //...
   link_to_next <- mkConnection_Send("tok_to_fet");
   
-  //Connection_Receive#(Token)
+  Connection_Receive#(Token)
   //...
-  //link_killToken <- mkConnection_Receive("fp_killToken");
+  link_killToken <- mkConnection_Receive("tok_kill");
 
 
   //handleReq
   
-  rule handleReq (True);
+  rule handleReq (nextValid);
   
     match {.x, .tick} <- link_from_tp.getReq();
 
     if (x == 17)
     begin
     //allocate a new token
-    r_free <= r_free + 1;
-
-    link_from_tp.makeResp(r_free);
-    link_to_next.send(tuple2(r_free, ?));
+    let tok = Token
+      {
+	index: valids.sub(next),
+	info: ?
+      };
+    link_from_tp.makeResp(tok);
+    link_to_next.send(tuple2(tok, ?));
     end
-  
+    nextValid <= valids.sub(next + 1);
+    next <= next + 1;
   endrule
   
+  //calcNext
+  
+  rule calcNext (!nextValid);
+  
+    if (valids.sub(next))
+      nextValid <= True;
+    else
+      next <= next + 1;
+  
+  endrule
  
   //recycle
  
@@ -75,23 +91,24 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
     match {.t, .*} <- link_from_prev.receive();
 
     //complete token t
-
-    if (r_first != t) 
-      $display("TGen ERROR: tokens completing out of order");
-
-    r_first <= r_first + 1;
+    if (!valids.sub(t.idx))
+      $display("Tokgen error. Completing unallocated token %h", t);
+      
+    valids.upd(t.idx, False);
 
   endrule
    
   //killToken
   
-  //rule killToken (True);
-    
-    //let tok <- link_killToken.receive();
-    
-    //free tok and all tokens after it
-    //r_free <= tok;
-    
-  //endrule
+  rule killToken (True);
+  
+    let tok <- link_killToken.receive();
+  
+    if (!valids.sub(t.idx))
+      $display("Tokgen error. Killing unallocated token %h", t);
+      
+    valids.upd(t.idx, False);
+  
+  endrule
   
 endmodule

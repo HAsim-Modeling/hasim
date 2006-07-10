@@ -28,7 +28,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   //******* State Elements
 
   Reg#(Vector#(TExp#(token_SZ), Bool))             tvalids   <- mkReg(Vector::replicate(False));
-  RegFile#(Token, Tuple3#(Addr, Value, Maybe#(Token))) tokens <- mkRegFileFull();
+  RegFile#(TokIndex, Tuple3#(Addr, Value, Maybe#(Token))) tokens <- mkRegFileFull();
   RegFile#(AddrHash, Maybe#(Token))                hashes    <- mkRegFileFull();
 
   FIFO#(Tuple4#(Token, Addr, Token, Maybe#(Tuple2#(Token, Value))))  workingQ <- mkFIFO();
@@ -43,7 +43,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
       tagged Invalid:
         return True;
       tagged Valid {.t2, .v}:
-        return t2 > t;
+        return (t2.index > t.index) && (t.info.epoch == t2.info.epoch);
     endcase
   
   endfunction
@@ -55,10 +55,10 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     match {.tok, .addr, .cur_tok, .best} = workingQ.first();
     workingQ.deq();
     
-    match {.a, .v, .next_tok} = tokens.sub(cur_tok);
+    match {.a, .v, .next_tok} = tokens.sub(cur_tok.index);
     
-    let done = !tvalids[cur_tok] || !isValid(next_tok);
-    let newbest = (tvalids[cur_tok] && (a == addr) && (cur_tok < tok) && isBetter(cur_tok, best)) ? Valid tuple2(cur_tok, v) : best;
+    let done = !tvalids[cur_tok.index] || !isValid(next_tok);
+    let newbest = (tvalids[cur_tok.index] && (a == addr) && (cur_tok.index < tok.index) && isBetter(cur_tok, best)) ? Valid tuple2(cur_tok, v) : best;
 
     if (done)
       resultQ.enq(tuple2(tok, newbest));
@@ -98,16 +98,16 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     AddrHash h = hash(a);
     let ntok = hashes.sub(h);
   
-    tokens.upd(t, tuple3(a, v, ntok));
+    tokens.upd(t.index, tuple3(a, v, ntok));
     hashes.upd(h, Valid t);
-    tvalids <= update(tvalids, t, True);
+    tvalids <= update(tvalids, t.index, True);
     
   endmethod
   
   method ActionValue#(Tuple2#(Addr, Value)) commit(Token t);
   
-    tvalids <= update(tvalids, t, False);
-    match {.a, .v, .ntok} = tokens.sub(t);
+    tvalids <= update(tvalids, t.index, False);
+    match {.a, .v, .ntok} = tokens.sub(t.index);
     //XXX We should really update the hash here.
  
     return tuple2(a, v);
@@ -116,7 +116,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   
   method Action kill(Token t);
   
-    tvalids <= update(tvalids, t, False);
+    tvalids <= update(tvalids, t.index, False);
   
   endmethod
   

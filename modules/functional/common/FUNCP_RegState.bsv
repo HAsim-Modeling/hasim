@@ -130,8 +130,10 @@ module [HASim_Module] mkBypassUnit
   RegFile#(SnapshotPtr, Vector#(TExp#(rname_SZ), PRName))  snaps <- mkRegFileFull();
 
 
+  Reg#(TokEpoch) epoch <- mkReg(0);
   Reg#(Bool)  busy <- mkReg(False);
   Reg#(Token) stopToken <- mkRegU();
+  FIFO#(Tuple3#(Maybe#(RName), Token, Bool)) waitingQ <- mkFIFO();
 
   Bool free_ss = pack(snap_valids) != ~0;
 
@@ -202,8 +204,17 @@ module [HASim_Module] mkBypassUnit
   rule makeMapping (!busy && (fl_read + 1 != fl_write));
   
     //{Maybe#(RName), Token, Bool} 
-    match {.mx, .tok, .ss} <- link_mapping.getReq();
-
+    let tup <- link_mapping.getReq();
+    waitingQ.enq(tup);
+      
+  endrule
+  
+  rule doMapping (!busy && (fl_read + 1 != fl_write));
+    
+    //{Maybe#(RName), Token, Bool} 
+    match {.mx, .tok, .ss} = waitingQ.first();
+    if (tok.info.epoch == epoch)
+    begin
     PRName oldPReg; 
     PRName newPReg;
 
@@ -266,7 +277,7 @@ module [HASim_Module] mkBypassUnit
     
     // return value
     link_mapping.makeResp(newPReg);
-    
+    end
   endrule
 
   //lookup{1, 2} used by Decode
@@ -341,7 +352,11 @@ module [HASim_Module] mkBypassUnit
   
   rule rewindToToken (!busy);
     
+    
     let tok <- link_rewindToToken.receive();
+    
+    epoch <= epoch + 1;
+    
     //NO!!!!!
      
     //see if token is snapshotted

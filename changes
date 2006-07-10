@@ -1050,3 +1050,26 @@ Directory tools/scripts
  hasim-configure           Locally Modified           79 
 
 Bug fix in top level Makefile.
+----------
+mpellaue    Date: Mon Jul 10 18:01:45 EDT 2006  CSN: CSN-hasim-84
+                  Mon Jul 10 22:01:45 UTC 2006
+
+
+Directory tools/scripts
+
+Directory modules/functional/common
+ FUNCP_Pipeline.bsv        Locally Modified           83 
+ FUNCP_Base.bsv            Locally Modified           83 
+ FUNCP_RegState.bsv        Locally Modified           83 
+ FUNCP_MemState.bsv        Locally Modified           83 
+ FUNCP.bsv                 Locally Modified           83 
+ FUNCP_StoreBuffer.bsv     Locally Modified           83 
+ FUNCP_TokGen.bsv          Locally Modified           83 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified           83 
+
+
+Epoch changes have begun. RegState.bsv still needs some work.
+
+Michael

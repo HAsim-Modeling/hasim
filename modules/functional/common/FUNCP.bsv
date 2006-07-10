@@ -26,7 +26,6 @@ import ISA::*;
 module [HASim_Module] mkFUNCP (TModule#(Command, Response));
 
   Empty   bypass  <- mkBypassUnit();
-  Empty   mem     <- mkMem_Software();
   
   Empty   pipe    <- mkFUNCP_Pipeline();
   

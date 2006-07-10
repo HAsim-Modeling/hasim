@@ -53,47 +53,157 @@ my $metatype = shift;
 Asim::init()
     || die("Unable to initialize Asim::\n");
 
-my $model = Asim::Model->new($modelfile);
-my $root = $model->modelroot();
-my $providing_module = get_provider($root,$metatype);
-my $synth_id = get_synthesis_boundary_name($providing_module);
-my @srcs = get_srcs_below($root,$providing_module,0);
-my $wrapper = $metatype . "_Wrapper.bsv";
 
-CORE::open(WRAPPER, "> $wrapper") || return undef;
-
-print WRAPPER "import ModuleCollect::*;\n";
-print WRAPPER "import HASim::*;\n";
-print WRAPPER "\n";
-
-print WRAPPER "// import all packages\n";
-foreach my $src (@srcs) {
-    if ($src =~ /.bsv/) {
-	$src =~ s/.bsv//g;
-	print WRAPPER "import $src\::*;\n";
-    }
-}
-
-print WRAPPER "\n";
-print WRAPPER "(* synthesize *)\n";
-print WRAPPER "module [Module] mk_" . $metatype . "_Wrapper (WithConnections#(Empty));\n";
-print WRAPPER "\t\n";
-print WRAPPER "\tlet m <- instantiateDangling(" . $synth_id . "());\n";
-print WRAPPER "\t\n";
-print WRAPPER "\t// connect children\n";
-print WRAPPER "\t\n";
-print WRAPPER "\treturn m;\n";
-print WRAPPER "endmodule\n";
-
-CORE::close(WRAPPER);
+print_wrapper($modelfile,$metatype) ;
 
 exit 0;
 
 
 ############################################################
 # 
+sub print_wrapper {
+    my $modelfile = shift;
+    my $metatype = shift;
 
-sub get_srcs_below {
+    my $model = Asim::Model->new($modelfile);
+    my $root = $model->modelroot();
+    my $module = $root->find_module_providing($metatype);
+
+    my $wrapper = $metatype . "_Wrapper.bsv";
+    CORE::open(WRAPPER, "> $wrapper") || return undef;
+
+    print WRAPPER "import ModuleCollect::*;\n";
+    print WRAPPER "import HASim::*;\n";
+    print WRAPPER "\n";
+
+    print WRAPPER "// import children wrappers\n";
+    foreach my $submodule ($module->submodules()) {
+	if (is_synthesis_boundary($submodule)) {
+	    my $file_root = $submodule->provides() . "_Wrapper";
+	    print WRAPPER "import $file_root\::*;\n";
+	}
+    }
+    print WRAPPER "\n";
+
+    print WRAPPER "// import non-synthesis children\n";
+    foreach my $file_root (get_srcs_at_synth_boundary($root,$module,0)) {
+	print WRAPPER "import $file_root\::*;\n";
+    }
+    print WRAPPER "\n";
+
+    print WRAPPER "(* synthesize *)\n";
+    print WRAPPER "module [Module] mk_" . $metatype . "_Wrapper (WithConnections);\n";
+    print WRAPPER "\n";
+
+    my $indent = "   ";
+
+    my @child_info_vars = ();
+    foreach my $submodule ($module->submodules()) {
+	if (is_synthesis_boundary($submodule)) {
+
+	    my $submetatype = $submodule->provides();
+	    
+	    print WRAPPER "$indent // $submetatype\n";
+	    
+	    my $wrap_var = "wrap_" . $submetatype;
+	    my $mk_wrapper = "mk_" . $submetatype . "_Wrapper";
+	    print WRAPPER "$indent // 1. instantiate wrapper\n";
+	    print WRAPPER "$indent WithConnections $wrap_var <- $mk_wrapper();\n";
+	    
+	    my $log_file = 
+		$model->build_dir() . "/" . 
+		get_module_build_dir($module,$root,"arch") . "/" .
+		$mk_wrapper . ".log";
+
+	    my (@sends,@recvs) = parse_dangling_connections($log_file);
+	    print WRAPPER "$indent // 2. log sends & recvs\n";
+	    my @sends_exprs = ();
+	    foreach my $conn_r (@sends) {
+		my $expr = "tuple2(" . $conn_r->[1] . ", " . $conn_r->[0] . ")";
+		push (@sends_exprs, $expr);
+	    }
+	    my $sends_var = "dsends_" . $submetatype;
+	    my $sends_cons = cons_expr(@sends_exprs);
+	    print WRAPPER "$indent let $sends_var = $sends_cons;\n";
+
+	    my @recvs_exprs = ();
+	    foreach my $conn_r (@recvs) {
+		my $expr = "tuple2(" . $conn_r->[1] . ", " . $conn_r->[0] . ")";
+		push (@recvs_exprs, $expr);
+	    }
+	    my $recvs_var = "drecvs_" . $submetatype;
+	    my $recvs_cons = cons_expr(@recvs_exprs);
+	    print WRAPPER "$indent let $recvs_var = $recvs_cons;\n";
+
+	    my $info_var = "info_" . $submetatype;
+	    print WRAPPER "$indent // 3. info\n";
+	    print WRAPPER "$indent let $info_var = tuple3($wrap_var,$sends_var,$recvs_var);\n";
+	    
+	    print WRAPPER "\n";
+	    
+	    push(@child_info_vars,$info_var);
+
+	}
+    }
+
+    print WRAPPER "$indent // join all info\n";
+    my $cons_string = get_cons_expr(@child_info_vars);
+    print WRAPPER "$indent let info = $cons_string;\n";
+    print WRAPPER "\n";
+
+    my $synth_id = get_synthesis_boundary_name($module);
+    print WRAPPER "$indent // instantiate own module\n";
+    print WRAPPER "$indent let m <- instantiateDangling($synth_id, info);\n";
+    print WRAPPER "\n";
+
+    print WRAPPER "$indent return m;\n";
+    print WRAPPER "\n";
+
+    print WRAPPER "endmodule\n";
+
+    CORE::close(WRAPPER);
+
+}
+
+############################################################
+# 
+sub get_module_build_dir {
+    my $target = shift;
+    my $current = shift;
+    my $path = shift;
+
+    if ( is_synthesis_boundary($current) ) {
+	$path = $path . "/" . $current->provides();
+	if ($current->issame($target)) {
+	    return $path;
+	} 
+    }
+
+    foreach my $submodule ($current->submodules()) {
+	my $res = get_module_build_dir($target,$submodule,$path);
+	if ($res) {
+	    return $res;		    
+	}
+    }
+
+    DIE("Control should never reach here.\n");
+}
+
+############################################################
+# 
+sub get_cons_expr {
+    my @vars = @_;
+
+    if ($#vars == -1) {
+	return "nil";
+    }
+
+    return "cons(" . $vars[0] . ", " . get_cons_expr(@vars[1 .. $#vars]) . ")";
+}
+
+############################################################
+# 
+sub get_srcs_at_synth_boundary {
     my $module = shift;
     my $ancestor = shift;
     my $below_ancestor = shift;
@@ -101,23 +211,56 @@ sub get_srcs_below {
     # at ancestor
     if ($module->provides() eq $ancestor->provides()) {
 	$below_ancestor = 1;
-    }
+    } 
 
     my @srcs = ();
     if ($below_ancestor) {
-	push(@srcs,$module->public());
-	push(@srcs,$module->private());
+	foreach my $file ($module->public(),$module->private()) {
+	    if ($file =~ /.bsv/) {
+		$file =~ s/.bsv//g;
+		push(@srcs,$file);
+	    }
+	}
     }
 
     # recurse
     foreach my $submodule ($module->submodules()) {
 	if (!is_synthesis_boundary($submodule) || !$below_ancestor) {
-	    my @result = get_srcs_below($submodule,$ancestor,$below_ancestor);
+	    my @result = get_srcs_at_synth_boundary($submodule,$ancestor,$below_ancestor);
 	    push(@srcs,@result);
 	}
     }
 
     return @srcs;
+}
+
+############################################################
+# 
+sub parse_dangling_connections {
+    my $log_file = shift;
+
+#Compilation message: "HASim.bsv", line 518, column 5: Dangling Send [0]: mem_imem_req
+#Compilation message: "HASim.bsv", line 528, column 5: Dangling Rec [0]: mem_imem_resp
+
+    my @sends = ();
+    my @recvs = ();
+
+    CORE::open(LOG, "< $log_file") || return undef;
+    while (my $line = <LOG>) {
+	if ($line =~ /.*Dangling\W+(\w+)\W+(\w+)\W+(\w+)\W+/) {
+	    my @connection = ($2,$3);
+	    if ($1 eq "Send") {
+		push(@sends, [@connection]);
+	    } elsif ($1 eq "Rec") {
+		push(@recvs, [@connection]);
+	    } else {
+		DIE("Unrecognized type of dangling connection: $1\n");
+	    }
+	}
+    }
+    CORE::close(LOG);
+
+    return ([@sends],[@recvs]);
 }
 
 sub get_provider {
@@ -160,4 +303,16 @@ sub is_synthesis_boundary {
 	}
     }
     return 0;
+}
+
+sub WARN {
+    my $msg = shift;
+    my ($package, $filename, $line, $subroutine, $hasargs, $wantarray, $evaltext, $is_require, $hints, $bitmask) = caller(1);
+    print STDERR "$filename: ($subroutine) [called from ln $line]: $msg\n";
+}
+
+sub DIE {
+    my $msg = shift;
+    WARN($msg);
+    die;
 }

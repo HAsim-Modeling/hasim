@@ -10,6 +10,7 @@ SRCS = $(BSVS) @SRCS@
 
 WRAPPER = $(DIR)_Wrapper
 WRAPPER_SYNTH_ID = mk_$(WRAPPER)
+LOGFILE = $(WRAPPER_SYNTH_ID).log
 
 SUBDIR_BAS = @SUBDIR_BAS@
 SUBDIR_VS = $(SUBDIR_BAS:%.ba=%.v)
@@ -36,7 +37,7 @@ make_subdir_bas:
 	done
 
 $(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(SRCS) $(SUBDIR_BAS)
-	$(BSC) $(BSCFLAGS) -u -sim -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv
+	$(BSC) $(BSCFLAGS) -u -sim -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv > $(LOGFILE) 2>&1
 
 #.PHONY: bsv_from_ba
 #bsv_from_ba: $(SUBDIR_BAS)
@@ -55,7 +56,7 @@ make_subdir_vs:
 	done
 
 $(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(SRCS) $(SUBDIR_VS)
-	$(BSC) $(BSCFLAGS) -u -verilog -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv
+	$(BSC) $(BSCFLAGS) -u -verilog -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv > $(LOGFILE) 2>&1
 
 #.PHONY: bsv_from_v
 #bsv_from_v: $(SUBDIR_VS)
@@ -64,8 +65,9 @@ $(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(SRCS) $(SUBDIR_VS)
 ################################################################
 ## 
 
+# perhaps add dependency on $(CONNECTION_SCRIPT) to catch changes it
 $(WRAPPER).bsv:
-	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
+	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR) 
 
 
 ################################################################

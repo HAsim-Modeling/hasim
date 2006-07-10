@@ -243,6 +243,7 @@ sub __generate_makefile_sub {
     my $my_dir = $parent_dir;
 
     if (is_synthesis_boundary($module)) {
+
 	# OVERRIDE non-synth-boundary settings
 	# 1. instantiate new hash for synthesis boundary
 	$current_replacements_r = empty_hash_ref();
@@ -260,17 +261,17 @@ sub __generate_makefile_sub {
 	$dots_path =~ s/([^\/])+/../g;
 	hash_set($current_replacements_r,'@DOTS_TO_MAKEFILE_INCL@',$dots_path);
 
-	## @SUBDIRS@ & @SUBDIR_BAS@
-	check_submodules_defined($module);
-	foreach my $child ($module->submodules()) {
-	    if (is_synthesis_boundary($child)) {
-		my $subdir = $child->provides();
-		hash_append($current_replacements_r," ",'@SUBDIRS@',$subdir);
-		my $child_ba = path_append($subdir,"mk_" . $subdir . "_Wrapper.ba");
-		hash_append($current_replacements_r," ",'@SUBDIR_BAS@',$child_ba);
-		my $child_v = path_append($subdir,"mk_" . $subdir . "_Wrapper.v");
-		hash_append($current_replacements_r," ",'@SUBDIR_VS@',$child_v);
-	    }
+    }
+
+    ## @SUBDIRS@ & @SUBDIR_BAS@
+    check_submodules_defined($module);
+    foreach my $child ($module->submodules()) {
+	
+	if (is_synthesis_boundary($child)) {
+	    my $subdir = $child->provides();
+	    hash_append($current_replacements_r," ",'@SUBDIRS@',$subdir);
+	    my $child_ba = path_append($subdir,"mk_" . $subdir . "_Wrapper.ba");
+	    hash_append($current_replacements_r," ",'@SUBDIR_BAS@',$child_ba);
 	}
     }
 

@@ -996,3 +996,20 @@ Directory modules/common
 Updated HASim connections and MemState in preparation for separate synthesis boundaries.
 
 Michael
+
+----------
+mamercal    Date: Mon Jul 10 11:12:18 EDT 2006  CSN: CSN-hasim-79
+                  Mon Jul 10 15:12:18 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           78 
+ hasim-configure           Locally Modified           78 
+ Makefile.top.template     Locally Modified           78 
+ hasim-connect             Locally Modified           78 
+
+Directory modules/functional/common
+ FUNCP_MemState.bsv        Locally Modified           78 
+
+Bug fix in hasim-configure.
+Incorporated dangling connection script into build flow.

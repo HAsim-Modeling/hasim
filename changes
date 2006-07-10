@@ -1013,3 +1013,12 @@ Directory modules/functional/common
 
 Bug fix in hasim-configure.
 Incorporated dangling connection script into build flow.
+----------
+mamercal    Date: Mon Jul 10 13:33:36 EDT 2006  CSN: CSN-hasim-80
+                  Mon Jul 10 17:33:36 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified           79 
+
+Bug fix identifying sub-synthesis boundaries.

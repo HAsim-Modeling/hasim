@@ -1022,3 +1022,12 @@ Directory tools/scripts
  hasim-connect             Locally Modified           79 
 
 Bug fix identifying sub-synthesis boundaries.
+----------
+mamercal    Date: Mon Jul 10 13:50:55 EDT 2006  CSN: CSN-hasim-81
+                  Mon Jul 10 17:50:55 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified           80 
+
+Added quotation marks around connection names.

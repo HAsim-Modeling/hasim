@@ -119,7 +119,7 @@ sub print_wrapper {
 	my @recvs_exprs = ();
 
 	foreach my $conn_r (@conns) {
-	    my $expr = "tuple2(" . $conn_r->[2] . ", " . $conn_r->[1] . ")";
+	    my $expr = "tuple2(\"" . $conn_r->[2] . "\", " . $conn_r->[1] . ")";
 
 	    if ($conn_r->[0] eq "Send") {
 		push (@sends_exprs, $expr);

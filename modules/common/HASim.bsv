@@ -115,51 +115,67 @@ endinterface
 
 `define CON_WIDTH 200
 
-typedef Bit#(8) CON_Addr;
+`define CON_Addr 10
+
 typedef Bit#(`CON_WIDTH) CON_Data;
 
 //Change to BypassFIFO here.
 function m#(FIFO#(a)) mkCON_FIFO() provisos (Bits#(a, a_SZ), IsModule#(m, m2)) = mkFIFO();
 
-interface WithConnections#(type orig_T);
+interface WithConnections;
 
-  interface orig_T original;
-
-  interface AntiGet#(Tuple2#(CON_Addr, CON_Data)) incoming;
-  interface Get#(Tuple2#(CON_Addr, CON_Data)) outgoing;
+  interface Vector#(`CON_Addr, CON_In)  incoming;
+  interface Vector#(`CON_Addr, CON_Out) outgoing;
 
 endinterface
 
-interface AntiGet#(type a);
+interface CON_In;
 
-  method Action get_TRY(a x);
+  method Action get_TRY(CON_Data x);
   method Bool   get_SUCCESS();
 
 endinterface
 
-instance Connectable#(FIFO#(a), AntiGet#(a));
+interface CON_Out;
 
-  function m#(Empty) mkConnection(FIFO#(a) q, AntiGet#(a) p)
+  method CON_Data try();
+  method Action success();
+
+endinterface
+
+instance Connectable#(CON_Out, CON_In);
+
+  function m#(Empty) mkConnection(CON_Out cout, CON_In cin)
     provisos (IsModule#(m, c));
   
-    return connectFIFOtoAntiGet(q, p);
+    return connectInToOut(cout, cin);
     
   endfunction
 
 endinstance
 
-module connectFIFOtoAntiGet#(FIFO#(a) q, AntiGet#(a) g) ();
+instance Connectable#(CON_In, CON_Out);
+
+  function m#(Empty) mkConnection(CON_In cin, CON_Out cout)
+    provisos (IsModule#(m, c));
+  
+    return connectInToOut(cout, cin);
+    
+  endfunction
+
+endinstance
+module connectInToOut#(CON_Out cout, CON_In cin) ();
 
   rule trySend (True);
   
-    let x = q.first();
-    g.get_TRY(x);
+    let x = cout.try();
+    cin.get_TRY(x);
   
   endrule
 
-  rule success (g.get_SUCCESS());
+  rule success (cin.get_SUCCESS());
   
-    q.deq();
+    cout.success();
     
   endrule
 
@@ -167,8 +183,8 @@ endmodule
 
 typedef union tagged
 {
-  Tuple2#(String,    FIFO#(CON_Data)) LSend;
-  Tuple2#(String, AntiGet#(CON_Data)) LRec;
+  Tuple2#(String, CON_Out) LSend;
+  Tuple2#(String, CON_In) LRec;
 }
   ConnectionData;
 
@@ -211,13 +227,22 @@ module [Connected_Module] mkConnection_Send#(String portname)
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-  FIFO#(CON_Data) q <- mkCON_FIFO();
-    
+  FIFO#(msg_T) q <- mkCON_FIFO();
+  
+  //Bind the interface to a name for convenience
+  let outg = (interface CON_Out;
+  
+	       method CON_Data try() = marshall(q.first());
+	       
+	       method Action success = q.deq();
+
+	     endinterface);
+
   //Add our interface to the ModuleCollect collection
-  addToCollection(LSend tuple2(portname, q));
+  addToCollection(LSend tuple2(portname, outg));
 
   method Action send(msg_T data);
-    q.enq(marshall(data));
+    q.enq(data);
   endmethod
 
 endmodule
@@ -233,7 +258,7 @@ module [Connected_Module] mkConnection_Receive#(String portname)
   VRWire#(msg_T) data_w  <- vMkRWire();
   
   //Bind the interface to a name for convenience
-  let inc = (interface AntiGet;
+  let inc = (interface CON_In;
   
 	       method Action get_TRY(CON_Data x);
 	         data_w.wset(unmarshall(x));
@@ -267,12 +292,12 @@ module [Connected_Module] mkConnection_Client#(String portname)
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-  FIFO#(CON_Data) q <- mkCON_FIFO();
-  VRWire#(Bool)  en_w    <- vMkRWire();
-  VRWire#(resp_T) data_w  <- vMkRWire();
+  FIFO#(req_T)    q      <- mkCON_FIFO();
+  VRWire#(Bool)   en_w   <- vMkRWire();
+  VRWire#(resp_T) data_w <- vMkRWire();
   	      
-  //Bind the interface to a name for convenience
-  let inc = (interface AntiGet;
+  //Bind the interfaces to names for convenience
+  let inc = (interface CON_In;
   
 	       method Action get_TRY(CON_Data x);
 	         data_w.wset(unmarshall(x));
@@ -283,16 +308,24 @@ module [Connected_Module] mkConnection_Client#(String portname)
 	       endmethod
 
 	     endinterface);
+
+  let outg = (interface CON_Out;
+  
+	        method CON_Data try() = marshall(q.first());
+	       
+	        method Action success() = q.deq();
+
+	     endinterface);
   
   let sendname = strConcat(portname, "_req");
   let recname = strConcat(portname, "_resp");
 
   //Add our interfaces to the ModuleCollect collection
-  addToCollection(LSend tuple2(sendname, q));
+  addToCollection(LSend tuple2(sendname, outg));
   addToCollection(LRec tuple2(recname, inc));
 
   method Action makeReq(req_T data);
-    q.enq(marshall(data));
+    q.enq(data);
   endmethod
   
   method ActionValue#(resp_T) getResp() if (data_w.whas());
@@ -314,12 +347,12 @@ module [Connected_Module] mkConnection_Server#(String portname)
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-  FIFO#(CON_Data) q <- mkCON_FIFO();
+  FIFO#(resp_T) q <- mkCON_FIFO();
   VRWire#(Bool)  en_w    <- vMkRWire();
   VRWire#(req_T) data_w  <- vMkRWire();
   
-  //Bind the interface to names for convenience
-  let inc = (interface AntiGet;
+  //Bind the interfaces to names for convenience
+  let inc = (interface CON_In;
   
 	       method Action get_TRY(CON_Data x);
 	         data_w.wset(unmarshall(x));
@@ -331,15 +364,22 @@ module [Connected_Module] mkConnection_Server#(String portname)
 
 	     endinterface);
 	     
+  let outg = (interface CON_Out;
+  
+	        method CON_Data try() = marshall(q.first());
+	       
+	        method Action success() = q.deq();
+
+	     endinterface);
   let sendname = strConcat(portname, "_resp");
   let recname = strConcat(portname, "_req");
   
   //Add our interfaces to the ModuleCollect collection
-  addToCollection(LSend tuple2(sendname, q));
+  addToCollection(LSend tuple2(sendname, outg));
   addToCollection(LRec tuple2(recname, inc));
 
   method Action makeResp(resp_T data);
-    q.enq(marshall(data));
+    q.enq(data);
   endmethod
   
   method ActionValue#(req_T) getReq() if (data_w.whas());
@@ -419,10 +459,10 @@ function Tuple3#(List#(Tuple2#(a, b)),
     
 endfunction
 
-//splitConnections :: [ConnectionData] -> ([(String, Get)], [(String, AntiGet)])
+//splitConnections :: [ConnectionData] -> ([(String, CON_Out)], [(String, CON_In)])
 
-function Tuple2#(List#(Tuple2#(String, FIFO#(CON_Data))), 
-                 List#(Tuple2#(String, AntiGet#(CON_Data)))) splitConnections(List#(ConnectionData) l);
+function Tuple2#(List#(Tuple2#(String, CON_Out)), 
+                 List#(Tuple2#(String, CON_In))) splitConnections(List#(ConnectionData) l);
 
   case (l) matches
     tagged Nil: return tuple2(Nil, Nil);
@@ -440,66 +480,31 @@ function Tuple2#(List#(Tuple2#(String, FIFO#(CON_Data))),
 
 endfunction
 
-//danglingIns :: [AntiGet a] -> Module (AntiGet (addr, a))
+typedef Tuple2#(String, Integer) ConMap;
 
-module danglingIns#(List#(AntiGet#(CON_Data)) gs) (AntiGet#(Tuple2#(CON_Addr, CON_Data)));
+//               child           sends          recs
+typedef Tuple3#(WithConnections, List#(ConMap), List#(ConMap)) DanglingInfo;
 
-  VRWire#(Bool) en_w <- vMkRWire();
-  
-  method Action get_TRY(Tuple2#(CON_Addr, CON_Data) tup);
-  
-    match {.a, .d} = tup;
-    
-    List::select(gs, a).get_TRY(d);
-    en_w.wset(List::select(gs, a).get_SUCCESS());
-  
-  endmethod
-  
-  method Bool get_SUCCESS() = en_w.whas() && en_w.wget();
-  
-endmodule
-
-//danglingOuts :: [FIFO a] -> Module (Get (addr, a))
-
-module danglingOuts#(List#(FIFO#(CON_Data)) fs) (Get#(Tuple2#(CON_Addr, CON_Data)));
-
-  Integer n = length(fs);
-  FIFO#(Tuple2#(CON_Addr, CON_Data)) q <- mkCON_FIFO();
-  
-  for (Integer k = 0; k < n; k = k + 1)
-  begin
-  
-    rule arbitrate (True);
-  
-      q.enq(tuple2(fromInteger(k), List::select(fs, k).first()));
-      List::select(fs, k).deq();
-  
-    endrule
-  
-  end
-
-  method ActionValue#(Tuple2#(CON_Addr, CON_Data)) get();
-    q.deq();
-    return q.first();
-  endmethod
-  
-endmodule
-
-
-//connectDangling :: [ConnectionData] -> ifc -> Module (WithConnections in out ifc)
  
-module [Module] connectDangling#(List#(ConnectionData) ld, inter_T i) (WithConnections#(inter_T));
+module [Module] connectDangling#(List#(ConnectionData) ld, 
+                                 inter_T i,
+                                 List#(DanglingInfo) children)       (WithConnections);
     
   match {.sends, .recs} = splitConnections(ld);
   
   
-  match {.dsends, .drecs, .cncts} = groupByName(sends, recs);
-    
+  //match {.dsends, .drecs, .cncts} = groupByName(sends, recs);
+  let tup = groupByName(sends, recs);
+  List#(Tuple2#(String, CON_Out)) dsends = tpl_1(tup);
+  List#(Tuple2#(String, CON_In))  drecs = tpl_2(tup);
+  match {.*, .*, .cncts} = tup;
+  
   let numout = length(dsends);
   let numin  = length(drecs);
   
   let nCncts = length(cncts);
   
+  //Internal Connections
   for (Integer x = 0; x < nCncts; x = x + 1)
   begin
     match {.nm, .cin, .cout} = cncts[x];
@@ -509,40 +514,147 @@ module [Module] connectDangling#(List#(ConnectionData) ld, inter_T i) (WithConne
   
   end
   
-  let nDSends = length(dsends);
+  //Children's connections
+  let nChildren = length(children);
+  Vector#(`CON_Addr, CON_Out) outs = newVector();
+  Vector#(`CON_Addr, CON_In) ins = newVector();
+  Integer cur_in = 0;
+  Integer cur_out = 0;
   
-  List#(FIFO#(CON_Data)) outs = List::nil;
-  for (Integer x = 0; x < nDSends; x = x + 1)
+  
+  for (Integer x = 0; x < nChildren; x = x + 1)
   begin
-    match {.nm, .cout} = dsends[x]; 
-    messageM(strConcat(strConcat(strConcat("Dangling Send [", integerToString(x)), "]: "), nm));
-    outs = List::cons(cout, outs);
+    match {.child, .osends, .orecs} = children[x];
+    
+    //Child's send connections
+    let nOSends = length(osends);
+    
+    for (Integer y = 0; y < nOSends; y = y + 1)
+    begin
+    
+      match {.cnm, .caddr} = osends[y];
+      
+      //First check the current module for a rec
+      
+      case (lookup(cnm, drecs)) matches
+        tagged Valid .cin:
+	begin
+          messageM(strConcat("Connecting Send to Child: ", cnm));
+	  mkConnection(child.outgoing[caddr], cin);
+	  drecs = removeItem(cnm, drecs);
+	end
+	tagged Invalid: //Then check the other children
+        begin
+	
+	  Bool found = False;
+	  for (Integer z = x; (z < nChildren) && (!found); z = z + 1)
+	  begin
+	    match {.c2, .ss, .rs} = children[z];
+	    case (lookup(cnm, rs)) matches
+	      tagged Valid .inaddr:
+	      begin
+	        messageM(strConcat("Connecting Child to Child: ", cnm));
+		mkConnection(child.outgoing[caddr], c2.incoming[inaddr]);
+		found = True;
+	      end
+	    endcase
+	  end
+	  if (!found) //It's a pass-through
+	  begin
+	    outs[cur_out] = (interface CON_Out;
+		               method CON_Data try() = child.outgoing[caddr].try();
+			       method Action success() = child.outgoing[caddr].success();
+			     endinterface);
+            messageM(strConcat(strConcat(strConcat("Dangling Send [", integerToString(cur_out)), "]: "), cnm));
+	    cur_out = cur_out + 1;
+	  end
+	end
+      endcase
+    end
+    
+    //Child's Rec connections
+    let nORecs = length(orecs);
+    
+    for (Integer y = 0; y < nORecs; y = y + 1)
+    begin
+    
+      match {.cnm, .caddr} = orecs[y];
+      
+      //First check the current module for a send
+      
+      case (lookup(cnm, dsends)) matches
+        tagged Valid .cout:
+	begin
+          messageM(strConcat("Connecting Rec to Child: ", cnm));
+	  mkConnection(cout, child.incoming[caddr]);
+	  dsends = removeItem(cnm, dsends);
+	end
+	tagged Invalid: //Then check the other children
+        begin
+	
+	  Bool found = False;
+	  for (Integer z = x; (z < nChildren) && (!found); z = z + 1)
+	  begin
+	    match {.c2, .ss, .rs} = children[z];
+	    case (lookup(cnm, ss)) matches
+	      tagged Valid .outaddr:
+	      begin
+	        messageM(strConcat("Connecting Child to Child: ", cnm));
+		mkConnection(c2.outgoing[outaddr], child.incoming[caddr]);
+		found = True;
+	      end
+	    endcase
+	  end
+	  if (!found) //It's a pass-through
+	  begin
+	    ins[cur_in] = (interface CON_In;
+		               method Action get_TRY(CON_Data x) = child.incoming[caddr].get_TRY(x);
+			       method Bool get_SUCCESS() = child.incoming[caddr].get_SUCCESS();
+			     endinterface);
+            messageM(strConcat(strConcat(strConcat("Dangling Rec [", integerToString(cur_in)), "]: "), cnm));
+	    cur_in = cur_in + 1;
+	  end
+	end
+      endcase
+    end
+    
+    
   end
   
-  let nDRecs = length(drecs);
-  
-  List#(AntiGet#(CON_Data)) ins = List::nil;
-  for (Integer x = 0; x < nDRecs; x = x + 1)
+  //Final Dangling sends
+  for (Integer x = 0; x < length(dsends); x = x + 1)
   begin
-    match {.nm, .cin} = drecs[x]; 
-    messageM(strConcat(strConcat(strConcat("Dangling Rec [", integerToString(x)), "]: "), nm));
-
-    ins = List::cons(cin, ins);
+    match {.cnm, .cout} = dsends[x];
+    messageM(strConcat(strConcat(strConcat("Dangling Send [", integerToString(cur_out)), "]: "), cnm));
+    outs[cur_out] = cout;
+    cur_out = cur_out + 1;
   end
   
-  let outg <- danglingOuts(outs);
-  let inc <- danglingIns(ins);
+  for (Integer x = cur_out; x < valueOf(`CON_Addr); x = x + 1)
+    outs[x] = ?;
   
-  interface original = i;
-  interface outgoing = outg;
-  interface incoming = inc;
+  //Final Dangling recs
+  for (Integer x = 0; x < length(drecs); x = x + 1)
+  begin
+    match {.cnm, .cin} = drecs[x];
+    messageM(strConcat(strConcat(strConcat("Dangling Rec [", integerToString(cur_in)), "]: "), cnm));
+    ins[cur_in] = cin;
+    cur_in = cur_in + 1;
+  end
+  
+  for (Integer x = cur_in; x < valueOf(`CON_Addr); x = x + 1)
+    ins[x] = ?;
+  
+  interface outgoing = outs;
+  interface incoming = ins;
   
 endmodule
 
 //connectTopLevel :: [ConnectionData] -> Module () 
 
-module [Module] connectTopLevel#(List#(ConnectionData) ld) ();
-  
+module [Module] connectTopLevel#(List#(ConnectionData) ld,
+                                 List#(DanglingInfo) children) ();
+  /*
   match {.sends, .recs} = splitConnections(ld);
   
   match {.dsends, .drecs, .cncts} = groupByName(sends, recs);
@@ -576,14 +688,17 @@ module [Module] connectTopLevel#(List#(ConnectionData) ld) ();
   
   if ((nDSends != 0) || (nDRecs != 0))
     error("Dangling connections at top-level!");
+  */
   
+  return ?;
 endmodule
  
-module [Module] instantiateDangling#(Connected_Module#(inter_T) m) (WithConnections#(inter_T));
+module [Module] instantiateDangling#(Connected_Module#(inter_T) m,
+                                     List#(DanglingInfo) children) (WithConnections);
 
   match {.m, .col} <- getCollection(m);
   
-  let x <- connectDangling(col, m);
+  let x <- connectDangling(col, m, children);
   return x;
 
 endmodule
@@ -596,10 +711,11 @@ module [Module] synth#(Connected_Module#(inter_T) m) (inter_T);
 
 endmodule
 
-module [Module] instantiateTopLevel#(Connected_Module#(Empty) m) (Empty);
+module [Module] instantiateTopLevel#(Connected_Module#(Empty) m,
+                                     List#(DanglingInfo) children) (Empty);
 
   match {.m, .col} <- getCollection(m);
   
-  connectTopLevel(col);
+  connectTopLevel(col, children);
 
 endmodule

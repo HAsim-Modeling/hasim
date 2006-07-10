@@ -80,7 +80,7 @@ module [HASim_Module] mkMem_Software ()
 
   //Connections
 
-  Connection_Server#(Addr, Inst)      link_imem      <- mkConnection_Server("mem_imem");
+  //Connection_Server#(Addr, Inst)      link_imem      <- mkConnection_Server("mem_imem");
   Connection_Server#(MemReq, MemResp) link_dmem      <- mkConnection_Server("mem_dmem");
   Connection_Receive#(Token)          link_commit    <- mkConnection_Receive("mem_commit");
   Connection_Receive#(Token)          link_killToken <- mkConnection_Receive("mem_kill");
@@ -92,7 +92,7 @@ module [HASim_Module] mkMem_Software ()
   //handleIMEM
   
   //Handles all IMem requests
-   
+   /*
   rule handleIMEM (True);
   
     Addr a <- link_imem.getReq();
@@ -104,7 +104,7 @@ module [HASim_Module] mkMem_Software ()
     link_imem.makeResp(imemory.sub(sa));
     
   endrule
-  
+  */
   //handleDMEM
   
   //handles Dmem loads/stores but not commits/rollbacks

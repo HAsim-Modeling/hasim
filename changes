@@ -1031,3 +1031,12 @@ Directory tools/scripts
  hasim-connect             Locally Modified           80 
 
 Added quotation marks around connection names.
+----------
+mamercal    Date: Mon Jul 10 14:04:19 EDT 2006  CSN: CSN-hasim-82
+                  Mon Jul 10 18:04:19 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           79 
+
+Compiler output now goes to both screen and log file.

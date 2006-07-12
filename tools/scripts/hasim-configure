@@ -92,19 +92,39 @@ foreach my $apmfile (@ARGV) {
     print "Opening... $apmfile\n" if $debug;
 
     if ($configure) {
+	print "Configuring build tree for $apmfile . . . ";
 	configure_build_tree($apmfile);
     } elsif ($nuke) {
+	print "Nuking build tree. . . ";
 	delete_build_tree($apmfile);
     } elsif ($setup) {
 	WARN_AND_DIE("setup command not yet implemented");
     } elsif ($build) {
 	WARN_AND_DIE("build command not yet implemented");
+#	print "Compiling build tree. . . ";
+#	build_build_tree($apmfile);
     } elsif ($run) {
 	WARN_AND_DIE("run command not yet implemented");
     }
 
-    exit 0;
+   print "done\n";
 }
+
+exit 1;
+
+############################################################
+# build_build_tree
+#sub build_build_tree {
+#    my $modelfile = shift;
+#    my $model = Asim::Model->new($modelfile);
+#    my $build_dir = $model->build_dir();
+#
+#    my $cmd = "\$(MAKE) -C $build_dir exe\n
+#    
+#    print $cmd;
+#
+#    return 1;
+#}
 
 ############################################################
 # delete_build_tree

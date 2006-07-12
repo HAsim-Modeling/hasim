@@ -37,7 +37,7 @@ vexe: v
 
 .PHONY: v
 v: 
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+	$(RECURSIVE_MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
 
 ################################################################
 ## C route
@@ -53,7 +53,7 @@ exe: ba
 
 .PHONY: ba
 ba: 
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
+	$(RECURSIVE_MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
 
 
 ################################################################
@@ -77,7 +77,7 @@ clean: clean_root
 
 .PHONY: clean_root
 clean_root:
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) clean; 
+	$(RECURSIVE_MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) clean; 
 
 .PHONY: realclean
 realclean: clean realclean_root
@@ -85,4 +85,4 @@ realclean: clean realclean_root
 
 .PHONY: realclean_root
 realclean_root:
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) realclean; 
+	$(RECURSIVE_MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) realclean; 

@@ -1073,3 +1073,16 @@ Directory modules/common
 Epoch changes have begun. RegState.bsv still needs some work.
 
 Michael
+
+----------
+mamercal    Date: Wed Jul 12 10:33:25 EDT 2006  CSN: CSN-hasim-86
+                  Wed Jul 12 14:33:25 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           85 
+ hasim-configure           Locally Modified           85 
+ Makefile.top.template     Locally Modified           85 
+ Makefile.include.template Locally Modified           85 
+
+Fixed recursive make s.t. if child make fails, parent make does not try to keep going.

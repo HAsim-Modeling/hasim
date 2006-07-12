@@ -33,7 +33,7 @@ ba: make_subdir_bas $(WRAPPER_SYNTH_ID).ba
 .PHONY: make_subdir_bas
 make_subdir_bas: 
 	for dir in $(SUBDIRS); do \
-		$(MAKE) -C $$dir ba; \
+		$(RECURSIVE_MAKE) -C $$dir ba; \
 	done
 
 $(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(SRCS) $(SUBDIR_BAS)
@@ -52,7 +52,7 @@ v: make_subdir_vs $(WRAPPER_SYNTH_ID).v
 .PHONY: make_subdir_vs
 make_subdir_vs: 
 	for dir in $(SUBDIRS); do \
-		$(MAKE) -C $$dir v; \
+		$(RECURSIVE_MAKE) -C $$dir v; \
 	done
 
 $(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(SRCS) $(SUBDIR_VS)
@@ -88,7 +88,7 @@ clean: clean_subdirs
 .PHONY: clean_subdirs
 clean_subdirs:
 	for dir in $(SUBDIRS); do \
-		$(MAKE) -C $$dir clean; \
+		$(RECURSIVE_MAKE) -C $$dir clean; \
 	done
 
 .PHONY: realclean
@@ -98,6 +98,6 @@ realclean: clean realclean_subdirs
 .PHONY: realclean_subdirs
 realclean_subdirs:
 	for dir in $(SUBDIRS); do \
-		$(MAKE) -C $$dir realclean; \
+		$(RECURSIVE_MAKE) -C $$dir realclean; \
 	done
 

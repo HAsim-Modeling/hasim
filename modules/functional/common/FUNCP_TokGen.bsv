@@ -32,7 +32,7 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
   
   RegFile#(TokIndex, Bool) valids <- mkRegFileFull();
   Reg#(TokIndex) next <- mkReg(0);
-  Reg#(Bool) nextValid <- mkReg(True);
+  Reg#(Bool) nextFree <- mkReg(True);
   
   
   //Links
@@ -55,7 +55,7 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
 
   //handleReq
   
-  rule handleReq (nextValid);
+  rule handleReq (nextFree);
   
     match {.x, .tick} <- link_from_tp.getReq();
 
@@ -70,17 +70,22 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
     link_from_tp.makeResp(tok);
     link_to_next.send(tuple2(tok, ?));
     valids.upd(next, True);
-    nextValid <= valids.sub(next + 1);
-    next <= next + 1;
+    if (valids.sub(next + 1))
+    begin
+      nextFree <= False;
+      next <= next + 2;
+    end
+    else
+      next <= next + 1;
     end
   endrule
   
   //calcNext
   
-  rule calcNext (!nextValid);
+  rule calcNext (!nextFree);
   
     if (!valids.sub(next))
-      nextValid <= True;
+      nextFree <= True;
     else
       next <= next + 1;
   

@@ -1086,3 +1086,18 @@ Directory tools/scripts
  Makefile.include.template Locally Modified           85 
 
 Fixed recursive make s.t. if child make fails, parent make does not try to keep going.
+----------
+mpellaue    Date: Wed Jul 12 13:22:03 EDT 2006  CSN: CSN-hasim-87
+                  Wed Jul 12 17:22:03 UTC 2006
+
+
+Directory tools/scripts
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage.apm    Locally Modified           86 
+
+Directory modules/functional/common
+ FUNCP_TokGen.bsv          Locally Modified           86 
+
+
+Changed the token generation algorithm to be slightly more efficient.

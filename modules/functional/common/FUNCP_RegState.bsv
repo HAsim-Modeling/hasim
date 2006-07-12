@@ -116,7 +116,7 @@ module [HASim_Module] mkBypassUnit
   Reg #(PRName)               fl_read   <- mkReg(minInitFL);
   Reg #(PRName)               fl_write  <- mkReg(maxInitFL); 
   
-  RegFile#(Token, PRName)     old_pregs <- mkRegFileFull();
+  RegFile#(TokIndex, PRName)     old_pregs <- mkRegFileFull();
 
   //rob                                   old
   RegFile#(PRName, Tuple3#(Token, Maybe#(RName), PRName)) rob      <- mkRegFileFull();
@@ -124,7 +124,7 @@ module [HASim_Module] mkBypassUnit
   Reg#(PRName) 						  rob_new  <- mkReg(0);
 
   Reg#(Vector#(TExp#(snapshotptr_SZ), Bool))  snap_valids        <- mkReg(unpack(0));
-  Reg#(Vector#(TExp#(snapshotptr_SZ), Token)) snap_ids           <- mkRegU();
+  Reg#(Vector#(TExp#(snapshotptr_SZ), TokIndex)) snap_ids           <- mkRegU();
   RegFile#(SnapshotPtr, PRName)               snap_flreadptrs    <- mkRegFileFull();
   RegFile#(SnapshotPtr, PRName)               snap_robnewptrs    <- mkRegFileFull(); 
   RegFile#(SnapshotPtr, Vector#(TExp#(rname_SZ), PRName))  snaps <- mkRegFileFull();
@@ -215,6 +215,7 @@ module [HASim_Module] mkBypassUnit
     match {.mx, .tok, .ss} = waitingQ.first();
     if (tok.info.epoch == epoch)
     begin
+    waitingQ.deq();
     PRName oldPReg; 
     PRName newPReg;
 
@@ -267,13 +268,13 @@ module [HASim_Module] mkBypassUnit
       begin
 	let idx = unJust(midx);
 	snap_valids     <= update(snap_valids, idx, True);
-	snap_ids        <= update(snap_ids   , idx, tok);
+	snap_ids        <= update(snap_ids   , idx, tok.index);
 	snap_flreadptrs.upd(idx, fl_read);
 	snap_robnewptrs.upd(idx, rob_new);
                   snaps.upd(idx, maptbl);
       end
     
-    old_pregs.upd(tok, oldPReg);
+    old_pregs.upd(tok.index, oldPReg);
     
     // return value
     link_mapping.makeResp(newPReg);
@@ -335,14 +336,14 @@ module [HASim_Module] mkBypassUnit
   
     let tok <- link_freePReg.receive();
   
-    PRName reg_to_free = old_pregs.sub(tok);
+    PRName reg_to_free = old_pregs.sub(tok.index);
   
     freelist.upd(fl_write, reg_to_free);
     fl_write <= fl_write + 1;
 
     rob_old <= rob_old + 1;
 
-    function f(s,t) = s && (t != tok);
+    function f(s,t) = s && (t != tok.index);
 
     let newvals = zipWith(f, snap_valids, snap_ids);
 
@@ -391,7 +392,7 @@ module [HASim_Module] mkBypassUnit
     //flatten dead snaps
     match {.oldTok, .*, .*} = rob.sub(rob_old);
 
-    function Bool flatten(Bool x, Token t) = x && (tok-oldTok > t - oldTok); //valid and older than tok stay
+    function Bool flatten(Bool x, TokIndex t) = x && (tok.index-oldTok.index > t - oldTok.index); //valid and older than tok stay
      
     snap_valids <= zipWith(flatten, snap_valids, snap_ids);
     

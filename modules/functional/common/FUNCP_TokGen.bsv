@@ -3,6 +3,7 @@ import FIFO::*;
 import BypassFIFO::*;
 import GetPut::*;
 import ClientServer::*;
+import RegFile::*;
 
 //HASim library imports
 import HASim::*;
@@ -29,9 +30,9 @@ import ISA::*;
 
 module [HASim_Module] mkFUNCP_Stage_TOK ();
   
-  RegFile#(TokIndex, Bool) valids <- mkReg(minBound);
+  RegFile#(TokIndex, Bool) valids <- mkRegFileFull();
   Reg#(TokIndex) next <- mkReg(0);
-  Reg#(Bool) nextValid <- mkReg(False);
+  Reg#(Bool) nextValid <- mkReg(True);
   
   
   //Links
@@ -63,21 +64,22 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
     //allocate a new token
     let tok = Token
       {
-	index: valids.sub(next),
+	index: next,
 	info: ?
       };
     link_from_tp.makeResp(tok);
     link_to_next.send(tuple2(tok, ?));
-    end
+    valids.upd(next, True);
     nextValid <= valids.sub(next + 1);
     next <= next + 1;
+    end
   endrule
   
   //calcNext
   
   rule calcNext (!nextValid);
   
-    if (valids.sub(next))
+    if (!valids.sub(next))
       nextValid <= True;
     else
       next <= next + 1;
@@ -91,10 +93,10 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
     match {.t, .*} <- link_from_prev.receive();
 
     //complete token t
-    if (!valids.sub(t.idx))
+    if (!valids.sub(t.index))
       $display("Tokgen error. Completing unallocated token %h", t);
       
-    valids.upd(t.idx, False);
+    valids.upd(t.index, False);
 
   endrule
    
@@ -104,10 +106,10 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
   
     let tok <- link_killToken.receive();
   
-    if (!valids.sub(t.idx))
-      $display("Tokgen error. Killing unallocated token %h", t);
+    if (!valids.sub(tok.index))
+      $display("Tokgen error. Killing unallocated token %h", tok);
       
-    valids.upd(t.idx, False);
+    valids.upd(tok.index, False);
   
   endrule
   

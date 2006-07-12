@@ -209,12 +209,9 @@ module [HASim_Module] mkBypassUnit
       
   endrule
   
-  rule doMapping (!busy && (fl_read + 1 != fl_write));
+  rule doMapping (!busy && (fl_read + 1 != fl_write) &&& waitingQ.first() matches {.mx, .tok, .ss} &&& tok.info.epoch == epoch);
     
     //{Maybe#(RName), Token, Bool} 
-    match {.mx, .tok, .ss} = waitingQ.first();
-    if (tok.info.epoch == epoch)
-    begin
     waitingQ.deq();
     PRName oldPReg; 
     PRName newPReg;
@@ -278,7 +275,6 @@ module [HASim_Module] mkBypassUnit
     
     // return value
     link_mapping.makeResp(newPReg);
-    end
   endrule
 
   //lookup{1, 2} used by Decode

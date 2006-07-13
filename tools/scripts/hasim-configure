@@ -323,6 +323,8 @@ sub __generate_makefile_sub {
 	    hash_append($current_replacements_r," ",'@SUBDIRS@',$subdir);
 	    my $child_ba = path_append($subdir,"mk_" . $subdir . "_Wrapper.ba");
 	    hash_append($current_replacements_r," ",'@SUBDIR_BAS@',$child_ba);
+#	    my $child_ba_log = path_append($subdir,"mk_" . $subdir . "_Wrapper.ba.log");
+#	    hash_append($current_replacements_r," ",'@SUBDIR_BA_LOGS@',$child_ba_log);
 	}
     }
 

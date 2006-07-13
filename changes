@@ -1138,3 +1138,16 @@ Directory tools/scripts
 Stable checkin with multiple synthesis boundaries. Connection algorithms have been isolated in preparation for Events/Debugs.
 
 Michael
+
+----------
+mamercal    Date: Thu Jul 13 17:06:06 EDT 2006  CSN: CSN-hasim-90
+                  Thu Jul 13 21:06:06 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           89 
+ hasim-configure           Locally Modified           89 
+ Makefile.top.template     Locally Modified           89 
+ Makefile.include.template Locally Modified           89 
+
+Bug fixes in Makefiles

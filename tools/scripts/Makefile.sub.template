@@ -27,21 +27,17 @@ all: ba
 ################################################################
 ## 
 
-.PHONY: ba
+.PHONY: ba 
 ba: make_subdir_bas $(WRAPPER_SYNTH_ID).ba
 
 .PHONY: make_subdir_bas
 make_subdir_bas: 
 	for dir in $(SUBDIRS); do \
-		$(RECURSIVE_MAKE) -C $$dir ba; \
+		$(MAKE) -C $$dir ba; \
 	done
 
 $(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(SRCS) $(SUBDIR_BAS)
 	$(BSC) $(BSCFLAGS) -u -sim -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
-
-#.PHONY: bsv_from_ba
-#bsv_from_ba: $(SUBDIR_BAS)
-#	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
 
 ################################################################
 ## 
@@ -52,7 +48,7 @@ v: make_subdir_vs $(WRAPPER_SYNTH_ID).v
 .PHONY: make_subdir_vs
 make_subdir_vs: 
 	for dir in $(SUBDIRS); do \
-		$(RECURSIVE_MAKE) -C $$dir v; \
+		$(MAKE) -C $$dir v; \
 	done
 
 $(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(SRCS) $(SUBDIR_VS)
@@ -88,7 +84,7 @@ clean: clean_subdirs
 .PHONY: clean_subdirs
 clean_subdirs:
 	for dir in $(SUBDIRS); do \
-		$(RECURSIVE_MAKE) -C $$dir clean; \
+		$(MAKE) -C $$dir clean; \
 	done
 
 .PHONY: realclean
@@ -98,6 +94,6 @@ realclean: clean realclean_subdirs
 .PHONY: realclean_subdirs
 realclean_subdirs:
 	for dir in $(SUBDIRS); do \
-		$(RECURSIVE_MAKE) -C $$dir realclean; \
+		$(MAKE) -C $$dir realclean; \
 	done
 

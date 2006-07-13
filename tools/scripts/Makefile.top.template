@@ -14,6 +14,7 @@ HS = $(CXXS:%.cxx=%.h)
 OS = $(CXXS:%.cxx=%.o)
 
 ROOT_BA = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).ba
+ROOT_V = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).v
 ALL_BAS = @ALL_BAS@
 ALL_VS = @ALL_VS@
 
@@ -32,11 +33,15 @@ vcd: $(APM_NAME).vexe
 	$(APM_NAME).vexe +bscvcd
 
 .PHONY: vexe
-vexe: v
+vexe: $(APM_NAME).vexe
+
+$(APM_NAME).vexe: $(ROOT_V)
 	$(BSC) $(BSCFLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 2>&1 | tee $(LOGFILE)
 
 .PHONY: v
-v: 
+v: $(ROOT_V)
+
+$(ROOT_V):
 	$(RECURSIVE_MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
 
 ################################################################
@@ -44,15 +49,19 @@ v:
 
 
 .PHONY: run_exe
-run_exe:
+run_exe: exe
 	$(APM_NAME).exe
 
 .PHONY: exe
-exe: ba
+exe: $(APM_NAME).exe
+
+$(APM_NAME).exe: $(ROOT_BA)
 	$(BSC) $(BSCFLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 2>&1 | tee $(LOGFILE)
 
 .PHONY: ba
-ba: 
+ba: $(ROOT_BA)
+
+$(ROOT_BA):
 	$(RECURSIVE_MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
 
 
@@ -77,7 +86,7 @@ clean: clean_root
 
 .PHONY: clean_root
 clean_root:
-	$(RECURSIVE_MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) clean; 
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) clean; 
 
 .PHONY: realclean
 realclean: clean realclean_root
@@ -85,4 +94,4 @@ realclean: clean realclean_root
 
 .PHONY: realclean_root
 realclean_root:
-	$(RECURSIVE_MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) realclean; 
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) realclean; 

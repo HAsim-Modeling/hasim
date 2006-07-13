@@ -17,6 +17,7 @@
 #
 # %public FUNCP_Pipeline.bsv
 # %private FUNCP_TokGen.bsv
+# %param SYNTH_BOUNDARY mkFUNCP_Pipeline "name of synthesis boundary"
 #
 # %AWB_END
 # */

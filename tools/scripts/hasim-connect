@@ -74,6 +74,7 @@ sub print_wrapper {
 
     print WRAPPER "import ModuleCollect::*;\n";
     print WRAPPER "import HASim::*;\n";
+    print WRAPPER "import Connections::*;\n";
     print WRAPPER "\n";
 
     print WRAPPER "// import children wrappers\n";
@@ -113,6 +114,8 @@ sub print_wrapper {
 	    $submetatype . "/" .
 	    $mk_wrapper . ".log";
 
+        print "<<<< $log_file\n";
+	
 	print WRAPPER "$indent // 2. log sends & recvs\n";
 	my @conns = parse_dangling_connections($log_file);
 	my @sends_exprs = ();
@@ -156,7 +159,7 @@ sub print_wrapper {
 
     my $synth_id = get_synthesis_boundary_name($module);
     print WRAPPER "$indent // instantiate own module\n";
-    print WRAPPER "$indent let m <- instantiateDangling($synth_id, info);\n";
+    print WRAPPER "$indent let m <- instantiateWithConnections($synth_id, info);\n";
     print WRAPPER "\n";
 
     print WRAPPER "$indent return m;\n";
@@ -213,8 +216,9 @@ sub get_sub_synth_modules {
     my @module_list = ();
     if (is_synthesis_boundary($module) && $start_module == 0) {
 	push (@module_list,$module);
-    } elsif (((is_synthesis_boundary($module) && $start_module == 1)) ||
-	     ((!is_synthesis_boundary($module) && $start_module == 0))) {
+    } else {
+#    } elsif (((is_synthesis_boundary($module) && $start_module == 1)) ||
+#	     ((!is_synthesis_boundary($module) && $start_module == 0))) {
 	foreach my $submodule ($module->submodules()) {
 	    push(@module_list,get_sub_synth_modules($submodule,0));
 	}
@@ -264,6 +268,7 @@ sub parse_dangling_connections {
 #Compilation message: "HASim.bsv", line 528, column 5: Dangling Rec [0]: mem_imem_resp
 
     print "parsing: $log_file\n";
+    my @conns = ();
     CORE::open(LOG, "< $log_file") || return undef;
     while (my $line = <LOG>) {
 	if ($line =~ /.*Dangling\W+(\w+)\W+(\w+)\W+(\w+)\W+/) {

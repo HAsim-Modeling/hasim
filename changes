@@ -1115,3 +1115,26 @@ Directory tools/scripts
 
 
 Small changes in RegState/MemState connection names
+
+----------
+mpellaue    Date: Thu Jul 13 14:37:22 EDT 2006  CSN: CSN-hasim-89
+                  Thu Jul 13 18:37:22 UTC 2006
+
+
+Directory modules/functional/common
+ hasim_funcp_pipeline.awb  Locally Modified           86 
+ hasim_funcp_regstate.awb  Locally Modified           86 
+ FUNCP.bsv                 Locally Modified           86 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified           86 
+ HASim.bsv                 Locally Modified           86 
+ Connections.bsv           Locally Added               0 
+
+Directory tools/scripts
+ hasim-connect             Locally Modified           86 
+
+
+Stable checkin with multiple synthesis boundaries. Connection algorithms have been isolated in preparation for Events/Debugs.
+
+Michael

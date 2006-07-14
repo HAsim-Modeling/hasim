@@ -40,6 +40,8 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
 
   Reg#(ConState) state <- mkReg(CON_Init);
   
+  Empty event_controller <- mkEventController_Software();
+  
   //*********** Rules ***********
   
   //load_imem
@@ -128,3 +130,14 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
  
 endmodule
 
+module [HASim_Module] mkEventController_Software ();
+
+  function String conv(CON_ChainAddr a, CON_Data d);
+    let a2 = "a"; //XXX bitToString(a);
+    let d2 = "d"; //XXX bitToString(d);
+    return strConcat(a2, strConcat(": ", d2));
+  endfunction
+  
+  let snk <- mkSink_Software("EVENT", 0, conv);
+
+endmodule

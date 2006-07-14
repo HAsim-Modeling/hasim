@@ -1151,3 +1151,22 @@ Directory tools/scripts
  Makefile.include.template Locally Modified           89 
 
 Bug fixes in Makefiles
+----------
+mpellaue    Date: Fri Jul 14 15:01:02 EDT 2006  CSN: CSN-hasim-91
+                  Fri Jul 14 19:01:02 UTC 2006
+
+
+Directory tools/scripts
+
+Directory modules/controller/simple
+ Controller.bsv            Locally Modified           90 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified           90 
+ Connections.bsv           Locally Modified           90 
+
+
+Sinks and Chains are now implemented. A very basic Event Recorder and Controller
+is implemnted using the Chains/Sinks.
+
+Michael

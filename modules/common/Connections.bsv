@@ -36,7 +36,7 @@ module [Module] connectDangling#(List#(ConnectionData) ld,
                                  inter_T i,
                                  List#(DanglingInfo) children)       (WithConnections);
     
-  match {.sends, .recs, .chns, .sinks} = splitConnections(ld);
+  match {.sends, .recs, .chns} = splitConnections(ld);
   
   
   //match {.dsends, .drecs, .cncts} = groupByName(sends, recs);
@@ -197,19 +197,37 @@ module [Module] connectDangling#(List#(ConnectionData) ld,
   Vector#(CON_NumChains, CON_Chain) mychains = newVector();
   
   //Chain connections
-  List#(List#(CON_Chain_Local)) cs = groupByIndex(chns);
+  List#(List#(ChainData)) cs = groupByIndex(chns);
   Integer nChains = length(cs);
   
   for (Integer x = 0; x < nChains; x = x + 1)
   begin
-  
-    List#(CON_Chain_Local) cur_c = cs[x];
-    Integer nLinks = length(cur_c);
-    CON_Chain tmp <- (nLinks == 0) ? mkPassThrough : connectLocalChain(cur_c, x);
+    List#(ChainData) cdata = cs[x];
+    match {.csrc, .clinks, .csink} = splitChains(cdata);
+    Integer nLinks = length(clinks);
+    CON_Chain tmp <- (nLinks == 0) ? mkPassThrough : connectLocalChain(clinks, x);
+
+    if (!List::isNull(csink))
+    begin
+      mkConnection(tmp.chain_out, List::head(csink));
+      messageM(strConcat(strConcat("Adding Chain Sink [", integerToString(x)), "]"));
+    end
+
     let ifcs = List::map(tpl_1, childs);
-    mychains[x] <- prependChildren(ifcs, tmp, x);
+    CON_Chain tmp2 <- prependChildren(ifcs, tmp, x);
+
+    if (!List::isNull(csrc)) 
+    begin
+      mkConnection(List::head(csrc), tmp2.chain_in);
+      messageM(strConcat(strConcat("Adding Chain Source [", integerToString(x)), "]"));
+    end
+    
+    mychains[x] = (interface CON_Chain;
+                     interface chain_out = tmp2.chain_out;
+                     interface chain_in = (!List::isNull(csrc)) ? ? : tmp2.chain_in;
+                   endinterface);
   end
-  
+  /*
   //Sinks
   List#(List#(CON_Chain_In)) sks = groupByIndex(sinks);
   Integer nSinks = length(sks);
@@ -226,7 +244,7 @@ module [Module] connectDangling#(List#(ConnectionData) ld,
     messageM(strConcat(strConcat("Adding Sink [", integerToString(x)), "]"));
     //In theory we should have no outgoing Chain. Is it necesarry if the chain is well-formed?
   end
-  
+  */
   
   interface outgoing = outs;
   interface incoming = ins;
@@ -242,6 +260,7 @@ module connectLocalChain#(List#(CON_Chain_Local) l, Integer x) (CON_Chain);
     default:
     begin
       CON_Chain c <- localToChain(List::head(l), 0);
+        messageM(strConcat(strConcat("Adding Chain Link [", integerToString(x)), "]"));
       CON_Chain cbegin = c;
       let nLinks = length(l);
       //Connect internal chains
@@ -354,30 +373,51 @@ endfunction
 
 //splitConnections :: [ConnectionData] -> ([(String, CON_Out)], [(String, CON_In)])
 
-function Tuple4#(List#(Tuple2#(String, CON_Out)), 
+function Tuple3#(List#(Tuple2#(String, CON_Out)), 
                  List#(Tuple2#(String, CON_In)),
-		 List#(Tuple2#(Integer, CON_Chain_Local)),
-		 List#(Tuple2#(Integer, CON_Chain_In))) splitConnections(List#(ConnectionData) l);
+		 List#(Tuple2#(Integer, ChainData))) splitConnections(List#(ConnectionData) l);
 
   case (l) matches
-    tagged Nil: return tuple4(Nil, Nil, Nil, Nil);
+    tagged Nil: return tuple3(Nil, Nil, Nil);
     default:
     begin
-      match {.sends, .recs, .chns, .sinks} = splitConnections(List::tail(l));
+      match {.sends, .recs, .chns} = splitConnections(List::tail(l));
       case (List::head(l)) matches
 	tagged LSend .t:
-	  return tuple4(List::cons(t,sends), recs, chns, sinks);
+	  return tuple3(List::cons(t,sends), recs, chns);
 	tagged LRec .t:
-	  return tuple4(sends, List::cons(t, recs), chns, sinks);
+	  return tuple3(sends, List::cons(t, recs), chns);
 	tagged LChain .t:
-	  return tuple4(sends, recs, List::cons(t, chns), sinks);
-	tagged LSink .t:
-	  return tuple4(sends, recs, chns, List::cons(t, sinks));
+	  return tuple3(sends, recs, List::cons(t, chns));
       endcase
     end
   endcase
 
 endfunction
+
+
+function Tuple3#(List#(CON_Chain_Out), 
+                 List#(CON_Chain_Local),
+		 List#(CON_Chain_In)) splitChains(List#(ChainData) l);
+
+  case (l) matches
+    tagged Nil: return tuple3(Nil, Nil, Nil);
+    default:
+    begin
+      match {.srcs, .lnks, .snks} = splitChains(List::tail(l));
+      case (List::head(l)) matches
+	tagged CSource .t:
+	  return tuple3(List::cons(t,srcs), lnks, snks);
+	tagged CLink .t:
+	  return tuple3(srcs, List::cons(t, lnks), snks);
+	tagged CSink .t:
+	  return tuple3(srcs, lnks, List::cons(t, snks));
+      endcase
+    end
+  endcase
+
+endfunction
+
 
 //splitWith :: (a -> Bool) -> [a] -> ([a], [a])
 

@@ -132,12 +132,15 @@ endmodule
 
 module [HASim_Module] mkEventController_Software ();
 
-  function String conv(CON_ChainAddr a, CON_Data d);
-    let a2 = "a"; //XXX bitToString(a);
-    let d2 = "d"; //XXX bitToString(d);
-    return strConcat(a2, strConcat(": ", d2));
+  function Action dispEvent(CON_ChainAddr a, CON_Data d);
+  action
+    Tuple2#(TimeStamp, Bit#(32)) tup = unmarshall(d);
+    match {.cc, .parm} = tup;
+    $display("[%d] EVENT #%0d: %0h", cc, a, parm);
+  endaction
   endfunction
   
-  let snk <- mkSink_Software("EVENT", 0, conv);
+  let src <- mkSource(0);
+  let snk <- mkSink_Software(0, dispEvent);
 
 endmodule

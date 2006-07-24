@@ -3,7 +3,6 @@
 import HASim::*;
 import FUNCP_Base::*;
 import FUNCP_TokGen::*;
-import FUNCP_RegState::*;
 
 //Model-specific imports
 import ISA::*;

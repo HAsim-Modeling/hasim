@@ -181,11 +181,11 @@ interface CON_Out;
 endinterface
 
 interface CON_Chain_Out;
-  method Maybe#(Tuple2#(CON_ChainAddr, CON_Data)) dout;
+  method Maybe#(Tuple2#(CON_ChainAddr, CON_Data)) dout();
 endinterface
 
 interface CON_Chain_In;
-  method Action din(Maybe#(Tuple2#(CON_ChainAddr, CON_Data)) t);
+  method Action din(Maybe#(Tuple2#(CON_ChainAddr, CON_Data)) x);
 endinterface
 
 //A scanchain
@@ -198,8 +198,8 @@ endinterface
 
 interface CON_Chain_Local;
 
-  method Maybe#(CON_Data) dout;
-  method Action din(Maybe#(CON_Data) t);
+  method Maybe#(CON_Data) dout();
+  method Action din(Maybe#(CON_Data) x);
 
 endinterface
 
@@ -341,10 +341,17 @@ endinterface
 
 typedef union tagged
 {
+  CON_Chain_Out   CSource;
+  CON_Chain_Local CLink;
+  CON_Chain_In    CSink;
+}
+  ChainData;
+
+typedef union tagged
+{
   Tuple2#(String, CON_Out) LSend;
   Tuple2#(String, CON_In)  LRec;
-  Tuple2#(Integer, CON_Chain_Local) LChain;
-  Tuple2#(Integer, CON_Chain_In) LSink;
+  Tuple2#(Integer, ChainData) LChain;
 }
   ConnectionData;
 
@@ -570,14 +577,13 @@ module [Module] mkPassThrough
 
 endmodule
 
+
 module [Connected_Module] mkEventRecorder#(String eventname)
     //interface:
-                (EventRecorder#(msg_T))
-    provisos
-            (Bits#(msg_T, msg_SZ),
-	     Transmittable#(Tuple2#(TimeStamp, msg_T)));
+                (EventRecorder#(Bit#(32)));
 
   Reg#(Maybe#(CON_Data)) r <- mkReg(Invalid);
+  FIFO#(Tuple2#(TimeStamp, Bit#(32))) q <- mkFIFO();
   VRWire#(Bool)  en_w    <- vMkRWire();
   
   //Bind the interface to a name for convenience
@@ -592,21 +598,43 @@ module [Connected_Module] mkEventRecorder#(String eventname)
 	     endinterface);
 
   //Add our interface to the ModuleCollect collection
-  addToCollection(LChain tuple2(0, chn));
+  addToCollection(LChain tuple2(0, CLink chn));
 
-  method Action recordEvent(TimeStamp cc, msg_T data);
-    r <= Valid marshall(tuple2(cc, data));
+  rule insert (True);
+  
+    q.deq();
+    r <= Valid marshall(q.first());
     en_w.wset(True);
+  
+  endrule
+
+  method Action recordEvent(TimeStamp cc, Bit#(32) data);
+    q.enq(tuple2(cc, data));
   endmethod
 
 endmodule
 
-module [Connected_Module] mkSink_Software#(String chainname, Integer x,
-                                           function String conv(CON_ChainAddr a, CON_Data d))
+
+module [Connected_Module] mkSource#(Integer x)
     //interface:
                 ();
 
-  let nm = strConcat("[", strConcat(chainname, "]: "));
+  //Bind the interface to a name for convenience
+  let src = (interface CON_Chain_Out;
+  
+	       method  Maybe#(Tuple2#(CON_ChainAddr, CON_Data)) dout() = Invalid;
+
+	     endinterface);
+
+  //Add our interface to the ModuleCollect collection
+  addToCollection(LChain tuple2(x, CSource src));
+
+endmodule
+
+module [Connected_Module] mkSink_Software#(Integer x,
+                                           function Action process(CON_ChainAddr a, CON_Data d))
+    //interface:
+                ();
 
   //Bind the interface to a name for convenience
   let snk = (interface CON_Chain_In;
@@ -614,18 +642,15 @@ module [Connected_Module] mkSink_Software#(String chainname, Integer x,
 	       method Action din(Maybe#(Tuple2#(CON_ChainAddr, CON_Data)) data);
 	         case (data) matches
 		   tagged Invalid:
-		     noAction;
+		     $display("****");
 		   tagged Valid {.a, .d}:
-		   begin
-		     String str = conv(a, d);
-		     $display(strConcat(nm, str));
-		   end
+		     process(a, d);
 		  endcase
 	       endmethod
 
 	     endinterface);
 
   //Add our interface to the ModuleCollect collection
-  addToCollection(LSink tuple2(x, snk));
+  addToCollection(LChain tuple2(x, CSink snk));
 
 endmodule

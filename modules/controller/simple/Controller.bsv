@@ -3,9 +3,11 @@
 import PrimArray::*;
 import RegFile::*;
 import Connectable::*;
+import FIFO::*;
 
 //HASim library imports
 import HASim::*;
+import Events::*;
 
 //HASim model-specific imports
 import ISA::*;
@@ -128,19 +130,4 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
     
   endrule
  
-endmodule
-
-module [HASim_Module] mkEventController_Software ();
-
-  function Action dispEvent(CON_ChainAddr a, CON_Data d);
-  action
-    Tuple2#(TimeStamp, Bit#(32)) tup = unmarshall(d);
-    match {.cc, .parm} = tup;
-    $display("[%d] EVENT #%0d: %0h", cc, a, parm);
-  endaction
-  endfunction
-  
-  let src <- mkSource(0);
-  let snk <- mkSink_Software(0, dispEvent);
-
 endmodule

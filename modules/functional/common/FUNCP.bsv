@@ -6,11 +6,7 @@ import FIFO::*;
 import Vector::*;
 
 import HASim::*;
-import Debug::*;
 import FUNCP_Base::*;
-import FUNCP_Pipeline::*;
-import FUNCP_MemState::*;
-import FUNCP_RegState::*;
 import FUNCP_Loader::*;
 import FUNCP_Checker::*;
 
@@ -24,11 +20,6 @@ import ISA::*;
 
 
 module [HASim_Module] mkFUNCP (TModule#(Command, Response));
-
-  Empty   bypass  <- mkBypassUnit();
-  Empty   mem     <- mkMem_Software();
-  
-  Empty   pipe    <- mkFUNCP_Pipeline();
   
   Loader  loader  <- mkFUNCP_Loader();
   Checker checker <- mkFUNCP_Checker();

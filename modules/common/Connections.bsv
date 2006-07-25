@@ -21,6 +21,17 @@ module [Module] instantiateWithConnections#(Connected_Module#(inter_T) m,
 
 endmodule
 
+//Instantiate a module with connections exposed
+
+module [Module] instantiateTopLevel#(Connected_Module#(inter_T) m,
+                                            List#(DanglingInfo) children) (Empty);
+
+  match {.m, .col} <- getCollection(m);
+  
+  connectTopLevel(col, m, children);
+  
+endmodule
+
 //Connection map from conname to local address
 
 typedef Tuple2#(String, Integer) ConMap;
@@ -197,54 +208,20 @@ module [Module] connectDangling#(List#(ConnectionData) ld,
   Vector#(CON_NumChains, CON_Chain) mychains = newVector();
   
   //Chain connections
-  List#(List#(ChainData)) cs = groupByIndex(chns);
-  Integer nChains = length(cs);
+  List#(List#(CON_Chain)) cs = groupByIndex(chns);
+  let nChains = length(cs);
   
-  for (Integer x = 0; x < nChains; x = x + 1)
+  for (Integer x = 0; x < valueOf(CON_NumChains); x = x + 1)
   begin
-    List#(ChainData) cdata = cs[x];
-    match {.csrc, .clinks, .csink} = splitChains(cdata);
+    List#(CON_Chain) clinks = (x < nChains) ? cs[x] : Nil;
     Integer nLinks = length(clinks);
-    CON_Chain tmp <- (nLinks == 0) ? mkPassThrough : connectLocalChain(clinks, x);
-
-    if (!List::isNull(csink))
-    begin
-      mkConnection(tmp.chain_out, List::head(csink));
-      messageM(strConcat(strConcat("Adding Chain Sink [", integerToString(x)), "]"));
-    end
+    CON_Chain tmp <- (nLinks == 0) ? mkPassThrough(x) : connectLocalChain(clinks, x);
 
     let ifcs = List::map(tpl_1, childs);
     CON_Chain tmp2 <- prependChildren(ifcs, tmp, x);
-
-    if (!List::isNull(csrc)) 
-    begin
-      mkConnection(List::head(csrc), tmp2.chain_in);
-      messageM(strConcat(strConcat("Adding Chain Source [", integerToString(x)), "]"));
-    end
-    
-    mychains[x] = (interface CON_Chain;
-                     interface chain_out = tmp2.chain_out;
-                     interface chain_in = (!List::isNull(csrc)) ? ? : tmp2.chain_in;
-                   endinterface);
+ 
+    mychains[x] = tmp2;
   end
-  /*
-  //Sinks
-  List#(List#(CON_Chain_In)) sks = groupByIndex(sinks);
-  Integer nSinks = length(sks);
-  
-  for (Integer x = 0; x < nSinks; x = x + 1)
-  begin
-  
-    List#(CON_Chain_In) cur_s = sks[x];
-    if (length(cur_s) > 1)
-      error(strConcat("ERROR: multiple sinks for chain number ", integerToString(x)));
-    
-    let snk = List::head(cur_s);
-    mkConnection(mychains[x].chain_out, snk);
-    messageM(strConcat(strConcat("Adding Sink [", integerToString(x)), "]"));
-    //In theory we should have no outgoing Chain. Is it necesarry if the chain is well-formed?
-  end
-  */
   
   interface outgoing = outs;
   interface incoming = ins;
@@ -252,30 +229,211 @@ module [Module] connectDangling#(List#(ConnectionData) ld,
   
 endmodule
 
-module connectLocalChain#(List#(CON_Chain_Local) l, Integer x) (CON_Chain);
+//Top-Level connections
+
+module [Module] connectTopLevel#(List#(ConnectionData) ld, 
+                                 inter_T i,
+                                 List#(DanglingInfo) children)       ();
+    
+  match {.sends, .recs, .chns} = splitConnections(ld);
+  
+  
+  //match {.dsends, .drecs, .cncts} = groupByName(sends, recs);
+  let tup = groupByName(sends, recs);
+  List#(Tuple2#(String, CON_Out)) dsends = tpl_1(tup);
+  List#(Tuple2#(String, CON_In))  drecs = tpl_2(tup);
+  match {.*, .*, .cncts} = tup;
+  
+  let numout = length(dsends);
+  let numin  = length(drecs);
+  
+  let nCncts = length(cncts);
+  
+  //Internal Connections
+  for (Integer x = 0; x < nCncts; x = x + 1)
+  begin
+    match {.nm, .cin, .cout} = cncts[x];
+    
+    messageM(strConcat("Connecting: ", nm));
+    mkConnection(cin, cout);
+  
+  end
+  
+  //Children's connections
+  let nChildren = length(children);
+  List#(DanglingInfo) childs = children; //We can't write to parameters
+  Vector#(CON_Addr, CON_Out) outs = newVector();
+  Vector#(CON_Addr, CON_In) ins = newVector();
+  Integer cur_in = 0;
+  Integer cur_out = 0;
+  Bool error_occurred = False;
+  
+  
+  for (Integer x = 0; x < nChildren; x = x + 1)
+  begin
+    match {.child, .osends, .orecs} = childs[x];
+    
+    //Child's send connections
+    let nOSends = length(osends);
+    
+    for (Integer y = 0; y < nOSends; y = y + 1)
+    begin
+    
+      match {.cnm, .caddr} = osends[y];
+      
+      //First check the current module for a rec
+      
+      case (lookup(cnm, drecs)) matches
+        tagged Valid .cin:
+	begin
+          messageM(strConcat("Connecting to Child Send: ", cnm));
+	  mkConnection(child.outgoing[caddr], cin);
+	  drecs = removeItem(cnm, drecs);
+	end
+	tagged Invalid: //Then check the other children
+        begin
+	
+	  Bool found = False;
+	  for (Integer z = x; (z < nChildren) && (!found); z = z + 1)
+	  begin
+	    match {.c2, .ss, .rs} = childs[z];
+	    case (lookup(cnm, rs)) matches
+	      tagged Valid .inaddr:
+	      begin
+	        messageM(strConcat("Connecting Child to Child: ", cnm));
+		mkConnection(child.outgoing[caddr], c2.incoming[inaddr]);
+		found = True;
+		childs[z] = tuple3(c2, ss, removeItem(cnm, rs));
+	      end
+	    endcase
+	  end
+	  if (!found) //It's a pass-through
+	  begin
+            messageM(strConcat(strConcat(strConcat("Dangling Send [", integerToString(cur_out)), "]: "), cnm));
+	    cur_out = cur_out + 1;
+	    error_occurred = True;
+	  end
+	end
+      endcase
+    end
+    
+    //Child's Rec connections
+    let nORecs = length(orecs);
+    
+    for (Integer y = 0; y < nORecs; y = y + 1)
+    begin
+    
+      match {.cnm, .caddr} = orecs[y];
+      
+      //First check the current module for a send
+      
+      case (lookup(cnm, dsends)) matches
+        tagged Valid .cout:
+	begin
+          messageM(strConcat("Connecting to Child Rec: ", cnm));
+	  mkConnection(cout, child.incoming[caddr]);
+	  dsends = removeItem(cnm, dsends);
+	end
+	tagged Invalid: //Then check the other children
+        begin
+	
+	  Bool found = False;
+	  for (Integer z = x; (z < nChildren) && (!found); z = z + 1)
+	  begin
+	    match {.c2, .ss, .rs} = childs[z];
+	    case (lookup(cnm, ss)) matches
+	      tagged Valid .outaddr:
+	      begin
+	        messageM(strConcat("Connecting Child to Child: ", cnm));
+		mkConnection(c2.outgoing[outaddr], child.incoming[caddr]);
+		found = True;
+		childs[z] = tuple3(c2, removeItem(cnm, ss), rs);
+	      end
+	    endcase
+	  end
+	  if (!found) //It's a pass-through
+	  begin
+            messageM(strConcat(strConcat(strConcat("Dangling Rec [", integerToString(cur_in)), "]: "), cnm));
+	    cur_in = cur_in + 1;
+	    error_occurred = True;
+	  end
+	end
+      endcase
+    end
+    
+    
+  end
+  
+  //Final Dangling sends
+  for (Integer x = 0; x < length(dsends); x = x + 1)
+  begin
+    match {.cnm, .cout} = dsends[x];
+    messageM(strConcat(strConcat(strConcat("Dangling Send [", integerToString(cur_out)), "]: "), cnm));
+    cur_out = cur_out + 1;
+    error_occurred = True;
+  end
+  
+  //Final Dangling recs
+  for (Integer x = 0; x < length(drecs); x = x + 1)
+  begin
+    match {.cnm, .cin} = drecs[x];
+    messageM(strConcat(strConcat(strConcat("Dangling Rec [", integerToString(cur_in)), "]: "), cnm));
+    cur_in = cur_in + 1;
+    error_occurred = True;
+  end
+    
+  Vector#(CON_NumChains, CON_Chain) mychains = newVector();
+  
+  //Chain connections
+  List#(List#(CON_Chain)) cs = groupByIndex(chns);
+  let nChains = length(cs);
+
+  for (Integer x = 0; x < valueOf(CON_NumChains); x = x + 1)
+  begin
+  
+    List#(CON_Chain) clinks = (x < nChains) ? cs[x] : Nil;
+    Integer nLinks = length(clinks);
+    CON_Chain tmp <- (nLinks == 0) ? mkPassThrough(x) : connectLocalChain(clinks, x);
+
+    let ifcs = List::map(tpl_1, childs);
+    CON_Chain tmp2 <- prependChildren(ifcs, tmp, x);
+ 
+    //Close the chain
+    mkConnection(tmp2, tmp2);
+  end
+
+  if (error_occurred)
+    error("Error: dangling connections at top-level.");
+  
+endmodule
+
+
+module connectLocalChain#(List#(CON_Chain) l, Integer x) (CON_Chain);
 
   case (l) matches
     tagged Nil:
       return error("Internal Chain Connection failed");
     default:
     begin
-      CON_Chain c <- localToChain(List::head(l), 0);
-        messageM(strConcat(strConcat("Adding Chain Link [", integerToString(x)), "]"));
+      messageM(strConcat(strConcat("Adding Link Chain [", integerToString(x)), "]"));
+      CON_Chain c = l[0];
       CON_Chain cbegin = c;
       let nLinks = length(l);
       //Connect internal chains
       for (Integer y = 1; y < nLinks; y = y + 1)
       begin
-	CON_Chain c2 <- localToChain(l[y], fromInteger(y));
+	CON_Chain c2 =l[y];
 	mkConnection(c, c2);
         messageM(strConcat(strConcat("Adding Chain Link [", integerToString(x)), "]"));
 	c = c2;
       end
       CON_Chain cend = c;
       return (interface CON_Chain;
-                      interface chain_in = cbegin.chain_in;
-		      interface chain_out = cend.chain_out;
-		   endinterface);
+                method first() = cend.first();
+		method deq() = cend.deq();
+		method enq() = cbegin.enq();
+		method clear = noAction; //If you want to implement this, broadcast
+	      endinterface);
     end
   endcase
 
@@ -294,10 +452,11 @@ module prependChildren#(List#(WithConnections) childs, CON_Chain chn, Integer x)
   end
 
   return (interface CON_Chain;
-                  interface chain_in = c.chain_in;
-		  interface chain_out = chn.chain_out;
-	       endinterface);
-
+            method first() = chn.first();
+	    method deq() = chn.deq();
+	    method enq() = c.enq();
+	    method clear = noAction; //If you want to implement this, broadcast
+	  endinterface);
 
 endmodule
 
@@ -375,7 +534,7 @@ endfunction
 
 function Tuple3#(List#(Tuple2#(String, CON_Out)), 
                  List#(Tuple2#(String, CON_In)),
-		 List#(Tuple2#(Integer, ChainData))) splitConnections(List#(ConnectionData) l);
+		 List#(Tuple2#(Integer, CON_Chain))) splitConnections(List#(ConnectionData) l);
 
   case (l) matches
     tagged Nil: return tuple3(Nil, Nil, Nil);
@@ -389,29 +548,6 @@ function Tuple3#(List#(Tuple2#(String, CON_Out)),
 	  return tuple3(sends, List::cons(t, recs), chns);
 	tagged LChain .t:
 	  return tuple3(sends, recs, List::cons(t, chns));
-      endcase
-    end
-  endcase
-
-endfunction
-
-
-function Tuple3#(List#(CON_Chain_Out), 
-                 List#(CON_Chain_Local),
-		 List#(CON_Chain_In)) splitChains(List#(ChainData) l);
-
-  case (l) matches
-    tagged Nil: return tuple3(Nil, Nil, Nil);
-    default:
-    begin
-      match {.srcs, .lnks, .snks} = splitChains(List::tail(l));
-      case (List::head(l)) matches
-	tagged CSource .t:
-	  return tuple3(List::cons(t,srcs), lnks, snks);
-	tagged CLink .t:
-	  return tuple3(srcs, List::cons(t, lnks), snks);
-	tagged CSink .t:
-	  return tuple3(srcs, lnks, List::cons(t, snks));
       endcase
     end
   endcase

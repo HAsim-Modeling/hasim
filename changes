@@ -1170,3 +1170,26 @@ Sinks and Chains are now implemented. A very basic Event Recorder and Controller
 is implemnted using the Chains/Sinks.
 
 Michael
+
+----------
+mpellaue    Date: Tue Jul 25 17:40:40 EDT 2006  CSN: CSN-hasim-93
+                  Tue Jul 25 21:40:40 UTC 2006
+
+
+Directory tools/scripts
+
+Directory modules/functional/common
+ FUNCP.bsv                 Locally Modified           92 
+
+Directory modules/controller/simple
+ Controller.bsv            Locally Modified           92 
+
+Directory modules/common
+ Debug.bsv                 Locally Modified           92 
+ hasim_common.awb          Locally Modified           92 
+ HASim.bsv                 Locally Modified           92 
+ Connections.bsv           Locally Modified           92 
+ Events.bsv                Locally Added               0 
+
+
+Redid the Events system to work with varying-latency model cycles.

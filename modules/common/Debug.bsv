@@ -8,7 +8,7 @@
 //Level 3+: Every rule and method traced, with conditionals
 
 `ifndef DEBUG_LEVEL
-`define DEBUG_LEVEL 2
+`define DEBUG_LEVEL 0
 `endif
 
 `ifndef PARTITION_NAME

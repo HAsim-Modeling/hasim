@@ -248,7 +248,7 @@ module connectChains#(CON_Chain cout, CON_Chain cin) ();
 endmodule
 
 interface EventRecorder;
-  method Action recordEvent(TimeStamp cc, Bit#(32) data);
+  method Action recordEvent(Maybe#(Bit#(32)) mdata);
 endinterface
 
 typedef union tagged

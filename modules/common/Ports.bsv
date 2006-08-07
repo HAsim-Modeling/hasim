@@ -1,0 +1,87 @@
+
+import HASim::*;
+import Events::*;
+
+interface Port_Send#(type msg_T);
+  
+  method Action send(Maybe#(msg_T) m);
+  
+endinterface
+
+interface Port_Receive#(type msg_T);
+
+  method ActionValue#(Maybe#(msg_T)) receive();
+
+endinterface
+
+
+module [HASim_Module] mkPort_Send#(String portname)
+  //interface:
+              (Port_Send#(msg_T))
+  provisos
+          (Bits#(msg_T, msg_SZ),
+	   Transmittable#(Maybe#(msg_T)));
+	
+  Connection_Send#(Maybe#(msg_T)) con <- mkConnection_Send(portname);
+    
+  method Action send(Maybe#(msg_T) m);
+    
+    con.send(m);
+    
+  endmethod
+    
+endmodule
+
+module [HASim_Module] mkPort_Receive#(String portname, Integer latency)
+  //interface:
+              (Port_Receive#(msg_T))
+      provisos
+	        (Bits#(msg_T, msg_SZ),
+		 Transmittable#(Maybe#(msg_T)));
+
+  let p <- mkPort_Receive_Buffered(portname, latency, 0);
+  return p;
+
+endmodule
+
+module [HASim_Module] mkPort_Receive_Buffered#(String portname, Integer latency, Integer extra_buffering)
+    //interface:
+                (Port_Receive#(msg_T))
+      provisos
+	        (Bits#(msg_T, msg_SZ),
+		 Transmittable#(Maybe#(msg_T)));
+
+  Connection_Receive#(Maybe#(msg_T)) con <- mkConnection_Receive(portname);
+   
+  Integer rMax = latency + extra_buffering + 1;
+  
+  if (rMax > 255)
+    error("Total Port buffering cannot currently exceed 255.");
+  
+  Reg#(Maybe#(msg_T)) rs[rMax];
+  
+  for (Integer x = 0; x < rMax; x = x + 1)
+    rs[x] <- mkReg(Invalid);
+
+  Reg#(Bit#(8)) head <- mkReg(fromInteger(latency));
+  Reg#(Bit#(8)) tail <- mkReg(0);
+  
+  Bool full  = head == tail + 1;
+  Bool empty = head == tail;
+  
+  rule shift (!full);
+  
+    let d <- con.receive();
+    (rs[head._read()]) <= d;
+    head <= head + 1;
+   
+  endrule
+  
+  method ActionValue#(Maybe#(msg_T)) receive() if (!empty);
+    
+    tail <= tail + 1;
+    return rs[tail._read()]._read();
+    
+  endmethod
+
+endmodule

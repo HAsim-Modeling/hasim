@@ -31,12 +31,11 @@ module [HASim_Module] mkFUNCP_Stage_FET ();
   FUNCP_Stage#(void, Addr, Inst, Tuple2#(Addr, Inst))
   //...
        stage <- mkFUNCP_Stage("FET", 
-                              "link_fet",
+                              "fp_fet_stage",
 			      "fp_fet",
-			      "tok_to_fet",
-			      "fet_to_dec", 
-			      "fet_kill",
-			      8);  
+			      "fp_tok_to_fet",
+			      "fp_fet_to_dec", 
+			      "fp_fet_kill");  
   mkFUNCP_FetchAlg();
 
 endmodule
@@ -46,12 +45,11 @@ module [HASim_Module] mkFUNCP_Stage_DEC ();
   FUNCP_Stage#(Tuple2#(Addr, Inst), void, DepInfo, Tuple2#(Addr, DecodedInst))
   //...
        stage <- mkFUNCP_Stage("DEC", 
-                              "link_dec",
+                              "fp_dec_stage",
 			      "fp_dec",
-			      "fet_to_dec",
-			      "dec_to_exe",
-			      "dec_kill", 
-			      8);  
+			      "fp_fet_to_dec",
+			      "fp_dec_to_exe",
+			      "fp_dec_kill");  
   mkFUNCP_DecodeAlg();
 
 endmodule
@@ -61,12 +59,11 @@ module [HASim_Module] mkFUNCP_Stage_EXE ();
   FUNCP_Stage#(Tuple2#(Addr, DecodedInst), void, InstResult, ExecedInst)
   //...
        stage <- mkFUNCP_Stage("EXE", 
-                              "link_exe",
+                              "fp_exe_stage",
 		              "fp_exe",
-		              "dec_to_exe",
-		              "exe_to_mem",
-			      "exe_kill", 
-		              8);
+		              "fp_dec_to_exe",
+		              "fp_exe_to_mem",
+			      "fp_exe_kill");
   
   mkFUNCP_ExecuteAlg();
 
@@ -77,12 +74,11 @@ module [HASim_Module] mkFUNCP_Stage_MEM ();
   FUNCP_Stage#(ExecedInst, void, void, InstWBInfo)
   //...
        stage <- mkFUNCP_Stage("MEM", 
-                	      "link_mem",
+                	      "fp_mem_stage",
 			      "fp_mem",
-			      "exe_to_mem",
-			      "mem_to_lco", 
-			      "mem_kill",
-			      8);
+			      "fp_exe_to_mem",
+			      "fp_mem_to_lco", 
+			      "fp_mem_kill");
 
   mkFUNCP_MemAlg();
 
@@ -93,12 +89,11 @@ module [HASim_Module] mkFUNCP_Stage_LCO ();
   FUNCP_Stage#(InstWBInfo, void, void, InstWBInfo)
   //...
        stage <- mkFUNCP_Stage("LCO", 
-                              "link_lco",
+                              "fp_lco_stage",
 			      "fp_lco",
-			      "mem_to_lco",
-			      "lco_to_gco", 
-			      "lco_kill",
-			      8);
+			      "fp_mem_to_lco",
+			      "fp_lco_to_gco", 
+			      "fp_lco_kill");
 
   mkFUNCP_LocalCommitAlg();
 
@@ -109,12 +104,11 @@ module [HASim_Module] mkFUNCP_Stage_GCO ();
   FUNCP_Stage#(InstWBInfo, void, void, void)
   //...
        stage <- mkFUNCP_Stage("GCO", 
-                              "link_gco",
+                              "fp_gco_stage",
 			      "fp_gco",
-			      "lco_to_gco",
-			      "gco_to_tok", 
-			      "gco_kill",
-			      8);
+			      "fp_lco_to_gco",
+			      "fp_gco_to_tok", 
+			      "fp_gco_kill");
   
   mkFUNCP_GlobalCommitAlg();
 

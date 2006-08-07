@@ -11,37 +11,21 @@ module [Connected_Module] mkEventRecorder#(String eventname)
                 (EventRecorder);
 
   FIFO#(EventData)  localQ <- mkFIFO();
-  FIFO#(TimeStamp)   timeQ <- mkFIFO();
   FIFO#(EventData)  chainQ <- mkFIFO();
   Reg#(Bool)         stall <- mkReg(False);
-  
-  Bool isBoundary = case (chainQ.first()) matches 
-                      tagged EVT_Boundary .t: return True;
-		      default: return False;
-		    endcase;
-
-  rule insert (stall &&& chainQ.first() matches tagged EVT_Boundary .t &&& t == timeQ.first());
+ 
+  rule insert (stall);
   
     chainQ.enq(localQ.first());
     localQ.deq();
-    timeQ.deq();
     stall <= False;
   
   endrule
-    
-
-  rule pass (stall &&& chainQ.first() matches tagged EVT_Boundary .t &&& t < timeQ.first());
-  
-    stall <= False;
-    chainQ.enq(EVT_NoEvent);
-  
-  endrule
-
-  
+      
   let chn = (interface FIFO;
   
-	        method CON_Data first() if (!isBoundary || !stall) = marshall(chainQ.first());
-		method Action deq() if (!isBoundary || !stall) = chainQ.deq();
+	        method CON_Data first() = marshall(chainQ.first());
+		method Action deq() = chainQ.deq();
 		method Action clear() = noAction;
 	        method Action enq(CON_Data x) if (!stall);
 		
@@ -60,10 +44,20 @@ module [Connected_Module] mkEventRecorder#(String eventname)
   //Add our interface to the ModuleCollect collection
   addToCollection(LChain tuple2(0, chn));
 
-  method Action recordEvent(TimeStamp cc, Bit#(32) data);
+  method Action recordEvent(Maybe#(Bit#(32)) mdata);
   
-    localQ.enq(EVT_Event data);
-    timeQ.enq(cc);
+    case (mdata) matches
+      tagged Invalid:
+      begin
+        localQ.enq(EVT_NoEvent);
+        //$display("EVENT %s: No Event", eventname);
+      end
+      tagged Valid .data:
+      begin
+        localQ.enq(EVT_Event data);
+        //$display("EVENT %s: 0x%h", eventname, data);
+      end
+    endcase
   
   endmethod
 

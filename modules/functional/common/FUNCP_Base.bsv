@@ -62,8 +62,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
                                          String servername,
 				         String prevname,
 				         String nextname,
-				         String killname,
-				         Integer sz) 
+				         String killname) 
     //interface:
                (FUNCP_Stage#(init_T, 
 			     req_T, 
@@ -76,7 +75,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
            Bits#(next_T, next_SZ),
 	   Transmittable#(Tuple3#(Token, init_T, req_T)),
 	   Transmittable#(Tuple3#(Token, resp_T, next_T)),
-	   Transmittable#(Tuple3#(Token, Tick, req_T)),
+	   Transmittable#(Tuple2#(Token, req_T)),
 	   Transmittable#(Tuple2#(Token, resp_T)),
 	   Transmittable#(Tuple2#(Token, init_T)),
 	   Transmittable#(Tuple2#(Token, next_T)),
@@ -92,7 +91,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   //...
   link_to_unit   <- mkConnection_Client(linkname);
   
-  Connection_Server#(Tuple3#(Token, Tick, req_T),
+  Connection_Server#(Tuple2#(Token, req_T),
                      Tuple2#(Token, resp_T))
   //...
   link_from_tp   <- mkConnection_Server(servername);
@@ -147,7 +146,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   
   rule handleReq (True);
 
-    match {.tok, .tick, .req} <- link_from_tp.getReq();
+    match {.tok, .req} <- link_from_tp.getReq();
    
     Bool started   = starteds.sub(tok.index);
     Bool valid  = valids.sub(tok.index);  

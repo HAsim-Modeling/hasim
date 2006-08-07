@@ -1193,3 +1193,25 @@ Directory modules/common
 
 
 Redid the Events system to work with varying-latency model cycles.
+
+----------
+mpellaue    Date: Mon Aug  7 17:55:06 EDT 2006  CSN: CSN-hasim-94
+                  Mon Aug  7 21:55:06 UTC 2006
+
+
+Directory tools/scripts
+
+Directory modules/functional/common
+ FUNCP_Pipeline.bsv        Locally Modified           93 
+ FUNCP_Base.bsv            Locally Modified           93 
+ FUNCP_RegState.bsv        Locally Modified           93 
+ FUNCP_MemState.bsv        Locally Modified           93 
+ FUNCP_TokGen.bsv          Locally Modified           93 
+
+Directory modules/common
+ Ports.bsv                 Locally Added               0 
+ HASim.bsv                 Locally Modified           93 
+ Events.bsv                Locally Modified           93 
+
+
+Added support for Ports, renamed some internal connections.

@@ -36,28 +36,29 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
   
   
   //Links
-  Connection_Server#(Tuple2#(Bit#(8), Tick), Token)
+  Connection_Server#(Bit#(8), Token)
   //...
   link_from_tp <- mkConnection_Server("fp_tok");
   
   Connection_Receive#(Tuple2#(Token, void))
   //...
-  link_from_prev <- mkConnection_Receive("gco_to_tok");
+  link_from_prev <- mkConnection_Receive("fp_gco_to_tok");
   
   Connection_Send#(Tuple2#(Token, void))
   //...
-  link_to_next <- mkConnection_Send("tok_to_fet");
+  link_to_next <- mkConnection_Send("fp_tok_to_fet");
   
   Connection_Receive#(Token)
   //...
-  link_killToken <- mkConnection_Receive("tok_kill");
+  link_killToken <- mkConnection_Receive("fp_tok_kill");
 
 
   //handleReq
   
   rule handleReq (nextFree);
   
-    match {.x, .tick} <- link_from_tp.getReq();
+    //bug workaround
+    let x <- link_from_tp.getReq();
 
     if (x == 17)
     begin

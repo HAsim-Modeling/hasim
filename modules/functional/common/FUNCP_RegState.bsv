@@ -173,7 +173,7 @@ module [HASim_Module] mkBypassUnit
 
   Connection_Receive#(Token) 
   //...
-        link_rewindToToken <- mkConnection_Receive("lco_to_bypass_rewind");
+        link_rewindToToken <- mkConnection_Receive("fp_rewindToToken");
 
   //unBusy
   

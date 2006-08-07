@@ -83,7 +83,7 @@ module [HASim_Module] mkMem_Software ()
   Connection_Server#(Addr, Inst)      link_imem      <- mkConnection_Server("mem_imem");
   Connection_Server#(MemReq, MemResp) link_dmem      <- mkConnection_Server("mem_dmem");
   Connection_Receive#(Token)          link_commit    <- mkConnection_Receive("mem_commit");
-  Connection_Receive#(Token)          link_killToken <- mkConnection_Receive("memstate_kill");
+  Connection_Receive#(Token)          link_killToken <- mkConnection_Receive("fp_memstate_kill");
 
   Connection_Receive#(Tuple2#(Addr, Inst))  magic_imem_write <- mkConnection_Receive("magic_imem");
   Connection_Receive#(Tuple2#(Addr, Value)) magic_dmem_write <- mkConnection_Receive("magic_dmem_write");

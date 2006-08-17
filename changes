@@ -1242,3 +1242,52 @@ Directory modules/controller/null
  Controller.bsv            Locally Added               0 
 
 Missing files.
+----------
+mpellaue    Date: Thu Aug 17 17:46:18 EDT 2006  CSN: CSN-hasim-97
+                  Thu Aug 17 21:46:18 UTC 2006
+
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Modified           96 
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage_ports.apm Locally Added               0 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Modified           96 
+ TL0.bsv                   Locally Modified           96 
+
+Directory modules/common
+ Debug.bsv                 Locally Modified           96 
+
+Directory modules
+ fpga/                     Locally Added               0 
+
+Directory modules/fpga
+ common/                   Locally Added               0 
+
+Directory modules/fpga/common
+ FPGA_Common.bsv           Locally Added               0 
+ hasim_fpga_common.awb     Locally Added               0 
+
+Directory modules/fpga
+ software/                 Locally Added               0 
+
+Directory modules/fpga/software
+ hasim_fpga_software.awb   Locally Added               0 
+ FPGA.bsv                  Locally Added               0 
+
+Directory modules/fpga
+ xup/                      Locally Added               0 
+
+Directory modules/fpga/xup
+ hasim_fpga_xup.awb        Locally Added               0 
+ FPGA.bsv                  Locally Added               0 
+ prim_fpga.v               Locally Added               0 
+
+
+Resolved the deadlock error.
+
+Additionally committing first revision of FPGA primitives library. Two initial versions: software and XUP board.
+
+Michael

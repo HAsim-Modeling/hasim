@@ -37,3 +37,17 @@ File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traf
 hasim_system=Hasim - Traffic light system
 hasim_controller=Hasim null controller
 hasim_common=Hasim base library
+
+[Hasim FPGA utils base library/Requires]
+hasim_fpga_implementation=Hasim FPGA utils XUP board library
+
+[Hasim - Traffic light function/Requires]
+hasim_fpga_common=Hasim FPGA utils base library
+
+[Hasim FPGA utils XUP board library]
+Packagehint=hasim
+File=modules/fpga/xup/hasim_fpga_xup.awb
+
+[Hasim FPGA utils base library]
+Packagehint=hasim
+File=modules/fpga/common/hasim_fpga_common.awb

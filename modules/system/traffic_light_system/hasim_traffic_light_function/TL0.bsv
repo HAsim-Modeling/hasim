@@ -3,6 +3,8 @@
 package TL0;
 
 import HASim::*;
+import FPGA_Common::*;
+import FPGA::*;
 
 // Simple model of a traffic light
 // (modeled after the light at the intersection of Rte 16 and Broadway
@@ -21,6 +23,7 @@ typedef enum {
 
 module [HASim_Module] sysTL(TL);
    Reg#(TLstates) state <- mkReg(RedAfterW);
+   LED_Controller leds <- mkLED_Controller();
    
    rule fromGreenNS (state == GreenNS);
       state <= AmberNS;
@@ -32,6 +35,7 @@ module [HASim_Module] sysTL(TL);
 
    rule fromRedAfterNS (state == RedAfterNS);
       state <= GreenE;
+      leds.setLEDs(4'b0100);
    endrule: fromRedAfterNS
 
    rule fromGreenE (state == GreenE);
@@ -44,6 +48,7 @@ module [HASim_Module] sysTL(TL);
 
    rule fromRedAfterE (state == RedAfterE);
       state <= GreenW;
+      leds.setLEDs(4'b0001);
    endrule: fromRedAfterE
 
    rule fromGreenW (state == GreenW);
@@ -56,6 +61,7 @@ module [HASim_Module] sysTL(TL);
 
    rule fromRedAfterW (state == RedAfterW);
       state <= GreenNS;
+      leds.setLEDs(4'b1010);
    endrule: fromRedAfterW
 
 endmodule: sysTL

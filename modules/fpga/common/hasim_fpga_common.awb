@@ -7,16 +7,15 @@
 #/*
 # %AWB_START
 #
-# %name Hasim - Traffic light function
-# %desc Hasim - Traffic light function
-# %provides hasim_traffic_light_function
-# %requires hasim_fpga_common
+# %name Hasim FPGA utils base library
+# %desc Hasim FPGA utils base library
+# %provides hasim_fpga_common
+# %requires hasim_fpga_implementation
 #
 # %attributes hasim
 #
-# %private TL0.bsv
-#
-# %param SYNTH_BOUNDARY sysTL "name of synthesis boundary"
+# %private FPGA_Common.bsv
 #
 # %AWB_END
 # */
+

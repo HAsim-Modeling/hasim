@@ -1,0 +1,133 @@
+
+[Hasim test case base]
+Packagehint=hasim
+File=modules/functional/test-cases/common/hasim_testcase_common.awb
+
+[Hasim functional partition loader]
+Packagehint=hasim
+File=modules/functional/common/hasim_funcp_loader.awb
+
+[Hasim functional partition regstate]
+Packagehint=hasim
+File=modules/functional/common/hasim_funcp_regstate.awb
+
+[Hasim functional partition memstate software]
+Packagehint=hasim
+File=modules/functional/common/hasim_funcp_memstate.awb
+
+[Hasim functional partition pipeline/Requires]
+hasim_funcp_localcommit_alg=Hasim mips funcp local commit algorithm
+hasim_funcp_mem_alg=Hasim mips funcp mem algorithm
+hasim_funcp_fetch_alg=Hasim mips funcp fetch algorithm
+hasim_funcp_globalcommit_alg=Hasim mips funcp global commit algorithm
+hasim_funcp_decode_alg=Hasim smips funcp decode algorithm
+hasim_funcp_execute_alg=Hasim smips funcp execute algorithm
+
+[Hasim simple controller]
+Packagehint=hasim
+File=modules/controller/simple/hasim_simple_controller.awb
+
+[Global]
+SaveParameters=0
+Description=5-Stage HASim SMIPS Model
+File=hasim_smips_5stage_ports
+Version=2.0
+Name=5-Stage HASim SMIPS Model
+
+[Hasim functional partition/Requires]
+hasim_funcp_checker=Hasim functional partition checker
+hasim_funcp_loader=Hasim functional partition loader
+hasim_funcp_memstate=Hasim functional partition memstate software
+hasim_funcp_base=Hasim functional partition base
+hasim_testcase=Hasim smips testcase branch
+hasim_funcp_regstate=Hasim functional partition regstate
+hasim_funcp_pipeline=Hasim functional partition pipeline
+
+[Hasim - Hardware (fpga) based system/Requires]
+hasim_funcp=Hasim functional partition
+hasim_chip=Hasim 5 stage pipelined timing partition ports
+hasim_isa=Hasim - SMIPS ISA
+
+[Hasim functional partition checker]
+Packagehint=hasim
+File=modules/functional/common/hasim_funcp_checker.awb
+
+[Hasim functional partition pipeline]
+Packagehint=hasim
+File=modules/functional/common/hasim_funcp_pipeline.awb
+
+[Hasim base library]
+Packagehint=hasim
+File=modules/common/hasim_common.awb
+
+[Model]
+DefaultAttributes=hasim smips 5-stage
+model=HAsim Model Foundation
+
+[Hasim mips funcp global commit algorithm]
+Packagehint=hasim-mips
+File=modules/functional/mips/mips_funcp_globalcommit_alg.awb
+
+[Hasim mips funcp mem algorithm]
+Packagehint=hasim-mips
+File=modules/functional/mips/mips_funcp_mem_alg.awb
+
+[Hasim mips funcp fetch algorithm]
+Packagehint=hasim-mips
+File=modules/functional/mips/mips_funcp_fetch_alg.awb
+
+[Hasim - Hardware (fpga) based system]
+Packagehint=hasim
+File=modules/system/single_chip_system/hasim_system.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/hasim_model.awb
+
+[Hasim functional partition base]
+Packagehint=hasim
+File=modules/functional/common/hasim_funcp_base.awb
+
+[Hasim functional partition]
+Packagehint=hasim
+File=modules/functional/common/hasim_funcp.awb
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - Hardware (fpga) based system
+hasim_controller=Hasim simple controller
+hasim_common=Hasim base library
+
+[Hasim mips funcp local commit algorithm]
+Packagehint=hasim-mips
+File=modules/functional/mips/mips_funcp_localcommit_alg.awb
+
+[Hasim functional partition storebuffer software]
+Packagehint=hasim
+File=modules/functional/common/hasim_funcp_storebuffer.awb
+
+[Hasim functional partition memstate software/Requires]
+hasim_funcp_storebuffer=Hasim functional partition storebuffer software
+
+[Hasim smips funcp decode algorithm]
+Packagehint=hasim-mips
+File=modules/functional/smips/smips_funcp_decode_alg.awb
+
+[Hasim smips funcp execute algorithm]
+Packagehint=hasim-mips
+File=modules/functional/smips/smips_funcp_execute_alg.awb
+
+[Hasim - SMIPS ISA]
+Packagehint=hasim-mips
+File=modules/isa/smips/hasim_smips_isa.awb
+
+
+[Hasim smips testcase branch/Requires]
+hasim_testcase_base=Hasim test case base
+
+[Hasim smips testcase branch]
+Packagehint=hasim-mips
+File=modules/functional/test-cases/smips/branch/smips_testcase_branch.awb
+
+[Hasim 5 stage pipelined timing partition ports]
+Packagehint=hasim-mips
+File=modules/chip/mips/5stage-ports/hasim_5stage_ports_chip.awb

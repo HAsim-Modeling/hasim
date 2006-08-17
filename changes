@@ -1215,3 +1215,19 @@ Directory modules/common
 
 
 Added support for Ports, renamed some internal connections.
+
+----------
+mamercal    Date: Thu Aug 17 17:19:38 EDT 2006  CSN: CSN-hasim-95
+                  Thu Aug 17 21:19:38 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified           94 
+ Makefile.top.template     Locally Modified           94 
+ hasim-connect             Locally Modified           94 
+
+Directory modules/model
+ hasim_model.awb           Locally Modified           94 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified           94 

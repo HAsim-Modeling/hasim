@@ -16,6 +16,8 @@
 
 %public Model.bsv
 
+%makefile Makefile.top.template Makefile.include.template Makefile.sub.template
+
 %param SYNTH_BOUNDARY mkModel "name of synthesis boundary"
 
 %AWB_END

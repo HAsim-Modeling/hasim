@@ -67,6 +67,7 @@ sub print_wrapper {
 
     my $model = Asim::Model->new($modelfile);
     my $root = $model->modelroot();
+#    $model->dump();
     my $module = $root->find_module_providing($metatype);
 
     my $wrapper = $metatype . "_Wrapper.bsv";
@@ -91,7 +92,11 @@ sub print_wrapper {
     print WRAPPER "\n";
 
     print WRAPPER "(* synthesize *)\n";
-    print WRAPPER "module [Module] mk_" . $metatype . "_Wrapper (WithConnections);\n";
+    if ($module->issame($root)) {
+	print WRAPPER "module [Module] mk_" . $metatype . "_Wrapper ();\n";    
+    } else {
+	print WRAPPER "module [Module] mk_" . $metatype . "_Wrapper (WithConnections);\n";    
+    }
     print WRAPPER "\n";
 
     my $indent = "   ";
@@ -108,6 +113,9 @@ sub print_wrapper {
 	print WRAPPER "$indent // 1. instantiate wrapper\n";
 	print WRAPPER "$indent WithConnections $wrap_var <- $mk_wrapper();\n";
 	
+#	    get_module_build_dir($module,$root,"arch") . "/" .
+#	    get_module_build_dir2($model,$module) . "/" .
+
 	my $log_file = 
 	    $model->build_dir() . "/" . 
 	    get_module_build_dir($module,$root,"arch") . "/" .
@@ -159,7 +167,11 @@ sub print_wrapper {
 
     my $synth_id = get_synthesis_boundary_name($module);
     print WRAPPER "$indent // instantiate own module\n";
-    print WRAPPER "$indent let m <- instantiateWithConnections($synth_id, info);\n";
+    if ($module->issame($root)) {
+	print WRAPPER "$indent let m <- instantiateTopLevel($synth_id, info);\n";
+    } else {
+	print WRAPPER "$indent let m <- instantiateWithConnections($synth_id, info);\n";
+    }
     print WRAPPER "\n";
 
     print WRAPPER "$indent return m;\n";
@@ -173,26 +185,61 @@ sub print_wrapper {
 
 ############################################################
 # 
+sub get_module_build_dir2 {
+
+    my $model = shift;
+    my $module = shift;
+
+    my $current = $module;
+    my $path = "";
+
+    while (defined $current) {
+	my $dir = "";
+	if (is_synthesis_boundary($current)) {
+	    my $dir = $current->provides();
+	}
+
+	if (!($dir eq "")) {
+	    $path = $dir . "/" . $path;
+        }
+	$current = $current->parent();
+
+    }
+
+    return $path;
+}
+
+##########################################################
+# 
 sub get_module_build_dir {
     my $target = shift;
     my $current = shift;
     my $path = shift;
 
+    my $tmp = $target->provides();
+    my $tmp2 = $current->provides();
+#    print "SEARCHING FOR $tmp FROM $tmp2\n";
+
     if ( is_synthesis_boundary($current) ) {
 	$path = $path . "/" . $current->provides();
 	if ($current->issame($target)) {
+#	    print "RETURNING PATH: $path\n";
 	    return $path;
-	} 
-    }
-
-    foreach my $submodule ($current->submodules()) {
-	my $res = get_module_build_dir($target,$submodule,$path);
-	if ($res) {
-	    return $res;		    
 	}
     }
 
-    DIE("Control should never reach here.\n");
+    foreach my $submodule ($current->submodules()) {
+	my $tmp3 = $submodule->provides();
+#	print "   CHILD $tmp3\n";
+	my $res = get_module_build_dir($target,$submodule,$path);
+	if ($res) {
+#	    print "SUCCESS\n";
+	    return $res;		    
+	}
+    }
+    return "";
+#    print "DONE\n";
+#    DIE("Control should never reach here.\n");
 }
 
 ############################################################

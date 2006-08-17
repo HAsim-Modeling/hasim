@@ -353,7 +353,6 @@ sub __generate_makefile_sub {
 	my $makefile = path_append($model->build_dir(),$my_dir,"Makefile");
 	do_template_replacements($template,$makefile,$current_replacements_r);
     }
-
 }
 
 ############################################################

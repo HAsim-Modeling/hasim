@@ -42,7 +42,7 @@ $(APM_NAME).vexe: $(ROOT_V)
 v: $(ROOT_V)
 
 $(ROOT_V):
-	$(RECURSIVE_MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
 
 ################################################################
 ## C route
@@ -62,7 +62,7 @@ $(APM_NAME).exe: $(ROOT_BA)
 ba: $(ROOT_BA)
 
 $(ROOT_BA):
-	$(RECURSIVE_MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
 
 
 ################################################################

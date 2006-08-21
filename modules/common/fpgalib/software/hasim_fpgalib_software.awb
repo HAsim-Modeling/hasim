@@ -7,13 +7,13 @@
 #/*
 # %AWB_START
 #
-# %name Hasim FPGA utils software library
-# %desc Hasim FPGA utils software library
-# %provides hasim_fpga_implementation
+# %name Hasim FPGA library software
+# %desc Hasim FPGA library software
+# %provides hasim_fpgalib
 #
 # %attributes hasim
 #
-# %private FPGA.bsv
+# %private FPGALib.bsv
 #
 # %AWB_END
 # */

@@ -3,8 +3,6 @@
 package TL0;
 
 import HASim::*;
-import FPGA_Common::*;
-import FPGA::*;
 
 // Simple model of a traffic light
 // (modeled after the light at the intersection of Rte 16 and Broadway
@@ -12,59 +10,57 @@ import FPGA::*;
 
 // Version 0: just model the normal cycle of states
 
-// An empty interface:
-interface TL;
-endinterface: TL
-
 typedef enum {
    GreenNS, AmberNS, RedAfterNS,
    GreenE, AmberE, RedAfterE,
    GreenW, AmberW, RedAfterW} TLstates deriving (Eq, Bits);
 
-module [HASim_Module] sysTL(TL);
+module [HASim_Module] sysTL ();
    Reg#(TLstates) state <- mkReg(RedAfterW);
-   LED_Controller leds <- mkLED_Controller();
+   Connection_Send#(Bit#(4)) link_leds <- mkConnection_Send("fpga_leds");
+   Connection_Receive#(Bit#(4))    link_switches <- mkConnection_Receive("fpga_switches");
+   Connection_Receive#(ButtonInfo) link_buttons <- mkConnection_Receive("fpga_buttons");
    
    rule fromGreenNS (state == GreenNS);
       state <= AmberNS;
-   endrule: fromGreenNS
+   endrule
    
    rule fromAmberNS (state == AmberNS);
       state <= RedAfterNS;
-   endrule: fromAmberNS
+   endrule
 
    rule fromRedAfterNS (state == RedAfterNS);
       state <= GreenE;
-      leds.setLEDs(4'b0100);
-   endrule: fromRedAfterNS
+      link_leds.send(4'b0100);
+   endrule
 
    rule fromGreenE (state == GreenE);
       state <= AmberE;
-   endrule: fromGreenE
+   endrule
 
    rule fromAmberE (state == AmberE);
       state <= RedAfterE;
-   endrule: fromAmberE
+   endrule
 
    rule fromRedAfterE (state == RedAfterE);
       state <= GreenW;
-      leds.setLEDs(4'b0001);
+      link_leds.send(4'b0001);
    endrule: fromRedAfterE
 
    rule fromGreenW (state == GreenW);
       state <= AmberW;
-   endrule: fromGreenW
+   endrule
 
    rule fromAmberW (state == AmberW);
       state <= RedAfterW;
-   endrule: fromAmberW
+   endrule
 
    rule fromRedAfterW (state == RedAfterW);
       state <= GreenNS;
-      leds.setLEDs(4'b1010);
-   endrule: fromRedAfterW
+      link_leds.send(4'b1010);
+   endrule
 
-endmodule: sysTL
+endmodule
 
-endpackage: TL0
+endpackage
 

@@ -10,6 +10,7 @@
 # %name Hasim base library
 # %desc Hasim base library
 # %provides hasim_common
+# %requires hasim_fpgalib
 #
 # %attributes hasim
 #

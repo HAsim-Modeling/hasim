@@ -10,13 +10,11 @@
 # %name Hasim - Traffic light system
 # %desc Hasim - Traffic light system
 # %provides hasim_system
-# %requires hasim_traffic_light_function
 #
 # %attributes hasim
 #
-# %private System.bsv
+# %private System.bsv TL0.bsv
 #
-# %param SYNTH_BOUNDARY mkSystem "name of synthesis boundary"
 #
 # %AWB_END
 # */

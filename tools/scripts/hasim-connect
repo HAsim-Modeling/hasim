@@ -93,7 +93,7 @@ sub print_wrapper {
 
     print WRAPPER "(* synthesize *)\n";
     if ($module->issame($root)) {
-	print WRAPPER "module [Module] mk_" . $metatype . "_Wrapper ();\n";    
+	print WRAPPER "module [Module] mk_" . $metatype . "_Wrapper (TopLevel);\n";    
     } else {
 	print WRAPPER "module [Module] mk_" . $metatype . "_Wrapper (WithConnections);\n";    
     }

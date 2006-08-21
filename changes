@@ -1291,3 +1291,160 @@ Resolved the deadlock error.
 Additionally committing first revision of FPGA primitives library. Two initial versions: software and XUP board.
 
 Michael
+
+----------
+mpellaue    Date: Mon Aug 21 15:54:00 EDT 2006  CSN: CSN-hasim-98
+                  Mon Aug 21 19:54:00 UTC 2006
+
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Modified           97 
+
+Directory modules/system/traffic_light_system
+ hasim_traffic_light_function/ Locally Removed            96 
+ traffic_light_system.awb  Locally Modified           96 
+ TL0.bsv                   Locally Added               - 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified           96 
+
+Directory modules/common/fpgalib
+ software/                 Locally Added               0 
+
+Directory modules/common/fpgalib/software
+ hasim_fpgalib_software.awb Locally Added               0 
+ xup.ucf                   Locally Added               0 
+ FPGALib.bsv               Locally Added               0 
+
+Directory modules/common/fpgalib
+ xup/                      Locally Added               0 
+
+Directory modules/common/fpgalib/xup
+ xup.ucf                   Locally Added               0 
+ hasim_fpgalib_xup.awb     Locally Added               0 
+ FPGALib.bsv               Locally Added               0 
+
+Directory modules/common
+ fpgalib/                  Locally Added               0 
+ HASim.bsv                 Locally Modified           96 
+ Connections.bsv           Locally Modified           96 
+
+Directory modules/fpga
+ common/                   Locally Removed            97 
+
+Directory modules/fpga/common
+ FPGA_Common.bsv           Locally Removed            97 
+ hasim_fpga_common.awb     Locally Removed            97 
+
+Directory modules/fpga
+ software/                 Locally Removed            97 
+
+Directory modules/fpga/software
+ hasim_fpga_software.awb   Locally Removed            97 
+ FPGA.bsv                  Locally Removed            97 
+
+Directory modules/fpga
+ xup/                      Locally Removed            97 
+
+Directory modules/fpga/xup
+ hasim_fpga_xup.awb        Locally Removed            97 
+ FPGA.bsv                  Locally Removed            97 
+ prim_fpga.v               Locally Removed            97 
+
+Directory modules
+ fpga/                     Locally Removed            97 
+
+Directory tools/scripts
+ hasim-connect             Locally Modified           96 
+
+
+Major reorganization of FPGALib, which is now a subsection of common. LEDs, switches, and buttons are now supported in both XUP and software. The .UCF file needs to be written. The MIPS models will need some surgery after this.
+
+Michael
+
+----------
+mpellaue    Date: Mon Aug 21 16:00:49 EDT 2006  CSN: CSN-hasim-98
+                  Mon Aug 21 20:00:49 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified           97 
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Modified           97 
+
+Directory admin
+ mytags                    Locally Modified           97 
+
+Directory admin/packages
+ hasim                     Locally Modified           97 
+
+Directory modules/system/traffic_light_system
+ traffic_light_system.awb  Locally Modified           97 
+ TL0.bsv                   Locally Added               - 
+ hasim_traffic_light_function/ Locally Removed            97 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Removed            97 
+ TL0.bsv                   Locally Removed            97 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified           97 
+ fpgalib/                  Locally Added               0 
+
+Directory modules/common/fpgalib
+ software/                 Locally Added               0 
+
+Directory modules/common/fpgalib/software
+ hasim_fpgalib_software.awb Locally Added               0 
+ xup.ucf                   Locally Added               0 
+ FPGALib.bsv               Locally Added               0 
+
+Directory modules/common/fpgalib
+ xup/                      Locally Added               0 
+
+Directory modules/common/fpgalib/xup
+ xup.ucf                   Locally Added               0 
+ hasim_fpgalib_xup.awb     Locally Added               0 
+ FPGALib.bsv               Locally Added               0 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified           97 
+ Connections.bsv           Locally Modified           97 
+
+Directory modules
+ fpga/                     Locally Removed            97 
+
+Directory modules/fpga
+ common/                   Locally Removed            97 
+
+Directory modules/fpga/common
+ FPGA_Common.bsv           Locally Removed            97 
+ hasim_fpga_common.awb     Locally Removed            97 
+
+Directory modules/fpga
+ software/                 Locally Removed            97 
+
+Directory modules/fpga/software
+ hasim_fpga_software.awb   Locally Removed            97 
+ FPGA.bsv                  Locally Removed            97 
+
+Directory modules/fpga
+ xup/                      Locally Removed            97 
+
+Directory modules/fpga/xup
+ hasim_fpga_xup.awb        Locally Removed            97 
+ FPGA.bsv                  Locally Removed            97 
+ prim_fpga.v               Locally Removed            97 
+
+Directory .
+ changes                   Locally Modified           97 
+
+
+Major reoganization of FPGALib, which is now part of common/
+
+LEDs, Buttons, switches are now supported
+
+The Traffic Light has been reworked to use LEDs. The MIPS models may require some surgery.
+
+Michael

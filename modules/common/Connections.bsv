@@ -1,4 +1,5 @@
 import HASim::*;
+import FPGALib::*;
 
 import GetPut::*;
 import ClientServer::*;
@@ -24,11 +25,14 @@ endmodule
 //Instantiate a module with connections exposed
 
 module [Module] instantiateTopLevel#(Connected_Module#(inter_T) m,
-                                            List#(DanglingInfo) children) (Empty);
+                                     List#(DanglingInfo) children) (TopLevel);
 
-  match {.m, .col} <- getCollection(m);
+  match {.m, .col1} <- getCollection(m);
+  match {.m2, .col2} <- getCollection(mkFPGALib);
+  let col = List::append(col1, col2);
   
   connectTopLevel(col, m, children);
+  return m2;
   
 endmodule
 

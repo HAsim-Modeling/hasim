@@ -39,6 +39,41 @@ typedef struct
 }
   Token deriving (Eq, Bits);
 
+typedef struct 
+{
+  Bit#(1) b_up; 
+  Bit#(1) b_down; 
+  Bit#(1) b_left; 
+  Bit#(1) b_right;
+  Bit#(1) b_center;
+}
+  ButtonInfo deriving (Eq, Bits);
+  
+interface TopLevel;
+  (* always_ready *)
+  (* result = "LED" *)
+  method Bit#(4) leds();
+  (* always_ready, always_enabled *)
+  (* prefix = "" *)
+  method Action  switches((* port = "SWITCH" *) Bit#(4) sw);
+  (* always_ready, always_enabled *)
+  (* prefix = "" *)
+  method Action  button_left((* port = "BUTTON_LEFT" *) Bit#(1) bl);
+  (* always_ready, always_enabled *)
+  (* prefix = "" *)
+  method Action  button_right((* port = "BUTTON_RIGHT" *) Bit#(1) br);
+  (* always_ready, always_enabled *)
+  (* prefix = "" *)
+  method Action  button_up((* port = "BUTTON_UP" *) Bit#(1) bu);
+  (* always_ready, always_enabled *)
+  (* prefix = "" *)
+  method Action  button_down((* port = "BUTTON_DOWN" *) Bit#(1) bd);
+  (* always_ready, always_enabled *)
+  (* prefix = "" *)
+  method Action  button_center((* port = "BUTTON_CENTER" *) Bit#(1) bc);
+
+endinterface
+
 // A Model is the global top-level, with no wires in or out.
 
 typedef Empty Model;

@@ -1,0 +1,24 @@
+Net "CLK" LOC = "";
+Net "RST_N" LOC = "";
+
+Net "LED[0]" LOC = "";
+Net "LED[1]" LOC = "";
+Net "LED[2]" LOC = "";
+Net "LED[3]" LOC = "";
+
+Net "SWITCH[0]" LOC = "";
+Net "SWITCH[1]" LOC = "";
+Net "SWITCH[2]" LOC = "";
+Net "SWITCH[3]" LOC = "";
+
+Net "BUTTON_LEFT" LOC = "";
+
+Net "BUTTON_RIGHT" LOC = "";
+
+Net "BUTTON_UP" LOC = "";
+
+Net "BUTTON_DOWN" LOC = "";
+
+Net "BUTTON_CENTER" LOC = "";
+
+

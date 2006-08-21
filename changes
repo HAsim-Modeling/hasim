@@ -1484,3 +1484,18 @@ Directory modules/system/traffic_light_system/hasim_traffic_light_function
  TL0.bsv                   Locally Added               0 
 
 Changes to TL example (slowed transition between states to make visible on LEDs)
+----------
+mamercal    Date: Mon Aug 21 17:22:17 EDT 2006  CSN: CSN-hasim-101
+                  Mon Aug 21 21:22:17 UTC 2006
+
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          100 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Modified          100 
+
+Directory modules/common/fpgalib/xup
+ xup.ucf                   Locally Modified          100 
+
+Correct pins filled in for XUP board.

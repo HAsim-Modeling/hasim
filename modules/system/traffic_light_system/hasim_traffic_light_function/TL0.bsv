@@ -10,7 +10,7 @@ import HASim::*;
 
 // Version 0: just model the normal cycle of states
 
-`define MAX_WAIT 1000
+`define MAX_WAIT 100
 
 // An empty interface:
 interface TL;

@@ -8,7 +8,8 @@ import TL0::*;
 
 module [HASim_Module] mkSystem (TModule#(Command, Response));
    let dut <- sysTL;
-   
+
+   /*   
    Reg#(UInt#(32)) ctr <- mkReg(0);
 
    rule inc_ctr;
@@ -18,6 +19,8 @@ module [HASim_Module] mkSystem (TModule#(Command, Response));
    rule stop (ctr > 100);
       $finish(0);
    endrule
+   */
+   
 endmodule
 
 endpackage

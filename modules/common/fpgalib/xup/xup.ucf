@@ -1,24 +1,23 @@
-Net "CLK" LOC = "";
-Net "RST_N" LOC = "";
+// There are two other input signals, CLK and RST_N.
+// No need to assign any pin to drive CLK.
+// Currently overrides BUTTON_CENTER to drive RST_N.
+// (In the future we will probably not want such a manual reset.)
 
-Net "LED[0]" LOC = "";
-Net "LED[1]" LOC = "";
-Net "LED[2]" LOC = "";
-Net "LED[3]" LOC = "";
+// RST_N driven by BUTTON_CENTER
+Net "RST_N" LOC = "AG5" | IOSTANDARD = LVTTL;
 
-Net "SWITCH[0]" LOC = "";
-Net "SWITCH[1]" LOC = "";
-Net "SWITCH[2]" LOC = "";
-Net "SWITCH[3]" LOC = "";
+Net "LED[0]" LOC = "AC4" | IOSTANDARD = LVTTL | DRIVE = 12 | SLEW = SLOW;
+Net "LED[1]" LOC = "AC3" | IOSTANDARD = LVTTL | DRIVE = 12 | SLEW = SLOW;
+Net "LED[2]" LOC = "AA6" | IOSTANDARD = LVTTL | DRIVE = 12 | SLEW = SLOW;
+Net "LED[3]" LOC = "AA5" | IOSTANDARD = LVTTL | DRIVE = 12 | SLEW = SLOW;
 
-Net "BUTTON_LEFT" LOC = "";
+Net "SWITCH[0]" LOC = "AC11" | IOSTANDARD = LVCMOS25;
+Net "SWITCH[1]" LOC = "AD11" | IOSTANDARD = LVCMOS25;
+Net "SWITCH[2]" LOC = "AF8" | IOSTANDARD = LVCMOS25;
+Net "SWITCH[3]" LOC = "AF9" | IOSTANDARD = LVCMOS25;
 
-Net "BUTTON_RIGHT" LOC = "";
-
-Net "BUTTON_UP" LOC = "";
-
-Net "BUTTON_DOWN" LOC = "";
-
-Net "BUTTON_CENTER" LOC = "";
-
-
+Net "BUTTON_LEFT" LOC = "AH1" | IOSTANDARD = LVTTL;
+Net "BUTTON_RIGHT" LOC = "AH2" | IOSTANDARD = LVTTL;
+Net "BUTTON_UP" LOC = "AH4" | IOSTANDARD = LVTTL;
+Net "BUTTON_DOWN" LOC = "AG3" | IOSTANDARD = LVTTL;
+//Net "BUTTON_CENTER" LOC = "AG5" | IOSTANDARD = LVTTL;

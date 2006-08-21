@@ -1467,3 +1467,20 @@ Directory modules/system/traffic_light_system/traffic_light_function
 Fixed a small mistake with the organization of the traffic light in the last commit.
 
 Michael
+
+----------
+mamercal    Date: Mon Aug 21 17:11:49 EDT 2006  CSN: CSN-hasim-100
+                  Mon Aug 21 21:11:49 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.include.template Locally Modified           99 
+
+Directory modules/system/traffic_light_system
+ hasim_traffic_light_function/ Locally Added               0 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Added               0 
+ TL0.bsv                   Locally Added               0 
+
+Changes to TL example (slowed transition between states to make visible on LEDs)

@@ -7,8 +7,7 @@ BSCFLAGS = -steps 1000000 \
 	   +RTS -K1000M -RTS \
            -keep-fires \
            -aggressive-conditions \
-           -no-opt-bool \
-           -no-opt-ATS 
+           -no-opt-bool 
 
 APM_NAME = @APM_NAME@
 BUILD_DIR = @BUILD_DIR@

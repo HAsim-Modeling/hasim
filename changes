@@ -1448,3 +1448,22 @@ LEDs, Buttons, switches are now supported
 The Traffic Light has been reworked to use LEDs. The MIPS models may require some surgery.
 
 Michael
+
+----------
+mpellaue    Date: Mon Aug 21 16:12:40 EDT 2006  CSN: CSN-hasim-99
+                  Mon Aug 21 20:12:40 UTC 2006
+
+
+Directory modules/system/traffic_light_system
+ traffic_light_system.awb  Locally Modified           98 
+ TL0.bsv                   Locally Removed            98 
+ traffic_light_function/   Locally Added               0 
+
+Directory modules/system/traffic_light_system/traffic_light_function
+ traffic_light_function.awb Locally Added               0 
+ TL0.bsv                   Locally Added               0 
+
+
+Fixed a small mistake with the organization of the traffic light in the last commit.
+
+Michael

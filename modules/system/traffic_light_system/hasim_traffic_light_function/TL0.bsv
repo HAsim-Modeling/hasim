@@ -10,7 +10,7 @@ import HASim::*;
 
 // Version 0: just model the normal cycle of states
 
-`define MAX_WAIT 100
+`define MAX_WAIT 32'd100000000
 
 // An empty interface:
 interface TL;
@@ -31,6 +31,7 @@ module [HASim_Module] sysTL(TL);
    Reg#(Bit#(32)) waitCount <- mkReg(`MAX_WAIT);
    
    rule waiting (waitCount != 0);
+//      link_leds.send(4'b1001);
       waitCount <= waitCount - 1;
    endrule
    

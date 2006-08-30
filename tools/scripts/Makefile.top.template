@@ -4,8 +4,7 @@
 include ./Makefile.include
 
 ROOT_DIR = @ROOT_DIR@
-ROOT_WRAPPER = $(ROOT_DIR)_Wrapper
-ROOT_WRAPPER_SYNTH_ID = mk_$(ROOT_WRAPPER)
+ROOT_WRAPPER_SYNTH_ID = mk_$(ROOT_DIR)_Wrapper
 
 LOGFILE = $(APM_NAME).log
 
@@ -18,71 +17,121 @@ ROOT_V = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).v
 ALL_BAS = @ALL_BAS@
 ALL_VS = @ALL_VS@
 
+################################################################
+## Xilinx tool variables
+
+## XUP board
+PART = xc2vp30-ff896-7
+
+#### xst
+XST_FILE = $(APM_NAME).xst
+XST_TARGET_FILE = $(APM_NAME).ngc
+XST_SIDE_EFFECT_FILES = $(APM_NAME).srp $(APM_NAME)_vhdl.prj
+XST_FLAGS = 
+
+#### ngdbuild
+UCF_FILE = $(APM_NAME).ucf
+NGDBUILD_TARGET_FILE = $(APM_NAME).ngd
+NGDBUILD_SIDE_EFFECT_FILES = $(NGDBUILD_TARGET_FILE) $(APM_NAME).bld netlist.lst
+NGDBUILD_FLAGS = -dd _ngo -nt timestamp -p $(PART)
+
+#### map
+MAP_TARGET_FILE = $(APM_NAME)_map.ncd $(APM_NAME).pcf
+MAP_SIDE_EFFECT_FILES = $(APM_NAME)_map.mrp $(APM_NAME)_map.ngm
+MAP_FLAGS = -cm area -pr b -u -k 4 -c 100 -tx off -p $(PART)
+
+#### par
+PAR_TARGET_FILE = $(APM_NAME)_par.ncd
+PAR_SIDE_EFFECT_FILES =  $(APM_NAME)_par.pad $(APM_NAME)_par.par $(APM_NAME)_par.unroutes $(APM_NAME)_par.xpi $(APM_NAME)_par_pad.csv $(APM_NAME)_par_pad.txt
+PAR_FLAGS = -w -ol std -t 1 
+
+#### bitgen
+UT_FILE = $(APM_NAME).ut
+BITGEN_TARGET_FILE = $(APM_NAME)_par.bit
+BITGEN_SIDE_EFFECT_FILES = $(APM_NAME)_par.bgn $(APM_NAME)_par.drc
+BITGEN_FLAGS = 
+
+#### impact
+DOWNLOAD_FILE = $(APM_NAME).download
+
 .PHONY: all
-all: exe
+all: bit
 
 ################################################################
-## Verilog route
-
-.PHONY: wave
-wave: dump.vcd
-	gtkwave dump.vcd
-
-.PHONY: vcd
-vcd: $(APM_NAME).vexe
-	$(APM_NAME).vexe +bscvcd
+## Verilog generation rules
 
 .PHONY: vexe
 vexe: $(APM_NAME).vexe
+	echo "#!/bin/sh" >$(APM_NAME)
+	echo "$(BUILD_DIR)/$(APM_NAME).vexe +bscvcd" >>$(APM_NAME)
+	chmod +x $(APM_NAME)
 
 $(APM_NAME).vexe: $(ROOT_V)
-	$(BSC) $(BSCFLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 2>&1 | tee $(LOGFILE)
-
-.PHONY: v
-v: $(ROOT_V)
+	$(BSC) $(BSC_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 2>&1 | tee $(LOGFILE)
 
 $(ROOT_V):
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
 
 ################################################################
-## C route
+## FPGA synthesis rules
 
+$(APM_NAME).ngc: $(ROOT_V) $(XST_FILE) 
+	$(XST) -ifn $(XST_FILE) 
 
-.PHONY: run_exe
-run_exe: exe
-	$(APM_NAME).exe
+$(APM_NAME).ngd: $(APM_NAME).ngc $(UCF_FILE)
+	$(NGDBUILD) -uc $(UCF_FILE) $(APM_NAME).ngc $(APM_NAME).ngd
+
+$(APM_NAME)_map.ncd $(APM_NAME).pcf: $(APM_NAME).ngd
+	$(MAP) $(MAP_FLAGS) -o $(APM_NAME)_map.ncd $(APM_NAME).ngd $(APM_NAME).pcf
+
+$(APM_NAME)_par.ncd: $(APM_NAME)_map.ncd  $(APM_NAME).pcf
+	$(PAR) $(PAR_FLAGS) $(APM_NAME)_map.ncd $(APM_NAME)_par.ncd $(APM_NAME).pcf
+
+$(APM_NAME)_par.bit: $(APM_NAME)_par.ncd $(UT_FILE)
+	$(BITGEN) $(BITGEN_FLAGS) -f $(UT_FILE) $(APM_NAME)_par.ncd
+
+.PHONY: bit
+bit: $(APM_NAME)_par.bit $(DOWNLOAD_FILE)
+	echo "#!/bin/sh" >$(APM_NAME)
+	echo "impact -batch $(BUILD_DIR)/$(DOWNLOAD_FILE)" >>$(APM_NAME)
+	chmod +x $(APM_NAME)
+
+################################################################
+## Bluesim generation rules
 
 .PHONY: exe
 exe: $(APM_NAME).exe
+	echo "#!/bin/sh" >$(APM_NAME)
+	echo "$(BUILD_DIR)/$(APM_NAME).exe" >>$(APM_NAME)
+	chmod +x $(APM_NAME)
 
 $(APM_NAME).exe: $(ROOT_BA)
-	$(BSC) $(BSCFLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 2>&1 | tee $(LOGFILE)
-
-.PHONY: ba
-ba: $(ROOT_BA)
+	$(BSC) $(BSC_FLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 2>&1 | tee $(LOGFILE)
 
 $(ROOT_BA):
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
 
 
 ################################################################
-## Misc.
+## Misc. rules
 
 .PHONY: help
 help:
-	@echo "  [wave] open vcd in waveform viewer"
-	@echo "  [vcd] generate signal dump file"
-	@echo "  [v] generate verilog source"
 	@echo "  [vexe] generate executable for Verilog simulation"
-	@echo "  [ba] generate ba for design"
-	@echo "  [exe] (default) generate executable for C simulation"
+	@echo "  [exe]  generate executable for C simulation"
+	@echo "  [bit] generate executable to run model on FPGA"
 	@echo "  [help] display this message"
-	@echo "  [clean] remove intermediate files ($(HS) $(OS) $(CXXS))"
-	@echo "  [realclean] remove target files ($(APM_NAME).exe $(APM_NAME).vexe dump.vcd)"  
+	@echo "  [clean] remove intermediate files"
+	@echo "  [realclean] remove target files"
 
 .PHONY: clean
 clean: clean_root
 	rm -f $(HS) $(OS) $(CXXS) *~
+	rm -f $(XST_TARGET_FILE)
+	rm -f $(NGDBUILD_TARGET_FILE)
+	rm -f $(MAP_TARGET_FILE)
+	rm -f $(PAR_TARGET_FILE)
+	rm -f $(BITGEN_TARGET_FILE)
 
 .PHONY: clean_root
 clean_root:
@@ -91,7 +140,14 @@ clean_root:
 .PHONY: realclean
 realclean: clean realclean_root
 	rm -f $(APM_NAME).exe $(APM_NAME).vexe dump.vcd
+	rm -f $(XST_SIDE_EFFECT_FILES)
+	rm -f $(NGDBUILD_SIDE_EFFECT_FILES)
+	rm -f $(MAP_SIDE_EFFECT_FILES)
+	rm -f $(PAR_SIDE_EFFECT_FILES)
+	rm -f $(BITGEN_SIDE_EFFECT_FILES)
+	rm -f *~
 
 .PHONY: realclean_root
 realclean_root:
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) realclean; 
+

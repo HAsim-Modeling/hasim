@@ -8,8 +8,8 @@ import HASim::*;
 module [HASim_Module] mkFPGALib (TopLevel);
 
   Connection_Receive#(Bit#(4)) link_leds <- mkConnection_Receive("fpga_leds");
-  Connection_Send#(Bit#(4))    link_switches <- mkConnection_Send("fpga_switches");
-  Connection_Send#(ButtonInfo) link_buttons <- mkConnection_Send("fpga_buttons");
+//  Connection_Send#(Bit#(4))    link_switches <- mkConnection_Send("fpga_switches");
+//  Connection_Send#(ButtonInfo) link_buttons <- mkConnection_Send("fpga_buttons");
   
   Reg#(Bit#(4)) led_reg <- mkReg(4'b0000);
   Reg#(Bit#(4)) switch_reg <- mkReg(4'b0000);
@@ -29,8 +29,8 @@ module [HASim_Module] mkFPGALib (TopLevel);
   
   rule send_switches (True);
   
-    link_switches.send(switch_reg);
-    
+//    link_switches.send(switch_reg);
+  noAction;      
   endrule
   
   rule send_buttons (True);
@@ -42,8 +42,8 @@ module [HASim_Module] mkFPGALib (TopLevel);
 		      b_center: bc_reg
 		    };
   
-    link_buttons.send(bi);
-    
+//    link_buttons.send(bi);
+  noAction;  
   endrule
   
   method Bit#(4) leds();

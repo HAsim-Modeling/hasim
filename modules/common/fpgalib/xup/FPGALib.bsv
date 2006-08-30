@@ -10,19 +10,20 @@ module [HASim_Module] mkFPGALib (TopLevel);
   Connection_Receive#(Bit#(4)) link_leds <- mkConnection_Receive("fpga_leds");
   Connection_Send#(Bit#(4))    link_switches <- mkConnection_Send("fpga_switches");
   Connection_Send#(ButtonInfo) link_buttons <- mkConnection_Send("fpga_buttons");
-  
-  Reg#(Bit#(4)) led_reg <- mkReg(4'b0000);
-  Reg#(Bit#(4)) switch_reg <- mkReg(4'b0000);
-  Reg#(Bit#(1)) bu_reg <- mkReg(0);
-  Reg#(Bit#(1)) bd_reg <- mkReg(0);
-  Reg#(Bit#(1)) bl_reg <- mkReg(0);
-  Reg#(Bit#(1)) br_reg <- mkReg(0);
-  Reg#(Bit#(1)) bc_reg <- mkReg(0);
+   
+  // all XUP board signals are active low
+  Reg#(Bit#(4)) led_reg <- mkReg(4'b1111);
+  Reg#(Bit#(4)) switch_reg <- mkReg(4'b1111);
+  Reg#(Bit#(1)) bu_reg <- mkReg(1);
+  Reg#(Bit#(1)) bd_reg <- mkReg(1);
+  Reg#(Bit#(1)) bl_reg <- mkReg(1);
+  Reg#(Bit#(1)) br_reg <- mkReg(1);
+  Reg#(Bit#(1)) bc_reg <- mkReg(1);
   
   rule set_leds (True);
   
     Bit#(4) newval <- link_leds.receive();
-    led_reg <= newval;
+    led_reg <= ~newval;
   
   endrule
   

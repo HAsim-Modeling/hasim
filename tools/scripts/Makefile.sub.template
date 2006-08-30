@@ -37,7 +37,7 @@ make_subdir_bas:
 	done
 
 $(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(SRCS) $(SUBDIR_BAS)
-	$(BSC) $(BSCFLAGS) -u -sim -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
 
 ################################################################
 ## 
@@ -52,7 +52,7 @@ make_subdir_vs:
 	done
 
 $(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(SRCS) $(SUBDIR_VS)
-	$(BSC) $(BSCFLAGS) -u -verilog -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
 
 #.PHONY: bsv_from_v
 #bsv_from_v: $(SUBDIR_VS)

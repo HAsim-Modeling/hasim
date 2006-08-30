@@ -3,11 +3,11 @@
 
 BSC = bsc
 
-BSCFLAGS = -steps 1000000 \
-	   +RTS -K1000M -RTS \
-           -keep-fires \
-           -aggressive-conditions \
-           -no-opt-bool 
+BSC_FLAGS = -steps 1000000 \
+	    +RTS -K1000M -RTS \
+            -keep-fires \
+            -aggressive-conditions \
+            -no-opt-bool 
 
 APM_NAME = @APM_NAME@
 BUILD_DIR = @BUILD_DIR@
@@ -16,6 +16,13 @@ ALL_DIRS = @ALL_DIRS@
 
 CONNECTION_SCRIPT = @CONNECTION_SCRIPT@
 APM_FILE = @APM_FILE@
+
+XST = xst
+NGDBUILD = ngdbuild
+MAP = map
+PAR = par
+BITGEN = bitgen
+IMPACT = impact
 
 override MAKEFLAGS=--no-keep-going
 

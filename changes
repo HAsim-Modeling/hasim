@@ -1541,3 +1541,29 @@ Added Stats, updated Ports, Events.
 TODO: Add CommandCenter under control of Controller. This should control running, syncing System. The Controller should sync system before Enabling/Disabling Events.
 
 Michael
+
+----------
+mamercal    Date: Wed Aug 30 17:21:19 EDT 2006  CSN: CSN-hasim-103
+                  Wed Aug 30 21:21:19 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified          102 
+ hasim-configure           Locally Modified          102 
+ Makefile.top.template     Locally Modified          102 
+ Makefile.include.template Locally Modified          102 
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Modified          102 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          102 
+
+Directory modules/common/fpgalib/software
+ FPGALib.bsv               Locally Modified          102 
+
+Directory modules/common/fpgalib/xup
+ FPGALib.bsv               Locally Modified          102 
+
+
+Extended hasim-configure to support FPGA targets.

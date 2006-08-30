@@ -120,7 +120,6 @@ File=modules/functional/smips/smips_funcp_execute_alg.awb
 Packagehint=hasim-mips
 File=modules/isa/smips/hasim_smips_isa.awb
 
-
 [Hasim smips testcase branch/Requires]
 hasim_testcase_base=Hasim test case base
 
@@ -131,3 +130,10 @@ File=modules/functional/test-cases/smips/branch/smips_testcase_branch.awb
 [Hasim 5 stage pipelined timing partition ports]
 Packagehint=hasim-mips
 File=modules/chip/mips/5stage-ports/hasim_5stage_ports_chip.awb
+
+[Hasim FPGA library XUP board]
+Packagehint=hasim
+File=modules/common/fpgalib/xup/hasim_fpgalib_xup.awb
+
+[Hasim base library/Requires]
+hasim_fpgalib=Hasim FPGA library XUP board

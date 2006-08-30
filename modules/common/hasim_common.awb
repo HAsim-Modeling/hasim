@@ -14,7 +14,7 @@
 #
 # %attributes hasim
 #
-# %private BypassFIFO.bsv Debug.bsv Events.bsv Connections.bsv HASim.bsv Ports.bsv
+# %private BypassFIFO.bsv Debug.bsv Events.bsv Connections.bsv HASim.bsv Ports.bsv Stats.bsv
 #
 # %AWB_END
 # */

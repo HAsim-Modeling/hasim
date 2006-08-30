@@ -8,6 +8,7 @@ import FIFO::*;
 //HASim library imports
 import HASim::*;
 import Events::*;
+import Stats::*;
 
 //HASim model-specific imports
 import ISA::*;
@@ -39,12 +40,25 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
   //*********** State ***********
   
   Reg#(Tick) curTick <- mkReg(minBound);
+  Reg#(Bit#(16)) finishing <- mkReg(2000);
 
   Reg#(ConState) state <- mkReg(CON_Init);
   
-  Empty event_controller <- mkEventController_Software();
+  EventController event_controller <- mkEventController_Software();
+  StatController   stat_controller <- mkStatController_Software();
+  
+  Connection_Send#(Bit#(4))           link_leds <- mkConnection_Send("fpga_leds");
+  Connection_Receive#(Bit#(4))    link_switches <- mkConnection_Receive("fpga_switches");
+  Connection_Receive#(ButtonInfo)  link_buttons <- mkConnection_Receive("fpga_buttons");
   
   //*********** Rules ***********
+  
+  //tick
+  rule tick (True);
+  
+    curTick <= curTick + 1;
+  
+  endrule
   
   //load_imem
   
@@ -65,16 +79,25 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
 	begin
           th.exec(COM_RunProgram);
           state <= CON_Running;
+          $display("Controller: Program Started on host CC %0d", curTick);
 	end
       default:
         begin
-          $display("Unexpected TModule response [0]: %0h", pack(resp));
+          $display("Controller: Unexpected TModule response [0]: %0h", pack(resp));
 
 	  $finish(1);
 	end
     endcase 
-    //$display("Staring Program...");
   endrule
+  /*
+  rule test_stats1 (curTick == 250);
+    event_controller.toggle();
+  endrule
+  
+  rule test_stats2 (curTick == 750);
+    event_controller.toggle();
+  endrule
+  */
   
   rule run_ends (state == CON_Running);
   
@@ -85,10 +108,11 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
 	begin
           th.exec(COM_CheckResult);
           state <= CON_Checking;
+          $display("Controller: Program Finished on host CC %0d", curTick);
 	end
       default:
         begin
-          $display("Unexpected TModule response [1]: %0h", pack(resp));
+          $display("Controller: Unexpected TModule response [1]: %0h", pack(resp));
 
 	  $finish(1);
 	end
@@ -111,22 +135,32 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
 	  state <= CON_Finished;
 
 	  $display("Controller: Test program finished succesfully.");
-	  $finish(0);
 	end
       tagged RESP_CheckFailed:
         begin
 	  state <= CON_Finished;
 
 	  $display("Controller: Test program finished. One or more failures occurred.");
-	  $finish(1);
 	end
       default:
         begin
-          $display("Unexpected TModule response [2]: %0h", pack(resp));
+          $display("Controller: Unexpected TModule response [2]: %0h", pack(resp));
 	  $finish(1);
 	end
     endcase
 
+    
+  endrule
+ 
+  rule finishUp (state == CON_Finished && finishing != 0);
+  
+    finishing <= finishing - 1;
+  endrule
+  
+  rule endSim (state == CON_Finished && finishing == 0);
+  
+  
+    $finish(0);
     
   endrule
  

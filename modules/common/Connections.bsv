@@ -464,6 +464,19 @@ module prependChildren#(List#(WithConnections) childs, CON_Chain chn, Integer x)
 
 endmodule
 
+module [Module] mkPassThrough#(Integer chainNum)
+    //interface:
+                (CON_Chain);
+
+  FIFO#(CON_Data) passQ <- mkFIFO();
+
+  method CON_Data first() = passQ.first();
+  method Action deq() = passQ.deq();
+  method Action clear() = passQ.clear();
+  method Action enq(CON_Data x) = passQ.enq(x);
+
+endmodule
+
 //************** Helper functions **************//
 
 //lookup :: Eq a => a -> [(a, b)] -> Maybe b

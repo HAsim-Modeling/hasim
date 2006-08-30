@@ -37,7 +37,6 @@ Description=Simple HASim Toymips Model
 File=hasim_toymips_simple
 Version=2.0
 Name=Simple HASim Toymips Model
-Type=HAsim
 
 [Hasim functional partition/Requires]
 hasim_funcp_checker=Hasim functional partition checker
@@ -131,3 +130,10 @@ File=modules/functional/common/hasim_funcp_storebuffer.awb
 
 [Hasim functional partition memstate software/Requires]
 hasim_funcp_storebuffer=Hasim functional partition storebuffer software
+
+[Hasim FPGA library XUP board]
+Packagehint=hasim
+File=modules/common/fpgalib/xup/hasim_fpgalib_xup.awb
+
+[Hasim base library/Requires]
+hasim_fpgalib=Hasim FPGA library XUP board

@@ -1,7 +1,7 @@
 package System;
 
 import HASim::*;
-import NullISA::*;
+import ISA::*;
 
 import TL0::*;
 

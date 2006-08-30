@@ -1499,3 +1499,45 @@ Directory modules/common/fpgalib/xup
  xup.ucf                   Locally Modified          100 
 
 Correct pins filled in for XUP board.
+----------
+mpellaue    Date: Wed Aug 30 15:37:35 EDT 2006  CSN: CSN-hasim-102
+                  Wed Aug 30 19:37:35 UTC 2006
+
+
+Directory config/pm/hasim/toymips
+ hasim_toymips_simple.apm  Locally Modified          101 
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Modified          101 
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage.apm    Locally Modified          101 
+ hasim_smips_5stage_ports.apm Locally Modified          101 
+
+Directory modules/controller/simple
+ Controller.bsv            Locally Modified          101 
+
+Directory modules/system/traffic_light_system
+ traffic_light_function/   Locally Removed           101 
+
+Directory modules/system/traffic_light_system/traffic_light_function
+ traffic_light_function.awb Locally Removed           101 
+ TL0.bsv                   Locally Removed           101 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Modified          101 
+
+Directory modules/common
+ Ports.bsv                 Locally Modified          101 
+ hasim_common.awb          Locally Modified          101 
+ Stats.bsv                 Locally Added               0 
+ HASim.bsv                 Locally Modified          101 
+ Connections.bsv           Locally Modified          101 
+ Events.bsv                Locally Modified          101 
+
+
+Added Stats, updated Ports, Events.
+
+TODO: Add CommandCenter under control of Controller. This should control running, syncing System. The Controller should sync system before Enabling/Disabling Events.
+
+Michael

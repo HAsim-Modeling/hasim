@@ -124,11 +124,16 @@ File=modules/isa/smips/hasim_smips_isa.awb
 Packagehint=hasim-mips
 File=modules/chip/mips/5stage/hasim_5stage_chip.awb
 
-
-
 [Hasim smips testcase branch/Requires]
 hasim_testcase_base=Hasim test case base
 
 [Hasim smips testcase branch]
 Packagehint=hasim-mips
 File=modules/functional/test-cases/smips/branch/smips_testcase_branch.awb
+
+[Hasim FPGA library XUP board]
+Packagehint=hasim
+File=modules/common/fpgalib/xup/hasim_fpgalib_xup.awb
+
+[Hasim base library/Requires]
+hasim_fpgalib=Hasim FPGA library XUP board

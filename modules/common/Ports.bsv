@@ -1,6 +1,5 @@
 
 import HASim::*;
-import Events::*;
 
 interface Port_Send#(type msg_T);
   
@@ -38,8 +37,8 @@ module [HASim_Module] mkPort_Receive#(String portname, Integer latency)
       provisos
 	        (Bits#(msg_T, msg_SZ),
 		 Transmittable#(Maybe#(msg_T)));
-
-  let p <- mkPort_Receive_Buffered(portname, latency, 0);
+  
+  let p <- (latency != 1) ? mkPort_Receive_Buffered(portname, latency, 0) : mkPort_Receive_L1(portname);
   return p;
 
 endmodule
@@ -84,4 +83,30 @@ module [HASim_Module] mkPort_Receive_Buffered#(String portname, Integer latency,
     
   endmethod
 
+endmodule
+
+//Port optimized for latency 1
+
+module [HASim_Module] mkPort_Receive_L1#(String portname)
+    //interface:
+                (Port_Receive#(msg_T))
+      provisos
+	        (Bits#(msg_T, msg_SZ),
+		 Transmittable#(Maybe#(msg_T)));
+
+  Connection_Receive#(Maybe#(msg_T)) con <- mkConnection_Receive(portname);
+  Reg#(Bool) initval <- mkReg(True);
+     
+  method ActionValue#(Maybe#(msg_T)) receive();
+    if (initval)
+    begin
+      initval <= False;
+      return Invalid;
+    end
+    else
+    begin
+      let m <- con.receive();
+      return m;
+    end
+  endmethod
 endmodule

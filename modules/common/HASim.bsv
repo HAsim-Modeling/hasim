@@ -184,7 +184,12 @@ typedef 32 CON_Addr;
 typedef Bit#(32) TimeStamp;
 
 typedef Bit#(CON_Width) CON_Data;
-typedef 2 CON_NumChains;
+typedef 4 CON_NumChains;
+
+//Chain 0: Events
+//Chain 1: Debug
+//Chain 2: Stats
+//Chain 3: Commands
 
 //Change to BypassFIFO here.
 function m#(FIFO#(a)) mkCON_FIFO() provisos (Bits#(a, a_SZ), IsModule#(m, m2)) = mkFIFO();
@@ -495,26 +500,5 @@ module [Connected_Module] mkConnection_Server#(String portname)
     en_w.wset(data_w.whas());
     return data_w.wget();
   endmethod
-
-endmodule
-
-typedef union tagged
-{
-  Bit#(32) EVT_Boundary;
-  void EVT_NoEvent;
-  Bit#(32) EVT_Event;
-}
-  EventData deriving (Eq, Bits);
-
-module [Module] mkPassThrough#(Integer chainNum)
-    //interface:
-                (CON_Chain);
-
-  FIFO#(EventData) passQ <- mkFIFO();
-
-  method CON_Data first() = marshall(passQ.first());
-  method Action deq() = passQ.deq();
-  method Action clear() = passQ.clear();
-  method Action enq(CON_Data x) = passQ.enq(unmarshall(x));
 
 endmodule

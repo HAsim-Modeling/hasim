@@ -1567,3 +1567,21 @@ Directory modules/common/fpgalib/xup
 
 
 Extended hasim-configure to support FPGA targets.
+
+----------
+mamercal    Date: Thu Aug 31 13:22:15 EDT 2006  CSN: CSN-hasim-104
+                  Thu Aug 31 17:22:15 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          103 
+ Makefile.include.template Locally Modified          103 
+
+Directory modules/controller/null
+ NullISA.bsv               Locally Removed           103 
+ ISA.bsv                   Locally Added               - 
+ hasim_null_controller.awb Locally Modified          103 
+ Controller.bsv            Locally Modified          103 
+
+
+Bug fixes in hasim-configure.

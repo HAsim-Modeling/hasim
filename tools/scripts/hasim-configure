@@ -200,7 +200,7 @@ sub generate_makefile_include {
     hash_set($replacements_r,'@APM_NAME@',$apm);
 
     # @CONNECTION_SCRIPT@
-    hash_set($replacements_r,'@CONNECTION_SCRIPT@',Asim::resolve("tools/scripts/hasim-connect"));
+#    hash_set($replacements_r,'@CONNECTION_SCRIPT@',Asim::resolve("tools/scripts/hasim-connect"));
 
     # @APM_FILE@
     hash_set($replacements_r,'@APM_FILE@',$model->filename());
@@ -249,7 +249,7 @@ sub generate_makefile_top {
     if (is_synthesis_boundary($root)) {
 	hash_set($replacements_r,'@ROOT_DIR@',$root->provides());
     } else {
-	die "$prog (model_generate_makefile_top): root module must be a synthesis boundary\n";
+	WARN_AND_DIE("Root module must be a synthesis boundary");
     }
 
     # gather other info recursively
@@ -500,10 +500,9 @@ sub generate_xst_file {
     CORE::open(FILE, "> $xst_file") || return undef;
     print FILE "run\n";
     print FILE "-ifmt VERILOG\n";
-#    print FILE "-vlgincdir \${BLUESPECDIR}/lib/Verilog\n";
+    print FILE "-vlgincdir " . $ENV{'BLUESPEC_LIB'} . "\n";
     print FILE "-ifn " . $name . ".v\n";
     print FILE "-ofn " . $name . "\n";
-    print FILE "-lso " . $name . ".lso\n";
     print FILE "-ofmt NGC\n";
     print FILE "-p xc2vp30-7-ff896\n";
     print FILE "-top " . get_wrapper($model->modelroot()) . "\n";
@@ -523,8 +522,9 @@ sub generate_prj_file {
 
     ## This is very bad, but a temporary solution to including the 
     ## Bluespec primitives
-    my $bluespec_lib = "/proj/vssad/local/i386_linux26/lib/Verilog";
+#    my $bluespec_lib = "/proj/vssad/local/i386_linux26/lib/Verilog";
 #    my $bluespec_lib = "\${BLUESPECDIR}/lib/Verilog";
+    my $bluespec_lib = "";
     my @bluespec_primitives = ("BypassWire.v", 
 			       "ClockDiv.v", 
 			       "ClockGen.v", 

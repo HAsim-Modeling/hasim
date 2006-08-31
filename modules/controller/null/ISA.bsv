@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 //                                                                           //
-// NullISA.bsv                                                               //
+// ISA.bsv                                                               //
 //                                                                           //
 // Non-ISA-specific datatypes required by Controller model                   //
 //                                                                           //

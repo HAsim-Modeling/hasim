@@ -14,7 +14,7 @@
 #
 # %attributes hasim
 #
-# %private Controller.bsv NullISA.bsv
+# %private Controller.bsv ISA.bsv
 #
 # %AWB_END
 # */

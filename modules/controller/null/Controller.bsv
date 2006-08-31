@@ -3,7 +3,7 @@
 import HASim::*;
 
 //HASim model-specific imports
-import NullISA::*;
+import ISA::*;
 
 //************* Null Controller **************
 

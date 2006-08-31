@@ -1585,3 +1585,14 @@ Directory modules/controller/null
 
 
 Bug fixes in hasim-configure.
+----------
+mamercal    Date: Thu Aug 31 14:28:47 EDT 2006  CSN: CSN-hasim-105
+                  Thu Aug 31 18:28:47 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          104 
+ Makefile.top.template     Locally Modified          104 
+
+
+Additional makefile target: 'make stats'

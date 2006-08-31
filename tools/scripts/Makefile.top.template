@@ -62,9 +62,11 @@ all: bit
 
 .PHONY: vexe
 vexe: $(APM_NAME).vexe
-	echo "#!/bin/sh" >$(APM_NAME)
-	echo "$(BUILD_DIR)/$(APM_NAME).vexe +bscvcd" >>$(APM_NAME)
-	chmod +x $(APM_NAME)
+	@echo "#!/bin/sh" >$(APM_NAME)
+	@echo "$(BUILD_DIR)/$(APM_NAME).vexe +bscvcd" >>$(APM_NAME)
+	@chmod +x $(APM_NAME)
+	@echo "Generated launch script $(APM_NAME)";
+
 
 $(APM_NAME).vexe: $(ROOT_V)
 	$(BSC) $(BSC_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 2>&1 | tee $(LOGFILE)
@@ -92,18 +94,31 @@ $(APM_NAME)_par.bit: $(APM_NAME)_par.ncd $(UT_FILE)
 
 .PHONY: bit
 bit: $(APM_NAME)_par.bit $(DOWNLOAD_FILE)
-	echo "#!/bin/sh" >$(APM_NAME)
-	echo "impact -batch $(BUILD_DIR)/$(DOWNLOAD_FILE)" >>$(APM_NAME)
-	chmod +x $(APM_NAME)
+	@echo "#!/bin/sh" >$(APM_NAME)
+	@echo "impact -batch $(BUILD_DIR)/$(DOWNLOAD_FILE)" >>$(APM_NAME)
+	@chmod +x $(APM_NAME)
+	@echo "Generated launch script $(APM_NAME)";
+
+.PHONY: stats
+stats: $(APM_NAME)_par.bit
+	@echo "++++++++++++ Post-Synthesis ++++++++++++"
+	@grep "Number of Slices" $(APM_NAME).srp
+	@grep "Maximum Frequency" $(APM_NAME).srp
+	@echo "++++++++++ Post-Place & Route ++++++++++"
+	@grep "Number of SLICEs" $(APM_NAME)_par.par
+	@grep -B 1 -A 3 "Max Delay" $(APM_NAME)_par.par
+	@echo "++++++++++++++++++++++++++++++++++++++++"
 
 ################################################################
 ## Bluesim generation rules
 
 .PHONY: exe
 exe: $(APM_NAME).exe
-	echo "#!/bin/sh" >$(APM_NAME)
-	echo "$(BUILD_DIR)/$(APM_NAME).exe" >>$(APM_NAME)
-	chmod +x $(APM_NAME)
+	@echo "#!/bin/sh" >$(APM_NAME)
+	@echo "$(BUILD_DIR)/$(APM_NAME).exe" >>$(APM_NAME)
+	@chmod +x $(APM_NAME)
+	@echo "Generated launch script $(APM_NAME)";
+
 
 $(APM_NAME).exe: $(ROOT_BA)
 	$(BSC) $(BSC_FLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 2>&1 | tee $(LOGFILE)

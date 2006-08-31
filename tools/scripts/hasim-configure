@@ -12,11 +12,6 @@ eval 'exec perl -w "$0" ${1+"$@"}'
 # Author:  Martha Mercaldi
 #
 
-#
-# TODO:
-#   - script does not yet handle sub-models
-#
-
 use File::Basename;
 use Getopt::Long;
 

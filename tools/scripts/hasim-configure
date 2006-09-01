@@ -18,8 +18,15 @@ use Getopt::Long;
 use Asim;
 use AsimShell;
 
+use Xilinx;
+use Bluespec;
+use Util;
+use HAsim;
+use Templates;
+
 use warnings;
 use strict;
+
 
 ############################################################
 # command line handling
@@ -55,7 +62,7 @@ $status = GetOptions( "private!"   => \$private,
 my $prog = basename($0);
 
 if (!$status) {
-    WARN_AND_DIE("Illegal argument, try '$prog --help'");
+    Util::WARN_AND_DIE("Illegal argument, try '$prog --help'");
 }
 
 if ($help) {
@@ -117,7 +124,7 @@ sub run_model {
     my $build_dir = $model->build_dir();
     
     my $apm = get_model_name($model);
-    my $exe = path_append($build_dir,$apm);
+    my $exe = Util::path_append($build_dir,$apm);
     
     $status = system("$exe");
 
@@ -132,7 +139,7 @@ sub build_build_tree {
     my $build_dir = $model->build_dir();
 
     ## NOTE: make target should come from argument to hasim-configure
-    $status = system("make -C $build_dir vexe");
+    $status = system("make -C $build_dir");
 
     return 1;
 }
@@ -168,15 +175,10 @@ sub configure_build_tree {
     generate_makefile_sub($model);
 
     # (4) generate files needex by Xilinx tools
-    generate_xst_file($model);
-    generate_prj_file($model);
-    generate_ucf_file($model);
-    generate_ut_file($model);
-    generate_download_file($model);
+    Xilinx::generate_files($model);
     
     return 1;
 }
-
 
 ############################################################
 # generate_makefile_include: Collect template replacement 
@@ -185,27 +187,30 @@ sub configure_build_tree {
 sub generate_makefile_include {
     my $model = shift;
 
-    my $replacements_r = empty_hash_ref();
+    my $replacements_r = Util::empty_hash_ref();
 
     # @BUILD_DIR@
-    hash_set($replacements_r,'@BUILD_DIR@',$model->build_dir());
+    Util::hash_set($replacements_r,'@BUILD_DIR@',$model->build_dir());
 
     # @APM_NAME@
-    my $apm = get_model_name($model);
-    hash_set($replacements_r,'@APM_NAME@',$apm);
+    my $apm = HAsim::get_model_name($model);
+    Util::hash_set($replacements_r,'@APM_NAME@',$apm);
+
+#    # @XILINX_DIR@
+#    hash_set($replacements_r,'@XILINX_DIR@',".xilinx");
 
     # @CONNECTION_SCRIPT@
 #    hash_set($replacements_r,'@CONNECTION_SCRIPT@',Asim::resolve("tools/scripts/hasim-connect"));
 
     # @APM_FILE@
-    hash_set($replacements_r,'@APM_FILE@',$model->filename());
+    Util::hash_set($replacements_r,'@APM_FILE@',$model->filename());
 
     # gather other info recursively
     __generate_makefile_include($model->modelroot(),"arch",$replacements_r);
 
     my $template = Asim::resolve("tools/scripts/Makefile.include.template");
-    my $makefile = path_append($model->build_dir(),"Makefile.include");
-    do_template_replacements($template,$makefile,$replacements_r);
+    my $makefile = Util::path_append($model->build_dir(),"Makefile.include");
+    Templates::do_replacements($template,$makefile,$replacements_r);
 }
 
 ############################################################
@@ -216,14 +221,14 @@ sub __generate_makefile_include {
     my $parent_dir = shift;
     my $replacements_r = shift;
 
-    my $my_dir = get_module_build_dir($module,$parent_dir);
-    if (is_synthesis_boundary($module)) {
+    my $my_dir = HAsim::get_module_build_dir($module,$parent_dir);
+    if (HAsim::is_synthesis_boundary($module)) {
 	# @ALL_DIRS@
-	hash_append($replacements_r,":",'@ALL_DIRS@',path_append("\$(BUILD_DIR)",$my_dir));
+	Util::hash_append($replacements_r,":",'@ALL_DIRS@',Util::path_append("\$(BUILD_DIR)",$my_dir));
     }
 
     # recurse
-    check_submodules_defined($module);
+    HAsim::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
 	__generate_makefile_include($child,$my_dir,$replacements_r);
     }
@@ -237,22 +242,22 @@ sub __generate_makefile_include {
 sub generate_makefile_top {
     my $model = shift;
     
-    my $replacements_r = empty_hash_ref();
+    my $replacements_r = Util::empty_hash_ref();
     
     #@ROOT_DIR@
     my $root = $model->modelroot();
-    if (is_synthesis_boundary($root)) {
-	hash_set($replacements_r,'@ROOT_DIR@',$root->provides());
+    if (HAsim::is_synthesis_boundary($root)) {
+	Util::hash_set($replacements_r,'@ROOT_DIR@',$root->provides());
     } else {
-	WARN_AND_DIE("Root module must be a synthesis boundary");
+	Util::WARN_AND_DIE("Root module must be a synthesis boundary");
     }
 
     # gather other info recursively
     __generate_makefile_top($root,"arch",$replacements_r);
 
     my $template = Asim::resolve("tools/scripts/Makefile.top.template");
-    my $makefile = path_append($model->build_dir(),"Makefile");
-    do_template_replacements($template,$makefile,$replacements_r);
+    my $makefile = Util::path_append($model->build_dir(),"Makefile");
+    Templates::do_replacements($template,$makefile,$replacements_r);
 }
 
 ############################################################
@@ -263,19 +268,19 @@ sub __generate_makefile_top {
     my $parent_dir = shift;
     my $replacements_r = shift;
 
-    my $my_dir = get_module_build_dir($module,$parent_dir);
-    if (is_synthesis_boundary($module)) {
+    my $my_dir = HAsim::get_module_build_dir($module,$parent_dir);
+    if (HAsim::is_synthesis_boundary($module)) {
 	# @ALL_VS@
-	my $fileroot = get_wrapper($module);
+	my $fileroot = HAsim::get_wrapper($module);
 	my $v_file = "$fileroot.v";
-	hash_append($replacements_r," ",'@ALL_VS@',path_append("\$(BUILD_DIR)",$my_dir,$v_file));
+	Util::hash_append($replacements_r," ",'@ALL_VS@',Util::path_append("\$(BUILD_DIR)",$my_dir,$v_file));
 	# @ALL_BAS@
 	my $ba_file = "$fileroot.ba";
-	hash_append($replacements_r," ",'@ALL_BAS@',path_append("\$(BUILD_DIR)",$my_dir,$ba_file));
+	Util::hash_append($replacements_r," ",'@ALL_BAS@',Util::path_append("\$(BUILD_DIR)",$my_dir,$ba_file));
     }
 
     # recurse
-    check_submodules_defined($module);
+    HAsim::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
 	__generate_makefile_top($child,$my_dir,$replacements_r);
     }
@@ -291,7 +296,7 @@ sub __generate_makefile_top {
 sub generate_makefile_sub {
     my $model = shift;
     
-    my $replacements_r = empty_hash_ref();
+    my $replacements_r = Util::empty_hash_ref();
     __generate_makefile_sub($model,$model->modelroot(),"arch",$replacements_r);
 }
 
@@ -309,36 +314,36 @@ sub __generate_makefile_sub {
     my $current_replacements_r = $replacements_r;
     my $my_dir = $parent_dir;
 
-    if (is_synthesis_boundary($module)) {
+    if (HAsim::is_synthesis_boundary($module)) {
 
 	# OVERRIDE non-synth-boundary settings
 	# 1. instantiate new hash for synthesis boundary
-	$current_replacements_r = empty_hash_ref();
+	$current_replacements_r = Util::empty_hash_ref();
 	# 2. update path
-	$my_dir = path_append($parent_dir,$module->provides());
+	$my_dir = Util::path_append($parent_dir,$module->provides());
 
 	## @DIR@
-	hash_set($current_replacements_r,'@DIR@',$module->provides());
+	Util::hash_set($current_replacements_r,'@DIR@',$module->provides());
 	
 	## @PARENT_PATH@
-	hash_set($current_replacements_r,'@PARENT_PATH@',$parent_dir);
+	Util::hash_set($current_replacements_r,'@PARENT_PATH@',$parent_dir);
 	
 	## @DOTS_TO_MAKEFILE_INCL@
 	my $dots_path = $my_dir;
 	$dots_path =~ s/([^\/])+/../g;
-	hash_set($current_replacements_r,'@DOTS_TO_MAKEFILE_INCL@',$dots_path);
+	Util::hash_set($current_replacements_r,'@DOTS_TO_MAKEFILE_INCL@',$dots_path);
 
     }
 
     ## @SUBDIRS@ & @SUBDIR_BAS@
-    check_submodules_defined($module);
+    HAsim::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
 	
-	if (is_synthesis_boundary($child)) {
+	if (HAsim::is_synthesis_boundary($child)) {
 	    my $subdir = $child->provides();
-	    hash_append($current_replacements_r," ",'@SUBDIRS@',$subdir);
-	    my $child_ba = path_append($subdir, get_wrapper($child) . ".ba");
-	    hash_append($current_replacements_r," ",'@SUBDIR_BAS@',$child_ba);
+	    Util::hash_append($current_replacements_r," ",'@SUBDIRS@',$subdir);
+	    my $child_ba = Util::path_append($subdir, HAsim::get_wrapper($child) . ".ba");
+	    Util::hash_append($current_replacements_r," ",'@SUBDIR_BAS@',$child_ba);
 	}
     }
 
@@ -349,23 +354,23 @@ sub __generate_makefile_sub {
     if ($public) { push(@l, $module->public()); }
     foreach my $f (@l) {
 	if ($f =~ /.bsv/) {
-	    hash_append($current_replacements_r, " ", '@BSVS@', $f);
+	    Util::hash_append($current_replacements_r, " ", '@BSVS@', $f);
 	} else {
-	    hash_append($current_replacements_r, " ", '@SRCS@', $f);
+	    Util::hash_append($current_replacements_r, " ", '@SRCS@', $f);
 	}
     }
 
     #recurse
-    check_submodules_defined($module);
+    HAsim::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
 	__generate_makefile_sub($model,$child,$my_dir,$current_replacements_r);
     }
 
     # on the way up, possibly generate makefile
-    if (is_synthesis_boundary($module)) {
+    if (HAsim::is_synthesis_boundary($module)) {
 	my $template = Asim::resolve("tools/scripts/Makefile.sub.template");
-	my $makefile = path_append($model->build_dir(),$my_dir,"Makefile");
-	do_template_replacements($template,$makefile,$current_replacements_r);
+	my $makefile = Util::path_append($model->build_dir(),$my_dir,"Makefile");
+	Templates::do_replacements($template,$makefile,$current_replacements_r);
     }
 }
 
@@ -377,7 +382,7 @@ sub make_symlinks {
 
     my $root = $model->modelroot();
     my $build_dir = $model->build_dir();
-    my $arch_dir = path_append($build_dir,"arch");
+    my $arch_dir = Util::path_append($build_dir,"arch");
     __make_symlinks($root,$arch_dir);
     
     return 1;
@@ -391,7 +396,7 @@ sub __make_symlinks {
     my $parent_dir = shift;
 
     # identify correct directory in build tree
-    my $my_dir = get_module_build_dir($module,$parent_dir);
+    my $my_dir = HAsim::get_module_build_dir($module,$parent_dir);
 
     # for each src file, generate symlink in $my_dir
     my $base_dir = $module->base_dir();
@@ -399,13 +404,13 @@ sub __make_symlinks {
     if ($private) {	push(@l, $module->private());    }
     if ($public) {	push(@l, $module->public());    }
     foreach my $f (@l) {
-	my $src = Asim::resolve(path_append($base_dir,$f));
-	my $tgt = path_append($my_dir,$f);
+	my $src = Asim::resolve(Util::path_append($base_dir,$f));
+	my $tgt = Util::path_append($my_dir,$f);
 	$status = system("ln -f -s $src $tgt");
     }
 
     # recurse
-    check_submodules_defined($module);
+    HAsim::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
 	__make_symlinks($child,$my_dir);
     }
@@ -418,7 +423,7 @@ sub __make_symlinks {
 sub make_dirs {
     my $model = shift;
     my $root = $model->modelroot();
-    __make_dirs($root,path_append($model->build_dir(),"arch"));
+    __make_dirs($root,Util::path_append($model->build_dir(),"arch"));
     return 1;
 }
 
@@ -428,416 +433,16 @@ sub __make_dirs {
     my $module = shift;
     my $parent_dir = shift;
 
-    my $my_dir = get_module_build_dir($module,$parent_dir);
-    if (is_synthesis_boundary($module)) {
+    my $my_dir = HAsim::get_module_build_dir($module,$parent_dir);
+    if (HAsim::is_synthesis_boundary($module)) {
 	$status = system("mkdir -p $my_dir");
     } 
     
     ## recurse
-    check_submodules_defined($module);
+    HAsim::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
 	__make_dirs($child,$my_dir);
     }
     
     return 1;
-}
-
-############################################################
-# do_template_replacements: Given a template file, a 
-#                           destination file, and a hash of
-#                           replacement keys to values, 
-#                           produce destination file = 
-#                           template + replacements
-sub do_template_replacements {
-    my $template = shift;
-    my $dst = shift;
-    my $replacements_r = shift;
-
-    print "Generating... $dst\n" if $debug;
-#    print "================================\n" if $debug;
-#    print "$template --> $dst\n" if $debug;
-#    print "--------------------------------\n" if $debug;
-#    while ( my ($key, $value) = each %$replacements_r ) {
-#	print "$key => $value\n" if $debug;
-#    }
-#    print "================================\n" if $debug;
-
-
-    CORE::open(DST, "> $dst") || return undef;
-    CORE::open(TEMPLATE, "< $template") || return undef;
-    while (my $line = <TEMPLATE>) {
-	# check for each possible substitution
-	while ( my ($key, $value) = each %$replacements_r ) {
-	    $line =~ s/$key/$value/g;
-	}
-	
-	# remove any unmatched replacements
-	while ($line =~ /@.+@/) {
-	    $line =~ s/@.+@//g;
-	}
-	print DST $line;
-    }
-    CORE::close(TEMPLATE);
-    CORE::close(DST);
-
-    return 1;
-}
-
-
-############################################################
-# generate_xst_file:
-sub generate_xst_file {
-    my $model = shift;
-    my $name = get_model_name($model);
-    
-    my $xst_file = path_append($model->build_dir(),$name . ".xst");
-
-    CORE::open(FILE, "> $xst_file") || return undef;
-    print FILE "run\n";
-    print FILE "-ifmt VERILOG\n";
-    print FILE "-vlgincdir " . $ENV{'BLUESPEC_LIB'} . "\n";
-    print FILE "-ifn " . $name . ".v\n";
-    print FILE "-ofn " . $name . "\n";
-    print FILE "-ofmt NGC\n";
-    print FILE "-p xc2vp30-7-ff896\n";
-    print FILE "-top " . get_wrapper($model->modelroot()) . "\n";
-    CORE::close(FILE);
-}
-
-############################################################
-# generate_prj_file:
-sub generate_prj_file {
-    my $model = shift;
-    my $name = get_model_name($model);
-    
-    my $prj_file = path_append($model->build_dir(),$name . ".v");
-
-    my $file;
-    CORE::open($file, "> $prj_file") || return undef;
-
-    ## This is very bad, but a temporary solution to including the 
-    ## Bluespec primitives
-#    my $bluespec_lib = "/proj/vssad/local/i386_linux26/lib/Verilog";
-#    my $bluespec_lib = "\${BLUESPECDIR}/lib/Verilog";
-    my $bluespec_lib = "";
-    my @bluespec_primitives = ("BypassWire.v", 
-			       "ClockDiv.v", 
-			       "ClockGen.v", 
-			       "ClockInverter.v", 
-			       "ClockMux.v", 
-			       "ClockSelect.v", 
-			       "ConvertFromZ.v", 
-			       "ConvertToZ.v", 
-			       "Counter.v", 
-			       "DualPortRam.v", 
-			       "FIFO1.v", 
-			       "FIFO10.v", 
-			       "FIFO2.v", 
-			       "FIFO20.v", 
-			       "FIFOL1.v", 
-			       "FIFOL10.v", 
-			       "FIFOL2.v", 
-			       "FIFOL20.v", 
-			       "FIFOLevel.v", 
-			       "Fork.v", 
-			       "GatedClock.v", 
-			       "InitialReset.v", 
-			       "MakeClock.v", 
-			       "McpRegUN.v", 
-			       "RWire.v", 
-			       "RWire0.v", 
-			       "RegA.v", 
-			       "RegFile.v", 
-			       "RegFileLoad.v", 
-			       "RegN.v", 
-			       "RegTwoA.v", 
-			       "RegTwoN.v", 
-			       "RegTwoUN.v", 
-			       "RegUN.v", 
-			       "ResolveZ.v", 
-			       "SizedFIFO.v", 
-			       "SizedFIFO0.v", 
-			       "SizedFIFOL.v", 
-			       "SizedFIFOL0.v", 
-			       "SyncBit.v", 
-			       "SyncBit1.v", 
-			       "SyncBit15.v", 
-			       "SyncFIFO.v", 
-			       "SyncFIFOLevel.v", 
-			       "SyncHandshake.v", 
-			       "SyncPulse.v", 
-			       "SyncRegister.v", 
-			       "SyncReset.v", 
-			       "SyncResetA.v", 
-			       "SyncWire.v");
-    
-    foreach my $v_file (@bluespec_primitives) {
-	print $file "`include \"" . path_append($bluespec_lib,$v_file) . "\"\n";
-    }
-
-    __generate_prj_file($model->modelroot(),"arch",$file);
-    CORE::close($file);
-}
-
-############################################################
-# __generate_prj_file:
-sub __generate_prj_file {
-    my $module = shift;
-    my $parent_dir = shift;
-    my $file = shift;
-
-    my $my_dir = get_module_build_dir($module,$parent_dir);
-
-    # recurse
-    check_submodules_defined($module);
-    foreach my $child ($module->submodules()) {
-	__generate_prj_file($child,$my_dir,$file);
-    }
-
-    if (is_synthesis_boundary($module)) {
-	my $v_file = path_append($my_dir, get_wrapper($module) . ".v");
-	print $file "`include \"$v_file\"\n";
-    }
-
-
-}
-
-############################################################
-# generate_ut_file:
-sub generate_ut_file {
-    my $model = shift;
-    my $name = get_model_name($model);
-    
-    my $ut_file = path_append($model->build_dir(),$name . ".ut");
-
-    CORE::open(FILE, "> $ut_file") || return undef;
-    print FILE "-w\n";
-    print FILE "-g DebugBitstream:No\n";
-    print FILE "-g Binary:no\n";
-    print FILE "-g CRC:Enable\n";
-    print FILE "-g ConfigRate:4\n";
-    print FILE "-g CclkPin:PullUp\n";
-    print FILE "-g M0Pin:PullUp\n";
-    print FILE "-g M1Pin:PullUp\n";
-    print FILE "-g M2Pin:PullUp\n";
-    print FILE "-g ProgPin:PullUp\n";
-    print FILE "-g DonePin:PullUp\n";
-    print FILE "-g PowerdownPin:PullUp\n";
-    print FILE "-g TckPin:PullUp\n";
-    print FILE "-g TdiPin:PullUp\n";
-    print FILE "-g TdoPin:PullNone\n";
-    print FILE "-g TmsPin:PullUp\n";
-    print FILE "-g UnusedPin:PullDown\n";
-    print FILE "-g UserID:0xFFFFFFFF\n";
-    print FILE "-g DCMShutdown:Disable\n";
-    print FILE "-g DisableBandgap:No\n";
-    print FILE "-g DCIUpdateMode:AsRequired\n";
-    print FILE "-g StartUpClk:CClk\n";
-    print FILE "-g DONE_cycle:4\n";
-    print FILE "-g GTS_cycle:5\n";
-    print FILE "-g GWE_cycle:6\n";
-    print FILE "-g LCK_cycle:NoWait\n";
-    print FILE "-g Security:None\n";
-    print FILE "-g DonePipe:No\n";
-    print FILE "-g DriveDone:No\n";
-    print FILE "-g Encrypt:No\n";
-    CORE::close(FILE);
-}
-
-############################################################
-# generate_ucf_file:
-sub generate_ucf_file {
-    my $model = shift;
-    my $name = get_model_name($model);
-    
-    my $ucf_file = path_append($model->build_dir(),$name . ".ucf");
-
-    CORE::open(FILE, "> $ucf_file") || return undef;
-
-    print FILE "// CLOCK\n";
-    print FILE "\n";
-    print FILE "NET \"CLK\" LOC = \"AJ15\" | IOSTANDARD = LVCMOS25;\n";
-    print FILE "\n";
-    print FILE "// LEDS\n";
-    print FILE "\n";
-    print FILE "NET \"LED[0]\" LOC=\"AC4\" | IOSTANDARD=LVTTL | DRIVE=12 | SLEW=SLOW;\n";
-    print FILE "NET \"LED[1]\" LOC=\"AC3\" | IOSTANDARD=LVTTL | DRIVE=12 | SLEW=SLOW;\n";
-    print FILE "NET \"LED[2]\" LOC=\"AA6\" | IOSTANDARD=LVTTL | DRIVE=12 | SLEW=SLOW; \n";
-    print FILE "NET \"LED[3]\" LOC=\"AA5\" | IOSTANDARD=LVTTL | DRIVE=12 | SLEW=SLOW;\n";
-    print FILE "\n";
-    print FILE "// SWITCHES\n";
-    print FILE "\n";
-    print FILE "NET \"SWITCH[0]\" LOC=\"AC11\" | IOSTANDARD=LVCMOS25;\n";
-    print FILE "NET \"SWITCH[1]\" LOC=\"AD11\" | IOSTANDARD=LVCMOS25;\n";
-    print FILE "NET \"SWITCH[2]\" LOC=\"AF8\" | IOSTANDARD=LVCMOS25;\n";
-    print FILE "NET \"SWITCH[3]\" LOC=\"AF9\" | IOSTANDARD=LVCMOS25;\n";
-    print FILE "\n";
-    print FILE "// PUSHBUTTONS\n";
-    print FILE "\n";
-    print FILE "NET \"BUTTON_LEFT\" LOC=\"AH1\" | IOSTANDARD=LVTTL;\n";
-    print FILE "NET \"BUTTON_RIGHT\" LOC=\"AH2\" | IOSTANDARD=LVTTL;\n";
-    print FILE "NET \"BUTTON_UP\" LOC=\"AH4\" | IOSTANDARD=LVTTL;\n";
-    print FILE "NET \"BUTTON_DOWN\" LOC=\"AG3\" | IOSTANDARD=LVTTL;\n";
-    print FILE "NET \"BUTTON_CENTER\" LOC=\"AG5\" | IOSTANDARD=LVTTL;\n";
-
-    CORE::close(FILE);
-}
-
-
-############################################################
-# generate_download_file:
-sub generate_download_file {
-    my $model = shift;
-    my $name = get_model_name($model);
-    
-    my $download_file = path_append($model->build_dir(),$name . ".download");
-
-    CORE::open(FILE, "> $download_file") || return undef;
-
-    print FILE "setMode -bscan\n";
-    print FILE "setCable -p auto\n";
-    print FILE "identify\n";    
-    print FILE "assignfile -p 3 -file " . get_model_name($model) . "_par.bit\n";
-    print FILE "program -p 3\n";
-    print FILE "quit\n";
-    
-    CORE::close(FILE);
-}
-
-############################################################
-# helper routines
-
-# empty_hash_ref: produce a ref to a new empty hash table
-sub empty_hash_ref {
-    my %hash = ();
-    return \%hash;
-}
-
-# hash_set: set a key,value pair in given hash table
-sub hash_set {
-    my $hash_r = shift;
-    my $key = shift;
-    my $value = shift;
-
-    $hash_r->{$key} = $value;
-
-    return 1;
-}
-
-# hash_append: append a value to the value already present
-#              in the given hash table (using the given 
-#              separator)
-sub hash_append {
-    my $hash_r = shift;
-    my $separator = shift;
-    my $key = shift;
-    my $value = shift;
-    
-    if (exists $hash_r->{$key}) { 
-	$hash_r->{$key} = $hash_r->{$key} . $separator . $value;
-    } else {
-	$hash_r->{$key} = $value;
-    }
-
-    return 1;
-}
-
-# check_submodules_defined: check that all submodules are
-#                           defined in model
-sub check_submodules_defined {
-    my $module = shift;
-
-    my @requires = $module->requires();
-    my @submodules = $module->submodules();
-    foreach my $index (0 .. $#requires) {
-	my $m = $submodules[$index];
-	my $r = $requires[$index];
-	if (! defined($m)) {
-	    WARN("No implementation specified for module of type $r...");
-	}
-    }
-
-    return 1;
-}
-
-# get_module_build_dir: identify module's directory in the
-#                       build tree (given parent directory path)
-sub get_module_build_dir {
-    my $module = shift;
-    my $parent_dir = shift;
-    my $my_dir;
-    if (is_synthesis_boundary($module)) {
-	$my_dir = path_append($parent_dir, $module->provides());
-    } else {
-	$my_dir = $parent_dir;
-    }
-    return $my_dir;
-}
-
-# path_append: simple utility to directory paths
-sub path_append {
-    my @parts = @_;
-
-    my $result = "";
-    foreach my $part (@parts) {
-	if ($result eq "") {
-	    $result = $part;
-	} elsif ($part eq "") {
-	    # skip this part
-	} else {
-	    $result = $result . "/" . $part;
-	}
-    }
-
-    return $result;
-}
-
-# is_synthesis_boundary: reads ab Asim module's parameters to
-#                        see if any Bluespec module is designated
-#                        a synthesis boundary
-sub is_synthesis_boundary {
-    my $module = shift;
-
-    foreach my $param_r ($module->parameters()) {
-	my %param = %{$param_r};
-	if ($param{'name'} eq "SYNTH_BOUNDARY") {
-	    return 1;
-	}
-    }
-    return 0;
-}
-
-# get_model_name
-sub get_model_name {
-    my $model = shift;
-    my $apm_file = $model->filename();
-
-    my @segments = split(/\//,$apm_file);
-    my $name = $segments[$#segments];
-    $name =~ s/.apm//g;
-
-    return $name;
-}
-
-# get_wrapper
-sub get_wrapper {
-    my $module = shift;
-    
-    if (! is_synthesis_boundary($module)) {
-	WARN_AND_DIE("Wrappers generated only for modules designated as synthesis boundaries.");
-    }
-
-    return ("mk_" . $module->provides . "_Wrapper");
-}
-
-sub WARN {
-    my $msg = shift;
-    my ($package, $filename, $line, $subroutine, $hasargs, $wantarray, $evaltext, $is_require, $hints, $bitmask) = caller(1);
-    print STDERR "$filename: ($subroutine) [called from ln $line]: $msg\n";
-}
-
-sub WARN_AND_DIE {
-    my $msg = shift;
-    WARN($msg);
-    die;
 }

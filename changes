@@ -1596,3 +1596,25 @@ Directory tools/scripts
 
 
 Additional makefile target: 'make stats'
+----------
+mamercal    Date: Fri Sep  1 09:37:40 EDT 2006  CSN: CSN-hasim-106
+                  Fri Sep  1 13:37:40 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          105 
+ configure-models          Locally Removed           105 
+ Xilinx.pm                 Locally Added               0 
+ Makefile.top.template     Locally Modified          105 
+ Util.pm                   Locally Added               0 
+ Templates.pm              Locally Added               0 
+ HAsim.pm                  Locally Added               0 
+ Bluespec.pm               Locally Added               0 
+
+Directory modules/common/fpgalib/xup
+ xup.ucf                   Locally Modified          105 
+
+
+1) Partitioned hasim-configure to seperate
+   Xilinx/Bluespec/HAsim/Template-specific functions
+2) Added makefile target, "make stats", to dump synthesis slice/timing stats

@@ -1641,3 +1641,21 @@ Directory modules/model
 
 Moved Makefile templates to modules/model directory and removed them from
 scripts.  hasim-configure now looks to .awb files to find templates.
+----------
+mamercal    Date: Fri Sep  1 13:53:48 EDT 2006  CSN: CSN-hasim-108
+                  Fri Sep  1 17:53:48 UTC 2006
+
+
+Directory tools/scripts
+ Xilinx.pm                 Locally Modified          107 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          107 
+
+Directory modules/common/fpgalib/xup
+ xup.ucf                   Locally Modified          107 
+
+
+- Fix in UCF file.  
+- Added copy of bitfile & download script to ~ for bit target (for easy access
+  from a Windows machine)

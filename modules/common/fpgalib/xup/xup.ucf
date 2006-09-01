@@ -1,3 +1,7 @@
+// RST_N
+
+NET "RST_N" LOC="AD10";
+
 // CLOCK
 
 NET "CLK" LOC = "AJ15" | IOSTANDARD = LVCMOS25;

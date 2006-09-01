@@ -97,10 +97,14 @@ bit: $(APM_NAME)_par.bit $(DOWNLOAD_FILE)
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "impact -batch $(BUILD_DIR)/$(DOWNLOAD_FILE)" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
-	@echo "Generated launch script \"$(APM_NAME)\"";
+	@echo "Generated launch script \"$(APM_NAME)\".";
+	@cp $(APM_NAME)_par.bit ~
+	@cp $(DOWNLOAD_FILE) ~
+	@echo "Copied files necessary for download to ~.";
+
 
 .PHONY: stats
-stats: $(APM_NAME)_par.bit
+stats: bit
 	@echo "++++++++++++ Post-Synthesis ++++++++++++"
 	@grep "Number of Slices" $(APM_NAME).srp
 	@grep "Maximum Frequency" $(APM_NAME).srp

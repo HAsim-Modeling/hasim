@@ -161,6 +161,9 @@ sub generate_ucf_file {
     print FILE "\n";
     print FILE "NET \"CLK\" LOC = \"AJ15\" | IOSTANDARD = LVCMOS25;\n";
     print FILE "\n";
+    print FILE "// RST_N\n";
+    print FILE "\n";
+    print FILE "NET \"RST_N\" LOC=\"AD10\";\n";
     print FILE "// LEDS\n";
     print FILE "\n";
     print FILE "NET \"LED[0]\" LOC=\"AC4\" | IOSTANDARD=LVTTL | DRIVE=12 | SLEW=SLOW;\n";

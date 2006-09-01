@@ -1,4 +1,4 @@
-#!/usr/bin/make -f
+#!/usr/bin/make -f --no-keep-going
 
 # Must always invoke this makefile from its own directory
 include ./Makefile.include

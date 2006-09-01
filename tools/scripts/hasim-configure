@@ -208,7 +208,7 @@ sub generate_makefile_include {
     # gather other info recursively
     __generate_makefile_include($model->modelroot(),"arch",$replacements_r);
 
-    my $template = Asim::resolve("tools/scripts/Makefile.include.template");
+    my $template = HAsim::get_makefile_include_template($model);
     my $makefile = Util::path_append($model->build_dir(),"Makefile.include");
     Templates::do_replacements($template,$makefile,$replacements_r);
 }
@@ -255,7 +255,7 @@ sub generate_makefile_top {
     # gather other info recursively
     __generate_makefile_top($root,"arch",$replacements_r);
 
-    my $template = Asim::resolve("tools/scripts/Makefile.top.template");
+    my $template = HAsim::get_makefile_top_template($model);
     my $makefile = Util::path_append($model->build_dir(),"Makefile");
     Templates::do_replacements($template,$makefile,$replacements_r);
 }
@@ -368,7 +368,7 @@ sub __generate_makefile_sub {
 
     # on the way up, possibly generate makefile
     if (HAsim::is_synthesis_boundary($module)) {
-	my $template = Asim::resolve("tools/scripts/Makefile.sub.template");
+	my $template = HAsim::get_makefile_sub_template($model,$module);
 	my $makefile = Util::path_append($model->build_dir(),$my_dir,"Makefile");
 	Templates::do_replacements($template,$makefile,$current_replacements_r);
     }

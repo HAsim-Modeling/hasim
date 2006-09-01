@@ -1618,3 +1618,26 @@ Directory modules/common/fpgalib/xup
 1) Partitioned hasim-configure to seperate
    Xilinx/Bluespec/HAsim/Template-specific functions
 2) Added makefile target, "make stats", to dump synthesis slice/timing stats
+----------
+mamercal    Date: Fri Sep  1 10:30:28 EDT 2006  CSN: CSN-hasim-107
+                  Fri Sep  1 14:30:28 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Removed           106 
+ hasim-configure           Locally Modified          106 
+ Makefile.top.template     Locally Removed           106 
+ Util.pm                   Locally Modified          106 
+ Makefile.include.template Locally Removed           106 
+ HAsim.pm                  Locally Modified          106 
+ Bluespec.pm               Locally Modified          106 
+
+Directory modules/model
+ Makefile.sub.template     Locally Added               - 
+ Makefile.top.template     Locally Added               - 
+ hasim_model.awb           Locally Modified          106 
+ Makefile.include.template Locally Added               - 
+
+
+Moved Makefile templates to modules/model directory and removed them from
+scripts.  hasim-configure now looks to .awb files to find templates.

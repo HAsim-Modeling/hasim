@@ -75,7 +75,7 @@ sub hash_append {
 # WARN
 sub WARN {
     my $msg = shift;
-    my ($package, $filename, $line, $subroutine, $hasargs, $wantarray, $evaltext, $is_require, $hints, $bitmask) = caller(1);
+    my ($package, $filename, $line, $subroutine, $hasargs, $wantarray, $evaltext, $is_require, $hints, $bitmask) = caller(2);
     print STDERR "$package::$subroutine: (called from $filename:$line): $msg\n";
 }
 

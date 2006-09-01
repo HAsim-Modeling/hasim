@@ -1,4 +1,4 @@
-#!/usr/bin/make -f
+#!/usr/bin/make -f --no-keep-going
 
 include @DOTS_TO_MAKEFILE_INCL@/Makefile.include
 

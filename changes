@@ -1694,3 +1694,16 @@ Directory modules/system/mulitplier_system
 Fixed bug in multiplier demo.
 
 Michael
+
+----------
+mpellaue    Date: Tue Sep  5 13:43:12 EDT 2006  CSN: CSN-hasim-109
+                  Tue Sep  5 17:43:12 UTC 2006
+
+
+Directory modules/common/fpgalib/xup
+ FPGALib.bsv               Locally Modified          108 
+
+
+Changes to DIP switches in FPGAlib.
+
+Michael

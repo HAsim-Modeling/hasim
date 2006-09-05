@@ -14,6 +14,7 @@ module [HASim_Module] mkFPGALib (TopLevel);
   // all XUP board signals are active low
   Reg#(Bit#(4)) led_reg <- mkReg(4'b1111);
   Reg#(Bit#(4)) switch_reg <- mkReg(4'b1111);
+  Reg#(Bit#(4)) old_switches <- mkReg(4'b1111);
   Reg#(Bit#(1)) bu_reg <- mkReg(1);
   Reg#(Bit#(1)) bd_reg <- mkReg(1);
   Reg#(Bit#(1)) bl_reg <- mkReg(1);
@@ -28,8 +29,11 @@ module [HASim_Module] mkFPGALib (TopLevel);
   endrule
   
   rule send_switches (True);
-  
-    link_switches.send(switch_reg);
+    if (switch_reg != old_switches)
+    begin
+      link_switches.send(switch_reg);
+      old_switches <= switch_reg;
+    end 
     
   endrule
   
@@ -55,6 +59,7 @@ module [HASim_Module] mkFPGALib (TopLevel);
   method Action switches(Bit#(4) sw);
   
     switch_reg <= ~sw;
+    
   
   endmethod
   

@@ -1659,3 +1659,25 @@ Directory modules/common/fpgalib/xup
 - Fix in UCF file.  
 - Added copy of bitfile & download script to ~ for bit target (for easy access
   from a Windows machine)
+----------
+mpellaue    Date: Tue Sep  5 10:13:35 EDT 2006  CSN: CSN-hasim-109
+                  Tue Sep  5 14:13:35 UTC 2006
+
+
+Directory config/pm/hasim
+ multiplier/               Locally Added               0 
+
+Directory config/pm/hasim/multiplier
+ multiplier.apm            Locally Added               0 
+
+Directory modules/system
+ mulitplier_system/        Locally Added               0 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.awb     Locally Added               0 
+ System.bsv                Locally Added               0 
+
+
+First checkin of multiplier demo.
+
+Michael

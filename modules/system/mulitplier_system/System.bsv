@@ -1,47 +1,45 @@
 import HASim::*;
 import ISA::*;
 
-
 module [HASim_Module] mkSystem (TModule#(Command, Response));
- 
-  Connection_Send#(Bit#(4)) link_leds <- mkConnection_Send("fpga_leds");
-  Connection_Receive#(Bit#(4))    link_switches <- mkConnection_Receive("fpga_switches");
-  Connection_Receive#(ButtonInfo) link_buttons <- mkConnection_Receive("fpga_buttons");
+   
+   Connection_Receive#(Bit#(4)) link_switches <- mkConnection_Receive("fpga_switches");
+   Connection_Receive#(ButtonInfo) link_buttons  <- mkConnection_Receive("fpga_buttons");
+   Connection_Send#(Bit#(4))    link_leds     <- mkConnection_Send("fpga_leds");
+   
+  Reg#(Bit#(4))  product      <- mkReg(0);
+  Reg#(Bit#(4))  d            <- mkReg(0);
+  Reg#(Bit#(2))  r            <- mkReg(0);
 
-  Reg#(Bit#(4))  product <- mkReg (0);
-  Reg#(Bit#(2))  d       <- mkRegU();
-  Reg#(Bit#(2))  r       <- mkReg(0);
-  Reg#(Bool)     busy    <- mkReg(False);
-
-  rule getInputs (!busy);
-    Bit#(4) inp <- link_switches.receive();
-    
-    Bit#(2) newd = inp[3:2];
-    Bit#(2) newr = inp[1:0];
-    
-    if (newd == 0 || newr == 0)
-      link_leds.send(4'b0000);
-    else
-    begin
-      d <= newd; 
-      r <= newr; 
-      product <= 0;
-      busy <= True;
-    end
+  rule cycle (r != 0);
+   if (r[0] == 1) product <= product + d;
+   d <= d << 1;
+   r <= r >> 1;
   endrule
 
-  rule cycle (busy && r != 0);
-    if (r[0] == 1) product <= product + zeroExtend(d);
-    d <= d << 1;
-    r <= r >> 1;
+  rule start (r == 0);
+     Bit#(4) inp <- link_switches.receive();
+     Bit#(2) x = inp[3:2];
+     Bit#(2) y = inp[1:0];
+     
+     if (x == 0 || y == 0)
+	begin
+	   d <= 0;
+	   r <= 0;
+	end
+     else
+	begin
+           d <= zeroExtend(x); 
+	   r <= y; 
+        end
+     product <= 0;
+     
   endrule
-  
-  rule sendResult (busy && r == 0);
-  
-    link_leds.send(product);
-    busy <= False;
-  
-  endrule
+   
+   rule finishUp (r == 0);
+      
+      link_leds.send(product);
+      
+   endrule
 
 endmodule
-

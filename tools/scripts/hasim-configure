@@ -18,14 +18,11 @@ use Getopt::Long;
 use Asim;
 use AsimShell;
 
-use Xilinx;
-use Bluespec;
-use Util;
 use HAsim;
-use Templates;
 
 use warnings;
 use strict;
+
 
 
 ############################################################
@@ -62,7 +59,7 @@ $status = GetOptions( "private!"   => \$private,
 my $prog = basename($0);
 
 if (!$status) {
-    Util::WARN_AND_DIE("Illegal argument, try '$prog --help'");
+    HAsim::Util::WARN_AND_DIE("Illegal argument, try '$prog --help'");
 }
 
 if ($help) {
@@ -124,7 +121,7 @@ sub run_model {
     my $build_dir = $model->build_dir();
     
     my $apm = get_model_name($model);
-    my $exe = Util::path_append($build_dir,$apm);
+    my $exe = HAsim::Util::path_append($build_dir,$apm);
     
     $status = system("$exe");
 
@@ -175,7 +172,7 @@ sub configure_build_tree {
     generate_makefile_sub($model);
 
     # (4) generate files needex by Xilinx tools
-    Xilinx::generate_files($model);
+    HAsim::Xilinx::generate_files($model);
     
     return 1;
 }
@@ -187,14 +184,14 @@ sub configure_build_tree {
 sub generate_makefile_include {
     my $model = shift;
 
-    my $replacements_r = Util::empty_hash_ref();
+    my $replacements_r = HAsim::Util::empty_hash_ref();
 
     # @BUILD_DIR@
-    Util::hash_set($replacements_r,'@BUILD_DIR@',$model->build_dir());
+    HAsim::Util::hash_set($replacements_r,'@BUILD_DIR@',$model->build_dir());
 
     # @APM_NAME@
-    my $apm = HAsim::get_model_name($model);
-    Util::hash_set($replacements_r,'@APM_NAME@',$apm);
+    my $apm = HAsim::Build::get_model_name($model);
+    HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$apm);
 
 #    # @XILINX_DIR@
 #    hash_set($replacements_r,'@XILINX_DIR@',".xilinx");
@@ -203,14 +200,14 @@ sub generate_makefile_include {
 #    hash_set($replacements_r,'@CONNECTION_SCRIPT@',Asim::resolve("tools/scripts/hasim-connect"));
 
     # @APM_FILE@
-    Util::hash_set($replacements_r,'@APM_FILE@',$model->filename());
+    HAsim::Util::hash_set($replacements_r,'@APM_FILE@',$model->filename());
 
     # gather other info recursively
     __generate_makefile_include($model->modelroot(),"arch",$replacements_r);
 
-    my $template = HAsim::get_makefile_include_template($model);
-    my $makefile = Util::path_append($model->build_dir(),"Makefile.include");
-    Templates::do_replacements($template,$makefile,$replacements_r);
+    my $template = HAsim::Build::get_makefile_include_template($model);
+    my $makefile = HAsim::Util::path_append($model->build_dir(),"Makefile.include");
+    HAsim::Templates::do_replacements($template,$makefile,$replacements_r);
 }
 
 ############################################################
@@ -221,14 +218,14 @@ sub __generate_makefile_include {
     my $parent_dir = shift;
     my $replacements_r = shift;
 
-    my $my_dir = HAsim::get_module_build_dir($module,$parent_dir);
-    if (HAsim::is_synthesis_boundary($module)) {
+    my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
+    if (HAsim::Build::is_synthesis_boundary($module)) {
 	# @ALL_DIRS@
-	Util::hash_append($replacements_r,":",'@ALL_DIRS@',Util::path_append("\$(BUILD_DIR)",$my_dir));
+	HAsim::Util::hash_append($replacements_r,":",'@ALL_DIRS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir));
     }
 
     # recurse
-    HAsim::check_submodules_defined($module);
+    HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
 	__generate_makefile_include($child,$my_dir,$replacements_r);
     }
@@ -242,22 +239,22 @@ sub __generate_makefile_include {
 sub generate_makefile_top {
     my $model = shift;
     
-    my $replacements_r = Util::empty_hash_ref();
+    my $replacements_r = HAsim::Util::empty_hash_ref();
     
     #@ROOT_DIR@
     my $root = $model->modelroot();
-    if (HAsim::is_synthesis_boundary($root)) {
-	Util::hash_set($replacements_r,'@ROOT_DIR@',$root->provides());
+    if (HAsim::Build::is_synthesis_boundary($root)) {
+	HAsim::Util::hash_set($replacements_r,'@ROOT_DIR@',$root->provides());
     } else {
-	Util::WARN_AND_DIE("Root module must be a synthesis boundary");
+	HAsim::Util::WARN_AND_DIE("Root module must be a synthesis boundary");
     }
 
     # gather other info recursively
     __generate_makefile_top($root,"arch",$replacements_r);
 
-    my $template = HAsim::get_makefile_top_template($model);
-    my $makefile = Util::path_append($model->build_dir(),"Makefile");
-    Templates::do_replacements($template,$makefile,$replacements_r);
+    my $template = HAsim::Build::get_makefile_top_template($model);
+    my $makefile = HAsim::Util::path_append($model->build_dir(),"Makefile");
+    HAsim::Templates::do_replacements($template,$makefile,$replacements_r);
 }
 
 ############################################################
@@ -268,19 +265,19 @@ sub __generate_makefile_top {
     my $parent_dir = shift;
     my $replacements_r = shift;
 
-    my $my_dir = HAsim::get_module_build_dir($module,$parent_dir);
-    if (HAsim::is_synthesis_boundary($module)) {
+    my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
+    if (HAsim::Build::is_synthesis_boundary($module)) {
 	# @ALL_VS@
-	my $fileroot = HAsim::get_wrapper($module);
+	my $fileroot = HAsim::Build::get_wrapper($module);
 	my $v_file = "$fileroot.v";
-	Util::hash_append($replacements_r," ",'@ALL_VS@',Util::path_append("\$(BUILD_DIR)",$my_dir,$v_file));
+	HAsim::Util::hash_append($replacements_r," ",'@ALL_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir,$v_file));
 	# @ALL_BAS@
 	my $ba_file = "$fileroot.ba";
-	Util::hash_append($replacements_r," ",'@ALL_BAS@',Util::path_append("\$(BUILD_DIR)",$my_dir,$ba_file));
+	HAsim::Util::hash_append($replacements_r," ",'@ALL_BAS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir,$ba_file));
     }
 
     # recurse
-    HAsim::check_submodules_defined($module);
+    HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
 	__generate_makefile_top($child,$my_dir,$replacements_r);
     }
@@ -296,7 +293,7 @@ sub __generate_makefile_top {
 sub generate_makefile_sub {
     my $model = shift;
     
-    my $replacements_r = Util::empty_hash_ref();
+    my $replacements_r = HAsim::Util::empty_hash_ref();
     __generate_makefile_sub($model,$model->modelroot(),"arch",$replacements_r);
 }
 
@@ -314,36 +311,36 @@ sub __generate_makefile_sub {
     my $current_replacements_r = $replacements_r;
     my $my_dir = $parent_dir;
 
-    if (HAsim::is_synthesis_boundary($module)) {
+    if (HAsim::Build::is_synthesis_boundary($module)) {
 
 	# OVERRIDE non-synth-boundary settings
 	# 1. instantiate new hash for synthesis boundary
-	$current_replacements_r = Util::empty_hash_ref();
+	$current_replacements_r = HAsim::Util::empty_hash_ref();
 	# 2. update path
-	$my_dir = Util::path_append($parent_dir,$module->provides());
+	$my_dir = HAsim::Util::path_append($parent_dir,$module->provides());
 
 	## @DIR@
-	Util::hash_set($current_replacements_r,'@DIR@',$module->provides());
+	HAsim::Util::hash_set($current_replacements_r,'@DIR@',$module->provides());
 	
 	## @PARENT_PATH@
-	Util::hash_set($current_replacements_r,'@PARENT_PATH@',$parent_dir);
+	HAsim::Util::hash_set($current_replacements_r,'@PARENT_PATH@',$parent_dir);
 	
 	## @DOTS_TO_MAKEFILE_INCL@
 	my $dots_path = $my_dir;
 	$dots_path =~ s/([^\/])+/../g;
-	Util::hash_set($current_replacements_r,'@DOTS_TO_MAKEFILE_INCL@',$dots_path);
+	HAsim::Util::hash_set($current_replacements_r,'@DOTS_TO_MAKEFILE_INCL@',$dots_path);
 
     }
 
     ## @SUBDIRS@ & @SUBDIR_BAS@
-    HAsim::check_submodules_defined($module);
+    HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
 	
-	if (HAsim::is_synthesis_boundary($child)) {
+	if (HAsim::Build::is_synthesis_boundary($child)) {
 	    my $subdir = $child->provides();
-	    Util::hash_append($current_replacements_r," ",'@SUBDIRS@',$subdir);
-	    my $child_ba = Util::path_append($subdir, HAsim::get_wrapper($child) . ".ba");
-	    Util::hash_append($current_replacements_r," ",'@SUBDIR_BAS@',$child_ba);
+	    HAsim::Util::hash_append($current_replacements_r," ",'@SUBDIRS@',$subdir);
+	    my $child_ba = HAsim::Util::path_append($subdir, HAsim::Build::get_wrapper($child) . ".ba");
+	    HAsim::Util::hash_append($current_replacements_r," ",'@SUBDIR_BAS@',$child_ba);
 	}
     }
 
@@ -354,23 +351,23 @@ sub __generate_makefile_sub {
     if ($public) { push(@l, $module->public()); }
     foreach my $f (@l) {
 	if ($f =~ /.bsv/) {
-	    Util::hash_append($current_replacements_r, " ", '@BSVS@', $f);
+	    HAsim::Util::hash_append($current_replacements_r, " ", '@BSVS@', $f);
 	} else {
-	    Util::hash_append($current_replacements_r, " ", '@SRCS@', $f);
+	    HAsim::Util::hash_append($current_replacements_r, " ", '@SRCS@', $f);
 	}
     }
 
     #recurse
-    HAsim::check_submodules_defined($module);
+    HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
 	__generate_makefile_sub($model,$child,$my_dir,$current_replacements_r);
     }
 
     # on the way up, possibly generate makefile
-    if (HAsim::is_synthesis_boundary($module)) {
-	my $template = HAsim::get_makefile_sub_template($model,$module);
-	my $makefile = Util::path_append($model->build_dir(),$my_dir,"Makefile");
-	Templates::do_replacements($template,$makefile,$current_replacements_r);
+    if (HAsim::Build::is_synthesis_boundary($module)) {
+	my $template = HAsim::Build::get_makefile_sub_template($model,$module);
+	my $makefile = HAsim::Util::path_append($model->build_dir(),$my_dir,"Makefile");
+	HAsim::Templates::do_replacements($template,$makefile,$current_replacements_r);
     }
 }
 
@@ -382,7 +379,7 @@ sub make_symlinks {
 
     my $root = $model->modelroot();
     my $build_dir = $model->build_dir();
-    my $arch_dir = Util::path_append($build_dir,"arch");
+    my $arch_dir = HAsim::Util::path_append($build_dir,"arch");
     __make_symlinks($root,$arch_dir);
     
     return 1;
@@ -396,7 +393,7 @@ sub __make_symlinks {
     my $parent_dir = shift;
 
     # identify correct directory in build tree
-    my $my_dir = HAsim::get_module_build_dir($module,$parent_dir);
+    my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
 
     # for each src file, generate symlink in $my_dir
     my $base_dir = $module->base_dir();
@@ -404,13 +401,13 @@ sub __make_symlinks {
     if ($private) {	push(@l, $module->private());    }
     if ($public) {	push(@l, $module->public());    }
     foreach my $f (@l) {
-	my $src = Asim::resolve(Util::path_append($base_dir,$f));
-	my $tgt = Util::path_append($my_dir,$f);
+	my $src = Asim::resolve(HAsim::Util::path_append($base_dir,$f));
+	my $tgt = HAsim::Util::path_append($my_dir,$f);
 	$status = system("ln -f -s $src $tgt");
     }
 
     # recurse
-    HAsim::check_submodules_defined($module);
+    HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
 	__make_symlinks($child,$my_dir);
     }
@@ -423,7 +420,7 @@ sub __make_symlinks {
 sub make_dirs {
     my $model = shift;
     my $root = $model->modelroot();
-    __make_dirs($root,Util::path_append($model->build_dir(),"arch"));
+    __make_dirs($root,HAsim::Util::path_append($model->build_dir(),"arch"));
     return 1;
 }
 
@@ -433,13 +430,13 @@ sub __make_dirs {
     my $module = shift;
     my $parent_dir = shift;
 
-    my $my_dir = HAsim::get_module_build_dir($module,$parent_dir);
-    if (HAsim::is_synthesis_boundary($module)) {
+    my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
+    if (HAsim::Build::is_synthesis_boundary($module)) {
 	$status = system("mkdir -p $my_dir");
     } 
     
     ## recurse
-    HAsim::check_submodules_defined($module);
+    HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
 	__make_dirs($child,$my_dir);
     }

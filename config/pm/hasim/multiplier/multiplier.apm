@@ -5,6 +5,7 @@ Description=Multiplier FPGA Demo
 File=multiplier
 Version=2.0
 Name=Multiplier Model
+Type=HAsim
 
 [Hasim null controller]
 Packagehint=hasim

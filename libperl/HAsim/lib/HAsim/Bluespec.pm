@@ -9,7 +9,7 @@
 # Author:  Martha Mercaldi
 #
 
-package Bluespec;
+package HAsim::Bluespec;
 
 use warnings;
 use strict;

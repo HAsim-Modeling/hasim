@@ -1,0 +1,7 @@
+lib/HAsim/Bluespec.pm
+lib/HAsim/Build.pm
+lib/HAsim/Templates.pm
+lib/HAsim/Util.pm
+lib/HAsim/Xilinx.pm
+lib/HAsim.pm
+META.yml                                 Module meta-data (added by MakeMaker)

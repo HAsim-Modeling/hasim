@@ -9,12 +9,12 @@
 # Author:  Martha Mercaldi
 #
 
-package Xilinx;
+package HAsim::Xilinx;
 
 use Asim;
 
-use HAsim;
-use Util;
+use HAsim::Build;
+use HAsim::Util;
 
 use warnings;
 use strict;
@@ -42,21 +42,21 @@ sub generate_files {
 # generate_xst_file:
 sub generate_xst_file {
     my $model = shift;
-    my $name = HAsim::get_model_name($model);
+    my $name = HAsim::Build::get_model_name($model);
     
-    my $xst_file = Util::path_append($model->build_dir(),$name . ".xst");
+    my $xst_file = HAsim::Util::path_append($model->build_dir(),$name . ".xst");
 
     CORE::open(FILE, "> $xst_file") || return undef;
 
     print FILE "run\n";
     print FILE "-ifmt VERILOG\n";
-    my $verilog_lib = Bluespec::verilog_lib_dir();
+    my $verilog_lib = HAsim::Bluespec::verilog_lib_dir();
     print FILE "-vlgincdir " . $verilog_lib . "\n";
     print FILE "-ifn " . $name . ".v\n";
     print FILE "-ofn " . $name . "\n";
     print FILE "-ofmt NGC\n";
     print FILE "-p " . $part_num . "\n";
-    print FILE "-top " . HAsim::get_wrapper($model->modelroot()) . "\n";
+    print FILE "-top " . HAsim::Build::get_wrapper($model->modelroot()) . "\n";
     CORE::close(FILE);
 }
 
@@ -65,14 +65,14 @@ sub generate_xst_file {
 sub generate_v_file {
 
     my $model = shift;
-    my $name = HAsim::get_model_name($model);
+    my $name = HAsim::Build::get_model_name($model);
     
-    my $v_file = Util::path_append($model->build_dir(),$name . ".v");
+    my $v_file = HAsim::Util::path_append($model->build_dir(),$name . ".v");
 
     my $file;
     CORE::open($file, "> $v_file") || return undef;
     
-    foreach my $v_file (Bluespec::verilog_lib_files()) {
+    foreach my $v_file (HAsim::Bluespec::verilog_lib_files()) {
 	print $file "`include \"" . $v_file . "\"\n";
     }
 
@@ -89,16 +89,16 @@ sub __generate_v_file {
     my $parent_dir = shift;
     my $file = shift;
 
-    my $my_dir = HAsim::get_module_build_dir($module,$parent_dir);
+    my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
 
     # recurse
-    HAsim::check_submodules_defined($module);
+    HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
 	__generate_v_file($child,$my_dir,$file);
     }
 
-    if (HAsim::is_synthesis_boundary($module)) {
-	my $v_file = Util::path_append($my_dir, HAsim::get_wrapper($module) . ".v");
+    if (HAsim::Build::is_synthesis_boundary($module)) {
+	my $v_file = HAsim::Util::path_append($my_dir, HAsim::Build::get_wrapper($module) . ".v");
 	print $file "`include \"$v_file\"\n";
     }
 
@@ -109,9 +109,9 @@ sub __generate_v_file {
 # generate_ut_file:
 sub generate_ut_file {
     my $model = shift;
-    my $name = HAsim::get_model_name($model);
+    my $name = HAsim::Build::get_model_name($model);
     
-    my $ut_file = Util::path_append($model->build_dir(),$name . ".ut");
+    my $ut_file = HAsim::Util::path_append($model->build_dir(),$name . ".ut");
 
     CORE::open(FILE, "> $ut_file") || return undef;
     print FILE "-w\n";
@@ -151,9 +151,9 @@ sub generate_ut_file {
 # generate_ucf_file:
 sub generate_ucf_file {
     my $model = shift;
-    my $name = HAsim::get_model_name($model);
+    my $name = HAsim::Build::get_model_name($model);
     
-    my $ucf_file = Util::path_append($model->build_dir(),$name . ".ucf");
+    my $ucf_file = HAsim::Util::path_append($model->build_dir(),$name . ".ucf");
 
     CORE::open(FILE, "> $ucf_file") || return undef;
 
@@ -194,16 +194,16 @@ sub generate_ucf_file {
 # generate_download_file:
 sub generate_download_file {
     my $model = shift;
-    my $name = HAsim::get_model_name($model);
+    my $name = HAsim::Build::get_model_name($model);
     
-    my $download_file = Util::path_append($model->build_dir(),$name . ".download");
+    my $download_file = HAsim::Util::path_append($model->build_dir(),$name . ".download");
 
     CORE::open(FILE, "> $download_file") || return undef;
 
     print FILE "setMode -bscan\n";
     print FILE "setCable -p auto\n";
     print FILE "identify\n";    
-    print FILE "assignfile -p 3 -file " . HAsim::get_model_name($model) . "_par.bit\n";
+    print FILE "assignfile -p 3 -file " . HAsim::Build::get_model_name($model) . "_par.bit\n";
     print FILE "program -p 3\n";
     print FILE "quit\n";
     

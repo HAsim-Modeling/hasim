@@ -1707,3 +1707,76 @@ Directory modules/common/fpgalib/xup
 Changes to DIP switches in FPGAlib.
 
 Michael
+
+----------
+mamercal    Date: Tue Sep  5 17:33:35 EDT 2006  CSN: CSN-hasim-112
+                  Tue Sep  5 21:33:35 UTC 2006
+
+
+Directory .
+ configure                 Locally Added               0 
+ include/                  Locally Added               0 
+ configure.in              Locally Added               0 
+
+Directory scripts
+ missing                   Locally Added               0 
+ install-sh                Locally Added               0 
+
+Directory .
+ scripts/                  Locally Added               0 
+
+Directory libperl
+ HAsim/                    Locally Added               0 
+
+Directory libperl/HAsim
+ lib/                      Locally Added               0 
+
+Directory libperl/HAsim/lib
+ HAsim/                    Locally Added               0 
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Added               - 
+ Util.pm                   Locally Added               - 
+ Templates.pm              Locally Added               - 
+ Bluespec.pm               Locally Added               - 
+
+Directory libperl/HAsim/lib
+ HAsim.pm                  Locally Added               - 
+
+Directory libperl/HAsim
+ MANIFEST                  Locally Added               0 
+ Makefile.PL               Locally Added               0 
+ README                    Locally Added               0 
+
+Directory libperl
+ Makefile.am               Locally Added               0 
+ README                    Locally Added               0 
+
+Directory .
+ libperl/                  Locally Added               0 
+ README                    Locally Added               0 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          111 
+ Xilinx.pm                 Locally Removed           111 
+ Util.pm                   Locally Removed           111 
+ Templates.pm              Locally Removed           111 
+ Makefile.am               Locally Added               0 
+ HAsim.pm                  Locally Removed           111 
+ Bluespec.pm               Locally Removed           111 
+
+Directory tools
+ Makefile.am               Locally Added               0 
+
+Directory config/pm/hasim/multiplier
+ multiplier.apm            Locally Modified          111 
+
+Directory modules/system/mulitplier_system
+ System.bsv                Locally Modified          111 
+
+Directory .
+ Makefile.am               Locally Added               0 
+
+
+- Installed .pm modules in libperl and added autoconf / Makefile support
+- Bug fix in multiplier BSV.

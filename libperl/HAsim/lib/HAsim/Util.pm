@@ -9,7 +9,7 @@
 # Author:  Martha Mercaldi
 #
 
-package Util;
+package HAsim::Util;
 
 use warnings;
 use strict;

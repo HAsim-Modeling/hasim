@@ -9,9 +9,9 @@
 # Author:  Martha Mercaldi
 #
 
-package Templates;
+package HAsim::Templates;
 
-use Util;
+use HAsim::Util;
 
 use warnings;
 use strict;
@@ -22,7 +22,7 @@ sub merge_replacements {
     my $r1 = shift;
     my $r2 = shift;
     
-    Util::WARN_AND_DIE("Templates::merge_replacements() not yet implemented.");
+    HAsim::Util::WARN_AND_DIE("Templates::merge_replacements() not yet implemented.");
 
 }
 

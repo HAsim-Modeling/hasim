@@ -14,10 +14,13 @@ module [HASim_Module] mkSystem (TModule#(Command, Response));
   Reg#(Bool)     busy    <- mkReg(False);
 
   rule getInputs (!busy);
-    match {.newd, .newr} <- con_switches.receive();
+    Bit#(4) inp <- link_switches.receive();
+    
+    Bit#(2) newd = inp[3:2];
+    Bit#(2) newr = inp[1:0];
     
     if (newd == 0 || newr == 0)
-      con_leds.send(4'b0000);
+      link_leds.send(4'b0000);
     else
     begin
       d <= newd; 
@@ -35,7 +38,7 @@ module [HASim_Module] mkSystem (TModule#(Command, Response));
   
   rule sendResult (busy && r == 0);
   
-    con_leds.send(product);
+    link_leds.send(product);
     busy <= False;
   
   endrule

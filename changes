@@ -1681,3 +1681,16 @@ Directory modules/system/mulitplier_system
 First checkin of multiplier demo.
 
 Michael
+
+----------
+mpellaue    Date: Tue Sep  5 10:25:01 EDT 2006  CSN: CSN-hasim-109
+                  Tue Sep  5 14:25:01 UTC 2006
+
+
+Directory modules/system/mulitplier_system
+ System.bsv                Locally Modified          109 
+
+
+Fixed bug in multiplier demo.
+
+Michael

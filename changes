@@ -1780,3 +1780,25 @@ Directory .
 
 - Installed .pm modules in libperl and added autoconf / Makefile support
 - Bug fix in multiplier BSV.
+----------
+mamercal    Date: Wed Sep  6 08:22:55 EDT 2006  CSN: CSN-hasim-113
+                  Wed Sep  6 12:22:55 UTC 2006
+
+
+Directory .
+ Makefile.in               Locally Added               0 
+
+Directory libperl/HAsim/lib/HAsim
+ Build.pm                  Locally Added               0 
+
+Directory libperl
+ Makefile.in               Locally Added               0 
+
+Directory tools
+ Makefile.in               Locally Added               0 
+
+Directory tools/scripts
+ Makefile.in               Locally Added               0 
+
+
+Added missing files.

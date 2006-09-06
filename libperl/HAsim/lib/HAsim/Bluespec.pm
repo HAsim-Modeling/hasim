@@ -74,7 +74,7 @@ sub verilog_lib_files {
 # verilog_lib_dir:
 sub verilog_lib_dir {
     if (! defined$ENV{'BLUESPEC_LIB'}) {
-      Util::WARN_AND_DIE("BLUESPEC_LIB undefined in environment.");
+      HAsim::Util::WARN_AND_DIE("BLUESPEC_LIB undefined in environment.");
     }
 
     return $ENV{'BLUESPEC_LIB'};

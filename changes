@@ -1802,3 +1802,18 @@ Directory tools/scripts
 
 
 Added missing files.
+----------
+jsemer      Date: Wed Sep  6 10:18:10 EDT 2006  CSN: CSN-hasim-114
+                  Wed Sep  6 14:18:10 UTC 2006
+
+
+Directory libperl/HAsim/lib/HAsim
+ Bluespec.pm               Locally Modified          113 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          113 
+ hasim-connect             Locally Modified          113 
+
+
+Added missing package qualifier in .pm file.
+Slight update to perl invocation syntax in scripts.

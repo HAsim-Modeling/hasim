@@ -1866,3 +1866,52 @@ Directory modules/system/switch_to_led_system/calculation4x4/multiplier
 
 - Split multiplier into switch/led interface and functional block.
 - Make now copies download script and bitfile to ~/.asim/hasim/download
+----------
+mamercal    Date: Thu Sep  7 19:16:34 EDT 2006  CSN: CSN-hasim-116
+                  Thu Sep  7 23:16:34 UTC 2006
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          115 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          115 
+
+Directory config/pm/hasim/demos/switch_to_led
+ multiplier4x4_xup.apm     Locally Modified          115 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          115 
+ Makefile.include.template Locally Modified          115 
+
+Directory modules/system/switch_to_led_system/calculation4x4
+ adder/                    Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4/adder
+ Calculation4x4.bsv        Locally Added               0 
+ adder4x4.awb              Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4
+ square/                   Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4/square
+ Calculation4x4.bsv        Locally Added               0 
+ square4x4.awb             Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ multiplier.awb            Locally Removed           115 
+ multiplier4x4.awb         Locally Added               - 
+
+Directory modules/system/switch_to_led_system/calculation4x4
+ echo/                     Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4/echo
+ echo4x4.awb               Locally Added               0 
+ Calculation4x4.bsv        Locally Added               0 
+
+Directory modules/common/fpgalib/xup
+ hasim_fpgalib_xup.awb     Locally Modified          115 
+
+
+1) Added additional calculation modules for switch to led demo system
+2) Added Makefile support to direct synthesis intermediate files to a side directory

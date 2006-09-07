@@ -23,7 +23,7 @@ hasim_common=Hasim base library
 [Global]
 SaveParameters=0
 Description=Switch to LED w. multiplier
-File=multiplier4x4
+File=multiplier4x4_xup
 Version=2.0
 Type=HAsim
 Name=Switch to LED w. multiplier
@@ -32,7 +32,7 @@ Name=Switch to LED w. multiplier
 hasim_fpgalib=Hasim FPGA library XUP board
 
 [Model]
-DefaultAttributes=hasim
+DefaultAttributes=xup hasim
 model=HAsim Model Foundation
 
 [Hasim base library]
@@ -43,5 +43,5 @@ File=modules/common/hasim_common.awb
 calculation4x4=Hasim - 4x4 multiplier
 
 [Hasim - 4x4 multiplier]
-File=modules/system/switch_to_led_system/calculation4x4/multiplier/multiplier.awb
+File=modules/system/switch_to_led_system/calculation4x4/multiplier/multiplier4x4.awb
 Packagehint=hasim

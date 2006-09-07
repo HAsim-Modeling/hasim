@@ -40,6 +40,9 @@ my $setup = 0;
 my $build = 0;
 my $run = 0;
 
+# command options
+my $buildopt = "all";
+
 my $private = 1;
 my $public = 1;
 my $relative = 0;
@@ -48,11 +51,12 @@ $status = GetOptions( "private!"   => \$private,
                       "public!"    => \$public,
                       "relative!"  => \$relative,
                       "debug"      => \$debug,
-                      "configure"      => \$configure,
-                      "nuke"      => \$nuke,
+                      "configure"  => \$configure,
+                      "nuke"       => \$nuke,
                       "setup"      => \$setup,
                       "build"      => \$build,
-                      "run"      => \$run,
+                      "run"        => \$run,
+                      "buildopt=s" => \$buildopt,
                       "help"       => \$help
 		      );
 
@@ -136,7 +140,7 @@ sub build_build_tree {
     my $build_dir = $model->build_dir();
 
     ## NOTE: make target should come from argument to hasim-configure
-    $status = system("make -C $build_dir");
+    $status = system("make -C $build_dir $buildopt");
 
     return 1;
 }
@@ -193,8 +197,11 @@ sub generate_makefile_include {
     my $apm = HAsim::Build::get_model_name($model);
     HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$apm);
 
-#    # @XILINX_DIR@
-#    hash_set($replacements_r,'@XILINX_DIR@',".xilinx");
+    # @TMP_XILINX_DIR@
+    HAsim::Util::hash_set($replacements_r,'@TMP_XILINX_DIR@',$HAsim::Xilinx::tmp_xilinx_dir);
+
+    # @TMP_BSC_DIR@
+#    hash_set($replacements_r,'@TMP_BSC_DIR@',".xilinx");
 
     # @CONNECTION_SCRIPT@
 #    hash_set($replacements_r,'@CONNECTION_SCRIPT@',Asim::resolve("tools/scripts/hasim-connect"));
@@ -248,6 +255,9 @@ sub generate_makefile_top {
     } else {
 	HAsim::Util::WARN_AND_DIE("Root module must be a synthesis boundary");
     }
+
+    # @PART@
+    HAsim::Util::hash_set($replacements_r,'@PART@',$HAsim::Xilinx::part_num);
 
     # gather other info recursively
     __generate_makefile_top($root,"arch",$replacements_r);
@@ -420,6 +430,10 @@ sub __make_symlinks {
 sub make_dirs {
     my $model = shift;
     my $root = $model->modelroot();
+
+    my $dir = HAsim::Util::path_append($model->build_dir(),$HAsim::Xilinx::tmp_xilinx_dir);
+    $status = system("mkdir -p " . $dir);
+
     __make_dirs($root,HAsim::Util::path_append($model->build_dir(),"arch"));
     return 1;
 }

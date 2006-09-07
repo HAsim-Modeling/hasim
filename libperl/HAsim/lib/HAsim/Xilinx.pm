@@ -22,8 +22,8 @@ use strict;
 ############################################################
 # package variables
 
-my $xilinx_dir = ".xilinx";
-my $part_num = "xc2vp30-7-ff896";
+our $tmp_xilinx_dir = ".xilinx";
+our $part_num = "xc2vp30-7-ff896";
 
 ############################################################
 # generate_files:

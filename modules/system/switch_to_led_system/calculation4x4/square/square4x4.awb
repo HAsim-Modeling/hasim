@@ -7,14 +7,14 @@
 #/*
 # %AWB_START
 #
-# %name Hasim FPGA library XUP board
-# %desc Hasim FPGA library XUP board
-# %provides hasim_fpgalib
+# %name Hasim - 4x4 square
+# %desc Hasim - 4x4 square
+# %provides calculation4x4
 #
-# %attributes xup hasim
+# %attributes hasim
 #
-# %private FPGALib.bsv xup.ucf
+# %private Calculation4x4.bsv
+#
 #
 # %AWB_END
 # */
-

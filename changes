@@ -1817,3 +1817,52 @@ Directory tools/scripts
 
 Added missing package qualifier in .pm file.
 Slight update to perl invocation syntax in scripts.
+
+----------
+mamercal    Date: Thu Sep  7 12:55:09 EDT 2006  CSN: CSN-hasim-115
+                  Thu Sep  7 16:55:09 UTC 2006
+
+
+Directory config/pm/hasim
+ traffic_light/            Locally Removed           114 
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Removed           114 
+
+Directory config/pm/hasim
+ multiplier/               Locally Removed           114 
+
+Directory config/pm/hasim/multiplier
+ multiplier.apm            Locally Removed           114 
+
+Directory config/pm/hasim
+ demos/                    Locally Added               0 
+
+Directory config/pm/hasim/demos
+ switch_to_led/            Locally Added               0 
+
+Directory config/pm/hasim/demos/switch_to_led
+ multiplier4x4_xup.apm     Locally Added               0 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          114 
+ Makefile.include.template Locally Modified          114 
+
+Directory modules/system
+ switch_to_led_system/     Locally Added               0 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.awb  Locally Added               0 
+ System.bsv                Locally Added               0 
+ calculation4x4/           Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4
+ multiplier/               Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ Calculation4x4.bsv        Locally Added               0 
+ multiplier.awb            Locally Added               0 
+
+
+- Split multiplier into switch/led interface and functional block.
+- Make now copies download script and bitfile to ~/.asim/hasim/download

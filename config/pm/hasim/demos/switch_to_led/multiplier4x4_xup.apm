@@ -1,0 +1,47 @@
+
+[Hasim FPGA library XUP board]
+Packagehint=hasim
+File=modules/common/fpgalib/xup/hasim_fpgalib_xup.awb
+
+[Hasim - Switch in to LED out system]
+Packagehint=hasim
+File=modules/system/switch_to_led_system/switch_to_led_system.awb
+
+[Hasim null controller]
+Packagehint=hasim
+File=modules/controller/null/hasim_null_controller.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/hasim_model.awb
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - Switch in to LED out system
+hasim_controller=Hasim null controller
+hasim_common=Hasim base library
+
+[Global]
+SaveParameters=0
+Description=Switch to LED w. multiplier
+File=multiplier4x4
+Version=2.0
+Type=HAsim
+Name=Switch to LED w. multiplier
+
+[Hasim base library/Requires]
+hasim_fpgalib=Hasim FPGA library XUP board
+
+[Model]
+DefaultAttributes=hasim
+model=HAsim Model Foundation
+
+[Hasim base library]
+Packagehint=hasim
+File=modules/common/hasim_common.awb
+
+[Hasim - Switch in to LED out system/Requires]
+calculation4x4=Hasim - 4x4 multiplier
+
+[Hasim - 4x4 multiplier]
+File=modules/system/switch_to_led_system/calculation4x4/multiplier/multiplier.awb
+Packagehint=hasim

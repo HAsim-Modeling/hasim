@@ -98,9 +98,10 @@ bit: $(APM_NAME)_par.bit $(DOWNLOAD_FILE)
 	@echo "impact -batch $(BUILD_DIR)/$(DOWNLOAD_FILE)" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
 	@echo "Generated launch script \"$(APM_NAME)\".";
-	@cp $(APM_NAME)_par.bit ~
-	@cp $(DOWNLOAD_FILE) ~
-	@echo "Copied files necessary for download to ~.";
+	@mkdir -p $(MAPPED_DIR);
+	@cp $(APM_NAME)_par.bit $(MAPPED_DIR)
+	@cp $(DOWNLOAD_FILE) $(MAPPED_DIR)
+	@echo "Copied files necessary for download to $(MAPPED_DIR).";
 
 
 .PHONY: stats

@@ -14,6 +14,8 @@ BUILD_DIR = @BUILD_DIR@
 ARCH_DIR = $(BUILD_DIR)/arch
 ALL_DIRS = @ALL_DIRS@
 
+MAPPED_DIR = ~/.asim/hasim/download
+
 CONNECTION_SCRIPT = hasim-connect
 APM_FILE = @APM_FILE@
 

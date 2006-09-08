@@ -7,13 +7,15 @@
 #/*
 # %AWB_START
 #
-# %name Hasim - Traffic light function w.o synthesis boundary
-# %desc Hasim - Traffic light function w.o synthesis boundary
+# %name Hasim - Traffic light function w. synthesis boundary
+# %desc Hasim - Traffic light function w. synthesis boundary
 # %provides hasim_traffic_light_function
 #
 # %attributes hasim
 #
 # %private TL0.bsv
+#
+# %param SYNTH_BOUNDARY sysTL "name of synthesis boundary"
 #
 # %AWB_END
 # */

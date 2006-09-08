@@ -1,12 +1,10 @@
-#!/usr/bin/make -f --no-keep-going
+#!/usr/bin/make --no-keep-going -f
 
 # Must always invoke this makefile from its own directory
 include ./Makefile.include
 
 ROOT_DIR = @ROOT_DIR@
 ROOT_WRAPPER_SYNTH_ID = mk_$(ROOT_DIR)_Wrapper
-
-LOGFILE = $(APM_NAME).log
 
 CXXS = $(ROOT_WRAPPER_SYNTH_ID).cxx schedule.cxx
 HS = $(CXXS:%.cxx=%.h)
@@ -105,7 +103,7 @@ vexe: $(APM_NAME).vexe
 
 
 $(APM_NAME).vexe: $(ROOT_V)
-	$(BSC) $(BSC_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 2>&1 | tee $(LOGFILE)
+	$(BSC) $(BSC_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 
 
 $(ROOT_V):
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
@@ -120,13 +118,12 @@ exe: $(APM_NAME).exe
 	@chmod +x $(APM_NAME)
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
-
 $(APM_NAME).exe: $(ROOT_BA)
-	$(BSC) $(BSC_FLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 2>&1 | tee $(LOGFILE)
+	$(BSC) $(BSC_FLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 
+	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
 
 $(ROOT_BA):
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
-
 
 ################################################################
 ## Misc. rules
@@ -142,8 +139,8 @@ help:
 
 .PHONY: clean
 clean: clean_root
-	rm -f $(HS) $(OS) $(CXXS)
 	rm -f $(TMP_XILINX_DIR)/*.*
+	rm -f $(TMP_bsc_DIR)/*.*
 	rm -f *~
 
 .PHONY: clean_root

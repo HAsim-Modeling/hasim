@@ -62,7 +62,6 @@ module [Module] connectDangling#(List#(ConnectionData) ld,
   
   let numout = length(dsends);
   let numin  = length(drecs);
-  
   let nCncts = length(cncts);
   
   //Internal Connections
@@ -240,7 +239,19 @@ module [Module] connectTopLevel#(List#(ConnectionData) ld,
                                  List#(DanglingInfo) children)       ();
     
   match {.sends, .recs, .chns} = splitConnections(ld);
-  
+   
+  /////////////////////////////////////
+  for (Integer x = 0; x < length(sends); x = x + 1)
+  begin
+    match {.nm, .cout} = sends[x];
+    messageM(strConcat("<SEND> ", nm));
+  end
+  for (Integer x = 0; x < length(recs); x = x + 1)
+  begin
+    match {.nm, .cin} = recs[x];
+    messageM(strConcat("<REC> ", nm));
+  end
+  /////////////////////////////////////   
   
   //match {.dsends, .drecs, .cncts} = groupByName(sends, recs);
   let tup = groupByName(sends, recs);
@@ -250,9 +261,26 @@ module [Module] connectTopLevel#(List#(ConnectionData) ld,
   
   let numout = length(dsends);
   let numin  = length(drecs);
-  
   let nCncts = length(cncts);
-  
+   
+  /////////////////////////////////////
+  for (Integer x = 0; x < numout; x = x + 1)
+  begin
+    match {.nm, .cout} = dsends[x];
+    messageM(strConcat("<DSEND> ", nm));
+  end
+  for (Integer x = 0; x < numin; x = x + 1)
+  begin
+     match {.nm, .cin} = drecs[x];
+     messageM(strConcat("<DREC> ", nm));
+  end
+  for (Integer x = 0; x < nCncts; x = x + 1)
+  begin
+     match {.nm, .cin, .cout} = cncts[x];
+     messageM(strConcat("<CNCT> ", nm));
+  end
+  /////////////////////////////////////   
+   
   //Internal Connections
   for (Integer x = 0; x < nCncts; x = x + 1)
   begin
@@ -285,6 +313,8 @@ module [Module] connectTopLevel#(List#(ConnectionData) ld,
     
       match {.cnm, .caddr} = osends[y];
       
+       messageM(strConcat("<OSEND> ", cnm));
+
       //First check the current module for a rec
       
       case (lookup(cnm, drecs)) matches
@@ -328,6 +358,8 @@ module [Module] connectTopLevel#(List#(ConnectionData) ld,
     begin
     
       match {.cnm, .caddr} = orecs[y];
+
+       messageM(strConcat("<OREC> ", cnm));
       
       //First check the current module for a send
       

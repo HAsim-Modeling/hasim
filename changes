@@ -1915,3 +1915,47 @@ Directory modules/common/fpgalib/xup
 
 1) Added additional calculation modules for switch to led demo system
 2) Added Makefile support to direct synthesis intermediate files to a side directory
+----------
+mamercal    Date: Fri Sep  8 17:15:45 EDT 2006  CSN: CSN-hasim-117
+                  Fri Sep  8 21:15:45 UTC 2006
+
+
+Directory libperl/HAsim/lib/HAsim
+ Bluespec.pm               Locally Modified          116 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          116 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Added               0 
+ traffic_light.apm         Locally Removed           116 
+ traffic_light_xup_synth.apm Locally Added               0 
+ traffic_light_exe_nosynth.apm Locally Added               0 
+ traffic_light_exe_synth.apm Locally Added               0 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_xup.apm           Locally Added               0 
+ adder4x4_xup.apm          Locally Added               0 
+ square4x4_xup.apm         Locally Added               0 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          116 
+ Makefile.top.template     Locally Modified          116 
+
+Directory modules/system/traffic_light_system
+ hasim_traffic_light_function_synth/ Locally Added               0 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function_synth
+ hasim_traffic_light_function.awb Locally Added               0 
+ TL0.bsv                   Locally Added               0 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Modified          116 
+
+Directory modules/common
+ Connections.bsv           Locally Modified          116 
+
+
+- Added new demo models: adder, echo, square and traffic light (w. and w.o
+  synthesis boundary, w. XUP and SW libraries)
+- Moved bluespec intermediate files (*.bi *.bo) to a .bsc directory

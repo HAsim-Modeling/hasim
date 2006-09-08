@@ -15,6 +15,11 @@ use warnings;
 use strict;
 
 ############################################################
+# package variables
+
+our $tmp_bsc_dir = ".bsc";
+
+############################################################
 # verilog_lib_files:
 sub verilog_lib_files {
     my @files = ("BypassWire.v",

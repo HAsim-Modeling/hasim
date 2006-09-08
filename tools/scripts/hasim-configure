@@ -201,7 +201,7 @@ sub generate_makefile_include {
     HAsim::Util::hash_set($replacements_r,'@TMP_XILINX_DIR@',$HAsim::Xilinx::tmp_xilinx_dir);
 
     # @TMP_BSC_DIR@
-#    hash_set($replacements_r,'@TMP_BSC_DIR@',".xilinx");
+    HAsim::Util::hash_set($replacements_r,'@TMP_BSC_DIR@',$HAsim::Bluespec::tmp_bsc_dir);
 
     # @CONNECTION_SCRIPT@
 #    hash_set($replacements_r,'@CONNECTION_SCRIPT@',Asim::resolve("tools/scripts/hasim-connect"));
@@ -432,6 +432,9 @@ sub make_dirs {
     my $root = $model->modelroot();
 
     my $dir = HAsim::Util::path_append($model->build_dir(),$HAsim::Xilinx::tmp_xilinx_dir);
+    $status = system("mkdir -p " . $dir);
+
+    $dir = HAsim::Util::path_append($model->build_dir(),$HAsim::Bluespec::tmp_bsc_dir);
     $status = system("mkdir -p " . $dir);
 
     __make_dirs($root,HAsim::Util::path_append($model->build_dir(),"arch"));

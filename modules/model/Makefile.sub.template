@@ -1,4 +1,4 @@
-#!/usr/bin/make -f --no-keep-going
+#!/usr/bin/make --no-keep-going -f 
 
 include @DOTS_TO_MAKEFILE_INCL@/Makefile.include
 
@@ -37,7 +37,8 @@ make_subdir_bas:
 	done
 
 $(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(SRCS) $(SUBDIR_BAS)
-	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+	mv $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba .
 
 ################################################################
 ## 
@@ -52,16 +53,11 @@ make_subdir_vs:
 	done
 
 $(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(SRCS) $(SUBDIR_VS)
-	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
-
-#.PHONY: bsv_from_v
-#bsv_from_v: $(SUBDIR_VS)
-#	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
+	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
 
 ################################################################
 ## 
 
-# perhaps add dependency on $(CONNECTION_SCRIPT) to catch changes it
 $(WRAPPER).bsv:
 	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR) 
 
@@ -74,12 +70,12 @@ help:
 	@echo "  [v] generate verilog source"
 	@echo "  [ba] (default) generate ba for design"
 	@echo "  [help] display this message"
-	@echo "  [clean] remove intermediate files ($(BIS) $(BOS) $(WRAPPER).{bo,bi})"
-	@echo "  [realclean] remove target files ($(WRAPPER).bsv $(WRAPPER_SYNTH_ID).ba)"
+	@echo "  [clean] remove intermediate files"
+	@echo "  [realclean] remove target files ($(WRAPPER).bsv $(WRAPPER_SYNTH_ID).ba $(WRAPPER_SYNTH_ID).v $(LOGFILE)"
 
 .PHONY: clean
 clean: clean_subdirs
-	rm -f $(BOS) $(BIS) $(WRAPPER).{bo,bi} *~	
+	rm -f *~	
 
 .PHONY: clean_subdirs
 clean_subdirs:

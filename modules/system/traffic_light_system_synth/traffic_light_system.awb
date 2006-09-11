@@ -1,0 +1,21 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hasim - Traffic light system
+# %desc Hasim - Traffic light system
+# %provides hasim_system
+# %requires hasim_traffic_light_function
+#
+# %attributes hasim
+#
+# %private System.bsv
+#
+#
+# %AWB_END
+# */

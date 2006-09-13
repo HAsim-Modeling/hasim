@@ -55,6 +55,7 @@ Asim::init()
 
 
 print_wrapper($modelfile,$metatype) ;
+create_surrogate($modelfile, $metatype);
 
 exit 0;
 
@@ -70,20 +71,13 @@ sub print_wrapper {
 #    $model->dump();
     my $module = $root->find_module_providing($metatype);
 
-    my $wrapper = $metatype . "_Wrapper.bsv";
+    my $wrapper = make_wrapper_name($metatype) . ".bsv";
     CORE::open(WRAPPER, "> $wrapper") || return undef;
 
     print WRAPPER "import ModuleCollect::*;\n";
     print WRAPPER "// These are well-known/required hasim modules\n";
     print WRAPPER "import hasim_base::*;\n";
     print WRAPPER "import hasim_common::*;\n";
-    print WRAPPER "\n";
-
-    print WRAPPER "// import children wrappers\n";
-    foreach my $submodule (get_sub_synth_modules($module,1)) {
-	my $file_root = $submodule->provides() . "_Wrapper";
-	print WRAPPER "import $file_root\::*;\n";
-    }
     print WRAPPER "\n";
 
     print WRAPPER "// import non-synthesis children\n";
@@ -94,29 +88,55 @@ sub print_wrapper {
 
     print WRAPPER "(* synthesize *)\n";
     if ($module->issame($root)) {
-	print WRAPPER "module [Module] mk_" . $metatype . "_Wrapper (TopLevel);\n";    
+	print WRAPPER "module [Module] mk_" . make_module_name($metatype) . " (TopLevel);\n";    
     } else {
-	print WRAPPER "module [Module] mk_" . $metatype . "_Wrapper (WithConnections);\n";    
+	print WRAPPER "module [Module] mk_" . make_module_name($metatype) . " (WithConnections);\n";    
     }
     print WRAPPER "\n";
 
+    my @child_info_vars = ();
+    my $synth_id = get_synthesis_boundary_name($module);
+    print WRAPPER "$indent // instantiate own module\n";
+    if ($module->issame($root)) {
+	print WRAPPER "$indent let m <- instantiateTopLevel($synth_id, nil);\n";
+    } else {
+	print WRAPPER "$indent let m <- instantiateWithConnections($synth_id, nil);\n";
+    }
+    print WRAPPER "\n";
+
+    print WRAPPER "$indent return m;\n";
+    print WRAPPER "\n";
+
+    print WRAPPER "endmodule\n";
+
+    CORE::close(WRAPPER);
+
+}
+
+############################################################
+# 
+sub create_surrogates {
+    my $modelfile = shift;
+    my $metatype = shift;
+
+    my $model = Asim::Model->new($modelfile);
+    my $root = $model->modelroot();
+
+    my $module = $root->find_module_providing($metatype);
+
     my $indent = "   ";
 
-    my @child_info_vars = ();
+    # For each child syntheis boundary
     foreach my $submodule (get_sub_synth_modules($module,1)) {
-
 	my $submetatype = $submodule->provides();
-	
-	print WRAPPER "$indent // $submetatype\n";	
+	my $filename = "$submetatype.bsv";
+
+        CORE::open(SURROGATE, "> $filename");
+        print SURROGATE "$indent // Surrogate for $submetatype\n";
 
 	my $wrap_var = "wrap_" . $submetatype;
-	my $mk_wrapper = "mk_" . $submetatype . "_Wrapper";
-	print WRAPPER "$indent // 1. instantiate wrapper\n";
-	print WRAPPER "$indent WithConnections $wrap_var <- $mk_wrapper();\n";
+	my $mk_wrapper = "mk_" . make_wrapper_name($submetatype);
 	
-#	    get_module_build_dir($module,$root,"arch") . "/" .
-#	    get_module_build_dir2($model,$module) . "/" .
-
 	my $log_file = 
 	    $model->build_dir() . "/" . 
 	    get_module_build_dir($module,$root,"arch") . "/" .
@@ -125,7 +145,7 @@ sub print_wrapper {
 
         print "<<<< $log_file\n";
 	
-	print WRAPPER "$indent // 2. log sends & recvs\n";
+	print SURROGATE "$indent // 2. log sends & recvs\n";
 	my @conns = parse_dangling_connections($log_file);
 	my @sends_exprs = ();
 	my @recvs_exprs = ();
@@ -148,40 +168,25 @@ sub print_wrapper {
 	my $sends_cons = get_cons_expr(@sends_exprs);
 	my $recvs_cons = get_cons_expr(@recvs_exprs);
 
-	print WRAPPER "$indent let $sends_var = $sends_cons;\n";
-	print WRAPPER "$indent let $recvs_var = $recvs_cons;\n";
+	print SURROGATE "$indent let $sends_var = $sends_cons;\n";
+	print SURROGATE "$indent let $recvs_var = $recvs_cons;\n";
 
-	my $info_var = "info_" . $submetatype;
-	print WRAPPER "$indent // 3. info\n";
-	print WRAPPER "$indent let $info_var = tuple3($wrap_var,$sends_var,$recvs_var);\n";
+	print SURROGATE "$indent addConnections($wrap_var, $sends_var, $recvs_var);\n";
+
+	print SURROGATE "endmodule\n";
+	print SURROGATE "\n";
 	
-	print WRAPPER "\n";
-	
-	push(@child_info_vars,$info_var);
-
+        CORE::close(SURROGATE);
     }
+}
 
-    print WRAPPER "$indent // join all info\n";
-    my $cons_string = get_cons_expr(@child_info_vars);
-    print WRAPPER "$indent let info = $cons_string;\n";
-    print WRAPPER "\n";
 
-    my $synth_id = get_synthesis_boundary_name($module);
-    print WRAPPER "$indent // instantiate own module\n";
-    if ($module->issame($root)) {
-	print WRAPPER "$indent let m <- instantiateTopLevel($synth_id, info);\n";
-    } else {
-	print WRAPPER "$indent let m <- instantiateWithConnections($synth_id, info);\n";
-    }
-    print WRAPPER "\n";
-
-    print WRAPPER "$indent return m;\n";
-    print WRAPPER "\n";
-
-    print WRAPPER "endmodule\n";
-
-    CORE::close(WRAPPER);
-
+############################################################
+# 
+sub make_wrapper_name {
+    my $name = shift;
+  
+    return $name . "_Wrapper";
 }
 
 ############################################################

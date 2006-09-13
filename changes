@@ -2066,3 +2066,22 @@ name must be well known by the parent module.
 Fixed up the switch_to_led modules to use this convention.
 
 Joel
+
+----------
+jsemer      Date: Wed Sep 13 17:28:09 EDT 2006  CSN: CSN-hasim-119
+                  Wed Sep 13 21:28:09 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          119 
+
+Directory modules/common/base
+ hasim_base.awb            Locally Added               0 
+
+
+First cut at new implementation of synthesis boundaries. It doesn't 
+work, but neither does it break models with no synthesis boundaries.
+
+Added file missing from last commit.
+
+Joel

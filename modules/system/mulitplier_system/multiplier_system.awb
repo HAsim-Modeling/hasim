@@ -13,7 +13,7 @@
 #
 # %attributes hasim
 #
-# %public System.bsv
+# %public multiplier_system.bsv
 #
 #
 # %AWB_END

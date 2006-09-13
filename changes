@@ -2085,3 +2085,75 @@ work, but neither does it break models with no synthesis boundaries.
 Added file missing from last commit.
 
 Joel
+
+----------
+jsemer      Date: Wed Sep 13 17:49:00 EDT 2006  CSN: CSN-hasim-119
+                  Wed Sep 13 21:49:00 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          120 
+
+Directory modules/model
+ Model.bsv                 Locally Removed           119 
+ hasim_model.awb           Locally Modified          118 
+ hasim_model.bsv           Locally Added               - 
+
+Directory modules/controller/simple
+ Controller.bsv            Locally Removed           119 
+ hasim_simple_controller.awb Locally Modified          119 
+ hasim_simple_controller.bsv Locally Added               - 
+
+Directory modules/controller/null
+ Controller.bsv            Locally Removed           119 
+ hasim_null_controller.awb Locally Modified          119 
+ hasim_null_controller.bsv Locally Added               - 
+
+Directory modules/system/mulitplier_system
+ System.bsv                Locally Removed           119 
+ multiplier_system.awb     Locally Modified          119 
+ multiplier_system.bsv     Locally Added               - 
+
+Directory modules/system/switch_to_led_system/calculation4x4/adder
+ Calculation4x4.bsv        Locally Removed           119 
+ adder4x4.awb              Locally Modified          119 
+ adder4x4.bsv              Locally Added               - 
+
+Directory modules/system/switch_to_led_system/calculation4x4/square
+ Calculation4x4.bsv        Locally Removed           119 
+ square4x4.awb             Locally Modified          119 
+ square4x4.bsv             Locally Added               - 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ Calculation4x4.bsv        Locally Removed           119 
+ multiplier4x4.awb         Locally Modified          119 
+ multiplier4x4.bsv         Locally Added               - 
+
+Directory modules/system/switch_to_led_system/calculation4x4/echo
+ echo4x4.awb               Locally Modified          119 
+ Calculation4x4.bsv        Locally Removed           119 
+ echo4x4.bsv               Locally Added               - 
+
+Directory modules/system/switch_to_led_system
+ System.bsv                Locally Removed           119 
+ switch_to_led_system.awb  Locally Modified          119 
+ switch_to_led_system.bsv  Locally Added               - 
+
+Directory modules/common/fpgalib/software
+ hasim_fpgalib_software.awb Locally Modified          119 
+ hasim_fpgalib_software.bsv Locally Added               - 
+ FPGALib.bsv               Locally Removed           119 
+
+Directory modules/common/fpgalib/xup
+ hasim_fpgalib_xup.awb     Locally Modified          119 
+ hasim_fpgalib_xup.bsv     Locally Added               - 
+ FPGALib.bsv               Locally Removed           119 
+
+
+Okay, so hasim-connect didn't really work (even without a
+synthesis boundary). It should now.
+
+Also took advantage of the fact that all bsv implementations 
+of an Asim module don't have to have the same filename.
+
+Joel

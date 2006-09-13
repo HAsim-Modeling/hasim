@@ -13,7 +13,7 @@
 #
 # %attributes hasim
 #
-# %public FPGALib.bsv
+# %public hasim_fpgalib_software.bsv
 #
 # %AWB_END
 # */

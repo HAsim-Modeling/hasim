@@ -55,7 +55,7 @@ Asim::init()
 
 
 print_wrapper($modelfile,$metatype) ;
-create_surrogate($modelfile, $metatype);
+create_surrogates($modelfile, $metatype);
 
 exit 0;
 
@@ -88,23 +88,23 @@ sub print_wrapper {
 
     print WRAPPER "(* synthesize *)\n";
     if ($module->issame($root)) {
-	print WRAPPER "module [Module] mk_" . make_module_name($metatype) . " (TopLevel);\n";    
+	print WRAPPER "module [Module] mk_" . make_wrapper_name($metatype) . " (TopLevel);\n";    
     } else {
-	print WRAPPER "module [Module] mk_" . make_module_name($metatype) . " (WithConnections);\n";    
+	print WRAPPER "module [Module] mk_" . make_wrapper_name($metatype) . " (WithConnections);\n";    
     }
     print WRAPPER "\n";
 
     my @child_info_vars = ();
     my $synth_id = get_synthesis_boundary_name($module);
-    print WRAPPER "$indent // instantiate own module\n";
+    print WRAPPER "// instantiate own module\n";
     if ($module->issame($root)) {
-	print WRAPPER "$indent let m <- instantiateTopLevel($synth_id, nil);\n";
+	print WRAPPER "  let m <- instantiateTopLevel($synth_id, nil);\n";
     } else {
-	print WRAPPER "$indent let m <- instantiateWithConnections($synth_id, nil);\n";
+	print WRAPPER "  let m <- instantiateWithConnections($synth_id, nil);\n";
     }
     print WRAPPER "\n";
 
-    print WRAPPER "$indent return m;\n";
+    print WRAPPER "  return m;\n";
     print WRAPPER "\n";
 
     print WRAPPER "endmodule\n";

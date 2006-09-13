@@ -14,7 +14,7 @@
 #
 # %attributes hasim
 #
-# %public System.bsv
+# %public switch_to_led_system.bsv
 #
 #
 # %AWB_END

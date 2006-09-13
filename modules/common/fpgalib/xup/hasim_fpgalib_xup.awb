@@ -13,7 +13,7 @@
 #
 # %attributes xup hasim
 #
-# %public FPGALib.bsv
+# %public hasim_fpgalib_xup.bsv
 # %private xup.ucf
 #
 # %AWB_END

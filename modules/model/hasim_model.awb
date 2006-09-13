@@ -14,7 +14,7 @@
 
 %attributes model
 
-%public Model.bsv
+%public hasim_model.bsv
 
 %makefile Makefile.include.template Makefile.top.template Makefile.sub.template
 

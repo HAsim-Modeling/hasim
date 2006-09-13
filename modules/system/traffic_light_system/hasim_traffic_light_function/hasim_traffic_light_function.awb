@@ -13,7 +13,7 @@
 #
 # %attributes hasim
 #
-# %private TL0.bsv
+# %public TL0.bsv
 #
 # %AWB_END
 # */

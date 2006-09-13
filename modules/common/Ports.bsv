@@ -1,5 +1,5 @@
 
-import HASim::*;
+import hasim_base::*;
 
 interface Port_Send#(type msg_T);
   

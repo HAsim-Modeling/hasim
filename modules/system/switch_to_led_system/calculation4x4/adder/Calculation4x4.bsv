@@ -1,4 +1,5 @@
-import HASim::*;
+import hasim_base::*;
+import hasim_common::*;
 
 interface Calculation4x4;
    method Action start(Bit#(4) in);

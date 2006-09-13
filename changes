@@ -1959,3 +1959,110 @@ Directory modules/common
 - Added new demo models: adder, echo, square and traffic light (w. and w.o
   synthesis boundary, w. XUP and SW libraries)
 - Moved bluespec intermediate files (*.bi *.bo) to a .bsc directory
+
+----------
+jsemer      Date: Wed Sep 13 16:27:19 EDT 2006  CSN: CSN-hasim-119
+                  Wed Sep 13 20:27:19 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          118 
+ hasim-connect             Locally Modified          118 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          118 
+ traffic_light_xup_synth.apm Locally Modified          118 
+ traffic_light_exe_nosynth.apm Locally Modified          118 
+ traffic_light_exe_synth.apm Locally Modified          118 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          118 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_xup.apm           Locally Modified          118 
+ adder4x4_xup.apm          Locally Modified          118 
+ square4x4_xup.apm         Locally Modified          118 
+ multiplier4x4_xup.apm     Locally Modified          118 
+
+Directory modules/model
+ Model.bsv                 Locally Modified          118 
+
+Directory modules/controller/simple
+ hasim_simple_controller.awb Locally Modified          118 
+ Controller.bsv            Locally Modified          118 
+
+Directory modules/controller/null
+ ISA.bsv                   Locally Removed           118 
+ hasim_null_controller.awb Locally Modified          118 
+ Controller.bsv            Locally Modified          118 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Modified          118 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Modified          118 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.awb     Locally Modified          118 
+ System.bsv                Locally Modified          118 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.awb  Locally Modified          118 
+ System.bsv                Locally Modified          118 
+
+Directory modules/system/switch_to_led_system/calculation4x4/adder
+ Calculation4x4.bsv        Locally Modified          118 
+ adder4x4.awb              Locally Modified          118 
+
+Directory modules/system/switch_to_led_system/calculation4x4/square
+ Calculation4x4.bsv        Locally Modified          118 
+ square4x4.awb             Locally Modified          118 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ Calculation4x4.bsv        Locally Modified          118 
+ multiplier4x4.awb         Locally Modified          118 
+
+Directory modules/system/switch_to_led_system/calculation4x4/echo
+ echo4x4.awb               Locally Modified          118 
+ Calculation4x4.bsv        Locally Modified          118 
+
+Directory modules/system/traffic_light_system_synth
+ System.bsv                Locally Modified          118 
+
+Directory modules/common
+ Ports.bsv                 Locally Modified          118 
+ hasim_common.awb          Locally Modified          118 
+
+Directory modules/common/fpgalib/software
+ hasim_fpgalib_software.awb Locally Modified          118 
+ FPGALib.bsv               Locally Modified          118 
+
+Directory modules/common/fpgalib/xup
+ hasim_fpgalib_xup.awb     Locally Modified          118 
+ FPGALib.bsv               Locally Modified          118 
+
+Directory modules/common
+ Stats.bsv                 Locally Modified          118 
+ HASim.bsv                 Locally Removed           118 
+ base/                     Locally Added               0 
+
+Directory modules/common/base
+ HASim.bsv                 Locally Added               - 
+
+Directory modules/common
+ Commands.bsv              Locally Added               - 
+ Connections.bsv           Locally Modified          118 
+ Events.bsv                Locally Modified          118 
+
+
+Added support for a synthesized bsv file that corresponds to
+each awb module and is named with the asim meta-type (%provides name).
+All 'imports' should use these files instead of any specific
+implementation file names.
+
+This relaxes the restriction that a module implementation file
+name must be well known by the parent module.
+
+Fixed up the switch_to_led modules to use this convention.
+
+Joel

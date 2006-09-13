@@ -1,5 +1,5 @@
 
-import HASim::*;
+import hasim_base::*;
 
 // FPGALib XUP implementation
 // To-Do: Talking to PowerPC

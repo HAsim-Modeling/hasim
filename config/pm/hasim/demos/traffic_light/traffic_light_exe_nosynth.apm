@@ -34,6 +34,7 @@ hasim_common=Hasim base library
 
 [Hasim base library/Requires]
 hasim_fpgalib=Hasim FPGA library software
+hasim_base=Hasim base module
 
 [Hasim - Traffic light system/Requires]
 hasim_traffic_light_function=Hasim - Traffic light function w.o synthesis boundary
@@ -44,4 +45,8 @@ Packagehint=hasim
 
 [Hasim - Traffic light function w.o synthesis boundary]
 File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function.awb
+Packagehint=hasim
+
+[Hasim base module]
+File=modules/common/base/hasim_base.awb
 Packagehint=hasim

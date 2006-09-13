@@ -6,12 +6,8 @@ import Connectable::*;
 import FIFO::*;
 
 //HASim library imports
-import HASim::*;
-import Events::*;
-import Stats::*;
-
-//HASim model-specific imports
-import ISA::*;
+import hasim_base::*;
+import hasim_common::*;
 
 //************* OneTest Controller **************
 

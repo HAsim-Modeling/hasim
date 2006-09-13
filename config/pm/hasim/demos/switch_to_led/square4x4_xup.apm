@@ -30,6 +30,7 @@ Name=Switch to LED w. square
 
 [Hasim base library/Requires]
 hasim_fpgalib=Hasim FPGA library XUP board
+hasim_base=Hasim base module
 
 [Model]
 DefaultAttributes=xup hasim
@@ -42,7 +43,10 @@ File=modules/common/hasim_common.awb
 [Hasim - Switch in to LED out system/Requires]
 calculation4x4=Hasim - 4x4 square
 
-
 [Hasim - 4x4 square]
 File=modules/system/switch_to_led_system/calculation4x4/square/square4x4.awb
+Packagehint=hasim
+
+[Hasim base module]
+File=modules/common/base/hasim_base.awb
 Packagehint=hasim

@@ -1,7 +1,7 @@
 import FIFO::*;
 import ModuleCollect::*;
 
-import HASim::*;
+import hasim_base::*;
 
 
 `define STAT_SIZE 32

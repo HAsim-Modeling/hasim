@@ -19,7 +19,6 @@ File=modules/model/hasim_model.awb
 Packagehint=hasim
 File=modules/common/hasim_common.awb
 
-
 [Model]
 DefaultAttributes=traffic-light hasim
 model=HAsim Model Foundation
@@ -35,9 +34,12 @@ File=modules/common/fpgalib/xup/hasim_fpgalib_xup.awb
 
 [Hasim base library/Requires]
 hasim_fpgalib=Hasim FPGA library XUP board
-
-
+hasim_base=Hasim base module
 
 [Hasim - Multiplier system]
 Packagehint=hasim
 File=modules/system/mulitplier_system/multiplier_system.awb
+
+[Hasim base module]
+File=modules/common/base/hasim_base.awb
+Packagehint=hasim

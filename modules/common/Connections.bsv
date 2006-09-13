@@ -1,6 +1,3 @@
-import HASim::*;
-import FPGALib::*;
-
 import GetPut::*;
 import ClientServer::*;
 import RegFile::*;
@@ -9,6 +6,9 @@ import List::*;
 import FIFO::*;
 import ModuleCollect::*;
 import Connectable::*;
+
+import hasim_base::*;
+import hasim_fpgalib::*;
 
 //Instantiate a module with connections exposed
 

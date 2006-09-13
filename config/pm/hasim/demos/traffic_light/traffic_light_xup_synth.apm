@@ -38,11 +38,15 @@ File=modules/common/fpgalib/xup/hasim_fpgalib_xup.awb
 
 [Hasim base library/Requires]
 hasim_fpgalib=Hasim FPGA library XUP board
+hasim_base=Hasim base module
 
 [Hasim - Traffic light system/Requires]
 hasim_traffic_light_function=Hasim - Traffic light function w. synthesis boundary
 
-
 [Hasim - Traffic light function w. synthesis boundary]
-File=modules/system/traffic_light_system/hasim_traffic_light_function_synth/hasim_traffic_light_function.awb
+File=modules/system/traffic_light_system_synth/traffic_light_function/hasim_traffic_light_function.awb
+Packagehint=hasim
+
+[Hasim base module]
+File=modules/common/base/hasim_base.awb
 Packagehint=hasim

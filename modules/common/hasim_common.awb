@@ -10,11 +10,11 @@
 # %name Hasim base library
 # %desc Hasim base library
 # %provides hasim_common
-# %requires hasim_fpgalib
+# %requires hasim_base hasim_fpgalib
 #
 # %attributes hasim
 #
-# %private BypassFIFO.bsv Debug.bsv Events.bsv Connections.bsv HASim.bsv Ports.bsv Stats.bsv
+# %public Events.bsv Connections.bsv  Ports.bsv Stats.bsv BypassFIFO.bsv Commands.bsv Debug.bsv 
 #
 # %AWB_END
 # */

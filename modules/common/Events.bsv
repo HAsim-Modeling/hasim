@@ -3,7 +3,7 @@ import FIFO::*;
 import ModuleCollect::*;
 
 //HASim library imports
-import HASim::*;
+import hasim_base::*;
 
 /*
 

@@ -1,5 +1,5 @@
 
-import HASim::*;
+import hasim_common::*;
 
 // FPGALib Software implementation
 // To-Do: Talking to PowerPC
@@ -8,8 +8,8 @@ import HASim::*;
 module [HASim_Module] mkFPGALib (TopLevel);
 
   Connection_Receive#(Bit#(4)) link_leds <- mkConnection_Receive("fpga_leds");
-//  Connection_Send#(Bit#(4))    link_switches <- mkConnection_Send("fpga_switches");
-//  Connection_Send#(ButtonInfo) link_buttons <- mkConnection_Send("fpga_buttons");
+  Connection_Send#(Bit#(4))    link_switches <- mkConnection_Send("fpga_switches");
+  Connection_Send#(ButtonInfo) link_buttons <- mkConnection_Send("fpga_buttons");
   
   Reg#(Bit#(4)) led_reg <- mkReg(4'b0000);
   Reg#(Bit#(4)) switch_reg <- mkReg(4'b0000);

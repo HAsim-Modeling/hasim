@@ -1,5 +1,5 @@
-import HASim::*;
-import ISA::*;
+import hasim_base::*;
+import hasim_common::*;
 
 module [HASim_Module] mkSystem (TModule#(Command, Response));
    

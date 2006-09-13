@@ -13,7 +13,8 @@
 #
 # %attributes xup hasim
 #
-# %private FPGALib.bsv xup.ucf
+# %public FPGALib.bsv
+# %private xup.ucf
 #
 # %AWB_END
 # */

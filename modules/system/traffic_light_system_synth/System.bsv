@@ -1,9 +1,9 @@
 package System;
 
-import HASim::*;
-import ISA::*;
+import hasim_base::*;
+import hasim_common::*;
 
-import TL0::*;
+import hasim_traffic_light_function::*;
 
 
 module [HASim_Module] mkSystem (TModule#(Command, Response));

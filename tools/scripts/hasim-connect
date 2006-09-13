@@ -74,8 +74,9 @@ sub print_wrapper {
     CORE::open(WRAPPER, "> $wrapper") || return undef;
 
     print WRAPPER "import ModuleCollect::*;\n";
-    print WRAPPER "import HASim::*;\n";
-    print WRAPPER "import Connections::*;\n";
+    print WRAPPER "// These are well-known/required hasim modules\n";
+    print WRAPPER "import hasim_base::*;\n";
+    print WRAPPER "import hasim_common::*;\n";
     print WRAPPER "\n";
 
     print WRAPPER "// import children wrappers\n";
@@ -277,31 +278,8 @@ sub get_sub_synth_modules {
 # 
 sub get_srcs_at_synth_boundary {
     my $module = shift;
-    my $ancestor = shift;
-    my $below_ancestor = shift;
 
-    # at ancestor
-    if ($module->provides() eq $ancestor->provides()) {
-	$below_ancestor = 1;
-    } 
-
-    my @srcs = ();
-    if ($below_ancestor) {
-	foreach my $file ($module->public(),$module->private()) {
-	    if ($file =~ /.bsv/) {
-		$file =~ s/.bsv//g;
-		push(@srcs,$file);
-	    }
-	}
-    }
-
-    # recurse
-    foreach my $submodule ($module->submodules()) {
-	if (!is_synthesis_boundary($submodule) || !$below_ancestor) {
-	    my @result = get_srcs_at_synth_boundary($submodule,$ancestor,$below_ancestor);
-	    push(@srcs,@result);
-	}
-    }
+    my @srcs = ($module->provides());
 
     return @srcs;
 }

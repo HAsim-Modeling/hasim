@@ -13,7 +13,7 @@
 #
 # %attributes hasim
 #
-# %private Calculation4x4.bsv
+# %public Calculation4x4.bsv
 #
 #
 # %AWB_END

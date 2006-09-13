@@ -1,7 +1,7 @@
-import HASim::*;
-import ISA::*;
+import hasim_base::*;
+import hasim_common::*;
 
-import Calculation4x4::*;
+import calculation4x4::*;
 
 module [HASim_Module] mkSystem (TModule#(Command, Response));
    

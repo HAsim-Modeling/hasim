@@ -1,9 +1,7 @@
 
 //HASim library imports
-import HASim::*;
-
-//HASim model-specific imports
-import ISA::*;
+import hasim_base::*;
+import hasim_common::*;
 
 //************* Null Controller **************
 

@@ -52,8 +52,24 @@ module [Module] connectDangling#(List#(ConnectionData) ld,
                                  List#(DanglingInfo) children)       (WithConnections);
     
   match {.sends, .recs, .chns} = splitConnections(ld);
+  match {.send_nms, .*} = List::unzip(sends);
+  match {.rec_nms, .*} = List::unzip(recs);
+
+  match {.ch_send_nms, .ch_rec_nms} = splitChildren(children);
   
-  //XXX Add duplicate name check
+  let dup_sends = getDuplicates(List::append(send_nms, ch_send_nms));
+  let dup_recs  = getDuplicates(List::append(rec_nms, ch_rec_nms));
+  
+  let nDupSends = length(dup_sends);
+  let nDupRecs = length(dup_recs);
+  
+  for (Integer x = 0; x < nDupSends; x = x + 1)
+    messageM(strConcat("ERROR: Duplicate Send: ", dup_sends[x]));
+  for (Integer x = 0; x < nDupRecs; x = x + 1)
+    messageM(strConcat("ERROR: Duplicate Receive: ", dup_recs[x]));
+    
+  if (nDupSends != 0 || nDupRecs != 0)
+    error("Duplicate connection names detected.");
   
   //match {.dsends, .drecs, .cncts} = groupByName(sends, recs);
   let tup = groupByName(sends, recs);
@@ -547,7 +563,7 @@ function Tuple3#(List#(Tuple2#(a, b)),
     
 endfunction
 
-//splitConnections :: [ConnectionData] -> ([(String, CON_Out)], [(String, CON_In)])
+//splitConnections :: [ConnectionData] -> ([(String, CON_Out)], [(String, CON_In)], [(String, CON_Chain)])
 
 function Tuple3#(List#(Tuple2#(String, CON_Out)), 
                  List#(Tuple2#(String, CON_In)),
@@ -571,6 +587,40 @@ function Tuple3#(List#(Tuple2#(String, CON_Out)),
 
 endfunction
 
+//splitChildren :: [DanglingInfo] -> ([String], [String])
+
+function Tuple2#(List#(String), 
+                 List#(String)) splitChildren(List#(DanglingInfo) l);
+
+  case (l) matches
+    tagged Nil: return tuple2(Nil, Nil);
+    default:
+    begin
+      match {.osends, .orecs} = splitChildren(List::tail(l));
+      match {.*, .sinfo, .rinfo} = (List::head(l));
+      match {.sends, .*} = List::unzip(sinfo);
+      match {.recs, .*} = List::unzip(rinfo);
+      return tuple2(List::append(sends, osends), List::append(recs, orecs));
+    end
+  endcase
+
+endfunction
+
+//getDuplicates :: [String] -> [String]
+
+function List#(String) getDuplicates(List#(String) l);
+
+  case (l) matches
+    tagged Nil: return Nil;
+    default:
+    begin
+      let ds = getDuplicates(List::tail(l));
+      let s  = (List::head(l));
+      return List::elem(s,ds) ? List::cons(s, ds) : ds;
+    end
+  endcase
+
+endfunction
 
 //splitWith :: (a -> Bool) -> [a] -> ([a], [a])
 

@@ -55,7 +55,7 @@ Asim::init()
 
 
 print_wrapper($modelfile,$metatype) ;
-create_surrogates($modelfile, $metatype);
+create_surrogate($modelfile, $metatype);
 
 exit 0;
 
@@ -88,23 +88,23 @@ sub print_wrapper {
 
     print WRAPPER "(* synthesize *)\n";
     if ($module->issame($root)) {
-	print WRAPPER "module [Module] mk_" . make_wrapper_name($metatype) . " (TopLevel);\n";    
+	print WRAPPER "module [Module] mk_" . make_module_name($metatype) . " (TopLevel);\n";    
     } else {
-	print WRAPPER "module [Module] mk_" . make_wrapper_name($metatype) . " (WithConnections);\n";    
+	print WRAPPER "module [Module] mk_" . make_module_name($metatype) . " (WithConnections);\n";    
     }
     print WRAPPER "\n";
 
     my @child_info_vars = ();
     my $synth_id = get_synthesis_boundary_name($module);
-    print WRAPPER "// instantiate own module\n";
+    print WRAPPER "$indent // instantiate own module\n";
     if ($module->issame($root)) {
-	print WRAPPER "  let m <- instantiateTopLevel($synth_id, nil);\n";
+	print WRAPPER "$indent let m <- instantiateTopLevel($synth_id, nil);\n";
     } else {
-	print WRAPPER "  let m <- instantiateWithConnections($synth_id, nil);\n";
+	print WRAPPER "$indent let m <- instantiateWithConnections($synth_id, nil);\n";
     }
     print WRAPPER "\n";
 
-    print WRAPPER "  return m;\n";
+    print WRAPPER "$indent return m;\n";
     print WRAPPER "\n";
 
     print WRAPPER "endmodule\n";
@@ -133,9 +133,20 @@ sub create_surrogates {
 
         CORE::open(SURROGATE, "> $filename");
         print SURROGATE "$indent // Surrogate for $submetatype\n";
-
+	
 	my $wrap_var = "wrap_" . $submetatype;
 	my $mk_wrapper = "mk_" . make_wrapper_name($submetatype);
+
+        print SURROGATE "\n";
+        print SURROGATE "// These are well-known/required hasim modules\n";
+        print SURROGATE "import hasim_base::*;\n";
+        print SURROGATE "import hasim_common::*;\n";
+        print SURROGATE "\n";
+	print SURROGATE "import " . make_wrapper_name($submetatype); . "::*;\n";
+	
+	print SURROGATE "module [HASim_Module] mk_" . make_module_name($submetatype) . " (TopLevel);\n";    
+	print SURROGATE "$indent // 1. instantiate wrapper\n";
+	print SURROGATE "$indent WithConnections $wrap_var <- $mk_wrapper();\n";
 	
 	my $log_file = 
 	    $model->build_dir() . "/" . 
@@ -172,6 +183,7 @@ sub create_surrogates {
 	print SURROGATE "$indent let $recvs_var = $recvs_cons;\n";
 
 	print SURROGATE "$indent addConnections($wrap_var, $sends_var, $recvs_var);\n";
+	print SURROGATE "$indent return $wrap_var;";
 
 	print SURROGATE "endmodule\n";
 	print SURROGATE "\n";
@@ -187,6 +199,14 @@ sub make_wrapper_name {
     my $name = shift;
   
     return $name . "_Wrapper";
+}
+
+############################################################
+# 
+sub make_module_name {
+    my $name = shift;
+  
+    return "mk_" . $name . "_Wrapper";
 }
 
 ############################################################

@@ -35,7 +35,7 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
 
   //*********** State ***********
   
-  Reg#(Tick) curTick <- mkReg(minBound);
+  Reg#(Bit#(64)) curTick <- mkReg(minBound);
   Reg#(Bit#(16)) finishing <- mkReg(2000);
 
   Reg#(ConState) state <- mkReg(CON_Init);

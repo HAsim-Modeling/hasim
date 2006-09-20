@@ -3,11 +3,15 @@ import FIFO::*;
 import RegFile::*;
 import PrimArray::*;
 
-import HASim::*;
-import ISA::*;
-import TestCase_Base::*;
-import TestCase::*;
-import Debug::*;
+import hasim_base::*;
+import hasim_fpgalib::*;
+import hasim_common::*;
+
+import hasim_funcp_base::*;
+import hasim_isa::*;
+
+import hasim_testcase_base::*;
+import hasim_testcase::*;
 
 interface Checker;
 
@@ -32,7 +36,7 @@ module [HASim_Module] mkFUNCP_Checker
   
   Reg#(Addr) ecur <- mkReg(minBound);
   
-  FIFO#(Tuple3#(Addr, Value, Value)) failQ <- mkFIFO();
+  FIFO#(Tuple3#(CMD_Addr, CMD_Value, CMD_Value)) failQ <- mkFIFO();
   FIFO#(Addr) locQ <- mkFIFO();
   
   Bool d_checking = ecur < fromInteger(primArrayLength(tc.dmem_exp));
@@ -57,7 +61,7 @@ module [HASim_Module] mkFUNCP_Checker
     if (v != exp_v)
     begin
       debug(2, $display("Checker: Failure at Location %h: Expected %0h. Found %0h", ecur, exp_v, v));
-      failQ.enq(tuple3(ecur, exp_v, v));
+      failQ.enq(tuple3(zeroExtend(ecur), zeroExtend(exp_v), zeroExtend(v)));
       passedR <= False;
     end
     
@@ -69,7 +73,7 @@ module [HASim_Module] mkFUNCP_Checker
     
   endmethod
   
-  method ActionValue#(Tuple3#(Addr, Value, Value)) getFailure();
+  method ActionValue#(Tuple3#(CMD_Addr, CMD_Value, CMD_Value)) getFailure();
   
     failQ.deq();
     return failQ.first();

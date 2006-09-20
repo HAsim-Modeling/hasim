@@ -2201,3 +2201,49 @@ Functional support for synthesis boundaries, and traffic light
 examples with and without a synthesis boundary.
 
 Joel/Michael
+
+----------
+jsemer      Date: Wed Sep 20 18:17:37 EDT 2006  CSN: CSN-hasim-123
+                  Wed Sep 20 22:17:37 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          123 
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage.apm    Locally Modified          122 
+ hasim_smips_5stage_ports.apm Locally Modified          122 
+
+Directory modules/system/single_chip_system
+ System.bsv                Locally Modified          122 
+ hasim_system.awb          Locally Modified          122 
+
+Directory modules/common
+ Commands.bsv              Locally Modified          122 
+
+Directory modules/functional/common
+ FUNCP_Checker.bsv         Locally Modified          122 
+ FUNCP_Pipeline.bsv        Locally Modified          122 
+ FUNCP_Loader.bsv          Locally Modified          122 
+ FUNCP_Base.bsv            Locally Modified          122 
+ hasim_funcp_regstate.awb  Locally Modified          122 
+ FUNCP_RegState.bsv        Locally Modified          122 
+ FUNCP_MemState.bsv        Locally Modified          122 
+ hasim_funcp_memstate.awb  Locally Modified          122 
+ FUNCP.bsv                 Locally Modified          122 
+ hasim_funcp.awb           Locally Modified          122 
+ FUNCP_StoreBuffer.bsv     Locally Modified          122 
+ FUNCP_TokGen.bsv          Locally Modified          122 
+
+Directory modules/functional/test-cases/common
+ hasim_testcase_common.awb Locally Modified          122 
+ TestCase_Base.bsv         Locally Modified          122 
+
+Directory modules/controller/simple
+ hasim_simple_controller.bsv Locally Modified          122 
+
+
+Updates to allow build of smips model using proper imports, i.e., import <asim-metatype>::*;
+and with sythesis boundaries.
+
+Joel/Michael

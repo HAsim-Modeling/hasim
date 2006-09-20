@@ -1,17 +1,25 @@
 
 //HASim library imports
-import HASim::*;
-import FUNCP_Base::*;
+
+//HASim library imports
+
+import hasim_base::*;
+import hasim_fpgalib::*;
+import hasim_common::*;
+
+import hasim_isa::*;
+import hasim_funcp_base::*;
+
 import FUNCP_TokGen::*;
 
 //Model-specific imports
-import ISA::*;
-import FUNCP_FetchAlg::*;
-import FUNCP_DecodeAlg::*;
-import FUNCP_ExecuteAlg::*;
-import FUNCP_MemAlg::*;
-import FUNCP_LocalCommitAlg::*;
-import FUNCP_GlobalCommitAlg::*;
+
+import hasim_funcp_fetch_alg::*;
+import hasim_funcp_decode_alg::*;
+import hasim_funcp_execute_alg::*;
+import hasim_funcp_mem_alg::*;
+import hasim_funcp_localcommit_alg::*;
+import hasim_funcp_globalcommit_alg::*;
 
 
 module [HASim_Module] mkFUNCP_Pipeline (); 

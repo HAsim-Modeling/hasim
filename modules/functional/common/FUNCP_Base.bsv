@@ -1,13 +1,15 @@
-import HASim::*;
-import BypassFIFO::*;
-
-import ISA::*;
-
 import Connectable::*;
 import GetPut::*;
 import ClientServer::*;
 import FIFO::*;
 import RegFile::*;
+
+import hasim_base::*;
+import hasim_fpgalib::*;
+import hasim_common::*;
+
+import hasim_isa::*;
+
 
 //************ Functional Partition Stage Interface ************//
 

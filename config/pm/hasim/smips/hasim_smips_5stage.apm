@@ -33,6 +33,7 @@ Description=5-Stage HASim SMIPS Model
 File=hasim_smips_5stage
 Version=2.0
 Name=5-Stage HASim SMIPS Model
+Type=HAsim
 
 [Hasim functional partition/Requires]
 hasim_funcp_checker=Hasim functional partition checker

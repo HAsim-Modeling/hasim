@@ -16,7 +16,8 @@
 # %attributes hasim
 #
 # %public FUNCP_MemState.bsv
-# %param SYNTH_BOUNDARY mkMem_Software "name of synthesis boundary"
+#
+# %param SYNTH_BOUNDARY mkFUNCP_Memstate "name of synthesis boundary"
 #
 # %AWB_END
 # */

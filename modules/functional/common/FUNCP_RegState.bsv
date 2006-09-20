@@ -1,13 +1,15 @@
-import HASim::*;
-import FUNCP_Base::*;
-
-import ISA::*;
-
 import GetPut::*;
 import RegFile::*;
 import FIFO::*;
 import Vector::*;
 import ConfigReg::*;
+
+import hasim_base::*;
+import hasim_fpgalib::*;
+import hasim_common::*;
+
+import hasim_funcp_base::*;
+import hasim_isa::*;
 
 
 //----------------------------------------------------------------------------------
@@ -83,7 +85,7 @@ endmodule
 // Bypass
 //----------------------------------------------------------------------------------
 
-module [HASim_Module] mkBypassUnit
+module [HASim_Module] mkFUNCP_Regstate
     //interface:
                 ()
     provisos

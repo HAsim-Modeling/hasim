@@ -1,61 +1,28 @@
 //Memory system with connections
 
-import HASim::*;
-import ISA::*;
-
 import GetPut::*;
 import ClientServer::*;
 import RegFile::*;
 import FIFO::*;
 import Vector::*;
-import BypassFIFO::*;
 
-import FUNCP_StoreBuffer::*;
+import hasim_base::*;
+import hasim_fpgalib::*;
+import hasim_common::*;
 
-/************* Memory System Interface *************/
+import hasim_funcp_base::*;
+import hasim_isa::*;
 
+import hasim_funcp_storebuffer::*;
 
-// Data Memory request
-
-typedef union tagged 
-{
-  struct {Token token; Addr addr;            } Ld;
-  struct {Token token; Addr addr; Value val; } St;
-}
-  MemReq 
-    deriving
-            (Eq, Bits);
-
-
-// Data Memory Response
-
-typedef union tagged {
-  Value LdResp;
-  void  StResp;
-}
-  MemResp 
-    deriving
-            (Eq, Bits);
-
-
-// Memory System Interface
-
-// The memory system consists of two major parts: the IMem and DMem.
-// The IMem is a simple Server (Address, Instruction)
-// The DMem uses the above MemReq/MemResp types
-// Additionally requests can be committed or killed in the DMem
-// They are committed by Global Commit and killed by killToken
-
-// For now the memory also has a "magic" link for the controller to
-// load the test case. This may disappear in the future.
-
+import hasim_funcp_memstate_ifc::*;
 
 /************* Simple Memory System Implementation *************/
 
 // This is intended for software simulation. An FPGA version would
 // be a memory controller.
 
-module [HASim_Module] mkMem_Software ()
+module [HASim_Module] mkFUNCP_Memstate ()
     provisos
             (Bits#(Token, token_SZ),
 	     Transmittable#(Addr),

@@ -1,6 +1,9 @@
 
-import HASim::*;
-import ISA::*;
+import hasim_base::*;
+import hasim_fpgalib::*;
+import hasim_common::*;
+
+import hasim_isa::*;
 
 //BSV Library imports
 import Vector::*;

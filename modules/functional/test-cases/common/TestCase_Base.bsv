@@ -1,5 +1,9 @@
 
-import ISA::*;
+import hasim_base::*;
+import hasim_fpgalib::*;
+import hasim_common::*;
+
+import hasim_isa::*;
 
 //XXX For performance reasons we're using primitive arrays here
 //    In the future maybe could use Vectors.

@@ -1,16 +1,19 @@
 //BSV library imports
 import FIFO::*;
-import BypassFIFO::*;
 import GetPut::*;
 import ClientServer::*;
 import RegFile::*;
 
 //HASim library imports
-import HASim::*;
-import FUNCP_Base::*;
+
+import hasim_base::*;
+import hasim_fpgalib::*;
+import hasim_common::*;
+
+import hasim_funcp_base::*;
 
 //HASim model-specific imports
-import ISA::*;
+import hasim_isa::*;
 
 //-------------------------------------------------------------------------//
 // Token Generation Unit                                                   //

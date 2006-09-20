@@ -2,10 +2,15 @@
 import RegFile::*;
 import PrimArray::*;
 
-import HASim::*;
-import TestCase_Base::*;
-import ISA::*;
-import TestCase::*;
+import hasim_base::*;
+import hasim_fpgalib::*;
+import hasim_common::*;
+
+import hasim_funcp_base::*;
+import hasim_isa::*;
+
+import hasim_testcase_base::*;
+import hasim_testcase::*;
 
 
 interface Loader;

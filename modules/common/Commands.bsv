@@ -8,8 +8,8 @@
 
 //************ Basic Datatypes ************//
 
-typedef Bit#(8)  Addr;
-typedef Bit#(32) Value;
+typedef Bit#(32)  CMD_Addr;
+typedef Bit#(32)  CMD_Value;
 
 
 typedef union tagged
@@ -28,7 +28,7 @@ typedef union tagged
 {
   void                                            RESP_DoneLoading;
   void                                            RESP_DoneRunning; //Perhaps return local tick here	 
-  struct {Addr addr; Value exp_v; Value found_v;} RESP_Failure;
+  struct {CMD_Addr addr; CMD_Value exp_v; CMD_Value found_v;} RESP_Failure;
   void                                            RESP_CheckPassed;
   void                                            RESP_CheckFailed;
   ModelResponse                                   RESP_Other;

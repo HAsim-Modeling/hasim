@@ -5,12 +5,18 @@ import RegFile::*;
 import FIFO::*;
 import Vector::*;
 
-import HASim::*;
-import FUNCP_Base::*;
-import FUNCP_Loader::*;
-import FUNCP_Checker::*;
+import hasim_base::*;
+import hasim_fpgalib::*;
+import hasim_common::*;
 
-import ISA::*;
+import hasim_funcp_base::*;
+import hasim_funcp_loader::*;
+import hasim_funcp_checker::*;
+
+import hasim_funcp_pipeline::*;
+import hasim_funcp_regstate::*;
+import hasim_funcp_memstate::*;
+
 
 `ifdef PARTITION_NAME
 `undef PARTITION_NAME
@@ -23,6 +29,9 @@ module [HASim_Module] mkFUNCP (TModule#(Command, Response));
   
   Loader  loader  <- mkFUNCP_Loader();
   Checker checker <- mkFUNCP_Checker();
+  Empty pipeline  <- mkFUNCP_Pipeline();
+  Empty regstate  <- mkFUNCP_Regstate();
+  Empty memstate  <- mkFUNCP_Memstate();
   
   Reg#(Bool)      loading  <- mkReg(False);
   Reg#(Bool)      checking <- mkReg(False);

@@ -16,7 +16,7 @@
 # %public FUNCP_RegState.bsv
 # %private freelist.hex
 #
-# %param SYNTH_BOUNDARY mkBypassUnit "name of synthesis boundary"
+# %param SYNTH_BOUNDARY mkFUNCP_Regstate "name of synthesis boundary"
 # %AWB_END
 # */
 

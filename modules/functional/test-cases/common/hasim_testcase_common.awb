@@ -13,7 +13,7 @@
 ##
 # %attributes hasim
 #
-# %private TestCase_Base.bsv
+# %public TestCase_Base.bsv
 #
 # %AWB_END
 # */

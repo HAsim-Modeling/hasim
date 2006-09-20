@@ -5,3 +5,4 @@ Name=hasim
 Tag=HEAD
 Lock=asim-hasim
 Buildorder=4
+Dependencies=hasim/HEAD 

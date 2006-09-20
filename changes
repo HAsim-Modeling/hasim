@@ -2247,3 +2247,14 @@ Updates to allow build of smips model using proper imports, i.e., import <asim-m
 and with sythesis boundaries.
 
 Joel/Michael
+
+----------
+jsemer      Date: Wed Sep 20 18:22:28 EDT 2006  CSN: CSN-hasim-123
+                  Wed Sep 20 22:22:28 UTC 2006
+
+
+Directory admin/packages
+ hasim                     Locally Modified          123 
+
+
+Added dependency on simcore/HEAD

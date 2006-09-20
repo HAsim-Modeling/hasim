@@ -2157,3 +2157,47 @@ Also took advantage of the fact that all bsv implementations
 of an Asim module don't have to have the same filename.
 
 Joel
+
+----------
+jsemer      Date: Wed Sep 20 16:05:56 EDT 2006  CSN: CSN-hasim-123
+                  Wed Sep 20 20:05:56 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          122 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_synth.apm Locally Modified          122 
+
+Directory modules/system/traffic_light_system
+ traffic_light_system.awb  Locally Modified          122 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          122 
+ hasim_traffic_light_function_synth.awb Locally Added               - 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Modified          122 
+
+Directory modules/system
+ traffic_light_system_synth/ Locally Removed           122 
+
+Directory modules/system/traffic_light_system_synth
+ traffic_light_system.awb  Locally Removed           122 
+ traffic_light_function/   Locally Removed           122 
+
+Directory modules/system/traffic_light_system_synth/traffic_light_function
+ hasim_traffic_light_function.awb Locally Removed           122 
+ TL0.bsv                   Locally Removed           122 
+
+Directory modules/system/traffic_light_system_synth
+ System.bsv                Locally Removed           122 
+
+Directory modules/common
+ Connections.bsv           Locally Modified          122 
+
+
+Functional support for synthesis boundaries, and traffic light
+examples with and without a synthesis boundary.
+
+Joel/Michael

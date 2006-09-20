@@ -13,9 +13,9 @@
 #
 # %attributes hasim
 #
-# %private TL0.bsv
+# %public TL0.bsv
 #
-# %param SYNTH_BOUNDARY sysTL "name of synthesis boundary"
+# %param SYNTH_BOUNDARY mk_traffic_light "name of synthesis boundary"
 #
 # %AWB_END
 # */

@@ -45,6 +45,27 @@ typedef Tuple2#(String, Integer) ConMap;
 //               child           sends          recs
 typedef Tuple3#(WithConnections, List#(ConMap), List#(ConMap)) DanglingInfo;
 
+//Re-bury connections which have been exposed at synthesis boundaries
+
+module [HASim_Module] addConnections#(WithConnections mod, List#(ConMap) sends, List#(ConMap) recs) ();
+
+   let nSends = length(sends);
+   for (Integer x = 0; x < nSends; x = x + 1)
+   begin
+     match {.nm, .idx} = sends[x];
+     addToCollection(LSend tuple2(nm, mod.outgoing[x]));
+   end
+
+
+   let nRecs = length(recs);
+   for (Integer x = 0; x < nRecs; x = x + 1)
+   begin
+     match {.nm, .idx} = recs[x];
+     addToCollection(LRec tuple2(nm, mod.incoming[x]));
+   end
+
+endmodule
+
 //The main connection algorithm 
 
 module [Module] connectDangling#(List#(ConnectionData) ld, 

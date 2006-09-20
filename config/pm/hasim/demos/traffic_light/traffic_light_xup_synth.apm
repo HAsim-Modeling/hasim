@@ -44,7 +44,7 @@ hasim_base=Hasim base module
 hasim_traffic_light_function=Hasim - Traffic light function w. synthesis boundary
 
 [Hasim - Traffic light function w. synthesis boundary]
-File=modules/system/traffic_light_system_synth/traffic_light_function/hasim_traffic_light_function.awb
+File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function_synth.awb
 Packagehint=hasim
 
 [Hasim base module]

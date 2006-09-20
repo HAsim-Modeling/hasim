@@ -1,8 +1,9 @@
 // Copyright 2000--2006 Bluespec, Inc.  All rights reserved.
 
-package TL0;
+import hasim_base::*;
+import hasim_fpgalib::*;
+import hasim_common::*;
 
-import HASim::*;
 
 // Simple model of a traffic light
 // (modeled after the light at the intersection of Rte 16 and Broadway
@@ -21,7 +22,7 @@ typedef enum {
    GreenE, AmberE, RedAfterE,
    GreenW, AmberW, RedAfterW} TLstates deriving (Eq, Bits);
 
-module [HASim_Module] sysTL(TL);
+module [HASim_Module] mk_traffic_light(TL);
    Reg#(TLstates) state <- mkReg(RedAfterW);
    
    Connection_Send#(Bit#(4)) link_leds <- mkConnection_Send("fpga_leds");
@@ -84,6 +85,3 @@ module [HASim_Module] sysTL(TL);
    endrule
 
 endmodule
-
-endpackage
-

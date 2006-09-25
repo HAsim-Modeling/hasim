@@ -13,6 +13,7 @@ eval 'exec perl -w "$0" ${1+"$@"}'
 #
 
 use File::Basename;
+use File::Spec;
 use Getopt::Long;
 
 use Asim;
@@ -323,7 +324,10 @@ sub __make_symlinks {
           HAsim::Util::WARN_AND_DIE("Module file $src does not exist");
         }
         
-	$status = system("ln -f -s $src $tgt");
+        # make src relative
+        my $relsrc = file::spec->abs2rel($src, dirname($tgt));
+
+	$status = system("ln -f -s $relsrc $tgt");
     }
 
     # recurse

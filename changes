@@ -2271,3 +2271,16 @@ Directory tools/scripts
 Symbolic links back to source are now relative. 
 
 Joel
+
+----------
+jsemer      Date: Tue Oct  3 15:39:46 EDT 2006  CSN: CSN-hasim-128
+                  Tue Oct  3 19:39:46 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          127 
+
+
+Fixed a typo. Don't know how this was working before.
+
+Joel

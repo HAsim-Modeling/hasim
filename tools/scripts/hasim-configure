@@ -325,7 +325,7 @@ sub __make_symlinks {
         }
         
         # make src relative
-        my $relsrc = file::spec->abs2rel($src, dirname($tgt));
+        my $relsrc = File::Spec->abs2rel($src, dirname($tgt));
 
 	$status = system("ln -f -s $relsrc $tgt");
     }

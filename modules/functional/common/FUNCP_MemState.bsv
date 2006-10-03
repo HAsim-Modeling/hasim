@@ -22,6 +22,13 @@ import hasim_funcp_memstate_ifc::*;
 // This is intended for software simulation. An FPGA version would
 // be a memory controller.
 
+typedef union tagged
+{
+  void Fast;
+  Token Slow;
+}
+  PathSpeed deriving (Eq, Bits);
+
 module [HASim_Module] mkFUNCP_Memstate ()
     provisos
             (Bits#(Token, token_SZ),
@@ -38,10 +45,11 @@ module [HASim_Module] mkFUNCP_Memstate ()
 
   //State elements
 
-  RegFile#(SoftAddr, Inst)  imemory <- mkRegFileFull();
-  RegFile#(SoftAddr, Value) dmemory <- mkRegFileFull();
+  BRAM#(SoftAddr, Inst)  imemory <- mkBRAM_Full();
+  BRAM#(SoftAddr, Value) dmemory <- mkBRAM_Full();
 
-  FIFO#(Tuple2#(Token, Value))  waitingQ <- mkFIFO();
+  FIFO#(Tuple2#(Token, Value))  st_bufQ <- mkFIFO();
+  FIFO#(PathSpeed)             waitingQ <- mkFIFO();
 
   StoreBuffer st_buffer <- mkFUNCP_StoreBuffer();
 
@@ -68,7 +76,14 @@ module [HASim_Module] mkFUNCP_Memstate ()
       $display("WARNING [0]: Address 0x%h out of bounds. Increase software address length!", a);
     
     SoftAddr sa = truncate(a);
-    link_imem.makeResp(imemory.sub(sa));
+    imemory.read_req(sa);
+    
+  endrule
+  
+  rule handleIMEM_resp (True);
+  
+    let i <- imemory.read_resp();
+    link_imem.makeResp(i);
     
   endrule
 
@@ -88,15 +103,19 @@ module [HASim_Module] mkFUNCP_Memstate ()
 
 	  SoftAddr sa = truncate(ld_info.addr);
 	  
+	  dmemory.read_req(sa);
+
 	  if (st_buffer.mayHaveAddress(ld_info.addr))
 	  begin  
 	    //Store buffer may have addr. Take the slow path
-	    waitingQ.enq(tuple2(ld_info.token, dmemory.sub(sa)));
+	    waitingQ.enq(Slow ld_info.token);
 	    st_buffer.retrieve(ld_info.token, ld_info.addr);
 	  end
 	  else
-	      //Store buffer does not have addr, return.
-	      link_dmem.makeResp(LdResp dmemory.sub(sa));  
+	  begin
+	    waitingQ.enq(Fast);
+	  end
+	    
         end
       tagged St .st_info:
         begin
@@ -109,6 +128,25 @@ module [HASim_Module] mkFUNCP_Memstate ()
         end
     endcase
   
+  endrule
+ 
+  rule handleDMEM_resp (True);
+  
+    let v <- dmemory.read_resp();
+
+    case (waitingQ.first()) matches
+      tagged Fast:
+      begin
+	link_dmem.makeResp(LdResp v);  
+      end
+      tagged Slow .tok:
+      begin
+        st_bufQ.enq(tuple2(tok, v));
+      end
+    endcase
+    
+    st_bufQ.deq();
+
   endrule
  
   //handleCommit
@@ -146,7 +184,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
   
   rule finishSlowPath (True);
   
-    match {.tok, .cur_val} = waitingQ.first();
+    match {.tok, .cur_val} = st_bufQ.first();
     waitingQ.deq();
     
     match {.t2, .mnew_val} <- st_buffer.result();
@@ -179,10 +217,17 @@ module [HASim_Module] mkFUNCP_Memstate ()
     
   endrule
   
-  rule magic_dmem_r (True);
+  rule magic_dmem_r_req (True);
   
     let addr <- magic_dmem_read.getReq();
-    magic_dmem_read.makeResp(dmemory.sub(truncate(addr)));
+    dmemory.read_req2(truncate(addr));
+    
+  endrule
+ 
+  rule magic_dmem_r_resp (True);
+  
+    let v <- dmemory.read_resp2();
+    magic_dmem_read.makeResp(v);
     
   endrule
   

@@ -33,9 +33,9 @@ import hasim_isa::*;
 
 module [HASim_Module] mkFUNCP_Stage_TOK ();
   
-  RegFile#(TokIndex, Bool) valids <- mkRegFileFull();
+  BRAM#(TokIndex, Bool) valids <- mkBRAM_Full();
   Reg#(TokIndex) next <- mkReg(0);
-  Reg#(Bool) nextFree <- mkReg(True);
+  Reg#(Bool)    ready <- mkReg(True);
   
   
   //Links
@@ -58,7 +58,7 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
 
   //handleReq
   
-  rule handleReq (nextFree);
+  rule handleReq (ready);
   
     //bug workaround
     let x <- link_from_tp.getReq();
@@ -74,36 +74,40 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
     link_from_tp.makeResp(tok);
     link_to_next.send(tuple2(tok, ?));
     valids.upd(next, True);
-    if (valids.sub(next + 1))
-    begin
-      nextFree <= False;
-      next <= next + 2;
-    end
-    else
-      next <= next + 1;
+    let n = next + 1;
+    valids.read_req(n);
+    next <= n;
+    ready <= False;
     end
   endrule
   
   //calcNext
+
+  rule calcNext (!ready);
   
-  rule calcNext (!nextFree);
-  
-    if (!valids.sub(next))
-      nextFree <= True;
+    Bool isFree <- valids.read_resp();
+    if (!isFree)
+      ready <= True;
     else
-      next <= next + 1;
+    begin
+      let n = next + 1;
+      next <= n;
+      valids.read_req(n);
+    end
   
   endrule
+  
  
   //recycle
  
   rule recycle (True);
 
+    //complete token t
     match {.t, .*} <- link_from_prev.receive();
 
-    //complete token t
-    if (!valids.sub(t.index))
-      $display("Tokgen error. Completing unallocated token %h", t);
+    //Bool isFree = valids.sub(t.index);
+    //if (!isFree)
+      //$display("Tokgen error. Completing unallocated token %h", t);
       
     valids.upd(t.index, False);
 
@@ -115,8 +119,10 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
   
     let tok <- link_killToken.receive();
   
-    if (!valids.sub(tok.index))
-      $display("Tokgen error. Killing unallocated token %h", tok);
+    //Bool isFree = valids.sub(tok.index);
+  
+    //if (!isFree)
+      //$display("Tokgen error. Killing unallocated token %h", tok);
       
     valids.upd(tok.index, False);
   

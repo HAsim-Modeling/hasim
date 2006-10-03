@@ -83,9 +83,6 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
 	   Transmittable#(Tuple2#(Token, next_T)),
 	   Transmittable#(Token));
 
-  //Local definitions
-  TokIndex tableMin = minBound;
-  TokIndex tableMax = maxBound; //fromInteger(sz - 1);
 
   //Links
   Connection_Client#(Tuple3#(Token, init_T, req_T),
@@ -111,54 +108,65 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   link_killToken <- mkConnection_Receive(killname);
 
   		
-  //SRAM tables
-  RegFile#(TokIndex, init_T)  values <- mkRegFile(tableMin, tableMax);
-  RegFile#(TokIndex, TokInfo) infos <- mkRegFile(tableMin, tableMax);
-  RegFile#(TokIndex, Bool)    valids <- mkRegFile(tableMin, tableMax); 
-  RegFile#(TokIndex, Bool)    starteds  <- mkRegFile(tableMin, tableMax); 
+  //BRAM tables
+  BRAM#(TokIndex, init_T)     values <- mkBRAM_Full();
+  BRAM#(TokIndex, TokInfo)     infos <- mkBRAM_Full();
+  BRAM#(TokIndex, Bool)       valids <- mkBRAM_Full();
+  BRAM#(TokIndex, Bool)    starteds  <- mkBRAM_Full(); 
 
+  //FIFOs
+  //FIFO#(Tuple2#(Token, init_T))         insertQ <- mkFIFO();
+  FIFO#(Tuple2#(Token, req_T))          reqQ    <- mkFIFO();
+  FIFO#(Tuple3#(Token, resp_T, next_T)) respQ   <- mkFIFO();
+  
   //Rules
   
   //insert
-  (* descending_urgency = "insert, handleReq, getResponse" *)
+  (* descending_urgency = "killToken, resp_finish, req_finish, insert" *)
   
   rule insert (True);
   
     match {.tok, .iVal} <- link_from_prev.receive();
     
-    Bool valid = valids.sub(tok.index);
+    //Note: We avoid a correctness check to reduce latency
     
-    if (valid)
-      begin        
-	$display("%s ERROR: reinserting allocated token %h", stagename, tok);
-      end
-    else
-      begin
-	//Set valid to true and started to false
-	valids.upd(tok.index, True);
-	starteds.upd(tok.index, False);
-	values.upd(tok.index, iVal);
-	infos.upd(tok.index, tok.info);
-      end
-  
+    //Set valid to true and started to false
+    valids.upd(tok.index, True);
+    starteds.upd(tok.index, False);
+    values.upd(tok.index, iVal);
+    infos.upd(tok.index, tok.info);
+    
   endrule
 
 
   //handleReq
   
-  rule handleReq (True);
+  rule req_start (True);
 
     match {.tok, .req} <- link_from_tp.getReq();
    
-    Bool started   = starteds.sub(tok.index);
-    Bool valid  = valids.sub(tok.index);  
+    starteds.read_req(tok.index);
+    valids.read_req(tok.index);
+    values.read_req(tok.index);
+    
+    reqQ.enq(tuple2(tok, req));
+  
+  endrule
+    
+  rule req_finish (True);
+   
+    match {.tok, .req} = reqQ.first();
+    reqQ.deq();
+   
+    Bool started   <- starteds.read_resp();
+    Bool valid     <-   valids.read_resp();  
 
-    init_T iVal = values.sub(tok.index);
+    init_T iVal    <-   values.read_resp();
 
     if (!valid)
-       $display("%s ERROR: requesting unallocated token %h", stagename, tok);
+       $display("%s ERROR: requesting unallocated token %h", stagename, tok.index);
      else if (started)
-       $display("%s ERROR: re-requesting token %h", stagename, tok);            
+       $display("%s ERROR: re-requesting token %h", stagename, tok.index);            
      else
      begin
        link_to_unit.makeReq(tuple3(tok, iVal, req));
@@ -169,11 +177,21 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
 
   //getResponse
   
-  rule getResponse (True);
+  rule resp_start (True);
   
     match {.tok, .resp, .next} <- link_to_unit.getResp();
     
-    Bool valid = valids.sub(tok.index);
+    valids.read_req3(tok.index);
+    
+    respQ.enq(tuple3(tok, resp, next));
+  
+  endrule
+  
+  rule resp_finish (True);
+    
+    Bool valid <- valids.read_resp3();
+    match {.tok, .resp, .next} = respQ.first();
+    respQ.deq();
     
     if (valid) // don't insert if it was killed
       begin

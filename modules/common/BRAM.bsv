@@ -8,31 +8,112 @@
 //
 // Revision History
 // Switched to HAsim coding conventions
-// Modified to be ActionValue methods. upd method goes last.
+// Wrapped Syncronous RAM with FIFOs. upd method goes last.
 // 9-12-2006, Michael
 // File created
 // 5-16-2006, Eric Chung
 //
 //
 
+import FIFO::*;
 
-package BRAM;
+interface BRAM#(type idx_type, type data_type);
+
+  method Action  read_req(idx_type idx);
+  method Action read_req2(idx_type idx);
+  method Action read_req3(idx_type idx);
+
+  method ActionValue#(data_type) read_resp();
+  method ActionValue#(data_type) read_resp2();
+  method ActionValue#(data_type) read_resp3();  
+  
+  method Action	upd(idx_type idx, data_type data);
+  
+endinterface
+
+module mkBRAM#(Integer low, Integer high) 
+  //interface:
+              (BRAM#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data));
+
+  FIFO#(Bit#(0)) q1 <- mkFIFO();
+  FIFO#(Bit#(0)) q2 <- mkFIFO();
+  FIFO#(Bit#(0)) q3 <- mkFIFO();
+
+  Sync_BRAM#(idx_type, data_type) br <- mkBRAM_Sync(low, high);
+
+  method Action  read_req(idx_type idx);
+    q1.enq(?);
+    br.read_req(idx);
+  endmethod
+    
+  method Action read_req2(idx_type idx);
+    q2.enq(?);
+    br.read_req2(idx);
+  endmethod
+
+  method Action read_req3(idx_type idx);
+    q3.enq(?);
+    br.read_req3(idx);
+  endmethod
+
+  method ActionValue#(data_type) read_resp();
+    q1.deq();
+    return br.read_resp();
+  endmethod
+  
+  method ActionValue#(data_type) read_resp2();
+    q2.deq();
+    return br.read_resp2();
+  endmethod
+
+  method ActionValue#(data_type) read_resp3(); 
+    q3.deq();
+    return br.read_resp3();
+  endmethod 
+  
+  method Action	upd(idx_type idx, data_type data);
+    br.upd(idx, data);
+  endmethod
+
+endmodule
+
+module mkBRAM_Full 
+  //interface:
+              (BRAM#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data));
 
 
-interface BRAM #(type idx_type, type data_type);
+  BRAM#(idx_type, data_type) br <- mkBRAM(0, valueof(TExp#(idx)));
 
-  method ActionValue#(data_type) sub(idx_type idx);
-  method ActionValue#(data_type) sub2(idx_type idx);
-  method ActionValue#(data_type) sub3(idx_type idx);
+  return br;
 
-  method Action		upd(idx_type idx, data_type data);
+endmodule
+
+//Synchronous BRAM primitive
+
+interface Sync_BRAM#(type idx_type, type data_type);
+
+  method Action  read_req(idx_type idx);
+  method Action read_req2(idx_type idx);
+  method Action read_req3(idx_type idx);
+
+  method data_type read_resp();
+  method data_type read_resp2();
+  method data_type read_resp3();  
+  
+  method Action	upd(idx_type idx, data_type data);
   
 endinterface
 
 
-import "BVI" BRAM = module mkBRAM#(Integer low, Integer high) 
+import "BVI" BRAM = module mkBRAM_Sync#(Integer low, Integer high) 
   //interface:
-              (BRAM#(idx_type, data_type)) 
+              (Sync_BRAM#(idx_type, data_type)) 
   provisos
           (Bits#(idx_type, idx), 
 	   Bits#(data_type, data));
@@ -44,15 +125,18 @@ import "BVI" BRAM = module mkBRAM#(Integer low, Integer high)
   parameter lo = low;
   parameter hi = high;
 
-  method D_OUT  sub(RD_ADDR)   enable(RE)  ready(RD_RDY);
-  method D_OUT2 sub2(RD_ADDR2) enable(RE2) ready(RD_RDY2);
-  method D_OUT3 sub3(RD_ADDR3) enable(RE3) ready(RD_RDY3);
+  method DOUT1  read_resp()  ready(DOUT1_RDY);
+  method DOUT2  read_resp2() ready(DOUT2_RDY);
+  method DOUT3  read_resp3() ready(DOUT3_RDY);
+  
+  method read_req(RD1_ADDR)   enable(RD1_EN);
+  method read_req2(RD2_ADDR) enable(RD2_EN);
+  method read_req3(RD3_ADDR) enable(RD3_EN);
 
-  method upd(WR_ADDR, D_IN) enable(WE);
+  method upd(WR_ADDR, WR_VAL) enable(WR_EN);
 
-  schedule (sub, sub2, sub3) CF (sub, sub2, sub3);
-  schedule (sub, sub2, sub3) SB upd;
+  schedule (read_req, read_req2, read_req3, read_resp, read_resp2, read_resp3) CF (read_req, read_req2, read_req3, read_resp, read_resp2, read_resp3, upd);
+  schedule upd C upd;
+
 endmodule
 
-
-endpackage

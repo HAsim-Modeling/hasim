@@ -30,9 +30,9 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
 
   //******* State Elements
 
-  Reg#(Vector#(TExp#(token_SZ), Bool))             tvalids   <- mkReg(Vector::replicate(False));
+  Reg#(Vector#(TExp#(token_SZ), Bool))              tvalids   <- mkReg(Vector::replicate(False));
   RegFile#(TokIndex, Tuple3#(Addr, Value, Maybe#(Token))) tokens <- mkRegFileFull();
-  RegFile#(AddrHash, Maybe#(Token))                hashes    <- mkRegFileFull();
+  RegFile#(AddrHash, Maybe#(Token))                 hashes    <- mkRegFileFull();
 
   FIFO#(Tuple4#(Token, Addr, Token, Maybe#(Tuple2#(Token, Value))))  workingQ <- mkFIFO();
   FIFO#(Tuple2#(Token, Maybe#(Tuple2#(Token, Value))))  resultQ <- mkFIFO();
@@ -70,16 +70,21 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   
   endrule
   
+  //mayHaveAddress
   
   method Bool mayHaveAddress(Addr a);
     AddrHash h = hash(a);
     return isJust(hashes.sub(h));
   endmethod
   
+  //retrieve
+  
   method Action retrieve(Token t, Addr a);
     AddrHash h = hash(a);
     workingQ.enq(tuple4(t, a, unJust(hashes.sub(h)), Invalid));
   endmethod
+  
+  //result
   
   method ActionValue#(Tuple2#(Token, Maybe#(Value))) result();
   
@@ -94,6 +99,8 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     endcase
     
   endmethod
+  
+  //insert
   
   method Action insert(Token t, Addr a, Value v);
   

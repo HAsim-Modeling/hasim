@@ -13,8 +13,8 @@
 #
 # %attributes xup hasim
 #
-# %public hasim_fpgalib_xup.bsv
-# %private xup.ucf
+# %public hasim_fpgalib_xup.bsv BRAM.bsv
+# %private xup.ucf BRAM.v
 #
 # %AWB_END
 # */

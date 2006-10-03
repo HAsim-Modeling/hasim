@@ -16,6 +16,7 @@
 //
 
 import FIFO::*;
+import RegFile::*;
 
 interface BRAM#(type idx_type, type data_type);
 
@@ -36,7 +37,8 @@ module mkBRAM#(Integer low, Integer high)
               (BRAM#(idx_type, data_type)) 
   provisos
           (Bits#(idx_type, idx), 
-	   Bits#(data_type, data));
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
 
   FIFO#(Bit#(0)) q1 <- mkFIFO();
   FIFO#(Bit#(0)) q2 <- mkFIFO();
@@ -46,32 +48,32 @@ module mkBRAM#(Integer low, Integer high)
 
   method Action  read_req(idx_type idx);
     q1.enq(?);
-    br.read_req(idx);
+    br.read_rq(idx);
   endmethod
     
   method Action read_req2(idx_type idx);
     q2.enq(?);
-    br.read_req2(idx);
+    br.read_rq2(idx);
   endmethod
 
   method Action read_req3(idx_type idx);
     q3.enq(?);
-    br.read_req3(idx);
+    br.read_rq3(idx);
   endmethod
 
   method ActionValue#(data_type) read_resp();
     q1.deq();
-    return br.read_resp();
+    return br.read_rsp();
   endmethod
   
   method ActionValue#(data_type) read_resp2();
     q2.deq();
-    return br.read_resp2();
+    return br.read_rsp2();
   endmethod
 
   method ActionValue#(data_type) read_resp3(); 
     q3.deq();
-    return br.read_resp3();
+    return br.read_rsp3();
   endmethod 
   
   method Action	upd(idx_type idx, data_type data);
@@ -85,7 +87,8 @@ module mkBRAM_Full
               (BRAM#(idx_type, data_type)) 
   provisos
           (Bits#(idx_type, idx), 
-	   Bits#(data_type, data));
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
 
 
   BRAM#(idx_type, data_type) br <- mkBRAM(0, valueof(TExp#(idx)));
@@ -98,45 +101,73 @@ endmodule
 
 interface Sync_BRAM#(type idx_type, type data_type);
 
-  method Action  read_req(idx_type idx);
-  method Action read_req2(idx_type idx);
-  method Action read_req3(idx_type idx);
+  method Action  read_rq(idx_type idx);
+  method Action read_rq2(idx_type idx);
+  method Action read_rq3(idx_type idx);
 
-  method data_type read_resp();
-  method data_type read_resp2();
-  method data_type read_resp3();  
+  method data_type read_rsp();
+  method data_type read_rsp2();
+  method data_type read_rsp3();  
   
   method Action	upd(idx_type idx, data_type data);
   
 endinterface
 
 
-import "BVI" BRAM = module mkBRAM_Sync#(Integer low, Integer high) 
+module mkBRAM_Sync#(Integer low, Integer high) 
   //interface:
               (Sync_BRAM#(idx_type, data_type)) 
   provisos
           (Bits#(idx_type, idx), 
-	   Bits#(data_type, data));
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
 
-  default_clock clk(CLK);
+  RegFile#(idx_type, data_type) br <- mkRegFile(fromInteger(low), fromInteger(high));
+  Reg#(data_type) rd1 <- mkRegU();
+  Reg#(data_type) rd2 <- mkRegU();
+  Reg#(data_type) rd3 <- mkRegU();
+  Reg#(Bool)  rdy_rd1 <- mkReg(False);
+  Reg#(Bool)  rdy_rd2 <- mkReg(False);
+  Reg#(Bool)  rdy_rd3 <- mkReg(False);
 
-  parameter addr_width = valueof(idx);
-  parameter data_width = valueof(data);
-  parameter lo = low;
-  parameter hi = high;
-
-  method DOUT1  read_resp()  ready(DOUT1_RDY);
-  method DOUT2  read_resp2() ready(DOUT2_RDY);
-  method DOUT3  read_resp3() ready(DOUT3_RDY);
+  method Action  read_rq(idx_type idx);
   
-  method read_req(RD1_ADDR)   enable(RD1_EN);
-  method read_req2(RD2_ADDR) enable(RD2_EN);
-  method read_req3(RD3_ADDR) enable(RD3_EN);
+    rdy_rd1 <= True;
+    rd1 <= br.sub(idx);
+    
+  endmethod
+  
+  method Action read_rq2(idx_type idx);
+  
+    rdy_rd2 <= True;
+    rd2 <= br.sub(idx);
+    
+  endmethod
 
-  method upd(WR_ADDR, WR_VAL) enable(WR_EN);
+  method Action read_rq3(idx_type idx);
+  
+    rdy_rd3 <= True;
+    rd3 <= br.sub(idx);
+    
+  endmethod
 
-  schedule (read_req, read_req2, read_req3, read_resp, read_resp2, read_resp3) CF (read_req, read_req2, read_req3, read_resp, read_resp2, read_resp3, upd);
-  schedule upd C upd;
+  method data_type read_rsp()  if (rdy_rd1);
+    return rd1;
+  endmethod 
 
+  method data_type read_rsp2() if (rdy_rd2);
+    return rd2;
+  endmethod 
+
+  method data_type read_rsp3() if (rdy_rd3); 
+    return rd3;
+  endmethod  
+  
+  method Action	upd(idx_type idx, data_type data);
+  
+    br.upd(idx, data);
+  
+  endmethod
+  
 endmodule
 

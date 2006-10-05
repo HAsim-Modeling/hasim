@@ -122,7 +122,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   //Rules
   
   //insert
-  (* descending_urgency = "killToken, resp_finish, req_finish, insert" *)
+  (* descending_urgency = "killToken, insert, resp_finish, req_finish" *)
   
   rule insert (True);
   

@@ -214,6 +214,7 @@ module [HASim_Module] mkFUNCP_Regstate
   rule doMapping (!busy && (fl_read + 1 != fl_write) &&& waitingQ.first() matches {.mx, .tok, .ss} &&& tok.info.epoch == epoch);
     
     //{Maybe#(RName), Token, Bool} 
+    $display("REGSTATE doMapping: %0d, %0d, %0d", mx, tok, ss);
     waitingQ.deq();
     PRName oldPReg; 
     PRName newPReg;
@@ -283,6 +284,7 @@ module [HASim_Module] mkFUNCP_Regstate
   rule lookup1 (True);
     
     let rnm <- link_lookup1.getReq();
+    $display("REGSTATE Lookup1: %0d", rnm);
     link_lookup1.makeResp(lookup(rnm));
     
   endrule
@@ -290,6 +292,7 @@ module [HASim_Module] mkFUNCP_Regstate
   rule lookup2 (True);
     
     let rnm <- link_lookup2.getReq();
+    $display("REGSTATE Lookup2: %0d", rnm);
     link_lookup2.makeResp(lookup(rnm));
     
   endrule
@@ -299,6 +302,7 @@ module [HASim_Module] mkFUNCP_Regstate
   rule read1 (True);
   
     let prnm <- link_read1.getReq();
+    $display("REGSTATE Read1: %0d", prnm);
     link_read1.makeResp(prf.read1(prnm));
   
   endrule
@@ -306,6 +310,7 @@ module [HASim_Module] mkFUNCP_Regstate
   rule read2 (True);
   
     let prnm <- link_read2.getReq();
+    $display("REGSTATE Read2: %0d", prnm);
     link_read2.makeResp(prf.read2(prnm));
   
   endrule
@@ -317,6 +322,7 @@ module [HASim_Module] mkFUNCP_Regstate
   rule write1 (True);
   
     match {.prnm, .val} <- link_write1.receive();
+    $display("REGSTATE Write1: %0d, %0d", prnm, val);
     prf.write1(prnm, val);
   
   endrule
@@ -324,6 +330,7 @@ module [HASim_Module] mkFUNCP_Regstate
   rule write2 (True);
   
     match {.prnm, .val} <- link_write2.receive();
+    $display("REGSTATE Write2: %0d, %0d", prnm, val);
     prf.write2(prnm, val);
   
   endrule
@@ -333,6 +340,7 @@ module [HASim_Module] mkFUNCP_Regstate
   rule freePReg (!busy);
   
     let tok <- link_freePReg.receive();
+    $display("REGSTATE freePReg: %0d", tok);
   
     PRName reg_to_free = old_pregs.sub(tok.index);
   
@@ -353,6 +361,7 @@ module [HASim_Module] mkFUNCP_Regstate
     
     
     let tok <- link_rewindToToken.receive();
+    $display("REGSTATE rewindToToken: %0d", tok);
     
     epoch <= epoch + 1;
     

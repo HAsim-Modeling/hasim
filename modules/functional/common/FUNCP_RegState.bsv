@@ -11,6 +11,8 @@ import hasim_common::*;
 import hasim_funcp_base::*;
 import hasim_isa::*;
 
+import FUNCP_FreeList::*;
+
 
 //----------------------------------------------------------------------------------
 // Physical Register File
@@ -100,11 +102,6 @@ module [HASim_Module] mkFUNCP_Regstate
   RFile_4_2 prf <- mkRFile_4_2();
 
   //map table 
-
-  RName maxR = maxBound;
-  Bit#(prname_SZ) minInitFL_bits = zeroExtend(pack(maxR)) + 1;
-  PRName minInitFL = unpack(minInitFL_bits);
-  PRName maxInitFL = maxBound;
   
   Vector#(TExp#(rname_SZ), PRName) initmap = map(fromInteger, genVector);
   Reg#(Vector#(TExp#(rname_SZ), PRName)) maptbl <- mkReg(initmap); // init with [0 .. max]
@@ -113,11 +110,7 @@ module [HASim_Module] mkFUNCP_Regstate
      return select(maptbl._read(), r);
   endfunction 
 
-  // XXX initialized with max+1 to maxBound ..
-  RegFile#(PRName, PRName)    freelist  <- mkRegFileFullLoad("freelist.hex");
-  Reg #(PRName)               fl_read   <- mkReg(minInitFL);
-  Reg #(PRName)               fl_write  <- mkReg(maxInitFL); 
-  
+  FreeList                       freelist <- mkFreeList();
   RegFile#(TokIndex, PRName)     old_pregs <- mkRegFileFull();
 
   //rob                                   old
@@ -135,6 +128,7 @@ module [HASim_Module] mkFUNCP_Regstate
   Reg#(TokEpoch) epoch <- mkReg(0);
   Reg#(Bool)  busy <- mkReg(False);
   Reg#(Token) stopToken <- mkRegU();
+  FIFO#(Tuple3#(Maybe#(RName), Token, Bool)) mappingQ <- mkFIFO();
   FIFO#(Tuple3#(Maybe#(RName), Token, Bool)) waitingQ <- mkFIFO();
 
   Bool free_ss = pack(snap_valids) != ~0;
@@ -192,7 +186,7 @@ module [HASim_Module] mkFUNCP_Regstate
      maptbl <= update(maptbl, unJust(mx), oldp);
 
    //back up (freelist)
-   fl_read <= fl_read - 1;
+   freelist.back();
  
    //backup (rob)
    rob_new <= rob_new - 1;
@@ -200,38 +194,49 @@ module [HASim_Module] mkFUNCP_Regstate
   endrule
 
 
-  //makeMapping
 
+  //begin_Mapping
 
-  rule makeMapping (!busy && (fl_read + 1 != fl_write));
-  
-    //{Maybe#(RName), Token, Bool} 
-    let tup <- link_mapping.getReq();
-    waitingQ.enq(tup);
-      
-  endrule
-  
-  rule doMapping (!busy && (fl_read + 1 != fl_write) &&& waitingQ.first() matches {.mx, .tok, .ss} &&& tok.info.epoch == epoch);
+  rule begin_Mapping (!busy);
     
     //{Maybe#(RName), Token, Bool} 
-    $display("REGSTATE doMapping: %0d, %0d, %0d", mx, tok, ss);
+    let tup <- link_mapping.getReq();
+    mappingQ.enq(tup);
+  endrule
+
+  //continue_Mapping
+  
+  rule continue_Mapping (!busy &&& mappingQ.first() matches {.mx, .tok, .ss} &&& tok.info.epoch == epoch);
+    $display("REGSTATE begin_Mapping: %0d, %0d, %0d", mx, tok, ss);
+    //take off freelist
+    freelist.forward_req();
+    mappingQ.deq();
+    waitingQ.enq(mappingQ.first());
+  endrule
+
+  //finish_Mapping
+
+  rule finish_Mapping (!busy);
+    
+    match {.mx, .tok, .ss} = waitingQ.first();
     waitingQ.deq();
+
     PRName oldPReg; 
     PRName newPReg;
-
+  
+    PRName nPReg <- freelist.forward_resp();
+  
     if (isJust(mx))
       begin
 	oldPReg = select(maptbl, unJust(mx));
-	newPReg = freelist.sub(fl_read);
+	newPReg = nPReg;
       end
     else
       begin
-	oldPReg = freelist.sub(fl_read);
+	oldPReg = nPReg;
 	newPReg = ?;
        end
 
-    //take off freelist
-    fl_read <= fl_read + 1;
 
     // update map
     if (isJust(mx))
@@ -269,7 +274,7 @@ module [HASim_Module] mkFUNCP_Regstate
 	let idx = unJust(midx);
 	snap_valids     <= update(snap_valids, idx, True);
 	snap_ids        <= update(snap_ids   , idx, tok.index);
-	snap_flreadptrs.upd(idx, fl_read);
+	snap_flreadptrs.upd(idx, freelist.current());
 	snap_robnewptrs.upd(idx, rob_new);
                   snaps.upd(idx, maptbl);
       end
@@ -344,8 +349,7 @@ module [HASim_Module] mkFUNCP_Regstate
   
     PRName reg_to_free = old_pregs.sub(tok.index);
   
-    freelist.upd(fl_write, reg_to_free);
-    fl_write <= fl_write + 1;
+    freelist.free(reg_to_free);
 
     rob_old <= rob_old + 1;
 
@@ -386,7 +390,7 @@ module [HASim_Module] mkFUNCP_Regstate
       tagged Just .i:
         begin
           maptbl  <=           snaps.sub(i);
-          fl_read <= snap_flreadptrs.sub(i);
+          freelist.backTo(snap_flreadptrs.sub(i));
           rob_new <= snap_robnewptrs.sub(i);
         end
       tagged Nothing:   //if not write busy and record token

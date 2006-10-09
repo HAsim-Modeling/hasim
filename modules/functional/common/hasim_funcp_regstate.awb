@@ -14,7 +14,7 @@
 # %attributes hasim
 #
 # %public FUNCP_RegState.bsv
-# %private freelist.hex
+# %private FUNCP_FreeList.bsv
 #
 # %param SYNTH_BOUNDARY mkFUNCP_Regstate "name of synthesis boundary"
 # %AWB_END

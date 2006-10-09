@@ -111,7 +111,6 @@ module [HASim_Module] mkFUNCP_Regstate
   endfunction 
 
   FreeList                       freelist <- mkFreeList();
-  RegFile#(TokIndex, PRName)     old_pregs <- mkRegFileFull();
 
   //rob                                   old
   RegFile#(PRName, Tuple3#(Token, Maybe#(RName), PRName)) rob      <- mkRegFileFull();
@@ -279,7 +278,7 @@ module [HASim_Module] mkFUNCP_Regstate
                   snaps.upd(idx, maptbl);
       end
     
-    old_pregs.upd(tok.index, oldPReg);
+    freelist.setOldPReg(tok, oldPReg);
     
     // return value
     link_mapping.makeResp(newPReg);
@@ -346,10 +345,8 @@ module [HASim_Module] mkFUNCP_Regstate
   
     let tok <- link_freePReg.receive();
     $display("REGSTATE freePReg: %0d", tok);
-  
-    PRName reg_to_free = old_pregs.sub(tok.index);
-  
-    freelist.free(reg_to_free);
+    
+    freelist.free(tok);
 
     rob_old <= rob_old + 1;
 

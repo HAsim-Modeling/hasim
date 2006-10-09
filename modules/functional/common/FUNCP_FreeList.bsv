@@ -12,9 +12,10 @@ interface FreeList;
   method Action forward_req();
   method ActionValue#(PRName) forward_resp();
   method Action back();
-  method Action free(PRName reg_to_free);
   method Action backTo(PRName r);
   method PRName current();
+  method Action setOldPReg(Token t, PRName oldPReg);
+  method Action free(Token t);
   
 endinterface
 
@@ -37,7 +38,8 @@ module [HASim_Module] mkFreeList
   Reg#(Bool) initializing <- mkReg(True);
   
 
-  BRAM#(PRName, PRName)       fl  <- mkBRAM_Full();
+  BRAM#(TokIndex, PRName)     old_pregs <- mkBRAM_Full();
+  BRAM#(PRName, PRName)       fl        <- mkBRAM_Full();
   Reg#(PRName)  	      fl_read   <- mkReg(minInitFL);
   Reg#(PRName)  	      fl_write  <- mkReg(minInitFL); 
   
@@ -52,6 +54,14 @@ module [HASim_Module] mkFreeList
   
   endrule
   
+  rule finish_free (True);
+  
+    PRName reg_to_free <- old_pregs.read_resp();
+    fl.upd(fl_write, reg_to_free);
+    fl_write <= fl_write + 1;
+
+  endrule
+  
   method Action forward_req() if (!full && !initializing);
     fl.read_req(fl_read);
     fl_read <= fl_read + 1;
@@ -64,10 +74,15 @@ module [HASim_Module] mkFreeList
   
   endmethod
   
-  method Action free(PRName reg_to_free) if (!initializing);
+  method Action setOldPReg(Token tok, PRName oldPReg) if (!initializing);
   
-    fl.upd(fl_write, reg_to_free);
-    fl_write <= fl_write + 1;
+    old_pregs.upd(tok.index, oldPReg);
+  
+  endmethod
+  
+  method Action free(Token tok) if (!initializing);
+  
+    old_pregs.read_req(tok.index);
   
   endmethod
   

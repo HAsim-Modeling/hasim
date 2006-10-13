@@ -18,13 +18,9 @@
 
 
 module BRAM(CLK, RST_N,
-            WR_ADDR,  WR_VAL, WR_EN,
-            RD1_ADDR, RD1_EN, RD1_RDY,
-	    RD2_ADDR, RD2_EN, RD2_RDY,
-	    RD3_ADDR, RD3_EN, RD3_RDY,
-	    RES1, RES1_RDY, RES1_EN, 
-	    RES2, RES2_RDY, RES2_EN,
-	    RES3, RES3_RDY, RES3_EN);
+            RD_ADDR, RD_RDY,   RD_EN,
+	    DOUT,    DOUT_RDY, DOUT_EN,
+            WR_ADDR, WR_VAL,   WR_EN);
 
    // synopsys template   
    parameter                   addr_width = 1;
@@ -35,94 +31,47 @@ module BRAM(CLK, RST_N,
    input                       CLK;
    input		       RST_N;   
 
-   // Write port
+   // Read Port
+   // req
+   input [addr_width - 1 : 0]  RD_ADDR;
+   input                       RD_EN;
+   output                      RD_RDY;
+   // resp
+   output [data_width - 1 : 0] DOUT;
+   output                      DOUT_RDY;
+   input                       DOUT_EN;
+
+   // Write Port
+   // req
    input [addr_width - 1 : 0]  WR_ADDR;
    input [data_width - 1 : 0]  WR_VAL;
    input                       WR_EN;
 
-   // Read port #1
-   // req
-   input		       RD1_EN;
-   input [addr_width - 1 : 0]  RD1_ADDR;
-   output                      RD1_RDY;
-   // resp
-   output [data_width - 1 : 0] RES1;
-   output                      RES1_RDY;
-   input                       RES1_EN;
-
-
-   // Read port #2
-   // req
-   input		       RD2_EN;
-   input [addr_width - 1 : 0]  RD2_ADDR;
-   output                      RD2_RDY;
-   // resp
-   output [data_width - 1 : 0] RES2;
-   output                      RES2_RDY;
-   input                       RES2_EN;
-
-
-   // Read port #3
-   // req
-   input		       RD3_EN;
-   input [addr_width - 1 : 0]  RD3_ADDR;
-   output                      RD3_RDY;
-   // resp
-   output [data_width - 1 : 0] RES3;
-   output                      RES3_RDY;
-   input                       RES3_EN;
-
- 
-   reg [data_width - 1 : 0]    arr[lo:hi];
+   reg [data_width - 1 : 0]    arr[lo:hi]; /*synthesis syn_ramstyle = "block_ram"*/
    
-   reg REQ_MADE1;
-   reg REQ_MADE2;
-   reg REQ_MADE3;
-   
-   reg [data_width - 1 : 0]    DOUT1;
+   reg                         RD_REQ_MADE;
+   reg [data_width - 1 : 0]    RAM_OUT;
+      
+   FIFO2#(.width(data_width), .guarded(1)) q(.RST_N(RST_N),
+                                             .CLK(CLK),
+                                             .D_IN(RAM_OUT),
+                                             .ENQ(RD_REQ_MADE),
+                                             .DEQ(DOUT_EN),
+                                             .CLR(1'b0),
+                                             .D_OUT(DOUT),
+                                             .FULL_N(RD_RDY),
+                                             .EMPTY_N(DOUT_RDY));
 
-   reg [data_width - 1 : 0]    DOUT2;
 
-   reg [data_width - 1 : 0]    DOUT3;
    
    integer x;
 
-   
-   FIFO2#(.width(data_width), .guarded(1)) q1(.RST_N(RST_N),
-					      .CLK(CLK),
-					      .D_IN(DOUT1),
-					      .ENQ(REQ_MADE1),
-					      .DEQ(RES1_EN),
-					      .CLR(1'b0),
-					      .D_OUT(RES1),
-					      .FULL_N(RD1_RDY),
-					      .EMPTY_N(RES1_RDY));
-
-   FIFO2#(.width(data_width), .guarded(1)) q2(.RST_N(RST_N),
-					      .CLK(CLK),
-					      .D_IN(DOUT2),
-					      .ENQ(REQ_MADE2),
-					      .DEQ(RES2_EN),
-					      .CLR(1'b0),
-					      .D_OUT(RES2),
-					      .FULL_N(RD2_RDY),
-					      .EMPTY_N(RES2_RDY));
-
-   FIFO2#(.width(data_width), .guarded(1)) q3(.RST_N(RST_N),
-					      .CLK(CLK),
-					      .D_IN(DOUT3),
-					      .ENQ(REQ_MADE3),
-					      .DEQ(RES3_EN),
-					      .CLR(1'b0),
-					      .D_OUT(RES3),
-					      .FULL_N(RD3_RDY),
-					      .EMPTY_N(RES3_RDY));
    always@(posedge CLK)
      begin
 
        
        if (!RST_N) 
-         begin
+         begin  //Make simulation behavior consistent with Xilinx synthesis
            // synopsys translate_off
 	   for (x = lo; x < hi; x = x + 1)
 	   begin
@@ -132,28 +81,17 @@ module BRAM(CLK, RST_N,
          end
        else 
          begin 
-	   REQ_MADE1 <= RD1_EN;
-	   REQ_MADE2 <= RD2_EN;
-	   REQ_MADE3 <= RD3_EN;
- 
-
-	   if (RD1_EN) begin
-             DOUT1 <= arr[RD1_ADDR];
-	   end
-
-	   if (RD2_EN) begin
-             DOUT2 <= arr[RD2_ADDR];
-	   end
-
-	   if (RD3_EN) begin
-             DOUT3 <= arr[RD3_ADDR];
-	   end
-
-
+	  
+	   RD_REQ_MADE <= RD_EN;
+	   
 	   if (WR_EN)
-             arr[WR_ADDR] <= WR_VAL;
+	     arr[WR_ADDR] <= WR_VAL;
+	   
+	   RAM_OUT <= arr[RD_ADDR];
+ 
          end
      end // always@ (posedge CLK)
 
 endmodule
+
 

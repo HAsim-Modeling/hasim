@@ -109,10 +109,10 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
 
   		
   //BRAM tables
-  BRAM#(TokIndex, init_T)     values <- mkBRAM_Full();
+  BRAM#(TokIndex, init_T)   values <- mkBRAM_Full();
   BRAM#(TokIndex, TokInfo)     infos <- mkBRAM_Full();
-  BRAM#(TokIndex, Bool)       valids <- mkBRAM_Full();
-  BRAM#(TokIndex, Bool)    starteds  <- mkBRAM_Full(); 
+  BRAM_2#(TokIndex, Bool)     valids <- mkBRAM_2_Full();
+  BRAM#(TokIndex, Bool)   starteds <- mkBRAM_Full(); 
 
   //FIFOs
   //FIFO#(Tuple2#(Token, init_T))         insertQ <- mkFIFO();
@@ -131,10 +131,10 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
     //Note: We avoid a correctness check to reduce latency
     
     //Set valid to true and started to false
-    valids.upd(tok.index, True);
-    starteds.upd(tok.index, False);
-    values.upd(tok.index, iVal);
-    infos.upd(tok.index, tok.info);
+    valids.write(tok.index, True);
+    starteds.write(tok.index, False);
+    values.write(tok.index, iVal);
+    infos.write(tok.index, tok.info);
     
   endrule
 
@@ -146,7 +146,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
     match {.tok, .req} <- link_from_tp.getReq();
    
     starteds.read_req(tok.index);
-    valids.read_req(tok.index);
+    valids.read_req1(tok.index);
     values.read_req(tok.index);
     
     reqQ.enq(tuple2(tok, req));
@@ -159,7 +159,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
     reqQ.deq();
    
     Bool started   <- starteds.read_resp();
-    Bool valid     <-   valids.read_resp();  
+    Bool valid     <-   valids.read_resp1();  
 
     init_T iVal    <-   values.read_resp();
 
@@ -170,7 +170,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
      else
      begin
        link_to_unit.makeReq(tuple3(tok, iVal, req));
-       starteds.upd(tok.index, True);
+       starteds.write(tok.index, True);
     end
     
   endrule
@@ -181,7 +181,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   
     match {.tok, .resp, .next} <- link_to_unit.getResp();
     
-    valids.read_req3(tok.index);
+    valids.read_req2(tok.index);
     
     respQ.enq(tuple3(tok, resp, next));
   
@@ -189,13 +189,13 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   
   rule resp_finish (True);
     
-    Bool valid <- valids.read_resp3();
+    Bool valid <- valids.read_resp2();
     match {.tok, .resp, .next} = respQ.first();
     respQ.deq();
     
     if (valid) // don't insert if it was killed
       begin
-        valids.upd(tok.index, False);
+        valids.write(tok.index, False);
 	link_from_tp.makeResp(tuple2(tok, resp));
 	link_to_next.send(tuple2(tok, next));
       end
@@ -208,7 +208,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
     
     let tok <- link_killToken.receive();
   
-    valids.upd(tok.index, False);
+    valids.write(tok.index, False);
   
   endrule
 

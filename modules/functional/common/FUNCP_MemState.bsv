@@ -164,7 +164,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
     if (a > maxAddr)
         $display("WARNING [2]: Address 0x%h out of bounds. Increase software address length!", a);
     
-    dmemory.upd(sa, v);
+    dmemory.write(sa, v);
 
   endrule
   
@@ -206,27 +206,27 @@ module [HASim_Module] mkFUNCP_Memstate ()
   rule magic_imem (True);
   
     match {.addr, .inst} <- magic_imem_write.receive();
-    imemory.upd(truncate(addr), inst);
+    imemory.write(truncate(addr), inst);
     
   endrule
   
   rule magic_dmem_w (True);
   
     match {.addr, .val} <- magic_dmem_write.receive();
-    dmemory.upd(truncate(addr), val);
+    dmemory.write(truncate(addr), val);
     
   endrule
   
   rule magic_dmem_r_req (True);
   
     let addr <- magic_dmem_read.getReq();
-    dmemory.read_req2(truncate(addr));
+    dmemory.read_req(truncate(addr));
     
   endrule
  
   rule magic_dmem_r_resp (True);
   
-    let v <- dmemory.read_resp2();
+    let v <- dmemory.read_resp();
     magic_dmem_read.makeResp(v);
     
   endrule

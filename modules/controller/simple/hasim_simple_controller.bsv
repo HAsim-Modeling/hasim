@@ -62,6 +62,7 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
   
     th.exec(COM_LoadState);
     state <= CON_Loading;
+    link_leds.send(4'b0001);
   
   endrule
   
@@ -75,6 +76,7 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
 	begin
           th.exec(COM_RunProgram);
           state <= CON_Running;
+	  link_leds.send(4'b0011);
           $display("Controller: Program Started on host CC %0d", curTick);
 	end
       default:
@@ -104,6 +106,7 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
 	begin
           th.exec(COM_CheckResult);
           state <= CON_Checking;
+	  link_leds.send(4'b0111);
           $display("Controller: Program Finished on host CC %0d", curTick);
 	end
       default:
@@ -129,12 +132,14 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
       tagged RESP_CheckPassed:
         begin
 	  state <= CON_Finished;
+	  link_leds.send(4'b1001);
 
 	  $display("Controller: Test program finished succesfully.");
 	end
       tagged RESP_CheckFailed:
         begin
 	  state <= CON_Finished;
+	  link_leds.send(4'b1101);
 
 	  $display("Controller: Test program finished. One or more failures occurred.");
 	end

@@ -73,7 +73,7 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
       };
     link_from_tp.makeResp(tok);
     link_to_next.send(tuple2(tok, ?));
-    valids.upd(next, True);
+    valids.write(next, True);
     let n = next + 1;
     valids.read_req(n);
     next <= n;
@@ -109,7 +109,7 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
     //if (!isFree)
       //$display("Tokgen error. Completing unallocated token %h", t);
       
-    valids.upd(t.index, False);
+    valids.write(t.index, False);
 
   endrule
    
@@ -124,7 +124,7 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
     //if (!isFree)
       //$display("Tokgen error. Killing unallocated token %h", tok);
       
-    valids.upd(tok.index, False);
+    valids.write(tok.index, False);
   
   endrule
   

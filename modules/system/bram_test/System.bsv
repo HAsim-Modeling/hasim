@@ -39,7 +39,7 @@ module [HASim_Module] mkSystem (TModule#(Command, Response));
      
      if (counter != 0)
      begin
-       br.upd(counter, n + 1);
+       br.write(counter, n + 1);
        counter <= counter + 1;
      end
      
@@ -51,7 +51,7 @@ module [HASim_Module] mkSystem (TModule#(Command, Response));
    endrule
    
    rule finishUp (started && finishing);
-      br.upd(0, 0);
+      br.write(0, 0);
       started <= False;
       finishing <= False;
       link_leds.send(4'b0011);

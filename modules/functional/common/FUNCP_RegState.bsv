@@ -15,75 +15,6 @@ import FUNCP_FreeList::*;
 
 
 //----------------------------------------------------------------------------------
-// Physical Register File
-//----------------------------------------------------------------------------------
-
-interface RFile_4_2;
-  method Maybe#(Value) read1(PRName a);
-  method Maybe#(Value) read2(PRName a);
-  method Maybe#(Value) read3(PRName a);
-  method Maybe#(Value) read4(PRName a);
-
-
-  method Action write1(PRName a, Value v);
-  method Action write2(PRName a, Value v);
-
-  method Action alloc(PRName a);
-endinterface
-
-module [HASim_Module] mkRFile_4_2
-    //interface:
-                (RFile_4_2) 
-    provisos
-            (Bits#(PRName,  prname_SZ),
-	     Bits#(Value,  value_SZ));
-
-  //RegisterFile
-
-  Vector#(TExp#(prname_SZ), Reg#(Value)) rf_regs <- mapM(compose(mkConfigReg,fromInteger), genVector);
-
-  function Bool initiallyValid(Integer x);
-    //Only r0 is valid, and set to zero:
-    return (x == 0);
-    //All registers are valid:
-    //PRName rmax = maxBound ;
-    //return(fromInteger(x) < rmax);
-  endfunction
-
-  Vector#(TExp#(prname_SZ), Reg#(Bool))           rf_valids <-
-            mapM(compose(mkConfigReg, initiallyValid), genVector);
-//            replicateM(mkConfigReg, mapM(initiallyValid, genVector));
-
-  function Maybe#(Value) read(PRName x);
-     return (select(rf_valids, x)._read()) ? Just((select(rf_regs, x))._read()) : Nothing;
-  endfunction
-
-  function Action write(PRName x, Value v);
-    action 
-      (select(rf_valids, x)) <= True;
-      (select(rf_regs, x))   <= v;
-    endaction
-  endfunction
-
-  function Action allocF(PRName x);
-    action
-      (select(rf_valids, x)) <= False;
-    endaction
-  endfunction
-
-  method read1 = read;
-  method read2 = read;
-  method read3 = read;
-  method read4 = read;
-
-  method write1 = write;
-  method write2 = write;
-
-  method alloc = allocF;
-
-endmodule
-
-//----------------------------------------------------------------------------------
 // Bypass
 //----------------------------------------------------------------------------------
 
@@ -98,8 +29,9 @@ module [HASim_Module] mkFUNCP_Regstate
              Bits#(SnapshotPtr, snapshotptr_SZ),
 	     Add#(rname_SZ, rdiff_TMP, prname_SZ),
 	     Add#(snapshotptr_SZ, sdiff_TMP, token_SZ));
-
-  RFile_4_2 prf <- mkRFile_4_2();
+  
+  
+  BRAM_2#(PRName, Maybe#(Value)) prf <- mkBRAM_2_Full();
 
   //map table 
   
@@ -125,10 +57,12 @@ module [HASim_Module] mkFUNCP_Regstate
 
 
   Reg#(TokEpoch) epoch <- mkReg(0);
-  Reg#(Bool)  busy <- mkReg(False);
+  Reg#(Bool)  busy <- mkReg(True);
   Reg#(Token) stopToken <- mkRegU();
   FIFO#(Tuple3#(Maybe#(RName), Token, Bool)) mappingQ <- mkFIFO();
   FIFO#(Tuple3#(Maybe#(RName), Token, Bool)) waitingQ <- mkFIFO();
+
+  Reg#(Bool) initializing <- mkReg(True);
 
   Bool free_ss = pack(snap_valids) != ~0;
 
@@ -170,9 +104,18 @@ module [HASim_Module] mkFUNCP_Regstate
   //...
         link_rewindToToken <- mkConnection_Receive("fp_rewindToToken");
 
+  rule initialize (initializing);
+  
+    prf.write(0, Valid 0); //R0 is hard-coded to 0.
+    busy <= False;
+    initializing <= False;
+  
+  endrule
+    
+
   //unBusy
   
-  rule unBusy (busy);
+  rule unBusy (busy && !initializing);
   
     //if newest token is stopToken or we ran out unbusy
     match {.tok, .mx, .oldp} = rob.sub(rob_new);
@@ -303,39 +246,79 @@ module [HASim_Module] mkFUNCP_Regstate
 
   //read{1, 2} used by Execute
 
-  rule read1 (True);
+  rule read_req1 (True);
   
     let prnm <- link_read1.getReq();
-    $display("REGSTATE Read1: %0d", prnm);
-    link_read1.makeResp(prf.read1(prnm));
+    prf.read_req1(prnm);
+  
+  endrule
+  
+  rule read_resp1 (True);
+
+    let res <- prf.read_resp1();
+    link_read1.makeResp(res);
   
   endrule
 
-  rule read2 (True);
+  rule read_req2 (True);
   
     let prnm <- link_read2.getReq();
-    $display("REGSTATE Read2: %0d", prnm);
-    link_read2.makeResp(prf.read2(prnm));
+    prf.read_req2(prnm);
+  
+  endrule
+  
+  rule read_resp2 (True);
+
+    let res <- prf.read_resp2();
+    link_read2.makeResp(res);
+  
+  endrule
+/*
+  //read{3, 4} used by Mem
+
+  rule read_req3 (True);
+  
+    let prnm <- link_read3.getReq();
+    prf.read_req3(prnm);
+  
+  endrule
+  
+  rule read_resp3 (True);
+
+    let res <- prf.read_resp3();
+    link_read3.makeResp(res);
   
   endrule
 
+  rule read_req4 (True);
+  
+    let prnm <- link_read4.getReq();
+    prf.read_req4(prnm);
+  
+  endrule
+  
+  rule read_resp4 (True);
+
+    let res <- prf.read_resp4();
+    link_read4.makeResp(res);
+  
+  endrule
+*/
   //write{1,2}
   //1 used by Execute
   //2 used by Mem
 
-  rule write1 (True);
+  (* descending_urgency = "write2, write" *)
+  rule write (True);
   
     match {.prnm, .val} <- link_write1.receive();
-    $display("REGSTATE Write1: %0d, %0d", prnm, val);
-    prf.write1(prnm, val);
-  
+    prf.write(prnm, Valid val);
   endrule
   
   rule write2 (True);
   
     match {.prnm, .val} <- link_write2.receive();
-    $display("REGSTATE Write2: %0d, %0d", prnm, val);
-    prf.write2(prnm, val);
+    prf.write(prnm, Valid val);
   
   endrule
 
@@ -344,7 +327,6 @@ module [HASim_Module] mkFUNCP_Regstate
   rule freePReg (!busy);
   
     let tok <- link_freePReg.receive();
-    $display("REGSTATE freePReg: %0d", tok);
     
     freelist.free(tok);
 

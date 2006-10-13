@@ -47,7 +47,7 @@ module [HASim_Module] mkFreeList
   
   rule initialize (initializing);
   
-    fl.upd(fl_write, fl_write);
+    fl.write(fl_write, fl_write);
     fl_write <= fl_write + 1;
     if (fl_write == maxInitFL)
       initializing <= False;
@@ -57,7 +57,7 @@ module [HASim_Module] mkFreeList
   rule finish_free (True);
   
     PRName reg_to_free <- old_pregs.read_resp();
-    fl.upd(fl_write, reg_to_free);
+    fl.write(fl_write, reg_to_free);
     fl_write <= fl_write + 1;
 
   endrule
@@ -76,7 +76,7 @@ module [HASim_Module] mkFreeList
   
   method Action setOldPReg(Token tok, PRName oldPReg) if (!initializing);
   
-    old_pregs.upd(tok.index, oldPReg);
+    old_pregs.write(tok.index, oldPReg);
   
   endmethod
   

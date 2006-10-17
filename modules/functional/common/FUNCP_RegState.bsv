@@ -45,15 +45,14 @@ module [HASim_Module] mkFUNCP_Regstate
   FreeList                       freelist <- mkFreeList();
 
   //rob                                   old
-  RegFile#(PRName, Tuple3#(Token, Maybe#(RName), PRName)) rob      <- mkRegFileFull();
+  BRAM_2#(PRName, Tuple3#(Token, Maybe#(RName), PRName))  rob      <- mkBRAM_2_Full();
   Reg#(PRName)   					  rob_old  <- mkReg(0);
   Reg#(PRName) 						  rob_new  <- mkReg(0);
 
   Reg#(Vector#(TExp#(snapshotptr_SZ), Bool))  snap_valids        <- mkReg(unpack(0));
-  Reg#(Vector#(TExp#(snapshotptr_SZ), TokIndex)) snap_ids           <- mkRegU();
-  RegFile#(SnapshotPtr, PRName)               snap_flreadptrs    <- mkRegFileFull();
-  RegFile#(SnapshotPtr, PRName)               snap_robnewptrs    <- mkRegFileFull(); 
-  RegFile#(SnapshotPtr, Vector#(TExp#(rname_SZ), PRName))  snaps <- mkRegFileFull();
+  Reg#(Vector#(TExp#(snapshotptr_SZ), TokIndex)) snap_ids        <- mkRegU();
+                             //fl_read  rob_new     map
+  BRAM#(SnapshotPtr, Tuple3#(PRName, PRName, Vector#(TExp#(rname_SZ), PRName))) snaps <- mkBRAM_Full();
 
 
   Reg#(TokEpoch) epoch <- mkReg(0);
@@ -63,6 +62,7 @@ module [HASim_Module] mkFUNCP_Regstate
   FIFO#(Tuple3#(Maybe#(RName), Token, Bool)) waitingQ <- mkFIFO();
 
   Reg#(Bool) initializing <- mkReg(True);
+  FIFO#(Token) flatteningQ   <- mkFIFO();
 
   Bool free_ss = pack(snap_valids) != ~0;
 
@@ -118,10 +118,12 @@ module [HASim_Module] mkFUNCP_Regstate
   rule unBusy (busy && !initializing);
   
     //if newest token is stopToken or we ran out unbusy
-    match {.tok, .mx, .oldp} = rob.sub(rob_new);
+    match {.tok, .mx, .oldp} <- rob.read_resp1();
     
     if (tok == stopToken || (rob_new == rob_old + 1))
        busy <= False;
+    else
+       rob.read_req1(rob_new - 1);
        
    //back up maptable
    if (isJust(mx))
@@ -190,7 +192,7 @@ module [HASim_Module] mkFUNCP_Regstate
 
     // write rob
     rob_new <= rob_new + 1;
-    rob.upd(rob_new, tuple3(tok, mx, newPReg));
+    rob.write(rob_new, tuple3(tok, mx, newPReg));
 
     // make snapshot if needed
     Maybe#(SnapshotPtr) midx = Nothing;
@@ -216,9 +218,7 @@ module [HASim_Module] mkFUNCP_Regstate
 	let idx = unJust(midx);
 	snap_valids     <= update(snap_valids, idx, True);
 	snap_ids        <= update(snap_ids   , idx, tok.index);
-	snap_flreadptrs.upd(idx, freelist.current());
-	snap_robnewptrs.upd(idx, rob_new);
-                  snaps.upd(idx, maptbl);
+        snaps.write(idx, tuple3(freelist.current(), rob_new, maptbl));
       end
     
     freelist.setOldPReg(tok, oldPReg);
@@ -368,25 +368,44 @@ module [HASim_Module] mkFUNCP_Regstate
     case (midx) matches
       tagged Just .i:
         begin
-          maptbl  <=           snaps.sub(i);
-          freelist.backTo(snap_flreadptrs.sub(i));
-          rob_new <= snap_robnewptrs.sub(i);
+	  snaps.read_req(i);
         end
       tagged Nothing:   //if not write busy and record token
         begin
           busy <= True;
+	  rob.read_req1(rob_new);
           stopToken <= tok;
         end
     endcase
 
     //flatten dead snaps
-    match {.oldTok, .*, .*} = rob.sub(rob_old);
+    rob.read_req2(rob_old);
+    flatteningQ.enq(tok);
+  
+  endrule
+  
+  rule flattenDeadSnaps (True);
+
+    let tok = flatteningQ.first();
+    flatteningQ.deq();
+    
+    match {.oldTok, .*, .*} <- rob.read_resp2();
 
     function Bool flatten(Bool x, TokIndex t) = x && (tok.index-oldTok.index > t - oldTok.index); //valid and older than tok stay
      
     snap_valids <= zipWith(flatten, snap_valids, snap_ids);
     
   endrule
+  
+  rule finishFastRewind (True);
+  
+    match {.flt, .robt, .mapt} <- snaps.read_resp();
+
+    maptbl  <= mapt;
+    freelist.backTo(flt);
+    rob_new <= robt;
     
+  endrule
+  
 endmodule
 

@@ -48,6 +48,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
   BRAM#(SoftAddr, Inst)  imemory <- mkBRAM_Full();
   BRAM#(SoftAddr, Value) dmemory <- mkBRAM_Full();
 
+  FIFO#(Tuple2#(Token, Addr))     loadQ <- mkFIFO();
   FIFO#(Tuple2#(Token, Value))  st_bufQ <- mkFIFO();
   FIFO#(PathSpeed)             waitingQ <- mkFIFO();
 
@@ -104,17 +105,8 @@ module [HASim_Module] mkFUNCP_Memstate ()
 	  SoftAddr sa = truncate(ld_info.addr);
 	  
 	  dmemory.read_req(sa);
-
-	  if (st_buffer.mayHaveAddress(ld_info.addr))
-	  begin  
-	    //Store buffer may have addr. Take the slow path
-	    waitingQ.enq(Slow ld_info.token);
-	    st_buffer.retrieve(ld_info.token, ld_info.addr);
-	  end
-	  else
-	  begin
-	    waitingQ.enq(Fast);
-	  end
+          st_buffer.checkAddress(ld_info.addr);
+	  loadQ.enq(tuple2(ld_info.token, ld_info.addr));
 	    
         end
       tagged St .st_info:
@@ -129,24 +121,27 @@ module [HASim_Module] mkFUNCP_Memstate ()
     endcase
   
   endrule
- 
-  rule handleDMEM_resp (True);
-  
-    let v <- dmemory.read_resp();
 
-    case (waitingQ.first()) matches
-      tagged Fast:
-      begin
-	link_dmem.makeResp(LdResp v);  
-      end
-      tagged Slow .tok:
-      begin
-        st_bufQ.enq(tuple2(tok, v));
-      end
-    endcase
+  rule handleStBufferCheck (True);
     
-    st_bufQ.deq();
+    match {.tok, .addr} = loadQ.first();
+    loadQ.deq();
 
+    let slow <- st_buffer.mayHaveAddress();
+    let v <- dmemory.read_resp();
+    
+    if (slow)
+    begin  
+      //Store buffer may have addr. Take the slow path
+      st_bufQ.enq(tuple2(tok, v));
+      st_buffer.retrieve(tok, addr);
+    end
+    else
+    begin
+      //Fast path response
+      link_dmem.makeResp(LdResp v); 
+    end
+      
   endrule
  
   //handleCommit
@@ -156,8 +151,13 @@ module [HASim_Module] mkFUNCP_Memstate ()
   rule handleCommit (True);
   
     Token tok <- link_commit.receive();
+    st_buffer.commit_req(tok);
     
-    match {.a, .v} <- st_buffer.commit(tok);
+  endrule
+  
+  rule handleCommit_2 (True);
+  
+    match {.a, .v} <- st_buffer.commit_resp();
     
     SoftAddr sa = truncate(a);
 

@@ -51,7 +51,9 @@ module BRAM(CLK, RST_N,
    
    reg                         RD_REQ_MADE;
    reg [data_width - 1 : 0]    RAM_OUT;
-      
+   
+   reg [1:0] CTR;
+   
    FIFO2#(.width(data_width), .guarded(1)) q(.RST_N(RST_N),
                                              .CLK(CLK),
                                              .D_IN(RAM_OUT),
@@ -59,10 +61,10 @@ module BRAM(CLK, RST_N,
                                              .DEQ(DOUT_EN),
                                              .CLR(1'b0),
                                              .D_OUT(DOUT),
-                                             .FULL_N(RD_RDY),
+                                             .FULL_N(),
                                              .EMPTY_N(DOUT_RDY));
 
-
+   assign RD_RDY = CTR > 0;
    
    integer x;
 
@@ -78,6 +80,7 @@ module BRAM(CLK, RST_N,
 	     arr[x] <= 0;
 	   end
            // synopsys translate_on
+	   CTR <= 2;
          end
        else 
          begin 
@@ -86,6 +89,10 @@ module BRAM(CLK, RST_N,
 	   
 	   if (WR_EN)
 	     arr[WR_ADDR] <= WR_VAL;
+	   
+	   CTR <= (RD_EN) ? 
+	            (DOUT_EN) ? CTR : CTR - 1 : 
+		    (DOUT_EN) ? CTR + 1 : CTR;
 	   
 	   RAM_OUT <= arr[RD_ADDR];
  

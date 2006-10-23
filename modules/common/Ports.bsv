@@ -65,20 +65,27 @@ module [HASim_Module] mkPort_Receive_Buffered#(String portname, Integer latency,
   Reg#(Bit#(8)) head <- mkReg(fromInteger(latency));
   Reg#(Bit#(8)) tail <- mkReg(0);
   
-  Bool full  = head == tail + 1;
+  function Bit#(n) overflow_incr(Bit#(n) x);
+    
+    let tmp = x + 1;
+    return (tmp == fromInteger(rMax)) ? 0 : tmp;
+  endfunction
+
+  Bool full  = head == overflow_incr(tail);
   Bool empty = head == tail;
+  
   
   rule shift (!full);
   
     let d <- con.receive();
     (rs[head._read()]) <= d;
-    head <= head + 1;
+    head <= overflow_incr(head);
    
   endrule
   
   method ActionValue#(Maybe#(msg_T)) receive() if (!empty);
     
-    tail <= tail + 1;
+    tail <= overflow_incr(tail);
     return rs[tail._read()]._read();
     
   endmethod

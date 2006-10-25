@@ -43,6 +43,7 @@ hasim_funcp_base=Hasim functional partition base
 hasim_testcase=Hasim smips testcase branch
 hasim_funcp_regstate=Hasim functional partition regstate
 hasim_funcp_pipeline=Hasim functional partition pipeline
+hasim_funcp_memstate_ifc=Hasim functional partition memstate interface
 
 [Hasim - Hardware (fpga) based system/Requires]
 hasim_funcp=Hasim functional partition
@@ -138,3 +139,12 @@ File=modules/common/fpgalib/xup/hasim_fpgalib_xup.awb
 
 [Hasim base library/Requires]
 hasim_fpgalib=Hasim FPGA library XUP board
+hasim_base=Hasim base module
+
+[Hasim base module]
+File=modules/common/base/hasim_base.awb
+Packagehint=hasim
+
+[Hasim functional partition memstate interface]
+File=modules/functional/common/hasim_funcp_memstate_ifc.awb
+Packagehint=hasim

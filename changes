@@ -2284,3 +2284,32 @@ Directory tools/scripts
 Fixed a typo. Don't know how this was working before.
 
 Joel
+
+----------
+jsemer      Date: Wed Oct 25 17:49:38 EDT 2006  CSN: CSN-hasim-137
+                  Wed Oct 25 21:49:38 UTC 2006
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          136 
+
+Directory config/pm/hasim/toymips
+ hasim_toymips_simple.apm  Locally Modified          136 
+
+Directory config/pm/hasim/demos
+ bram_test/                Locally Added               0 
+
+Directory config/pm/hasim/demos/bram_test
+ bram_test_xup.apm         Locally Added               0 
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage.apm    Locally Modified          136 
+
+
+Added changes to hasim configure procedure for handling .v files.
+
+Added a bram test model.
+
+Updated (but didn not test) the non-ports smips model and the toymips models.
+
+Joel

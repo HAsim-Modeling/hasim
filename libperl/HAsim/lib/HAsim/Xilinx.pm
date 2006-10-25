@@ -102,6 +102,16 @@ sub __generate_v_file {
 	print $file "`include \"$v_file\"\n";
     }
 
+    # Add includes of public and private bsc files
+    my @l = ();
+    push(@l, $module->private());
+
+    foreach my $f (@l) {
+      if ($f =~ /.v$/) {
+        my $v_file = HAsim::Util::path_append($my_dir, $f);
+        print $file "`include \"$v_file\"\n";
+      }
+    }
 
 }
 

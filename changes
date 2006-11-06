@@ -2313,3 +2313,29 @@ Added a bram test model.
 Updated (but didn not test) the non-ports smips model and the toymips models.
 
 Joel
+
+----------
+emer        Date: Mon Nov  6 15:37:32 EST 2006  CSN: CSN-hasim-138
+                  Mon Nov  6 20:37:32 UTC 2006
+
+
+Directory .
+ Makefile.in               Locally Modified          137 
+
+Directory include
+ config.h.in               Locally Added               0 
+
+Directory libperl
+ Makefile.in               Locally Modified          137 
+
+Directory tools
+ Makefile.in               Locally Modified          137 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          137 
+
+
+Added missing autoheader file: config.h.in
+
+Joel
+

@@ -436,10 +436,26 @@ sub __generate_makefile_top {
 
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
     if (HAsim::Build::is_synthesis_boundary($module)) {
-	# @ALL_VS@
+
+	# @ALL_VS@ - bsc generated .v files
+
 	my $fileroot = HAsim::Build::get_wrapper($module);
 	my $v_file = "$fileroot.v";
 	HAsim::Util::hash_append($replacements_r," ",'@ALL_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir,$v_file));
+
+	# @ALL_VS@ - raw .v files
+
+        my @l = ();
+        push(@l, $module->private());
+
+        foreach my $f (@l) {
+            if ($f =~ /.v$/) {
+                my $user_v_file = HAsim::Util::path_append($my_dir, $f);
+                HAsim::Util::hash_append($replacements_r," ",'@ALL_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir,$user_v_file));
+            }
+        }
+
+
 	# @ALL_BAS@
 	my $ba_file = "$fileroot.ba";
 	HAsim::Util::hash_append($replacements_r," ",'@ALL_BAS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir,$ba_file));

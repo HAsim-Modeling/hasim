@@ -2339,3 +2339,16 @@ Added missing autoheader file: config.h.in
 
 Joel
 
+
+----------
+emer        Date: Wed Nov 15 17:50:15 EST 2006  CSN: CSN-hasim-139
+                  Wed Nov 15 22:50:15 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          138 
+
+
+Fix to include user specified private .v files in vexe builds.
+
+Joel

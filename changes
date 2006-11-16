@@ -2367,3 +2367,19 @@ Directory modules/functional/common
 
 
 Fixed bugs from the previous checkin.
+
+----------
+pellauer    Date: Thu Nov 16 16:03:50 EST 2006  CSN: CSN-hasim-141
+                  Thu Nov 16 21:03:50 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          140 
+
+Directory modules/common
+ Connections.bsv           Locally Modified          140 
+
+
+Changes to the Connections algorithm in anticipation of adding typechecking.
+
+Michael

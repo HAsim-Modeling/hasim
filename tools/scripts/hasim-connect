@@ -98,9 +98,9 @@ sub print_wrapper {
     my $synth_id = get_synthesis_boundary_name($module);
     print WRAPPER "    // instantiate own module\n";
     if ($module->issame($root)) {
-	print WRAPPER "    let m <- instantiateTopLevel($synth_id, List::nil);\n";
+	print WRAPPER "    let m <- instantiateTopLevel($synth_id);\n";
     } else {
-	print WRAPPER "    let m <- instantiateWithConnections($synth_id, List::nil);\n";
+	print WRAPPER "    let m <- instantiateWithConnections($synth_id);\n";
     }
     print WRAPPER "\n";
 

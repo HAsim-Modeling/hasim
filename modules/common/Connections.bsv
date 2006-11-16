@@ -12,26 +12,24 @@ import hasim_fpgalib::*;
 
 //Instantiate a module with connections exposed
 
-module [Module] instantiateWithConnections#(Connected_Module#(inter_T) m,
-                                            List#(DanglingInfo) children) (WithConnections);
+module [Module] instantiateWithConnections#(Connected_Module#(inter_T) m) (WithConnections);
 
   match {.m, .col} <- getCollection(m);
   
-  let x <- connectDangling(col, m, children);
+  let x <- connectDangling(col, m);
   return x;
 
 endmodule
 
 //Instantiate a module with connections exposed
 
-module [Module] instantiateTopLevel#(Connected_Module#(inter_T) m,
-                                     List#(DanglingInfo) children) (TopLevel);
+module [Module] instantiateTopLevel#(Connected_Module#(inter_T) m) (TopLevel);
 
   match {.m, .col1} <- getCollection(m);
   match {.m2, .col2} <- getCollection(mkFPGALib);
   let col = List::append(col1, col2);
   
-  connectTopLevel(col, m, children);
+  connectTopLevel(col, m);
   return m2;
   
 endmodule
@@ -40,15 +38,12 @@ endmodule
 
 typedef Tuple2#(String, Integer) ConMap;
 
-//For each child module, dangling send and receive connections
-
-//               child           sends          recs
-typedef Tuple3#(WithConnections, List#(ConMap), List#(ConMap)) DanglingInfo;
-
 //Re-bury connections which have been exposed at synthesis boundaries
 
 module [HASim_Module] addConnections#(WithConnections mod, List#(ConMap) sends, List#(ConMap) recs) ();
-
+   
+   //Add Sends
+   
    let nSends = length(sends);
    for (Integer x = 0; x < nSends; x = x + 1)
    begin
@@ -56,6 +51,7 @@ module [HASim_Module] addConnections#(WithConnections mod, List#(ConMap) sends, 
      addToCollection(LSend tuple2(nm, mod.outgoing[x]));
    end
 
+   //Add Recs
 
    let nRecs = length(recs);
    for (Integer x = 0; x < nRecs; x = x + 1)
@@ -63,23 +59,25 @@ module [HASim_Module] addConnections#(WithConnections mod, List#(ConMap) sends, 
      match {.nm, .idx} = recs[x];
      addToCollection(LRec tuple2(nm, mod.incoming[x]));
    end
-
+   
+   //Add Chains
+   for (Integer x = 0; x < valueof(CON_NumChains); x = x + 1)
+   begin
+     addToCollection(LChain tuple2(x, mod.chains[x]));
+   end
+   
 endmodule
 
 //The main connection algorithm 
 
-module [Module] connectDangling#(List#(ConnectionData) ld, 
-                                 inter_T i,
-                                 List#(DanglingInfo) children)       (WithConnections);
+module [Module] connectDangling#(List#(ConnectionData) ld, inter_T i)       (WithConnections);
     
   match {.sends, .recs, .chns} = splitConnections(ld);
   match {.send_nms, .*} = List::unzip(sends);
   match {.rec_nms, .*} = List::unzip(recs);
 
-  match {.ch_send_nms, .ch_rec_nms} = splitChildren(children);
-  
-  let dup_sends = getDuplicates(List::append(send_nms, ch_send_nms));
-  let dup_recs  = getDuplicates(List::append(rec_nms, ch_rec_nms));
+  let dup_sends = getDuplicates(send_nms);
+  let dup_recs  = getDuplicates(rec_nms);
   
   let nDupSends = length(dup_sends);
   let nDupRecs = length(dup_recs);
@@ -103,125 +101,20 @@ module [Module] connectDangling#(List#(ConnectionData) ld,
   
   let nCncts = length(cncts);
   
-  //Internal Connections
+  //Actually Connect the Connections
   for (Integer x = 0; x < nCncts; x = x + 1)
   begin
     match {.nm, .cin, .cout} = cncts[x];
-    
+    //Type-Checking goes here
     messageM(strConcat("Connecting: ", nm));
     mkConnection(cin, cout);
   
   end
   
-  //Children's connections
-  let nChildren = length(children);
-  List#(DanglingInfo) childs = children; //We can't write to parameters
   Vector#(CON_Addr, CON_Out) outs = newVector();
   Vector#(CON_Addr, CON_In) ins = newVector();
-  Integer cur_in = 0;
   Integer cur_out = 0;
-  
-  
-  for (Integer x = 0; x < nChildren; x = x + 1)
-  begin
-    match {.child, .osends, .orecs} = childs[x];
-    
-    //Child's send connections
-    let nOSends = length(osends);
-    
-    for (Integer y = 0; y < nOSends; y = y + 1)
-    begin
-    
-      match {.cnm, .caddr} = osends[y];
-      
-      //First check the current module for a rec
-      
-      case (lookup(cnm, drecs)) matches
-        tagged Valid .cin:
-	begin
-          messageM(strConcat("Connecting to Child Send: ", cnm));
-	  mkConnection(child.outgoing[caddr], cin);
-	  drecs = removeItem(cnm, drecs);
-	end
-	tagged Invalid: //Then check the other children
-        begin
-	
-	  Bool found = False;
-	  for (Integer z = x; (z < nChildren) && (!found); z = z + 1)
-	  begin
-	    match {.c2, .ss, .rs} = childs[z];
-	    case (lookup(cnm, rs)) matches
-	      tagged Valid .inaddr:
-	      begin
-	        messageM(strConcat("Connecting Child to Child: ", cnm));
-		mkConnection(child.outgoing[caddr], c2.incoming[inaddr]);
-		found = True;
-		childs[z] = tuple3(c2, ss, removeItem(cnm, rs));
-	      end
-	    endcase
-	  end
-	  if (!found) //It's a pass-through
-	  begin
-	    outs[cur_out] = (interface CON_Out;
-		               method CON_Data try() = child.outgoing[caddr].try();
-			       method Action success() = child.outgoing[caddr].success();
-			     endinterface);
-            messageM(strConcat(strConcat(strConcat("Dangling Send [", integerToString(cur_out)), "]: "), cnm));
-	    cur_out = cur_out + 1;
-	  end
-	end
-      endcase
-    end
-    
-    //Child's Rec connections
-    let nORecs = length(orecs);
-    
-    for (Integer y = 0; y < nORecs; y = y + 1)
-    begin
-    
-      match {.cnm, .caddr} = orecs[y];
-      
-      //First check the current module for a send
-      
-      case (lookup(cnm, dsends)) matches
-        tagged Valid .cout:
-	begin
-          messageM(strConcat("Connecting to Child Rec: ", cnm));
-	  mkConnection(cout, child.incoming[caddr]);
-	  dsends = removeItem(cnm, dsends);
-	end
-	tagged Invalid: //Then check the other children
-        begin
-	
-	  Bool found = False;
-	  for (Integer z = x; (z < nChildren) && (!found); z = z + 1)
-	  begin
-	    match {.c2, .ss, .rs} = childs[z];
-	    case (lookup(cnm, ss)) matches
-	      tagged Valid .outaddr:
-	      begin
-	        messageM(strConcat("Connecting Child to Child: ", cnm));
-		mkConnection(c2.outgoing[outaddr], child.incoming[caddr]);
-		found = True;
-		childs[z] = tuple3(c2, removeItem(cnm, ss), rs);
-	      end
-	    endcase
-	  end
-	  if (!found) //It's a pass-through
-	  begin
-	    ins[cur_in] = (interface CON_In;
-		               method Action get_TRY(CON_Data x) = child.incoming[caddr].get_TRY(x);
-			       method Bool get_SUCCESS() = child.incoming[caddr].get_SUCCESS();
-			     endinterface);
-            messageM(strConcat(strConcat(strConcat("Dangling Rec [", integerToString(cur_in)), "]: "), cnm));
-	    cur_in = cur_in + 1;
-	  end
-	end
-      endcase
-    end
-    
-    
-  end
+  Integer cur_in = 0;
   
   //Final Dangling sends
   for (Integer x = 0; x < length(dsends); x = x + 1)
@@ -259,10 +152,7 @@ module [Module] connectDangling#(List#(ConnectionData) ld,
     Integer nLinks = length(clinks);
     CON_Chain tmp <- (nLinks == 0) ? mkPassThrough(x) : connectLocalChain(clinks, x);
 
-    let ifcs = List::map(tpl_1, childs);
-    CON_Chain tmp2 <- prependChildren(ifcs, tmp, x);
- 
-    mychains[x] = tmp2;
+    mychains[x] = tmp;
   end
   
   interface outgoing = outs;
@@ -273,14 +163,26 @@ endmodule
 
 //Top-Level connections
 
-module [Module] connectTopLevel#(List#(ConnectionData) ld, 
-                                 inter_T i,
-                                 List#(DanglingInfo) children)       ();
+module [Module] connectTopLevel#(List#(ConnectionData) ld, inter_T i)       ();
     
   match {.sends, .recs, .chns} = splitConnections(ld);
+  match {.send_nms, .*} = List::unzip(sends);
+  match {.rec_nms, .*} = List::unzip(recs);
+
+  let dup_sends = getDuplicates(send_nms);
+  let dup_recs  = getDuplicates(rec_nms);
   
-  //XXX Add duplicate name check
+  let nDupSends = length(dup_sends);
+  let nDupRecs = length(dup_recs);
   
+  for (Integer x = 0; x < nDupSends; x = x + 1)
+    messageM(strConcat("ERROR: Duplicate Send: ", dup_sends[x]));
+  for (Integer x = 0; x < nDupRecs; x = x + 1)
+    messageM(strConcat("ERROR: Duplicate Receive: ", dup_recs[x]));
+    
+  if (nDupSends != 0 || nDupRecs != 0)
+    error("Duplicate connection names detected.");
+
   //match {.dsends, .drecs, .cncts} = groupByName(sends, recs);
   let tup = groupByName(sends, recs);
   List#(Tuple2#(String, CON_Out)) dsends = tpl_1(tup);
@@ -292,121 +194,22 @@ module [Module] connectTopLevel#(List#(ConnectionData) ld,
   
   let nCncts = length(cncts);
   
-  //Internal Connections
+  //Actually Connect Connections
   for (Integer x = 0; x < nCncts; x = x + 1)
   begin
     match {.nm, .cin, .cout} = cncts[x];
-    
+    //Type-Check here
     messageM(strConcat("Connecting: ", nm));
     mkConnection(cin, cout);
   
   end
   
-  //Children's connections
-  let nChildren = length(children);
-  List#(DanglingInfo) childs = children; //We can't write to parameters
   Vector#(CON_Addr, CON_Out) outs = newVector();
   Vector#(CON_Addr, CON_In) ins = newVector();
-  Integer cur_in = 0;
   Integer cur_out = 0;
+  Integer cur_in = 0;
   Bool error_occurred = False;
-  
-  
-  for (Integer x = 0; x < nChildren; x = x + 1)
-  begin
-    match {.child, .osends, .orecs} = childs[x];
-    
-    //Child's send connections
-    let nOSends = length(osends);
-    
-    for (Integer y = 0; y < nOSends; y = y + 1)
-    begin
-    
-      match {.cnm, .caddr} = osends[y];
-      
-      //First check the current module for a rec
-      
-      case (lookup(cnm, drecs)) matches
-        tagged Valid .cin:
-	begin
-          messageM(strConcat("Connecting to Child Send: ", cnm));
-	  mkConnection(child.outgoing[caddr], cin);
-	  drecs = removeItem(cnm, drecs);
-	end
-	tagged Invalid: //Then check the other children
-        begin
-	
-	  Bool found = False;
-	  for (Integer z = x; (z < nChildren) && (!found); z = z + 1)
-	  begin
-	    match {.c2, .ss, .rs} = childs[z];
-	    case (lookup(cnm, rs)) matches
-	      tagged Valid .inaddr:
-	      begin
-	        messageM(strConcat("Connecting Child to Child: ", cnm));
-		mkConnection(child.outgoing[caddr], c2.incoming[inaddr]);
-		found = True;
-		childs[z] = tuple3(c2, ss, removeItem(cnm, rs));
-	      end
-	    endcase
-	  end
-	  if (!found) //It's a pass-through
-	  begin
-            messageM(strConcat(strConcat(strConcat("Dangling Send [", integerToString(cur_out)), "]: "), cnm));
-	    cur_out = cur_out + 1;
-	    error_occurred = True;
-	  end
-	end
-      endcase
-    end
-    
-    //Child's Rec connections
-    let nORecs = length(orecs);
-    
-    for (Integer y = 0; y < nORecs; y = y + 1)
-    begin
-    
-      match {.cnm, .caddr} = orecs[y];
-      
-      //First check the current module for a send
-      
-      case (lookup(cnm, dsends)) matches
-        tagged Valid .cout:
-	begin
-          messageM(strConcat("Connecting to Child Rec: ", cnm));
-	  mkConnection(cout, child.incoming[caddr]);
-	  dsends = removeItem(cnm, dsends);
-	end
-	tagged Invalid: //Then check the other children
-        begin
-	
-	  Bool found = False;
-	  for (Integer z = x; (z < nChildren) && (!found); z = z + 1)
-	  begin
-	    match {.c2, .ss, .rs} = childs[z];
-	    case (lookup(cnm, ss)) matches
-	      tagged Valid .outaddr:
-	      begin
-	        messageM(strConcat("Connecting Child to Child: ", cnm));
-		mkConnection(c2.outgoing[outaddr], child.incoming[caddr]);
-		found = True;
-		childs[z] = tuple3(c2, removeItem(cnm, ss), rs);
-	      end
-	    endcase
-	  end
-	  if (!found) //It's a pass-through
-	  begin
-            messageM(strConcat(strConcat(strConcat("Dangling Rec [", integerToString(cur_in)), "]: "), cnm));
-	    cur_in = cur_in + 1;
-	    error_occurred = True;
-	  end
-	end
-      endcase
-    end
-    
-    
-  end
-  
+
   //Final Dangling sends
   for (Integer x = 0; x < length(dsends); x = x + 1)
   begin
@@ -438,11 +241,8 @@ module [Module] connectTopLevel#(List#(ConnectionData) ld,
     Integer nLinks = length(clinks);
     CON_Chain tmp <- (nLinks == 0) ? mkPassThrough(x) : connectLocalChain(clinks, x);
 
-    let ifcs = List::map(tpl_1, childs);
-    CON_Chain tmp2 <- prependChildren(ifcs, tmp, x);
- 
     //Close the chain
-    mkConnection(tmp2, tmp2);
+    mkConnection(tmp, tmp);
   end
 
   if (error_occurred)
@@ -482,26 +282,6 @@ module connectLocalChain#(List#(CON_Chain) l, Integer x) (CON_Chain);
 
 endmodule
 
-module prependChildren#(List#(WithConnections) childs, CON_Chain chn, Integer x) (CON_Chain);
-
-  CON_Chain c = chn;
-  let nChildren = length(childs);
-  for (Integer z = (nChildren-1); z >= 0; z = z - 1)
-  begin
-    CON_Chain c2 = childs[z].chains[x];
-    messageM(strConcat(strConcat("Linking Chain to Child [", integerToString(x)), "]"));
-    mkConnection(c2, c);
-    c = c2;
-  end
-
-  return (interface CON_Chain;
-            method first() = chn.first();
-	    method deq() = chn.deq();
-	    method enq() = c.enq();
-	    method clear = noAction; //If you want to implement this, broadcast
-	  endinterface);
-
-endmodule
 
 module [Module] mkPassThrough#(Integer chainNum)
     //interface:
@@ -603,25 +383,6 @@ function Tuple3#(List#(Tuple2#(String, CON_Out)),
 	tagged LChain .t:
 	  return tuple3(sends, recs, List::cons(t, chns));
       endcase
-    end
-  endcase
-
-endfunction
-
-//splitChildren :: [DanglingInfo] -> ([String], [String])
-
-function Tuple2#(List#(String), 
-                 List#(String)) splitChildren(List#(DanglingInfo) l);
-
-  case (l) matches
-    tagged Nil: return tuple2(Nil, Nil);
-    default:
-    begin
-      match {.osends, .orecs} = splitChildren(List::tail(l));
-      match {.*, .sinfo, .rinfo} = (List::head(l));
-      match {.sends, .*} = List::unzip(sinfo);
-      match {.recs, .*} = List::unzip(rinfo);
-      return tuple2(List::append(sends, osends), List::append(recs, orecs));
     end
   endcase
 

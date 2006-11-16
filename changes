@@ -2352,3 +2352,18 @@ Directory tools/scripts
 Fix to include user specified private .v files in vexe builds.
 
 Joel
+
+----------
+pellauer    Date: Thu Nov 16 14:49:34 EST 2006  CSN: CSN-hasim-140
+                  Thu Nov 16 19:49:34 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          139 
+
+Directory modules/functional/common
+ FUNCP_Pipeline.bsv        Locally Modified          139 
+ FUNCP_MemState.bsv        Locally Modified          139 
+
+
+Fixed bugs from the previous checkin.

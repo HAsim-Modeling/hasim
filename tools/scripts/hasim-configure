@@ -449,7 +449,7 @@ sub __generate_makefile_top {
         push(@l, $module->private());
 
         foreach my $f (@l) {
-            if ($f =~ /.v$/) {
+            if ($f =~ /\.v$/) {
                 my $user_v_file = HAsim::Util::path_append($my_dir, $f);
                 HAsim::Util::hash_append($replacements_r," ",'@ALL_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir,$user_v_file));
             }

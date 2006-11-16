@@ -36,7 +36,7 @@ endmodule
 
 module [HASim_Module] mkFUNCP_Stage_FET ();
 
-  FUNCP_Stage#(void, Addr, Inst, Tuple2#(Addr, Inst))
+  FUNCP_Stage#(void, Addr, PackedInst, Tuple2#(Addr, PackedInst))
   //...
        stage <- mkFUNCP_Stage("FET", 
                               "fp_fet_stage",
@@ -50,7 +50,7 @@ endmodule
 
 module [HASim_Module] mkFUNCP_Stage_DEC ();
 
-  FUNCP_Stage#(Tuple2#(Addr, Inst), void, DepInfo, Tuple2#(Addr, DecodedInst))
+  FUNCP_Stage#(Tuple2#(Addr, PackedInst), void, DepInfo, Tuple2#(Addr, DecodedInst))
   //...
        stage <- mkFUNCP_Stage("DEC", 
                               "fp_dec_stage",

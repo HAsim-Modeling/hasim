@@ -56,10 +56,10 @@ module [HASim_Module] mkFUNCP_Memstate ()
 
   //Connections
 
-  Connection_Server#(Addr, Inst)      link_imem      <- mkConnection_Server("mem_imem");
-  Connection_Server#(MemReq, MemResp) link_dmem      <- mkConnection_Server("mem_dmem");
-  Connection_Receive#(Token)          link_commit    <- mkConnection_Receive("mem_commit");
-  Connection_Receive#(Token)          link_killToken <- mkConnection_Receive("fp_memstate_kill");
+  Connection_Server#(Addr, PackedInst) link_imem      <- mkConnection_Server("mem_imem");
+  Connection_Server#(MemReq, MemResp)  link_dmem      <- mkConnection_Server("mem_dmem");
+  Connection_Receive#(Token)           link_commit    <- mkConnection_Receive("mem_commit");
+  Connection_Receive#(Token)           link_killToken <- mkConnection_Receive("fp_memstate_kill");
 
   Connection_Receive#(Tuple2#(Addr, Inst))  magic_imem_write <- mkConnection_Receive("magic_imem");
   Connection_Receive#(Tuple2#(Addr, Value)) magic_dmem_write <- mkConnection_Receive("magic_dmem_write");
@@ -83,8 +83,8 @@ module [HASim_Module] mkFUNCP_Memstate ()
   
   rule handleIMEM_resp (True);
   
-    let i <- imemory.read_resp();
-    link_imem.makeResp(i);
+    Inst i <- imemory.read_resp();
+    link_imem.makeResp(instToBits(i));
     
   endrule
 

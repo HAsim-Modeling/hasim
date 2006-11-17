@@ -2383,3 +2383,19 @@ Directory modules/common
 Changes to the Connections algorithm in anticipation of adding typechecking.
 
 Michael
+
+----------
+pellauer    Date: Fri Nov 17 14:44:40 EST 2006  CSN: CSN-hasim-142
+                  Fri Nov 17 19:44:40 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          140 
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          140 
+
+
+Configuring and then "make vexe" should work now without user intervention now, even when primitive Verilog files are imported into the module.
+
+Michael

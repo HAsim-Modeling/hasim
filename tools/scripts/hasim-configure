@@ -443,22 +443,21 @@ sub __generate_makefile_top {
 	my $v_file = "$fileroot.v";
 	HAsim::Util::hash_append($replacements_r," ",'@ALL_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir,$v_file));
 
-	# @ALL_VS@ - raw .v files
-
-        my @l = ();
-        push(@l, $module->private());
-
-        foreach my $f (@l) {
-            if ($f =~ /\.v$/) {
-                my $user_v_file = HAsim::Util::path_append($my_dir, $f);
-                HAsim::Util::hash_append($replacements_r," ",'@ALL_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir,$user_v_file));
-            }
-        }
-
 
 	# @ALL_BAS@
 	my $ba_file = "$fileroot.ba";
 	HAsim::Util::hash_append($replacements_r," ",'@ALL_BAS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir,$ba_file));
+    }
+
+    # @ALL_VS@ - raw .v files
+
+    my @l = ();
+    push(@l, $module->private());
+
+    foreach my $f (@l) {
+        if ($f =~ /\.v$/) {
+            HAsim::Util::hash_append($replacements_r," ",'@ALL_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, $f));
+        }
     }
 
     # recurse

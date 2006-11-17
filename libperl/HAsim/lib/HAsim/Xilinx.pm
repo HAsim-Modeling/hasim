@@ -107,7 +107,7 @@ sub __generate_v_file {
     push(@l, $module->private());
 
     foreach my $f (@l) {
-      if ($f =~ /.v$/) {
+      if ($f =~ /\.v$/) {
         my $v_file = HAsim::Util::path_append($my_dir, $f);
         print $file "`include \"$v_file\"\n";
       }

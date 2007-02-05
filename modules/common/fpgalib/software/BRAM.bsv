@@ -18,17 +18,43 @@
 import FIFO::*;
 import RegFile::*;
 
+//One RAM.
 interface BRAM#(type idx_type, type data_type);
 
-  method Action  read_req(idx_type idx);
+  method Action read_req(idx_type idx);
+
+  method ActionValue#(data_type) read_resp();
+
+  method Action	write(idx_type idx, data_type data);
+  
+endinterface
+
+
+//Two RAMs.
+interface BRAM_2#(type idx_type, type data_type);
+
+  method Action read_req1(idx_type idx);
+  method Action read_req2(idx_type idx);
+
+  method ActionValue#(data_type) read_resp1();
+  method ActionValue#(data_type) read_resp2();
+
+  method Action	write(idx_type idx, data_type data);
+  
+endinterface
+
+//Three RAMs.
+interface BRAM_3#(type idx_type, type data_type);
+
+  method Action read_req1(idx_type idx);
   method Action read_req2(idx_type idx);
   method Action read_req3(idx_type idx);
 
-  method ActionValue#(data_type) read_resp();
+  method ActionValue#(data_type) read_resp1();
   method ActionValue#(data_type) read_resp2();
-  method ActionValue#(data_type) read_resp3();  
-  
-  method Action	upd(idx_type idx, data_type data);
+  method ActionValue#(data_type) read_resp3();
+
+  method Action	write(idx_type idx, data_type data);
   
 endinterface
 
@@ -39,50 +65,15 @@ module mkBRAM#(Integer low, Integer high)
           (Bits#(idx_type, idx), 
 	   Bits#(data_type, data),
 	   Literal#(idx_type));
+	   
+  BRAM#(idx_type, data_type) m <- (valueof(data) == 0) ? 
+                                  mkBRAM_Zero() :
+				  mkBRAM_NonZero(low, high);
 
-  FIFO#(Bit#(0)) q1 <- mkFIFO();
-  FIFO#(Bit#(0)) q2 <- mkFIFO();
-  FIFO#(Bit#(0)) q3 <- mkFIFO();
-
-  Sync_BRAM#(idx_type, data_type) br <- mkBRAM_Sync(low, high);
-
-  method Action  read_req(idx_type idx);
-    q1.enq(?);
-    br.read_rq(idx);
-  endmethod
-    
-  method Action read_req2(idx_type idx);
-    q2.enq(?);
-    br.read_rq2(idx);
-  endmethod
-
-  method Action read_req3(idx_type idx);
-    q3.enq(?);
-    br.read_rq3(idx);
-  endmethod
-
-  method ActionValue#(data_type) read_resp();
-    q1.deq();
-    return br.read_rsp();
-  endmethod
-  
-  method ActionValue#(data_type) read_resp2();
-    q2.deq();
-    return br.read_rsp2();
-  endmethod
-
-  method ActionValue#(data_type) read_resp3(); 
-    q3.deq();
-    return br.read_rsp3();
-  endmethod 
-  
-  method Action	upd(idx_type idx, data_type data);
-    br.upd(idx, data);
-  endmethod
-
+  return m;
 endmodule
 
-module mkBRAM_Full 
+module mkBRAM_NonZero#(Integer low, Integer high) 
   //interface:
               (BRAM#(idx_type, data_type)) 
   provisos
@@ -90,26 +81,34 @@ module mkBRAM_Full
 	   Bits#(data_type, data),
 	   Literal#(idx_type));
 
+  FIFO#(Bit#(0)) processing_read <- mkFIFO();
 
-  BRAM#(idx_type, data_type) br <- mkBRAM(0, valueof(TExp#(idx)));
+  Sync_BRAM#(idx_type, data_type) br <- mkBRAM_Sync(low, high);
 
-  return br;
+  method Action  read_req(idx_type idx);
+    processing_read.enq(?);
+    br.read_req(idx);
+  endmethod
+    
+  method ActionValue#(data_type) read_resp();
+    processing_read.deq();
+    return br.read_rsp();
+  endmethod
+  
+  method Action	write(idx_type idx, data_type data);
+    br.write(idx, data);
+  endmethod
 
 endmodule
 
 //Synchronous BRAM primitive
-
 interface Sync_BRAM#(type idx_type, type data_type);
 
-  method Action  read_rq(idx_type idx);
-  method Action read_rq2(idx_type idx);
-  method Action read_rq3(idx_type idx);
+  method Action read_req(idx_type idx);
 
   method data_type read_rsp();
-  method data_type read_rsp2();
-  method data_type read_rsp3();  
   
-  method Action	upd(idx_type idx, data_type data);
+  method Action	write(idx_type idx, data_type data);
   
 endinterface
 
@@ -123,47 +122,21 @@ module mkBRAM_Sync#(Integer low, Integer high)
 	   Literal#(idx_type));
 
   RegFile#(idx_type, data_type) br <- mkRegFile(fromInteger(low), fromInteger(high));
-  Reg#(data_type) rd1 <- mkRegU();
-  Reg#(data_type) rd2 <- mkRegU();
-  Reg#(data_type) rd3 <- mkRegU();
-  Reg#(Bool)  rdy_rd1 <- mkReg(False);
-  Reg#(Bool)  rdy_rd2 <- mkReg(False);
-  Reg#(Bool)  rdy_rd3 <- mkReg(False);
+  Reg#(data_type) read_data <- mkRegU();
+  Reg#(Bool)  ready <- mkReg(False);
 
-  method Action  read_rq(idx_type idx);
+  method Action  read_req(idx_type idx);
   
-    rdy_rd1 <= True;
-    rd1 <= br.sub(idx);
+    ready <= True;
+    read_data <= br.sub(idx);
     
   endmethod
   
-  method Action read_rq2(idx_type idx);
-  
-    rdy_rd2 <= True;
-    rd2 <= br.sub(idx);
-    
-  endmethod
-
-  method Action read_rq3(idx_type idx);
-  
-    rdy_rd3 <= True;
-    rd3 <= br.sub(idx);
-    
-  endmethod
-
-  method data_type read_rsp()  if (rdy_rd1);
-    return rd1;
+  method data_type read_rsp()  if (ready);
+    return read_data;
   endmethod 
 
-  method data_type read_rsp2() if (rdy_rd2);
-    return rd2;
-  endmethod 
-
-  method data_type read_rsp3() if (rdy_rd3); 
-    return rd3;
-  endmethod  
-  
-  method Action	upd(idx_type idx, data_type data);
+  method Action	write(idx_type idx, data_type data);
   
     br.upd(idx, data);
   
@@ -171,3 +144,130 @@ module mkBRAM_Sync#(Integer low, Integer high)
   
 endmodule
 
+module mkBRAM_Zero
+  //interface:
+              (BRAM#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
+  
+  FIFO#(data_type) q <- mkFIFO();
+
+  method Action read_req(idx_type i);
+     q.enq(?);
+  endmethod
+
+  method Action write(idx_type i, data_type d);
+    noAction;
+  endmethod
+
+  method ActionValue#(data_type) read_resp();
+    q.deq();
+    return q.first();
+  endmethod
+
+endmodule
+
+module mkBRAM_Full 
+  //interface:
+              (BRAM#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
+
+
+  BRAM#(idx_type, data_type) br <- mkBRAM(0, valueof(TExp#(idx)) - 1);
+
+  return br;
+
+endmodule
+
+
+module mkBRAM_2#(Integer low, Integer high) 
+  //interface:
+              (BRAM_2#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
+	   
+  BRAM#(idx_type, data_type) br1 <- mkBRAM(low, high);
+  BRAM#(idx_type, data_type) br2 <- mkBRAM(low, high);
+  
+  method read_req1(idx) = br1.read_req(idx);
+  method read_req2(idx) = br2.read_req(idx);
+
+  method read_resp1() = br1.read_resp();
+  method read_resp2() = br2.read_resp();
+
+  method Action	write(idx_type idx, data_type data);
+  
+    br1.write(idx, data);
+    br2.write(idx, data);
+  
+  endmethod
+  
+endmodule
+
+module mkBRAM_2_Full 
+  //interface:
+              (BRAM_2#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
+
+
+  BRAM_2#(idx_type, data_type) br <- mkBRAM_2(0, valueof(TExp#(idx)) - 1);
+
+  return br;
+
+endmodule
+
+
+module mkBRAM_3#(Integer low, Integer high) 
+  //interface:
+              (BRAM_3#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
+	   
+  BRAM#(idx_type, data_type) br1 <- mkBRAM(low, high);
+  BRAM#(idx_type, data_type) br2 <- mkBRAM(low, high);
+  BRAM#(idx_type, data_type) br3 <- mkBRAM(low, high);
+  
+  method read_req1(idx) = br1.read_req(idx);
+  method read_req2(idx) = br2.read_req(idx);
+  method read_req3(idx) = br3.read_req(idx);
+
+  method read_resp1() = br1.read_resp();
+  method read_resp2() = br2.read_resp();
+  method read_resp3() = br3.read_resp();
+
+  method Action	write(idx_type idx, data_type data);
+  
+    br1.write(idx, data);
+    br2.write(idx, data);
+    br3.write(idx, data);
+  
+  endmethod
+  
+endmodule
+
+module mkBRAM_3_Full 
+  //interface:
+              (BRAM_3#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
+
+
+  BRAM_3#(idx_type, data_type) br <- mkBRAM_3(0, valueof(TExp#(idx)) - 1);
+
+  return br;
+
+endmodule

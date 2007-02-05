@@ -59,8 +59,9 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   
   endfunction
   
+  (* descending_urgency = "retrieve_2, insert_2, doLookup" *)
+
   //Looks up the most recent store to an addr
-  
   rule doLookup (True);
   
     match {.tok, .addr, .cur_tok, .best} = workingQ.first();

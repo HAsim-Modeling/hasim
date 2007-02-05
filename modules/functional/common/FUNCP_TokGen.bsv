@@ -56,8 +56,9 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
   link_killToken <- mkConnection_Receive("fp_tok_kill");
 
 
+  (* descending_urgency = "killToken, recycle, handleReq" *)
+
   //handleReq
-  
   rule handleReq (ready);
   
     //bug workaround
@@ -65,19 +66,20 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
 
     if (x == 17)
     begin
-    //allocate a new token
-    let tok = Token
-      {
-	index: next,
-	info: ?
-      };
-    link_from_tp.makeResp(tok);
-    link_to_next.send(tuple2(tok, ?));
-    valids.write(next, True);
-    let n = next + 1;
-    valids.read_req(n);
-    next <= n;
-    ready <= False;
+      //allocate a new token
+      let tok = Token
+        {
+          index: next,
+          info: ?
+        };
+      link_from_tp.makeResp(tok);
+      link_to_next.send(tuple2(tok, ?));
+      valids.write(next, True);
+      $display("FUNCP_TokGen handleReq valids[%0d]=%0d", next, True);
+      let n = next + 1;
+      valids.read_req(n);
+      next <= n;
+      ready <= False;
     end
   endrule
   
@@ -110,6 +112,7 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
       //$display("Tokgen error. Completing unallocated token %h", t);
       
     valids.write(t.index, False);
+    $display("FUNCP_TokGen recycle valids[%0d]=%0d", t.index, False);
 
   endrule
    
@@ -125,6 +128,7 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
       //$display("Tokgen error. Killing unallocated token %h", tok);
       
     valids.write(tok.index, False);
+    $display("FUNCP_TokGen killToken valids[%0d]=%0d", tok.index, False);
   
   endrule
   

@@ -8,8 +8,8 @@
 
 //************ Basic Datatypes ************//
 
-typedef Bit#(32)  CMD_Addr;
-typedef Bit#(32)  CMD_Value;
+typedef Bit#(64)  CMD_Addr;
+typedef Bit#(64)  CMD_Value;
 
 
 typedef union tagged

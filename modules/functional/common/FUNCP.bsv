@@ -37,6 +37,8 @@ module [HASim_Module] mkFUNCP (TModule#(Command, Response));
   Reg#(Bool)      checking <- mkReg(False);
   FIFO#(Response) respQ    <- mkFIFO();
   
+    (* descending_urgency = "failResp, checkResp, loadResp" *)
+
     rule loadResp (loading && loader.done());
       respQ.enq(RESP_DoneLoading);
       loading <= False;

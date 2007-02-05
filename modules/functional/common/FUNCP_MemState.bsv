@@ -29,6 +29,14 @@ typedef union tagged
 }
   PathSpeed deriving (Eq, Bits);
 
+typedef enum
+{
+  NormalRead,
+  MagicRead
+}
+  ReadPortOwner
+  deriving (Eq, Bits);
+
 module [HASim_Module] mkFUNCP_Memstate ()
     provisos
             (Bits#(Token, token_SZ),
@@ -47,6 +55,8 @@ module [HASim_Module] mkFUNCP_Memstate ()
 
   BRAM#(SoftAddr, Inst)  imemory <- mkBRAM_Full();
   BRAM#(SoftAddr, Value) dmemory <- mkBRAM_Full();
+
+  FIFO#(ReadPortOwner) dmemory_read_port_ownerQ <- mkFIFO();
 
   FIFO#(Tuple2#(Token, Addr))     loadQ <- mkFIFO();
   FIFO#(Tuple2#(Token, Value))  st_bufQ <- mkFIFO();
@@ -67,8 +77,12 @@ module [HASim_Module] mkFUNCP_Memstate ()
   
   //handleIMEM
   
-  //Handles all IMem requests
+  (* descending_urgency = "finishSlowPath, handleStBufferCheck" *)
+  (* descending_urgency = "handleCommit_2, magic_dmem_w" *)
+  (* descending_urgency = "magic_dmem_r_req, handleDMEM" *)
+  (* descending_urgency = "st_buffer.insert_2, handleKill, handleCommit" *)
 
+  //Handles all IMem requests
   rule handleIMEM (True);
   
     Addr a <- link_imem.getReq();
@@ -104,7 +118,8 @@ module [HASim_Module] mkFUNCP_Memstate ()
 
 	  SoftAddr sa = truncate(ld_info.addr);
 	  
-	  dmemory.read_req(sa);
+          dmemory.read_req(sa);
+          dmemory_read_port_ownerQ.enq(NormalRead);
           st_buffer.checkAddress(ld_info.addr);
 	  loadQ.enq(tuple2(ld_info.token, ld_info.addr));
 	    
@@ -122,10 +137,11 @@ module [HASim_Module] mkFUNCP_Memstate ()
   
   endrule
 
-  rule handleStBufferCheck (True);
+  rule handleStBufferCheck (dmemory_read_port_ownerQ.first() == NormalRead);
     
     match {.tok, .addr} = loadQ.first();
     loadQ.deq();
+    dmemory_read_port_ownerQ.deq();
 
     let slow <- st_buffer.mayHaveAddress();
     let v <- dmemory.read_resp();
@@ -221,11 +237,13 @@ module [HASim_Module] mkFUNCP_Memstate ()
   
     let addr <- magic_dmem_read.getReq();
     dmemory.read_req(truncate(addr));
+    dmemory_read_port_ownerQ.enq(MagicRead);
     
   endrule
  
-  rule magic_dmem_r_resp (True);
+  rule magic_dmem_r_resp (dmemory_read_port_ownerQ.first() == MagicRead);
   
+    dmemory_read_port_ownerQ.deq();
     let v <- dmemory.read_resp();
     magic_dmem_read.makeResp(v);
     

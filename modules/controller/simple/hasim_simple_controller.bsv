@@ -77,7 +77,7 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
           th.exec(COM_RunProgram);
           state <= CON_Running;
 	  link_leds.send(4'b0011);
-          $display("Controller: Program Started on host CC %0d", curTick);
+          $display("Controller: Program Started on host tick %0d", curTick);
 	end
       default:
         begin
@@ -107,7 +107,7 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
           th.exec(COM_CheckResult);
           state <= CON_Checking;
 	  link_leds.send(4'b0111);
-          $display("Controller: Program Finished on host CC %0d", curTick);
+          $display("Controller: Program Finished on host tick %0d", curTick);
 	end
       default:
         begin

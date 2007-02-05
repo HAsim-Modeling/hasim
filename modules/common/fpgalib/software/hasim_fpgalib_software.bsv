@@ -1,5 +1,5 @@
 
-import hasim_common::*;
+import hasim_base::*;
 
 // FPGALib Software implementation
 // To-Do: Talking to PowerPC

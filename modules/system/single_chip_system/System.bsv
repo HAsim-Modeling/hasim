@@ -27,6 +27,8 @@ module [HASim_Module] mkSystem
     
     FIFO#(Response) respQ <- mkFIFO();
     
+    (* descending_urgency = "getChipResp, getFuncResp" *)
+
     rule getFuncResp (True);
       let res <- funcp.response();
       respQ.enq(res);

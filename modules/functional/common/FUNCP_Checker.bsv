@@ -60,8 +60,8 @@ module [HASim_Module] mkFUNCP_Checker
      
     if (v != exp_v)
     begin
-      debug(2, $display("Checker: Failure at Location %h: Expected %0h. Found %0h", ecur, exp_v, v));
-      failQ.enq(tuple3(zeroExtend(ecur), zeroExtend(exp_v), zeroExtend(v)));
+      debug(2, $display("Checker: Failure at Location %h: Expected %0h. Found %0h", cur, exp_v, v));
+      failQ.enq(tuple3(zeroExtend(cur), zeroExtend(exp_v), zeroExtend(v)));
       passedR <= False;
     end
     

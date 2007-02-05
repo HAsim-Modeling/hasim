@@ -29,9 +29,8 @@ module [HASim_Module] mkFreeList
 	     Bits#(Token,       token_SZ));
 
 
-
-  RName maxR = maxBound;
-  Bit#(prname_SZ) minInitFL_bits = zeroExtend(pack(maxR)) + 1;
+  RName maxR = pack(REG_LAST);
+  Bit#(prname_SZ) minInitFL_bits = zeroExtend(pack(maxR));
   PRName minInitFL = unpack(minInitFL_bits);
   PRName maxInitFL = maxBound;
   
@@ -54,22 +53,26 @@ module [HASim_Module] mkFreeList
   
   endrule
   
-  rule finish_free (True);
+  rule finish_free (!initializing);
   
     PRName reg_to_free <- old_pregs.read_resp();
     fl.write(fl_write, reg_to_free);
     fl_write <= fl_write + 1;
+    $display("FREELIST freelist[%0d]=%0d, fl_write=%0d, fl_read=%0d", fl_write, reg_to_free, fl_write+1, fl_read);
 
   endrule
   
   method Action forward_req() if (!full && !initializing);
     fl.read_req(fl_read);
     fl_read <= fl_read + 1;
+    $display("FREELIST req %0d, fl_write=%0d, fl_read=%0d", fl_read, fl_write, fl_read+1);
+
   endmethod
   
   method ActionValue#(PRName) forward_resp() if (!initializing);
     
     let rsp <- fl.read_resp();
+    $display("FREELIST resp=%0d, fl_write=%0d, fl_read=%0d", rsp, fl_write, fl_read);
     return rsp;
   
   endmethod
@@ -77,24 +80,28 @@ module [HASim_Module] mkFreeList
   method Action setOldPReg(Token tok, PRName oldPReg) if (!initializing);
   
     old_pregs.write(tok.index, oldPReg);
+    $display("FREELIST oldPReg[%0d]=%0d, fl_write=%0d, fl_read=%0d", tok.index, oldPReg, fl_write, fl_read);
   
   endmethod
   
   method Action free(Token tok) if (!initializing);
   
     old_pregs.read_req(tok.index);
+    $display("FREELIST free oldPReg [%0d], fl_write=%0d, fl_read=%0d", tok.index, fl_write, fl_read);
   
   endmethod
   
   method Action back() if (!initializing);
   
     fl_read <= fl_read - 1;
+    $display("FREELIST back, fl_write=%0d, fl_read=%0d", fl_write, fl_read-1);
   
   endmethod
   
   method Action backTo(PRName r) if (!initializing);
   
     fl_read <= r;
+    $display("FREELIST back_to, fl_write=%0d, fl_read=%0d", fl_write, r);
   
   endmethod
   

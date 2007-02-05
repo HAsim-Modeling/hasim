@@ -177,7 +177,7 @@ endinterface
 //----------------------------------------------------------------//
 
 
-typedef 200 CON_Width;
+typedef 256 CON_Width;
 
 typedef 32 CON_Addr;
 

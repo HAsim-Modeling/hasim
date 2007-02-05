@@ -140,7 +140,7 @@ help:
 .PHONY: clean
 clean: clean_root
 	rm -f $(TMP_XILINX_DIR)/*.*
-	rm -f $(TMP_bsc_DIR)/*.*
+	rm -f $(TMP_BSC_DIR)/*.*
 	rm -f *~
 
 .PHONY: clean_root

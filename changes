@@ -2399,3 +2399,28 @@ Directory libperl/HAsim/lib/HAsim
 Configuring and then "make vexe" should work now without user intervention now, even when primitive Verilog files are imported into the module.
 
 Michael
+
+----------
+pellauer    Date: Wed Mar 14 14:44:11 EDT 2007  CSN: CSN-hasim-148
+                  Wed Mar 14 18:44:11 UTC 2007
+
+
+Directory .
+ Makefile.in               Locally Modified          147 
+
+Directory libperl
+ Makefile.in               Locally Modified          147 
+
+Directory tools
+ Makefile.in               Locally Modified          147 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          147 
+ Makefile.in               Locally Modified          147 
+
+
+Added support for running and setting-up benchmarks to hasim-configure.
+
+Michael
+
+

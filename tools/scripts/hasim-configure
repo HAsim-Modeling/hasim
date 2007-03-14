@@ -43,24 +43,35 @@ my $run = 0;
 
 # command options
 my $buildopt = "all";
+my $builddir = undef;
+my $benchmark = undef;
+my $rundir = undef;
+my $model = undef;
+my $runopt = "";
+
 
 my $private = 1;
 my $public = 1;
 my $relative = 0;
 
-$status = GetOptions( "private!"   => \$private,
-                      "public!"    => \$public,
-                      "relative!"  => \$relative,
-                      "debug"      => \$debug,
-                      "configure"  => \$configure,
-                      "nuke"       => \$nuke,
-                      "setup"      => \$setup,
-                      "build"      => \$build,
-                      "run"        => \$run,
-                      "buildopt=s" => \$buildopt,
-                      "help"       => \$help
+$status = GetOptions( "private!"    => \$private,
+                      "public!"     => \$public,
+                      "relative!"   => \$relative,
+                      "debug"       => \$debug,
+                      "configure"   => \$configure,
+                      "nuke"        => \$nuke,
+                      "setup"       => \$setup,
+                      "build"       => \$build,
+                      "run"         => \$run,
+		      "model=s"     => \$model,
+		      "builddir=s"  => \$builddir,
+		      "benchmark=s" => \$benchmark,
+		      "rundir=s"    => \$rundir,
+                      "buildopt=s"  => \$buildopt,
+		      "runopt=s"    => \$runopt,
+                      "help"        => \$help
 		      );
-
+		      
 my $prog = basename($0);
 
 if (!$status) {
@@ -84,6 +95,10 @@ if ($num_commands != 1) {
     exit 0;
 }
 
+if (!defined($model)) {
+  $model = $ARGV[1];
+}
+
 
 ############################################################
 # main body of script
@@ -91,31 +106,29 @@ if ($num_commands != 1) {
 Asim::init()
     || die("Unable to initialize Asim::\n");
 
-foreach my $apmfile (@ARGV) {
 
-    print "Opening... $apmfile\n" if $debug;
+print "Opening... $model\n" if $debug;
 
-    if ($configure) {
-	print "Configuring build tree for $apmfile . . . ";
-	configure_build_tree($apmfile);
-    } elsif ($nuke) {
-	print "Nuking build tree. . . ";
-	delete_build_tree($apmfile);
-    } elsif ($setup) {
-	WARN_AND_DIE("setup command not yet implemented");
-    } elsif ($build) {
+if ($configure) {
+    print "Configuring build tree for $model . . . ";
+    configure_build_tree($model);
+} elsif ($nuke) {
+    print "Nuking build tree. . . ";
+    delete_build_tree($model);
+} elsif ($setup) {
+    setup_benchmark($model);
+} elsif ($build) {
 #	WARN_AND_DIE("build command not yet implemented");
-	print "Compiling build tree. . . ";
-	build_build_tree($apmfile);
-    } elsif ($run) {
-	print "Running model. . . ";
-	run_model($apmfile);
+    print "Compiling build tree. . . ";
+    build_build_tree($model);
+} elsif ($run) {
+    print "Running model. . . ";
+    run_model($model);
 #	WARN_AND_DIE("run command not yet implemented");
-    }
-
-   print "done\n";
 }
 
+print "done\n";
+   
 exit 0;
 
 ############################################################
@@ -123,12 +136,103 @@ exit 0;
 sub run_model {
     my $modelfile = shift;
     my $model = Asim::Model->new($modelfile);
-    my $build_dir = $model->build_dir();
     
-    my $apm = get_model_name($model);
-    my $exe = HAsim::Util::path_append($build_dir,$apm);
+    if (!defined($benchmark)) {
+      WARN_AND_DIE("Undefined Benchmark for running.");
+    }
     
-    $status = system("$exe");
+    if (!defined($rundir)) {
+      $rundir = $model->run_dir($benchmark);
+    }
+    
+    my $exe = HAsim::Util::path_append($rundir, "run $runopt");
+    
+    $status = system("cd $rundir; $exe");
+
+    return 1;
+}
+
+#### SETUP
+# What are we given? .cfg? or NM.cfx/bmark.cfg
+# Essentially open the benchmark.cfg
+# Parse the CFG
+# Find setup script
+# Create the directory in build/model/bm? Or is that rundir?
+# Invoke setup script with arguments SRC DEST OTHERS
+# SETUP Script: Link to the model. Compile the benchmark. Create the run script.
+
+############################################################
+# setup_benchmark
+sub setup_benchmark {
+    my $modelfile = shift;
+    my $model = Asim::Model->new($modelfile);
+    
+    if (!defined($benchmark)) {
+      WARN_AND_DIE("Undefined Benchmark for setup.");
+    }
+    
+    if (!defined($rundir)) {
+      $rundir = $model->run_dir($benchmark);
+    }
+    
+    #Actually create rundir
+    
+    print STDOUT "RUNDir: $rundir\n";
+    
+    $status = system("rm -rf " . $rundir);
+    $status = system("mkdir -p " . $rundir);
+      
+    my $is_cfx = $benchmark =~ m/(.*\.cfx)\/(.*)/;
+    my $cfx = $1;
+    my $cfg_path = $2;
+  
+    if ($is_cfx)
+    {
+
+      #Use the CFX to generate the CFG
+      # $status = system("$cfx_file --emit smips/smipsv1_addiu.cfg > $cfg_file"); #Don't hardcode this
+      my $cfx_file = Asim::resolve($cfx) ||  HAsim::Util::WARN_AND_DIE("Could not resolve CFX: $cfx");
+      CORE::open(CFG, "$cfx_file --emit $cfg_path |") || HAsim::Util::WARN_AND_DIE("NO SUCH CFX: $cfx_file");
+    } 
+    else
+    {
+      my $cfg_file = Asim::resolve($benchmark) || HAsim::Util::WARN_AND_DIE("Could not resolve CFG: $benchmark");
+      CORE::open(CFG, "< $cfg_file") || HAsim::Util::WARN_AND_DIE("NO SUCH CFG"); #Double check CFG name
+    }
+    
+    
+    my $setup = "";
+    
+    #Parse the CFG File for relevant info
+    my $linenum = 0;
+    while (my $line = <CFG>) {
+
+      if ($linenum == 5) {$setup = $line}; #This could be better
+      $linenum++;
+
+    }
+    
+    chomp($setup);
+    
+    # print STDOUT "SETUP: $setup\n";
+    
+    $setup =~ m/ *([^ ]*) (.*)/;
+    my $setup_command = $1;
+    my $setup_args = $2;
+    
+    print STDOUT "SCRIPT: $setup_command\n";
+    
+    my $setupscript = Asim::resolve($setup_command);
+    
+    print STDOUT "SETUPSCRIPT: $setupscript\n";
+   
+    my $srcdir = dirname($setupscript);
+   
+    #Run the setup script with appropriate params
+    
+    #DOUBLE IS THE SRC/DST DIR CONSISTENT WITH AMC?
+    print STDOUT "COMMAND: $setupscript $srcdir $rundir $setup_args\n";
+    $status = system("$setupscript $srcdir $rundir $setup_args");
 
     return 1;
 }
@@ -138,10 +242,13 @@ sub run_model {
 sub build_build_tree {
     my $modelfile = shift;
     my $model = Asim::Model->new($modelfile);
-    my $build_dir = $model->build_dir();
-
+    
+    if (!defined($builddir)) {
+      $builddir = $model->build_dir();
+    }
+    
     ## NOTE: make target should come from argument to hasim-configure
-    $status = system("make -C $build_dir $buildopt");
+    $status = system("make -C $builddir $buildopt");
 
     return 1;
 }
@@ -151,12 +258,18 @@ sub build_build_tree {
 sub delete_build_tree {
     my $modelfile = shift;
     my $model = Asim::Model->new($modelfile);
-    my $build_dir = $model->build_dir();
-    my $above_build_dir = $build_dir;
-    $above_build_dir =~ s/\/pm$//g; # strip off pm directory to make parent first
-    $status = system("rm -fr $above_build_dir");
+    
+    if (!defined($builddir)) {
+      $builddir = $model->build_dir();
+    }
+    
+    my $above_builddir = $builddir;
+    $above_builddir =~ s/\/pm$//g; # strip off pm directory to make parent first
+    $status = system("rm -fr $above_builddir");
+    
     return 1;
 }
+
 
 ############################################################
 # configure_build_tree: Open a model produce build tree,
@@ -191,13 +304,17 @@ sub make_dirs {
     my $model = shift;
     my $root = $model->modelroot();
 
-    my $dir = HAsim::Util::path_append($model->build_dir(),$HAsim::Xilinx::tmp_xilinx_dir);
+    if (!defined($builddir)) {
+      $builddir = $model->build_dir();
+    }
+    
+    my $dir = HAsim::Util::path_append($builddir,$HAsim::Xilinx::tmp_xilinx_dir);
     $status = system("mkdir -p " . $dir);
 
-    $dir = HAsim::Util::path_append($model->build_dir(),$HAsim::Bluespec::tmp_bsc_dir);
+    $dir = HAsim::Util::path_append($builddir,$HAsim::Bluespec::tmp_bsc_dir);
     $status = system("mkdir -p " . $dir);
 
-    __make_dirs($root,HAsim::Util::path_append($model->build_dir(),"arch"));
+    __make_dirs($root,HAsim::Util::path_append($builddir,"arch"));
     return 1;
 }
 
@@ -227,7 +344,10 @@ sub make_bsvfiles {
     my $model = shift;
     my $root = $model->modelroot();
 
-    __make_bsvfiles($root,HAsim::Util::path_append($model->build_dir(),"arch"));
+    if (!defined($builddir)) {
+      $builddir = $model->build_dir();
+    }
+    __make_bsvfiles($root,HAsim::Util::path_append($builddir,"arch"));
     return 1;
 }
 
@@ -294,8 +414,12 @@ sub make_symlinks {
     my $model = shift;
 
     my $root = $model->modelroot();
-    my $build_dir = $model->build_dir();
-    my $arch_dir = HAsim::Util::path_append($build_dir,"arch");
+
+    if (!defined($builddir)) {
+      $builddir = $model->build_dir();
+    }
+    
+    my $arch_dir = HAsim::Util::path_append($builddir,"arch");
     __make_symlinks($root,$arch_dir);
     
     return 1;
@@ -349,8 +473,12 @@ sub generate_makefile_include {
 
     my $replacements_r = HAsim::Util::empty_hash_ref();
 
+    if (!defined($builddir)) {
+      $builddir = $model->build_dir();
+    }
+    
     # @BUILD_DIR@
-    HAsim::Util::hash_set($replacements_r,'@BUILD_DIR@',$model->build_dir());
+    HAsim::Util::hash_set($replacements_r,'@BUILD_DIR@',$builddir);
 
     # @APM_NAME@
     my $apm = HAsim::Build::get_model_name($model);
@@ -372,7 +500,7 @@ sub generate_makefile_include {
     __generate_makefile_include($model->modelroot(),"arch",$replacements_r);
 
     my $template = HAsim::Build::get_makefile_include_template($model);
-    my $makefile = HAsim::Util::path_append($model->build_dir(),"Makefile.include");
+    my $makefile = HAsim::Util::path_append($builddir,"Makefile.include");
     HAsim::Templates::do_replacements($template,$makefile,$replacements_r);
 }
 
@@ -405,6 +533,10 @@ sub __generate_makefile_include {
 sub generate_makefile_top {
     my $model = shift;
     
+    if (!defined($builddir)) {
+      $builddir = $model->build_dir();
+    }
+    
     my $replacements_r = HAsim::Util::empty_hash_ref();
     
     #@ROOT_DIR@
@@ -422,7 +554,7 @@ sub generate_makefile_top {
     __generate_makefile_top($root,"arch",$replacements_r);
 
     my $template = HAsim::Build::get_makefile_top_template($model);
-    my $makefile = HAsim::Util::path_append($model->build_dir(),"Makefile");
+    my $makefile = HAsim::Util::path_append($builddir,"Makefile");
     HAsim::Templates::do_replacements($template,$makefile,$replacements_r);
 }
 
@@ -547,10 +679,14 @@ sub __generate_makefile_sub {
 	__generate_makefile_sub($model,$child,$my_dir,$current_replacements_r);
     }
 
+    if (!defined($builddir)) {
+      $builddir = $model->build_dir();
+    }
+
     # on the way up, possibly generate makefile
     if (HAsim::Build::is_synthesis_boundary($module)) {
 	my $template = HAsim::Build::get_makefile_sub_template($model,$module);
-	my $makefile = HAsim::Util::path_append($model->build_dir(),$my_dir,"Makefile");
+	my $makefile = HAsim::Util::path_append($builddir,$my_dir,"Makefile");
 	HAsim::Templates::do_replacements($template,$makefile,$current_replacements_r);
     }
 }

@@ -96,7 +96,7 @@ if ($num_commands != 1) {
 }
 
 if (!defined($model)) {
-  $model = $ARGV[1];
+  $model = $ARGV[0];
 }
 
 

@@ -2424,3 +2424,19 @@ Added support for running and setting-up benchmarks to hasim-configure.
 Michael
 
 
+
+----------
+jsemer      Date: Sat Mar 31 17:34:48 EDT 2007  CSN: CSN-hasim-150
+                  Sat Mar 31 21:34:48 UTC 2007
+
+
+Directory .
+ Makefile.in               Locally Modified          149 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          149 
+
+Get information about the .cfg file using Asim::Benchmark
+instead of processing the file directly in hasim-configure.
+
+Joel

@@ -116,14 +116,14 @@ if ($configure) {
     print "Nuking build tree. . . ";
     delete_build_tree($model);
 } elsif ($setup) {
-    setup_benchmark($model);
+    setup_benchmark($model, $benchmark);
 } elsif ($build) {
 #	WARN_AND_DIE("build command not yet implemented");
     print "Compiling build tree. . . ";
     build_build_tree($model);
 } elsif ($run) {
     print "Running model. . . ";
-    run_model($model);
+    run_model($model, $benchmark);
 #	WARN_AND_DIE("run command not yet implemented");
 }
 
@@ -135,14 +135,16 @@ exit 0;
 # run_model
 sub run_model {
     my $modelfile = shift;
+    my $benchmarkfile = shift;
+
     my $model = Asim::Model->new($modelfile);
     
-    if (!defined($benchmark)) {
+    if (!defined($benchmarkfile)) {
       WARN_AND_DIE("Undefined Benchmark for running.");
     }
     
     if (!defined($rundir)) {
-      $rundir = $model->run_dir($benchmark);
+      $rundir = $model->run_dir($benchmarkfile);
     }
     
     my $exe = HAsim::Util::path_append($rundir, "run $runopt");
@@ -165,14 +167,16 @@ sub run_model {
 # setup_benchmark
 sub setup_benchmark {
     my $modelfile = shift;
+    my $benchmarkfile = shift;
+
     my $model = Asim::Model->new($modelfile);
     
-    if (!defined($benchmark)) {
+    if (!defined($benchmarkfile)) {
       WARN_AND_DIE("Undefined Benchmark for setup.");
     }
     
     if (!defined($rundir)) {
-      $rundir = $model->run_dir($benchmark);
+      $rundir = $model->run_dir($benchmarkfile);
     }
     
     #Actually create rundir
@@ -181,58 +185,20 @@ sub setup_benchmark {
     
     $status = system("rm -rf " . $rundir);
     $status = system("mkdir -p " . $rundir);
+
+    my $benchmark = Asim::Benchmark->new($benchmarkfile);
       
-    my $is_cfx = $benchmark =~ m/(.*\.cfx)\/(.*)/;
-    my $cfx = $1;
-    my $cfg_path = $2;
-  
-    if ($is_cfx)
-    {
-
-      #Use the CFX to generate the CFG
-      # $status = system("$cfx_file --emit smips/smipsv1_addiu.cfg > $cfg_file"); #Don't hardcode this
-      my $cfx_file = Asim::resolve($cfx) ||  HAsim::Util::WARN_AND_DIE("Could not resolve CFX: $cfx");
-      CORE::open(CFG, "$cfx_file --emit $cfg_path |") || HAsim::Util::WARN_AND_DIE("NO SUCH CFX: $cfx_file");
-    } 
-    else
-    {
-      my $cfg_file = Asim::resolve($benchmark) || HAsim::Util::WARN_AND_DIE("Could not resolve CFG: $benchmark");
-      CORE::open(CFG, "< $cfg_file") || HAsim::Util::WARN_AND_DIE("NO SUCH CFG"); #Double check CFG name
-    }
-    
-    
-    my $setup = "";
-    
-    #Parse the CFG File for relevant info
-    my $linenum = 0;
-    while (my $line = <CFG>) {
-
-      if ($linenum == 5) {$setup = $line}; #This could be better
-      $linenum++;
-
-    }
-    
-    chomp($setup);
-    
-    # print STDOUT "SETUP: $setup\n";
-    
-    $setup =~ m/ *([^ ]*) (.*)/;
-    my $setup_command = $1;
-    my $setup_args = $2;
+    my $setup_command = $benchmark->setup_command();
+    my $setup_args = $benchmark->setup_args();
+    my $srcdir = $benchmark->setup_srcdir();
     
     print STDOUT "SCRIPT: $setup_command\n";
-    
-    my $setupscript = Asim::resolve($setup_command);
-    
-    print STDOUT "SETUPSCRIPT: $setupscript\n";
-   
-    my $srcdir = dirname($setupscript);
    
     #Run the setup script with appropriate params
     
     #DOUBLE IS THE SRC/DST DIR CONSISTENT WITH AMC?
-    print STDOUT "COMMAND: $setupscript $srcdir $rundir $setup_args\n";
-    $status = system("$setupscript $srcdir $rundir $setup_args");
+    print STDOUT "COMMAND: $setup_command $srcdir $rundir $setup_args\n";
+    $status = system("$setup_command $srcdir $rundir $setup_args");
 
     return 1;
 }

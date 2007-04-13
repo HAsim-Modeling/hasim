@@ -2440,3 +2440,58 @@ Get information about the .cfg file using Asim::Benchmark
 instead of processing the file directly in hasim-configure.
 
 Joel
+
+----------
+aparasha    Date: Fri Apr 13 15:00:33 EDT 2007  CSN: CSN-hasim-151
+                  Fri Apr 13 19:00:33 UTC 2007
+
+
+Directory config/pm
+ bluespec/                 Locally Added               0 
+
+Directory config/pm/bluespec
+ demos/                    Locally Added               0 
+
+Directory config/pm/bluespec/demos
+ counter.apm               Locally Added               0 
+
+Directory modules
+ bluespec/                 Locally Added               0 
+
+Directory modules/bluespec
+ model/                    Locally Added               0 
+
+Directory modules/bluespec/model
+ pure-bluespec/            Locally Added               0 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.sub.template     Locally Added               0 
+ mkModel.bsv               Locally Added               0 
+ pure_bluespec_model.awb   Locally Added               0 
+ Makefile.top.template     Locally Added               0 
+ Makefile.include.template Locally Added               0 
+
+Directory modules/bluespec
+ system/                   Locally Added               0 
+
+Directory modules/bluespec/system
+ demos/                    Locally Added               0 
+
+Directory modules/bluespec/system/demos
+ counter/                  Locally Added               0 
+
+Directory modules/bluespec/system/demos/counter
+ mkCounter.bsv             Locally Added               0 
+ counter_system.awb        Locally Added               0 
+ System.bsv                Locally Added               0 
+
+Directory modules/bluespec
+ common/                   Locally Added               0 
+
+Directory modules/bluespec/common
+ null/                     Locally Added               0 
+
+Directory modules/bluespec/common/null
+ null.bsv                  Locally Added               0 
+ bluespec_null.awb         Locally Added               0 
+

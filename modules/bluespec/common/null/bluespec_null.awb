@@ -1,0 +1,16 @@
+********************************************************************
+* Awb module specification
+********************************************************************
+
+%AWB_START
+
+%name Bluespec Null Library
+%desc Bluespec Null Library
+
+%provides bluespec_common
+
+%attributes bluespec
+
+%public
+
+%AWB_END

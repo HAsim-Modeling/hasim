@@ -2495,3 +2495,28 @@ Directory modules/bluespec/common/null
  null.bsv                  Locally Added               0 
  bluespec_null.awb         Locally Added               0 
 
+
+----------
+jsemer      Date: Tue Apr 17 11:48:07 EDT 2007  CSN: CSN-hasim-152
+                  Tue Apr 17 15:48:07 UTC 2007
+
+
+Directory tools/scripts
+ bluespec/                 Locally Added               0 
+
+Directory tools/scripts/bluespec
+ setup-bmark-bsv           Locally Added               0 
+
+Directory config
+ bm/                       Locally Added               0 
+
+Directory config/bm
+ bluespec/                 Locally Added               0 
+
+Directory config/bm/bluespec
+ demo.cfx                  Locally Added               0 
+
+Added a simple benchmark to run a Bluespec design. At
+this point with no input.
+
+Joel

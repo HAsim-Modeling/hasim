@@ -1,0 +1,27 @@
+: # -*-Perl-*-
+eval 'exec perl -w "$0" ${1+"$@"}'
+   if 0;
+
+use Asim;
+use strict;
+
+##
+## Generate cfg files for Oracle/TPC-C for a variety of CPU numbers.
+##
+
+my $gcfg = Asim::GenCFG->new();
+
+
+my @bmarks = ("null",
+	     );
+	      
+foreach my $bmark (@bmarks) {
+        $gcfg->add(name => $bmark,
+                  tree => [ "benchmarks" ],
+                  setup => "tools/scripts/bluespec/setup-bmark-bsv $bmark",
+		  feeder => "vcs",
+                  ccount => 800000,
+                  );
+   }
+
+$gcfg->action(@ARGV);

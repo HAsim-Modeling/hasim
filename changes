@@ -2520,3 +2520,13 @@ Added a simple benchmark to run a Bluespec design. At
 this point with no input.
 
 Joel
+
+----------
+jsemer      Date: Tue Apr 17 13:37:35 EDT 2007  CSN: CSN-hasim-153
+                  Tue Apr 17 17:37:35 UTC 2007
+
+
+Directory tools/scripts/bluespec
+ setup-bmark-bsv           Locally Modified          152 
+
+Make demo.cfx executable.

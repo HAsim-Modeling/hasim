@@ -2,12 +2,12 @@
 eval 'exec perl -w "$0" ${1+"$@"}'
    if 0;
 
+##
+## Directory of hasim benchmarks
+##     Remember to set this file as executable
+
 use Asim;
 use strict;
-
-##
-## Generate cfg files for Oracle/TPC-C for a variety of CPU numbers.
-##
 
 my $gcfg = Asim::GenCFG->new();
 

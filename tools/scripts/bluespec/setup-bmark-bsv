@@ -6,7 +6,7 @@
 #
 # Usage: setup-bmark-smips <srcdir> <destdir> <bmark>
 #
-# Setup benchmark to run in <destdir>
+# Setup benchmark to run in <destdir> 
 #
 ##############################################################
 

@@ -2589,3 +2589,31 @@ Directory modules/bluespec/model/pure-bluespec
 Makefile dependencies for bsc have been improved slightly.
 
 Michael
+
+----------
+jsemer      Date: Wed Apr 18 17:41:42 EDT 2007  CSN: CSN-hasim-156
+                  Wed Apr 18 21:41:42 UTC 2007
+
+
+Directory config/pm/hasim
+ toymips/                  Locally Removed           155 
+
+Directory config/pm/hasim/toymips
+ hasim_toymips_simple.apm  Locally Removed           155 
+
+Directory config/pm/hasim
+ smips/                    Locally Removed           155 
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage.apm    Locally Removed           155 
+ hasim_smips_5stage_ports.apm Locally Removed           155 
+
+Directory modules/system/single_chip_system
+ hasim_system.awb          Locally Modified          155 
+
+Moved smips and toymips models out to hasim repository
+and into hasim-mips repository.
+
+Rearranged order of submodules in hasim_system.
+
+Joel

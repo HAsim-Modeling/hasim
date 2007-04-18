@@ -2530,3 +2530,32 @@ Directory tools/scripts/bluespec
  setup-bmark-bsv           Locally Modified          152 
 
 Make demo.cfx executable.
+
+----------
+jsemer      Date: Wed Apr 18 14:25:04 EDT 2007  CSN: CSN-hasim-154
+                  Wed Apr 18 18:25:04 UTC 2007
+
+
+Directory .
+ Makefile.in               Locally Modified          153 
+
+Directory libperl
+ Makefile.in               Locally Modified          153 
+
+Directory tools
+ Makefile.in               Locally Modified          153 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          153 
+
+Directory tools/scripts/bluespec
+ setup-bmark-bsv           Locally Modified          153 
+ run.pl                    Locally Added               0 
+
+Added ability to pass switches to bluespec run scripts. At 
+present the only switch that is parsed is the cycle switch
+(-c) and only for vexe targets.
+
+Automake also updated some files...
+
+Joel

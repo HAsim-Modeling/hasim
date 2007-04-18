@@ -95,35 +95,41 @@ $(XILINX_APM_NAME).ngc: $(ROOT_V) $(XST_FILE)
 ## Verilog generation rules
 
 .PHONY: vexe
-vexe: $(APM_NAME).vexe
+vexe:
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+	$(BSC) $(BSC_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "$(BUILD_DIR)/$(APM_NAME).vexe +bscvcd" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
 
-$(APM_NAME).vexe: $(ROOT_V)
-	$(BSC) $(BSC_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 
+#$(APM_NAME).vexe:
+#	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+#	$(BSC) $(BSC_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 
 
-$(ROOT_V):
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+#$(ROOT_V):
+#	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
 
 ################################################################
 ## Bluesim generation rules
 
 .PHONY: exe
 exe: $(APM_NAME).exe
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
+	$(BSC) $(BSC_FLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 
+	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "$(BUILD_DIR)/$(APM_NAME).exe" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
-$(APM_NAME).exe: $(ROOT_BA)
-	$(BSC) $(BSC_FLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 
-	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
+#$(APM_NAME).exe: $(ROOT_BA)
+#	$(BSC) $(BSC_FLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 
+#	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
 
-$(ROOT_BA):
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
+#$(ROOT_BA):
+#	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
 
 ################################################################
 ## Misc. rules

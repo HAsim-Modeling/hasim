@@ -26,7 +26,9 @@ all: ba
 ## 
 
 .PHONY: ba 
-ba: make_subdir_bas make_bas
+ba: make_subdir_bas $(SRCS) $(SUBDIR_BAS)
+	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)
+
 
 .PHONY: make_subdir_bas
 make_subdir_bas: 
@@ -34,15 +36,16 @@ make_subdir_bas:
 		$(MAKE) -C $$dir ba; \
 	done
 
-.PHONY: make_bas
-make_bas: $(SRCS) $(SUBDIR_BAS)
-	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)
+#.PHONY: make_bas
+#make_bas: $(SRCS) $(SUBDIR_BAS)
+#	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)
 
 ################################################################
 ## 
 
 .PHONY: v
-v: make_subdir_vs make_vs
+v: make_subdir_vs $(SRCS) $(SUBDIR_VS)
+	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)
 
 .PHONY: make_subdir_vs
 make_subdir_vs: 
@@ -50,9 +53,9 @@ make_subdir_vs:
 		$(MAKE) -C $$dir v; \
 	done
 
-.PHONY: make_vs
-make_vs: $(SRCS) $(SUBDIR_VS)
-	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)
+#.PHONY: make_vs
+#make_vs: $(SRCS) $(SUBDIR_VS)
+#	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)
 
 
 ################################################################

@@ -28,7 +28,9 @@ all: ba
 ## 
 
 .PHONY: ba 
-ba: make_subdir_bas $(WRAPPER_SYNTH_ID).ba
+ba: make_subdir_bas $(WRAPPER_SYNTH_ID).ba  $(WRAPPER).bsv $(SRCS) $(SUBDIR_BAS)
+	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+	mv $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba .
 
 .PHONY: make_subdir_bas
 make_subdir_bas: 
@@ -36,15 +38,16 @@ make_subdir_bas:
 		$(MAKE) -C $$dir ba; \
 	done
 
-$(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(SRCS) $(SUBDIR_BAS)
-	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
-	mv $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba .
+# $(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(SRCS) $(SUBDIR_BAS)
+# 	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+# 	mv $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba .
 
 ################################################################
 ## 
 
 .PHONY: v
-v: make_subdir_vs $(WRAPPER_SYNTH_ID).v
+v: make_subdir_vs $(WRAPPER_SYNTH_ID).v $(WRAPPER).bsv $(SRCS) $(SUBDIR_VS)
+	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
 
 .PHONY: make_subdir_vs
 make_subdir_vs: 
@@ -52,8 +55,8 @@ make_subdir_vs:
 		$(MAKE) -C $$dir v; \
 	done
 
-$(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(SRCS) $(SUBDIR_VS)
-	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+#$(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(SRCS) $(SUBDIR_VS)
+#	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
 
 ################################################################
 ## 

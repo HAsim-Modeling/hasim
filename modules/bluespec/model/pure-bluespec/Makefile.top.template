@@ -93,38 +93,46 @@ $(XILINX_APM_NAME).ngc: $(ROOT_V) $(XST_FILE)
 ## Verilog generation rules
 
 .PHONY: vexe
-vexe: $(APM_NAME).vexe
+vexe:
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+	cd arch/model ; $(BSC) $(BSC_FLAGS) -verilog -e mkModel -o ../../$(APM_NAME).vexe mkModel.v
+	ln -f -s $(APM_NAME).vexe simv
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "$(BUILD_DIR)/$(APM_NAME).vexe +bscvcd" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
 
-$(APM_NAME).vexe:
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+#$(APM_NAME).vexe:
+#	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
 #	cd arch/model ; $(BSC) $(BSC_FLAGS) -vsim $(BLUESPECDIR)/bin/bsc_build_vsim_vcs -verilog -e mkModel -o ../../$(APM_NAME).vexe mkModel.v
-	cd arch/model ; $(BSC) $(BSC_FLAGS) -verilog -e mkModel -o ../../$(APM_NAME).vexe mkModel.v
-	ln -f -s $(APM_NAME).vexe simv
+#	cd arch/model ; $(BSC) $(BSC_FLAGS) -verilog -e mkModel -o ../../$(APM_NAME).vexe mkModel.v
+#	ln -f -s $(APM_NAME).vexe simv
 #	ln -f -s $(APM_NAME).vexe.daidir simv.daidir
 
 ################################################################
 ## Bluesim generation rules
 
 .PHONY: exe
-exe: $(APM_NAME).exe
-	@echo "#!/bin/sh" >$(APM_NAME)
-	@echo "$(BUILD_DIR)/$(APM_NAME).exe" >>$(APM_NAME)
-	@chmod +x $(APM_NAME)
-	@echo "Generated launch script \"$(APM_NAME)\"";
-
-$(APM_NAME).exe:
+exe:
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
 	$(BSC) $(BSC_FLAGS) -sim -e mkModel -o $(APM_NAME).exe $(TMP_BSC_DIR)/*.ba
 	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
 	ln -f -s $(APM_NAME).exe simv
 
+	@echo "#!/bin/sh" >$(APM_NAME)
+	@echo "$(BUILD_DIR)/$(APM_NAME).exe" >>$(APM_NAME)
+	@chmod +x $(APM_NAME)
+	@echo "Generated launch script \"$(APM_NAME)\"";
 
-$(ROOT_BA):
+#$(APM_NAME).exe:
+#	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
+#	$(BSC) $(BSC_FLAGS) -sim -e mkModel -o $(APM_NAME).exe $(TMP_BSC_DIR)/*.ba
+#	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
+#	ln -f -s $(APM_NAME).exe simv
+
+
+#$(ROOT_BA):
 
 ################################################################
 ## Misc. rules

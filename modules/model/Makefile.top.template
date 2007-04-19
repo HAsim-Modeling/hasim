@@ -115,7 +115,7 @@ vexe:
 ## Bluesim generation rules
 
 .PHONY: exe
-exe: $(APM_NAME).exe
+exe:
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
 	$(BSC) $(BSC_FLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 
 	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)

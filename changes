@@ -2617,3 +2617,18 @@ and into hasim-mips repository.
 Rearranged order of submodules in hasim_system.
 
 Joel
+
+----------
+pellauer    Date: Thu Apr 19 10:24:13 EDT 2007  CSN: CSN-hasim-157
+                  Thu Apr 19 14:24:13 UTC 2007
+
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          156 
+ Makefile.top.template     Locally Modified          156 
+
+
+Fixed a typo in the Makefile templates that was preventing freshly configured
+models from building.
+
+Michael

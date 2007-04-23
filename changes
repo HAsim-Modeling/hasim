@@ -2648,3 +2648,16 @@ Directory modules/model
 HAsim Makefile changed to better deal with dependencies. Additionally this should allow it to work with sub-models correctly.
 
 Michael
+
+----------
+pellauer    Date: Mon Apr 23 16:16:12 EDT 2007  CSN: CSN-hasim-159
+                  Mon Apr 23 20:16:12 UTC 2007
+
+
+Directory modules/common/fpgalib/xup
+ BRAM.v                    Locally Modified          157 
+
+
+Fixed an initialization bug in BRAM.v found by Artur.
+
+Michael

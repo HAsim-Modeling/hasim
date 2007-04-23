@@ -75,7 +75,7 @@ module BRAM(CLK, RST_N,
        if (!RST_N) 
          begin  //Make simulation behavior consistent with Xilinx synthesis
            // synopsys translate_off
-	   for (x = lo; x < hi; x = x + 1)
+	   for (x = lo; x <= hi; x = x + 1)
 	   begin
 	     arr[x] <= 0;
 	   end

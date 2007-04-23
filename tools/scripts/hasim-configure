@@ -631,13 +631,19 @@ sub __generate_makefile_sub {
     my @l = ();
     if ($private) { push(@l, $module->private()); }
     if ($public) { push(@l, $module->public()); }
+    my $deps = "";
+    my $mod_bsv = $module->provides() . ".bsv";
     foreach my $f (@l) {
 	if ($f =~ /.bsv/) {
 	    HAsim::Util::hash_append($current_replacements_r, " ", '@BSVS@', $f);
+	    $deps = $deps . " $f";
 	} else {
 	    HAsim::Util::hash_append($current_replacements_r, " ", '@SRCS@', $f);
 	}
     }
+    my $mod_rule = "\n$mod_bsv: $deps\n\ttouch \$\@\n";
+    HAsim::Util::hash_append($current_replacements_r, " ", '@GEN_DEPS@', $mod_rule);
+    HAsim::Util::hash_append($current_replacements_r, " ", '@GEN_BSVS@', $mod_bsv);
 
     #recurse
     HAsim::Build::check_submodules_defined($module);

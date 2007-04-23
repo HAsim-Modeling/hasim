@@ -6,7 +6,8 @@ DIR = @DIR@
 SUBDIRS = @SUBDIRS@
 PARENT_PATH = @PARENT_PATH@
 BSVS = @BSVS@
-SRCS = $(BSVS) @SRCS@
+GEN_BSVS = @GEN_BSVS@
+SRCS = $(BSVS) $(GEN_BSVS) @SRCS@
 
 WRAPPER = $(DIR)_Wrapper
 WRAPPER_SYNTH_ID = mk_$(WRAPPER)
@@ -14,9 +15,6 @@ LOGFILE = $(WRAPPER_SYNTH_ID).log
 
 SUBDIR_BAS = @SUBDIR_BAS@
 SUBDIR_VS = $(SUBDIR_BAS:%.ba=%.v)
-
-BIS = $(BSVS:%.bsv=%.bi)
-BOS = $(BSVS:%.bsv=%.bo)
 
 ################################################################
 ## 
@@ -28,9 +26,7 @@ all: ba
 ## 
 
 .PHONY: ba 
-ba: make_subdir_bas $(WRAPPER).bsv $(SRCS) $(SUBDIR_BAS)
-	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
-	mv $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba .
+ba: make_subdir_bas $(WRAPPER_SYNTH_ID).ba
 
 .PHONY: make_subdir_bas
 make_subdir_bas: 
@@ -38,16 +34,15 @@ make_subdir_bas:
 		$(MAKE) -C $$dir ba; \
 	done
 
-# $(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(SRCS) $(SUBDIR_BAS)
-# 	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
-# 	mv $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba .
+$(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(GEN_BSVS) $(SUBDIR_BAS)
+	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+	mv $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba .
 
 ################################################################
 ## 
 
 .PHONY: v
-v: make_subdir_vs $(WRAPPER).bsv $(SRCS) $(SUBDIR_VS)
-	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+v: make_subdir_vs $(WRAPPER_SYNTH_ID).v
 
 .PHONY: make_subdir_vs
 make_subdir_vs: 
@@ -55,8 +50,8 @@ make_subdir_vs:
 		$(MAKE) -C $$dir v; \
 	done
 
-#$(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(SRCS) $(SUBDIR_VS)
-#	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+$(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(GEN_BSVS) $(SUBDIR_VS)
+	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
 
 ################################################################
 ## 
@@ -64,6 +59,11 @@ make_subdir_vs:
 $(WRAPPER).bsv:
 	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR) 
 
+################################################################
+## 
+
+
+@GEN_DEPS@
 
 ################################################################
 ## Misc.

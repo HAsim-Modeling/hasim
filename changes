@@ -2661,3 +2661,16 @@ Directory modules/common/fpgalib/xup
 Fixed an initialization bug in BRAM.v found by Artur.
 
 Michael
+
+----------
+pellauer    Date: Tue Apr 24 13:49:41 EDT 2007  CSN: CSN-hasim-160
+                  Tue Apr 24 17:49:41 UTC 2007
+
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.sub.template     Locally Modified          158 
+
+
+Updating the pure-bluespec Makefile with the changes to the HAsim makefile.
+
+Michael

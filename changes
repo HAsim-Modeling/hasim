@@ -2674,3 +2674,13 @@ Directory modules/bluespec/model/pure-bluespec
 Updating the pure-bluespec Makefile with the changes to the HAsim makefile.
 
 Michael
+
+----------
+jsemer      Date: Mon Apr 30 11:40:58 EDT 2007  CSN: CSN-hasim-161
+                  Mon Apr 30 15:40:58 UTC 2007
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_exe_synth.apm Locally Modified          160 
+
+Fixed name of model.

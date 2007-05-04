@@ -1,0 +1,39 @@
+/*
+  style.css - a CSS stylesheet for use with HTML output produced by
+  tldp-xsl stylesheets.  Written by David Horton.
+*/
+
+
+body {
+  font-family: sans-serif;
+  margin: 2%;
+}
+
+
+.programlisting, .screen {
+
+/*
+   Style the programlisting and screen classes with a light gray
+   background and a small bit of space between the object border and
+   the text inside.  The programlisting and screen classes are HTML
+   representations of the <programlisting> and <screen> DocBook tags.
+*/
+
+  background: lightgray;
+  padding: 5px;
+}
+
+
+table, td, th {
+
+/*
+   Remove borders from all table elements.  This look is cleaner as
+   well as being more consistent with PDF output.
+*/
+
+  border: none;
+}
+
+
+/* Add any desired customizations below. */
+

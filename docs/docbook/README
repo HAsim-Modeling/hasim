@@ -1,0 +1,19 @@
+
+See this page for a "Gentle Guide to Docbook":
+
+   http://www.ibm.com/developerworks/linux/library/l-docbk.html
+
+------------------------------------------
+How to add or make your own documentation:
+------------------------------------------
+
+1. Edit your docbook in the xml subtree.  It is strongly recommended that you
+   use an XML editor/validator such as xxe.  xxe is a Java application and is
+   already installed in Hudson as part of the VSSAD environment.
+
+2a. In this directory (docs/docbook), type "make" to convert the docbook
+   xml to HTML via xsltproc.  
+
+2b. Check for conversion and syntax  errors.
+
+3. Examine the resulting html in the "html" subdirectory.

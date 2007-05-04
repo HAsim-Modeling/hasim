@@ -1,0 +1,88 @@
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+   <title>TLDP-XSL HOWTO</title><link rel="stylesheet" href="style.css" type="text/css"><meta name="generator" content="DocBook XSL Stylesheets V1.65.1"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="article" lang="en"><div class="titlepage"><div><div><h2 class="title"><a name="d0e1"></a>TLDP-XSL HOWTO</h2></div><div><div class="author"><h3 class="author"><span class="firstname">David</span> <span class="surname">Horton</span></h3></div></div></div><div></div><hr></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><span class="sect1"><a href="#d0e15">1. Introduction</a></span></dt><dd><dl><dt><span class="sect2"><a href="#d0e18">1.1. About TLDP-XSL</a></span></dt><dt><span class="sect2"><a href="#d0e29">1.2. Legal Information</a></span></dt></dl></dd><dt><span class="sect1"><a href="#d0e46">2. Installing</a></span></dt><dd><dl><dt><span class="sect2"><a href="#d0e51">2.1. Prerequisites</a></span></dt><dt><span class="sect2"><a href="#d0e69">2.2. Installation</a></span></dt></dl></dd><dt><span class="sect1"><a href="#d0e93">3. Processing</a></span></dt><dd><dl><dt><span class="sect2"><a href="#d0e139">3.1. HTML Output Examples</a></span></dt><dt><span class="sect2"><a href="#d0e160">3.2. Examples of Other File Formats</a></span></dt></dl></dd><dt><span class="sect1"><a href="#d0e185">4. Styling HTML With CSS</a></span></dt><dt><span class="sect1"><a href="#d0e210">5. Feedback</a></span></dt></dl></div><div class="abstract"><p class="title"><b>Abstract</b></p><p>This document provides instructions for installing the TLDP XSL
+    style sheets and using them to produce various output formats from DocBook
+    XML source files.</p></div><div class="sect1" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d0e15"></a>1.&nbsp;Introduction</h2></div></div><div></div></div><div class="sect2" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="d0e18"></a>1.1.&nbsp;About TLDP-XSL</h3></div></div><div></div></div><p>The TLDP-XSL package is a customization layer for the standard
+      DocBook XSL style sheets. The customizations include things like
+      automatic numbering for chapters and sections as well as controlling how
+      documents are broken into multiple HTML pages. For additional
+      information about these customizations, please refer to the comments
+      within the XSL files in the <tt class="filename">html</tt> and
+      <tt class="filename">fo</tt> directories of the tldp-xsl package.</p></div><div class="sect2" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="d0e29"></a>1.2.&nbsp;Legal Information</h3></div></div><div></div></div><p>Copyright (c) 2003-2005 David Horton</p><p>Permission is granted to copy, distribute and/or modify this
+      document under the terms of the <a href="http://www.gnu.org/licenses/fdl.txt" target="_top">GNU Free Documentation
+      License</a>, Version 1.2 or any later version published by the Free
+      Software Foundation; with no Invariant Sections, no Front-Cover Texts,
+      and no Back-Cover Texts. A copy of the license is included in the file
+      <tt class="filename">license.txt</tt>.</p><p>This documentation is provided as-is with no warranty of any kind,
+      either expressed or implied, including, but not limited to, the implied
+      warranties of merchantability and fitness for a particular purpose. Use
+      the concepts, examples and information at your own risk. The author(s)
+      do not take any responsibility for damages that may arise from the use
+      of this document.</p><p>All copyrights are held by their respective owners, unless
+      specifically noted otherwise. Use of a term in this document should not
+      be regarded as affecting the validity of any trademark or service mark.
+      Naming of particular products or brands should not be seen as
+      endorsements.</p></div></div><div class="sect1" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d0e46"></a>2.&nbsp;Installing</h2></div></div><div></div></div><p>Installation is very straightforward and simply involves copying the
+    TLDP-XSL style sheets into the appropriate directories of the DocBook XSL
+    style sheet package.</p><div class="sect2" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="d0e51"></a>2.1.&nbsp;Prerequisites</h3></div></div><div></div></div><p>The following tasks should be completed prior to installation of
+      the TLDP-XSL style sheets:</p><div class="itemizedlist"><ul type="disc"><li><p>Download Norman Walsh's <a href="http://sourceforge.net/projects/docbook/" target="_top">docbook-xsl style
+          sheet package</a> and copy the contents of the package into an
+          appropriate directory on the target system. The actual directory
+          path is not critical, just make a note of where the files are
+          placed.</p></li><li><p>Download the latest version of the <a href="http://www.happy-monkey.net/docbook/tldp/" target="_top">tldp-xsl
+          package</a>.</p></li></ul></div></div><div class="sect2" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="d0e69"></a>2.2.&nbsp;Installation</h3></div></div><div></div></div><p>Once the prerequisites are taken care of, installation is
+      easy.</p><div class="itemizedlist"><ul type="disc"><li><p>Copy all of the files from the tldp-xsl package
+          <tt class="filename">html</tt> directory into the
+          <tt class="filename">html</tt> directory of Norman Walsh's style
+          sheets.</p></li><li><p>Copy the file from the tldp-xsl package
+          <tt class="filename">fo</tt> directory into the <tt class="filename">fo</tt>
+          directory of Norman Walsh's style sheets.</p></li></ul></div></div></div><div class="sect1" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d0e93"></a>3.&nbsp;Processing</h2></div></div><div></div></div><p>Using the XSL style sheets to produce HTML output requires an XSLT
+    processor. Producing other output types, like PDF, requires a Formatting
+    Objects (FO) processor. These style sheets have been tested with xsltproc,
+    the Saxon-6.5.2 XSLT processor and the Apache fop-0.20.5 formatting
+    objects processor, but any processor that is compatible with the target
+    system should work equally well.</p><div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title">Note</h3><p>Processor installation is beyond the scope of this document.
+        Please refer to the instructions included with the chosen
+        product.</p></div><p>There are several different XSL style sheets in the tldp-xsl package
+    and each one is intended to address a particular formatting task. The
+    style sheets and their intended uses are summarized below:</p><div class="itemizedlist"><ul type="disc"><li><p><tt class="filename">fo/tldp-print.xsl</tt> works with a formatting
+        objects (FO) processor to create PDF and other non-HTML formatted
+        documents. This type of document is good to use when printed output is
+        desired.</p></li><li><p><tt class="filename">html/tldp-single-page.xsl</tt> places all
+        document output on a single HTML page. This works well for short,
+        on-line documents like FAQ's or mini-HOWTO's.</p></li><li><p><tt class="filename">html/tldp-sections.xsl</tt> divides the document
+        into sections with each section having a separate HTML page. This is
+        good for producing HOWTO documents for on-line viewing.</p></li><li><p><tt class="filename">html/tldp-chapters.xsl</tt> divides the document
+        into chapters, each having a separate HTML page. This style sheet can
+        be used as an alternative to <tt class="filename">tldp-sections.xsl</tt> to
+        provide better continuity in the document.</p></li></ul></div><div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title">Note</h3><p>the <tt class="filename">tldp-common.xsl</tt> file is intended to be
+      used by other XSL style sheets and should <span class="emphasis"><em>not</em></span> be
+      called directly in an attempt to produce HTML output.</p></div><p>The sections below give some examples of how to use the XSL style
+    sheets to produce different types of output with various processors.
+    Please be aware that file names and paths may be different on the target
+    system and will need to be adjusted accordingly.</p><div class="sect2" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="d0e139"></a>3.1.&nbsp;HTML Output Examples</h3></div></div><div></div></div><p>This example shows the style sheets being used to create a
+      single-page HTML document with <a href="http://www.xmlsoft.org/XSLT/xsltproc2.html" target="_top">xsltproc</a> on a
+      GNU/Linux platform:</p><pre class="programlisting">xsltproc -o faq.html ~/docbook-xsl/html/tldp-one-page.xsl faq.xml</pre><p>Here is an example using the style sheets with <a href="http://sourceforge.net/projects/saxon/" target="_top">Instant Saxon</a> on a
+      Windows platform to create multiple-page HTML output with each section
+      on its own HTML page:</p><pre class="programlisting">cd output_dir
+saxon c:\source_dir\howto.xml c:\docbook-xsl\html\tldp-sections.xsl</pre><p>It is also possible to create multiple-page HTML documents with
+      each chapter on its own HTML page as show in this example:</p><pre class="programlisting">xsltproc ~/docbook-xsl/html/tldp-chapters.xsl ~/xml-files/howto.xml</pre></div><div class="sect2" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="d0e160"></a>3.2.&nbsp;Examples of Other File Formats</h3></div></div><div></div></div><p>The following example uses the <tt class="filename">tldp-print.xsl</tt>
+      style sheet with <a href="http://xml.apache.org/fop/" target="_top">Apache
+      FOP</a> to create a .PDF document:</p><pre class="programlisting">fop -xml guide.xml -xsl ~/docbook-xsl/fo/tldp-print.xsl -pdf guide.pdf</pre><p>The <tt class="filename">tldp-print.xsl</tt> stylesheet and Apache FOP
+      may also be used to produce formatted output in an on-screen window or
+      send formatted output directly to a printer. Examples of this are shown
+      below:</p><pre class="programlisting">fop -xml howto.xml -xsl ~/docbook-xsl/fo/tldp-print.xsl -awt
+fop -xml howto.xml -xsl ~/docbook-xsl/fo/tldp-print.xsl -print</pre><p>It is theoretically possible to produce other types of output,
+      however the examples shown above are give the best results at this time.
+      Check the <a href="http://xml.apache.org/fop/" target="_top">Apache FOP home
+      page</a> to see which other output types are supported and what the
+      current limitations are for those formats.</p></div></div><div class="sect1" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d0e185"></a>4.&nbsp;Styling HTML With CSS</h2></div></div><div></div></div><p>HTML produced by the tldp-xsl package contains a
+    <tt class="sgmltag-element">link</tt> tag that refers to a cascading style sheet called
+    <tt class="filename">style.css</tt>. To add some style to HTML output simply
+    copy any valid CSS file with the name <tt class="filename">style.css</tt> into
+    the directory that contains the HTML document. A sample
+    <tt class="filename">style.css</tt> is included in the <tt class="filename">doc</tt>
+    directory of this package and is used to style the HTML version of this
+    howto. Browsers that do not support CSS should probably ignore the link
+    with no ill effects.</p><p>For information on CSS visit <a href="http://www.w3c.org/Style/CSS" target="_top">http://www.w3c.org/Style/CSS</a>.</p></div><div class="sect1" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d0e210"></a>5.&nbsp;Feedback</h2></div></div><div></div></div><p>Please send feedback concerning this document and the tldp-xsl style
+    sheets to <a href="mailto:dhorton@NOSPAM.member.fsf.org" target="_top">dhorton@NOSPAM.member.fsf.org</a></p></div></div></body></html>

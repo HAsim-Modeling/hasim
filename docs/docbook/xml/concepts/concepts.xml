@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<chapter id="concepts">
+  <title>Fundamental Concepts</title>
+
+  <para>This chapter is a general introduction to tools and building blocks
+  common to all HAsim models, offering brief introductions to major
+  concept.</para>
+
+  <section id="bluespec">
+    <title>Bluespec</title>
+
+    <para></para>
+  </section>
+
+  <section id="a-ports">
+    <title>A-Ports</title>
+
+    <para></para>
+  </section>
+
+  <section id="model-time">
+    <title>Model Time</title>
+
+    <para></para>
+  </section>
+
+  <section id="components">
+    <title>Simulator Components</title>
+
+    <para></para>
+
+    <section id="functional">
+      <title>Functional Partition</title>
+
+      <para></para>
+    </section>
+
+    <section id="timing">
+      <title>Timing Partition</title>
+
+      <para></para>
+    </section>
+
+    <section id="platform">
+      <title>Platform Partition</title>
+
+      <para></para>
+    </section>
+  </section>
+</chapter>

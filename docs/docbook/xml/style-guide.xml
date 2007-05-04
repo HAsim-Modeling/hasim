@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<article id="style-guide">
+  <title>HAsim Documentation Style Guide</title>
+
+  <section id="style-formats">
+    <title>Formats</title>
+
+    <section id="style-docbook">
+      <title>DocBook</title>
+
+      <para>Documentation is written in DocBook XML. Most documentation
+      sources are stored in <filename>hasim/docs/docbook</filename>.
+      Documentation specific to a module (e.g. hasim-x86) may be stored in
+      that module's <filename>docs/docbook</filename> directory. Each chapter
+      of a book is stored as a separate file in a separate directory. This
+      allows multiple authors to work on their own chapters without having to
+      merge their changes.</para>
+
+      <para>Sections are separated with <emphasis
+      role="bold">section</emphasis> tags. Do not use <emphasis
+      role="bold">sectN</emphasis> tags.</para>
+
+      <para>It is good practice to add <emphasis role="bold">id</emphasis>
+      field values for all chapters and high level sections. A chapter
+      identifier becomes the name of the chapter's generated HTML file.
+      Identifiers are also used for linking from tables of contents. Name
+      clashes of sections across separate XML files can be a problem. All
+      identifiers should begin with
+      "<emphasis>&lt;chapter_name&gt;</emphasis>-" in order to reduce name
+      clashes. Be careful when adding <emphasis role="bold">id</emphasis>
+      values in XML editors that the identifier is associated with the right
+      tag. In XXE it is especially easy to set the <emphasis
+      role="bold">id</emphasis> of the <emphasis role="bold">title</emphasis>
+      field of a <emphasis role="bold">section</emphasis> instead of the
+      section itself.</para>
+
+      <para><ulink
+      url="http://tldp.org/LDP/LDP-Author-Guide/html/writing-docbook.html">Appendix
+      D</ulink> of the <ulink
+      url="http://tldp.org/LDP/LDP-Author-Guide/html/index.html">Linux
+      Documentation Project Author Guide</ulink> is full of good
+      recommendations for tagging content such as URLs, directories, emphasis,
+      lists, etc.</para>
+    </section>
+
+    <section id="style-graphics">
+      <title>Graphics</title>
+
+      <para>Images should be at most 700 pixels wide and 400 pixels high.
+      These sizes fit well on a reasonably sized browser and scale well in
+      standard Powerpoint slides. When possible, drawings should be stored as
+      <ulink url="http://www.w3.org/Graphics/SVG/">SVG (Scalable Vector
+      Graphics)</ulink> files. SVG file names should be added to the
+      PNG_FROM_SVG varaible at the top of
+      <filename>hasim/docs/docbook/Makefile</filename>. The build process will
+      automatically generate PNG files from the SVG files. Typing
+      <command>make png</command> in the <filename>docbook</filename>
+      directory will update all PNG files. Because SVG files store vector data
+      we will be able to scale drawings to multiple sizes for web, pdf and
+      presentations.</para>
+    </section>
+  </section>
+
+  <section id="style-tools">
+    <title>Tools</title>
+
+    <section id="style-xxe">
+      <title>XML Editor: <ulink
+      url="http://www.xmlmind.com/xmleditor/">XXE</ulink></title>
+
+      <para>XXE is our recommended WYSIWYG editor for DocBook XML. It does a
+      good job of displaying formatted XML, managing tags, showing included
+      chapters and checking spelling. XXE is written in Java and is installed
+      in the VSSAD environment on Linux machines. We are using a slightly old
+      version that has a free full commercial use license. XMLMind recently
+      changed their license for new versions, requiring money for commercial
+      use. Assumming we like XXE we can deal with licensing later if we need
+      an upgrade. Please avoid writing XML by hand so we have consistent
+      formatting and validation of the content.</para>
+
+      <para>A few tips on getting started with XXE:</para>
+
+      <itemizedlist>
+        <listitem>
+          <para>See the document structure by opening a new view using
+          <guimenu>View-&gt;Add</guimenu>. In this view you can click on
+          chapters and sections in order to select whole regions.
+          <keycap>Ctrl-click</keycap> in a region increases the selection by
+          one level in the XML hierarchy.</para>
+        </listitem>
+
+        <listitem>
+          <para>Adding a section with just the paragraph level selected add a
+          subsection to the current selection. If you want to add a new
+          section at the same level as the previous section then select the
+          previous section at the section level and use
+          <guimenu>Edit-&gt;Insert After</guimenu>.</para>
+        </listitem>
+
+        <listitem>
+          <para>To include one XML file within another select the region of
+          the XML file to be included. It is strongly recommended that there
+          be an <emphasis role="bold">id</emphasis> tag associated with this
+          level. Choose <guimenu>Edit-&gt;Reference-&gt;Copy as
+          Reference</guimenu>. Go to the XML file in which you want the
+          reference and choose <guimenu>Edit-&gt;Paste</guimenu>. For the
+          paste to be enabled you must be at a level in the target document
+          where the included object is allowed.</para>
+        </listitem>
+
+        <listitem>
+          <para>Included regions are shown with a light blue overlay and can
+          not be edited directly. To edit the included file directly select
+          anywhere in the included version and choose
+          <guimenu>Edit-&gt;Reference-&gt;Edit Referenced
+          Document</guimenu>.</para>
+        </listitem>
+      </itemizedlist>
+    </section>
+
+    <section id="style-inkscape">
+      <title>SVG Editor: <ulink
+      url="http://www.inkscape.org/">Inkscape</ulink></title>
+
+      <para>Inkscape is an open source SVG editor that runs on Windows and
+      Unix. It is not installed on the VSSAD Linux machines. A precomplied
+      Windows version is available. Inkscape appears to generate reasonably
+      clean SVG and has an intuitive user interface.</para>
+
+      <para>Note: <emphasis>Do not</emphasis> use Inkscape to export PNG
+      files. Use the <filename>Makefile</filename> rules. Adobe Acrobat
+      displays colors of PNG files generated by Inkscape incorrectly. In fact,
+      one Inkscape-generated PNG file appears to corrupt the colors of all
+      images in a PDF, regardless of their sources. The same is true of PNG
+      files generated by Apache's <ulink
+      url="http://xmlgraphics.apache.org/batik/tools/rasterizer.html">Batik
+      SVG Rasterizer</ulink>.</para>
+    </section>
+  </section>
+</article>

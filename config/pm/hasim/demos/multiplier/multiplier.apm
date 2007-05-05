@@ -1,0 +1,45 @@
+
+[Global]
+SaveParameters=0
+Description=Multiplier FPGA Demo
+File=multiplier
+Version=2.0
+Name=Multiplier Model
+Type=HAsim
+
+[Hasim null controller]
+Packagehint=hasim
+File=modules/controller/null/hasim_null_controller.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/hasim_model.awb
+
+[Hasim base library]
+Packagehint=hasim
+File=modules/common/hasim_common.awb
+
+[Model]
+DefaultAttributes=traffic-light hasim
+model=HAsim Model Foundation
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - Multiplier system
+hasim_controller=Hasim null controller
+hasim_common=Hasim base library
+
+[Hasim FPGA library XUP board]
+Packagehint=hasim
+File=modules/common/fpgalib/xup/hasim_fpgalib_xup.awb
+
+[Hasim base library/Requires]
+hasim_fpgalib=Hasim FPGA library XUP board
+hasim_base=Hasim base module
+
+[Hasim - Multiplier system]
+Packagehint=hasim
+File=modules/system/mulitplier_system/multiplier_system.awb
+
+[Hasim base module]
+File=modules/common/base/hasim_base.awb
+Packagehint=hasim

@@ -1,0 +1,98 @@
+#!/usr/bin/make --no-keep-going -f 
+
+include @DOTS_TO_MAKEFILE_INCL@/Makefile.include
+
+DIR = @DIR@
+SUBDIRS = @SUBDIRS@
+PARENT_PATH = @PARENT_PATH@
+BSVS = @BSVS@
+GEN_BSVS = @GEN_BSVS@
+SRCS = $(BSVS) $(GEN_BSVS) @SRCS@
+
+WRAPPER = $(DIR)_Wrapper
+WRAPPER_SYNTH_ID = mk_$(WRAPPER)
+LOGFILE = $(WRAPPER_SYNTH_ID).log
+
+SUBDIR_BAS = @SUBDIR_BAS@
+SUBDIR_VS = $(SUBDIR_BAS:%.ba=%.v)
+
+################################################################
+## 
+
+.PHONY: all
+all: ba
+
+################################################################
+## 
+
+.PHONY: ba 
+ba: make_subdir_bas $(WRAPPER_SYNTH_ID).ba
+
+.PHONY: make_subdir_bas
+make_subdir_bas: 
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir ba; \
+	done
+
+$(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(GEN_BSVS) $(SUBDIR_BAS)
+	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+	mv $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba .
+
+################################################################
+## 
+
+.PHONY: v
+v: make_subdir_vs $(WRAPPER_SYNTH_ID).v
+
+.PHONY: make_subdir_vs
+make_subdir_vs: 
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir v; \
+	done
+
+$(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(GEN_BSVS) $(SUBDIR_VS)
+	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+
+################################################################
+## 
+
+$(WRAPPER).bsv:
+	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR) 
+
+################################################################
+## 
+
+
+@GEN_DEPS@
+
+################################################################
+## Misc.
+
+.PHONY: help
+help:
+	@echo "  [v] generate verilog source"
+	@echo "  [ba] (default) generate ba for design"
+	@echo "  [help] display this message"
+	@echo "  [clean] remove intermediate files"
+	@echo "  [realclean] remove target files ($(WRAPPER).bsv $(WRAPPER_SYNTH_ID).ba $(WRAPPER_SYNTH_ID).v $(LOGFILE)"
+
+.PHONY: clean
+clean: clean_subdirs
+	rm -f *~	
+
+.PHONY: clean_subdirs
+clean_subdirs:
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir clean; \
+	done
+
+.PHONY: realclean
+realclean: clean realclean_subdirs
+	rm -f $(WRAPPER).bsv $(WRAPPER_SYNTH_ID).ba $(WRAPPER_SYNTH_ID).v $(LOGFILE)
+
+.PHONY: realclean_subdirs
+realclean_subdirs:
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir realclean; \
+	done
+

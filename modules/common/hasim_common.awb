@@ -1,0 +1,21 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hasim base library
+# %desc Hasim base library
+# %provides hasim_common
+# %requires hasim_base hasim_fpgalib
+#
+# %attributes hasim
+#
+# %public Events.bsv Connections.bsv  Ports.bsv Stats.bsv BypassFIFO.bsv Commands.bsv Debug.bsv 
+#
+# %AWB_END
+# */
+

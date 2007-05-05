@@ -1,0 +1,23 @@
+********************************************************************
+* Awb module specification
+********************************************************************
+
+%AWB_START
+
+%name Pure Bluespec Model Foundation
+%desc Pure Bluespec Model Foundation
+
+%provides model
+
+%requires bluespec_system
+%requires bluespec_common
+
+%attributes bluespec model
+
+%public mkModel.bsv
+
+%makefile Makefile.include.template Makefile.top.template Makefile.sub.template
+
+%param SYNTH_BOUNDARY mkModel "name of synthesis boundary"
+
+%AWB_END

@@ -1,0 +1,37 @@
+################################################################
+## Common macros for all Makefiles in build tree
+
+BSC = bsc
+
+BSC_FLAGS = -steps 1000000 \
+	    +RTS -K1000M -RTS \
+            -keep-fires \
+            -aggressive-conditions \
+            -no-opt-bool 
+
+APM_NAME = @APM_NAME@
+BUILD_DIR = @BUILD_DIR@
+ARCH_DIR = $(BUILD_DIR)/arch
+ALL_DIRS = @ALL_DIRS@
+
+MAPPED_DIR = ~/.asim/hasim/download
+TMP_XILINX_DIR = $(BUILD_DIR)/@TMP_XILINX_DIR@
+TMP_BSC_DIR = $(BUILD_DIR)/@TMP_BSC_DIR@
+
+XILINX_APM_NAME = $(TMP_XILINX_DIR)/$(APM_NAME)
+
+CONNECTION_SCRIPT = hasim-connect
+APM_FILE = @APM_FILE@
+
+XST = xst
+NGDBUILD = ngdbuild
+MAP = map
+PAR = par
+BITGEN = bitgen
+IMPACT = impact
+
+.bsv.ba: $(SUBDIR_BAS)
+	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
+
+.bsv.v: $(SUBDIR_VS)
+	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)

@@ -1,0 +1,52 @@
+
+[Global]
+SaveParameters=0
+Description=Traffic Light from Bluespec Tutorial for simulation w. synthesis boundary
+File=traffic_light_exe_synth
+Version=2.0
+Name=Traffic Light Model
+Type=HAsim
+
+[Hasim null controller]
+Packagehint=hasim
+File=modules/controller/null/hasim_null_controller.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/hasim_model.awb
+
+[Hasim base library]
+Packagehint=hasim
+File=modules/common/hasim_common.awb
+
+[Hasim - Traffic light system]
+Packagehint=hasim
+File=modules/system/traffic_light_system/traffic_light_system.awb
+
+[Model]
+DefaultAttributes=traffic-light hasim
+model=HAsim Model Foundation
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - Traffic light system
+hasim_controller=Hasim null controller
+hasim_common=Hasim base library
+
+[Hasim base library/Requires]
+hasim_fpgalib=Hasim FPGA library software
+hasim_base=Hasim base module
+
+[Hasim - Traffic light system/Requires]
+hasim_traffic_light_function=Hasim - Traffic light function w. synthesis boundary
+
+[Hasim - Traffic light function w. synthesis boundary]
+File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function_synth.awb
+Packagehint=hasim
+
+[Hasim FPGA library software]
+File=modules/common/fpgalib/software/hasim_fpgalib_software.awb
+Packagehint=hasim
+
+[Hasim base module]
+File=modules/common/base/hasim_base.awb
+Packagehint=hasim

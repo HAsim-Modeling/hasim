@@ -1,0 +1,21 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hasim simple controller
+# %desc Hasim simple controller
+# %provides hasim_controller
+#
+#
+# %attributes hasim
+#
+# %public hasim_simple_controller.bsv
+#
+# %AWB_END
+# */
+

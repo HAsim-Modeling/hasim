@@ -1,0 +1,387 @@
+:
+eval 'exec perl -w "$0" ${1+"$@"}'
+    if 0;
+
+# *****************************************************************
+# *                                                               *
+# *   Copyright (c) (Fill in here)                                *
+# *                                                               *
+# *****************************************************************
+
+#
+# Author:  
+#
+
+
+use File::Basename;
+use Getopt::Long;
+
+use Asim;
+use AsimShell;
+
+############################################################
+# handle command line
+
+my $status;
+
+my $help = 0;
+my $debug = 0;
+
+
+$status = GetOptions( "debug"      => \$debug,
+                      "help"       => \$help
+		      );
+
+my $prog = basename($0);
+
+if (!$status) {
+    print STDERR "$prog: Illegal argument, try '$prog --help'\n";
+    exit 0;
+}
+
+if ($help) {
+    system "perldoc $0";
+    exit 0;
+}
+
+############################################################
+# main body of script
+
+my $modelfile = shift;
+my $metatype = shift;
+
+Asim::init()
+    || die("Unable to initialize Asim::\n");
+
+
+print_wrapper($modelfile,$metatype) ;
+create_surrogates($modelfile, $metatype);
+
+exit 0;
+
+
+############################################################
+# 
+sub print_wrapper {
+    my $modelfile = shift;
+    my $metatype = shift;
+
+    my $model = Asim::Model->new($modelfile);
+    my $root = $model->modelroot();
+#    $model->dump();
+    my $module = $root->find_module_providing($metatype);
+
+    my $wrapper = make_wrapper_name($metatype) . ".bsv";
+    CORE::open(WRAPPER, "> $wrapper") || return undef;
+
+    print WRAPPER "import ModuleCollect::*;\n";
+    print WRAPPER "// These are well-known/required hasim modules\n";
+    print WRAPPER "import hasim_base::*;\n";
+    print WRAPPER "import hasim_common::*;\n";
+    print WRAPPER "\n";
+
+    print WRAPPER "// import non-synthesis children\n";
+    foreach my $file_root (get_srcs_at_synth_boundary($module)) {
+	print WRAPPER "`include \"$file_root\"\n";
+    }
+    print WRAPPER "\n";
+
+    print WRAPPER "(* synthesize *)\n";
+    if ($module->issame($root)) {
+	print WRAPPER "module " . make_module_name(make_wrapper_name($metatype)) . " (TopLevel);\n";    
+    } else {
+	print WRAPPER "module " . make_module_name(make_wrapper_name($metatype)) . " (WithConnections);\n";    
+    }
+    print WRAPPER "\n";
+
+    my @child_info_vars = ();
+    my $synth_id = get_synthesis_boundary_name($module);
+    print WRAPPER "    // instantiate own module\n";
+    if ($module->issame($root)) {
+	print WRAPPER "    let m <- instantiateTopLevel($synth_id);\n";
+    } else {
+	print WRAPPER "    let m <- instantiateWithConnections($synth_id);\n";
+    }
+    print WRAPPER "\n";
+
+    print WRAPPER "    return m;\n";
+    print WRAPPER "\n";
+
+    print WRAPPER "endmodule\n";
+
+    CORE::close(WRAPPER);
+
+}
+
+############################################################
+# 
+sub create_surrogates {
+    my $modelfile = shift;
+    my $metatype = shift;
+
+    my $model = Asim::Model->new($modelfile);
+    my $root = $model->modelroot();
+
+    my $module = $root->find_module_providing($metatype);
+
+    my $indent = "   ";
+
+    # For each child synthtesis boundary
+    foreach my $submodule (get_sub_synth_modules($module,1)) {
+	my $submetatype = $submodule->provides();
+        my $synth_id = get_synthesis_boundary_name($submodule);
+	my $filename = "$submetatype.bsv";
+
+        CORE::open(SURROGATE, "> $filename");
+        print SURROGATE "$indent // Surrogate for $submetatype\n";
+	
+	my $wrap_var = "wrap_" . $submetatype;
+	my $mk_wrapper = make_module_name(make_wrapper_name($submetatype));
+
+        print SURROGATE "\n";
+        print SURROGATE "// These are well-known/required hasim modules\n";
+        print SURROGATE "import hasim_base::*;\n";
+        print SURROGATE "import hasim_common::*;\n";
+        print SURROGATE "\n";
+
+	print SURROGATE "import " . make_wrapper_name($submetatype) . "::*;\n";
+	
+	print SURROGATE "module [HASim_Module] $synth_id ();\n";    
+	print SURROGATE "$indent // 1. instantiate wrapper\n";
+	print SURROGATE "$indent WithConnections $wrap_var <- $mk_wrapper();\n";
+	
+	my $log_file = 
+	    $model->build_dir() . "/" . 
+	    get_module_build_dir($module,$root,"arch") . "/" .
+	    $submetatype . "/" .
+	    $mk_wrapper . ".log";
+
+        print "<<<< $log_file\n";
+	
+	print SURROGATE "$indent // 2. log sends & recvs\n";
+	my @conns = parse_dangling_connections($log_file);
+	my @sends_exprs = ();
+	my @recvs_exprs = ();
+
+	foreach my $conn_r (@conns) {
+	    my $expr = "tuple2(\"" . $conn_r->[2] . "\", " . $conn_r->[1] . ")";
+
+	    if ($conn_r->[0] eq "Send") {
+		push (@sends_exprs, $expr);
+	    } elsif ($conn_r->[0] eq "Rec") {
+		push (@recvs_exprs, $expr);
+	    } else {
+		DIE("Unrecognized type of dangling connection: $1\n");
+	    }	    
+	}
+
+	my $sends_var = "dsends_" . $submetatype;
+	my $recvs_var = "drecvs_" . $submetatype;
+
+	my $sends_cons = get_cons_expr(@sends_exprs);
+	my $recvs_cons = get_cons_expr(@recvs_exprs);
+
+	print SURROGATE "$indent let $sends_var = $sends_cons;\n";
+	print SURROGATE "$indent let $recvs_var = $recvs_cons;\n";
+
+	print SURROGATE "$indent addConnections($wrap_var, $sends_var, $recvs_var);\n";
+
+	print SURROGATE "endmodule\n";
+	print SURROGATE "\n";
+	
+        CORE::close(SURROGATE);
+    }
+}
+
+
+############################################################
+# 
+sub make_wrapper_name {
+    my $name = shift;
+  
+    return $name . "_Wrapper";
+}
+
+############################################################
+# 
+sub make_module_name {
+    my $name = shift;
+  
+    return "mk_" . $name;
+}
+
+############################################################
+# 
+sub get_module_build_dir2 {
+
+    my $model = shift;
+    my $module = shift;
+
+    my $current = $module;
+    my $path = "";
+
+    while (defined $current) {
+	my $dir = "";
+	if (is_synthesis_boundary($current)) {
+	    my $dir = $current->provides();
+	}
+
+	if (!($dir eq "")) {
+	    $path = $dir . "/" . $path;
+        }
+	$current = $current->parent();
+
+    }
+
+    return $path;
+}
+
+##########################################################
+# 
+sub get_module_build_dir {
+    my $target = shift;
+    my $current = shift;
+    my $path = shift;
+
+    my $tmp = $target->provides();
+    my $tmp2 = $current->provides();
+#    print "SEARCHING FOR $tmp FROM $tmp2\n";
+
+    if ( is_synthesis_boundary($current) ) {
+	$path = $path . "/" . $current->provides();
+	if ($current->issame($target)) {
+#	    print "RETURNING PATH: $path\n";
+	    return $path;
+	}
+    }
+
+    foreach my $submodule ($current->submodules()) {
+	my $tmp3 = $submodule->provides();
+#	print "   CHILD $tmp3\n";
+	my $res = get_module_build_dir($target,$submodule,$path);
+	if ($res) {
+#	    print "SUCCESS\n";
+	    return $res;		    
+	}
+    }
+    return "";
+#    print "DONE\n";
+#    DIE("Control should never reach here.\n");
+}
+
+############################################################
+# 
+sub get_cons_expr {
+    my @vars = @_;
+
+    if ($#vars == -1) {
+	return "List::nil";
+    }
+
+    return "cons(" . $vars[0] . ", " . get_cons_expr(@vars[1 .. $#vars]) . ")";
+}
+
+############################################################
+# 
+sub get_sub_synth_modules {
+    my $module = shift;
+    my $start_module = shift;
+
+    my @module_list = ();
+    if (is_synthesis_boundary($module) && $start_module == 0) {
+	push (@module_list,$module);
+    } else {
+#    } elsif (((is_synthesis_boundary($module) && $start_module == 1)) ||
+#	     ((!is_synthesis_boundary($module) && $start_module == 0))) {
+	foreach my $submodule ($module->submodules()) {
+	    push(@module_list,get_sub_synth_modules($submodule,0));
+	}
+    }
+    return @module_list;
+}
+
+############################################################
+# 
+sub get_srcs_at_synth_boundary {
+    my $module = shift;
+
+    my @srcs = ($module->public());
+
+    return @srcs;
+}
+
+############################################################
+# 
+sub parse_dangling_connections {
+    my $log_file = shift;
+
+#Compilation message: "HASim.bsv", line 518, column 5: Dangling Send [0]: mem_imem_req
+#Compilation message: "HASim.bsv", line 528, column 5: Dangling Rec [0]: mem_imem_resp
+
+    print "parsing: $log_file\n";
+    my @conns = ();
+    CORE::open(LOG, "< $log_file") || return undef;
+    while (my $line = <LOG>) {
+	if ($line =~ /.*Dangling\W+(\w+)\W+(\w+)\W+(\w+)\W+/) {
+	    my @connection = ($1,$2,$3);
+	    push(@conns, [@connection]);
+	}
+    }
+    CORE::close(LOG);
+
+    return @conns;
+}
+
+sub get_provider {
+    my $module = shift;
+    my $metatype = shift;
+
+    if ($module->provides() eq $metatype) {
+	return $module;
+    }
+
+    # recurse
+    foreach my $submodule ($module->submodules()) {
+	my $result = get_provider($submodule,$metatype);
+	if ($result != 0) {
+	    return $result;
+	}
+    }
+
+    return 0;
+}
+
+sub get_synthesis_boundary_name {
+    my $module = shift;
+    foreach $param_r ($module->parameters()) {
+	my %param = %{$param_r};
+	if ($param{'name'} eq "SYNTH_BOUNDARY") {
+	    return $param{'default'};
+	}
+    }
+    die "$prog: get_synthesis_boundary_name called on non-synthesis boundary module\n";
+}
+
+sub is_synthesis_boundary {
+    my $module = shift;
+
+    foreach $param_r ($module->parameters()) {
+	my %param = %{$param_r};
+	if ($param{'name'} eq "SYNTH_BOUNDARY") {
+	    return 1;
+	}
+    }
+    return 0;
+}
+
+sub WARN {
+    my $msg = shift;
+    my ($package, $filename, $line, $subroutine, $hasargs, $wantarray, $evaltext, $is_require, $hints, $bitmask) = caller(1);
+    print STDERR "$filename: ($subroutine) [called from ln $line]: $msg\n";
+}
+
+sub DIE {
+    my $msg = shift;
+    WARN($msg);
+    die;
+}

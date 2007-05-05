@@ -1,0 +1,8 @@
+[Global]
+Description=Hardware Asim Base Library
+CSN=CSN-hasim-161
+Name=hasim
+Tag=HEAD
+Lock=asim-hasim
+Buildorder=4
+Dependencies=hasim/HEAD 

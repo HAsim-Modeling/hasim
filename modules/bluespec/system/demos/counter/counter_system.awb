@@ -1,0 +1,16 @@
+********************************************************************
+* Awb module specification
+********************************************************************
+
+%AWB_START
+
+%name Bluespec Counter Example
+%desc Bluespec Counter Example
+
+%provides bluespec_system
+
+%attributes bluespec
+
+%public mkCounter.bsv System.bsv
+
+%AWB_END

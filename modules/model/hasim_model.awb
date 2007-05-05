@@ -1,0 +1,23 @@
+********************************************************************
+* Awb module specification
+********************************************************************
+
+%AWB_START
+
+%name HAsim Model Foundation
+%desc HAsim foundation module for ASIM models
+%provides model
+
+%requires hasim_controller
+%requires hasim_system
+%requires hasim_common
+
+%attributes model
+
+%public hasim_model.bsv
+
+%makefile Makefile.include.template Makefile.top.template Makefile.sub.template
+
+%param SYNTH_BOUNDARY mkModel "name of synthesis boundary"
+
+%AWB_END

@@ -1,0 +1,45 @@
+
+[Global]
+SaveParameters=0
+Description=Bram Test model for testing communication with Linux
+File=bram_test_xup
+Version=2.0
+Name=Bram Test 
+Type=HAsim
+
+[Hasim null controller]
+Packagehint=hasim
+File=modules/controller/null/hasim_null_controller.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/hasim_model.awb
+
+[Hasim base library]
+Packagehint=hasim
+File=modules/common/hasim_common.awb
+
+[Model]
+DefaultAttributes=bram-test hasim
+model=HAsim Model Foundation
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - BRAM test system
+hasim_controller=Hasim null controller
+hasim_common=Hasim base library
+
+[Hasim FPGA library XUP board]
+Packagehint=hasim
+File=modules/common/fpgalib/xup/hasim_fpgalib_xup.awb
+
+[Hasim base library/Requires]
+hasim_fpgalib=Hasim FPGA library XUP board
+hasim_base=Hasim base module
+
+[Hasim base module]
+File=modules/common/base/hasim_base.awb
+Packagehint=hasim
+
+[Hasim - BRAM test system]
+File=modules/system/bram_test/bram_test_system.awb
+Packagehint=hasim

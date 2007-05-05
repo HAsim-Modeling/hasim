@@ -1,0 +1,34 @@
+################################################################
+## Common macros for all Makefiles in build tree
+
+BSC = bsc
+
+BSC_FLAGS = -keep-fires \
+            -aggressive-conditions
+
+# BLUESPECDIR = /proj/vssad/local/i386_linux26/lib
+
+APM_NAME = @APM_NAME@
+BUILD_DIR = @BUILD_DIR@
+ARCH_DIR = $(BUILD_DIR)/arch
+ALL_DIRS = @ALL_DIRS@
+
+MAPPED_DIR = ~/.asim/hasim/download
+TMP_XILINX_DIR = $(BUILD_DIR)/@TMP_XILINX_DIR@
+TMP_BSC_DIR = $(BUILD_DIR)/@TMP_BSC_DIR@
+
+XILINX_APM_NAME = $(TMP_XILINX_DIR)/$(APM_NAME)
+
+APM_FILE = @APM_FILE@
+
+XST = xst
+NGDBUILD = ngdbuild
+MAP = map
+PAR = par
+BITGEN = bitgen
+IMPACT = impact
+
+.bsv.ba: $(SUBDIR_BAS)
+
+
+.bsv.v: $(SUBDIR_VS)

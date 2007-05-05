@@ -1,0 +1,24 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hasim functional partition pipeline
+# %desc Hasim functional partition pipeline
+# %provides hasim_funcp_pipeline
+# 
+# %requires hasim_funcp_fetch_alg hasim_funcp_decode_alg hasim_funcp_execute_alg hasim_funcp_mem_alg hasim_funcp_localcommit_alg hasim_funcp_globalcommit_alg
+#
+# %attributes hasim
+#
+# %public FUNCP_Pipeline.bsv
+# %private FUNCP_TokGen.bsv
+# %param SYNTH_BOUNDARY mkFUNCP_Pipeline "name of synthesis boundary"
+#
+# %AWB_END
+# */
+

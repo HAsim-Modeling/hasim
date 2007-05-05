@@ -1,0 +1,165 @@
+#!/usr/bin/make --no-keep-going -f
+
+# Must always invoke this makefile from its own directory
+include ./Makefile.include
+
+ROOT_DIR = @ROOT_DIR@
+ROOT_WRAPPER_SYNTH_ID = mk_$(ROOT_DIR)_Wrapper
+
+CXXS = $(ROOT_WRAPPER_SYNTH_ID).cxx schedule.cxx
+HS = $(CXXS:%.cxx=%.h)
+OS = $(CXXS:%.cxx=%.o)
+
+ROOT_BA = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).ba
+ROOT_V = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).v
+ALL_BAS = @ALL_BAS@
+ALL_VS = @ALL_VS@
+
+################################################################
+## Xilinx tool variables
+
+## XUP board
+PART = @PART@
+
+#### xst
+XST_FILE = $(APM_NAME).xst
+XST_FLAGS = 
+
+#### ngdbuild
+UCF_FILE = $(APM_NAME).ucf
+NGDBUILD_FLAGS = -dd _ngo -nt timestamp -p $(PART)
+
+#### map
+MAP_TARGET_FILE = $(APM_NAME)_map.ncd $(APM_NAME).pcf
+MAP_FLAGS = -cm area -pr b -u -k 4 -c 100 -tx off -p $(PART)
+
+#### par
+PAR_FLAGS = -w -ol std -t 1 
+
+#### bitgen
+UT_FILE = $(APM_NAME).ut
+BITGEN_FLAGS = 
+
+#### impact
+DOWNLOAD_FILE = $(APM_NAME).download
+
+.PHONY: all
+all: bitstats
+
+################################################################
+## FPGA synthesis rules
+
+.PHONY: bitstats
+bitstats: bit
+	@echo "++++++++++++ Post-Synthesis ++++++++++++"
+	@grep "Number of Slices" $(XILINX_APM_NAME).srp
+	@grep "Maximum Frequency" $(XILINX_APM_NAME).srp
+	@echo "++++++++++ Post-Place & Route ++++++++++"
+	@grep "Number of SLICEs" $(XILINX_APM_NAME)_par.par
+	@grep -B 1 -A 3 "Max Delay" $(XILINX_APM_NAME)_par.par
+	@echo "++++++++++++++++++++++++++++++++++++++++"
+
+
+.PHONY: bit
+bit: $(APM_NAME)_par.bit $(DOWNLOAD_FILE)
+	@echo "#!/bin/sh" >$(APM_NAME)
+	@echo "impact -batch $(BUILD_DIR)/$(DOWNLOAD_FILE)" >>$(APM_NAME)
+	@chmod +x $(APM_NAME)
+	@echo "Generated launch script \"$(APM_NAME)\".";
+	@mkdir -p $(MAPPED_DIR);
+	@cp $(APM_NAME)_par.bit $(MAPPED_DIR)
+	@cp $(DOWNLOAD_FILE) $(MAPPED_DIR)
+	@echo "Copied files necessary for download to $(MAPPED_DIR).";
+
+$(APM_NAME)_par.bit: $(XILINX_APM_NAME)_par.ncd $(UT_FILE)
+	$(BITGEN) $(BITGEN_FLAGS) -f $(UT_FILE) $<
+	mv xilinx_device_details.xml $(TMP_XILINX_DIR)
+	mv $(TMP_XILINX_DIR)/$@ .
+
+$(XILINX_APM_NAME)_par.ncd: $(XILINX_APM_NAME)_map.ncd $(XILINX_APM_NAME).pcf
+	$(PAR) $(PAR_FLAGS) $< $@ $(XILINX_APM_NAME).pcf
+
+$(XILINX_APM_NAME)_map.ncd $(XILINX_APM_NAME).pcf: $(XILINX_APM_NAME).ngd
+	$(MAP) $(MAP_FLAGS) -o $(XILINX_APM_NAME)_map.ncd $^ $(XILINX_APM_NAME).pcf
+
+$(XILINX_APM_NAME).ngd: $(UCF_FILE) $(XILINX_APM_NAME).ngc 
+	$(NGDBUILD) -uc $^ $@
+	mv netlist.lst $(TMP_XILINX_DIR)
+
+$(XILINX_APM_NAME).ngc: $(ROOT_V) $(XST_FILE) 
+	$(XST) -ifn $(XST_FILE)
+	mv $(APM_NAME).srp $(TMP_XILINX_DIR)
+	mv $(@F) $(TMP_XILINX_DIR)
+
+################################################################
+## Verilog generation rules
+
+.PHONY: vexe
+vexe:
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+	$(BSC) $(BSC_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 
+	@echo "#!/bin/sh" >$(APM_NAME)
+	@echo "$(BUILD_DIR)/$(APM_NAME).vexe +bscvcd" >>$(APM_NAME)
+	@chmod +x $(APM_NAME)
+	@echo "Generated launch script \"$(APM_NAME)\"";
+
+
+#$(APM_NAME).vexe:
+#	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+#	$(BSC) $(BSC_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 
+
+#$(ROOT_V):
+#	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+
+################################################################
+## Bluesim generation rules
+
+.PHONY: exe
+exe:
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
+	$(BSC) $(BSC_FLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 
+	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
+	@echo "#!/bin/sh" >$(APM_NAME)
+	@echo "$(BUILD_DIR)/$(APM_NAME).exe" >>$(APM_NAME)
+	@chmod +x $(APM_NAME)
+	@echo "Generated launch script \"$(APM_NAME)\"";
+
+#$(APM_NAME).exe: $(ROOT_BA)
+#	$(BSC) $(BSC_FLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 
+#	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
+
+#$(ROOT_BA):
+#	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
+
+################################################################
+## Misc. rules
+
+.PHONY: help
+help:
+	@echo "  [vexe] generate executable for Verilog simulation"
+	@echo "  [exe]  generate executable for C simulation"
+	@echo "  [bit] generate executable to run model on FPGA"
+	@echo "  [help] display this message"
+	@echo "  [clean] remove intermediate files"
+	@echo "  [realclean] remove target files"
+
+.PHONY: clean
+clean: clean_root
+	rm -f $(TMP_XILINX_DIR)/*.*
+	rm -f $(TMP_bsc_DIR)/*.*
+	rm -f *~
+
+.PHONY: clean_root
+clean_root:
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) clean; 
+
+.PHONY: realclean
+realclean: clean realclean_root
+	rm -f $(APM_NAME).exe $(APM_NAME).vexe dump.vcd
+	rm -f $(APM_NAME)_par.bit
+	rm -f $(APM_NAME)
+
+.PHONY: realclean_root
+realclean_root:
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) realclean; 
+

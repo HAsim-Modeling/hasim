@@ -1,0 +1,2686 @@
+jsemer      Date: Tue May  15 15:40:00 EDT 2006  CSN: CSN-hasim-42
+                  Tue May  15 20:40:00 UTC 2006
+
+
+Directory /
+ changes                  Locally Added
+
+Added a changes file.
+
+
+----------
+jsemer      Date: Mon May 15 16:01:24 EDT 2006  CSN: CSN-hasim-43
+                  Mon May 15 20:01:24 UTC 2006
+
+
+Directory modules/common
+ Debug.bsv                 Locally Removed            42 
+ ValueVector.bsv           Locally Removed            42 
+ common/                   Locally Added               0 
+
+Directory modules/common/common
+ Debug.bsv                 Locally Added               - 
+ ValueVector.bsv           Locally Added               - 
+ Links.bsv                 Locally Added               - 
+ BypassFIFO.bsv            Locally Added               - 
+
+Directory modules/common
+ Links.bsv                 Locally Removed            42 
+ BypassFIFO.bsv            Locally Removed            42 
+
+Minor restructuring of common files.
+
+----------
+jsemer      Date: Mon May 15 16:07:12 EDT 2006  CSN: CSN-hasim-44
+                  Mon May 15 20:07:12 UTC 2006
+
+
+Directory modules
+ common/                   Locally Removed            43 
+
+Directory modules/common
+ toymips/                  Locally Removed            43 
+
+Directory modules/common/toymips
+ TOY_Datatypes.bsv         Locally Removed            43 
+
+Directory modules/common
+ common/                   Locally Removed            43 
+
+Directory modules/common/common
+ Debug.bsv                 Locally Removed            43 
+ ValueVector.bsv           Locally Removed            43 
+ Links.bsv                 Locally Removed            43 
+ BypassFIFO.bsv            Locally Removed            43 
+
+Directory modules/common
+ smips/                    Locally Removed            43 
+
+Directory modules/common/smips
+ SMIPS_Datatypes.bsv       Locally Removed            43 
+ SMIPS_Interfaces.bsv      Locally Removed            43 
+ SMIPS_Linker.bsv          Locally Removed            43 
+
+Renamed common to base.
+
+----------
+jsemer      Date: Thu May 18 19:07:11 EDT 2006  CSN: CSN-hasim-45
+                  Thu May 18 23:07:11 UTC 2006
+
+
+Directory config/pm/hasim/toymips
+ hasim_5stage_toymips.apm  Locally Added               0 
+ hasim_simple_toymips.apm  Locally Added               0 
+
+Directory modules/functional/toymips
+ hasim_toymips_functional_partition.awb Locally Added               0 
+
+Directory modules/functional/common
+ hasim_functional_partition_base.awb Locally Added               0 
+
+Directory modules/functional/smips
+ hasim_smips_functional_partition.awb Locally Added               0 
+
+Directory modules/controller/toymips
+ toymips_testcases.awb     Locally Added               0 
+
+Directory modules/system
+ hasim_system.awb          Locally Added               0 
+
+Directory modules/timing/toymips
+ hasim_5stage_timing_partition.awb Locally Added               0 
+ hasim_simple_timing_partition.awb Locally Added               0 
+
+Directory modules/cpu
+ hasim_cpu.awb             Locally Added               0 
+
+Directory modules/base/common
+ hasim_base.awb            Locally Added               0 
+
+
+Added asim module files and a couple of models as initial versions
+of what a hasim model could look like.
+
+
+----------
+jsemer      Date: Thu May 25 13:54:45 EDT 2006  CSN: CSN-hasim-48
+                  Thu May 25 17:54:45 UTC 2006
+
+
+Directory config/pm/hasim/toymips
+ hasim_5stage_toymips.apm  Locally Modified           47 
+ hasim_simple_toymips.apm  Locally Modified           47 
+
+Directory modules/controller/common
+ hasim_simple_controller.awb Locally Added               0 
+
+Added missing file
+
+----------
+mpellaue    Date: Wed May 31 17:01:28 EDT 2006  CSN: CSN-hasim-49
+                  Wed May 31 21:01:28 UTC 2006
+
+
+Directory tools/scripts
+ configure-models          Locally Modified           48 
+
+configure-models script now accepts a list of files as input. Still needs to
+generate the actual Makefile.
+
+----------
+mpellaue    Date: Fri Jun  2 17:23:17 EDT 2006  CSN: CSN-hasim-50
+                  Fri Jun  2 21:23:17 UTC 2006
+
+
+Directory tools/scripts
+ configure-models          Locally Modified           49 
+
+Directory modules/functional/toymips
+ TOY_FunctionalPartition.bsv Locally Modified           48 
+
+Directory modules/functional/common
+ FunctionalPartition.bsv   Locally Modified           48 
+ Mem.bsv                   Locally Modified           48 
+
+Directory modules/controller/toymips
+ TOY_TestCases.bsv         Locally Modified           48 
+
+Directory modules/timing/toymips
+ TOY_TimingPartition.bsv   Locally Modified           48 
+
+Directory modules/base/toymips
+ TOY_Datatypes.bsv         Locally Modified           48 
+
+Directory modules/base/common
+ Debug.bsv                 Locally Modified           48 
+ hasim_base.awb            Locally Modified           48 
+ Links.bsv                 Locally Modified           48 
+ HASim.bsv                 Locally Modified           48 
+ BypassFIFO.bsv            Locally Modified           48 
+
+
+Merging Links/Connections with TOYMips. Still a lot of work to bd done. TBD: add a "transmittable" typeclass.
+
+----------
+mpellaue    Date: Wed Jun  7 16:51:12 EDT 2006  CSN: CSN-hasim-51
+                  Wed Jun  7 20:51:12 UTC 2006
+
+
+Directory modules/functional/toymips
+ TOY_Mem.bsv               Locally Modified           48 
+ TOY_FunctionalPartition.bsv Locally Modified           50 
+
+Directory modules/functional/common
+ FunctionalPartition.bsv   Locally Modified           50 
+ Mem.bsv                   Locally Modified           50 
+ BypassUnit.bsv            Locally Modified           48 
+
+Directory modules/controller/toymips
+ TOY_TestCases.bsv         Locally Modified           50 
+
+Directory modules/controller/common
+ SimpleController.bsv      Locally Modified           48 
+ System.bsv                Locally Modified           48 
+
+Directory modules/timing/toymips
+ TOY_TimingPartition.bsv   Locally Modified           50 
+ TOY_System.bsv            Locally Modified           48 
+
+Directory modules/base/common
+ HASim.bsv                 Locally Modified           50 
+
+Updated HASim to work with new Connections methodology, 
+with point-to-point connections of limited bit-width.
+
+----------
+jsemer      Date: Wed Jun  7 17:20:01 EDT 2006  CSN: CSN-hasim-52
+                  Wed Jun  7 21:20:01 UTC 2006
+
+
+Directory modules/functional
+ test-cases/               Locally Added               0 
+
+Directory modules/controller
+ toymips/                  Locally Removed            51 
+
+Directory modules/controller/toymips
+ TOY_TestCases.bsv         Locally Removed            51 
+ toymips_testcases.awb     Locally Removed            51 
+
+Directory modules
+ base/                     Locally Removed            51 
+
+Directory modules/base
+ toymips/                  Locally Removed            51 
+
+Directory modules/base/toymips
+ TOY_Datatypes.bsv         Locally Removed            51 
+
+Directory modules/base
+ common/                   Locally Removed            51 
+
+Directory modules/base/common
+ Debug.bsv                 Locally Removed            51 
+ hasim_base.awb            Locally Removed            51 
+ ValueVector.bsv           Locally Removed            51 
+ Links.bsv                 Locally Removed            51 
+ HASim.bsv                 Locally Removed            51 
+ BypassFIFO.bsv            Locally Removed            51 
+
+Directory modules/base
+ smips/                    Locally Removed            51 
+
+Directory modules/base/smips
+ SMIPS_Datatypes.bsv       Locally Removed            51 
+ SMIPS_Interfaces.bsv      Locally Removed            51 
+ SMIPS_Linker.bsv          Locally Removed            51 
+
+Partial commit of reorganization of hasim model.
+
+Joel/Michael/Martha
+
+----------
+jsemer      Date: Wed Jun  7 17:59:42 EDT 2006  CSN: CSN-hasim-53
+                  Wed Jun  7 21:59:42 UTC 2006
+
+
+Directory modules/functional/common
+ FunctionalPartitionBase.bsv Locally Added               - 
+ FunctionalPartition.bsv   Locally Removed            51 
+ hasim_functional_partition_common.awb Locally Added               - 
+ hasim_functional_partition_base.awb Locally Removed            51 
+
+Directory modules/functional/smips
+ hasim_smips_functional_partition.awb Locally Modified           51 
+ SMIPS_FunctionalPartition.bsv Locally Removed            51 
+ FunctionalPartition.bsv   Locally Added               - 
+
+Directory modules/functional/test-cases
+ common/                   Locally Added               0 
+
+Directory modules/functional/test-cases/common
+ TestCase.bsv              Locally Added               - 
+
+Directory modules/functional/toymips
+ TOY_FunctionalPartition.bsv Locally Removed            51 
+ FunctionalPartition.bsv   Locally Added               - 
+ hasim_toymips_functional_partition.awb Locally Modified           51 
+
+Directory modules/controller/common
+ TestCase.bsv              Locally Removed            51 
+ hasim_simple_controller.awb Locally Modified           51 
+ SimpleController.bsv      Locally Removed            51 
+ Controller.bsv            Locally Added               - 
+ System.bsv                Locally Removed            51 
+
+Directory modules/timing
+ toymips/                  Locally Removed            51 
+
+Directory modules/timing/toymips
+ hasim_5stage_timing_partition.awb Locally Removed            51 
+ hasim_simple_timing_partition.awb Locally Removed            51 
+ TOY_TimingPartition.bsv   Locally Removed            51 
+ TOY_System.bsv            Locally Removed            51 
+ TOY_TimingPartition_Pipeline.bsv Locally Removed            51 
+
+Directory modules
+ timing/                   Locally Removed            51 
+
+Directory modules/common
+ hasim_common.awb          Locally Added               - 
+ hasim_base.awb            Locally Removed            52 
+ Links.bsv                 Locally Removed            52 
+
+Directory modules/isa/toymips
+ TOY_Datatypes.bsv         Locally Removed            52 
+ isa.bsv                   Locally Added               - 
+
+Directory modules/isa/smips
+ hasim_smips_isa.awb       Locally Added               0 
+ SMIPS_Datatypes.bsv       Locally Removed            52 
+ Isa.bsv                   Locally Added               - 
+ SMIPS_Interfaces.bsv      Locally Removed            52 
+ SMIPS_Linker.bsv          Locally Removed            52 
+
+Directory modules/chip/toymips
+ simple/                   Locally Added               0 
+
+Directory modules/system
+ hasim_system.awb          Locally Modified           51 
+ System.bsv                Locally Added               - 
+
+Another partial reorganization.
+
+Michael/Martha/Joel
+
+----------
+jsemer      Date: Wed Jun  7 18:33:16 EDT 2006  CSN: CSN-hasim-54
+                  Wed Jun  7 22:33:16 UTC 2006
+
+
+Directory admin/packages
+ hasim                     Locally Modified           53 
+
+Directory admin
+ mytags                    Locally Modified           53 
+
+Directory models
+ toymips/                  Locally Removed            51 
+
+Directory models/toymips
+ unpipelined.hmc           Locally Removed            51 
+
+Directory .
+ models/                   Locally Removed            51 
+
+Directory config/pm/hasim/toymips
+ hasim_5stage_toymips.apm  Locally Modified           51 
+ hasim_simple_toymips.apm  Locally Modified           51 
+
+Directory modules
+ model/                    Locally Added               0 
+
+Directory modules/model
+ model.awb                 Locally Added               0 
+
+Directory modules/functional/toymips
+ hasim_toymips_functional_partition.awb Locally Modified           53 
+
+Directory modules/functional/smips
+ hasim_smips_functional_partition.awb Locally Modified           53 
+
+Directory modules/functional/test-cases/toymips
+ TOY_TestCases.bsv         Locally Removed            53 
+ TestCases.bsv             Locally Added               - 
+ toymips_testcases.awb     Locally Modified           53 
+
+Directory modules/functional/test-cases/common
+ TestCase.bsv              Locally Removed            53 
+ testcase_harness.awb      Locally Added               0 
+ TestCaseHarness.bsv       Locally Added               - 
+
+Directory modules/controller
+ common/                   Locally Removed            53 
+
+Directory modules/controller/common
+ hasim_simple_controller.awb Locally Removed            53 
+ Controller.bsv            Locally Removed            53 
+
+Directory modules/chip/toymips
+ hasim_5stage_timing_partition.awb Locally Removed            53 
+ hasim_simple_timing_partition.awb Locally Removed            53 
+ TOY_TimingPartition.bsv   Locally Removed            53 
+ TOY_System.bsv            Locally Removed            53 
+ 5stage/                   Locally Added               0 
+
+Directory modules/chip/toymips/5stage
+ hasim_5stage_chip.awb     Locally Added               - 
+ Chip.bsv                  Locally Added               - 
+
+Directory modules/chip/toymips/simple
+ hasim_simple_chip.awb     Locally Added               - 
+ Chip.bsv                  Locally Added               - 
+
+Directory modules/chip/toymips
+ TOY_TimingPartition_Pipeline.bsv Locally Removed            53 
+
+Directory modules/isa/toymips
+ hasim_toymips_isa.awb     Locally Added               0 
+
+Directory .
+ changes                   Locally Modified           53 
+
+Last step of this reorganization
+
+Martha/Joel/Michael
+
+----------
+jsemer      Date: Wed Jun  7 18:35:29 EDT 2006  CSN: CSN-hasim-55
+                  Wed Jun  7 22:35:29 UTC 2006
+
+
+Directory config/pm/hasim/toymips
+ hasim_simple_smips.apm    Locally Added               0 
+
+
+Added simple mips (smips) model.
+
+Joel
+
+----------
+mpellaue    Date: Thu Jun  8 10:06:28 EDT 2006  CSN: CSN-hasim-56
+                  Thu Jun  8 14:06:28 UTC 2006
+
+
+Directory modules/functional/test-cases/toymips
+ simple_addition/          Locally Added               0 
+ TestCases.bsv             Locally Modified           55 
+ toymips_testcases.awb     Locally Removed            55 
+
+Directory modules/controller/simple
+ Controller.bsv            Locally Modified           55 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified           55 
+ ValueVector.bsv           Locally Removed            55 
+ HASim.bsv                 Locally Modified           55 
+
+Partial cleanup from previous reorganization.
+
+Michael
+
+----------
+mpellaue    Date: Fri Jun  9 17:19:22 EDT 2006  CSN: CSN-hasim-57
+                  Fri Jun  9 21:19:22 UTC 2006
+
+
+Directory modules/functional/test-cases/toymips/simple_subtraction
+ TestCase.bsv              Locally Added               0 
+ toymips_testcase_simple_subtraction.awb Locally Added               0 
+
+Directory modules/functional/test-cases/toymips
+ simple_subtraction/       Locally Added               0 
+ TestCases.bsv             Locally Removed            56 
+
+Directory modules/functional/test-cases/toymips/branch
+ TestCase.bsv              Locally Added               0 
+ toymips_testcase_branch.awb Locally Added               0 
+
+Directory modules/functional/test-cases/toymips
+ branch/                   Locally Added               0 
+
+Directory modules/functional/test-cases/toymips/stalls
+ TestCase.bsv              Locally Added               0 
+ toymips_testcase_branch.awb Locally Added               0 
+
+Directory modules/functional/test-cases/toymips
+ stalls/                   Locally Added               0 
+
+Directory modules/functional/test-cases/toymips/simple_addition
+ TestCase.bsv              Locally Added               0 
+ toymips_testcase_simple_addition.awb Locally Added               0 
+
+Directory modules/functional/test-cases/common
+ TestCaseBase.bsv          Locally Added               - 
+ testcase_harness.awb      Locally Removed            55 
+ TestCaseHarness.bsv       Locally Removed            55 
+ hasim_testcase_common.awb Locally Added               - 
+
+Directory modules/functional/common
+ FunctionalPartitionBase.bsv Locally Modified           55 
+ TokGen.bsv                Locally Added               0 
+ hasim_tokgen.awb          Locally Added               0 
+ FUNCP_Pipeline.bsv        Locally Added               0 
+ hasim_funcp_pipeline.awb  Locally Added               0 
+
+Directory modules/functional/toymips
+ FunctionalPartition.bsv   Locally Modified           55 
+ hasim_toymips_functional_partition.awb Locally Modified           55 
+
+
+Partial commit of ongoing reorg.
+
+Michael
+
+----------
+mpellaue    Date: Mon Jun 12 13:47:31 EDT 2006  CSN: CSN-hasim-58
+                  Mon Jun 12 17:47:31 UTC 2006
+
+
+Directory modules/functional/toymips
+ FUNCP_GlobalCommitAlg.bsv Locally Added               0 
+ FUNCP_FetchAlg.bsv        Locally Added               0 
+ TOY_Mem.bsv               Locally Removed            55 
+ toymips_funcp_globalcommit_alg.awb Locally Added               0 
+ toymips_funcp_fetch_alg.awb Locally Added               0 
+ FunctionalPartition.bsv   Locally Removed            57 
+ FUNCP_MemAlg.bsv          Locally Added               0 
+ toymips_funcp_mem_alg.awb Locally Added               0 
+ hasim_toymips_functional_partition.awb Locally Removed            57 
+ FUNCP_ExecuteAlg.bsv      Locally Added               0 
+ FUNCP_DecodeAlg.bsv       Locally Added               0 
+ FUNCP_LocalCommitAlg.bsv  Locally Added               0 
+ toymips_funcp_execute_alg.awb Locally Added               0 
+ toymips_funcp_decode_alg.awb Locally Added               0 
+ toymips_funcp_localcommit_alg.awb Locally Added               0 
+
+Directory modules/functional/common
+ hasim_tokgen.awb          Locally Removed            57 
+ TokGen.bsv                Locally Removed            57 
+ FunctionalPartitionBase.bsv Locally Removed            57 
+ FUNCP_Checker.bsv         Locally Added               0 
+ hasim_funcp_checker.awb   Locally Added               0 
+ hasim_funcp_pipeline.awb  Locally Modified           57 
+ FUNCP_Pipeline.bsv        Locally Modified           57 
+ hasim_funcp_loader.awb    Locally Added               0 
+ FUNCP_Loader.bsv          Locally Added               0 
+ BypassUnit.bsv            Locally Removed            55 
+ hasim_functional_partition_common.awb Locally Modified           55 
+ FUNCP_Base.bsv            Locally Added               - 
+ hasim_funcp_base.awb      Locally Added               0 
+ FUNCP_RegState.bsv        Locally Added               - 
+ FUNCP_Mem.bsv             Locally Added               - 
+ hasim_funcp_regstate.awb  Locally Added               0 
+ hasim_funcp_memstate.awb  Locally Added               0 
+ hasim_funcp.awb           Locally Added               0 
+ FUNCP.bsv                 Locally Added               0 
+ Mem.bsv                   Locally Removed            55 
+ FUNCP_TokGen.bsv          Locally Added               - 
+
+Directory modules/functional/test-cases/toymips/simple_addition
+ TestCase.bsv              Locally Modified           57 
+ toymips_testcase_simple_addition.awb Locally Modified           57 
+
+Directory modules/functional/test-cases/toymips/simple_subtraction
+ TestCase.bsv              Locally Modified           57 
+ toymips_testcase_simple_subtraction.awb Locally Modified           57 
+
+Directory modules/functional/test-cases/toymips/branch
+ TestCase.bsv              Locally Modified           57 
+ toymips_testcase_branch.awb Locally Modified           57 
+
+Directory modules/functional/test-cases/toymips/stalls
+ TestCase.bsv              Locally Modified           57 
+ toymips_testcase_branch.awb Locally Modified           57 
+
+Directory modules/functional/test-cases/common
+ hasim_testcase_common.awb Locally Modified           57 
+ TestCase_Base.bsv         Locally Added               - 
+ TestCaseBase.bsv          Locally Removed            57 
+
+Directory modules/controller/simple
+ Controller.bsv            Locally Modified           56 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified           56 
+
+Directory modules/isa/toymips
+ isa.bsv                   Locally Removed            55 
+ ISA.bsv                   Locally Added               - 
+ hasim_toymips_isa.awb     Locally Modified           55 
+
+Directory modules/model
+ model.awb                 Locally Removed            55 
+ Model.bsv                 Locally Added               0 
+ hasim_model.awb           Locally Added               - 
+
+Directory modules/chip/toymips/simple
+ Chip.bsv                  Locally Modified           55 
+
+Directory modules/system
+ hasim_system.awb          Locally Modified           55 
+ System.bsv                Locally Modified           55 
+
+Partial commit of reorganization, including TOYMIPS model. Some final cleanup remains.
+
+Michael
+
+----------
+mpellaue    Date: Mon Jun 12 14:08:36 EDT 2006  CSN: CSN-hasim-59
+                  Mon Jun 12 18:08:36 UTC 2006
+
+
+Directory modules/functional/common
+ hasim_funcp_checker.awb   Locally Modified           58 
+ hasim_funcp_loader.awb    Locally Modified           58 
+ hasim_functional_partition_common.awb Locally Removed            58 
+ hasim_funcp.awb           Locally Modified           58 
+
+Directory modules/cpu
+ hasim_cpu.awb             Locally Removed            55 
+
+Directory modules
+ cpu/                      Locally Removed            55 
+
+Directory config/pm/hasim/toymips
+ hasim_simple_smips.apm    Locally Removed            55 
+ hasim_5stage_toymips.apm  Locally Removed            55 
+ hasim_simple_toymips.apm  Locally Removed            55 
+ hasim_toymips_simple.apm  Locally Added               0 
+
+HASim reorganization complete. The TOYMIPS simple model should now be buildable (although there's a bug in global commit which is currently causing it to deadlock.)
+
+Michael
+
+----------
+mpellaue    Date: Mon Jun 12 18:13:43 EDT 2006  CSN: CSN-hasim-60
+                  Mon Jun 12 22:13:43 UTC 2006
+
+
+Directory modules/functional/common
+ FUNCP_Checker.bsv         Locally Modified           58 
+ FUNCP_Loader.bsv          Locally Modified           58 
+ FUNCP_Mem.bsv             Locally Removed            58 
+ FUNCP_RegState.bsv        Locally Modified           58 
+ FUNCP_MemState.bsv        Locally Added               - 
+
+Directory tools/scripts
+ configure-models          Locally Modified           55 
+
+A few final changes to the reorg.
+
+Michael
+
+----------
+mpellaue    Date: Wed Jun 14 11:42:29 EDT 2006  CSN: CSN-hasim-61
+                  Wed Jun 14 15:42:29 UTC 2006
+
+
+Directory modules/functional/toymips
+ FUNCP_DecodeAlg.bsv       Locally Modified           58 
+
+Directory modules/functional/common
+ FUNCP_Checker.bsv         Locally Modified           60 
+
+Directory modules/controller/simple
+ Controller.bsv            Locally Modified           58 
+
+Directory modules/chip/toymips/simple
+ Chip.bsv                  Locally Modified           58 
+
+Fixed a deadlock in the toymips model. Preparing to separate mips models into hasim-mips repository.
+
+Michael
+
+----------
+mpellaue    Date: Wed Jun 14 17:06:15 EDT 2006  CSN: CSN-hasim-62
+                  Wed Jun 14 21:06:15 UTC 2006
+
+
+Directory modules/functional
+ toymips/                  Locally Removed            55 
+
+Directory modules/functional/smips
+ hasim_smips_functional_partition.awb Locally Removed            55 
+ SMIPS_Mem.bsv             Locally Removed            55 
+ FunctionalPartition.bsv   Locally Removed            55 
+
+Directory modules/functional
+ smips/                    Locally Removed            55 
+
+Directory modules
+ chip/                     Locally Removed            55 
+ isa/                      Locally Removed            55 
+
+TOYMIPS/SMIPS files removed and moved to the hasim-mips repository.
+
+Michael
+
+----------
+mpellaue    Date: Wed Jun 14 17:13:44 EDT 2006  CSN: CSN-hasim-62
+                  Wed Jun 14 21:13:45 UTC 2006
+
+
+Directory admin/packages
+ hasim                     Locally Modified           61 
+
+Directory admin
+ mytags                    Locally Modified           61 
+
+Directory modules/functional
+ toymips/                  Locally Removed            61 
+
+Directory modules/functional/toymips
+ FUNCP_GlobalCommitAlg.bsv Locally Removed            61 
+ FUNCP_FetchAlg.bsv        Locally Removed            61 
+ toymips_funcp_globalcommit_alg.awb Locally Removed            61 
+ toymips_funcp_fetch_alg.awb Locally Removed            61 
+ FUNCP_MemAlg.bsv          Locally Removed            61 
+ toymips_funcp_mem_alg.awb Locally Removed            61 
+ FUNCP_ExecuteAlg.bsv      Locally Removed            61 
+ FUNCP_DecodeAlg.bsv       Locally Removed            61 
+ FUNCP_LocalCommitAlg.bsv  Locally Removed            61 
+ toymips_funcp_execute_alg.awb Locally Removed            61 
+ toymips_funcp_decode_alg.awb Locally Removed            61 
+ toymips_funcp_localcommit_alg.awb Locally Removed            61 
+
+Directory modules/functional
+ smips/                    Locally Removed            61 
+
+Directory modules/functional/smips
+ hasim_smips_functional_partition.awb Locally Removed            61 
+ SMIPS_Mem.bsv             Locally Removed            61 
+ FunctionalPartition.bsv   Locally Removed            61 
+
+Directory modules
+ chip/                     Locally Removed            61 
+
+Directory modules/chip
+ toymips/                  Locally Removed            61 
+
+Directory modules/chip/toymips
+ 5stage/                   Locally Removed            61 
+
+Directory modules/chip/toymips/5stage
+ hasim_5stage_chip.awb     Locally Removed            61 
+ Chip.bsv                  Locally Removed            61 
+
+Directory modules/chip/toymips
+ simple/                   Locally Removed            61 
+
+Directory modules/chip/toymips/simple
+ hasim_simple_chip.awb     Locally Removed            61 
+ Chip.bsv                  Locally Removed            61 
+
+Directory modules
+ isa/                      Locally Removed            61 
+
+Directory modules/isa
+ toymips/                  Locally Removed            61 
+
+Directory modules/isa/toymips
+ ISA.bsv                   Locally Removed            61 
+ hasim_toymips_isa.awb     Locally Removed            61 
+
+Directory modules/isa
+ smips/                    Locally Removed            61 
+
+Directory modules/isa/smips
+ hasim_smips_isa.awb       Locally Removed            61 
+ Isa.bsv                   Locally Removed            61 
+
+Directory .
+ changes                   Locally Modified           61 
+
+Removed TOYMIPS/SMIPS files. They have been transferred to the hasim-mips repository.
+
+Michael
+
+----------
+mpellaue    Date: Tue Jun 27 18:19:23 EDT 2006  CSN: CSN-hasim-63
+                  Tue Jun 27 22:19:23 UTC 2006
+
+
+Directory modules/functional/common
+ FUNCP_Checker.bsv         Locally Modified           62 
+ FUNCP_Pipeline.bsv        Locally Modified           62 
+ FUNCP_Loader.bsv          Locally Modified           62 
+ FUNCP_MemState.bsv        Locally Modified           62 
+
+Directory modules/common
+ Debug.bsv                 Locally Modified           62 
+ HASim.bsv                 Locally Modified           62 
+
+Modified HAsim to wrk with bsc 3.8.68. Please use this version or later.
+
+Michael
+
+----------
+mpellaue    Date: Thu Jun 29 18:02:33 EDT 2006  CSN: CSN-hasim-65
+                  Thu Jun 29 22:02:33 UTC 2006
+
+
+Directory tools/scripts
+
+Directory modules/functional/common
+ FUNCP_MemState.bsv        Locally Modified           64 
+
+
+Fixed tiny bug in MemState.
+
+Michael
+
+----------
+mpellaue    Date: Fri Jun 30 17:26:38 EDT 2006  CSN: CSN-hasim-66
+                  Fri Jun 30 21:26:38 UTC 2006
+
+
+Directory modules/functional/common
+ FUNCP_Base.bsv            Locally Modified           64 
+ FUNCP_RegState.bsv        Locally Modified           64 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified           64 
+
+Directory tools/scripts
+
+
+Bugfixes in the RegState, and Pipeline connections.
+
+----------
+mamercal    Date: Wed Jul  5 14:32:44 EDT 2006  CSN: CSN-hasim-67
+                  Wed Jul  5 18:32:44 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Added               0 
+ hasim-configure           Locally Added               0 
+ Makefile.top.template     Locally Added               0 
+ hasim-connect             Locally Added               0 
+ Makefile.include.template Locally Added               0 
+
+Directory config/pm/hasim
+ traffic_light/            Locally Added               0 
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Added               0 
+
+Directory modules/model
+ Model.bsv                 Locally Modified           66 
+ hasim_model.awb           Locally Modified           66 
+
+Directory modules/controller
+ null/                     Locally Added               0 
+
+Directory modules/controller/null
+ hasim_null_controller.awb Locally Added               0 
+
+Directory modules/system
+ single_chip_system/       Locally Added               0 
+
+Directory modules/system/single_chip_system
+ System.bsv                Locally Added               - 
+ hasim_system.awb          Locally Added               - 
+
+Directory modules/system
+ traffic_light_system/     Locally Added               0 
+
+Directory modules/system/traffic_light_system
+ traffic_light_system.awb  Locally Added               0 
+ hasim_traffic_light_function/ Locally Added               0 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Added               0 
+ TL0.bsv                   Locally Added               0 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Added               0 
+
+Directory modules/system
+ System.bsv                Locally Removed            66 
+ hasim_system.awb          Locally Removed            66 
+
+Adding configure script (hasim-configure), a braindead connection script
+(hasim-connect) and Makefile templates.
+----------
+mamercal    Date: Wed Jul  5 15:52:10 EDT 2006  CSN: CSN-hasim-68
+                  Wed Jul  5 19:52:10 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           67 
+ hasim-configure           Locally Modified           67 
+ Makefile.top.template     Locally Modified           67 
+ hasim-connect             Locally Modified           67 
+ Makefile.include.template Locally Modified           67 
+
+Directory config/pm/hasim/toymips
+ hasim_toymips_simple.apm  Locally Modified           67 
+
+Added support for non-BSV source files.  Some bug fixes.
+----------
+mamercal    Date: Wed Jul  5 16:03:30 EDT 2006  CSN: CSN-hasim-69
+                  Wed Jul  5 20:03:30 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified           68 
+
+Minor fix.
+----------
+mamercal    Date: Wed Jul  5 16:07:33 EDT 2006  CSN: CSN-hasim-70
+                  Wed Jul  5 20:07:33 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified           69 
+
+Little thing.
+----------
+mamercal    Date: Wed Jul  5 16:22:33 EDT 2006  CSN: CSN-hasim-71
+                  Wed Jul  5 20:22:33 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.top.template     Locally Modified           68 
+ hasim-configure           Locally Modified           70 
+
+Modified top level make targets
+----------
+mamercal    Date: Wed Jul  5 16:36:31 EDT 2006  CSN: CSN-hasim-72
+                  Wed Jul  5 20:36:31 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified           71 
+
+Fixed bug w. file resolution in hasim-connect.
+----------
+mpellaue    Date: Wed Jul  5 18:15:01 EDT 2006  CSN: CSN-hasim-73
+                  Wed Jul  5 22:15:01 UTC 2006
+
+
+Directory tools/scripts
+
+Directory config/pm/hasim/toymips
+ hasim_toymips_simple.apm  Locally Modified           72 
+
+Directory config/pm/hasim
+ smips/                    Locally Added               0 
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage.apm    Locally Added               0 
+
+Directory modules/functional/common
+ FUNCP_Pipeline.bsv        Locally Modified           72 
+ FUNCP_RegState.bsv        Locally Modified           72 
+ hasim_funcp_memstate.awb  Locally Modified           72 
+ FUNCP_MemState.bsv        Locally Modified           72 
+ FUNCP_StoreBuffer.bsv     Locally Added               0 
+ hasim_funcp_storebuffer.awb Locally Added               0 
+
+
+Added initial store buffer. You may need to re-configure from the APM to use it.
+
+Michael
+
+----------
+mamercal    Date: Thu Jul  6 15:01:49 EDT 2006  CSN: CSN-hasim-74
+                  Thu Jul  6 19:01:49 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           73 
+ hasim-configure           Locally Modified           73 
+ Makefile.top.template     Locally Modified           73 
+ Makefile.include.template Locally Modified           73 
+
+Directory config/pm/hasim/toymips
+ hasim_toymips_simple.apm  Locally Modified           73 
+
+Minor fixes + comments.
+----------
+mamercal    Date: Thu Jul  6 15:13:30 EDT 2006  CSN: CSN-hasim-75
+                  Thu Jul  6 19:13:30 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.include.template Locally Modified           74 
+ hasim-configure           Locally Modified           74 
+
+Made include directory paths absolute for bsc.
+----------
+mamercal    Date: Thu Jul  6 17:16:35 EDT 2006  CSN: CSN-hasim-76
+                  Thu Jul  6 21:16:35 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           75 
+ hasim-configure           Locally Modified           75 
+ Makefile.top.template     Locally Modified           75 
+ Makefile.include.template Locally Modified           75 
+
+Directory modules/functional/common
+ FUNCP_MemState.bsv        Locally Modified           75 
+
+Bug fix in hasim-configure, plus slight change to makefile build flow.
+----------
+mpellaue    Date: Thu Jul  6 18:32:04 EDT 2006  CSN: CSN-hasim-77
+                  Thu Jul  6 22:32:04 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified           76 
+
+Directory modules/functional/common
+ FUNCP_Checker.bsv         Locally Modified           76 
+ FUNCP_Loader.bsv          Locally Modified           76 
+ hasim_funcp_memstate.awb  Locally Modified           76 
+ FUNCP_MemState.bsv        Locally Modified           76 
+ FUNCP.bsv                 Locally Modified           76 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified           76 
+
+
+Updated HASim connections and MemState in preparation for separate synthesis boundaries.
+
+Michael
+
+----------
+mamercal    Date: Mon Jul 10 11:12:18 EDT 2006  CSN: CSN-hasim-79
+                  Mon Jul 10 15:12:18 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           78 
+ hasim-configure           Locally Modified           78 
+ Makefile.top.template     Locally Modified           78 
+ hasim-connect             Locally Modified           78 
+
+Directory modules/functional/common
+ FUNCP_MemState.bsv        Locally Modified           78 
+
+Bug fix in hasim-configure.
+Incorporated dangling connection script into build flow.
+----------
+mamercal    Date: Mon Jul 10 13:33:36 EDT 2006  CSN: CSN-hasim-80
+                  Mon Jul 10 17:33:36 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified           79 
+
+Bug fix identifying sub-synthesis boundaries.
+----------
+mamercal    Date: Mon Jul 10 13:50:55 EDT 2006  CSN: CSN-hasim-81
+                  Mon Jul 10 17:50:55 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified           80 
+
+Added quotation marks around connection names.
+----------
+mamercal    Date: Mon Jul 10 14:04:19 EDT 2006  CSN: CSN-hasim-82
+                  Mon Jul 10 18:04:19 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           79 
+
+Compiler output now goes to both screen and log file.
+----------
+mamercal    Date: Mon Jul 10 14:57:29 EDT 2006  CSN: CSN-hasim-83
+                  Mon Jul 10 18:57:29 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.top.template     Locally Modified           79 
+ hasim-configure           Locally Modified           79 
+
+Bug fix in top level Makefile.
+----------
+mpellaue    Date: Mon Jul 10 18:01:45 EDT 2006  CSN: CSN-hasim-84
+                  Mon Jul 10 22:01:45 UTC 2006
+
+
+Directory tools/scripts
+
+Directory modules/functional/common
+ FUNCP_Pipeline.bsv        Locally Modified           83 
+ FUNCP_Base.bsv            Locally Modified           83 
+ FUNCP_RegState.bsv        Locally Modified           83 
+ FUNCP_MemState.bsv        Locally Modified           83 
+ FUNCP.bsv                 Locally Modified           83 
+ FUNCP_StoreBuffer.bsv     Locally Modified           83 
+ FUNCP_TokGen.bsv          Locally Modified           83 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified           83 
+
+
+Epoch changes have begun. RegState.bsv still needs some work.
+
+Michael
+
+----------
+mamercal    Date: Wed Jul 12 10:33:25 EDT 2006  CSN: CSN-hasim-86
+                  Wed Jul 12 14:33:25 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           85 
+ hasim-configure           Locally Modified           85 
+ Makefile.top.template     Locally Modified           85 
+ Makefile.include.template Locally Modified           85 
+
+Fixed recursive make s.t. if child make fails, parent make does not try to keep going.
+----------
+mpellaue    Date: Wed Jul 12 13:22:03 EDT 2006  CSN: CSN-hasim-87
+                  Wed Jul 12 17:22:03 UTC 2006
+
+
+Directory tools/scripts
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage.apm    Locally Modified           86 
+
+Directory modules/functional/common
+ FUNCP_TokGen.bsv          Locally Modified           86 
+
+
+Changed the token generation algorithm to be slightly more efficient.
+
+----------
+mpellaue    Date: Wed Jul 12 16:49:25 EDT 2006  CSN: CSN-hasim-88
+                  Wed Jul 12 20:49:25 UTC 2006
+
+
+Directory modules/functional/common
+ FUNCP_RegState.bsv        Locally Modified           86 
+ FUNCP_MemState.bsv        Locally Modified           86 
+
+Directory tools/scripts
+
+
+Small changes in RegState/MemState connection names
+
+----------
+mpellaue    Date: Thu Jul 13 14:37:22 EDT 2006  CSN: CSN-hasim-89
+                  Thu Jul 13 18:37:22 UTC 2006
+
+
+Directory modules/functional/common
+ hasim_funcp_pipeline.awb  Locally Modified           86 
+ hasim_funcp_regstate.awb  Locally Modified           86 
+ FUNCP.bsv                 Locally Modified           86 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified           86 
+ HASim.bsv                 Locally Modified           86 
+ Connections.bsv           Locally Added               0 
+
+Directory tools/scripts
+ hasim-connect             Locally Modified           86 
+
+
+Stable checkin with multiple synthesis boundaries. Connection algorithms have been isolated in preparation for Events/Debugs.
+
+Michael
+
+----------
+mamercal    Date: Thu Jul 13 17:06:06 EDT 2006  CSN: CSN-hasim-90
+                  Thu Jul 13 21:06:06 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified           89 
+ hasim-configure           Locally Modified           89 
+ Makefile.top.template     Locally Modified           89 
+ Makefile.include.template Locally Modified           89 
+
+Bug fixes in Makefiles
+----------
+mpellaue    Date: Fri Jul 14 15:01:02 EDT 2006  CSN: CSN-hasim-91
+                  Fri Jul 14 19:01:02 UTC 2006
+
+
+Directory tools/scripts
+
+Directory modules/controller/simple
+ Controller.bsv            Locally Modified           90 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified           90 
+ Connections.bsv           Locally Modified           90 
+
+
+Sinks and Chains are now implemented. A very basic Event Recorder and Controller
+is implemnted using the Chains/Sinks.
+
+Michael
+
+----------
+mpellaue    Date: Tue Jul 25 17:40:40 EDT 2006  CSN: CSN-hasim-93
+                  Tue Jul 25 21:40:40 UTC 2006
+
+
+Directory tools/scripts
+
+Directory modules/functional/common
+ FUNCP.bsv                 Locally Modified           92 
+
+Directory modules/controller/simple
+ Controller.bsv            Locally Modified           92 
+
+Directory modules/common
+ Debug.bsv                 Locally Modified           92 
+ hasim_common.awb          Locally Modified           92 
+ HASim.bsv                 Locally Modified           92 
+ Connections.bsv           Locally Modified           92 
+ Events.bsv                Locally Added               0 
+
+
+Redid the Events system to work with varying-latency model cycles.
+
+----------
+mpellaue    Date: Mon Aug  7 17:55:06 EDT 2006  CSN: CSN-hasim-94
+                  Mon Aug  7 21:55:06 UTC 2006
+
+
+Directory tools/scripts
+
+Directory modules/functional/common
+ FUNCP_Pipeline.bsv        Locally Modified           93 
+ FUNCP_Base.bsv            Locally Modified           93 
+ FUNCP_RegState.bsv        Locally Modified           93 
+ FUNCP_MemState.bsv        Locally Modified           93 
+ FUNCP_TokGen.bsv          Locally Modified           93 
+
+Directory modules/common
+ Ports.bsv                 Locally Added               0 
+ HASim.bsv                 Locally Modified           93 
+ Events.bsv                Locally Modified           93 
+
+
+Added support for Ports, renamed some internal connections.
+
+----------
+mamercal    Date: Thu Aug 17 17:19:38 EDT 2006  CSN: CSN-hasim-95
+                  Thu Aug 17 21:19:38 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified           94 
+ Makefile.top.template     Locally Modified           94 
+ hasim-connect             Locally Modified           94 
+
+Directory modules/model
+ hasim_model.awb           Locally Modified           94 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified           94 
+
+----------
+mamercal    Date: Thu Aug 17 17:39:56 EDT 2006  CSN: CSN-hasim-96
+                  Thu Aug 17 21:39:56 UTC 2006
+
+
+Directory modules/controller/null
+ NullISA.bsv               Locally Added               0 
+ Controller.bsv            Locally Added               0 
+
+Missing files.
+----------
+mpellaue    Date: Thu Aug 17 17:46:18 EDT 2006  CSN: CSN-hasim-97
+                  Thu Aug 17 21:46:18 UTC 2006
+
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Modified           96 
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage_ports.apm Locally Added               0 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Modified           96 
+ TL0.bsv                   Locally Modified           96 
+
+Directory modules/common
+ Debug.bsv                 Locally Modified           96 
+
+Directory modules
+ fpga/                     Locally Added               0 
+
+Directory modules/fpga
+ common/                   Locally Added               0 
+
+Directory modules/fpga/common
+ FPGA_Common.bsv           Locally Added               0 
+ hasim_fpga_common.awb     Locally Added               0 
+
+Directory modules/fpga
+ software/                 Locally Added               0 
+
+Directory modules/fpga/software
+ hasim_fpga_software.awb   Locally Added               0 
+ FPGA.bsv                  Locally Added               0 
+
+Directory modules/fpga
+ xup/                      Locally Added               0 
+
+Directory modules/fpga/xup
+ hasim_fpga_xup.awb        Locally Added               0 
+ FPGA.bsv                  Locally Added               0 
+ prim_fpga.v               Locally Added               0 
+
+
+Resolved the deadlock error.
+
+Additionally committing first revision of FPGA primitives library. Two initial versions: software and XUP board.
+
+Michael
+
+----------
+mpellaue    Date: Mon Aug 21 15:54:00 EDT 2006  CSN: CSN-hasim-98
+                  Mon Aug 21 19:54:00 UTC 2006
+
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Modified           97 
+
+Directory modules/system/traffic_light_system
+ hasim_traffic_light_function/ Locally Removed            96 
+ traffic_light_system.awb  Locally Modified           96 
+ TL0.bsv                   Locally Added               - 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified           96 
+
+Directory modules/common/fpgalib
+ software/                 Locally Added               0 
+
+Directory modules/common/fpgalib/software
+ hasim_fpgalib_software.awb Locally Added               0 
+ xup.ucf                   Locally Added               0 
+ FPGALib.bsv               Locally Added               0 
+
+Directory modules/common/fpgalib
+ xup/                      Locally Added               0 
+
+Directory modules/common/fpgalib/xup
+ xup.ucf                   Locally Added               0 
+ hasim_fpgalib_xup.awb     Locally Added               0 
+ FPGALib.bsv               Locally Added               0 
+
+Directory modules/common
+ fpgalib/                  Locally Added               0 
+ HASim.bsv                 Locally Modified           96 
+ Connections.bsv           Locally Modified           96 
+
+Directory modules/fpga
+ common/                   Locally Removed            97 
+
+Directory modules/fpga/common
+ FPGA_Common.bsv           Locally Removed            97 
+ hasim_fpga_common.awb     Locally Removed            97 
+
+Directory modules/fpga
+ software/                 Locally Removed            97 
+
+Directory modules/fpga/software
+ hasim_fpga_software.awb   Locally Removed            97 
+ FPGA.bsv                  Locally Removed            97 
+
+Directory modules/fpga
+ xup/                      Locally Removed            97 
+
+Directory modules/fpga/xup
+ hasim_fpga_xup.awb        Locally Removed            97 
+ FPGA.bsv                  Locally Removed            97 
+ prim_fpga.v               Locally Removed            97 
+
+Directory modules
+ fpga/                     Locally Removed            97 
+
+Directory tools/scripts
+ hasim-connect             Locally Modified           96 
+
+
+Major reorganization of FPGALib, which is now a subsection of common. LEDs, switches, and buttons are now supported in both XUP and software. The .UCF file needs to be written. The MIPS models will need some surgery after this.
+
+Michael
+
+----------
+mpellaue    Date: Mon Aug 21 16:00:49 EDT 2006  CSN: CSN-hasim-98
+                  Mon Aug 21 20:00:49 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified           97 
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Modified           97 
+
+Directory admin
+ mytags                    Locally Modified           97 
+
+Directory admin/packages
+ hasim                     Locally Modified           97 
+
+Directory modules/system/traffic_light_system
+ traffic_light_system.awb  Locally Modified           97 
+ TL0.bsv                   Locally Added               - 
+ hasim_traffic_light_function/ Locally Removed            97 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Removed            97 
+ TL0.bsv                   Locally Removed            97 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified           97 
+ fpgalib/                  Locally Added               0 
+
+Directory modules/common/fpgalib
+ software/                 Locally Added               0 
+
+Directory modules/common/fpgalib/software
+ hasim_fpgalib_software.awb Locally Added               0 
+ xup.ucf                   Locally Added               0 
+ FPGALib.bsv               Locally Added               0 
+
+Directory modules/common/fpgalib
+ xup/                      Locally Added               0 
+
+Directory modules/common/fpgalib/xup
+ xup.ucf                   Locally Added               0 
+ hasim_fpgalib_xup.awb     Locally Added               0 
+ FPGALib.bsv               Locally Added               0 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified           97 
+ Connections.bsv           Locally Modified           97 
+
+Directory modules
+ fpga/                     Locally Removed            97 
+
+Directory modules/fpga
+ common/                   Locally Removed            97 
+
+Directory modules/fpga/common
+ FPGA_Common.bsv           Locally Removed            97 
+ hasim_fpga_common.awb     Locally Removed            97 
+
+Directory modules/fpga
+ software/                 Locally Removed            97 
+
+Directory modules/fpga/software
+ hasim_fpga_software.awb   Locally Removed            97 
+ FPGA.bsv                  Locally Removed            97 
+
+Directory modules/fpga
+ xup/                      Locally Removed            97 
+
+Directory modules/fpga/xup
+ hasim_fpga_xup.awb        Locally Removed            97 
+ FPGA.bsv                  Locally Removed            97 
+ prim_fpga.v               Locally Removed            97 
+
+Directory .
+ changes                   Locally Modified           97 
+
+
+Major reoganization of FPGALib, which is now part of common/
+
+LEDs, Buttons, switches are now supported
+
+The Traffic Light has been reworked to use LEDs. The MIPS models may require some surgery.
+
+Michael
+
+----------
+mpellaue    Date: Mon Aug 21 16:12:40 EDT 2006  CSN: CSN-hasim-99
+                  Mon Aug 21 20:12:40 UTC 2006
+
+
+Directory modules/system/traffic_light_system
+ traffic_light_system.awb  Locally Modified           98 
+ TL0.bsv                   Locally Removed            98 
+ traffic_light_function/   Locally Added               0 
+
+Directory modules/system/traffic_light_system/traffic_light_function
+ traffic_light_function.awb Locally Added               0 
+ TL0.bsv                   Locally Added               0 
+
+
+Fixed a small mistake with the organization of the traffic light in the last commit.
+
+Michael
+
+----------
+mamercal    Date: Mon Aug 21 17:11:49 EDT 2006  CSN: CSN-hasim-100
+                  Mon Aug 21 21:11:49 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.include.template Locally Modified           99 
+
+Directory modules/system/traffic_light_system
+ hasim_traffic_light_function/ Locally Added               0 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Added               0 
+ TL0.bsv                   Locally Added               0 
+
+Changes to TL example (slowed transition between states to make visible on LEDs)
+----------
+mamercal    Date: Mon Aug 21 17:22:17 EDT 2006  CSN: CSN-hasim-101
+                  Mon Aug 21 21:22:17 UTC 2006
+
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          100 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Modified          100 
+
+Directory modules/common/fpgalib/xup
+ xup.ucf                   Locally Modified          100 
+
+Correct pins filled in for XUP board.
+----------
+mpellaue    Date: Wed Aug 30 15:37:35 EDT 2006  CSN: CSN-hasim-102
+                  Wed Aug 30 19:37:35 UTC 2006
+
+
+Directory config/pm/hasim/toymips
+ hasim_toymips_simple.apm  Locally Modified          101 
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Modified          101 
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage.apm    Locally Modified          101 
+ hasim_smips_5stage_ports.apm Locally Modified          101 
+
+Directory modules/controller/simple
+ Controller.bsv            Locally Modified          101 
+
+Directory modules/system/traffic_light_system
+ traffic_light_function/   Locally Removed           101 
+
+Directory modules/system/traffic_light_system/traffic_light_function
+ traffic_light_function.awb Locally Removed           101 
+ TL0.bsv                   Locally Removed           101 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Modified          101 
+
+Directory modules/common
+ Ports.bsv                 Locally Modified          101 
+ hasim_common.awb          Locally Modified          101 
+ Stats.bsv                 Locally Added               0 
+ HASim.bsv                 Locally Modified          101 
+ Connections.bsv           Locally Modified          101 
+ Events.bsv                Locally Modified          101 
+
+
+Added Stats, updated Ports, Events.
+
+TODO: Add CommandCenter under control of Controller. This should control running, syncing System. The Controller should sync system before Enabling/Disabling Events.
+
+Michael
+
+----------
+mamercal    Date: Wed Aug 30 17:21:19 EDT 2006  CSN: CSN-hasim-103
+                  Wed Aug 30 21:21:19 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Modified          102 
+ hasim-configure           Locally Modified          102 
+ Makefile.top.template     Locally Modified          102 
+ Makefile.include.template Locally Modified          102 
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Modified          102 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          102 
+
+Directory modules/common/fpgalib/software
+ FPGALib.bsv               Locally Modified          102 
+
+Directory modules/common/fpgalib/xup
+ FPGALib.bsv               Locally Modified          102 
+
+
+Extended hasim-configure to support FPGA targets.
+
+----------
+mamercal    Date: Thu Aug 31 13:22:15 EDT 2006  CSN: CSN-hasim-104
+                  Thu Aug 31 17:22:15 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          103 
+ Makefile.include.template Locally Modified          103 
+
+Directory modules/controller/null
+ NullISA.bsv               Locally Removed           103 
+ ISA.bsv                   Locally Added               - 
+ hasim_null_controller.awb Locally Modified          103 
+ Controller.bsv            Locally Modified          103 
+
+
+Bug fixes in hasim-configure.
+----------
+mamercal    Date: Thu Aug 31 14:28:47 EDT 2006  CSN: CSN-hasim-105
+                  Thu Aug 31 18:28:47 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          104 
+ Makefile.top.template     Locally Modified          104 
+
+
+Additional makefile target: 'make stats'
+----------
+mamercal    Date: Fri Sep  1 09:37:40 EDT 2006  CSN: CSN-hasim-106
+                  Fri Sep  1 13:37:40 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          105 
+ configure-models          Locally Removed           105 
+ Xilinx.pm                 Locally Added               0 
+ Makefile.top.template     Locally Modified          105 
+ Util.pm                   Locally Added               0 
+ Templates.pm              Locally Added               0 
+ HAsim.pm                  Locally Added               0 
+ Bluespec.pm               Locally Added               0 
+
+Directory modules/common/fpgalib/xup
+ xup.ucf                   Locally Modified          105 
+
+
+1) Partitioned hasim-configure to seperate
+   Xilinx/Bluespec/HAsim/Template-specific functions
+2) Added makefile target, "make stats", to dump synthesis slice/timing stats
+----------
+mamercal    Date: Fri Sep  1 10:30:28 EDT 2006  CSN: CSN-hasim-107
+                  Fri Sep  1 14:30:28 UTC 2006
+
+
+Directory tools/scripts
+ Makefile.sub.template     Locally Removed           106 
+ hasim-configure           Locally Modified          106 
+ Makefile.top.template     Locally Removed           106 
+ Util.pm                   Locally Modified          106 
+ Makefile.include.template Locally Removed           106 
+ HAsim.pm                  Locally Modified          106 
+ Bluespec.pm               Locally Modified          106 
+
+Directory modules/model
+ Makefile.sub.template     Locally Added               - 
+ Makefile.top.template     Locally Added               - 
+ hasim_model.awb           Locally Modified          106 
+ Makefile.include.template Locally Added               - 
+
+
+Moved Makefile templates to modules/model directory and removed them from
+scripts.  hasim-configure now looks to .awb files to find templates.
+----------
+mamercal    Date: Fri Sep  1 13:53:48 EDT 2006  CSN: CSN-hasim-108
+                  Fri Sep  1 17:53:48 UTC 2006
+
+
+Directory tools/scripts
+ Xilinx.pm                 Locally Modified          107 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          107 
+
+Directory modules/common/fpgalib/xup
+ xup.ucf                   Locally Modified          107 
+
+
+- Fix in UCF file.  
+- Added copy of bitfile & download script to ~ for bit target (for easy access
+  from a Windows machine)
+----------
+mpellaue    Date: Tue Sep  5 10:13:35 EDT 2006  CSN: CSN-hasim-109
+                  Tue Sep  5 14:13:35 UTC 2006
+
+
+Directory config/pm/hasim
+ multiplier/               Locally Added               0 
+
+Directory config/pm/hasim/multiplier
+ multiplier.apm            Locally Added               0 
+
+Directory modules/system
+ mulitplier_system/        Locally Added               0 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.awb     Locally Added               0 
+ System.bsv                Locally Added               0 
+
+
+First checkin of multiplier demo.
+
+Michael
+
+----------
+mpellaue    Date: Tue Sep  5 10:25:01 EDT 2006  CSN: CSN-hasim-109
+                  Tue Sep  5 14:25:01 UTC 2006
+
+
+Directory modules/system/mulitplier_system
+ System.bsv                Locally Modified          109 
+
+
+Fixed bug in multiplier demo.
+
+Michael
+
+----------
+mpellaue    Date: Tue Sep  5 13:43:12 EDT 2006  CSN: CSN-hasim-109
+                  Tue Sep  5 17:43:12 UTC 2006
+
+
+Directory modules/common/fpgalib/xup
+ FPGALib.bsv               Locally Modified          108 
+
+
+Changes to DIP switches in FPGAlib.
+
+Michael
+
+----------
+mamercal    Date: Tue Sep  5 17:33:35 EDT 2006  CSN: CSN-hasim-112
+                  Tue Sep  5 21:33:35 UTC 2006
+
+
+Directory .
+ configure                 Locally Added               0 
+ include/                  Locally Added               0 
+ configure.in              Locally Added               0 
+
+Directory scripts
+ missing                   Locally Added               0 
+ install-sh                Locally Added               0 
+
+Directory .
+ scripts/                  Locally Added               0 
+
+Directory libperl
+ HAsim/                    Locally Added               0 
+
+Directory libperl/HAsim
+ lib/                      Locally Added               0 
+
+Directory libperl/HAsim/lib
+ HAsim/                    Locally Added               0 
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Added               - 
+ Util.pm                   Locally Added               - 
+ Templates.pm              Locally Added               - 
+ Bluespec.pm               Locally Added               - 
+
+Directory libperl/HAsim/lib
+ HAsim.pm                  Locally Added               - 
+
+Directory libperl/HAsim
+ MANIFEST                  Locally Added               0 
+ Makefile.PL               Locally Added               0 
+ README                    Locally Added               0 
+
+Directory libperl
+ Makefile.am               Locally Added               0 
+ README                    Locally Added               0 
+
+Directory .
+ libperl/                  Locally Added               0 
+ README                    Locally Added               0 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          111 
+ Xilinx.pm                 Locally Removed           111 
+ Util.pm                   Locally Removed           111 
+ Templates.pm              Locally Removed           111 
+ Makefile.am               Locally Added               0 
+ HAsim.pm                  Locally Removed           111 
+ Bluespec.pm               Locally Removed           111 
+
+Directory tools
+ Makefile.am               Locally Added               0 
+
+Directory config/pm/hasim/multiplier
+ multiplier.apm            Locally Modified          111 
+
+Directory modules/system/mulitplier_system
+ System.bsv                Locally Modified          111 
+
+Directory .
+ Makefile.am               Locally Added               0 
+
+
+- Installed .pm modules in libperl and added autoconf / Makefile support
+- Bug fix in multiplier BSV.
+----------
+mamercal    Date: Wed Sep  6 08:22:55 EDT 2006  CSN: CSN-hasim-113
+                  Wed Sep  6 12:22:55 UTC 2006
+
+
+Directory .
+ Makefile.in               Locally Added               0 
+
+Directory libperl/HAsim/lib/HAsim
+ Build.pm                  Locally Added               0 
+
+Directory libperl
+ Makefile.in               Locally Added               0 
+
+Directory tools
+ Makefile.in               Locally Added               0 
+
+Directory tools/scripts
+ Makefile.in               Locally Added               0 
+
+
+Added missing files.
+----------
+jsemer      Date: Wed Sep  6 10:18:10 EDT 2006  CSN: CSN-hasim-114
+                  Wed Sep  6 14:18:10 UTC 2006
+
+
+Directory libperl/HAsim/lib/HAsim
+ Bluespec.pm               Locally Modified          113 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          113 
+ hasim-connect             Locally Modified          113 
+
+
+Added missing package qualifier in .pm file.
+Slight update to perl invocation syntax in scripts.
+
+----------
+mamercal    Date: Thu Sep  7 12:55:09 EDT 2006  CSN: CSN-hasim-115
+                  Thu Sep  7 16:55:09 UTC 2006
+
+
+Directory config/pm/hasim
+ traffic_light/            Locally Removed           114 
+
+Directory config/pm/hasim/traffic_light
+ traffic_light.apm         Locally Removed           114 
+
+Directory config/pm/hasim
+ multiplier/               Locally Removed           114 
+
+Directory config/pm/hasim/multiplier
+ multiplier.apm            Locally Removed           114 
+
+Directory config/pm/hasim
+ demos/                    Locally Added               0 
+
+Directory config/pm/hasim/demos
+ switch_to_led/            Locally Added               0 
+
+Directory config/pm/hasim/demos/switch_to_led
+ multiplier4x4_xup.apm     Locally Added               0 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          114 
+ Makefile.include.template Locally Modified          114 
+
+Directory modules/system
+ switch_to_led_system/     Locally Added               0 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.awb  Locally Added               0 
+ System.bsv                Locally Added               0 
+ calculation4x4/           Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4
+ multiplier/               Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ Calculation4x4.bsv        Locally Added               0 
+ multiplier.awb            Locally Added               0 
+
+
+- Split multiplier into switch/led interface and functional block.
+- Make now copies download script and bitfile to ~/.asim/hasim/download
+----------
+mamercal    Date: Thu Sep  7 19:16:34 EDT 2006  CSN: CSN-hasim-116
+                  Thu Sep  7 23:16:34 UTC 2006
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          115 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          115 
+
+Directory config/pm/hasim/demos/switch_to_led
+ multiplier4x4_xup.apm     Locally Modified          115 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          115 
+ Makefile.include.template Locally Modified          115 
+
+Directory modules/system/switch_to_led_system/calculation4x4
+ adder/                    Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4/adder
+ Calculation4x4.bsv        Locally Added               0 
+ adder4x4.awb              Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4
+ square/                   Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4/square
+ Calculation4x4.bsv        Locally Added               0 
+ square4x4.awb             Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ multiplier.awb            Locally Removed           115 
+ multiplier4x4.awb         Locally Added               - 
+
+Directory modules/system/switch_to_led_system/calculation4x4
+ echo/                     Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4/echo
+ echo4x4.awb               Locally Added               0 
+ Calculation4x4.bsv        Locally Added               0 
+
+Directory modules/common/fpgalib/xup
+ hasim_fpgalib_xup.awb     Locally Modified          115 
+
+
+1) Added additional calculation modules for switch to led demo system
+2) Added Makefile support to direct synthesis intermediate files to a side directory
+----------
+mamercal    Date: Fri Sep  8 17:15:45 EDT 2006  CSN: CSN-hasim-117
+                  Fri Sep  8 21:15:45 UTC 2006
+
+
+Directory libperl/HAsim/lib/HAsim
+ Bluespec.pm               Locally Modified          116 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          116 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Added               0 
+ traffic_light.apm         Locally Removed           116 
+ traffic_light_xup_synth.apm Locally Added               0 
+ traffic_light_exe_nosynth.apm Locally Added               0 
+ traffic_light_exe_synth.apm Locally Added               0 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_xup.apm           Locally Added               0 
+ adder4x4_xup.apm          Locally Added               0 
+ square4x4_xup.apm         Locally Added               0 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          116 
+ Makefile.top.template     Locally Modified          116 
+
+Directory modules/system/traffic_light_system
+ hasim_traffic_light_function_synth/ Locally Added               0 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function_synth
+ hasim_traffic_light_function.awb Locally Added               0 
+ TL0.bsv                   Locally Added               0 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Modified          116 
+
+Directory modules/common
+ Connections.bsv           Locally Modified          116 
+
+
+- Added new demo models: adder, echo, square and traffic light (w. and w.o
+  synthesis boundary, w. XUP and SW libraries)
+- Moved bluespec intermediate files (*.bi *.bo) to a .bsc directory
+
+----------
+jsemer      Date: Wed Sep 13 16:27:19 EDT 2006  CSN: CSN-hasim-119
+                  Wed Sep 13 20:27:19 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          118 
+ hasim-connect             Locally Modified          118 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          118 
+ traffic_light_xup_synth.apm Locally Modified          118 
+ traffic_light_exe_nosynth.apm Locally Modified          118 
+ traffic_light_exe_synth.apm Locally Modified          118 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          118 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_xup.apm           Locally Modified          118 
+ adder4x4_xup.apm          Locally Modified          118 
+ square4x4_xup.apm         Locally Modified          118 
+ multiplier4x4_xup.apm     Locally Modified          118 
+
+Directory modules/model
+ Model.bsv                 Locally Modified          118 
+
+Directory modules/controller/simple
+ hasim_simple_controller.awb Locally Modified          118 
+ Controller.bsv            Locally Modified          118 
+
+Directory modules/controller/null
+ ISA.bsv                   Locally Removed           118 
+ hasim_null_controller.awb Locally Modified          118 
+ Controller.bsv            Locally Modified          118 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Modified          118 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Modified          118 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.awb     Locally Modified          118 
+ System.bsv                Locally Modified          118 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.awb  Locally Modified          118 
+ System.bsv                Locally Modified          118 
+
+Directory modules/system/switch_to_led_system/calculation4x4/adder
+ Calculation4x4.bsv        Locally Modified          118 
+ adder4x4.awb              Locally Modified          118 
+
+Directory modules/system/switch_to_led_system/calculation4x4/square
+ Calculation4x4.bsv        Locally Modified          118 
+ square4x4.awb             Locally Modified          118 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ Calculation4x4.bsv        Locally Modified          118 
+ multiplier4x4.awb         Locally Modified          118 
+
+Directory modules/system/switch_to_led_system/calculation4x4/echo
+ echo4x4.awb               Locally Modified          118 
+ Calculation4x4.bsv        Locally Modified          118 
+
+Directory modules/system/traffic_light_system_synth
+ System.bsv                Locally Modified          118 
+
+Directory modules/common
+ Ports.bsv                 Locally Modified          118 
+ hasim_common.awb          Locally Modified          118 
+
+Directory modules/common/fpgalib/software
+ hasim_fpgalib_software.awb Locally Modified          118 
+ FPGALib.bsv               Locally Modified          118 
+
+Directory modules/common/fpgalib/xup
+ hasim_fpgalib_xup.awb     Locally Modified          118 
+ FPGALib.bsv               Locally Modified          118 
+
+Directory modules/common
+ Stats.bsv                 Locally Modified          118 
+ HASim.bsv                 Locally Removed           118 
+ base/                     Locally Added               0 
+
+Directory modules/common/base
+ HASim.bsv                 Locally Added               - 
+
+Directory modules/common
+ Commands.bsv              Locally Added               - 
+ Connections.bsv           Locally Modified          118 
+ Events.bsv                Locally Modified          118 
+
+
+Added support for a synthesized bsv file that corresponds to
+each awb module and is named with the asim meta-type (%provides name).
+All 'imports' should use these files instead of any specific
+implementation file names.
+
+This relaxes the restriction that a module implementation file
+name must be well known by the parent module.
+
+Fixed up the switch_to_led modules to use this convention.
+
+Joel
+
+----------
+jsemer      Date: Wed Sep 13 17:28:09 EDT 2006  CSN: CSN-hasim-119
+                  Wed Sep 13 21:28:09 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          119 
+
+Directory modules/common/base
+ hasim_base.awb            Locally Added               0 
+
+
+First cut at new implementation of synthesis boundaries. It doesn't 
+work, but neither does it break models with no synthesis boundaries.
+
+Added file missing from last commit.
+
+Joel
+
+----------
+jsemer      Date: Wed Sep 13 17:49:00 EDT 2006  CSN: CSN-hasim-119
+                  Wed Sep 13 21:49:00 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          120 
+
+Directory modules/model
+ Model.bsv                 Locally Removed           119 
+ hasim_model.awb           Locally Modified          118 
+ hasim_model.bsv           Locally Added               - 
+
+Directory modules/controller/simple
+ Controller.bsv            Locally Removed           119 
+ hasim_simple_controller.awb Locally Modified          119 
+ hasim_simple_controller.bsv Locally Added               - 
+
+Directory modules/controller/null
+ Controller.bsv            Locally Removed           119 
+ hasim_null_controller.awb Locally Modified          119 
+ hasim_null_controller.bsv Locally Added               - 
+
+Directory modules/system/mulitplier_system
+ System.bsv                Locally Removed           119 
+ multiplier_system.awb     Locally Modified          119 
+ multiplier_system.bsv     Locally Added               - 
+
+Directory modules/system/switch_to_led_system/calculation4x4/adder
+ Calculation4x4.bsv        Locally Removed           119 
+ adder4x4.awb              Locally Modified          119 
+ adder4x4.bsv              Locally Added               - 
+
+Directory modules/system/switch_to_led_system/calculation4x4/square
+ Calculation4x4.bsv        Locally Removed           119 
+ square4x4.awb             Locally Modified          119 
+ square4x4.bsv             Locally Added               - 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ Calculation4x4.bsv        Locally Removed           119 
+ multiplier4x4.awb         Locally Modified          119 
+ multiplier4x4.bsv         Locally Added               - 
+
+Directory modules/system/switch_to_led_system/calculation4x4/echo
+ echo4x4.awb               Locally Modified          119 
+ Calculation4x4.bsv        Locally Removed           119 
+ echo4x4.bsv               Locally Added               - 
+
+Directory modules/system/switch_to_led_system
+ System.bsv                Locally Removed           119 
+ switch_to_led_system.awb  Locally Modified          119 
+ switch_to_led_system.bsv  Locally Added               - 
+
+Directory modules/common/fpgalib/software
+ hasim_fpgalib_software.awb Locally Modified          119 
+ hasim_fpgalib_software.bsv Locally Added               - 
+ FPGALib.bsv               Locally Removed           119 
+
+Directory modules/common/fpgalib/xup
+ hasim_fpgalib_xup.awb     Locally Modified          119 
+ hasim_fpgalib_xup.bsv     Locally Added               - 
+ FPGALib.bsv               Locally Removed           119 
+
+
+Okay, so hasim-connect didn't really work (even without a
+synthesis boundary). It should now.
+
+Also took advantage of the fact that all bsv implementations 
+of an Asim module don't have to have the same filename.
+
+Joel
+
+----------
+jsemer      Date: Wed Sep 20 16:05:56 EDT 2006  CSN: CSN-hasim-123
+                  Wed Sep 20 20:05:56 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          122 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_synth.apm Locally Modified          122 
+
+Directory modules/system/traffic_light_system
+ traffic_light_system.awb  Locally Modified          122 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          122 
+ hasim_traffic_light_function_synth.awb Locally Added               - 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Modified          122 
+
+Directory modules/system
+ traffic_light_system_synth/ Locally Removed           122 
+
+Directory modules/system/traffic_light_system_synth
+ traffic_light_system.awb  Locally Removed           122 
+ traffic_light_function/   Locally Removed           122 
+
+Directory modules/system/traffic_light_system_synth/traffic_light_function
+ hasim_traffic_light_function.awb Locally Removed           122 
+ TL0.bsv                   Locally Removed           122 
+
+Directory modules/system/traffic_light_system_synth
+ System.bsv                Locally Removed           122 
+
+Directory modules/common
+ Connections.bsv           Locally Modified          122 
+
+
+Functional support for synthesis boundaries, and traffic light
+examples with and without a synthesis boundary.
+
+Joel/Michael
+
+----------
+jsemer      Date: Wed Sep 20 18:17:37 EDT 2006  CSN: CSN-hasim-123
+                  Wed Sep 20 22:17:37 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          123 
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage.apm    Locally Modified          122 
+ hasim_smips_5stage_ports.apm Locally Modified          122 
+
+Directory modules/system/single_chip_system
+ System.bsv                Locally Modified          122 
+ hasim_system.awb          Locally Modified          122 
+
+Directory modules/common
+ Commands.bsv              Locally Modified          122 
+
+Directory modules/functional/common
+ FUNCP_Checker.bsv         Locally Modified          122 
+ FUNCP_Pipeline.bsv        Locally Modified          122 
+ FUNCP_Loader.bsv          Locally Modified          122 
+ FUNCP_Base.bsv            Locally Modified          122 
+ hasim_funcp_regstate.awb  Locally Modified          122 
+ FUNCP_RegState.bsv        Locally Modified          122 
+ FUNCP_MemState.bsv        Locally Modified          122 
+ hasim_funcp_memstate.awb  Locally Modified          122 
+ FUNCP.bsv                 Locally Modified          122 
+ hasim_funcp.awb           Locally Modified          122 
+ FUNCP_StoreBuffer.bsv     Locally Modified          122 
+ FUNCP_TokGen.bsv          Locally Modified          122 
+
+Directory modules/functional/test-cases/common
+ hasim_testcase_common.awb Locally Modified          122 
+ TestCase_Base.bsv         Locally Modified          122 
+
+Directory modules/controller/simple
+ hasim_simple_controller.bsv Locally Modified          122 
+
+
+Updates to allow build of smips model using proper imports, i.e., import <asim-metatype>::*;
+and with sythesis boundaries.
+
+Joel/Michael
+
+----------
+jsemer      Date: Wed Sep 20 18:22:28 EDT 2006  CSN: CSN-hasim-123
+                  Wed Sep 20 22:22:28 UTC 2006
+
+
+Directory admin/packages
+ hasim                     Locally Modified          123 
+
+
+Added dependency on simcore/HEAD
+
+----------
+jsemer      Date: Mon Sep 25 14:26:06 EDT 2006  CSN: CSN-hasim-126
+                  Mon Sep 25 18:26:06 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          125 
+
+
+Symbolic links back to source are now relative. 
+
+Joel
+
+----------
+jsemer      Date: Tue Oct  3 15:39:46 EDT 2006  CSN: CSN-hasim-128
+                  Tue Oct  3 19:39:46 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          127 
+
+
+Fixed a typo. Don't know how this was working before.
+
+Joel
+
+----------
+jsemer      Date: Wed Oct 25 17:49:38 EDT 2006  CSN: CSN-hasim-137
+                  Wed Oct 25 21:49:38 UTC 2006
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          136 
+
+Directory config/pm/hasim/toymips
+ hasim_toymips_simple.apm  Locally Modified          136 
+
+Directory config/pm/hasim/demos
+ bram_test/                Locally Added               0 
+
+Directory config/pm/hasim/demos/bram_test
+ bram_test_xup.apm         Locally Added               0 
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage.apm    Locally Modified          136 
+
+
+Added changes to hasim configure procedure for handling .v files.
+
+Added a bram test model.
+
+Updated (but didn not test) the non-ports smips model and the toymips models.
+
+Joel
+
+----------
+emer        Date: Mon Nov  6 15:37:32 EST 2006  CSN: CSN-hasim-138
+                  Mon Nov  6 20:37:32 UTC 2006
+
+
+Directory .
+ Makefile.in               Locally Modified          137 
+
+Directory include
+ config.h.in               Locally Added               0 
+
+Directory libperl
+ Makefile.in               Locally Modified          137 
+
+Directory tools
+ Makefile.in               Locally Modified          137 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          137 
+
+
+Added missing autoheader file: config.h.in
+
+Joel
+
+
+----------
+emer        Date: Wed Nov 15 17:50:15 EST 2006  CSN: CSN-hasim-139
+                  Wed Nov 15 22:50:15 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          138 
+
+
+Fix to include user specified private .v files in vexe builds.
+
+Joel
+
+----------
+pellauer    Date: Thu Nov 16 14:49:34 EST 2006  CSN: CSN-hasim-140
+                  Thu Nov 16 19:49:34 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          139 
+
+Directory modules/functional/common
+ FUNCP_Pipeline.bsv        Locally Modified          139 
+ FUNCP_MemState.bsv        Locally Modified          139 
+
+
+Fixed bugs from the previous checkin.
+
+----------
+pellauer    Date: Thu Nov 16 16:03:50 EST 2006  CSN: CSN-hasim-141
+                  Thu Nov 16 21:03:50 UTC 2006
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          140 
+
+Directory modules/common
+ Connections.bsv           Locally Modified          140 
+
+
+Changes to the Connections algorithm in anticipation of adding typechecking.
+
+Michael
+
+----------
+pellauer    Date: Fri Nov 17 14:44:40 EST 2006  CSN: CSN-hasim-142
+                  Fri Nov 17 19:44:40 UTC 2006
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          140 
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          140 
+
+
+Configuring and then "make vexe" should work now without user intervention now, even when primitive Verilog files are imported into the module.
+
+Michael
+
+----------
+pellauer    Date: Wed Mar 14 14:44:11 EDT 2007  CSN: CSN-hasim-148
+                  Wed Mar 14 18:44:11 UTC 2007
+
+
+Directory .
+ Makefile.in               Locally Modified          147 
+
+Directory libperl
+ Makefile.in               Locally Modified          147 
+
+Directory tools
+ Makefile.in               Locally Modified          147 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          147 
+ Makefile.in               Locally Modified          147 
+
+
+Added support for running and setting-up benchmarks to hasim-configure.
+
+Michael
+
+
+
+----------
+jsemer      Date: Sat Mar 31 17:34:48 EDT 2007  CSN: CSN-hasim-150
+                  Sat Mar 31 21:34:48 UTC 2007
+
+
+Directory .
+ Makefile.in               Locally Modified          149 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          149 
+
+Get information about the .cfg file using Asim::Benchmark
+instead of processing the file directly in hasim-configure.
+
+Joel
+
+----------
+aparasha    Date: Fri Apr 13 15:00:33 EDT 2007  CSN: CSN-hasim-151
+                  Fri Apr 13 19:00:33 UTC 2007
+
+
+Directory config/pm
+ bluespec/                 Locally Added               0 
+
+Directory config/pm/bluespec
+ demos/                    Locally Added               0 
+
+Directory config/pm/bluespec/demos
+ counter.apm               Locally Added               0 
+
+Directory modules
+ bluespec/                 Locally Added               0 
+
+Directory modules/bluespec
+ model/                    Locally Added               0 
+
+Directory modules/bluespec/model
+ pure-bluespec/            Locally Added               0 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.sub.template     Locally Added               0 
+ mkModel.bsv               Locally Added               0 
+ pure_bluespec_model.awb   Locally Added               0 
+ Makefile.top.template     Locally Added               0 
+ Makefile.include.template Locally Added               0 
+
+Directory modules/bluespec
+ system/                   Locally Added               0 
+
+Directory modules/bluespec/system
+ demos/                    Locally Added               0 
+
+Directory modules/bluespec/system/demos
+ counter/                  Locally Added               0 
+
+Directory modules/bluespec/system/demos/counter
+ mkCounter.bsv             Locally Added               0 
+ counter_system.awb        Locally Added               0 
+ System.bsv                Locally Added               0 
+
+Directory modules/bluespec
+ common/                   Locally Added               0 
+
+Directory modules/bluespec/common
+ null/                     Locally Added               0 
+
+Directory modules/bluespec/common/null
+ null.bsv                  Locally Added               0 
+ bluespec_null.awb         Locally Added               0 
+
+
+----------
+jsemer      Date: Tue Apr 17 11:48:07 EDT 2007  CSN: CSN-hasim-152
+                  Tue Apr 17 15:48:07 UTC 2007
+
+
+Directory tools/scripts
+ bluespec/                 Locally Added               0 
+
+Directory tools/scripts/bluespec
+ setup-bmark-bsv           Locally Added               0 
+
+Directory config
+ bm/                       Locally Added               0 
+
+Directory config/bm
+ bluespec/                 Locally Added               0 
+
+Directory config/bm/bluespec
+ demo.cfx                  Locally Added               0 
+
+Added a simple benchmark to run a Bluespec design. At
+this point with no input.
+
+Joel
+
+----------
+jsemer      Date: Tue Apr 17 13:37:35 EDT 2007  CSN: CSN-hasim-153
+                  Tue Apr 17 17:37:35 UTC 2007
+
+
+Directory tools/scripts/bluespec
+ setup-bmark-bsv           Locally Modified          152 
+
+Make demo.cfx executable.
+
+----------
+jsemer      Date: Wed Apr 18 14:25:04 EDT 2007  CSN: CSN-hasim-154
+                  Wed Apr 18 18:25:04 UTC 2007
+
+
+Directory .
+ Makefile.in               Locally Modified          153 
+
+Directory libperl
+ Makefile.in               Locally Modified          153 
+
+Directory tools
+ Makefile.in               Locally Modified          153 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          153 
+
+Directory tools/scripts/bluespec
+ setup-bmark-bsv           Locally Modified          153 
+ run.pl                    Locally Added               0 
+
+Added ability to pass switches to bluespec run scripts. At 
+present the only switch that is parsed is the cycle switch
+(-c) and only for vexe targets.
+
+Automake also updated some files...
+
+Joel
+
+----------
+pellauer    Date: Wed Apr 18 16:42:19 EDT 2007  CSN: CSN-hasim-155
+                  Wed Apr 18 20:42:19 UTC 2007
+
+
+Directory .
+ Makefile.in               Locally Modified          154 
+
+Directory libperl
+ Makefile.in               Locally Modified          154 
+
+Directory tools
+ Makefile.in               Locally Modified          154 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          154 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          154 
+ Makefile.top.template     Locally Modified          154 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.sub.template     Locally Modified          154 
+ Makefile.top.template     Locally Modified          154 
+
+
+Makefile dependencies for bsc have been improved slightly.
+
+Michael
+
+----------
+jsemer      Date: Wed Apr 18 17:41:42 EDT 2007  CSN: CSN-hasim-156
+                  Wed Apr 18 21:41:42 UTC 2007
+
+
+Directory config/pm/hasim
+ toymips/                  Locally Removed           155 
+
+Directory config/pm/hasim/toymips
+ hasim_toymips_simple.apm  Locally Removed           155 
+
+Directory config/pm/hasim
+ smips/                    Locally Removed           155 
+
+Directory config/pm/hasim/smips
+ hasim_smips_5stage.apm    Locally Removed           155 
+ hasim_smips_5stage_ports.apm Locally Removed           155 
+
+Directory modules/system/single_chip_system
+ hasim_system.awb          Locally Modified          155 
+
+Moved smips and toymips models out to hasim repository
+and into hasim-mips repository.
+
+Rearranged order of submodules in hasim_system.
+
+Joel
+
+----------
+pellauer    Date: Thu Apr 19 10:24:13 EDT 2007  CSN: CSN-hasim-157
+                  Thu Apr 19 14:24:13 UTC 2007
+
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          156 
+ Makefile.top.template     Locally Modified          156 
+
+
+Fixed a typo in the Makefile templates that was preventing freshly configured
+models from building.
+
+Michael
+
+----------
+pellauer    Date: Mon Apr 23 16:09:43 EDT 2007  CSN: CSN-hasim-158
+                  Mon Apr 23 20:09:43 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          157 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          157 
+
+
+HAsim Makefile changed to better deal with dependencies. Additionally this should allow it to work with sub-models correctly.
+
+Michael
+
+----------
+pellauer    Date: Mon Apr 23 16:16:12 EDT 2007  CSN: CSN-hasim-159
+                  Mon Apr 23 20:16:12 UTC 2007
+
+
+Directory modules/common/fpgalib/xup
+ BRAM.v                    Locally Modified          157 
+
+
+Fixed an initialization bug in BRAM.v found by Artur.
+
+Michael
+
+----------
+pellauer    Date: Tue Apr 24 13:49:41 EDT 2007  CSN: CSN-hasim-160
+                  Tue Apr 24 17:49:41 UTC 2007
+
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.sub.template     Locally Modified          158 
+
+
+Updating the pure-bluespec Makefile with the changes to the HAsim makefile.
+
+Michael
+
+----------
+jsemer      Date: Mon Apr 30 11:40:58 EDT 2007  CSN: CSN-hasim-161
+                  Mon Apr 30 15:40:58 UTC 2007
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_exe_synth.apm Locally Modified          160 
+
+Fixed name of model.

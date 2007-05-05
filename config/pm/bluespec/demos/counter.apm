@@ -1,0 +1,28 @@
+
+[Global]
+SaveParameters=0
+Description=Traffic Light from Bluespec Tutorial for simulation w. synthesis boundary
+File=counter
+Version=2.0
+Name=Traffic Light Model
+Type=HAsim
+
+[Model]
+DefaultAttributes=traffic-light hasim
+model=Pure Bluespec Model Foundation
+
+[Pure Bluespec Model Foundation]
+File=modules/bluespec/model/pure-bluespec/pure_bluespec_model.awb
+Packagehint=hasim
+
+[Bluespec Null Library]
+File=modules/bluespec/common/null/bluespec_null.awb
+Packagehint=hasim
+
+[Bluespec Counter Example]
+File=modules/bluespec/system/demos/counter/counter_system.awb
+Packagehint=hasim
+
+[Pure Bluespec Model Foundation/Requires]
+bluespec_common=Bluespec Null Library
+bluespec_system=Bluespec Counter Example

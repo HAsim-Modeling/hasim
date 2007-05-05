@@ -1,0 +1,20 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hasim base module
+# %desc Hasim base module
+# %provides hasim_base
+#
+# %attributes hasim
+#
+# %public HASim.bsv
+#
+# %AWB_END
+# */
+

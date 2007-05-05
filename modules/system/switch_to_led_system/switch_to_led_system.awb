@@ -1,0 +1,21 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hasim - Switch in to LED out system
+# %desc Hasim - Switch in to LED out system
+# %provides hasim_system
+# %requires calculation4x4
+#
+# %attributes hasim
+#
+# %public switch_to_led_system.bsv
+#
+#
+# %AWB_END
+# */

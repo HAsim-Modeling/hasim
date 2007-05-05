@@ -1,0 +1,61 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT([ASIM hasim], [1.3a], [joel.emer@intel.com], [asim-hasim])
+AC_PREREQ(2.59) dnl required autoconf version
+AC_CONFIG_SRCDIR([admin/packages/hasim])
+dnl AC_INIT(admin/packages/hasim)
+
+dnl Installation defaults
+dnl AC_PREFIX_DEFAULT(/usr/local)
+AC_PREFIX_PROGRAM(asimstarter)
+
+AC_CONFIG_AUX_DIR(scripts)
+
+AM_INIT_AUTOMAKE([1.8.3 foreign subdir-objects]) dnl automake version + options
+AM_CONFIG_HEADER(include/config.h)
+
+AC_SUBST(package)
+package=hasim
+
+dnl Get release tag out of package file.
+dnl The tag is assumed to be in a line that looks like: Tag=<tagname>
+AC_SUBST(release)
+release=`grep '^Tag=' ./admin/packages/$package | sed 's/Tag=//'`
+
+
+configdir='${sysconfdir}/asim/${release}'
+AC_SUBST(configdir)
+
+
+packagedir='${datadir}/asim'
+AC_SUBST(packagedir)
+
+
+codedir='${packagedir}/${package}/${release}'
+AC_SUBST(codedir)
+
+# This is where architecture dependent info is placed
+tooldir='${libexecdir}/asim/${release}'
+AC_SUBST(tooldir)
+
+dnl Checks for programs.
+AC_PROG_CC
+AC_PROG_LN_S
+AC_PROG_INSTALL
+
+# libperl
+AC_CONFIG_FILES(libperl/Makefile)
+dnl AC_CONFIG_FILES(libperl/Asim/lib/Asim.pm)
+
+# run perl MakeMaker at configure time, not make time,
+# to create the makefiles in the libperl tree:
+AC_CONFIG_COMMANDS( libperl/HAsim/Makefile                                        ,
+		[cd libperl/HAsim;      perl Makefile.PL PREFIX=$prefix; cd ../..], 
+		                        		       [prefix=$prefix  ])
+
+# tools top level
+AC_CONFIG_FILES(tools/Makefile)
+
+# tools/scripts
+AC_CONFIG_FILES(tools/scripts/Makefile)
+
+AC_OUTPUT(Makefile)

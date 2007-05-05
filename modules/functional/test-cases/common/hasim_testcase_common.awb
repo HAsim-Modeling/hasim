@@ -1,0 +1,20 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hasim test case base
+# %desc Hasim test case base
+# %provides hasim_testcase_base
+##
+# %attributes hasim
+#
+# %public TestCase_Base.bsv
+#
+# %AWB_END
+# */
+

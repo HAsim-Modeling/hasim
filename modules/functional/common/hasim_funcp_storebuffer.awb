@@ -1,0 +1,20 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hasim functional partition storebuffer software
+# %desc Hasim functional partition store buffer software
+# %provides hasim_funcp_storebuffer
+# 
+# %attributes hasim
+#
+# %public FUNCP_StoreBuffer.bsv
+#
+# %AWB_END
+# */
+

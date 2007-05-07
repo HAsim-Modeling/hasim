@@ -13,7 +13,7 @@
 PNG_FROM_SVG =
 
 all: png
-	+(cd build; make HTTP_PROXY=http://proxy.hd.intel.com:911)
+	+(cd build; make)
 
 png: $(PNG_FROM_SVG)
 

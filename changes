@@ -4238,3 +4238,14 @@ Directory tools/scripts
  Makefile.in               Locally Modified          163 
 
 Add DocBook documentation framework and a HAsim documentation style guide.
+
+----------
+mcadler     Date: Mon May  7 14:57:12 EDT 2007  CSN: CSN-hasim-166
+                  Mon May  7 18:57:12 UTC 2007
+
+
+Directory docs/docbook
+ Makefile                  Locally Modified          164 
+
+Remove HTTP_PROXY from Makefile.  It is now part of the Asim environment, defined
+in asim-setup scripts.

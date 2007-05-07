@@ -3,41 +3,27 @@ SUBDIRS = libperl tools
 #
 # we have non-standard install sub-targets
 #
-.phony: install-exec-hook install-release install-etc install-bin install-config install-src
+.phony: doc install-exec-hook install-release install-bin install-src
+
+doc:
+	cd docs; make
 
 install-exec-hook: install-bin install-release
-	@echo ""
-	@echo "*******************************************************"
-	@echo ""
-	@echo "Remember to do the following:"
-	@echo ""
-	@echo "    Update PATH to include \"$(DESTDIR)$(bindir)\""
-	@echo "    Update MANPATH to include \"$(DESTDIR)$(mandir)\""
-	@echo "    Update PERL5LIB to include \"$(DESTDIR)$(libdir)/perl5/site_perl\""
-	@echo ""
-	@echo "*******************************************************"
-	@echo ""
 	@echo "Done."
 
-install-release: all install-config
+install-release: all
 	@echo "Done."
 
-install-bin: install-config install-etc
+install-bin:
 
 
 #
-# This creates a simple default workspace for this version of asim
+# Install the source tree, and make it world-readable
 #
-install-config:
-	$(INSTALL) -D -m 644 etc/awb.config.template  $(DESTDIR)$(configdir)/awb.config
+install-src-public: install-src
+	chmod -R o+r $(DESTDIR)$(codedir)
+	find         $(DESTDIR)$(codedir) -type d -exec chmod o+x {} \;
 
-
-INSTALL_RC = $(top_srcdir)/scripts/install-rcfile
-
-install-etc:
-	$(INSTALL) -D -m 644 $(srcdir)/etc/asim.pack $(DESTDIR)$(sysconfdir)/asim/asim.pack
-	export PERL5LIB=$(top_srcdir)/libperl/Asim/lib; \
-	$(INSTALL_RC) -D -m 644 $(srcdir)/etc/asimrc.template $(DESTDIR)$(sysconfdir)/asim/asimrc
 
 #
 # This horrible sequence copies the source to $(codedir) and
@@ -59,7 +45,7 @@ install-src:
 # we also need to fix up the distribution to contain the whole source tree
 # minus the CVS directories
 #
-EXTRA_DIST = admin config include libperl tools Makefile changes $(INSTALL_RC)
+EXTRA_DIST = admin config include libperl tools Makefile changes
 
 dist-hook:
 	make -C $(distdir) distclean

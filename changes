@@ -4266,3 +4266,76 @@ Directory .
 
 
 Cleaned up 'make {install,install-src,install-src-public,doc}' procedures.
+
+----------
+aparasha    Date: Tue May  8 11:49:17 EDT 2007  CSN: CSN-hasim-168
+                  Tue May  8 15:49:17 UTC 2007
+
+
+Directory .
+ configure                 Locally Modified          167 
+ Makefile.in               Locally Modified          167 
+ configure.in              Locally Modified          167 
+
+Directory scripts
+ depcomp                   Locally Added               0 
+ compile                   Locally Added               0 
+
+Directory tools
+ hasim/                    Locally Added               0 
+
+Directory tools/hasim
+ Makefile.in               Locally Added               0 
+ hasim-front-panel/        Locally Added               0 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Added               0 
+ hasim_front_panel.ui      Locally Added               0 
+ Makefile.am               Locally Added               0 
+ hasim_front_panel_header.pl Locally Added               0 
+ hasim_front_panel.ui.h    Locally Added               0 
+
+Directory tools/hasim
+ Makefile.am               Locally Added               0 
+
+Directory tools
+ Makefile.in               Locally Modified          167 
+ Makefile.am               Locally Modified          167 
+
+Directory config/pm/hasim/demos/bram_test
+ bram_test_xup.apm         Locally Modified          167 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          167 
+ traffic_light_xup_synth.apm Locally Modified          167 
+ traffic_light_exe_nosynth.apm Locally Modified          167 
+ traffic_light_exe_synth.apm Locally Modified          167 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          167 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_xup.apm           Locally Modified          167 
+ adder4x4_xup.apm          Locally Modified          167 
+ square4x4_xup.apm         Locally Modified          167 
+ multiplier4x4_xup.apm     Locally Modified          167 
+
+Directory config/pm/hasim
+ submodels/                Locally Added               0 
+
+Directory config/pm/hasim/submodels
+ common/                   Locally Added               0 
+
+Directory config/pm/hasim/submodels/common
+ common_xup.apm            Locally Added               0 
+ common_sw.apm             Locally Added               0 
+
+
+- Added a hasim-front-panel for emulating switches and LEDs 
+  in software.
+
+- Added submodels for hasim-common and modified demo models
+  to use them.
+
+
+

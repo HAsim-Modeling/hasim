@@ -1,0 +1,44 @@
+
+
+[Global]
+SaveParameters=0
+Description=XUP Common Library
+File=common_xup
+Version=2.0
+Name=XUP Common Library
+Type=HAsim
+
+
+[Hasim base library]
+Packagehint=hasim
+File=modules/common/hasim_common.awb
+
+[Model]
+DefaultAttributes=xup hasim
+model=Hasim base library
+
+
+
+
+
+
+[Hasim FPGA library XUP board]
+Packagehint=hasim
+File=modules/common/fpgalib/xup/hasim_fpgalib_xup.awb
+
+[Hasim base library/Requires]
+hasim_fpgalib=Hasim FPGA library XUP board
+hasim_base=Hasim base module
+
+[Hasim base module]
+File=modules/common/base/hasim_base.awb
+Packagehint=hasim
+
+
+
+
+
+
+
+
+

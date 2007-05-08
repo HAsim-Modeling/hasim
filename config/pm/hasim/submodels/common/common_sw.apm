@@ -1,0 +1,28 @@
+
+[Global]
+SaveParameters=0
+Description=Software Common Library
+File=common_sw
+Version=2.0
+Name=Software Common Library
+Type=HAsim
+
+[Hasim base library]
+Packagehint=hasim
+File=modules/common/hasim_common.awb
+
+[Model]
+DefaultAttributes=xup hasim
+model=Hasim base library
+
+[Hasim base library/Requires]
+hasim_fpgalib=Hasim FPGA library software
+hasim_base=Hasim base module
+
+[Hasim base module]
+File=modules/common/base/hasim_base.awb
+Packagehint=hasim
+
+[Hasim FPGA library software]
+File=modules/common/fpgalib/software/hasim_fpgalib_software.awb
+Packagehint=hasim

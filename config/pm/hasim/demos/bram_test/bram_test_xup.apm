@@ -17,7 +17,7 @@ File=modules/model/hasim_model.awb
 
 [Hasim base library]
 Packagehint=hasim
-File=modules/common/hasim_common.awb
+File=config/pm/hasim/submodels/common/common_xup.apm
 
 [Model]
 DefaultAttributes=bram-test hasim
@@ -28,17 +28,8 @@ hasim_system=Hasim - BRAM test system
 hasim_controller=Hasim null controller
 hasim_common=Hasim base library
 
-[Hasim FPGA library XUP board]
-Packagehint=hasim
-File=modules/common/fpgalib/xup/hasim_fpgalib_xup.awb
 
-[Hasim base library/Requires]
-hasim_fpgalib=Hasim FPGA library XUP board
-hasim_base=Hasim base module
 
-[Hasim base module]
-File=modules/common/base/hasim_base.awb
-Packagehint=hasim
 
 [Hasim - BRAM test system]
 File=modules/system/bram_test/bram_test_system.awb

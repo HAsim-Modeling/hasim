@@ -17,7 +17,7 @@ File=modules/model/hasim_model.awb
 
 [Hasim base library]
 Packagehint=hasim
-File=modules/common/hasim_common.awb
+File=config/pm/hasim/submodels/common/common_sw.apm
 
 [Hasim - Traffic light system]
 Packagehint=hasim
@@ -32,21 +32,12 @@ hasim_system=Hasim - Traffic light system
 hasim_controller=Hasim null controller
 hasim_common=Hasim base library
 
-[Hasim base library/Requires]
-hasim_fpgalib=Hasim FPGA library software
-hasim_base=Hasim base module
 
 [Hasim - Traffic light system/Requires]
 hasim_traffic_light_function=Hasim - Traffic light function w.o synthesis boundary
 
-[Hasim FPGA library software]
-File=modules/common/fpgalib/software/hasim_fpgalib_software.awb
-Packagehint=hasim
 
 [Hasim - Traffic light function w.o synthesis boundary]
 File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function.awb
 Packagehint=hasim
 
-[Hasim base module]
-File=modules/common/base/hasim_base.awb
-Packagehint=hasim

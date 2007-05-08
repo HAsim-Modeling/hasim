@@ -1,0 +1,754 @@
+<!DOCTYPE UI><UI version="3.0" stdsetdef="1">
+<class>hfpanel</class>
+<widget class="QDialog">
+    <property name="name">
+        <cstring>hfpanel</cstring>
+    </property>
+    <property name="geometry">
+        <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>350</width>
+            <height>236</height>
+        </rect>
+    </property>
+    <property name="minimumSize">
+        <size>
+            <width>350</width>
+            <height>236</height>
+        </size>
+    </property>
+    <property name="maximumSize">
+        <size>
+            <width>350</width>
+            <height>236</height>
+        </size>
+    </property>
+    <property name="caption">
+        <string>HAsim Front Panel</string>
+    </property>
+    <property name="sizeGripEnabled">
+        <bool>false</bool>
+    </property>
+    <widget class="QButtonGroup">
+        <property name="name">
+            <cstring>groupSwitches</cstring>
+        </property>
+        <property name="geometry">
+            <rect>
+                <x>10</x>
+                <y>10</y>
+                <width>100</width>
+                <height>170</height>
+            </rect>
+        </property>
+        <property name="title">
+            <string>Switches</string>
+        </property>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>textLabel1</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>20</x>
+                    <y>30</y>
+                    <width>16</width>
+                    <height>20</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>0</string>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>textLabel2</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>20</x>
+                    <y>60</y>
+                    <width>16</width>
+                    <height>20</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>1</string>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>textLabel3</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>20</x>
+                    <y>90</y>
+                    <width>16</width>
+                    <height>20</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>2</string>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>textLabel4</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>20</x>
+                    <y>120</y>
+                    <width>16</width>
+                    <height>20</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>3</string>
+            </property>
+        </widget>
+        <widget class="QSlider">
+            <property name="name">
+                <cstring>switch0</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>40</x>
+                    <y>30</y>
+                    <width>40</width>
+                    <height>20</height>
+                </rect>
+            </property>
+            <property name="paletteForegroundColor">
+                <color>
+                    <red>0</red>
+                    <green>0</green>
+                    <blue>0</blue>
+                </color>
+            </property>
+            <property name="maxValue">
+                <number>1</number>
+            </property>
+            <property name="pageStep">
+                <number>1</number>
+            </property>
+            <property name="orientation">
+                <enum>Horizontal</enum>
+            </property>
+        </widget>
+        <widget class="QSlider">
+            <property name="name">
+                <cstring>switch1</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>40</x>
+                    <y>60</y>
+                    <width>40</width>
+                    <height>20</height>
+                </rect>
+            </property>
+            <property name="maxValue">
+                <number>1</number>
+            </property>
+            <property name="pageStep">
+                <number>1</number>
+            </property>
+            <property name="orientation">
+                <enum>Horizontal</enum>
+            </property>
+        </widget>
+        <widget class="QSlider">
+            <property name="name">
+                <cstring>switch2</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>40</x>
+                    <y>90</y>
+                    <width>40</width>
+                    <height>20</height>
+                </rect>
+            </property>
+            <property name="maxValue">
+                <number>1</number>
+            </property>
+            <property name="pageStep">
+                <number>1</number>
+            </property>
+            <property name="orientation">
+                <enum>Horizontal</enum>
+            </property>
+        </widget>
+        <widget class="QSlider">
+            <property name="name">
+                <cstring>switch3</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>40</x>
+                    <y>120</y>
+                    <width>40</width>
+                    <height>20</height>
+                </rect>
+            </property>
+            <property name="maxValue">
+                <number>1</number>
+            </property>
+            <property name="pageStep">
+                <number>1</number>
+            </property>
+            <property name="orientation">
+                <enum>Horizontal</enum>
+            </property>
+        </widget>
+    </widget>
+    <widget class="QButtonGroup">
+        <property name="name">
+            <cstring>groupLEDs</cstring>
+        </property>
+        <property name="geometry">
+            <rect>
+                <x>270</x>
+                <y>10</y>
+                <width>70</width>
+                <height>170</height>
+            </rect>
+        </property>
+        <property name="title">
+            <string>LEDs</string>
+        </property>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>led3_on</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>40</x>
+                    <y>120</y>
+                    <width>16</width>
+                    <height>16</height>
+                </rect>
+            </property>
+            <property name="pixmap">
+                <pixmap>image0</pixmap>
+            </property>
+            <property name="scaledContents">
+                <bool>true</bool>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>led2_on</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>40</x>
+                    <y>90</y>
+                    <width>16</width>
+                    <height>16</height>
+                </rect>
+            </property>
+            <property name="pixmap">
+                <pixmap>image0</pixmap>
+            </property>
+            <property name="scaledContents">
+                <bool>true</bool>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>led1_on</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>40</x>
+                    <y>60</y>
+                    <width>16</width>
+                    <height>16</height>
+                </rect>
+            </property>
+            <property name="pixmap">
+                <pixmap>image0</pixmap>
+            </property>
+            <property name="scaledContents">
+                <bool>true</bool>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>led0_on</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>40</x>
+                    <y>30</y>
+                    <width>16</width>
+                    <height>16</height>
+                </rect>
+            </property>
+            <property name="pixmap">
+                <pixmap>image0</pixmap>
+            </property>
+            <property name="scaledContents">
+                <bool>true</bool>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>led0_off</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>40</x>
+                    <y>30</y>
+                    <width>16</width>
+                    <height>16</height>
+                </rect>
+            </property>
+            <property name="pixmap">
+                <pixmap>image1</pixmap>
+            </property>
+            <property name="scaledContents">
+                <bool>true</bool>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>led1_off</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>40</x>
+                    <y>60</y>
+                    <width>16</width>
+                    <height>16</height>
+                </rect>
+            </property>
+            <property name="pixmap">
+                <pixmap>image1</pixmap>
+            </property>
+            <property name="scaledContents">
+                <bool>true</bool>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>led2_off</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>40</x>
+                    <y>90</y>
+                    <width>16</width>
+                    <height>16</height>
+                </rect>
+            </property>
+            <property name="pixmap">
+                <pixmap>image1</pixmap>
+            </property>
+            <property name="scaledContents">
+                <bool>true</bool>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>led3_off</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>40</x>
+                    <y>120</y>
+                    <width>16</width>
+                    <height>16</height>
+                </rect>
+            </property>
+            <property name="pixmap">
+                <pixmap>image1</pixmap>
+            </property>
+            <property name="scaledContents">
+                <bool>true</bool>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>textLabel2_2</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>20</x>
+                    <y>60</y>
+                    <width>16</width>
+                    <height>20</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>1</string>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>textLabel3_2</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>20</x>
+                    <y>90</y>
+                    <width>16</width>
+                    <height>20</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>2</string>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>textLabel4_2</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>20</x>
+                    <y>120</y>
+                    <width>16</width>
+                    <height>20</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>3</string>
+            </property>
+        </widget>
+        <widget class="QLabel">
+            <property name="name">
+                <cstring>textLabel1_2</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>20</x>
+                    <y>30</y>
+                    <width>16</width>
+                    <height>20</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>0</string>
+            </property>
+        </widget>
+    </widget>
+    <widget class="QButtonGroup">
+        <property name="name">
+            <cstring>groupButtons</cstring>
+        </property>
+        <property name="geometry">
+            <rect>
+                <x>120</x>
+                <y>10</y>
+                <width>140</width>
+                <height>170</height>
+            </rect>
+        </property>
+        <property name="title">
+            <string>Buttons</string>
+        </property>
+        <widget class="QPushButton">
+            <property name="name">
+                <cstring>switch8</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>50</x>
+                    <y>110</y>
+                    <width>40</width>
+                    <height>40</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>DN</string>
+            </property>
+            <property name="autoDefault">
+                <bool>false</bool>
+            </property>
+        </widget>
+        <widget class="QPushButton">
+            <property name="name">
+                <cstring>switch7</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>90</x>
+                    <y>70</y>
+                    <width>40</width>
+                    <height>40</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>RT</string>
+            </property>
+            <property name="autoDefault">
+                <bool>false</bool>
+            </property>
+        </widget>
+        <widget class="QPushButton">
+            <property name="name">
+                <cstring>switch6</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>50</x>
+                    <y>70</y>
+                    <width>40</width>
+                    <height>40</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>OK</string>
+            </property>
+            <property name="autoDefault">
+                <bool>false</bool>
+            </property>
+        </widget>
+        <widget class="QPushButton">
+            <property name="name">
+                <cstring>switch5</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>10</x>
+                    <y>70</y>
+                    <width>40</width>
+                    <height>40</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>LT</string>
+            </property>
+            <property name="autoDefault">
+                <bool>false</bool>
+            </property>
+        </widget>
+        <widget class="QPushButton">
+            <property name="name">
+                <cstring>switch4</cstring>
+            </property>
+            <property name="geometry">
+                <rect>
+                    <x>50</x>
+                    <y>30</y>
+                    <width>40</width>
+                    <height>40</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>UP</string>
+            </property>
+            <property name="autoDefault">
+                <bool>false</bool>
+            </property>
+        </widget>
+    </widget>
+    <widget class="QLayoutWidget">
+        <property name="name">
+            <cstring>layout2</cstring>
+        </property>
+        <property name="geometry">
+            <rect>
+                <x>10</x>
+                <y>190</y>
+                <width>330</width>
+                <height>40</height>
+            </rect>
+        </property>
+        <grid>
+            <property name="name">
+                <cstring>unnamed</cstring>
+            </property>
+            <spacer row="0" column="0">
+                <property name="name">
+                    <cstring>Horizontal Spacing2</cstring>
+                </property>
+                <property name="orientation">
+                    <enum>Horizontal</enum>
+                </property>
+                <property name="sizeType">
+                    <enum>Expanding</enum>
+                </property>
+                <property name="sizeHint">
+                    <size>
+                        <width>360</width>
+                        <height>36</height>
+                    </size>
+                </property>
+            </spacer>
+            <widget class="QPushButton" row="0" column="1">
+                <property name="name">
+                    <cstring>startButton</cstring>
+                </property>
+                <property name="text">
+                    <string>Start</string>
+                </property>
+                <property name="autoDefault">
+                    <bool>false</bool>
+                </property>
+            </widget>
+            <widget class="QPushButton" row="0" column="2">
+                <property name="name">
+                    <cstring>buttonOk</cstring>
+                </property>
+                <property name="text">
+                    <string>E&amp;xit</string>
+                </property>
+                <property name="accel">
+                    <string>Alt+X</string>
+                </property>
+                <property name="autoDefault">
+                    <bool>false</bool>
+                </property>
+            </widget>
+        </grid>
+    </widget>
+</widget>
+<images>
+    <image name="image0">
+        <data format="PNG" length="567">89504e470d0a1a0a0000000d494844520000000f0000000f08060000003bd6954a000001fe49444154789c6dd33b6f1b671085e167af5c924b512420294a8c18085cbb0b9cffe432aa5db848a536ffc96ee3564811c4902c239278a776f9ed978274600b996a80396706387827f1a42e30260e9021608d19c9e5136df2a5798d1f8867986288ac4885b6b3c21d6ef137c9ef5f9b5fe327e2739c8c0bf5595f3529f7e6a6f3386b2cae376ee7adbff0e76141ee70f1477cff5ddff4c5c8e0b4a75717d222d1b551b3dc199cf414570b6eb61a2292fc0267383d2a4d5fd4c6cf8786a7956a5cc8cafde5edac91f73324da75b098b72e908f89538cce2bc3b3caf0b4327ad6175ece84492bb92f8cfe384262b7d9a9cffb26f3d698980f0ee1f48e4b655da8c685f07266f7f38ef417baf7c4856a31b0a90bd5b834c40069862c4f64452acd5369998a9396f495a47843fa4a9c36b2723fcfcabd36431e107651683b5ddbe99a28b92b09ef446fe9de4bef0ba1e974a113dabd36205f6385ed43a359ee6c678fea0f239285387927bd2ba41f8eac675bcda2b57d68ac0ee0e433923be2f47a637852c9ab7daad562202d47ba2658cfb6569fb6569f1f2daf37ee0ec4e597f80de379abb89a83dd63b0a973699eeada4eb3dc59dd6efc73b5743b6f7dc2e517483e92f488f166ab5d07f5795f755cca8a4468e27f847d3e10f6f140e6376c3f3bb03d418db44884365ae11e3707e3376c7f5dbfe2f8c9576df0f03f5ff52f2912e582b1bfec9e0000000049454e44ae426082</data>
+    </image>
+    <image name="image1">
+        <data format="PNG" length="376">89504e470d0a1a0a0000000d494844520000000f0000000f08060000003bd6954a0000013f49444154789c75d3316f13411005e06f2f97f8300127051229002151f39768c92f0a6d7e1325452c2840348408879cb97829fc2c2d565869b423ed7b6fdecccd157be7037e5057d8e0008f704a39dfc3965d7289cfd46ff8890935801e0b3cc74bcabb967c894fd425eeb00e79832ee4230c788d3711e8a5e212b789310235e443cc708fe536af28e5021fa9dff1ab115807dc8538c7631ce319de52fa6bea4dc06388abd89f626d4a8f07717193a1f6b779fc9358e37704c654159121982945badd546b06b489dd3115c666f29b063ba1eb33f22e51626f86a7b91fc2f4e8e7bb24fd0c4d8f438486881c36d839fa13ca827ad77c8e1ae07dc84701cf120bdb8debce7116f579e2389617b99f346f43f0efe3c00bca48bd6a2afd6fc35e05cfde6e7fa17ec57563bfddedb310ffd9edf65c6cc9751581dd704e1ef8abfe022be86723e8be82710000000049454e44ae426082</data>
+    </image>
+</images>
+<connections>
+    <connection>
+        <sender>buttonOk</sender>
+        <signal>clicked()</signal>
+        <receiver>hfpanel</receiver>
+        <slot>accept()</slot>
+    </connection>
+    <connection>
+        <sender>startButton</sender>
+        <signal>clicked()</signal>
+        <receiver>hfpanel</receiver>
+        <slot>startButton_clicked()</slot>
+    </connection>
+    <connection>
+        <sender>buttonOk</sender>
+        <signal>clicked()</signal>
+        <receiver>hfpanel</receiver>
+        <slot>buttonOk_clicked()</slot>
+    </connection>
+    <connection>
+        <sender>switch0</sender>
+        <signal>valueChanged(int)</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch0_valueChanged(int)</slot>
+    </connection>
+    <connection>
+        <sender>switch1</sender>
+        <signal>valueChanged(int)</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch1_valueChanged(int)</slot>
+    </connection>
+    <connection>
+        <sender>switch2</sender>
+        <signal>valueChanged(int)</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch2_valueChanged(int)</slot>
+    </connection>
+    <connection>
+        <sender>switch3</sender>
+        <signal>valueChanged(int)</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch3_valueChanged(int)</slot>
+    </connection>
+    <connection>
+        <sender>switch4</sender>
+        <signal>pressed()</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch4_pressed()</slot>
+    </connection>
+    <connection>
+        <sender>switch4</sender>
+        <signal>released()</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch4_released()</slot>
+    </connection>
+    <connection>
+        <sender>switch5</sender>
+        <signal>released()</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch5_released()</slot>
+    </connection>
+    <connection>
+        <sender>switch5</sender>
+        <signal>pressed()</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch5_pressed()</slot>
+    </connection>
+    <connection>
+        <sender>switch6</sender>
+        <signal>released()</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch6_released()</slot>
+    </connection>
+    <connection>
+        <sender>switch6</sender>
+        <signal>pressed()</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch6_pressed()</slot>
+    </connection>
+    <connection>
+        <sender>switch7</sender>
+        <signal>released()</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch7_released()</slot>
+    </connection>
+    <connection>
+        <sender>switch7</sender>
+        <signal>pressed()</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch7_pressed()</slot>
+    </connection>
+    <connection>
+        <sender>switch8</sender>
+        <signal>released()</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch8_released()</slot>
+    </connection>
+    <connection>
+        <sender>switch8</sender>
+        <signal>pressed()</signal>
+        <receiver>hfpanel</receiver>
+        <slot>switch8_pressed()</slot>
+    </connection>
+</connections>
+<includes>
+    <include location="local" impldecl="in declaration">use IO::Select;</include>
+    <include location="local" impldecl="in declaration">my @ledArray;</include>
+    <include location="local" impldecl="in declaration">my @switchArray;</include>
+    <include location="local" impldecl="in declaration">my $scanning;</include>
+    <include location="local" impldecl="in implementation">hasim_front_panel.ui.h</include>
+</includes>
+<slots>
+    <slot>startButton_clicked()</slot>
+    <slot>buttonOk_clicked()</slot>
+    <slot>sendSwitchMessage( int, int )</slot>
+    <slot>switch0_valueChanged( int )</slot>
+    <slot>switch1_valueChanged( int )</slot>
+    <slot>switch2_valueChanged( int )</slot>
+    <slot>switch3_valueChanged( int )</slot>
+    <slot>switch4_released()</slot>
+    <slot>switch4_pressed()</slot>
+    <slot>switch5_released()</slot>
+    <slot>switch5_pressed()</slot>
+    <slot>switch6_released()</slot>
+    <slot>switch6_pressed()</slot>
+    <slot>switch7_released()</slot>
+    <slot>switch7_pressed()</slot>
+    <slot>switch8_released()</slot>
+    <slot>switch8_pressed()</slot>
+</slots>
+<functions>
+    <function access="private" specifier="non virtual">init()</function>
+</functions>
+<layoutdefaults spacing="6" margin="11"/>
+</UI>

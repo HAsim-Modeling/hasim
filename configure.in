@@ -58,4 +58,10 @@ AC_CONFIG_FILES(tools/Makefile)
 # tools/scripts
 AC_CONFIG_FILES(tools/scripts/Makefile)
 
+# tools/scripts
+AC_CONFIG_FILES(tools/hasim/Makefile)
+
+# tools/scripts
+AC_CONFIG_FILES(tools/hasim/hasim-front-panel/Makefile)
+
 AC_OUTPUT(Makefile)

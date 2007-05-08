@@ -1,1 +1,1 @@
-SUBDIRS=scripts
+SUBDIRS=scripts hasim

@@ -29,6 +29,8 @@ typedef union tagged
 }
   PathSpeed deriving (Eq, Bits);
 
+typedef Bit#(20) SimAddr;
+
 module [HASim_Module] mkFUNCP_Memstate ()
     provisos
             (Bits#(Token, token_SZ),
@@ -40,13 +42,12 @@ module [HASim_Module] mkFUNCP_Memstate ()
 	     Transmittable#(MemResp),
 	     Transmittable#(Tuple2#(Token, Token)));
 	    
-  SoftAddr maxSoftAddr = maxBound();
-  Addr maxAddr = zeroExtend(maxSoftAddr);
+  SimAddr maxSimAddr = maxBound();
+  Addr maxAddr = zeroExtend(maxSimAddr);
 
   //State elements
 
-  BRAM#(SoftAddr, Inst)  imemory <- mkBRAM_Full();
-  BRAM#(SoftAddr, Value) dmemory <- mkBRAM_Full();
+  BRAM_2#(SimAddr, Bit#(32))  memory <- mkBRAM_2_Full_Load("program.vmh");
 
   FIFO#(Tuple2#(Token, Addr))     loadQ <- mkFIFO();
   FIFO#(Tuple2#(Token, Value))  st_bufQ <- mkFIFO();
@@ -61,10 +62,6 @@ module [HASim_Module] mkFUNCP_Memstate ()
   Connection_Receive#(Token)           link_commit    <- mkConnection_Receive("mem_commit");
   Connection_Receive#(Token)           link_killToken <- mkConnection_Receive("fp_memstate_kill");
 
-  Connection_Receive#(Tuple2#(Addr, Inst))  magic_imem_write <- mkConnection_Receive("magic_imem");
-  Connection_Receive#(Tuple2#(Addr, Value)) magic_dmem_write <- mkConnection_Receive("magic_dmem_write");
-  Connection_Server#(Addr, Value)           magic_dmem_read  <- mkConnection_Server("magic_dmem_read");
-  
   //handleIMEM
   
   //Handles all IMem requests
@@ -73,18 +70,19 @@ module [HASim_Module] mkFUNCP_Memstate ()
   
     Addr a <- link_imem.getReq();
     
-    if (a > maxAddr)
+    Addr sa = a>>2;
+    
+    if (sa > maxAddr)
       $display("WARNING [0]: Address 0x%h out of bounds. Increase software address length!", a);
     
-    SoftAddr sa = truncate(a);
-    imemory.read_req(sa);
+    memory.read_req1(truncate(sa));
     
   endrule
   
   rule handleIMEM_resp (True);
   
-    Inst i <- imemory.read_resp();
-    link_imem.makeResp(instToBits(i));
+    Bit#(32) i <- memory.read_resp1();
+    link_imem.makeResp(i);
     
   endrule
 
@@ -99,12 +97,14 @@ module [HASim_Module] mkFUNCP_Memstate ()
     case (req) matches
       tagged Ld .ld_info:
         begin
-	  if (ld_info.addr > maxAddr)
+	
+	  Addr sa = ld_info.addr>>2;
+
+	  if (sa > maxAddr)
             $display("WARNING [1]: Address 0x%h out of bounds. Increase software address length!", ld_info.addr);
 
-	  SoftAddr sa = truncate(ld_info.addr);
 	  
-	  dmemory.read_req(sa);
+	  memory.read_req2(truncate(sa));
           st_buffer.checkAddress(ld_info.addr);
 	  loadQ.enq(tuple2(ld_info.token, ld_info.addr));
 	    
@@ -128,7 +128,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
     loadQ.deq();
 
     let slow <- st_buffer.mayHaveAddress();
-    let v <- dmemory.read_resp();
+    let v <- memory.read_resp2();
     
     if (slow)
     begin  
@@ -159,12 +159,12 @@ module [HASim_Module] mkFUNCP_Memstate ()
   
     match {.a, .v} <- st_buffer.commit_resp();
     
-    SoftAddr sa = truncate(a);
+    Addr sa = a>>2;
 
-    if (a > maxAddr)
+    if (sa > maxAddr)
         $display("WARNING [2]: Address 0x%h out of bounds. Increase software address length!", a);
     
-    dmemory.write(sa, v);
+    memory.write(truncate(sa), v);
 
   endrule
   
@@ -199,36 +199,6 @@ module [HASim_Module] mkFUNCP_Memstate ()
 	link_dmem.makeResp(LdResp new_val);
     endcase
         
-  endrule
-
-  //Magic interface for testharness
-
-  rule magic_imem (True);
-  
-    match {.addr, .inst} <- magic_imem_write.receive();
-    imemory.write(truncate(addr), inst);
-    
-  endrule
-  
-  rule magic_dmem_w (True);
-  
-    match {.addr, .val} <- magic_dmem_write.receive();
-    dmemory.write(truncate(addr), val);
-    
-  endrule
-  
-  rule magic_dmem_r_req (True);
-  
-    let addr <- magic_dmem_read.getReq();
-    dmemory.read_req(truncate(addr));
-    
-  endrule
- 
-  rule magic_dmem_r_resp (True);
-  
-    let v <- dmemory.read_resp();
-    magic_dmem_read.makeResp(v);
-    
   endrule
   
 endmodule

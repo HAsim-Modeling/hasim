@@ -55,11 +55,11 @@ module [HASim_Module] mkFUNCP_Regstate
   BRAM#(SnapshotPtr, Tuple3#(PRName, PRName, Vector#(TExp#(rname_SZ), PRName))) snaps <- mkBRAM_Full();
 
 
-  Reg#(TokEpoch) epoch <- mkReg(0);
+  Reg#(TokEpoch) epoch <- mkReg(minBound);
+  Reg#(TokEpoch) dead_epoch <- mkReg(maxBound);
   Reg#(Bool)  busy <- mkReg(True);
   Reg#(Token) stopToken <- mkRegU();
   FIFO#(Tuple3#(Maybe#(RName), Token, Bool)) mappingQ <- mkFIFO();
-  FIFO#(Tuple3#(Maybe#(RName), Token, Bool)) waitingQ <- mkFIFO();
 
   Reg#(Bool) initializing <- mkReg(True);
   FIFO#(Token) flatteningQ   <- mkFIFO();
@@ -119,8 +119,9 @@ module [HASim_Module] mkFUNCP_Regstate
   
     //if newest token is stopToken or we ran out unbusy
     match {.tok, .mx, .oldp} <- rob.read_resp1();
+    $display("RegState: Rolling back [%d], %b(R%d), PR%d", tok.index, isJust(mx), unJust(mx), oldp);
     
-    if (tok == stopToken || (rob_new == rob_old + 1))
+    if (tok.index == stopToken.index || (rob_new == rob_old + 1))
        busy <= False;
     else
        rob.read_req1(rob_new - 1);
@@ -138,32 +139,57 @@ module [HASim_Module] mkFUNCP_Regstate
   endrule
 
 
-
-  //begin_Mapping
-
   rule begin_Mapping (!busy);
     
-    //{Maybe#(RName), Token, Bool} 
-    let tup <- link_mapping.getReq();
-    mappingQ.enq(tup);
+     
+    match {.mx, .tok, .ss} <- link_mapping.getReq();
+    
+    if (tok.info.epoch == dead_epoch) //It's a dead request so return junk
+    begin
+      $display("REGSTATE begin_Mapping JUNK: %0b(%0d), %0d, %0d", isJust(mx), unJust(mx), tok.index, ss);
+      link_mapping.makeResp(?);
+    end
+    else
+    begin    //take off freelist
+      $display("REGSTATE begin_Mapping: %0b(%0d), %0d, %0d", isJust(mx), unJust(mx), tok.index, ss);
+      freelist.forward_req();
+      mappingQ.enq(tuple3(mx, tok, ss));
+    end
+    
   endrule
 
+/*
+  //begin_Mapping
+
+  rule normal_Mapping (!busy);
+  
+    match {.mx, .tok, .ss} <- link_mapping.getReq();
+    
+  
+    $display("REGSTATE begin_Mapping: %0b(%0d), %0d, %0d", isJust(mx), unJust(mx), tok.index, ss);
+    //take off freelist
+    freelist.forward_req();
+    mappingQ.enq(tuple3(mx, tok, ss));
+    
+  endrule
+  
+  
   //continue_Mapping
   
   rule continue_Mapping (!busy &&& mappingQ.first() matches {.mx, .tok, .ss} &&& tok.info.epoch == epoch);
-    $display("REGSTATE begin_Mapping: %0d, %0d, %0d", mx, tok, ss);
+    $display("REGSTATE begin_Mapping: %0d, %0d, %0d", mx, tok.index, ss);
     //take off freelist
     freelist.forward_req();
-    mappingQ.deq();
+    waitingQ.deq();
     waitingQ.enq(mappingQ.first());
   endrule
-
+*/
   //finish_Mapping
 
   rule finish_Mapping (!busy);
     
-    match {.mx, .tok, .ss} = waitingQ.first();
-    waitingQ.deq();
+    match {.mx, .tok, .ss} = mappingQ.first();
+    mappingQ.deq();
 
     PRName oldPReg; 
     PRName newPReg;
@@ -192,13 +218,14 @@ module [HASim_Module] mkFUNCP_Regstate
 
     // write rob
     rob_new <= rob_new + 1;
-    rob.write(rob_new, tuple3(tok, mx, newPReg));
+    rob.write(rob_new, tuple3(tok, mx, oldPReg)); //newPReg));
+    $display("RegState: Updating ROB [%d], %b(R%d), PR%d", tok.index, isJust(mx), unJust(mx), oldPReg);
 
     // make snapshot if needed
     Maybe#(SnapshotPtr) midx = Nothing;
 
   //INDEX sequence
-    Bit#(snapshotptr_SZ) ti_bits = truncate(pack(tok));
+    Bit#(snapshotptr_SZ) ti_bits = truncate(pack(tok.index));
     SnapshotPtr ti = unpack(ti_bits);
     if(!select(snap_valids, ti))
       midx = Just(ti);
@@ -228,7 +255,7 @@ module [HASim_Module] mkFUNCP_Regstate
   endrule
 
   //lookup{1, 2} used by Decode
-  rule lookup1 (True);
+  rule lookup1 (!busy);
     
     let rnm <- link_lookup1.getReq();
     $display("REGSTATE Lookup1: %0d", rnm);
@@ -236,7 +263,7 @@ module [HASim_Module] mkFUNCP_Regstate
     
   endrule
   
-  rule lookup2 (True);
+  rule lookup2 (!busy);
     
     let rnm <- link_lookup2.getReq();
     $display("REGSTATE Lookup2: %0d", rnm);
@@ -344,8 +371,9 @@ module [HASim_Module] mkFUNCP_Regstate
     
     
     let tok <- link_rewindToToken.receive();
-    $display("REGSTATE rewindToToken: %0d", tok);
+    $display("REGSTATE rewindToToken: %0d", tok.index);
     
+    dead_epoch <= epoch;
     epoch <= epoch + 1;
     
     //NO!!!!!
@@ -354,7 +382,7 @@ module [HASim_Module] mkFUNCP_Regstate
   //INDEX function 
     Maybe#(SnapshotPtr) midx = Nothing;
 
-    Bit#(snapshotptr_SZ) idx_bits = truncate(pack(tok));
+    Bit#(snapshotptr_SZ) idx_bits = truncate(pack(tok.index));
     SnapshotPtr idx = unpack(idx_bits);
     
     if (select(snap_valids, idx))
@@ -373,7 +401,8 @@ module [HASim_Module] mkFUNCP_Regstate
       tagged Nothing:   //if not write busy and record token
         begin
           busy <= True;
-	  rob.read_req1(rob_new);
+	  rob.read_req1(rob_new - 1);
+	  rob_new <= rob_new - 1;
           stopToken <= tok;
         end
     endcase

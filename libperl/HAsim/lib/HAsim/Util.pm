@@ -83,7 +83,7 @@ sub WARN {
 # WARN_AND_DIE
 sub WARN_AND_DIE {
     my $msg = shift;
-    WARN($msg);
+    WARN("\n\n$msg\n");
     die;
 }
 

@@ -6,6 +6,6 @@ import hasim_system::*;
 module [HASim_Module] mkModel ();
 
   let system <- mkSystem();
-  Controller controller <- mkController(system);
+  let controller <- mkController();
 
 endmodule

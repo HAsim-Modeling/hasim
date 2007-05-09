@@ -30,13 +30,14 @@ typedef enum
   ConState
            deriving (Eq, Bits);
 
-module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
+module [HASim_Module] mkController ();
 
 
   //*********** State ***********
   
   Reg#(Bit#(64)) curTick <- mkReg(minBound);
-  Reg#(Bit#(16)) finishing <- mkReg(2000);
+  Reg#(Bit#(16)) finishing <- mkReg(500);
+  Reg#(Bool)     passed <- mkReg(False);
 
   Reg#(ConState) state <- mkReg(CON_Init);
   
@@ -47,6 +48,8 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
   Connection_Receive#(Bit#(4))    link_switches <- mkConnection_Receive("fpga_switches");
   Connection_Receive#(ButtonInfo)  link_buttons <- mkConnection_Receive("fpga_buttons");
   
+  Connection_Client#(Command, Response)      link_tp <- mkConnection_Client("controller_to_tp");
+  
   //*********** Rules ***********
   
   //tick
@@ -56,98 +59,41 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
   
   endrule
   
-  //load_imem
-  
-  rule load_prog(state == CON_Init);
-  
-    th.exec(COM_LoadState);
-    state <= CON_Loading;
-    link_leds.send(4'b0001);
-  
-  endrule
-  
   //run_prog
   
-  rule run_prog (state == CON_Loading);
+  rule run_prog (state == CON_Init);
   
-    let resp <- th.response();
-    case (resp) matches
-      tagged RESP_DoneLoading:
-	begin
-          th.exec(COM_RunProgram);
-          state <= CON_Running;
-	  link_leds.send(4'b0011);
-          $display("Controller: Program Started on host CC %0d", curTick);
-	end
-      default:
-        begin
-          $display("Controller: Unexpected TModule response [0]: %0h", pack(resp));
-
-	  $finish(1);
-	end
-    endcase 
+     link_tp.makeReq(COM_RunProgram);
+     state <= CON_Running;
+     link_leds.send(4'b0011);
+     $display("Controller: Program Started on host CC %0d", curTick);
+     
   endrule
-  /*
-  rule test_stats1 (curTick == 250);
-    event_controller.toggle();
-  endrule
-  
-  rule test_stats2 (curTick == 750);
-    event_controller.toggle();
-  endrule
-  */
   
   rule run_ends (state == CON_Running);
   
-    let resp <- th.response();
+    let resp <- link_tp.getResp();
   
     case (resp) matches
-      tagged RESP_DoneRunning:
+      tagged RESP_DoneRunning .pf:
 	begin
-          th.exec(COM_CheckResult);
-          state <= CON_Checking;
-	  link_leds.send(4'b0111);
-          $display("Controller: Program Finished on host CC %0d", curTick);
+	  if (pf)
+	  begin
+	    link_leds.send(4'b1001);
+	    $display("Controller: Test program finished succesfully.");
+	    passed <= True;
+	  end
+	  else
+	  begin
+	    link_leds.send(4'b1101);
+	    $display("Controller: Test program finished. One or more failures occurred.");
+	  end
+	  state <= CON_Finished;
 	end
       default:
-        begin
-          $display("Controller: Unexpected TModule response [1]: %0h", pack(resp));
-
-	  $finish(1);
-	end
-    endcase
-  endrule
-  
-  rule getFails (state == CON_Checking);
-    
-    let resp <- th.response();
-  
-    case (resp) matches
-      tagged RESP_Failure .f:
-	begin
-	  $display("Controller: ERROR: Memory location 0x%0h does not match expected result", f.addr);
-	  $display("            Expected Value: 0x%0h", f.exp_v);
-	  $display("            Actual Value: 0x%0h", f.found_v);
-	end
-      tagged RESP_CheckPassed:
-        begin
-	  state <= CON_Finished;
-	  link_leds.send(4'b1001);
-
-	  $display("Controller: Test program finished succesfully.");
-	end
-      tagged RESP_CheckFailed:
-        begin
-	  state <= CON_Finished;
-	  link_leds.send(4'b1101);
-
-	  $display("Controller: Test program finished. One or more failures occurred.");
-	end
-      default:
-        begin
-          $display("Controller: Unexpected TModule response [2]: %0h", pack(resp));
-	  $finish(1);
-	end
+      begin
+	$display("Controller: ERROR: Unexpected Timing Partition Response: 0x%h.", resp);
+      end
     endcase
 
     
@@ -155,13 +101,17 @@ module [HASim_Module] mkController#(TModule#(Command, Response) th) ();
  
   rule finishUp (state == CON_Finished && finishing != 0);
   
+  //Allow some extra time for the event chain to dump
+  
     finishing <= finishing - 1;
   endrule
   
   rule endSim (state == CON_Finished && finishing == 0);
   
-  
-    $finish(0);
+    if (passed)
+      $finish(0);
+    else
+      $finish(1);
     
   endrule
  

@@ -4339,3 +4339,86 @@ Directory config/pm/hasim/submodels/common
 
 
 
+
+----------
+pellauer    Date: Wed May  9 14:42:59 EDT 2007  CSN: CSN-hasim-169
+                  Wed May  9 18:42:59 UTC 2007
+
+
+Directory .
+ Makefile.in               Locally Modified          168 
+
+Directory libperl/HAsim/lib/HAsim
+ Util.pm                   Locally Modified          168 
+
+Directory libperl
+ Makefile.in               Locally Modified          168 
+
+Directory tools/hasim
+ Makefile.in               Locally Modified          168 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Modified          168 
+
+Directory tools
+ Makefile.in               Locally Modified          168 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          168 
+ Makefile.in               Locally Modified          168 
+
+Directory modules/model
+ hasim_model.bsv           Locally Modified          168 
+
+Directory modules/functional/common
+ FUNCP_RegState.bsv        Locally Modified          168 
+ FUNCP_MemState.bsv        Locally Modified          168 
+ hasim_funcp.awb           Locally Modified          168 
+ FUNCP.bsv                 Locally Modified          168 
+
+Directory modules/controller/simple
+ hasim_simple_controller.bsv Locally Modified          168 
+
+Directory modules/system/single_chip_system
+ System.bsv                Locally Modified          168 
+
+Directory modules/common/fpgalib
+ BRAM_Verilog.bsv          Locally Added               0 
+ BRAM_base.bsv             Locally Added               0 
+ BRAM.v                    Locally Added               0 
+ fpgalib_software.awb      Locally Added               0 
+ xup.ucf                   Locally Added               0 
+ fpgalib_xup.awb           Locally Added               0 
+ FPGALib_XUP.bsv           Locally Added               0 
+ BRAM_Bluesim.bsv          Locally Added               0 
+ BRAM1.bsv                 Locally Added               0 
+
+Directory modules/common/fpgalib/xup
+ BRAM.v                    Locally Modified          168 
+ BRAM.bsv                  Locally Modified          168 
+
+Directory modules/common/fpgalib
+ BRAM2.bsv                 Locally Added               0 
+ BRAM3.bsv                 Locally Added               0 
+ FPGALib_Bluesim.bsv       Locally Added               0 
+
+Directory modules/common/base
+ HASim.bsv                 Locally Modified          168 
+
+Directory modules/common
+ Commands.bsv              Locally Modified          168 
+
+
+Committing a fairly major change to the HAsim functional partition. This change
+encompasses several things:
+
+1) It brings BRAMs up for Bluesim allowing us to run Bluesim models if the software fpgalib is selected.
+
+2) During simulation it loads the program from a .vmh file on disk rather than
+from a hardcoded program. This allows us to run benchmarks via the awb interface.
+
+3) The main memory is now a unified memory rather than IMem/DMem. An on-FPGA
+cache hierachy should be added later.
+
+
+Michael P.

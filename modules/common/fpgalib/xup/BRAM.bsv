@@ -51,12 +51,43 @@ module mkBRAM#(Integer low, Integer high)
 	   
   BRAM#(idx_type, data_type) m <- (valueof(data) == 0) ? 
                                   mkBRAM_Zero() :
-				  mkBRAM_NonZero(low, high);
+				  mkBRAM_NonZero(low, high, False, "", False);
 
   return m;
 endmodule
 
-import "BVI" BRAM = module mkBRAM_NonZero#(Integer low, Integer high) 
+
+module mkBRAM_Load#(Integer low, Integer high, String fname) 
+  //interface:
+              (BRAM#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
+	   
+  BRAM#(idx_type, data_type) m <- (valueof(data) == 0) ? 
+                                  mkBRAM_Zero() :
+				  mkBRAM_NonZero(low, high, True, fname, False);
+
+  return m;
+endmodule
+
+module mkBRAM_LoadBin#(Integer low, Integer high, String fname) 
+  //interface:
+              (BRAM#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
+	   
+  BRAM#(idx_type, data_type) m <- (valueof(data) == 0) ? 
+                                  mkBRAM_Zero() :
+				  mkBRAM_NonZero(low, high, True, fname, True);
+
+  return m;
+endmodule
+
+import "BVI" BRAM = module mkBRAM_NonZero#(Integer low, Integer high, Bool load, String fname, Bool bin) 
   //interface:
               (BRAM#(idx_type, data_type)) 
   provisos
@@ -70,6 +101,9 @@ import "BVI" BRAM = module mkBRAM_NonZero#(Integer low, Integer high)
   parameter data_width = valueof(data);
   parameter lo = low;
   parameter hi = high;
+  parameter loadfile = load;
+  parameter filename = fname;
+  parameter binary = bin;
 
   method DOUT read_resp() ready(DOUT_RDY) enable(DOUT_EN);
   
@@ -120,12 +154,43 @@ module mkBRAM_Full
 	   Literal#(idx_type));
 
 
-  BRAM#(idx_type, data_type) br <- mkBRAM(0, valueof(TExp#(idx)) - 1);
+  BRAM#(idx_type, data_type) br <- mkBRAM(0, valueof(TExp#(idx)) - 1, False, "", False);
 
   return br;
 
 endmodule
-module mkBRAM_2#(Integer low, Integer high) 
+
+module mkBRAM_Full_Load#(String fname); 
+  //interface:
+              (BRAM#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
+
+
+  BRAM#(idx_type, data_type) br <- mkBRAM(0, valueof(TExp#(idx)) - 1, True, fname, False);
+
+  return br;
+
+endmodule
+
+module mkBRAM_Full_LoadBin#(String fname); 
+  //interface:
+              (BRAM#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
+
+
+  BRAM#(idx_type, data_type) br <- mkBRAM(0, valueof(TExp#(idx)) - 1, True, fname, True);
+
+  return br;
+
+endmodule
+
+module mkBRAM_NonZero_2#(Integer low, Integer high, Bool loadfile, String fname, String bin) 
   //interface:
               (BRAM_2#(idx_type, data_type)) 
   provisos
@@ -133,8 +198,8 @@ module mkBRAM_2#(Integer low, Integer high)
 	   Bits#(data_type, data),
 	   Literal#(idx_type));
 	   
-  BRAM#(idx_type, data_type) br1 <- mkBRAM(low, high);
-  BRAM#(idx_type, data_type) br2 <- mkBRAM(low, high);
+  BRAM#(idx_type, data_type) br1 <- mkBRAM(low, high, loadfile, fname, bin);
+  BRAM#(idx_type, data_type) br2 <- mkBRAM(low, high, loadfile, fname, bin);
   
   method read_req1(idx) = br1.read_req(idx);
   method read_req2(idx) = br2.read_req(idx);
@@ -151,7 +216,22 @@ module mkBRAM_2#(Integer low, Integer high)
   
 endmodule
 
-module mkBRAM_2_Full 
+module mkBRAM_2
+  //interface:
+              (BRAM_2#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
+
+
+  BRAM_2#(idx_type, data_type) br <- mkBRAM_2(0, valueof(TExp#(idx)) - 1, False, "", False);
+
+  return br;
+
+endmodule
+
+module mkBRAM_2_Full
   //interface:
               (BRAM_2#(idx_type, data_type)) 
   provisos
@@ -166,6 +246,20 @@ module mkBRAM_2_Full
 
 endmodule
 
+module mkBRAM_2_Full_Load
+  //interface:
+              (BRAM_2#(idx_type, data_type)) 
+  provisos
+          (Bits#(idx_type, idx), 
+	   Bits#(data_type, data),
+	   Literal#(idx_type));
+
+
+  BRAM_2#(idx_type, data_type) br <- mkBRAM_2(0, valueof(TExp#(idx)) - 1);
+
+  return br;
+
+endmodule
 module mkBRAM_3#(Integer low, Integer high) 
   //interface:
               (BRAM_3#(idx_type, data_type)) 

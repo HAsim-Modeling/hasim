@@ -81,15 +81,20 @@ module BRAM(CLK, RST_N,
            // synopsys translate_off
 	   for (x = lo; x <= hi; x = x + 1)
 	   begin
-	     arr[x] <= 0;
+	     arr[x] = 0;
 	   end
 	   
-	if (loadfile)  
-	  if (binary)
-             $readmemb(filename, arr, lo, hi);
-          else
-             $readmemh(filename, arr, lo, hi);
-     end
+	   if (loadfile)
+	     begin  
+	       if (binary)
+		 begin
+                   $readmemb(filename, arr, lo, hi);
+		 end
+               else
+		 begin
+                   $readmemh(filename, arr, lo, hi);
+		 end
+	     end
 	   
            // synopsys translate_on
 	   CTR <= 2;

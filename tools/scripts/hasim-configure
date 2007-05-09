@@ -411,7 +411,7 @@ sub __make_symlinks {
 	my $tgt = HAsim::Util::path_append($my_dir,$f);
 
         if (! -e $src) {
-          HAsim::Util::WARN_AND_DIE("Module file $src does not exist");
+          HAsim::Util::WARN_AND_DIE("Module file $f does not exist in $base_dir");
         }
         
         # make src relative

@@ -14,7 +14,6 @@
 # %requires hasim_funcp_base hasim_funcp_pipeline 
 # %requires hasim_funcp_regstate 
 # %requires hasim_funcp_memstate_ifc hasim_funcp_memstate 
-# %requires hasim_funcp_loader hasim_funcp_checker hasim_testcase
 #
 # %attributes hasim
 #

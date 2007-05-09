@@ -21,7 +21,7 @@ import Connectable::*;
 
 //Note: make these ASim parameters
 typedef Bit#(8) TokIndex;
-typedef Bit#(1) TokEpoch;
+typedef Bit#(2) TokEpoch;
 typedef Bit#(0) TokContext;
 
 // A Token has support for associated data like epochs and contexts
@@ -74,46 +74,9 @@ interface TopLevel;
 
 endinterface
 
-// A Model is the global top-level, with no wires in or out.
-
-typedef Empty Model;
-
-//------------ Controller Interface ------------//
-
-// A Controller is the part of the Model which controls the
-// simulation. All communication with the "outside world" passes
-// through it. It switches between normal simulation and special
-// modes like Debug/Events/Stats.
-
-// Eventually this could be mostly implemented as software on the
-// FPGA PowerPC.
-
-// In the future I expect this to become more interesting with
-// Bus interfaces.
-
-typedef Empty Controller;
-
-//------------ TModule Interface ------------//
-
-// A TModule is a Timing Partition Module. 
-// This is a module which is controlled by a controller. It has the
-// capability to execute a "tick" (a simulated clock cycle). 
-// This may take a number of actual host cycles to do.
-
-// Note that this protocol may have to be changed in the future
-// In order to reduce sequentialization. The RAMP project could
-// play a role here.
-
-interface TModule#(type com_T, type resp_T);
-  
-  method Action               exec(com_T c);
-  method ActionValue#(resp_T) response();
-
-endinterface
-
 //------------------------- Connections --------------------------//
 //                                                                //
-// Connections are the plumbing of HASim. They represent basic	  //
+// Connections are the plumbing of HAsim. They represent basic	  //
 // point-to-point communication. The advantage over traditional   //
 // Bluespec Connectables is that they are easier to use, are	  //
 // connected automatically, and can easily be extended to include //

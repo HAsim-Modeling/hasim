@@ -106,7 +106,7 @@ module [HASim_Module] mkFUNCP_Regstate
 
   rule initialize (initializing);
   
-    prf.write(0, Valid 0); //R0 is hard-coded to 0.
+    prf.write(0, tagged Valid 0); //R0 is hard-coded to 0.
     busy <= False;
     initializing <= False;
   
@@ -339,13 +339,13 @@ module [HASim_Module] mkFUNCP_Regstate
   rule write (True);
   
     match {.prnm, .val} <- link_write1.receive();
-    prf.write(prnm, Valid val);
+    prf.write(prnm, tagged Valid val);
   endrule
   
   rule write2 (True);
   
     match {.prnm, .val} <- link_write2.receive();
-    prf.write(prnm, Valid val);
+    prf.write(prnm, tagged Valid val);
   
   endrule
 

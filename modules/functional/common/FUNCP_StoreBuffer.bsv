@@ -69,7 +69,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     match {.a, .v, .next_tok} <- tokens.read_resp1();
     
     let done = !tvalids[cur_tok.index] || !isValid(next_tok);
-    let newbest = (tvalids[cur_tok.index] && (a == addr) && (cur_tok.index < tok.index) && isBetter(cur_tok, best)) ? Valid tuple2(cur_tok, v) : best;
+    let newbest = (tvalids[cur_tok.index] && (a == addr) && (cur_tok.index < tok.index) && isBetter(cur_tok, best)) ? tagged Valid tuple2(cur_tok, v) : best;
 
     if (done)
       resultQ.enq(tuple2(tok, newbest));
@@ -89,7 +89,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     let ntok <- hashes.read_resp1();
   
     tokens.write(t.index, tuple3(a, v, ntok));
-    hashes.write(h, Valid t);
+    hashes.write(h, tagged Valid t);
     tvalids <= update(tvalids, t.index, True);
     
   endrule
@@ -104,7 +104,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     let cur = unJust(res); //Must be valid
     
     tokens.read_req1(cur.index);
-    workingQ.enq(tuple4(t, a, cur, Invalid));
+    workingQ.enq(tuple4(t, a, cur, tagged Invalid));
   
   endrule
   
@@ -143,9 +143,9 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     
     case (best) matches
       tagged Valid {.t, .v}:
-        return tuple2(tok, Valid v);
+        return tuple2(tok, tagged Valid v);
       tagged Invalid:
-        return tuple2(tok, Invalid);
+        return tuple2(tok, tagged Invalid);
     endcase
     
   endmethod

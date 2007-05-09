@@ -67,7 +67,7 @@ module [Connected_Module] mkEventRecorder#(String eventname)
 	     endinterface);
 	     
   //Add our interface to the ModuleCollect collection
-  addToCollection(LChain tuple2(0, chn));
+  addToCollection(tagged LChain tuple2(0, chn));
 
   method Action recordEvent(Maybe#(Bit#(32)) mdata);
   
@@ -75,12 +75,12 @@ module [Connected_Module] mkEventRecorder#(String eventname)
       case (mdata) matches
 	tagged Invalid:
 	begin
-          localQ.enq(EVT_NoEvent);
+          localQ.enq(tagged EVT_NoEvent);
           //$display("EVENT %s: No Event", eventname);
 	end
 	tagged Valid .data:
 	begin
-          localQ.enq(EVT_Event data);
+          localQ.enq(tagged EVT_Event data);
           //$display("EVENT %s: 0x%h", eventname, data);
 	end
       endcase
@@ -100,7 +100,7 @@ module [Connected_Module] mkEventRecorder_Disabled#(String eventname)
  
   rule insert (stall);
   
-    chainQ.enq(EVT_NoEvent);
+    chainQ.enq(tagged EVT_NoEvent);
     stall <= False;
   
   endrule
@@ -125,7 +125,7 @@ module [Connected_Module] mkEventRecorder_Disabled#(String eventname)
 	     endinterface);
 	     
   //Add our interface to the ModuleCollect collection
-  addToCollection(LChain tuple2(0, chn));
+  addToCollection(tagged LChain tuple2(0, chn));
 
   method Action recordEvent(Maybe#(Bit#(32)) mdata);
     noAction;
@@ -181,7 +181,7 @@ module [Connected_Module] mkEventController_Software
   
   let chn = (interface FIFO;
   
-	        method CON_Data first() if (enabled || toggling) = marshall(toggling? EVT_Toggle : EVT_Boundary cc);
+	        method CON_Data first() if (enabled || toggling) = marshall(toggling? tagged EVT_Toggle : tagged EVT_Boundary cc);
 		method Action deq() if (enabled || toggling);
 		  if (!toggling) cc <= cc + 1;
 		  toggling <= False;
@@ -192,7 +192,7 @@ module [Connected_Module] mkEventController_Software
 	     endinterface);
 
   //Add our interface to the ModuleCollect collection
-  addToCollection(LChain tuple2(0, chn));
+  addToCollection(tagged LChain tuple2(0, chn));
 
   method Action toggle();
   

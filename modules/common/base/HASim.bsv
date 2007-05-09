@@ -315,7 +315,7 @@ module [Connected_Module] mkConnection_Send#(String portname)
 	     endinterface);
 
   //Add our interface to the ModuleCollect collection
-  addToCollection(LSend tuple2(portname, outg));
+  addToCollection(tagged LSend tuple2(portname, outg));
 
   method Action send(msg_T data);
     q.enq(data);
@@ -347,7 +347,7 @@ module [Connected_Module] mkConnection_Receive#(String portname)
 	     endinterface);
 
   //Add our interface to the ModuleCollect collection
-  addToCollection(LRec tuple2(portname, inc));
+  addToCollection(tagged LRec tuple2(portname, inc));
   
   method ActionValue#(msg_T) receive() if (data_w.whas());
     en_w.wset(data_w.whas());
@@ -397,8 +397,8 @@ module [Connected_Module] mkConnection_Client#(String portname)
   let recname = strConcat(portname, "_resp");
 
   //Add our interfaces to the ModuleCollect collection
-  addToCollection(LSend tuple2(sendname, outg));
-  addToCollection(LRec tuple2(recname, inc));
+  addToCollection(tagged LSend tuple2(sendname, outg));
+  addToCollection(tagged LRec tuple2(recname, inc));
 
   method Action makeReq(req_T data);
     q.enq(data);
@@ -452,8 +452,8 @@ module [Connected_Module] mkConnection_Server#(String portname)
   let recname = strConcat(portname, "_req");
   
   //Add our interfaces to the ModuleCollect collection
-  addToCollection(LSend tuple2(sendname, outg));
-  addToCollection(LRec tuple2(recname, inc));
+  addToCollection(tagged LSend tuple2(sendname, outg));
+  addToCollection(tagged LRec tuple2(recname, inc));
 
   method Action makeResp(resp_T data);
     q.enq(data);

@@ -115,7 +115,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
 	  //place value in store buffer	  	  
 	  st_buffer.insert(st_info.token, st_info.addr, st_info.val);
 	    
-          link_dmem.makeResp(StResp);
+          link_dmem.makeResp(tagged StResp);
 	  
         end
     endcase
@@ -139,7 +139,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
     else
     begin
       //Fast path response
-      link_dmem.makeResp(LdResp v); 
+      link_dmem.makeResp(tagged LdResp v); 
     end
       
   endrule
@@ -194,9 +194,9 @@ module [HASim_Module] mkFUNCP_Memstate ()
     
     case (mnew_val) matches
       tagged Invalid:  //All that work for nothing.
-        link_dmem.makeResp(LdResp cur_val);
+        link_dmem.makeResp(tagged LdResp cur_val);
       tagged Valid .new_val:
-	link_dmem.makeResp(LdResp new_val);
+	link_dmem.makeResp(tagged LdResp new_val);
     endcase
         
   endrule

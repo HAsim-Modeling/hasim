@@ -40,14 +40,14 @@ module [Connected_Module] mkStatCounter#(String statname)
  
   rule insert (state == Dumping);
   
-    chainQ.enq(ST_Val stat);
+    chainQ.enq(tagged ST_Val stat);
     state <= DoneDumping;
   
   endrule
       
   rule endDump (state == DoneDumping);
   
-    chainQ.enq(ST_Boundary);
+    chainQ.enq(tagged ST_Boundary);
     state <= Recording;
     
   endrule
@@ -84,7 +84,7 @@ module [Connected_Module] mkStatCounter#(String statname)
 	     endinterface);
 	     
   //Add our interface to the ModuleCollect collection
-  addToCollection(LChain tuple2(2, chn));
+  addToCollection(tagged LChain tuple2(2, chn));
 
   method Action incr();
     
@@ -162,9 +162,9 @@ module [Connected_Module] mkStatController_Software
 	        method CON_Data first() if (state == Ready);
 		
 		  return marshall(case (nextCommand) matches
-                     tagged SC_Toggle: return ST_Toggle;
-		     tagged SC_Reset:  return ST_Reset;
-		     tagged SC_Dump:   return ST_Boundary;
+                     tagged SC_Toggle: return tagged ST_Toggle;
+		     tagged SC_Reset:  return tagged ST_Reset;
+		     tagged SC_Dump:   return tagged ST_Boundary;
 		   endcase);
 		   
 		endmethod
@@ -178,7 +178,7 @@ module [Connected_Module] mkStatController_Software
 	     endinterface);
 
   //Add our interface to the ModuleCollect collection
-  addToCollection(LChain tuple2(2, chn));
+  addToCollection(tagged LChain tuple2(2, chn));
   
   method Action exec(StatCommand c) if (state == Waiting);
     state <= Ready;

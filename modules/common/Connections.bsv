@@ -48,7 +48,7 @@ module [HASim_Module] addConnections#(WithConnections mod, List#(ConMap) sends, 
    for (Integer x = 0; x < nSends; x = x + 1)
    begin
      match {.nm, .idx} = sends[x];
-     addToCollection(LSend tuple2(nm, mod.outgoing[x]));
+     addToCollection(tagged LSend tuple2(nm, mod.outgoing[x]));
    end
 
    //Add Recs
@@ -57,13 +57,13 @@ module [HASim_Module] addConnections#(WithConnections mod, List#(ConMap) sends, 
    for (Integer x = 0; x < nRecs; x = x + 1)
    begin
      match {.nm, .idx} = recs[x];
-     addToCollection(LRec tuple2(nm, mod.incoming[x]));
+     addToCollection(tagged LRec tuple2(nm, mod.incoming[x]));
    end
    
    //Add Chains
    for (Integer x = 0; x < valueof(CON_NumChains); x = x + 1)
    begin
-     addToCollection(LChain tuple2(x, mod.chains[x]));
+     addToCollection(tagged LChain tuple2(x, mod.chains[x]));
    end
    
 endmodule
@@ -305,11 +305,11 @@ function Maybe#(b) lookup (a data, List#(Tuple2#(a, b)) l)
   
   case (l) matches
     tagged Nil:
-      return Invalid;
+      return tagged Invalid;
     default:
     begin
       match {.d, .v} = List::head(l);
-      return (d == data) ? (Valid v) : lookup(data, List::tail(l));
+      return (d == data) ? (tagged Valid v) : lookup(data, List::tail(l));
     end
   endcase
 

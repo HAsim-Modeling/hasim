@@ -4476,3 +4476,49 @@ Directory config/pm/hasim/submodels/common
 Models have been altered to reflect the new FPGALib structure.
 
 Michael P.
+
+----------
+pellauer    Date: Wed May  9 17:35:58 EDT 2007  CSN: CSN-hasim-172
+                  Wed May  9 21:35:58 UTC 2007
+
+
+Directory .
+ configure                 Locally Modified          171 
+ Makefile.in               Locally Modified          171 
+
+Directory libperl
+ Makefile.in               Locally Modified          171 
+
+Directory tools/hasim
+ Makefile.in               Locally Modified          171 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Modified          171 
+
+Directory tools
+ Makefile.in               Locally Modified          171 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          171 
+
+Directory modules/functional/common
+ FUNCP_RegState.bsv        Locally Modified          171 
+ FUNCP_MemState.bsv        Locally Modified          171 
+ FUNCP_StoreBuffer.bsv     Locally Modified          171 
+
+Directory modules/common
+ Stats.bsv                 Locally Modified          171 
+
+Directory modules/common/base
+ HASim.bsv                 Locally Modified          171 
+
+Directory modules/common
+ Connections.bsv           Locally Modified          171 
+ Events.bsv                Locally Modified          171 
+
+
+It seems that MIT was using an Bluespec undocumented syntax that was actually
+illegal and is no longer supported by the compiler. Things have been fixed to be
+forward- and backward-compatible.
+
+Michael

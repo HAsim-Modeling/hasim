@@ -4444,3 +4444,35 @@ Directory modules/common/fpgalib
 Deleting files no longer need in the FPGA lib. Some models will need to be altered.
 
 Michael P.
+
+----------
+pellauer    Date: Wed May  9 15:21:29 EDT 2007  CSN: CSN-hasim-171
+                  Wed May  9 19:21:29 UTC 2007
+
+
+Directory config/pm/hasim/demos/bram_test
+ bram_test_xup.apm         Locally Modified          169 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          169 
+ traffic_light_xup_synth.apm Locally Modified          169 
+ traffic_light_exe_nosynth.apm Locally Modified          169 
+ traffic_light_exe_synth.apm Locally Modified          169 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          169 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_xup.apm           Locally Modified          169 
+ adder4x4_xup.apm          Locally Modified          169 
+ square4x4_xup.apm         Locally Modified          169 
+ multiplier4x4_xup.apm     Locally Modified          169 
+
+Directory config/pm/hasim/submodels/common
+ common_xup.apm            Locally Modified          169 
+ common_sw.apm             Locally Modified          169 
+
+
+Models have been altered to reflect the new FPGALib structure.
+
+Michael P.

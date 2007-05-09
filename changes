@@ -4422,3 +4422,25 @@ cache hierachy should be added later.
 
 
 Michael P.
+
+----------
+pellauer    Date: Wed May  9 14:49:19 EDT 2007  CSN: CSN-hasim-170
+                  Wed May  9 18:49:19 UTC 2007
+
+
+Directory modules/common/fpgalib
+ xup/                      Locally Removed           168 
+
+Directory modules/common/fpgalib/software
+ hasim_fpgalib_software.awb Locally Removed           168 
+ hasim_fpgalib_software.bsv Locally Removed           168 
+ xup.ucf                   Locally Removed           168 
+ BRAM.bsv                  Locally Removed           168 
+
+Directory modules/common/fpgalib
+ software/                 Locally Removed           168 
+
+
+Deleting files no longer need in the FPGA lib. Some models will need to be altered.
+
+Michael P.

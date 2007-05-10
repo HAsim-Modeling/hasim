@@ -45,6 +45,8 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   FIFO#(Tuple4#(Token, Addr, Value, AddrHash))                        insertQ <- mkFIFO();
   FIFO#(Tuple2#(Token, Maybe#(Tuple2#(Token, Value))))                resultQ <- mkFIFO();
   
+  Reg#(Bool) busy <- mkReg(False);
+
   //Change hash here
   function AddrHash hash(Addr a) = truncate(a);
   
@@ -61,7 +63,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   
   //Looks up the most recent store to an addr
   
-  rule doLookup (True);
+  rule doLookup (busy);
   
     match {.tok, .addr, .cur_tok, .best} = workingQ.first();
     workingQ.deq();
@@ -72,7 +74,10 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     let newbest = (tvalids[cur_tok.index] && (a == addr) && (cur_tok.index < tok.index) && isBetter(cur_tok, best)) ? tagged Valid tuple2(cur_tok, v) : best;
 
     if (done)
+    begin
       resultQ.enq(tuple2(tok, newbest));
+      busy <= False;
+    end
     else
     begin
       tokens.read_req1(validValue(next_tok).index);
@@ -81,7 +86,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   
   endrule
   
-  rule insert_2 (True);
+  rule insert_2 (!busy);
   
     match {.t, .a, .v, .h} = insertQ.first();
     insertQ.deq();
@@ -94,7 +99,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     
   endrule
 
-  rule retrieve_2 (True);
+  rule retrieve_2 (busy);
     
     match {.t, .a} = retrieveQ.first();
     retrieveQ.deq();
@@ -126,11 +131,12 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   
   //retrieve
   
-  method Action retrieve(Token t, Addr a);
+  method Action retrieve(Token t, Addr a) if (!busy);
   
     AddrHash h = hash(a);
     hashes.read_req1(h);
     retrieveQ.enq(tuple2(t, a));
+    busy <= True;
     
   endmethod
   
@@ -152,7 +158,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   
   //insert
   
-  method Action insert(Token t, Addr a, Value v);
+  method Action insert(Token t, Addr a, Value v) if (!busy);
   
   
     AddrHash h = hash(a);
@@ -162,7 +168,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   endmethod
   
   
-  method Action commit_req(Token t);
+  method Action commit_req(Token t) if (!busy);
   
     //XXX We should really update the hash here.
     tvalids <= update(tvalids, t.index, False);
@@ -177,7 +183,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     
   endmethod
   
-  method Action kill(Token t);
+  method Action kill(Token t) if (!busy);
   
     tvalids <= update(tvalids, t.index, False);
   

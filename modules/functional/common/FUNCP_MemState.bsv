@@ -185,7 +185,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
   rule finishSlowPath (True);
   
     match {.tok, .cur_val} = st_bufQ.first();
-    waitingQ.deq();
+    st_bufQ.deq();
     
     match {.t2, .mnew_val} <- st_buffer.result();
     

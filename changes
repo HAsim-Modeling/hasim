@@ -4522,3 +4522,17 @@ illegal and is no longer supported by the compiler. Things have been fixed to be
 forward- and backward-compatible.
 
 Michael
+
+----------
+pellauer    Date: Thu May 10 11:29:40 EDT 2007  CSN: CSN-hasim-173
+                  Thu May 10 15:29:40 UTC 2007
+
+
+Directory modules/functional/common
+ FUNCP_MemState.bsv        Locally Modified          172 
+ FUNCP_StoreBuffer.bsv     Locally Modified          172 
+
+
+Bugfixes in the Memstate/Store buffer.
+
+Michael P.

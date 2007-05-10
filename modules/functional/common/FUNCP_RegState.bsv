@@ -35,7 +35,7 @@ module [HASim_Module] mkFUNCP_Regstate
 
   //map table 
   
-  Vector#(TExp#(rname_SZ), PRName) initmap = map(fromInteger, genVector);
+  Vector#(TExp#(rname_SZ), PRName) initmap = replicate(0); //map(fromInteger, genVector);
   Reg#(Vector#(TExp#(rname_SZ), PRName)) maptbl <- mkReg(initmap); // init with [0 .. max]
 
   function PRName lookup(RName r);
@@ -124,17 +124,20 @@ module [HASim_Module] mkFUNCP_Regstate
     if (tok.index == stopToken.index || (rob_new == rob_old + 1))
        busy <= False;
     else
-       rob.read_req1(rob_new - 1);
-       
-   //back up maptable
-   if (isJust(mx))
-     maptbl <= update(maptbl, unJust(mx), oldp);
+    begin
+       //back up maptable
+       if (isJust(mx))
+         maptbl <= update(maptbl, unJust(mx), oldp);
 
-   //back up (freelist)
-   freelist.back();
+       //back up (freelist)
+       freelist.back();
  
-   //backup (rob)
-   rob_new <= rob_new - 1;
+       //backup (rob)
+       rob_new <= rob_new - 1;
+       
+       //Get ready for next cycle
+       rob.read_req1(rob_new - 1);
+    end
    
   endrule
 
@@ -149,12 +152,18 @@ module [HASim_Module] mkFUNCP_Regstate
       $display("REGSTATE begin_Mapping JUNK: %0b(%0d), %0d, %0d", isJust(mx), unJust(mx), tok.index, ss);
       link_mapping.makeResp(?);
     end
-    else
-    begin    //take off freelist
-      $display("REGSTATE begin_Mapping: %0b(%0d), %0d, %0d", isJust(mx), unJust(mx), tok.index, ss);
-      freelist.forward_req();
-      mappingQ.enq(tuple3(mx, tok, ss));
-    end
+    else case (mx) matches
+      tagged Valid .r &&& (r == 0): //They're writing R0. It's a throwaway.
+      begin
+        link_mapping.makeResp(0);
+      end
+      default:
+	begin    //take off freelist
+	  $display("REGSTATE begin_Mapping: %0b(%0d), %0d, %0d", isJust(mx), unJust(mx), tok.index, ss);
+	  freelist.forward_req();
+	  mappingQ.enq(tuple3(mx, tok, ss));
+	end
+    endcase
     
   endrule
 
@@ -339,13 +348,17 @@ module [HASim_Module] mkFUNCP_Regstate
   rule write (True);
   
     match {.prnm, .val} <- link_write1.receive();
-    prf.write(prnm, tagged Valid val);
+    
+    if (prnm != 0) //Can't write PR0
+      prf.write(prnm, tagged Valid val);
   endrule
   
   rule write2 (True);
   
     match {.prnm, .val} <- link_write2.receive();
-    prf.write(prnm, tagged Valid val);
+    
+    if (prnm != 0) //Can't write PR0
+      prf.write(prnm, tagged Valid val);
   
   endrule
 

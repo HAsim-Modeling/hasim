@@ -4536,3 +4536,17 @@ Directory modules/functional/common
 Bugfixes in the Memstate/Store buffer.
 
 Michael P.
+
+----------
+pellauer    Date: Thu May 10 18:35:11 EDT 2007  CSN: CSN-hasim-174
+                  Thu May 10 22:35:11 UTC 2007
+
+
+Directory modules/functional/common
+ FUNCP_FreeList.bsv        Locally Modified          172 
+ FUNCP_RegState.bsv        Locally Modified          172 
+
+
+Some small bugfixes in the RegState.
+
+Michael P.

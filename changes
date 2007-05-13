@@ -4550,3 +4550,14 @@ Directory modules/functional/common
 Some small bugfixes in the RegState.
 
 Michael P.
+
+----------
+vmurali     Date: Sun May 13 17:00:07 EDT 2007  CSN: CSN-hasim-175
+                  Sun May 13 21:00:07 UTC 2007
+
+
+Directory modules/common/fpgalib
+ FPGALib_Bluesim.bsv       Locally Modified          174 
+
+I think Michael changed something here
+

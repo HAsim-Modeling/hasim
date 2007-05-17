@@ -6,6 +6,7 @@ File=multiplier
 Version=2.0
 Name=Multiplier Model
 Type=HAsim
+Class=Asim::Model
 
 [Hasim null controller]
 Packagehint=hasim
@@ -20,7 +21,7 @@ Packagehint=hasim
 File=modules/common/hasim_common.awb
 
 [Model]
-DefaultAttributes=traffic-light hasim
+DefaultAttributes=demo xup hasim
 model=HAsim Model Foundation
 
 [HAsim Model Foundation/Requires]
@@ -31,7 +32,6 @@ hasim_common=Hasim base library
 [Hasim - Multiplier system]
 Packagehint=hasim
 File=modules/system/mulitplier_system/multiplier_system.awb
-
 
 [Hasim base module]
 File=modules/common/base/hasim_base.awb

@@ -6,6 +6,7 @@ File=bram_test_xup
 Version=2.0
 Name=Bram Test 
 Type=HAsim
+Class=Asim::Model
 
 [Hasim null controller]
 Packagehint=hasim
@@ -20,7 +21,7 @@ Packagehint=hasim
 File=modules/common/hasim_common.awb
 
 [Model]
-DefaultAttributes=bram-test hasim
+DefaultAttributes=bram-test xup hasim
 model=HAsim Model Foundation
 
 [HAsim Model Foundation/Requires]

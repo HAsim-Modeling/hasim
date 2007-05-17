@@ -23,9 +23,10 @@ File=multiplier4x4_xup
 Version=2.0
 Type=HAsim
 Name=Switch to LED w. multiplier
+Class=Asim::Model
 
 [Model]
-DefaultAttributes=xup hasim
+DefaultAttributes=switch2led xup hasim
 model=HAsim Model Foundation
 
 [Hasim base library]
@@ -38,7 +39,6 @@ calculation4x4=Hasim - 4x4 multiplier
 [Hasim - 4x4 multiplier]
 File=modules/system/switch_to_led_system/calculation4x4/multiplier/multiplier4x4.awb
 Packagehint=hasim
-
 
 [Hasim base module]
 File=modules/common/base/hasim_base.awb

@@ -4561,3 +4561,43 @@ Directory modules/common/fpgalib
 
 I think Michael changed something here
 
+
+----------
+jsemer      Date: Thu May 17 10:36:52 EDT 2007  CSN: CSN-hasim-176
+                  Thu May 17 14:36:52 UTC 2007
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          175 
+
+Directory config/pm/hasim/demos/bram_test
+ bram_test_xup.apm         Locally Modified          175 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          175 
+ traffic_light_xup_synth.apm Locally Modified          175 
+ traffic_light_exe_nosynth.apm Locally Modified          175 
+ traffic_light_exe_synth.apm Locally Modified          175 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          175 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_xup.apm           Locally Modified          175 
+ adder4x4_xup.apm          Locally Modified          175 
+ square4x4_xup.apm         Locally Modified          175 
+ multiplier4x4_xup.apm     Locally Modified          175 
+
+Directory config/pm/hasim/submodels/common
+ common_sw.apm             Locally Modified          175 
+
+Directory config/pm/bluespec/demos
+ counter.apm               Locally Modified          175 
+
+
+Hasim-connect updated to work with either old or new 
+semantics of Asim::Model::find_module_providing(). 
+
+Model changes are just name and attribute updates.
+
+Joel

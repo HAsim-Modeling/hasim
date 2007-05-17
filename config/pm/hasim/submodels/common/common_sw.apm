@@ -6,13 +6,14 @@ File=common_sw
 Version=2.0
 Name=Software Common Library
 Type=HAsim
+Class=Asim::Model
 
 [Hasim base library]
 Packagehint=hasim
 File=modules/common/hasim_common.awb
 
 [Model]
-DefaultAttributes=xup hasim
+DefaultAttributes=software hasim
 model=Hasim base library
 
 [Hasim base library/Requires]

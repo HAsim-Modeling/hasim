@@ -67,6 +67,14 @@ sub print_wrapper {
     my $metatype = shift;
 
     my $model = Asim::Model->new($modelfile);
+
+    if (defined(&Asim::Model::embed_submodels)) {
+      print "Using Asim::Model embed_submodels\n";
+      $model->embed_submodels();
+    } else {
+      print "Using Asim::Model without embed_submodels\n";
+    }       
+
     my $root = $model->modelroot();
 #    $model->dump();
     my $module = $root->find_module_providing($metatype);
@@ -120,6 +128,14 @@ sub create_surrogates {
     my $metatype = shift;
 
     my $model = Asim::Model->new($modelfile);
+
+    if (defined(&Asim::Model::embed_submodels)) {
+      print "Using Asim::Model embed_submodels\n";
+      $model->embed_submodels();
+    } else {
+      print "Using Asim::Model without embed_submodels\n";
+    }       
+
     my $root = $model->modelroot();
 
     my $module = $root->find_module_providing($metatype);

@@ -6,7 +6,8 @@ include ./Makefile.include
 ROOT_DIR = @ROOT_DIR@
 ROOT_WRAPPER_SYNTH_ID = mk_$(ROOT_DIR)_Wrapper
 
-CXXS = $(ROOT_WRAPPER_SYNTH_ID).cxx schedule.cxx
+# -- Angshuman -- CXXS = $(ROOT_WRAPPER_SYNTH_ID).cxx schedule.cxx
+CXXS = schedule.cxx
 HS = $(CXXS:%.cxx=%.h)
 OS = $(CXXS:%.cxx=%.o)
 
@@ -116,7 +117,7 @@ vexe:
 .PHONY: exe
 exe:
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
-	$(BSC) $(BSC_FLAGS) -sim -e mkModel -o $(APM_NAME).exe $(TMP_BSC_DIR)/*.ba
+	$(BSC) $(BSC_FLAGS) -sim -e mkModel -o $(APM_NAME).exe $(TMP_BSC_DIR)/*.ba $(TMP_BSC_DIR)/*.c
 	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
 	ln -f -s $(APM_NAME).exe simv
 
@@ -149,7 +150,7 @@ help:
 .PHONY: clean
 clean: clean_root
 	rm -f $(TMP_XILINX_DIR)/*.*
-	rm -f $(TMP_bsc_DIR)/*.*
+	rm -f $(TMP_BSC_DIR)/*.*
 	rm -f *~
 
 .PHONY: clean_root

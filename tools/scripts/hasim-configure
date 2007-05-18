@@ -627,7 +627,7 @@ sub __generate_makefile_sub {
     }
 
     ## FOR BOTH SYNTH & NON_SYNTH
-    ## @BSVS@ & @SRCS@
+    ## @BSVS@ & @SRCS@ @CSRCS@
     my @l = ();
     if ($private) { push(@l, $module->private()); }
     if ($public) { push(@l, $module->public()); }
@@ -637,6 +637,8 @@ sub __generate_makefile_sub {
 	if ($f =~ /.bsv/) {
 	    HAsim::Util::hash_append($current_replacements_r, " ", '@BSVS@', $f);
 	    $deps = $deps . " $f";
+	} elsif ($f =~ /.c/) {
+	    HAsim::Util::hash_append($current_replacements_r, " ", '@CSRCS@', $f);
 	} else {
 	    HAsim::Util::hash_append($current_replacements_r, " ", '@SRCS@', $f);
 	}

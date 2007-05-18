@@ -1,0 +1,16 @@
+********************************************************************
+* Awb module specification
+********************************************************************
+
+%AWB_START
+
+%name Bluespec Multiplier Example
+%desc Bluespec Multiplier Example
+
+%provides bluespec_system
+
+%attributes bluespec
+
+%public Multiplier.bsv System.bsv
+
+%AWB_END

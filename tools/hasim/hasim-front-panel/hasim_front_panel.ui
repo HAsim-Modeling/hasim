@@ -725,6 +725,7 @@
     <include location="local" impldecl="in declaration">use IO::Select;</include>
     <include location="local" impldecl="in declaration">my @ledArray;</include>
     <include location="local" impldecl="in declaration">my @switchArray;</include>
+    <include location="local" impldecl="in declaration">my @switchCache;</include>
     <include location="local" impldecl="in declaration">my $scanning;</include>
     <include location="local" impldecl="in implementation">hasim_front_panel.ui.h</include>
 </includes>

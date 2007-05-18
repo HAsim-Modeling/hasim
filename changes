@@ -4601,3 +4601,124 @@ semantics of Asim::Model::find_module_providing().
 Model changes are just name and attribute updates.
 
 Joel
+
+----------
+aparasha    Date: Fri May 18 13:40:46 EDT 2007  CSN: CSN-hasim-177
+                  Fri May 18 17:40:46 UTC 2007
+
+
+Directory tools/hasim/hasim-front-panel
+ hasim_front_panel.ui      Locally Modified          176 
+ hasim_front_panel.ui.h    Locally Modified          176 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          176 
+
+Directory config/pm/bluespec/demos
+ multiplier.apm            Locally Added               0 
+ counter.apm               Locally Modified          176 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.sub.template     Locally Modified          176 
+ Makefile.top.template     Locally Modified          176 
+
+Directory modules/bluespec/system/demos/counter
+ System.bsv                Locally Modified          176 
+
+Directory modules/bluespec/system/demos
+ multiplier/               Locally Added               0 
+
+Directory modules/bluespec/system/demos/multiplier
+ Multiplier.bsv            Locally Added               0 
+ System.bsv                Locally Added               0 
+ mult_system.awb           Locally Added               0 
+
+Directory modules/bluespec/common/null
+ null.bsv                  Locally Removed           176 
+
+Directory modules/bluespec/common
+ base/                     Locally Added               0 
+
+Directory modules/bluespec/common/base
+ bluespec_base.awb         Locally Added               0 
+
+Directory modules/common/fpgalib
+ software/                 Locally Added               0 
+
+Directory modules/common/fpgalib/software
+ virtual-platform/         Locally Added               0 
+
+Directory modules/common/fpgalib/software/virtual-platform
+ channelio/                Locally Added               0 
+
+Directory modules/common/fpgalib/software/virtual-platform/channelio
+ unix-channelio/           Locally Added               0 
+
+Directory modules/common/fpgalib/software/virtual-platform/channelio/unix-channelio
+ unix-channelio.c          Locally Added               0 
+ unix-channelio.awb        Locally Added               0 
+ UNIXChannelIO.bsv         Locally Added               0 
+
+Directory modules/common/fpgalib/software/virtual-platform
+ virtual-platform.awb      Locally Added               0 
+ virtual-devices/          Locally Added               0 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices
+ console/                  Locally Added               0 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/console
+ console-serial/           Locally Added               0 
+ graphical-serial/         Locally Added               0 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/console/graphical-serial
+ graphical-serial.awb      Locally Added               0 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices
+ fp/                       Locally Added               0 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/fp
+ console-fp/               Locally Added               0 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/fp/console-fp
+ console-fp.awb            Locally Added               0 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/fp
+ graphical-fp/             Locally Added               0 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/fp/graphical-fp
+ graphical-fp.awb          Locally Added               0 
+ GraphicalFP.bsv           Locally Added               0 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices
+ std-virtual-devices.awb   Locally Added               0 
+
+Directory modules/common/fpgalib/software
+ hasim_fpgalib_platform_software.awb Locally Added               0 
+
+
+- Added a virtual platform hierarchy that pure bluespec models can now use
+  to interact with virtual devices. Basic framework for some sample virtual
+  device sets has been added to the virtual platform to assist virtual
+  device writers in figuring out where in the hierarchy the device
+  implementations should be placed.
+
+- Added a unix-channelio module that encapsulates primitives required for
+  a bluespec module to communicate with a UNIX process.
+
+- Added an implementation of the FrontPanel virtual device. This virtual
+  device provides a set of virtual LEDs and switches to a bluespec model.
+  This particular implementation emulates these LEDs and switches by
+  instantiating a hasim-front-panel dialog box and using the channelio
+  module.
+
+- Modified the pure-bluespec counter demo example to use the virtual
+  platform and FrontPanel virtual device. The current testbench does not
+  count anything, but simply loads all inputs into the counter each
+  cycle and sends the contents of the counter's latch each cycle to
+  the LEDs.
+
+- Added a pure-bluespec multiplier example, which also uses the FrontPanel
+  virtual device. The model treats switches 0-1 and 2-3 as two 2-bit
+  unsigned integers, multiplies them when the OK button is pressed using
+  a shift-and-add multiplier, and displays the result (when available) as
+  a 4-bit unsigned integer on the LEDs.

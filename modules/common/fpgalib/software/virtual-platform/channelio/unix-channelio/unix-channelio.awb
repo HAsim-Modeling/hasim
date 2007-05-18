@@ -1,0 +1,7 @@
+
+%name Channel IO to/from a UNIX Process
+%desc Channel IO to/from a UNIX Process
+
+%provides channelio
+
+%public UNIXChannelIO.bsv unix-channelio.c

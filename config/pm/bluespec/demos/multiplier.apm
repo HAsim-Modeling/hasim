@@ -1,35 +1,34 @@
 
+
 [Global]
-SaveParameters=0
-Description=Counter Demo from Bluespec Tutorial
-File=counter
+Type=HAsim
 Version=2.1
-Name=Counter Demo
+File=multiplier
+SaveParameters=0
+Description=Bluespec Multiplier Example
+Name=Bluespec Multiplier Example
 Type=HAsim
 Class=Asim::Model
 
-[Model]
-DefaultAttributes=bluespec
-model=Pure Bluespec Model Foundation
+[Pure Bluespec Model Foundation/Requires]
+bluespec_common=Bluespec Base Library
+bluespec_system=Bluespec Multiplier Example
 
 [Pure Bluespec Model Foundation]
 File=modules/bluespec/model/pure-bluespec/pure_bluespec_model.awb
 Packagehint=hasim
 
-[Bluespec Counter Example]
-File=modules/bluespec/system/demos/counter/counter_system.awb
+[Bluespec Multiplier Example]
+File=modules/bluespec/system/demos/multiplier/mult_system.awb
 Packagehint=hasim
 
-[Pure Bluespec Model Foundation/Requires]
-bluespec_common=Bluespec Base Library
-bluespec_system=Bluespec Counter Example
+[Model]
+DefaultAttributes=
+model=Pure Bluespec Model Foundation
 
 [Software virtual platform/Requires]
-virtual_devices=Standard virtual devices
 channelio=Channel IO to/from a UNIX Process
-
-[Bluespec Base Library/Requires]
-virtual_platform=Software virtual platform
+virtual_devices=Standard virtual devices
 
 [Graphical Serial Console]
 File=modules/common/fpgalib/software/virtual-platform/virtual-devices/console/graphical-serial/graphical-serial.awb
@@ -47,14 +46,18 @@ Packagehint=hasim
 File=modules/common/fpgalib/software/virtual-platform/virtual-devices/std-virtual-devices.awb
 Packagehint=hasim
 
+
 [Graphical Front Panel]
 File=modules/common/fpgalib/software/virtual-platform/virtual-devices/fp/graphical-fp/graphical-fp.awb
 Packagehint=hasim
 
-[Bluespec Base Library]
-File=modules/bluespec/common/base/bluespec_base.awb
-Packagehint=hasim
-
 [Channel IO to/from a UNIX Process]
 File=modules/common/fpgalib/software/virtual-platform/channelio/unix-channelio/unix-channelio.awb
+Packagehint=hasim
+
+[Bluespec Base Library/Requires]
+virtual_platform=Software virtual platform
+
+[Bluespec Base Library]
+File=modules/bluespec/common/base/bluespec_base.awb
 Packagehint=hasim

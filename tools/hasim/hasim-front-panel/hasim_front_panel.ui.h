@@ -26,6 +26,9 @@ void hfpanel::init()
     $switchArray[7] = switch7;
     $switchArray[8] = switch8;
 
+    my $string_of_32_zeroes = "00000000000000000000000000000000";
+    @switchCache = split(//, $string_of_32_zeroes);
+
     # disable all input controls except Start button
     groupSwitches->setEnabled(0);
     groupButtons->setEnabled(0);
@@ -59,10 +62,11 @@ void hfpanel::startButton_clicked()
     $sel->add(\*STDIN);
 
     # flush all junk from STDIN
-    while ($sel->can_read($timeout))
-    {
-        my $junk = <STDIN>;
-    }
+    # while ($sel->can_read($timeout))
+    # {
+    #    my $junk;
+    #    read(STDIN, $junk, 1);
+    # }
         
     # enter scan loop
     while ($scanning eq 1)
@@ -71,33 +75,24 @@ void hfpanel::startButton_clicked()
         if ($sel->can_read($timeout))
         {
             # incoming!
-            my $line = <STDIN>;
+            my $data;
+            read(STDIN, $data, 32);
 
-            # parse line
-            chomp($line);
-            my ($led, $state) = split (' ', $line);
-                
-            # sanity checks
-            if ($led lt 0 || $led gt 3)
+            # update LED state: be careful about endian-ness!
+            for (my $led = 0; $led < 4; $led = $led + 1)
             {
-                die "invalid LED number";
-            }
-            if ($state ne 0 && $state ne 1)
-            {
-                die "invalid LED state";
-            }
-
-            # in our dialog box, the off-state LED is on top,
-            # so to switch "on" the LED, we need to hide the
-            # off-state pixmap, and to switch it "off", we need
-            # to reveal the off-state pixmap
-            if ($state eq 0)
-            {
-                $ledArray[$led]->show();
-            }
-            else
-            {
-                $ledArray[$led]->hide();
+                # in our dialog box, the off-state LED is on top,
+                # so to switch "on" the LED, we need to hide the
+                # off-state pixmap, and to switch it "off", we need
+                # to reveal the off-state pixmap
+                if (substr($data, $led, 1) eq '0')
+                {
+                    $ledArray[$led]->show();
+                }
+                else
+                {
+                    $ledArray[$led]->hide();
+                }
             }
         }
             
@@ -136,7 +131,12 @@ void hfpanel::buttonOk_clicked()
 
 void hfpanel::sendSwitchMessage( int, int )
 {
-	print STDOUT "$_[0] $_[1]\n";
+    # construct string and print it out
+    $switchCache[$_[0]] = $_[1];
+
+    print STDOUT @switchCache;
+
+    #print STDOUT "$_[0] $_[1]\n";
 }
 
 

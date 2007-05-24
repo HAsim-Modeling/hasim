@@ -4748,3 +4748,20 @@ Directory tools/scripts
 
 Added branch predictor awb file
 
+
+----------
+aparasha    Date: Thu May 24 11:36:47 EDT 2007  CSN: CSN-hasim-179
+                  Thu May 24 15:36:47 UTC 2007
+
+
+Directory modules/common/fpgalib/software/virtual-platform/channelio/unix-channelio
+ unix-channelio.c          Locally Modified          178 
+ UNIXChannelIO.bsv         Locally Modified          178 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/fp/graphical-fp
+ GraphicalFP.bsv           Locally Modified          178 
+
+
+Modified the UNIX ChannelIO module to act as a pure pipe to/from
+a UNIX process, and transferred the functionality of caching
+input/output state to the FrontPanel code.

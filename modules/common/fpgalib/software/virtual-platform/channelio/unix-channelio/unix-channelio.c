@@ -5,12 +5,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 /* virtualized I/O happens at the granularity of "packets",
  * but to reduce overheads we physically do selects, reads
  * and writes at the granularity of "blocks" */
 #define PACKET_SIZE     32
 #define BLOCK_SIZE      32
+
+#define CIO_NULL        0xFFFFFFFF
 
 static int      terminated = 0;
 static int      initialized = 0;
@@ -21,14 +24,10 @@ static int      inPipe[2],
 static fd_set   readfds;
 static int      childpid;
 
-/* need caches */
-static unsigned int     inputCache;
-static unsigned int     outputCache;
-
 /* unprocessed input: use pair of buffers for speed */
-static char             unprocBuffer[2][PACKET_SIZE];
-static int              ubIndex = 0;
-static int              ubActive = 0;
+static char             inputBuffer[BLOCK_SIZE];
+static int              ibHead = 0;
+static int              ibTail = 0;
 
 #define PARENT_READ     inPipe[0]
 #define CHILD_WRITE     inPipe[1]
@@ -137,36 +136,23 @@ unsigned int cio_read(unsigned char handle)
      * all interface methods visible to the BSV model */
     if (initialized == 0)
     {
-        return 0;
+        return CIO_NULL;
     }
+
     if (termCheck())
     {
-        return 0;
+        return CIO_NULL;
     }
 
-    /* note that our input technique is not a continuous
-     * polling loop; the BSV model calls this method on
-     * demand, and we scan the buffered inputs on the pipe.
-     * A pipe communication delay could mean that two inputs
-     * that were (hypothetically) sent simultaneously from
-     * the dialog box could become visible to the BSV model
-     * on successive clock cycles */
-
-    /* also, multiple inputs on the pipe will overwrite
-     * each other; we only return the latest state */
-
-    /* scan input on pipe: for each select, we read in a
-     * block's worth of data. Since there is no bound on
-     * how frequently (or infrequently) this method is going
-     * to be called, we need to loop and read in as much data
-     * from the pipe as possible. */
-    done = 0;
-    do
+    /* check if we have an empty or incomplete input buffer
+     * If so, scan the pipe once for incoming data */
+    if (ibTail < BLOCK_SIZE)
     {
+        /* insufficient data in buffers; attempt to read a block's
+         * worth of data from the pipe. If we already have an incomplete
+         * block in our buffer, then only attempt to read enough
+         * data to complete the block */
         int data_available;
-        int i;
-        int bytes_requested;
-        int bytes_read;
 
         FD_ZERO(&readfds);
         FD_SET(PARENT_READ, &readfds);
@@ -183,84 +169,74 @@ unsigned int cio_read(unsigned char handle)
             exit(1);
         }
 
-        if (data_available == 0)
+        if (data_available != 0)
         {
-            done = 1;
-            break;
-        }
+            /* incoming! */
+            int bytes_requested;
+            int bytes_read;
 
-        /* incoming! */
-
-        /* sanity check */
-        if (data_available != 1 || FD_ISSET(PARENT_READ, &readfds) == 0)
-        {
-            fprintf(stderr, "activity detected on unknown descriptor\n");
-            exit(1);
-        }
-
-        /* read in data, but attempt to keep it aligned */
-        bytes_requested = BLOCK_SIZE - ubIndex;
-
-        bytes_read = read(PARENT_READ,
-                          &unprocBuffer[ubActive][ubIndex],
-                          bytes_requested);
-
-        ubIndex += bytes_read;
-
-        if (bytes_read < bytes_requested)
-        {
-            /* we will stop attempting to read anything else from the
-             * pipe during this method call. This *could* be an EOF */
-            done = 1;
-        }
-
-        /* attempt to transfer data from the unprocessed data buffer
-         * into the input state cache
-         *
-         * OPTIMIZATION: ignore all but the last available packets of
-         * data. Note that this is only applicable because of the
-         * particular properties of the input device we are modeling */
-        if (ubIndex >= PACKET_SIZE)
-        {
-            /* locate index of last full packet */
-            int incomplete = ubIndex % PACKET_SIZE;
-            int loc = ubIndex - PACKET_SIZE - incomplete;
-
-            /* Perl quirk: incoming data is text bit stream, convert to int */
-            int bit_index;
-            unsigned int mask = 1;
-            inputCache = 0;
-            for (bit_index = 0; bit_index < PACKET_SIZE; bit_index++)
+            /* sanity check */
+            if (data_available != 1 || FD_ISSET(PARENT_READ, &readfds) == 0)
             {
-                if (unprocBuffer[ubActive][loc + bit_index] == '1')
-                {
-                    inputCache = inputCache + (mask << bit_index);
-                }
+                fprintf(stderr, "activity detected on unknown descriptor\n");
+                exit(1);
             }
 
-            // memcpy(&inputCache, &unprocBuffer[ubActive][loc], PACKET_SIZE);
+            /* read in data, keep it aligned */
+            bytes_requested = BLOCK_SIZE - ibTail;
 
-            /* copy over incomplete chunk into the other unprocBuffer,
-             * and swap active buffers */
-            if (incomplete > 0)
-            {
-                memcpy(&unprocBuffer[1 - ubActive][0],
-                       &unprocBuffer[ubActive][ubIndex - incomplete],
-                       incomplete);
-            }
-            ubActive = 1 - ubActive;
-            ubIndex = incomplete;
+            bytes_read = read(PARENT_READ,
+                              &inputBuffer[ibTail],
+                              bytes_requested);
+
+            ibTail += bytes_read;
         }
     }
-    while (!done);
 
-    /* scan complete; return state of cache */
-    return inputCache;
+    /* see if we have sufficient data to complete a packet */
+    if ((ibTail - ibHead) >= PACKET_SIZE)
+    {
+        /* incoming data is text bit stream, convert to int */
+        int i;
+        unsigned int retval = 0;
+        unsigned int mask = 1;
+        for (i = 0; i < PACKET_SIZE; i++)
+        {
+            if (inputBuffer[ibHead] == '1')
+            {
+                retval += mask;
+            }
+            mask = mask << 1;
+            ibHead = ibHead + 1;
+        }
+
+        /* sanity checks */
+        assert(ibHead <= ibTail);
+        assert(retval != CIO_NULL);
+
+        /* now that we have a full packet, see if head and tail are
+         * aligned, and if so, reset both pointers */
+        if (ibHead == ibTail)
+        {
+            ibHead = 0;
+            ibTail = 0;
+        }
+
+        /* packet ready, return */
+        return retval;
+    }
+
+    /* if we're here, then there's no data on the incoming channel */
+    return CIO_NULL;
 }
 
 /* write one LED */
 void cio_write(unsigned char handle, unsigned int data)
 {   
+    int bytes_written;
+    char databuf[PACKET_SIZE];
+    int i, mask;
+
     /* this code needs to be present at the beginning of
      * all interface methods visible to the BSV model */
     if (termCheck())
@@ -268,38 +244,27 @@ void cio_write(unsigned char handle, unsigned int data)
         return;
     }
 
-    /* probe cache to see if the output state has indeed changed */
-    if (data != outputCache)
+    /* Perl doesn't seem to play nice with binary data, so convert
+     * the data into an ASCII text bit stream (ugh) */
+    mask = 1;
+    for (i = 0; i < PACKET_SIZE; i++)
     {
-        int bytes_written;
-        char databuf[PACKET_SIZE+1]; // +1 for debug, remove later
-        int i, mask;
+        char bit = (mask & data) ? '1' : '0';
+        databuf[i] = bit;
+        mask = mask << 1;
+    }
 
-        /* yes, it has... update internal state */
-        outputCache = data;
-
-        /* Perl doesn't seem to play nice with binary data, so convert
-         * the data into an ASCII text bit stream (ugh) */
-        mask = 1;
-        for (i = 0; i < PACKET_SIZE; i++)
-        {
-            char bit = (mask & outputCache) ? '1' : '0';
-            databuf[i] = bit;
-            mask = mask << 1;
-        }
-
-        /* send message on pipe */
-        bytes_written = write(PARENT_WRITE, databuf, PACKET_SIZE);
-        if (bytes_written == -1)
-        {
-            perror("write");
-            exit(1);
-        }
-        else if (bytes_written < PACKET_SIZE)
-        {
-            fprintf(stderr, "could not write complete packet.\n");
-            exit(1);
-        }
+    /* send message on pipe */
+    bytes_written = write(PARENT_WRITE, databuf, PACKET_SIZE);
+    if (bytes_written == -1)
+    {
+        perror("write");
+        exit(1);
+    }
+    else if (bytes_written < PACKET_SIZE)
+    {
+        fprintf(stderr, "could not write complete packet.\n");
+        exit(1);
     }
 }
 

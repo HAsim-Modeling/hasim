@@ -1,6 +1,6 @@
 interface ChannelIO;
-    method Bit#(32) read();
-    method Action   write(Bit#(32) data);
+    method Maybe#(Bit#(32)) read();
+    method Action           write(Bit#(32) data);
 endinterface
 
 import "BDPI" function Bit#(8)  cio_open(Bit#(8) programID);
@@ -17,8 +17,18 @@ module mkChannelIO(ChannelIO);
         ready  <= 1;
     endrule
 
-    method Bit#(32) read() if (ready == 1);
-        return cio_read(handle);
+    method Maybe#(Bit#(32)) read() if (ready == 1);
+        // 0xFFFFFFFF means no data
+        // The Unix channelio C module uses the MSB to indicate
+        // absence of data on the pipe. We convert this to a
+        // tagged union
+        Bit#(32) data = cio_read(handle);
+        Maybe#(Bit#(32)) retval;
+        if (data == 'hFFFFFFFF)
+            retval = tagged Invalid;
+        else
+            retval = tagged Valid data;
+        return retval;
     endmethod
 
     method Action write(Bit#(32) data) if (ready == 1);

@@ -31,6 +31,10 @@ PAR = par
 BITGEN = bitgen
 IMPACT = impact
 
+BATCH_CMD = nbq
+BATCH_OPTS = -P mmdc_suse -C farm
+BATCH_LAUNCH = $(BATCH_CMD) $(BATCH_OPTS)
+
 .bsv.ba: $(SUBDIR_BAS)
 	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
 

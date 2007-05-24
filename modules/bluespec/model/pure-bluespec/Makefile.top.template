@@ -104,6 +104,10 @@ vexe:
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
 
+.PHONY: batch_vexe
+batch_vexe:
+	$(BATCH_LAUNCH) -J $(APM_NAME).batch make vexe
+	
 #$(APM_NAME).vexe:
 #	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
 #	cd arch/model ; $(BSC) $(BSC_FLAGS) -vsim $(BLUESPECDIR)/bin/bsc_build_vsim_vcs -verilog -e mkModel -o ../../$(APM_NAME).vexe mkModel.v
@@ -125,6 +129,12 @@ exe:
 	@echo "$(BUILD_DIR)/$(APM_NAME).exe" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
 	@echo "Generated launch script \"$(APM_NAME)\"";
+
+
+.PHONY: batch_exe
+batch_exe:
+	$(BATCH_LAUNCH) -J $(APM_NAME).batch make exe
+	
 
 #$(APM_NAME).exe:
 #	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba

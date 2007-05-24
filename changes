@@ -4781,3 +4781,23 @@ Directory modules/bluespec/model/pure-bluespec
 Added the -wait-for-license flag to the Makefiles.
 
 Michael P.
+
+----------
+mpellaux    Date: Thu May 24 17:43:23 EDT 2007  CSN: CSN-hasim-181
+                  Thu May 24 21:43:23 UTC 2007
+
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          179 
+ Makefile.include.template Locally Modified          180 
+ Makefile.sub.template     Locally Modified          179 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.sub.template     Locally Modified          179 
+ Makefile.top.template     Locally Modified          179 
+ Makefile.include.template Locally Modified          180 
+
+
+Added batch commands to Makefile templates.
+
+Michael P.

@@ -103,6 +103,10 @@ vexe:
 	@chmod +x $(APM_NAME)
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
+.PHONY: batch_vexe
+batch_vexe:
+	$(BATCH_LAUNCH) -J $(ROOT_WRAPPER_SYNTH_ID).batch make vexe
+	
 
 #$(APM_NAME).vexe:
 #	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
@@ -124,6 +128,10 @@ exe:
 	@chmod +x $(APM_NAME)
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
+.PHONY: batch_exe
+batch_exe:
+	$(BATCH_LAUNCH) -J $(ROOT_WRAPPER_SYNTH_ID).batch make exe
+	
 #$(APM_NAME).exe: $(ROOT_BA)
 #	$(BSC) $(BSC_FLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 
 #	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)

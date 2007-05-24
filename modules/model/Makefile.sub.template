@@ -56,6 +56,16 @@ $(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(GEN_BSVS) $(SUBDIR_VS)
 ################################################################
 ## 
 
+batch_v:
+	$(BATCH_LAUNCH) -J $(WRAPPER_SYNTH_ID).batch make v
+	
+
+batch_ba:
+	$(BATCH_LAUNCH) -J $(WRAPPER_SYNTH_ID).batch make ba
+	
+################################################################
+## 
+
 $(WRAPPER).bsv:
 	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR) 
 

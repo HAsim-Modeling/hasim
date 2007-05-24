@@ -4765,3 +4765,19 @@ Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/fp/gr
 Modified the UNIX ChannelIO module to act as a pure pipe to/from
 a UNIX process, and transferred the functionality of caching
 input/output state to the FrontPanel code.
+
+----------
+mpellaux    Date: Thu May 24 13:04:50 EDT 2007  CSN: CSN-hasim-180
+                  Thu May 24 17:04:50 UTC 2007
+
+
+Directory modules/model
+ Makefile.include.template Locally Modified          179 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.include.template Locally Modified          179 
+
+
+Added the -wait-for-license flag to the Makefiles.
+
+Michael P.

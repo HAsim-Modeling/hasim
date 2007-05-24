@@ -4,6 +4,7 @@
 BSC = bsc
 
 BSC_FLAGS = -keep-fires \
+	    -wait-for-license \
             -aggressive-conditions
 
 # BLUESPECDIR = /proj/vssad/local/i386_linux26/lib

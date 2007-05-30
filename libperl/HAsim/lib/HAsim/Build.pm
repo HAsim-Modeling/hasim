@@ -157,4 +157,23 @@ sub get_model_name {
     return $name;
 }
 
+############################################################
+# get_bdpi_names: reads awb Asim module's parameters and
+#                 returns a list of BDPI-exported function
+#                 names, if any
+sub get_bdpi_names {
+    my $module = shift;
+
+    foreach my $param_r ($module->parameters()) {
+        my %param = %{$param_r};
+        if ($param{'name'} eq "BDPI_NAMES") {
+            my @quotesstripped = split("\"", $param{'default'});
+            my @names = split(" ", $quotesstripped[1]);
+            return @names;
+        }
+    }
+
+    return ();
+}
+
 return 1;

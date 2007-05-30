@@ -10,14 +10,14 @@ module mkSystem();
     FrontPanel      fp      <- mkFrontPanel();
 
     rule step0(state == 0);
-        Bit#(8) truncated = truncate(fp.readSwitch());
+        Bit#(8) truncated = truncate(fp.readSwitches());
         counter.load(truncated);
         state <= 1;
     endrule
 
     rule step1(state == 1);
-        Bit#(32) extended = zeroExtend(counter.read());
-        fp.writeLED(extended);
+        Bit#(4) truncated = truncate(counter.read());
+        fp.writeLEDs(truncated);
         state <= 2;
     endrule
 

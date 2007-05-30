@@ -5,3 +5,5 @@
 %provides channelio
 
 %public UNIXChannelIO.bsv unix-channelio.c
+
+%param BDPI_NAMES "cio_open cio_read cio_write" "list of BDPI-exported names"

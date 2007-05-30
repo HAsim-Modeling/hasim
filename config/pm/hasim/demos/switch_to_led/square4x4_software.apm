@@ -1,0 +1,85 @@
+
+[Hasim - Switch in to LED out system]
+Packagehint=hasim
+File=modules/system/switch_to_led_system/switch_to_led_system.awb
+
+[Hasim null controller]
+Packagehint=hasim
+File=modules/controller/null/hasim_null_controller.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/hasim_model.awb
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - Switch in to LED out system
+hasim_controller=Hasim null controller
+hasim_common=Hasim base library
+
+[Global]
+SaveParameters=0
+Description=Switch to LED w. square
+File=square4x4_software
+Version=2.1
+Type=HAsim
+Name=Switch to LED w. square
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=switch2led xup hasim
+model=HAsim Model Foundation
+
+[Hasim base library]
+Packagehint=hasim
+File=modules/common/hasim_common.awb
+
+[Hasim - Switch in to LED out system/Requires]
+calculation4x4=Hasim - 4x4 square
+
+[Hasim - 4x4 square]
+File=modules/system/switch_to_led_system/calculation4x4/square/square4x4.awb
+Packagehint=hasim
+
+[Hasim base module]
+File=modules/common/base/hasim_base.awb
+Packagehint=hasim
+
+
+[Hasim base library/Requires]
+hasim_fpgalib=Hasim FPGA library software as a virtual platform
+hasim_base=Hasim base module
+
+[Hasim FPGA library software as a virtual platform/Requires]
+virtual_platform=Software virtual platform
+
+[Graphical Serial Console]
+File=modules/common/fpgalib/software/virtual-platform/virtual-devices/console/graphical-serial/graphical-serial.awb
+Packagehint=hasim
+
+[Standard virtual devices/Requires]
+console=Graphical Serial Console
+front_panel=Graphical Front Panel
+
+[Channel IO to/from a UNIX Process]
+File=modules/common/fpgalib/software/virtual-platform/channelio/unix-channelio/unix-channelio.awb
+Packagehint=hasim
+
+[Hasim FPGA library software as a virtual platform]
+File=modules/common/fpgalib/software/hasim_fpgalib_platform_software.awb
+Packagehint=hasim
+
+[Software virtual platform/Requires]
+channelio=Channel IO to/from a UNIX Process
+virtual_devices=Standard virtual devices
+
+[Software virtual platform]
+File=modules/common/fpgalib/software/virtual-platform/virtual-platform.awb
+Packagehint=hasim
+
+[Standard virtual devices]
+File=modules/common/fpgalib/software/virtual-platform/virtual-devices/std-virtual-devices.awb
+Packagehint=hasim
+
+[Graphical Front Panel]
+File=modules/common/fpgalib/software/virtual-platform/virtual-devices/fp/graphical-fp/graphical-fp.awb
+Packagehint=hasim

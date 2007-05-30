@@ -16,7 +16,7 @@
 #
 # %attributes hasim
 #
-# %public hasim_fpgalib_platform_software.bsv BRAM.bsv
+# %public FPGALib_Bluesim.bsv BRAM_Bluesim.bsv BRAM1.bsv BRAM2.bsv BRAM3.bsv
 #
 # %AWB_END
 # */

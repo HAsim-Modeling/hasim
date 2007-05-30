@@ -4801,3 +4801,68 @@ Directory modules/bluespec/model/pure-bluespec
 Added batch commands to Makefile templates.
 
 Michael P.
+
+----------
+aparasha    Date: Wed May 30 15:29:32 EDT 2007  CSN: CSN-hasim-182
+                  Wed May 30 19:29:32 UTC 2007
+
+
+Directory libperl/HAsim/lib/HAsim
+ Build.pm                  Locally Modified          181 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          181 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Added               0 
+ adder4x4_software.apm     Locally Added               0 
+ square4x4_software.apm    Locally Added               0 
+ multiplier4x4_software.apm Locally Added               0 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          181 
+ Makefile.top.template     Locally Modified          181 
+
+Directory modules/bluespec/system/demos/counter
+ System.bsv                Locally Modified          181 
+
+Directory modules/bluespec/system/demos/multiplier
+ System.bsv                Locally Modified          181 
+
+Directory modules/controller/null
+ hasim_null_controller.bsv Locally Modified          181 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.bsv  Locally Modified          181 
+
+Directory modules/common/fpgalib/software/virtual-platform/channelio/unix-channelio
+ unix-channelio.awb        Locally Modified          181 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/fp/graphical-fp
+ GraphicalFP.bsv           Locally Modified          181 
+
+Directory modules/common/fpgalib/software
+ BRAM_Bluesim.bsv          Locally Added               0 
+ hasim_fpgalib_platform_software.awb Locally Modified          181 
+ BRAM1.bsv                 Locally Added               0 
+ BRAM2.bsv                 Locally Added               0 
+ FPGALib_Bluesim.bsv       Locally Added               0 
+ BRAM3.bsv                 Locally Added               0 
+
+
+- Modified the "software" FPGA library to use the virtual platform
+  infrastructure. HAsim models can now talk to virtual devices via
+  connections through the software FPGA library. (Previously, only
+  pure Bluespec models were able to use virtual devices).
+
+- Created software versions of the switch2led HAsim APM models.
+
+- Modified the hasim_null_controller to remove references to the
+  deprecated TModule identifiers.
+
+- Modified the hasim-configure/Makefile process in order to compile
+  and link models using BDPI in a much cleaner fashion. Modules
+  with BDPI C files will now need to specify the names of all BDPI
+  methods that the C file exports using a %param declaration. These
+  names are used my hasim-configure and the Makefiles to locate
+  temporary BDPI-specific .ba object files.

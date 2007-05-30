@@ -1,0 +1,84 @@
+
+[Hasim - Switch in to LED out system]
+Packagehint=hasim
+File=modules/system/switch_to_led_system/switch_to_led_system.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/hasim_model.awb
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - Switch in to LED out system
+hasim_controller=Hasim null controller
+hasim_common=Hasim base library
+
+[Global]
+SaveParameters=0
+Description=Switch to LED adder
+File=adder4x4_vp
+Version=2.1
+Type=HAsim
+Name=Switch to LED adder
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=switch2led hasim
+model=HAsim Model Foundation
+
+[Hasim base library]
+Packagehint=hasim
+File=modules/common/hasim_common.awb
+
+[Hasim - Switch in to LED out system/Requires]
+calculation4x4=Hasim - 4x4 adder
+
+[Hasim - 4x4 adder]
+File=modules/system/switch_to_led_system/calculation4x4/adder/adder4x4.awb
+Packagehint=hasim
+
+[Hasim base module]
+File=modules/common/base/hasim_base.awb
+Packagehint=hasim
+
+[Hasim base library/Requires]
+hasim_fpgalib=Hasim FPGA library software as a virtual platform
+hasim_base=Hasim base module
+
+[Hasim null controller]
+File=modules/controller/null/hasim_null_controller.awb
+Packagehint=hasim
+
+[Hasim FPGA library software as a virtual platform]
+File=modules/common/fpgalib/software/hasim_fpgalib_platform_software.awb
+Packagehint=hasim
+
+[Hasim FPGA library software as a virtual platform/Requires]
+virtual_platform=Software virtual platform
+
+[Software virtual platform]
+File=modules/common/fpgalib/software/virtual-platform/virtual-platform.awb
+Packagehint=hasim
+
+[Software virtual platform/Requires]
+virtual_devices=Standard virtual devices
+channelio=Channel IO to/from a UNIX Process
+
+[Standard virtual devices]
+File=modules/common/fpgalib/software/virtual-platform/virtual-devices/std-virtual-devices.awb
+Packagehint=hasim
+
+[Graphical Serial Console]
+File=modules/common/fpgalib/software/virtual-platform/virtual-devices/console/graphical-serial/graphical-serial.awb
+Packagehint=hasim
+
+[Standard virtual devices/Requires]
+console=Graphical Serial Console
+front_panel=Graphical Front Panel
+
+[Graphical Front Panel]
+File=modules/common/fpgalib/software/virtual-platform/virtual-devices/fp/graphical-fp/graphical-fp.awb
+Packagehint=hasim
+
+[Channel IO to/from a UNIX Process]
+File=modules/common/fpgalib/software/virtual-platform/channelio/unix-channelio/unix-channelio.awb
+Packagehint=hasim

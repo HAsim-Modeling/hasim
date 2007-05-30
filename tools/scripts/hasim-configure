@@ -547,6 +547,15 @@ sub __generate_makefile_top {
 	HAsim::Util::hash_append($replacements_r," ",'@ALL_BAS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir,$ba_file));
     }
 
+    # collect BDPI-exported files and add it to the @ALL_BAS@ list
+    my @bdpi_names = HAsim::Build::get_bdpi_names($module);
+    foreach my $n (@bdpi_names) {
+        my $fname = "$n.ba";
+	    HAsim::Util::hash_append($replacements_r, " ", '@ALL_BAS@',
+                                 HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, $fname));
+    }
+
+
     # @ALL_VS@ - raw .v files
 
     my @l = ();
@@ -555,6 +564,18 @@ sub __generate_makefile_top {
     foreach my $f (@l) {
         if ($f =~ /\.v$/) {
             HAsim::Util::hash_append($replacements_r," ",'@ALL_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, $f));
+        }
+    }
+
+    # @ALL_CS@
+    @l = ();
+    push (@l, $module->public());
+
+    foreach my $f (@l)
+    {
+        if ($f =~ /\.c$/)
+        {
+            HAsim::Util::hash_append($replacements_r," ",'@ALL_CS@',HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, $f));
         }
     }
 
@@ -637,12 +658,20 @@ sub __generate_makefile_sub {
 	if ($f =~ /.bsv/) {
 	    HAsim::Util::hash_append($current_replacements_r, " ", '@BSVS@', $f);
 	    $deps = $deps . " $f";
-	} elsif ($f =~ /.c/) {
+	} elsif ($f =~ /.\.c/) {
 	    HAsim::Util::hash_append($current_replacements_r, " ", '@CSRCS@', $f);
 	} else {
 	    HAsim::Util::hash_append($current_replacements_r, " ", '@SRCS@', $f);
 	}
     }
+
+    # collect BDPI-exported names
+    my @bdpi_names = HAsim::Build::get_bdpi_names($module);
+    foreach my $n (@bdpi_names) {
+        my $fname = "$n.ba";
+	    HAsim::Util::hash_append($current_replacements_r, " ", '@BDPI_BAS@', $fname);
+    }
+
     my $mod_rule = "\n$mod_bsv: $deps\n\ttouch \$\@\n";
     HAsim::Util::hash_append($current_replacements_r, " ", '@GEN_DEPS@', $mod_rule);
     HAsim::Util::hash_append($current_replacements_r, " ", '@GEN_BSVS@', $mod_bsv);

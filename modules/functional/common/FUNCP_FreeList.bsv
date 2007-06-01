@@ -41,7 +41,7 @@ module [HASim_Module] mkFreeList
   BRAM#(TokIndex, PRName)     old_pregs <- mkBRAM_Full();
   BRAM#(PRName, PRName)       fl        <- mkBRAM_Full();
   Reg#(PRName)  	      fl_read   <- mkReg(minInitFL);
-  Reg#(PRName)  	      fl_write  <- mkReg(minInitFL); 
+  Reg#(PRName)  	      fl_write  <- mkReg(0); 
   
   Bool full = fl_read + 1 == fl_write;
   
@@ -57,8 +57,12 @@ module [HASim_Module] mkFreeList
   rule finish_free (True);
   
     PRName reg_to_free <- old_pregs.read_resp();
-    fl.write(fl_write, reg_to_free);
-    fl_write <= fl_write + 1;
+    if (reg_to_free != 0)
+    begin
+      fl.write(fl_write, reg_to_free);
+      fl_write <= fl_write + 1;
+      $display("FREELIST: Freeing PR%0d", reg_to_free);
+    end
 
   endrule
   
@@ -70,6 +74,7 @@ module [HASim_Module] mkFreeList
   method ActionValue#(PRName) forward_resp() if (!initializing);
     
     let rsp <- fl.read_resp();
+    $display("FREELIST: Allocating PR%0d", rsp);
     return rsp;
   
   endmethod
@@ -88,6 +93,11 @@ module [HASim_Module] mkFreeList
   
   method Action back() if (!initializing);
   
+    if (fl_read == fl_write)
+    begin
+      $display("ERROR: Backed up the freelist too far!");
+      $finish(1);
+    end
     fl_read <= fl_read - 1;
   
   endmethod

@@ -148,7 +148,14 @@ module [Connected_Module] mkEventController_Software
   Reg#(Bit#(32))      cur <- mkReg(0);
   Reg#(Bool)      toggling <- mkReg(False);
   Reg#(Bool)      enabled <- mkReg(True);
-    
+  
+  rule timeout (cc == 100000);
+  
+    $display("ERROR: Benchmark timed out after 100000 model cycles");
+    $finish(1);
+  
+  endrule
+  
   rule process (True);
   
     chainQ.deq();

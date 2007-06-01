@@ -39,7 +39,7 @@ module [HASim_Module] mkFUNCP_Regstate
   Reg#(Vector#(TExp#(rname_SZ), PRName)) maptbl <- mkReg(initmap); // init with [0 .. max]
 
   function PRName lookup(RName r);
-     return select(maptbl._read(), r);
+     return (r == 0) ? 0 : select(maptbl._read(), r);
   endfunction 
 
   FreeList                       freelist <- mkFreeList();
@@ -59,7 +59,7 @@ module [HASim_Module] mkFUNCP_Regstate
   Reg#(TokEpoch) dead_epoch <- mkReg(maxBound);
   Reg#(Bool)  busy <- mkReg(True);
   Reg#(Token) stopToken <- mkRegU();
-  FIFO#(Tuple3#(Maybe#(RName), Token, Bool)) mappingQ <- mkFIFO();
+  FIFO#(Tuple5#(Maybe#(RName), Token, Bool, RName, RName)) mappingQ <- mkFIFO();
 
   Reg#(Bool) initializing <- mkReg(True);
   FIFO#(Token) flatteningQ   <- mkFIFO();
@@ -67,18 +67,10 @@ module [HASim_Module] mkFUNCP_Regstate
   Bool free_ss = pack(snap_valids) != ~0;
 
   //Connections
-  Connection_Server#(Tuple3#(Maybe#(RName), Token, Bool), 
-                     PRName) 
+  Connection_Server#(Tuple5#(Maybe#(RName), Token, Bool, RName, RName), 
+                     Tuple3#(PRName, PRName, PRName)) 
   //...
         link_mapping <- mkConnection_Server("dec_to_bypass_mapping");
-
-  Connection_Server#(RName, PRName) 
-  //...
-        link_lookup1 <- mkConnection_Server("dec_to_bypass_lookup1");
-
-  Connection_Server#(RName, PRName) 
-  //...
-        link_lookup2 <- mkConnection_Server("dec_to_bypass_lookup2");
 
   Connection_Server#(PRName, Maybe#(Value)) 
   //...
@@ -143,61 +135,31 @@ module [HASim_Module] mkFUNCP_Regstate
 
 
   rule begin_Mapping (!busy);
-    
      
-    match {.mx, .tok, .ss} <- link_mapping.getReq();
+    match {.mx, .tok, .ss, .r1, .r2} <- link_mapping.getReq();
     
     if (tok.info.epoch == dead_epoch) //It's a dead request so return junk
     begin
       $display("REGSTATE begin_Mapping JUNK: %0b(%0d), %0d, %0d", isJust(mx), unJust(mx), tok.index, ss);
       link_mapping.makeResp(?);
     end
-    else case (mx) matches
-      tagged Valid .r &&& (r == 0): //They're writing R0. It's a throwaway.
-      begin
-        link_mapping.makeResp(0);
-      end
-      default:
-	begin    //take off freelist
-	  $display("REGSTATE begin_Mapping: %0b(%0d), %0d, %0d", isJust(mx), unJust(mx), tok.index, ss);
-	  freelist.forward_req();
-	  mappingQ.enq(tuple3(mx, tok, ss));
-	end
-    endcase
+    else
+    begin
     
+      $display("REGSTATE begin_Mapping: %0b(%0d), %0d, %0d", isJust(mx), unJust(mx), tok.index, ss);
+
+      freelist.forward_req();
+
+      mappingQ.enq(tuple5(mx, tok, ss, r1, r2));
+     
+    end    
   endrule
 
-/*
-  //begin_Mapping
-
-  rule normal_Mapping (!busy);
-  
-    match {.mx, .tok, .ss} <- link_mapping.getReq();
-    
-  
-    $display("REGSTATE begin_Mapping: %0b(%0d), %0d, %0d", isJust(mx), unJust(mx), tok.index, ss);
-    //take off freelist
-    freelist.forward_req();
-    mappingQ.enq(tuple3(mx, tok, ss));
-    
-  endrule
-  
-  
-  //continue_Mapping
-  
-  rule continue_Mapping (!busy &&& mappingQ.first() matches {.mx, .tok, .ss} &&& tok.info.epoch == epoch);
-    $display("REGSTATE begin_Mapping: %0d, %0d, %0d", mx, tok.index, ss);
-    //take off freelist
-    freelist.forward_req();
-    waitingQ.deq();
-    waitingQ.enq(mappingQ.first());
-  endrule
-*/
   //finish_Mapping
 
   rule finish_Mapping (!busy);
     
-    match {.mx, .tok, .ss} = mappingQ.first();
+    match {.mx, .tok, .ss, .r1, .r2} = mappingQ.first();
     mappingQ.deq();
 
     PRName oldPReg; 
@@ -220,9 +182,11 @@ module [HASim_Module] mkFUNCP_Regstate
     // update map
     if (isJust(mx))
       begin
+        $display("New Mapping: R%0d/PR%0d", unJust(mx), newPReg);
 	Vector#(TExp#(rname_SZ), PRName) new_map = maptbl;
 	new_map = update(new_map, unJust(mx), newPReg);
 	maptbl <= new_map;
+	prf.write(newPReg, tagged Invalid);
       end
 
     // write rob
@@ -259,25 +223,15 @@ module [HASim_Module] mkFUNCP_Regstate
     
     freelist.setOldPReg(tok, oldPReg);
     
+    //Do lookups
+    PRName pr1 = lookup(r1);
+    PRName pr2 = lookup(r2);
+    
+    $display("Lookup1: R%0d/PR%0d", r1, pr1);
+    $display("Lookup2: R%0d/PR%0d", r2, pr2);
+    
     // return value
-    link_mapping.makeResp(newPReg);
-  endrule
-
-  //lookup{1, 2} used by Decode
-  rule lookup1 (!busy);
-    
-    let rnm <- link_lookup1.getReq();
-    $display("REGSTATE Lookup1: %0d", rnm);
-    link_lookup1.makeResp(lookup(rnm));
-    
-  endrule
-  
-  rule lookup2 (!busy);
-    
-    let rnm <- link_lookup2.getReq();
-    $display("REGSTATE Lookup2: %0d", rnm);
-    link_lookup2.makeResp(lookup(rnm));
-    
+    link_mapping.makeResp(tuple3(newPReg, pr1, pr2));
   endrule
 
   //read{1, 2} used by Execute
@@ -349,16 +303,27 @@ module [HASim_Module] mkFUNCP_Regstate
   
     match {.prnm, .val} <- link_write1.receive();
     
-    if (prnm != 0) //Can't write PR0
-      prf.write(prnm, tagged Valid val);
+    if (prnm == 0)
+    begin
+      $display("ERROR: WRITE1 to PR0 <= 0x%0h", val);
+      $finish(1);
+    end
+    
+    prf.write(prnm, tagged Valid val);
+    
   endrule
   
   rule write2 (True);
   
     match {.prnm, .val} <- link_write2.receive();
     
-    if (prnm != 0) //Can't write PR0
-      prf.write(prnm, tagged Valid val);
+    if (prnm == 0)
+    begin
+      $display("ERROR: WRITE2 to PR0 <= 0x%0h", val);
+      $finish(1);
+    end
+    
+    prf.write(prnm, tagged Valid val);
   
   endrule
 

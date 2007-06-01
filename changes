@@ -4866,3 +4866,27 @@ Directory modules/common/fpgalib/software
   methods that the C file exports using a %param declaration. These
   names are used my hasim-configure and the Makefiles to locate
   temporary BDPI-specific .ba object files.
+----------
+mpellaux    Date: Fri Jun  1 11:31:04 EDT 2007  CSN: CSN-hasim-183
+                  Fri Jun  1 15:31:04 UTC 2007
+
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          182 
+
+Directory modules/functional/common
+ FUNCP_FreeList.bsv        Locally Modified          182 
+ FUNCP_RegState.bsv        Locally Modified          182 
+
+Directory modules/common
+ Events.bsv                Locally Modified          182 
+
+
+Fixed some serious freelist/regstate bugs.
+
+Makefile now makes simv link.
+
+Events cause simulation to timeout after 100,000 model cycles.
+
+Michael P.
+

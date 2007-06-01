@@ -102,6 +102,7 @@ vexe:
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "$(BUILD_DIR)/$(APM_NAME).vexe +bscvcd" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
+	ln -fs $(APM_NAME).vexe simv
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
 .PHONY: batch_vexe
@@ -127,6 +128,7 @@ exe:
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "$(BUILD_DIR)/$(APM_NAME).exe" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
+	ln -fs $(APM_NAME).exe simv
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
 .PHONY: batch_exe
@@ -155,7 +157,7 @@ help:
 .PHONY: clean
 clean: clean_root
 	rm -f $(TMP_XILINX_DIR)/*.*
-	rm -f $(TMP_bsc_DIR)/*.*
+	rm -f $(TMP_BSC_DIR)/*.*
 	rm -f *~
 
 .PHONY: clean_root

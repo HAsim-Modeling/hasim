@@ -121,7 +121,7 @@ batch_vexe:
 .PHONY: exe
 exe:
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
-	$(BSC) $(BSC_FLAGS) -sim -e mkModel -o $(APM_NAME).exe $(TMP_BSC_DIR)/*.ba $(TMP_BSC_DIR)/*.c
+	$(BSC) $(BSC_FLAGS) $(LDFLAGS) -sim -e mkModel -o $(APM_NAME).exe $(TMP_BSC_DIR)/*.ba $(TMP_BSC_DIR)/*.c
 	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
 	ln -f -s $(APM_NAME).exe simv
 

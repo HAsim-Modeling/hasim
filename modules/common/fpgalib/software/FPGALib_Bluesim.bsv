@@ -2,8 +2,8 @@ import hasim_base::*;
 import front_panel::*;
 
 // FPGALib Software implementation as a virtual platform
-// To-Do: Talking to PowerPC
-// To-Do: Talking to DIMM
+interface TopLevel;
+endinterface
 
 module [HASim_Module] mkFPGALib (TopLevel);
 
@@ -50,35 +50,5 @@ module [HASim_Module] mkFPGALib (TopLevel);
         link_switches.send(switch_reg);
         link_buttons.send(bi);
     endrule
-  
-    /* we'll let these remain for now */
-    method Bit#(4) leds();
-        return led_reg;
-    endmethod
-  
-    method Action switches(Bit#(4) sw);
-        switch_reg <= ~sw;
-    endmethod
-  
-    method Action  button_left(Bit#(1) bl);
-        bl_reg <= ~bl;
-    endmethod
-
-    method Action  button_right(Bit#(1) br);
-        br_reg <= ~br;
-    endmethod
-  
-    method Action  button_up(Bit#(1) bu);
-        bu_reg <= ~bu;
-    endmethod
-  
-    method Action  button_down(Bit#(1) bd);
-        bd_reg <= ~bd;
-    endmethod
-
-    method Action  button_center(Bit#(1) bc);
-        bc_reg <= ~bc;
-    endmethod
 
 endmodule
-

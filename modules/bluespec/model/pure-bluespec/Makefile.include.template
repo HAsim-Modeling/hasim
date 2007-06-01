@@ -7,6 +7,8 @@ BSC_FLAGS = -keep-fires \
 	    -wait-for-license \
             -aggressive-conditions
 
+LDFLAGS = -L /usr/lib/curses
+
 # BLUESPECDIR = /proj/vssad/local/i386_linux26/lib
 
 APM_NAME = @APM_NAME@

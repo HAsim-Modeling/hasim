@@ -4890,3 +4890,59 @@ Events cause simulation to timeout after 100,000 model cycles.
 
 Michael P.
 
+
+----------
+aparasha    Date: Fri Jun  1 12:43:20 EDT 2007  CSN: CSN-hasim-184
+                  Fri Jun  1 16:43:20 UTC 2007
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          183 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Modified          183 
+ adder4x4_software.apm     Locally Modified          183 
+ square4x4_software.apm    Locally Modified          183 
+ adder4x4_xup.apm          Locally Modified          183 
+ multiplier4x4_software.apm Locally Modified          183 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          183 
+ Makefile.include.template Locally Modified          183 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.top.template     Locally Modified          183 
+ Makefile.include.template Locally Modified          183 
+
+Directory modules/common/fpgalib/software/virtual-platform
+ virtual-platform.awb      Locally Modified          183 
+
+Directory modules/common/fpgalib/software
+ FPGALib_Bluesim.bsv       Locally Modified          183 
+
+Directory modules/common/base
+ no-top-level/             Locally Added               0 
+
+Directory modules/common/base/no-top-level
+ hasim_base.awb            Locally Added               0 
+ HASim.bsv                 Locally Added               0 
+
+
+- Added an explicit path to lcurses in the BSC command line in order to
+  enable the linker to work correctly on Suse 2.6 systems.
+
+- Moved the TopLevel interface definition from hasim_base to hasim_fpgalib.
+  Currently, only the software virtual-platform-enabled fpgalib
+  implementation has this functionality; therefore, in order to not break
+  existing models that are configured with either the non-virtual-platform
+  software fpgalib or the XUP fpgalib, the existing hasim_base has not
+  been touched. Instead, an alternate hasim_base has been created, which
+  does not have the TopLevel definition. All models using the software
+  virtual-platform fpgalib must use this alternate hasim_base. Eventually,
+  all models will use this new hasim_base.
+
+- Updated the switch2led hasim demos to use the new fpgalib/base
+  combination.
+
+- Fixed a minor bug in the hasim top-level Makefile that was generating
+  a "rm -f /*.*" command when called with "make clean".

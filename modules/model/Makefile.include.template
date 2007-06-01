@@ -8,7 +8,9 @@ BSC_FLAGS = -steps 1000000 \
             -keep-fires \
             -aggressive-conditions \
 	    -wait-for-license \
-            -no-opt-bool 
+            -no-opt-bool
+
+LDFLAGS = -L /usr/lib/curses
 
 APM_NAME = @APM_NAME@
 BUILD_DIR = @BUILD_DIR@

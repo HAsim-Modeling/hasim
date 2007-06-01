@@ -40,13 +40,10 @@ calculation4x4=Hasim - 4x4 echo
 File=modules/system/switch_to_led_system/calculation4x4/echo/echo4x4.awb
 Packagehint=hasim
 
-[Hasim base module]
-File=modules/common/base/hasim_base.awb
-Packagehint=hasim
 
 [Hasim base library/Requires]
 hasim_fpgalib=Hasim FPGA library software as a virtual platform
-hasim_base=Hasim base module
+hasim_base=Hasim base module without toplevel wires
 
 [Hasim FPGA library software as a virtual platform/Requires]
 virtual_platform=Software virtual platform
@@ -81,4 +78,8 @@ Packagehint=hasim
 
 [Channel IO to/from a UNIX Process]
 File=modules/common/fpgalib/software/virtual-platform/channelio/unix-channelio/unix-channelio.awb
+Packagehint=hasim
+
+[Hasim base module without toplevel wires]
+File=modules/common/base/no-top-level/hasim_base.awb
 Packagehint=hasim

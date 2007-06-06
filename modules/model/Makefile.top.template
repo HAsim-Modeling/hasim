@@ -87,7 +87,8 @@ $(XILINX_APM_NAME).ngd: $(UCF_FILE) $(XILINX_APM_NAME).ngc
 	$(NGDBUILD) -uc $^ $@
 	mv netlist.lst $(TMP_XILINX_DIR)
 
-$(XILINX_APM_NAME).ngc: $(ROOT_V) $(XST_FILE) 
+$(XILINX_APM_NAME).ngc:$(XST_FILE) 
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
 	$(XST) -ifn $(XST_FILE)
 	mv $(APM_NAME).srp $(TMP_XILINX_DIR)
 	mv $(@F) $(TMP_XILINX_DIR)

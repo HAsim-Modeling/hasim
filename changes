@@ -4946,3 +4946,20 @@ Directory modules/common/base/no-top-level
 
 - Fixed a minor bug in the hasim top-level Makefile that was generating
   a "rm -f /*.*" command when called with "make clean".
+
+----------
+mpellaue    Date: Wed Jun  6 15:17:33 EDT 2007  CSN: CSN-hasim-185
+                  Wed Jun  6 19:17:33 UTC 2007
+
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          184 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.top.template     Locally Modified          184 
+
+
+Fixing "make bit" to work even if "make v" was not done first.
+
+Michael P.
+

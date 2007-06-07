@@ -5268,3 +5268,31 @@ Directory modules/common
   models.
 
 - Removed two old submodels for hasim-common.
+
+----------
+aparasha    Date: Thu Jun  7 14:03:16 EDT 2007  CSN: CSN-hasim-187
+                  Thu Jun  7 18:03:16 UTC 2007
+
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Modified          186 
+ adder4x4_software.apm     Locally Modified          186 
+ square4x4_xup.apm         Locally Modified          186 
+ multiplier4x4_software.apm Locally Modified          186 
+ echo4x4_xup.apm           Locally Modified          186 
+ square4x4_software.apm    Locally Modified          186 
+ adder4x4_xup.apm          Locally Modified          186 
+ multiplier4x4_xup.apm     Locally Modified          186 
+
+Directory modules/common/base
+ no-top-level/             Locally Removed           185 
+ HASim.bsv                 Locally Added               - 
+ hasim_base.awb            Locally Added               - 
+
+
+- Moved the files for new hasim base above one directory
+  level (subversion would not allow this in the previous
+  commit)
+
+- Updated the switch2led demo configs to adjust for the
+  above movement.

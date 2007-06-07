@@ -36,15 +36,12 @@ calculation4x4=Hasim - 4x4 echo
 File=modules/system/switch_to_led_system/calculation4x4/echo/echo4x4.awb
 Packagehint=hasim
 
-
-
-
 [Hasim Common Library]
 File=modules/common/hasim_common.awb
 Packagehint=hasim
 
 [Hasim Base Module]
-File=modules/common/base/no-top-level/hasim_base.awb
+File=modules/common/base/hasim_base.awb
 Packagehint=hasim
 
 [Hasim Common Library/Requires]

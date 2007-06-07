@@ -5429,3 +5429,22 @@ Using the new FPGA Environment and Components, we can deprecate hasim_base and
 roll its functionality in hasim_common.
 
 Michael P.
+
+----------
+mpellaue    Date: Thu Jun  7 18:13:56 EDT 2007  CSN: CSN-hasim-191
+                  Thu Jun  7 22:13:56 UTC 2007
+
+
+Directory modules/functional/semantic-model
+ hasim_funcp_tokstate.awb  Locally Added               0 
+ FUNCPTokState.bsv         Locally Added               0 
+ hasim_funcp_model.awb     Locally Added               0 
+ FUNCPModel.bsv            Locally Added               0 
+
+Directory modules/functional
+ semantic-model/           Locally Added               0 
+
+
+Added a very preliminary version of the functional partition semantic model.
+
+Michael P.

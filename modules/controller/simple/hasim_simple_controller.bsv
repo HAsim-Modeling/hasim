@@ -6,7 +6,6 @@ import Connectable::*;
 import FIFO::*;
 
 //HASim library imports
-import hasim_base::*;
 import hasim_common::*;
 
 //************* OneTest Controller **************

@@ -1,9 +1,7 @@
-import hasim_base::*;
 import hasim_common::*;
 
 import calculation4x4::*;
 
-//module [HASim_Module] mkSystem (TModule#(Command, Response));
 module [HASim_Module] mkSystem ();
    
     Connection_Receive#(Bit#(4))    link_switches <- mkConnection_Receive("fpga_switches");

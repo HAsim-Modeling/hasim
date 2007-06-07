@@ -1,11 +1,10 @@
-import hasim_base::*;
 import hasim_common::*;
 
-module [HASim_Module] mkSystem (TModule#(Command, Response));
+module [HASim_Module] mkSystem ();
    
-   Connection_Receive#(Bit#(4)) link_switches <- mkConnection_Receive("fpga_switches");
-   Connection_Receive#(ButtonInfo) link_buttons  <- mkConnection_Receive("fpga_buttons");
-   Connection_Send#(Bit#(4))    link_leds     <- mkConnection_Send("fpga_leds");
+  Connection_Receive#(Bit#(4)) link_switches <- mkConnection_Receive("fpga_switches");
+  Connection_Receive#(ButtonInfo) link_buttons  <- mkConnection_Receive("fpga_buttons");
+  Connection_Send#(Bit#(4))    link_leds     <- mkConnection_Send("fpga_leds");
    
   Reg#(Bit#(4))  product      <- mkReg(0);
   Reg#(Bit#(4))  d            <- mkReg(0);

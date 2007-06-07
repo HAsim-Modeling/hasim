@@ -1,4 +1,4 @@
-import hasim_base::*;
+import hasim_common::*;
 import front_panel::*;
 import toplevel_wires::*;
 

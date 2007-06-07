@@ -7,9 +7,6 @@ import FIFO::*;
 import ModuleCollect::*;
 import Connectable::*;
 
-import hasim_base::*;
-import hasim_fpgalib::*;
-
 //Instantiate a module with connections exposed
 
 module [Module] instantiateWithConnections#(Connected_Module#(inter_T) m) (WithConnections);

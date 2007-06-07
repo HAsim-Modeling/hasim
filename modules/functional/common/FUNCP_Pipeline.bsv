@@ -1,10 +1,6 @@
 
 //HASim library imports
 
-//HASim library imports
-
-import hasim_base::*;
-import hasim_fpgalib::*;
 import hasim_common::*;
 
 import hasim_isa::*;

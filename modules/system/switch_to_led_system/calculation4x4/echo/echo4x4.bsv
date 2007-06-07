@@ -1,4 +1,3 @@
-import hasim_base::*;
 import hasim_common::*;
 
 interface Calculation4x4;

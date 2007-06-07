@@ -2,9 +2,6 @@
 import FIFO::*;
 import ModuleCollect::*;
 
-//HASim library imports
-import hasim_base::*;
-
 /*
 
 module [Connected_Module] mkEventRecorder#(String eventname)

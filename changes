@@ -5340,3 +5340,92 @@ Directory config/pm/hasim/demos/bram_test
 Fixed a bug in TopLevel Wires: The actual top-level magic wires
 have been separated from the "driver" wires (coming from the FPGA
 model) by placing them in a sub-interface.
+----------
+mpellaue    Date: Thu Jun  7 17:25:18 EDT 2007  CSN: CSN-hasim-190
+                  Thu Jun  7 21:25:18 UTC 2007
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          189 
+
+Directory modules/model
+ Makefile.include.template Locally Modified          189 
+ hasim_model.bsv           Locally Modified          189 
+
+Directory modules/functional/common
+ FUNCP_MemState_ifc.bsv    Locally Modified          189 
+ FUNCP_Checker.bsv         Locally Modified          189 
+ FUNCP_Pipeline.bsv        Locally Modified          189 
+ FUNCP_Loader.bsv          Locally Modified          189 
+ FUNCP_Base.bsv            Locally Modified          189 
+ FUNCP_FreeList.bsv        Locally Modified          189 
+ FUNCP_RegState.bsv        Locally Modified          189 
+ FUNCP_MemState.bsv        Locally Modified          189 
+ FUNCP.bsv                 Locally Modified          189 
+ FUNCP_StoreBuffer.bsv     Locally Modified          189 
+ FUNCP_TokGen.bsv          Locally Modified          189 
+
+Directory modules/functional/test-cases/common
+ TestCase_Base.bsv         Locally Modified          189 
+
+Directory modules/controller/simple
+ hasim_simple_controller.bsv Locally Modified          189 
+
+Directory modules/controller/null
+ hasim_null_controller.bsv Locally Modified          189 
+
+Directory modules/system/bram_test
+ System.bsv                Locally Modified          189 
+
+Directory modules/system/single_chip_system
+ System.bsv                Locally Modified          189 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          189 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Modified          189 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.bsv     Locally Modified          189 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.bsv  Locally Modified          189 
+
+Directory modules/system/switch_to_led_system/calculation4x4/adder
+ adder4x4.bsv              Locally Modified          189 
+
+Directory modules/system/switch_to_led_system/calculation4x4/square
+ square4x4.bsv             Locally Modified          189 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ multiplier4x4.bsv         Locally Modified          189 
+
+Directory modules/system/switch_to_led_system/calculation4x4/echo
+ echo4x4.bsv               Locally Modified          189 
+
+Directory modules/common
+ Ports.bsv                 Locally Modified          189 
+ hasim_common.awb          Locally Modified          189 
+
+Directory modules/common/fpgaenv/platform-interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          189 
+
+Directory modules/common
+ Stats.bsv                 Locally Modified          189 
+
+Directory modules/common/base
+ hasim_base.awb            Locally Removed           189 
+ HASim.bsv                 Locally Removed           189 
+
+Directory modules/common
+ HASim.bsv                 Locally Added               - 
+ Connections.bsv           Locally Modified          189 
+ Connections_Deprecated.bsv Locally Modified          189 
+ Events.bsv                Locally Modified          189 
+
+
+Using the new FPGA Environment and Components, we can deprecate hasim_base and
+roll its functionality in hasim_common.
+
+Michael P.

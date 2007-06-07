@@ -7,10 +7,6 @@ import FIFO::*;
 import ModuleCollect::*;
 import Connectable::*;
 
-import hasim_base::*;
-import platform_interface::*;
-import toplevel_wires::*;
-
 //Instantiate a module with connections exposed
 
 module [Module] instantiateWithConnections#(Connected_Module#(inter_T) m) (WithConnections);
@@ -24,13 +20,12 @@ endmodule
 
 //Instantiate a module with connections exposed
 
-module [Module] instantiateTopLevel#(Connected_Module#(inter_T) m) (TopLevelWires);
+module [Module] instantiateTopLevel#(Connected_Module#(inter_T) m) (inter_T);
 
-  match {.m, .col1} <- getCollection(m);
-  match {.m2, .col2} <- getCollection(mkPlatformInterface);
-  let col = List::append(col1, col2);
+  match {.m2, .col} <- getCollection(m);
   
   connectTopLevel(col, m);
+  
   return m2;
   
 endmodule

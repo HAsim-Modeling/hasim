@@ -1,8 +1,5 @@
 
-import hasim_base::*;
 import hasim_common::*;
-import fpga_components::*;
-
 
 module [HASim_Module] mkSystem ();
 

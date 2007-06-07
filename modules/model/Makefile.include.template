@@ -8,6 +8,7 @@ BSC_FLAGS = -steps 1000000 \
             -keep-fires \
             -aggressive-conditions \
 	    -wait-for-license \
+	    -no-show-method-conf \
             -no-opt-bool
 
 LDFLAGS = -L /usr/lib/curses

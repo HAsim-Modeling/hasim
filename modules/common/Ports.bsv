@@ -1,6 +1,4 @@
 
-import hasim_base::*;
-
 interface Port_Send#(type msg_T);
   
   method Action send(Maybe#(msg_T) m);

@@ -1,9 +1,6 @@
 import FIFO::*;
 import ModuleCollect::*;
 
-import hasim_base::*;
-
-
 `define STAT_SIZE 32
 
 interface Stat;

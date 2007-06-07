@@ -1,7 +1,6 @@
 
+import fpga_components::*;
 import hasim_common::*;
-import hasim_base::*;
-import hasim_fpgalib::*;
 
 import hasim_funcp_base::*;
 import hasim_isa::*;

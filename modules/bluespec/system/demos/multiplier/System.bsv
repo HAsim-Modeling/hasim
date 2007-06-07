@@ -1,5 +1,6 @@
 import Multiplier::*;
 import front_panel::*;
+import toplevel_wires::*;
 
 (* synthesize *)
 module mkSystem();
@@ -13,7 +14,8 @@ module mkSystem();
     Reg#(Bit#(32))  in2         <- mkReg(0);
     Reg#(Bit#(1))   go          <- mkReg(0);
 
-    FrontPanel      fp          <- mkFrontPanel();
+    TopLevelWires   wires       <- mkTopLevelWires();
+    FrontPanel      fp          <- mkFrontPanel(wires);
 
     /* rules */
     rule latchSwitches(True);

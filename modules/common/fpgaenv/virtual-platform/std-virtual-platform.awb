@@ -1,6 +1,6 @@
 
-%name Software virtual platform
-%desc Software virtual platform
+%name Standard Virtual Platform
+%desc Standard Virtual Platform
 
 %provides virtual_platform
 

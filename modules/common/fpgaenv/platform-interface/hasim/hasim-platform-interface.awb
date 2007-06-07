@@ -7,13 +7,14 @@
 #/*
 # %AWB_START
 #
-# %name Hasim base module
-# %desc Hasim base module
-# %provides hasim_base
+# %name Hasim Platform Interface
+# %desc Hasim Platform Interface: translates Connections to Platform Commands
+#
+# %provides platform_interface
 #
 # %attributes hasim
 #
-# %public HASim.bsv
+# %public HAsimPlatformInterface.bsv
 #
 # %AWB_END
 # */

@@ -8,7 +8,8 @@ import ModuleCollect::*;
 import Connectable::*;
 
 import hasim_base::*;
-import hasim_fpgalib::*;
+import platform_interface::*;
+import toplevel_wires::*;
 
 //Instantiate a module with connections exposed
 
@@ -23,10 +24,10 @@ endmodule
 
 //Instantiate a module with connections exposed
 
-module [Module] instantiateTopLevel#(Connected_Module#(inter_T) m) (TopLevel);
+module [Module] instantiateTopLevel#(Connected_Module#(inter_T) m) (TopLevelWires);
 
   match {.m, .col1} <- getCollection(m);
-  match {.m2, .col2} <- getCollection(mkFPGALib);
+  match {.m2, .col2} <- getCollection(mkPlatformInterface);
   let col = List::append(col1, col2);
   
   connectTopLevel(col, m);

@@ -1,8 +1,0 @@
-
-%name Standard virtual devices
-%desc Standard virtual devices
-
-%provides virtual_devices
-
-%requires front_panel console
-

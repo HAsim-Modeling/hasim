@@ -7,10 +7,10 @@
 #/*
 # %AWB_START
 #
-# %name Hasim base library
-# %desc Hasim base library
+# %name Hasim Common Library
+# %desc Hasim Common Library
 # %provides hasim_common
-# %requires hasim_base hasim_fpgalib
+# %requires hasim_base hasim_fpgaenv
 #
 # %attributes hasim
 #

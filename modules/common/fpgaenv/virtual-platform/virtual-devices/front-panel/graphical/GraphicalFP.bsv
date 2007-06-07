@@ -1,11 +1,12 @@
 import channelio::*;
+import toplevel_wires::*;
 
 interface FrontPanel;
-    method Bit#(9) readSwitches();
+    method Bit#(9)  readSwitches();
     method Action   writeLEDs(Bit#(4) data);
 endinterface
 
-module mkFrontPanel(FrontPanel);
+module mkFrontPanel#(TopLevelWires wires) (FrontPanel);
     // maintain input and output caches
     Reg#(Bit#(32))  inputCache  <- mkReg(0);
     Reg#(Bit#(32))  outputCache <- mkReg(0);

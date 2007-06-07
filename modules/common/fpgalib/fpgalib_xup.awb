@@ -7,9 +7,11 @@
 #/*
 # %AWB_START
 #
-# %name Hasim FPGA library XUP board
-# %desc Hasim FPGA library XUP board
+# %name Deprecated Hasim FPGA library XUP board
+# %desc Deprecated Hasim FPGA library XUP board
 # %provides hasim_fpgalib
+#
+# %requires toplevel_wires
 #
 # %attributes xup hasim
 #

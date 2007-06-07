@@ -3,7 +3,7 @@
 SaveParameters=0
 Description=Multiplier FPGA Demo
 File=multiplier
-Version=2.0
+Version=2.1
 Name=Multiplier Model
 Type=HAsim
 Class=Asim::Model
@@ -16,10 +16,6 @@ File=modules/controller/null/hasim_null_controller.awb
 Packagehint=hasim
 File=modules/model/hasim_model.awb
 
-[Hasim base library]
-Packagehint=hasim
-File=modules/common/hasim_common.awb
-
 [Model]
 DefaultAttributes=demo xup hasim
 model=HAsim Model Foundation
@@ -27,20 +23,32 @@ model=HAsim Model Foundation
 [HAsim Model Foundation/Requires]
 hasim_system=Hasim - Multiplier system
 hasim_controller=Hasim null controller
-hasim_common=Hasim base library
+hasim_common=Deprecated Hasim common library
 
 [Hasim - Multiplier system]
 Packagehint=hasim
 File=modules/system/mulitplier_system/multiplier_system.awb
 
-[Hasim base module]
-File=modules/common/base/hasim_base.awb
+[Deprecated Hasim common library]
+File=modules/common/hasim_common_deprecated.awb
 Packagehint=hasim
 
-[Hasim FPGA library XUP board]
+[Deprecated Hasim base module]
+File=modules/common/base/hasim_base_deprecated.awb
+Packagehint=hasim
+
+[Deprecated Hasim common library/Requires]
+hasim_base=Deprecated Hasim base module
+hasim_fpgalib=Deprecated Hasim FPGA library XUP board
+
+
+[Deprecated Hasim FPGA library XUP board]
 File=modules/common/fpgalib/fpgalib_xup.awb
 Packagehint=hasim
 
-[Hasim base library/Requires]
-hasim_fpgalib=Hasim FPGA library XUP board
-hasim_base=Hasim base module
+[Null TopLevel Wires]
+File=modules/common/fpgaenv/toplevel-wires/null/null-toplevel-wires.awb
+Packagehint=hasim
+
+[Deprecated Hasim FPGA library XUP board/Requires]
+toplevel_wires=Null TopLevel Wires

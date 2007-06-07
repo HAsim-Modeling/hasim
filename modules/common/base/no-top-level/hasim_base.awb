@@ -7,8 +7,8 @@
 #/*
 # %AWB_START
 #
-# %name Hasim base module without toplevel wires
-# %desc Hasim base module without toplevel wires
+# %name Hasim Base Module
+# %desc Hasim Base Module
 # %provides hasim_base
 #
 # %attributes hasim

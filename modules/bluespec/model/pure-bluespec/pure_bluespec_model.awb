@@ -9,8 +9,7 @@
 
 %provides model
 
-%requires bluespec_system
-%requires bluespec_common
+%requires bluespec_system bluespec_common
 
 %attributes bluespec model
 

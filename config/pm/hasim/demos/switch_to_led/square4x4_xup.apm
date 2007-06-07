@@ -14,13 +14,13 @@ File=modules/model/hasim_model.awb
 [HAsim Model Foundation/Requires]
 hasim_system=Hasim - Switch in to LED out system
 hasim_controller=Hasim null controller
-hasim_common=Hasim base library
+hasim_common=Hasim Common Library
 
 [Global]
 SaveParameters=0
 Description=Switch to LED w. square
 File=square4x4_xup
-Version=2.0
+Version=2.1
 Type=HAsim
 Name=Switch to LED w. square
 Class=Asim::Model
@@ -29,10 +29,6 @@ Class=Asim::Model
 DefaultAttributes=switch2led xup hasim
 model=HAsim Model Foundation
 
-[Hasim base library]
-Packagehint=hasim
-File=modules/common/hasim_common.awb
-
 [Hasim - Switch in to LED out system/Requires]
 calculation4x4=Hasim - 4x4 square
 
@@ -40,14 +36,21 @@ calculation4x4=Hasim - 4x4 square
 File=modules/system/switch_to_led_system/calculation4x4/square/square4x4.awb
 Packagehint=hasim
 
-[Hasim base module]
-File=modules/common/base/hasim_base.awb
+
+
+
+[Hasim Common Library]
+File=modules/common/hasim_common.awb
 Packagehint=hasim
 
-[Hasim FPGA library XUP board]
-File=modules/common/fpgalib/fpgalib_xup.awb
+[Hasim Base Module]
+File=modules/common/base/no-top-level/hasim_base.awb
 Packagehint=hasim
 
-[Hasim base library/Requires]
-hasim_fpgalib=Hasim FPGA library XUP board
-hasim_base=Hasim base module
+[Hasim Common Library/Requires]
+hasim_fpgaenv=Hasim FPGA Environment
+hasim_base=Hasim Base Module
+
+[Hasim FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-xup.apm
+Packagehint=hasim

@@ -4963,3 +4963,308 @@ Fixing "make bit" to work even if "make v" was not done first.
 
 Michael P.
 
+
+----------
+aparasha    Date: Thu Jun  7 13:54:04 EDT 2007  CSN: CSN-hasim-186
+                  Thu Jun  7 17:54:04 UTC 2007
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          185 
+
+Directory config/pm/hasim/demos/bram_test
+ bram_test_xup.apm         Locally Modified          185 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          185 
+ traffic_light_xup_synth.apm Locally Modified          185 
+ traffic_light_exe_nosynth.apm Locally Modified          185 
+ traffic_light_exe_synth.apm Locally Modified          185 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          185 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Modified          185 
+ adder4x4_software.apm     Locally Modified          185 
+ echo4x4_xup.apm           Locally Modified          185 
+ square4x4_software.apm    Locally Modified          185 
+ adder4x4_xup.apm          Locally Modified          185 
+ square4x4_xup.apm         Locally Modified          185 
+ multiplier4x4_software.apm Locally Modified          185 
+ multiplier4x4_xup.apm     Locally Modified          185 
+
+Directory config/pm/hasim/submodels
+ fpgaenv/                  Locally Added               0 
+
+Directory config/pm/hasim/submodels/fpgaenv
+ hasim-fpgaenv-software.apm Locally Added               0 
+ hasim-fpgaenv-xup.apm     Locally Added               0 
+
+Directory config/pm/hasim/submodels
+ common/                   Locally Removed           185 
+
+Directory config/pm/hasim/submodels/common
+ common_xup.apm            Locally Removed           185 
+ common_sw.apm             Locally Removed           185 
+
+Directory config/pm/bluespec/demos
+ multiplier.apm            Locally Modified          185 
+ counter.apm               Locally Modified          185 
+
+Directory modules/bluespec/model/pure-bluespec
+ pure_bluespec_model.awb   Locally Modified          185 
+
+Directory modules/bluespec/system/demos/counter
+ System.bsv                Locally Modified          185 
+
+Directory modules/bluespec/system/demos/multiplier
+ System.bsv                Locally Modified          185 
+
+Directory modules/bluespec/common/base
+ bluespec_base.awb         Locally Modified          185 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.bsv  Locally Modified          185 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ multiplier4x4.bsv         Locally Modified          185 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          185 
+ hasim_common_deprecated.awb Locally Added               0 
+
+Directory modules/common/fpgalib
+ fpgalib_software.awb      Locally Modified          185 
+ fpgalib_xup.awb           Locally Modified          185 
+ software/                 Locally Removed           185 
+
+Directory modules/common/fpgalib/software
+ virtual-platform/         Locally Removed           185 
+
+Directory modules/common/fpgalib/software/virtual-platform
+ channelio/                Locally Removed           185 
+
+Directory modules/common/fpgalib/software/virtual-platform/channelio
+ unix-channelio/           Locally Removed           185 
+
+Directory modules/common/fpgalib/software/virtual-platform/channelio/unix-channelio
+ unix-channelio.c          Locally Removed           185 
+ unix-channelio.awb        Locally Removed           185 
+ UNIXChannelIO.bsv         Locally Removed           185 
+
+Directory modules/common/fpgalib/software/virtual-platform
+ virtual-platform.awb      Locally Removed           185 
+ virtual-devices/          Locally Removed           185 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices
+ console/                  Locally Removed           185 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/console
+ console-serial/           Locally Removed           185 
+ graphical-serial/         Locally Removed           185 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/console/graphical-serial
+ graphical-serial.awb      Locally Removed           185 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices
+ fp/                       Locally Removed           185 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/fp
+ console-fp/               Locally Removed           185 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/fp/console-fp
+ console-fp.awb            Locally Removed           185 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/fp
+ graphical-fp/             Locally Removed           185 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices/fp/graphical-fp
+ graphical-fp.awb          Locally Removed           185 
+ GraphicalFP.bsv           Locally Removed           185 
+
+Directory modules/common/fpgalib/software/virtual-platform/virtual-devices
+ std-virtual-devices.awb   Locally Removed           185 
+
+Directory modules/common/fpgalib/software
+ BRAM_Bluesim.bsv          Locally Removed           185 
+ hasim_fpgalib_platform_software.awb Locally Removed           185 
+ BRAM1.bsv                 Locally Removed           185 
+ BRAM2.bsv                 Locally Removed           185 
+ FPGALib_Bluesim.bsv       Locally Removed           185 
+ BRAM3.bsv                 Locally Removed           185 
+
+Directory modules/common
+ fpgaenv/                  Locally Added               0 
+
+Directory modules/common/fpgaenv
+ fpga-components/          Locally Added               0 
+
+Directory modules/common/fpgaenv/fpga-components
+ software/                 Locally Added               0 
+
+Directory modules/common/fpgaenv/fpga-components/software
+ software-fpga-components.awb Locally Added               0 
+ BRAM_Bluesim.bsv          Locally Added               0 
+ BRAM1.bsv                 Locally Added               0 
+ BRAM2.bsv                 Locally Added               0 
+ BRAM3.bsv                 Locally Added               0 
+
+Directory modules/common/fpgaenv/fpga-components
+ hardware/                 Locally Added               0 
+
+Directory modules/common/fpgaenv/fpga-components/hardware
+ BRAM_Verilog.bsv          Locally Added               0 
+ hardware-fpga-components.awb Locally Added               0 
+ BRAM_base.bsv             Locally Added               0 
+ BRAM.v                    Locally Added               0 
+ BRAM1.bsv                 Locally Added               0 
+ BRAM2.bsv                 Locally Added               0 
+ BRAM3.bsv                 Locally Added               0 
+
+Directory modules/common/fpgaenv
+ toplevel-wires/           Locally Added               0 
+
+Directory modules/common/fpgaenv/toplevel-wires
+ null/                     Locally Added               0 
+
+Directory modules/common/fpgaenv/toplevel-wires/null
+ null-toplevel-wires.awb   Locally Added               0 
+ NullTopLevelWires.bsv     Locally Added               0 
+
+Directory modules/common/fpgaenv/toplevel-wires
+ xup/                      Locally Added               0 
+
+Directory modules/common/fpgaenv/toplevel-wires/xup
+ xup-toplevel-wires.awb    Locally Added               0 
+ xup.ucf                   Locally Added               0 
+ XUPTopLevelWires.bsv      Locally Added               0 
+
+Directory modules/common/fpgaenv
+ platform-interface/       Locally Added               0 
+
+Directory modules/common/fpgaenv/platform-interface
+ hasim/                    Locally Added               0 
+
+Directory modules/common/fpgaenv/platform-interface/hasim
+ HAsimPlatformInterface.bsv Locally Added               0 
+ hasim-platform-interface.awb Locally Added               0 
+
+Directory modules/common/fpgaenv
+ hasim-fpga-environment.awb Locally Added               0 
+ virtual-platform/         Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform
+ channelio/                Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio
+ unix/                     Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio/unix
+ unix-channelio.c          Locally Added               0 
+ unix-channelio.awb        Locally Added               0 
+ UNIXChannelIO.bsv         Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio
+ null/                     Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio/null
+ null-channelio.awb        Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform
+ virtual-devices/          Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices
+ console/                  Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/console
+ console-serial/           Locally Added               0 
+ graphical-serial/         Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/console/graphical-serial
+ graphical-serial.awb      Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/console
+ null-serial/              Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/console/null-serial
+ null-serial.awb           Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/console
+ xup-serial/               Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices
+ front-panel/              Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ console/                  Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/console
+ console-fp.awb            Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ graphical/                Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/graphical
+ graphical-fp.awb          Locally Added               0 
+ GraphicalFP.bsv           Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ xup/                      Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/xup
+ xup-fp.awb                Locally Added               0 
+ XUPFP.bsv                 Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices
+ std-virtual-devices.awb   Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform
+ std-virtual-platform.awb  Locally Added               0 
+
+Directory modules/common/base/no-top-level
+ hasim_base.awb            Locally Modified          185 
+
+Directory modules/common/base
+ hasim_base.awb            Locally Removed           185 
+ hasim_base_deprecated.awb Locally Added               - 
+ HASim.bsv                 Locally Removed           185 
+ HASim_Deprecated.bsv      Locally Added               - 
+
+Directory modules/common
+ Connections.bsv           Locally Modified          185 
+ Connections_Deprecated.bsv Locally Added               0 
+
+
+- Added an FPGA Environment (fpgaenv) module hierarchy which is required
+  by hasim-common. The module hierarchy underneath fpgaenv comprises of
+  the virtual-platform (which has been moved from fpgalib to fpgaenv),
+  fpga-components (which contains components such as the BRAM),
+  toplevel-wires (magic wires that get mapped to a UCF file), and 
+  platform-interface (plumbing code that ties hasim connections to the
+  virtual platform).
+
+  Note: fpgalib is now deprecated. In order to maintain temporary
+  backwards compatibility, it still exists in the module hierarchy.
+  However, to use it, models must use the "deprecated hasim-common" and
+  "deprecated hasim-base" modules. In order to ensure compatibility with
+  hasim-connect, toplevel_wires is now a dummy requirement for fpgalib.
+  Please use the Null toplevel wires module for all fpgalib models.
+
+- Top-level wires have been moved from fpgalib into a separate module
+  underneath fpgaenv. Connections.bsv, while instantiating the top level,
+  now instantiates a platform-interface (instead of fpgalib). The platform
+  interface instantiates the top-level wires and the necessary virtual
+  devices, and passes a pointer to the top-level wires module to all
+  virtual devices.
+
+- Modified the switch2led demos to use the new fpgaenv.
+  Modified the pure bluespec demos to use the new virtual platform and
+      top-level wires.
+  All other hasim demos continue to use fpgalib (along with the deprecated
+      hasim-base and hasim-common modules).
+
+- Added two submodels for fpgaenv, one for Software and the other for XUP
+  models.
+
+- Removed two old submodels for hasim-common.

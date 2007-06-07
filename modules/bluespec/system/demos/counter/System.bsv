@@ -1,13 +1,15 @@
 import mkCounter::*;
 import front_panel::*;
+import toplevel_wires::*;
 
 (* synthesize *)
 module mkSystem();
 
     Counter         counter <- mkCounter();
     Reg#(Bit#(16))  state   <- mkReg(0);
-
-    FrontPanel      fp      <- mkFrontPanel();
+    
+    TopLevelWires   wires   <- mkTopLevelWires();
+    FrontPanel      fp      <- mkFrontPanel(wires);
 
     rule step0(state == 0);
         Bit#(8) truncated = truncate(fp.readSwitches());

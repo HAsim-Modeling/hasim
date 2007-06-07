@@ -9,7 +9,7 @@
 
 %provides bluespec_common
 
-%requires virtual_platform
+%requires virtual_platform toplevel_wires
 
 %attributes bluespec
 

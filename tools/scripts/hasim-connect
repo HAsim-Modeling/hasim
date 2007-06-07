@@ -86,7 +86,7 @@ sub print_wrapper {
     print WRAPPER "// These are well-known/required hasim modules\n";
     print WRAPPER "import hasim_base::*;\n";
     print WRAPPER "import hasim_common::*;\n";
-    print WRAPPER "import hasim_fpgalib::*;\n";
+    print WRAPPER "import toplevel_wires::*;\n";
     print WRAPPER "\n";
 
     print WRAPPER "// import non-synthesis children\n";
@@ -97,7 +97,7 @@ sub print_wrapper {
 
     print WRAPPER "(* synthesize *)\n";
     if ($module->issame($root)) {
-	print WRAPPER "module " . make_module_name(make_wrapper_name($metatype)) . " (TopLevel);\n";    
+	print WRAPPER "module " . make_module_name(make_wrapper_name($metatype)) . " (TopLevelWires);\n";    
     } else {
 	print WRAPPER "module " . make_module_name(make_wrapper_name($metatype)) . " (WithConnections);\n";    
     }
@@ -159,7 +159,7 @@ sub create_surrogates {
         print SURROGATE "// These are well-known/required hasim modules\n";
         print SURROGATE "import hasim_base::*;\n";
         print SURROGATE "import hasim_common::*;\n";
-        print SURROGATE "import hasim_fpgalib::*;\n";
+        print SURROGATE "import toplevel_wires::*;\n";
         print SURROGATE "\n";
 
 	print SURROGATE "import " . make_wrapper_name($submetatype) . "::*;\n";

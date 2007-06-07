@@ -10,7 +10,7 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
     Connection_Send#(ButtonInfo)    link_buttons    <- mkConnection_Send("fpga_buttons");
 
     // instantiate top-level wires
-    TopLevelWires                   wires           <- mkTopLevelWires();
+    TopLevelWiresDriver             wires           <- mkTopLevelWiresDriver();
 
     // instantiate virtual devices
     FrontPanel                      frontPanel      <- mkFrontPanel(wires);
@@ -40,6 +40,6 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
     endrule
 
     // return interface to top-level wires
-    return wires;
+    return wires.wires_out;
 
 endmodule

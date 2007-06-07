@@ -23,6 +23,9 @@ interface TopLevelWires;
     (* always_ready, always_enabled *)
     (* prefix = "" *)
     method Action  button_center((* port = "BUTTON_CENTER" *) Bit#(1) bc);
+endinterface
+
+interface TopLevelWiresDriver;
 
     // wires from/to FPGA model; each of these wires correspond to one
     // of the above magic UCF wires. For now, we do now connect the
@@ -34,9 +37,11 @@ interface TopLevelWires;
     method  Bit#(1)     getButtonUp();
     method  Bit#(1)     getButtonDown();
     method  Bit#(1)     getButtonCenter();
+    interface TopLevelWires wires_out;
+
 endinterface
 
-module mkTopLevelWires (TopLevelWires);
+module mkTopLevelWiresDriver (TopLevelWiresDriver);
 
     // all XUP board signals are active low
     Reg#(Bit#(4)) led_reg <- mkReg(4'b1111);
@@ -47,33 +52,38 @@ module mkTopLevelWires (TopLevelWires);
     Reg#(Bit#(1)) br_reg <- mkReg(1);
     Reg#(Bit#(1)) bc_reg <- mkReg(1);
   
-    method Bit#(4) leds();
-        return led_reg;
-    endmethod
+    interface TopLevelWires wires_out;
 
-    method Action switches(Bit#(4) sw);
-        switch_reg <= ~sw;
-    endmethod
-  
-    method Action  button_left(Bit#(1) bl);
-        bl_reg <= ~bl;
-    endmethod
+        method Bit#(4) leds();
+            return led_reg;
+        endmethod
 
-    method Action  button_right(Bit#(1) br);
-        br_reg <= ~br;
-    endmethod
+        method Action switches(Bit#(4) sw);
+            switch_reg <= ~sw;
+        endmethod
   
-    method Action  button_up(Bit#(1) bu);
-        bu_reg <= ~bu;
-    endmethod
-  
-    method Action  button_down(Bit#(1) bd);
-        bd_reg <= ~bd;
-    endmethod
+        method Action  button_left(Bit#(1) bl);
+            bl_reg <= ~bl;
+        endmethod
 
-    method Action  button_center(Bit#(1) bc);
-        bc_reg <= ~bc;
-    endmethod
+        method Action  button_right(Bit#(1) br);
+            br_reg <= ~br;
+        endmethod
+  
+        method Action  button_up(Bit#(1) bu);
+            bu_reg <= ~bu;
+        endmethod
+  
+        method Action  button_down(Bit#(1) bd);
+            bd_reg <= ~bd;
+        endmethod
+
+        method Action  button_center(Bit#(1) bc);
+            bc_reg <= ~bc;
+        endmethod
+ 
+    endinterface
+ 
 
     // interfaces to FPGA model
     method  Action setLEDs(Bit#(4) leds_in);
@@ -105,3 +115,4 @@ module mkTopLevelWires (TopLevelWires);
     endmethod
 
 endmodule
+

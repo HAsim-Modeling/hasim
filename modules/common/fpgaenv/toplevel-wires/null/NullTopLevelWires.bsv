@@ -2,5 +2,15 @@
 interface TopLevelWires;
 endinterface
 
-module mkTopLevelWires (TopLevelWires);
+interface TopLevelWiresDriver;
+
+    interface TopLevelWires wires_out;
+
+endinterface
+
+module mkTopLevelWiresDriver (TopLevelWiresDriver);
+
+    interface TopLevelWires wires_out;
+    endinterface
+
 endmodule

@@ -6,7 +6,7 @@ interface FrontPanel;
     method Action   writeLEDs(Bit#(4) data);
 endinterface
 
-module mkFrontPanel#(TopLevelWires wires) (FrontPanel);
+module mkFrontPanel#(TopLevelWiresDriver wires) (FrontPanel);
     // maintain input and output caches
     Reg#(Bit#(32))  inputCache  <- mkReg(0);
     Reg#(Bit#(32))  outputCache <- mkReg(0);

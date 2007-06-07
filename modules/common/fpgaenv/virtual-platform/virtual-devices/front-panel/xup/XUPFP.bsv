@@ -5,7 +5,7 @@ interface FrontPanel;
     method Action   writeLEDs(Bit#(4) data);
 endinterface
 
-module mkFrontPanel#(TopLevelWires wires) (FrontPanel);
+module mkFrontPanel#(TopLevelWiresDriver wires) (FrontPanel);
 
     method Bit#(9) readSwitches();
         // read from toplevel wires

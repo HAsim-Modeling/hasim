@@ -1,10 +1,10 @@
 
 import hasim_base::*;
 import hasim_common::*;
-import hasim_fpgalib::*;
+import fpga_components::*;
 
 
-module [HASim_Module] mkSystem (TModule#(Command, Response));
+module [HASim_Module] mkSystem ();
 
    BRAM#(Bit#(8), Bit#(32)) br <- mkBRAM_Full();
    Reg#(Bool) started <- mkReg(False);

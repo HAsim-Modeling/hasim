@@ -5310,3 +5310,33 @@ Directory modules/system/switch_to_led_system/calculation4x4/multiplier
 
 Made small bugfixes to the Square and Multiplier hasim
 demos. They work now.
+----------
+aparasha    Date: Thu Jun  7 15:47:48 EDT 2007  CSN: CSN-hasim-189
+                  Thu Jun  7 19:47:48 UTC 2007
+
+
+Directory modules/system/bram_test
+ System.bsv                Locally Modified          187 
+
+Directory modules/common/fpgaenv/toplevel-wires/null
+ NullTopLevelWires.bsv     Locally Modified          187 
+
+Directory modules/common/fpgaenv/toplevel-wires/xup
+ XUPTopLevelWires.bsv      Locally Modified          187 
+
+Directory modules/common/fpgaenv/platform-interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          187 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/graphical
+ GraphicalFP.bsv           Locally Modified          187 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/xup
+ XUPFP.bsv                 Locally Modified          187 
+
+Directory config/pm/hasim/demos/bram_test
+ bram_test_xup.apm         Locally Modified          187 
+
+
+Fixed a bug in TopLevel Wires: The actual top-level magic wires
+have been separated from the "driver" wires (coming from the FPGA
+model) by placing them in a sub-interface.

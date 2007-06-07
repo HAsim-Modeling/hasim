@@ -23,32 +23,24 @@ model=HAsim Model Foundation
 [HAsim Model Foundation/Requires]
 hasim_system=Hasim - BRAM test system
 hasim_controller=Hasim null controller
-hasim_common=Deprecated Hasim common library
+hasim_common=Hasim Common Library
 
 [Hasim - BRAM test system]
 File=modules/system/bram_test/bram_test_system.awb
 Packagehint=hasim
 
-[Deprecated Hasim common library]
-File=modules/common/hasim_common_deprecated.awb
+[Hasim Common Library]
+File=modules/common/hasim_common.awb
 Packagehint=hasim
 
-[Deprecated Hasim base module]
-File=modules/common/base/hasim_base_deprecated.awb
+[Hasim Base Module]
+File=modules/common/base/hasim_base.awb
 Packagehint=hasim
 
-[Deprecated Hasim common library/Requires]
-hasim_base=Deprecated Hasim base module
-hasim_fpgalib=Deprecated Hasim FPGA library XUP board
+[Hasim Common Library/Requires]
+hasim_base=Hasim Base Module
+hasim_fpgaenv=Hasim FPGA Environment
 
-
-[Deprecated Hasim FPGA library XUP board]
-File=modules/common/fpgalib/fpgalib_xup.awb
+[Hasim FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
 Packagehint=hasim
-
-[Null TopLevel Wires]
-File=modules/common/fpgaenv/toplevel-wires/null/null-toplevel-wires.awb
-Packagehint=hasim
-
-[Deprecated Hasim FPGA library XUP board/Requires]
-toplevel_wires=Null TopLevel Wires

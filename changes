@@ -5296,3 +5296,17 @@ Directory modules/common/base
 
 - Updated the switch2led demo configs to adjust for the
   above movement.
+----------
+aparasha    Date: Thu Jun  7 15:04:16 EDT 2007  CSN: CSN-hasim-188
+                  Thu Jun  7 19:04:16 UTC 2007
+
+
+Directory modules/system/switch_to_led_system/calculation4x4/square
+ square4x4.bsv             Locally Modified          186 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ multiplier4x4.bsv         Locally Modified          186 
+
+
+Made small bugfixes to the Square and Multiplier hasim
+demos. They work now.

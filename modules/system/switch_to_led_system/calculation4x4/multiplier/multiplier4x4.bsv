@@ -13,9 +13,9 @@ module [HASim_Module] mkCalculation4x4(Calculation4x4);
     Reg#(Bit#(2))  r            <- mkReg(0);   
 
     rule cycle (r != 0);
+        product <= (r[0] == 1) ? (product + d) : product;
         d <= d << 1;
         r <= r >> 1;
-        $display("product = %u", product + d);
     endrule
 
     method Action start(Bit#(4) in) if (r == 0);
@@ -31,7 +31,6 @@ module [HASim_Module] mkCalculation4x4(Calculation4x4);
 	    begin
             d <= zeroExtend(x);
             r <= y; 
-            $display("loading: d = %u r = %u", x, y);
         end
         product <= 0;
     endmethod
@@ -41,5 +40,3 @@ module [HASim_Module] mkCalculation4x4(Calculation4x4);
     endmethod
 
 endmodule
-
-

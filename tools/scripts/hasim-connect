@@ -93,13 +93,14 @@ sub print_wrapper {
     }
     print WRAPPER "\n";
 
-    print WRAPPER "(* synthesize *)\n";
     if ($module->issame($root)) {
         print WRAPPER "\n";
         print WRAPPER "import toplevel_wires::*;\n";
         print WRAPPER "\n";
+    print WRAPPER "(* synthesize *)\n";
 	print WRAPPER "module " . make_module_name(make_wrapper_name($metatype)) . " (TopLevelWires);\n";    
     } else {
+    print WRAPPER "(* synthesize *)\n";
 	print WRAPPER "module " . make_module_name(make_wrapper_name($metatype)) . " (WithConnections);\n";    
     }
     print WRAPPER "\n";

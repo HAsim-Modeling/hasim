@@ -239,6 +239,11 @@ void cio_write(unsigned char handle, unsigned int data)
 
     /* this code needs to be present at the beginning of
      * all interface methods visible to the BSV model */
+    if (initialized == 0)
+    {
+        return;
+    }
+
     if (termCheck())
     {
         return;
@@ -271,10 +276,15 @@ void cio_write(unsigned char handle, unsigned int data)
 /* The BSV model can probe this flag to figure out if the *
  * user has exited from the dialog box, and, if it so     *
  * chooses, terminate simulation                          */
-char cio_isdestroyed(unsigned char handle)
+unsigned char cio_isdestroyed(unsigned char handle)
 {
     /* this code needs to be present at the beginning of
      * all interface methods visible to the BSV model */
+    if (initialized == 0)
+    {
+        return 0;
+    }
+
     if (termCheck())
     {
         return 1;

@@ -14,8 +14,8 @@ module mkSystem();
     Reg#(Bit#(32))  in2         <- mkReg(0);
     Reg#(Bit#(1))   go          <- mkReg(0);
 
-    TopLevelWires   wires       <- mkTopLevelWires();
-    FrontPanel      fp          <- mkFrontPanel(wires);
+    TopLevelWiresDriver wires       <- mkTopLevelWiresDriver();
+    FrontPanel          fp          <- mkFrontPanel(wires);
 
     /* rules */
     rule latchSwitches(True);

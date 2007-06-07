@@ -5448,3 +5448,36 @@ Directory modules/functional
 Added a very preliminary version of the functional partition semantic model.
 
 Michael P.
+
+----------
+aparasha    Date: Thu Jun  7 18:27:05 EDT 2007  CSN: CSN-hasim-192
+                  Thu Jun  7 22:27:05 UTC 2007
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          191 
+
+Directory modules/bluespec/system/demos/counter
+ System.bsv                Locally Modified          191 
+
+Directory modules/bluespec/system/demos/multiplier
+ System.bsv                Locally Modified          191 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio/unix
+ unix-channelio.c          Locally Modified          191 
+ unix-channelio.awb        Locally Modified          191 
+ UNIXChannelIO.bsv         Locally Modified          191 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/graphical
+ GraphicalFP.bsv           Locally Modified          191 
+
+
+- Added a method to unix-channelio which allows a module
+  using the channel to detect if the connected UNIX process
+  has exited.
+
+- Added a rule to the graphical front panel which probes the
+  above method and terminates the simulation if channelio
+  has detected a process exit.
+
+- Fixed a small bug in hasim-connect

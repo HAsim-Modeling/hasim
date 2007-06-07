@@ -8,8 +8,8 @@ module mkSystem();
     Counter         counter <- mkCounter();
     Reg#(Bit#(16))  state   <- mkReg(0);
     
-    TopLevelWires   wires   <- mkTopLevelWires();
-    FrontPanel      fp      <- mkFrontPanel(wires);
+    TopLevelWiresDriver wires   <- mkTopLevelWiresDriver();
+    FrontPanel          fp      <- mkFrontPanel(wires);
 
     rule step0(state == 0);
         Bit#(8) truncated = truncate(fp.readSwitches());

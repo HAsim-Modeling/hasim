@@ -25,6 +25,12 @@ module mkFrontPanel#(TopLevelWiresDriver wires) (FrontPanel);
         inputCache <= fromMaybe(inputCache, channel.read());
     endrule
 
+    // check if our UNIX channel was forcibly closed, and if so,
+    // terminate simulation
+    rule detectTermination (channel.isDestroyed());
+        $finish(0);
+    endrule
+
     // the actual readSwitches() method
     method Bit#(9) readSwitches();
         return inputCache[8:0];

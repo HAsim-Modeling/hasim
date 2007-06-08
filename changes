@@ -5508,3 +5508,18 @@ a paramater and set very short for the software simulation versions.
 Updated hasim-connect to include module parameters for the build
 of the module at the synthesis boundary.
 
+
+----------
+jsemer      Date: Fri Jun  8 17:18:48 EDT 2007  CSN: CSN-hasim-194
+                  Fri Jun  8 21:18:48 UTC 2007
+
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          193 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.bsv     Locally Modified          193 
+
+Updated multiplier system to work with new fpgaenv. The
+design now waits for the user to push the center button
+to start the calculation.

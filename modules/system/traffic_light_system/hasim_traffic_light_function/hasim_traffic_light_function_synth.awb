@@ -16,6 +16,7 @@
 # %public TL0.bsv
 #
 # %param SYNTH_BOUNDARY mk_traffic_light "name of synthesis boundary"
+# %param MAX_WAIT 'd100000000 "Delay between signal changes"
 #
 # %AWB_END
 # */

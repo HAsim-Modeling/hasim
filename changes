@@ -5481,3 +5481,30 @@ Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/gr
   has detected a process exit.
 
 - Fixed a small bug in hasim-connect
+
+----------
+jsemer      Date: Fri Jun  8 11:46:41 EDT 2007  CSN: CSN-hasim-193
+                  Fri Jun  8 15:46:41 UTC 2007
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          192 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          192 
+ traffic_light_xup_synth.apm Locally Modified          192 
+ traffic_light_exe_nosynth.apm Locally Modified          192 
+ traffic_light_exe_synth.apm Locally Modified          192 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Modified          192 
+ TL0.bsv                   Locally Modified          192 
+ hasim_traffic_light_function_synth.awb Locally Modified          192 
+
+Updated the traffic light example to work with the new fpgaenv structure.
+To work reasonably in simulation the traffic light delay was made
+a paramater and set very short for the software simulation versions.
+
+Updated hasim-connect to include module parameters for the build
+of the module at the synthesis boundary.
+

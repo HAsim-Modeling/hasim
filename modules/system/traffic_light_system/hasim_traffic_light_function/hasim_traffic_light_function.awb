@@ -13,6 +13,8 @@
 #
 # %attributes hasim
 #
+# %param MAX_WAIT 'd100000000 "Delay between signal changes"
+#
 # %public TL0.bsv
 #
 # %AWB_END

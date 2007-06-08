@@ -8,8 +8,6 @@ import hasim_common::*;
 
 // Version 0: just model the normal cycle of states
 
-`define MAX_WAIT 32'd100000000
-
 // An empty interface:
 interface TL;
 endinterface: TL

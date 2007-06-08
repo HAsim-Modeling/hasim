@@ -87,6 +87,29 @@ sub print_wrapper {
     print WRAPPER "import hasim_common::*;\n";
     print WRAPPER "\n";
 
+    #
+    # add defines for parameters
+    #   TBD: Share this code with hasim-configure
+
+    print WRAPPER "// These are the parameters for the module\n";
+
+    my @p = ();
+    push(@p, $module->parameters());
+
+    foreach my $p (@p) {
+      my $pname = $p->name();
+      my $pvalue = $p->value();
+      
+      print WRAPPER "`define $pname $pvalue\n";
+    }
+    print WRAPPER "\n";
+
+    #
+    # add includes for public sources
+    #   Note: Can't just include 'provides' name since it bsc won't 
+    #         find the correct instance of the file
+    #
+
     print WRAPPER "// import non-synthesis children\n";
     foreach my $file_root (get_srcs_at_synth_boundary($module)) {
 	print WRAPPER "`include \"$file_root\"\n";

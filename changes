@@ -5523,3 +5523,29 @@ Directory modules/system/mulitplier_system
 Updated multiplier system to work with new fpgaenv. The
 design now waits for the user to push the center button
 to start the calculation.
+
+----------
+vmurali     Date: Fri Jun  8 20:25:56 EDT 2007  CSN: CSN-hasim-195
+                  Sat Jun  9 00:25:56 UTC 2007
+
+
+Directory .
+ configure                 Locally Modified          194 
+ Makefile.in               Locally Modified          194 
+
+Directory libperl
+ Makefile.in               Locally Modified          194 
+
+Directory tools/hasim
+ Makefile.in               Locally Modified          194 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Modified          194 
+
+Directory tools
+ Makefile.in               Locally Modified          194 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          194 
+
+This is MIT Makefile.in

@@ -5549,3 +5549,16 @@ Directory tools/scripts
  Makefile.in               Locally Modified          194 
 
 This is MIT Makefile.in
+
+----------
+aparasha    Date: Mon Jun 18 16:44:46 EDT 2007  CSN: CSN-hasim-196
+                  Mon Jun 18 20:44:46 UTC 2007
+
+
+Directory modules/common/fpgaenv/virtual-platform/channelio/unix
+ unix-channelio.c          Locally Modified          195 
+
+
+Reduced the timeout for the select() system call in the
+UNIX channel-io module. Simulation is now significantly
+faster.

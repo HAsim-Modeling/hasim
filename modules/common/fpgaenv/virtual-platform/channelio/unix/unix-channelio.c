@@ -12,7 +12,7 @@
  * and writes at the granularity of "blocks" */
 #define PACKET_SIZE     32
 #define BLOCK_SIZE      32
-
+#define SELECT_TIMEOUT  1000
 #define CIO_NULL        0xFFFFFFFF
 
 static int      terminated = 0;
@@ -158,7 +158,7 @@ unsigned int cio_read(unsigned char handle)
         FD_SET(PARENT_READ, &readfds);
 
         timeout.tv_sec  = 0;
-        timeout.tv_usec = 100000;
+        timeout.tv_usec = SELECT_TIMEOUT;
 
         data_available = select(PARENT_READ + 1, &readfds,
                                 NULL, NULL, &timeout);

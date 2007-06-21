@@ -5562,3 +5562,21 @@ Directory modules/common/fpgaenv/virtual-platform/channelio/unix
 Reduced the timeout for the select() system call in the
 UNIX channel-io module. Simulation is now significantly
 faster.
+----------
+mpellaue    Date: Thu Jun 21 18:14:10 EDT 2007  CSN: CSN-hasim-197
+                  Thu Jun 21 22:14:10 UTC 2007
+
+
+Directory modules/functional/semantic-model
+ FUNCPTokState.bsv         Locally Modified          196 
+ hasim_funcp_model.awb     Locally Modified          196 
+ FUNCPModel.bsv            Locally Modified          196 
+
+Directory modules/functional/common
+ FUNCP_FreeList.bsv        Locally Modified          196 
+ FUNCP_MemState.bsv        Locally Modified          196 
+
+
+Updates to the semantic model, which is becoming less and less of a model.
+
+Michael P.

@@ -13,10 +13,13 @@
 # 
 # %requires hasim_funcp_memstate_ifc hasim_funcp_memstate 
 # %requires hasim_funcp_tokstate
+# %requires hasim_isa_datapath
 #
 # %attributes hasim
 #
 # %public FUNCPModel.bsv
+# %param SYNTH_BOUNDARY mkFUNCP "Name of synthesis boundary"
+#
 #
 # %AWB_END
 # */

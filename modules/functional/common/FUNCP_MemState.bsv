@@ -9,7 +9,6 @@ import Vector::*;
 import fpga_components::*;
 import hasim_common::*;
 
-import hasim_funcp_base::*;
 import hasim_isa::*;
 
 import hasim_funcp_storebuffer::*;

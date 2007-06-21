@@ -2,7 +2,6 @@
 import fpga_components::*;
 import hasim_common::*;
 
-import hasim_funcp_base::*;
 import hasim_isa::*;
 
 
@@ -11,6 +10,7 @@ interface FreeList;
   method Action forward_req();
   method ActionValue#(PRName) forward_resp();
   method Action back();
+  method Action backN(PRName n);
   method Action backTo(PRName r);
   method PRName current();
   method Action setOldPReg(Token t, PRName oldPReg);
@@ -98,6 +98,20 @@ module [HASim_Module] mkFreeList
       $finish(1);
     end
     fl_read <= fl_read - 1;
+  
+  endmethod
+  
+  method Action backN(PRName n) if (!initializing);
+    
+    let new_read = fl_read - n;
+  
+    if (((fl_read > fl_write) && (new_read < fl_write)) || (fl_read < fl_write) && (new_read > fl_write))
+    begin
+      $display("ERROR: Backed up the freelist too far! (N = %0d)", n);
+      $finish(1);
+    end
+    
+    fl_read <= new_read;
   
   endmethod
   

@@ -31,7 +31,7 @@ module [HASim_Module] mkFreeList
 
   RName maxR = maxBound;
   Bit#(prname_SZ) minInitFL_bits = zeroExtend(pack(maxR)) + 1;
-  PRName minInitFL = 1; //unpack(minInitFL_bits);
+  PRName minInitFL = unpack(minInitFL_bits);
   PRName maxInitFL = maxBound;
   
   Reg#(Bool) initializing <- mkReg(True);

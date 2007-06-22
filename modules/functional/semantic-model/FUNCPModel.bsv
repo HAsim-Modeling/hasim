@@ -9,11 +9,11 @@ import fpga_components::*;
 import hasim_funcp_memstate_ifc::*;
 import hasim_funcp_memstate::*;
 import hasim_funcp_tokstate::*;
+import hasim_funcp_freelist::*;
 
 import hasim_isa::*;
 import hasim_isa_datapath::*;
 
-import FUNCP_FreeList::*;
 
 module [HASim_Module] mkFUNCP 
   //interface:
@@ -30,7 +30,7 @@ module [HASim_Module] mkFUNCP
 
   BRAM#(TokIndex, Addr)     tok_addr         <- mkBRAM_Full();
   BRAM_2#(TokIndex, Inst)   tok_inst         <- mkBRAM_2_Full();
-  BRAM_2#(TokIndex, Maybe#(PRName)) tok_dest <- mkBRAM_2_Full(); //A nice convenience
+  BRAM_2#(TokIndex, PRName) tok_dest         <- mkBRAM_2_Full(); //A nice convenience
   BRAM#(TokIndex, Maybe#(PRName)) tok_writer1     <- mkBRAM_Full();
   BRAM#(TokIndex, Maybe#(PRName)) tok_writer2     <- mkBRAM_Full();
   BRAM#(TokIndex, Addr)      tok_memaddr     <- mkBRAM_Full();
@@ -274,7 +274,7 @@ module [HASim_Module] mkFUNCP
         tagged Valid .r1: return tagged Valid select(maptable, r1);
       endcase;
     
-    let w2 = case (s1) matches
+    let w2 = case (s2) matches
         tagged Invalid: return tagged Invalid;
         tagged Valid .r2: return tagged Valid select(maptable, r2);
       endcase;
@@ -286,19 +286,14 @@ module [HASim_Module] mkFUNCP
     
     case (w2) matches
       tagged Invalid: $display("FUNCP: Token %0d: No source 2", tok.index);
-      tagged Valid .pr2: $display("FUNCP: Token %0d: Source 2 is R%0d", tok.index, pr2);
+      tagged Valid .pr2: $display("FUNCP: Token %0d: Source 2 is PR%0d", tok.index, pr2);
     endcase
     
     let dst = getDest(inst);
-    
-    let final_dest = case (dst) matches
-                       tagged Invalid: tagged Invalid;
-		       tagged Valid .d: tagged Valid pdest;
-		     endcase;
-    
+        
     tok_writer1.write(tok.index, w1);
     tok_writer2.write(tok.index, w2);
-    tok_dest.write(tok.index, final_dest);
+    tok_dest.write(tok.index, pdest);
    
     if (isLoad(inst))
       tok_state.is_a_load(tok.index);
@@ -394,7 +389,7 @@ module [HASim_Module] mkFUNCP
     
     case (w2) matches
       tagged Invalid: $display("FUNCP: Token %0d (JUNK): No source 2", tok.index);
-      tagged Valid .pr2: $display("FUNCP: Token %0d (JUNK): Source 2 is R%0d", tok.index, pr2);
+      tagged Valid .pr2: $display("FUNCP: Token %0d (JUNK): Source 2 is PR%0d", tok.index, pr2);
     endcase
     
     tok_state.dec_finish(tok.index);
@@ -465,7 +460,7 @@ module [HASim_Module] mkFUNCP
     let inst <- tok_inst.read_resp2();
     
     let rdy1 = isValid(w1) ? isValid(v1) : True;
-    let rdy2 = isValid(w1) ? isValid(v2) : True;
+    let rdy2 = isValid(w2) ? isValid(v2) : True;
     
     if ((rdy1 && rdy2) || !tok_state.isAllocated(tok.index)) //let junk proceed
     begin
@@ -494,12 +489,9 @@ module [HASim_Module] mkFUNCP
     exe3Q.deq();
     
     match {.res, .eaddr, .wbval} <- link_datapath.getResp();
-    let mdst <- tok_dest.read_resp1();
+    let dst <- tok_dest.read_resp1();
     
-    case (mdst) matches
-      tagged Invalid:  noAction;
-      tagged Valid .d: prf.write(d, tagged Valid wbval);
-    endcase
+    prf.write(dst, tagged Valid wbval);
     
     tok_memaddr.write(tok.index, eaddr);
     
@@ -528,16 +520,16 @@ module [HASim_Module] mkFUNCP
     memQ.deq();
   
     let addr <- tok_memaddr.read_resp();
-    let mdst <- tok_dest.read_resp2();
+    let dst <- tok_dest.read_resp2();
     
     if (tok_state.isLoad(tok.index))
     begin
         link_to_dmem.makeReq(Ld {addr: addr, token: tok});
-	mem2Q.enq(tuple2(tok, validValue(mdst)));
+	mem2Q.enq(tuple2(tok, dst));
     end
     else if (tok_state.isStore(tok.index))
     begin
-        prf.read_req3(validValue(mdst));
+        prf.read_req3(dst);
 	storeQ.enq(tuple2(tok, addr));
     end
     else
@@ -681,21 +673,14 @@ module [HASim_Module] mkFUNCP
     let t = rewindQ.first();
     rewindQ.deq();
     
-    let mdst <- tok_dest.read_resp2();
+    let dst <- tok_dest.read_resp2();
     let inst <- tok_inst.read_resp2();
     
     case (getDest(inst)) matches
       tagged Invalid: noAction;
       tagged Valid .d:
       begin
-        case (mdst) matches
-	  tagged Invalid:
-	  begin
-	    $display("FUNCP: ERROR: Nonsensical Backup. Token %0d is inconsistent.", t);
-            $finish(1);
-	  end
-	  tagged Valid .pd: maptable[d] <= pd;
-	endcase
+	  maptable[d] <= dst;
       end
     endcase
     

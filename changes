@@ -5580,3 +5580,21 @@ Directory modules/functional/common
 Updates to the semantic model, which is becoming less and less of a model.
 
 Michael P.
+
+----------
+pellauer    Date: Fri Jun 22 18:00:01 EDT 2007  CSN: CSN-hasim-198
+                  Fri Jun 22 22:00:01 UTC 2007
+
+
+Directory modules/functional/semantic-model
+ hasim_funcp_model.awb     Locally Modified          197 
+ FUNCPModel.bsv            Locally Modified          197 
+
+Directory modules/functional/common
+ hasim_funcp_freelist.awb  Locally Added               0 
+ FUNCP_FreeList.bsv        Locally Modified          197 
+
+
+Bugfixes in the new funcp.
+
+Michael

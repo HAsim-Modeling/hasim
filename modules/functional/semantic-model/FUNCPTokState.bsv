@@ -76,12 +76,12 @@ module mkFUNCP_TokState (FUNCP_TokState)
       $display("ERROR: Funcp Exception! TokState: Deallocating un-allocated Token %0d", t);
       $finish(1);
     end
-    
+    /*
     if (t != oldest_tok)
     begin
       $display("FUNCP: WARNING: TokState: Deallocating Tokens out of order (Given: %0d Oldest: %0d)", t, oldest_tok);
     end
-    
+    */
     oldest_tok <= oldest_tok + 1;
     alloc <=  update(alloc, t, False);
     
@@ -117,13 +117,13 @@ module mkFUNCP_TokState (FUNCP_TokState)
   endmethod
   
   method Action fet_start(TokIndex t);
-  
+  /*
     if (!alloc[t])
     begin
       $display("ERROR: Funcp Exception! TokState: Fetching un-allocated Token %0d", t);
       $finish(1);
     end
-  
+  */
     fetReq.upd(t, True);
     
   endmethod

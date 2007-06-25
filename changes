@@ -5598,3 +5598,17 @@ Directory modules/functional/common
 Bugfixes in the new funcp.
 
 Michael
+
+----------
+pellauer    Date: Mon Jun 25 19:16:46 EDT 2007  CSN: CSN-hasim-199
+                  Mon Jun 25 23:16:46 UTC 2007
+
+
+Directory modules/functional/semantic-model
+ FUNCPTokState.bsv         Locally Modified          198 
+ FUNCPModel.bsv            Locally Modified          198 
+
+
+Bugfixes in the new functional partition.
+
+Michael

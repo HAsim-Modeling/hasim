@@ -23,6 +23,25 @@ module [HASim_Module] mkFUNCP
 	   Bits#(RName, rname_SZ),
 	   Bits#(SnapshotPtr, snapshotptr_SZ));
 
+  //A fake register to hold our debugging file descriptor
+  let debug_log <- mkReg(InvalidFile);
+  Reg#(Bit#(32)) cc <- mkReg(0);
+
+  function Action funcp_debug(Action a);
+  action
+  
+    let debugOn <- $test$plusargs("funcp-log");
+  
+    if (debugOn)
+    begin
+      $fwrite(debug_log, "[%d]: ", cc);
+      a;
+      $fwrite(debug_log, "\n");
+    end
+  
+  endaction
+  endfunction
+
   let mem_state <- mkFUNCP_Memstate();
   FUNCP_TokState tok_state <- mkFUNCP_TokState();
   
@@ -53,11 +72,12 @@ module [HASim_Module] mkFUNCP
   
   //Snapshots
   
-  Reg#(Vector#(TExp#(snapshotptr_SZ), Bool))  snap_valids        <- mkReg(unpack(0));
+  Reg#(Vector#(TExp#(idx_SZ), Bool))             snap_valids     <- mkReg(replicate(False));
   Reg#(Vector#(TExp#(snapshotptr_SZ), TokIndex)) snap_ids        <- mkRegU();
-  Reg#(SnapshotPtr)                             snap_next        <- mkReg(0);
+  Reg#(SnapshotPtr)                              snap_next       <- mkReg(0);
 
-  BRAM#(SnapshotPtr, Vector#(TExp#(rname_SZ), PRName))         snaps   <- mkBRAM_Full();
+  BRAM#(SnapshotPtr, Vector#(TExp#(rname_SZ), PRName))         snaps    <- mkBRAM_Full();
+  BRAM#(SnapshotPtr, PRName)                                   snaps_fl <- mkBRAM_Full();
 
   //Misc
 
@@ -65,8 +85,8 @@ module [HASim_Module] mkFUNCP
   
   Reg#(Bool)     rewinding <- mkReg(False);
   Reg#(Bool)     fast_rewind <- mkReg(False);
-  Reg#(Bool)     initializing <- mkReg(False);
-  let ready = !rewinding && !fast_rewind && !initializing;
+  Reg#(Bool)     initializing <- mkReg(True);
+  let ready = !rewinding && !initializing;
   Reg#(TokIndex) rewindTok <- mkRegU();
   Reg#(TokIndex) rewindCur <- mkRegU();
   
@@ -164,7 +184,7 @@ module [HASim_Module] mkFUNCP
   Connection_Send#(Token) link_mem_commit <- mkConnection_Send("mem_commit");
   
   Connection_Client#(Tuple4#(Inst, Addr, Value, Value), 
-                     Tuple3#(InstResult, Addr, Value)) link_datapath <- mkConnection_Client("isa_datapath");
+                     Tuple3#(InstResult, Addr, Maybe#(Value))) link_datapath <- mkConnection_Client("isa_datapath");
     
   //Dump obsolete kills
   
@@ -197,6 +217,38 @@ module [HASim_Module] mkFUNCP
     let foo <- link_gco_kill.receive();
   endrule
   
+  //open the debug log
+  rule initialize (initializing);
+  
+    let debugOn <- $test$plusargs("funcp-log");
+    
+    if (debugOn)
+    begin
+      let fd <- $fopen("hasim_funcp.out", "w");
+    
+      if (fd == InvalidFile)
+      begin
+        $display("Error opening FUNCP logfile hasim_funcp.out");
+        $finish(1);
+      end
+    
+      debug_log <= fd;
+      
+    end
+    
+    initializing <= False;
+  
+  endrule
+  
+  rule currentCC (True);
+  
+    cc <= cc + 1;
+  
+  endrule
+ 
+  
+  (* descending_urgency= "rewind_slow2, rewind_slow1, rewind_fast, rewind1, gco, lco, mem3, mem3_store, mem2, mem1, execute4, execute3, execute2, execute1, decode_junk, decode2, decode1, fetch2, fetch1, newInFlight" *)
+ 
   rule newInFlight (ready);
    
     let x <- link_tok.getReq();
@@ -207,6 +259,7 @@ module [HASim_Module] mkFUNCP
       let t <- tok_state.allocate();
       let newtok = Token {index: t, info: ?};
       link_tok.makeResp(newtok);
+      funcp_debug($fwrite(debug_log, "TokGen: Allocating Token %0d", t));
     end
 
   endrule
@@ -215,6 +268,8 @@ module [HASim_Module] mkFUNCP
   rule fetch1 (ready);
   
     match {.tok, .addr} <- link_fet.getReq();
+    
+    funcp_debug($fwrite(debug_log, "Token %0d: Fetch: Start (Address: 0x%h)", tok.index, addr));
   
     tok_state.fet_start(tok.index);
     
@@ -239,6 +294,8 @@ module [HASim_Module] mkFUNCP
     
     tok_state.fet_finish(tok.index);
     
+    funcp_debug($fwrite(debug_log, "Token %0d: Fetch: End (Inst: 0x%h)", tok.index, resp));
+    
     link_fet.makeResp(tuple2(tok, inst));
     
   endrule
@@ -248,6 +305,7 @@ module [HASim_Module] mkFUNCP
     Tuple2#(Token, void) tup <- link_dec.getReq();
     
     match {.tok, .*} = tup;
+    funcp_debug($fwrite(debug_log, "Token %0d: Decode: Start", tok.index));
   
     tok_state.dec_start(tok.index);
     
@@ -279,16 +337,6 @@ module [HASim_Module] mkFUNCP
         tagged Valid .r2: return tagged Valid select(maptable, r2);
       endcase;
     
-    case (w1) matches
-      tagged Invalid: $display("FUNCP: Token %0d: No source 1", tok.index);
-      tagged Valid .pr1: $display("FUNCP: Token %0d: Source 1 is PR%0d", tok.index, pr1);
-    endcase
-    
-    case (w2) matches
-      tagged Invalid: $display("FUNCP: Token %0d: No source 2", tok.index);
-      tagged Valid .pr2: $display("FUNCP: Token %0d: Source 2 is PR%0d", tok.index, pr2);
-    endcase
-    
     let dst = getDest(inst);
         
     tok_writer1.write(tok.index, w1);
@@ -310,7 +358,6 @@ module [HASim_Module] mkFUNCP
       tagged Invalid: noAction;
       tagged Valid .d: 
       begin
-        $display("FUNCP: New Mapping: Token %0d: R%0d = PR%0d. (Formerly PR%0d)", tok.index, d, pdest, select(maptable, d));
 	prf.write(pdest, tagged Invalid);
       end
     endcase
@@ -323,9 +370,11 @@ module [HASim_Module] mkFUNCP
     
     if (isBranch(inst)) //Make a snapshot
     begin
+      funcp_debug($fwrite(debug_log, "Token %0d: Decode: Branch Detected. Making Snapshot (Number %0d).", tok.index, snap_next));
       snap_valids[tok.index] <= True;
       snap_ids[snap_next] <= tok.index;
       snaps.write(snap_next, newmap);
+      snaps_fl.write(snap_next, freelist.current());
       snap_next <= snap_next + 1;
     end
     
@@ -340,12 +389,12 @@ module [HASim_Module] mkFUNCP
  
     let map_s1 = case (s1) matches
 	           tagged Invalid: tagged Invalid;
-		   tagged Valid .s1: tagged Valid tuple2(s1, validValue(w1));
+		   tagged Valid .r1: tagged Valid tuple2(r1, validValue(w1));
 		 endcase;
 
     let map_s2 = case (s2) matches
 	           tagged Invalid: tagged Invalid;
-		   tagged Valid .s2: tagged Valid tuple2(s2, validValue(w2));
+		   tagged Valid .r2: tagged Valid tuple2(r2, validValue(w2));
 		 endcase;
 
     let deps = DepInfo 
@@ -355,7 +404,22 @@ module [HASim_Module] mkFUNCP
 	dep_src1: map_s1,
 	dep_src2: map_s2
       };
-      
+    
+    case (dst) matches
+      tagged Invalid:  funcp_debug($fwrite(debug_log, "Token %0d: Decode: End (No Dest. PR%0d)", tok.index, pdest));
+      tagged Valid .d: funcp_debug($fwrite(debug_log, "Token %0d: Decode: End (Dest:R%0d/PR%0d, formerly %0d)", tok.index, d, pdest, select(maptable, d)));
+    endcase
+    
+    case (s1) matches
+      tagged Invalid:   funcp_debug($fwrite(debug_log, "Token %0d: Decode: End (No Source 1)", tok.index));
+      tagged Valid .r1: funcp_debug($fwrite(debug_log, "Token %0d: Decode: End (Source 1: R%0d/PR%0d)", tok.index, r1, validValue(w1)));
+    endcase
+
+    case (s2) matches
+      tagged Invalid:   funcp_debug($fwrite(debug_log, "Token %0d: Decode: End (No Source 2)", tok.index));
+      tagged Valid .r2: funcp_debug($fwrite(debug_log, "Token %0d: Decode: End (Source 2: R%0d/PR%0d)", tok.index, r2, validValue(w2)));
+    endcase
+
     link_dec.makeResp(tuple2(tok, deps));
     
   endrule
@@ -382,16 +446,6 @@ module [HASim_Module] mkFUNCP
         tagged Valid .r2: return tagged Valid select(maptable, r2);
       endcase;
     
-    case (w1) matches
-      tagged Invalid: $display("FUNCP: Token %0d (JUNK): No source 1", tok.index);
-      tagged Valid .pr1: $display("FUNCP: Token %0d (JUNK): Source 1 is PR%0d", tok.index, pr1);
-    endcase
-    
-    case (w2) matches
-      tagged Invalid: $display("FUNCP: Token %0d (JUNK): No source 2", tok.index);
-      tagged Valid .pr2: $display("FUNCP: Token %0d (JUNK): Source 2 is PR%0d", tok.index, pr2);
-    endcase
-    
     tok_state.dec_finish(tok.index);
     
     let map_s1 = case (s1) matches
@@ -412,6 +466,18 @@ module [HASim_Module] mkFUNCP
 	dep_src2: map_s2
       };
       
+    funcp_debug($fwrite(debug_log, "Token %0d: Decode: End JUNK (Dest ignored)", tok.index));
+    
+    case (s1) matches
+      tagged Invalid:   funcp_debug($fwrite(debug_log, "Token %0d: Decode: End JUNK (No Source 1)", tok.index));
+      tagged Valid .r1: funcp_debug($fwrite(debug_log, "Token %0d: Decode: End JUNK (Source 1: R%0d/PR%0d)", tok.index, r1, validValue(w1)));
+    endcase
+
+    case (s2) matches
+      tagged Invalid:   funcp_debug($fwrite(debug_log, "Token %0d: Decode: End JUNK (No Source 2)", tok.index));
+      tagged Valid .r2: funcp_debug($fwrite(debug_log, "Token %0d: Decode: End JUNK (Source 2: R%0d/PR%0d)", tok.index, r2, validValue(w2)));
+    endcase
+      
     link_dec.makeResp(tuple2(tok, deps));
     
   endrule
@@ -419,6 +485,7 @@ module [HASim_Module] mkFUNCP
   rule execute1 (ready);
   
     match {.tok, .*} <- link_exe.getReq();    
+    funcp_debug($fwrite(debug_log, "Token %0d: Execute: Start", tok.index));
   
     tok_state.exe_start(tok.index);
     
@@ -429,12 +496,11 @@ module [HASim_Module] mkFUNCP
   
   endrule
   
-  (* descending_urgency= "execute3, execute2" *)
-  
   rule execute2 (ready);
   
     let tok = exeQ.first();
     exeQ.deq();
+    funcp_debug($fwrite(debug_log, "Token %0d: Execute: Reg Read", tok.index));
     
     let w1 <- tok_writer1.read_resp();
     let w2 <- tok_writer2.read_resp();
@@ -462,9 +528,17 @@ module [HASim_Module] mkFUNCP
     let rdy1 = isValid(w1) ? isValid(v1) : True;
     let rdy2 = isValid(w2) ? isValid(v2) : True;
     
-    if ((rdy1 && rdy2) || !tok_state.isAllocated(tok.index)) //let junk proceed
+    let isJunk = !tok_state.isAllocated(tok.index);
+    
+    if ((rdy1 && rdy2) || isJunk) //let junk proceed
     begin
       exe2Q.deq();
+
+      if (!isJunk)
+        funcp_debug($fwrite(debug_log, "Token %0d: Execute: Sending to Datapath (V1:0x%h, V2:0x%h)", tok.index, validValue(v1), validValue(v2)));
+      else
+        funcp_debug($fwrite(debug_log, "Token %0d: Execute: Sending to Datapath JUNK (V1:0x%h, V2:0x%h)", tok.index, validValue(v1), validValue(v2)));
+	
       link_datapath.makeReq(tuple4(inst, addr, validValue(v1), validValue(v2)));
       tok_dest.read_req1(tok.index);
       exe3Q.enq(tok);
@@ -472,7 +546,13 @@ module [HASim_Module] mkFUNCP
     else
     begin
     
-      $display("FUNCP: EXE: Token %0d: Stall", tok.index);
+      if (!rdy1 && !rdy2)
+        funcp_debug($fwrite(debug_log, "Token %0d: Execute: Stalling on both sources.", tok.index));  
+      else if (!rdy1)
+        funcp_debug($fwrite(debug_log, "Token %0d: Execute: Stalling on source 1.", tok.index));  
+      else
+        funcp_debug($fwrite(debug_log, "Token %0d: Execute: Stalling on source 2.", tok.index));    
+      
       prf.read_req1(validValue(w1));
       prf.read_req2(validValue(w2));
       tok_addr.read_req(tok.index);
@@ -491,11 +571,16 @@ module [HASim_Module] mkFUNCP
     match {.res, .eaddr, .wbval} <- link_datapath.getResp();
     let dst <- tok_dest.read_resp1();
     
-    prf.write(dst, tagged Valid wbval);
+    prf.write(dst, wbval);
     
     tok_memaddr.write(tok.index, eaddr);
     
     tok_state.exe_finish(tok.index);
+    
+    if (isValid(wbval))
+      funcp_debug($fwrite(debug_log, "Token %0d: Execute: Finish (PR%0d <= 0x%h).", tok.index, dst, validValue(wbval)));
+    else
+      funcp_debug($fwrite(debug_log, "Token %0d: Execute: Finish (No writeback).", tok.index));
     
     link_exe.makeResp(tuple2(tok, res));
   
@@ -504,6 +589,8 @@ module [HASim_Module] mkFUNCP
   rule mem1 (ready);
   
     match {.tok, .*} <- link_mem.getReq();
+    
+    funcp_debug($fwrite(debug_log, "Token %0d: DMem: Start", tok.index)); 
     
     tok_state.mem_start(tok.index);
     
@@ -524,16 +611,19 @@ module [HASim_Module] mkFUNCP
     
     if (tok_state.isLoad(tok.index))
     begin
+        funcp_debug($fwrite(debug_log, "Token %0d: DMem: Requesting Load (Addr: 0x%h)", tok.index, addr)); 
         link_to_dmem.makeReq(Ld {addr: addr, token: tok});
 	mem2Q.enq(tuple2(tok, dst));
     end
     else if (tok_state.isStore(tok.index))
     begin
+        funcp_debug($fwrite(debug_log, "Token %0d: DMem: Retreiving Store Value (PR%0d)", tok.index, dst)); 
         prf.read_req3(dst);
 	storeQ.enq(tuple2(tok, addr));
     end
     else
     begin
+      funcp_debug($fwrite(debug_log, "Token %0d: DMem: Finish (trivial)", tok.index)); 
       tok_state.mem_finish(tok.index);
       link_mem.makeResp(tuple2(tok, ?));
     end
@@ -553,7 +643,10 @@ module [HASim_Module] mkFUNCP
 	$finish(1);
       end
       tagged Valid .val:
+      begin
+        funcp_debug($fwrite(debug_log, "Token %0d: DMem: Requesting Store (Addr: 0x%h <= 0x%h)", tok.index, addr, val)); 
         link_to_dmem.makeReq(St {val: val, addr: addr, token: tok});
+      end
     endcase
   
     mem2Q.enq(tuple2(tok, ?));
@@ -569,10 +662,16 @@ module [HASim_Module] mkFUNCP
   
     case (resp) matches
       tagged StResp .*  : noAction;
-      tagged LdResp .val: prf.write(dest, tagged Valid val);
+      tagged LdResp .val:
+      begin
+        funcp_debug($fwrite(debug_log, "Token %0d: DMem: Load Response (PR%0d <= 0x%h", tok.index, dest, val)); 
+        prf.write(dest, tagged Valid val);
+      end
     endcase
     
     tok_state.mem_finish(tok.index);
+    
+    funcp_debug($fwrite(debug_log, "Token %0d: DMem: Finish", tok.index)); 
     
     link_mem.makeResp(tuple2(tok, ?));
   endrule
@@ -583,7 +682,7 @@ module [HASim_Module] mkFUNCP
     
     freelist.free(tok);
 
-    $display("FUNCP: finishing token %0d", tok.index);
+    funcp_debug($fwrite(debug_log, "Token %0d: LCO: Finishing Token", tok.index)); 
 
     link_lco.makeResp(tuple2(tok, ?));
     tok_state.deallocate(tok.index);
@@ -595,6 +694,8 @@ module [HASim_Module] mkFUNCP
   
     match {.tok, .*} <- link_gco.getReq();
     
+    funcp_debug($fwrite(debug_log, "Token %d: GCO: Finishing Token", tok.index)); 
+
     link_mem_commit.send(tok);
     
     link_gco.makeResp(tuple2(tok, ?));
@@ -605,8 +706,7 @@ module [HASim_Module] mkFUNCP
   
     let tok <- link_rewind.receive();
     
-    TokIndex n = tok_state.youngest() - tok.index;
-    freelist.backN(truncate(n)); //Possibly should check if truncation is dangerous
+    funcp_debug($fwrite(debug_log, "Rewind: Starting Rewind to Token %0d (Youngest: %0d)", tok.index, tok_state.youngest())); 
     
     tok_state.rewindTo(tok.index);
     
@@ -614,9 +714,9 @@ module [HASim_Module] mkFUNCP
     if (snap_valids[tok.index]) //We might have a snapshot
     begin
     
-    
+      funcp_debug($fwrite(debug_log, "Potential Fast Rewind"));  
       SnapshotPtr idx = snap_next; //Find youngest snapshot of this token
-      for (Integer x = 0; x < valueof(snapshotptr_SZ); x = x + 1)
+      for (Integer x = 0; x < valueof(TExp#(snapshotptr_SZ)); x = x + 1)
       begin
 	
 	let cur = snap_next + fromInteger(x);
@@ -626,26 +726,38 @@ module [HASim_Module] mkFUNCP
 	
       end
       
-      if (found) 
+      if (found)
+      begin   
+        funcp_debug($fwrite(debug_log, "Fast Rewind confirmed with Snapshot %0d", idx));  
         snaps.read_req(idx);
-	
+	snaps_fl.read_req(idx);
+      end
+      
     end
-   
+    
+    if (!found)
+    begin
+    
+        funcp_debug($fwrite(debug_log, "Initiating slow Rewind (Oldest: %0d)", tok_state.oldest()));  
+    end
+    
     rewinding <= True;
     fast_rewind <= found;
-    rewindTok <= tok.index;
+    rewindTok <= tok_state.youngest();
     rewindCur <= tok_state.oldest(); //Start at the oldest and go forward
-    
     
   endrule
   
   rule rewind_fast (rewinding && fast_rewind);
   
       let snp_map <- snaps.read_resp();
+      let snp_fl  <- snaps_fl.read_resp();
   
       maptable <= snp_map;
+      freelist.backTo(snp_fl);
 
       rewinding <= False;
+      funcp_debug($fwrite(debug_log, "Fast Rewind finished."));  
       
   endrule
   
@@ -656,6 +768,7 @@ module [HASim_Module] mkFUNCP
     
     if (tok_state.isAllocated(rewindCur)) //Don't remap killed tokens
     begin
+        funcp_debug($fwrite(debug_log, "Slow Rewind: Lookup up Token %0d", rewindCur));  
         tok_dest.read_req2(rewindCur);
         tok_inst.read_req2(rewindCur);
 	rewindQ.enq(rewindCur);
@@ -664,22 +777,28 @@ module [HASim_Module] mkFUNCP
     rewindCur <= rewindCur + 1;
     
     if (rewindCur == rewindTok) //Must take into account the last instruction
+    begin
       rewinding <= False;
+      funcp_debug($fwrite(debug_log, "Slow Rewind: No more tokens to lookup."));  
+    end
   
   endrule
 
-  rule rewind_slow2 (rewinding && !fast_rewind);
+  rule rewind_slow2 (True);
   
     let t = rewindQ.first();
     rewindQ.deq();
     
+     
+    freelist.back();
     let dst <- tok_dest.read_resp2();
     let inst <- tok_inst.read_resp2();
     
     case (getDest(inst)) matches
-      tagged Invalid: noAction;
+      tagged Invalid: funcp_debug($fwrite(debug_log, "Slow Rewind: Token %0d had no dest", t));
       tagged Valid .d:
       begin
+          funcp_debug($fwrite(debug_log, "Slow Rewind: Token %0d: Remapping (R%0d/PR%0d)", t, d, dst));
 	  maptable[d] <= dst;
       end
     endcase

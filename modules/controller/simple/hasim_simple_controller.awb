@@ -15,6 +15,7 @@
 # %attributes hasim
 #
 # %public hasim_simple_controller.bsv
+# %param HASIM_CONTROLLER_COOLDOWN 500 "Number of FPGA extra FPGA cycles to finish dumping stats/events"
 #
 # %AWB_END
 # */

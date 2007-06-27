@@ -35,7 +35,7 @@ module [HASim_Module] mkController ();
   //*********** State ***********
   
   Reg#(Bit#(64)) curTick <- mkReg(minBound);
-  Reg#(Bit#(16)) finishing <- mkReg(500);
+  Reg#(Bit#(16)) finishing <- mkReg(`HASIM_CONTROLLER_COOLDOWN);
   Reg#(Bool)     passed <- mkReg(False);
 
   Reg#(ConState) state <- mkReg(CON_Init);
@@ -65,7 +65,7 @@ module [HASim_Module] mkController ();
      link_tp.makeReq(COM_RunProgram);
      state <= CON_Running;
      link_leds.send(4'b0011);
-     $display("Controller: Program Started on host CC %0d", curTick);
+     $display("[%d]: Controller: Program Started", curTick);
      
   endrule
   
@@ -79,19 +79,20 @@ module [HASim_Module] mkController ();
 	  if (pf)
 	  begin
 	    link_leds.send(4'b1001);
-	    $display("Controller: Test program finished succesfully.");
+	    $display("[%d]: Controller: Test program finished succesfully.", curTick);
 	    passed <= True;
 	  end
 	  else
 	  begin
 	    link_leds.send(4'b1101);
-	    $display("Controller: Test program finished. One or more failures occurred.");
+	    $display("[%d]: Controller: Test program finished. One or more failures occurred.", curTick);
 	  end
+	  stat_controller.dumpStats();
 	  state <= CON_Finished;
 	end
       default:
       begin
-	$display("Controller: ERROR: Unexpected Timing Partition Response: 0x%h.", resp);
+	$display("[%d]: Controller: ERROR: Unexpected Timing Partition Response: 0x%h.", curTick, resp);
       end
     endcase
 

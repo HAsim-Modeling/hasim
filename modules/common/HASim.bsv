@@ -125,8 +125,8 @@ typedef Bit#(CON_Width) CON_Data;
 typedef 4 CON_NumChains;
 
 //Chain 0: Events
-//Chain 1: Debug
-//Chain 2: Stats
+//Chain 1: Stats
+//Chain 2: Debug
 //Chain 3: Commands
 
 //Change to BypassFIFO here.

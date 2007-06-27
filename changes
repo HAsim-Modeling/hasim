@@ -5664,3 +5664,25 @@ up from this directory. Also, Makefile.include.template for both
 Hasim and pure bluespec models temporarily contains an additional
 include path to /home/aparasha/i386-linux26/include. These will be
 updated when the new iverilog version is installed in /proj/vssad.
+
+----------
+mpellaue    Date: Wed Jun 27 12:48:45 EDT 2007  CSN: CSN-hasim-201
+                  Wed Jun 27 16:48:45 UTC 2007
+
+
+Directory modules/controller/simple
+ hasim_simple_controller.awb Locally Modified          200 
+ hasim_simple_controller.bsv Locally Modified          200 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          200 
+ Stats.bsv                 Locally Modified          200 
+ HASim.bsv                 Locally Modified          200 
+ Connections.bsv           Locally Modified          200 
+ Events.bsv                Locally Modified          200 
+
+
+Stats and Events now place their output into separate files. Also a bugfix in
+connections for scanchains. Controller dumps stats at end of run.
+
+Michael P.

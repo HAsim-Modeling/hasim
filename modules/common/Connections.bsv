@@ -139,16 +139,19 @@ module [Module] connectDangling#(List#(ConnectionData) ld, inter_T i)       (Wit
   Vector#(CON_NumChains, CON_Chain) mychains = newVector();
   
   //Chain connections
-  List#(List#(CON_Chain)) cs = groupByIndex(chns);
-  let nChains = length(cs);
   
+  Vector#(CON_NumChains, List#(CON_Chain)) tmp_cs = replicate(Nil);
+  
+  let cs = groupChains(tmp_cs, chns);
+
   for (Integer x = 0; x < valueOf(CON_NumChains); x = x + 1)
   begin
-    List#(CON_Chain) clinks = (x < nChains) ? cs[x] : Nil;
-    Integer nLinks = length(clinks);
-    CON_Chain tmp <- (nLinks == 0) ? mkPassThrough(x) : connectLocalChain(clinks, x);
+  
+    Integer nLinks = length(cs[x]);
+    CON_Chain tmp <- (nLinks == 0) ? mkPassThrough(x) : connectLocalChain(cs[x], x);
 
     mychains[x] = tmp;
+    
   end
   
   interface outgoing = outs;
@@ -227,15 +230,16 @@ module [Module] connectTopLevel#(List#(ConnectionData) ld, inter_T i)       ();
   Vector#(CON_NumChains, CON_Chain) mychains = newVector();
   
   //Chain connections
-  List#(List#(CON_Chain)) cs = groupByIndex(chns);
-  let nChains = length(cs);
+  
+  Vector#(CON_NumChains, List#(CON_Chain)) tmp_cs = replicate(Nil);
+  
+  let cs = groupChains(tmp_cs, chns);
 
   for (Integer x = 0; x < valueOf(CON_NumChains); x = x + 1)
   begin
   
-    List#(CON_Chain) clinks = (x < nChains) ? cs[x] : Nil;
-    Integer nLinks = length(clinks);
-    CON_Chain tmp <- (nLinks == 0) ? mkPassThrough(x) : connectLocalChain(clinks, x);
+    Integer nLinks = length(cs[x]);
+    CON_Chain tmp <- (nLinks == 0) ? mkPassThrough(x) : connectLocalChain(cs[x], x);
 
     //Close the chain
     mkConnection(tmp, tmp);
@@ -283,6 +287,7 @@ module [Module] mkPassThrough#(Integer chainNum)
     //interface:
                 (CON_Chain);
 
+  messageM(strConcat(strConcat("Making Pass-Through Chain [", integerToString(chainNum)), "]"));
   FIFO#(CON_Data) passQ <- mkFIFO();
 
   method CON_Data first() = passQ.first();
@@ -434,6 +439,23 @@ function List#(List#(b)) groupByIndex(List#(Tuple2#(a, b)) l) provisos (Eq#(a));
       match {.same, .rest} = splitWith(eqIndex(idx), List::tail(l));
       let same2 = List::map(tpl_2, same);
       return List::cons(List::cons(val, same2), groupByIndex(rest));
+    end
+  endcase
+
+endfunction
+
+//groupChains :: Vector n a -> [(Int, a)] -> Vector n a
+
+function Vector#(n, List#(a)) groupChains(Vector#(n, List#(a)) v, List#(Tuple2#(Integer, a)) l);
+
+  case (l) matches
+    tagged Nil: return v;
+    default:
+    begin
+      match {.idx, .val} = List::head(l);
+      let new_v = v;
+      new_v[idx] = List::cons(val, new_v[idx]);
+      return groupChains(new_v, List::tail(l));
     end
   endcase
 

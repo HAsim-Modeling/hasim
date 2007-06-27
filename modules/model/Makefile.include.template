@@ -12,6 +12,7 @@ BSC_FLAGS = -steps 1000000 \
             -no-opt-bool
 
 LDFLAGS = -L /usr/lib/curses
+VSIM_LINK_FLAGS = -I /home/aparasha/i386-linux26/include
 
 APM_NAME = @APM_NAME@
 BUILD_DIR = @BUILD_DIR@

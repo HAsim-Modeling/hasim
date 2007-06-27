@@ -5612,3 +5612,55 @@ Directory modules/functional/semantic-model
 Bugfixes in the new functional partition.
 
 Michael
+
+----------
+aparasha    Date: Wed Jun 27 12:06:39 EDT 2007  CSN: CSN-hasim-200
+                  Wed Jun 27 16:06:39 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          199 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          199 
+ Makefile.top.template     Locally Modified          199 
+ Makefile.include.template Locally Modified          199 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.sub.template     Locally Modified          199 
+ Makefile.top.template     Locally Modified          199 
+ Makefile.include.template Locally Modified          199 
+
+Directory modules/bluespec/system/demos/counter
+ System.bsv                Locally Modified          199 
+
+Directory modules/bluespec/system/demos/multiplier
+ System.bsv                Locally Modified          199 
+
+Directory modules/common/fpgaenv/platform-interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          199 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio/unix
+ UNIXChannelIO.bsv         Locally Modified          199 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/graphical
+ GraphicalFP.bsv           Locally Modified          199 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/xup
+ XUPFP.bsv                 Locally Modified          199 
+
+
+Hasim and Pure Bluespec models using BDPI will now compile into
+vexe and work properly with the iVerilog simulator. However, the
+existing iverilog distribution on /proj/vssad will not work, a
+development snapshot of iverilog, version 0.9.devel build 2007/04/21
+or later is required.
+
+I have a temporary installation of this build set up in my home
+directory. If you wish to use this, you need to add
+    /home/aparasha/i386-linux26/bin
+to your PATH and make sure iverilog, iverilog-vpi and vvp are picked
+up from this directory. Also, Makefile.include.template for both
+Hasim and pure bluespec models temporarily contains an additional
+include path to /home/aparasha/i386-linux26/include. These will be
+updated when the new iverilog version is installed in /proj/vssad.

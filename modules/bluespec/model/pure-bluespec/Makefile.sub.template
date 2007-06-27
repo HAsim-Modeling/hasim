@@ -54,7 +54,8 @@ make_subdir_vs:
 	done
 
 mkModel.v: $(GEN_BSVS) $(SUBDIR_VS)
-	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)
+#	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)
+	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)
 
 ################################################################
 ## 
@@ -94,7 +95,7 @@ clean_subdirs:
 
 .PHONY: realclean
 realclean: clean realclean_subdirs
-	rm -f *.ba $(LOGFILE)
+	rm -f *.ba mkModel.v $(LOGFILE)
 
 .PHONY: realclean_subdirs
 realclean_subdirs:

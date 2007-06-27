@@ -19,10 +19,11 @@ module mkSystem();
 
     /* rules */
     rule latchSwitches(True);
-        Bit#(9) switchVector = fp.readSwitches();
+        Bit#(4) switchVector = fp.readSwitches();
+        Bit#(5) buttonVector = fp.readButtons();
         in1 <= zeroExtend(switchVector[1:0]);
         in2 <= zeroExtend(switchVector[3:2]);
-        go  <= switchVector[6];
+        go  <= buttonVector[2];
     endrule: latchSwitches
 
     rule init(state == 0 && go == 1);

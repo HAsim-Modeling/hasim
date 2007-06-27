@@ -15,6 +15,7 @@ ROOT_V = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).v
 ALL_BAS = @ALL_BAS@
 ALL_VS = @ALL_VS@
 ALL_CS = @ALL_CS@
+BDPI_BAS = @BDPI_BAS@
 
 ################################################################
 ## Xilinx tool variables
@@ -99,7 +100,10 @@ $(XILINX_APM_NAME).ngc:$(XST_FILE)
 .PHONY: vexe
 vexe:
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
-	$(BSC) $(BSC_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 
+	ln -f -s $(ARCH_DIR)/$(ROOT_DIR)/vpi_* .
+	$(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) $(ALL_CS) $(BDPI_BAS)
+	rm -f vpi_*
+	mv -f directc.sft $(TMP_BSC_DIR)
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "$(BUILD_DIR)/$(APM_NAME).vexe +bscvcd" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)

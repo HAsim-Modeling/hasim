@@ -547,11 +547,13 @@ sub __generate_makefile_top {
 	HAsim::Util::hash_append($replacements_r," ",'@ALL_BAS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir,$ba_file));
     }
 
-    # collect BDPI-exported files and add it to the @ALL_BAS@ list
+    # collect BDPI-exported files and add it to the @ALL_BAS@ and @BDPI_BAS@ list
     my @bdpi_names = HAsim::Build::get_bdpi_names($module);
     foreach my $n (@bdpi_names) {
         my $fname = "$n.ba";
 	    HAsim::Util::hash_append($replacements_r, " ", '@ALL_BAS@',
+                                 HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, $fname));
+	    HAsim::Util::hash_append($replacements_r, " ", '@BDPI_BAS@',
                                  HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, $fname));
     }
 

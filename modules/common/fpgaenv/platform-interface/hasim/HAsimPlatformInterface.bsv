@@ -23,19 +23,26 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
         frontPanel.writeLEDs(newval);
     endrule
   
-    rule send_switches_and_buttons (True);
-        // read in switch/button state from front panel
-        Bit#(9) sbstate = frontPanel.readSwitches();
+    rule send_switches (True);
+        // read in switch state from front panel
+        Bit#(4) sstate = frontPanel.readSwitches();
 
-        // send switch and button info over the connection
+        // send switch info over the connection
+        link_switches.send(sstate);
+    endrule
+
+    rule send_buttons (True);
+        // read in button state from front panel
+        Bit#(5) bstate = frontPanel.readButtons();
         ButtonInfo bi = ButtonInfo {
-    	                    b_up: sbstate[4],
-                            b_down: sbstate[8], 
-                            b_left: sbstate[5],
-                            b_right: sbstate[7],
-                            b_center: sbstate[6]
+    	                    b_up: bstate[0],
+                            b_down: bstate[4], 
+                            b_left: bstate[1],
+                            b_right: bstate[3],
+                            b_center: bstate[2]
                         };
-        link_switches.send(sbstate[3:0]);
+
+        // send button info over the connection
         link_buttons.send(bi);
     endrule
 

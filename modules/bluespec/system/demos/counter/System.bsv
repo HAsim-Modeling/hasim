@@ -12,8 +12,8 @@ module mkSystem();
     FrontPanel          fp      <- mkFrontPanel(wires);
 
     rule step0(state == 0);
-        Bit#(8) truncated = truncate(fp.readSwitches());
-        counter.load(truncated);
+        Bit#(8) extended = zeroExtend(fp.readSwitches());
+        counter.load(extended);
         state <= 1;
     endrule
 

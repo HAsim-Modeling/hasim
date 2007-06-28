@@ -30,7 +30,7 @@ import hasim_isa::*;
 // TODO: This could be a bit smarter. Currently it assumes that tokens commit
 // inorder. Actually, this is probably a pretty reasonable assumption.
 
-module [HASim_Module] mkFUNCP_Stage_TOK ();
+module [HASim_Module] mkFUNCP_Stage_TOK#(File debug_log, Tick curCC) ();
   
   BRAM#(TokIndex, Bool) valids <- mkBRAM_Full();
   Reg#(TokIndex) next <- mkReg(0);
@@ -65,10 +65,14 @@ module [HASim_Module] mkFUNCP_Stage_TOK ();
     if (x == 17)
     begin
     //allocate a new token
+    
+    let inf = FUNCP_TokInfo {epoch: 0, scratchpad: 0};
+    
     let tok = Token
       {
 	index: next,
-	info: ?
+	timep_info: ?,
+	funcp_info: inf
       };
     link_from_tp.makeResp(tok);
     link_to_next.send(tuple2(tok, ?));

@@ -19,26 +19,43 @@ import FIFO::*;
 import ModuleCollect::*;
 import Connectable::*;
 
-//Note: make these ASim parameters
-typedef Bit#(8) TokIndex;
-typedef Bit#(2) TokEpoch;
-typedef Bit#(0) TokContext;
+`define HASIM_TOK_INDEX_BITS 8
+`define HASIM_TIMEP_EPOCH_BITS 2
+`define HASIM_TIMEP_SCRATCHPAD_BITS 5
+`define HASIM_FUNCP_EPOCH_BITS 2
+`define HASIM_FUNCP_SCRATCHPAD_BITS 5
 
-// A Token has support for associated data like epochs and contexts
+typedef Bit#(`HASIM_TOK_INDEX_BITS) TokIndex;
+typedef Bit#(`HASIM_TIMEP_EPOCH_BITS) TIMEP_Epoch;
+typedef Bit#(`HASIM_TIMEP_SCRATCHPAD_BITS) TIMEP_Scratchpad;
+typedef Bit#(`HASIM_FUNCP_EPOCH_BITS) FUNCP_Epoch;
+typedef Bit#(`HASIM_FUNCP_SCRATCHPAD_BITS)FUNCP_Scratchpad;
+
 typedef struct
 {
-  TokEpoch   epoch;
-  TokContext ctxt;
+  TIMEP_Epoch   epoch;
+  TIMEP_Scratchpad scratchpad;
 }
-  TokInfo deriving (Eq, Bits);
+  TIMEP_TokInfo 
+    deriving (Eq, Bits);
 
 typedef struct
 {
-  TokIndex   index;
-  TokInfo    info;
+  FUNCP_Epoch   epoch;
+  FUNCP_Scratchpad scratchpad;
 }
-  Token deriving (Eq, Bits);
+  FUNCP_TokInfo 
+    deriving (Eq, Bits);
 
+typedef struct
+{
+  TokIndex	    index;
+  TIMEP_TokInfo     timep_info;
+  FUNCP_TokInfo     funcp_info;
+}
+  Token 
+    deriving (Eq, Bits);
+    
 typedef struct 
 {
   Bit#(1) b_up; 

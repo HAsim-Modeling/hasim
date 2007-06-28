@@ -109,7 +109,6 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   		
   //BRAM tables
   BRAM#(TokIndex, init_T)   values <- mkBRAM_Full();
-  BRAM#(TokIndex, TokInfo)     infos <- mkBRAM_Full();
   BRAM_2#(TokIndex, Bool)     valids <- mkBRAM_2_Full();
   BRAM#(TokIndex, Bool)   starteds <- mkBRAM_Full(); 
 
@@ -133,7 +132,6 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
     valids.write(tok.index, True);
     starteds.write(tok.index, False);
     values.write(tok.index, iVal);
-    infos.write(tok.index, tok.info);
     
   endrule
 

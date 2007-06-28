@@ -18,7 +18,7 @@ interface FreeList;
   
 endinterface
 
-module [HASim_Module] mkFreeList
+module [HASim_Module] mkFreeList#(File debug_log, Tick curCC)
     //interface:
                 (FreeList)
     provisos
@@ -60,7 +60,7 @@ module [HASim_Module] mkFreeList
     begin
       fl.write(fl_write, reg_to_free);
       fl_write <= fl_write + 1;
-      $display("FREELIST: Freeing PR%0d", reg_to_free);
+      $fdisplay(debug_log, "[%d]: FREELIST: Freeing PR%0d", curCC, reg_to_free);
     end
 
   endrule
@@ -73,7 +73,7 @@ module [HASim_Module] mkFreeList
   method ActionValue#(PRName) forward_resp() if (!initializing);
     
     let rsp <- fl.read_resp();
-    $display("FREELIST: Allocating PR%0d", rsp);
+    $fdisplay(debug_log, "[%d]: FREELIST: Allocating PR%0d", curCC, rsp);
     return rsp;
   
   endmethod

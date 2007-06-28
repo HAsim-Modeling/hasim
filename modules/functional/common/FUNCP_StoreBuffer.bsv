@@ -55,7 +55,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
       tagged Invalid:
         return True;
       tagged Valid {.t2, .v}:
-        return (t2.index > t.index) && (t.info.epoch == t2.info.epoch);
+        return (t2.index > t.index) && (t.timep_info.epoch == t2.timep_info.epoch);
     endcase
   
   endfunction

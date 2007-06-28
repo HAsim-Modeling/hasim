@@ -17,20 +17,46 @@ import hasim_funcp_mem_alg::*;
 import hasim_funcp_localcommit_alg::*;
 import hasim_funcp_globalcommit_alg::*;
 
+`define HASIM_FUNCP_PIPELINE_LOGFILE "hasim_funcp_pipeline.out"
 
 module [HASim_Module] mkFUNCP_Pipeline (); 
+  
+  let debug_log <- mkReg(InvalidFile);
+  Reg#(Bool) initialized <- mkReg(False);
+  Reg#(Tick) curCC <- mkReg(0);
 
-  let tok_stage <- mkFUNCP_Stage_TOK();
-  let fet_stage <- mkFUNCP_Stage_FET();
-  let dec_stage <- mkFUNCP_Stage_DEC();
-  let exe_stage <- mkFUNCP_Stage_EXE();
-  let mem_stage <- mkFUNCP_Stage_MEM();
-  let lco_stage <- mkFUNCP_Stage_LCO();
-  let gco_stage <- mkFUNCP_Stage_GCO();
+  let tok_stage <- mkFUNCP_Stage_TOK(debug_log, curCC);
+  let fet_stage <- mkFUNCP_Stage_FET(debug_log, curCC);
+  let dec_stage <- mkFUNCP_Stage_DEC(debug_log, curCC);
+  let exe_stage <- mkFUNCP_Stage_EXE(debug_log, curCC);
+  let mem_stage <- mkFUNCP_Stage_MEM(debug_log, curCC);
+  let lco_stage <- mkFUNCP_Stage_LCO(debug_log, curCC);
+  let gco_stage <- mkFUNCP_Stage_GCO(debug_log, curCC);
+  
+  rule initialize (!initialized);
+  
+    let fd <- $fopen(`HASIM_FUNCP_PIPELINE_LOGFILE, "w");
+    
+    if (fd == InvalidFile)
+    begin
+      $display("ERROR: FUNCP: Pipeline: Could not create file %s", `HASIM_FUNCP_PIPELINE_LOGFILE);
+      $finish(1);
+    end
+    
+    debug_log <= fd;
+    initialized <= True;
+  
+  endrule
+  
+  rule count (True);
+  
+    curCC <= curCC + 1;
+  
+  endrule
   
 endmodule
 
-module [HASim_Module] mkFUNCP_Stage_FET ();
+module [HASim_Module] mkFUNCP_Stage_FET#(File debug_log, Tick curCC) ();
 
   FUNCP_Stage#(void, Addr, PackedInst, Tuple2#(Addr, PackedInst))
   //...
@@ -40,11 +66,11 @@ module [HASim_Module] mkFUNCP_Stage_FET ();
 			      "fp_tok_to_fet",
 			      "fp_fet_to_dec", 
 			      "fp_fet_kill");  
-  mkFUNCP_FetchAlg();
+  mkFUNCP_FetchAlg(debug_log, curCC);
 
 endmodule
 
-module [HASim_Module] mkFUNCP_Stage_DEC ();
+module [HASim_Module] mkFUNCP_Stage_DEC#(File debug_log, Tick curCC) ();
 
   FUNCP_Stage#(Tuple2#(Addr, PackedInst), void, DepInfo, Tuple2#(Addr, DecodedInst))
   //...
@@ -54,11 +80,11 @@ module [HASim_Module] mkFUNCP_Stage_DEC ();
 			      "fp_fet_to_dec",
 			      "fp_dec_to_exe",
 			      "fp_dec_kill");  
-  mkFUNCP_DecodeAlg();
+  mkFUNCP_DecodeAlg(debug_log, curCC);
 
 endmodule
 
-module [HASim_Module] mkFUNCP_Stage_EXE ();
+module [HASim_Module] mkFUNCP_Stage_EXE#(File debug_log, Tick curCC) ();
 
   FUNCP_Stage#(Tuple2#(Addr, DecodedInst), void, InstResult, ExecedInst)
   //...
@@ -69,11 +95,11 @@ module [HASim_Module] mkFUNCP_Stage_EXE ();
 		              "fp_exe_to_mem",
 			      "fp_exe_kill");
   
-  mkFUNCP_ExecuteAlg();
+  mkFUNCP_ExecuteAlg(debug_log, curCC);
 
 endmodule
 
-module [HASim_Module] mkFUNCP_Stage_MEM ();
+module [HASim_Module] mkFUNCP_Stage_MEM#(File debug_log, Tick curCC) ();
 
   FUNCP_Stage#(ExecedInst, void, void, InstWBInfo)
   //...
@@ -84,11 +110,11 @@ module [HASim_Module] mkFUNCP_Stage_MEM ();
 			      "fp_mem_to_lco", 
 			      "fp_mem_kill");
 
-  mkFUNCP_MemAlg();
+  mkFUNCP_MemAlg(debug_log, curCC);
 
 endmodule
 
-module [HASim_Module] mkFUNCP_Stage_LCO ();
+module [HASim_Module] mkFUNCP_Stage_LCO#(File debug_log, Tick curCC) ();
 
   FUNCP_Stage#(InstWBInfo, void, void, InstWBInfo)
   //...
@@ -99,11 +125,11 @@ module [HASim_Module] mkFUNCP_Stage_LCO ();
 			      "fp_lco_to_gco", 
 			      "fp_lco_kill");
 
-  mkFUNCP_LocalCommitAlg();
+  mkFUNCP_LocalCommitAlg(debug_log, curCC);
 
 endmodule
 
-module [HASim_Module] mkFUNCP_Stage_GCO ();
+module [HASim_Module] mkFUNCP_Stage_GCO#(File debug_log, Tick curCC) ();
 
   FUNCP_Stage#(InstWBInfo, void, void, void)
   //...
@@ -114,7 +140,7 @@ module [HASim_Module] mkFUNCP_Stage_GCO ();
 			      "fp_gco_to_tok", 
 			      "fp_gco_kill");
   
-  mkFUNCP_GlobalCommitAlg();
+  mkFUNCP_GlobalCommitAlg(debug_log, curCC);
 
 endmodule
 

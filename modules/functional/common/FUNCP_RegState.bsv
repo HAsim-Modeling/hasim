@@ -12,6 +12,7 @@ import hasim_isa::*;
 
 import FUNCP_FreeList::*;
 
+`define HASIM_FUNCP_REGSTATE_LOGFILE "hasim_funcp_regstate.out"
 
 //----------------------------------------------------------------------------------
 // Bypass
@@ -29,6 +30,9 @@ module [HASim_Module] mkFUNCP_Regstate
 	     Add#(rname_SZ, rdiff_TMP, prname_SZ),
 	     Add#(snapshotptr_SZ, sdiff_TMP, token_SZ));
   
+  
+  let debug_log <- mkReg(InvalidFile);
+  Reg#(Tick) curCC <- mkReg(0);
   
   BRAM_2#(PRName, Maybe#(Value)) prf <- mkBRAM_2_Full();
 
@@ -54,8 +58,8 @@ module [HASim_Module] mkFUNCP_Regstate
   BRAM#(SnapshotPtr, Tuple3#(PRName, PRName, Vector#(TExp#(rname_SZ), PRName))) snaps <- mkBRAM_Full();
 
 
-  Reg#(TokEpoch) epoch <- mkReg(minBound);
-  Reg#(TokEpoch) dead_epoch <- mkReg(maxBound);
+  Reg#(TIMEP_Epoch) epoch <- mkReg(minBound);
+  Reg#(TIMEP_Epoch) dead_epoch <- mkReg(maxBound);
   Reg#(Bool)  busy <- mkReg(True);
   Reg#(Token) stopToken <- mkRegU();
   FIFO#(Tuple5#(Maybe#(RName), Token, Bool, RName, RName)) mappingQ <- mkFIFO();
@@ -95,7 +99,23 @@ module [HASim_Module] mkFUNCP_Regstate
   //...
         link_rewindToToken <- mkConnection_Receive("fp_rewindToToken");
 
+  rule count (True);
+  
+    curCC <= curCC + 1;
+  
+  endrule
+
   rule initialize (initializing);
+  
+    let fd <- $fopen(`HASIM_FUNCP_REGSTATE_LOGFILE, "w");
+    
+    if (fd == InvalidFile)
+    begin
+      $display("ERROR: FUNCP: Regstate: could not create logfile %s", `HASIM_FUNCP_REGSTATE_LOGFILE);
+      $finish(1);
+    end
+    
+    debug_log <= fd;
   
     prf.write(0, tagged Valid 0); //R0 is hard-coded to 0.
     busy <= False;
@@ -110,7 +130,7 @@ module [HASim_Module] mkFUNCP_Regstate
   
     //if newest token is stopToken or we ran out unbusy
     match {.tok, .mx, .oldp} <- rob.read_resp1();
-    $display("RegState: Rolling back [%d], %b(R%d), PR%d", tok.index, isJust(mx), unJust(mx), oldp);
+    $fdisplay(debug_log, "[%d]: RegState: Rolling back [%d], %b(R%d), PR%d", curCC, tok.index, isJust(mx), unJust(mx), oldp);
     
     if (tok.index == stopToken.index || (rob_new == rob_old + 1))
        busy <= False;
@@ -137,15 +157,15 @@ module [HASim_Module] mkFUNCP_Regstate
      
     match {.mx, .tok, .ss, .r1, .r2} <- link_mapping.getReq();
     
-    if (tok.info.epoch == dead_epoch) //It's a dead request so return junk
+    if (tok.timep_info.epoch == dead_epoch) //It's a dead request so return junk
     begin
-      $display("REGSTATE begin_Mapping JUNK: %0b(%0d), %0d, %0d", isJust(mx), unJust(mx), tok.index, ss);
+      $fdisplay(debug_log, "[%d]: REGSTATE begin_Mapping JUNK: %0b(%0d), %0d, %0d", curCC, isJust(mx), unJust(mx), tok.index, ss);
       link_mapping.makeResp(?);
     end
     else
     begin
     
-      $display("REGSTATE begin_Mapping: %0b(%0d), %0d, %0d", isJust(mx), unJust(mx), tok.index, ss);
+      $fdisplay(debug_log, "[%d]: REGSTATE begin_Mapping: %0b(%0d), %0d, %0d", curCC, isJust(mx), unJust(mx), tok.index, ss);
 
       freelist.forward_req();
 
@@ -181,7 +201,7 @@ module [HASim_Module] mkFUNCP_Regstate
     // update map
     if (isJust(mx))
       begin
-        $display("New Mapping: R%0d/PR%0d", unJust(mx), newPReg);
+        $fdisplay(debug_log, "[%d]: New Mapping: R%0d/PR%0d", curCC, unJust(mx), newPReg);
 	Vector#(TExp#(rname_SZ), PRName) new_map = maptbl;
 	new_map = update(new_map, unJust(mx), newPReg);
 	maptbl <= new_map;
@@ -191,7 +211,7 @@ module [HASim_Module] mkFUNCP_Regstate
     // write rob
     rob_new <= rob_new + 1;
     rob.write(rob_new, tuple3(tok, mx, oldPReg)); //newPReg));
-    $display("RegState: Updating ROB [%d], %b(R%d), PR%d", tok.index, isJust(mx), unJust(mx), oldPReg);
+    $fdisplay(debug_log, "[%d]: RegState: Updating ROB [%d], %b(R%d), PR%d", curCC, tok.index, isJust(mx), unJust(mx), oldPReg);
 
     // make snapshot if needed
     Maybe#(SnapshotPtr) midx = Nothing;
@@ -226,8 +246,8 @@ module [HASim_Module] mkFUNCP_Regstate
     PRName pr1 = lookup(r1);
     PRName pr2 = lookup(r2);
     
-    $display("Lookup1: R%0d/PR%0d", r1, pr1);
-    $display("Lookup2: R%0d/PR%0d", r2, pr2);
+    $fdisplay(debug_log, "[%d]: Lookup1: R%0d/PR%0d", curCC, r1, pr1);
+    $fdisplay(debug_log, "[%d]: Lookup2: R%0d/PR%0d", curCC, r2, pr2);
     
     // return value
     link_mapping.makeResp(tuple3(newPReg, pr1, pr2));
@@ -348,7 +368,7 @@ module [HASim_Module] mkFUNCP_Regstate
     
     
     let tok <- link_rewindToToken.receive();
-    $display("REGSTATE rewindToToken: %0d", tok.index);
+    $fdisplay(debug_log, "[%d]: REGSTATE rewindToToken: %0d", curCC, tok.index);
     
     dead_epoch <= epoch;
     epoch <= epoch + 1;

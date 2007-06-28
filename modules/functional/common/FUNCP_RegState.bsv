@@ -45,7 +45,7 @@ module [HASim_Module] mkFUNCP_Regstate
      return (r == 0) ? 0 : select(maptbl._read(), r);
   endfunction 
 
-  FreeList                       freelist <- mkFreeList();
+  FreeList                       freelist <- mkFreeList(debug_log, curCC);
 
   //rob                                   old
   BRAM_2#(PRName, Tuple3#(Token, Maybe#(RName), PRName))  rob      <- mkBRAM_2_Full();

@@ -5712,3 +5712,32 @@ Functional partition now puts its output into a debug log file.
 Tokens now support TIMEP/FUNCP scratchpads.
 
 Michael P.
+
+----------
+mvijayar    Date: Thu Jun 28 16:17:01 EDT 2007  CSN: CSN-hasim-203
+                  Thu Jun 28 20:17:01 UTC 2007
+
+
+Directory .
+ configure                 Locally Modified          202 
+ Makefile.in               Locally Modified          202 
+
+Directory libperl
+ Makefile.in               Locally Modified          202 
+
+Directory tools/hasim
+ Makefile.in               Locally Modified          202 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Modified          202 
+
+Directory tools
+ Makefile.in               Locally Modified          202 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          202 
+
+Directory modules/functional/common
+ FUNCP_RegState.bsv        Locally Modified          202 
+
+Bug in RegState that has to be fixed

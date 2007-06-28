@@ -5764,3 +5764,15 @@ Directory modules/bluespec/model/pure-bluespec
   bug which prevents it from looking for object files in the
   specified directories. The workarounds should be removed
   when the compiler bug is fixed.
+----------
+aparasha    Date: Thu Jun 28 17:24:48 EDT 2007  CSN: CSN-hasim-205
+                  Thu Jun 28 21:24:48 UTC 2007
+
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          204 
+
+
+Removed the Makefile workaround introduced in the previous update.
+(A bsc compiler update has fixed the bug and the workaround is no
+longer necessary.)

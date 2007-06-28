@@ -56,11 +56,11 @@ make_subdir_vs:
 	done
 
 $(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(GEN_BSVS) $(SUBDIR_VS)
-	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
-#	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
-#	for bfile in $(BDPI_BAS); do \
-#	    mv $(TMP_BSC_DIR)/$$bfile . ; \
-#	done
+#	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
+	for bfile in $(BDPI_BAS); do \
+	    mv $(TMP_BSC_DIR)/$$bfile . ; \
+	done
 
 ################################################################
 ## 

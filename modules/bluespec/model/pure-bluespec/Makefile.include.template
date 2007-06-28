@@ -8,9 +8,7 @@ BSC_FLAGS = -keep-fires \
             -aggressive-conditions
 
 LDFLAGS = -L /usr/lib/curses
-VSIM_LINK_FLAGS = -I /home/aparasha/i386-linux26/include
-
-# BLUESPECDIR = /proj/vssad/local/i386_linux26/lib
+VSIM_LINK_FLAGS = -I $(IVERILOGDIR)/include
 
 APM_NAME = @APM_NAME@
 BUILD_DIR = @BUILD_DIR@

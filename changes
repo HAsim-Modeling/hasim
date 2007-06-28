@@ -5741,3 +5741,26 @@ Directory modules/functional/common
  FUNCP_RegState.bsv        Locally Modified          202 
 
 Bug in RegState that has to be fixed
+
+----------
+aparasha    Date: Thu Jun 28 16:51:47 EDT 2007  CSN: CSN-hasim-204
+                  Thu Jun 28 20:51:47 UTC 2007
+
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          203 
+ Makefile.top.template     Locally Modified          203 
+ Makefile.include.template Locally Modified          203 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.include.template Locally Modified          203 
+
+
+- Updated Makefiles to remove a hard include path to temporarily-
+  installed iverilog distribution and instead pick up the path
+  from an environment variable created by setup-hasim.
+
+- Added a hack to the Makefiles to work around a bsc compiler
+  bug which prevents it from looking for object files in the
+  specified directories. The workarounds should be removed
+  when the compiler bug is fixed.

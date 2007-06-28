@@ -103,7 +103,7 @@ vexe:
 	ln -f -s $(ARCH_DIR)/$(ROOT_DIR)/vpi_* .
 	$(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) $(ALL_CS) $(BDPI_BAS)
 	rm -f vpi_*
-	mv -f directc.sft $(TMP_BSC_DIR)
+	if [ -f "directc.sft" ] ; then mv -f directc.sft $(TMP_BSC_DIR) ; fi
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "$(BUILD_DIR)/$(APM_NAME).vexe +bscvcd" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
@@ -113,7 +113,6 @@ vexe:
 .PHONY: batch_vexe
 batch_vexe:
 	$(BATCH_LAUNCH) -J $(ROOT_WRAPPER_SYNTH_ID).batch make vexe
-	
 
 #$(APM_NAME).vexe:
 #	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v

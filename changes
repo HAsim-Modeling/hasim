@@ -5776,3 +5776,27 @@ Directory modules/model
 Removed the Makefile workaround introduced in the previous update.
 (A bsc compiler update has fixed the bug and the workaround is no
 longer necessary.)
+----------
+mpellaue    Date: Thu Jun 28 20:02:21 EDT 2007  CSN: CSN-hasim-206
+                  Fri Jun 29 00:02:21 UTC 2007
+
+
+Directory config/pm/hasim/submodels/fpgaenv
+ hasim-fpgaenv-null.apm    Locally Added               0 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          205 
+
+Directory modules/controller/simple
+ hasim_simple_controller.bsv Locally Modified          205 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/console
+ NullFP.bsv                Locally Added               0 
+ console-fp.awb            Locally Modified          205 
+
+
+Added a null Front Panel and FPGA env which works with Bluesim but doesn't pop up a window.
+
+Controller's output is formatted a little more nicely.
+
+Michael P.

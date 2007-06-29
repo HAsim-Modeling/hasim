@@ -4,3 +4,4 @@
 
 %provides front_panel
 
+%public NullFP.bsv

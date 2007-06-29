@@ -65,8 +65,8 @@ module [HASim_Module] mkController ();
      link_tp.makeReq(COM_RunProgram);
      state <= CON_Running;
      link_leds.send(4'b0011);
-     $display("[%d]: Controller: Program Started", curTick);
-     
+     $display("[%0d]: Controller: Program Started", curTick);
+     $fflush();
   endrule
   
   rule run_ends (state == CON_Running);
@@ -79,20 +79,23 @@ module [HASim_Module] mkController ();
 	  if (pf)
 	  begin
 	    link_leds.send(4'b1001);
-	    $display("[%d]: Controller: Test program finished succesfully.", curTick);
+	    $display("[%0d]: Controller: Test program finished succesfully.", curTick);
+            $fflush();
 	    passed <= True;
 	  end
 	  else
 	  begin
 	    link_leds.send(4'b1101);
-	    $display("[%d]: Controller: Test program finished. One or more failures occurred.", curTick);
+	    $display("[%0d]: Controller: Test program finished. One or more failures occurred.", curTick);
+            $fflush();
 	  end
 	  stat_controller.dumpStats();
 	  state <= CON_Finished;
 	end
       default:
       begin
-	$display("[%d]: Controller: ERROR: Unexpected Timing Partition Response: 0x%h.", curTick, resp);
+	$display("[%0d]: Controller: ERROR: Unexpected Timing Partition Response: 0x%h.", curTick, resp);
+        $fflush();
       end
     endcase
 

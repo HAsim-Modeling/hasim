@@ -5800,3 +5800,46 @@ Added a null Front Panel and FPGA env which works with Bluesim but doesn't pop u
 Controller's output is formatted a little more nicely.
 
 Michael P.
+
+----------
+mpellaue    Date: Thu Jul  5 15:32:18 EDT 2007  CSN: CSN-hasim-207
+                  Thu Jul  5 19:32:18 UTC 2007
+
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          206 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.sub.template     Locally Modified          206 
+
+Directory modules/controller/simple
+ hasim_simple_controller.awb Locally Modified          206 
+ hasim_simple_controller.bsv Locally Modified          206 
+
+Directory modules/controller
+ local/                    Locally Added               0 
+
+Directory modules/controller/local
+ hasim_local_controller.awb Locally Added               0 
+ LocalController.bsv       Locally Added               0 
+
+Directory modules/common
+ Ports.bsv                 Locally Modified          206 
+ hasim_common.awb          Locally Modified          206 
+ Stats.bsv                 Locally Modified          206 
+ Commands.bsv              Locally Modified          206 
+ HASim.bsv                 Locally Modified          206 
+ Events.bsv                Locally Modified          206 
+
+
+
+1) Local Controller stub is in place. Currently it starts the program via scanchain and returns when done. It
+_could_ control the Ports except that the Ports just always say that they are ready and balanced.
+
+2) Makefile now returns 1 correctly if a subdirectory fails. It turns out that the for-loop in the Makefile
+was a bash for-loop rather than a Makefile for-loop. This confusion meant that the for-loop returned
+"success" [0] even if a child process had failed [1]. We now test for this explicitly and bottom-out
+correctly. This might fix some of the weirdness people had experienced at synthesis boundaries with
+connections, as these rely on logfiles which might have gotten confused by the incorrect bottoming-out.
+
+Michael P.

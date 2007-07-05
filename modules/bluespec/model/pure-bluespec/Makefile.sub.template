@@ -32,9 +32,17 @@ ba: make_subdir_bas mkModel.ba
 
 .PHONY: make_subdir_bas
 make_subdir_bas: 
-	for dir in $(SUBDIRS); do \
-		$(MAKE) -C $$dir ba; \
-	done
+	erroccurred=0; \
+	for dir in $(SUBDIRS); \
+	do \
+	  make -C $$dir ba; \
+	  if [ $$? -ne 0 ] ; \
+	  then \
+	    erroccurred=1; \
+	    break ; \
+	  fi ; \
+	done ; \
+	test $$erroccurred -ne 1
 
 mkModel.ba: $(GEN_BSVS) $(SUBDIR_BAS)
 	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)
@@ -49,9 +57,17 @@ v: make_subdir_vs mkModel.v
 
 .PHONY: make_subdir_vs
 make_subdir_vs: 
-	for dir in $(SUBDIRS); do \
-		$(MAKE) -C $$dir v; \
-	done
+	erroccurred=0; \
+	for dir in $(SUBDIRS); \
+	do \
+	  make -C $$dir v; \
+	  if [ $$? -ne 0 ] ; \
+	  then \
+	    erroccurred=1; \
+	    break ; \
+	  fi ; \
+	done ; \
+	test $$erroccurred -ne 1
 
 mkModel.v: $(GEN_BSVS) $(SUBDIR_VS)
 #	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)

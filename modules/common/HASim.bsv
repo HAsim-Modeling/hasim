@@ -10,24 +10,17 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 //BSV Library imports
-import GetPut::*;
-import ClientServer::*;
-import RegFile::*;
 import Vector::*;
-import List::*;
 import FIFO::*;
 import ModuleCollect::*;
 import Connectable::*;
 
-`define HASIM_TOK_INDEX_BITS 8
-`define HASIM_TIMEP_EPOCH_BITS 2
-`define HASIM_TIMEP_SCRATCHPAD_BITS 5
-`define HASIM_FUNCP_EPOCH_BITS 2
-`define HASIM_FUNCP_SCRATCHPAD_BITS 5
 
 typedef Bit#(`HASIM_TOK_INDEX_BITS) TokIndex;
+
 typedef Bit#(`HASIM_TIMEP_EPOCH_BITS) TIMEP_Epoch;
 typedef Bit#(`HASIM_TIMEP_SCRATCHPAD_BITS) TIMEP_Scratchpad;
+
 typedef Bit#(`HASIM_FUNCP_EPOCH_BITS) FUNCP_Epoch;
 typedef Bit#(`HASIM_FUNCP_SCRATCHPAD_BITS)FUNCP_Scratchpad;
 
@@ -93,7 +86,6 @@ endinterface
 
 interface Connection_Receive#(type msg_T);
   
-  //For the user
   method ActionValue#(msg_T) receive();
 
 endinterface
@@ -104,7 +96,6 @@ endinterface
 
 interface Connection_Client#(type req_T, type resp_T);
 
-  //For the user
   method Action               makeReq(req_T data);
   method ActionValue#(resp_T) getResp;
   
@@ -117,9 +108,18 @@ endinterface
 
 interface Connection_Server#(type req_T, type resp_T);
 
-  //For the user
   method ActionValue#(req_T) getReq();
   method Action              makeResp(resp_T data);
+  
+endinterface
+
+// A chain is a link which has a previous to receive from and
+// a next to send to.
+
+interface Connection_Chain#(type msg_T);
+
+  method ActionValue#(msg_T) receive_from_prev();
+  method Action              send_to_next(msg_T data);
   
 endinterface
 
@@ -143,8 +143,8 @@ typedef 4 CON_NumChains;
 
 //Chain 0: Events
 //Chain 1: Stats
-//Chain 2: Debug
-//Chain 3: Commands
+//Chain 2: Commands
+//Chain 3: Responses
 
 //Change to BypassFIFO here.
 function m#(FIFO#(a)) mkCON_FIFO() provisos (Bits#(a, a_SZ), IsModule#(m, m2)) = mkFIFO();
@@ -454,6 +454,44 @@ module [Connected_Module] mkConnection_Server#(String portname)
   method ActionValue#(req_T) getReq() if (data_w.whas());
     en_w.wset(data_w.whas());
     return data_w.wget();
+  endmethod
+
+endmodule
+
+//A Connection in a Chain
+
+module [Connected_Module] mkConnection_Chain#(Integer chain_num)
+    //interface:
+		(Connection_Chain#(msg_T))
+    provisos
+	    (Bits#(msg_T, msg_SZ),
+	   Transmittable#(msg_T));
+
+  //This queue is here for correctness until the system is confirmed to work
+  //Later it could be removed or turned into a BypassFIFO to reduce latency.
+
+  VRWire#(msg_T) data_w  <- vMkRWire();
+  FIFO#(msg_T) outQ <- mkCON_FIFO();
+
+  let chn = (interface FIFO;
+
+	      method CON_Data first() = marshall(outQ.first());
+	      method Action deq() = outQ.deq();
+	      method Action clear() = noAction;
+	      method Action enq(CON_Data x) = data_w.wset(unmarshall(x));
+
+	   endinterface);
+
+  addToCollection(tagged LChain tuple2(chain_num, chn));
+
+  method Action send_to_next(msg_T data);
+    outQ.enq(data);
+  endmethod
+
+  method ActionValue#(msg_T) receive_from_prev() if (data_w.whas());
+
+    return data_w.wget();
+
   endmethod
 
 endmodule

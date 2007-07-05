@@ -10,6 +10,7 @@
 # %name Hasim simple controller
 # %desc Hasim simple controller
 # %provides hasim_controller
+# %requires hasim_local_controller
 #
 #
 # %attributes hasim

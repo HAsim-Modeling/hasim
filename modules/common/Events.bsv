@@ -168,7 +168,7 @@ typedef enum
   EVC_State
     deriving (Eq, Bits);
 
-module [Connected_Module] mkEventController_Software
+module [Connected_Module] mkEventController_Simulation
     //interface:
                 (EventController);
 

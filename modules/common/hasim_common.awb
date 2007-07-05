@@ -18,6 +18,14 @@
 #
 # %param HASIM_BMARK_TIMEOUT 100000 "Force a run to end after N model cycles"
 #
+# %param HASIM_TOK_INDEX_BITS 8 "Number of bits in a Token (8 = 256 in-flight instructions)"
+#
+# %param HASIM_TIMEP_EPOCH_BITS 2 "Number of bits in timing model token epoch (2 = 4 in-flight branches)"
+# %param HASIM_TIMEP_SCRATCHPAD_BITS 5 "Number of bits in timing model token scratchpad"
+#
+# %param HASIM_FUNCP_EPOCH_BITS 2 "Number of bits in functional partition token epoch."
+# %param HASIM_FUNCP_SCRATCHPAD_BITS 5 "Number of bits in functional partition token scratchpad."
+#
 # %param HASIM_EVENTS_ENABLED True "Statically enable/disable Event logging (True/False)"
 # %param HASIM_EVENTS_LOGFILE "hasim_events.out" "Name of Event logfile"
 #

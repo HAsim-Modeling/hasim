@@ -167,7 +167,7 @@ interface StatController;
 
 endinterface
 
-module [Connected_Module] mkStatController_Software
+module [Connected_Module] mkStatController_Simulation
     //interface:
                 (StatController);
 

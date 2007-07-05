@@ -1,13 +1,25 @@
 
+interface Port_Control;
+
+  method Bool empty();
+  method Bool full();
+  method Bool balanced();
+  method Bool light();
+  method Bool heavy();
+
+endinterface
+
 interface Port_Send#(type msg_T);
   
   method Action send(Maybe#(msg_T) m);
+  interface Port_Control ctrl;
   
 endinterface
 
 interface Port_Receive#(type msg_T);
 
   method ActionValue#(Maybe#(msg_T)) receive();
+  interface Port_Control ctrl;
 
 endinterface
 
@@ -26,7 +38,19 @@ module [HASim_Module] mkPort_Send#(String portname)
     con.send(m);
     
   endmethod
+  
+  //XXX a temporary set of control info
     
+  interface Port_Control ctrl;
+
+    method Bool empty() = True;
+    method Bool full() = False;
+    method Bool balanced() = True;
+    method Bool light() = False;
+    method Bool heavy() = False;
+
+  endinterface
+
 endmodule
 
 module [HASim_Module] mkPort_Receive#(String portname, Integer latency)
@@ -88,6 +112,17 @@ module [HASim_Module] mkPort_Receive_Buffered#(String portname, Integer latency,
     
   endmethod
 
+  //XXX a temporary set of control info
+  interface Port_Control ctrl;
+
+    method Bool empty() = False;
+    method Bool full() = True;
+    method Bool balanced() = True;
+    method Bool light() = False;
+    method Bool heavy() = False;
+
+  endinterface
+
 endmodule
 
 //Port optimized for latency 1
@@ -114,4 +149,17 @@ module [HASim_Module] mkPort_Receive_L1#(String portname)
       return m;
     end
   endmethod
+
+  
+  //XXX a temporary set of control info
+  interface Port_Control ctrl;
+
+    method Bool empty() = False;
+    method Bool full() = True;
+    method Bool balanced() = True;
+    method Bool light() = False;
+    method Bool heavy() = False;
+
+  endinterface
+
 endmodule

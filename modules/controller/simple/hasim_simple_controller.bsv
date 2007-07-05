@@ -7,6 +7,7 @@ import FIFO::*;
 
 //HASim library imports
 import hasim_common::*;
+import hasim_local_controller::*;
 
 //************* OneTest Controller **************
 
@@ -40,14 +41,16 @@ module [HASim_Module] mkController ();
 
   Reg#(ConState) state <- mkReg(CON_Init);
   
-  EventController event_controller <- mkEventController_Software();
-  StatController   stat_controller <- mkStatController_Software();
+  EventController     event_controller    <- mkEventController_Simulation();
+  StatController      stat_controller     <- mkStatController_Simulation();
+  
+  Connection_Chain#(Command)   link_command   <- mkConnection_Chain(2);
+  Connection_Chain#(Response)  link_response  <- mkConnection_Chain(3);
   
   Connection_Send#(Bit#(4))           link_leds <- mkConnection_Send("fpga_leds");
   Connection_Receive#(Bit#(4))    link_switches <- mkConnection_Receive("fpga_switches");
   Connection_Receive#(ButtonInfo)  link_buttons <- mkConnection_Receive("fpga_buttons");
   
-  Connection_Client#(Command, Response)      link_tp <- mkConnection_Client("controller_to_tp");
   
   //*********** Rules ***********
   
@@ -58,20 +61,30 @@ module [HASim_Module] mkController ();
   
   endrule
   
+  //finish_Commands
+  
+  rule finish_Commands (True);
+  
+    //Just finish the chain
+    let cmd <- link_command.receive_from_prev();
+  
+  endrule
+  
   //run_prog
   
   rule run_prog (state == CON_Init);
   
-     link_tp.makeReq(COM_RunProgram);
+     link_command.send_to_next(COM_RunProgram);
+     
      state <= CON_Running;
      link_leds.send(4'b0011);
      $display("[%0d]: Controller: Program Started", curTick);
      $fflush();
   endrule
   
-  rule run_ends (state == CON_Running);
+  rule get_Response (state == CON_Running);
   
-    let resp <- link_tp.getResp();
+    let resp <- link_response.receive_from_prev();
   
     case (resp) matches
       tagged RESP_DoneRunning .pf:

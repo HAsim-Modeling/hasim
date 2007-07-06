@@ -80,71 +80,78 @@ sub print_wrapper {
     my $module = $root->find_module_providing($metatype);
 
     my $wrapper = make_wrapper_name($metatype) . ".bsv";
-    CORE::open(WRAPPER, "> $wrapper") || return undef;
+    
+    if (need_to_regenerate_wrapper($wrapper))
+    {
+      CORE::open(WRAPPER, "> $wrapper") || return undef;
 
-    print WRAPPER "import ModuleCollect::*;\n";
-    print WRAPPER "// These are well-known/required hasim modules\n";
-    print WRAPPER "import hasim_common::*;\n";
-    print WRAPPER "\n";
+      print WRAPPER "import ModuleCollect::*;\n";
+      print WRAPPER "// These are well-known/required hasim modules\n";
+      print WRAPPER "import hasim_common::*;\n";
+      print WRAPPER "\n";
 
-    #
-    # add defines for parameters
-    #   TBD: Share this code with hasim-configure
+      #
+      # add defines for parameters
+      #   TBD: Share this code with hasim-configure
 
-    print WRAPPER "// These are the parameters for the module\n";
+      print WRAPPER "// These are the parameters for the module\n";
 
-    my @p = ();
-    push(@p, $module->parameters());
+      my @p = ();
+      push(@p, $module->parameters());
 
-    foreach my $p (@p) {
-      my $pname = $p->name();
-      my $pvalue = $p->value();
-      
-      print WRAPPER "`define $pname $pvalue\n";
+      foreach my $p (@p) {
+	my $pname = $p->name();
+	my $pvalue = $p->value();
+
+	print WRAPPER "`define $pname $pvalue\n";
+      }
+      print WRAPPER "\n";
+
+      #
+      # add includes for public sources
+      #   Note: Can't just include 'provides' name since it bsc won't 
+      #         find the correct instance of the file
+      #
+
+      print WRAPPER "// import non-synthesis children\n";
+      foreach my $file_root (get_srcs_at_synth_boundary($module)) {
+	  print WRAPPER "`include \"$file_root\"\n";
+      }
+      print WRAPPER "\n";
+
+      if ($module->issame($root)) {
+          print WRAPPER "\n";
+          print WRAPPER "import toplevel_wires::*;\n";
+          print WRAPPER "\n";
+      print WRAPPER "(* synthesize *)\n";
+	  print WRAPPER "module " . make_module_name(make_wrapper_name($metatype)) . " (TopLevelWires);\n";    
+      } else {
+      print WRAPPER "(* synthesize *)\n";
+	  print WRAPPER "module " . make_module_name(make_wrapper_name($metatype)) . " (WithConnections);\n";    
+      }
+      print WRAPPER "\n";
+
+      my @child_info_vars = ();
+      my $synth_id = get_synthesis_boundary_name($module);
+      print WRAPPER "    // instantiate own module\n";
+      if ($module->issame($root)) {
+	  print WRAPPER "    let m <- instantiateTopLevel($synth_id);\n";
+      } else {
+	  print WRAPPER "    let m <- instantiateWithConnections($synth_id);\n";
+      }
+      print WRAPPER "\n";
+
+      print WRAPPER "    return m;\n";
+      print WRAPPER "\n";
+
+      print WRAPPER "endmodule\n";
+
+      CORE::close(WRAPPER);
     }
-    print WRAPPER "\n";
-
-    #
-    # add includes for public sources
-    #   Note: Can't just include 'provides' name since it bsc won't 
-    #         find the correct instance of the file
-    #
-
-    print WRAPPER "// import non-synthesis children\n";
-    foreach my $file_root (get_srcs_at_synth_boundary($module)) {
-	print WRAPPER "`include \"$file_root\"\n";
+    else
+    {
+      print "No need to re-generate $wrapper\n";
     }
-    print WRAPPER "\n";
-
-    if ($module->issame($root)) {
-        print WRAPPER "\n";
-        print WRAPPER "import toplevel_wires::*;\n";
-        print WRAPPER "\n";
-    print WRAPPER "(* synthesize *)\n";
-	print WRAPPER "module " . make_module_name(make_wrapper_name($metatype)) . " (TopLevelWires);\n";    
-    } else {
-    print WRAPPER "(* synthesize *)\n";
-	print WRAPPER "module " . make_module_name(make_wrapper_name($metatype)) . " (WithConnections);\n";    
-    }
-    print WRAPPER "\n";
-
-    my @child_info_vars = ();
-    my $synth_id = get_synthesis_boundary_name($module);
-    print WRAPPER "    // instantiate own module\n";
-    if ($module->issame($root)) {
-	print WRAPPER "    let m <- instantiateTopLevel($synth_id);\n";
-    } else {
-	print WRAPPER "    let m <- instantiateWithConnections($synth_id);\n";
-    }
-    print WRAPPER "\n";
-
-    print WRAPPER "    return m;\n";
-    print WRAPPER "\n";
-
-    print WRAPPER "endmodule\n";
-
-    CORE::close(WRAPPER);
-
 }
 
 ############################################################
@@ -174,22 +181,8 @@ sub create_surrogates {
         my $synth_id = get_synthesis_boundary_name($submodule);
 	my $filename = "$submetatype.bsv";
 
-        CORE::open(SURROGATE, "> $filename");
-        print SURROGATE "$indent // Surrogate for $submetatype\n";
-	
 	my $wrap_var = "wrap_" . $submetatype;
 	my $mk_wrapper = make_module_name(make_wrapper_name($submetatype));
-
-        print SURROGATE "\n";
-        print SURROGATE "// These are well-known/required hasim modules\n";
-        print SURROGATE "import hasim_common::*;\n";
-        print SURROGATE "\n";
-
-	print SURROGATE "import " . make_wrapper_name($submetatype) . "::*;\n";
-	
-	print SURROGATE "module [HASim_Module] $synth_id ();\n";    
-	print SURROGATE "$indent // 1. instantiate wrapper\n";
-	print SURROGATE "$indent WithConnections $wrap_var <- $mk_wrapper();\n";
 	
 	my $log_file = 
 	    $model->build_dir() . "/" . 
@@ -197,40 +190,62 @@ sub create_surrogates {
 	    $submetatype . "/" .
 	    $mk_wrapper . ".log";
 
-        print "<<<< $log_file\n";
+        #print "<<<< $log_file\n";
 	
-	print SURROGATE "$indent // 2. log sends & recvs\n";
-	my @conns = parse_dangling_connections($log_file);
-	my @sends_exprs = ();
-	my @recvs_exprs = ();
+	if (need_to_regenerate_surrogate($filename, $log_file))
+	{
+          CORE::open(SURROGATE, "> $filename");
+          print SURROGATE "$indent // Surrogate for $submetatype\n";
 
-	foreach my $conn_r (@conns) {
-	    my $expr = "tuple2(\"" . $conn_r->[2] . "\", " . $conn_r->[1] . ")";
 
-	    if ($conn_r->[0] eq "Send") {
-		push (@sends_exprs, $expr);
-	    } elsif ($conn_r->[0] eq "Rec") {
-		push (@recvs_exprs, $expr);
-	    } else {
-		DIE("Unrecognized type of dangling connection: $1\n");
-	    }	    
+          print SURROGATE "\n";
+          print SURROGATE "// These are well-known/required hasim modules\n";
+          print SURROGATE "import hasim_common::*;\n";
+          print SURROGATE "\n";
+
+	  print SURROGATE "import " . make_wrapper_name($submetatype) . "::*;\n";
+
+	  print SURROGATE "module [HASim_Module] $synth_id ();\n";    
+	  print SURROGATE "$indent // 1. instantiate wrapper\n";
+	  print SURROGATE "$indent WithConnections $wrap_var <- $mk_wrapper();\n";
+
+	  print SURROGATE "$indent // 2. log sends & recvs\n";
+	  my @conns = parse_dangling_connections($log_file);
+	  my @sends_exprs = ();
+	  my @recvs_exprs = ();
+
+	  foreach my $conn_r (@conns) {
+	      my $expr = "tuple2(\"" . $conn_r->[2] . "\", " . $conn_r->[1] . ")";
+
+	      if ($conn_r->[0] eq "Send") {
+		  push (@sends_exprs, $expr);
+	      } elsif ($conn_r->[0] eq "Rec") {
+		  push (@recvs_exprs, $expr);
+	      } else {
+		  DIE("Unrecognized type of dangling connection: $1\n");
+	      }	    
+	  }
+
+	  my $sends_var = "dsends_" . $submetatype;
+	  my $recvs_var = "drecvs_" . $submetatype;
+
+	  my $sends_cons = get_cons_expr(@sends_exprs);
+	  my $recvs_cons = get_cons_expr(@recvs_exprs);
+
+	  print SURROGATE "$indent let $sends_var = $sends_cons;\n";
+	  print SURROGATE "$indent let $recvs_var = $recvs_cons;\n";
+
+	  print SURROGATE "$indent addConnections($wrap_var, $sends_var, $recvs_var);\n";
+
+	  print SURROGATE "endmodule\n";
+	  print SURROGATE "\n";
+
+          CORE::close(SURROGATE);
 	}
-
-	my $sends_var = "dsends_" . $submetatype;
-	my $recvs_var = "drecvs_" . $submetatype;
-
-	my $sends_cons = get_cons_expr(@sends_exprs);
-	my $recvs_cons = get_cons_expr(@recvs_exprs);
-
-	print SURROGATE "$indent let $sends_var = $sends_cons;\n";
-	print SURROGATE "$indent let $recvs_var = $recvs_cons;\n";
-
-	print SURROGATE "$indent addConnections($wrap_var, $sends_var, $recvs_var);\n";
-
-	print SURROGATE "endmodule\n";
-	print SURROGATE "\n";
-	
-        CORE::close(SURROGATE);
+	else
+	{
+	  print "No need to re-generate $filename\n";
+	}
     }
 }
 
@@ -359,7 +374,7 @@ sub parse_dangling_connections {
 #Compilation message: "HASim.bsv", line 518, column 5: Dangling Send [0]: mem_imem_req
 #Compilation message: "HASim.bsv", line 528, column 5: Dangling Rec [0]: mem_imem_resp
 
-    print "parsing: $log_file\n";
+    #print "parsing: $log_file\n";
     my @conns = ();
     CORE::open(LOG, "< $log_file") || return undef;
     while (my $line = <LOG>) {
@@ -371,6 +386,88 @@ sub parse_dangling_connections {
     CORE::close(LOG);
 
     return @conns;
+}
+
+sub parse_existing_dangling_connections {
+    my ($filename, $ref_sends, $ref_recvs) = @_;
+
+    
+
+#    let dsends_hasim_funcp_memstate = cons(tuple2("mem_imem_resp", 0), cons(tuple2("mem_dmem_resp", 1), List::nil));
+#    let drecvs_hasim_funcp_memstate = cons(tuple2("mem_imem_req", 0), cons(tuple2("mem_dmem_req", 1), cons(tuple2("mem_commit", 2), cons(tuple2("fp_memstate_kill", 3), List::nil))));
+
+    #print "parsing: $filename\n";
+    CORE::open(EXISTING, "< $filename") || return undef;
+    
+    
+    while (my $line = <EXISTING>) {
+	if ($line =~ m/let dsends_/) {
+          @{$ref_sends} = $line =~ m/tuple2\("(\w+)", \d*\)/g;
+	}
+	elsif ($line =~ m/let drecvs_/) {
+          @{$ref_recvs} = $line =~ m/tuple2\("(\w+)", \d*\)/g;
+	}
+    }
+    CORE::close(EXISTING);
+}
+
+sub need_to_regenerate_surrogate {
+
+  my $filename = shift;
+  my $log_file = shift;
+  
+  my @conns = parse_dangling_connections($log_file);
+  
+  #If these differ we need to regenerate.
+
+  my (@sends_existing, @recvs_existing);
+
+  parse_existing_dangling_connections($filename, \@sends_existing, \@recvs_existing);
+
+  my $differ = 0;
+
+  foreach my $conn_r (@conns) {
+      my $these_differ = 0;
+
+      my $ctype = $conn_r->[0];
+      my $cidx  = $conn_r->[1];
+      my $cname = $conn_r->[2];
+      
+      if ($ctype eq "Send") 
+      {
+        my $existing = $sends_existing[$cidx];
+	#print "Testing if Send $cname [$cidx] is different from $existing.\n";
+        $these_differ = $cname ne $existing;
+      } 
+      elsif ($ctype eq "Rec") 
+      {
+        my $existing = $recvs_existing[$cidx];
+	#print "Testing if Recv $cname [$cidx] is different from $existing.\n";
+        $these_differ = $cname ne $existing;
+      } 
+      else 
+      {
+	DIE("Unrecognized type of dangling connection: $ctype\n");
+      }
+      $differ = $differ || $these_differ;
+  }
+
+  return $differ;
+}
+
+sub need_to_regenerate_wrapper {
+
+  my $filename = shift;
+  
+  #This could be slightly more intelligent and check that the name of the 
+  #synthesis boundary hasn't changed.
+  
+  #For now just check that the file exists
+  
+  my $exists = CORE::open(WRAPPER, "< $filename");
+  
+  return !$exists;
+  
 }
 
 sub get_provider {

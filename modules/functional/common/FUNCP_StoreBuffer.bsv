@@ -131,14 +131,14 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   
   //mayHaveAddress
   
-  method Action checkAddress(Addr a);
+  method Action checkAddress(Addr a) if (!initializing);
   
     AddrHash h = hash(a);
     hashes.read_req2(h);
     
   endmethod
   
-  method ActionValue#(Bool) mayHaveAddress();
+  method ActionValue#(Bool) mayHaveAddress() if (!initializing);
   
     let res <- hashes.read_resp2();
     return isJust(res);

@@ -5873,3 +5873,23 @@ Make was taking its cue about success or failure from the cp command rather than
 Store buffer now initializes its BRAMs manually.
 
 Michael P.
+
+----------
+mpellaue    Date: Fri Jul  6 17:31:37 EDT 2007  CSN: CSN-hasim-209
+                  Fri Jul  6 21:31:37 UTC 2007
+
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          208 
+
+Directory modules/functional/common
+ FUNCP_StoreBuffer.bsv     Locally Modified          208 
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          207 
+
+
+Modified Makefile and hasim-connect to not re-generate files unless they've actually changed. Hopefully this will result in fewer re-compiles.
+
+Michael P.
+

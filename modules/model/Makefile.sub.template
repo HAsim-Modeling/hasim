@@ -17,6 +17,7 @@ LOGFILE = $(WRAPPER_SYNTH_ID).log
 
 SUBDIR_BAS = @SUBDIR_BAS@
 SUBDIR_VS = $(SUBDIR_BAS:%.ba=%.v)
+SUBDIR_LOGS = $(SUBDIR_BAS:%.ba=%.log)
 
 ################################################################
 ## 
@@ -44,8 +45,9 @@ make_subdir_bas:
 	done ; \
 	test $$erroccurred -ne 1
 
-$(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(GEN_BSVS) $(SUBDIR_BAS)
+$(WRAPPER_SYNTH_ID).ba: $(GEN_BSVS) $(SUBDIR_LOGS)
 	@erroccurred=0; \
+	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR) ; \
 	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; \
 	if [ $$? -ne 0 ] ; \
 	then \
@@ -78,9 +80,10 @@ make_subdir_vs:
 	done ; \
 	test $$erroccurred -ne 1
 
-$(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(GEN_BSVS) $(SUBDIR_VS)
+$(WRAPPER_SYNTH_ID).v: $(GEN_BSVS) $(SUBDIR_LOGS)
 #	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
 	@erroccurred=0; \
+	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR) ; \
 	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; \
 	if [ $$? -ne 0 ] ; \
 	then \
@@ -101,12 +104,7 @@ batch_v:
 
 batch_ba:
 	$(BATCH_LAUNCH) -J $(WRAPPER_SYNTH_ID).batch make ba
-	
-################################################################
-## 
 
-$(WRAPPER).bsv:
-	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR) 
 
 ################################################################
 ## 

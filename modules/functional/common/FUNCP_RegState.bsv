@@ -317,7 +317,6 @@ module [HASim_Module] mkFUNCP_Regstate
   //1 used by Execute
   //2 used by Mem
 
-  (* descending_urgency = "write2, write" *)
   rule write (True);
   
     match {.prnm, .val} <- link_write1.receive();
@@ -423,6 +422,7 @@ module [HASim_Module] mkFUNCP_Regstate
     
   endrule
   
+  (* descending_urgency = "finish_Mapping, rewindToToken, write2, write" *)
   rule finishFastRewind (True);
   
     match {.flt, .robt, .mapt} <- snaps.read_resp();

@@ -5893,3 +5893,15 @@ Modified Makefile and hasim-connect to not re-generate files unless they've actu
 
 Michael P.
 
+
+----------
+mvijayar    Date: Fri Jul  6 18:20:29 EDT 2007  CSN: CSN-hasim-210
+                  Fri Jul  6 22:20:29 UTC 2007
+
+
+Directory modules/functional/common
+ FUNCP_FreeList.bsv        Locally Modified          209 
+ FUNCP_RegState.bsv        Locally Modified          209 
+
+The changed Freelist and regstate to take care of the problem I mentioned in hasim-mips log
+

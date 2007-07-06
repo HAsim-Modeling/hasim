@@ -41,6 +41,8 @@ module [HASim_Module] mkFreeList#(File debug_log, Tick curCC)
   BRAM#(PRName, PRName)       fl        <- mkBRAM_Full();
   Reg#(PRName)  	      fl_read   <- mkReg(minInitFL);
   Reg#(PRName)  	      fl_write  <- mkReg(0); 
+
+  Reg#(Bit#(2))             reqCount <- mkReg(0);
   
   Bool full = fl_read + 1 == fl_write;
   
@@ -50,7 +52,6 @@ module [HASim_Module] mkFreeList#(File debug_log, Tick curCC)
     fl_write <= fl_write + 1;
     if (fl_write == maxInitFL)
       initializing <= False;
-  
   endrule
   
   rule finish_free (True);
@@ -60,7 +61,7 @@ module [HASim_Module] mkFreeList#(File debug_log, Tick curCC)
     begin
       fl.write(fl_write, reg_to_free);
       fl_write <= fl_write + 1;
-      $fdisplay(debug_log, "[%d]: FREELIST: Freeing PR%0d", curCC, reg_to_free);
+      $fdisplay(debug_log, "[%d]: FREELIST: Freeing PR%0d %0d", curCC, reg_to_free, fl_write + 1);
     end
 
   endrule
@@ -68,12 +69,15 @@ module [HASim_Module] mkFreeList#(File debug_log, Tick curCC)
   method Action forward_req() if (!full && !initializing);
     fl.read_req(fl_read);
     fl_read <= fl_read + 1;
+    $fdisplay(debug_log, "[%d]: FREELIST: Requesting %0d", curCC, fl_read);
+    reqCount <= reqCount + 1;
   endmethod
   
   method ActionValue#(PRName) forward_resp() if (!initializing);
     
     let rsp <- fl.read_resp();
-    $fdisplay(debug_log, "[%d]: FREELIST: Allocating PR%0d", curCC, rsp);
+    $fdisplay(debug_log, "[%d]: FREELIST: Allocating PR%0d %0d", curCC, rsp, fl_read);
+    reqCount <= reqCount - 1;
     return rsp;
   
   endmethod
@@ -115,8 +119,11 @@ module [HASim_Module] mkFreeList#(File debug_log, Tick curCC)
   
   endmethod
   
-  method Action backTo(PRName r) if (!initializing);
+  method Action backTo(PRName r) if (!initializing && reqCount == 0);
   
+    $fdisplay(debug_log, "went back to PR%0d", r);
+    if(fl_read > fl_write && r < fl_write || fl_read < fl_write && r < fl_write && r > fl_read)
+        $display("ERROR: Backed up the freelist too far! (r = %0d)", r);
     fl_read <= r;
   
   endmethod

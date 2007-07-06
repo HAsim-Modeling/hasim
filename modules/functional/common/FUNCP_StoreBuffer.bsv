@@ -44,7 +44,10 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   FIFO#(Tuple4#(Token, Addr, Value, AddrHash))                        insertQ <- mkFIFO();
   FIFO#(Tuple2#(Token, Maybe#(Tuple2#(Token, Value))))                resultQ <- mkFIFO();
   
-  Reg#(Bool) busy <- mkReg(False);
+  Reg#(Bool) searching <- mkReg(False);
+  Reg#(Bool) initializing <- mkReg(True);
+  Reg#(TokIndex) cur <- mkReg(0);
+  let busy = initializing || searching;
 
   //Change hash here
   function AddrHash hash(Addr a) = truncate(a);
@@ -60,9 +63,23 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   
   endfunction
   
+  rule initialize (initializing);
+  
+    tokens.write(cur, tuple3(0, 0, tagged Invalid));
+    hashes.write(truncate(cur), tagged Invalid);
+    
+    let newcur = cur + 1;
+    
+    cur <= newcur;
+    
+    if (newcur == 0)
+      initializing <= False;
+  
+  endrule
+  
   //Looks up the most recent store to an addr
   
-  rule doLookup (busy);
+  rule doLookup (searching);
   
     match {.tok, .addr, .cur_tok, .best} = workingQ.first();
     workingQ.deq();
@@ -75,7 +92,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     if (done)
     begin
       resultQ.enq(tuple2(tok, newbest));
-      busy <= False;
+      searching <= False;
     end
     else
     begin
@@ -98,7 +115,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     
   endrule
 
-  rule retrieve_2 (busy);
+  rule retrieve_2 (searching);
     
     match {.t, .a} = retrieveQ.first();
     retrieveQ.deq();
@@ -135,7 +152,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     AddrHash h = hash(a);
     hashes.read_req1(h);
     retrieveQ.enq(tuple2(t, a));
-    busy <= True;
+    searching <= True;
     
   endmethod
   

@@ -30,14 +30,9 @@ module [HASim_Module] mkFUNCP
   function Action funcp_debug(Action a);
   action
   
-    let debugOn <- $test$plusargs("funcp-log");
-  
-    if (debugOn)
-    begin
-      $fwrite(debug_log, "[%d]: ", cc);
-      a;
-      $fwrite(debug_log, "\n");
-    end
+    $fwrite(debug_log, "[%d]: ", cc);
+    a;
+    $fwrite(debug_log, "\n");
   
   endaction
   endfunction
@@ -68,7 +63,7 @@ module [HASim_Module] mkFUNCP
   
   //Freelist
   
-  FreeList freelist <- mkFreeList();
+  FreeList freelist <- mkFreeList(debug_log, cc);
   
   //Snapshots
   
@@ -220,22 +215,16 @@ module [HASim_Module] mkFUNCP
   //open the debug log
   rule initialize (initializing);
   
-    let debugOn <- $test$plusargs("funcp-log");
-    
-    if (debugOn)
+    let fd <- $fopen("hasim_funcp.out", "w");
+
+    if (fd == InvalidFile)
     begin
-      let fd <- $fopen("hasim_funcp.out", "w");
-    
-      if (fd == InvalidFile)
-      begin
-        $display("Error opening FUNCP logfile hasim_funcp.out");
-        $finish(1);
-      end
-    
-      debug_log <= fd;
-      
+      $display("Error opening FUNCP logfile hasim_funcp.out");
+      $finish(1);
     end
-    
+
+    debug_log <= fd;
+
     initializing <= False;
   
   endrule
@@ -247,7 +236,7 @@ module [HASim_Module] mkFUNCP
   endrule
  
   
-  (* descending_urgency= "rewind_slow2, rewind_slow1, rewind_fast, rewind1, gco, lco, mem3, mem3_store, mem2, mem1, execute4, execute3, execute2, execute1, decode_junk, decode2, decode1, fetch2, fetch1, newInFlight" *)
+  (* descending_urgency= "gco, lco, mem3, mem3_store, mem2, mem1, execute4, execute3, execute2, execute1, decode_junk, decode2, decode1, fetch2, fetch1, newInFlight, rewind_slow2, rewind_slow1, rewind_fast, rewind1" *)
  
   rule newInFlight (ready);
    
@@ -257,7 +246,8 @@ module [HASim_Module] mkFUNCP
     if (x == 17)
     begin
       let t <- tok_state.allocate();
-      let newtok = Token {index: t, info: ?};
+      let inf = FUNCP_TokInfo {epoch: 0, scratchpad: 0};
+      let newtok = Token {index: t, timep_info: ?, funcp_info: inf};
       link_tok.makeResp(newtok);
       funcp_debug($fwrite(debug_log, "TokGen: Allocating Token %0d", t));
     end
@@ -696,7 +686,10 @@ module [HASim_Module] mkFUNCP
     
     funcp_debug($fwrite(debug_log, "Token %d: GCO: Finishing Token", tok.index)); 
 
-    link_mem_commit.send(tok);
+    if (tok_state.isStore(tok.index))
+    begin
+      link_mem_commit.send(tok);
+    end
     
     link_gco.makeResp(tuple2(tok, ?));
     

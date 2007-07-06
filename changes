@@ -5843,3 +5843,33 @@ correctly. This might fix some of the weirdness people had experienced at synthe
 connections, as these rely on logfiles which might have gotten confused by the incorrect bottoming-out.
 
 Michael P.
+
+----------
+mpellaue    Date: Fri Jul  6 13:39:25 EDT 2007  CSN: CSN-hasim-208
+                  Fri Jul  6 17:39:25 UTC 2007
+
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          207 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.sub.template     Locally Modified          207 
+
+Directory modules/functional/semantic-model
+ FUNCPModel.bsv            Locally Modified          207 
+
+Directory modules/functional/common
+ FUNCP_StoreBuffer.bsv     Locally Modified          207 
+
+
+More Makefile changes: Now even more intelligent about not recompiling. The insight was that if you do a command like:
+
+all:
+      <compile>
+      cp file1 file2
+
+Make was taking its cue about success or failure from the cp command rather than the compilation. Should be fixed now.
+
+Store buffer now initializes its BRAMs manually.
+
+Michael P.

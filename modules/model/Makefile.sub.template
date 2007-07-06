@@ -45,11 +45,18 @@ make_subdir_bas:
 	test $$erroccurred -ne 1
 
 $(WRAPPER_SYNTH_ID).ba: $(WRAPPER).bsv $(GEN_BSVS) $(SUBDIR_BAS)
-	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
-	cp $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba .
-	for bfile in $(BDPI_BAS); do \
+	@erroccurred=0; \
+	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; \
+	if [ $$? -ne 0 ] ; \
+	then \
+	  erroccurred=1; \
+	else \
+	  cp $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba . ; \
+	  for bfile in $(BDPI_BAS); do \
 	    mv $(TMP_BSC_DIR)/$$bfile . ; \
-    done
+	done ; \
+	fi ; \
+	test $$erroccurred -ne 1
 
 ################################################################
 ## 
@@ -73,10 +80,17 @@ make_subdir_vs:
 
 $(WRAPPER_SYNTH_ID).v: $(WRAPPER).bsv $(GEN_BSVS) $(SUBDIR_VS)
 #	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
-	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
-	for bfile in $(BDPI_BAS); do \
+	@erroccurred=0; \
+	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; \
+	if [ $$? -ne 0 ] ; \
+	then \
+	  erroccurred=1; \
+	else \
+	  for bfile in $(BDPI_BAS); do \
 	    mv $(TMP_BSC_DIR)/$$bfile . ; \
-	done
+          done ; \
+	fi ; \
+	test $$erroccurred -ne 1
 
 ################################################################
 ## 

@@ -32,7 +32,7 @@ ba: make_subdir_bas mkModel.ba
 
 .PHONY: make_subdir_bas
 make_subdir_bas: 
-	erroccurred=0; \
+	@erroccurred=0; \
 	for dir in $(SUBDIRS); \
 	do \
 	  make -C $$dir ba; \
@@ -45,8 +45,15 @@ make_subdir_bas:
 	test $$erroccurred -ne 1
 
 mkModel.ba: $(GEN_BSVS) $(SUBDIR_BAS)
-	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)
-	cp --target-directory=$(TMP_BSC_DIR) $(CSRCS)
+	@erroccurred=0; \
+	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE) ; \
+	if [ $$? -ne 0 ] ; \
+	then \
+	  erroccurred=1; \
+	else \
+	  cp --target-directory=$(TMP_BSC_DIR) $(CSRCS) ; \
+	fi ; \
+	test $$erroccurred -ne 1
 #	mv $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba .
 
 ################################################################
@@ -57,7 +64,7 @@ v: make_subdir_vs mkModel.v
 
 .PHONY: make_subdir_vs
 make_subdir_vs: 
-	erroccurred=0; \
+	@erroccurred=0; \
 	for dir in $(SUBDIRS); \
 	do \
 	  make -C $$dir v; \

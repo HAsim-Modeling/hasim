@@ -92,28 +92,31 @@ module [HASim_Module] mkFUNCP_Memstate ()
 
     MemReq req <- link_dmem.getReq();
     
+    $display("Request at %0d", $time);
     case (req) matches
       tagged Ld .ld_info:
         begin
 	
-	  Addr sa = ld_info.addr>>2;
+	        Addr sa = ld_info.addr>>2;
 
-	  if (sa > maxAddr)
-            $display("WARNING [1]: Address 0x%h out of bounds. Increase software address length!", ld_info.addr);
+	        if (sa > maxAddr)
+                $display("WARNING [1]: Address 0x%h out of bounds. Increase software address length!", ld_info.addr);
 
-	  
-	  memory.read_req2(truncate(sa));
-          st_buffer.checkAddress(ld_info.addr);
-	  loadQ.enq(tuple2(ld_info.token, ld_info.addr));
+	
+            $display("Load at %0d", $time);
+	        memory.read_req2(truncate(sa));
+            st_buffer.checkAddress(ld_info.addr);
+	        loadQ.enq(tuple2(ld_info.token, ld_info.addr));
 	    
         end
       tagged St .st_info:
         begin
 		  
-	  //place value in store buffer	  	  
-	  st_buffer.insert(st_info.token, st_info.addr, st_info.val);
+	    //place value in store buffer
+            $display("Store at %0d", $time);	  	  
+	        st_buffer.insert(st_info.token, st_info.addr, st_info.val);
 	    
-          link_dmem.makeResp(tagged StResp);
+            link_dmem.makeResp(tagged StResp);
 	  
         end
     endcase

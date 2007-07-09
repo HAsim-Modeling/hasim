@@ -43,6 +43,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   FIFO#(Tuple2#(Token, Addr))                                       retrieveQ <- mkFIFO();
   FIFO#(Tuple4#(Token, Addr, Value, AddrHash))                        insertQ <- mkFIFO();
   FIFO#(Tuple2#(Token, Maybe#(Tuple2#(Token, Value))))                resultQ <- mkFIFO();
+  Reg#(Bit#(2))                                                       counter <- mkReg(0);
   
   Reg#(Bool) searching <- mkReg(False);
   Reg#(Bool) initializing <- mkReg(True);
@@ -79,7 +80,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   
   //Looks up the most recent store to an addr
   
-  rule doLookup (searching);
+  rule doLookup (searching && counter == 0);
   
     match {.tok, .addr, .cur_tok, .best} = workingQ.first();
     workingQ.deq();
@@ -113,9 +114,10 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     hashes.write(h, tagged Valid t);
     tvalids <= update(tvalids, t.index, True);
     
+    counter <= counter - 1;
   endrule
 
-  rule retrieve_2 (searching);
+  rule retrieve_2 (searching && counter == 0);
     
     match {.t, .a} = retrieveQ.first();
     retrieveQ.deq();
@@ -131,14 +133,14 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   
   //mayHaveAddress
   
-  method Action checkAddress(Addr a) if (!initializing);
+  method Action checkAddress(Addr a) if (!initializing && counter == 0);
   
     AddrHash h = hash(a);
     hashes.read_req2(h);
     
   endmethod
   
-  method ActionValue#(Bool) mayHaveAddress() if (!initializing);
+  method ActionValue#(Bool) mayHaveAddress() if (!initializing && counter == 0);
   
     let res <- hashes.read_resp2();
     return isJust(res);
@@ -147,7 +149,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   
   //retrieve
   
-  method Action retrieve(Token t, Addr a) if (!busy);
+  method Action retrieve(Token t, Addr a) if (!busy && counter == 0);
   
     AddrHash h = hash(a);
     hashes.read_req1(h);
@@ -158,7 +160,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   
   //result
   
-  method ActionValue#(Tuple2#(Token, Maybe#(Value))) result();
+  method ActionValue#(Tuple2#(Token, Maybe#(Value))) result() if(counter == 0);
   
     match {.tok, .best} = resultQ.first();
     resultQ.deq();
@@ -180,7 +182,8 @@ module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
     AddrHash h = hash(a);
     hashes.read_req1(h);    
     insertQ.enq(tuple4(t, a, v, h));
- 
+    counter <= counter + 1; 
+
   endmethod
   
   

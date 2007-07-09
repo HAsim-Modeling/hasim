@@ -5905,3 +5905,16 @@ Directory modules/functional/common
 
 The changed Freelist and regstate to take care of the problem I mentioned in hasim-mips log
 
+
+----------
+mvijayar    Date: Mon Jul  9 10:56:22 EDT 2007  CSN: CSN-hasim-211
+                  Mon Jul  9 14:56:22 UTC 2007
+
+
+Directory modules/functional/common
+ FUNCP_MemState.bsv        Locally Modified          210 
+ FUNCP_StoreBuffer.bsv     Locally Modified          210 
+
+Store buffer didnt behave correctly during back-to-back store followed by load, because the store request was still in fifo whereas the load proceeded without looking at the fifo. So I changed
+store to hold on to a lock.This makes the model pass all test cases
+

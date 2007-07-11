@@ -1,0 +1,21 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hasim - FSB AFU system
+# %desc Hasim - FSB AFU system
+# %provides hasim_system
+# %requires afu_alg
+#
+# %attributes hasim fsb afu
+#
+# %public afu_system.bsv
+#
+#
+# %AWB_END
+# */

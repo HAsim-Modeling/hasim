@@ -5918,3 +5918,76 @@ Directory modules/functional/common
 Store buffer didnt behave correctly during back-to-back store followed by load, because the store request was still in fifo whereas the load proceeded without looking at the fifo. So I changed
 store to hold on to a lock.This makes the model pass all test cases
 
+
+----------
+mpellaue    Date: Wed Jul 11 17:00:34 EDT 2007  CSN: CSN-hasim-212
+                  Wed Jul 11 21:00:34 UTC 2007
+
+
+Directory config/pm/hasim/demos
+ fsb_afu/                  Locally Added               0 
+
+Directory config/pm/hasim/demos/fsb_afu
+ afu_add1.apm              Locally Added               0 
+ afu_pass_through.apm      Locally Added               0 
+
+Directory config/pm/hasim/submodels/fpgaenv
+ hasim-fpgaenv-fsb-afu.apm Locally Added               0 
+
+Directory modules/system
+ afu_system/               Locally Added               0 
+
+Directory modules/system/afu_system
+ pass-through/             Locally Added               0 
+
+Directory modules/system/afu_system/pass-through
+ afu_pass_through_alg.awb  Locally Added               0 
+ afu_pass_through_alg.bsv  Locally Added               0 
+
+Directory modules/system/afu_system
+ afu_system.awb            Locally Added               0 
+ afu_system.bsv            Locally Added               0 
+ add1/                     Locally Added               0 
+
+Directory modules/system/afu_system/add1
+ afu_add1_alg.awb          Locally Added               0 
+ afu_add1_alg.bsv          Locally Added               0 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          211 
+
+Directory modules/common/fpgaenv/toplevel-wires
+ fsb_afu/                  Locally Added               0 
+
+Directory modules/common/fpgaenv/toplevel-wires/fsb_afu
+ fsb_afu.ucf               Locally Added               0 
+ FSB_AFU_TopLevelWires.bsv Locally Added               0 
+ fsb-afu-toplevel-wires.awb Locally Added               0 
+
+Directory modules/common/fpgaenv/platform-interface
+ hasim_afu/                Locally Added               0 
+
+Directory modules/common/fpgaenv/platform-interface/hasim_afu
+ HAsimPlatformInterface.bsv Locally Added               0 
+ hasim-fsb-afu-platform-interface.awb Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ fsb_afu/                  Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/fsb_afu
+ FSB_AFU_FP.bsv            Locally Added               0 
+ fsb-afu-fp.awb            Locally Added               0 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified          211 
+
+
+Added FSB_AFU system with example algorithms. Two algorithms so far:
+"pass-through" and "add1". Two models showing off these algorithms.
+
+Some minor changes to hasim_common which converts some previously hard-coded
+numbers into AWB parameters.
+
+TBD: add support for multiple FPGA synthesis environments to support FSB flow.
+
+Michael P.

@@ -1,0 +1,21 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hasim FSB AFU Platform Interface
+# %desc Hasim FSB AFU Platform Interface: translates Connections to Platform Commands
+#
+# %provides platform_interface
+#
+# %attributes hasim
+#
+# %public HAsimPlatformInterface.bsv
+#
+# %AWB_END
+# */
+

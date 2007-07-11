@@ -16,22 +16,26 @@
 #
 # %public HASim.bsv Events.bsv Connections.bsv  Ports.bsv Stats.bsv BypassFIFO.bsv Commands.bsv Debug.bsv 
 #
-# %param HASIM_BMARK_TIMEOUT 100000 "Force a run to end after N model cycles"
+# %param HASIM_BMARK_TIMEOUT 100000 "Force a run to end after N model cycles."
 #
-# %param HASIM_TOK_INDEX_BITS 8 "Number of bits in a Token (8 = 256 in-flight instructions)"
+# %param HASIM_TOK_INDEX_BITS 8 "Number of bits in a Token (8 = 256 in-flight instructions)."
 #
-# %param HASIM_TIMEP_EPOCH_BITS 2 "Number of bits in timing model token epoch (2 = 4 in-flight branches)"
-# %param HASIM_TIMEP_SCRATCHPAD_BITS 5 "Number of bits in timing model token scratchpad"
+# %param HASIM_TIMEP_EPOCH_BITS 2 "Number of bits in timing model token epoch (2 = 4 in-flight branches)."
+# %param HASIM_TIMEP_SCRATCHPAD_BITS 5 "Number of bits in timing model token scratchpad."
 #
 # %param HASIM_FUNCP_EPOCH_BITS 2 "Number of bits in functional partition token epoch."
 # %param HASIM_FUNCP_SCRATCHPAD_BITS 5 "Number of bits in functional partition token scratchpad."
 #
-# %param HASIM_EVENTS_ENABLED True "Statically enable/disable Event logging (True/False)"
-# %param HASIM_EVENTS_LOGFILE "hasim_events.out" "Name of Event logfile"
+# %param HASIM_EVENTS_ENABLED True "Statically enable/disable Event logging (True/False)."
+# %param HASIM_EVENTS_LOGFILE "hasim_events.out" "Name of Event logfile."
 #
-# %param HASIM_STATS_ENABLED True "Statically enable/disable Stats logging (True/False)"
-# %param HASIM_STATS_SIZE 32 "Number of bits per Stat counter"
-# %param HASIM_STATS_LOGFILE "hasim_stats.out" "Name of Stats logfile"
+# %param HASIM_STATS_ENABLED True "Statically enable/disable Stats logging (True/False)."
+# %param HASIM_STATS_SIZE 32 "Number of bits per Stat counter."
+# %param HASIM_STATS_LOGFILE "hasim_stats.out" "Name of Stats logfile."
+#
+# %param HASIM_CON_CWIDTH 256 "Maximum Connection Bit Width."
+# %param HASIM_CON_NUMBER 32 "Maximum number of dangling connections per synthesis boundary."
+# %param HASIM_CON_NUMCHAINS 4 "Number of Connection Chains."
 #
 # %AWB_END
 # */

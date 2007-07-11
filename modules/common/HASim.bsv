@@ -15,7 +15,6 @@ import FIFO::*;
 import ModuleCollect::*;
 import Connectable::*;
 
-
 typedef Bit#(`HASIM_TOK_INDEX_BITS) TokIndex;
 
 typedef Bit#(`HASIM_TIMEP_EPOCH_BITS) TIMEP_Epoch;
@@ -132,14 +131,14 @@ endinterface
 //----------------------------------------------------------------//
 
 
-typedef 200 CON_Width;
+typedef `HASIM_CON_CWIDTH CON_Width;
 
-typedef 32 CON_Addr;
+typedef `HASIM_CON_NUMBER CON_Addr;
 
 typedef Bit#(32) TimeStamp;
 
 typedef Bit#(CON_Width) CON_Data;
-typedef 4 CON_NumChains;
+typedef `HASIM_CON_NUMCHAINS CON_NumChains;
 
 //Chain 0: Events
 //Chain 1: Stats

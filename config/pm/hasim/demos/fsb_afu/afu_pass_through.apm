@@ -1,0 +1,49 @@
+
+[Global]
+SaveParameters=0
+Description=Multiplier FPGA Demo
+File=afu_pass_through
+Version=2.1
+Name=Multiplier Model
+Type=HAsim
+Class=Asim::Model
+
+[Hasim null controller]
+Packagehint=hasim
+File=modules/controller/null/hasim_null_controller.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/hasim_model.awb
+
+[Model]
+DefaultAttributes=demo hasim software
+model=HAsim Model Foundation
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - FSB AFU system
+hasim_controller=Hasim null controller
+hasim_common=Hasim Common Library
+
+
+[Hasim Common Library]
+File=modules/common/hasim_common.awb
+Packagehint=hasim
+
+[Hasim Common Library/Requires]
+hasim_fpgaenv=Hasim FPGA Environment
+
+[Hasim FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-fsb-afu.apm
+Packagehint=hasim
+
+[Hasim - FSB AFU system]
+File=modules/system/afu_system/afu_system.awb
+Packagehint=hasim
+
+[Hasim - AFU Pass-Through Alg]
+File=modules/system/afu_system/pass-through/afu_pass_through_alg.awb
+Packagehint=hasim
+
+[Hasim - FSB AFU system/Requires]
+afu_alg=Hasim - AFU Pass-Through Alg

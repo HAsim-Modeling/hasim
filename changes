@@ -5991,3 +5991,28 @@ numbers into AWB parameters.
 TBD: add support for multiple FPGA synthesis environments to support FSB flow.
 
 Michael P.
+
+----------
+vmurali     Date: Thu Jul 12 14:15:30 EDT 2007  CSN: CSN-hasim-213
+                  Thu Jul 12 18:15:30 UTC 2007
+
+
+Directory .
+ configure                 Locally Modified          212 
+ Makefile.in               Locally Modified          212 
+
+Directory libperl
+ Makefile.in               Locally Modified          212 
+
+Directory tools/hasim
+ Makefile.in               Locally Modified          212 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Modified          212 
+
+Directory tools
+ Makefile.in               Locally Modified          212 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          212 
+

@@ -23,6 +23,8 @@ XILINX_APM_NAME = $(TMP_XILINX_DIR)/$(APM_NAME)
 
 APM_FILE = @APM_FILE@
 
+TRAP_ERRORS = trap "exit 1" ERR
+
 XST = xst
 NGDBUILD = ngdbuild
 MAP = map

@@ -6016,3 +6016,33 @@ Directory tools
 Directory tools/scripts
  Makefile.in               Locally Modified          212 
 
+
+----------
+mpellaue    Date: Thu Jul 12 18:04:04 EDT 2007  CSN: CSN-hasim-214
+                  Thu Jul 12 22:04:04 UTC 2007
+
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          213 
+ Makefile.top.template     Locally Modified          213 
+ Makefile.include.template Locally Modified          213 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.sub.template     Locally Modified          213 
+ Makefile.top.template     Locally Modified          213 
+ Makefile.include.template Locally Modified          213 
+
+Directory modules/functional/common
+ hasim_funcp_memstate.awb  Locally Modified          213 
+ FUNCP_MemState.bsv        Locally Modified          213 
+ FUNCP_StoreBuffer.bsv     Locally Modified          213 
+ hasim_funcp_storebuffer.awb Locally Modified          213 
+
+
+* The store buffer/memstate are a little more parameterized
+
+* The Makefiles are once again more intelligent about exit conditions. It turns
+out that "tee" can wreak havoc on exit codes. The use of the BASH "trap" command
+and special ${PIPESTATUS} variable now combats that.
+
+Michael P.

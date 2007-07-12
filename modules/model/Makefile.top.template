@@ -99,6 +99,7 @@ $(XILINX_APM_NAME).ngc:$(XST_FILE)
 
 .PHONY: vexe
 vexe:
+	@$(TRAP_ERRORS)
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
 	ln -f -s $(ARCH_DIR)/$(ROOT_DIR)/vpi_* .
 	$(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) $(ALL_CS) $(BDPI_BAS)
@@ -126,6 +127,7 @@ batch_vexe:
 
 .PHONY: exe
 exe:
+	@$(TRAP_ERRORS)
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
 	$(BSC) $(BSC_FLAGS) $(LDFLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) $(ALL_CS)
 	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)

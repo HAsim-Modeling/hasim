@@ -27,7 +27,7 @@ typedef union tagged
 }
   PathSpeed deriving (Eq, Bits);
 
-typedef Bit#(20) SimAddr;
+typedef Bit#(`FUNCP_MEM_ADDR_BITS) SimAddr;
 
 module [HASim_Module] mkFUNCP_Memstate ()
     provisos
@@ -92,7 +92,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
 
     MemReq req <- link_dmem.getReq();
     
-    $display("Request at %0d", $time);
+    //$display("Request at %0d", $time);
     case (req) matches
       tagged Ld .ld_info:
         begin
@@ -103,7 +103,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
                 $display("WARNING [1]: Address 0x%h out of bounds. Increase software address length!", ld_info.addr);
 
 	
-            $display("Load at %0d", $time);
+            //$display("Load at %0d", $time);
 	        memory.read_req2(truncate(sa));
             st_buffer.checkAddress(ld_info.addr);
 	        loadQ.enq(tuple2(ld_info.token, ld_info.addr));
@@ -113,7 +113,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
         begin
 		  
 	    //place value in store buffer
-            $display("Store at %0d", $time);	  	  
+            //$display("Store at %0d", $time);	  	  
 	        st_buffer.insert(st_info.token, st_info.addr, st_info.val);
 	    
             link_dmem.makeResp(tagged StResp);

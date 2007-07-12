@@ -27,7 +27,7 @@ interface StoreBuffer;
 
 endinterface
 
-typedef Bit#(3) AddrHash;
+typedef Bit#(`FUNCP_STOREB_HASH_BITS) AddrHash;
 
 module [HASim_Module] mkFUNCP_StoreBuffer (StoreBuffer)
   provisos

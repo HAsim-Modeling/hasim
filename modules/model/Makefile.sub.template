@@ -33,32 +33,20 @@ ba: make_subdir_bas $(WRAPPER_SYNTH_ID).ba
 
 .PHONY: make_subdir_bas
 make_subdir_bas: 
-	@erroccurred=0; \
-	for dir in $(SUBDIRS); \
+	@$(TRAP_ERRORS)
+	@for dir in $(SUBDIRS); \
 	do \
 	  make -C $$dir ba; \
-	  if [ $$? -ne 0 ] ; \
-	  then \
-	    erroccurred=1; \
-	    break ; \
-	  fi ; \
-	done ; \
-	test $$erroccurred -ne 1
+	done ;
 
 $(WRAPPER_SYNTH_ID).ba: $(GEN_BSVS) $(SUBDIR_LOGS)
-	@erroccurred=0; \
-	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR) ; \
-	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; \
-	if [ $$? -ne 0 ] ; \
-	then \
-	  erroccurred=1; \
-	else \
-	  cp $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba . ; \
-	  for bfile in $(BDPI_BAS); do \
-	    mv $(TMP_BSC_DIR)/$$bfile . ; \
-	done ; \
-	fi ; \
-	test $$erroccurred -ne 1
+	@$(TRAP_ERRORS)
+	@$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
+	@$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; test $${PIPESTATUS[0]} -eq 0
+	@cp $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba .
+	@for bfile in $(BDPI_BAS); do \
+	  mv $(TMP_BSC_DIR)/$$bfile . ; \
+	done ;
 
 ################################################################
 ## 
@@ -68,32 +56,20 @@ v: make_subdir_vs $(WRAPPER_SYNTH_ID).v
 
 .PHONY: make_subdir_vs
 make_subdir_vs: 
-	@erroccurred=0; \
-	for dir in $(SUBDIRS); \
+	@$(TRAP_ERRORS)
+	@for dir in $(SUBDIRS); \
 	do \
 	  make -C $$dir v; \
-	  if [ $$? -ne 0 ] ; \
-	  then \
-	    erroccurred=1; \
-	    break ; \
-	  fi ; \
 	done ; \
-	test $$erroccurred -ne 1
 
 $(WRAPPER_SYNTH_ID).v: $(GEN_BSVS) $(SUBDIR_LOGS)
 #	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
-	@erroccurred=0; \
-	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR) ; \
-	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; \
-	if [ $$? -ne 0 ] ; \
-	then \
-	  erroccurred=1; \
-	else \
-	  for bfile in $(BDPI_BAS); do \
-	    mv $(TMP_BSC_DIR)/$$bfile . ; \
-          done ; \
-	fi ; \
-	test $$erroccurred -ne 1
+	@$(TRAP_ERRORS)
+	@$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
+	@$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; test $${PIPESTATUS[0]} -eq 0
+	@for bfile in $(BDPI_BAS); do \
+	  mv $(TMP_BSC_DIR)/$$bfile . ; \
+        done
 
 ################################################################
 ## 

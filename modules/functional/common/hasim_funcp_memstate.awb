@@ -18,6 +18,7 @@
 # %public FUNCP_MemState.bsv
 #
 # %param SYNTH_BOUNDARY mkFUNCP_Memstate "name of synthesis boundary"
+# %param FUNCP_MEM_ADDR_BITS 20 "Number of bits to address memory. Increasing this will slow down Verilog simulations."
 #
 # %AWB_END
 # */

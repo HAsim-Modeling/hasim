@@ -98,6 +98,7 @@ $(XILINX_APM_NAME).ngc:$(XST_FILE)
 
 .PHONY: vexe
 vexe:
+	@$(TRAP_ERRORS)
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
 	cd arch/model ; $(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e mkModel -o ../../$(APM_NAME).vexe mkModel.v $(ALL_VS) $(ALL_CS) $(BDPI_BAS) ; if [ -f "directc.vpi" ] ; then mv -f directc.vpi ../../ ; fi
 	ln -f -s $(APM_NAME).vexe simv
@@ -123,6 +124,7 @@ batch_vexe:
 
 .PHONY: exe
 exe:
+	@$(TRAP_ERRORS)
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
 	$(BSC) $(BSC_FLAGS) $(LDFLAGS) -sim -e mkModel -o $(APM_NAME).exe $(TMP_BSC_DIR)/*.ba $(TMP_BSC_DIR)/*.c
 	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)

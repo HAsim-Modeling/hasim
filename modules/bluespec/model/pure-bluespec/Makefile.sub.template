@@ -32,28 +32,16 @@ ba: make_subdir_bas mkModel.ba
 
 .PHONY: make_subdir_bas
 make_subdir_bas: 
-	@erroccurred=0; \
-	for dir in $(SUBDIRS); \
+	@$(TRAP_ERRORS)
+	@for dir in $(SUBDIRS); \
 	do \
 	  make -C $$dir ba; \
-	  if [ $$? -ne 0 ] ; \
-	  then \
-	    erroccurred=1; \
-	    break ; \
-	  fi ; \
-	done ; \
-	test $$erroccurred -ne 1
+	done
 
 mkModel.ba: $(GEN_BSVS) $(SUBDIR_BAS)
-	@erroccurred=0; \
-	$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE) ; \
-	if [ $$? -ne 0 ] ; \
-	then \
-	  erroccurred=1; \
-	else \
-	  cp --target-directory=$(TMP_BSC_DIR) $(CSRCS) ; \
-	fi ; \
-	test $$erroccurred -ne 1
+	@$(TRAP_ERRORS)
+	@$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE) ; test $${PIPESTATUS[0]} -eq 0
+	@cp --target-directory=$(TMP_BSC_DIR) $(CSRCS)
 #	mv $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba .
 
 ################################################################
@@ -64,21 +52,17 @@ v: make_subdir_vs mkModel.v
 
 .PHONY: make_subdir_vs
 make_subdir_vs: 
-	@erroccurred=0; \
-	for dir in $(SUBDIRS); \
+	@$(TRAP_ERRORS)
+	@for dir in $(SUBDIRS); \
 	do \
 	  make -C $$dir v; \
-	  if [ $$? -ne 0 ] ; \
-	  then \
-	    erroccurred=1; \
-	    break ; \
-	  fi ; \
 	done ; \
 	test $$erroccurred -ne 1
 
 mkModel.v: $(GEN_BSVS) $(SUBDIR_VS)
 #	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)
-	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE)
+	@$(TRAP_ERRORS)
+	@$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) mkModel.bsv 2>&1 | tee $(LOGFILE) ; test $${PIPESTATUS[0]} -eq 0
 
 ################################################################
 ## 

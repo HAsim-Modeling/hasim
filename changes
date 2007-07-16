@@ -6046,3 +6046,28 @@ out that "tee" can wreak havoc on exit codes. The use of the BASH "trap" command
 and special ${PIPESTATUS} variable now combats that.
 
 Michael P.
+
+----------
+vmurali     Date: Sun Jul 15 22:21:03 EDT 2007  CSN: CSN-hasim-215
+                  Mon Jul 16 02:21:03 UTC 2007
+
+
+Directory .
+ configure                 Locally Modified          214 
+ Makefile.in               Locally Modified          214 
+
+Directory libperl
+ Makefile.in               Locally Modified          214 
+
+Directory tools/hasim
+ Makefile.in               Locally Modified          214 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Modified          214 
+
+Directory tools
+ Makefile.in               Locally Modified          214 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          214 
+

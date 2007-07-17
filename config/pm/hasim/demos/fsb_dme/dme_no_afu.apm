@@ -1,0 +1,51 @@
+
+[Global]
+SaveParameters=0
+Description=Multiplier FPGA Demo
+File=dme_no_afu
+Version=2.1
+Name=Multiplier Model
+Type=HAsim
+Class=Asim::Model
+
+[Hasim null controller]
+Packagehint=hasim
+File=modules/controller/null/hasim_null_controller.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/hasim_model.awb
+
+[Model]
+DefaultAttributes=demo hasim software
+model=HAsim Model Foundation
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - FSB DME system
+hasim_controller=Hasim null controller
+hasim_common=Hasim Common Library
+
+[Hasim Common Library]
+File=modules/common/hasim_common.awb
+Packagehint=hasim
+
+[Hasim Common Library/Requires]
+hasim_fpgaenv=Hasim FPGA Environment
+
+[Hasim FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-fsb-dme.apm
+Packagehint=hasim
+
+[Hasim - FSB DME system/Requires]
+dme_alg=Hasim - DME Simple No AFU
+
+[Hasim - FSB DME system]
+File=modules/system/dme_system/dme_system.awb
+Packagehint=hasim
+
+[Hasim - DME Simple No AFU]
+File=modules/system/dme_system/no-afu/dme_no_afu.awb
+Packagehint=hasim
+
+[Hasim Common Library/Params]
+HASIM_CON_CWIDTH=300

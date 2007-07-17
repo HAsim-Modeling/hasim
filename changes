@@ -6071,3 +6071,56 @@ Directory tools
 Directory tools/scripts
  Makefile.in               Locally Modified          214 
 
+
+----------
+mpellaue    Date: Tue Jul 17 18:03:32 EDT 2007  CSN: CSN-hasim-216
+                  Tue Jul 17 22:03:32 UTC 2007
+
+
+Directory config/pm/hasim/demos
+ fsb_dme/                  Locally Added               0 
+
+Directory config/pm/hasim/demos/fsb_dme
+ dme_no_afu.apm            Locally Added               0 
+
+Directory config/pm/hasim/submodels/fpgaenv
+ hasim-fpgaenv-fsb-dme.apm Locally Added               0 
+
+Directory modules/system
+ dme_system/               Locally Added               0 
+
+Directory modules/system/dme_system
+ dme_system.awb            Locally Added               0 
+ dme_system.bsv            Locally Added               0 
+ no-afu/                   Locally Added               0 
+
+Directory modules/system/dme_system/no-afu
+ dme_no_afu.awb            Locally Added               0 
+ dme_no_afu.bsv            Locally Added               0 
+
+Directory modules/common/fpgaenv/toplevel-wires
+ fsb_dme/                  Locally Added               0 
+
+Directory modules/common/fpgaenv/toplevel-wires/fsb_dme
+ fsb-dme-toplevel-wires.awb Locally Added               0 
+ fsb_dme.ucf               Locally Added               0 
+ FSB_DME_TopLevelWires.bsv Locally Added               0 
+
+Directory modules/common/fpgaenv/platform-interface
+ hasim_dme/                Locally Added               0 
+
+Directory modules/common/fpgaenv/platform-interface/hasim_dme
+ HAsimPlatformInterface.bsv Locally Added               0 
+ hasim-fsb-dme-platform-interface.awb Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ fsb_dme/                  Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/fsb_dme
+ fsb-dme-fp.awb            Locally Added               0 
+ FSB_DME_FP.bsv            Locally Added               0 
+
+
+A first crack at a DME system. TBD: The almost full signals output by the Bluespec DME are bogus. TBD: should support CSR.
+
+Michael P.

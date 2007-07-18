@@ -6124,3 +6124,28 @@ Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/fs
 A first crack at a DME system. TBD: The almost full signals output by the Bluespec DME are bogus. TBD: should support CSR.
 
 Michael P.
+
+----------
+mvijayar    Date: Wed Jul 18 17:33:28 EDT 2007  CSN: CSN-hasim-217
+                  Wed Jul 18 21:33:28 UTC 2007
+
+
+Directory .
+ configure                 Locally Modified          216 
+ Makefile.in               Locally Modified          216 
+
+Directory libperl
+ Makefile.in               Locally Modified          216 
+
+Directory tools/hasim
+ Makefile.in               Locally Modified          216 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Modified          216 
+
+Directory tools
+ Makefile.in               Locally Modified          216 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          216 
+

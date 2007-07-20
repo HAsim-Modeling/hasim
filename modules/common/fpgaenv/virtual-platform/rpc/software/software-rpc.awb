@@ -1,0 +1,7 @@
+%name Software RPC Client and Server w. Integrated Services
+%desc Software RPC Client and Server w. Integrated Services
+
+%provides software_rpc
+
+%private software-rpc-server.h front-panel.h
+%public software-rpc-server.c front-panel.c

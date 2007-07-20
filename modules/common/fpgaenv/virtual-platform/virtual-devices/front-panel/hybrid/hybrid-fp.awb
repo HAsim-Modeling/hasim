@@ -1,0 +1,7 @@
+
+%name Hybrid Front Panel
+%desc Hybrid Front Panel
+
+%provides front_panel
+
+%public HybridFP.bsv

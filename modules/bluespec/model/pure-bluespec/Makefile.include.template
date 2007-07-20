@@ -7,13 +7,14 @@ BSC_FLAGS = -keep-fires \
 	    -wait-for-license \
             -aggressive-conditions
 
-LDFLAGS = -L /usr/lib/curses
 VSIM_LINK_FLAGS = -I $(IVERILOGDIR)/include
 
 APM_NAME = @APM_NAME@
 BUILD_DIR = @BUILD_DIR@
 ARCH_DIR = $(BUILD_DIR)/arch
 ALL_DIRS = @ALL_DIRS@
+
+LDFLAGS = -L /usr/lib/curses -I $(BUILD_DIR)/arch/model
 
 MAPPED_DIR = ~/.asim/hasim/download
 TMP_XILINX_DIR = $(BUILD_DIR)/@TMP_XILINX_DIR@

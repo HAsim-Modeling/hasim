@@ -1,0 +1,10 @@
+
+%name Bluesim ChannelIO Module
+%desc Bluesim ChannelIO Module
+
+%provides channelio
+
+%private bluesim-channelio.h
+%public BluesimChannelIO.bsv bluesim-channelio.c
+
+%param BDPI_NAMES "cio_init cio_open cio_read cio_write cio_isdestroyed" "list of BDPI-exported names"

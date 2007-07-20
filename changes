@@ -6149,3 +6149,76 @@ Directory tools
 Directory tools/scripts
  Makefile.in               Locally Modified          216 
 
+
+----------
+aparasha    Date: Fri Jul 20 14:19:48 EDT 2007  CSN: CSN-hasim-218
+                  Fri Jul 20 18:19:48 UTC 2007
+
+
+Directory config/pm/hasim/demos/switch_to_led
+ adder4x4_software.apm     Locally Modified          217 
+
+Directory config/pm/hasim/submodels/fpgaenv
+ hasim-fpgaenv-rpc-bluesim.apm Locally Added               0 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.include.template Locally Modified          217 
+
+Directory modules/common/fpgaenv/platform-interface
+ hasim-rpc/                Locally Added               0 
+
+Directory modules/common/fpgaenv/platform-interface/hasim-rpc
+ HAsimRPCPlatformInterface.bsv Locally Added               0 
+ hasim-rpc-platform-interface.awb Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio
+ bluesim/                  Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio/bluesim
+ bluesim-channelio.c       Locally Added               0 
+ bluesim-channelio.h       Locally Added               0 
+ bluesim-channelio.awb     Locally Added               0 
+ BluesimChannelIO.bsv      Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform
+ rpc-virtual-platform.awb  Locally Added               0 
+ rpc/                      Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/rpc
+ software/                 Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/rpc/software
+ software-rpc-server.c     Locally Added               0 
+ software-rpc.awb          Locally Added               0 
+ front-panel.c             Locally Added               0 
+ software-rpc-server.h     Locally Added               0 
+ memory.c                  Locally Added               0 
+ front-panel.h             Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/rpc
+ rpc.awb                   Locally Added               0 
+ hardware/                 Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/rpc/hardware
+ hardware-rpc.awb          Locally Added               0 
+ HardwareRPCClient.bsv     Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ hybrid/                   Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/hybrid
+ HybridFP.bsv              Locally Added               0 
+ hybrid-fp.awb             Locally Added               0 
+
+
+- Added an implementation of an RPC-based virtual platform
+  infrastructure designed to support hybrid hardware/software module
+  development. The software module partitions currently reside
+  together with the software RPC stub both in the module hierarchy
+  as well as the source tree, but will be moved away later.
+
+- Added an FPGA Environment submodel that conveniently wraps all
+  modules required for a consistent hybrid RPC-based platform.
+
+- Added a Hybrid Front Panel virtual device to demonstrate this
+  infrastructure.

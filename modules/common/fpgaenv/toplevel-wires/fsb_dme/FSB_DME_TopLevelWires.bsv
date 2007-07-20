@@ -71,16 +71,36 @@ module mkTopLevelWiresDriver (TopLevelWiresDriver);
   FIFOF#(Bit#(75)) cmd_inQ  <- mkUGFIFOF();
   Wire#(Bit#(75))  cmd_outW <- mkWire();
 
+  //Extra buffering to translate "full" to "almost full"
+  FIFOF#(Tuple3#(Bit#(256), Bool, Bool)) data_inQ_backup  <- mkUGFIFOF1();
+  FIFOF#(Bit#(75)) cmd_inQ_backup  <- mkUGFIFOF1();
+  
  
     interface TopLevelWires wires_out;
 
       method Action inp(Bit#(256) data_from_fsb, Bit#(75) cmd_from_fsb, Bool cmd_to_fsb_almost_full, Bool data_to_fsb_almost_full, Bool cmd_from_fsb_ready, Bool data_from_fsb_ready, Bool data_from_fsb_xfer_begin, Bool data_from_fsb_xfer_end);
 
         if (data_from_fsb_ready)
-	  data_inQ.enq(tuple3(data_from_fsb, data_from_fsb_xfer_begin, data_from_fsb_xfer_end));
+	  if (data_inQ.notFull())
+	    data_inQ.enq(tuple3(data_from_fsb, data_from_fsb_xfer_begin, data_from_fsb_xfer_end));
+	  else
+	    data_inQ_backup.enq(tuple3(data_from_fsb, data_from_fsb_xfer_begin, data_from_fsb_xfer_end));
+	else if (data_inQ_backup.notEmpty())
+	  begin
+	    data_inQ.enq(data_inQ_backup.first());
+	    data_inQ_backup.deq();
+	  end
 	
 	if (cmd_from_fsb_ready)
-	  cmd_inQ.enq(cmd_from_fsb);
+	  if (cmd_inQ.notFull())
+	    cmd_inQ.enq(cmd_from_fsb);
+	  else
+	    cmd_inQ_backup.enq(cmd_from_fsb);
+	else if (cmd_inQ_backup.notEmpty())
+	  begin
+	    cmd_inQ.enq(cmd_inQ_backup.first());
+	    cmd_inQ_backup.deq();
+	  end
 
         fsb_cmd_was_almost_full  <= cmd_to_fsb_almost_full;
 	fsb_data_was_almost_full <= data_to_fsb_almost_full;
@@ -93,8 +113,8 @@ module mkTopLevelWiresDriver (TopLevelWiresDriver);
       method Bit#(256) data_to_fsb() = data_outW;
       method Bool data_xfer_begin() = data_xfer_beginW;
       method Bool data_xfer_end() = data_xfer_endW;
-      method Bool cmd_from_fsb_almost_full() = !cmd_inQ.notFull();   //XXX Not actually almost full
-      method Bool data_from_fsb_almost_full() = !data_inQ.notFull(); //XXX
+      method Bool cmd_from_fsb_almost_full() = !cmd_inQ.notFull() || !cmd_inQ_backup.notFull();
+      method Bool data_from_fsb_almost_full() = !data_inQ.notFull() || !cmd_inQ_backup.notFull();
       
     endinterface
  

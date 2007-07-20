@@ -422,6 +422,7 @@ sub need_to_regenerate_surrogate {
 
   my (@sends_existing, @recvs_existing);
 
+  CORE::open(EXISTING, "< $filename") || return 1;
   parse_existing_dangling_connections($filename, \@sends_existing, \@recvs_existing);
 
   my $differ = 0;

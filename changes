@@ -6222,3 +6222,26 @@ Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/hy
 
 - Added a Hybrid Front Panel virtual device to demonstrate this
   infrastructure.
+----------
+mpellaue    Date: Fri Jul 20 17:36:23 EDT 2007  CSN: CSN-hasim-219
+                  Fri Jul 20 21:36:23 UTC 2007
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          218 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          218 
+ Makefile.top.template     Locally Modified          218 
+
+Directory modules/common/fpgaenv/toplevel-wires/fsb_dme
+ FSB_DME_TopLevelWires.bsv Locally Modified          218 
+
+
+make batch_vexe and make batch_exe now work correctly.
+
+A small bugfix in hasim-connect.
+
+FSB toplevel Almost full signals are now implemented.
+
+Michael

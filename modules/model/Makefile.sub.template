@@ -74,12 +74,55 @@ $(WRAPPER_SYNTH_ID).v: $(GEN_BSVS) $(SUBDIR_LOGS)
 ################################################################
 ## 
 
-batch_v:
-	$(BATCH_LAUNCH) -J $(WRAPPER_SYNTH_ID).batch make v
-	
+batch_v: make_subdir_batch_vs batch_$(DIR).v
 
-batch_ba:
-	$(BATCH_LAUNCH) -J $(WRAPPER_SYNTH_ID).batch make ba
+make_subdir_batch_vs:
+	@for dir in $(SUBDIRS); \
+	do \
+	  make -C $$dir batch_v; \
+	done
+
+batch_$(DIR).v:
+	@for dep in $(SUBDIRS) ;\
+	do \
+  	  if [ -z "$$subdeps" ] ;\
+	  then \
+	    subdeps="$$dep [exit == 0]" ;\
+	  else \
+	    subdeps="$$dep [exit == 0] && $$subdeps" ;\
+	  fi ;\
+	done ;\
+  	if [ -n "$$subdeps" ] ;\
+	then \
+	  $(BATCH_LAUNCH) -J $(DIR).batch.log --triggers "$$subdeps" --task-name $(DIR) make $(WRAPPER_SYNTH_ID).v ;\
+	else \
+	  $(BATCH_LAUNCH) -J $(DIR).batch.log --task-name $(DIR) make $(WRAPPER_SYNTH_ID).v ;\
+	fi
+
+batch_ba: make_subdir_batch_bas batch_$(DIR).ba
+
+make_subdir_batch_bas:
+	@for dir in $(SUBDIRS); \
+	do \
+	  make -C $$dir batch_ba; \
+	done
+
+batch_$(DIR).ba:
+	@for dep in $(SUBDIRS) ;\
+	do \
+  	  if [ -z "$$subdeps" ] ;\
+	  then \
+	    subdeps="$$dep [exit == 0]" ;\
+	  else \
+	    subdeps="$$dep [exit == 0] && $$subdeps" ;\
+	  fi ;\
+	done ;\
+  	if [ -n "$$subdeps" ] ;\
+	then \
+	  $(BATCH_LAUNCH) -J $(DIR).batch.log --triggers "$$subdeps" --task-name $(DIR) make $(WRAPPER_SYNTH_ID).ba ;\
+	else \
+	  $(BATCH_LAUNCH) -J $(DIR).batch.log --task-name $(DIR) make $(WRAPPER_SYNTH_ID).ba ;\
+	fi
 
 
 ################################################################

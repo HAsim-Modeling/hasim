@@ -98,9 +98,16 @@ $(XILINX_APM_NAME).ngc:$(XST_FILE)
 ## Verilog generation rules
 
 .PHONY: vexe
-vexe:
+vexe: make_subdir_vs link_vexe
 	@$(TRAP_ERRORS)
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+
+make_subdir_vs:
+	@$(TRAP_ERRORS)
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+
+link_vexe:
+	@$(TRAP_ERRORS)
 	ln -f -s $(ARCH_DIR)/$(ROOT_DIR)/vpi_* .
 	$(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) $(ALL_CS) $(BDPI_BAS)
 	rm -f vpi_*
@@ -113,7 +120,8 @@ vexe:
 
 .PHONY: batch_vexe
 batch_vexe:
-	$(BATCH_LAUNCH) -J $(ROOT_WRAPPER_SYNTH_ID).batch make vexe
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) batch_v
+	$(BATCH_LAUNCH) --block -J $(APM_NAME).batch.log --trigger "$(ROOT_DIR) [exit == 0]" --task-name $(APM_NAME) make link_vexe
 
 #$(APM_NAME).vexe:
 #	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
@@ -126,9 +134,13 @@ batch_vexe:
 ## Bluesim generation rules
 
 .PHONY: exe
-exe:
+exe: make_subdir_bas link_exe
+
+make_subdir_bas:
 	@$(TRAP_ERRORS)
 	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
+
+link_exe:
 	$(BSC) $(BSC_FLAGS) $(LDFLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) $(ALL_CS)
 	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
 	@echo "#!/bin/sh" >$(APM_NAME)
@@ -139,7 +151,8 @@ exe:
 
 .PHONY: batch_exe
 batch_exe:
-	$(BATCH_LAUNCH) -J $(ROOT_WRAPPER_SYNTH_ID).batch make exe
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) batch_ba
+	$(BATCH_LAUNCH) --block -J $(APM_NAME).batch.log --trigger "$(ROOT_DIR) [exit == 0]" --task-name $(APM_NAME) make link_exe
 	
 #$(APM_NAME).exe: $(ROOT_BA)
 #	$(BSC) $(BSC_FLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 

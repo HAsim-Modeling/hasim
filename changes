@@ -6245,3 +6245,28 @@ A small bugfix in hasim-connect.
 FSB toplevel Almost full signals are now implemented.
 
 Michael
+
+----------
+vmurali     Date: Mon Jul 23 15:07:05 EDT 2007  CSN: CSN-hasim-220
+                  Mon Jul 23 19:07:05 UTC 2007
+
+
+Directory .
+ configure                 Locally Modified          219 
+ Makefile.in               Locally Modified          219 
+
+Directory libperl
+ Makefile.in               Locally Modified          219 
+
+Directory tools/hasim
+ Makefile.in               Locally Modified          219 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Modified          219 
+
+Directory tools
+ Makefile.in               Locally Modified          219 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          219 
+

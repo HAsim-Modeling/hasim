@@ -6270,3 +6270,20 @@ Directory tools
 Directory tools/scripts
  Makefile.in               Locally Modified          219 
 
+
+----------
+mpellaue    Date: Tue Jul 24 15:17:46 EDT 2007  CSN: CSN-hasim-221
+                  Tue Jul 24 19:17:46 UTC 2007
+
+
+Directory modules/system/bram_test
+ System.bsv                Locally Modified          220 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          220 
+ FPGAFIFOs.bsv             Locally Added               0 
+
+
+Added a first version of DRAM and BRAM FIFOs to hasim_common.
+
+Michael P.

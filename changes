@@ -6287,3 +6287,23 @@ Directory modules/common
 Added a first version of DRAM and BRAM FIFOs to hasim_common.
 
 Michael P.
+
+----------
+mcadler     Date: Tue Jul 24 15:57:54 EDT 2007  CSN: CSN-hasim-222
+                  Tue Jul 24 19:57:54 UTC 2007
+
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          221 
+ Makefile.top.template     Locally Modified          221 
+ Makefile.include.template Locally Modified          221 
+
+First pass of Makefile cleanup:
+ - Express independence of subdirectory builds as Make rules.
+ - Remove separate Netbatch rules.  We can add netbatch back later as a
+   special instance of the compiler, not a rule.
+ - The model build rules are now target independent.  Building bit, exe
+   and vexe differ only at the top level.
+ - Each subdirectory has its own .bsc temporary directory to avoid
+   potential name clashes.
+ - Removed "realclean" rules.  "clean" now removes everything.

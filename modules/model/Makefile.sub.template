@@ -15,115 +15,33 @@ WRAPPER = $(DIR)_Wrapper
 WRAPPER_SYNTH_ID = mk_$(WRAPPER)
 LOGFILE = $(WRAPPER_SYNTH_ID).log
 
-SUBDIR_BAS = @SUBDIR_BAS@
-SUBDIR_VS = $(SUBDIR_BAS:%.ba=%.v)
-SUBDIR_LOGS = $(SUBDIR_BAS:%.ba=%.log)
-
 ################################################################
 ## 
 
 .PHONY: all
-all: ba
+all: $(WRAPPER_SYNTH_ID).ba
 
 ################################################################
 ## 
 
-.PHONY: ba 
-ba: make_subdir_bas $(WRAPPER_SYNTH_ID).ba
+# .ba file is built as a side-effect of building the .v file.  Copy
+# it from the temp. directory.
+%.ba: %.v
+	cp -f $(TMP_BSC_DIR)/$@ .
 
-.PHONY: make_subdir_bas
-make_subdir_bas: 
+$(WRAPPER_SYNTH_ID).v: $(SUBDIRS) $(GEN_BSVS)
 	@$(TRAP_ERRORS)
-	@for dir in $(SUBDIRS); \
-	do \
-	  make -C $$dir ba; \
-	done ;
-
-$(WRAPPER_SYNTH_ID).ba: $(GEN_BSVS) $(SUBDIR_LOGS)
-	@$(TRAP_ERRORS)
+	@mkdir -p $(TMP_BSC_DIR)
 	@$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
-	@$(BSC) $(BSC_FLAGS) -u -sim -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; test $${PIPESTATUS[0]} -eq 0
-	@cp $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba .
-	@for bfile in $(BDPI_BAS); do \
-	  mv $(TMP_BSC_DIR)/$$bfile . ; \
-	done ;
-
-################################################################
-## 
-
-.PHONY: v
-v: make_subdir_vs $(WRAPPER_SYNTH_ID).v
-
-.PHONY: make_subdir_vs
-make_subdir_vs: 
-	@$(TRAP_ERRORS)
-	@for dir in $(SUBDIRS); \
-	do \
-	  make -C $$dir v; \
-	done ; \
-
-$(WRAPPER_SYNTH_ID).v: $(GEN_BSVS) $(SUBDIR_LOGS)
-#	$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE)
-	@$(TRAP_ERRORS)
-	@$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
-	@$(BSC) $(BSC_FLAGS) -u -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; test $${PIPESTATUS[0]} -eq 0
+	@$(BSC) $(BSC_FLAGS) -u -elab -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; test $${PIPESTATUS[0]} -eq 0
 	@for bfile in $(BDPI_BAS); do \
 	  mv $(TMP_BSC_DIR)/$$bfile . ; \
         done
 
-################################################################
-## 
-
-batch_v: make_subdir_batch_vs batch_$(DIR).v
-
-make_subdir_batch_vs:
-	@for dir in $(SUBDIRS); \
-	do \
-	  make -C $$dir batch_v; \
-	done
-
-batch_$(DIR).v:
-	@for dep in $(SUBDIRS) ;\
-	do \
-  	  if [ -z "$$subdeps" ] ;\
-	  then \
-	    subdeps="$$dep [exit == 0]" ;\
-	  else \
-	    subdeps="$$dep [exit == 0] && $$subdeps" ;\
-	  fi ;\
-	done ;\
-  	if [ -n "$$subdeps" ] ;\
-	then \
-	  $(BATCH_LAUNCH) -J $(DIR).batch.log --triggers "$$subdeps" --task-name $(DIR) make $(WRAPPER_SYNTH_ID).v ;\
-	else \
-	  $(BATCH_LAUNCH) -J $(DIR).batch.log --task-name $(DIR) make $(WRAPPER_SYNTH_ID).v ;\
-	fi
-
-batch_ba: make_subdir_batch_bas batch_$(DIR).ba
-
-make_subdir_batch_bas:
-	@for dir in $(SUBDIRS); \
-	do \
-	  make -C $$dir batch_ba; \
-	done
-
-batch_$(DIR).ba:
-	@for dep in $(SUBDIRS) ;\
-	do \
-  	  if [ -z "$$subdeps" ] ;\
-	  then \
-	    subdeps="$$dep [exit == 0]" ;\
-	  else \
-	    subdeps="$$dep [exit == 0] && $$subdeps" ;\
-	  fi ;\
-	done ;\
-  	if [ -n "$$subdeps" ] ;\
-	then \
-	  $(BATCH_LAUNCH) -J $(DIR).batch.log --triggers "$$subdeps" --task-name $(DIR) make $(WRAPPER_SYNTH_ID).ba ;\
-	else \
-	  $(BATCH_LAUNCH) -J $(DIR).batch.log --task-name $(DIR) make $(WRAPPER_SYNTH_ID).ba ;\
-	fi
-
+.PHONY: $(SUBDIRS)
+$(SUBDIRS):
+	@$(TRAP_ERRORS)
+	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 ################################################################
 ## 
@@ -136,29 +54,18 @@ batch_$(DIR).ba:
 
 .PHONY: help
 help:
-	@echo "  [v] generate verilog source"
-	@echo "  [ba] (default) generate ba for design"
+	@echo "  [all] (default) generate ba and verilog for design"
 	@echo "  [help] display this message"
 	@echo "  [clean] remove intermediate files"
-	@echo "  [realclean] remove target files ($(WRAPPER).bsv $(WRAPPER_SYNTH_ID).ba $(WRAPPER_SYNTH_ID).v $(LOGFILE)"
 
 .PHONY: clean
 clean: clean_subdirs
-	rm -f *~	
+	@rm -rf $(TMP_BSC_DIR)/*.*
+	@rm -f $(WRAPPER).bsv $(WRAPPER_SYNTH_ID).ba $(WRAPPER_SYNTH_ID).v $(LOGFILE)
+	@rm -f *~	
 
 .PHONY: clean_subdirs
 clean_subdirs:
-	for dir in $(SUBDIRS); do \
+	@for dir in $(SUBDIRS); do \
 		$(MAKE) -C $$dir clean; \
 	done
-
-.PHONY: realclean
-realclean: clean realclean_subdirs
-	rm -f $(WRAPPER).bsv $(WRAPPER_SYNTH_ID).ba $(WRAPPER_SYNTH_ID).v $(LOGFILE)
-
-.PHONY: realclean_subdirs
-realclean_subdirs:
-	for dir in $(SUBDIRS); do \
-		$(MAKE) -C $$dir realclean; \
-	done
-

@@ -88,8 +88,7 @@ $(XILINX_APM_NAME).ngd: $(UCF_FILE) $(XILINX_APM_NAME).ngc
 	$(NGDBUILD) -uc $^ $@
 	mv netlist.lst $(TMP_XILINX_DIR)
 
-$(XILINX_APM_NAME).ngc:$(XST_FILE) 
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
+$(XILINX_APM_NAME).ngc: make_subdir $(XST_FILE)
 	$(XST) -ifn $(XST_FILE)
 	mv $(APM_NAME).srp $(TMP_XILINX_DIR)
 	mv $(@F) $(TMP_XILINX_DIR)
@@ -98,15 +97,7 @@ $(XILINX_APM_NAME).ngc:$(XST_FILE)
 ## Verilog generation rules
 
 .PHONY: vexe
-vexe: make_subdir_vs link_vexe
-	@$(TRAP_ERRORS)
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
-
-make_subdir_vs:
-	@$(TRAP_ERRORS)
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
-
-link_vexe:
+vexe: make_subdir
 	@$(TRAP_ERRORS)
 	ln -f -s $(ARCH_DIR)/$(ROOT_DIR)/vpi_* .
 	$(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) $(ALL_CS) $(BDPI_BAS)
@@ -118,29 +109,12 @@ link_vexe:
 	ln -fs $(APM_NAME).vexe simv
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
-.PHONY: batch_vexe
-batch_vexe:
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) batch_v
-	$(BATCH_LAUNCH) --block -J $(APM_NAME).batch.log --trigger "$(ROOT_DIR) [exit == 0]" --task-name $(APM_NAME) make link_vexe
-
-#$(APM_NAME).vexe:
-#	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
-#	$(BSC) $(BSC_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) 
-
-#$(ROOT_V):
-#	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) v
 
 ################################################################
 ## Bluesim generation rules
 
 .PHONY: exe
-exe: make_subdir_bas link_exe
-
-make_subdir_bas:
-	@$(TRAP_ERRORS)
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
-
-link_exe:
+exe: make_subdir
 	$(BSC) $(BSC_FLAGS) $(LDFLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) $(ALL_CS)
 	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
 	@echo "#!/bin/sh" >$(APM_NAME)
@@ -149,17 +123,13 @@ link_exe:
 	ln -fs $(APM_NAME).exe simv
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
-.PHONY: batch_exe
-batch_exe:
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) batch_ba
-	$(BATCH_LAUNCH) --block -J $(APM_NAME).batch.log --trigger "$(ROOT_DIR) [exit == 0]" --task-name $(APM_NAME) make link_exe
-	
-#$(APM_NAME).exe: $(ROOT_BA)
-#	$(BSC) $(BSC_FLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) 
-#	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
+################################################################
+##
 
-#$(ROOT_BA):
-#	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) ba
+.PHONY: make_subdir
+make_subdir:
+	@$(TRAP_ERRORS)
+	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR)
 
 ################################################################
 ## Misc. rules
@@ -170,26 +140,17 @@ help:
 	@echo "  [exe]  generate executable for C simulation"
 	@echo "  [bit] generate executable to run model on FPGA"
 	@echo "  [help] display this message"
-	@echo "  [clean] remove intermediate files"
-	@echo "  [realclean] remove target files"
+	@echo "  [clean] remove intermediate and target files"
 
 .PHONY: clean
 clean: clean_root
-	rm -f $(TMP_XILINX_DIR)/*.*
-	rm -f $(TMP_BSC_DIR)/*.*
-	rm -f *~
+	@rm -f $(TMP_XILINX_DIR)/*.*
+	@rm -f $(TMP_BSC_DIR)/*.*
+	@rm -f $(APM_NAME).exe $(APM_NAME).vexe dump.vcd
+	@rm -f $(APM_NAME)_par.bit
+	@rm -f $(APM_NAME)
+	@rm -f *~
 
 .PHONY: clean_root
 clean_root:
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) clean; 
-
-.PHONY: realclean
-realclean: clean realclean_root
-	rm -f $(APM_NAME).exe $(APM_NAME).vexe dump.vcd
-	rm -f $(APM_NAME)_par.bit
-	rm -f $(APM_NAME)
-
-.PHONY: realclean_root
-realclean_root:
-	$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) realclean; 
-
+	@$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) clean; 

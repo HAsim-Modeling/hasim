@@ -15,6 +15,7 @@
 # %attributes hasim
 #
 # %public HASim.bsv Events.bsv Connections.bsv  Ports.bsv Stats.bsv BypassFIFO.bsv FPGAFIFOs.bsv Commands.bsv Debug.bsv 
+# %private bluespec_common.prj
 #
 # %param HASIM_BMARK_TIMEOUT 100000 "Force a run to end after N model cycles."
 #

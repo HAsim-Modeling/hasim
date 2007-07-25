@@ -16,15 +16,6 @@ use HAsim::Util;
 use warnings;
 use strict;
 
-############################################################
-# merge_replacements
-sub merge_replacements {
-    my $r1 = shift;
-    my $r2 = shift;
-    
-    HAsim::Util::WARN_AND_DIE("Templates::merge_replacements() not yet implemented.");
-
-}
 
 ############################################################
 # do_template_replacements: Given a template file, a 
@@ -32,9 +23,10 @@ sub merge_replacements {
 #                           replacement keys to values, 
 #                           produce destination file = 
 #                           template + replacements
-sub do_replacements {
+
+sub do_template_replacements {
     my $template = shift;
-    my $dst = shift;
+    my $dstfile = shift;
     my $replacements_r = shift;
 
 #    print "Generating... $dst\n" if $debug;
@@ -47,8 +39,8 @@ sub do_replacements {
 #    print "================================\n" if $debug;
 
 
-    CORE::open(DST, "> $dst") || return undef;
     CORE::open(TEMPLATE, "< $template") || return undef;
+
     while (my $line = <TEMPLATE>) {
 	# check for each possible substitution
 	while ( my ($key, $value) = each %$replacements_r ) {
@@ -56,15 +48,30 @@ sub do_replacements {
 	}
 	
 	# remove any unmatched replacements
-	while ($line =~ /@.+@/) {
+	while ($line =~ /@(.+)@/) {
 	    $line =~ s/@.+@//g;
 	}
-	print DST $line;
+	print $dstfile $line;
     }
     CORE::close(TEMPLATE);
-    CORE::close(DST);
 
     return 1;
+}
+
+############################################################
+# do_replacements: The function to create a new file
+
+sub do_replacements {
+    my $template = shift;
+    my $dst = shift;
+    my $replacements_r = shift;
+    
+    CORE::open(DST, "> $dst") || return undef;
+    
+    return do_template_replacements($template, *DST{IO}, $replacements_r);
+    
+    CORE::close(DST);
+    
 }
 
 

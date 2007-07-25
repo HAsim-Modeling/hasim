@@ -13,7 +13,7 @@
 # %provides toplevel_wires
 #
 # %public XUPTopLevelWires.bsv
-# %private xup.ucf
+# %private xup.ucf xup.ut xup.xst xup.download
 #
 # %AWB_END
 # */

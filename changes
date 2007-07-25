@@ -6307,3 +6307,35 @@ First pass of Makefile cleanup:
  - Each subdirectory has its own .bsc temporary directory to avoid
    potential name clashes.
  - Removed "realclean" rules.  "clean" now removes everything.
+
+----------
+pellauer    Date: Wed Jul 25 17:30:50 EDT 2007  CSN: CSN-hasim-223
+                  Wed Jul 25 21:30:50 UTC 2007
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          222 
+ Templates.pm              Locally Modified          222 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          222 
+
+Directory modules/common/fpgaenv/toplevel-wires/xup
+ xup.download              Locally Added               0 
+ xup-toplevel-wires.awb    Locally Modified          222 
+ xup.ut                    Locally Added               0 
+ xup.xst                   Locally Added               0 
+
+Directory modules/common
+ bluespec_common.prj       Locally Added               0 
+
+
+Redid synthesis architecture. XUP is supported in the new architecture and
+should transparently work like before. UCF and other files are aggregated from
+around the model. (Currently they live in toplevelwires.)
+
+A bluespec_common.prj files lists all the bluespec verilog library primitives.
+
+Michael P.
+
+

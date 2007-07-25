@@ -20,6 +20,38 @@ use warnings;
 use strict;
 
 ############################################################
+# find_all_files_with_suffix: search the model tree and 
+#                               return all files which have 
+#                               the given suffix.
+
+sub find_all_files_with_suffix {
+    my $module = shift;
+    my $suffix = shift;
+    
+    my @res = ();
+    
+    foreach my $child ($module->submodules())
+    {
+      push(@res, find_all_files_with_suffix($child, $suffix));
+    }
+    
+    my @files = ();
+    push(@files, $module->public());
+    push(@files, $module->private());
+    
+    foreach my $file (@files)
+    {
+      if ($file =~ /(.*)$suffix$/)
+      {
+        push(@res, Asim::resolve(HAsim::Util::path_append($module->base_dir(), $file)));
+      }
+    }
+    
+    return @res;
+}
+
+
+############################################################
 # package variables
 
 our $tmp_xilinx_dir = ".xilinx";
@@ -30,7 +62,7 @@ our $part_num = "xc2vp30-7-ff896";
 sub generate_files {
     my $model = shift;
 
-    generate_v_file($model);
+    generate_prj_file($model);
     generate_xst_file($model);
     generate_ucf_file($model);
     generate_ut_file($model);
@@ -42,49 +74,69 @@ sub generate_files {
 # generate_xst_file:
 sub generate_xst_file {
     my $model = shift;
-    my $name = HAsim::Build::get_model_name($model);
     
-    my $xst_file = HAsim::Util::path_append($model->build_dir(),$name . ".xst");
+    my $name = HAsim::Build::get_model_name($model);
+    my $final_xst_file = HAsim::Util::path_append($model->build_dir(),$name . ".xst");
 
-    CORE::open(FILE, "> $xst_file") || return undef;
+    CORE::open(XSTFILE, "> $final_xst_file") || return undef;
 
-    print FILE "run\n";
-    print FILE "-ifmt VERILOG\n";
-    my $verilog_lib = HAsim::Bluespec::verilog_lib_dir();
-    print FILE "-vlgincdir " . $verilog_lib . "\n";
-    print FILE "-ifn " . $name . ".v\n";
-    print FILE "-ofn " . $name . "\n";
-    print FILE "-ofmt NGC\n";
-    print FILE "-p " . $part_num . "\n";
-    print FILE "-top " . HAsim::Build::get_wrapper($model->modelroot()) . "\n";
-    CORE::close(FILE);
+    my $replacements_r = HAsim::Util::empty_hash_ref();
+    
+    HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$name);
+
+    my $bdir = bluespec_dir();
+    HAsim::Util::hash_set($replacements_r,'@BLUESPECDIR@', $bdir);
+
+    #Concatenate all found .xst files
+
+    my @model_xst_files = find_all_files_with_suffix($model->modelroot(), ".xst");
+
+    foreach my $model_xst_file (@model_xst_files)
+    {
+      HAsim::Templates::do_template_replacements($model_xst_file, *XSTFILE{IO}, $replacements_r);
+    }
+    
+    CORE::close(XSTFILE);
 }
 
 ############################################################
-# generate_v_file:
-sub generate_v_file {
+# generate_prj_file:
+sub generate_prj_file {
 
     my $model = shift;
     my $name = HAsim::Build::get_model_name($model);
     
-    my $v_file = HAsim::Util::path_append($model->build_dir(),$name . ".v");
+    my $final_prj_file = HAsim::Util::path_append($model->build_dir(),$name . ".prj");
 
-    my $file;
-    CORE::open($file, "> $v_file") || return undef;
+    #first add all local .prj files
+
+    CORE::open(PRJFILE, "> $final_prj_file") || return undef;
     
-    foreach my $v_file (HAsim::Bluespec::verilog_lib_files()) {
-	print $file "`include \"" . $v_file . "\"\n";
+    my @model_prj_files = find_all_files_with_suffix($model->modelroot(), ".prj");
+    
+    my $replacements_r = HAsim::Util::empty_hash_ref();
+    
+    HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$name);
+
+    my $bdir = bluespec_dir();
+    HAsim::Util::hash_set($replacements_r,'@BLUESPECDIR@', $bdir);
+
+    foreach my $model_prj_file (@model_prj_files)
+    {
+      HAsim::Templates::do_template_replacements($model_prj_file, *PRJFILE{IO}, $replacements_r);
     }
 
-    __generate_v_file($model->modelroot(),"arch",$file);
-    CORE::close($file);
+    #now add all bsc-generated verilog files
+
+    __generate_prj_file($model->modelroot(),"arch",*PRJFILE{IO});
+    CORE::close(PRJFILE);
 
     return 1;
 }
 
 ############################################################
-# __generate_v_file:
-sub __generate_v_file {
+# __generate_prj_file:
+sub __generate_prj_file {
     my $module = shift;
     my $parent_dir = shift;
     my $file = shift;
@@ -94,12 +146,12 @@ sub __generate_v_file {
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-	__generate_v_file($child,$my_dir,$file);
+	__generate_prj_file($child,$my_dir,$file);
     }
 
     if (HAsim::Build::is_synthesis_boundary($module)) {
 	my $v_file = HAsim::Util::path_append($my_dir, HAsim::Build::get_wrapper($module) . ".v");
-	print $file "`include \"$v_file\"\n";
+	print $file "verilog work \"$v_file\"\n";
     }
 
     # Add includes of public and private bsc files
@@ -109,7 +161,7 @@ sub __generate_v_file {
     foreach my $f (@l) {
       if ($f =~ /\.v$/) {
         my $v_file = HAsim::Util::path_append($my_dir, $f);
-        print $file "`include \"$v_file\"\n";
+        print $file "verilog work \"$v_file\"\n";
       }
     }
 
@@ -121,82 +173,52 @@ sub generate_ut_file {
     my $model = shift;
     my $name = HAsim::Build::get_model_name($model);
     
-    my $ut_file = HAsim::Util::path_append($model->build_dir(),$name . ".ut");
+    my $final_ut_file = HAsim::Util::path_append($model->build_dir(),$name . ".ut");
 
-    CORE::open(FILE, "> $ut_file") || return undef;
-    print FILE "-w\n";
-    print FILE "-g DebugBitstream:No\n";
-    print FILE "-g Binary:no\n";
-    print FILE "-g CRC:Enable\n";
-    print FILE "-g ConfigRate:4\n";
-    print FILE "-g CclkPin:PullUp\n";
-    print FILE "-g M0Pin:PullUp\n";
-    print FILE "-g M1Pin:PullUp\n";
-    print FILE "-g M2Pin:PullUp\n";
-    print FILE "-g ProgPin:PullUp\n";
-    print FILE "-g DonePin:PullUp\n";
-    print FILE "-g PowerdownPin:PullUp\n";
-    print FILE "-g TckPin:PullUp\n";
-    print FILE "-g TdiPin:PullUp\n";
-    print FILE "-g TdoPin:PullNone\n";
-    print FILE "-g TmsPin:PullUp\n";
-    print FILE "-g UnusedPin:PullDown\n";
-    print FILE "-g UserID:0xFFFFFFFF\n";
-    print FILE "-g DCMShutdown:Disable\n";
-    print FILE "-g DisableBandgap:No\n";
-    print FILE "-g DCIUpdateMode:AsRequired\n";
-    print FILE "-g StartUpClk:CClk\n";
-    print FILE "-g DONE_cycle:4\n";
-    print FILE "-g GTS_cycle:5\n";
-    print FILE "-g GWE_cycle:6\n";
-    print FILE "-g LCK_cycle:NoWait\n";
-    print FILE "-g Security:None\n";
-    print FILE "-g DonePipe:No\n";
-    print FILE "-g DriveDone:No\n";
-    print FILE "-g Encrypt:No\n";
-    CORE::close(FILE);
+    CORE::open(UTFILE, "> $final_ut_file") || return undef;
+
+    #Concatenate all found .ut files
+    
+    my @model_ut_files = find_all_files_with_suffix($model->modelroot(), ".ut");
+    
+    my $replacements_r = HAsim::Util::empty_hash_ref();
+    
+    HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$name);    
+
+    foreach my $model_ut_file (@model_ut_files)
+    {
+      HAsim::Templates::do_template_replacements($model_ut_file, *UTFILE{IO}, $replacements_r);
+    }
+
+    CORE::close(UTFILE);
+
 }
 
 ############################################################
 # generate_ucf_file:
 sub generate_ucf_file {
     my $model = shift;
-    my $name = HAsim::Build::get_model_name($model);
+
+    my $replacements_r = HAsim::Util::empty_hash_ref();
     
-    my $ucf_file = HAsim::Util::path_append($model->build_dir(),$name . ".ucf");
+    my $apm = HAsim::Build::get_model_name($model);
+    HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$apm);
 
-    CORE::open(FILE, "> $ucf_file") || return undef;
+    my $final_ucf_file = HAsim::Util::path_append($model->build_dir(),$apm . ".ucf");
 
-    print FILE "// CLOCK\n";
-    print FILE "\n";
-    print FILE "NET \"CLK\" LOC = \"AJ15\" | IOSTANDARD = LVCMOS25;\n";
-    print FILE "\n";
-    print FILE "// RST_N\n";
-    print FILE "\n";
-    print FILE "NET \"RST_N\" LOC=\"AD10\";\n";
-    print FILE "// LEDS\n";
-    print FILE "\n";
-    print FILE "NET \"LED[0]\" LOC=\"AC4\" | IOSTANDARD=LVTTL | DRIVE=12 | SLEW=SLOW;\n";
-    print FILE "NET \"LED[1]\" LOC=\"AC3\" | IOSTANDARD=LVTTL | DRIVE=12 | SLEW=SLOW;\n";
-    print FILE "NET \"LED[2]\" LOC=\"AA6\" | IOSTANDARD=LVTTL | DRIVE=12 | SLEW=SLOW; \n";
-    print FILE "NET \"LED[3]\" LOC=\"AA5\" | IOSTANDARD=LVTTL | DRIVE=12 | SLEW=SLOW;\n";
-    print FILE "\n";
-    print FILE "// SWITCHES\n";
-    print FILE "\n";
-    print FILE "NET \"SWITCH[0]\" LOC=\"AC11\" | IOSTANDARD=LVCMOS25;\n";
-    print FILE "NET \"SWITCH[1]\" LOC=\"AD11\" | IOSTANDARD=LVCMOS25;\n";
-    print FILE "NET \"SWITCH[2]\" LOC=\"AF8\" | IOSTANDARD=LVCMOS25;\n";
-    print FILE "NET \"SWITCH[3]\" LOC=\"AF9\" | IOSTANDARD=LVCMOS25;\n";
-    print FILE "\n";
-    print FILE "// PUSHBUTTONS\n";
-    print FILE "\n";
-    print FILE "NET \"BUTTON_LEFT\" LOC=\"AH1\" | IOSTANDARD=LVTTL;\n";
-    print FILE "NET \"BUTTON_RIGHT\" LOC=\"AH2\" | IOSTANDARD=LVTTL;\n";
-    print FILE "NET \"BUTTON_UP\" LOC=\"AH4\" | IOSTANDARD=LVTTL;\n";
-    print FILE "NET \"BUTTON_DOWN\" LOC=\"AG3\" | IOSTANDARD=LVTTL;\n";
-    print FILE "NET \"BUTTON_CENTER\" LOC=\"AG5\" | IOSTANDARD=LVTTL;\n";
+    CORE::open(UCFFILE, "> $final_ucf_file") || return undef;
 
-    CORE::close(FILE);
+    #Concatenate all found .ucf files
+
+    my @model_ucf_files = find_all_files_with_suffix($model->modelroot(), ".ucf");
+
+    foreach my $model_ucf_file (@model_ucf_files)
+    {
+      HAsim::Templates::do_template_replacements($model_ucf_file, *UCFFILE{IO}, $replacements_r);
+    
+    }
+    
+    CORE::close(UCFFILE);
 }
 
 
@@ -208,17 +230,34 @@ sub generate_download_file {
     
     my $download_file = HAsim::Util::path_append($model->build_dir(),$name . ".download");
 
-    CORE::open(FILE, "> $download_file") || return undef;
-
-    print FILE "setMode -bscan\n";
-    print FILE "setCable -p auto\n";
-    print FILE "identify\n";    
-    print FILE "assignfile -p 3 -file " . HAsim::Build::get_model_name($model) . "_par.bit\n";
-    print FILE "program -p 3\n";
-    print FILE "quit\n";
+    my $replacements_r = HAsim::Util::empty_hash_ref();
     
-    CORE::close(FILE);
+    my $apm = HAsim::Build::get_model_name($model);
+    HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$apm);
+
+    CORE::open(DWNFILE, "> $download_file") || return undef;
+
+    #Concatenate all found .download files
+
+    my @model_dwn_files = find_all_files_with_suffix($model->modelroot(), ".download");
+
+    foreach my $model_dwn_file (@model_dwn_files)
+    {
+      HAsim::Templates::do_template_replacements($model_dwn_file, *DWNFILE{IO}, $replacements_r);
+    
+    }
+    
+    CORE::close(DWNFILE);
 }
 
+############################################################
+# bluespec_dir:
+sub bluespec_dir {
+    if (! defined$ENV{'BLUESPECDIR'}) {
+      HAsim::Util::WARN_AND_DIE("BLUESPECDIR undefined in environment.");
+    }
+
+    return $ENV{'BLUESPECDIR'};
+}
 
 return 1;

@@ -14,7 +14,7 @@ my @bscPath;
 my $bscBDir = ".";
 
 my %bsvFiles;
-my %bsvDep;
+my %bsvDep;             # Dependence on source files.
 
 sub ErrorExit($)
 {
@@ -99,6 +99,9 @@ sub NoteImport($$)
 {
     my ($fName, $impName) = @_;
 
+    # Is it a special library?
+    return if (($impName eq "BDPI") || ($impName eq "BVI"));
+
     # Is it a precompiled library?
     return if (defined(FindBSVFile($impName . ".bi")));
 
@@ -112,6 +115,82 @@ sub NoteImport($$)
 
     $bsvDep{$fName}{$imp} = 1;
     ParseBSVFile($imp, 1);
+}
+
+
+##
+## Note include files by parsing the `line directive emitted by bsc -E
+##
+sub NoteIncludes($$)
+{
+    my ($fName, $s) = @_;
+
+    ##
+    ## There may be multiple `line directives on a line.  Loop while we keep
+    ## finding them.  Using the $gotOne mechanism instead of looping while
+    ## we still see `line avoids an infinite loop in case of parser bugs.
+    ##
+    my $gotOne = 0;
+    do
+    {
+        $gotOne = 0;
+        if ($s =~ /.*`line [0-9]+ "(.+)" [0-9]+/)
+        {
+            $s =~ s/.*`line [0-9]+ ".+" [0-9]+//;
+            $gotOne = 1;
+        }
+
+        if ($s =~ /.*`line\((.+),[0-9]+,[0-9]+,[0-9]+\)/)
+        {
+            $s =~ s/.*`line\(.+,[0-9]+,[0-9]+,[0-9]+\)//;
+            $gotOne = 1;
+        }
+
+        if ($gotOne)
+        {
+            # Note dependence on include file.  First we have to find out
+            # where it is since bsc -E doesn't give a full path.
+            my $inc_base = $1;
+            my $inc = $inc_base;
+            if (! -f $inc)
+            {
+                $inc = FindBSVFile($inc);
+                if (! defined($inc))
+                {
+                    ErrorExit("Failed to find include file ${inc_base} included by $fName");
+                }
+            }
+
+            # bsc compiler emits a really ugly name for the main file with
+            # 3 slashes before the leaf.  Compare the inodes of the include
+            # file to the base name.
+            my $f_ino = (stat($fName))[1];
+            $f_ino = -1 if (! defined($f_ino));
+
+            my $i_ino = (stat($inc))[1];
+            $i_ino = -2 if (! defined($i_ino));
+
+            if ($i_ino != $f_ino)
+            {
+                #
+                # Set an entry in $bsvInc with a value of 0 to indicate just
+                # an include file, not an import.  Be careful not to change
+                # a previous import to include state.
+                #
+                if (! exists($bsvDep{$fName}{$inc}))
+                {
+                    $bsvDep{$fName}{$inc} = 0;
+                }
+            }
+        }
+    }
+    while ($gotOne);
+
+    if ($s =~ /`line/)
+    {
+        print STDERR "Failed to parse `line directive in ${fName}:\n";
+        print STDERR "  $s\n";
+    }
 }
 
 
@@ -134,9 +213,16 @@ sub ParseBSVFile($$)
         chomp;
         my $s = $_;
 
+        # Note included files
+        if ($s =~ /`line/)
+        {
+            NoteIncludes($fName, $s);
+        }
+
         # Drop comments.  This code isn't especially smart about slashes inside
         # quotes, multiline comments, etc.
-        $s =~ s/\/\/.*//;               # Drop //...
+
+        $s =~ s/\/\/.*//;             # Drop //...
 
         if ($inComment)
         {
@@ -174,6 +260,8 @@ sub ParseBSVFile($$)
                 my $imp = $s;
                 $imp =~ s/^import //;
                 $imp =~ s/[:; ].*//;
+                $imp =~ s/^"//;
+                $imp =~ s/"$//;
                 NoteImport($fName, $imp);
             }
         }
@@ -216,10 +304,14 @@ foreach my $bsv (keys %bsvFiles)
 
         print "${bscBDir}/${b}: ${dep}\n";
 
-        my $d = $dep;
-        $d =~ s/\.bsv$/.bi/;
-        $d =~ s/.*\///g;
-        print "${bscBDir}/${b}: ${bscBDir}/${d}\n";
+        if ($bsvDep{$bsv}{$dep} != 0)
+        {
+            # For imports add dependence on built object
+            my $d = $dep;
+            $d =~ s/\.bsv$/.bi/;
+            $d =~ s/.*\///g;
+            print "${bscBDir}/${b}: ${bscBDir}/${d}\n";
+        }
     }
     print "\n";
 }

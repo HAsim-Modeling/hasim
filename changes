@@ -6369,3 +6369,14 @@ Directory modules/model
  Makefile.sub.template     Locally Modified          224 
 
 Oops.
+
+----------
+mcadler     Date: Thu Jul 26 17:54:35 EDT 2007  CSN: CSN-hasim-226
+                  Thu Jul 26 21:54:35 UTC 2007
+
+
+Directory tools/scripts
+ hasim-bsc-mkdepend        Locally Modified          224 
+
+- Note dependence on included source files.
+- Special case BDPI and BVI imports (Bluespec system libraries)

@@ -6339,3 +6339,23 @@ A bluespec_common.prj files lists all the bluespec verilog library primitives.
 Michael P.
 
 
+
+----------
+mcadler     Date: Wed Jul 25 21:08:45 EDT 2007  CSN: CSN-hasim-224
+                  Thu Jul 26 01:08:45 UTC 2007
+
+
+Directory tools/scripts
+ hasim-bsc-mkdepend        Locally Added               0 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          223 
+ Makefile.include.template Locally Modified          223 
+
+- hasim-bsc-mkdepend computes full dependence graph for source modules
+- Build in parallel when possible
+- Each subdirectory still has its own build directory but all others
+  can now share the results.  Previous check in didn't, forcing lots of
+  duplicate builds.
+- Directory structure still makes it difficult to compute full dependence
+  graph.  Many modules are rebuilt unnecessarily.

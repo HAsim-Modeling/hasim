@@ -1,0 +1,264 @@
+: # -*-Perl-*-
+eval 'exec perl -w "$0" ${1+"$@"}'
+    if 0;
+
+use strict;
+use File::Basename;
+use Getopt::Long;
+
+my $debug = 0;
+
+# Search path in Bluespec compiler
+my $bscPathArg;
+my @bscPath;
+my $bscBDir = ".";
+
+my %bsvFiles;
+my %bsvDep;
+
+sub ErrorExit($)
+{
+    my ($str) = @_;
+    print STDERR "Error: ${str}\n";
+    exit(1);
+}
+
+sub Usage()
+{
+    my $prog = basename($0);
+    print STDERR "Usage:\n";
+    print STDERR "  ${prog}: [-p path] <bsv files>\n";
+    exit(1);
+}
+
+##
+## SetSearchPath --
+##   Combine user specified search path (-p argument) and the Bluespec compiler's
+##   default path.
+##
+sub SetSearchPath($)
+{
+    my ($path) = @_;
+
+    ## Figure out Bluespec's default path
+    my $default = undef;
+    open(BSC, "bsc -help |");
+    while (<BSC>)
+    {
+        chomp;
+        my $p = $_;
+        if ($p =~ /^import path:/)
+        {
+            $default = $p;
+            $default =~ s/^import path:\s*//;
+            $default =~ s/\s*$//;
+        }
+    }
+    close(BSC);
+    ErrorExit("Failed to find Bluespec default path") if (! defined($default));
+
+    $bscPathArg = $path;
+    if ($path eq '')
+    {
+        $path = $default;
+        $bscPathArg = '+';
+    }
+
+    @bscPath = split(':', $path);
+    my @defaultPath = split(':', $default);
+    for (my $i = 0; $i <= $#bscPath; $i++)
+    {
+        if ($bscPath[$i] eq '+')
+        {
+            splice(@bscPath, $i, 1, @defaultPath);
+        }
+    }
+
+    if ($debug)
+    {
+        print STDERR "BSC Search Path: " . join(':', @bscPath) . "\n";
+    }
+}
+
+
+sub FindBSVFile($)
+{
+    my ($f) = @_;
+
+    foreach my $s (@bscPath)
+    {
+        my $p = $s . '/' . $f;
+        return $p if (-f $p);
+    }
+
+    return undef;
+}
+
+
+sub NoteImport($$)
+{
+    my ($fName, $impName) = @_;
+
+    # Is it a precompiled library?
+    return if (defined(FindBSVFile($impName . ".bi")));
+
+    my $imp = FindBSVFile($impName . ".bsv");
+    if (! defined($imp))
+    {
+        ErrorExit("Failed to find $impName imported by $fName");
+    }
+
+    print STDERR "  $fName imports $imp\n" if ($debug);
+
+    $bsvDep{$fName}{$imp} = 1;
+    ParseBSVFile($imp, 1);
+}
+
+
+sub ParseBSVFile($$)
+{
+    my ($fName, $flag) = @_;
+
+    # Already parsed this file?
+    return if (exists($bsvFiles{$fName}));
+    $bsvFiles{$fName} = $flag;
+
+    print STDERR "Parsing input file ${fName}\n" if ($debug);
+    ErrorExit("Can't find file $fName") if (! -f $fName);
+
+    my $inComment = 0;
+    my $BSV;
+    open($BSV, "bsc -E -wait-for-license -p $bscPathArg $fName |");
+    while (<$BSV>)
+    {
+        chomp;
+        my $s = $_;
+
+        # Drop comments.  This code isn't especially smart about slashes inside
+        # quotes, multiline comments, etc.
+        $s =~ s/\/\/.*//;               # Drop //...
+
+        if ($inComment)
+        {
+            if ($s =~ /\*[\)\/]/)     # End with *) or */
+            {
+                $s =~ s/.*\*[\)\/]//;
+                $inComment = 0;
+            }
+        }
+
+        $s =~ s/\(\*.*\*\)//;           # Drop (*...*)
+        $s =~ s/\/\*.*\*\///;           # Drop /*...*/
+
+        $s = '' if ($inComment);
+
+        if ($s =~ /[\(\/]\*/)        # Note start with (* or /*
+        {
+            $s =~ s/[\(\/]\*.*//;
+            $inComment = 1;
+        }
+
+        # Simplify lines.  Turn all whitespace into single spaces, no leading spaces.
+        $s =~ s/^\s*//;
+        $s =~ s/\s+/ /g;
+
+        # Finally ready to look for import statements
+        if ($s =~ /^import /)
+        {
+            # Skip non-Bluespec imports
+            if ($s =~ / \= module /)
+            {
+            }
+            else
+            {
+                my $imp = $s;
+                $imp =~ s/^import //;
+                $imp =~ s/[:; ].*//;
+                NoteImport($fName, $imp);
+            }
+        }
+    }
+    close($BSV);
+}
+
+
+my $pathArg = '';
+
+if (! GetOptions('bdir=s' => \$bscBDir,
+                 'debug!' => \$debug,
+                 'p=s' => \$pathArg))
+{
+    Usage();
+}
+Usage() if ($#ARGV < 0);
+
+SetSearchPath($pathArg);
+
+foreach my $bsv (@ARGV)
+{
+    ParseBSVFile($bsv, 0);
+}
+
+##
+## Emit dependence rules
+##
+foreach my $bsv (keys %bsvFiles)
+{
+    
+    my $b = $bsv;
+    $b =~ s/\.bsv$/.bi/;
+    $b =~ s/.*\///g;
+    print "${bscBDir}/${b}: ${bsv}\n";
+    foreach my $dep (keys %{$bsvDep{$bsv}})
+    {
+        ## Each file depends on the imported .bsv source files and the files
+        ## built from those sources
+
+        print "${bscBDir}/${b}: ${dep}\n";
+
+        my $d = $dep;
+        $d =~ s/\.bsv$/.bi/;
+        $d =~ s/.*\///g;
+        print "${bscBDir}/${b}: ${bscBDir}/${d}\n";
+    }
+    print "\n";
+}
+print "\n";
+
+
+##
+## These pseudo rules note dependence for building all objects and rebuilding
+## the dependence file itself.
+##
+
+foreach my $bsv (keys %bsvFiles)
+{
+    print ".depends: ${bsv}\n";
+}
+print "\n";
+
+print ".PHONY: all_intermediate\n";
+foreach my $bsv (keys %bsvFiles)
+{
+    ## Only describe subordinate files.  The top level file must be built by
+    ## a different rule.
+    if ($bsvFiles{$bsv} > 0)
+    {
+        my $b = $bsv;
+        $b =~ s/\.bsv$/.bi/;
+        $b =~ s/.*\///g;
+        print "all_intermediate: ${bscBDir}/${b}\n";
+    }
+}
+print "\n";
+
+##
+## Now for a hack.  Emit hints in the file for finding imported .bsv source files.
+## The .bi rule in the Makefile needs this information.
+##
+foreach my $bsv (keys %bsvFiles)
+{
+    print "#PATH_BSV: ${bsv}\n";
+}
+print "\n";
+

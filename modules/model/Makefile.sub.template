@@ -15,6 +15,14 @@ WRAPPER = $(DIR)_Wrapper
 WRAPPER_SYNTH_ID = mk_$(WRAPPER)
 LOGFILE = $(WRAPPER_SYNTH_ID).log
 
+##
+## Include build directories from subdirectories in the library path.  Derive
+## the build directories from ALL_DIRS.  Build directories are relative to
+## each directory.
+##
+ALL_BUILD_DIRS := $(subst :,/$(TMP_BSC_DIR):,$(ALL_DIRS))/$(TMP_BSC_DIR)
+ALL_LIB_DIRS = $(ALL_DIRS):$(ALL_BUILD_DIRS)
+
 ################################################################
 ## 
 
@@ -24,24 +32,69 @@ all: $(WRAPPER_SYNTH_ID).ba
 ################################################################
 ## 
 
-# .ba file is built as a side-effect of building the .v file.  Copy
-# it from the temp. directory.
+## .ba file is built as a side-effect of building the .v file.  Copy
+## it from the temp. directory.
 %.ba: %.v
 	cp -f $(TMP_BSC_DIR)/$@ .
 
-$(WRAPPER_SYNTH_ID).v: $(SUBDIRS) $(GEN_BSVS)
+$(WRAPPER_SYNTH_ID).v: .all_intermediate
 	@$(TRAP_ERRORS)
-	@mkdir -p $(TMP_BSC_DIR)
-	@$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
-	@$(BSC) $(BSC_FLAGS) -u -elab -verilog -p +:$(ALL_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; test $${PIPESTATUS[0]} -eq 0
+	@echo "Compiling $(WRAPPER).bsv" ; \
+	@$(BSC) $(BSC_FLAGS) -elab -verilog -p +:$(ALL_LIB_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; test $${PIPESTATUS[0]} -eq 0
 	@for bfile in $(BDPI_BAS); do \
 	  mv $(TMP_BSC_DIR)/$$bfile . ; \
         done
+
+##
+## This rule is a hack around the problem that subdirectories must be built
+## before the connection script can run.  See the comment on the depends rule.
+## In a perfect world this step wouldn't exist and the .v rule above would
+## depend directly on all_intermediate (without the leading dot).
+.all_intermediate: .depends
+	@$(MAKE) all_intermediate
+	touch $@
 
 .PHONY: $(SUBDIRS)
 $(SUBDIRS):
 	@$(TRAP_ERRORS)
 	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+##
+## This rule for building a module with Bluespec is complicated only because
+## the .bsv file may not be in the local directory.  hasim-bsc-mkdepend leaves
+## hints for finding source files in the .depends-bsv file.
+##
+%.bi:
+	@$(TRAP_ERRORS)
+	@ \
+	 log=$@ ; \
+	 log=$${log/%.bi/.log} ; \
+	 bsv=`basename $@` ; \
+	 bsv=$${bsv/%.bi/.bsv} ; \
+	 bsv=`grep "^#PATH_BSV: .*$$bsv$$" .depends-bsv` ; \
+	 bsv=$${bsv/##PATH_BSV: /} ; \
+	 echo "Compiling $$bsv" ; \
+	 $(BSC) $(BSC_FLAGS) -elab -verilog -p +:$(ALL_LIB_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) $$bsv 2>&1 | tee $$log ; test $${PIPESTATUS[0]} -eq 0
+
+
+##
+## Ideally the target of this rule would be .depends-bsv.
+## Unfortunately this doesn't work because the connection script has to run
+## after all subdirectories are built.  Putting a dependence here on subdirectories
+## causes a loop.
+##
+## ***** BE CAREFUL ***** hasim-bsc-mkdepend generates dependence for .depends.
+##    If you change the name here you must also change it in the script.
+##
+.depends: $(GEN_BSVS) $(SUBDIRS)
+	@mkdir -p $(TMP_BSC_DIR)
+	@$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
+	@hasim-bsc-mkdepend -bdir $(TMP_BSC_DIR) -p +:$(ALL_LIB_DIRS) $(WRAPPER).bsv > .depends-bsv
+	touch $@
+
+-include .depends-bsv
+
+all_intermediate:
 
 ################################################################
 ## 
@@ -62,6 +115,7 @@ help:
 clean: clean_subdirs
 	@rm -rf $(TMP_BSC_DIR)/*.*
 	@rm -f $(WRAPPER).bsv $(WRAPPER_SYNTH_ID).ba $(WRAPPER_SYNTH_ID).v $(LOGFILE)
+	@rm -f .depends-bsv .depends .all_intermediate
 	@rm -f *~	
 
 .PHONY: clean_subdirs

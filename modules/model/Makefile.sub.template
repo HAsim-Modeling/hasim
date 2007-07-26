@@ -39,7 +39,7 @@ all: $(WRAPPER_SYNTH_ID).ba
 
 $(WRAPPER_SYNTH_ID).v: .all_intermediate
 	@$(TRAP_ERRORS)
-	@echo "Compiling $(WRAPPER).bsv" ; \
+	@echo "Compiling $(WRAPPER).bsv"
 	@$(BSC) $(BSC_FLAGS) -elab -verilog -p +:$(ALL_LIB_DIRS):$(TMP_BSC_DIR) -bdir $(TMP_BSC_DIR) -g $(WRAPPER_SYNTH_ID) $(WRAPPER).bsv 2>&1 | tee $(LOGFILE) ; test $${PIPESTATUS[0]} -eq 0
 	@for bfile in $(BDPI_BAS); do \
 	  mv $(TMP_BSC_DIR)/$$bfile . ; \

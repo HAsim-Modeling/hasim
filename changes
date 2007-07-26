@@ -6359,3 +6359,13 @@ Directory modules/model
   duplicate builds.
 - Directory structure still makes it difficult to compute full dependence
   graph.  Many modules are rebuilt unnecessarily.
+
+----------
+mcadler     Date: Wed Jul 25 21:22:15 EDT 2007  CSN: CSN-hasim-225
+                  Thu Jul 26 01:22:15 UTC 2007
+
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          224 
+
+Oops.

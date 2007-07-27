@@ -40,9 +40,3 @@ BATCH_OPTS = -P mmdc_suse -C farm
 BATCH_LAUNCH = $(BATCH_CMD) $(BATCH_OPTS)
 
 TRAP_ERRORS = trap "exit 1" ERR
-
-.bsv.ba: $(SUBDIR_BAS)
-	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
-
-.bsv.v: $(SUBDIR_VS)
-	$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)

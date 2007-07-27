@@ -6391,3 +6391,34 @@ Directory modules/model
 
 Fixes libcurses problem on 64 bit machines.  Search for 64 bit version of
 the library first.
+
+----------
+mpellaue    Date: Fri Jul 27 18:06:50 EDT 2007  CSN: CSN-hasim-228
+                  Fri Jul 27 22:06:50 UTC 2007
+
+
+Directory libperl/HAsim/lib/HAsim
+ Build.pm                  Locally Modified          227 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          227 
+ hasim-connect             Locally Modified          227 
+ hasim-bsc-mkdepend        Locally Modified          227 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          227 
+ Makefile.include.template Locally Modified          227 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          227 
+
+
+The Makefile for hasim models is now fully parallel. A file is now never built
+more than once.
+
+TBD: remove spurious recompiles of surrogates which the Makefile dependencies
+occaisionally force.
+
+TBD: roll this over for pure bluespec models.
+
+Michael P.

@@ -176,4 +176,27 @@ sub get_bdpi_names {
     return ();
 }
 
+sub make_wrapper_name {
+    my $name = shift;
+  
+    return $name . "_Wrapper";
+}
+
+sub make_module_name {
+    my $name = shift;
+  
+    return "mk_" . $name;
+}
+
+sub get_synthesis_boundary_name {
+    my $module = shift;
+    foreach my $param_r ($module->parameters()) {
+	my %param = %{$param_r};
+	if ($param{'name'} eq "SYNTH_BOUNDARY") {
+	    return $param{'default'};
+	}
+    }
+    HAsim::Util::WARN_AND_DIE("get_synthesis_boundary_name called on non-synthesis boundary module\n");
+}
+
 return 1;

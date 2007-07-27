@@ -108,6 +108,7 @@ Asim::init()
 
 
 print "Opening... $model\n" if $debug;
+    
 
 if ($configure) {
     print "Configuring build tree for $model . . . ";
@@ -244,6 +245,12 @@ sub configure_build_tree {
     my $modelfile = shift;
     my $model = Asim::Model->new($modelfile);
 
+    if (defined(&Asim::Model::embed_submodels)) {
+      print "Using Asim::Model embed_submodels\n";
+      $model->embed_submodels();
+    } else {
+      print "Using Asim::Model without embed_submodels\n";
+    }   
     # (1) make directories
     make_dirs($model);
 
@@ -277,10 +284,7 @@ sub make_dirs {
     my $dir = HAsim::Util::path_append($builddir,$HAsim::Xilinx::tmp_xilinx_dir);
     $status = system("mkdir -p " . $dir);
 
-    $dir = HAsim::Util::path_append($builddir,$HAsim::Bluespec::tmp_bsc_dir);
-    $status = system("mkdir -p " . $dir);
-
-    __make_dirs($root,HAsim::Util::path_append($builddir,"arch"));
+    __make_dirs($root,HAsim::Util::path_append($builddir,"arch"), 1);
     return 1;
 }
 
@@ -289,16 +293,24 @@ sub make_dirs {
 sub __make_dirs {
     my $module = shift;
     my $parent_dir = shift;
+    my $isroot = shift;
 
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
     if (HAsim::Build::is_synthesis_boundary($module)) {
 	$status = system("mkdir -p $my_dir");
+        my $bdir = HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir);
+        $status = system("mkdir -p " . $bdir);
+        #Generate a wrapper bsv file for that directory.
+        generate_wrapper($module, $my_dir, $isroot);
+        #Generate an empty surrogate that will be filled in later
+        generate_empty_surrogate($module, $parent_dir);
+        $isroot = 0;
     } 
     
     ## recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-	__make_dirs($child,$my_dir);
+	__make_dirs($child,$my_dir, $isroot);
     }
     
     return 1;
@@ -627,8 +639,8 @@ sub __generate_makefile_sub {
 	## @DIR@
 	HAsim::Util::hash_set($current_replacements_r,'@DIR@',$module->provides());
 	
-	## @PARENT_PATH@
-	HAsim::Util::hash_set($current_replacements_r,'@PARENT_PATH@',$parent_dir);
+	## @FULL_DIR@
+	HAsim::Util::hash_set($current_replacements_r,'@FULL_DIR@',"$builddir/$my_dir");
 	
 	## @DOTS_TO_MAKEFILE_INCL@
 	my $dots_path = $my_dir;
@@ -644,8 +656,9 @@ sub __generate_makefile_sub {
 	if (HAsim::Build::is_synthesis_boundary($child)) {
 	    my $subdir = $child->provides();
 	    HAsim::Util::hash_append($current_replacements_r," ",'@SUBDIRS@',$subdir);
-	    my $child_ba = HAsim::Util::path_append($subdir, HAsim::Build::get_wrapper($child) . ".ba");
-	    HAsim::Util::hash_append($current_replacements_r," ",'@SUBDIR_BAS@',$child_ba);
+            my $child_wrap = HAsim::Build::make_wrapper_name($subdir);
+	    my $child_bi = "${builddir}/${my_dir}/${subdir}/\$(TMP_BSC_DIR)/${child_wrap}.bi";
+	    HAsim::Util::hash_append($current_replacements_r," ",'@SUBDIR_WRAPPER_BIS@',$child_bi);
 	}
     }
 
@@ -675,7 +688,6 @@ sub __generate_makefile_sub {
     }
 
     my $mod_rule = "\n$mod_bsv: $deps\n\ttouch \$\@\n";
-    HAsim::Util::hash_append($current_replacements_r, " ", '@GEN_DEPS@', $mod_rule);
     HAsim::Util::hash_append($current_replacements_r, " ", '@GEN_BSVS@', $mod_bsv);
 
     #recurse
@@ -696,3 +708,127 @@ sub __generate_makefile_sub {
     }
 }
 
+
+
+#############################################################
+# Generate a wrapper file that turns all Connections to wires
+# at a synthesis boundary.
+
+sub generate_wrapper {
+    my $module = shift;
+    my $dirname = shift;
+    my $isroot = shift;
+
+    my $metatype = $module->provides();
+    my $wrapper = HAsim::Build::make_wrapper_name($metatype) . ".bsv";
+    
+    CORE::open(WRAPPER, "> $dirname/$wrapper") || return undef;
+
+    print WRAPPER "import ModuleCollect::*;\n";
+    print WRAPPER "// These are well-known/required hasim modules\n";
+    print WRAPPER "import hasim_common::*;\n";
+    print WRAPPER "\n";
+
+    #
+    # add defines for parameters
+    #   TBD: Share this code with hasim-configure
+
+    print WRAPPER "// These are the parameters for the module\n";
+
+    my @p = ();
+    push(@p, $module->parameters());
+
+    foreach my $p (@p) {
+      my $pname = $p->name();
+      my $pvalue = $p->value();
+
+      print WRAPPER "`define $pname $pvalue\n";
+    }
+    print WRAPPER "\n";
+
+    #
+    # add includes for public sources
+    #   Note: Can't just include 'provides' name since it bsc won't 
+    #         find the correct instance of the file
+    #
+
+    print WRAPPER "// import non-synthesis public files\n";
+    foreach my $file_root ($module->public()) {
+	print WRAPPER "`include \"$file_root\"\n";
+    }
+    print WRAPPER "\n";
+
+    print WRAPPER "// import non-synthesis private files\n";
+    foreach my $file_root ($module->private()) {
+	print WRAPPER "`include \"$file_root\"\n";
+    }
+    print WRAPPER "\n";
+
+    if ($isroot) {
+        print WRAPPER "\n";
+        print WRAPPER "import toplevel_wires::*;\n";
+        print WRAPPER "\n";
+    print WRAPPER "(* synthesize *)\n";
+	print WRAPPER "module " . HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($metatype)) . " (TopLevelWires);\n";    
+    } else {
+    print WRAPPER "(* synthesize *)\n";
+	print WRAPPER "module " . HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($metatype)) . " (WithConnections);\n";    
+    }
+    print WRAPPER "\n";
+
+    my @child_info_vars = ();
+    my $synth_id = HAsim::Build::get_synthesis_boundary_name($module);
+    print WRAPPER "    // instantiate own module\n";
+    if ($isroot) {
+	print WRAPPER "    let m <- instantiateTopLevel($synth_id);\n";
+    } else {
+	print WRAPPER "    let m <- instantiateWithConnections($synth_id);\n";
+    }
+    print WRAPPER "\n";
+
+    print WRAPPER "    return m;\n";
+    print WRAPPER "\n";
+
+    print WRAPPER "endmodule\n";
+
+    CORE::close(WRAPPER);
+}
+
+
+sub generate_empty_surrogate {
+    my $module = shift;
+    my $dir = shift;
+    
+    my $metatype = $module->provides();
+
+    my $synth_id = HAsim::Build::get_synthesis_boundary_name($module);
+    my $wrap_var = "wrap_" . $metatype;
+    my $mk_wrapper = HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($metatype));
+    
+    my $indent = "   ";
+
+    CORE::open(SURROGATE, "> ${dir}/${metatype}.bsv");
+	
+    print SURROGATE "$indent // Surrogate for $metatype (initial)\n";
+
+
+    print SURROGATE "\n";
+    print SURROGATE "// These are well-known/required hasim modules\n";
+    print SURROGATE "import hasim_common::*;\n";
+    print SURROGATE "\n";
+
+    print SURROGATE "import " . HAsim::Build::make_wrapper_name($metatype) . "::*;\n";
+
+    print SURROGATE "module [HASim_Module] $synth_id ();\n";    
+    print SURROGATE "$indent // 1. instantiate wrapper\n";
+    print SURROGATE "$indent WithConnections $wrap_var <- $mk_wrapper();\n";
+
+    print SURROGATE "$indent // 2. log sends & recvs\n";
+    print SURROGATE "$indent // This will be filled in by hasim-connect\n";
+    print SURROGATE "$indent addConnections($wrap_var, List::nil, List::nil);\n";
+
+    print SURROGATE "endmodule\n";
+    print SURROGATE "\n";
+
+    CORE::close(SURROGATE);
+}

@@ -19,6 +19,8 @@ use Getopt::Long;
 use Asim;
 use AsimShell;
 
+use HAsim;
+
 ############################################################
 # handle command line
 
@@ -53,106 +55,10 @@ my $metatype = shift;
 Asim::init()
     || die("Unable to initialize Asim::\n");
 
-
-print_wrapper($modelfile,$metatype) ;
 create_surrogates($modelfile, $metatype);
 
 exit 0;
 
-
-############################################################
-# 
-sub print_wrapper {
-    my $modelfile = shift;
-    my $metatype = shift;
-
-    my $model = Asim::Model->new($modelfile);
-
-    if (defined(&Asim::Model::embed_submodels)) {
-      print "Using Asim::Model embed_submodels\n";
-      $model->embed_submodels();
-    } else {
-      print "Using Asim::Model without embed_submodels\n";
-    }       
-
-    my $root = $model->modelroot();
-#    $model->dump();
-    my $module = $root->find_module_providing($metatype);
-
-    my $wrapper = make_wrapper_name($metatype) . ".bsv";
-    
-    if (need_to_regenerate_wrapper($wrapper))
-    {
-      CORE::open(WRAPPER, "> $wrapper") || return undef;
-
-      print WRAPPER "import ModuleCollect::*;\n";
-      print WRAPPER "// These are well-known/required hasim modules\n";
-      print WRAPPER "import hasim_common::*;\n";
-      print WRAPPER "\n";
-
-      #
-      # add defines for parameters
-      #   TBD: Share this code with hasim-configure
-
-      print WRAPPER "// These are the parameters for the module\n";
-
-      my @p = ();
-      push(@p, $module->parameters());
-
-      foreach my $p (@p) {
-	my $pname = $p->name();
-	my $pvalue = $p->value();
-
-	print WRAPPER "`define $pname $pvalue\n";
-      }
-      print WRAPPER "\n";
-
-      #
-      # add includes for public sources
-      #   Note: Can't just include 'provides' name since it bsc won't 
-      #         find the correct instance of the file
-      #
-
-      print WRAPPER "// import non-synthesis children\n";
-      foreach my $file_root (get_srcs_at_synth_boundary($module)) {
-	  print WRAPPER "`include \"$file_root\"\n";
-      }
-      print WRAPPER "\n";
-
-      if ($module->issame($root)) {
-          print WRAPPER "\n";
-          print WRAPPER "import toplevel_wires::*;\n";
-          print WRAPPER "\n";
-      print WRAPPER "(* synthesize *)\n";
-	  print WRAPPER "module " . make_module_name(make_wrapper_name($metatype)) . " (TopLevelWires);\n";    
-      } else {
-      print WRAPPER "(* synthesize *)\n";
-	  print WRAPPER "module " . make_module_name(make_wrapper_name($metatype)) . " (WithConnections);\n";    
-      }
-      print WRAPPER "\n";
-
-      my @child_info_vars = ();
-      my $synth_id = get_synthesis_boundary_name($module);
-      print WRAPPER "    // instantiate own module\n";
-      if ($module->issame($root)) {
-	  print WRAPPER "    let m <- instantiateTopLevel($synth_id);\n";
-      } else {
-	  print WRAPPER "    let m <- instantiateWithConnections($synth_id);\n";
-      }
-      print WRAPPER "\n";
-
-      print WRAPPER "    return m;\n";
-      print WRAPPER "\n";
-
-      print WRAPPER "endmodule\n";
-
-      CORE::close(WRAPPER);
-    }
-    else
-    {
-      print "No need to re-generate $wrapper\n";
-    }
-}
 
 ############################################################
 # 
@@ -178,7 +84,7 @@ sub create_surrogates {
     # For each child synthtesis boundary
     foreach my $submodule (get_sub_synth_modules($module,1)) {
 	my $submetatype = $submodule->provides();
-        my $synth_id = get_synthesis_boundary_name($submodule);
+        my $synth_id = HAsim::Build::get_synthesis_boundary_name($submodule);
 	my $filename = "$submetatype.bsv";
 
 	my $wrap_var = "wrap_" . $submetatype;
@@ -187,8 +93,8 @@ sub create_surrogates {
 	my $log_file = 
 	    $model->build_dir() . "/" . 
 	    get_module_build_dir($module,$root,"arch") . "/" .
-	    $submetatype . "/" .
-	    $mk_wrapper . ".log";
+	    $submetatype . "/.bsc/" .
+	    make_wrapper_name($submetatype) . ".log";
 
         #print "<<<< $log_file\n";
 	
@@ -244,7 +150,7 @@ sub create_surrogates {
 	}
 	else
 	{
-	  print "No need to re-generate $filename\n";
+	  print "hasim-connect: No need to re-generate $filename\n";
 	}
     }
 }
@@ -278,7 +184,7 @@ sub get_module_build_dir2 {
 
     while (defined $current) {
 	my $dir = "";
-	if (is_synthesis_boundary($current)) {
+	if (HAsim::Build::is_synthesis_boundary($current)) {
 	    my $dir = $current->provides();
 	}
 
@@ -303,7 +209,7 @@ sub get_module_build_dir {
     my $tmp2 = $current->provides();
 #    print "SEARCHING FOR $tmp FROM $tmp2\n";
 
-    if ( is_synthesis_boundary($current) ) {
+    if ( HAsim::Build::is_synthesis_boundary($current) ) {
 	$path = $path . "/" . $current->provides();
 	if ($current->issame($target)) {
 #	    print "RETURNING PATH: $path\n";
@@ -344,7 +250,7 @@ sub get_sub_synth_modules {
     my $start_module = shift;
 
     my @module_list = ();
-    if (is_synthesis_boundary($module) && $start_module == 0) {
+    if (HAsim::Build::is_synthesis_boundary($module) && $start_module == 0) {
 	push (@module_list,$module);
     } else {
 #    } elsif (((is_synthesis_boundary($module) && $start_module == 1)) ||
@@ -354,16 +260,6 @@ sub get_sub_synth_modules {
 	}
     }
     return @module_list;
-}
-
-############################################################
-# 
-sub get_srcs_at_synth_boundary {
-    my $module = shift;
-
-    my @srcs = ($module->public());
-
-    return @srcs;
 }
 
 ############################################################
@@ -436,12 +332,14 @@ sub need_to_regenerate_surrogate {
       
       if ($ctype eq "Send") 
       {
+        return 1 unless defined($sends_existing[$cidx]);
         my $existing = $sends_existing[$cidx];
 	#print "Testing if Send $cname [$cidx] is different from $existing.\n";
         $these_differ = $cname ne $existing;
       } 
       elsif ($ctype eq "Rec") 
       {
+        return 1 unless defined($recvs_existing[$cidx]);
         my $existing = $recvs_existing[$cidx];
 	#print "Testing if Recv $cname [$cidx] is different from $existing.\n";
         $these_differ = $cname ne $existing;
@@ -454,21 +352,6 @@ sub need_to_regenerate_surrogate {
   }
 
   return $differ;
-}
-
-sub need_to_regenerate_wrapper {
-
-  my $filename = shift;
-  
-  #This could be slightly more intelligent and check that the name of the 
-  #synthesis boundary hasn't changed.
-  
-  #For now just check that the file exists
-  
-  my $exists = CORE::open(WRAPPER, "< $filename");
-  
-  return !$exists;
-  
 }
 
 sub get_provider {
@@ -490,28 +373,6 @@ sub get_provider {
     return 0;
 }
 
-sub get_synthesis_boundary_name {
-    my $module = shift;
-    foreach $param_r ($module->parameters()) {
-	my %param = %{$param_r};
-	if ($param{'name'} eq "SYNTH_BOUNDARY") {
-	    return $param{'default'};
-	}
-    }
-    die "$prog: get_synthesis_boundary_name called on non-synthesis boundary module\n";
-}
-
-sub is_synthesis_boundary {
-    my $module = shift;
-
-    foreach $param_r ($module->parameters()) {
-	my %param = %{$param_r};
-	if ($param{'name'} eq "SYNTH_BOUNDARY") {
-	    return 1;
-	}
-    }
-    return 0;
-}
 
 sub WARN {
     my $msg = shift;

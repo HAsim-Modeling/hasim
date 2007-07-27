@@ -7,17 +7,13 @@ import hasim_common::*;
 //  on the border between Arlington, MA and Somerville, MA)
 
 // Version 0: just model the normal cycle of states
-
-// An empty interface:
-interface TL;
-endinterface: TL
-
+  
 typedef enum {
    GreenNS, AmberNS, RedAfterNS,
    GreenE, AmberE, RedAfterE,
    GreenW, AmberW, RedAfterW} TLstates deriving (Eq, Bits);
 
-module [HASim_Module] mk_traffic_light(TL);
+module [HASim_Module] mk_traffic_light();
    Reg#(TLstates) state <- mkReg(RedAfterW);
    
    Connection_Send#(Bit#(4)) link_leds <- mkConnection_Send("fpga_leds");

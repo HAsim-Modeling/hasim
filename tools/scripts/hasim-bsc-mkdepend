@@ -94,6 +94,24 @@ sub FindBSVFile($)
     return undef;
 }
 
+sub FindBSVLibrary($)
+{
+    my ($f) = @_;
+
+    if (! defined$ENV{'BLUESPECDIR'}) {
+      ErrorExit("BLUESPECDIR undefined in environment.");
+    }
+
+    my $bsc_lib_dir = $ENV{'BLUESPECDIR'};
+    
+    my $p = $bsc_lib_dir . '/Prelude/' . $f;
+    return $p if (-f $p);
+
+    $p = $bsc_lib_dir . '/Libraries/' . $f;
+    return $p if (-f $p);
+
+    return undef;
+}
 
 sub NoteImport($$)
 {
@@ -103,7 +121,7 @@ sub NoteImport($$)
     return if (($impName eq "BDPI") || ($impName eq "BVI"));
 
     # Is it a precompiled library?
-    return if (defined(FindBSVFile($impName . ".bi")));
+    return if (defined(FindBSVLibrary($impName . ".bi")));
 
     my $imp = FindBSVFile($impName . ".bsv");
     if (! defined($imp))
@@ -293,24 +311,26 @@ foreach my $bsv (@ARGV)
 foreach my $bsv (keys %bsvFiles)
 {
     
-    my $b = $bsv;
-    $b =~ s/\.bsv$/.bi/;
-    $b =~ s/.*\///g;
-    print "${bscBDir}/${b}: ${bsv}\n";
+    my $bi = $bsv;
+    $bi =~ s/\.bsv$/.bi/;
+    $bi =~ s/(.*)\///g;
+    my $bdir = $1;
+    print "${bdir}/${bscBDir}/${bi}: ${bsv}\n";
     foreach my $dep (keys %{$bsvDep{$bsv}})
     {
         ## Each file depends on the imported .bsv source files and the files
         ## built from those sources
 
-        print "${bscBDir}/${b}: ${dep}\n";
+        print "${bdir}/${bscBDir}/${bi}: ${dep}\n";
 
         if ($bsvDep{$bsv}{$dep} != 0)
         {
             # For imports add dependence on built object
             my $d = $dep;
             $d =~ s/\.bsv$/.bi/;
-            $d =~ s/.*\///g;
-            print "${bscBDir}/${b}: ${bscBDir}/${d}\n";
+            $d =~ s/(.*)\///g;
+            my $ddir = $1;
+            print "${bdir}/${bscBDir}/${bi}: ${ddir}/${bscBDir}/${d}\n";
         }
     }
     print "\n";
@@ -325,11 +345,11 @@ print "\n";
 
 foreach my $bsv (keys %bsvFiles)
 {
-    print ".depends: ${bsv}\n";
+    print ".depends-bsv: ${bsv}\n";
 }
 print "\n";
 
-print ".PHONY: all_intermediate\n";
+#print ".PHONY: all_intermediate\n";
 foreach my $bsv (keys %bsvFiles)
 {
     ## Only describe subordinate files.  The top level file must be built by
@@ -339,7 +359,7 @@ foreach my $bsv (keys %bsvFiles)
         my $b = $bsv;
         $b =~ s/\.bsv$/.bi/;
         $b =~ s/.*\///g;
-        print "all_intermediate: ${bscBDir}/${b}\n";
+        #print "all_intermediate: ${bscBDir}/${b}\n";
     }
 }
 print "\n";

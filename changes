@@ -6380,3 +6380,14 @@ Directory tools/scripts
 
 - Note dependence on included source files.
 - Special case BDPI and BVI imports (Bluespec system libraries)
+
+----------
+mcadler     Date: Fri Jul 27 13:59:40 EDT 2007  CSN: CSN-hasim-227
+                  Fri Jul 27 17:59:40 UTC 2007
+
+
+Directory modules/model
+ Makefile.include.template Locally Modified          225 
+
+Fixes libcurses problem on 64 bit machines.  Search for 64 bit version of
+the library first.

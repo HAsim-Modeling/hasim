@@ -11,7 +11,7 @@ BSC_FLAGS = -steps 1000000 \
 	    -no-show-method-conf \
             -no-opt-bool
 
-LDFLAGS = -L /usr/lib/curses
+LDFLAGS = -L /usr/lib64/curses -L /usr/lib/curses
 VSIM_LINK_FLAGS = -I $(IVERILOGDIR)/include
 
 APM_NAME = @APM_NAME@

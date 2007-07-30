@@ -11,8 +11,16 @@ BSC_FLAGS = -steps 1000000 \
 	    -no-show-method-conf \
             -no-opt-bool
 
+#OLEVEL = -O3
+OLEVEL = 
+
 LDFLAGS = -L /usr/lib64/curses -L /usr/lib/curses
 VSIM_LINK_FLAGS = -I $(IVERILOGDIR)/include
+
+CPP = c++
+CPP_FLAGS = -Wall -Wno-unused $(OLEVEL) -g -D_FILE_OFFSET_BITS=64 -I/proj/vssad/local/x86_64_linux26/libexec/bluespec/Bluesim -fno-rtti
+
+BLUESIM_LINK_LIBS = $${BLUESPECDIR}/Bluesim/g++4_64/libbsui.a $${BLUESPECDIR}/Bluesim/g++4_64/libedit.a $${BLUESPECDIR}/Bluesim/g++4_64/libbskernel.a $${BLUESPECDIR}/Bluesim/g++4_64/libbsprim.a -lm -lcurses
 
 APM_NAME = @APM_NAME@
 BUILD_DIR = @BUILD_DIR@

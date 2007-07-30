@@ -12,10 +12,26 @@ OS = $(CXXS:%.cxx=%.o)
 
 ROOT_BA = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).ba
 ROOT_V = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).v
-ALL_BAS = @ALL_BAS@
-ALL_VS = @ALL_VS@
-ALL_CS = @ALL_CS@
+
+GIVEN_VS = @GIVEN_VS@
+GIVEN_CS = @GIVEN_CS@
+
 BDPI_BAS = @BDPI_BAS@
+
+GEN_CXXS = $(TMP_BSC_DIR)/schedule.cxx @GEN_CXXS@
+GEN_BAS = @GEN_BAS@
+GEN_VS = @GEN_VS@
+
+GEN_OS = $(GEN_CXXS:%.cxx=%.o)
+GIVEN_OS = $(GIVEN_CS:%.c=%.o)
+WRAPPER_BIS = $(GEN_BAS:%.ba=%.bi)
+
+
+ALL_BAS = $(GEN_BAS) $(BDPI_BAS)
+ALL_VS = $(GEN_VS) $(GIVEN_VS)
+ALL_CS = $(GEN_CXXS) $(GIVEN_CS)
+ALL_OS = $(GEN_OS) $(GIVEN_OS)
+
 
 ################################################################
 ## Xilinx tool variables
@@ -100,7 +116,7 @@ $(XILINX_APM_NAME).ngc: make_subdir $(XST_FILE)
 vexe: make_subdir
 	@$(TRAP_ERRORS)
 	ln -f -s $(ARCH_DIR)/$(ROOT_DIR)/vpi_* .
-	$(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) $(ALL_CS) $(BDPI_BAS)
+	$(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) $(GIVEN_CS) $(BDPI_BAS)
 	rm -f vpi_*
 	if [ -f "directc.sft" ] ; then mv -f directc.sft $(TMP_BSC_DIR) ; fi
 	@echo "#!/bin/sh" >$(APM_NAME)
@@ -114,13 +130,33 @@ vexe: make_subdir
 ## Bluesim generation rules
 
 .PHONY: exe
-exe: make_subdir
-	$(BSC) $(BSC_FLAGS) $(LDFLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID)  -simdir $(TMP_BSC_DIR) -o $(APM_NAME).exe $(ALL_BAS) $(ALL_CS)
+exe: $(APM_NAME).exe
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "$(BUILD_DIR)/$(APM_NAME).exe" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
 	ln -fs $(APM_NAME).exe simv
 	@echo "Generated launch script \"$(APM_NAME)\"";
+
+$(APM_NAME).exe: $(ALL_OS)
+	@ \
+	 $(CPP) $(CPP_FLAGS) $(LDFLAGS) -DTOP=$(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_OS) $(BLUESIM_LINK_LIBS)
+
+$(GEN_CXXS): generate_cxxs
+
+.PHONY: generate_cxxs
+generate_cxxs: make_subdir
+	@$(BSC) $(BSC_FLAGS) $(LDFLAGS) -KILLsimBlocksToC -sim -e $(ROOT_WRAPPER_SYNTH_ID) -simdir $(TMP_BSC_DIR) -o $(APM_NAME).exe $(ALL_BAS)
+
+$(TMP_BSC_DIR)/%.o: $(TMP_BSC_DIR)/%.cxx
+	@ \
+	 $(CPP) $(CPP_FLAGS) -c -o $@ $<
+
+## Dependencies ensure correct build order of generated .o files
+
+$(TMP_BSC_DIR)/schedule.o: $(TMP_BSC_DIR)/$(ROOT_WRAPPER_SYNTH_ID).o
+
+@GEN_DEPS@
+
 
 ################################################################
 ##

@@ -6451,3 +6451,23 @@ Directory tools/scripts
  hasim-configure           Locally Modified          229 
 
 Minor typo fix.
+
+----------
+mpellaue    Date: Mon Jul 30 17:40:39 EDT 2007  CSN: CSN-hasim-231
+                  Mon Jul 30 21:40:39 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          230 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          230 
+ Makefile.top.template     Locally Modified          230 
+ Makefile.include.template Locally Modified          230 
+
+
+Parallel linking is now available. By turning off -O3 in Bluesim links we get
+MAJOR speedup in the linking step for about a 30% slowdown in runspeeds. To
+re-enable change $OLEVEL in Makefile.include.
+
+Michael P.

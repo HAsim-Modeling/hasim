@@ -35,19 +35,6 @@ all: $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba
 ################################################################
 ## 
 
-$(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).o: $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba
-	@ \
-	 bsv=`basename $@` ; \
-	 bsv=$${bsv/%.o/.bsv} ; \
-	 top=$${bsv/%.bsv/} ; \
-	 full_bsv=`grep "^#PATH_BSV: .*$$bsv$$" .depends-bsv` ; \
-	 full_bsv=$${full_bsv/##PATH_BSV: /} ; \
-	 bdir=$${full_bsv/$$bsv/} ; \
-	 bdir=$${bdir}.bsc ; \
-	 echo "Generating and Linking C for $$top" ; \
-	 $(BSC) $(BSC_FLAGS) -sim -p +:$(ALL_LIB_DIRS):$(TMP_BSC_DIR) -bdir $$bdir -vdir $$bdir -simdir $$bdir -o $$bdir/$$top -e $$top $<
-
-
 ## .ba file is built as a side-effect of building the .v file.
 $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba: $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).v
 
@@ -56,8 +43,9 @@ $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).v: $(SURROGATE_BIS) $(TMP_BSC_DIR)/$(WRAPPER)
 $(SURROGATE_BIS): .surrogates
 
 .surrogates: $(SUBDIR_WRAPPER_BIS) 
-	@$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
-        @touch $@
+	@ \
+	 $(CONNECTION_SCRIPT) $(APM_FILE) $(DIR) ;\
+	 touch $@
 
 ##
 ## This rule for building a module with Bluespec is complicated only because
@@ -74,9 +62,9 @@ $(SURROGATE_BIS): .surrogates
 	 full_bsv=`grep "^#PATH_BSV: .*$$bsv$$" .depends-bsv` ; \
 	 full_bsv=$${full_bsv/##PATH_BSV: /} ; \
 	 bdir=$${full_bsv/$$bsv/} ; \
-         bdir=$${bdir}.bsc ; \
+         bdir=$${bdir}$(TMP_BSC_DIR) ; \
 	 echo "Compiling $$full_bsv" ; \
-	 $(BSC) $(BSC_FLAGS) -elab -verilog -p +:$(ALL_LIB_DIRS):$(TMP_BSC_DIR) -bdir $$bdir $$full_bsv 2>&1 | tee $$log ; test $${PIPESTATUS[0]} -eq 0
+	 $(BSC) $(BSC_FLAGS) -elab -verilog -p +:$(ALL_LIB_DIRS):$(TMP_BSC_DIR) -bdir $$bdir -vdir $$bdir -simdir $$bdir $$full_bsv 2>&1 | tee $$log ; test $${PIPESTATUS[0]} -eq 0
 
 
 ##

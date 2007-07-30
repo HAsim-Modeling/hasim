@@ -431,7 +431,7 @@ sub __make_symlinks {
         
         # make src relative
         my $relsrc = File::Spec->abs2rel($src, dirname($tgt));
-	$status = system("ln -f -s $relsrc $tgt") unless (readlink($tgt) eq $relsrc);
+	$status = system("ln -f -s $relsrc $tgt");
     }
 
     # recurse
@@ -531,7 +531,7 @@ sub generate_makefile_top {
     HAsim::Util::hash_set($replacements_r,'@PART@',$HAsim::Xilinx::part_num);
 
     # gather other info recursively
-    __generate_makefile_top($root,"arch",$replacements_r);
+    __generate_makefile_top($root,"arch",$replacements_r, 1);
 
     my $template = HAsim::Build::get_makefile_top_template($model);
     my $makefile = HAsim::Util::path_append($builddir,"Makefile");
@@ -545,45 +545,55 @@ sub __generate_makefile_top {
     my $module = shift;
     my $parent_dir = shift;
     my $replacements_r = shift;
+    my $is_root = shift;
 
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
     if (HAsim::Build::is_synthesis_boundary($module)) {
 
-	# @ALL_VS@ - bsc generated .v files
+	# @GEN_VS@ - bsc generated .v files
 
 	my $fileroot = HAsim::Build::get_wrapper($module);
 	my $v_file = "$fileroot.v";
-	HAsim::Util::hash_append($replacements_r," ",'@ALL_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, "\$(TMP_BSC_DIR)", $v_file));
+	HAsim::Util::hash_append($replacements_r," ",'@GEN_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, "\$(TMP_BSC_DIR)", $v_file));
 
-
-	# @ALL_BAS@
+	# @GEN_BAS@
 	my $ba_file = "$fileroot.ba";
-	HAsim::Util::hash_append($replacements_r," ",'@ALL_BAS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, "\$(TMP_BSC_DIR)", $ba_file));
+	HAsim::Util::hash_append($replacements_r," ",'@GEN_BAS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, "\$(TMP_BSC_DIR)", $ba_file));
+        
+	# @GEN_CXXS@ are local to the toplevel directory
+	my $cxx_file = "$fileroot.cxx";
+	HAsim::Util::hash_append($replacements_r," ",'@GEN_CXXS@',HAsim::Util::path_append("\$(TMP_BSC_DIR)", $cxx_file));
+        
+        # @GEN_DEPS@ makes sure generated .cxx files are compiled in the right order
+        my $my_o = HAsim::Build::make_wrapper_name($module->provides());
+        my $parent_o = HAsim::Build::make_wrapper_name($parent_dir);
+        if (!$is_root)
+        {
+	  HAsim::Util::hash_append($replacements_r," ",'@GEN_DEPS@',"\n\$(TMP_BSC_DIR)/$parent_o.o: \$(TMP_BSC_DIR)/$my_o.o\n");
+        }
     }
 
-    # collect BDPI-exported files and add it to the @ALL_BAS@ and @BDPI_BAS@ list
+    # collect BDPI-exported files and add it to the @BDPI_BAS@ list
     my @bdpi_names = HAsim::Build::get_bdpi_names($module);
     foreach my $n (@bdpi_names) {
         my $fname = "$n.ba";
-	    HAsim::Util::hash_append($replacements_r, " ", '@ALL_BAS@',
-                                 HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, "\$(TMP_BSC_DIR)", $fname));
 	    HAsim::Util::hash_append($replacements_r, " ", '@BDPI_BAS@',
                                  HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, "\$(TMP_BSC_DIR)", $fname));
     }
 
 
-    # @ALL_VS@ - raw .v files
+    # @GIVEN_VS@ - raw .v files included in the model
 
     my @l = ();
     push(@l, $module->private());
 
     foreach my $f (@l) {
         if ($f =~ /\.v$/) {
-            HAsim::Util::hash_append($replacements_r," ",'@ALL_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, $f));
+            HAsim::Util::hash_append($replacements_r," ",'@GIVEN_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, $f));
         }
     }
 
-    # @ALL_CS@
+    # @GIVEN_CS@
     @l = ();
     push (@l, $module->public());
 
@@ -591,14 +601,14 @@ sub __generate_makefile_top {
     {
         if ($f =~ /\.c$/)
         {
-            HAsim::Util::hash_append($replacements_r," ",'@ALL_CS@',HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, $f));
+            HAsim::Util::hash_append($replacements_r," ",'@GIVEN_CS@',HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, $f));
         }
     }
 
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-	__generate_makefile_top($child,$my_dir,$replacements_r);
+	__generate_makefile_top($child,$my_dir,$replacements_r, 0);
     }
 
 }

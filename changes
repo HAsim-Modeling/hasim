@@ -6441,3 +6441,13 @@ Bugfixes in Makefile and hasim-configure.
 Spurious recompiles of surrogates are now fixed.
 
 Michael P.
+
+----------
+jsemer      Date: Mon Jul 30 16:50:19 EDT 2007  CSN: CSN-hasim-230
+                  Mon Jul 30 20:50:19 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          229 
+
+Minor typo fix.

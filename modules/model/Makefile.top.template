@@ -115,8 +115,7 @@ vexe: make_subdir
 
 .PHONY: exe
 exe: make_subdir
-	$(BSC) $(BSC_FLAGS) $(LDFLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_BAS) $(ALL_CS)
-	mv $(CXXS) $(HS) $(OS) $(TMP_BSC_DIR)
+	$(BSC) $(BSC_FLAGS) $(LDFLAGS) -sim -e $(ROOT_WRAPPER_SYNTH_ID)  -simdir $(TMP_BSC_DIR) -o $(APM_NAME).exe $(ALL_BAS) $(ALL_CS)
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "$(BUILD_DIR)/$(APM_NAME).exe" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)

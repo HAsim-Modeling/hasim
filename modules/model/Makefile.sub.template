@@ -45,22 +45,19 @@ $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).o: $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba
 	 bdir=$${full_bsv/$$bsv/} ; \
 	 bdir=$${bdir}.bsc ; \
 	 echo "Generating and Linking C for $$top" ; \
-	 $(BSC) $(BSC_FLAGS) -sim -p +:$(ALL_LIB_DIRS):$(TMP_BSC_DIR) -bdir $$bdir -simdir $$bdir -o $$bdir/$$top -e $$top $<
+	 $(BSC) $(BSC_FLAGS) -sim -p +:$(ALL_LIB_DIRS):$(TMP_BSC_DIR) -bdir $$bdir -vdir $$bdir -simdir $$bdir -o $$bdir/$$top -e $$top $<
 
 
 ## .ba file is built as a side-effect of building the .v file.
 $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba: $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).v
-	@targ=$@ ;\
-	echo "$$targ done." 
-
 
 $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).v: $(SURROGATE_BIS) $(TMP_BSC_DIR)/$(WRAPPER).bi
 
-$(SURROGATE_BIS): generate_surrogates
+$(SURROGATE_BIS): .surrogates
 
-.PHONY: generate_surrogates
-generate_surrogates: $(SUBDIR_WRAPPER_BIS) 
+.surrogates: $(SUBDIR_WRAPPER_BIS) 
 	@$(CONNECTION_SCRIPT) $(APM_FILE) $(DIR)
+        @touch $@
 
 ##
 ## This rule for building a module with Bluespec is complicated only because

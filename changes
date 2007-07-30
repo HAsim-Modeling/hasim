@@ -6422,3 +6422,22 @@ occaisionally force.
 TBD: roll this over for pure bluespec models.
 
 Michael P.
+
+----------
+mpellaue    Date: Mon Jul 30 12:58:46 EDT 2007  CSN: CSN-hasim-229
+                  Mon Jul 30 16:58:46 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          228 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          227 
+ Makefile.sub.template     Locally Modified          228 
+
+
+Bugfixes in Makefile and hasim-configure.
+
+Spurious recompiles of surrogates are now fixed.
+
+Michael P.

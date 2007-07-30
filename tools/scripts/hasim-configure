@@ -284,6 +284,9 @@ sub make_dirs {
     my $dir = HAsim::Util::path_append($builddir,$HAsim::Xilinx::tmp_xilinx_dir);
     $status = system("mkdir -p " . $dir);
 
+    my $bdir = HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir);
+    $status = system("mkdir -p " . $bdir);
+    
     __make_dirs($root,HAsim::Util::path_append($builddir,"arch"), 1);
     return 1;
 }
@@ -428,8 +431,7 @@ sub __make_symlinks {
         
         # make src relative
         my $relsrc = File::Spec->abs2rel($src, dirname($tgt));
-
-	$status = system("ln -f -s $relsrc $tgt");
+	$status = system("ln -f -s $relsrc $tgt") unless (readlink($tgt) eq $relsrc);
     }
 
     # recurse
@@ -551,12 +553,12 @@ sub __generate_makefile_top {
 
 	my $fileroot = HAsim::Build::get_wrapper($module);
 	my $v_file = "$fileroot.v";
-	HAsim::Util::hash_append($replacements_r," ",'@ALL_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir,$v_file));
+	HAsim::Util::hash_append($replacements_r," ",'@ALL_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, "\$(TMP_BSC_DIR)", $v_file));
 
 
 	# @ALL_BAS@
 	my $ba_file = "$fileroot.ba";
-	HAsim::Util::hash_append($replacements_r," ",'@ALL_BAS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir,$ba_file));
+	HAsim::Util::hash_append($replacements_r," ",'@ALL_BAS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, "\$(TMP_BSC_DIR)", $ba_file));
     }
 
     # collect BDPI-exported files and add it to the @ALL_BAS@ and @BDPI_BAS@ list
@@ -564,9 +566,9 @@ sub __generate_makefile_top {
     foreach my $n (@bdpi_names) {
         my $fname = "$n.ba";
 	    HAsim::Util::hash_append($replacements_r, " ", '@ALL_BAS@',
-                                 HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, $fname));
+                                 HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, "\$(TMP_BSC_DIR)", $fname));
 	    HAsim::Util::hash_append($replacements_r, " ", '@BDPI_BAS@',
-                                 HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, $fname));
+                                 HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, "\$(TMP_BSC_DIR)", $fname));
     }
 
 

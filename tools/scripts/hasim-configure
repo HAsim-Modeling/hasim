@@ -568,10 +568,11 @@ sub __generate_makefile_top {
         
         # @GEN_O_DEPS@ makes sure generated .cxx files are compiled in the right order
         my $my_o = HAsim::Build::make_wrapper_name($module->provides());
-        my $parent_o = HAsim::Build::make_wrapper_name($parent_dir);
+        my $parent = HAsim::Build::make_wrapper_name($parent_dir);
+        $parent =~ s/.*\///;
         if (!$is_root)
         {
-	  HAsim::Util::hash_append($replacements_r," ",'@GEN_O_DEPS@',"\n\$(TMP_BSC_DIR)/$parent_o.o: \$(TMP_BSC_DIR)/$my_o.o\n");
+	  HAsim::Util::hash_append($replacements_r," ",'@GEN_O_DEPS@',"\n\$(TMP_BSC_DIR)/$parent.o: \$(TMP_BSC_DIR)/$my_o.o\n");
         }
     }
 

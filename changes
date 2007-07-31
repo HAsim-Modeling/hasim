@@ -6523,3 +6523,16 @@ Directory modules/common
 
 Fixed a bug in Ports.bsv.
 
+
+----------
+mpellaue    Date: Tue Jul 31 17:45:22 EDT 2007  CSN: CSN-hasim-234
+                  Tue Jul 31 21:45:22 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          233 
+
+
+A small bugfix in the top-level bluesim .cxx rules.
+
+Michael P.

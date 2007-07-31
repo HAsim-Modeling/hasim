@@ -50,20 +50,28 @@ if ($help) {
 # main body of script
 
 my $modelfile = shift;
-my $metatype = shift;
+my $targetfile = shift;
+
+my $filename = $targetfile;
+$targetfile =~ s/.*\/(.*).bsv//;
+my $metatype = $1;
+
 
 Asim::init()
     || die("Unable to initialize Asim::\n");
 
-create_surrogates($modelfile, $metatype);
+create_surrogate($modelfile, $filename, $metatype);
 
 exit 0;
 
 
 ############################################################
 # 
-sub create_surrogates {
+
+
+sub create_surrogate {
     my $modelfile = shift;
+    my $filename = shift;
     my $metatype = shift;
 
     my $model = Asim::Model->new($modelfile);
@@ -81,80 +89,74 @@ sub create_surrogates {
 
     my $indent = "   ";
 
-    # For each child synthtesis boundary
-    foreach my $submodule (get_sub_synth_modules($module,1)) {
-	my $submetatype = $submodule->provides();
-        my $synth_id = HAsim::Build::get_synthesis_boundary_name($submodule);
-	my $filename = "$submetatype.bsv";
+    my $synth_id = HAsim::Build::get_synthesis_boundary_name($module);
 
-	my $wrap_var = "wrap_" . $submetatype;
-	my $mk_wrapper = make_module_name(make_wrapper_name($submetatype));
-	
-	my $log_file = 
-	    $model->build_dir() . "/" . 
-	    get_module_build_dir($module,$root,"arch") . "/" .
-	    $submetatype . "/.bsc/" .
-	    make_wrapper_name($submetatype) . ".log";
+    my $wrap_var = "wrap_" . $metatype;
+    my $mk_wrapper = make_module_name(make_wrapper_name($metatype));
 
-        #print "<<<< $log_file\n";
-	
-	if (need_to_regenerate_surrogate($filename, $log_file))
-	{
-          CORE::open(SURROGATE, "> $filename");
-          print SURROGATE "$indent // Surrogate for $submetatype\n";
+    my $log_file = 
+       $model->build_dir() . "/" . 
+       get_module_build_dir($module,$root,"arch") . "/" .
+       "/.bsc/" .
+       make_wrapper_name($metatype) . ".log";
+
+    #print "<<<< $log_file\n";
+
+    if (need_to_regenerate_surrogate($filename, $log_file))
+    {
+      CORE::open(SURROGATE, "> $filename");
+      print SURROGATE "$indent // Surrogate for $metatype\n";
 
 
-          print SURROGATE "\n";
-          print SURROGATE "// These are well-known/required hasim modules\n";
-          print SURROGATE "import hasim_common::*;\n";
-          print SURROGATE "\n";
+      print SURROGATE "\n";
+      print SURROGATE "// These are well-known/required hasim modules\n";
+      print SURROGATE "import hasim_common::*;\n";
+      print SURROGATE "\n";
 
-	  print SURROGATE "import " . make_wrapper_name($submetatype) . "::*;\n";
+      print SURROGATE "import " . make_wrapper_name($metatype) . "::*;\n";
 
-	  print SURROGATE "module [HASim_Module] $synth_id ();\n";    
-	  print SURROGATE "$indent // 1. instantiate wrapper\n";
-	  print SURROGATE "$indent WithConnections $wrap_var <- $mk_wrapper();\n";
+      print SURROGATE "module [HASim_Module] $synth_id ();\n";    
+      print SURROGATE "$indent // 1. instantiate wrapper\n";
+      print SURROGATE "$indent WithConnections $wrap_var <- $mk_wrapper();\n";
 
-	  print SURROGATE "$indent // 2. log sends & recvs\n";
-	  my @conns = parse_dangling_connections($log_file);
-	  my @sends_exprs = ();
-	  my @recvs_exprs = ();
+      print SURROGATE "$indent // 2. log sends & recvs\n";
+      my @conns = parse_dangling_connections($log_file);
+      my @sends_exprs = ();
+      my @recvs_exprs = ();
 
-	  foreach my $conn_r (@conns) {
-	      my $expr = "tuple2(\"" . $conn_r->[2] . "\", " . $conn_r->[1] . ")";
+      foreach my $conn_r (@conns) {
+          my $expr = "tuple2(\"" . $conn_r->[2] . "\", " . $conn_r->[1] . ")";
 
-	      if ($conn_r->[0] eq "Send") {
-		  push (@sends_exprs, $expr);
-	      } elsif ($conn_r->[0] eq "Rec") {
-		  push (@recvs_exprs, $expr);
-	      } else {
-		  DIE("Unrecognized type of dangling connection: $1\n");
-	      }	    
-	  }
+          if ($conn_r->[0] eq "Send") {
+              push (@sends_exprs, $expr);
+          } elsif ($conn_r->[0] eq "Rec") {
+              push (@recvs_exprs, $expr);
+          } else {
+              DIE("Unrecognized type of dangling connection: $1\n");
+          }     
+      }
 
-	  my $sends_var = "dsends_" . $submetatype;
-	  my $recvs_var = "drecvs_" . $submetatype;
+      my $sends_var = "dsends_" . $metatype;
+      my $recvs_var = "drecvs_" . $metatype;
 
-	  my $sends_cons = get_cons_expr(@sends_exprs);
-	  my $recvs_cons = get_cons_expr(@recvs_exprs);
+      my $sends_cons = get_cons_expr(@sends_exprs);
+      my $recvs_cons = get_cons_expr(@recvs_exprs);
 
-	  print SURROGATE "$indent let $sends_var = $sends_cons;\n";
-	  print SURROGATE "$indent let $recvs_var = $recvs_cons;\n";
+      print SURROGATE "$indent let $sends_var = $sends_cons;\n";
+      print SURROGATE "$indent let $recvs_var = $recvs_cons;\n";
 
-	  print SURROGATE "$indent addConnections($wrap_var, $sends_var, $recvs_var);\n";
+      print SURROGATE "$indent addConnections($wrap_var, $sends_var, $recvs_var);\n";
 
-	  print SURROGATE "endmodule\n";
-	  print SURROGATE "\n";
+      print SURROGATE "endmodule\n";
+      print SURROGATE "\n";
 
-          CORE::close(SURROGATE);
-	}
-	else
-	{
-	  print "hasim-connect: No need to re-generate $filename\n";
-	}
+      CORE::close(SURROGATE);
+    }
+    else
+    {
+      print "hasim-connect: No need to re-generate $filename\n";
     }
 }
-
 
 ############################################################
 # 

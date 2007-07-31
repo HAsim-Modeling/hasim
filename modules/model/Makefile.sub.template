@@ -22,7 +22,9 @@ LOGFILE = $(WRAPPER_SYNTH_ID).log
 ## each directory.
 ##
 ALL_BUILD_DIRS := $(subst :,/$(TMP_BSC_DIR):,$(ALL_DIRS))/$(TMP_BSC_DIR)
+RELATIVE_BUILD_DIRS := $(subst :,/$(TMP_BSC_DIR):,$(RELATIVE_DIRS))/$(TMP_BSC_DIR)
 ALL_LIB_DIRS = $(ALL_DIRS):$(ALL_BUILD_DIRS)
+RELATIVE_LIB_DIRS = $(RELATIVE_DIRS):$(RELATIVE_BUILD_DIRS)
 
 SURROGATE_BIS=$(SUBDIRS:%=./$(TMP_BSC_DIR)/%.bi)
 
@@ -30,22 +32,15 @@ SURROGATE_BIS=$(SUBDIRS:%=./$(TMP_BSC_DIR)/%.bi)
 ## 
 
 .PHONY: all
-all: $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba
+all: $(FULL_DIR)/$(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba
 
 ################################################################
 ## 
 
 ## .ba file is built as a side-effect of building the .v file.
-$(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba: $(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).v
+$(FULL_DIR)/$(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba: $(FULL_DIR)/$(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).v
 
-$(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).v: $(SURROGATE_BIS) $(TMP_BSC_DIR)/$(WRAPPER).bi
-
-$(SURROGATE_BIS): .surrogates
-
-.surrogates: $(SUBDIR_WRAPPER_BIS) 
-	@ \
-	 $(CONNECTION_SCRIPT) $(APM_FILE) $(DIR) ;\
-	 touch $@
+$(FULL_DIR)/$(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).v: $(FULL_DIR)/$(TMP_BSC_DIR)/$(WRAPPER).bi
 
 ##
 ## This rule for building a module with Bluespec is complicated only because
@@ -69,18 +64,22 @@ $(SURROGATE_BIS): .surrogates
 
 ##
 ##
-## ***** BE CAREFUL ***** hasim-bsc-mkdepend generates dependence for .depends.
-##    If you change the name here you must also change it in the script.
+## hasim-bsc-mkdepend generates dependence for .depends-bsv.
 ##
 
 Makefile:: .depends-bsv
 
 .depends-bsv: $(GEN_BSVS)
-	@hasim-bsc-mkdepend -bdir $(TMP_BSC_DIR) -p +:$(ALL_LIB_DIRS) ./$(WRAPPER).bsv > .depends-bsv
+	@echo "Generating dependencies"
+	@hasim-bsc-mkdepend -bdir $(TMP_BSC_DIR) -p +:$(ALL_LIB_DIRS) $(FULL_DIR)/$(WRAPPER).bsv > .depends-bsv
 
 
 -include .depends-bsv
 
+################################################################
+## Surrogate dependencies
+
+@SURROGATE_DEPS@
 
 ################################################################
 ## Misc.

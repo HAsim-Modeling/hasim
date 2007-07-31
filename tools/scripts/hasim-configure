@@ -496,6 +496,8 @@ sub __generate_makefile_include {
     if (HAsim::Build::is_synthesis_boundary($module)) {
 	# @ALL_DIRS@
 	HAsim::Util::hash_append($replacements_r,":",'@ALL_DIRS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir));
+	# @RELATIVE_DIRS@
+	HAsim::Util::hash_append($replacements_r,":",'@RELATIVE_DIRS@',$my_dir);
     }
 
     # recurse
@@ -564,12 +566,12 @@ sub __generate_makefile_top {
 	my $cxx_file = "$fileroot.cxx";
 	HAsim::Util::hash_append($replacements_r," ",'@GEN_CXXS@',HAsim::Util::path_append("\$(TMP_BSC_DIR)", $cxx_file));
         
-        # @GEN_DEPS@ makes sure generated .cxx files are compiled in the right order
+        # @GEN_O_DEPS@ makes sure generated .cxx files are compiled in the right order
         my $my_o = HAsim::Build::make_wrapper_name($module->provides());
         my $parent_o = HAsim::Build::make_wrapper_name($parent_dir);
         if (!$is_root)
         {
-	  HAsim::Util::hash_append($replacements_r," ",'@GEN_DEPS@',"\n\$(TMP_BSC_DIR)/$parent_o.o: \$(TMP_BSC_DIR)/$my_o.o\n");
+	  HAsim::Util::hash_append($replacements_r," ",'@GEN_O_DEPS@',"\n\$(TMP_BSC_DIR)/$parent_o.o: \$(TMP_BSC_DIR)/$my_o.o\n");
         }
     }
 
@@ -671,6 +673,8 @@ sub __generate_makefile_sub {
             my $child_wrap = HAsim::Build::make_wrapper_name($subdir);
 	    my $child_bi = "${builddir}/${my_dir}/${subdir}/\$(TMP_BSC_DIR)/${child_wrap}.bi";
 	    HAsim::Util::hash_append($current_replacements_r," ",'@SUBDIR_WRAPPER_BIS@',$child_bi);
+            generate_surrogate_deps($current_replacements_r, $child, "$builddir/$my_dir")
+
 	}
     }
 
@@ -720,6 +724,34 @@ sub __generate_makefile_sub {
     }
 }
 
+
+#############################################################
+# Generate surrogate dependencies for turning wires back to
+# connections via hasim-connect
+
+sub generate_surrogate_deps
+{
+  my $replacements_r = shift;
+  my $module = shift;
+  my $dir = shift;
+  
+  my $surrogate = $module->provides();
+  my $wrapper = HAsim::Build::make_wrapper_name($surrogate);
+  
+  # @SURROGATE_DEPS@ ensures surrogates are re-generated as necessary
+  #HAsim::Util::hash_append($replacements_r," ",'@SURROGATE_DEPS@',"\n./\$(TMP_BSC_DIR)/$surrogate.bi: ./$surrogate.bsv\n");
+  my $run_connection = "\$(CONNECTION_SCRIPT) \$(APM_FILE) \$@";
+  HAsim::Util::hash_append($replacements_r," ",'@SURROGATE_DEPS@',"\n$dir/$surrogate.bsv: $dir/$surrogate/\$(TMP_BSC_DIR)/$wrapper.bi\n\t$run_connection\n");
+  
+  foreach my $child ($module->submodules()) {
+    if (HAsim::Build::is_synthesis_boundary($child)) {
+      my $subdir = $child->provides();
+      my $subdir_wrapper = HAsim::Build::make_wrapper_name($subdir);
+      #HAsim::Util::hash_append($replacements_r," ",'@SURROGATE_DEPS@',"\n./$subdir/$surrogate.bsv: $dir/$subdir/\$(TMP_BSC_DIR)/$subdir_wrapper.bi\n\t\$(CONNECTION_SCRIPT) \$(APM_FILE) \$@\n");
+      generate_surrogate_deps($replacements_r, $child, HAsim::Util::path_append($dir, $surrogate));
+    }
+  }
+}
 
 
 #############################################################

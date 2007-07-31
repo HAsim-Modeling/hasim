@@ -155,7 +155,7 @@ $(TMP_BSC_DIR)/%.o: $(TMP_BSC_DIR)/%.cxx
 
 $(TMP_BSC_DIR)/schedule.o: $(TMP_BSC_DIR)/$(ROOT_WRAPPER_SYNTH_ID).o
 
-@GEN_DEPS@
+@GEN_O_DEPS@
 
 
 ################################################################

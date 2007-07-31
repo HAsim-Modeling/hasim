@@ -50,7 +50,7 @@ sub SetSearchPath($)
         if ($p =~ /^import path:/)
         {
             $default = $p;
-            $default =~ s/^import path:\s*//;
+            $default =~ s/^import path: \.:\s*//;
             $default =~ s/\s*$//;
         }
     }
@@ -342,12 +342,16 @@ print "\n";
 ## These pseudo rules note dependence for building all objects and rebuilding
 ## the dependence file itself.
 ##
+#
 
-foreach my $bsv (keys %bsvFiles)
-{
-    print ".depends-bsv: ${bsv}\n";
-}
-print "\n";
+# XXX Currently these are commented out because they don't play well with the surrogates.
+# These are statically generated instead
+
+#foreach my $bsv (keys %bsvFiles)
+#{
+#    print ".depends-bsv: ${bsv}\n";
+#}
+#print "\n";
 
 #print ".PHONY: all_intermediate\n";
 foreach my $bsv (keys %bsvFiles)

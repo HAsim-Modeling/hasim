@@ -6471,3 +6471,25 @@ MAJOR speedup in the linking step for about a 30% slowdown in runspeeds. To
 re-enable change $OLEVEL in Makefile.include.
 
 Michael P.
+
+----------
+mpellaue    Date: Tue Jul 31 14:32:52 EDT 2007  CSN: CSN-hasim-232
+                  Tue Jul 31 18:32:52 UTC 2007
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          230 
+ hasim-bsc-mkdepend        Locally Modified          230 
+ hasim-configure           Locally Modified          231 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          231 
+ Makefile.include.template Locally Modified          231 
+ Makefile.sub.template     Locally Modified          231 
+
+
+Makefiles now work with surrogates nested to more than one level.
+
+Linking is parallel by default.
+
+Michael P.

@@ -93,7 +93,7 @@ module [HASim_Module] mkPort_Receive_Buffered#(String portname, Integer latency,
     return (tmp == fromInteger(rMax)) ? 0 : tmp;
   endfunction
 
-  Bool full  = head == overflow_incr(tail);
+  Bool full  = overflow_incr(head) == tail;
   Bool empty = head == tail;
   
   

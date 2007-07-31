@@ -6493,3 +6493,33 @@ Makefiles now work with surrogates nested to more than one level.
 Linking is parallel by default.
 
 Michael P.
+
+----------
+mvijayar    Date: Tue Jul 31 17:43:16 EDT 2007  CSN: CSN-hasim-233
+                  Tue Jul 31 21:43:16 UTC 2007
+
+
+Directory .
+ configure                 Locally Modified          232 
+ Makefile.in               Locally Modified          232 
+
+Directory libperl
+ Makefile.in               Locally Modified          232 
+
+Directory tools/hasim
+ Makefile.in               Locally Modified          232 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Modified          232 
+
+Directory tools
+ Makefile.in               Locally Modified          232 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          232 
+
+Directory modules/common
+ Ports.bsv                 Locally Modified          232 
+
+Fixed a bug in Ports.bsv.
+

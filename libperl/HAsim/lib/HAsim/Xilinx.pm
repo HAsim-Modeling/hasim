@@ -107,7 +107,7 @@ sub generate_prj_file {
     my $name = HAsim::Build::get_model_name($model);
     
     my $final_prj_file = HAsim::Util::path_append($model->build_dir(),$name . ".prj");
-
+   
     #first add all local .prj files
 
     CORE::open(PRJFILE, "> $final_prj_file") || return undef;
@@ -158,10 +158,17 @@ sub __generate_prj_file {
     my @l = ();
     push(@l, $module->private());
 
+    #Add existing verilog/vhdl primitives unless a previous .prj file overrode this.
+
     foreach my $f (@l) {
       if ($f =~ /\.v$/) {
-        my $v_file = HAsim::Util::path_append($my_dir, $f);
-        print $file "verilog work \"$v_file\"\n";
+          my $v_file = HAsim::Util::path_append($my_dir, $f);
+          print $file "verilog work \"$v_file\"\n";
+      }
+      if ($f =~ /\.vhd$/) {
+          my $vhd_lib = get_vhdl_lib($module);
+          my $vhd_file = HAsim::Util::path_append($my_dir, $f);
+          print $file "vhdl $vhd_lib \"$vhd_file\"\n";
       }
     }
 
@@ -260,4 +267,18 @@ sub bluespec_dir {
     return $ENV{'BLUESPECDIR'};
 }
 
+############################################################
+# vhdl_lib: returns a VHDL lib, or "work" by default
+
+sub get_vhdl_lib {
+    my $module = shift;
+
+    foreach my $param_r ($module->parameters()) {
+	my %param = %{$param_r};
+	if ($param{'name'} eq "VHDL_LIB") {
+	    return $param{'default'};
+	}
+    }
+    return "work";
+}
 return 1;

@@ -457,6 +457,18 @@ sub generate_makefile_include {
       $builddir = $model->build_dir();
     }
     
+    # @HOSTLIB@ determines if we should use 64-bit Bluesim libraries
+    # @HOSTLIB@ is _64 on 64-bit machines and "" otherwise
+    if (! defined$ENV{'HOSTTYPE'}) {
+      HAsim::Util::WARN_AND_DIE("HOSTTYPE undefined in environment. Could not determine if this is a 64-bit machine.");
+    }
+    
+    my $hosttype = $ENV{'HOSTTYPE'};
+    if ($hosttype =~ m/64/)
+    {
+      HAsim::Util::hash_set($replacements_r,'@HOSTLIB@',"_64");
+    }
+    
     # @BUILD_DIR@
     HAsim::Util::hash_set($replacements_r,'@BUILD_DIR@',$builddir);
 

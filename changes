@@ -6536,3 +6536,28 @@ Directory tools/scripts
 A small bugfix in the top-level bluesim .cxx rules.
 
 Michael P.
+
+----------
+mpellaue    Date: Thu Aug  2 10:49:21 EDT 2007  CSN: CSN-hasim-235
+                  Thu Aug  2 14:49:21 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          234 
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          233 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          233 
+ Makefile.include.template Locally Modified          233 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.top.template     Locally Modified          233 
+
+
+Beginnings of a general synthesis environment.
+
+hasim-configure now detects whether or not to use the 64-bit Bluesim libraries.
+
+Michael P.

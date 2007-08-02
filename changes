@@ -6561,3 +6561,28 @@ Beginnings of a general synthesis environment.
 hasim-configure now detects whether or not to use the 64-bit Bluesim libraries.
 
 Michael P.
+
+----------
+mpellaue    Date: Thu Aug  2 16:28:28 EDT 2007  CSN: CSN-hasim-236
+                  Thu Aug  2 20:28:28 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          235 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          235 
+ Makefile.sub.template     Locally Modified          234 
+
+Directory modules/functional/semantic-model
+ FUNCPModel.bsv            Locally Modified          234 
+
+Directory modules/functional/common
+ FUNCP_MemState.bsv        Locally Modified          234 
+
+
+Small fixes to Makefile to remove spurious recompiles of wrappers.
+
+A race in the new funcp/store buffer has been located but no fix is currently in place.
+
+Michael P.

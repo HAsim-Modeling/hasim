@@ -62,7 +62,7 @@ BITGEN_FLAGS =
 DOWNLOAD_FILE = $(APM_NAME).download
 
 .PHONY: all
-all: bitstats
+all: exe
 
 ################################################################
 ## FPGA synthesis rules
@@ -145,10 +145,13 @@ $(GEN_CXXS): generate_cxxs
 
 .PHONY: generate_cxxs
 generate_cxxs: make_subdir
-	@$(BSC) $(BSC_FLAGS) $(LDFLAGS) -KILLsimBlocksToC -sim -e $(ROOT_WRAPPER_SYNTH_ID) -simdir $(TMP_BSC_DIR) -o $(APM_NAME).exe $(ALL_BAS)
+	@ \
+	 echo "Generating C files"
+	 $(BSC) $(BSC_FLAGS) $(LDFLAGS) -KILLsimBlocksToC -sim -e $(ROOT_WRAPPER_SYNTH_ID) -simdir $(TMP_BSC_DIR) -o $(APM_NAME).exe $(ALL_BAS)
 
 $(TMP_BSC_DIR)/%.o: $(TMP_BSC_DIR)/%.cxx
 	@ \
+	 echo "Compiling $<"
 	 $(CPP) $(CPP_FLAGS) -c -o $@ $<
 
 ## Dependencies ensure correct build order of generated .o files

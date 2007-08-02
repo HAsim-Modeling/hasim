@@ -654,7 +654,7 @@ module [HASim_Module] mkFUNCP
       tagged StResp .*  : noAction;
       tagged LdResp .val:
       begin
-        funcp_debug($fwrite(debug_log, "Token %0d: DMem: Load Response (PR%0d <= 0x%h", tok.index, dest, val)); 
+        funcp_debug($fwrite(debug_log, "Token %0d: DMem: Load Response (PR%0d <= 0x%h)", tok.index, dest, val)); 
         prf.write(dest, tagged Valid val);
       end
     endcase
@@ -684,7 +684,7 @@ module [HASim_Module] mkFUNCP
   
     match {.tok, .*} <- link_gco.getReq();
     
-    funcp_debug($fwrite(debug_log, "Token %d: GCO: Finishing Token", tok.index)); 
+    funcp_debug($fwrite(debug_log, "Token %0d: GCO: Finishing Token", tok.index)); 
 
     if (tok_state.isStore(tok.index))
     begin

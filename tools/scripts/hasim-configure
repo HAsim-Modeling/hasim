@@ -673,6 +673,11 @@ sub __generate_makefile_sub {
 	my $dots_path = $my_dir;
 	$dots_path =~ s/([^\/])+/../g;
 	HAsim::Util::hash_set($current_replacements_r,'@DOTS_TO_MAKEFILE_INCL@',$dots_path);
+        
+        
+        my $my_wrap = HAsim::Build::make_wrapper_name($module->provides());
+	my $my_bsv = "${builddir}/${my_dir}/${my_wrap}.bsv";
+	HAsim::Util::hash_append($current_replacements_r," ",'@WRAPPER_BSVS@',$my_bsv);
 
     }
 
@@ -683,10 +688,7 @@ sub __generate_makefile_sub {
 	if (HAsim::Build::is_synthesis_boundary($child)) {
 	    my $subdir = $child->provides();
 	    HAsim::Util::hash_append($current_replacements_r," ",'@SUBDIRS@',$subdir);
-            my $child_wrap = HAsim::Build::make_wrapper_name($subdir);
-	    my $child_bi = "${builddir}/${my_dir}/${subdir}/\$(TMP_BSC_DIR)/${child_wrap}.bi";
-	    HAsim::Util::hash_append($current_replacements_r," ",'@SUBDIR_WRAPPER_BIS@',$child_bi);
-            generate_surrogate_deps($current_replacements_r, $child, "$builddir/$my_dir")
+            generate_surrogate_deps($current_replacements_r, $child, "$builddir/$my_dir");
 
 	}
     }
@@ -756,10 +758,17 @@ sub generate_surrogate_deps
   my $run_connection = "\$(CONNECTION_SCRIPT) \$(APM_FILE) \$@";
   HAsim::Util::hash_append($replacements_r," ",'@SURROGATE_DEPS@',"\n$dir/$surrogate.bsv: $dir/$surrogate/\$(TMP_BSC_DIR)/$wrapper.bi\n\t$run_connection\n");
   
+  my $child_wrap = HAsim::Build::make_wrapper_name($surrogate);
+  my $child_bsv = "${dir}/${surrogate}/${child_wrap}.bsv";
+  HAsim::Util::hash_append($replacements_r," ",'@WRAPPER_BSVS@',$child_bsv);
+  
   foreach my $child ($module->submodules()) {
     if (HAsim::Build::is_synthesis_boundary($child)) {
       my $subdir = $child->provides();
       my $subdir_wrapper = HAsim::Build::make_wrapper_name($subdir);
+      
+      #my $child_bsv = "${dir}/${subdir}/${subdir_wrapper}.bsv";
+      #Asim::Util::hash_append($replacements_r," ",'@WRAPPER_BSVS@',$child_bsv);
       #HAsim::Util::hash_append($replacements_r," ",'@SURROGATE_DEPS@',"\n./$subdir/$surrogate.bsv: $dir/$subdir/\$(TMP_BSC_DIR)/$subdir_wrapper.bi\n\t\$(CONNECTION_SCRIPT) \$(APM_FILE) \$@\n");
       generate_surrogate_deps($replacements_r, $child, HAsim::Util::path_append($dir, $surrogate));
     }
@@ -874,7 +883,7 @@ sub generate_empty_surrogate {
     print SURROGATE "import hasim_common::*;\n";
     print SURROGATE "\n";
 
-    print SURROGATE "import " . HAsim::Build::make_wrapper_name($metatype) . "::*;\n";
+    #print SURROGATE "import " . HAsim::Build::make_wrapper_name($metatype) . "::*;\n";
 
     print SURROGATE "module [HASim_Module] $synth_id ();\n";    
     print SURROGATE "$indent // 1. instantiate wrapper\n";

@@ -6586,3 +6586,19 @@ Small fixes to Makefile to remove spurious recompiles of wrappers.
 A race in the new funcp/store buffer has been located but no fix is currently in place.
 
 Michael P.
+
+----------
+nikhil      Date: Sun Aug  5 17:12:35 CDT 2007  CSN: CSN-hasim-237
+                  Sun Aug  5 22:12:35 UTC 2007
+
+
+Directory modules/common
+ fpgaenv-fast/             Locally Added               0 
+
+Directory modules/common/fpgaenv-fast
+ hasim-fast-fpga-environment.awb Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform
+ fast-virtual-platform.awb Locally Added               0 
+
+Created FPGA environment for FAST

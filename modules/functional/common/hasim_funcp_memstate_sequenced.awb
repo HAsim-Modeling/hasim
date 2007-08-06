@@ -1,0 +1,25 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hasim functional partition memstate sequenced
+# %desc Hasim functional partition memory state sequenced
+# %provides hasim_funcp_memstate
+# 
+# %requires hasim_funcp_storebuffer
+#
+# %attributes hasim
+#
+# %public FUNCP_MemState_Seq.bsv
+#
+# %param SYNTH_BOUNDARY mkFUNCP_Memstate "name of synthesis boundary"
+# %param FUNCP_MEM_ADDR_BITS 20 "Number of bits to address memory. Increasing this will slow down Verilog simulations."
+#
+# %AWB_END
+# */
+

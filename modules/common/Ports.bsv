@@ -99,7 +99,9 @@ module [HASim_Module] mkPort_Receive_Buffered#(String portname, Integer latency,
   
   rule shift (!full);
   
-    let d <- con.receive();
+    let d = con.receive();
+    con.deq();
+    
     (rs[head._read()]) <= d;
     head <= overflow_incr(head);
    
@@ -145,7 +147,8 @@ module [HASim_Module] mkPort_Receive_L1#(String portname)
     end
     else
     begin
-      let m <- con.receive();
+      let m = con.receive();
+      con.deq();
       return m;
     end
   endmethod

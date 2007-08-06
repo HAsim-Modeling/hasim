@@ -6627,3 +6627,43 @@ Directory tools
 Directory tools/scripts
  Makefile.in               Locally Modified          237 
 
+
+----------
+mpellaue    Date: Mon Aug  6 18:17:55 EDT 2007  CSN: CSN-hasim-239
+                  Mon Aug  6 22:17:55 UTC 2007
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          238 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          238 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          238 
+
+Directory modules/functional/semantic-model
+ FUNCPModel.bsv            Locally Modified          238 
+
+Directory modules/functional/common
+ FUNCP_StoreBuffer_Seq.bsv Locally Added               0 
+ hasim_funcp_memstate_sequenced.awb Locally Added               0 
+ FUNCP_MemState.bsv        Locally Modified          238 
+ hasim_funcp_storebuffer_sequenced.awb Locally Added               0 
+ FUNCP_MemState_Seq.bsv    Locally Added               0 
+
+Directory modules/common/fpgaenv/platform-interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          238 
+
+Directory modules/common
+ HASim.bsv                 Locally Modified          238 
+ Ports.bsv                 Locally Modified          238 
+
+
+Added the new StoreBuffer/Memstate for the new FUNCP.
+
+Small bugfix in synthesis environment.
+
+The interface of connections has changed to a first/deq mechanism, which will break some models.
+
+Michael P.

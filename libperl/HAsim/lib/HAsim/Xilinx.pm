@@ -150,7 +150,7 @@ sub __generate_prj_file {
     }
 
     if (HAsim::Build::is_synthesis_boundary($module)) {
-	my $v_file = HAsim::Util::path_append($my_dir, HAsim::Build::get_wrapper($module) . ".v");
+	my $v_file = HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, HAsim::Build::get_wrapper($module) . ".v");
 	print $file "verilog work \"$v_file\"\n";
     }
 

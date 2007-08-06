@@ -47,7 +47,15 @@ typedef struct
 }
   Token 
     deriving (Eq, Bits);
-    
+
+//isOlder: predicated on the idea that only half the tokens are in flight at once.
+
+function Bool isOlder(TokIndex t1, TokIndex t2);
+
+  return (t1 - t2) > (t2 - t1);
+
+endfunction
+
 typedef struct 
 {
   Bit#(1) b_up; 
@@ -85,7 +93,8 @@ endinterface
 
 interface Connection_Receive#(type msg_T);
   
-  method ActionValue#(msg_T) receive();
+  method Action deq();
+  method msg_T  receive();
 
 endinterface
 
@@ -95,8 +104,9 @@ endinterface
 
 interface Connection_Client#(type req_T, type resp_T);
 
-  method Action               makeReq(req_T data);
-  method ActionValue#(resp_T) getResp;
+  method Action makeReq(req_T data);
+  method resp_T getResp();
+  method Action deq();
   
 endinterface
 
@@ -107,8 +117,9 @@ endinterface
 
 interface Connection_Server#(type req_T, type resp_T);
 
-  method ActionValue#(req_T) getReq();
-  method Action              makeResp(resp_T data);
+  method req_T  getReq();
+  method Action deq();
+  method Action makeResp(resp_T data);
   
 endinterface
 
@@ -321,7 +332,7 @@ module [Connected_Module] mkConnection_Receive#(String portname)
             (Bits#(msg_T, msg_SZ),
 	     Transmittable#(msg_T));
 
-  VRWire#(Bool)  en_w    <- vMkRWire();
+  PulseWire      en_w    <- mkPulseWire();
   VRWire#(msg_T) data_w  <- vMkRWire();
   
   //Bind the interface to a name for convenience
@@ -332,7 +343,7 @@ module [Connected_Module] mkConnection_Receive#(String portname)
 	       endmethod
 	       
 	       method Bool get_SUCCESS();
-	         return en_w.whas() && en_w.wget();
+	         return en_w;
 	       endmethod
 
 	     endinterface);
@@ -340,9 +351,12 @@ module [Connected_Module] mkConnection_Receive#(String portname)
   //Add our interface to the ModuleCollect collection
   addToCollection(tagged LRec tuple2(portname, inc));
   
-  method ActionValue#(msg_T) receive() if (data_w.whas());
-    en_w.wset(data_w.whas());
+  method msg_T receive() if (data_w.whas());
     return data_w.wget();
+  endmethod
+
+  method Action deq() if (data_w.whas());
+    en_w.send();
   endmethod
 
 endmodule
@@ -360,7 +374,7 @@ module [Connected_Module] mkConnection_Client#(String portname)
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
   FIFO#(req_T)    q      <- mkCON_FIFO();
-  VRWire#(Bool)   en_w   <- vMkRWire();
+  PulseWire       en_w   <- mkPulseWire();
   VRWire#(resp_T) data_w <- vMkRWire();
   	      
   //Bind the interfaces to names for convenience
@@ -371,7 +385,7 @@ module [Connected_Module] mkConnection_Client#(String portname)
 	       endmethod
 	       
 	       method Bool get_SUCCESS();
-	         return en_w.whas() && en_w.wget();
+	         return en_w;
 	       endmethod
 
 	     endinterface);
@@ -395,9 +409,12 @@ module [Connected_Module] mkConnection_Client#(String portname)
     q.enq(data);
   endmethod
   
-  method ActionValue#(resp_T) getResp() if (data_w.whas());
-    en_w.wset(data_w.whas());
+  method resp_T getResp() if (data_w.whas());
     return data_w.wget();
+  endmethod
+
+  method Action deq() if (data_w.whas());
+    en_w.send();
   endmethod
 
 endmodule
@@ -415,7 +432,7 @@ module [Connected_Module] mkConnection_Server#(String portname)
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
   FIFO#(resp_T) q <- mkCON_FIFO();
-  VRWire#(Bool)  en_w    <- vMkRWire();
+  PulseWire      en_w    <- mkPulseWire();
   VRWire#(req_T) data_w  <- vMkRWire();
   
   //Bind the interfaces to names for convenience
@@ -426,7 +443,7 @@ module [Connected_Module] mkConnection_Server#(String portname)
 	       endmethod
 	       
 	       method Bool get_SUCCESS();
-	         return en_w.whas() && en_w.wget();
+	         return en_w;
 	       endmethod
 
 	     endinterface);
@@ -450,9 +467,12 @@ module [Connected_Module] mkConnection_Server#(String portname)
     q.enq(data);
   endmethod
   
-  method ActionValue#(req_T) getReq() if (data_w.whas());
-    en_w.wset(data_w.whas());
+  method req_T getReq() if (data_w.whas());
     return data_w.wget();
+  endmethod
+  
+  method Action deq() if (data_w.whas());
+    en_w.send();
   endmethod
 
 endmodule

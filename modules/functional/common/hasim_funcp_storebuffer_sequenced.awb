@@ -1,0 +1,21 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hasim functional partition storebuffer sequenced
+# %desc Hasim functional partition storebuffer sequenced
+# %provides hasim_funcp_storebuffer
+# 
+# %attributes hasim
+#
+# %public FUNCP_StoreBuffer_Seq.bsv
+# %param FUNCP_STOREB_HASH_BITS 4 "Number of bits to use for address hash."
+#
+# %AWB_END
+# */
+

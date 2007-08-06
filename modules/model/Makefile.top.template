@@ -134,7 +134,7 @@ exe: $(APM_NAME).exe
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "$(BUILD_DIR)/$(APM_NAME).exe" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
-	ln -fs $(APM_NAME).exe simv
+	@ln -fs $(APM_NAME).exe simv
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
 $(APM_NAME).exe: $(ALL_OS)
@@ -147,12 +147,12 @@ $(GEN_CXXS): generate_cxxs
 generate_cxxs: make_subdir
 	@ \
 	 echo "Generating C files"
-	 $(BSC) $(BSC_FLAGS) $(LDFLAGS) -KILLsimBlocksToC -sim -e $(ROOT_WRAPPER_SYNTH_ID) -simdir $(TMP_BSC_DIR) -o $(APM_NAME).exe $(ALL_BAS)
+	 @$(BSC) $(BSC_FLAGS) $(LDFLAGS) -KILLsimBlocksToC -sim -e $(ROOT_WRAPPER_SYNTH_ID) -simdir $(TMP_BSC_DIR) -o $(APM_NAME).exe $(ALL_BAS)
 
 $(TMP_BSC_DIR)/%.o: $(TMP_BSC_DIR)/%.cxx
 	@ \
 	 echo "Compiling $<"
-	 $(CPP) $(CPP_FLAGS) -c -o $@ $<
+	 @$(CPP) $(CPP_FLAGS) -c -o $@ $<
 
 ## Dependencies ensure correct build order of generated .o files
 

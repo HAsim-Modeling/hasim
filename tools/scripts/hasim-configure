@@ -579,8 +579,8 @@ sub __generate_makefile_top {
 	HAsim::Util::hash_append($replacements_r," ",'@GEN_CXXS@',HAsim::Util::path_append("\$(TMP_BSC_DIR)", $cxx_file));
         
         # @GEN_O_DEPS@ makes sure generated .cxx files are compiled in the right order
-        my $my_o = HAsim::Build::make_wrapper_name($module->provides());
-        my $parent = HAsim::Build::make_wrapper_name($parent_dir);
+        my $my_o = HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($module->provides()));
+        my $parent = HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($parent_dir));
         $parent =~ s/.*\///;
         if (!$is_root)
         {

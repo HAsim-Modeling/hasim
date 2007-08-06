@@ -47,16 +47,15 @@ module [HASim_Module] mkFUNCP_Memstate ()
 
   BRAM_2#(SimAddr, Bit#(32))  memory <- mkBRAM_2_Full_Load("program.vmh");
 
-  FIFO#(Tuple2#(Token, Addr))     loadQ <- mkFIFO();
-  FIFO#(Tuple2#(Token, Value))  st_bufQ <- mkFIFO();
   FIFO#(PathSpeed)             waitingQ <- mkFIFO();
 
-  StoreBuffer st_buffer <- mkFUNCP_StoreBuffer();
+  let st_buffer <- mkFUNCP_StoreBuffer();
 
   //Connections
 
   Connection_Server#(Addr, PackedInst) link_imem      <- mkConnection_Server("mem_imem");
   Connection_Server#(MemReq, MemResp)  link_dmem      <- mkConnection_Server("mem_dmem");
+  Connection_Client#(SB_Command, SB_Response) link_stbuffer <- mkConnection_Client("mem_storebuf");
   Connection_Receive#(Token)           link_commit    <- mkConnection_Receive("mem_commit");
   Connection_Receive#(Token)           link_killToken <- mkConnection_Receive("fp_memstate_kill");
 
@@ -99,15 +98,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
       tagged Ld .ld_info:
         begin
   
-          Addr sa = ld_info.addr>>2;
-
-          if (sa > maxAddr)
-            $display("WARNING [1]: Address 0x%h out of bounds. Increase software address length!", ld_info.addr);
-
-          //$display("Load at %0d", $time);
-          memory.read_req2(truncate(sa));
-          st_buffer.checkAddress(ld_info.addr);
-          loadQ.enq(tuple2(ld_info.token, ld_info.addr));
+          link_stbuffer.makeReq(tagged SB_Lookup {a: ld_info.addr, t: ld_info.token});
       
         end
       tagged St .st_info:
@@ -115,7 +106,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
       
           //place value in store buffer
           //$display("Store at %0d", $time);        
-          st_buffer.insert(st_info.token, st_info.addr, st_info.val);
+          link_stbuffer.makeReq(tagged SB_Insert {v: st_info.val, a: st_info.addr, t: st_info.token});
       
           link_dmem.makeResp(tagged StResp);
     
@@ -124,28 +115,6 @@ module [HASim_Module] mkFUNCP_Memstate ()
   
   endrule
 
-  rule handleStBufferCheck (True);
-    
-    match {.tok, .addr} = loadQ.first();
-    loadQ.deq();
-
-    let slow <- st_buffer.mayHaveAddress();
-    let v <- memory.read_resp2();
-    
-    if (slow)
-    begin  
-      //Store buffer may have addr. Take the slow path
-      st_bufQ.enq(tuple2(tok, v));
-      st_buffer.retrieve(tok, addr);
-    end
-    else
-    begin
-      //Fast path response
-      link_dmem.makeResp(tagged LdResp v); 
-    end
-      
-  endrule
- 
   //handleCommit
   
   //Actually commits stores
@@ -155,13 +124,13 @@ module [HASim_Module] mkFUNCP_Memstate ()
     Token tok = link_commit.receive();
     link_commit.deq();
     
-    st_buffer.commit_req(tok);
+    link_stbuffer.makeReq(tagged SB_Commit tok);
     
   endrule
   
-  rule handleCommit_2 (True);
-  
-    match {.a, .v} <- st_buffer.commit_resp();
+  rule handleCommit_2 (link_stbuffer.getResp() matches tagged SBR_Commit {a: .a, unused: .*, v: .v, t: .t});
+    
+    link_stbuffer.deq();
     
     Addr sa = a>>2;
 
@@ -181,29 +150,44 @@ module [HASim_Module] mkFUNCP_Memstate ()
     Token tok = link_killToken.receive();
     link_killToken.deq();
     
-    st_buffer.kill(tok);
+    link_stbuffer.makeReq(tagged SB_Kill tok);
 
   endrule
 
-  //finishSlowPath
+  rule sbHit (link_stbuffer.getResp() matches tagged SBR_Lookup {a: .addr, mv: .mnew_val, t: .tok}
+                   &&& mnew_val matches tagged Valid .new_val);
   
-  rule finishSlowPath (True);
+    //The Store Buffer had it
   
-    match {.tok, .cur_val} = st_bufQ.first();
-    st_bufQ.deq();
+    link_stbuffer.deq();
+    link_dmem.makeResp(tagged LdResp new_val);
     
-    match {.t2, .mnew_val} <- st_buffer.result();
-    
-    if (tok != t2)
-      $display("ERROR, unexpected response from Store Buffer!");
-    
-    case (mnew_val) matches
-      tagged Invalid:  //All that work for nothing.
-        link_dmem.makeResp(tagged LdResp cur_val);
-      tagged Valid .new_val:
-        link_dmem.makeResp(tagged LdResp new_val);
-    endcase
+    //Ignore memory response
+    let v <- memory.read_resp2();
         
+  endrule
+  
+  //The Store Buffer doesn't have it, so we use the result from the dmem
+  
+  rule sbMiss (link_stbuffer.getResp() matches tagged SBR_Lookup {a: .addr, mv: .mnew_val, t:.tok}
+                   &&& mnew_val matches tagged Invalid);
+    
+    link_stbuffer.deq();
+    
+  
+     Addr sa = addr>>2;
+
+     if (sa > maxAddr)
+       $display("WARNING [1]: Address 0x%h out of bounds. Increase software address length!", addr);
+
+     //$display("Load at %0d", $time);
+     memory.read_req2(truncate(sa));
+
+  endrule
+  
+  rule sbMissFinish (True);
+    let v <- memory.read_resp2();
+    link_dmem.makeResp(tagged LdResp v);
   endrule
   
 endmodule

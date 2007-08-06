@@ -185,31 +185,31 @@ module [HASim_Module] mkFUNCP
   
   
   rule tok_kills (ready);
-    let foo <- link_tok_kill.receive();
+    link_tok_kill.deq();
   endrule
   
   rule fet_kills (ready);
-    let foo <- link_fet_kill.receive();
+    link_fet_kill.deq();
   endrule
   
   rule dec_kills (ready);
-    let foo <- link_dec_kill.receive();
+    link_dec_kill.deq();
   endrule
   
   rule exe_kills (ready);
-    let foo <- link_exe_kill.receive();
+    link_exe_kill.deq();
   endrule
   
   rule mem_kills (ready);
-    let foo <- link_mem_kill.receive();
+    link_mem_kill.deq();
   endrule
   
   rule lco_kills (ready);
-    let foo <- link_lco_kill.receive();
+    link_lco_kill.deq();
   endrule
 
   rule gco_kills (ready);
-    let foo <- link_gco_kill.receive();
+    link_gco_kill.deq();
   endrule
   
   //open the debug log
@@ -240,7 +240,7 @@ module [HASim_Module] mkFUNCP
  
   rule newInFlight (ready);
    
-    let x <- link_tok.getReq();
+    let x = link_tok.getReq();
 
     //Bug work-around
     if (x == 17)
@@ -248,6 +248,7 @@ module [HASim_Module] mkFUNCP
       let t <- tok_state.allocate();
       let inf = FUNCP_TokInfo {epoch: 0, scratchpad: 0};
       let newtok = Token {index: t, timep_info: ?, funcp_info: inf};
+      link_tok.deq();
       link_tok.makeResp(newtok);
       funcp_debug($fwrite(debug_log, "TokGen: Allocating Token %0d", t));
     end
@@ -257,7 +258,8 @@ module [HASim_Module] mkFUNCP
   
   rule fetch1 (ready);
   
-    match {.tok, .addr} <- link_fet.getReq();
+    match {.tok, .addr} = link_fet.getReq();
+    link_fet.deq();
     
     funcp_debug($fwrite(debug_log, "Token %0d: Fetch: Start (Address: 0x%h)", tok.index, addr));
   
@@ -273,7 +275,8 @@ module [HASim_Module] mkFUNCP
   
   rule fetch2 (ready);
   
-    PackedInst resp <- link_to_imem.getResp();
+    PackedInst resp = link_to_imem.getResp();
+    link_to_imem.deq();
     
     let inst = bitsToInst(resp);
     
@@ -292,9 +295,9 @@ module [HASim_Module] mkFUNCP
   
   rule decode1 (ready);
   
-    Tuple2#(Token, void) tup <- link_dec.getReq();
+    match {.tok, .*} = link_dec.getReq();
+    link_dec.deq();
     
-    match {.tok, .*} = tup;
     funcp_debug($fwrite(debug_log, "Token %0d: Decode: Start", tok.index));
   
     tok_state.dec_start(tok.index);
@@ -474,7 +477,9 @@ module [HASim_Module] mkFUNCP
   
   rule execute1 (ready);
   
-    match {.tok, .*} <- link_exe.getReq();    
+    match {.tok, .*} = link_exe.getReq();
+    link_exe.deq();
+    
     funcp_debug($fwrite(debug_log, "Token %0d: Execute: Start", tok.index));
   
     tok_state.exe_start(tok.index);
@@ -558,7 +563,9 @@ module [HASim_Module] mkFUNCP
     let tok = exe3Q.first();
     exe3Q.deq();
     
-    match {.res, .eaddr, .wbval} <- link_datapath.getResp();
+    match {.res, .eaddr, .wbval} = link_datapath.getResp();
+    link_datapath.deq();
+    
     let dst <- tok_dest.read_resp1();
     
     prf.write(dst, wbval);
@@ -578,7 +585,8 @@ module [HASim_Module] mkFUNCP
   
   rule mem1 (ready);
   
-    match {.tok, .*} <- link_mem.getReq();
+    match {.tok, .*} = link_mem.getReq();
+    link_mem.deq();
     
     funcp_debug($fwrite(debug_log, "Token %0d: DMem: Start", tok.index)); 
     
@@ -648,7 +656,8 @@ module [HASim_Module] mkFUNCP
     match {.tok, .dest} = mem2Q.first();
     mem2Q.deq();
     
-    let resp <- link_to_dmem.getResp();
+    let resp = link_to_dmem.getResp();
+    link_to_dmem.deq();
   
     case (resp) matches
       tagged StResp .*  : noAction;
@@ -668,7 +677,8 @@ module [HASim_Module] mkFUNCP
   
   rule lco (ready);
   
-    match {.tok, .*} <- link_lco.getReq();
+    match {.tok, .*} = link_lco.getReq();
+    link_lco.deq();
     
     freelist.free(tok);
 
@@ -682,7 +692,8 @@ module [HASim_Module] mkFUNCP
   
   rule gco (ready);
   
-    match {.tok, .*} <- link_gco.getReq();
+    match {.tok, .*} = link_gco.getReq();
+    link_gco.deq();
     
     funcp_debug($fwrite(debug_log, "Token %0d: GCO: Finishing Token", tok.index)); 
 
@@ -697,7 +708,8 @@ module [HASim_Module] mkFUNCP
   
   rule rewind1 (ready);
   
-    let tok <- link_rewind.receive();
+    let tok = link_rewind.receive();
+    link_rewind.deq();
     
     funcp_debug($fwrite(debug_log, "Rewind: Starting Rewind to Token %0d (Youngest: %0d)", tok.index, tok_state.youngest())); 
     

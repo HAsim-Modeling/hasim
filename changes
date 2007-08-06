@@ -6602,3 +6602,28 @@ Directory modules/common/fpgaenv/virtual-platform
  fast-virtual-platform.awb Locally Added               0 
 
 Created FPGA environment for FAST
+
+----------
+vmurali     Date: Mon Aug  6 14:37:30 EDT 2007  CSN: CSN-hasim-238
+                  Mon Aug  6 18:37:30 UTC 2007
+
+
+Directory .
+ configure                 Locally Modified          237 
+ Makefile.in               Locally Modified          237 
+
+Directory libperl
+ Makefile.in               Locally Modified          237 
+
+Directory tools/hasim
+ Makefile.in               Locally Modified          237 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Modified          237 
+
+Directory tools
+ Makefile.in               Locally Modified          237 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          237 
+

@@ -6,7 +6,9 @@ module [HASim_Module] mkAFU_Alg ();
   
   rule passThrough (True);
   
-    let d <- link_dme.getReq();
+    let d = link_dme.getReq();
+    link_dme.deq();
+    
     link_dme.makeResp(d);
     
   endrule

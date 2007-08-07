@@ -115,14 +115,14 @@ $(XILINX_APM_NAME).ngc: $(XST_FILE)
 .PHONY: vexe
 vexe: make_subdir
 	@$(TRAP_ERRORS)
-	ln -f -s $(ARCH_DIR)/$(ROOT_DIR)/vpi_* .
-	$(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) $(GIVEN_CS) $(BDPI_BAS)
-	rm -f vpi_*
-	if [ -f "directc.sft" ] ; then mv -f directc.sft $(TMP_BSC_DIR) ; fi
+	@ln -f -s $(ARCH_DIR)/$(ROOT_DIR)/vpi_* .
+	@$(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) $(GIVEN_CS) $(BDPI_BAS)
+	@rm -f vpi_*
+	@if [ -f "directc.sft" ] ; then mv -f directc.sft $(TMP_BSC_DIR) ; fi
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "$(BUILD_DIR)/$(APM_NAME).vexe +bscvcd" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
-	ln -fs $(APM_NAME).vexe simv
+	@ln -fs $(APM_NAME).vexe simv
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
 
@@ -146,13 +146,13 @@ $(GEN_CXXS): generate_cxxs
 .PHONY: generate_cxxs
 generate_cxxs: make_subdir
 	@ \
-	 echo "Generating C files"
-	 @$(BSC) $(BSC_FLAGS) $(LDFLAGS) -KILLsimBlocksToC -sim -e $(ROOT_WRAPPER_SYNTH_ID) -simdir $(TMP_BSC_DIR) -o $(APM_NAME).exe $(ALL_BAS)
+	 echo "Generating C files" ;\
+	 $(BSC) $(BSC_FLAGS) $(LDFLAGS) -KILLsimBlocksToC -sim -e $(ROOT_WRAPPER_SYNTH_ID) -simdir $(TMP_BSC_DIR) -o $(APM_NAME).exe $(ALL_BAS)
 
 $(TMP_BSC_DIR)/%.o: $(TMP_BSC_DIR)/%.cxx
 	@ \
-	 echo "Compiling $<"
-	 @$(CPP) $(CPP_FLAGS) -c -o $@ $<
+	 echo "Compiling $<" ;\
+	 $(CPP) $(CPP_FLAGS) -c -o $@ $<
 
 ## Dependencies ensure correct build order of generated .o files
 

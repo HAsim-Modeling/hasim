@@ -155,7 +155,8 @@ module [HASim_Module] mkFUNCP_Regstate
 
   rule begin_Mapping (!busy);
      
-    match {.mx, .tok, .ss, .r1, .r2} <- link_mapping.getReq();
+    match {.mx, .tok, .ss, .r1, .r2} = link_mapping.getReq();
+    linkMapping.deq();
     
     if (tok.timep_info.epoch == dead_epoch) //It's a dead request so return junk
     begin
@@ -257,7 +258,9 @@ module [HASim_Module] mkFUNCP_Regstate
 
   rule read_req1 (True);
   
-    let prnm <- link_read1.getReq();
+    let prnm = link_read1.getReq();
+    link_read1.deq();
+    
     prf.read_req1(prnm);
   
   endrule
@@ -271,7 +274,9 @@ module [HASim_Module] mkFUNCP_Regstate
 
   rule read_req2 (True);
   
-    let prnm <- link_read2.getReq();
+    let prnm = link_read2.getReq();
+    link_read2.deq();
+    
     prf.read_req2(prnm);
   
   endrule
@@ -319,7 +324,8 @@ module [HASim_Module] mkFUNCP_Regstate
 
   rule write (True);
   
-    match {.prnm, .val} <- link_write1.receive();
+    match {.prnm, .val} = link_write1.receive();
+    link_write1.deq();
     
     if (prnm == 0)
     begin
@@ -333,7 +339,8 @@ module [HASim_Module] mkFUNCP_Regstate
   
   rule write2 (True);
   
-    match {.prnm, .val} <- link_write2.receive();
+    match {.prnm, .val} = link_write2.receive();
+    link_write2.deq();
     
     if (prnm == 0)
     begin
@@ -349,7 +356,8 @@ module [HASim_Module] mkFUNCP_Regstate
   
   rule freePReg (!busy);
   
-    let tok <- link_freePReg.receive();
+    let tok = link_freePReg.receive();
+    link_freePReg.deq();
     
     freelist.free(tok);
 
@@ -366,7 +374,9 @@ module [HASim_Module] mkFUNCP_Regstate
   rule rewindToToken (!busy);
     
     
-    let tok <- link_rewindToToken.receive();
+    let tok = link_rewindToToken.receive();
+    link_rewindToToken.deq();
+
     $fdisplay(debug_log, "[%d]: REGSTATE rewindToToken: %0d", curCC, tok.index);
     
     dead_epoch <= epoch;

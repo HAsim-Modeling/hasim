@@ -124,7 +124,8 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   
   rule insert (True);
   
-    match {.tok, .iVal} <- link_from_prev.receive();
+    match {.tok, .iVal} = link_from_prev.receive();
+    link_from_prev.deq();
     
     //Note: We avoid a correctness check to reduce latency
     
@@ -140,7 +141,8 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   
   rule req_start (True);
 
-    match {.tok, .req} <- link_from_tp.getReq();
+    match {.tok, .req} = link_from_tp.getReq();
+    link_from_tp.deq();
    
     starteds.read_req(tok.index);
     valids.read_req1(tok.index);
@@ -176,7 +178,8 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   
   rule resp_start (True);
   
-    match {.tok, .resp, .next} <- link_to_unit.getResp();
+    match {.tok, .resp, .next} = link_to_unit.getResp();
+    link_to_unit.deq();
     
     valids.read_req2(tok.index);
     
@@ -203,7 +206,8 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   
   rule killToken (True);
     
-    let tok <- link_killToken.receive();
+    let tok = link_killToken.receive();
+    link_killToken.deq();
   
     valids.write(tok.index, False);
   

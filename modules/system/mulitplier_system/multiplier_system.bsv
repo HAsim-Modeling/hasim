@@ -12,8 +12,10 @@ module [HASim_Module] mkSystem ();
   Reg#(Bit#(2))  r            <- mkReg(0);
 
   rule start (state == 0);
-     Bit#(4) inp <- link_switches.receive();
-     ButtonInfo btns <- link_buttons.receive();
+     Bit#(4) inp = link_switches.receive();
+     ButtonInfo btns = link_buttons.receive();
+     link_switchs.deq();
+     link_buttons.deq();
 
      Bit#(2) x = inp[3:2];
      Bit#(2) y = inp[1:0];

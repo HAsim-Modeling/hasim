@@ -21,7 +21,9 @@ module [HASim_Module] mkFPGALib (TopLevel);
   
   rule set_leds (True);
   
-    Bit#(4) newval <- link_leds.receive();
+    Bit#(4) newval = link_leds.receive();
+    link_leds.deq();
+
     led_reg <= newval;
     $display("LEDS: %0b", newval);
   

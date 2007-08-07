@@ -50,7 +50,9 @@ module [HASim_Module] mkFUNCP_Checker
   
   rule dmem_resp (True);
   
-    Value v <- magic_dmem.getResp();
+    Value v = magic_dmem.getResp();
+    magic_dmem.deq();
+
     let cur = locQ.first();
     locQ.deq();
     

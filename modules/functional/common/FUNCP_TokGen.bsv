@@ -60,11 +60,13 @@ module [HASim_Module] mkFUNCP_Stage_TOK#(File debug_log, Tick curCC) ();
   rule handleReq (ready);
   
     //bug workaround
-    let x <- link_from_tp.getReq();
+    let x = link_from_tp.getReq();
 
     if (x == 17)
     begin
     //allocate a new token
+    
+    link_from_tp.deq();
     
     let inf = FUNCP_TokInfo {epoch: 0, scratchpad: 0};
     
@@ -106,7 +108,8 @@ module [HASim_Module] mkFUNCP_Stage_TOK#(File debug_log, Tick curCC) ();
   rule recycle (True);
 
     //complete token t
-    match {.t, .*} <- link_from_prev.receive();
+    match {.t, .*} = link_from_prev.receive();
+    link_from_prev.deq();
 
     //Bool isFree = valids.sub(t.index);
     //if (!isFree)
@@ -120,7 +123,8 @@ module [HASim_Module] mkFUNCP_Stage_TOK#(File debug_log, Tick curCC) ();
   
   rule killToken (True);
   
-    let tok <- link_killToken.receive();
+    let tok = link_killToken.receive();
+    link_killToken.deq();
   
     //Bool isFree = valids.sub(tok.index);
   

@@ -33,14 +33,18 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
 
     rule moveDataToFSB (True);
     
-      match {.d, .b, .e} <- link_from_dme_data.receive();
+      match {.d, .b, .e} = link_from_dme_data.receive();
+      link_from_dme_data.deq();
+      
       frontPanel.putData(d, b, e);
     
     endrule
 
     rule moveCmdToFSB (True);
     
-      let c <- link_from_dme_cmd.receive();
+      let c = link_from_dme_cmd.receive();
+      link_from_dme_cmd.deq();
+
       frontPanel.putCmd(c);
     
     endrule

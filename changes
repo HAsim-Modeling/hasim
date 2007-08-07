@@ -6667,3 +6667,52 @@ Small bugfix in synthesis environment.
 The interface of connections has changed to a first/deq mechanism, which will break some models.
 
 Michael P.
+
+----------
+pellauer    Date: Tue Aug  7 15:44:29 EDT 2007  CSN: CSN-hasim-240
+                  Tue Aug  7 19:44:29 UTC 2007
+
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          239 
+
+Directory modules/functional/common
+ FUNCP_Checker.bsv         Locally Modified          239 
+ FUNCP_Base.bsv            Locally Modified          239 
+ FUNCP_RegState.bsv        Locally Modified          239 
+ FUNCP_TokGen.bsv          Locally Modified          239 
+
+Directory modules/system/afu_system/pass-through
+ afu_pass_through_alg.bsv  Locally Modified          239 
+
+Directory modules/system/afu_system/add1
+ afu_add1_alg.bsv          Locally Modified          239 
+
+Directory modules/system/dme_system/no-afu
+ dme_no_afu.bsv            Locally Modified          239 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.bsv     Locally Modified          239 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.bsv  Locally Modified          239 
+
+Directory modules/common/fpgaenv/platform-interface/hasim-rpc
+ HAsimRPCPlatformInterface.bsv Locally Modified          239 
+
+Directory modules/common/fpgaenv/platform-interface/hasim_dme
+ HAsimPlatformInterface.bsv Locally Modified          239 
+
+Directory modules/common/fpgaenv/platform-interface/hasim_afu
+ HAsimPlatformInterface.bsv Locally Modified          239 
+
+Directory modules/common/fpgalib
+ FPGALib_XUP.bsv           Locally Modified          239 
+ FPGALib_Bluesim.bsv       Locally Modified          239 
+
+
+Changed everything over to the new connections interface.
+
+Small bug in Makefile template fixed.
+
+Michael P.

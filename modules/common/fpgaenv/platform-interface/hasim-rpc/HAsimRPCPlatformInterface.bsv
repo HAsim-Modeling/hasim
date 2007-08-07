@@ -21,7 +21,8 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
 
     // rules
     rule set_leds (True);
-        Bit#(4) newval <- link_leds.receive();
+        Bit#(4) newval = link_leds.receive();
+	link_leds.deq();
 
         // ask front panel to display my current LED state
         frontPanel.writeLEDs(newval);

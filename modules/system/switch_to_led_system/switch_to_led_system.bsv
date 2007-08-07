@@ -11,8 +11,10 @@ module [HASim_Module] mkSystem ();
     Calculation4x4 func <- mkCalculation4x4();
 
     rule run(True);
-        Bit#(4) inp <- link_switches.receive();
-        ButtonInfo btns <- link_buttons.receive();
+        Bit#(4) inp = link_switches.receive();
+        ButtonInfo btns = link_buttons.receive();
+	link_switches.deq();
+	link_buttons.deq();
         func.start(inp);
     endrule
 

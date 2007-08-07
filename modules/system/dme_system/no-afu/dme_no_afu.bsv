@@ -111,8 +111,11 @@ module [HASim_Module] mkDME_Alg ();
   
   rule reqStore (True);
   
-    let rsp <- link_from_fsb_cmd.receive();
-    match {.d, .b, .e}   <- link_from_fsb_data.receive();
+    let rsp = link_from_fsb_cmd.receive();
+    link_from_fsb_cmd.deq();
+    
+    match {.d, .b, .e}   = link_from_fsb_data.receive();
+    link_from_fsb_data.receive();
     
     let cmd = fsb_cmd_store(fsb_cmd_addr(rsp), 3'b010);
     link_to_fsb_cmd.send(cmd);

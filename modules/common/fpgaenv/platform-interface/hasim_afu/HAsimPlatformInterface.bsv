@@ -23,7 +23,9 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
 
     rule moveRsp (True);
     
-      let d <- link_afu.getResp();
+      let d = link_afu.getResp();
+      link_afu.deq();
+
       frontPanel.makeResponse(d);
     
     endrule

@@ -6716,3 +6716,29 @@ Changed everything over to the new connections interface.
 Small bug in Makefile template fixed.
 
 Michael P.
+
+----------
+mpellaue    Date: Wed Aug  8 18:00:59 EDT 2007  CSN: CSN-hasim-241
+                  Wed Aug  8 22:00:59 UTC 2007
+
+
+Directory modules/functional/semantic-model
+ FUNCPTokState.bsv         Locally Modified          240 
+ FUNCPModel.bsv            Locally Modified          240 
+
+Directory modules/functional/common
+ FUNCP_StoreBuffer_Seq.bsv Locally Modified          240 
+ FUNCP_FreeList.bsv        Locally Modified          240 
+ FUNCP_MemState_Seq.bsv    Locally Modified          240 
+
+Directory modules/common
+ Events.bsv                Locally Modified          240 
+
+
+Changes to the new functional partition. All tests now pass on the 5-stage timing model.
+
+Benchmarks run between ~9000 and ~66000 model cycles before deadlocking due to a remaining bug in the Store Buffer.
+
+New functional partition should be as mature as existing now.
+
+Michael P.

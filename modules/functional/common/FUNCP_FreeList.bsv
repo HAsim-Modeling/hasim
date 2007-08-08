@@ -121,7 +121,7 @@ module [HASim_Module] mkFreeList#(File debug_log, Tick curCC)
   
   method Action backTo(PRName r) if (!initializing && reqCount == 0);
   
-    $fdisplay(debug_log, "went back to PR%0d", r);
+    $fdisplay(debug_log, "[%d]: FREELIST: Going back to PR%0d", curCC, r);
     if(fl_read > fl_write && r < fl_write || fl_read < fl_write && r < fl_write && r > fl_read)
         $display("ERROR: Backed up the freelist too far! (r = %0d)", r);
     fl_read <= r;

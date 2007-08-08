@@ -173,15 +173,30 @@ module [Connected_Module] mkEventController_Simulation
                 (EventController);
 
   FIFO#(EventData) chainQ <- mkFIFO();
+  Reg#(Bit#(32))  fpga_cc <- mkReg(0);
+  Reg#(Bit#(32))  nextBeat <- mkReg(0);
   Reg#(Bit#(32))       cc <- mkReg(0);
   Reg#(Bit#(32))      cur <- mkReg(0);
   Reg#(EVC_State)   state <- mkReg(EVC_Initialize);
   let           event_log <- mkReg(InvalidFile);
   
+  rule tick (True);
+  
+    fpga_cc <= fpga_cc + 1;
+  
+  endrule
+  
   rule timeout (cc == `HASIM_BMARK_TIMEOUT);
   
-    $display("Event Controller: ERROR: Benchmark timed out after %s model cycles.", `HASIM_BMARK_TIMEOUT);
+    $display("[%0d] Event Controller: ERROR: Benchmark timed out after %s model cycles.", `HASIM_BMARK_TIMEOUT);
     $finish(1);
+  
+  endrule
+  
+  rule heartbeat ((cc == nextBeat) && (cc != 0));
+  
+    $display("[%0d] Event Controller: %0d Model cycles simulated.", fpga_cc, cc);
+    nextBeat <= nextBeat + 1000;
   
   endrule
   

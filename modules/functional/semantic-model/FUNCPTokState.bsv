@@ -55,8 +55,15 @@ module mkFUNCP_TokState (FUNCP_TokState)
   TokStateRF memResp    <- mkRegFileFull();
   TokStateRF finalized  <- mkRegFileFull();
 
-  Reg#(TokIndex) youngest_tok <- mkReg(0);
+  Reg#(TokIndex) next_free_tok <- mkReg(0);
+  TokIndex youngest_tok = next_free_tok - 1;
   Reg#(TokIndex) oldest_tok <- mkReg(0);
+
+  
+  TokIndex num_in_flight =  next_free_tok - oldest_tok;
+  
+  //We can allocate only half the tokens at once.
+  Bool can_allocate = num_in_flight[valueOf(idx_SZ) - 1] == 0;
 
   function Bool isBusy(TokIndex t);
   
@@ -68,6 +75,7 @@ module mkFUNCP_TokState (FUNCP_TokState)
     return fet_busy || dec_busy || exe_busy || mem_busy;
   
   endfunction
+  
   
   method Action deallocate(TokIndex t);
   
@@ -82,12 +90,12 @@ module mkFUNCP_TokState (FUNCP_TokState)
       $display("FUNCP: WARNING: TokState: Deallocating Tokens out of order (Given: %0d Oldest: %0d)", t, oldest_tok);
     end
     */
-    oldest_tok <= oldest_tok + 1;
+    oldest_tok <= t + 1; //This is a heuristic, but saves on much combinational logic
     alloc <=  update(alloc, t, False);
     
   endmethod
   
-  method ActionValue#(TokIndex) allocate() if (!isBusy(youngest_tok)); //Stall until the youngest quiesces
+  method ActionValue#(TokIndex) allocate() if (can_allocate && !isBusy(next_free_tok)); //Stall until the youngest quiesces
   /*
     if (alloc.sub(t))
     begin
@@ -95,7 +103,7 @@ module mkFUNCP_TokState (FUNCP_TokState)
       $finish(1);
     end
     */
-    let t = youngest_tok;
+    let t = next_free_tok;
     
     alloc <= update(alloc, t, True);
     fetReq.upd(t, False);
@@ -110,7 +118,7 @@ module mkFUNCP_TokState (FUNCP_TokState)
     memResp.upd(t, False);
     finalized.upd(t, False);
     
-    youngest_tok <= youngest_tok + 1;
+    next_free_tok <= next_free_tok + 1;
     
     return t;
     
@@ -269,7 +277,11 @@ module mkFUNCP_TokState (FUNCP_TokState)
     for (Integer x = 0; x < valueof(TExp#(idx_SZ)); x = x + 1)
     begin
       TokIndex cur = fromInteger(x);
-      as[x] = (cur > t) && (cur <= youngest_tok) ? False : alloc[x];
+      as[x] = (youngest_tok > t) ? 
+                 //No overflow
+                 ((cur > t) && (cur <= youngest_tok) ? False : alloc[x]) :
+                 //Overflow
+                 ((cur > t) || (cur <= youngest_tok) ? False : alloc[x]);
     end
   
     alloc <= as;

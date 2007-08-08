@@ -81,9 +81,14 @@ module [HASim_Module] mkFUNCP
   Reg#(Bool)     rewinding <- mkReg(False);
   Reg#(Bool)     fast_rewind <- mkReg(False);
   Reg#(Bool)     initializing <- mkReg(True);
+  Reg#(PRName)   init_cur <- mkReg(0);
   let ready = !rewinding && !initializing;
   Reg#(TokIndex) rewindTok <- mkRegU();
   Reg#(TokIndex) rewindCur <- mkRegU();
+  Reg#(TIMEP_Epoch) epoch <- mkReg(0);
+  
+  RName  maxReg  = maxBound;
+  PRName maxInit = zeroExtend(maxReg);
   
   //Queues
   
@@ -176,11 +181,16 @@ module [HASim_Module] mkFUNCP
   //...
   link_gco_kill <- mkConnection_Receive("fp_gco_kill");
 
+  Connection_Receive#(Token) link_memstate_kill <- mkConnection_Receive("fp_memstate_kill");
+
+
   Connection_Send#(Token) link_mem_commit <- mkConnection_Send("mem_commit");
   
   Connection_Client#(Tuple4#(Inst, Addr, Value, Value), 
                      Tuple3#(InstResult, Addr, Maybe#(Value))) link_datapath <- mkConnection_Client("isa_datapath");
-    
+
+  Connection_Send#(Tuple2#(TokIndex, TokIndex)) link_mem_rewind <- mkConnection_Send("mem_rewind");
+  
   //Dump obsolete kills
   
   
@@ -211,6 +221,10 @@ module [HASim_Module] mkFUNCP
   rule gco_kills (ready);
     link_gco_kill.deq();
   endrule
+
+  rule memstate_kills (ready);
+    link_memstate_kill.deq();
+  endrule
   
   //open the debug log
   rule initialize (initializing);
@@ -224,8 +238,11 @@ module [HASim_Module] mkFUNCP
     end
 
     debug_log <= fd;
-
-    initializing <= False;
+    
+    prf.write(init_cur, tagged Valid 0);
+    
+    initializing <= (init_cur <= maxInit);
+    init_cur <= init_cur + 1;
   
   endrule
   
@@ -309,7 +326,7 @@ module [HASim_Module] mkFUNCP
   
   endrule
   
-  rule decode2 (ready && tok_state.isAllocated(decQ.first().index));
+  rule decode2 (ready && decQ.first().timep_info.epoch == epoch);
   
     let tok = decQ.first();
     decQ.deq();
@@ -417,7 +434,7 @@ module [HASim_Module] mkFUNCP
     
   endrule
   
-  rule decode_junk (ready && !tok_state.isAllocated(decQ.first().index));
+  rule decode_junk (!initializing && decQ.first().timep_info.epoch != epoch);
   
     let tok = decQ.first();
     decQ.deq();
@@ -713,7 +730,9 @@ module [HASim_Module] mkFUNCP
     
     funcp_debug($fwrite(debug_log, "Rewind: Starting Rewind to Token %0d (Youngest: %0d)", tok.index, tok_state.youngest())); 
     
+    link_mem_rewind.send(tuple2(tok.index, tok_state.youngest()));
     tok_state.rewindTo(tok.index);
+    epoch <= epoch + 1;
     
     Bool found = False;
     if (snap_valids[tok.index]) //We might have a snapshot

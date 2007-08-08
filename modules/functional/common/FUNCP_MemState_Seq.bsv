@@ -57,10 +57,10 @@ module [HASim_Module] mkFUNCP_Memstate ()
   Connection_Server#(MemReq, MemResp)  link_dmem      <- mkConnection_Server("mem_dmem");
   Connection_Client#(SB_Command, SB_Response) link_stbuffer <- mkConnection_Client("mem_storebuf");
   Connection_Receive#(Token)           link_commit    <- mkConnection_Receive("mem_commit");
-  Connection_Receive#(Token)           link_killToken <- mkConnection_Receive("fp_memstate_kill");
+  Connection_Receive#(Tuple2#(TokIndex, TokIndex))           link_rewindToToken <- mkConnection_Receive("mem_rewind");
 
   //handleIMEM
-  
+   
   //Handles all IMem requests
 
   rule handleIMEM (True);
@@ -145,12 +145,12 @@ module [HASim_Module] mkFUNCP_Memstate ()
   
   //Rolls back killed tokens
   
-  rule handleKill (True);
+  rule handleRewind (True);
   
-    Token tok = link_killToken.receive();
-    link_killToken.deq();
+    match {.rewind_tok, .youngest} = link_rewindToToken.receive();
+    link_rewindToToken.deq();
     
-    link_stbuffer.makeReq(tagged SB_Kill tok);
+    link_stbuffer.makeReq(tagged SB_Rewind {rewind: rewind_tok, youngest: youngest});
 
   endrule
 
@@ -161,9 +161,6 @@ module [HASim_Module] mkFUNCP_Memstate ()
   
     link_stbuffer.deq();
     link_dmem.makeResp(tagged LdResp new_val);
-    
-    //Ignore memory response
-    let v <- memory.read_resp2();
         
   endrule
   

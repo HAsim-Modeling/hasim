@@ -12,10 +12,10 @@ import RegFile::*;
 
 typedef union tagged
 {
-  struct {Value v; Addr a; Token t;} SB_Insert;
-  struct {Addr a; Token t;}          SB_Lookup;
-  Token                              SB_Commit;
-  Token                              SB_Kill;
+  struct {Value v; Addr a; Token t;}     SB_Insert;
+  struct {Addr a; Token t;}              SB_Lookup;
+  Token                                  SB_Commit;
+  struct {TokIndex rewind; TokIndex youngest;} SB_Rewind;
 }
   SB_Command 
     deriving (Eq, Bits);
@@ -54,7 +54,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer ()
   Reg#(TokIndex) cur <- mkReg(0);
 
   //Change hash here
-  function AddrHash hash(Addr a) = truncate(a);
+  function AddrHash hash(Addr a) = truncate(a>>2);
   
   function Bool isBetter(Token t, Maybe#(Tuple2#(Token, Value)) mt);
   
@@ -120,12 +120,25 @@ module [HASim_Module] mkFUNCP_StoreBuffer ()
   endrule
 
   //Invalidate, but no need to send the response
-  rule kill (!initializing &&& link_memstate.getReq() matches tagged SB_Kill .tok);
-        
-    //We invalidate the node's data, but
-    //do not remove the node from the list
+  rule rewind (!initializing &&& link_memstate.getReq() matches tagged SB_Rewind .rinfo);
+     
+    //We invalidate the nodes' data, but
+    //do not remove them from the list
     //which is correct, but may slow down lookups
-    tvalids <= update(tvalids, tok.index, False); 
+    
+    Vector#(TExp#(idx_SZ), Bool) as = newVector();
+    
+    for (Integer x = 0; x < valueof(TExp#(idx_SZ)); x = x + 1)
+    begin
+      TokIndex cur = fromInteger(x);
+      as[x] = (rinfo.youngest > rinfo.rewind) ? 
+                 //No overflow
+                 ((cur > rinfo.rewind) && (cur <= rinfo.youngest) ? False : tvalids[x]) :
+                 //Overflow
+                 ((cur > rinfo.rewind) || (cur <= rinfo.youngest) ? False : tvalids[x]);
+    end
+
+    tvalids <= as;
     link_memstate.deq(); 
 
   endrule
@@ -171,7 +184,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer ()
                           tagged Valid {.tk, .v}: tagged Valid v;
                         endcase;
 
-        link_memstate.makeResp(tagged SBR_Lookup {mv:finalres, a: a, t:tok});
+        link_memstate.makeResp(tagged SBR_Lookup {mv:finalres, a: addr, t:tok});
 
         searching <= False;
         link_memstate.deq();
@@ -179,6 +192,11 @@ module [HASim_Module] mkFUNCP_StoreBuffer ()
       end
     tagged Valid .next_tok: //Keep looking for a better match
       begin
+        if (next_tok.index == candidate.index)
+        begin
+          $display("ERROR: FUNCP: Store Buffer: Infinite loop in list on Token %0d (Addr: 0x%h, Value: 0x%h)", candidate.index, a, v);
+          $finish(1);
+        end
         listmem.read_req(next_tok.index);
         candidate <= next_tok;
         best_so_far <= newbest;

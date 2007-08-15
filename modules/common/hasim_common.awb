@@ -17,7 +17,7 @@
 # %public HASim.bsv Events.bsv Connections.bsv  Ports.bsv Stats.bsv BypassFIFO.bsv FPGAFIFOs.bsv Commands.bsv Debug.bsv 
 # %private bluespec_common.prj
 #
-# %param HASIM_BMARK_TIMEOUT 100000 "Force a run to end after N model cycles."
+# %param HASIM_BMARK_TIMEOUT 1000000 "Force a run to end after N model cycles."
 #
 # %param HASIM_TOK_INDEX_BITS 8 "Number of bits in a Token (8 = 256 in-flight instructions)."
 #

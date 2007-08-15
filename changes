@@ -6742,3 +6742,27 @@ Benchmarks run between ~9000 and ~66000 model cycles before deadlocking due to a
 New functional partition should be as mature as existing now.
 
 Michael P.
+
+----------
+mpellaue    Date: Tue Aug 14 20:18:19 EDT 2007  CSN: CSN-hasim-242
+                  Wed Aug 15 00:18:19 UTC 2007
+
+
+Directory config/pm/hasim/demos/bram_test
+ bram_test_xup.apm         Locally Modified          241 
+
+Directory modules/functional/semantic-model
+ FUNCPModel.bsv            Locally Modified          241 
+
+Directory modules/functional/common
+ FUNCP_StoreBuffer_Seq.bsv Locally Modified          241 
+ FUNCP_FreeList.bsv        Locally Modified          241 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          241 
+ Events.bsv                Locally Modified          241 
+
+
+Changes to the new store buffer mean that long-running benchmarks can run to completion.
+
+Michael P.

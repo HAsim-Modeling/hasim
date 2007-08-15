@@ -54,7 +54,7 @@ module [HASim_Module] mkFreeList#(File debug_log, Tick curCC)
       initializing <= False;
   endrule
   
-  rule finish_free (True);
+  rule finish_free (!initializing);
   
     PRName reg_to_free <- old_pregs.read_resp();
     if (reg_to_free != 0)

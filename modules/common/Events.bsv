@@ -174,7 +174,7 @@ module [Connected_Module] mkEventController_Simulation
 
   FIFO#(EventData) chainQ <- mkFIFO();
   Reg#(Bit#(32))  fpga_cc <- mkReg(0);
-  Reg#(Bit#(32))  nextBeat <- mkReg(0);
+  Reg#(Bit#(32))  nextBeat <- mkReg(1000);
   Reg#(Bit#(32))       cc <- mkReg(0);
   Reg#(Bit#(32))      cur <- mkReg(0);
   Reg#(EVC_State)   state <- mkReg(EVC_Initialize);

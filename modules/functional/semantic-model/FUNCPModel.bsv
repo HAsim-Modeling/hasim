@@ -229,15 +229,20 @@ module [HASim_Module] mkFUNCP
   //open the debug log
   rule initialize (initializing);
   
-    let fd <- $fopen("hasim_funcp.out", "w");
-
-    if (fd == InvalidFile)
+    if (debug_log == InvalidFile)
     begin
-      $display("Error opening FUNCP logfile hasim_funcp.out");
-      $finish(1);
+      let fd <- $fopen("hasim_funcp.out", "w");
+
+      if (fd == InvalidFile)
+      begin
+        $display("Error opening FUNCP logfile hasim_funcp.out");
+        $finish(1);
+      end
+      
+      debug_log <= fd;
+      
     end
 
-    debug_log <= fd;
     
     prf.write(init_cur, tagged Valid 0);
     

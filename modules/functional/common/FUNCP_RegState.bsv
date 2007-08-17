@@ -156,7 +156,7 @@ module [HASim_Module] mkFUNCP_Regstate
   rule begin_Mapping (!busy);
      
     match {.mx, .tok, .ss, .r1, .r2} = link_mapping.getReq();
-    linkMapping.deq();
+    link_mapping.deq();
     
     if (tok.timep_info.epoch == dead_epoch) //It's a dead request so return junk
     begin

@@ -6796,3 +6796,13 @@ Directory .
 
 Remove aclocal.m4 from ignore list.  I hope/believe this will stop the
 rebuilding of files by autoconf.
+
+----------
+mcadler     Date: Fri Aug 17 13:32:38 EDT 2007  CSN: CSN-hasim-244
+                  Fri Aug 17 17:32:38 UTC 2007
+
+
+Directory modules/functional/common
+ FUNCP_RegState.bsv        Locally Modified          243 
+
+Make 5-stage model compile.

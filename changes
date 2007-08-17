@@ -6766,3 +6766,33 @@ Directory modules/common
 Changes to the new store buffer mean that long-running benchmarks can run to completion.
 
 Michael P.
+
+----------
+mcadler     Date: Fri Aug 17 12:29:13 EDT 2007  CSN: CSN-hasim-243
+                  Fri Aug 17 16:29:13 UTC 2007
+
+
+Directory .
+ configure                 Locally Modified          242 
+ Makefile.in               Locally Modified          242 
+
+Directory libperl
+ Makefile.in               Locally Modified          242 
+
+Directory tools/hasim
+ Makefile.in               Locally Modified          242 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Modified          242 
+
+Directory tools
+ Makefile.in               Locally Modified          242 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          242 
+
+Directory .
+ aclocal.m4                Locally Added               0 
+
+Remove aclocal.m4 from ignore list.  I hope/believe this will stop the
+rebuilding of files by autoconf.

@@ -13,6 +13,9 @@ my $bscPathArg;
 my @bscPath;
 my $bscBDir = ".";
 
+my $derived;
+my %derivedBSV;
+
 my %bsvFiles;
 my %bsvDep;             # Dependence on source files.
 
@@ -292,6 +295,7 @@ my $pathArg = '';
 
 if (! GetOptions('bdir=s' => \$bscBDir,
                  'debug!' => \$debug,
+                 'derived=s' => \$derived,
                  'p=s' => \$pathArg))
 {
     Usage();
@@ -299,6 +303,18 @@ if (! GetOptions('bdir=s' => \$bscBDir,
 Usage() if ($#ARGV < 0);
 
 SetSearchPath($pathArg);
+
+##
+## Build a hash of derived BSV files.  We won't claim that the .depends file
+## depends on them.  If we did, there would be a circular dependence.
+##
+if (defined($derived))
+{
+    foreach my $d (split(' ', $derived))
+    {
+        $derivedBSV{$d} = 1;
+    }
+}
 
 foreach my $bsv (@ARGV)
 {
@@ -342,16 +358,15 @@ print "\n";
 ## These pseudo rules note dependence for building all objects and rebuilding
 ## the dependence file itself.
 ##
-#
 
-# XXX Currently these are commented out because they don't play well with the surrogates.
-# These are statically generated instead
-
-#foreach my $bsv (keys %bsvFiles)
-#{
-#    print ".depends-bsv: ${bsv}\n";
-#}
-#print "\n";
+foreach my $bsv (keys %bsvFiles)
+{
+    if (! exists($derivedBSV{$bsv}))
+    {
+        print ".depends-bsv: ${bsv}\n";
+    }
+}
+print "\n";
 
 #print ".PHONY: all_intermediate\n";
 foreach my $bsv (keys %bsvFiles)

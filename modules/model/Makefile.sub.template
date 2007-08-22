@@ -26,6 +26,7 @@ RELATIVE_BUILD_DIRS := $(subst :,/$(TMP_BSC_DIR):,$(RELATIVE_DIRS))/$(TMP_BSC_DI
 ALL_LIB_DIRS = $(ALL_DIRS):$(ALL_BUILD_DIRS)
 RELATIVE_LIB_DIRS = $(RELATIVE_DIRS):$(RELATIVE_BUILD_DIRS)
 
+SURROGATE_BSVS=$(SUBDIRS:%=$(FULL_DIR)/%.bsv)
 SURROGATE_BIS=$(SUBDIRS:%=./$(TMP_BSC_DIR)/%.bi)
 
 ################################################################
@@ -71,7 +72,7 @@ Makefile:: .depends-bsv
 
 .depends-bsv: $(GEN_BSVS)
 	@echo "Generating dependencies"
-	@hasim-bsc-mkdepend -bdir $(TMP_BSC_DIR) -p +:$(ALL_LIB_DIRS) $(WRAPPER_BSVS) > .depends-bsv
+	@hasim-bsc-mkdepend -bdir $(TMP_BSC_DIR) -derived "$(SURROGATE_BSVS)" -p +:$(ALL_LIB_DIRS) $(WRAPPER_BSVS) > .depends-bsv
 
 
 -include .depends-bsv

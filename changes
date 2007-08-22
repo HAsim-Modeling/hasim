@@ -6816,3 +6816,18 @@ Directory modules/functional/semantic-model
  FUNCPModel.bsv            Locally Modified          244 
 
 kill token rule must be able to fire always
+
+----------
+mcadler     Date: Wed Aug 22 17:54:55 EDT 2007  CSN: CSN-hasim-246
+                  Wed Aug 22 21:54:55 UTC 2007
+
+
+Directory tools/scripts
+ hasim-bsc-mkdepend        Locally Modified          245 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          245 
+
+Enable full dependence recomputation.  The loop was caused by the .depends-bsv
+file depending on the derived .bsv files.  Those are now excluded from the
+.depends-bsv rebuilding chain.

@@ -6806,3 +6806,13 @@ Directory modules/functional/common
  FUNCP_RegState.bsv        Locally Modified          243 
 
 Make 5-stage model compile.
+
+----------
+vmurali     Date: Tue Aug 21 22:59:02 EDT 2007  CSN: CSN-hasim-245
+                  Wed Aug 22 02:59:02 UTC 2007
+
+
+Directory modules/functional/semantic-model
+ FUNCPModel.bsv            Locally Modified          244 
+
+kill token rule must be able to fire always

@@ -194,35 +194,35 @@ module [HASim_Module] mkFUNCP
   //Dump obsolete kills
   
   
-  rule tok_kills (ready);
+  rule tok_kills (!initializing);
     link_tok_kill.deq();
   endrule
   
-  rule fet_kills (ready);
+  rule fet_kills (!initializing);
     link_fet_kill.deq();
   endrule
   
-  rule dec_kills (ready);
+  rule dec_kills (!initializing);
     link_dec_kill.deq();
   endrule
   
-  rule exe_kills (ready);
+  rule exe_kills (!initializing);
     link_exe_kill.deq();
   endrule
   
-  rule mem_kills (ready);
+  rule mem_kills (!initializing);
     link_mem_kill.deq();
   endrule
   
-  rule lco_kills (ready);
+  rule lco_kills (!initializing);
     link_lco_kill.deq();
   endrule
 
-  rule gco_kills (ready);
+  rule gco_kills (!initializing);
     link_gco_kill.deq();
   endrule
 
-  rule memstate_kills (ready);
+  rule memstate_kills (!initializing);
     link_memstate_kill.deq();
   endrule
   

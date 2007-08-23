@@ -6831,3 +6831,13 @@ Directory modules/model
 Enable full dependence recomputation.  The loop was caused by the .depends-bsv
 file depending on the derived .bsv files.  Those are now excluded from the
 .depends-bsv rebuilding chain.
+
+----------
+vmurali     Date: Thu Aug 23 17:19:54 EDT 2007  CSN: CSN-hasim-247
+                  Thu Aug 23 21:19:54 UTC 2007
+
+
+Directory modules/functional/semantic-model
+ FUNCPModel.bsv            Locally Modified          246 
+
+Changed functional model for temporary fix of the bug during execute stage

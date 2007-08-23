@@ -1,4 +1,3 @@
-
 import FIFO::*;
 import Vector::*;
 import RegFile::*;
@@ -25,6 +24,8 @@ module [HASim_Module] mkFUNCP
 
   //A fake register to hold our debugging file descriptor
   let debug_log <- mkReg(InvalidFile);
+  let debug_load <- mkReg(InvalidFile);
+  let debug_commit <- mkReg(InvalidFile);
   Reg#(Bit#(32)) cc <- mkReg(0);
 
   function Action funcp_debug(Action a);
@@ -42,12 +43,12 @@ module [HASim_Module] mkFUNCP
   
   //In-Flight instruction info
 
-  BRAM#(TokIndex, Addr)     tok_addr         <- mkBRAM_Full();
+  BRAM_2#(TokIndex, Addr)   tok_addr         <- mkBRAM_2_Full();
   BRAM_2#(TokIndex, Inst)   tok_inst         <- mkBRAM_2_Full();
-  BRAM_2#(TokIndex, PRName) tok_dest         <- mkBRAM_2_Full(); //A nice convenience
+  BRAM_3#(TokIndex, PRName) tok_dest         <- mkBRAM_3_Full(); //A nice convenience
   BRAM#(TokIndex, Maybe#(PRName)) tok_writer1     <- mkBRAM_Full();
   BRAM#(TokIndex, Maybe#(PRName)) tok_writer2     <- mkBRAM_Full();
-  BRAM#(TokIndex, Addr)      tok_memaddr     <- mkBRAM_Full();
+  BRAM_2#(TokIndex, Addr)      tok_memaddr     <- mkBRAM_2_Full();
   BRAM_3#(PRName, Maybe#(Value))     prf             <- mkBRAM_3_Full();
 
   //Map table
@@ -86,7 +87,9 @@ module [HASim_Module] mkFUNCP
   Reg#(TokIndex) rewindTok <- mkRegU();
   Reg#(TokIndex) rewindCur <- mkRegU();
   Reg#(TIMEP_Epoch) epoch <- mkReg(0);
-  
+
+  Reg#(Bool)        execing <- mkReg(False);  
+
   RName  maxReg  = maxBound;
   PRName maxInit = zeroExtend(maxReg);
   
@@ -101,7 +104,10 @@ module [HASim_Module] mkFUNCP
   FIFO#(Tuple2#(Token, PRName)) mem2Q <- mkFIFO();
   FIFO#(Tuple2#(Token, Addr)) storeQ <- mkFIFO();
   FIFO#(TokIndex) rewindQ <- mkFIFO();
+  FIFO#(TokIndex) lcoQ <- mkFIFO();
   
+  FIFO#(Bool) isInstLoad <- mkFIFO();
+
   //Datapath
   let datapath <- mkISA_Datapath();
   
@@ -243,6 +249,27 @@ module [HASim_Module] mkFUNCP
       
     end
 
+    if( debug_load == InvalidFile)
+    begin
+      let fd <- $fopen("hasim_load.out", "w");
+      if(fd == InvalidFile)
+      begin
+        $display("Error opening FUNCP loadfile hasim_load.out");
+        $finish(1);
+      end
+      debug_load <= fd;
+    end
+    
+    if( debug_commit == InvalidFile)
+    begin
+      let fd <- $fopen("hasim_commit.out", "w");
+      if(fd == InvalidFile)
+      begin
+        $display("Error opening FUNCP commitfile hasim_commit.out");
+        $finish(1);
+      end
+      debug_commit <= fd;
+    end
     
     prf.write(init_cur, tagged Valid 0);
     
@@ -258,7 +285,7 @@ module [HASim_Module] mkFUNCP
   endrule
  
   
-  (* descending_urgency= "gco, lco, mem3, mem3_store, mem2, mem1, execute4, execute3, execute2, execute1, decode_junk, decode2, decode1, fetch2, fetch1, newInFlight, rewind_slow2, rewind_slow1, rewind_fast, rewind1" *)
+  (* descending_urgency= "gco, lco3, lco2, lco1, mem3, mem3_store, mem2, mem1, execute4, execute3, execute2, execute1, decode_junk, decode2, decode1, fetch2, fetch1, newInFlight, rewind_slow2, rewind_slow1, rewind_fast, rewind1" *)
  
   rule newInFlight (ready);
    
@@ -513,8 +540,10 @@ module [HASim_Module] mkFUNCP
   
   endrule
   
-  rule execute2 (ready);
+  rule execute2 (ready && !execing);
   
+    execing <= True;
+
     let tok = exeQ.first();
     exeQ.deq();
     funcp_debug($fwrite(debug_log, "Token %0d: Execute: Reg Read", tok.index));
@@ -526,20 +555,20 @@ module [HASim_Module] mkFUNCP
     prf.read_req1(validValue(w1));
     prf.read_req2(validValue(w2));
  
-    tok_addr.read_req(tok.index);
+    tok_addr.read_req1(tok.index);
     tok_inst.read_req2(tok.index);
 
     exe2Q.enq(tuple3(tok, w1, w2));
-      
+
   endrule
   
-  rule execute3 (ready);
-  
+  rule execute3 (ready && execing);
+
     match {.tok, .w1, .w2} = exe2Q.first();
 
     let v1 <- prf.read_resp1();
     let v2 <- prf.read_resp2();
-    let addr <- tok_addr.read_resp();
+    let addr <- tok_addr.read_resp1();
     let inst <- tok_inst.read_resp2();
     
     let rdy1 = isValid(w1) ? isValid(v1) : True;
@@ -550,6 +579,7 @@ module [HASim_Module] mkFUNCP
     if ((rdy1 && rdy2) || isJunk) //let junk proceed
     begin
       exe2Q.deq();
+      execing <= False;
 
       if (!isJunk)
         funcp_debug($fwrite(debug_log, "Token %0d: Execute: Sending to Datapath (V1:0x%h, V2:0x%h)", tok.index, validValue(v1), validValue(v2)));
@@ -572,7 +602,7 @@ module [HASim_Module] mkFUNCP
       
       prf.read_req1(validValue(w1));
       prf.read_req2(validValue(w2));
-      tok_addr.read_req(tok.index);
+      tok_addr.read_req1(tok.index);
       tok_inst.read_req2(tok.index);
       
     end
@@ -614,7 +644,7 @@ module [HASim_Module] mkFUNCP
     
     tok_state.mem_start(tok.index);
     
-    tok_memaddr.read_req(tok.index);
+    tok_memaddr.read_req1(tok.index);
     tok_dest.read_req2(tok.index);
     
     memQ.enq(tok);
@@ -626,7 +656,7 @@ module [HASim_Module] mkFUNCP
     let tok = memQ.first();
     memQ.deq();
   
-    let addr <- tok_memaddr.read_resp();
+    let addr <- tok_memaddr.read_resp1();
     let dst <- tok_dest.read_resp2();
     
     if (tok_state.isLoad(tok.index))
@@ -697,20 +727,48 @@ module [HASim_Module] mkFUNCP
     link_mem.makeResp(tuple2(tok, ?));
   endrule
   
-  rule lco (ready);
+  rule lco1 (ready);
   
     match {.tok, .*} = link_lco.getReq();
     link_lco.deq();
     
     freelist.free(tok);
 
+    tok_addr.read_req2(tok.index);
+    tok_dest.read_req3(tok.index);
+
+    lcoQ.enq(tok.index);
+
     funcp_debug($fwrite(debug_log, "Token %0d: LCO: Finishing Token", tok.index)); 
 
     link_lco.makeResp(tuple2(tok, ?));
     tok_state.deallocate(tok.index);
-	
+
+    isInstLoad.enq(tok_state.isLoad(tok.index));
   endrule
 
+  rule lco2 (ready);
+
+    Addr addr    <- tok_addr.read_resp2();
+    PRName dest  <- tok_dest.read_resp3();
+
+    lcoQ.deq();
+    tok_memaddr.read_req2(lcoQ.first());
+
+    funcp_debug($fdisplay(debug_commit, "Commit: 0x%h", addr));
+    funcp_debug($fdisplay(debug_load, "PC: 0x%h", addr));
+
+    prf.read_req3(dest);
+
+  endrule
+
+  rule lco3 (ready);
+    Addr      memaddr <- tok_memaddr.read_resp2();
+    Maybe#(Value) val <- prf.read_resp3();
+    isInstLoad.deq();
+    if(isInstLoad.first())
+        funcp_debug($fdisplay(debug_load, "Load: MemAddr: 0x%h Val: 0x%h", memaddr, validValue(val)));
+  endrule
   
   rule gco (ready);
   

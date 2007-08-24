@@ -6841,3 +6841,17 @@ Directory modules/functional/semantic-model
  FUNCPModel.bsv            Locally Modified          246 
 
 Changed functional model for temporary fix of the bug during execute stage
+
+----------
+mpellaue    Date: Fri Aug 24 11:41:12 EDT 2007  CSN: CSN-hasim-248
+                  Fri Aug 24 15:41:12 UTC 2007
+
+
+Directory modules/functional/common
+ FUNCP_StoreBuffer_Seq.bsv Locally Modified          247 
+
+
+Bugfix in the StoreBuffer allows all benchmarks to run to completion in
+out-of-order model.
+
+Michael P.

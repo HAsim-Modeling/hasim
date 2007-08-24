@@ -61,7 +61,8 @@ module [HASim_Module] mkFUNCP_StoreBuffer ()
   //Intermediate state for lookups
   
   Reg#(Token) candidate <- mkRegU();
-  Reg#(Token) last_valid_tok <- mkRegU();
+  Reg#(Maybe#(Token)) last_valid_tok <- mkRegU();
+  Reg#(AddrHash) curlist <- mkRegU();
   Reg#(Maybe#(Tuple2#(Token, Value))) best_so_far <- mkReg(Invalid);
   
   Reg#(Bool) initializing <- mkReg(True);
@@ -83,6 +84,84 @@ module [HASim_Module] mkFUNCP_StoreBuffer ()
         return isOlder(old_t.index, t.index) && (t.timep_info.epoch == old_t.timep_info.epoch);
     endcase
   
+  endfunction
+  
+  function Action begin_list_cleanup(AddrHash list);
+  action
+  
+    curlist <= list;
+    last_valid_tok <= tagged Invalid;
+  
+  endaction
+  endfunction
+  
+  function Action cleanup_list_node(Token tok);
+  action
+  
+    if (tvalids[tok.index]) //We're at a valid node in the list
+    begin
+
+      case (last_valid_tok) matches //We haven't seen a valid node yet, so this is the head.
+        tagged Invalid:
+        begin
+          heads.upd(curlist, tagged Valid tok);
+          $fdisplay(debug_log, "[%d]: Clean-up #%0d: setting Token %0d to be head.", cc, curlist, tok.index); 
+        end
+        tagged Valid .prv:  //Reset the last valid guy to point at this guy.
+        begin
+          listnodes.write(prv.index, tagged Valid tok);
+          $fdisplay(debug_log, "[%d]: Clean-up #%0d: pointing Token %0d at Token %0d.", cc, curlist, prv.index, tok.index); 
+        end
+      endcase
+    
+      //This node is the new latest valid node.
+      $fdisplay(debug_log, "[%d]: Clean-up #%0d: Token %0d is last-known good node.", cc, curlist, candidate.index); 
+      last_valid_tok <= tagged Valid tok;
+    end
+    else
+    begin
+      //This was invalid and will be removed.
+      $fdisplay(debug_log, "[%d]: Clean-up #%0d: Removing invalid Token %0d from list.", cc, candidate.index); 
+    end
+  
+  endaction
+  endfunction
+  
+  function Action finish_list_cleanup(Token listtail);
+  action
+  
+    if (tvalids[listtail.index]) //The final node is good
+    begin
+      case (last_valid_tok) matches
+        tagged Invalid: //The tail is actually the only element in the list
+        begin
+          heads.upd(curlist, tagged Valid listtail);
+          $fdisplay(debug_log, "[%d]: Clean-up #%0d (Finished): setting Token %0d to be head.", cc, curlist, listtail.index); 
+        end
+        tagged Valid .prv: //Set the last valid guy to point at the tail.
+        begin
+          listnodes.write(prv.index, tagged Valid listtail);
+          $fdisplay(debug_log, "[%d]: Clean-up #%0d (Finished): pointing Token %0d at Token %0d.", cc, curlist, prv.index, listtail.index); 
+        end
+      endcase
+    end
+    else //The list tail is invalid
+    begin
+      case (last_valid_tok) matches
+        tagged Invalid:  //We never saw a valid node, so the list is empty.
+        begin
+          heads.upd(curlist, tagged Invalid);
+          $fdisplay(debug_log, "[%d]: Clean-up #%0d (Finished): Setting to empty.", cc, curlist); 
+        end
+        tagged Valid .t: //The last valid node is the new tail.
+        begin
+          listnodes.write(t.index, tagged Invalid);
+          $fdisplay(debug_log, "[%d]: Clean-up #%0d (Finished): Setting %0d to be the tail of the list.", cc, t.index); 
+        end
+      endcase
+    end
+
+  endaction
   endfunction
   
   rule currentCC (True);
@@ -142,10 +221,11 @@ module [HASim_Module] mkFUNCP_StoreBuffer ()
       end
     else
       begin
-        $fdisplay(debug_log, "[%d]: Token %0d cannot go at head of list #%0d", cc, tok.index, h);
+        $fdisplay(debug_log, "[%d]: Token %0d must search list #%0d", cc, tok.index, h);
         state <= SB_Inserting;
         listnodes.read_req(validValue(old_head).index);
         candidate <= validValue(old_head);
+        begin_list_cleanup(h);
       end
 
   endrule
@@ -164,13 +244,13 @@ module [HASim_Module] mkFUNCP_StoreBuffer ()
       begin
         $fdisplay(debug_log, "[%d]: Inserting Token %0d after Token %0d", cc, tok.index, candidate.index);
         listnodes.write(tok.index, mnext);
-        listnodes.read_req(candidate.index);
         tvalids <= update(tvalids, tok.index, True);
         state <= SB_Finishing_Insert;
       end
    else
       begin
         $fdisplay(debug_log, "[%d]: Could not insert Token %0d after Token %0d", cc, tok.index, candidate.index);
+        cleanup_list_node(candidate);
         listnodes.read_req(validValue(mnext).index);
         candidate <= validValue(mnext);
       end
@@ -179,15 +259,12 @@ module [HASim_Module] mkFUNCP_StoreBuffer ()
   
   //Update the prev to point to newly inserted node
   rule finish_insert (state == SB_Finishing_Insert &&& link_memstate.getReq() matches tagged SB_Insert {v:.v, a: .a, t: .tok});
+   
+   finish_list_cleanup(tok);
 
-   let mnext <- listnodes.read_resp();
-
-   $fdisplay(debug_log, "[%d]: Finishing Insert. Token %0d now point at Token %0d", cc, candidate.index, tok.index);
-
-   listnodes.write(candidate.index, tagged Valid tok);
+   $fdisplay(debug_log, "[%d]: Insert Finished", cc);
    state <= SB_Ready;
    link_memstate.deq();
-
   endrule
   
   //Invalidate, and return value for writeback
@@ -270,8 +347,9 @@ module [HASim_Module] mkFUNCP_StoreBuffer ()
   
   
   rule begin_lookup (state == SB_Ready &&& link_memstate.getReq() matches tagged SB_Lookup {a:.addr, t:.tok});
-      
-    case (heads.sub(hash(addr))) matches
+    
+    let h = hash(addr);
+    case (heads.sub(h)) matches
       tagged Invalid: //Store Buffer doesn't have it. Short circuit the response
       begin
         $fdisplay(debug_log, "[%d]: Looking up %0d: Hash says we don't have it!", cc, tok.index);
@@ -286,7 +364,7 @@ module [HASim_Module] mkFUNCP_StoreBuffer ()
         candidate <= c;
         state <= SB_Searching;
         best_so_far <= tagged Invalid;
-        last_valid_tok <= c;
+        begin_list_cleanup(h);
       end
     endcase
   
@@ -317,17 +395,13 @@ module [HASim_Module] mkFUNCP_StoreBuffer ()
 
         $fwrite(debug_log, "[%d]: Hit the end of list.", cc); 
         
-        if (!tvalids[candidate.index])
-        begin
-          listnodes.write(last_valid_tok.index, tagged Invalid);
-          $fdisplay(debug_log, "[%d]: Setting %0d to be the tail of the list", cc, last_valid_tok.index); 
-        end
-
         if (isValid(finalres))
           $fwrite(debug_log, "A success!\n");
         else
           $fwrite(debug_log, "A false positive...\n");
-        
+       
+        finish_list_cleanup(candidate);
+       
         link_memstate.makeResp(tagged SBR_Lookup {mv:finalres, a: addr, t:tok});
 
         state <= SB_Ready;
@@ -343,20 +417,9 @@ module [HASim_Module] mkFUNCP_StoreBuffer ()
         end
           
         $fdisplay(debug_log, "[%d]: Still more list to go.", cc); 
-
-        listnodes.write(last_valid_tok.index, tagged Valid candidate);
-        $fdisplay(debug_log, "[%d]: Pointing Token %0d at Token %0d", cc, last_valid_tok.index, candidate.index); 
-
-        if (tvalids[candidate.index])
-        begin
-          $fdisplay(debug_log, "[%d]: Token %0d is last-known good node.", cc, candidate.index); 
-          last_valid_tok <= candidate;
-        end
-        else
-        begin
-          $fdisplay(debug_log, "[%d]: Removing invalid Token %0d from list.", cc, candidate.index); 
-        end
-   
+        
+        cleanup_list_node(candidate);
+        
         listvalues.read_req(next_tok.index);
         listnodes.read_req(next_tok.index);
         candidate <= next_tok;

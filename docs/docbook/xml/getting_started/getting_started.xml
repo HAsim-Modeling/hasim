@@ -1,0 +1,457 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<chapter id="getting_started">
+  <title>Getting Started with AWB and HASim</title>
+
+  <para> This chapter is a general introduction to downloading and installing
+  Architect's Workbench (AWB), checking out repositories, configuring existing
+  models, running benchmarks, and creating new models.</para>
+
+  <section id="installing_awb">
+    <title>Installing AWB</title>
+
+    <para>Currently AWB is distributed via SVN sourcecode access. To begin you
+    must checkout AWB and install a local copy. This will allow you to
+    checkout repositories and models that people have created, as well as
+    create new models for distribution.</para>
+
+    <section id="installing_prerequisites">
+      <title>Prerequisites</title>
+
+      <para>AWB depends on Perl and QT. Currently the supported Perl version
+      is 5.8.8. Make sure you have the development headers for QT installed
+      (Debian package: XXX). Additionally the QT bindings for Perl are
+      required (Debian package: XXX). Optionally install the libreadline
+      bindings for perl (Debian package: XXX) which will allow the asim-shell
+      console to make use of nice features such as tab-completion.</para>
+    </section>
+
+    <section id="installing_checking_out">
+      <title>Checking Out Asimcore</title>
+
+      <para>First check out the asimcore source code to a local
+      directory:</para>
+
+      <para>
+        <screen>
+          <prompt>&gt; </prompt><userinput>svn co https://asim.csail.mit.edu/svn/trunk/asimcore asimcore</userinput>
+          <prompt>&gt; </prompt><userinput>cd asimcore</userinput>
+        </screen>
+      </para>
+
+      <para></para>
+    </section>
+
+    <section id="installing_building">
+      <title>Building and Installing Asimcore</title>
+
+      <para>Now you are ready to configure the model:</para>
+      
+      <para>
+        <screen>
+          <prompt>&gt; </prompt><userinput>./configure --prefix=&lt;INSTALLDIR&gt;</userinput>
+        </screen>
+      </para>
+      
+      <para>Where &lt;INSTALLDIR&gt; is the place you want to install AWB locally. Make sure that no errors
+      such as "could not find QT" or "could not find PerlQT" occurred. If all went well then you're ready to
+      build the model:</para>
+
+      <para>
+        <screen>
+          <prompt>&gt; </prompt><userinput>make</userinput>
+          <prompt>&gt; </prompt><userinput>make install</userinput>
+          <prompt>&gt; </prompt><userinput>make install-src</userinput>
+        </screen>
+      </para>
+      
+      
+    </section>
+    <section id="installing_evironment">
+
+      <title>Setting up your Environment</title>
+
+      <para>In order to run AWB you must set the following environment variables:</para>
+      
+      <para>
+        <screen>
+          <prompt>&gt; </prompt><userinput>export PATH=$PATH:&lt;INSTALLDIR&gt;/bin</userinput>
+          <prompt>&gt; </prompt><userinput>export CVS_RSH=ssh</userinput>
+          <prompt>&gt; </prompt><userinput>export EDITOR=&lt;Your favorite text editor&gt;</userinput>
+        </screen>
+      </para>
+      
+      <para>You may find it convenient to add these to your .bashrc or .tcshrc so that they are set every
+      time you log on.</para> 
+      
+      <para>Additionally if you are going to use AWB to configure Bluespec models such as HAsim then your
+      $BLUESPECDIR environment variable must be set to the location where the Bluespec libraries are
+      installed.</para>
+
+    </section>
+
+    <section id="installing_running">
+      <title>Running AWB</title>
+
+      <para>You are now ready to run AWB. Make sure you have an XWindows connection and do the
+      following:</para>
+
+      <para>
+        <screen>
+          <prompt>&gt; </prompt><userinput>awb &amp;</userinput>
+        </screen>
+      </para>
+      
+      <para>If all goes well you should see the AWB GUI window appear.</para>
+      
+      <figure id="awb_window">
+        <title>AWB Window succesfully appearing</title>
+
+        <screenshot>
+          <screeninfo>AWB window screenshot</screeninfo>
+
+          <mediaobject>
+            <imageobject>
+              <imagedata fileref="awb1.png"/>
+            </imageobject>
+          </mediaobject>
+        </screenshot>
+      </figure>
+
+    </section>
+  </section>
+
+  <section id="workspaces">
+    <title>Working with Workspaces and Packages (Repositories)</title>
+
+    <para>When you started AWB for the first time you probably got a message similar to the following:</para>
+
+    <para>
+      <screen>
+        <computeroutput>Warning: No valid workspace found!!!</computeroutput>
+        <computeroutput>Check the value of $AWBLOCAL and your ~/.asimrc file</computeroutput>
+        <computeroutput>A default value of &lt;INSTALLDIR&gt;/etc/asim/ws/HEAD is being used.</computeroutput>
+      </screen>
+    </para>
+    
+    <para>This is because you don't have any local AWB <firstterm>workspace</firstterm>. A workspace is an
+    organized collection of checked-out models from one or more repositories. You can have many local
+    workspaces, perhaps with independent local modifications.</para>
+
+    <section id="workspaces_creating">
+    
+      <title>Creating a New Workspace</title>
+
+      <para>The easiest way to create a workspace is using the AWB "Admin" tab:</para>
+      
+      <figure id="awb_admin">
+        <title>AWB Window Admin Tab</title>
+
+        <screenshot>
+          <screeninfo>AWB admin tab screenshot</screeninfo>
+
+          <mediaobject>
+            <imageobject>
+              <imagedata fileref="awb2.png"/>
+            </imageobject>
+          </mediaobject>
+        </screenshot>
+      </figure>
+      
+    </section>
+
+    <para>Enter a name for your new workspace in the "New workspace name:" field and click the "Create"
+    button. Note that AWB automatically switches you to this workspace, which will be reflected by the window
+    title. (If you are not switched automatically you can do so using the "Switch" button.</para>
+
+    <section id="workspaces_checking_out">
+      <title>Checking out Packages (Repositories)</title>
+
+      <para>Now that you've created a workspace you'll probably want to checkout some repositories so you can
+      work with existing code. To do so select a repository from the list in the "Respositories" section,
+      enter your username and password, and click the "Checkout" button. Repositories that you have checked
+      out are commonly referred to as <firstterm>packages</firstterm>. After you check out a new repository
+      you should click the "Refresh" button to make sure it appears in the list of packages. Note that you
+      can perform many common actions on checked-out packages using the Admin tab.</para>
+
+    </section>
+
+    <section id="workspaces_listing">
+      <title>Listing Your Repository</title>
+
+      <para>TBD: Listing your repository using asim.pack.</para>
+      
+    </section>
+  </section>
+
+  <section id="models">
+    <title>Configuring/Building Existing Models</title>
+
+    <para>AWB packages typically contain one or more <firstterm>modules</firstterm>. Modules have an AWB
+    <firstterm>metatype</firstterm> such as branch_predictor or nonblocking_cache. Two modules which have the
+    same metatype are alternatives which can be swapped for each other seamlessly. For example, a one-bit
+    branch predictor and a two-bit branch predictor which share the same interface would both have the
+    metatype branch_predictor.</para>
+
+    <para>Groups of particular modules are organized into <firstterm>models</firstterm>. For example, a CPU
+    with the one-bit branch predictor and a CPU with the two-bit branch predictor would be two different
+    models. AWB provides a convenient GUI for selecting between moduled alternatives and configuring
+    models.</para>
+
+    <section id="models_examining">
+      <title>Examining a Model</title>
+
+      <para>First let's examine an existing model. Move to the "Models" tab of AWB. Under "Model Directories"
+      click on the "Models" drop-down list to expand it. You will see an organization of all models available
+      in the packages you have checked out. Models are stored as files with the .apm extension. Select one of
+      the directories and a list of all modelfiles in that directory will appear on the righthand "Models"
+      list. Select a model and right-click. A menu containing "New", "Edit", "Clean", "Configure", and
+      "Build" will appear. Select "Edit" and the apm-edit application will launch with a representation of
+      the model hierarchy.</para> 
+
+      <para>In the apm-edit window you will see all modules which have been selected to make up that model.
+      Blue or gray gears represent satisfied choices. Occaisionally you will a model with a red gear,
+      representing a choice which has not been satisfied yet. Click on one of the modules and the
+      "Alternative Modules" list will show all other modules in checked-out packages which can be plugged in
+      to this location. Click once on an alternative module to see a description of its components. To
+      replace the current choice double-click on the alternative module you wish to plug in. Note that if
+      your new choice has requirements you will need to fill them in as well.</para>
+
+    </section>
+
+    <section id="models_viewing">
+      <title>Viewing or Editing Modules</title>
+
+      <para>AWB models provide a convenient way to edit the source code of component modules. To edit a
+      module, right-click on its name in the heirarchy. A menu containing "New", "Edit", "Insert", and
+      "Delete" will appear. Select "Edit" and a text editor (determined by the EDITOR environment variable)
+      will appear. The editor will display all component source code files which make up the module.
+      Additionally it will display a file with the .awb extension. These files contain information which
+      inform AWB about the module and how it fits into models. Each AWB module must have one .awb file
+      somewhere in the package.</para>
+
+    </section>
+
+    <section id="models_configuring">
+      <title>Configuring and Building Models</title>
+
+      <para>Now that we have examined a model, let's configure and build it. Return to the main AWB window in
+      the "Models" tab. Make sure that you have the model you wish to configure selected and click the
+      "Configure" button. If no errors occurred AWB has created a build directory for the model. You can
+      examine the build directory structure it creates in your workspace.</para> 
+      
+      <para>
+        <screen>
+          <prompt>&gt; </prompt><userinput>cd &lt;WORKSPACE&gt;</userinput>
+          <prompt>&gt; </prompt><userinput>cd build/default/&lt;MODELNAME&gt;/pm</userinput>
+          <prompt>&gt; </prompt><userinput>ls</userinput>
+        </screen>
+      </para>
+
+      <para>This is the main build directory for your performance model (pm). If you have selected a model
+      written in Bluespec you can view the source files as follows:</para>
+      
+      <para>
+        <screen>
+          <prompt>&gt; </prompt><userinput>cd arch/model</userinput>
+          <prompt>&gt; </prompt><userinput>ls</userinput>
+        </screen>
+      </para>
+
+      <para>Note that the files are symbolic links from the build directory back to the package source code.
+      Many people find AWB build directories to be convenient places to work with and edit model source
+      code because they aggregate the files so effectively.</para>
+
+      <para>Now you are ready to build the model. There are two ways to do this. First, it can be done via
+      the AWB GUI. In the main AWB make sure you have a model selected on the "Models" tab and have
+      configured it. Next click on the "Build Options" tab. Select one of the targets from the "Build
+      Options" list and click the "Build" button. Check the log to make sure no errors occurred. If all goes
+      well an executable will be built.</para>
+ 
+      <para>Alternatively, you can build the model from the command line. The targets which are listed under
+      "Build Options" may be passed directly to the "make" command in the "pm" directory. For example, if
+      "exe" is the target to make an executable:</para>
+
+      <para>
+        <screen>
+          <prompt>&gt; </prompt><userinput>cd &lt;WORKSPACE&gt;/build/default/&lt;MODELNAME&gt;/pm</userinput>
+          <prompt>&gt; </prompt><userinput>make exe</userinput>
+        </screen>
+      </para>
+      
+      <para>This also allows you to invoke parallel builds. For example, to set the maximum number of
+      parallel jobs to 8:</para>
+
+      <para>
+        <screen>
+          <prompt>&gt; </prompt><userinput>make -j 8 exe</userinput>
+        </screen>
+      </para>
+
+    </section> 
+  </section>
+
+  <section id="running">
+    <title>Running Benchmarks</title>
+
+    <para>Now that you have created a model you will want to run it on one or more benchmarks. AWB assumes
+    that all simulators require an input file. Simulators which do not require an input file should use the
+    special "Null Benchmark."</para> 
+
+    <para>The default benchmark files are not currently included in the AWB package, but must be installed in
+    some well-known global location. This is because experience has shown that it is not useful for benchmark
+    executables to be checked into repositories or managed as packages. (Benchmark source code could still
+    receive this treatment, but the executables should be globally installed.)</para>
+
+    <section id="running_setup">
+      <title>Seting up a Benchmark</title>
+
+      <para>Once you have successfully built a model you are ready to configure a benchmark. First, make sure
+      that the model you want to run is selected under the "Models" tab. Then go to the "Benchmarks" tab.
+      Select the benchmark that you wish to run, similarly to selecting a model. Click the "Setup" button to
+      configure that benchmark to be run with this model.</para>
+      
+      <para>This will create a new "bm" (benchmarks) subdirectory in the build dir. Each configured benchmark
+      will have its own run directory with symlinks pointing at the installed benchmark location.</para>
+
+      <para>
+        <screen>
+          <prompt>&gt; </prompt><userinput>cd &lt;WORKSPACE&gt;/build/default/&lt;MODELNAME&gt;</userinput>
+          <prompt>&gt; </prompt><userinput>cd bm/&lt;BENCHMARKNAME&gt;</userinput>
+          <prompt>&gt; </prompt><userinput>ls</userinput>
+        </screen>
+      </para>
+
+    </section>
+
+    <section id="running_running">
+      <title>Running a Model on a Benchmark</title>
+
+      <para>Once you have setup a benchmark, you can run it by going to the "Run Options" tab and clicking
+      the "Run" button. Note that HAsim Bluespec modules do not currently support the dynamic parameters
+      shown in the GUI. The results of a run is placed in the benchmark directory. Benchmarks can also be run
+      via the command line:</para>
+
+      <para>
+        <screen>
+          <prompt>&gt; </prompt><userinput>cd bm/&lt;BENCHMARKNAME&gt;</userinput>
+          <prompt>&gt; </prompt><userinput>./run</userinput>
+        </screen>
+      </para>
+      
+    </section>
+
+    <section id="running_results">
+      <title>Viewing Results</title>
+
+      <para>AWB also includes facilities for viewing results such as stats and stripcharts, as well as
+      integration with the data visualization tool Dreams. However most HAsim output is not currently formatted
+      to take advantage of these tools.</para>
+      
+    </section>
+
+  </section>
+
+  <section id="creating">
+    <title>Creating new Modules and Models</title>
+
+    <para>At this point you have enough familiarity with AWB's mechanisms to begin creating your own modules
+    and models.</para>
+
+    <section id="creating_module">
+      <title>Creating a New Module</title>
+
+      <para>To create a new Module first assemble all source-code files for that module into a single
+      directory in your package. Then you must create an AWB file which describes the module. AWB files
+      support many directives, but the most important ones you'll need to know about are as follows:</para>
+      
+      <table frame="all" id="awb_directives">
+        <tgroup cols="3">
+          <thead>
+            <row>
+              <entry>Directive</entry>
+              <entry>Parameter</entry>
+              <entry>Description</entry>
+            </row>
+          </thead>
+          <tbody>
+            <row>
+              <entry>%provides</entry>
+              <entry>AWB type</entry>
+              <entry>The AWB metatype that this module provides</entry>
+            </row>
+            <row>
+              <entry>%requires</entry>
+              <entry>AWB types</entry>
+              <entry>One or more types that this module requires</entry>
+            </row>
+            <row>
+              <entry>%public</entry>
+              <entry>filenames</entry>
+              <entry>Source code for this module which is publically visible</entry>
+            </row>
+            <row>
+              <entry>%private</entry>
+              <entry>filenames</entry>
+              <entry>Source code for this module which is private</entry>
+            </row>
+            <row>
+              <entry>%param</entry>
+              <entry>Name Default Descr</entry>
+              <entry>A parameter with a default value that will appear as a #define</entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </table>
+      
+      <para>Once you have created an AWB file with these directives your module should appear on the list of
+      "Alternative Modules" in the apm-edit window. (You may have to click the "Refresh" button to make new
+      modules appear.)</para>
+
+      <section id="creating_imports">
+        <title>A Note on Imports</title>
+        
+        <para>How do you write source code in a model-independent manor? Specifically, how do you import
+        other modules when you don't know if they will be selected to appear in a model? The answer is to
+        import files by their AWB metatype rather than their actual name.</para>
+
+        <para>For example, consider a microprocessor Fetch module which requires a branch predictor and a
+        non-blocking cache. Rather than importing the One-Bit Predictor and the 4KB Cache, the Fetch code
+        imports the general AWB types:</para>
+        
+        <para>
+          <programlisting>
+            import branch_predictor::*;
+            import non_blocking_cache::*;
+          </programlisting>
+        </para>
+        
+        <para>When you configure a model AWB sets up symbolic links and creates surrogate header files so
+        that, for example, "branch_predictor" points to the Two-Bit Predictor the user has selected.</para>
+
+      </section>
+    </section>
+    
+    <section id="creating_model">
+      <title>Creating a New Model</title>
+
+      <para>Once you have created all component modules, creating a new Model is easy. Simply select
+      "Model/New" from the AWB menu and begin selecting alternative modules you have created. To speed up the
+      process you may want to depress the "Autoselect" button which will automatically select modules when
+      there is only one alternative for that AWB type. Save the model, and you will be able to configure it
+      as normal.</para>
+
+    </section>
+  </section>
+
+  <section id="wrapup">
+    <title>Wrapping Up</title>
+
+    <para>At this point you know the basics of managing source code with AWB. Advanced topics to be covered
+    later include a complete list of .awb and .apm file features, model hierarchy designs which successfully
+    encourage reuse, and HAsim Smart Synthesis Boundaries.</para>
+
+  </section>
+  
+</chapter>

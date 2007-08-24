@@ -4,6 +4,10 @@
 <book id="index">
   <title>Hardware Asim (HAsim)</title>
 
+  <xi:include href="getting_started/getting_started.xml"
+              xmlns:xi="http://www.w3.org/2001/XInclude"
+              xpointer="element(/1)" />
+
   <xi:include href="concepts/concepts.xml"
               xmlns:xi="http://www.w3.org/2001/XInclude"
               xpointer="element(/1)" />

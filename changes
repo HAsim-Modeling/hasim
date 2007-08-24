@@ -6855,3 +6855,22 @@ Bugfix in the StoreBuffer allows all benchmarks to run to completion in
 out-of-order model.
 
 Michael P.
+
+----------
+mpellaue    Date: Fri Aug 24 17:34:10 EDT 2007  CSN: CSN-hasim-249
+                  Fri Aug 24 21:34:10 UTC 2007
+
+
+Directory docs/docbook/xml
+ hasim.xml                 Locally Modified          248 
+ getting_started/          Locally Added               0 
+
+Directory docs/docbook/xml/getting_started
+ getting_started.xml       Locally Added               0 
+ awb1.png                  Locally Added               0 
+ awb2.png                  Locally Added               0 
+
+
+A first cut at a "Getting Started with AWB and HAsim" guide.
+
+Michael P.

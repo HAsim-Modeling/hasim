@@ -1,7 +1,0 @@
-
-%name Hardware RPC Client and Server
-%desc Hardware RPC Client and Server
-
-%provides hardware_rpc
-
-%public HardwareRPCClient.bsv

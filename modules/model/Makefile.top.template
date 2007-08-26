@@ -15,6 +15,7 @@ ROOT_V = $(ARCH_DIR)/$(ROOT_DIR)/$(ROOT_WRAPPER_SYNTH_ID).v
 
 GIVEN_VS = @GIVEN_VS@
 GIVEN_CS = @GIVEN_CS@
+BDPI_CS = @BDPI_CS@
 
 BDPI_BAS = @BDPI_BAS@
 
@@ -24,13 +25,14 @@ GEN_VS = @GEN_VS@
 
 GEN_OS = $(GEN_CXXS:%.cxx=%.o)
 GIVEN_OS = $(GIVEN_CS:%.c=%.o)
+BDPI_OS = $(BDPI_CS:%.c=%.o)
 WRAPPER_BIS = $(GEN_BAS:%.ba=%.bi)
 
 
 ALL_BAS = $(GEN_BAS) $(BDPI_BAS)
 ALL_VS = $(GEN_VS) $(GIVEN_VS)
 ALL_CS = $(GEN_CXXS) $(GIVEN_CS)
-ALL_OS = $(GEN_OS) $(GIVEN_OS)
+ALL_OS = $(GEN_OS) $(BDPI_OS)
 
 
 ################################################################
@@ -60,6 +62,9 @@ BITGEN_FLAGS =
 
 #### impact
 DOWNLOAD_FILE = $(APM_NAME).download
+
+.c.o:
+	$(CC) -c -DAPM_NAME=\"$(APM_NAME)\" -o $@ $<
 
 .PHONY: all
 all: exe
@@ -113,10 +118,10 @@ $(XILINX_APM_NAME).ngc: $(XST_FILE)
 ## Verilog generation rules
 
 .PHONY: vexe
-vexe: make_subdir
+vexe: make_subdir $(BDPI_OS)
 	@$(TRAP_ERRORS)
 	@ln -f -s $(ARCH_DIR)/$(ROOT_DIR)/vpi_* .
-	@$(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) $(GIVEN_CS) $(BDPI_BAS)
+	@$(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) $(BDPI_OS) $(BDPI_BAS)
 	@rm -f vpi_*
 	@if [ -f "directc.sft" ] ; then mv -f directc.sft $(TMP_BSC_DIR) ; fi
 	@echo "#!/bin/sh" >$(APM_NAME)
@@ -130,16 +135,20 @@ vexe: make_subdir
 ## Bluesim generation rules
 
 .PHONY: exe
-exe: $(APM_NAME).exe
+exe: $(APM_NAME)_hw.exe
 	@echo "#!/bin/sh" >$(APM_NAME)
-	@echo "$(BUILD_DIR)/$(APM_NAME).exe" >>$(APM_NAME)
+	@echo "$(BUILD_DIR)/$(APM_NAME)_hw.exe" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
-	@ln -fs $(APM_NAME).exe simv
+	@ln -fs $(APM_NAME)_hw.exe simv
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
-$(APM_NAME).exe: $(ALL_OS)
+$(APM_NAME)_hw.exe: $(ALL_OS)
 	@ \
-	 $(CPP) $(CPP_FLAGS) $(LDFLAGS) -DTOP=$(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).exe $(ALL_OS) $(BLUESIM_LINK_LIBS)
+	 $(CPP) $(CPP_FLAGS) $(LDFLAGS) -DTOP=$(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME)_hw.exe $(ALL_OS) $(BLUESIM_LINK_LIBS)
+
+swexe: $(GIVEN_OS)
+	@ \
+	 $(CPP) -o $(APM_NAME)_sw.exe $(GIVEN_OS)
 
 $(GEN_CXXS): generate_cxxs
 

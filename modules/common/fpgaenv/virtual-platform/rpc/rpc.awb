@@ -1,8 +1,0 @@
-
-%name RPC Framework
-%desc RPC Framework for Hardware/Software Interaction
-
-%provides rpc
-
-%requires hardware_rpc
-%requires software_rpc

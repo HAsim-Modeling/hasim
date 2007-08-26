@@ -1,6 +1,8 @@
 #ifndef __CHANNELIO__
 #define __CHANNELIO__
 
+#include <sys/select.h>
+
 /* virtualized I/O happens at the granularity of "packets",
  * but to reduce overheads we physically do selects, reads
  * and writes at the granularity of "blocks" */

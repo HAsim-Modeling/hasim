@@ -368,15 +368,12 @@ sub __make_bsvfiles {
     }
 
     # Add includes of public and private bsc files
-    my @l = ();
-    if ($public) {	push(@l, $module->public());    }
-
-    foreach my $f (@l) {
-      if ($f =~ /.bsv$/) {
-        print BSVFILE "`include \"$f\"\n";
-      }
+    if ($public) {
+        foreach my $f ($module->sources("BSV", "PUBLIC")) {
+            print BSVFILE "`include \"$f\"\n";
+        }
     }
-    
+
     CORE::close(BSVFILE);
     
     # recurse
@@ -419,11 +416,15 @@ sub __make_symlinks {
     # for each src file, generate symlink in $my_dir
     my $base_dir = $module->base_dir();
     my @l = ();
-    if ($private) {	push(@l, $module->private());    }
-    if ($public) {	push(@l, $module->public());    }
+    if ($private) {
+        push(@l, $module->sources("*", "PRIVATE"));
+    }
+    if ($public) {
+        push(@l, $module->sources("*", "PUBLIC"));
+    }
     foreach my $f (@l) {
-	my $src = Asim::resolve(HAsim::Util::path_append($base_dir,$f));
-	my $tgt = HAsim::Util::path_append($my_dir,$f);
+        my $src = Asim::resolve(HAsim::Util::path_append($base_dir,$f));
+        my $tgt = HAsim::Util::path_append($my_dir,$f);
 
         if (! -e $src) {
           HAsim::Util::WARN_AND_DIE("Module file $f does not exist in $base_dir");
@@ -431,13 +432,13 @@ sub __make_symlinks {
         
         # make src relative
         my $relsrc = File::Spec->abs2rel($src, dirname($tgt));
-	$status = system("ln -f -s $relsrc $tgt");
+        $status = system("ln -f -s $relsrc $tgt");
     }
 
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-	__make_symlinks($child,$my_dir);
+        __make_symlinks($child,$my_dir);
     }
 
     return 1;
@@ -597,26 +598,29 @@ sub __generate_makefile_top {
     }
 
 
-    # @GIVEN_VS@ - raw .v files included in the model
+    ## @GIVEN_VS@ - raw .v files included in the model
 
-    my @l = ();
-    push(@l, $module->private());
-
-    foreach my $f (@l) {
-        if ($f =~ /\.v$/) {
-            HAsim::Util::hash_append($replacements_r," ",'@GIVEN_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, $f));
-        }
+    foreach my $f ($module->sources("VERILOG", "*")) {
+        HAsim::Util::hash_append($replacements_r," ",'@GIVEN_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, $f));
     }
 
-    # @GIVEN_CS@
-    @l = ();
-    push (@l, $module->public());
+    ## @GIVEN_CS@
 
-    foreach my $f (@l)
-    {
-        if ($f =~ /\.c$/)
-        {
-            HAsim::Util::hash_append($replacements_r," ",'@GIVEN_CS@',HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, $f));
+    foreach my $f ($module->sources("CPP", "*")) {
+        HAsim::Util::hash_append($replacements_r," ",'@GIVEN_CS@',HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, $f));
+    }
+
+    ## @BDPI_CS@
+
+    foreach my $f ($module->sources("BDPI_C", "*")) {
+        # **** HACK **** only push C files, not H files. TODO: Need a more general separation
+        #                between to-be-compiled source files and not-to-be-compiled header files
+        # **** /HACK ****
+        if ($f =~ /\.h$/) {
+            # do nothing
+        }
+        else {
+            HAsim::Util::hash_append($replacements_r," ",'@BDPI_CS@',HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, $f));
         }
     }
 
@@ -695,20 +699,29 @@ sub __generate_makefile_sub {
 
     ## FOR BOTH SYNTH & NON_SYNTH
     ## @BSVS@ & @SRCS@ @CSRCS@
-    my @l = ();
-    if ($private) { push(@l, $module->private()); }
-    if ($public) { push(@l, $module->public()); }
+
     my $deps = "";
     my $mod_bsv = $module->provides() . ".bsv";
-    foreach my $f (@l) {
-	if ($f =~ /.bsv/) {
-	    HAsim::Util::hash_append($current_replacements_r, " ", '@BSVS@', $f);
-	    $deps = $deps . " $f";
-	} elsif ($f =~ /.\.c/) {
-	    HAsim::Util::hash_append($current_replacements_r, " ", '@CSRCS@', $f);
-	} else {
-	    HAsim::Util::hash_append($current_replacements_r, " ", '@SRCS@', $f);
-	}
+
+    if ($private) {
+        foreach my $f ($module->sources("BSV", "PRIVATE")) {
+            HAsim::Util::hash_append($current_replacements_r, " ", '@BSVS@', $f);
+            $deps = $deps . " $f";
+        }
+        foreach my $f ($module->sources("CPP", "PRIVATE")) {
+            HAsim::Util::hash_append($current_replacements_r, " ", '@CSRCS@', $f);
+            # $deps = $deps . " $f";
+        }
+    }
+    if ($public) {
+        foreach my $f ($module->sources("BSV", "PUBLIC")) {
+            HAsim::Util::hash_append($current_replacements_r, " ", '@BSVS@', $f);
+            $deps = $deps . " $f";
+        }
+        foreach my $f ($module->sources("CPP", "PUBLIC")) {
+            HAsim::Util::hash_append($current_replacements_r, " ", '@CSRCS@', $f);
+            # $deps = $deps . " $f";
+        }
     }
 
     # collect BDPI-exported names
@@ -819,14 +832,14 @@ sub generate_wrapper {
     #
 
     print WRAPPER "// import non-synthesis public files\n";
-    foreach my $file_root ($module->public()) {
-	print WRAPPER "`include \"$file_root\"\n";
+    foreach my $file_root ($module->sources("BSV", "PUBLIC")) {
+        print WRAPPER "`include \"$file_root\"\n";
     }
     print WRAPPER "\n";
 
     print WRAPPER "// import non-synthesis private files\n";
-    foreach my $file_root ($module->private()) {
-	print WRAPPER "`include \"$file_root\"\n";
+    foreach my $file_root ($module->sources("BSV", "PRIVATE")) {
+        print WRAPPER "`include \"$file_root\"\n";
     }
     print WRAPPER "\n";
 

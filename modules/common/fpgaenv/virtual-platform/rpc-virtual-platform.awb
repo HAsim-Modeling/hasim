@@ -1,7 +1,0 @@
-
-%name RPC-Based Virtual Platform
-%desc RPC-Based Virtual Platform
-
-%provides virtual_platform
-
-%requires virtual_devices channelio rpc

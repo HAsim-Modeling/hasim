@@ -4,10 +4,14 @@
 #include <assert.h>
 #include <sys/select.h>
 
-#include "front-panel.h"
-
 #define SELECT_TIMEOUT      1000
 #define DIALOG_PACKET_SIZE  4
+#define STDIN               0
+#define STDOUT              1
+
+#define MY_STRING_ID        "FRONT_PANEL"
+
+typedef unsigned int UINT32;
 
 static int dialogpid;
 static int child_to_parent[2], parent_to_child[2];
@@ -124,7 +128,7 @@ void sync_outputs()
 }
 
 /* init */
-void front_panel_init()
+void front_panel_init(char *stringID)
 {
     /* unfortunately, Perl doesn't play nice with binary
      * data, so we cannot simply instantiate a Perl front panel and
@@ -159,6 +163,9 @@ void front_panel_init()
         inputCache = 0;
         outputCache = 0;
     }
+
+    /* set string ID */
+    sprintf(stringID, "%s", MY_STRING_ID);
 }
 
 /* service method */

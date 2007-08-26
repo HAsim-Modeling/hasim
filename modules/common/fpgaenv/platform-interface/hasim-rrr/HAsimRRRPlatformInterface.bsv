@@ -1,7 +1,7 @@
 import hasim_common::*;
 import front_panel::*;
 import toplevel_wires::*;
-import hardware_rpc::*;
+import rrr::*;
 
 module [HASim_Module] mkPlatformInterface(TopLevelWires);
 

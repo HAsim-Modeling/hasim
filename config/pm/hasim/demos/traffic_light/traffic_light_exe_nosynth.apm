@@ -48,4 +48,4 @@ File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
 Packagehint=hasim
 
 [Hasim - Traffic light function w.o synthesis boundary/Params]
-MAX_WAIT='d10
+MAX_WAIT='d1000

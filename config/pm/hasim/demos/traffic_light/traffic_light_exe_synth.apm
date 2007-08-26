@@ -37,7 +37,7 @@ File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traf
 Packagehint=hasim
 
 [Hasim - Traffic light function w. synthesis boundary/Params]
-MAX_WAIT='d10
+MAX_WAIT='d1000
 
 [Hasim Common Library]
 File=modules/common/hasim_common.awb

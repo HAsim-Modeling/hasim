@@ -44,20 +44,6 @@ Packagehint=hasim
 hasim_fpgaenv=Hasim FPGA Environment
 
 [Hasim FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-rpc-bluesim.apm
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-rrr-sim.apm
 Packagehint=hasim
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

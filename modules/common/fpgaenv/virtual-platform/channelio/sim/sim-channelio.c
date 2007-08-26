@@ -7,7 +7,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "bluesim-channelio.h"
+#include "sim-channelio.h"
 
 /* global table of open channel handles */
 Channel OCHT[MAX_OPEN_CHANNELS];
@@ -119,6 +119,8 @@ unsigned char cio_open(unsigned char serviceID)
 
     if (channel->childpid == 0)
     {
+        char software_exe[256];
+
         /* CHILD: setup pipes for software side */
         close(temp_parent_read_desc);
         close(temp_parent_write_desc);
@@ -131,8 +133,9 @@ unsigned char cio_open(unsigned char serviceID)
          * never return; it should instead terminate the process
         ServiceMap[serviceID](); */
 
-        /* start software-side HRSM server */
-        software_main();
+        /* start software-side RRR server */
+        sprintf(software_exe, "./%s_sw.exe", APM_NAME);
+        execlp(software_exe, software_exe, NULL);
 
         /* error */
         exit(1);

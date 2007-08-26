@@ -4,45 +4,50 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "software-rpc-server.h"
-#include "front-panel.h"
+#include "software-rrr-server.h"
 
 /* this is the main HAsim software server */
 
 /* service map */
 Service ServiceMap[MAX_SERVICES];
+int     n_services;
 
 /* internal methods */
 static void init()
 {
     int i;
+    n_services = 0;
 
-    /* initialize service table. For now, we hard-code
-     * the service names, but we should come up with a
-     * more sophisticated way to do this */
-    ServiceMap[0].ID        = 0;
-    ServiceMap[0].params    = 1;
-    ServiceMap[0].init      = front_panel_init;
-    ServiceMap[0].main      = NULL;
-    ServiceMap[0].request   = front_panel_request;
+    /* initialize service table by defining a
+     * macro and including the service definition
+     * file */
+#define ADD_SERVICE(name)                                   \
+    {                                                       \
+        /* first generate function prototypes */            \
+        void    name##_init();                              \
+        UINT32  name##_request(UINT32, UINT32, UINT32);     \
+                                                            \
+        /* now fill in service table */                     \
+        ServiceMap[n_services].ID       =   n_services;     \
+        ServiceMap[n_services].params   =   3;              \
+        ServiceMap[n_services].init     =   name##_init;    \
+        ServiceMap[n_services].main     =   NULL;           \
+        ServiceMap[n_services].request  =   name##_request; \
+                                                            \
+        /* update service count */                          \
+        n_services++;                                       \
+    }
 
-    /*
-    ServiceMap[1].ID        = 1;
-    ServiceMap[1].params    = 2;
-    ServiceMap[1].main_func = NULL;
-    ServiceMap[1].req_func  = NULL;
+#include "global-service-list.rrr"
 
-    ServiceMap[2].ID        = 2;
-    ServiceMap[2].params    = 3;
-    ServiceMap[2].main_func = NULL;
-    ServiceMap[2].req_func  = memory_request;
-    memory_init();
-    */
+#undef ADD_SERVICE
 
     /* initialize individual services */
-    for (i = 0; i < MAX_SERVICES; i++)
+    for (i = 0; i < n_services; i++)
     {
-        ServiceMap[i].init();
+        ServiceMap[i].init(ServiceMap[i].stringID);
+        fprintf(stderr, "RRR server: registered service: %s\n",
+                ServiceMap[i].stringID);
     }
 }
 
@@ -72,7 +77,7 @@ static UINT32 pack(unsigned char dst[])
 }
 
 /* main */
-void software_main()
+int main()
 {
     unsigned char   buf[CHANNELIO_PACKET_SIZE];
     int             nbytes;
@@ -133,5 +138,5 @@ void software_main()
         assert(nbytes == CHANNELIO_PACKET_SIZE);    /* ugh */
     }
 
-    exit(0);
+    return 0;
 }

@@ -40,14 +40,9 @@ Packagehint=hasim
 File=modules/common/hasim_common.awb
 Packagehint=hasim
 
-[Hasim Base Module]
-File=modules/common/base/hasim_base.awb
-Packagehint=hasim
-
 [Hasim Common Library/Requires]
 hasim_fpgaenv=Hasim FPGA Environment
-hasim_base=Hasim Base Module
 
 [Hasim FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-rrr-sim.apm
 Packagehint=hasim

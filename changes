@@ -6874,3 +6874,136 @@ Directory docs/docbook/xml/getting_started
 A first cut at a "Getting Started with AWB and HAsim" guide.
 
 Michael P.
+
+----------
+aparasha    Date: Sun Aug 26 12:09:38 EDT 2007  CSN: CSN-hasim-250
+                  Sun Aug 26 16:09:38 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          249 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_exe_nosynth.apm Locally Modified          249 
+ traffic_light_exe_synth.apm Locally Modified          249 
+
+Directory config/pm/hasim/demos/switch_to_led
+ adder4x4_software.apm     Locally Modified          249 
+ multiplier4x4_software.apm Locally Modified          249 
+
+Directory config/pm/hasim/submodels/fpgaenv
+ hasim-fpgaenv-rpc-bluesim.apm Locally Removed           249 
+ hasim-fpgaenv-rrr-sim.apm Locally Added               0 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          249 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.awb  Locally Modified          249 
+
+Directory modules/common/fpgaenv/platform-interface
+ hasim-rpc/                Locally Removed           249 
+
+Directory modules/common/fpgaenv/platform-interface/hasim-rpc
+ HAsimRPCPlatformInterface.bsv Locally Removed           249 
+ hasim-rpc-platform-interface.awb Locally Removed           249 
+
+Directory modules/common/fpgaenv/platform-interface
+ hasim-rrr/                Locally Added               0 
+
+Directory modules/common/fpgaenv/platform-interface/hasim-rrr
+ HAsimRRRPlatformInterface.bsv Locally Added               0 
+ hasim-rrr-platform-interface.awb Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio
+ bluesim/                  Locally Removed           249 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio/bluesim
+ bluesim-channelio.c       Locally Removed           249 
+ bluesim-channelio.h       Locally Removed           249 
+ bluesim-channelio.awb     Locally Removed           249 
+ BluesimChannelIO.bsv      Locally Removed           249 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio/unix
+ unix-channelio.awb        Locally Modified          249 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio
+ sim/                      Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio/sim
+ SimChannelIO.bsv          Locally Added               0 
+ sim-channelio.c           Locally Added               0 
+ sim-channelio.h           Locally Added               0 
+ sim-channelio.awb         Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform
+ rpc-virtual-platform.awb  Locally Removed           249 
+ rrr-virtual-platform.awb  Locally Added               0 
+ rpc/                      Locally Removed           249 
+
+Directory modules/common/fpgaenv/virtual-platform/rpc
+ software/                 Locally Removed           249 
+
+Directory modules/common/fpgaenv/virtual-platform/rpc/software
+ software-rpc-server.c     Locally Removed           249 
+ software-rpc.awb          Locally Removed           249 
+ front-panel.c             Locally Removed           249 
+ software-rpc-server.h     Locally Removed           249 
+ memory.c                  Locally Removed           249 
+ front-panel.h             Locally Removed           249 
+
+Directory modules/common/fpgaenv/virtual-platform/rpc
+ rpc.awb                   Locally Removed           249 
+ hardware/                 Locally Removed           249 
+
+Directory modules/common/fpgaenv/virtual-platform/rpc/hardware
+ hardware-rpc.awb          Locally Removed           249 
+ HardwareRPCClient.bsv     Locally Removed           249 
+
+Directory modules/common/fpgaenv/virtual-platform
+ rrr/                      Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/rrr
+ software-rrr-server.c     Locally Added               0 
+ software-rrr-server.h     Locally Added               0 
+ HardwareRRRClient.bsv     Locally Added               0 
+ global-service-list.rrr   Locally Added               0 
+ rrr.awb                   Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices
+ std-virtual-devices-mem.awb Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/hybrid
+ HybridFP.bsv              Locally Modified          249 
+ hybrid-fp.awb             Locally Modified          249 
+ hybrid-fp-sw.c            Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices
+ memory/                   Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/memory
+ hybrid/                   Locally Added               0 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/memory/hybrid
+ hybrid-memory-sw.c        Locally Added               0 
+ hybrid-memory.awb         Locally Added               0 
+ HybridMemory.bsv          Locally Added               0 
+
+
+- Separated the software module source files (for hybrid modules) from
+  the software main server (earlier, all software module files were
+  residing with the software RRR server code).
+
+- Changed all "*RPC*" names to "*RRR*"
+
+- Added support for service modules to register themselves with the
+  RRR server, without the server having explicit knowledge of the set
+  of services it is going to host. Currently, we are using a global
+  map table of services to accomplish this, but this will be updated
+  to a more distributed approach.
+
+- Added a preliminary implementation for building hardware and software
+  module trees independently into a hardware target (simulation executable
+  or bitfile) and a software target (executable). The AWB build dialog
+  box will build the hardware target only. To build the software target,
+  do into the build directory and type "make swexe" at a console prompt.

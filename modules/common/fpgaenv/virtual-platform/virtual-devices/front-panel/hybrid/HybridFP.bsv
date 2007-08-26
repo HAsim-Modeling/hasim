@@ -1,4 +1,4 @@
-import hardware_rpc::*;
+import rrr::*;
 import toplevel_wires::*;
 
 interface FrontPanel;

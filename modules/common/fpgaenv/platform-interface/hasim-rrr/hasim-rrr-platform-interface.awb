@@ -7,14 +7,14 @@
 #/*
 # %AWB_START
 #
-# %name Hasim RPC-Based Platform Interface
-# %desc Hasim RPC-Based Platform Interface: translates Connections to Platform Commands
+# %name Hasim RRR-Based Platform Interface
+# %desc Hasim RRR-Based Platform Interface: translates Connections to Platform Commands
 #
 # %provides platform_interface
 #
 # %attributes hasim
 #
-# %public HAsimRPCPlatformInterface.bsv
+# %public HAsimRRRPlatformInterface.bsv
 #
 # %AWB_END
 # */

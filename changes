@@ -7149,3 +7149,29 @@ TBD: separate platform_interface from fpgaenv.
 
 Michael P.
 
+
+----------
+mpellaue    Date: Tue Aug 28 14:50:58 EDT 2007  CSN: CSN-hasim-252
+                  Tue Aug 28 18:50:58 UTC 2007
+
+
+Directory config/pm/hasim/submodels
+ hasim_common.apm          Locally Added               0 
+
+Directory modules/common/modellib
+ hasim_modellib.awb        Locally Added               0 
+
+Directory modules/common/smart_synthesis_boundaries
+ ExposeConnections.bsv     Locally Added               0 
+ WithConnections.bsv       Locally Added               0 
+ BuryConnections.bsv       Locally Added               0 
+ smart_synth_boundaries.awb Locally Added               0 
+
+Directory modules/common
+ smart_synthesis_boundaries/ Locally Added               0 
+
+
+Adding files which were mistakenly ommitted from the previous checkin. The
+previous checkin is broken without these.
+
+Michael P.

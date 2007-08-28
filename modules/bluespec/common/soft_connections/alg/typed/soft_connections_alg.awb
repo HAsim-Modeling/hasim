@@ -7,13 +7,13 @@
 #/*
 # %AWB_START
 #
-# %name Deprecated Hasim base module
-# %desc Deprecated Hasim base module
-# %provides hasim_base
+# %name Soft Connection Algorithm
+# %desc Soft Connection Algorithm
+# %provides soft_connections_alg
 #
 # %attributes hasim
 #
-# %public HASim_Deprecated.bsv
+# %public ConnectionHelper.bsv ConnectionAlg.bsv
 #
 # %AWB_END
 # */

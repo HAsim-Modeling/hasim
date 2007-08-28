@@ -107,8 +107,13 @@ module [Connected_Module] mkStatCounter_Enabled#(String statname)
 
 	     endinterface);
 	     
+  //Get our type for typechecking
+  Bit#(`HASIM_STATS_SIZE) msg = ?;
+  let mytype = printType(typeOf(msg));
+
   //Add our interface to the ModuleCollect collection
-  addToCollection(tagged LChain tuple2(1, chn));
+  let inf = CChain_Info {cnum: 1, ctype: mytype, conn: chn};
+  addToCollection(tagged LChain inf);
 
   method Action incr();
     
@@ -137,10 +142,15 @@ module [Connected_Module] mkStatCounter_Disabled#(String statname)
 		endmethod
 
 	     endinterface);
-	     
-  //Add our interface to the ModuleCollect collection
-  addToCollection(tagged LChain tuple2(1, chn));
 
+  //Get our type for typechecking
+  Bit#(`HASIM_STATS_SIZE) msg = ?;
+  let mytype = printType(typeOf(msg));
+
+  //Add our interface to the ModuleCollect collection
+  let inf = CChain_Info {cnum: 1, ctype: mytype, conn: chn};
+  addToCollection(tagged LChain inf);
+  
   method Action incr();
     
     noAction;
@@ -244,8 +254,13 @@ module [Connected_Module] mkStatController_Simulation
 
 	     endinterface);
 
+  //Get our type for typechecking
+  Bit#(`HASIM_STATS_SIZE) msg = ?;
+  let mytype = printType(typeOf(msg));
+
   //Add our interface to the ModuleCollect collection
-  addToCollection(tagged LChain tuple2(1, chn));
+  let inf = CChain_Info {cnum: 1, ctype: mytype, conn: chn};
+  addToCollection(tagged LChain inf);
   
   method Action enableStats if (state == SC_Idle);
   

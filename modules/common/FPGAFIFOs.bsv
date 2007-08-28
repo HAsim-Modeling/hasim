@@ -1,4 +1,4 @@
-
+import RegFile::*;
 import fpga_components::*;
 
 

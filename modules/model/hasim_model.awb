@@ -8,8 +8,9 @@
 %desc HAsim foundation module for ASIM models
 %provides model
 
-%requires hasim_controller
 %requires hasim_system
+%requires hasim_controller
+%requires hasim_fpgaenv
 %requires hasim_common
 
 %attributes model

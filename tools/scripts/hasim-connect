@@ -110,12 +110,13 @@ sub create_surrogate {
 
       print SURROGATE "\n";
       print SURROGATE "// These are well-known/required hasim modules\n";
-      print SURROGATE "import hasim_common::*;\n";
+      print SURROGATE "import soft_connections::*;\n";
+      print SURROGATE "import smart_synth_boundaries::*;\n";
       print SURROGATE "\n";
 
       print SURROGATE "import " . make_wrapper_name($metatype) . "::*;\n";
 
-      print SURROGATE "module [HASim_Module] $synth_id ();\n";    
+      print SURROGATE "module [Connected_Module] $synth_id ();\n";    
       print SURROGATE "$indent // 1. instantiate wrapper\n";
       print SURROGATE "$indent WithConnections $wrap_var <- $mk_wrapper();\n";
 

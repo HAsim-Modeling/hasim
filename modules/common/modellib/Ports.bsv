@@ -1,4 +1,7 @@
 
+import hasim_common::*;
+import soft_connections::*;
+
 interface Port_Control;
 
   method Bool empty();

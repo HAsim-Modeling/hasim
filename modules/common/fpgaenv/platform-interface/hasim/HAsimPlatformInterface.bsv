@@ -1,6 +1,18 @@
 import hasim_common::*;
+import soft_connections::*;
 import front_panel::*;
 import toplevel_wires::*;
+
+typedef struct
+{
+  Bit#(1) b_up;
+  Bit#(1) b_down;
+  Bit#(1) b_left;
+  Bit#(1) b_right;
+  Bit#(1) b_center;
+}
+  ButtonInfo deriving (Eq, Bits);
+
 
 module [HASim_Module] mkPlatformInterface(TopLevelWires);
 

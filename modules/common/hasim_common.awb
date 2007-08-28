@@ -10,14 +10,14 @@
 # %name Hasim Common Library
 # %desc Hasim Common Library
 # %provides hasim_common
-# %requires hasim_fpgaenv
+# %requires hasim_modellib
+# %requires smart_synth_boundaries
+# %requires soft_connections
 #
 # %attributes hasim
 #
-# %public HASim.bsv Events.bsv Connections.bsv  Ports.bsv Stats.bsv BypassFIFO.bsv FPGAFIFOs.bsv Commands.bsv Debug.bsv 
+# %public HASim.bsv Token.bsv BypassFIFO.bsv FPGAFIFOs.bsv Debug.bsv 
 # %private bluespec_common.prj
-#
-# %param HASIM_BMARK_TIMEOUT 1000000 "Force a run to end after N model cycles."
 #
 # %param HASIM_TOK_INDEX_BITS 8 "Number of bits in a Token (8 = 256 in-flight instructions)."
 #
@@ -30,13 +30,6 @@
 # %param HASIM_EVENTS_ENABLED True "Statically enable/disable Event logging (True/False)."
 # %param HASIM_EVENTS_LOGFILE "hasim_events.out" "Name of Event logfile."
 #
-# %param HASIM_STATS_ENABLED True "Statically enable/disable Stats logging (True/False)."
-# %param HASIM_STATS_SIZE 32 "Number of bits per Stat counter."
-# %param HASIM_STATS_LOGFILE "hasim_stats.out" "Name of Stats logfile."
-#
-# %param HASIM_CON_CWIDTH 256 "Maximum Connection Bit Width."
-# %param HASIM_CON_NUMBER 32 "Maximum number of dangling connections per synthesis boundary."
-# %param HASIM_CON_NUMCHAINS 4 "Number of Connection Chains."
 #
 # %AWB_END
 # */

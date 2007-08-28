@@ -1,12 +1,17 @@
 //BSV library imports
 import FIFO::*;
 import ModuleCollect::*;
+import soft_connections::*;
 
 //AWB Parameters
 //name:                  default:
 //HASIM_EVENTS_ENABLED   True
 //HASIM_EVENTS_LOGFILE   events_log.out
 //HASIM_BMARK_TIMEOUT    100000
+
+interface EventRecorder;
+  method Action recordEvent(Maybe#(Bit#(32)) mdata);
+endinterface
 
 module [Connected_Module] mkEventRecorder#(String eventname)
     //interface:
@@ -81,10 +86,15 @@ module [Connected_Module] mkEventRecorder_Enabled#(String eventname)
 		endmethod
 
 	     endinterface);
-	     
-  //Add our interface to the ModuleCollect collection
-  addToCollection(tagged LChain tuple2(0, chn));
 
+  //Get our type for typechecking
+  Bit#(32) msg = ?;
+  let mytype = printType(typeOf(msg));
+
+  //Add our interface to the ModuleCollect collection
+  let inf = CChain_Info {cnum: 0, ctype: mytype, conn: chn};
+  addToCollection(tagged LChain inf);
+     
   method Action recordEvent(Maybe#(Bit#(32)) mdata);
   
     if (enabled)
@@ -139,9 +149,14 @@ module [Connected_Module] mkEventRecorder_Disabled#(String eventname)
 		endmethod
 
 	     endinterface);
-	     
+
+  //Get our type for typechecking
+  Bit#(32) msg = ?;
+  let mytype = printType(typeOf(msg));
+
   //Add our interface to the ModuleCollect collection
-  addToCollection(tagged LChain tuple2(0, chn));
+  let inf = CChain_Info {cnum: 0, ctype: mytype, conn: chn};
+  addToCollection(tagged LChain inf);
 
   method Action recordEvent(Maybe#(Bit#(32)) mdata);
     noAction;
@@ -274,8 +289,13 @@ module [Connected_Module] mkEventController_Simulation
 
 	     endinterface);
 
+  //Get our type for typechecking
+  Bit#(32) msg = ?;
+  let mytype = printType(typeOf(msg));
+
   //Add our interface to the ModuleCollect collection
-  addToCollection(tagged LChain tuple2(0, chn));
+  let inf = CChain_Info {cnum: 0, ctype: mytype, conn: chn};
+  addToCollection(tagged LChain inf);
 
   method Action enableEvents();
     //XXX More must be done to get all event recorders onto the same model CC.

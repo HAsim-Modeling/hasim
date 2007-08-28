@@ -1,6 +1,7 @@
 
 import fpga_components::*;
 import hasim_common::*;
+import soft_connections::*;
 
 import hasim_isa::*;
 

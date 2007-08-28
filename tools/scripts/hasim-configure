@@ -803,9 +803,13 @@ sub generate_wrapper {
     
     CORE::open(WRAPPER, "> $dirname/$wrapper") || return undef;
 
-    print WRAPPER "import ModuleCollect::*;\n";
     print WRAPPER "// These are well-known/required hasim modules\n";
-    print WRAPPER "import hasim_common::*;\n";
+    if ($isroot) {
+      print WRAPPER "import soft_connections_alg::*;\n";
+    } else {
+      print WRAPPER "import smart_synth_boundaries::*;\n";
+    }
+
     print WRAPPER "\n";
 
     #
@@ -847,10 +851,10 @@ sub generate_wrapper {
         print WRAPPER "\n";
         print WRAPPER "import toplevel_wires::*;\n";
         print WRAPPER "\n";
-    print WRAPPER "(* synthesize *)\n";
+        print WRAPPER "(* synthesize *)\n";
 	print WRAPPER "module " . HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($metatype)) . " (TopLevelWires);\n";    
     } else {
-    print WRAPPER "(* synthesize *)\n";
+        print WRAPPER "(* synthesize *)\n";
 	print WRAPPER "module " . HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($metatype)) . " (WithConnections);\n";    
     }
     print WRAPPER "\n";
@@ -859,9 +863,9 @@ sub generate_wrapper {
     my $synth_id = HAsim::Build::get_synthesis_boundary_name($module);
     print WRAPPER "    // instantiate own module\n";
     if ($isroot) {
-	print WRAPPER "    let m <- instantiateTopLevel($synth_id);\n";
-    } else {
 	print WRAPPER "    let m <- instantiateWithConnections($synth_id);\n";
+    } else {
+	print WRAPPER "    let m <- instantiateSmartBoundary($synth_id);\n";
     }
     print WRAPPER "\n";
 

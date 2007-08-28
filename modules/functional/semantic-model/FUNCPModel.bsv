@@ -3,6 +3,7 @@ import Vector::*;
 import RegFile::*;
 
 import hasim_common::*;
+import soft_connections::*;
 import fpga_components::*;
 
 import hasim_funcp_memstate_ifc::*;

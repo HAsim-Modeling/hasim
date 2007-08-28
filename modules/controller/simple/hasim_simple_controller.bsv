@@ -7,6 +7,9 @@ import FIFO::*;
 
 //HASim library imports
 import hasim_common::*;
+import hasim_modellib::*;
+import soft_connections::*;
+import platform_interface::*;
 import hasim_local_controller::*;
 
 //************* OneTest Controller **************

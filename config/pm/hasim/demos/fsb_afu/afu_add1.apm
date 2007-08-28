@@ -1,10 +1,10 @@
 
 [Global]
 SaveParameters=0
-Description=Multiplier FPGA Demo
+Description=AFU Add1 demo
 File=afu_add1
 Version=2.1
-Name=Multiplier Model
+Name=AFU ADD1
 Type=HAsim
 Class=Asim::Model
 
@@ -17,20 +17,19 @@ Packagehint=hasim
 File=modules/model/hasim_model.awb
 
 [Model]
-DefaultAttributes=demo hasim software
+DefaultAttributes=afu hasim software
 model=HAsim Model Foundation
 
 [HAsim Model Foundation/Requires]
 hasim_system=Hasim - FSB AFU system
 hasim_controller=Hasim null controller
 hasim_common=Hasim Common Library
+hasim_fpgaenv=Hasim FPGA Environment
 
 [Hasim Common Library]
-File=modules/common/hasim_common.awb
+File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
-[Hasim Common Library/Requires]
-hasim_fpgaenv=Hasim FPGA Environment
 
 [Hasim FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-fsb-afu.apm

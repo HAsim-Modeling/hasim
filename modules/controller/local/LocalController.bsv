@@ -7,6 +7,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 import hasim_common::*;
+import hasim_modellib::*;
+import soft_connections::*;
 
 import Vector::*;
 import FIFO::*;

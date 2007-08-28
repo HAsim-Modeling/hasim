@@ -7007,3 +7007,145 @@ Directory modules/common/fpgaenv/virtual-platform/virtual-devices/memory/hybrid
   or bitfile) and a software target (executable). The AWB build dialog
   box will build the hardware target only. To build the software target,
   do into the build directory and type "make swexe" at a console prompt.
+
+----------
+mpellaue    Date: Tue Aug 28 14:37:57 EDT 2007  CSN: CSN-hasim-251
+                  Tue Aug 28 18:37:57 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          250 
+ hasim-connect             Locally Modified          250 
+
+Directory config/pm/hasim/demos/fsb_dme
+ dme_no_afu.apm            Locally Modified          250 
+
+Directory config/pm/hasim/demos/bram_test
+ bram_test_xup.apm         Locally Modified          250 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          250 
+ traffic_light_xup_synth.apm Locally Modified          250 
+ traffic_light_exe_nosynth.apm Locally Modified          250 
+ traffic_light_exe_synth.apm Locally Modified          250 
+
+Directory config/pm/hasim/demos/fsb_afu
+ afu_add1.apm              Locally Modified          250 
+ afu_pass_through.apm      Locally Modified          250 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          250 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Modified          250 
+ adder4x4_software.apm     Locally Modified          250 
+ echo4x4_xup.apm           Locally Modified          250 
+ square4x4_software.apm    Locally Modified          250 
+ adder4x4_xup.apm          Locally Modified          250 
+ square4x4_xup.apm         Locally Modified          250 
+ multiplier4x4_software.apm Locally Modified          250 
+ multiplier4x4_xup.apm     Locally Modified          250 
+
+Directory modules/model
+ hasim_model.awb           Locally Modified          250 
+
+Directory modules/bluespec/common
+ soft_connections/         Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections
+ Connected_Module.bsv      Locally Added               0 
+ alg/                      Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections/alg
+ typed/                    Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections/alg/typed
+ ConnectionHelper.bsv      Locally Added               0 
+ soft_connections_alg.awb  Locally Added               0 
+ ConnectionAlg.bsv         Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections
+ soft_connections.awb      Locally Added               0 
+ Connections.bsv           Locally Added               0 
+
+Directory modules/functional/semantic-model
+ FUNCPModel.bsv            Locally Modified          250 
+
+Directory modules/functional/common
+ FUNCP_StoreBuffer_Seq.bsv Locally Modified          250 
+ FUNCP_MemState_Seq.bsv    Locally Modified          250 
+
+Directory modules/controller/simple
+ hasim_simple_controller.bsv Locally Modified          250 
+
+Directory modules/controller/local
+ LocalController.bsv       Locally Modified          250 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          250 
+
+Directory modules/common/fpgaenv/platform-interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          250 
+
+Directory modules/common
+ modellib/                 Locally Added               0 
+
+Directory modules/common/modellib
+ Ports.bsv                 Locally Added               - 
+ Stats.bsv                 Locally Added               - 
+ Commands.bsv              Locally Added               - 
+ Events.bsv                Locally Added               - 
+
+Directory modules/common
+ Stats.bsv                 Locally Removed           250 
+ HASim.bsv                 Locally Modified          250 
+ Commands.bsv              Locally Removed           250 
+ Connections_Deprecated.bsv Locally Removed           250 
+ FPGAFIFOs.bsv             Locally Modified          250 
+ Events.bsv                Locally Removed           250 
+ Ports.bsv                 Locally Removed           250 
+ hasim_common_deprecated.awb Locally Removed           250 
+ fpgalib/                  Locally Removed           250 
+
+Directory modules/common/fpgalib
+ BRAM_Verilog.bsv          Locally Removed           250 
+ BRAM_base.bsv             Locally Removed           250 
+ BRAM.v                    Locally Removed           250 
+ fpgalib_software.awb      Locally Removed           250 
+ fpgalib_xup.awb           Locally Removed           250 
+ xup.ucf                   Locally Removed           250 
+ FPGALib_XUP.bsv           Locally Removed           250 
+ BRAM_Bluesim.bsv          Locally Removed           250 
+ BRAM1.bsv                 Locally Removed           250 
+ BRAM2.bsv                 Locally Removed           250 
+ BRAM3.bsv                 Locally Removed           250 
+ FPGALib_Bluesim.bsv       Locally Removed           250 
+
+Directory modules/common
+ Token.bsv                 Locally Added               0 
+ base/                     Locally Removed           250 
+
+Directory modules/common/base
+ hasim_base_deprecated.awb Locally Removed           250 
+ HASim_Deprecated.bsv      Locally Removed           250 
+
+Directory modules/common
+ Connections.bsv           Locally Removed           250 
+
+
+hasim_common reorg. Soft Connections have been separated out and moved into
+Bluespec common (soft_connections). Smart Synthesis Boundaries are now a
+separate module (smart_synth_boundaries). Modeling constructs are now in
+hasim_modellib.
+
+Many deprecated elements of hasim_common have been deleted.
+
+Soft Connections code is better documented and more maintainable.
+
+All demo models have been updated to use the new organization. hasim_common is
+now a submodel.
+
+TBD: separate platform_interface from fpgaenv.
+
+Michael P.
+

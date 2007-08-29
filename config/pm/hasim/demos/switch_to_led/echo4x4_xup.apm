@@ -15,7 +15,7 @@ File=modules/model/hasim_model.awb
 hasim_system=Hasim - Switch in to LED out system
 hasim_controller=Hasim null controller
 hasim_common=Hasim Common Library
-hasim_fpgaenv=Hasim FPGA Environment
+fpgaenv=FPGA Environment
 
 [Global]
 SaveParameters=0
@@ -42,7 +42,6 @@ File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
 
-
-[Hasim FPGA Environment]
+[FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-xup.apm
 Packagehint=hasim

@@ -20,6 +20,7 @@ Packagehint=hasim
 smart_synth_boundaries=Smart Synthesis Boundaries
 soft_connections=Soft Connections
 hasim_modellib=Hasim Modeling Library
+platform_interface=Hasim Platform Interface
 
 [Hasim Modeling Library]
 File=modules/common/modellib/hasim_modellib.awb
@@ -38,4 +39,8 @@ Packagehint=hasim
 
 [Soft Connection Algorithm]
 File=modules/bluespec/common/soft_connections/alg/typed/soft_connections_alg.awb
+Packagehint=hasim
+
+[Hasim Platform Interface]
+File=modules/common/platform_interface/hasim/hasim-platform-interface.awb
 Packagehint=hasim

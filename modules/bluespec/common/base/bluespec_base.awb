@@ -4,12 +4,12 @@
 
 %AWB_START
 
-%name Bluespec Base Library
-%desc Bluespec Base Library
+%name Bluespec Common Library with FPGA
+%desc Bluespec Common Library with FPGA
 
 %provides bluespec_common
 
-%requires virtual_platform toplevel_wires
+%requires fpgaenv
 
 %attributes bluespec
 

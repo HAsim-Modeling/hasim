@@ -1,64 +1,49 @@
 
 [Global]
 SaveParameters=0
-Description=Hasim RRR-Based FPGA Environment for Simulation
+Description=Bluespec RRR-Based FPGA Environment for Simulation
 File=hasim-fpgaenv-rrr-sim
 Version=2.1
 Type=HAsim
-Name=Hasim RRR-Based FPGA Environment for Simulation
+Name=Bluespec RRR-Based FPGA Environment for Simulation
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=hasim
-model=Hasim FPGA Environment
+DefaultAttributes=bluespec
+model=FPGA Environment
 
-[Hasim FPGA Environment/Requires]
-virtual_platform=RRR-Based Virtual Platform
-platform_interface=Hasim RRR-Based Platform Interface
-toplevel_wires=Null TopLevel Wires
-fpga_components=Software FPGA Components
 
-[Hasim FPGA Environment]
-File=modules/common/fpgaenv/hasim-fpga-environment.awb
-Packagehint=hasim
 
 [Software FPGA Components]
-File=modules/common/fpgaenv/fpga-components/software/software-fpga-components.awb
+File=modules/bluespec/common/fpgaenv/fpga-components/software/software-fpga-components.awb
 Packagehint=hasim
 
 [Null TopLevel Wires]
-File=modules/common/fpgaenv/toplevel-wires/null/null-toplevel-wires.awb
+File=modules/bluespec/common/fpgaenv/toplevel-wires/null/null-toplevel-wires.awb
 Packagehint=hasim
 
 [RRR-Based Virtual Platform]
-File=modules/common/fpgaenv/virtual-platform/rrr-virtual-platform.awb
+File=modules/bluespec/common/fpgaenv/virtual-platform/rrr-virtual-platform.awb
 Packagehint=hasim
 
 [RRR-Based Virtual Platform/Requires]
 virtual_devices=Standard Virtual Devices with Memory
 channelio=ChannelIO Module for Simulation
-rrr=HRRR Clients and Servers
+rrr=RRR Clients and Servers
 
 [Hybrid Front Panel]
-File=modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/hybrid/hybrid-fp.awb
+File=modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel/hybrid/hybrid-fp.awb
 Packagehint=hasim
 
 [Null Serial Console]
-File=modules/common/fpgaenv/virtual-platform/virtual-devices/console/null-serial/null-serial.awb
+File=modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/console/null-serial/null-serial.awb
 Packagehint=hasim
-
 
 [Hybrid Memory]
-File=modules/common/fpgaenv/virtual-platform/virtual-devices/memory/hybrid/hybrid-memory.awb
+File=modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/memory/hybrid/hybrid-memory.awb
 Packagehint=hasim
 
-[Hasim RRR-Based Platform Interface]
-File=modules/common/fpgaenv/platform-interface/hasim-rrr/hasim-rrr-platform-interface.awb
-Packagehint=hasim
 
-[HRRR Clients and Servers]
-File=modules/common/fpgaenv/virtual-platform/rrr/rrr.awb
-Packagehint=hasim
 
 [Standard Virtual Devices with Memory/Requires]
 memory=Hybrid Memory
@@ -66,9 +51,22 @@ console=Null Serial Console
 front_panel=Hybrid Front Panel
 
 [Standard Virtual Devices with Memory]
-File=modules/common/fpgaenv/virtual-platform/virtual-devices/std-virtual-devices-mem.awb
+File=modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/std-virtual-devices-mem.awb
 Packagehint=hasim
 
 [ChannelIO Module for Simulation]
-File=modules/common/fpgaenv/virtual-platform/channelio/sim/sim-channelio.awb
+File=modules/bluespec/common/fpgaenv/virtual-platform/channelio/sim/sim-channelio.awb
 Packagehint=hasim
+
+[FPGA Environment]
+File=modules/bluespec/common/fpgaenv/fpga-environment.awb
+Packagehint=hasim
+
+[RRR Clients and Servers]
+File=modules/bluespec/common/fpgaenv/virtual-platform/rrr/rrr.awb
+Packagehint=hasim
+
+[FPGA Environment/Requires]
+virtual_platform=RRR-Based Virtual Platform
+toplevel_wires=Null TopLevel Wires
+fpga_components=Software FPGA Components

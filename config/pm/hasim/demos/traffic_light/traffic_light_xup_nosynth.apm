@@ -28,7 +28,7 @@ model=HAsim Model Foundation
 hasim_system=Hasim - Traffic light system
 hasim_controller=Hasim null controller
 hasim_common=Hasim Common Library
-hasim_fpgaenv=Hasim FPGA Environment
+fpgaenv=FPGA Environment
 
 [Hasim - Traffic light system/Requires]
 hasim_traffic_light_function=Hasim - Traffic light function w.o synthesis boundary
@@ -37,11 +37,11 @@ hasim_traffic_light_function=Hasim - Traffic light function w.o synthesis bounda
 File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function.awb
 Packagehint=hasim
 
-
 [Hasim Common Library]
 File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
-[Hasim FPGA Environment]
+
+[FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-xup.apm
 Packagehint=hasim

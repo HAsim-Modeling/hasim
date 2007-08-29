@@ -1,65 +1,61 @@
 
 [Global]
 SaveParameters=0
-Description=Hasim FPGA Environment for Software
+Description=Bluespec FPGA Environment for Software
 File=hasim-fpgaenv-software
 Version=2.1
 Type=HAsim
-Name=Hasim FPGA Environment for Software
+Name=Bluespec FPGA Environment for Software
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=hasim
-model=Hasim FPGA Environment
-
-
+DefaultAttributes=bluespec
+model=FPGA Environment
 
 [Graphical Front Panel]
-File=modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/graphical/graphical-fp.awb
+File=modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel/graphical/graphical-fp.awb
 Packagehint=hasim
 
-[Hasim FPGA Environment/Requires]
-virtual_platform=Standard Virtual Platform
-platform_interface=Hasim Platform Interface
-toplevel_wires=Null TopLevel Wires
-fpga_components=Software FPGA Components
 
 [Null Serial Console]
-File=modules/common/fpgaenv/virtual-platform/virtual-devices/console/null-serial/null-serial.awb
+File=modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/console/null-serial/null-serial.awb
 Packagehint=hasim
 
 [Standard Virtual Platform]
-File=modules/common/fpgaenv/virtual-platform/std-virtual-platform.awb
+File=modules/bluespec/common/fpgaenv/virtual-platform/std-virtual-platform.awb
 Packagehint=hasim
 
-[Hasim Platform Interface]
-File=modules/common/fpgaenv/platform-interface/hasim/hasim-platform-interface.awb
-Packagehint=hasim
 
 [Standard Virtual Platform/Requires]
 virtual_devices=Standard Virtual Devices
 channelio=Channel IO to/from a UNIX Process
 
-[Hasim FPGA Environment]
-File=modules/common/fpgaenv/hasim-fpga-environment.awb
-Packagehint=hasim
 
 [Channel IO to/from a UNIX Process]
-File=modules/common/fpgaenv/virtual-platform/channelio/unix/unix-channelio.awb
+File=modules/bluespec/common/fpgaenv/virtual-platform/channelio/unix/unix-channelio.awb
 Packagehint=hasim
 
 [Software FPGA Components]
-File=modules/common/fpgaenv/fpga-components/software/software-fpga-components.awb
+File=modules/bluespec/common/fpgaenv/fpga-components/software/software-fpga-components.awb
 Packagehint=hasim
 
 [Null TopLevel Wires]
-File=modules/common/fpgaenv/toplevel-wires/null/null-toplevel-wires.awb
+File=modules/bluespec/common/fpgaenv/toplevel-wires/null/null-toplevel-wires.awb
 Packagehint=hasim
 
 [Standard Virtual Devices]
-File=modules/common/fpgaenv/virtual-platform/virtual-devices/std-virtual-devices.awb
+File=modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/std-virtual-devices.awb
 Packagehint=hasim
 
 [Standard Virtual Devices/Requires]
 console=Null Serial Console
 front_panel=Graphical Front Panel
+
+[FPGA Environment]
+File=modules/bluespec/common/fpgaenv/fpga-environment.awb
+Packagehint=hasim
+
+[FPGA Environment/Requires]
+virtual_platform=Standard Virtual Platform
+toplevel_wires=Null TopLevel Wires
+fpga_components=Software FPGA Components

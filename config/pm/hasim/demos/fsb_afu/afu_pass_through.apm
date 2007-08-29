@@ -24,15 +24,12 @@ model=HAsim Model Foundation
 hasim_system=Hasim - FSB AFU system
 hasim_controller=Hasim null controller
 hasim_common=Hasim Common Library
-hasim_fpgaenv=Hasim FPGA Environment
+fpgaenv=FPGA Environment
 
 [Hasim Common Library]
 File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
-[Hasim FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-fsb-afu.apm
-Packagehint=hasim
 
 [Hasim - FSB AFU system]
 File=modules/system/afu_system/afu_system.awb
@@ -44,3 +41,7 @@ Packagehint=hasim
 
 [Hasim - FSB AFU system/Requires]
 afu_alg=Hasim - AFU Pass-Through Alg
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-fsb-afu.apm
+Packagehint=hasim

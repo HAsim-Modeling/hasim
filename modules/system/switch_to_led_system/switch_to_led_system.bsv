@@ -1,4 +1,6 @@
 import hasim_common::*;
+import soft_connections::*;
+import platform_interface::*;
 
 import calculation4x4::*;
 

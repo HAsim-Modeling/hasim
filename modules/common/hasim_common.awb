@@ -11,6 +11,7 @@
 # %desc Hasim Common Library
 # %provides hasim_common
 # %requires hasim_modellib
+# %requires platform_interface
 # %requires smart_synth_boundaries
 # %requires soft_connections
 #

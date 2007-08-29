@@ -7,12 +7,12 @@
 #/*
 # %AWB_START
 #
-# %name Hasim FPGA Environment
-# %desc Hasim FPGA Environment
+# %name FPGA Environment
+# %desc FPGA Environment
 #
-# %provides hasim_fpgaenv
+# %provides fpgaenv
 #
-# %requires platform_interface virtual_platform fpga_components toplevel_wires
+# %requires virtual_platform fpga_components toplevel_wires
 #
 # %attributes hasim
 #

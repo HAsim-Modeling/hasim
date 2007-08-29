@@ -24,15 +24,12 @@ model=HAsim Model Foundation
 hasim_system=Hasim - FSB DME system
 hasim_controller=Hasim null controller
 hasim_common=Hasim Common Library
-hasim_fpgaenv=Hasim FPGA Environment
+fpgaenv=FPGA Environment
 
 [Hasim Common Library]
 File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
-[Hasim FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-fsb-dme.apm
-Packagehint=hasim
 
 [Hasim - FSB DME system/Requires]
 dme_alg=Hasim - DME Simple No AFU
@@ -45,3 +42,7 @@ Packagehint=hasim
 File=modules/system/dme_system/no-afu/dme_no_afu.awb
 Packagehint=hasim
 
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-fsb-dme.apm
+Packagehint=hasim

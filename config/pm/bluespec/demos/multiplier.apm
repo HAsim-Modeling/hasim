@@ -10,7 +10,7 @@ Type=HAsim
 Class=Asim::Model
 
 [Pure Bluespec Model Foundation/Requires]
-bluespec_common=Bluespec Base Library
+bluespec_common=Bluespec Common Library with FPGA
 bluespec_system=Bluespec Multiplier Example
 
 [Pure Bluespec Model Foundation]
@@ -25,43 +25,23 @@ Packagehint=hasim
 DefaultAttributes=
 model=Pure Bluespec Model Foundation
 
-[Standard virtual devices/Requires]
-console=Null Serial Console
-front_panel=Graphical Front Panel
 
-[Standard virtual devices]
-File=modules/common/fpgaenv/virtual-platform/virtual-devices/std-virtual-devices.awb
-Packagehint=hasim
 
-[Bluespec Base Library/Requires]
-virtual_platform=Standard Virtual Platform
-toplevel_wires=Null TopLevel Wires
 
-[Bluespec Base Library]
+
+
+
+
+
+
+
+[Bluespec Common Library with FPGA/Requires]
+fpgaenv=FPGA Environment
+
+[Bluespec Common Library with FPGA]
 File=modules/bluespec/common/base/bluespec_base.awb
 Packagehint=hasim
 
-[Null Serial Console]
-File=modules/common/fpgaenv/virtual-platform/virtual-devices/console/null-serial/null-serial.awb
-Packagehint=hasim
-
-[Standard Virtual Platform]
-File=modules/common/fpgaenv/virtual-platform/std-virtual-platform.awb
-Packagehint=hasim
-
-[Standard Virtual Platform/Requires]
-channelio=Channel IO to/from a UNIX Process
-virtual_devices=Standard virtual devices
-
-
-[Graphical Front Panel]
-File=modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/graphical/graphical-fp.awb
-Packagehint=hasim
-
-[Channel IO to/from a UNIX Process]
-File=modules/common/fpgaenv/virtual-platform/channelio/unix/unix-channelio.awb
-Packagehint=hasim
-
-[Null TopLevel Wires]
-File=modules/common/fpgaenv/toplevel-wires/null/null-toplevel-wires.awb
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
 Packagehint=hasim

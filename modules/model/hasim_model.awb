@@ -10,7 +10,7 @@
 
 %requires hasim_system
 %requires hasim_controller
-%requires hasim_fpgaenv
+%requires fpgaenv
 %requires hasim_common
 
 %attributes model

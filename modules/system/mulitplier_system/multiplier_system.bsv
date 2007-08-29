@@ -1,4 +1,6 @@
 import hasim_common::*;
+import soft_connections::*;
+import platform_interface::*;
 
 module [HASim_Module] mkSystem ();
    
@@ -14,7 +16,7 @@ module [HASim_Module] mkSystem ();
   rule start (state == 0);
      Bit#(4) inp = link_switches.receive();
      ButtonInfo btns = link_buttons.receive();
-     link_switchs.deq();
+     link_switches.deq();
      link_buttons.deq();
 
      Bit#(2) x = inp[3:2];

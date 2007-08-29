@@ -24,7 +24,7 @@ model=HAsim Model Foundation
 hasim_system=Hasim - BRAM test system
 hasim_controller=Hasim null controller
 hasim_common=Hasim Common Library
-hasim_fpgaenv=Hasim FPGA Environment
+fpgaenv=FPGA Environment
 
 [Hasim - BRAM test system]
 File=modules/system/bram_test/bram_test_system.awb
@@ -35,6 +35,6 @@ File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
 
-[Hasim FPGA Environment]
+[FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-xup.apm
 Packagehint=hasim

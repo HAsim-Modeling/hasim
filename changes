@@ -7407,3 +7407,81 @@ Directory modules/common/fpgaenv/virtual-platform
 Intermediate checkin for the reorganization of FPGA environment. This checkin is broken and should not be used for anything.
 
 Michael P.
+
+----------
+mpellaue    Date: Wed Aug 29 16:11:01 EDT 2007  CSN: CSN-hasim-254
+                  Wed Aug 29 20:11:01 UTC 2007
+
+
+Directory modules/bluespec/common/fpgaenv
+ hasim-fpga-environment.awb Locally Removed           253 
+ fpga-environment.awb      Locally Added               - 
+
+Directory modules/bluespec/common/base
+ bluespec_base.awb         Locally Modified          252 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          252 
+
+Directory modules/model
+ hasim_model.awb           Locally Modified          252 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          252 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.bsv     Locally Modified          252 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.bsv  Locally Modified          252 
+
+Directory config/pm/hasim/demos/fsb_dme
+ dme_no_afu.apm            Locally Modified          252 
+
+Directory config/pm/hasim/demos/bram_test
+ bram_test_xup.apm         Locally Modified          252 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          252 
+ traffic_light_xup_synth.apm Locally Modified          252 
+ traffic_light_exe_nosynth.apm Locally Modified          252 
+ traffic_light_exe_synth.apm Locally Modified          252 
+
+Directory config/pm/hasim/demos/fsb_afu
+ afu_add1.apm              Locally Modified          252 
+ afu_pass_through.apm      Locally Modified          252 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          252 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Modified          252 
+ adder4x4_software.apm     Locally Modified          252 
+ echo4x4_xup.apm           Locally Modified          252 
+ square4x4_software.apm    Locally Modified          252 
+ adder4x4_xup.apm          Locally Modified          252 
+ square4x4_xup.apm         Locally Modified          252 
+ multiplier4x4_software.apm Locally Modified          252 
+ multiplier4x4_xup.apm     Locally Modified          252 
+
+Directory config/pm/hasim/submodels
+ hasim_common.apm          Locally Modified          252 
+
+Directory config/pm/hasim/submodels/fpgaenv
+ hasim-fpgaenv-fsb-afu.apm Locally Modified          252 
+ hasim-fpgaenv-software.apm Locally Modified          252 
+ hasim-fpgaenv-null.apm    Locally Modified          252 
+ hasim-fpgaenv-rrr-sim.apm Locally Modified          252 
+ hasim-fpgaenv-xup.apm     Locally Modified          252 
+ hasim-fpgaenv-fsb-dme.apm Locally Modified          252 
+
+Directory config/pm/bluespec/demos
+ multiplier.apm            Locally Modified          252 
+ counter.apm               Locally Modified          252 
+
+
+Finished reorg changes to fpgaenv. Fixed all dependent models.
+
+Pure Bluespec models may now use fpgaenv. Everything should work again now.
+
+Michael P.

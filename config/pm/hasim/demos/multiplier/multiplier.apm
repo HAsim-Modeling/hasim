@@ -24,7 +24,7 @@ model=HAsim Model Foundation
 hasim_system=Hasim - Multiplier system
 hasim_controller=Hasim null controller
 hasim_common=Hasim Common Library
-hasim_fpgaenv=Hasim FPGA Environment
+fpgaenv=FPGA Environment
 
 [Hasim - Multiplier system]
 Packagehint=hasim
@@ -35,6 +35,6 @@ File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
 
-[Hasim FPGA Environment]
+[FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
 Packagehint=hasim

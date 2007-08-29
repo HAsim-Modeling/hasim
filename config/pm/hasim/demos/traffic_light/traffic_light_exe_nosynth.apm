@@ -28,7 +28,7 @@ model=HAsim Model Foundation
 hasim_system=Hasim - Traffic light system
 hasim_controller=Hasim null controller
 hasim_common=Hasim Common Library
-hasim_fpgaenv=Hasim FPGA Environment
+fpgaenv=FPGA Environment
 
 [Hasim - Traffic light system/Requires]
 hasim_traffic_light_function=Hasim - Traffic light function w.o synthesis boundary
@@ -42,9 +42,9 @@ File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
 
-[Hasim FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
-Packagehint=hasim
-
 [Hasim - Traffic light function w.o synthesis boundary/Params]
 MAX_WAIT='d10
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
+Packagehint=hasim

@@ -1,6 +1,8 @@
 // Copyright 2000--2006 Bluespec, Inc.  All rights reserved.
 
 import hasim_common::*;
+import soft_connections::*;
+import platform_interface::*;
 
 // Simple model of a traffic light
 // (modeled after the light at the intersection of Rte 16 and Broadway

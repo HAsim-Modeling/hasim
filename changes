@@ -7175,3 +7175,235 @@ Adding files which were mistakenly ommitted from the previous checkin. The
 previous checkin is broken without these.
 
 Michael P.
+
+----------
+mpellaue    Date: Wed Aug 29 14:20:33 EDT 2007  CSN: CSN-hasim-253
+                  Wed Aug 29 18:20:33 UTC 2007
+
+
+Directory modules/common
+ fpgaenv/                  Locally Removed           252 
+
+Directory modules/common/fpgaenv
+ fpga-components/          Locally Removed           252 
+
+Directory modules/common/fpgaenv/fpga-components
+ software/                 Locally Removed           252 
+
+Directory modules/common/fpgaenv/fpga-components/software
+ software-fpga-components.awb Locally Removed           252 
+ BRAM_Bluesim.bsv          Locally Removed           252 
+ BRAM1.bsv                 Locally Removed           252 
+ BRAM2.bsv                 Locally Removed           252 
+ BRAM3.bsv                 Locally Removed           252 
+
+Directory modules/common/fpgaenv/fpga-components
+ hardware/                 Locally Removed           252 
+
+Directory modules/common/fpgaenv/fpga-components/hardware
+ BRAM_Verilog.bsv          Locally Removed           252 
+ hardware-fpga-components.awb Locally Removed           252 
+ BRAM_base.bsv             Locally Removed           252 
+ BRAM.v                    Locally Removed           252 
+ BRAM1.bsv                 Locally Removed           252 
+ BRAM2.bsv                 Locally Removed           252 
+ BRAM3.bsv                 Locally Removed           252 
+
+Directory modules/common/fpgaenv
+ toplevel-wires/           Locally Removed           252 
+
+Directory modules/common/fpgaenv/toplevel-wires
+ fsb_dme/                  Locally Removed           252 
+
+Directory modules/common/fpgaenv/toplevel-wires/fsb_dme
+ fsb-dme-toplevel-wires.awb Locally Removed           252 
+ fsb_dme.ucf               Locally Removed           252 
+ FSB_DME_TopLevelWires.bsv Locally Removed           252 
+
+Directory modules/common/fpgaenv/toplevel-wires
+ fsb_afu/                  Locally Removed           252 
+
+Directory modules/common/fpgaenv/toplevel-wires/fsb_afu
+ fsb_afu.ucf               Locally Removed           252 
+ FSB_AFU_TopLevelWires.bsv Locally Removed           252 
+ fsb-afu-toplevel-wires.awb Locally Removed           252 
+
+Directory modules/common/fpgaenv/toplevel-wires
+ null/                     Locally Removed           252 
+
+Directory modules/common/fpgaenv/toplevel-wires/null
+ null-toplevel-wires.awb   Locally Removed           252 
+ NullTopLevelWires.bsv     Locally Removed           252 
+
+Directory modules/common/fpgaenv/toplevel-wires
+ xup/                      Locally Removed           252 
+
+Directory modules/common/fpgaenv/toplevel-wires/xup
+ xup.download              Locally Removed           252 
+ xup-toplevel-wires.awb    Locally Removed           252 
+ xup.ut                    Locally Removed           252 
+ xup.ucf                   Locally Removed           252 
+ xup.xst                   Locally Removed           252 
+ XUPTopLevelWires.bsv      Locally Removed           252 
+
+Directory modules/common/fpgaenv
+ platform-interface/       Locally Removed           252 
+
+Directory modules/common/fpgaenv/platform-interface
+ hasim/                    Locally Removed           252 
+
+Directory modules/common/fpgaenv/platform-interface/hasim
+ HAsimPlatformInterface.bsv Locally Removed           252 
+ hasim-platform-interface.awb Locally Removed           252 
+
+Directory modules/common/fpgaenv/platform-interface
+ hasim-rrr/                Locally Removed           252 
+
+Directory modules/common/fpgaenv/platform-interface/hasim-rrr
+ HAsimRRRPlatformInterface.bsv Locally Removed           252 
+ hasim-rrr-platform-interface.awb Locally Removed           252 
+
+Directory modules/common/fpgaenv/platform-interface
+ hasim_dme/                Locally Removed           252 
+
+Directory modules/common/fpgaenv/platform-interface/hasim_dme
+ HAsimPlatformInterface.bsv Locally Removed           252 
+ hasim-fsb-dme-platform-interface.awb Locally Removed           252 
+
+Directory modules/common/fpgaenv/platform-interface
+ hasim_afu/                Locally Removed           252 
+
+Directory modules/common/fpgaenv/platform-interface/hasim_afu
+ HAsimPlatformInterface.bsv Locally Removed           252 
+ hasim-fsb-afu-platform-interface.awb Locally Removed           252 
+
+Directory modules/common/fpgaenv
+ hasim-fpga-environment.awb Locally Removed           252 
+ virtual-platform/         Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform
+ channelio/                Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio
+ unix/                     Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio/unix
+ unix-channelio.c          Locally Removed           252 
+ unix-channelio.awb        Locally Removed           252 
+ UNIXChannelIO.bsv         Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio
+ sim/                      Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio/sim
+ SimChannelIO.bsv          Locally Removed           252 
+ sim-channelio.c           Locally Removed           252 
+ sim-channelio.h           Locally Removed           252 
+ sim-channelio.awb         Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio
+ null/                     Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/channelio/null
+ null-channelio.awb        Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform
+ rrr-virtual-platform.awb  Locally Removed           252 
+ rrr/                      Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/rrr
+ software-rrr-server.c     Locally Removed           252 
+ software-rrr-server.h     Locally Removed           252 
+ HardwareRRRClient.bsv     Locally Removed           252 
+ global-service-list.rrr   Locally Removed           252 
+ rrr.awb                   Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform
+ virtual-devices/          Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices
+ console/                  Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/console
+ console-serial/           Locally Removed           252 
+ graphical-serial/         Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/console/graphical-serial
+ graphical-serial.awb      Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/console
+ null-serial/              Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/console/null-serial
+ null-serial.awb           Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/console
+ xup-serial/               Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices
+ std-virtual-devices-mem.awb Locally Removed           252 
+ front-panel/              Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ fsb_dme/                  Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/fsb_dme
+ fsb-dme-fp.awb            Locally Removed           252 
+ FSB_DME_FP.bsv            Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ hybrid/                   Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/hybrid
+ HybridFP.bsv              Locally Removed           252 
+ hybrid-fp.awb             Locally Removed           252 
+ hybrid-fp-sw.c            Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ console/                  Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/console
+ NullFP.bsv                Locally Removed           252 
+ console-fp.awb            Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ fsb_afu/                  Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/fsb_afu
+ FSB_AFU_FP.bsv            Locally Removed           252 
+ fsb-afu-fp.awb            Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ graphical/                Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/graphical
+ graphical-fp.awb          Locally Removed           252 
+ GraphicalFP.bsv           Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ xup/                      Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/front-panel/xup
+ xup-fp.awb                Locally Removed           252 
+ XUPFP.bsv                 Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices
+ std-virtual-devices.awb   Locally Removed           252 
+ memory/                   Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/memory
+ hybrid/                   Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform/virtual-devices/memory/hybrid
+ hybrid-memory-sw.c        Locally Removed           252 
+ hybrid-memory.awb         Locally Removed           252 
+ HybridMemory.bsv          Locally Removed           252 
+
+Directory modules/common/fpgaenv/virtual-platform
+ std-virtual-platform.awb  Locally Removed           252 
+ fast-virtual-platform.awb Locally Removed           252 
+
+
+Intermediate checkin for the reorganization of FPGA environment. This checkin is broken and should not be used for anything.
+
+Michael P.

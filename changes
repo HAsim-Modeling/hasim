@@ -7712,3 +7712,13 @@ Directory modules/bluespec/model/pure-bluespec
 Renamed traffic light models to make model names unique
 
 Reorder %requires in model root modules.
+
+----------
+mcadler     Date: Thu Aug 30 16:12:27 EDT 2007  CSN: CSN-hasim-257
+                  Thu Aug 30 20:12:27 UTC 2007
+
+
+Directory modules/common
+ bluespec_common.prj       Locally Modified          256 
+
+@BLUESPECDIR@/Verilog/FIFOLevel.v no longer exists.

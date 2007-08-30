@@ -6,12 +6,11 @@
 
 %name Pure Bluespec Model Foundation
 %desc Pure Bluespec Model Foundation
+%attributes bluespec model
 
 %provides model
 
 %requires bluespec_system bluespec_common
-
-%attributes bluespec model
 
 %public mkModel.bsv
 

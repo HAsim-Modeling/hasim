@@ -7691,3 +7691,24 @@ Directory modules/bluespec/common/fpgaenv/virtual-platform
  fast-virtual-platform.awb Locally Removed           254 
 
 Moved fpga environment from here to platforms package.
+
+----------
+jsemer      Date: Thu Aug 30 14:47:09 EDT 2007  CSN: CSN-hasim-256
+                  Thu Aug 30 18:47:09 UTC 2007
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          255 
+ traffic_light_xup_synth.apm Locally Modified          255 
+ traffic_light_exe_nosynth.apm Locally Modified          255 
+ traffic_light_exe_synth.apm Locally Modified          255 
+
+Directory modules/model
+ hasim_model.awb           Locally Modified          255 
+
+Directory modules/bluespec/model/pure-bluespec
+ pure_bluespec_model.awb   Locally Modified          255 
+
+Renamed traffic light models to make model names unique
+
+Reorder %requires in model root modules.

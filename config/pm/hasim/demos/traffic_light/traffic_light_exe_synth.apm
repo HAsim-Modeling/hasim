@@ -4,7 +4,7 @@ SaveParameters=0
 Description=Traffic Light from Bluespec Tutorial for simulation w. synthesis boundary
 File=traffic_light_exe_synth
 Version=2.1
-Name=Traffic Light Model with synthesis boundary
+Name=Traffic Light Model - Exe with synthesis boundary
 Type=HAsim
 Class=Asim::Model
 
@@ -44,7 +44,6 @@ MAX_WAIT='d10
 File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
-
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
-Packagehint=hasim
+Packagehint=platforms

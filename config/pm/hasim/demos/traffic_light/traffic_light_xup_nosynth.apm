@@ -4,7 +4,7 @@ SaveParameters=0
 Description=Traffic Light from Bluespec Tutorial for XUP w.o synthesis boundary
 File=traffic_light_xup_nosynth
 Version=2.1
-Name=Traffic Light Model
+Name=Traffic Light Model - XUP
 Type=HAsim
 Class=Asim::Model
 
@@ -41,7 +41,6 @@ Packagehint=hasim
 File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
-
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-xup.apm
-Packagehint=hasim
+Packagehint=platforms

@@ -7485,3 +7485,209 @@ Finished reorg changes to fpgaenv. Fixed all dependent models.
 Pure Bluespec models may now use fpgaenv. Everything should work again now.
 
 Michael P.
+
+----------
+jsemer      Date: Thu Aug 30 12:54:10 EDT 2007  CSN: CSN-hasim-255
+                  Thu Aug 30 16:54:10 UTC 2007
+
+
+Directory config/pm/hasim/submodels/fpgaenv
+ hasim-fpgaenv-fsb-afu.apm Locally Removed           254 
+ hasim-fpgaenv-null.apm    Locally Removed           254 
+ hasim-fpgaenv-software.apm Locally Removed           254 
+ hasim-fpgaenv-rrr-sim.apm Locally Removed           254 
+ hasim-fpgaenv-xup.apm     Locally Removed           254 
+ hasim-fpgaenv-fsb-dme.apm Locally Removed           254 
+
+Directory modules/bluespec/common
+ fpgaenv/                  Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv
+ fpga-components/          Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/fpga-components
+ software/                 Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/fpga-components/software
+ software-fpga-components.awb Locally Removed           254 
+ BRAM_Bluesim.bsv          Locally Removed           254 
+ BRAM1.bsv                 Locally Removed           254 
+ BRAM2.bsv                 Locally Removed           254 
+ BRAM3.bsv                 Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/fpga-components
+ hardware/                 Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/fpga-components/hardware
+ BRAM_Verilog.bsv          Locally Removed           254 
+ hardware-fpga-components.awb Locally Removed           254 
+ BRAM_base.bsv             Locally Removed           254 
+ BRAM.v                    Locally Removed           254 
+ BRAM1.bsv                 Locally Removed           254 
+ BRAM2.bsv                 Locally Removed           254 
+ BRAM3.bsv                 Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv
+ toplevel-wires/           Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/toplevel-wires
+ fsb_dme/                  Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/toplevel-wires/fsb_dme
+ fsb-dme-toplevel-wires.awb Locally Removed           254 
+ fsb_dme.ucf               Locally Removed           254 
+ FSB_DME_TopLevelWires.bsv Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/toplevel-wires
+ fsb_afu/                  Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/toplevel-wires/fsb_afu
+ fsb_afu.ucf               Locally Removed           254 
+ FSB_AFU_TopLevelWires.bsv Locally Removed           254 
+ fsb-afu-toplevel-wires.awb Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/toplevel-wires
+ null/                     Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/toplevel-wires/null
+ null-toplevel-wires.awb   Locally Removed           254 
+ NullTopLevelWires.bsv     Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/toplevel-wires
+ xup/                      Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/toplevel-wires/xup
+ xup.download              Locally Removed           254 
+ xup-toplevel-wires.awb    Locally Removed           254 
+ xup.ut                    Locally Removed           254 
+ xup.ucf                   Locally Removed           254 
+ xup.xst                   Locally Removed           254 
+ XUPTopLevelWires.bsv      Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv
+ fpga-environment.awb      Locally Removed           254 
+ virtual-platform/         Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform
+ channelio/                Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/channelio
+ unix/                     Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/channelio/unix
+ unix-channelio.c          Locally Removed           254 
+ unix-channelio.awb        Locally Removed           254 
+ UNIXChannelIO.bsv         Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/channelio
+ sim/                      Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/channelio/sim
+ SimChannelIO.bsv          Locally Removed           254 
+ sim-channelio.c           Locally Removed           254 
+ sim-channelio.h           Locally Removed           254 
+ sim-channelio.awb         Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/channelio
+ null/                     Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/channelio/null
+ null-channelio.awb        Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform
+ rrr-virtual-platform.awb  Locally Removed           254 
+ rrr/                      Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/rrr
+ software-rrr-server.c     Locally Removed           254 
+ software-rrr-server.h     Locally Removed           254 
+ HardwareRRRClient.bsv     Locally Removed           254 
+ global-service-list.rrr   Locally Removed           254 
+ rrr.awb                   Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform
+ virtual-devices/          Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices
+ console/                  Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/console
+ console-serial/           Locally Removed           254 
+ graphical-serial/         Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/console/graphical-serial
+ graphical-serial.awb      Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/console
+ null-serial/              Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/console/null-serial
+ null-serial.awb           Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/console
+ xup-serial/               Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices
+ std-virtual-devices-mem.awb Locally Removed           254 
+ front-panel/              Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ fsb_dme/                  Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel/fsb_dme
+ fsb-dme-fp.awb            Locally Removed           254 
+ FSB_DME_FP.bsv            Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ hybrid/                   Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel/hybrid
+ HybridFP.bsv              Locally Removed           254 
+ hybrid-fp-sw.c            Locally Removed           254 
+ hybrid-fp.awb             Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ console/                  Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel/console
+ NullFP.bsv                Locally Removed           254 
+ console-fp.awb            Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ fsb_afu/                  Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel/fsb_afu
+ FSB_AFU_FP.bsv            Locally Removed           254 
+ fsb-afu-fp.awb            Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ graphical/                Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel/graphical
+ graphical-fp.awb          Locally Removed           254 
+ GraphicalFP.bsv           Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel
+ xup/                      Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/front-panel/xup
+ xup-fp.awb                Locally Removed           254 
+ XUPFP.bsv                 Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices
+ std-virtual-devices.awb   Locally Removed           254 
+ memory/                   Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/memory
+ hybrid/                   Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform/virtual-devices/memory/hybrid
+ hybrid-memory-sw.c        Locally Removed           254 
+ hybrid-memory.awb         Locally Removed           254 
+ HybridMemory.bsv          Locally Removed           254 
+
+Directory modules/bluespec/common/fpgaenv/virtual-platform
+ std-virtual-platform.awb  Locally Removed           254 
+ fast-virtual-platform.awb Locally Removed           254 
+
+Moved fpga environment from here to platforms package.

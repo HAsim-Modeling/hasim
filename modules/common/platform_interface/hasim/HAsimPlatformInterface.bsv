@@ -2,6 +2,7 @@ import hasim_common::*;
 import soft_connections::*;
 import front_panel::*;
 import toplevel_wires::*;
+import low_level_platform_interface::*;
 
 typedef struct
 {
@@ -13,7 +14,6 @@ typedef struct
 }
   ButtonInfo deriving (Eq, Bits);
 
-
 module [HASim_Module] mkPlatformInterface(TopLevelWires);
 
     // instantiate connections
@@ -21,11 +21,11 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
     Connection_Send#(Bit#(4))       link_switches   <- mkConnection_Send("fpga_switches");
     Connection_Send#(ButtonInfo)    link_buttons    <- mkConnection_Send("fpga_buttons");
 
-    // instantiate top-level wires
-    TopLevelWiresDriver             wires           <- mkTopLevelWiresDriver();
+    // instantiate low-level platform interface
+    LowLevelPlatformInterface       llpint          <- mkLowLevelPlatformInterface();
 
     // instantiate virtual devices
-    FrontPanel                      frontPanel      <- mkFrontPanel(wires);
+    FrontPanel                      frontPanel      <- mkFrontPanel(llpint);
 
     // rules
     rule set_leds (True);
@@ -60,6 +60,6 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
     endrule
 
     // return interface to top-level wires
-    return wires.wires_out;
+    return llpint.topLevelWires.wires_out;
 
 endmodule

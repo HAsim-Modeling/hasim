@@ -55,7 +55,7 @@ $(FULL_DIR)/$(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).v: $(FULL_DIR)/$(TMP_BSC_DIR)/$(W
 	 log=$${log/%.bi/.log} ; \
 	 bsv=`basename $@` ; \
 	 bsv=$${bsv/%.bi/.bsv} ; \
-	 full_bsv=`grep "^#PATH_BSV: .*$$bsv$$" .depends-bsv` ; \
+	 full_bsv=`grep "^#PATH_BSV: .*/$$bsv$$" .depends-bsv` ; \
 	 full_bsv=$${full_bsv/##PATH_BSV: /} ; \
 	 bdir=$${full_bsv/$$bsv/} ; \
          bdir=$${bdir}$(TMP_BSC_DIR) ; \

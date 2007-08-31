@@ -7722,3 +7722,32 @@ Directory modules/common
  bluespec_common.prj       Locally Modified          256 
 
 @BLUESPECDIR@/Verilog/FIFOLevel.v no longer exists.
+
+----------
+aparasha    Date: Fri Aug 31 14:20:42 EDT 2007  CSN: CSN-hasim-258
+                  Fri Aug 31 18:20:42 UTC 2007
+
+
+Directory config/pm/hasim/demos/switch_to_led
+ adder4x4_software.apm     Locally Modified          257 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          257 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          257 
+
+Directory modules/common/platform_interface
+ hasim-rrr/                Locally Removed           257 
+
+Directory modules/common/platform_interface/hasim-rrr
+ HAsimRRRPlatformInterface.bsv Locally Removed           257 
+ hasim-rrr-platform-interface.awb Locally Removed           257 
+
+
+- updated the HAsim Platform Interface module as part of
+  the fpgaenv reorganization (see asim-platforms changes
+  file).
+
+- removed the "hasim-rrr" implementation of
+  platform_interface.

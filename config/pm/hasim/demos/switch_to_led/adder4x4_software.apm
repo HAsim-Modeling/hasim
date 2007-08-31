@@ -41,8 +41,6 @@ Packagehint=hasim
 File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
-
-
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
-Packagehint=hasim
+Packagehint=platforms

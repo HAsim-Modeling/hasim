@@ -3,6 +3,7 @@ import soft_connections::*;
 import front_panel::*;
 import toplevel_wires::*;
 import low_level_platform_interface::*;
+import memory::*;
 
 typedef struct
 {
@@ -21,12 +22,18 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
     Connection_Send#(Bit#(4))       link_switches   <- mkConnection_Send("fpga_switches");
     Connection_Send#(ButtonInfo)    link_buttons    <- mkConnection_Send("fpga_buttons");
 
+    // Currently only one user can read and write memory
+    Connection_Server#(MEM_Request, MEM_Value) link_memory       <- mkConnection_Server("vdev_memory");
+    Connection_Send#(MEM_Addr)                 link_memory_inval <- mkConnection_Send("vdev_memory_invalidate");
+
     // instantiate low-level platform interface
     LowLevelPlatformInterface       llpint          <- mkLowLevelPlatformInterface();
 
     // instantiate virtual devices
     FrontPanel                      frontPanel      <- mkFrontPanel(llpint);
 
+    Memory                          memory          <- mkMemory(llpint);
+    
     // rules
     rule set_leds (True);
         Bit#(4) newval = link_leds.receive();
@@ -57,6 +64,34 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
 
         // send button info over the connection
         link_buttons.send(bi);
+    endrule
+
+    rule send_mem_req (True);
+      //Read in memory request and pass it on.
+      //Eventually we'll have to arbitrate between different users
+      let mreq = link_memory.getReq();
+      link_memory.deq();
+      
+      memory.makeMemRequest(mreq);
+    
+    endrule
+    
+    rule send_mem_resp (True);
+    
+      //Read in mem resp and pass it on.
+      //Eventually we'll have to figure out which user to send it to.
+      let mrsp <- memory.getMemResponse();
+      link_memory.makeResp(mrsp);
+    
+    endrule
+    
+    rule send_mem_inval (True);
+    
+      //Read the mem invalidates and pass them on.
+      //This will ultimately be a broadcast to all users.
+      let inval <- memory.getInvalidateRequest();
+      link_memory_inval.send(inval);
+    
     endrule
 
     // return interface to top-level wires

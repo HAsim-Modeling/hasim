@@ -41,6 +41,7 @@ Packagehint=hasim
 File=modules/bluespec/common/soft_connections/alg/typed/soft_connections_alg.awb
 Packagehint=hasim
 
+
 [Hasim Platform Interface]
 File=modules/common/platform_interface/hasim/hasim-platform-interface.awb
 Packagehint=hasim

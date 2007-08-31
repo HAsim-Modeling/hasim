@@ -7751,3 +7751,107 @@ Directory modules/common/platform_interface/hasim-rrr
 
 - removed the "hasim-rrr" implementation of
   platform_interface.
+----------
+mpellaue    Date: Fri Aug 31 16:36:53 EDT 2007  CSN: CSN-hasim-259
+                  Fri Aug 31 20:36:53 UTC 2007
+
+
+Directory config/pm/hasim/submodels
+ hasim_common.apm          Locally Modified          258 
+
+Directory modules/functional
+ memstate/                 Locally Added               0 
+
+Directory modules/functional/memstate
+ hasim_funcp_memstate_sequenced.awb Locally Added               - 
+ hasim_funcp_null_cache.awb Locally Added               0 
+ FUNCP_NullCache.bsv       Locally Added               0 
+ FUNCP_MemState.bsv        Locally Added               - 
+ hasim_funcp_memstate.awb  Locally Added               - 
+ FUNCP_MemState_ifc.bsv    Locally Added               - 
+ hasim_funcp_memstate_ifc.awb Locally Added               - 
+ FUNCP_MemState_Cached.bsv Locally Added               0 
+ hasim_funcp_memstate_cached.awb Locally Added               0 
+ FUNCP_MemState_Seq.bsv    Locally Added               - 
+
+Directory modules/functional
+ store-buffer/             Locally Added               0 
+
+Directory modules/functional/store-buffer
+ FUNCP_StoreBuffer_Seq.bsv Locally Added               - 
+ hasim_funcp_storebuffer_sequenced.awb Locally Added               - 
+ FUNCP_StoreBuffer.bsv     Locally Added               - 
+ hasim_funcp_storebuffer.awb Locally Added               - 
+
+Directory modules/functional/common
+ FUNCP_StoreBuffer_Seq.bsv Locally Removed           258 
+ hasim_funcp_memstate_ifc.awb Locally Removed           258 
+ FUNCP_MemState_ifc.bsv    Locally Removed           258 
+ FUNCP_Checker.bsv         Locally Removed           258 
+ hasim_funcp_checker.awb   Locally Removed           258 
+ hasim_funcp_pipeline.awb  Locally Removed           258 
+ FUNCP_Pipeline.bsv        Locally Removed           258 
+ FUNCP_Loader.bsv          Locally Removed           258 
+ hasim_funcp_loader.awb    Locally Removed           258 
+ FUNCP_Base.bsv            Locally Removed           258 
+ hasim_funcp_base.awb      Locally Removed           258 
+ hasim_funcp_memstate_sequenced.awb Locally Removed           258 
+ deprecated/               Locally Added               0 
+
+Directory modules/functional/common/deprecated
+ FUNCP_RegState.bsv        Locally Added               - 
+ hasim_funcp_regstate.awb  Locally Added               - 
+ FUNCP.bsv                 Locally Added               - 
+ hasim_funcp_deprecated.awb Locally Added               - 
+ FUNCP_Checker.bsv         Locally Added               - 
+ hasim_funcp_checker.awb   Locally Added               - 
+ FUNCP_Pipeline.bsv        Locally Added               - 
+ hasim_funcp_pipeline.awb  Locally Added               - 
+ FUNCP_Loader.bsv          Locally Added               - 
+ hasim_funcp_loader.awb    Locally Added               - 
+ FUNCP_TokGen.bsv          Locally Added               - 
+ FUNCP_Base.bsv            Locally Added               - 
+ hasim_funcp_base.awb      Locally Added               - 
+
+Directory modules/functional/common
+ hasim_funcp_freelist.awb  Locally Removed           258 
+ FUNCP_FreeList.bsv        Locally Removed           258 
+ FUNCP_RegState.bsv        Locally Removed           258 
+ hasim_funcp_regstate.awb  Locally Removed           258 
+ hasim_funcp_memstate.awb  Locally Removed           258 
+ FUNCP_MemState.bsv        Locally Removed           258 
+ hasim_funcp.awb           Locally Removed           258 
+ FUNCP.bsv                 Locally Removed           258 
+ hasim_funcp_storebuffer_sequenced.awb Locally Removed           258 
+ FUNCP_StoreBuffer.bsv     Locally Removed           258 
+ hasim_funcp_storebuffer.awb Locally Removed           258 
+ FUNCP_TokGen.bsv          Locally Removed           258 
+ FUNCP_MemState_Seq.bsv    Locally Removed           258 
+
+Directory modules/functional
+ test-cases/               Locally Removed           258 
+
+Directory modules/functional/test-cases
+ common/                   Locally Removed           258 
+
+Directory modules/functional/test-cases/common
+ hasim_testcase_common.awb Locally Removed           258 
+ TestCase_Base.bsv         Locally Removed           258 
+
+Directory modules/functional
+ freelist/                 Locally Added               0 
+
+Directory modules/functional/freelist
+ FUNCP_FreeList.bsv        Locally Added               - 
+ hasim_funcp_freelist.awb  Locally Added               - 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          258 
+
+
+Rearranged the Functional Partition to make deprecated modules more obvious.
+
+Added support in the functional partiton for Memory Virtual Device. For now a
+"null" cache simply passes all requests on to the memory device.
+
+Michael P.

@@ -9,10 +9,12 @@ import Vector::*;
 import fpga_components::*;
 import hasim_common::*;
 import soft_connections::*;
+import memory::*;
 
 import hasim_isa::*;
 
 import hasim_funcp_storebuffer::*;
+import hasim_funcp_cache::*;
 
 import hasim_funcp_memstate_ifc::*;
 
@@ -21,14 +23,11 @@ import hasim_funcp_memstate_ifc::*;
 // This is intended for software simulation. An FPGA version would
 // be a memory controller.
 
-typedef union tagged
+typedef enum
 {
-  void Fast;
-  Token Slow;
+  IMem, DMem
 }
   PathSpeed deriving (Eq, Bits);
-
-typedef Bit#(`FUNCP_MEM_ADDR_BITS) SimAddr;
 
 module [HASim_Module] mkFUNCP_Memstate ()
     provisos
@@ -40,23 +39,19 @@ module [HASim_Module] mkFUNCP_Memstate ()
              Transmittable#(MemReq),
              Transmittable#(MemResp),
              Transmittable#(Tuple2#(Token, Token)));
-      
-  SimAddr maxSimAddr = maxBound();
-  Addr maxAddr = zeroExtend(maxSimAddr);
 
   //State elements
-
-  BRAM_2#(SimAddr, Bit#(32))  memory <- mkBRAM_2_Full_Load("program.vmh");
-
-  FIFO#(PathSpeed)             waitingQ <- mkFIFO();
+  FIFO#(PathSpeed)             pathQ <- mkFIFO();
 
   let st_buffer <- mkFUNCP_StoreBuffer();
+  let cache     <- mkFUNCP_Cache();
 
   //Connections
 
   Connection_Server#(Addr, PackedInst) link_imem      <- mkConnection_Server("mem_imem");
   Connection_Server#(MemReq, MemResp)  link_dmem      <- mkConnection_Server("mem_dmem");
   Connection_Client#(SB_Command, SB_Response) link_stbuffer <- mkConnection_Client("mem_storebuf");
+  Connection_Client#(MEM_Request, MEM_Value)  link_cache     <- mkConnection_Client("mem_cache");
   Connection_Receive#(Token)           link_commit    <- mkConnection_Receive("mem_commit");
   Connection_Receive#(Tuple2#(TokIndex, TokIndex))           link_rewindToToken <- mkConnection_Receive("mem_rewind");
 
@@ -69,19 +64,20 @@ module [HASim_Module] mkFUNCP_Memstate ()
     Addr a = link_imem.getReq();
     link_imem.deq();
     
-    Addr sa = a>>2;
-    
-    if (sa > maxAddr)
-      $display("WARNING [0]: Address 0x%h out of bounds. Increase software address length!", a);
-    
-    memory.read_req1(truncate(sa));
+    //We assume no self-modifying code, otherwise we would go to the store buffer here.
+    link_cache.makeReq(tagged MEM_Load a);
+    pathQ.enq(IMem);
     
   endrule
   
-  rule handleIMEM_resp (True);
+  rule handleIMEM_resp (pathQ.first() == IMem);
   
-    Bit#(32) i <- memory.read_resp1();
-    link_imem.makeResp(i);
+    MEM_Value v = link_cache.getResp();
+    link_cache.deq();
+    
+    link_imem.makeResp(v);
+    
+    pathQ.deq();
     
   endrule
 
@@ -105,12 +101,12 @@ module [HASim_Module] mkFUNCP_Memstate ()
       tagged St .st_info:
         begin
       
-          //place value in store buffer
+          //place value in store buffer, but don't actually change memory
           //$display("Store at %0d", $time);        
           link_stbuffer.makeReq(tagged SB_Insert {v: st_info.val, a: st_info.addr, t: st_info.token});
-      
+          
+          //Fast-forward the response
           link_dmem.makeResp(tagged StResp);
-    
         end
     endcase
   
@@ -118,7 +114,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
 
   //handleCommit
   
-  //Actually commits stores
+  //Actually commits stores to memory
  
   rule handleCommit (True);
   
@@ -133,13 +129,8 @@ module [HASim_Module] mkFUNCP_Memstate ()
     
     link_stbuffer.deq();
     
-    Addr sa = a>>2;
-
-    if (sa > maxAddr)
-        $display("WARNING [2]: Address 0x%h out of bounds. Increase software address length!", a);
+    link_cache.makeReq(tagged MEM_Store {addr:a, val: v});
     
-    memory.write(truncate(sa), v);
-
   endrule
   
   //handleKillRange
@@ -155,10 +146,12 @@ module [HASim_Module] mkFUNCP_Memstate ()
 
   endrule
 
+  //Finish DMem requests
+
   rule sbHit (link_stbuffer.getResp() matches tagged SBR_Lookup {a: .addr, mv: .mnew_val, t: .tok}
                    &&& mnew_val matches tagged Valid .new_val);
   
-    //The Store Buffer had it
+    //The Store Buffer had it. No need to go to cache.
   
     link_stbuffer.deq();
     link_dmem.makeResp(tagged LdResp new_val);
@@ -172,20 +165,20 @@ module [HASim_Module] mkFUNCP_Memstate ()
     
     link_stbuffer.deq();
     
+    link_cache.makeReq(tagged MEM_Load addr);
+    pathQ.enq(DMem);
   
-     Addr sa = addr>>2;
-
-     if (sa > maxAddr)
-       $display("WARNING [1]: Address 0x%h out of bounds. Increase software address length!", addr);
-
-     //$display("Load at %0d", $time);
-     memory.read_req2(truncate(sa));
-
   endrule
   
-  rule sbMissFinish (True);
-    let v <- memory.read_resp2();
+  rule sbMissFinish (pathQ.first() == DMem);
+  
+    let v = link_cache.getResp();
+    link_cache.deq();
+    
     link_dmem.makeResp(tagged LdResp v);
+    
+    pathQ.deq();
+        
   endrule
   
 endmodule

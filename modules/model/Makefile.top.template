@@ -66,6 +66,9 @@ DOWNLOAD_FILE = $(APM_NAME).download
 .c.o:
 	$(CC) -c -DAPM_NAME=\"$(APM_NAME)\" -o $@ $<
 
+.cpp.o:
+	$(CPP) -c -DAPM_NAME=\"$(APM_NAME)\" -o $@ $<
+
 .PHONY: all
 all: exe
 

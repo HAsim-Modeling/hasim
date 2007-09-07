@@ -1,0 +1,39 @@
+
+[Global]
+SaveParameters=0
+Description=Hybrid Virtual Memory Test Model
+File=mem_test_hybrid
+Version=2.1
+Name=Hybrid Virtual Memory Test Model
+Type=HAsim
+Class=Asim::Model
+
+[Hasim null controller]
+Packagehint=hasim
+File=modules/controller/null/hasim_null_controller.awb
+
+[HAsim Model Foundation]
+Packagehint=hasim
+File=modules/model/hasim_model.awb
+
+[Model]
+DefaultAttributes=bram-test xup hasim
+model=HAsim Model Foundation
+
+[HAsim Model Foundation/Requires]
+hasim_system=Hasim - Virtual Memory Test system
+hasim_controller=Hasim null controller
+hasim_common=Hasim Common Library
+fpgaenv=FPGA Environment
+
+[Hasim Common Library]
+File=config/pm/hasim/submodels/hasim_common.apm
+Packagehint=hasim
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-rrr-sim.apm
+Packagehint=platforms
+
+[Hasim - Virtual Memory Test system]
+File=modules/system/mem_test/mem_test.awb
+Packagehint=hasim

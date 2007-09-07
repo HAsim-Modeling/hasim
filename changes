@@ -7855,3 +7855,39 @@ Added support in the functional partiton for Memory Virtual Device. For now a
 "null" cache simply passes all requests on to the memory device.
 
 Michael P.
+
+----------
+aparasha    Date: Fri Sep  7 17:46:39 EDT 2007  CSN: CSN-hasim-260
+                  Fri Sep  7 21:46:39 UTC 2007
+
+
+Directory config/pm/hasim/demos
+ mem_test/                 Locally Added               0 
+
+Directory config/pm/hasim/demos/mem_test
+ mem_test_hybrid.apm       Locally Added               0 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          259 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.bsv  Locally Modified          259 
+
+Directory modules/system
+ mem_test/                 Locally Added               0 
+
+Directory modules/system/mem_test
+ mem_test.awb              Locally Added               0 
+ MemTest.bsv               Locally Added               0 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          259 
+
+
+- added a hasim demo for testing the memory device. The demo
+  currently does not build properly; this will be fixed in
+  an upcoming commit.
+
+- plugged dangling soft-connections to memory in Platform
+  Interface by looping them back in the same module. This
+  is a temporary "fix" and will be removed soon. 

@@ -26,6 +26,10 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
     Connection_Server#(MEM_Request, MEM_Value) link_memory       <- mkConnection_Server("vdev_memory");
     Connection_Send#(MEM_Addr)                 link_memory_inval <- mkConnection_Send("vdev_memory_invalidate");
 
+    // *** HACK *** plus these dangling leaks right here ***
+    Connection_Client#(MEM_Request, MEM_Value) link_memory_loopback   <- mkConnection_Client("vdev_memory");
+    Connection_Receive#(MEM_Addr)              link_memory_inval_loopback <- mkConnection_Receive("vdev_memory_invalidate");
+
     // instantiate low-level platform interface
     LowLevelPlatformInterface       llpint          <- mkLowLevelPlatformInterface();
 

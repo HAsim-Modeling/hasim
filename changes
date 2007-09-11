@@ -7964,3 +7964,22 @@ Directory modules/common/platform_interface/hasim
 
 - updated the Hybrid Memory Test model + modules. The model now
   builds and simulates correctly with the updated platform modules.
+----------
+mcadler     Date: Tue Sep 11 16:08:59 EDT 2007  CSN: CSN-hasim-262
+                  Tue Sep 11 20:08:59 UTC 2007
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          261 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          261 
+ Makefile.include.template Locally Modified          261 
+
+- Clean up dependence in makefiles.  In particular, "make bit" now knows it
+  must first compile the bsv files.
+- Remove the logic from hasim-connect that attempted to decide whether to
+  rebuild the connection.  The makefiles now fully describe dependence.
+  The logic in hasim-connect, while technically correct, caused connection
+  files not to be rebuilt sometimes.  The Bluespec compiler then failed
+  because of timestamp mismatches on input files.

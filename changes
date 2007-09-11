@@ -7983,3 +7983,36 @@ Directory modules/model
   The logic in hasim-connect, while technically correct, caused connection
   files not to be rebuilt sometimes.  The Bluespec compiler then failed
   because of timestamp mismatches on input files.
+
+----------
+aparasha    Date: Tue Sep 11 17:07:47 EDT 2007  CSN: CSN-hasim-263
+                  Tue Sep 11 21:07:47 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          262 
+
+
+RRR Service Collection: instead of a global RRR service list, modules
+providing RRR services can now specify the set of services they provide
+in a distributed manner. Module-local RRR files are all collected by
+hasim-configure and concatenated into a master service list, which can be
+imported by the server main routine.
+
+Notes:
+- currently, the .rrr file within a module must have a unique name, e.g.,
+  two modules cannot use the same filename "service-list.rrr". This is not
+  a huge issue, but it is an unnecessary restriction since the individual
+  .rrr files are read only once by hasim-configure and are not used by the
+  build process. Also, unnecessary symlinks to these files are created in
+  the build directory.
+
+- currently, only the software side uses this master service list to
+  generate service method names and service IDs. The BSV side is still
+  hard-coded with service IDs. Adding or removing services (to/from the
+  existing front-panel+memory set) will almost certainly break all models.
+  This will be fixed soon; until then, please do not add/remove any services!
+
+- the current infrastructure only supports software services. Implementing
+  hardware services will require maintaining two separate master service
+  lists.

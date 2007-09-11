@@ -267,6 +267,9 @@ sub configure_build_tree {
 
     # (4) generate files needex by Xilinx tools
     HAsim::Xilinx::generate_files($model);
+
+    # (5) make master RRR file
+    make_master_rrr_file($model);
     
     return 1;
 }
@@ -317,6 +320,70 @@ sub __make_dirs {
     }
     
     return 1;
+}
+
+############################################################
+# make_master_rrr_file: Make master list of RRR services
+sub make_master_rrr_file {
+    my $model = shift;
+    my $root = $model->modelroot();
+
+    if (!defined($builddir)) {
+      $builddir = $model->build_dir();
+    }
+
+    my $arch_dir = HAsim::Util::path_append($builddir, "arch");
+
+    # obtain global list of all RRR files
+    my @rrr_file_list = __get_rrr_files($root, $arch_dir);
+
+    # concatenate all files into a single master RRR file
+    my $root_module_dir = HAsim::Build::get_module_build_dir($root, $arch_dir);
+    my $rrrfilename = HAsim::Util::path_append($root_module_dir, "master-service-list.rrr");
+    CORE::open(MASTERRRRFILE, "> $rrrfilename");
+
+    foreach my $f (@rrr_file_list)
+    {
+        CORE::open(RRRFILE, $f) || die("could not open RRR file $f\n");
+        while (my $line = <RRRFILE>)
+        {
+            print MASTERRRRFILE $line;
+        }
+        CORE::close(RRRFILE);
+    }
+
+    return 1;
+}
+
+############################################################
+# __get_rrr_files: Recursively get list of RRR files
+sub __get_rrr_files {
+    my $module = shift;
+    my $parent_dir = shift;
+
+    # identify correct directory in build tree
+    my $my_dir = HAsim::Build::get_module_build_dir($module, $parent_dir);
+
+    # get list of my own RRR files
+    my @rrr_list = $module->sources("RRR", "*");
+
+    # pre-pend absolute path to each file
+    my @rrr_list_fullpath = ();
+    foreach my $f (@rrr_list)
+    {
+        my $fullpath = HAsim::Util::path_append($my_dir, $f);
+        push(@rrr_list_fullpath, $fullpath);
+    }
+
+    # recurse
+    HAsim::Build::check_submodules_defined($module);
+    foreach my $child ($module->submodules())
+    {
+        my @sub_rrr_list = __get_rrr_files($child, $my_dir);
+        push(@rrr_list_fullpath, @sub_rrr_list);
+    }
+
+    return @rrr_list_fullpath;
 }
 
 ############################################################

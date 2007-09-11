@@ -34,7 +34,13 @@ File=modules/system/mulitplier_system/multiplier_system.awb
 File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
-
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
+Packagehint=platforms
+
+[Hasim Connection Terminus]
+File=modules/controller/connection-terminus/connection-terminus.awb
 Packagehint=hasim
+
+[Hasim null controller/Requires]
+connection_terminus=Hasim Connection Terminus

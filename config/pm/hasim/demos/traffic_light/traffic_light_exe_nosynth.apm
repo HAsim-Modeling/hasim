@@ -47,3 +47,15 @@ MAX_WAIT='d10
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
 Packagehint=platforms
+
+[Hasim Connection Terminus]
+File=modules/controller/connection-terminus/connection-terminus.awb
+Packagehint=hasim
+
+[Hasim null controller/Requires]
+connection_terminus=Hasim Connection Terminus
+
+[Hasim Connection Terminus/Params]
+TERM_FPGA_SWITCHES=0
+TERM_FPGA_BUTTONS=0
+TERM_FPGA_LEDS=0

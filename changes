@@ -7891,3 +7891,76 @@ Directory modules/common/platform_interface/hasim
 - plugged dangling soft-connections to memory in Platform
   Interface by looping them back in the same module. This
   is a temporary "fix" and will be removed soon. 
+----------
+aparasha    Date: Tue Sep 11 14:32:05 EDT 2007  CSN: CSN-hasim-261
+                  Tue Sep 11 18:32:05 UTC 2007
+
+
+Directory config/pm/hasim/demos/fsb_dme
+ dme_no_afu.apm            Locally Modified          260 
+
+Directory config/pm/hasim/demos/bram_test
+ bram_test_xup.apm         Locally Modified          260 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          260 
+ traffic_light_xup_synth.apm Locally Modified          260 
+ traffic_light_exe_nosynth.apm Locally Modified          260 
+ traffic_light_exe_synth.apm Locally Modified          260 
+
+Directory config/pm/hasim/demos/fsb_afu
+ afu_add1.apm              Locally Modified          260 
+ afu_pass_through.apm      Locally Modified          260 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          260 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Modified          260 
+ adder4x4_software.apm     Locally Modified          260 
+ echo4x4_xup.apm           Locally Modified          260 
+ square4x4_software.apm    Locally Modified          260 
+ adder4x4_xup.apm          Locally Modified          260 
+ square4x4_xup.apm         Locally Modified          260 
+ multiplier4x4_software.apm Locally Modified          260 
+ multiplier4x4_xup.apm     Locally Modified          260 
+
+Directory config/pm/hasim/demos/mem_test
+ mem_test_hybrid.apm       Locally Modified          260 
+
+Directory modules/controller
+ connection-terminus/      Locally Added               0 
+
+Directory modules/controller/connection-terminus
+ ConnectionTerminus.bsv    Locally Added               0 
+ connection-terminus.awb   Locally Added               0 
+
+Directory modules/controller/simple
+ hasim_simple_controller.awb Locally Modified          260 
+
+Directory modules/controller/null
+ hasim_null_controller.awb Locally Modified          260 
+ hasim_null_controller.bsv Locally Modified          260 
+
+Directory modules/system/mem_test
+ MemTest.bsv               Locally Modified          260 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          260 
+
+
+- added a new module called "ConnectionTerminus" that terminates
+  dangling connections. Each connection that can be potentially
+  "plugged" (i.e., stubbed-in) by ConnectionTerminus has an
+  associated parameter whose value specifies whether the connection
+  needs to be plugged or not. The set of connections in this module
+  needs to be kept consistent with the complementary set in HAsim
+  Platform Interface.
+
+- removed loopback connection stubs from HAsim Platform Interface.
+
+- updated all existing APM models to use the Connection Terminus.
+  Parameter values have been set appropriately.
+
+- updated the Hybrid Memory Test model + modules. The model now
+  builds and simulates correctly with the updated platform modules.

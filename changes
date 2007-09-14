@@ -8016,3 +8016,21 @@ Notes:
 - the current infrastructure only supports software services. Implementing
   hardware services will require maintaining two separate master service
   lists.
+
+----------
+aparasha    Date: Fri Sep 14 12:43:53 EDT 2007  CSN: CSN-hasim-264
+                  Fri Sep 14 16:43:53 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          263 
+
+
+RRR Client Registration: hasim-configure, while recursively
+generating the master RRR file, also keeps track of the
+sequence number (serviceID) that each service will receive
+in the final master sequence. These serviceIDs are printed into
+the module's BSV include file as `defines with a macro names
+that the module recognizes (derived from the parameter to the
+ADD_SERVICE macro calls in the module's .rrr file). The client
+thus obtains all serviceIDs it needs to use.

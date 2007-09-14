@@ -1,4 +1,4 @@
-:
+
 eval 'exec perl -w "$0" ${1+"$@"}'
     if 0;
 
@@ -270,7 +270,7 @@ sub configure_build_tree {
 
     # (5) make master RRR file
     make_master_rrr_file($model);
-    
+
     return 1;
 }
 
@@ -334,23 +334,27 @@ sub make_master_rrr_file {
 
     my $arch_dir = HAsim::Util::path_append($builddir, "arch");
 
-    # obtain global list of all RRR files
-    my @rrr_file_list = __get_rrr_files($root, $arch_dir);
+    # obtain global list of all RRR files, and assign service IDs
+    my ($n_services, @rrr_file_list) = __get_rrr_files($root, $arch_dir, 0);
 
     # concatenate all files into a single master RRR file
     my $root_module_dir = HAsim::Build::get_module_build_dir($root, $arch_dir);
+
     my $rrrfilename = HAsim::Util::path_append($root_module_dir, "master-service-list.rrr");
+
     CORE::open(MASTERRRRFILE, "> $rrrfilename");
 
     foreach my $f (@rrr_file_list)
     {
-        CORE::open(RRRFILE, $f) || die("could not open RRR file $f\n");
+        CORE::open(RRRFILE, $f) || die "make_master_rrr_file: could not open RRR file $f\n";
         while (my $line = <RRRFILE>)
         {
-            print MASTERRRRFILE $line;
+            print MASTERRRRFILE "$line";
         }
         CORE::close(RRRFILE);
     }
+
+    CORE::close(MASTERRRRFILE);
 
     return 1;
 }
@@ -360,6 +364,7 @@ sub make_master_rrr_file {
 sub __get_rrr_files {
     my $module = shift;
     my $parent_dir = shift;
+    my $serviceID = shift;
 
     # identify correct directory in build tree
     my $my_dir = HAsim::Build::get_module_build_dir($module, $parent_dir);
@@ -375,15 +380,49 @@ sub __get_rrr_files {
         push(@rrr_list_fullpath, $fullpath);
     }
 
+    # also write serviceIDs into module's local include file
+    # we assume that this file has already been created
+    my $provides = $module->provides();
+    my $bsvfile = HAsim::Util::path_append($my_dir,"$provides.bsv");
+
+    CORE::open(BSVFILE, ">>$bsvfile");
+
+    foreach my $f (@rrr_list_fullpath)
+    {
+        CORE::open(RRRFILE, $f) || die("__get_rrr_files: could not open RRR file $f\n");
+        while (my $line = <RRRFILE>)
+        {
+            if ($line =~ /ADD_SERVICE\((\w+)\)/)
+            {
+                print BSVFILE "\`define SID_$1 $serviceID\n";
+                $serviceID = $serviceID + 1;
+            }
+        }
+        CORE::close(RRRFILE);
+    }
+
+    # Add includes of public and private bsc files
+    # This was moved over from __make_bsvfiles
+    # TODO TODO TODO: clean this up by unifying
+    # make_master_rrr_file and make_bsvfiles
+    if ($public) {
+        foreach my $f ($module->sources("BSV", "PUBLIC")) {
+            print BSVFILE "`include \"$f\"\n";
+        }
+    }
+
+    CORE::close(BSVFILE);
+
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules())
     {
-        my @sub_rrr_list = __get_rrr_files($child, $my_dir);
+        my ($newServiceID, @sub_rrr_list) = __get_rrr_files($child, $my_dir, $serviceID);
         push(@rrr_list_fullpath, @sub_rrr_list);
+        $serviceID = $newServiceID;
     }
 
-    return @rrr_list_fullpath;
+    return ($serviceID, @rrr_list_fullpath);
 }
 
 ############################################################
@@ -435,11 +474,14 @@ sub __make_bsvfiles {
     }
 
     # Add includes of public and private bsc files
-    if ($public) {
-        foreach my $f ($module->sources("BSV", "PUBLIC")) {
-            print BSVFILE "`include \"$f\"\n";
-        }
-    }
+    # This has been moved to __get_rrr_files
+    # TODO TODO TODO: clean this up by unifying
+    # make_master_rrr_file and make_bsvfiles
+    #if ($public) {
+    #    foreach my $f ($module->sources("BSV", "PUBLIC")) {
+    #        print BSVFILE "`include \"$f\"\n";
+    #    }
+    #}
 
     CORE::close(BSVFILE);
     

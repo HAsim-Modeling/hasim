@@ -21,12 +21,13 @@ module [HASim_Module] mkSystem ();
         link_memory.deq();
         if (v == 0)
         begin
-            $display("");
+            $fdisplay(stderr, "");
             addr <= 0;
+            $finish(0);
         end
         else
         begin
-            $write("%c", v);
+            $fwrite(stderr, "%c", v);
             addr <= addr + 1;
         end
         state <= 0;

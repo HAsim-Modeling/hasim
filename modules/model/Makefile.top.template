@@ -24,7 +24,7 @@ GEN_BAS = @GEN_BAS@
 GEN_VS = @GEN_VS@
 
 GEN_OS = $(GEN_CXXS:%.cxx=%.o)
-GIVEN_OS = $(GIVEN_CS:%.c=%.o)
+GIVEN_OS = $(GIVEN_CS:%.cpp=%.o)
 BDPI_OS = $(BDPI_CS:%.c=%.o)
 WRAPPER_BIS = $(GEN_BAS:%.ba=%.bi)
 

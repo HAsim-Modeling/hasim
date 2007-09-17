@@ -8034,3 +8034,33 @@ the module's BSV include file as `defines with a macro names
 that the module recognizes (derived from the parameter to the
 ADD_SERVICE macro calls in the module's .rrr file). The client
 thus obtains all serviceIDs it needs to use.
+----------
+aparasha    Date: Mon Sep 17 13:47:48 EDT 2007  CSN: CSN-hasim-265
+                  Mon Sep 17 17:47:48 UTC 2007
+
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          264 
+
+Directory modules/system/mem_test
+ MemTest.bsv               Locally Modified          264 
+
+- fixed a small bug in Makefile.top
+
+- slightly changed MemTest: it now displays Hello, World!
+  only once and exits. Earlier, it was coded to display the
+  message ad-infinitum in a loop because $finish caused the
+  hybrid simulation to exit un-cleanly. This has been fixed.
+
+- also updated MemTest to display the message on stderr
+  instead of stdout.
+
+  **** IMPORTANT NOTE ****
+
+  Please do not use $display or $write in BSV code henceforth.
+  If the module in which this code is used happens to be placed
+  inside a hybrid model, then stdout of the simulation
+  executable gets plugged into the software executable, and
+  the $display strings will confuse the communication protocol.
+
+  Instead, use $fdisplay(stderr, ...) or $fwrite(stderr, ...).

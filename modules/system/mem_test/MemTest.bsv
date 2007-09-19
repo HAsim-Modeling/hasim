@@ -19,17 +19,11 @@ module [HASim_Module] mkSystem ();
     rule recv(state == 1);
         MEM_Value v = link_memory.getResp();
         link_memory.deq();
-        if (v == 0)
-        begin
-            $fdisplay(stderr, "");
-            addr <= 0;
-            $finish(0);
-        end
-        else
-        begin
-            $fwrite(stderr, "%c", v);
+        $display("%8x: %8x", addr, v);
+        if (addr <= 32000)
             addr <= addr + 1;
-        end
+        else
+            $finish(0);
         state <= 0;
     endrule
 

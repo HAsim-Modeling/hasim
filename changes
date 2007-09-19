@@ -8096,3 +8096,24 @@ Directory modules/model
   MAKE_ALL_TARGET to the standard HAsim Makefile.top.template.  The
   paramter defaults to "exe".
 - Set MAKE_ALL_TARGET to "bit" for traffic light XUP models.
+
+----------
+aparasha    Date: Wed Sep 19 13:29:27 EDT 2007  CSN: CSN-hasim-267
+                  Wed Sep 19 17:29:27 UTC 2007
+
+
+Directory config/pm/hasim/demos/switch_to_led
+ adder4x4_software.apm     Locally Modified          266 
+
+Directory modules/controller/connection-terminus
+ connection-terminus.awb   Locally Modified          266 
+
+Directory modules/system/mem_test
+ MemTest.bsv               Locally Modified          266 
+
+- updated MemTest to dump contents of first few blocks
+  of the memory device.
+
+- updated default values of parameters in Connection
+  Terminus to *not* automatically stub-out any of the
+  potentially-dangling connections.

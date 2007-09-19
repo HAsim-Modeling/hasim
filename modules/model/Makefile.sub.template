@@ -33,15 +33,15 @@ SURROGATE_BIS=$(SUBDIRS:%=./$(TMP_BSC_DIR)/%.bi)
 ## 
 
 .PHONY: all
-all: $(FULL_DIR)/$(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba
+all: $(FULL_DIR)/$(TMP_BSC_DIR)/build.done
 
 ################################################################
 ## 
 
-## .ba file is built as a side-effect of building the .v file.
-$(FULL_DIR)/$(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).ba: $(FULL_DIR)/$(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).v
-
-$(FULL_DIR)/$(TMP_BSC_DIR)/$(WRAPPER_SYNTH_ID).v: $(FULL_DIR)/$(TMP_BSC_DIR)/$(WRAPPER).bi
+## the build.done file is built as a signal to the directory above that this
+## directory's build is complete.
+$(FULL_DIR)/$(TMP_BSC_DIR)/build.done: $(FULL_DIR)/$(TMP_BSC_DIR)/$(WRAPPER).bi
+	touch $(FULL_DIR)/$(TMP_BSC_DIR)/build.done
 
 ##
 ## This rule for building a module with Bluespec is complicated only because

@@ -48,8 +48,8 @@ sub do_template_replacements {
 	}
 	
 	# remove any unmatched replacements
-	while ($line =~ /@(.+)@/) {
-	    $line =~ s/@.+@//g;
+	while ($line =~ /@([\w\-]+)@/) {
+	    $line =~ s/@[\w\-]+@//g;
 	}
 	print $dstfile $line;
     }

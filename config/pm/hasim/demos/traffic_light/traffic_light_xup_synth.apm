@@ -56,3 +56,6 @@ connection_terminus=Hasim Connection Terminus
 TERM_FPGA_SWITCHES=0
 TERM_FPGA_BUTTONS=0
 TERM_FPGA_LEDS=0
+
+[HAsim Model Foundation/Params]
+MAKE_ALL_TARGET=bit

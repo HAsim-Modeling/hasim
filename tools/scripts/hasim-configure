@@ -1,4 +1,4 @@
-
+: # -*-Perl-*-
 eval 'exec perl -w "$0" ${1+"$@"}'
     if 0;
 
@@ -553,6 +553,20 @@ sub __make_symlinks {
     return 1;
 }
 
+############################################################
+# add_makefile_param_replacements:  Add replacement strings
+#         defined by module parameters.
+sub add_makefile_param_replacements ($$) {
+    my $replacements_r = shift;
+    my $module = shift;
+
+    my @p = ();
+    push(@p, $module->parameters());
+    foreach my $p (@p) {
+        HAsim::Util::hash_set($replacements_r, '@' . $p->name() . '@', $p->value());
+    }
+}
+
 
 ############################################################
 # generate_makefile_include: Collect template replacement 
@@ -561,12 +575,14 @@ sub __make_symlinks {
 sub generate_makefile_include {
     my $model = shift;
 
-    my $replacements_r = HAsim::Util::empty_hash_ref();
-
     if (!defined($builddir)) {
       $builddir = $model->build_dir();
     }
     
+    my $replacements_r = HAsim::Util::empty_hash_ref();
+
+    add_makefile_param_replacements($replacements_r, $model->modelroot());
+
     # @HOSTLIB@ determines if we should use 64-bit Bluesim libraries
     # @HOSTLIB@ is _64 on 64-bit machines and "" otherwise
     if (! defined$ENV{'HOSTTYPE'}) {
@@ -643,6 +659,8 @@ sub generate_makefile_top {
     
     my $replacements_r = HAsim::Util::empty_hash_ref();
     
+    add_makefile_param_replacements($replacements_r, $model->modelroot());
+
     #@ROOT_DIR@
     my $root = $model->modelroot();
     if (HAsim::Build::is_synthesis_boundary($root)) {

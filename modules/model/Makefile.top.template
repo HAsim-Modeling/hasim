@@ -34,6 +34,17 @@ ALL_VS = $(GEN_VS) $(GIVEN_VS)
 ALL_CS = $(GEN_CXXS) $(GIVEN_CS)
 ALL_OS = $(GEN_OS) $(BDPI_OS)
 
+SWEXE = $(APM_NAME)_sw.exe
+
+SUBDIR_BUILD_DONE = $(ARCH_DIR)/$(ROOT_DIR)/$(TMP_BSC_DIR)/build.done
+
+## Model may define the target of "make all".  Provide a default if no target
+## is specified.
+ifneq ($(strip @MAKE_ALL_TARGET@),)
+    MAKE_ALL_TARGET = @MAKE_ALL_TARGET@
+else
+    MAKE_ALL_TARGET = exe
+endif
 
 ################################################################
 ## Xilinx tool variables
@@ -70,13 +81,18 @@ DOWNLOAD_FILE = $(APM_NAME).download
 	$(CPP) -c -DAPM_NAME=\"$(APM_NAME)\" -o $@ $<
 
 .PHONY: all
-all: exe
+all: $(MAKE_ALL_TARGET)
 
 ################################################################
 ## FPGA synthesis rules
 
-.PHONY: bitstats
-bitstats: $(APM_NAME)_par.bit
+.PHONY: bit
+bit: $(APM_NAME)_par.bit $(DOWNLOAD_FILE) $(SWEXE)
+	@echo "#!/bin/sh" >$(APM_NAME)
+	@echo "impact -batch $(BUILD_DIR)/$(DOWNLOAD_FILE)" >>$(APM_NAME)
+	@chmod +x $(APM_NAME)
+	@echo "Generated launch script \"$(APM_NAME)\".";
+	@echo ""
 	@echo "++++++++++++ Post-Synthesis ++++++++++++"
 	@grep "Number of Slices" $(XILINX_APM_NAME).srp
 	@grep "Maximum Frequency" $(XILINX_APM_NAME).srp
@@ -84,14 +100,6 @@ bitstats: $(APM_NAME)_par.bit
 	@grep "Number of SLICEs" $(XILINX_APM_NAME)_par.par
 	@grep -B 1 -A 3 "Max Delay" $(XILINX_APM_NAME)_par.par
 	@echo "++++++++++++++++++++++++++++++++++++++++"
-
-
-.PHONY: bit
-bit: $(APM_NAME)_par.bit $(DOWNLOAD_FILE)
-	@echo "#!/bin/sh" >$(APM_NAME)
-	@echo "impact -batch $(BUILD_DIR)/$(DOWNLOAD_FILE)" >>$(APM_NAME)
-	@chmod +x $(APM_NAME)
-	@echo "Generated launch script \"$(APM_NAME)\".";
 
 $(APM_NAME)_par.bit: $(XILINX_APM_NAME)_par.ncd $(UT_FILE)
 	$(BITGEN) $(BITGEN_FLAGS) -f $(UT_FILE) $<
@@ -108,7 +116,7 @@ $(XILINX_APM_NAME).ngd: $(UCF_FILE) $(XILINX_APM_NAME).ngc
 	$(NGDBUILD) -uc $^ $@
 	mv netlist.lst $(TMP_XILINX_DIR)
 
-$(XILINX_APM_NAME).ngc: make_subdir $(XST_FILE)
+$(XILINX_APM_NAME).ngc: $(SUBDIR_BUILD_DONE) $(XST_FILE)
 	$(XST) -ifn $(XST_FILE)
 	mv $(APM_NAME).srp $(TMP_XILINX_DIR)
 	mv $(@F) $(TMP_XILINX_DIR)
@@ -117,24 +125,25 @@ $(XILINX_APM_NAME).ngc: make_subdir $(XST_FILE)
 ## Verilog generation rules
 
 .PHONY: vexe
-vexe: make_subdir $(BDPI_OS)
-	@$(TRAP_ERRORS)
-	@ln -f -s $(ARCH_DIR)/$(ROOT_DIR)/vpi_* .
-	@$(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME).vexe $(ALL_VS) $(BDPI_OS) $(BDPI_BAS)
-	@rm -f vpi_*
-	@if [ -f "directc.sft" ] ; then mv -f directc.sft $(TMP_BSC_DIR) ; fi
+vexe: $(APM_NAME).vexe $(SWEXE)
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "$(BUILD_DIR)/$(APM_NAME).vexe +bscvcd" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
 	@ln -fs $(APM_NAME).vexe simv
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
+$(APM_NAME).vexe: $(SUBDIR_BUILD_DONE) $(BDPI_OS)
+	@$(TRAP_ERRORS)
+	@ln -f -s $(ARCH_DIR)/$(ROOT_DIR)/vpi_* .
+	@$(BSC) $(BSC_FLAGS) $(VSIM_LINK_FLAGS) -verilog -e $(ROOT_WRAPPER_SYNTH_ID) -o $@ $(ALL_VS) $(BDPI_OS) $(BDPI_BAS)
+	@rm -f vpi_*
+	@if [ -f "directc.sft" ] ; then mv -f directc.sft $(TMP_BSC_DIR) ; fi
 
 ################################################################
 ## Bluesim generation rules
 
 .PHONY: exe
-exe: $(APM_NAME)_hw.exe
+exe: $(APM_NAME)_hw.exe $(SWEXE)
 	@echo "#!/bin/sh" >$(APM_NAME)
 	@echo "$(BUILD_DIR)/$(APM_NAME)_hw.exe" >>$(APM_NAME)
 	@chmod +x $(APM_NAME)
@@ -142,24 +151,28 @@ exe: $(APM_NAME)_hw.exe
 	@echo "Generated launch script \"$(APM_NAME)\"";
 
 $(APM_NAME)_hw.exe: $(ALL_OS)
-	@ \
-	 $(CPP) $(CPP_FLAGS) $(LDFLAGS) -DTOP=$(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME)_hw.exe $(ALL_OS) $(BLUESIM_LINK_LIBS)
+	@ $(CPP) $(CPP_FLAGS) $(LDFLAGS) -DTOP=$(ROOT_WRAPPER_SYNTH_ID) -o $(APM_NAME)_hw.exe $(ALL_OS) $(BLUESIM_LINK_LIBS)
 
-swexe: $(GIVEN_OS)
-	@ \
-	 $(CPP) -o $(APM_NAME)_sw.exe $(GIVEN_OS)
+$(GEN_CXXS): $(TMP_BSC_DIR)/$(APM_NAME).done
 
-$(GEN_CXXS): $(APM_NAME).exe
+$(TMP_BSC_DIR)/$(APM_NAME).done: $(SUBDIR_BUILD_DONE)
+	@echo "Generating C files" ;\
+	 $(BSC) $(BSC_FLAGS) $(LDFLAGS) -KILLsimBlocksToC -sim -e $(ROOT_WRAPPER_SYNTH_ID) -simdir $(TMP_BSC_DIR) $(ALL_BAS) \;
+	 touch $@
 
-$(APM_NAME).exe: make_subdir
-	@ \
-	 echo "Generating C files" ;\
-	 $(BSC) $(BSC_FLAGS) $(LDFLAGS) -KILLsimBlocksToC -sim -e $(ROOT_WRAPPER_SYNTH_ID) -simdir $(TMP_BSC_DIR) -o $(APM_NAME).exe $(ALL_BAS)
-
-$(TMP_BSC_DIR)/%.o: $(TMP_BSC_DIR)/%.cxx
-	@ \
-	 echo "Compiling $<" ;\
+$(TMP_BSC_DIR)/%.o: $(TMP_BSC_DIR)/%.cxx $(TMP_BSC_DIR)/$(APM_NAME).done
+	@echo "Compiling $<" ;\
 	 $(CPP) $(CPP_FLAGS) -c -o $@ $<
+
+
+################################################################
+## Software side
+
+$(SWEXE): $(GIVEN_OS)
+ifneq ($(strip $(GIVEN_OS)),)
+	@ $(CPP) -o $@ $(GIVEN_OS)
+endif
+
 
 ## Dependencies ensure correct build order of generated .o files
 
@@ -170,6 +183,23 @@ $(TMP_BSC_DIR)/schedule.o: $(TMP_BSC_DIR)/$(ROOT_WRAPPER_SYNTH_ID).o
 
 ################################################################
 ##
+
+## Build subdirectory.
+
+## build.done is rebuilt by the recursive make whenever something in the
+## subdirectory build changes.  It serves as a semaphore for activity
+## without having to know the full dependence chain.
+$(SUBDIR_BUILD_DONE): make_subdir
+
+##
+## This dependence forces make to reload itself after make_subdir has run.
+## Without this line make will never discover if build.done is rebuilt
+## by the recursive build.  Avoid setting this dependence for build targets
+## like help and clean, since they would force a build in subdirectories.
+##
+ifeq ($(findstring $(MAKECMDGOALS),help clean clean_root),)
+Makefile:: make_subdir
+endif
 
 .PHONY: make_subdir
 make_subdir:
@@ -189,13 +219,13 @@ help:
 
 .PHONY: clean
 clean: clean_root
-	@rm -f $(TMP_XILINX_DIR)/*.*
-	@rm -f $(TMP_BSC_DIR)/*.*
-	@rm -f $(APM_NAME).exe $(APM_NAME).vexe dump.vcd
-	@rm -f $(APM_NAME)_par.bit
-	@rm -f $(APM_NAME)
-	@rm -f *~
+	@$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) clean; 
 
 .PHONY: clean_root
 clean_root:
-	@$(MAKE) -C $(ARCH_DIR)/$(ROOT_DIR) clean; 
+	@rm -f $(TMP_XILINX_DIR)/*.*
+	@rm -f $(TMP_BSC_DIR)/*.*
+	@rm -f $(APM_NAME).exe $(APM_NAME).vexe dump.vcd $(SWEXE)
+	@rm -f $(APM_NAME)_par.bit
+	@rm -f $(APM_NAME)
+	@rm -f *~

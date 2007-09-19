@@ -8064,3 +8064,35 @@ Directory modules/system/mem_test
   the $display strings will confuse the communication protocol.
 
   Instead, use $fdisplay(stderr, ...) or $fwrite(stderr, ...).
+
+----------
+mcadler     Date: Wed Sep 19 11:53:42 EDT 2007  CSN: CSN-hasim-266
+                  Wed Sep 19 15:53:42 UTC 2007
+
+
+Directory libperl/HAsim/lib/HAsim
+ Templates.pm              Locally Modified          265 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          265 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          265 
+ traffic_light_xup_synth.apm Locally Modified          265 
+
+Directory modules/model
+ Makefile.sub.template     Locally Modified          265 
+ Makefile.top.template     Locally Modified          265 
+ hasim_model.awb           Locally Modified          265 
+
+- Fix parsing of @FOO@ replacement in Makefiles.  Variables must now be
+  letters, numbers, "-" or "_".  This fixes the problem of hasim-configure
+  deleting lines like:  @echo $@
+- Top level builds now know when they need to be rebuilt.  Running make
+  no longer goes through top level synthesis when not needed.
+- Software-side binary is built automatically.
+- All module parameters from AWB files are now exposed as potential
+  replacement strings during Makefile generation.  Added a parameter
+  MAKE_ALL_TARGET to the standard HAsim Makefile.top.template.  The
+  paramter defaults to "exe".
+- Set MAKE_ALL_TARGET to "bit" for traffic light XUP models.

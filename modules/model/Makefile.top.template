@@ -171,6 +171,7 @@ $(TMP_BSC_DIR)/%.o: $(TMP_BSC_DIR)/%.cxx $(TMP_BSC_DIR)/$(APM_NAME).done
 $(SWEXE): $(GIVEN_OS)
 ifneq ($(strip $(GIVEN_OS)),)
 	@ $(CPP) -o $@ $(GIVEN_OS)
+	@ln -fs $@ simx
 endif
 
 

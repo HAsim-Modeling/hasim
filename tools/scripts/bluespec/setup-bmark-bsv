@@ -32,17 +32,30 @@ echo "Go to $destdir"
 cd $destdir
 
 echo "Creating simlinks"
-mkdir -p program
 
-/bin/ln -f -s ../../pm/simv .
-/bin/ln -f -s ../../pm/simv.daidir
+if [ -e "../../pm/simx" ]
+then
+  /bin/ln -f -s ../../pm/simx .
+  progname="./simx"
+else
+  /bin/ln -f -s ../../pm/simv .
+  progname="./simv"
+fi
+
+if [ -d "../../pm/simv.daidir" ]
+then
+  /bin/ln -f -s ../../pm/simv.daidir .
+fi
 
 #
 # Create run script with variable substition on run template
 #    Note: we can't substitute strings with a * in them
 
 echo "Creating run script"
-sed "s*<<<SCRIPT>>>*$0*" <$srcdir/run.pl | sed "s*<<<BENCHMARK>>>*$bmark*" >run
+cp $srcdir/run.pl run
+sed -i "s*<<<SCRIPT>>>*$0*"          run
+sed -i "s*<<<PROGRAM>>>*$progname*"   run
+sed -i "s*<<<BENCHMARK>>>*$bmark*"   run
 
 chmod +x run
 

@@ -53,6 +53,8 @@ Packagehint=hasim
 connection_terminus=Hasim Connection Terminus
 
 [Hasim Connection Terminus/Params]
-TERM_FPGA_SWITCHES=0
-TERM_FPGA_BUTTONS=0
-TERM_FPGA_LEDS=0
+TERM_VDEV_MEMORY=1
+TERM_VDEV_MEMORY_INVALIDATE=1
+
+[HAsim Model Foundation/Params]
+MAKE_ALL_TARGET=bit

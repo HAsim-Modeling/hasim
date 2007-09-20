@@ -8117,3 +8117,37 @@ Directory modules/system/mem_test
 - updated default values of parameters in Connection
   Terminus to *not* automatically stub-out any of the
   potentially-dangling connections.
+
+----------
+jsemer      Date: Thu Sep 20 08:54:36 EDT 2007  CSN: CSN-hasim-268
+                  Thu Sep 20 12:54:36 UTC 2007
+
+
+Directory tools/scripts/bluespec
+ setup-bmark-bsv           Locally Modified          267 
+ run.pl                    Locally Modified          267 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Modified          267 
+ echo4x4_xup.apm           Locally Modified          267 
+ square4x4_software.apm    Locally Modified          267 
+ adder4x4_xup.apm          Locally Modified          267 
+ square4x4_xup.apm         Locally Modified          267 
+ multiplier4x4_software.apm Locally Modified          267 
+ multiplier4x4_xup.apm     Locally Modified          267 
+
+Directory config/pm/hasim/demos/mem_test
+ mem_test_hybrid.apm       Locally Modified          267 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          267 
+
+Updated Makefile to create a well-known name 'simx' to launch
+the software part of a hybrid model. 
+
+Updated the benchmark setup script to launch either hybrid
+designs (simx) or pure hardware simulations (simv). 
+
+Updated the switch-to-led models and mem_test model with
+proper terminations of platform interface connections. Also
+made make target of of 'bit' for xup models.

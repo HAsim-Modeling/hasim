@@ -46,5 +46,6 @@ Packagehint=hasim
 connection_terminus=Hasim Connection Terminus
 
 [Hasim Connection Terminus/Params]
-TERM_VDEV_MEMORY=0
-TERM_VDEV_MEMORY_INVALIDATE=0
+TERM_FPGA_SWITCHES=1
+TERM_FPGA_BUTTONS=1
+TERM_FPGA_LEDS=1

@@ -44,8 +44,16 @@ if ($debug) {
   print "Cycles = $cycles\n";
 }
 
-my $command = "./simv +max-cycles=$cycles";
+my $command = "<<<PROGRAM>>>";
+
+if ( $command =~ /simv/) {
+   # Direct simulation arguments
+   $args="+max-cycles=$cycles";
+ } else {
+   # Hybrid simulation arguments
+   $args="";
+ }
 
 print "Running: $command\n";
-$status = system("$command | tee <<<BENCHMARK>>>.out");
+$status = system("$command $args | tee <<<BENCHMARK>>>.out");
 print "Status: $status\n";

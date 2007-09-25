@@ -9,7 +9,7 @@ File=modules/model/hasim_model.awb
 
 [HAsim Model Foundation/Requires]
 hasim_system=Hasim - Switch in to LED out system
-hasim_controller=Hasim null controller
+hasim_controller=Hasim hybrid null controller
 hasim_common=Hasim Common Library
 fpgaenv=FPGA Environment
 
@@ -33,25 +33,28 @@ calculation4x4=Hasim - 4x4 adder
 File=modules/system/switch_to_led_system/calculation4x4/adder/adder4x4.awb
 Packagehint=hasim
 
-[Hasim null controller]
-File=modules/controller/null/hasim_null_controller.awb
-Packagehint=hasim
-
 [Hasim Common Library]
 File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-rrr-sim.apm
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
 
 [Hasim Connection Terminus]
 File=modules/controller/connection-terminus/connection-terminus.awb
 Packagehint=hasim
 
-[Hasim null controller/Requires]
-connection_terminus=Hasim Connection Terminus
 
-[Hasim Connection Terminus/Params]
-TERM_VDEV_MEMORY=1
-TERM_VDEV_MEMORY_INVALIDATE=1
+
+[Hasim software controller for hybrid models]
+File=modules/controller/software/software-controller.awb
+Packagehint=hasim
+
+[Hasim hybrid null controller]
+File=modules/controller/hybrid-null/hybrid-null-controller.awb
+Packagehint=hasim
+
+[Hasim hybrid null controller/Requires]
+software_controller=Hasim software controller for hybrid models
+connection_terminus=Hasim Connection Terminus

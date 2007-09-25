@@ -8172,3 +8172,52 @@ Directory config/pm/hasim/demos/mem_test
 
 Tried to systemitize names and attributes of switch2led and 
 memory models.
+
+----------
+aparasha    Date: Tue Sep 25 13:02:47 EDT 2007  CSN: CSN-hasim-270
+                  Tue Sep 25 17:02:47 UTC 2007
+
+
+Directory config/pm/hasim/demos/switch_to_led
+ adder4x4_software.apm     Locally Modified          269 
+
+Directory config/pm/hasim/demos/mem_test
+ mem_test_hybrid.apm       Locally Modified          269 
+
+Directory modules/controller/connection-terminus
+ connection-terminus.awb   Locally Modified          269 
+
+Directory modules/controller
+ hybrid-simple/            Locally Added               0 
+
+Directory modules/controller/hybrid-simple
+ hybrid-simple-controller.awb Locally Added               0 
+ HybridSimpleController.bsv Locally Added               0 
+
+Directory modules/controller
+ hybrid-null/              Locally Added               0 
+
+Directory modules/controller/hybrid-null
+ hybrid-null-controller.awb Locally Added               0 
+ HybridNullController.bsv  Locally Added               0 
+
+Directory modules/controller
+ software/                 Locally Added               0 
+
+Directory modules/controller/software
+ software-controller.h     Locally Added               0 
+ software-controller.awb   Locally Added               0 
+ software-controller.cpp   Locally Added               0 
+
+Directory modules/system/mem_test
+ MemTest.bsv               Locally Modified          269 
+
+- added a software controller module.
+
+- added hybrid versions of the null and simple controllers
+  which use the software controller.
+
+- moved software main() from software RRR server in platforms
+  to the software controller.
+
+- reset connection terminus defaults to 1.

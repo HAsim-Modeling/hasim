@@ -15,11 +15,11 @@
 #
 # %sources -t BSV -v PUBLIC ConnectionTerminus.bsv
 #
-# %param TERM_FPGA_SWITCHES             0   "termimate fpga_switches?"
-# %param TERM_FPGA_BUTTONS              0   "termimate fpga_buttons?"
-# %param TERM_FPGA_LEDS                 0   "termimate fpga_leds?"
-# %param TERM_VDEV_MEMORY               0   "termimate vdev_memory?"
-# %param TERM_VDEV_MEMORY_INVALIDATE    0   "termimate vdev_memory_invalidate?"
+# %param TERM_FPGA_SWITCHES             1   "termimate fpga_switches?"
+# %param TERM_FPGA_BUTTONS              1   "termimate fpga_buttons?"
+# %param TERM_FPGA_LEDS                 1   "termimate fpga_leds?"
+# %param TERM_VDEV_MEMORY               1   "termimate vdev_memory?"
+# %param TERM_VDEV_MEMORY_INVALIDATE    1   "termimate vdev_memory_invalidate?"
 #
 # %AWB_END
 # */

@@ -8,10 +8,6 @@ Name=Hybrid Virtual Memory Test Model
 Type=HAsim
 Class=Asim::Model
 
-[Hasim null controller]
-Packagehint=hasim
-File=modules/controller/null/hasim_null_controller.awb
-
 [HAsim Model Foundation]
 Packagehint=hasim
 File=modules/model/hasim_model.awb
@@ -22,17 +18,13 @@ model=HAsim Model Foundation
 
 [HAsim Model Foundation/Requires]
 hasim_system=Hasim - Virtual Memory Test system
-hasim_controller=Hasim null controller
+hasim_controller=Hasim hybrid null controller
 hasim_common=Hasim Common Library
 fpgaenv=FPGA Environment
 
 [Hasim Common Library]
 File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
-
-[FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-rrr-sim.apm
-Packagehint=platforms
 
 [Hasim - Virtual Memory Test system]
 File=modules/system/mem_test/mem_test.awb
@@ -42,10 +34,18 @@ Packagehint=hasim
 File=modules/controller/connection-terminus/connection-terminus.awb
 Packagehint=hasim
 
-[Hasim null controller/Requires]
-connection_terminus=Hasim Connection Terminus
+[Hasim hybrid null controller]
+File=modules/controller/hybrid-null/hybrid-null-controller.awb
+Packagehint=hasim
 
-[Hasim Connection Terminus/Params]
-TERM_FPGA_SWITCHES=1
-TERM_FPGA_BUTTONS=1
-TERM_FPGA_LEDS=1
+[Hasim hybrid null controller/Requires]
+connection_terminus=Hasim Connection Terminus
+software_controller=Hasim software controller for hybrid models
+
+[Hasim software controller for hybrid models]
+File=modules/controller/software/software-controller.awb
+Packagehint=hasim
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
+Packagehint=platforms

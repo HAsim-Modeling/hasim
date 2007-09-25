@@ -19,7 +19,8 @@ module [HASim_Module] mkSystem ();
     rule recv(state == 1);
         MEM_Value v = link_memory.getResp();
         link_memory.deq();
-        $display("%8x: %8x", addr, v);
+        if (v != 0)
+            $display("%8x: %8x", addr, v);
         if (addr <= 32000)
             addr <= addr + 1;
         else

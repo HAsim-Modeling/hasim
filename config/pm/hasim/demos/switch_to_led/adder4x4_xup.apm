@@ -19,15 +19,15 @@ fpgaenv=FPGA Environment
 
 [Global]
 SaveParameters=0
-Description=Switch to LED adder
+Description=Switch to LED w. adder - xup
 File=adder4x4_xup
 Version=2.1
 Type=HAsim
-Name=Switch to LED adder
+Name=Switch to LED w. adder - xup
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=switch2led xup hasim
+DefaultAttributes=switch2led hasim xup
 model=HAsim Model Foundation
 
 [Hasim - Switch in to LED out system/Requires]

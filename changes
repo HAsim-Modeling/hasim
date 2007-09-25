@@ -8151,3 +8151,24 @@ designs (simx) or pure hardware simulations (simv).
 Updated the switch-to-led models and mem_test model with
 proper terminations of platform interface connections. Also
 made make target of of 'bit' for xup models.
+
+----------
+jsemer      Date: Mon Sep 24 21:37:32 EDT 2007  CSN: CSN-hasim-269
+                  Tue Sep 25 01:37:32 UTC 2007
+
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Modified          268 
+ adder4x4_software.apm     Locally Modified          268 
+ echo4x4_xup.apm           Locally Modified          268 
+ square4x4_software.apm    Locally Modified          268 
+ adder4x4_xup.apm          Locally Modified          268 
+ square4x4_xup.apm         Locally Modified          268 
+ multiplier4x4_software.apm Locally Modified          268 
+ multiplier4x4_xup.apm     Locally Modified          268 
+
+Directory config/pm/hasim/demos/mem_test
+ mem_test_hybrid.apm       Locally Modified          268 
+
+Tried to systemitize names and attributes of switch2led and 
+memory models.

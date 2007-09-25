@@ -19,15 +19,15 @@ fpgaenv=FPGA Environment
 
 [Global]
 SaveParameters=0
-Description=Switch to LED w. echo
+Description=Switch to LED w. echo - xup
 File=echo4x4_xup
 Version=2.1
 Type=HAsim
-Name=Switch to LED w. echo
+Name=Switch to LED w. echo - xup
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=switch2led xup hasim
+DefaultAttributes=switch2led hasim xup
 model=HAsim Model Foundation
 
 [Hasim - Switch in to LED out system/Requires]

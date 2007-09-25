@@ -15,15 +15,15 @@ fpgaenv=FPGA Environment
 
 [Global]
 SaveParameters=0
-Description=Switch to LED adder in Software
+Description=Switch to LED w. adder - hybrid simulation
 File=adder4x4_software
 Version=2.1
 Type=HAsim
-Name=Switch to LED adder in Software
+Name=Switch to LED w. adder - hybrid simulation
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=switch2led hasim
+DefaultAttributes=switch2led hasim hybrid simulation
 model=HAsim Model Foundation
 
 [Hasim - Switch in to LED out system/Requires]

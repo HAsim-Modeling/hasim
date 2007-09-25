@@ -19,15 +19,15 @@ fpgaenv=FPGA Environment
 
 [Global]
 SaveParameters=0
-Description=Switch to LED w. square
+Description=Switch to LED w. square - xup
 File=square4x4_xup
 Version=2.1
 Type=HAsim
-Name=Switch to LED w. square
+Name=Switch to LED w. square - xup
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=switch2led xup hasim
+DefaultAttributes=switch2led hasim xup
 model=HAsim Model Foundation
 
 [Hasim - Switch in to LED out system/Requires]

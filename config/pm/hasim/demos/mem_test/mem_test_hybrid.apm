@@ -17,7 +17,7 @@ Packagehint=hasim
 File=modules/model/hasim_model.awb
 
 [Model]
-DefaultAttributes=bram-test xup hasim
+DefaultAttributes=bram-test  hasim hybrid simulation
 model=HAsim Model Foundation
 
 [HAsim Model Foundation/Requires]

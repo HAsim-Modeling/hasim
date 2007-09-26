@@ -8221,3 +8221,18 @@ Directory modules/system/mem_test
   to the software controller.
 
 - reset connection terminus defaults to 1.
+
+----------
+aparasha    Date: Wed Sep 26 00:33:57 EDT 2007  CSN: CSN-hasim-271
+                  Wed Sep 26 04:33:57 UTC 2007
+
+
+Directory modules/controller/software
+ software-controller.h     Locally Modified          270 
+ software-controller.awb   Locally Modified          270 
+ main.cpp                  Locally Added               0 
+ main.h                    Locally Added               0 
+ software-controller.cpp   Locally Modified          270 
+
+- updated software controller to instantiate channelio and
+  RRR server.

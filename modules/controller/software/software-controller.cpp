@@ -1,54 +1,62 @@
 #include <stdio.h>
-#include <unistd.h>
-#include <strings.h>
-#include <assert.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <signal.h>
-#include <string.h>
 
 #include "software-controller.h"
-#include "software-rrr-server.h"
 
-/***** ----- SOFTWARE CONTROLLER ----- *****
-
- This is where a Hybrid model begins
- execution. This module:
- - has the software main()
- - instantiates the software module
-   hierarchy (including the software
-   RRR server)
- - initializes the hardware via RRR
- - also provides some RRR service
-   functions (stats, events, exceptions)
-
- ***** ------------------------------- *****/
-
-/* globally visible variables */
-GlobalArgs globalArgs;
-
-/* main */
-int main(int argc, char *argv[])
+// constructor
+SOFTWARE_CONTROLLER_CLASS::SOFTWARE_CONTROLLER_CLASS()
 {
-    /* parse args and place in global array */
-    if (argc == 2)
+    Init();
+}
+
+// destructor
+SOFTWARE_CONTROLLER_CLASS::~SOFTWARE_CONTROLLER_CLASS()
+{
+    Uninit();
+}
+
+// init
+void
+SOFTWARE_CONTROLLER_CLASS::Init()
+{
+    // instantiate submodules
+    channelio = new CHANNELIO_CLASS(this);
+    rrrServer = new RRR_SERVER_CLASS(this, channelio);
+}
+
+// destructor
+void
+SOFTWARE_CONTROLLER_CLASS::Uninit()
+{
+    // destroy submodules
+    if (rrrServer)
     {
-        strcpy(globalArgs.benchmark, argv[1]);
-    }
-    else
-    {
-        strcpy(globalArgs.benchmark, "program.vmh");
+        delete rrrServer;
+        rrrServer = NULL;
     }
 
-    /* initialize software RRR server */
-    rrr_server_init();
-
-    /* go into an infinite loop, clocking all modules */
-    while (true)
+    if (channelio)
     {
-        rrr_server_clock();
+        delete channelio;
+        channelio = NULL;
     }
+}
 
-    return 0;
+// poll
+void
+SOFTWARE_CONTROLLER_CLASS::Poll()
+{
+    // clock submodules
+    channelio->Poll();
+    rrrServer->Poll();
+}
+
+// callback-exit
+void
+SOFTWARE_CONTROLLER_CLASS::CallbackExit(
+    int exitcode)
+{
+    // chain-uninit, then exit
+    Uninit();
+    exit(exitcode);
 }

@@ -8254,3 +8254,24 @@ Directory modules/controller/software
 - added a new RRR service to the software controller. Its
   functionality will be tested once the hardware part of
   the controller starts communicating with it.
+
+----------
+aparasha    Date: Wed Sep 26 19:36:44 EDT 2007  CSN: CSN-hasim-273
+                  Wed Sep 26 23:36:44 UTC 2007
+
+
+Directory modules/controller/software
+ main.cpp                  Locally Modified          272 
+
+Directory modules/controller/connection-terminus
+ ConnectionTerminus.bsv    Locally Modified          271 
+ connection-terminus.awb   Locally Modified          271 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          271 
+
+- fixed a bug in software controller that was causing
+  it to fail compilation.
+
+- added a new connection - a direct link to RRR - to
+  platform interface and connection terminus

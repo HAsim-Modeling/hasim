@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "main.h"
+#include "swcon-service.h"
 #include "software-controller.h"
 
 /***** ----- SOFTWARE CONTROLLER ----- *****

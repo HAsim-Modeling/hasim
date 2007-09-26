@@ -4,6 +4,7 @@ import front_panel::*;
 import toplevel_wires::*;
 import low_level_platform_interface::*;
 import memory::*;
+import rrr::*;
 
 typedef struct
 {
@@ -26,10 +27,11 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
     Connection_Server#(MEM_Request, MEM_Value) link_memory       <- mkConnection_Server("vdev_memory");
     Connection_Send#(MEM_Addr)                 link_memory_inval <- mkConnection_Send("vdev_memory_invalidate");
 
-    /*** HACK *** plus these dangling leaks right here ***
-    Connection_Client#(MEM_Request, MEM_Value) link_memory_loopback   <- mkConnection_Client("vdev_memory");
-    Connection_Receive#(MEM_Addr)              link_memory_inval_loopback <- mkConnection_Receive("vdev_memory_invalidate");
-    /***/
+    // direct RRR connection
+    Connection_Server#(RRR_Request, RRR_Response) link_rrr <- mkConnection_Server("rrr_client");
+
+    // state of RRR request
+    Reg#(Bit#(1))   rrrState    <- mkReg(0);
 
     // instantiate low-level platform interface
     LowLevelPlatformInterface       llpint          <- mkLowLevelPlatformInterface();
@@ -97,6 +99,36 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
       let inval <- memory.getInvalidateRequest();
       link_memory_inval.send(inval);
     
+    endrule
+
+    // RRR link: we can only allow 1 outstanding request per link at
+    // any instant
+    rule send_rrr_req (rrrState == 0);
+
+        // read in RRR request from connection and translate
+        // it to a method call to RRR client
+        let req = link_rrr.getReq();
+        link_rrr.deq();
+
+        llpint.rrrClient.makeRequest(req);
+
+        if (req.needResponse == True)
+            rrrState <= 1;
+        else
+            rrrState <= 0;
+
+    endrule
+
+    // RRR link: we should only try to obtain a response if we have
+    // sent out a request
+    rule send_rrr_resp (rrrState == 1);
+
+        // call RRR client method to receive a response, and
+        // send the result on the connection
+        let resp <- llpint.rrrClient.getResponse();
+        link_rrr.makeResp(resp);
+        rrrState <= 0;
+
     endrule
 
     // return interface to top-level wires

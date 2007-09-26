@@ -5,21 +5,24 @@
 #include "sim-channelio-sw.h"
 #include "software-rrr-server.h"
 
+class SWCON_SERVICE_CLASS;
 
 // *********** software controller ***********
 typedef class SOFTWARE_CONTROLLER_CLASS* SOFTWARE_CONTROLLER;
 class SOFTWARE_CONTROLLER_CLASS: public HASIM_SW_MODULE_CLASS
 {
     private:
-        CHANNELIO   channelio;
-        RRR_SERVER  rrrServer;
+        CHANNELIO       channelio;
+        RRR_SERVER      rrrServer;
+        SWCON_SERVICE_CLASS*   myService;
 
     public:
         SOFTWARE_CONTROLLER_CLASS();
         ~SOFTWARE_CONTROLLER_CLASS();
-        void Init();
+        void Main();
         void Uninit();
-        void Poll();
+        void SchedulerLoop();
+        void PrintString(char []);
         void CallbackExit(int);
 };
 

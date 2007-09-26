@@ -1,12 +1,14 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
 
 #include "software-controller.h"
+
+using namespace std;
 
 // constructor
 SOFTWARE_CONTROLLER_CLASS::SOFTWARE_CONTROLLER_CLASS()
 {
-    Init();
 }
 
 // destructor
@@ -15,16 +17,7 @@ SOFTWARE_CONTROLLER_CLASS::~SOFTWARE_CONTROLLER_CLASS()
     Uninit();
 }
 
-// init
-void
-SOFTWARE_CONTROLLER_CLASS::Init()
-{
-    // instantiate submodules
-    channelio = new CHANNELIO_CLASS(this);
-    rrrServer = new RRR_SERVER_CLASS(this, channelio);
-}
-
-// destructor
+// uninit
 void
 SOFTWARE_CONTROLLER_CLASS::Uninit()
 {
@@ -42,13 +35,24 @@ SOFTWARE_CONTROLLER_CLASS::Uninit()
     }
 }
 
-// poll
+// scheduler loop
 void
-SOFTWARE_CONTROLLER_CLASS::Poll()
+SOFTWARE_CONTROLLER_CLASS::SchedulerLoop()
 {
-    // clock submodules
-    channelio->Poll();
-    rrrServer->Poll();
+    while (true)
+    {
+        // poll submodules
+        channelio->Poll();
+        rrrServer->Poll();
+    }
+}
+
+// print string
+void
+SOFTWARE_CONTROLLER_CLASS::PrintString(
+    char buf[])
+{
+    cout << buf << endl;
 }
 
 // callback-exit

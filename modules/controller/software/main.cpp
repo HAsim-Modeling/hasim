@@ -28,6 +28,12 @@
 // globally visible variables
 GlobalArgs globalArgs;
 
+// create actual software controller
+SOFTWARE_CONTROLLER_CLASS controller;
+
+// RRR service module
+extern SWCON_SERVICE_CLASS swconServiceInstance;
+
 // main
 int main(int argc, char *argv[])
 {
@@ -41,16 +47,34 @@ int main(int argc, char *argv[])
         strcpy(globalArgs.benchmark, "program.vmh");
     }
 
-    // create actual software controller
-    SOFTWARE_CONTROLLER_CLASS controller;
-
-    // go into an infinite loop, polling the controller
-    // (this will hierarchically poll all sub-modules... we need
-    //  to refine this using a proper "poll-server"
-    while (true)
-    {
-        controller.Poll();
-    }
+    // transfer control to controller
+    controller.Main();
 
     return 0;
+}
+
+// ----- controller's Main -----
+void
+SOFTWARE_CONTROLLER_CLASS::Main()
+{
+    // connect to my (already running) RRR service
+    myService = &swconServiceInstance;
+    myService->Connect(this);
+
+    // instantiate channelIO and RRR server.
+    // instantiating channelio has the side-effect of
+    // initializing the hardware partition
+    channelio = new CHANNELIO_CLASS(this);
+    rrrServer = new RRR_SERVER_CLASS(this, channelio);
+
+    // send "start" signal to the hardware partition.
+    // We currently do it by asking our RRR service to
+    // respond "Yes" to a "Should I Start?" RRR request
+    myService->StartHardware();
+
+    // go into the main scheduler loop
+    SchedulerLoop();
+
+    // end of simulation... cleanup and exit
+    Uninit();
 }

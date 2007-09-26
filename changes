@@ -8236,3 +8236,21 @@ Directory modules/controller/software
 
 - updated software controller to instantiate channelio and
   RRR server.
+
+----------
+aparasha    Date: Wed Sep 26 16:13:44 EDT 2007  CSN: CSN-hasim-272
+                  Wed Sep 26 20:13:44 UTC 2007
+
+
+Directory modules/controller/software
+ software-controller.h     Locally Modified          271 
+ software-controller.awb   Locally Modified          271 
+ main.cpp                  Locally Modified          271 
+ swcon-service.cpp         Locally Added               0 
+ swcon-service.rrr         Locally Added               0 
+ software-controller.cpp   Locally Modified          271 
+ swcon-service.h           Locally Added               0 
+
+- added a new RRR service to the software controller. Its
+  functionality will be tested once the hardware part of
+  the controller starts communicating with it.

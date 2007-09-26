@@ -13,8 +13,9 @@
 #
 # %attributes hasim
 #
-# %sources -t CPP -v PUBLIC software-controller.h main.h
-# %sources -t CPP -v PRIVATE software-controller.cpp main.cpp
+# %sources -t CPP -v PUBLIC     software-controller.h main.h swcon-service.h
+# %sources -t CPP -v PRIVATE    software-controller.cpp main.cpp swcon-service.cpp
+# %sources -t RRR -v PUBLIC     swcon-service.rrr
 #
 # %AWB_END
 # */

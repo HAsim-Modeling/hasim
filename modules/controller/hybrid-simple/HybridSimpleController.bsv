@@ -11,6 +11,7 @@ import hasim_modellib::*;
 import soft_connections::*;
 import platform_interface::*;
 import hasim_local_controller::*;
+import software_controller::*;
 
 //************* OneTest Controller **************
 

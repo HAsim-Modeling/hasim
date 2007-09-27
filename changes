@@ -8314,3 +8314,13 @@ Directory config/pm/hasim/demos/switch_to_led
 Hybrid simple MIPS controller now waits for start signal
 from software, and displays status messages by talking to
 software controller.
+
+----------
+aparasha    Date: Thu Sep 27 15:56:08 EDT 2007  CSN: CSN-hasim-275
+                  Thu Sep 27 19:56:08 UTC 2007
+
+
+Directory modules/controller/hybrid-simple
+ HybridSimpleController.bsv Locally Modified          274 
+
+small bugfix.

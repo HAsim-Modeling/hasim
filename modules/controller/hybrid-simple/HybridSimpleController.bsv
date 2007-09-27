@@ -53,7 +53,10 @@ module [HASim_Module] mkController ();
   Connection_Send#(Bit#(4))           link_leds <- mkConnection_Send("fpga_leds");
   Connection_Receive#(Bit#(4))    link_switches <- mkConnection_Receive("fpga_switches");
   Connection_Receive#(ButtonInfo)  link_buttons <- mkConnection_Receive("fpga_buttons");
-  
+
+  SoftwareController    swcon   <- mkSoftwareController();
+
+  let terminus <- mkConnectionTerminus();
   
   //*********** Rules ***********
   
@@ -75,14 +78,15 @@ module [HASim_Module] mkController ();
   
   //run_prog
   
-  rule run_prog (state == CON_Init);
+  rule run_prog (state == CON_Init && swcon.getSimState() == 1);
   
      link_command.send_to_next(COM_RunProgram);
      
      state <= CON_Running;
      link_leds.send(4'b0011);
-     $display("[%0d]: Controller: Program Started", curTick);
-     $fflush();
+
+     swcon.printMessage1P(0, curTick);
+
   endrule
   
   rule get_Response (state == CON_Running);
@@ -95,23 +99,20 @@ module [HASim_Module] mkController ();
 	  if (pf)
 	  begin
 	    link_leds.send(4'b1001);
-	    $display("[%0d]: Controller: Test program finished succesfully.", curTick);
-            $fflush();
+        swcon.printMessage1P(1, curTick);
 	    passed <= True;
 	  end
 	  else
 	  begin
 	    link_leds.send(4'b1101);
-	    $display("[%0d]: Controller: Test program finished. One or more failures occurred.", curTick);
-            $fflush();
+        swcon.printMessage1P(2, curTick);
 	  end
 	  stat_controller.dumpStats();
 	  state <= CON_Finished;
 	end
       default:
       begin
-	$display("[%0d]: Controller: ERROR: Unexpected Timing Partition Response: 0x%h.", curTick, resp);
-        $fflush();
+        swcon.printMessage2P(3, curTick, resp);
       end
     endcase
 

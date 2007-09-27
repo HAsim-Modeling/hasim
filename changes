@@ -8275,3 +8275,42 @@ Directory modules/common/platform_interface/hasim
 
 - added a new connection - a direct link to RRR - to
   platform interface and connection terminus
+
+----------
+aparasha    Date: Thu Sep 27 14:18:59 EDT 2007  CSN: CSN-hasim-274
+                  Thu Sep 27 18:18:59 UTC 2007
+
+
+Directory modules/controller/connection-terminus
+ connection-terminus.awb   Locally Modified          273 
+ ConnectionTerminus.bsv    Locally Modified          273 
+
+Directory modules/controller/software
+ software-controller.cpp   Locally Modified          272 
+ software-controller.h     Locally Modified          272 
+ software-controller.awb   Locally Modified          272 
+ SoftwareController.bsv    Locally Added               0 
+ swcon-service.cpp         Locally Modified          272 
+
+Directory modules/controller/hybrid-simple
+ HybridSimpleController.bsv Locally Modified          272 
+
+Directory modules/controller/hybrid-null
+ hybrid-null-controller.awb Locally Modified          272 
+ HybridNullController.bsv  Locally Modified          272 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          273 
+
+Directory config/pm/hasim/demos/switch_to_led
+ adder4x4_software.apm     Locally Modified          272 
+
+- added a BSV stub to the software controller module which
+  hides the RRR communication protocols and exports a nice
+  clean interface to the hardware controller.
+
+- several miscellaneous bug fixes, additions, cleanups.
+
+Hybrid simple MIPS controller now waits for start signal
+from software, and displays status messages by talking to
+software controller.

@@ -97,8 +97,6 @@ SWCON_SERVICE_CLASS::Request(
     UINT32 arg2,
     UINT32 *result)
 {
-    char buf[9];
-    UINT32 mask = 0x000000FF;
     bool retval = false;
 
     // decode request
@@ -109,20 +107,8 @@ SWCON_SERVICE_CLASS::Request(
             retval = true;
             break;
 
-        case 1: // dump string
-            buf[0] =  arg0        & mask;
-            buf[1] = (arg0 >>  8) & mask;
-            buf[2] = (arg0 >> 16) & mask;
-            buf[3] = (arg0 >> 24) & mask;
-
-            buf[4] =  arg1        & mask;
-            buf[5] = (arg1 >>  8) & mask;
-            buf[6] = (arg1 >> 16) & mask;
-            buf[7] = (arg1 >> 24) & mask;
-
-            buf[8] = 0;
-
-            controller->PrintString(buf);
+        case 1: // print message
+            controller->PrintMessage(arg1, arg2);
             retval = false;
             break;
 

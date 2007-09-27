@@ -27,11 +27,12 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
     Connection_Server#(MEM_Request, MEM_Value) link_memory       <- mkConnection_Server("vdev_memory");
     Connection_Send#(MEM_Addr)                 link_memory_inval <- mkConnection_Send("vdev_memory_invalidate");
 
-    // direct RRR connection
-    Connection_Server#(RRR_Request, RRR_Response) link_rrr <- mkConnection_Server("rrr_client");
+    // direct RRR connections
+    Connection_Server#(RRR_Request, RRR_Response) link_rrr_diov <- mkConnection_Server("rrr_client_diov");
+    Connection_Receive#(RRR_Request) link_rrr_void <- mkConnection_Receive("rrr_client_void");
 
     // state of RRR request
-    Reg#(Bit#(1))   rrrState    <- mkReg(0);
+    Reg#(Bit#(2))   rrrState    <- mkReg(0);
 
     // instantiate low-level platform interface
     LowLevelPlatformInterface       llpint          <- mkLowLevelPlatformInterface();
@@ -101,34 +102,41 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
     
     endrule
 
-    // RRR link: we can only allow 1 outstanding request per link at
-    // any instant
-    rule send_rrr_req (rrrState == 0);
+    // send non-void RRR request
+    rule send_rrr_req_diov (rrrState == 0);
 
         // read in RRR request from connection and translate
         // it to a method call to RRR client
-        let req = link_rrr.getReq();
-        link_rrr.deq();
+        let req = link_rrr_diov.getReq();
+        link_rrr_diov.deq();
 
         llpint.rrrClient.makeRequest(req);
 
-        if (req.needResponse == True)
-            rrrState <= 1;
-        else
-            rrrState <= 0;
+        // move to a state where we wait for a response
+        rrrState <= 1;
 
     endrule
 
-    // RRR link: we should only try to obtain a response if we have
-    // sent out a request
+    // send void RRR request
+    rule send_rrr_req_void (rrrState == 0);
+
+        // read in RRR request from connection and translate
+        // it to a method call to RRR client
+        let req = link_rrr_void.receive();
+        link_rrr_void.deq();
+
+        llpint.rrrClient.makeRequest(req);
+
+        // stay in the same state, we don't need a response
+        rrrState <= 0;  
+
+    endrule
+
+    // wait for RRR response
     rule send_rrr_resp (rrrState == 1);
-
-        // call RRR client method to receive a response, and
-        // send the result on the connection
         let resp <- llpint.rrrClient.getResponse();
-        link_rrr.makeResp(resp);
+        link_rrr_diov.makeResp(resp);
         rrrState <= 0;
-
     endrule
 
     // return interface to top-level wires

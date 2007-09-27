@@ -22,7 +22,7 @@ class SOFTWARE_CONTROLLER_CLASS: public HASIM_SW_MODULE_CLASS
         void Main();
         void Uninit();
         void SchedulerLoop();
-        void PrintString(char []);
+        void PrintMessage(UINT32, UINT32);
         void CallbackExit(int);
 };
 

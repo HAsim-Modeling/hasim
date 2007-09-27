@@ -13,6 +13,7 @@
 #
 # %attributes hasim
 #
+# %sources -t BSV -v PUBLIC     SoftwareController.bsv
 # %sources -t CPP -v PUBLIC     software-controller.h main.h swcon-service.h
 # %sources -t CPP -v PRIVATE    software-controller.cpp main.cpp swcon-service.cpp
 # %sources -t RRR -v PUBLIC     swcon-service.rrr

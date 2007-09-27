@@ -11,8 +11,8 @@
 # %desc Hasim hybrid null controller
 # %provides hasim_controller
 #
-# %requires connection_terminus
 # %requires software_controller
+# %requires connection_terminus
 #
 # %attributes hasim
 #

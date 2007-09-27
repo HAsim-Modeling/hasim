@@ -6,6 +6,17 @@
 
 using namespace std;
 
+// map table of messages
+const int MSG_TYPES = 5;
+char MSG_TABLE[MSG_TYPES][256] =
+{
+    "[%0d]: controller: program started.\n",
+    "[%0d]: controller: test program finished succesfully.\n",
+    "[%0d]: controller: test program finished, one or more failures occurred.\n",
+    "[%0d]: controller: ERROR: unexpected timing partition response: ",
+    "0x%x\n"
+};
+
 // constructor
 SOFTWARE_CONTROLLER_CLASS::SOFTWARE_CONTROLLER_CLASS()
 {
@@ -49,10 +60,19 @@ SOFTWARE_CONTROLLER_CLASS::SchedulerLoop()
 
 // print string
 void
-SOFTWARE_CONTROLLER_CLASS::PrintString(
-    char buf[])
+SOFTWARE_CONTROLLER_CLASS::PrintMessage(
+    UINT32 msgclass,
+    UINT32 payload)
 {
-    cout << buf << endl;
+    if (msgclass >= MSG_TYPES)
+    {
+        cerr << "software controller: invalid message class: "
+             << msgclass << endl;
+        CallbackExit(1);
+    }
+
+    char *fmtstr = MSG_TABLE[msgclass];
+    printf(fmtstr, payload);
 }
 
 // callback-exit

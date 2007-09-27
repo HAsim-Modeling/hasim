@@ -8324,3 +8324,13 @@ Directory modules/controller/hybrid-simple
  HybridSimpleController.bsv Locally Modified          274 
 
 small bugfix.
+
+----------
+jsemer      Date: Thu Sep 27 17:46:44 EDT 2007  CSN: CSN-hasim-276
+                  Thu Sep 27 21:46:44 UTC 2007
+
+
+Directory config/pm/hasim/demos/switch_to_led
+ square4x4_software.apm    Locally Modified          275 
+
+Use correct fpga environment.

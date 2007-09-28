@@ -8334,3 +8334,23 @@ Directory config/pm/hasim/demos/switch_to_led
  square4x4_software.apm    Locally Modified          275 
 
 Use correct fpga environment.
+
+----------
+jsemer      Date: Fri Sep 28 13:59:46 EDT 2007  CSN: CSN-hasim-277
+                  Fri Sep 28 17:59:46 UTC 2007
+
+
+Directory experiments
+ hasim/                    Locally Added               0 
+
+Directory experiments/hasim
+ quick/                    Locally Added               0 
+
+Directory experiments/hasim/quick
+ quick.benchmarks          Locally Added               0 
+ quick.models              Locally Added               0 
+
+Directory .
+ experiments/              Locally Added               0 
+
+Added initial set of experiments for regression testing.

@@ -1,0 +1,11 @@
+# ***************
+#
+# Null Input Models
+#
+# ***************
+
+experiments = traffic_light
+#
+# As simple configuration
+#
+config/bm/bluespec/demo.cfx/null.cfg

@@ -8367,3 +8367,20 @@ Intermediate checkin towards building support for sending
 stats and events to the software partition. The hybrid controller's
 code will be in an inconsistent state after this commit, and any
 models using it will be broken.
+
+----------
+pellauer    Date: Tue Oct  2 15:13:20 EDT 2007  CSN: CSN-hasim-279
+                  Tue Oct  2 19:13:20 UTC 2007
+
+
+Directory modules/controller/hybrid-simple
+ HybridSimpleController.bsv Locally Modified          278 
+
+Directory modules/common/modellib
+ Stats.bsv                 Locally Modified          278 
+ Events.bsv                Locally Modified          278 
+
+
+Added Hybrid Event and Stat controllers. The HybridSimpleController can use these to print them out.
+
+Michael P.

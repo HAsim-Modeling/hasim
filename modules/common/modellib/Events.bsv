@@ -29,7 +29,7 @@ typedef union tagged
   Bit#(32) EVT_Boundary;
   void EVT_NoEvent;
   Bit#(32) EVT_Event;
-  File EVT_SetLog;
+  File EVT_SetLog; //Simulation only
   void EVT_Disable;
   void EVT_Enable;
 }
@@ -168,13 +168,24 @@ interface EventController;
 
   method Action enableEvents();
   method Action disableEvents();
+  method ActionValue#(EventInfo) getNextEvent();
 
 endinterface
 
+typedef struct
+{
+        Bit#(1) eventBoundary; //Is it a model cycle boundary?
+        Bit#(8)  eventStringID;
+        Bit#(32) eventData;
+}
+  EventInfo deriving (Eq, Bits);
+
+
+
 typedef enum
 {
-  EVC_Initialize,
-  EVC_PassLogFile,
+  EVC_Initialize,  //Simulation only
+  EVC_PassLogFile, //Simulation only
   EVC_Enabled,
   EVC_Enabling,
   EVC_Disabling,
@@ -188,12 +199,14 @@ module [Connected_Module] mkEventController_Simulation
                 (EventController);
 
   FIFO#(EventData) chainQ <- mkFIFO();
+  FIFO#(EventInfo) eventQ <- mkFIFO();
   Reg#(Bit#(32))  fpga_cc <- mkReg(0);
   Reg#(Bit#(32))  nextBeat <- mkReg(1000);
   Reg#(Bit#(32))       cc <- mkReg(0);
-  Reg#(Bit#(32))      cur <- mkReg(0);
+  Reg#(Bit#(8))       cur <- mkReg(0);
   Reg#(EVC_State)   state <- mkReg(EVC_Initialize);
   let           event_log <- mkReg(InvalidFile);
+  Reg#(Bool)   isBoundary <- mkReg(False);
   
   rule tick (True);
   
@@ -239,18 +252,22 @@ module [Connected_Module] mkEventController_Simulation
       tagged EVT_Boundary .t:
       begin
 	cur <= 0;
+	isBoundary <= True;
       end
       tagged EVT_NoEvent:
       begin
         //Record information here
 	//$fdisplay(event_log, "EVENT %0d: ****", cur);
 	cur <= cur + 1;
+	isBoundary <= False;
       end
       tagged EVT_Event .d:
       begin
         //Record information here
         //$fdisplay(event_log, "EVENT %0d: 0x%h", cur, d);
 	cur <= cur + 1;
+        eventQ.enq(EventInfo {eventBoundary: pack(isBoundary), eventStringID: cur, eventData: d});
+	isBoundary <= False;
       end
       default: noAction;
     endcase
@@ -306,6 +323,106 @@ module [Connected_Module] mkEventController_Simulation
   method Action disableEvents();
   
     state <= EVC_Disabling;
+    
+  endmethod
+  
+  method ActionValue#(EventInfo) getNextEvent();
+  
+    eventQ.deq();
+    return eventQ.first();
+    
+  endmethod
+  
+endmodule
+
+module [Connected_Module] mkEventController_Hybrid
+    //interface:
+                (EventController);
+
+  FIFO#(EventData) chainQ <- mkFIFO();
+  FIFO#(EventInfo) eventQ <- mkFIFO();
+  Reg#(Bit#(8))       cur <- mkReg(0);
+  Reg#(EVC_State)   state <- mkReg(EVC_Idle);
+  Reg#(Bool) isBoundary <- mkReg(False);
+  
+  
+  
+  rule process (state != EVC_Initialize);
+  
+    chainQ.deq();
+    
+    case (chainQ.first()) matches
+      tagged EVT_Boundary .t:
+      begin
+	cur <= 0;
+	isBoundary <= True;
+      end
+      tagged EVT_NoEvent:
+      begin
+	cur <= cur + 1;
+	isBoundary <= False;
+      end
+      tagged EVT_Event .d:
+      begin
+        eventQ.enq(EventInfo {eventBoundary: pack(isBoundary), eventStringID: cur, eventData: d});
+	isBoundary <= False;
+	cur <= cur + 1;
+      end
+      default: noAction;
+    endcase
+     
+  endrule
+  
+  let canStart = !((state == EVC_Idle) || (state == EVC_Initialize));
+  let nextCmd = case (state) matches
+                  tagged EVC_Disabling:   tagged EVT_Disable;
+		  tagged EVC_Enabling:    tagged EVT_Enable;
+		  tagged EVC_Enabled:     tagged EVT_Boundary 0;
+		  default: ?;
+		endcase;
+  
+  let nextState = case (state) matches
+                  tagged EVC_Disabling:   EVC_Idle;
+                  tagged EVC_Enabling:    EVC_Enabled;
+		  tagged EVC_Enabled:     EVC_Enabled;
+		  default: ?;
+		endcase;
+    
+  let chn = (interface FIFO;
+  
+	        method CON_Data first() if (canStart) = marshall(nextCmd);
+		method Action deq() if (canStart);
+		  state <= nextState;
+		endmethod
+	        method Action enq(CON_Data x) = chainQ.enq(unmarshall(x));
+		method Action clear() = noAction;
+
+	     endinterface);
+
+  //Get our type for typechecking
+  Bit#(32) msg = ?;
+  let mytype = printType(typeOf(msg));
+
+  //Add our interface to the ModuleCollect collection
+  let inf = CChain_Info {cnum: 0, ctype: mytype, conn: chn};
+  addToCollection(tagged LChain inf);
+
+  method Action enableEvents();
+    //XXX More must be done to get all event recorders onto the same model CC.
+    state <= EVC_Enabling;
+    
+  endmethod
+
+  method Action disableEvents();
+  
+    state <= EVC_Disabling;
+    
+  endmethod
+  
+  method ActionValue#(EventInfo) getNextEvent();
+  
+    eventQ.deq();
+    return eventQ.first();
     
   endmethod
   

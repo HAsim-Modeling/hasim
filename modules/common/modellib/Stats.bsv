@@ -26,7 +26,7 @@ typedef union tagged
 {
   void ST_Boundary;
   Bit#(`HASIM_STATS_SIZE) ST_Val;
-  File ST_LogFile;
+  File ST_LogFile; //Simulation Only
   void ST_Enable;
   void ST_Disable;
   void ST_Reset;
@@ -174,15 +174,25 @@ interface StatController;
   method Action disableStats();
   method Action resetStats();
   method Action dumpStats();
+  method ActionValue#(StatInfo) getNextStat();
 
 endinterface
+
+typedef struct
+{
+        Bit#(8)  statStringID;
+        Bit#(32) statValue;
+}
+  StatInfo deriving (Eq, Bits);
+
 
 module [Connected_Module] mkStatController_Simulation
     //interface:
                 (StatController);
 
   FIFO#(StatData)  chainQ <- mkFIFO();
-  Reg#(Bit#(32))      cur <- mkReg(0);
+  FIFO#(StatInfo)  statQ  <- mkFIFO();
+  Reg#(Bit#(8))      cur <- mkReg(0);
   Reg#(StatConState)  state <- mkReg(SC_Initializing);
   let stats_log <- mkReg(InvalidFile);
     
@@ -216,8 +226,8 @@ module [Connected_Module] mkStatController_Simulation
       tagged ST_Val .d:
       begin
         //$display("STAT %0d: 0x%h", cur, d);
-	//Record stat here
 	cur <= cur + 1;
+	statQ.enq(StatInfo {statStringID: cur, statValue: d});
       end
       default:
       begin
@@ -287,5 +297,112 @@ module [Connected_Module] mkStatController_Simulation
   
   endmethod
   
+  method ActionValue#(StatInfo) getNextStat();
+  
+    statQ.deq();
+    return statQ.first();
+    
+  endmethod
+  
+endmodule
+
+module [Connected_Module] mkStatController_Hybrid
+    //interface:
+                (StatController);
+
+  FIFO#(StatData)  chainQ <- mkFIFO();
+  FIFO#(StatInfo)  statQ  <- mkFIFO();
+  Reg#(Bit#(8))      cur  <- mkReg(0);
+  Reg#(StatConState)  state <- mkReg(SC_Idle);
+    
+
+  rule process (state != SC_Initializing);
+  
+    chainQ.deq();
+    
+    case (chainQ.first()) matches
+      tagged ST_Boundary:
+      begin
+	cur <= 0;
+	state <= SC_Idle;
+      end
+      tagged ST_Val .d:
+      begin
+	cur <= cur + 1;
+	statQ.enq(StatInfo {statStringID: cur, statValue: d});
+      end
+      default:
+      begin
+	cur <= 0;
+	state <= SC_Idle;
+      end
+    endcase
+     
+  endrule
+  
+  let canStart = !((state == SC_Idle) || (state == SC_Initializing));
+  
+  let nextCommand = case (state) matches
+                     tagged SC_Dumping:      return tagged ST_Boundary;
+		     tagged SC_Enabling:     return tagged ST_Enable;
+		     tagged SC_Disabling:    return tagged ST_Disable;
+		     tagged SC_Reseting:     return tagged ST_Reset;
+		     default:                return tagged ST_Boundary;
+		   endcase;
+  
+  let chn = (interface FIFO;
+  
+	        method CON_Data first() if (canStart);
+		
+		  return marshall(nextCommand);
+		   
+		endmethod
+		
+		method Action deq() if (canStart);
+		  state <= SC_Idle;
+		endmethod
+	        method Action enq(CON_Data x) = chainQ.enq(unmarshall(x));
+		method Action clear() = noAction;
+
+	     endinterface);
+
+  //Get our type for typechecking
+  Bit#(`HASIM_STATS_SIZE) msg = ?;
+  let mytype = printType(typeOf(msg));
+
+  //Add our interface to the ModuleCollect collection
+  let inf = CChain_Info {cnum: 1, ctype: mytype, conn: chn};
+  addToCollection(tagged LChain inf);
+  
+  method Action enableStats if (state == SC_Idle);
+  
+    state <= SC_Enabling;
+  
+  endmethod
+  
+  method Action disableStats if (state == SC_Idle);
+  
+    state <= SC_Disabling;
+  
+  endmethod
+  
+  method Action resetStats if (state == SC_Idle);
+  
+    state <= SC_Reseting;
+  
+  endmethod
+  
+  method Action dumpStats if (state == SC_Idle);
+  
+    state <= SC_Dumping;
+  
+  endmethod
+  
+  method ActionValue#(StatInfo) getNextStat();
+  
+    statQ.deq();
+    return statQ.first();
+    
+  endmethod
   
 endmodule

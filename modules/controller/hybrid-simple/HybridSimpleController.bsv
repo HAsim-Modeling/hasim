@@ -47,8 +47,8 @@ module [HASim_Module] mkController ();
 
   Reg#(ConState) state <- mkReg(CON_Init);
   
-  EventController     event_controller    <- mkEventController_Simulation();
-  StatController      stat_controller     <- mkStatController_Simulation();
+  EventController     event_controller    <- mkEventController_Hybrid();
+  StatController      stat_controller     <- mkStatController_Hybrid();
   
   Connection_Chain#(Command)   link_command   <- mkConnection_Chain(2);
   Connection_Chain#(Response)  link_response  <- mkConnection_Chain(3);
@@ -102,13 +102,13 @@ module [HASim_Module] mkController ();
 	  if (pf)
 	  begin
 	    link_leds.send(4'b1001);
-        swcon.printMessage1P(1, truncate(curTick));
+            swcon.printMessage1P(1, truncate(curTick));
 	    passed <= True;
 	  end
 	  else
 	  begin
 	    link_leds.send(4'b1101);
-        swcon.printMessage1P(2, truncate(curTick));
+            swcon.printMessage1P(2, truncate(curTick));
 	  end
 	  stat_controller.dumpStats();
 	  state <= CON_Finished;
@@ -137,6 +137,7 @@ module [HASim_Module] mkController ();
         eventTick <= eventTick + 1;
 
   endrule
+ 
  
   rule finishUp (state == CON_Finished && finishing != 0);
   

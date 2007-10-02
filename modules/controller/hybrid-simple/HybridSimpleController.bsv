@@ -12,6 +12,7 @@ import soft_connections::*;
 import platform_interface::*;
 import hasim_local_controller::*;
 import software_controller::*;
+import connection_terminus::*;
 
 //************* OneTest Controller **************
 
@@ -40,6 +41,7 @@ module [HASim_Module] mkController ();
   //*********** State ***********
   
   Reg#(Bit#(64)) curTick <- mkReg(minBound);
+  Reg#(Bit#(64)) eventTick <- mkReg(minBound);
   Reg#(Bit#(16)) finishing <- mkReg(`HASIM_CONTROLLER_COOLDOWN);
   Reg#(Bool)     passed <- mkReg(False);
 
@@ -86,7 +88,7 @@ module [HASim_Module] mkController ();
      state <= CON_Running;
      link_leds.send(4'b0011);
 
-     swcon.printMessage1P(0, curTick);
+     swcon.printMessage1P(0, truncate(curTick));
 
   endrule
   
@@ -100,24 +102,40 @@ module [HASim_Module] mkController ();
 	  if (pf)
 	  begin
 	    link_leds.send(4'b1001);
-        swcon.printMessage1P(1, curTick);
+        swcon.printMessage1P(1, truncate(curTick));
 	    passed <= True;
 	  end
 	  else
 	  begin
 	    link_leds.send(4'b1101);
-        swcon.printMessage1P(2, curTick);
+        swcon.printMessage1P(2, truncate(curTick));
 	  end
 	  stat_controller.dumpStats();
 	  state <= CON_Finished;
 	end
       default:
       begin
-        swcon.printMessage2P(3, curTick, resp);
+        swcon.printMessage2P(3, truncate(curTick), 0);
       end
     endcase
 
     
+  endrule
+
+  rule dumpStat (state == CON_Finished && finishing != 0);
+
+    StatInfo si <- stat_controller.getNextStat();
+    swcon.printStat(si.statStringID, si.statValue);
+
+  endrule
+
+  rule dumpEvent (True);
+
+    EventInfo ei <- event_controller.getNextEvent();
+    swcon.printEvent(eventTick, ei.eventStringID, ei.eventData);
+    if (ei.isBoundary)
+        eventTick <= eventTick + 1;
+
   endrule
  
   rule finishUp (state == CON_Finished && finishing != 0);

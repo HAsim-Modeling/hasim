@@ -8354,3 +8354,16 @@ Directory .
  experiments/              Locally Added               0 
 
 Added initial set of experiments for regression testing.
+
+----------
+aparasha    Date: Tue Oct  2 14:16:12 EDT 2007  CSN: CSN-hasim-278
+                  Tue Oct  2 18:16:12 UTC 2007
+
+
+Directory modules/controller/hybrid-simple
+ HybridSimpleController.bsv Locally Modified          277 
+
+Intermediate checkin towards building support for sending
+stats and events to the software partition. The hybrid controller's
+code will be in an inconsistent state after this commit, and any
+models using it will be broken.

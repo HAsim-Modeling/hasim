@@ -8,6 +8,10 @@ import soft_connections::*;
 
 `define REQ_STATE_SYNC      0
 `define REQ_PRINT_MSG       1
+`define REQ_PRINT_EVENT     2
+`define REQ_PRINT_STAT      3
+
+`define EVENT_STRING_DEC_NEWLINE    5
 
 `define POLL_INTERVAL       100000
 
@@ -16,6 +20,8 @@ interface SoftwareController;
     method Bit#(32) getSimState();
     method Action   printMessage1P(Bit#(32) msgclass, Bit#(32) payload);
     method Action   printMessage2P(Bit#(32) msgclass, Bit#(32) payload0, Bit#(32) payload1);
+    method Action   printEvent(Bit#(8) stringID, Bit#(64) modelcycle, Bit#(32) payload);
+    method Action   printStat(Bit#(8) stringID, Bit#(32) value);
 endinterface
 
 module [HASim_Module] mkSoftwareController(SoftwareController);
@@ -24,6 +30,7 @@ module [HASim_Module] mkSoftwareController(SoftwareController);
     Reg#(Bit#(32))  pollCounter     <- mkReg(0);
     Reg#(Bit#(32))  simState        <- mkReg(`HWSTATE_IDLE);
     Reg#(Bit#(8))   reqState        <- mkReg(0);
+    Reg#(Bit#(32))  pendingReqType  <- mkReg(0);
     Reg#(Bit#(32))  pendingMsgClass <- mkReg(0);
     Reg#(Bit#(32))  pendingPayload  <- mkReg(0);
    
@@ -57,12 +64,12 @@ module [HASim_Module] mkSoftwareController(SoftwareController);
         reqState <= 0;
     endrule
 
-    // send pending print message, if any
-    rule send_pending_print_req (reqState == 2);
+    // send pending message/event/stat, if any
+    rule send_pending_req (reqState == 2);
         
         RRR_Request req;
         req.serviceID       = `SID_SWCON_SERVICE;
-        req.param0          = `REQ_PRINT_MSG;
+        req.param0          = pendingReqType;
         req.param1          = pendingMsgClass;
         req.param2          = pendingPayload;
         req.needResponse    = False;
@@ -114,10 +121,42 @@ module [HASim_Module] mkSoftwareController(SoftwareController);
         link_rrr_void.send(req);
 
         // buffer second payload, we will send it next cycle
+        pendingReqType  <= `REQ_PRINT_MSG;
         pendingMsgClass <= msgclass + 1;
         pendingPayload  <= payload1;
         reqState <= 2;
+    endmethod
 
+    // print event in 2 stages
+    method Action   printEvent(Bit#(8) stringID, Bit#(64) modelcycle, Bit#(32) payload);
+        RRR_Request req;
+        req.serviceID       = `SID_SWCON_SERVICE;
+        req.param0          = `REQ_PRINT_EVENT;
+        req.param1          = zeroExtend(stringID);
+        req.param2          = truncate(modelcycle);
+        req.needResponse    = False;
+
+        link_rrr_void.send(req);
+
+        // buffer second payload, we will send it next cycle
+        pendingReqType  <= `REQ_PRINT_EVENT;
+        pendingMsgClass <= `EVENT_STRING_DEC_NEWLINE;
+        pendingPayload  <= payload;
+        reqState <= 2;
+    endmethod
+
+    // print stat
+    method Action printStat(Bit#(8) stringID, Bit#(32) value) if (reqState == 0);
+        RRR_Request req;
+        req.serviceID       = `SID_SWCON_SERVICE;
+        req.param0          = `REQ_PRINT_STAT;
+        req.param1          = zeroExtend(stringID);
+        req.param2          = value;
+        req.needResponse    = False;
+
+        link_rrr_void.send(req);
+
+        reqState <= 0;
     endmethod
 
 endmodule

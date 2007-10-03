@@ -112,6 +112,16 @@ SWCON_SERVICE_CLASS::Request(
             retval = false;
             break;
 
+        case 2: // print event
+            controller->PrintEvent(arg1, arg2);
+            retval = false;
+            break;
+
+        case 3: // print stat
+            controller->PrintStat(arg1, arg2);
+            retval = false;
+            break;
+
         default:
             cerr << "controller service: invalid request" << endl;
             CallbackExit(1);

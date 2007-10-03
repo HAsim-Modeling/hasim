@@ -68,45 +68,45 @@ module [Connected_Module] mkStatCounter_Enabled#(String statname)
   
   let chn = (interface FIFO;
   
-	        method CON_Data first() = marshall(chainQ.first());
-		method Action deq() = chainQ.deq();
-		method Action clear() = noAction;
-	        method Action enq(CON_Data x) if (state == Recording);
-		
-		  StatData st = unmarshall(x);
-		  
-		  case (st) matches 
-		    tagged ST_Boundary .t:
-		    begin
-		      state <= Dumping;
-		    end
-		    tagged ST_LogFile .fd: 
-		    begin
-		      stats_log <= fd;
-		      chainQ.enq(st);
-		    end
-		    tagged ST_Reset: 
-		    begin
-		      stat <= 0;
-		      chainQ.enq(st);
-		    end
-		    tagged ST_Disable: 
-		    begin
-		      enabled <= False;
-		      chainQ.enq(st);
-		    end
-		    tagged ST_Enable: 
-		    begin
-		      enabled <= True;
-		      chainQ.enq(st);
-		    end
-		    default: chainQ.enq(st);
-		  endcase
-		  
-		endmethod
+                method CON_Data first() = marshall(chainQ.first());
+                method Action deq() = chainQ.deq();
+                method Action clear() = noAction;
+                method Action enq(CON_Data x) if (state == Recording);
+                
+                  StatData st = unmarshall(x);
+                  
+                  case (st) matches 
+                    tagged ST_Boundary .t:
+                    begin
+                      state <= Dumping;
+                    end
+                    tagged ST_LogFile .fd: 
+                    begin
+                      stats_log <= fd;
+                      chainQ.enq(st);
+                    end
+                    tagged ST_Reset: 
+                    begin
+                      stat <= 0;
+                      chainQ.enq(st);
+                    end
+                    tagged ST_Disable: 
+                    begin
+                      enabled <= False;
+                      chainQ.enq(st);
+                    end
+                    tagged ST_Enable: 
+                    begin
+                      enabled <= True;
+                      chainQ.enq(st);
+                    end
+                    default: chainQ.enq(st);
+                  endcase
+                  
+                endmethod
 
-	     endinterface);
-	     
+             endinterface);
+             
   //Get our type for typechecking
   Bit#(`HASIM_STATS_SIZE) msg = ?;
   let mytype = printType(typeOf(msg));
@@ -132,16 +132,16 @@ module [Connected_Module] mkStatCounter_Disabled#(String statname)
   
   let chn = (interface FIFO;
   
-	        method CON_Data first() = marshall(chainQ.first());
-		method Action deq() = chainQ.deq();
-		method Action clear() = noAction;
-	        method Action enq(CON_Data x);
-		
-		  chainQ.enq(unmarshall(x));
-		  
-		endmethod
+                method CON_Data first() = marshall(chainQ.first());
+                method Action deq() = chainQ.deq();
+                method Action clear() = noAction;
+                method Action enq(CON_Data x);
+                
+                  chainQ.enq(unmarshall(x));
+                  
+                endmethod
 
-	     endinterface);
+             endinterface);
 
   //Get our type for typechecking
   Bit#(`HASIM_STATS_SIZE) msg = ?;
@@ -219,20 +219,20 @@ module [Connected_Module] mkStatController_Simulation
     case (chainQ.first()) matches
       tagged ST_Boundary:
       begin
-	cur <= 0;
-	state <= SC_Idle;
-	$fdisplay(stats_log, "****** STATS DUMP ENDS ******");
+        cur <= 0;
+        state <= SC_Idle;
+        $fdisplay(stats_log, "****** STATS DUMP ENDS ******");
       end
       tagged ST_Val .d:
       begin
         //$display("STAT %0d: 0x%h", cur, d);
-	cur <= cur + 1;
-	statQ.enq(StatInfo {statStringID: cur, statValue: d});
+        cur <= cur + 1;
+        statQ.enq(StatInfo {statStringID: cur, statValue: d});
       end
       default:
       begin
-	cur <= 0;
-	state <= SC_Idle;
+        cur <= 0;
+        state <= SC_Idle;
       end
     endcase
      
@@ -243,26 +243,26 @@ module [Connected_Module] mkStatController_Simulation
   let nextCommand = case (state) matches
                      tagged SC_SetLogFile:   return tagged ST_LogFile stats_log;
                      tagged SC_Dumping:      return tagged ST_Boundary;
-		     tagged SC_Enabling:     return tagged ST_Enable;
-		     tagged SC_Disabling:    return tagged ST_Disable;
-		     tagged SC_Reseting:     return tagged ST_Reset;
-		   endcase;
+                     tagged SC_Enabling:     return tagged ST_Enable;
+                     tagged SC_Disabling:    return tagged ST_Disable;
+                     tagged SC_Reseting:     return tagged ST_Reset;
+                   endcase;
   
   let chn = (interface FIFO;
   
-	        method CON_Data first() if (canStart);
-		
-		  return marshall(nextCommand);
-		   
-		endmethod
-		
-		method Action deq() if (canStart);
-		  state <= SC_Idle;
-		endmethod
-	        method Action enq(CON_Data x) = chainQ.enq(unmarshall(x));
-		method Action clear() = noAction;
+                method CON_Data first() if (canStart);
+                
+                  return marshall(nextCommand);
+                   
+                endmethod
+                
+                method Action deq() if (canStart);
+                  state <= SC_Idle;
+                endmethod
+                method Action enq(CON_Data x) = chainQ.enq(unmarshall(x));
+                method Action clear() = noAction;
 
-	     endinterface);
+             endinterface);
 
   //Get our type for typechecking
   Bit#(`HASIM_STATS_SIZE) msg = ?;
@@ -323,18 +323,18 @@ module [Connected_Module] mkStatController_Hybrid
     case (chainQ.first()) matches
       tagged ST_Boundary:
       begin
-	cur <= 0;
-	state <= SC_Idle;
+        cur <= 0;
+        state <= SC_Idle;
       end
       tagged ST_Val .d:
       begin
-	cur <= cur + 1;
-	statQ.enq(StatInfo {statStringID: cur, statValue: d});
+        cur <= cur + 1;
+        statQ.enq(StatInfo {statStringID: cur, statValue: d});
       end
       default:
       begin
-	cur <= 0;
-	state <= SC_Idle;
+        cur <= 0;
+        state <= SC_Idle;
       end
     endcase
      
@@ -344,27 +344,27 @@ module [Connected_Module] mkStatController_Hybrid
   
   let nextCommand = case (state) matches
                      tagged SC_Dumping:      return tagged ST_Boundary;
-		     tagged SC_Enabling:     return tagged ST_Enable;
-		     tagged SC_Disabling:    return tagged ST_Disable;
-		     tagged SC_Reseting:     return tagged ST_Reset;
-		     default:                return tagged ST_Boundary;
-		   endcase;
+                     tagged SC_Enabling:     return tagged ST_Enable;
+                     tagged SC_Disabling:    return tagged ST_Disable;
+                     tagged SC_Reseting:     return tagged ST_Reset;
+                     default:                return tagged ST_Boundary;
+                   endcase;
   
   let chn = (interface FIFO;
   
-	        method CON_Data first() if (canStart);
-		
-		  return marshall(nextCommand);
-		   
-		endmethod
-		
-		method Action deq() if (canStart);
-		  state <= SC_Idle;
-		endmethod
-	        method Action enq(CON_Data x) = chainQ.enq(unmarshall(x));
-		method Action clear() = noAction;
+                method CON_Data first() if (canStart);
+                
+                  return marshall(nextCommand);
+                   
+                endmethod
+                
+                method Action deq() if (canStart);
+                  state <= SC_Idle;
+                endmethod
+                method Action enq(CON_Data x) = chainQ.enq(unmarshall(x));
+                method Action clear() = noAction;
 
-	     endinterface);
+             endinterface);
 
   //Get our type for typechecking
   Bit#(`HASIM_STATS_SIZE) msg = ?;

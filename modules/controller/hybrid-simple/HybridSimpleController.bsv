@@ -132,8 +132,8 @@ module [HASim_Module] mkController ();
   rule dumpEvent (True);
 
     EventInfo ei <- event_controller.getNextEvent();
-    swcon.printEvent(eventTick, ei.eventStringID, ei.eventData);
-    if (ei.isBoundary)
+    swcon.printEvent(ei.eventStringID, eventTick, ei.eventData);
+    if (ei.eventBoundary == 1)
         eventTick <= eventTick + 1;
 
   endrule

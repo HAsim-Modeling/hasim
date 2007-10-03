@@ -8384,3 +8384,27 @@ Directory modules/common/modellib
 Added Hybrid Event and Stat controllers. The HybridSimpleController can use these to print them out.
 
 Michael P.
+
+----------
+aparasha    Date: Wed Oct  3 14:38:51 EDT 2007  CSN: CSN-hasim-280
+                  Wed Oct  3 18:38:51 UTC 2007
+
+
+Directory modules/controller/hybrid-simple
+ HybridSimpleController.bsv Locally Modified          279 
+
+Directory modules/controller/software
+ software-controller.h     Locally Modified          279 
+ SoftwareController.bsv    Locally Modified          279 
+ swcon-service.cpp         Locally Modified          279 
+ software-controller.cpp   Locally Modified          279 
+
+Directory modules/common/modellib
+ Stats.bsv                 Locally Modified          279 
+ Events.bsv                Locally Modified          279 
+
+- intermediate checkin: updated software controller with
+  preliminary support for printing stats and events. Hybrid
+  models are still broken.
+
+- changed Tabs to Spaces in Stats.bsv and Events.bsv

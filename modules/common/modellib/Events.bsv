@@ -58,34 +58,34 @@ module [Connected_Module] mkEventRecorder_Enabled#(String eventname)
       
   let chn = (interface FIFO;
   
-	        method CON_Data first() = marshall(chainQ.first());
-		method Action deq() = chainQ.deq();
-		method Action clear() = noAction;
-	        method Action enq(CON_Data x) if (!stall);
-		
-		  EventData evt = unmarshall(x);
-		  
-		  case (evt) matches 
-		    tagged EVT_Boundary .t:
-		    begin
-		      stall <= True;
-		      case (localQ.first()) matches
-			tagged EVT_NoEvent:    $fdisplay(event_log, "[%d]: %s:", t, eventname);
-			tagged EVT_Event .et: $fdisplay(event_log, "[%d]: %s: %0d", t, eventname, et);
-			default: noAction;
-		      endcase
-		    end
+                method CON_Data first() = marshall(chainQ.first());
+                method Action deq() = chainQ.deq();
+                method Action clear() = noAction;
+                method Action enq(CON_Data x) if (!stall);
+                
+                  EventData evt = unmarshall(x);
+                  
+                  case (evt) matches 
+                    tagged EVT_Boundary .t:
+                    begin
+                      stall <= True;
+                      case (localQ.first()) matches
+                        tagged EVT_NoEvent:    $fdisplay(event_log, "[%d]: %s:", t, eventname);
+                        tagged EVT_Event .et: $fdisplay(event_log, "[%d]: %s: %0d", t, eventname, et);
+                        default: noAction;
+                      endcase
+                    end
                     tagged EVT_Disable: enabled <= False;
                     tagged EVT_Enable:  enabled <= True;
-		    tagged EVT_SetLog .l:  event_log <= l;
-		    default: noAction;
-		  endcase
-		  		  
-		  chainQ.enq(evt);
-		  
-		endmethod
+                    tagged EVT_SetLog .l:  event_log <= l;
+                    default: noAction;
+                  endcase
+                                    
+                  chainQ.enq(evt);
+                  
+                endmethod
 
-	     endinterface);
+             endinterface);
 
   //Get our type for typechecking
   Bit#(32) msg = ?;
@@ -99,16 +99,16 @@ module [Connected_Module] mkEventRecorder_Enabled#(String eventname)
   
     if (enabled)
       case (mdata) matches
-	tagged Invalid:
-	begin
+        tagged Invalid:
+        begin
           localQ.enq(tagged EVT_NoEvent);
           //$display("EVENT %s: No Event", eventname);
-	end
-	tagged Valid .data:
-	begin
+        end
+        tagged Valid .data:
+        begin
           localQ.enq(tagged EVT_Event data);
           //$display("EVENT %s: 0x%h", eventname, data);
-	end
+        end
       endcase
   
   endmethod
@@ -133,22 +133,22 @@ module [Connected_Module] mkEventRecorder_Disabled#(String eventname)
       
   let chn = (interface FIFO;
   
-	        method CON_Data first() = marshall(chainQ.first());
-		method Action deq() = chainQ.deq();
-		method Action clear() = noAction;
-	        method Action enq(CON_Data x) if (!stall);
-		
-		  EventData evt = unmarshall(x);
-		  chainQ.enq(evt);
-		  
-		  case (evt) matches 
-		    tagged EVT_Boundary .t: stall <= True;
-		    default: noAction;
-		  endcase
-		  
-		endmethod
+                method CON_Data first() = marshall(chainQ.first());
+                method Action deq() = chainQ.deq();
+                method Action clear() = noAction;
+                method Action enq(CON_Data x) if (!stall);
+                
+                  EventData evt = unmarshall(x);
+                  chainQ.enq(evt);
+                  
+                  case (evt) matches 
+                    tagged EVT_Boundary .t: stall <= True;
+                    default: noAction;
+                  endcase
+                  
+                endmethod
 
-	     endinterface);
+             endinterface);
 
   //Get our type for typechecking
   Bit#(32) msg = ?;
@@ -247,27 +247,27 @@ module [Connected_Module] mkEventController_Simulation
   rule process (state != EVC_Initialize);
   
     chainQ.deq();
-    
+
     case (chainQ.first()) matches
       tagged EVT_Boundary .t:
       begin
-	cur <= 0;
-	isBoundary <= True;
+        cur <= 0;
+        isBoundary <= True;
       end
       tagged EVT_NoEvent:
       begin
         //Record information here
-	//$fdisplay(event_log, "EVENT %0d: ****", cur);
-	cur <= cur + 1;
-	isBoundary <= False;
+        //$fdisplay(event_log, "EVENT %0d: ****", cur);
+        cur <= cur + 1;
+        isBoundary <= False;
       end
       tagged EVT_Event .d:
       begin
         //Record information here
         //$fdisplay(event_log, "EVENT %0d: 0x%h", cur, d);
-	cur <= cur + 1;
+        cur <= cur + 1;
         eventQ.enq(EventInfo {eventBoundary: pack(isBoundary), eventStringID: cur, eventData: d});
-	isBoundary <= False;
+        isBoundary <= False;
       end
       default: noAction;
     endcase
@@ -277,34 +277,34 @@ module [Connected_Module] mkEventController_Simulation
   let canStart = !((state == EVC_Idle) || (state == EVC_Initialize));
   let nextCmd = case (state) matches
                   tagged EVC_Disabling:   tagged EVT_Disable;
-		  tagged EVC_Enabling:    tagged EVT_Enable;
-		  tagged EVC_Enabled:     tagged EVT_Boundary cc;
-		  tagged EVC_PassLogFile: tagged EVT_SetLog event_log;
-		  default: ?;
-		endcase;
+                  tagged EVC_Enabling:    tagged EVT_Enable;
+                  tagged EVC_Enabled:     tagged EVT_Boundary cc;
+                  tagged EVC_PassLogFile: tagged EVT_SetLog event_log;
+                  default: ?;
+                endcase;
   
   let nextState = case (state) matches
                   tagged EVC_Disabling:   EVC_Idle;
                   tagged EVC_Enabling:    EVC_Enabled;
-		  tagged EVC_Enabled:     EVC_Enabled;
-		  tagged EVC_PassLogFile: EVC_Enabled;
-		  default: ?;
-		endcase;
+                  tagged EVC_Enabled:     EVC_Enabled;
+                  tagged EVC_PassLogFile: EVC_Enabled;
+                  default: ?;
+                endcase;
     
   let chn = (interface FIFO;
   
-	        method CON_Data first() if (canStart) = marshall(nextCmd);
-		method Action deq() if (canStart);
-		  if (state == EVC_Enabled) 
-		  begin
-		    cc <= cc + 1;
-		  end
-		  state <= nextState;
-		endmethod
-	        method Action enq(CON_Data x) = chainQ.enq(unmarshall(x));
-		method Action clear() = noAction;
+                method CON_Data first() if (canStart) = marshall(nextCmd);
+                method Action deq() if (canStart);
+                  if (state == EVC_Enabled) 
+                  begin
+                    cc <= cc + 1;
+                  end
+                  state <= nextState;
+                endmethod
+                method Action enq(CON_Data x) = chainQ.enq(unmarshall(x));
+                method Action clear() = noAction;
 
-	     endinterface);
+             endinterface);
 
   //Get our type for typechecking
   Bit#(32) msg = ?;
@@ -354,19 +354,19 @@ module [Connected_Module] mkEventController_Hybrid
     case (chainQ.first()) matches
       tagged EVT_Boundary .t:
       begin
-	cur <= 0;
-	isBoundary <= True;
+        cur <= 0;
+        isBoundary <= True;
       end
       tagged EVT_NoEvent:
       begin
-	cur <= cur + 1;
-	isBoundary <= False;
+        cur <= cur + 1;
+        isBoundary <= False;
       end
       tagged EVT_Event .d:
       begin
         eventQ.enq(EventInfo {eventBoundary: pack(isBoundary), eventStringID: cur, eventData: d});
-	isBoundary <= False;
-	cur <= cur + 1;
+        isBoundary <= False;
+        cur <= cur + 1;
       end
       default: noAction;
     endcase
@@ -376,28 +376,28 @@ module [Connected_Module] mkEventController_Hybrid
   let canStart = !((state == EVC_Idle) || (state == EVC_Initialize));
   let nextCmd = case (state) matches
                   tagged EVC_Disabling:   tagged EVT_Disable;
-		  tagged EVC_Enabling:    tagged EVT_Enable;
-		  tagged EVC_Enabled:     tagged EVT_Boundary 0;
-		  default: ?;
-		endcase;
+                  tagged EVC_Enabling:    tagged EVT_Enable;
+                  tagged EVC_Enabled:     tagged EVT_Boundary 0;
+                  default: ?;
+                endcase;
   
   let nextState = case (state) matches
                   tagged EVC_Disabling:   EVC_Idle;
                   tagged EVC_Enabling:    EVC_Enabled;
-		  tagged EVC_Enabled:     EVC_Enabled;
-		  default: ?;
-		endcase;
+                  tagged EVC_Enabled:     EVC_Enabled;
+                  default: ?;
+                endcase;
     
   let chn = (interface FIFO;
   
-	        method CON_Data first() if (canStart) = marshall(nextCmd);
-		method Action deq() if (canStart);
-		  state <= nextState;
-		endmethod
-	        method Action enq(CON_Data x) = chainQ.enq(unmarshall(x));
-		method Action clear() = noAction;
+                method CON_Data first() if (canStart) = marshall(nextCmd);
+                method Action deq() if (canStart);
+                  state <= nextState;
+                endmethod
+                method Action enq(CON_Data x) = chainQ.enq(unmarshall(x));
+                method Action clear() = noAction;
 
-	     endinterface);
+             endinterface);
 
   //Get our type for typechecking
   Bit#(32) msg = ?;

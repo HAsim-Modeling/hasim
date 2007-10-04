@@ -8427,3 +8427,16 @@ Directory modules/common/modellib
 - fixed a bug in SoftwareController.bsv
 
 - fixed a bug in Events.bsv
+
+----------
+aparasha    Date: Thu Oct  4 17:57:36 EDT 2007  CSN: CSN-hasim-282
+                  Thu Oct  4 21:57:36 UTC 2007
+
+
+Directory modules/controller/hybrid-simple
+ HybridSimpleController.bsv Locally Modified          281 
+
+- added Michael Pellauer's temporary workaround for a bug. Hybrid
+  models now build and execute to completion, and events and messages
+  are correctly streamed through to the software partition. Stats
+  currently appear garbled.

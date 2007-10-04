@@ -59,9 +59,10 @@ module [HASim_Module] mkController ();
   Connection_Receive#(ButtonInfo)  link_buttons <- mkConnection_Receive("fpga_buttons");
 
   SoftwareController    swcon   <- mkSoftwareController();
-
   let terminus <- mkConnectionTerminus();
   
+  FIFO#(Response)  responseQ  <- mkFIFO();
+
   //*********** Rules ***********
   
   //tick
@@ -95,8 +96,15 @@ module [HASim_Module] mkController ();
   
   rule get_Response (state == CON_Running);
   
-    let resp <- link_response.receive_from_prev();
-  
+    // BEGIN workaround
+    //
+    // ORIGINAL: let resp <- link_response.receive_from_prev();
+    //
+    let resp = responseQ.first();
+    responseQ.deq();
+    //
+    // END workaround
+
     case (resp) matches
       tagged RESP_DoneRunning .pf:
         begin
@@ -165,5 +173,14 @@ module [HASim_Module] mkController ();
       $finish(1);
     
   endrule
- 
+
+  // BEGIN workaround
+  rule get_ResponseWorkaround (state == CON_Running);
+
+    let resp <- link_response.receive_from_prev();
+    responseQ.enq(resp);
+
+  endrule
+  // END workaround
+
 endmodule

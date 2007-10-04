@@ -128,7 +128,7 @@ module [HASim_Module] mkSoftwareController(SoftwareController);
     endmethod
 
     // print event in 2 stages
-    method Action   printEvent(Bit#(8) stringID, Bit#(64) modelcycle, Bit#(32) payload);
+    method Action   printEvent(Bit#(8) stringID, Bit#(64) modelcycle, Bit#(32) payload) if (reqState == 0);
         RRR_Request req;
         req.serviceID       = `SID_SWCON_SERVICE;
         req.param0          = `REQ_PRINT_EVENT;

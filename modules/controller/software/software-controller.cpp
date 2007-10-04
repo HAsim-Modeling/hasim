@@ -7,14 +7,16 @@
 using namespace std;
 
 // messages
-const int MSG_TYPES = 5;
+const int MSG_TYPES = 7;
 char MSG_TABLE[MSG_TYPES][256] =
 {
     "[%0d]: controller: program started.\n",
     "[%0d]: controller: test program finished succesfully.\n",
     "[%0d]: controller: test program finished, one or more failures occurred.\n",
     "[%0d]: controller: ERROR: unexpected timing partition response: ",
-    "0x%x\n"
+    "0x%x\n",
+    "[%0d]: controller: model cycles completed: ",
+    "%u\n"
 };
 
 // events

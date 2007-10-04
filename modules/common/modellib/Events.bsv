@@ -216,7 +216,7 @@ module [Connected_Module] mkEventController_Simulation
   
   rule timeout (cc == `HASIM_BMARK_TIMEOUT);
   
-    $display("[%0d] Event Controller: ERROR: Benchmark timed out after %s model cycles.", `HASIM_BMARK_TIMEOUT);
+    $display("[%0d] Event Controller: ERROR: Benchmark timed out after %0d model cycles.", fpga_cc, `HASIM_BMARK_TIMEOUT);
     $finish(1);
   
   endrule
@@ -342,7 +342,7 @@ module [Connected_Module] mkEventController_Hybrid
   FIFO#(EventData) chainQ <- mkFIFO();
   FIFO#(EventInfo) eventQ <- mkFIFO();
   Reg#(Bit#(8))       cur <- mkReg(0);
-  Reg#(EVC_State)   state <- mkReg(EVC_Idle);
+  Reg#(EVC_State)   state <- mkReg(EVC_Enabled);
   Reg#(Bool) isBoundary <- mkReg(False);
   
   

@@ -41,7 +41,8 @@ module [HASim_Module] mkController ();
   //*********** State ***********
   
   Reg#(Bit#(64)) curTick <- mkReg(minBound);
-  Reg#(Bit#(64)) eventTick <- mkReg(minBound);
+  Reg#(Bit#(64)) modelTick <- mkReg(0);
+  Reg#(Bit#(64)) beat <- mkReg(0);
   Reg#(Bit#(16)) finishing <- mkReg(`HASIM_CONTROLLER_COOLDOWN);
   Reg#(Bool)     passed <- mkReg(False);
 
@@ -98,21 +99,21 @@ module [HASim_Module] mkController ();
   
     case (resp) matches
       tagged RESP_DoneRunning .pf:
-	begin
-	  if (pf)
-	  begin
-	    link_leds.send(4'b1001);
+        begin
+          if (pf)
+          begin
+            link_leds.send(4'b1001);
             swcon.printMessage1P(1, truncate(curTick));
-	    passed <= True;
-	  end
-	  else
-	  begin
-	    link_leds.send(4'b1101);
+            passed <= True;
+          end
+          else
+          begin
+            link_leds.send(4'b1101);
             swcon.printMessage1P(2, truncate(curTick));
-	  end
-	  stat_controller.dumpStats();
-	  state <= CON_Finished;
-	end
+          end
+          stat_controller.dumpStats();
+          state <= CON_Finished;
+        end
       default:
       begin
         swcon.printMessage2P(3, truncate(curTick), 0);
@@ -122,19 +123,29 @@ module [HASim_Module] mkController ();
     
   endrule
 
-  rule dumpStat (state == CON_Finished && finishing != 0);
+  rule printStat (state == CON_Finished && finishing != 0);
 
     StatInfo si <- stat_controller.getNextStat();
     swcon.printStat(si.statStringID, si.statValue);
 
   endrule
 
-  rule dumpEvent (True);
+  rule printEvent (True);
 
     EventInfo ei <- event_controller.getNextEvent();
-    swcon.printEvent(ei.eventStringID, eventTick, ei.eventData);
+    swcon.printEvent(ei.eventStringID, modelTick, ei.eventData);
     if (ei.eventBoundary == 1)
-        eventTick <= eventTick + 1;
+    begin
+        modelTick <= modelTick + 1;
+        beat <= beat + 1;
+    end
+
+  endrule
+
+  rule heartBeat (beat == 1000);
+
+    swcon.printMessage2P(5, truncate(curTick), truncate(modelTick));
+    beat <= 0;
 
   endrule
  

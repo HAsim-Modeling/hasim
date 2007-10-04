@@ -8408,3 +8408,22 @@ Directory modules/common/modellib
   models are still broken.
 
 - changed Tabs to Spaces in Stats.bsv and Events.bsv
+
+----------
+aparasha    Date: Thu Oct  4 16:16:12 EDT 2007  CSN: CSN-hasim-281
+                  Thu Oct  4 20:16:12 UTC 2007
+
+
+Directory modules/controller/hybrid-simple
+ HybridSimpleController.bsv Locally Modified          280 
+
+Directory modules/controller/software
+ software-controller.cpp   Locally Modified          280 
+ SoftwareController.bsv    Locally Modified          280 
+
+Directory modules/common/modellib
+ Events.bsv                Locally Modified          280 
+
+- fixed a bug in SoftwareController.bsv
+
+- fixed a bug in Events.bsv

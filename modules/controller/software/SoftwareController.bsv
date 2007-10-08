@@ -35,10 +35,10 @@ module [HASim_Module] mkSoftwareController(SoftwareController);
     Reg#(Bit#(32))  pendingPayload  <- mkReg(0);
    
     Connection_Client#(RRR_Request, RRR_Response)   link_rrr_diov
-        <- mkConnection_Client("rrr_client_diov");
+        <- mkConnection_Client("rrr_controller_diov");
 
     Connection_Send#(RRR_Request)                   link_rrr_void
-        <- mkConnection_Send("rrr_client_void");
+        <- mkConnection_Send("rrr_controller_void");
 
     /* ----------- rules ------------ */
 

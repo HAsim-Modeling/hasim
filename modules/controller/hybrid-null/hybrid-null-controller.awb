@@ -12,7 +12,6 @@
 # %provides hasim_controller
 #
 # %requires software_controller
-# %requires connection_terminus
 #
 # %attributes hasim
 #

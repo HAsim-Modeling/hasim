@@ -12,7 +12,6 @@ import soft_connections::*;
 import platform_interface::*;
 import hasim_local_controller::*;
 import software_controller::*;
-import connection_terminus::*;
 
 //************* OneTest Controller **************
 
@@ -59,7 +58,6 @@ module [HASim_Module] mkController ();
   Connection_Receive#(ButtonInfo)  link_buttons <- mkConnection_Receive("fpga_buttons");
 
   SoftwareController    swcon   <- mkSoftwareController();
-  let terminus <- mkConnectionTerminus();
   
   FIFO#(Response)  responseQ  <- mkFIFO();
 

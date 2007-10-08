@@ -28,8 +28,8 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
     Connection_Send#(MEM_Addr)                 link_memory_inval <- mkConnection_Send("vdev_memory_invalidate");
 
     // direct RRR connections
-    Connection_Server#(RRR_Request, RRR_Response) link_rrr_diov <- mkConnection_Server("rrr_client_diov");
-    Connection_Receive#(RRR_Request) link_rrr_void <- mkConnection_Receive("rrr_client_void");
+    Connection_Server#(RRR_Request, RRR_Response) link_rrr_controller_diov <- mkConnection_Server("rrr_controller_diov");
+    Connection_Receive#(RRR_Request) link_rrr_controller_void <- mkConnection_Receive("rrr_controller_void");
 
     // state of RRR request
     Reg#(Bit#(2))   rrrState    <- mkReg(0);
@@ -39,8 +39,10 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
 
     // instantiate virtual devices
     FrontPanel                      frontPanel      <- mkFrontPanel(llpint);
-
     Memory                          memory          <- mkMemory(llpint);
+
+    // connection terminus
+    let     t <- mkConnectionTerminus();
     
     // rules
     rule set_leds (True);
@@ -107,8 +109,8 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
 
         // read in RRR request from connection and translate
         // it to a method call to RRR client
-        let req = link_rrr_diov.getReq();
-        link_rrr_diov.deq();
+        let req = link_rrr_controller_diov.getReq();
+        link_rrr_controller_diov.deq();
 
         llpint.rrrClient.makeRequest(req);
 
@@ -122,8 +124,8 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
 
         // read in RRR request from connection and translate
         // it to a method call to RRR client
-        let req = link_rrr_void.receive();
-        link_rrr_void.deq();
+        let req = link_rrr_controller_void.receive();
+        link_rrr_controller_void.deq();
 
         llpint.rrrClient.makeRequest(req);
 
@@ -135,7 +137,7 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
     // wait for RRR response
     rule send_rrr_resp (rrrState == 1);
         let resp <- llpint.rrrClient.getResponse();
-        link_rrr_diov.makeResp(resp);
+        link_rrr_controller_diov.makeResp(resp);
         rrrState <= 0;
     endrule
 

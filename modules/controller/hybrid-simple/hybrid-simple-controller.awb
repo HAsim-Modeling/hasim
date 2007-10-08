@@ -13,7 +13,6 @@
 #
 # %requires hasim_local_controller
 # %requires software_controller
-# %requires connection_terminus
 #
 # %attributes hasim
 #

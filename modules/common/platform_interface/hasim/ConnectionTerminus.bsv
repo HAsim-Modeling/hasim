@@ -1,7 +1,6 @@
 import hasim_common::*;
 import soft_connections::*;
 import memory::*;
-import platform_interface::*;
 import rrr::*;
 
 module [HASim_Module] mkConnectionTerminus();
@@ -21,10 +20,10 @@ module [HASim_Module] mkConnectionTerminus();
     if (`TERM_VDEV_MEMORY_INVALIDATE == 1)
         Connection_Receive#(MEM_Addr) link_memory_inval <- mkConnection_Receive("vdev_memory_invalidate");
 
-    if (`TERM_RRR_CLIENT_DIOV == 1)
-        Connection_Client#(RRR_Request, RRR_Response) link_rrr_diov <- mkConnection_Client("rrr_client_diov");
-
-    if (`TERM_RRR_CLIENT_VOID == 1)
-        Connection_Send#(RRR_Request) link_rrr_void <- mkConnection_Send("rrr_client_void");
+    if (`TERM_RRR_CONTROLLER == 1)
+    begin
+        Connection_Client#(RRR_Request, RRR_Response) link_rrr_diov <- mkConnection_Client("rrr_controller_diov");
+        Connection_Send#(RRR_Request) link_rrr_void <- mkConnection_Send("rrr_controller_void");
+    end
 
 endmodule

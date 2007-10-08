@@ -8440,3 +8440,71 @@ Directory modules/controller/hybrid-simple
   models now build and execute to completion, and events and messages
   are correctly streamed through to the software partition. Stats
   currently appear garbled.
+
+----------
+aparasha    Date: Mon Oct  8 14:17:19 EDT 2007  CSN: CSN-hasim-283
+                  Mon Oct  8 18:17:19 UTC 2007
+
+
+Directory modules/controller/hybrid-simple
+ hybrid-simple-controller.awb Locally Modified          281 
+ HybridSimpleController.bsv Locally Modified          282 
+
+Directory modules/controller/simple
+ hasim_simple_controller.awb Locally Modified          281 
+
+Directory modules/controller/hybrid-null
+ hybrid-null-controller.awb Locally Modified          281 
+ HybridNullController.bsv  Locally Modified          281 
+
+Directory modules/controller/null
+ hasim_null_controller.awb Locally Modified          281 
+ hasim_null_controller.bsv Locally Modified          281 
+
+Directory modules/controller/software
+ SoftwareController.bsv    Locally Modified          281 
+
+Directory modules/controller/connection-terminus
+ ConnectionTerminus.bsv    Locally Removed           281 
+ connection-terminus.awb   Locally Removed           281 
+
+Directory modules/controller
+ connection-terminus/      Locally Removed           281 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Added               0 
+ HAsimPlatformInterface.bsv Locally Modified          281 
+ hasim-platform-interface.awb Locally Modified          281 
+
+Directory modules/common/modellib
+ Events.bsv                Locally Modified          281 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          281 
+ traffic_light_xup_synth.apm Locally Modified          281 
+ traffic_light_exe_nosynth.apm Locally Modified          281 
+ traffic_light_exe_synth.apm Locally Modified          281 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Modified          281 
+ adder4x4_software.apm     Locally Modified          281 
+ echo4x4_xup.apm           Locally Modified          281 
+ square4x4_software.apm    Locally Modified          281 
+ adder4x4_xup.apm          Locally Modified          281 
+ square4x4_xup.apm         Locally Modified          281 
+ multiplier4x4_software.apm Locally Modified          281 
+ multiplier4x4_xup.apm     Locally Modified          281 
+
+Directory config/pm/hasim/demos/mem_test
+ mem_test_hybrid.apm       Locally Modified          281 
+
+- moved connection terminus from a controller submodule to
+  a single file within the hasim platform interface module.
+
+- disabled queuing events in EventController_Simulation. Since
+  the main controller is not de-queuing them, pure (non-hybrid)
+  simulation models were stalling. This is a temporary fix to
+  ensure that the models continue to build and run while a
+  cleaner solution is implemented.
+
+- updated connection terminus parameters in config files.

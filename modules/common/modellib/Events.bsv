@@ -224,6 +224,7 @@ module [Connected_Module] mkEventController_Simulation
   rule heartbeat ((cc == nextBeat) && (cc != 0));
   
     $display("[%0d] Event Controller: %0d Model cycles simulated.", fpga_cc, cc);
+    $fflush();
     nextBeat <= nextBeat + 1000;
   
   endrule
@@ -266,7 +267,7 @@ module [Connected_Module] mkEventController_Simulation
         //Record information here
         //$fdisplay(event_log, "EVENT %0d: 0x%h", cur, d);
         cur <= cur + 1;
-        eventQ.enq(EventInfo {eventBoundary: pack(isBoundary), eventStringID: cur, eventData: d});
+        //eventQ.enq(EventInfo {eventBoundary: pack(isBoundary), eventStringID: cur, eventData: d});
         isBoundary <= False;
       end
       default: noAction;

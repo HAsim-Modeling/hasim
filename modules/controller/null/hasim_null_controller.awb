@@ -11,8 +11,6 @@
 # %desc Hasim null controller
 # %provides hasim_controller
 #
-# %requires connection_terminus
-#
 # %attributes hasim
 #
 # %public hasim_null_controller.bsv 

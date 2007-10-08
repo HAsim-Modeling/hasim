@@ -32,18 +32,20 @@ char EVENT_TABLE[EVENT_TYPES][256] =
 };
 
 // stats
-const int STAT_TYPES = 100;
-char STAT_TABLE[STAT_TYPES][256];
+const int STAT_TYPES = 6;
+char STAT_TABLE[STAT_TYPES][256] =
+{
+    "instructions committed = %u\n",
+    "dcache misses          = %u\n",
+    "branch mispredicts     = %u\n",
+    "icache misses          = %u\n",
+    "instructions fetched   = %u\n",
+    "total cycles           = %u\n"
+};
 
 // constructor
 SOFTWARE_CONTROLLER_CLASS::SOFTWARE_CONTROLLER_CLASS()
 {
-    // fill in stat table with artifical stat names for now
-    for (int i = 0; i < STAT_TYPES; i++)
-    {
-        sprintf(STAT_TABLE[i], "STAT %3d: \%d\n", i);
-    }
-
     // open events and stats files
     eventfile = fopen("software_events.out", "w+");
     statfile = fopen("software_stats.out", "w+");

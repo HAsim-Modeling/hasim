@@ -8508,3 +8508,14 @@ Directory config/pm/hasim/demos/mem_test
   cleaner solution is implemented.
 
 - updated connection terminus parameters in config files.
+
+----------
+aparasha    Date: Mon Oct  8 16:01:14 EDT 2007  CSN: CSN-hasim-284
+                  Mon Oct  8 20:01:14 UTC 2007
+
+
+Directory modules/controller/software
+ software-controller.cpp   Locally Modified          282 
+
+- fixed a bug; hybrid models now stream Stats correctly to the
+  software partition.

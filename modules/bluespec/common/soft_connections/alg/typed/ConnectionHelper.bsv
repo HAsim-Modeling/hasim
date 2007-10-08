@@ -277,19 +277,9 @@ instance Connectable#(CON_Chain, CON_Chain);
   function m#(Empty) mkConnection(CON_Chain cout, CON_Chain cin)
     provisos (IsModule#(m, c));
   
-    return connectChainLinks(cout, cin);
+    return connectOutToIn(cout.outgoing, cin.incoming);
     
   endfunction
 
 endinstance
 
-module connectChainLinks#(CON_Chain cout, CON_Chain cin) ();
-
-  rule scanmove (True);
-    //Move the data
-    cin.enq(cout.first());
-    cout.deq();
-  
-  endrule
-
-endmodule

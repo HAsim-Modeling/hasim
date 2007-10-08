@@ -225,16 +225,34 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
 
   VRWire#(msg_T) data_w  <- vMkRWire();
-  FIFO#(msg_T) outQ <- mkCON_FIFO();
+  PulseWire      en_w    <- mkPulseWire();
+  FIFO#(msg_T)   q       <- mkCON_FIFO();
 
-  let chn = (interface FIFO;
+  let inc = (interface CON_In;
+  
+	       method Action get_TRY(CON_Data x);
+	         data_w.wset(unmarshall(x));
+	       endmethod
+	       
+	       method Bool get_SUCCESS();
+	         return en_w;
+	       endmethod
 
-	      method CON_Data first() = marshall(outQ.first());
-	      method Action deq() = outQ.deq();
-	      method Action clear() = noAction;
-	      method Action enq(CON_Data x) = data_w.wset(unmarshall(x));
+	     endinterface);
 
-	   endinterface);
+  let outg = (interface CON_Out;
+  
+	       method CON_Data try() = marshall(q.first());
+	       
+	       method Action success = q.deq();
+
+	     endinterface);
+
+  let chn = (interface CON_Chain;
+               
+	       interface incoming = inc;
+	       interface outgoing = outg;
+	     endinterface);
 
   //Figure out my type for typechecking
   msg_T msg = ?;
@@ -246,11 +264,12 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
 
 
   method Action send_to_next(msg_T data);
-    outQ.enq(data);
+    q.enq(data);
   endmethod
 
   method ActionValue#(msg_T) receive_from_prev() if (data_w.whas());
 
+    en_w.send();
     return data_w.wget();
 
   endmethod

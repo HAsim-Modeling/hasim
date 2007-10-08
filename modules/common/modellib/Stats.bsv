@@ -7,6 +7,8 @@ import ModuleCollect::*;
 //HASIM_STATS_SIZE      32
 //HASIM_STATS_LOGFILE   stats_log.out
 
+`define CHAIN_IDX_STATS 1
+
 interface Stat;
   
   method Action incr();
@@ -45,7 +47,7 @@ module [Connected_Module] mkStatCounter_Enabled#(String statname)
   //interface:
               (Stat);
 
-  FIFO#(StatData)        chainQ <- mkFIFO();
+  Connection_Chain#(StatData) chain <- mkConnection_Chain(`CHAIN_IDX_STATS);
   Reg#(Bit#(`HASIM_STATS_SIZE))   stat <- mkReg(0);
   Reg#(StatState)         state <- mkReg(Recording);
   Reg#(Bool) enabled <- mkReg(True);
@@ -54,67 +56,51 @@ module [Connected_Module] mkStatCounter_Enabled#(String statname)
   rule insert (state == Dumping);
     
     $fdisplay(stats_log, "%s: %0d", statname, stat);
-    chainQ.enq(tagged ST_Val stat);
+    chain.send_to_next(tagged ST_Val stat);
     state <= DoneDumping;
   
   endrule
       
   rule endDump (state == DoneDumping);
   
-    chainQ.enq(tagged ST_Boundary);
+    chain.send_to_next(tagged ST_Boundary);
     state <= Recording;
     
   endrule
   
-  let chn = (interface FIFO;
+  rule shift (state == Recording);
   
-                method CON_Data first() = marshall(chainQ.first());
-                method Action deq() = chainQ.deq();
-                method Action clear() = noAction;
-                method Action enq(CON_Data x) if (state == Recording);
-                
-                  StatData st = unmarshall(x);
-                  
-                  case (st) matches 
-                    tagged ST_Boundary .t:
-                    begin
-                      state <= Dumping;
-                    end
-                    tagged ST_LogFile .fd: 
-                    begin
-                      stats_log <= fd;
-                      chainQ.enq(st);
-                    end
-                    tagged ST_Reset: 
-                    begin
-                      stat <= 0;
-                      chainQ.enq(st);
-                    end
-                    tagged ST_Disable: 
-                    begin
-                      enabled <= False;
-                      chainQ.enq(st);
-                    end
-                    tagged ST_Enable: 
-                    begin
-                      enabled <= True;
-                      chainQ.enq(st);
-                    end
-                    default: chainQ.enq(st);
-                  endcase
-                  
-                endmethod
+    StatData st <- chain.receive_from_prev();
 
-             endinterface);
-             
-  //Get our type for typechecking
-  Bit#(`HASIM_STATS_SIZE) msg = ?;
-  let mytype = printType(typeOf(msg));
-
-  //Add our interface to the ModuleCollect collection
-  let inf = CChain_Info {cnum: 1, ctype: mytype, conn: chn};
-  addToCollection(tagged LChain inf);
-
+    case (st) matches 
+      tagged ST_Boundary .t:
+      begin
+        state <= Dumping;
+      end
+      tagged ST_LogFile .fd: 
+      begin
+        stats_log <= fd;
+        chain.send_to_next(st);
+      end
+      tagged ST_Reset: 
+      begin
+        stat <= 0;
+        chain.send_to_next(st);
+      end
+      tagged ST_Disable: 
+      begin
+        enabled <= False;
+        chain.send_to_next(st);
+      end
+      tagged ST_Enable: 
+      begin
+        enabled <= True;
+        chain.send_to_next(st);
+      end
+      default: chain.send_to_next(st);
+    endcase
+  endrule
+  
   method Action incr();
     
     if (enabled)
@@ -128,28 +114,14 @@ module [Connected_Module] mkStatCounter_Disabled#(String statname)
   //interface:
               (Stat);
 
-  FIFO#(StatData)        chainQ <- mkFIFO();
+  Connection_Chain#(StatData) chain <- mkConnection_Chain(`CHAIN_IDX_STATS);
   
-  let chn = (interface FIFO;
+  rule shift (True);
   
-                method CON_Data first() = marshall(chainQ.first());
-                method Action deq() = chainQ.deq();
-                method Action clear() = noAction;
-                method Action enq(CON_Data x);
-                
-                  chainQ.enq(unmarshall(x));
-                  
-                endmethod
-
-             endinterface);
-
-  //Get our type for typechecking
-  Bit#(`HASIM_STATS_SIZE) msg = ?;
-  let mytype = printType(typeOf(msg));
-
-  //Add our interface to the ModuleCollect collection
-  let inf = CChain_Info {cnum: 1, ctype: mytype, conn: chn};
-  addToCollection(tagged LChain inf);
+    let st <- chain.receive_from_prev();
+    chain.send_to_next(st);
+  
+  endrule
   
   method Action incr();
     
@@ -190,7 +162,7 @@ module [Connected_Module] mkStatController_Simulation
     //interface:
                 (StatController);
 
-  FIFO#(StatData)  chainQ <- mkFIFO();
+  Connection_Chain#(StatData) chain <- mkConnection_Chain(`CHAIN_IDX_STATS);
   FIFO#(StatInfo)  statQ  <- mkFIFO();
   Reg#(Bit#(8))      cur <- mkReg(0);
   Reg#(StatConState)  state <- mkReg(SC_Initializing);
@@ -212,11 +184,11 @@ module [Connected_Module] mkStatController_Simulation
   
   endrule
   
-  rule process (state != SC_Initializing);
+  rule processResp (state != SC_Initializing);
   
-    chainQ.deq();
+    let st <- chain.receive_from_prev();
     
-    case (chainQ.first()) matches
+    case (st) matches
       tagged ST_Boundary:
       begin
         cur <= 0;
@@ -225,7 +197,6 @@ module [Connected_Module] mkStatController_Simulation
       end
       tagged ST_Val .d:
       begin
-        //$display("STAT %0d: 0x%h", cur, d);
         cur <= cur + 1;
         statQ.enq(StatInfo {statStringID: cur, statValue: d});
       end
@@ -237,40 +208,21 @@ module [Connected_Module] mkStatController_Simulation
     endcase
      
   endrule
+    
+  rule sendReq (!((state == SC_Idle) || (state == SC_Initializing)));
   
-  let canStart = !((state == SC_Idle) || (state == SC_Initializing));
+    let nextCommand = case (state) matches
+                       tagged SC_SetLogFile:   return tagged ST_LogFile stats_log;
+                       tagged SC_Dumping:      return tagged ST_Boundary;
+                       tagged SC_Enabling:     return tagged ST_Enable;
+                       tagged SC_Disabling:    return tagged ST_Disable;
+                       tagged SC_Reseting:     return tagged ST_Reset;
+                     endcase;
   
-  let nextCommand = case (state) matches
-                     tagged SC_SetLogFile:   return tagged ST_LogFile stats_log;
-                     tagged SC_Dumping:      return tagged ST_Boundary;
-                     tagged SC_Enabling:     return tagged ST_Enable;
-                     tagged SC_Disabling:    return tagged ST_Disable;
-                     tagged SC_Reseting:     return tagged ST_Reset;
-                   endcase;
+    chain.send_to_next(nextCommand);
+    state <= SC_Idle;
   
-  let chn = (interface FIFO;
-  
-                method CON_Data first() if (canStart);
-                
-                  return marshall(nextCommand);
-                   
-                endmethod
-                
-                method Action deq() if (canStart);
-                  state <= SC_Idle;
-                endmethod
-                method Action enq(CON_Data x) = chainQ.enq(unmarshall(x));
-                method Action clear() = noAction;
-
-             endinterface);
-
-  //Get our type for typechecking
-  Bit#(`HASIM_STATS_SIZE) msg = ?;
-  let mytype = printType(typeOf(msg));
-
-  //Add our interface to the ModuleCollect collection
-  let inf = CChain_Info {cnum: 1, ctype: mytype, conn: chn};
-  addToCollection(tagged LChain inf);
+  endrule
   
   method Action enableStats if (state == SC_Idle);
   
@@ -309,18 +261,18 @@ endmodule
 module [Connected_Module] mkStatController_Hybrid
     //interface:
                 (StatController);
-
-  FIFO#(StatData)  chainQ <- mkFIFO();
+		
+  Connection_Chain#(StatData) chain <- mkConnection_Chain(`CHAIN_IDX_STATS);
   FIFO#(StatInfo)  statQ  <- mkFIFO();
   Reg#(Bit#(8))      cur  <- mkReg(0);
   Reg#(StatConState)  state <- mkReg(SC_Idle);
     
 
-  rule process (state != SC_Initializing);
+  rule processResp (state != SC_Initializing);
   
-    chainQ.deq();
+    let st <- chain.receive_from_prev();
     
-    case (chainQ.first()) matches
+    case (st) matches
       tagged ST_Boundary:
       begin
         cur <= 0;
@@ -340,39 +292,21 @@ module [Connected_Module] mkStatController_Hybrid
      
   endrule
   
-  let canStart = !((state == SC_Idle) || (state == SC_Initializing));
+  rule sendReq (!((state == SC_Idle) || (state == SC_Initializing)));
   
-  let nextCommand = case (state) matches
-                     tagged SC_Dumping:      return tagged ST_Boundary;
-                     tagged SC_Enabling:     return tagged ST_Enable;
-                     tagged SC_Disabling:    return tagged ST_Disable;
-                     tagged SC_Reseting:     return tagged ST_Reset;
-                     default:                return tagged ST_Boundary;
-                   endcase;
+
+    let nextCommand = case (state) matches
+                       tagged SC_Dumping:      return tagged ST_Boundary;
+                       tagged SC_Enabling:     return tagged ST_Enable;
+                       tagged SC_Disabling:    return tagged ST_Disable;
+                       tagged SC_Reseting:     return tagged ST_Reset;
+                       default:                return tagged ST_Boundary;
+                     endcase;
   
-  let chn = (interface FIFO;
+    chain.send_to_next(nextCommand);
+    state <= SC_Idle;
   
-                method CON_Data first() if (canStart);
-                
-                  return marshall(nextCommand);
-                   
-                endmethod
-                
-                method Action deq() if (canStart);
-                  state <= SC_Idle;
-                endmethod
-                method Action enq(CON_Data x) = chainQ.enq(unmarshall(x));
-                method Action clear() = noAction;
-
-             endinterface);
-
-  //Get our type for typechecking
-  Bit#(`HASIM_STATS_SIZE) msg = ?;
-  let mytype = printType(typeOf(msg));
-
-  //Add our interface to the ModuleCollect collection
-  let inf = CChain_Info {cnum: 1, ctype: mytype, conn: chn};
-  addToCollection(tagged LChain inf);
+  endrule
   
   method Action enableStats if (state == SC_Idle);
   

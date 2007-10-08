@@ -59,8 +59,6 @@ module [HASim_Module] mkController ();
 
   SoftwareController    swcon   <- mkSoftwareController();
   
-  FIFO#(Response)  responseQ  <- mkFIFO();
-
   //*********** Rules ***********
   
   //tick
@@ -94,14 +92,7 @@ module [HASim_Module] mkController ();
   
   rule get_Response (state == CON_Running);
   
-    // BEGIN workaround
-    //
-    // ORIGINAL: let resp <- link_response.receive_from_prev();
-    //
-    let resp = responseQ.first();
-    responseQ.deq();
-    //
-    // END workaround
+    let resp <- link_response.receive_from_prev();
 
     case (resp) matches
       tagged RESP_DoneRunning .pf:
@@ -171,14 +162,5 @@ module [HASim_Module] mkController ();
       $finish(1);
     
   endrule
-
-  // BEGIN workaround
-  rule get_ResponseWorkaround (state == CON_Running);
-
-    let resp <- link_response.receive_from_prev();
-    responseQ.enq(resp);
-
-  endrule
-  // END workaround
 
 endmodule

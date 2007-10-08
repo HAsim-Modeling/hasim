@@ -8519,3 +8519,36 @@ Directory modules/controller/software
 
 - fixed a bug; hybrid models now stream Stats correctly to the
   software partition.
+
+----------
+pellauer    Date: Mon Oct  8 17:13:45 EDT 2007  CSN: CSN-hasim-285
+                  Mon Oct  8 21:13:45 UTC 2007
+
+
+Directory modules/bluespec/common/soft_connections
+ Connected_Module.bsv      Locally Modified          284 
+
+Directory modules/bluespec/common/soft_connections/alg/typed
+ ConnectionHelper.bsv      Locally Modified          284 
+ ConnectionAlg.bsv         Locally Modified          284 
+
+Directory modules/bluespec/common/soft_connections
+ Connections.bsv           Locally Modified          284 
+
+Directory modules/controller/hybrid-simple
+ HybridSimpleController.bsv Locally Modified          284 
+
+Directory modules/common/modellib
+ Stats.bsv                 Locally Modified          284 
+ Events.bsv                Locally Modified          284 
+
+
+Fixed bug in connection chains. Connection chains are now used more consistently
+between stats/events, increasing readability. This also removes the workaround
+which was in the hybrid controller.
+
+This is the first step towards abstracting out the interconnection network which
+stats/events/commands use to have more alternatives than scanchains.
+
+Michael P.
+

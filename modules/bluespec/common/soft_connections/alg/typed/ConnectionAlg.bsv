@@ -178,10 +178,8 @@ module connectLocalChain#(List#(CChain_Info) l) (CON_Chain);
       
       //The final chain enqueues to the head and dequeues from the tail
       return (interface CON_Chain;
-                method first() = cend.conn.first();
-		method deq() = cend.conn.deq();
-		method enq() = cbegin.conn.enq();
-		method clear = noAction; //Not implemented because of expense
+                interface incoming = cbegin.conn.incoming;
+		interface outgoing = cend.conn.outgoing;
 	      endinterface);
     end
   endcase
@@ -197,10 +195,26 @@ module mkPassThrough#(Integer chainNum)
 
   messageM(strConcat(strConcat("Making Pass-Through Chain [", integerToString(chainNum)), "]"));
   FIFO#(CON_Data) passQ <- mkFIFO();
+  PulseWire en_w <- mkPulseWire();
 
-  method CON_Data first() = passQ.first();
-  method Action deq() = passQ.deq();
-  method Action clear() = passQ.clear();
-  method Action enq(CON_Data x) = passQ.enq(x);
+  interface CON_In incoming;
 
+    method Action get_TRY(CON_Data x);
+      passQ.enq(x);
+      en_w.send();
+    endmethod
+
+    method Bool get_SUCCESS();
+      return en_w;
+    endmethod
+
+  endinterface
+
+  interface CON_Out outgoing;
+
+    method CON_Data try() = passQ.first();
+
+    method Action success = passQ.deq();
+
+  endinterface
 endmodule

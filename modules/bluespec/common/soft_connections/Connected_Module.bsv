@@ -29,8 +29,14 @@ interface CON_Out;
 
 endinterface
 
-//A scanchain
-typedef FIFO#(CON_Data) CON_Chain;
+//A scanchain has incoming and outgoing connections
+interface CON_Chain;
+
+  interface CON_In incoming;
+  interface CON_Out outgoing;
+
+endinterface
+
 
 //Data about soft connections
 typedef struct {String cname; String ctype; CON_Out conn;} CSend_Info;

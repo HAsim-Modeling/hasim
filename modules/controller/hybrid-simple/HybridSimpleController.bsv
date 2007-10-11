@@ -47,8 +47,8 @@ module [HASim_Module] mkController ();
 
   Reg#(ConState) state <- mkReg(CON_Init);
   
-  EventController     event_controller    <- mkEventController_Hybrid();
-  StatController      stat_controller     <- mkStatController_Hybrid();
+  EventController     event_controller    <- mkEventController();
+  StatController      stat_controller     <- mkStatController();
   
   Connection_Chain#(Command)   link_command   <- mkConnection_Chain(2);
   Connection_Chain#(Response)  link_response  <- mkConnection_Chain(3);

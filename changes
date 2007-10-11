@@ -8552,3 +8552,27 @@ stats/events/commands use to have more alternatives than scanchains.
 
 Michael P.
 
+
+----------
+pellauer    Date: Thu Oct 11 17:08:40 EDT 2007  CSN: CSN-hasim-286
+                  Thu Oct 11 21:08:40 UTC 2007
+
+
+Directory modules/controller/hybrid-simple
+ HybridSimpleController.bsv Locally Modified          285 
+
+Directory modules/controller/simple
+ hasim_simple_controller.awb Locally Modified          285 
+ hasim_simple_controller.bsv Locally Modified          285 
+
+Directory modules/common/modellib
+ hasim_modellib.awb        Locally Modified          285 
+ Stats.bsv                 Locally Modified          285 
+ Events.bsv                Locally Modified          285 
+
+
+Events and Stats no longer have separate hybrid/simulation controllers. Instead
+the only point of choice is in the controller itself, which is either simulation
+or hybrid. This is the first step towrards a hub/ring topology.
+
+Michael P.

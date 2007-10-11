@@ -16,7 +16,10 @@
 # %attributes hasim
 #
 # %public hasim_simple_controller.bsv
-# %param HASIM_CONTROLLER_COOLDOWN 500 "Number of FPGA extra FPGA cycles to finish dumping stats/events"
+# %param CTRL_EVENTS_COOLDOWN 500 "Number of FPGA extra FPGA cycles to finish dumping events"
+# %param CTRL_EVENTS_LOGFILE   "events_log.out" "Event logfile name."
+# %param CTRL_STATS_LOGFILE    "stats_log.out"  "Stats logfile name."
+# %param CTRL_BMARK_TIMEOUT    100000 "Timeout benchmark after N simulated cycles."
 #
 # %AWB_END
 # */

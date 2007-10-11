@@ -15,14 +15,11 @@
 #
 # %public Ports.bsv Events.bsv Stats.bsv Commands.bsv
 #
-# %param HASIM_BMARK_TIMEOUT 1000000 "Force a run to end after N model cycles."
-#
 # %param HASIM_EVENTS_ENABLED True "Statically enable/disable Event logging (True/False)."
-# %param HASIM_EVENTS_LOGFILE "hasim_events.out" "Name of Event logfile."
+# %param HASIM_EVENTS_SIZE 32 "Number of bits for Event parameter."
 #
 # %param HASIM_STATS_ENABLED True "Statically enable/disable Stats logging (True/False)."
 # %param HASIM_STATS_SIZE 32 "Number of bits per Stat counter."
-# %param HASIM_STATS_LOGFILE "hasim_stats.out" "Name of Stats logfile."
 #
 #
 # %AWB_END

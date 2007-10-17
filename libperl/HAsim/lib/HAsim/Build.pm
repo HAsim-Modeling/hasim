@@ -19,10 +19,43 @@ use warnings;
 use strict;
 
 ############################################################
+# scons file functions
+#
+sub get_scons_template($$) {
+    my $module = shift;
+    my $category = shift;
+
+    my $template = $module->scons($category);
+    return undef if (! defined($template));
+
+    return Asim::resolve(HAsim::Util::path_append($module->base_dir(),$template));
+}
+
+sub get_scons_top_template {
+    my $model = shift;
+    my $root = $model->modelroot();
+
+    return get_scons_template($root, 'top');
+}
+
+sub get_scons_hw_sub_template {
+    my $model = shift;
+    my $module = shift;
+    my $root = $model->modelroot();
+
+    return get_scons_template($root, 'hw');
+}
+
+############################################################
 # get_makefile_include_template
 sub get_makefile_include_template {
     my $model = shift;
     my $root = $model->modelroot();
+
+    if (num_makefile_templates($root) == 1) {
+        # Only a top template specified
+        return undef;
+    }
 
     if (num_makefile_templates($root) != 3) {
 	HAsim::Util::WARN_AND_DIE("In HAsim, root module must specify three Makefile templates.");
@@ -37,11 +70,12 @@ sub get_makefile_top_template {
     my $model = shift;
     my $root = $model->modelroot();
 
-    if (num_makefile_templates($root) != 3) {
-	HAsim::Util::WARN_AND_DIE("In HAsim, root module must specify three Makefile templates.");
+    my $tNum = 0;
+    if (num_makefile_templates($root) > 1) {
+        $tNum = 1;
     }
 
-    return get_makefile_template($root,1);
+    return get_makefile_template($root, $tNum);
 }
 
 ############################################################
@@ -50,6 +84,11 @@ sub get_makefile_sub_template {
     my $model = shift;
     my $module = shift;
     my $root = $model->modelroot();
+
+    if (num_makefile_templates($root) == 1) {
+        # Only a top template specified
+        return undef;
+    }
 
     # if $module is root, or has no override. . .
     if ($module->issame($root) || num_makefile_templates($module) == 0) {

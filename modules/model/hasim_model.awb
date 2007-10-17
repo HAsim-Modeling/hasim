@@ -15,7 +15,9 @@
 %requires hasim_common
 %requires fpgaenv
 
-%makefile Makefile.include.template Makefile.top.template Makefile.sub.template
+%makefile Makefile.top.template
+%scons %top SCons.top.template
+%scons %hw  SCons.hw.template
 
 %public hasim_model.bsv
 

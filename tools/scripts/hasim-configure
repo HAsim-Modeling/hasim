@@ -553,48 +553,24 @@ sub __make_symlinks {
     return 1;
 }
 
-############################################################
-# add_makefile_param_replacements:  Add replacement strings
-#         defined by module parameters.
-sub add_makefile_param_replacements ($$) {
-    my $replacements_r = shift;
-    my $module = shift;
-
-    my @p = ();
-    push(@p, $module->parameters());
-    foreach my $p (@p) {
-        HAsim::Util::hash_set($replacements_r, '@' . $p->name() . '@', $p->value());
-    }
-}
-
 
 ############################################################
-# generate_makefile_include: Collect template replacement 
-#                            values for model, and generate
-#                            $(APM)/pm/Makefile.include
-sub generate_makefile_include {
+# makefile_common_replacements: Replacement strings common
+#     to all levels of makefiles.
+sub makefile_common_replacements($$) {
     my $model = shift;
+    my $replacements_r = shift;
 
     if (!defined($builddir)) {
       $builddir = $model->build_dir();
     }
     
-    my $replacements_r = HAsim::Util::empty_hash_ref();
-
-    add_makefile_param_replacements($replacements_r, $model->modelroot());
-
-    # @HOSTLIB@ determines if we should use 64-bit Bluesim libraries
-    # @HOSTLIB@ is _64 on 64-bit machines and "" otherwise
-    if (! defined$ENV{'HOSTTYPE'}) {
-      HAsim::Util::WARN_AND_DIE("HOSTTYPE undefined in environment. Could not determine if this is a 64-bit machine.");
+    my @p = ();
+    push(@p, $model->modelroot()->parameters());
+    foreach my $p (@p) {
+        HAsim::Util::hash_set($replacements_r, '@' . $p->name() . '@', $p->value());
     }
-    
-    my $hosttype = $ENV{'HOSTTYPE'};
-    if ($hosttype =~ m/64/)
-    {
-      HAsim::Util::hash_set($replacements_r,'@HOSTLIB@',"_64");
-    }
-    
+
     # @BUILD_DIR@
     HAsim::Util::hash_set($replacements_r,'@BUILD_DIR@',$builddir);
 
@@ -613,11 +589,26 @@ sub generate_makefile_include {
 
     # @APM_FILE@
     HAsim::Util::hash_set($replacements_r,'@APM_FILE@',$model->filename());
+}
+
+
+############################################################
+# generate_makefile_include: Collect template replacement 
+#                            values for model, and generate
+#                            $(APM)/pm/Makefile.include
+sub generate_makefile_include {
+    my $model = shift;
+
+    my $template = HAsim::Build::get_makefile_include_template($model);
+    return if (! defined($template));
+
+    my $replacements_r = HAsim::Util::empty_hash_ref();
+
+    makefile_common_replacements($model, $replacements_r);
 
     # gather other info recursively
     __generate_makefile_include($model->modelroot(),"arch",$replacements_r);
 
-    my $template = HAsim::Build::get_makefile_include_template($model);
     my $makefile = HAsim::Util::path_append($builddir,"Makefile.include");
     HAsim::Templates::do_replacements($template,$makefile,$replacements_r);
 }
@@ -632,10 +623,8 @@ sub __generate_makefile_include {
 
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
     if (HAsim::Build::is_synthesis_boundary($module)) {
-	# @ALL_DIRS@
-	HAsim::Util::hash_append($replacements_r,":",'@ALL_DIRS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir));
-	# @RELATIVE_DIRS@
-	HAsim::Util::hash_append($replacements_r,":",'@RELATIVE_DIRS@',$my_dir);
+	# @ALL_HW_DIRS@
+	HAsim::Util::hash_append($replacements_r,":",'@ALL_HW_DIRS@',$my_dir);
     }
 
     # recurse
@@ -659,25 +648,39 @@ sub generate_makefile_top {
     
     my $replacements_r = HAsim::Util::empty_hash_ref();
     
-    add_makefile_param_replacements($replacements_r, $model->modelroot());
+    makefile_common_replacements($model, $replacements_r);
 
-    #@ROOT_DIR@
+    #@ROOT_DIR_HW_MODEL@
     my $root = $model->modelroot();
     if (HAsim::Build::is_synthesis_boundary($root)) {
-	HAsim::Util::hash_set($replacements_r,'@ROOT_DIR@',$root->provides());
+	HAsim::Util::hash_set($replacements_r,'@ROOT_DIR_HW_MODEL@',$root->provides());
     } else {
 	HAsim::Util::WARN_AND_DIE("Root module must be a synthesis boundary");
     }
 
-    # @PART@
-    HAsim::Util::hash_set($replacements_r,'@PART@',$HAsim::Xilinx::part_num);
+    # @FPGA_PART@
+    HAsim::Util::hash_set($replacements_r,'@FPGA_PART@',$HAsim::Xilinx::part_num);
+
+    # @ROOT_DIR_HW@
+    my $my_dir = HAsim::Build::get_module_build_dir($root,"arch");
+    HAsim::Util::hash_set($replacements_r,'@ROOT_DIR_HW@',$my_dir);
 
     # gather other info recursively
     __generate_makefile_top($root,"arch",$replacements_r, 1);
 
+    # Generate the makefile
     my $template = HAsim::Build::get_makefile_top_template($model);
-    my $makefile = HAsim::Util::path_append($builddir,"Makefile");
-    HAsim::Templates::do_replacements($template,$makefile,$replacements_r);
+    if (defined($template)) {
+        my $makefile = HAsim::Util::path_append($builddir,"Makefile");
+        HAsim::Templates::do_replacements($template,$makefile,$replacements_r);
+    }
+
+    # Generate scons files
+    $template = HAsim::Build::get_scons_top_template($model);
+    if (defined($template)) {
+        my $scons = HAsim::Util::path_append($builddir, "SConstruct");
+        HAsim::Templates::do_replacements($template, $scons, $replacements_r);
+    }
 }
 
 ############################################################
@@ -691,20 +694,24 @@ sub __generate_makefile_top {
 
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
     if (HAsim::Build::is_synthesis_boundary($module)) {
+	# @ALL_HW_DIRS@
+	HAsim::Util::hash_append($replacements_r,":",'@ALL_HW_DIRS@',$my_dir);
 
 	# @GEN_VS@ - bsc generated .v files
 
 	my $fileroot = HAsim::Build::get_wrapper($module);
 	my $v_file = "$fileroot.v";
-	HAsim::Util::hash_append($replacements_r," ",'@GEN_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, "\$(TMP_BSC_DIR)", $v_file));
+	HAsim::Util::hash_append($replacements_r," ",'@GEN_VS@',HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, $v_file));
 
 	# @GEN_BAS@
 	my $ba_file = "$fileroot.ba";
-	HAsim::Util::hash_append($replacements_r," ",'@GEN_BAS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, "\$(TMP_BSC_DIR)", $ba_file));
+	HAsim::Util::hash_append($replacements_r," ",'@GEN_BAS@',HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, $ba_file));
         
-	# @GEN_CXXS@ are local to the toplevel directory
+	# @GEN_CXXS@ and @GEN_HS@ are local to the toplevel directory
 	my $cxx_file = "$fileroot.cxx";
-	HAsim::Util::hash_append($replacements_r," ",'@GEN_CXXS@',HAsim::Util::path_append("\$(TMP_BSC_DIR)", $cxx_file));
+	HAsim::Util::hash_append($replacements_r," ",'@GEN_CXXS@',HAsim::Util::path_append($cxx_file));
+	my $h_file = "$fileroot.h";
+	HAsim::Util::hash_append($replacements_r," ",'@GEN_HS@',HAsim::Util::path_append($h_file));
         
         # @GEN_O_DEPS@ makes sure generated .cxx files are compiled in the right order
         my $my_o = HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($module->provides()));
@@ -721,20 +728,20 @@ sub __generate_makefile_top {
     foreach my $n (@bdpi_names) {
         my $fname = "$n.ba";
 	    HAsim::Util::hash_append($replacements_r, " ", '@BDPI_BAS@',
-                                 HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, "\$(TMP_BSC_DIR)", $fname));
+                                 HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, $fname));
     }
 
 
     ## @GIVEN_VS@ - raw .v files included in the model
 
     foreach my $f ($module->sources("VERILOG", "*")) {
-        HAsim::Util::hash_append($replacements_r," ",'@GIVEN_VS@',HAsim::Util::path_append("\$(BUILD_DIR)",$my_dir, $f));
+        HAsim::Util::hash_append($replacements_r," ",'@GIVEN_VS@',HAsim::Util::path_append($my_dir, $f));
     }
 
     ## @GIVEN_CS@
 
     foreach my $f ($module->sources("CPP", "*")) {
-        HAsim::Util::hash_append($replacements_r," ",'@GIVEN_CS@',HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, $f));
+        HAsim::Util::hash_append($replacements_r," ",'@GIVEN_CS@',HAsim::Util::path_append($my_dir, $f));
     }
 
     ## @BDPI_CS@
@@ -747,7 +754,7 @@ sub __generate_makefile_top {
             # do nothing
         }
         else {
-            HAsim::Util::hash_append($replacements_r," ",'@BDPI_CS@',HAsim::Util::path_append("\$(BUILD_DIR)", $my_dir, $f));
+            HAsim::Util::hash_append($replacements_r," ",'@BDPI_CS@',HAsim::Util::path_append($my_dir, $f));
         }
     }
 
@@ -769,6 +776,7 @@ sub generate_makefile_sub {
     my $model = shift;
     
     my $replacements_r = HAsim::Util::empty_hash_ref();
+    makefile_common_replacements($model, $replacements_r);
     __generate_makefile_sub($model,$model->modelroot(),"arch",$replacements_r);
 }
 
@@ -807,9 +815,8 @@ sub __generate_makefile_sub {
         
         
         my $my_wrap = HAsim::Build::make_wrapper_name($module->provides());
-	my $my_bsv = "${builddir}/${my_dir}/${my_wrap}.bsv";
-	HAsim::Util::hash_append($current_replacements_r," ",'@WRAPPER_BSVS@',$my_bsv);
-
+        my $my_bsv = "${my_wrap}.bsv";
+        HAsim::Util::hash_append($current_replacements_r," ",'@WRAPPER_BSVS@',$my_bsv);
     }
 
     ## @SUBDIRS@ & @SUBDIR_BAS@
@@ -819,7 +826,7 @@ sub __generate_makefile_sub {
 	if (HAsim::Build::is_synthesis_boundary($child)) {
 	    my $subdir = $child->provides();
 	    HAsim::Util::hash_append($current_replacements_r," ",'@SUBDIRS@',$subdir);
-            generate_surrogate_deps($current_replacements_r, $child, "$builddir/$my_dir");
+            generate_surrogate_deps($current_replacements_r, $child, '');
 
 	}
     }
@@ -873,9 +880,19 @@ sub __generate_makefile_sub {
 
     # on the way up, possibly generate makefile
     if (HAsim::Build::is_synthesis_boundary($module)) {
+        # Generate makefile
 	my $template = HAsim::Build::get_makefile_sub_template($model,$module);
-	my $makefile = HAsim::Util::path_append($builddir,$my_dir,"Makefile");
-	HAsim::Templates::do_replacements($template,$makefile,$current_replacements_r);
+        if (defined($template)) {
+            my $makefile = HAsim::Util::path_append($builddir,$my_dir,"Makefile");
+            HAsim::Templates::do_replacements($template,$makefile,$current_replacements_r);
+        }
+
+        # Generate scons file
+        $template = HAsim::Build::get_scons_hw_sub_template($model, $module);
+        if (defined($template)) {
+            my $scons = HAsim::Util::path_append($builddir, $my_dir, "SConscript");
+            HAsim::Templates::do_replacements($template, $scons, $current_replacements_r);
+        }
     }
 }
 
@@ -894,22 +911,19 @@ sub generate_surrogate_deps
   my $wrapper = HAsim::Build::make_wrapper_name($surrogate);
   
   # @SURROGATE_DEPS@ ensures surrogates are re-generated as necessary
-  #HAsim::Util::hash_append($replacements_r," ",'@SURROGATE_DEPS@',"\n./\$(TMP_BSC_DIR)/$surrogate.bi: ./$surrogate.bsv\n");
   my $run_connection = "\$(CONNECTION_SCRIPT) \$(APM_FILE) \$@";
   HAsim::Util::hash_append($replacements_r," ",'@SURROGATE_DEPS@',"\n$dir/$surrogate.bsv: $dir/$surrogate/\$(TMP_BSC_DIR)/$wrapper.bi\n\t$run_connection\n");
   
-  my $child_wrap = HAsim::Build::make_wrapper_name($surrogate);
-  my $child_bsv = "${dir}/${surrogate}/${child_wrap}.bsv";
-  HAsim::Util::hash_append($replacements_r," ",'@WRAPPER_BSVS@',$child_bsv);
+#  my $child_wrap = HAsim::Build::make_wrapper_name($surrogate);
+#  my $child_bsv = "${surrogate}/${child_wrap}.bsv";
+#  $child_bsv = "$dir/$child_bsv" if ($dir ne '');
+#  HAsim::Util::hash_append($replacements_r," ",'@WRAPPER_BSVS@',$child_bsv);
   
   foreach my $child ($module->submodules()) {
     if (HAsim::Build::is_synthesis_boundary($child)) {
       my $subdir = $child->provides();
       my $subdir_wrapper = HAsim::Build::make_wrapper_name($subdir);
       
-      #my $child_bsv = "${dir}/${subdir}/${subdir_wrapper}.bsv";
-      #Asim::Util::hash_append($replacements_r," ",'@WRAPPER_BSVS@',$child_bsv);
-      #HAsim::Util::hash_append($replacements_r," ",'@SURROGATE_DEPS@',"\n./$subdir/$surrogate.bsv: $dir/$subdir/\$(TMP_BSC_DIR)/$subdir_wrapper.bi\n\t\$(CONNECTION_SCRIPT) \$(APM_FILE) \$@\n");
       generate_surrogate_deps($replacements_r, $child, HAsim::Util::path_append($dir, $surrogate));
     }
   }

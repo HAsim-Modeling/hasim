@@ -83,6 +83,7 @@ sub generate_xst_file {
     my $replacements_r = HAsim::Util::empty_hash_ref();
     
     HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$name);
+    HAsim::Util::hash_set($replacements_r,'@TMP_XILINX_DIR@',$tmp_xilinx_dir);
 
     my $bdir = bluespec_dir();
     HAsim::Util::hash_set($replacements_r,'@BLUESPECDIR@', $bdir);

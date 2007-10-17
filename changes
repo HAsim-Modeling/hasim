@@ -8576,3 +8576,25 @@ the only point of choice is in the controller itself, which is either simulation
 or hybrid. This is the first step towrards a hub/ring topology.
 
 Michael P.
+
+----------
+mcadler     Date: Wed Oct 17 14:46:17 EDT 2007  CSN: CSN-hasim-287
+                  Wed Oct 17 18:46:17 UTC 2007
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          286 
+ Build.pm                  Locally Modified          286 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          286 
+ hasim-connect             Locally Modified          286 
+ hasim-bsc-mkdepend        Locally Modified          286 
+
+Directory modules/model
+ SCons.top.template        Locally Added               0 
+ Makefile.top.template     Locally Modified          286 
+ hasim_model.awb           Locally Modified          286 
+ SCons.hw.template         Locally Added               0 
+
+Build the world using SCons.

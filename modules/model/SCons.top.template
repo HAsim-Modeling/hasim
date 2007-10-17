@@ -1,0 +1,350 @@
+# -*-Python-*-
+
+import os
+import re
+import string
+
+defs = {
+    'ALL_HW_DIRS'        : '@ALL_HW_DIRS@',
+    'APM_FILE'           : '@APM_FILE@',
+    'APM_NAME'           : '@APM_NAME@',
+    'BDPI_BAS'           : '@BDPI_BAS@',
+    'BDPI_CS'            : '@BDPI_CS@',
+    'BSC'                : 'bsc',
+    'BSC_FLAGS'          : '-steps 1000000 +RTS -K1000M -RTS -keep-fires -aggressive-conditions -wait-for-license -no-show-method-conf -no-opt-bool',
+    'BUILD_DIR'          : '@BUILD_DIR@',
+    'CONNECTION_SCRIPT'  : 'hasim-connect',
+    'FPGA_PART'          : '@FPGA_PART@',
+    'GIVEN_CS'           : '@GIVEN_CS@',
+    'GIVEN_VS'           : '@GIVEN_VS@',
+    'GEN_BAS'            : '@GEN_BAS@',
+    'GEN_CXXS'           : 'schedule.cxx @GEN_CXXS@',
+    'GEN_HS'             : 'schedule.h @GEN_HS@',
+    'LDFLAGS'            : '-L /usr/lib64/curses -L /usr/lib/curses',
+    'MAKE_ALL_TARGET'    : '@MAKE_ALL_TARGET@',
+    'ROOT_DIR_HW'        : '@ROOT_DIR_HW@',
+    'ROOT_DIR_HW_MODEL'  : '@ROOT_DIR_HW_MODEL@',
+    'TMP_BSC_DIR'        : '@TMP_BSC_DIR@',
+    'TMP_XILINX_DIR'     : '@TMP_XILINX_DIR@',
+    'XST_FILE'           : '@XST_FILE@',
+}
+
+# Propagate environment from external state
+env = Environment(ENV = os.environ, DEFS = defs)
+env['ENV']['SHELL'] = '/bin/sh'
+
+
+############################################################################
+############################################################################
+##
+## Utility functions used in this module and in submodules
+##
+############################################################################
+############################################################################
+
+utility_names = []
+
+##
+## clean_split --
+##     Split a string into a list using specified separator (default ':'),
+##     dropping empty entries.
+##
+utility_names.append('clean_split')
+def clean_split(list, sep=':'):
+    return [x for x in list.split(sep) if x != '' ]
+
+##
+## rebase_directory --
+##     Rebase directory (d) that is a reference relative to the root build
+##     directory, returning a result relative to cwd.  cwd must also be
+##     relative to the root build directory.
+##
+utility_names.append('rebase_directory')
+def rebase_directory(d, cwd):
+    d = clean_split(d, sep='/')
+    cwd = clean_split(cwd, sep='/')
+
+    for x in cwd:
+        if (len(d) == 0 or d[0] != x):
+            d.insert(0, '..')
+        else:
+            d.pop(0)
+
+    if (len(d) == 0): d = [ '.' ]
+    return '/'.join(d)
+
+##
+## transform_string_list --
+##     Interpret incoming string (str) as a list of substrings separated by (sep).
+##     Add (prefix) and (suffix) to each substring and return a modified string.
+##
+utility_names.append('transform_string_list')
+def transform_string_list(str, sep, prefix, suffix):
+    if (sep == None):
+        sep = ' '
+    t = [ prefix + a + suffix for a in clean_split(str, sep) ]
+    return string.join(t, sep)
+    
+
+
+############################################################################
+############################################################################
+##
+## SCons configuration.
+##
+############################################################################
+############################################################################
+
+##
+## env.Clone() is new as of 0.97.  It used to be called Copy().
+##
+import SCons.Environment
+try:
+    SCons.Environment.Environment.Clone
+except AttributeError:
+    SCons.Environment.Environment.Clone = SCons.Environment.Environment.Copy
+
+
+############################################################################
+############################################################################
+##
+## Build rules
+##
+############################################################################
+############################################################################
+
+SourceSignatures('MD5')
+TargetSignatures('content')
+
+APM_NAME = env['DEFS']['APM_NAME']
+BSC = env['DEFS']['BSC']
+BSC_FLAGS = env['DEFS']['BSC_FLAGS']
+LDFLAGS = env['DEFS']['LDFLAGS']
+TMP_BSC_DIR = env['DEFS']['TMP_BSC_DIR']
+
+ROOT_WRAPPER_SYNTH_ID = 'mk_' + env['DEFS']['ROOT_DIR_HW_MODEL'] + '_Wrapper'
+
+SW_EXE = APM_NAME + '_sw.exe'
+if env['DEFS']['GIVEN_CS'] != '':
+    SW_TGT = ['simx']
+else:
+    SW_TGT = []
+
+
+############################################################################
+##
+## Rules for HW subdirectory.  These are shared by all targets.
+##
+############################################################################
+env['DEFS']['CWD_REL'] = env['DEFS']['ROOT_DIR_HW']
+Export('env ' + " ".join(utility_names))
+wrapper_v = SConscript([env['DEFS']['ROOT_DIR_HW'] + '/SConscript'])
+
+BuildDir(TMP_BSC_DIR, '.', duplicate=0)
+
+
+
+
+############################################################################
+##
+## Rules for building a Bluesim EXE.
+##
+############################################################################
+
+##
+## C++ files are generated in the .bsc directories by a single Bluespec invocation
+##
+cxx_targets = transform_string_list(env['DEFS']['GEN_CXXS'], ' ', TMP_BSC_DIR + '/', '')
+h_targets = transform_string_list(env['DEFS']['GEN_HS'], ' ', TMP_BSC_DIR + '/', '')
+
+cxx_gen_command = BSC + ' ' + BSC_FLAGS + ' ' + LDFLAGS + \
+                  ' -KILLsimBlocksToC -sim -e ' + ROOT_WRAPPER_SYNTH_ID + ' -simdir ' + \
+                  TMP_BSC_DIR + ' ' + env['DEFS']['GEN_BAS'] + ' ' + env['DEFS']['BDPI_BAS']
+
+cxx = env.Command(
+    clean_split(cxx_targets + ' ' + h_targets, sep=' '),
+    wrapper_v,
+    cxx_gen_command)
+
+Clean(cxx,  TMP_BSC_DIR + '/imported_BDPI_functions.h')
+
+##
+## Compile the C++ into a Bluesim executable.  First define a compilation
+## environment with the right flags.
+##
+bsc_ccflags = '-Wall -Wno-unused -g -D_FILE_OFFSET_BITS=64' + \
+              ' -DTOP=' + ROOT_WRAPPER_SYNTH_ID + \
+              ' -I' + os.environ['BLUESPECDIR'] + '/Bluesim -fno-rtti'
+
+bsc_lib_ext = ''
+if (os.environ['HOSTTYPE'].find('_64')):
+    bsc_lib_ext = '_64'
+
+bsc_cxx_env = env.Clone(
+    CCFLAGS = bsc_ccflags,
+    LINKFLAGS = bsc_ccflags,
+    LIBPATH = [ '/usr/lib64/curses', '/usr/lib/curses',
+                os.environ['BLUESPECDIR'] + '/Bluesim/g++4' + bsc_lib_ext ],
+    LIBS = ['bsui', 'edit', 'bskernel', 'bsprim', 'curses'])
+
+bsim_build_obj = []
+
+for c in clean_split(cxx_targets, sep=' '):
+    bsim_build_obj += bsc_cxx_env.Object(c)
+
+bdpi_obj = []
+for c in clean_split(env['DEFS']['BDPI_CS'], sep=' '):
+    # Build BDPI C files into the top level temporary directory
+    tgt = TMP_BSC_DIR + '/' + clean_split(c, '/')[-1]
+    # Strip suffix (scons will add the right one)
+    tgt = re.compile(r'\.[cx]+$').sub('', tgt)
+    bdpi_obj += bsc_cxx_env.Object(target=tgt, source=c)
+
+bsim_build_obj += bdpi_obj
+
+sbin = bsc_cxx_env.Program(APM_NAME + '_hw.exe', bsim_build_obj)
+
+exe = env.Command(
+    APM_NAME + '_hw_exe.sh',
+    sbin + SW_TGT,
+    [ '@echo "#!/bin/sh" > $TARGET',
+      '@echo "' + env['DEFS']['BUILD_DIR'] + '/$SOURCE \$*" >> $TARGET',
+      '@chmod a+x $TARGET',
+      Delete('simv'),
+      '@ln -fs $TARGET simv' ])
+
+env.Alias('exe', exe)
+
+
+
+
+############################################################################
+##
+## Rules for building a Verilog simulation vexe
+##
+############################################################################
+
+vexe_gen_command = BSC + ' ' + BSC_FLAGS + ' -I ' + env['ENV']['IVERILOGDIR'] + '/include' + \
+                   ' -verilog -e ' + ROOT_WRAPPER_SYNTH_ID + ' -o $TARGET' + \
+                   ' $SOURCES ' + env['DEFS']['BDPI_BAS']
+
+vbin = env.Command(
+    APM_NAME + '_hw.vexe',
+    wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' ') + bdpi_obj,
+    [ vexe_gen_command,
+      Delete('directc.sft') ])
+
+
+vexe = env.Command(
+    APM_NAME + '_hw_vexe.sh',
+    vbin + SW_TGT,
+    [ '@echo "#!/bin/sh" > $TARGET',
+      '@echo "' + env['DEFS']['BUILD_DIR'] + '/$SOURCE +bscvcd \$*" >> $TARGET',
+      '@chmod a+x $TARGET',
+      Delete('simv'),
+      '@ln -fs $TARGET simv' ])
+
+env.Alias('vexe', vexe)
+
+
+
+
+############################################################################
+##
+## Rules for building a Xilinx bit image
+##
+############################################################################
+
+TMP_XILINX_DIR = env['DEFS']['TMP_XILINX_DIR']
+XILINX_APM_NAME = TMP_XILINX_DIR + '/' + APM_NAME
+XST_FILE = env['DEFS']['XST_FILE']
+
+FPGA_PART = env['DEFS']['FPGA_PART']
+
+xilinx_ngc = env.Command(
+    XILINX_APM_NAME + '.ngc',
+    wrapper_v,
+    'xst -ifn ' + APM_NAME + '.xst -ofn ' + XILINX_APM_NAME + '.srp')
+
+Clean(xilinx_ngc,  XILINX_APM_NAME + '.srp')
+
+
+xilinx_ngd = env.Command(
+    XILINX_APM_NAME + '.ngd',
+    xilinx_ngc,
+    [ 'ngdbuild -uc ' + APM_NAME + '.ucf $SOURCE $TARGET',
+      Move(TMP_XILINX_DIR + '/netlist.lst', 'netlist.lst') ])
+
+Clean(xilinx_ngd, TMP_XILINX_DIR + '/netlist.lst')
+
+
+# Map
+xilinx_map = env.Command(
+    [ XILINX_APM_NAME + '_map.ncd', XILINX_APM_NAME + '.pcf' ],
+    xilinx_ngd,
+    [ 'map -cm area -pr b -u -k 4 -c 100 -tx off -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf',
+      Move(TMP_XILINX_DIR + '/xilinx_device_details.xml', 'xilinx_device_details.xml') ])
+
+Clean(xilinx_map, TMP_XILINX_DIR + '/xilinx_device_details.xml')
+
+# Place and route
+xilinx_par = env.Command(
+    XILINX_APM_NAME + '_par.ncd',
+    xilinx_map,
+    'par -w -ol std -t 1 ' + XILINX_APM_NAME + '_map.ncd $TARGET ' + XILINX_APM_NAME + '.pcf');
+
+
+# Generate the FPGA image
+xilinx_bit = env.Command(
+    XILINX_APM_NAME + '_par.bit',
+    [ APM_NAME + '.ut', xilinx_par ],
+    'bitgen -f $SOURCES')
+
+
+# Loader script
+loader = env.Command(
+    APM_NAME,
+    xilinx_bit + SW_TGT,
+    [ '@echo "#!/bin/sh" > $TARGET',
+      '@echo "impact -batch ' + env['DEFS']['BUILD_DIR'] + '/' + APM_NAME + '.download" >> $TARGET',
+      Chmod('$TARGET', 0755),
+      '@echo "++++++++++++ Post-Synthesis ++++++++++++"',
+      '@grep "Number of Slices" ' + XILINX_APM_NAME + '.srp',
+      '@grep "Maximum Frequency" ' + XILINX_APM_NAME + '.srp',
+      '@echo "++++++++++++ Post-Place & Route ++++++++"',
+      '@grep "Number of SLICEs" ' + XILINX_APM_NAME + '_par.par',
+      '@grep -B 1 -A 3 "Max Delay" ' + XILINX_APM_NAME + '_par.par' ])
+      
+env.Alias('bit', loader)
+
+
+##
+## Clean up a few extra files not described in the build rules
+##
+if env.GetOption('clean'):
+    os.system('cd ' + TMP_XILINX_DIR + '; rm -f ' + APM_NAME + '*')
+
+
+############################################################################
+##
+## Rules for building the software side
+##
+############################################################################
+
+if SW_TGT != []:
+    sw_env = env.Clone(CCFLAGS = '-DAPM_NAME=\\"' + APM_NAME + '\\"')
+    sw_exe = sw_env.Program(SW_EXE, clean_split(env['DEFS']['GIVEN_CS'], sep = ' '))
+
+    sw_env.Command(SW_TGT, sw_exe, '@ln -fs $SOURCE $TARGET')
+
+
+############################################################################
+############################################################################
+
+##
+## Set a default target
+##
+if (env['DEFS']['MAKE_ALL_TARGET'] != ''):
+    Default(env['DEFS']['MAKE_ALL_TARGET'])
+else:
+    Default(exe)

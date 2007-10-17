@@ -22,7 +22,7 @@ my %bsvDep;             # Dependence on source files.
 sub ErrorExit($)
 {
     my ($str) = @_;
-    print STDERR "Error: ${str}\n";
+    print STDERR "hasim-bsc-mkdepend error: ${str}\n";
     exit(1);
 }
 
@@ -124,7 +124,7 @@ sub NoteImport($$)
     return if (($impName eq "BDPI") || ($impName eq "BVI"));
 
     # Is it a precompiled library?
-    return if (defined(FindBSVLibrary($impName . ".bi")));
+    return if (defined(FindBSVLibrary($impName . ".bo")));
 
     my $imp = FindBSVFile($impName . ".bsv");
     if (! defined($imp))
@@ -225,6 +225,16 @@ sub ParseBSVFile($$)
 
     print STDERR "Parsing input file ${fName}\n" if ($debug);
     ErrorExit("Can't find file $fName") if (! -f $fName);
+
+    # Don't parse the contents of derived files.  We avoid parsing mainly because
+    # the file changes after the first build and would cause the build rule to
+    # think it needs to be rebuilt even though no rebuild is needed.  The
+    # dependence is captured through other paths.
+    #
+    # Start by stripping any leading local directory specifier.
+    my $fn = $fName;
+    $fn =~ s/^\.\///;
+    return if (exists($derivedBSV{$fn}));
 
     my $inComment = 0;
     my $BSV;
@@ -327,27 +337,31 @@ foreach my $bsv (@ARGV)
 foreach my $bsv (keys %bsvFiles)
 {
     
-    my $bi = $bsv;
-    $bi =~ s/\.bsv$/.bi/;
-    $bi =~ s/(.*)\///g;
+    my $bo = $bsv;
+    $bo =~ s/\.bsv$/.bo/;
+    $bo =~ s/(.*)\///g;
     my $bdir = $1;
-    print "${bdir}/${bscBDir}/${bi}: ${bsv}\n";
+    $bdir = defined($bdir) ? $bdir . '/' : '';
+        
+    print "${bdir}${bscBDir}/${bo}: ${bsv}\n";
     foreach my $dep (keys %{$bsvDep{$bsv}})
     {
         ## Each file depends on the imported .bsv source files and the files
         ## built from those sources
 
-        print "${bdir}/${bscBDir}/${bi}: ${dep}\n";
-
         if ($bsvDep{$bsv}{$dep} != 0)
         {
             # For imports add dependence on built object
             my $d = $dep;
-            $d =~ s/\.bsv$/.bi/;
+            $d =~ s/\.bsv$/.bo/;
             $d =~ s/(.*)\///g;
             my $ddir = $1;
-            print "${bdir}/${bscBDir}/${bi}: ${ddir}/${bscBDir}/${d}\n";
+            print "${bdir}${bscBDir}/${bo}: ${ddir}/${bscBDir}/${d}\n";
         }
+        else {
+            print "${bdir}${bscBDir}/${bo}: ${dep}\n";
+        }
+
     }
     print "\n";
 }
@@ -376,20 +390,9 @@ foreach my $bsv (keys %bsvFiles)
     if ($bsvFiles{$bsv} > 0)
     {
         my $b = $bsv;
-        $b =~ s/\.bsv$/.bi/;
+        $b =~ s/\.bsv$/.bo/;
         $b =~ s/.*\///g;
         #print "all_intermediate: ${bscBDir}/${b}\n";
     }
 }
 print "\n";
-
-##
-## Now for a hack.  Emit hints in the file for finding imported .bsv source files.
-## The .bi rule in the Makefile needs this information.
-##
-foreach my $bsv (keys %bsvFiles)
-{
-    print "#PATH_BSV: ${bsv}\n";
-}
-print "\n";
-

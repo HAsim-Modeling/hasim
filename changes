@@ -8598,3 +8598,14 @@ Directory modules/model
  SCons.hw.template         Locally Added               0 
 
 Build the world using SCons.
+
+----------
+mcadler     Date: Thu Oct 18 11:59:35 EDT 2007  CSN: CSN-hasim-288
+                  Thu Oct 18 15:59:35 UTC 2007
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          287 
+
+Fix test for 64 bit machine.  Python's string find() method returns -1
+when string doesn't match.

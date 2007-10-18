@@ -177,7 +177,7 @@ bsc_ccflags = '-Wall -Wno-unused -g -D_FILE_OFFSET_BITS=64' + \
               ' -I' + os.environ['BLUESPECDIR'] + '/Bluesim -fno-rtti'
 
 bsc_lib_ext = ''
-if (os.environ['HOSTTYPE'].find('_64')):
+if (os.environ['HOSTTYPE'].find('_64') >= 0):
     bsc_lib_ext = '_64'
 
 bsc_cxx_env = env.Clone(

@@ -264,7 +264,7 @@ FPGA_PART = env['DEFS']['FPGA_PART']
 xilinx_ngc = env.Command(
     XILINX_APM_NAME + '.ngc',
     wrapper_v,
-    'xst -ifn ' + APM_NAME + '.xst -ofn ' + XILINX_APM_NAME + '.srp')
+    'xst -ifn config/' + APM_NAME + '.xst -ofn ' + XILINX_APM_NAME + '.srp')
 
 Clean(xilinx_ngc,  XILINX_APM_NAME + '.srp')
 
@@ -272,7 +272,7 @@ Clean(xilinx_ngc,  XILINX_APM_NAME + '.srp')
 xilinx_ngd = env.Command(
     XILINX_APM_NAME + '.ngd',
     xilinx_ngc,
-    [ 'ngdbuild -uc ' + APM_NAME + '.ucf $SOURCE $TARGET',
+    [ 'ngdbuild -uc ' + 'config/' + APM_NAME + '.ucf $SOURCE $TARGET',
       Move(TMP_XILINX_DIR + '/netlist.lst', 'netlist.lst') ])
 
 Clean(xilinx_ngd, TMP_XILINX_DIR + '/netlist.lst')
@@ -282,8 +282,7 @@ Clean(xilinx_ngd, TMP_XILINX_DIR + '/netlist.lst')
 xilinx_map = env.Command(
     [ XILINX_APM_NAME + '_map.ncd', XILINX_APM_NAME + '.pcf' ],
     xilinx_ngd,
-    [ 'map -cm area -pr b -u -k 4 -c 100 -tx off -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf',
-      Move(TMP_XILINX_DIR + '/xilinx_device_details.xml', 'xilinx_device_details.xml') ])
+    'map -cm area -pr b -u -k 4 -c 100 -tx off -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf')
 
 Clean(xilinx_map, TMP_XILINX_DIR + '/xilinx_device_details.xml')
 
@@ -297,7 +296,7 @@ xilinx_par = env.Command(
 # Generate the FPGA image
 xilinx_bit = env.Command(
     XILINX_APM_NAME + '_par.bit',
-    [ APM_NAME + '.ut', xilinx_par ],
+    [ 'config/' + APM_NAME + '.ut', xilinx_par ],
     'bitgen -f $SOURCES')
 
 
@@ -306,13 +305,13 @@ loader = env.Command(
     APM_NAME,
     xilinx_bit + SW_TGT,
     [ '@echo "#!/bin/sh" > $TARGET',
-      '@echo "impact -batch ' + env['DEFS']['BUILD_DIR'] + '/' + APM_NAME + '.download" >> $TARGET',
+      '@echo "impact -batch ' + env['DEFS']['BUILD_DIR'] + '/config/' + APM_NAME + '.download" >> $TARGET',
       Chmod('$TARGET', 0755),
       '@echo "++++++++++++ Post-Synthesis ++++++++++++"',
-      '@grep "Number of Slices" ' + XILINX_APM_NAME + '.srp',
+      '@grep "out of" ' + XILINX_APM_NAME + '.srp',
       '@grep "Maximum Frequency" ' + XILINX_APM_NAME + '.srp',
       '@echo "++++++++++++ Post-Place & Route ++++++++"',
-      '@grep "Number of SLICEs" ' + XILINX_APM_NAME + '_par.par',
+      '@grep -i "slice" ' + XILINX_APM_NAME + '_par.par',
       '@grep -B 1 -A 3 "Max Delay" ' + XILINX_APM_NAME + '_par.par' ])
       
 env.Alias('bit', loader)

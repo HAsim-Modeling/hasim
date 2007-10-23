@@ -55,12 +55,15 @@ sub find_all_files_with_suffix {
 # package variables
 
 our $tmp_xilinx_dir = ".xilinx";
-our $part_num = "xc2vp30-7-ff896";
+our $xilinx_config_dir = "config";
 
 ############################################################
 # generate_files:
 sub generate_files {
     my $model = shift;
+
+    my $config_dir = HAsim::Util::path_append($model->build_dir(), $xilinx_config_dir);
+    system("mkdir -p $config_dir");
 
     generate_prj_file($model);
     generate_xst_file($model);
@@ -76,11 +79,13 @@ sub generate_xst_file {
     my $model = shift;
     
     my $name = HAsim::Build::get_model_name($model);
-    my $final_xst_file = HAsim::Util::path_append($model->build_dir(),$name . ".xst");
+    my $final_xst_file = HAsim::Util::path_append($model->build_dir(),$xilinx_config_dir,$name . ".xst");
 
     CORE::open(XSTFILE, "> $final_xst_file") || return undef;
 
     my $replacements_r = HAsim::Util::empty_hash_ref();
+
+    HAsim::Util::common_replacements($model, $replacements_r);
     
     HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$name);
     HAsim::Util::hash_set($replacements_r,'@TMP_XILINX_DIR@',$tmp_xilinx_dir);
@@ -107,7 +112,7 @@ sub generate_prj_file {
     my $model = shift;
     my $name = HAsim::Build::get_model_name($model);
     
-    my $final_prj_file = HAsim::Util::path_append($model->build_dir(),$name . ".prj");
+    my $final_prj_file = HAsim::Util::path_append($model->build_dir(),$xilinx_config_dir,$name . ".prj");
    
     #first add all local .prj files
 
@@ -116,6 +121,8 @@ sub generate_prj_file {
     my @model_prj_files = find_all_files_with_suffix($model->modelroot(), ".prj");
     
     my $replacements_r = HAsim::Util::empty_hash_ref();
+    
+    HAsim::Util::common_replacements($model, $replacements_r);
     
     HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$name);
 
@@ -181,7 +188,7 @@ sub generate_ut_file {
     my $model = shift;
     my $name = HAsim::Build::get_model_name($model);
     
-    my $final_ut_file = HAsim::Util::path_append($model->build_dir(),$name . ".ut");
+    my $final_ut_file = HAsim::Util::path_append($model->build_dir(),$xilinx_config_dir,$name . ".ut");
 
     CORE::open(UTFILE, "> $final_ut_file") || return undef;
 
@@ -190,6 +197,8 @@ sub generate_ut_file {
     my @model_ut_files = find_all_files_with_suffix($model->modelroot(), ".ut");
     
     my $replacements_r = HAsim::Util::empty_hash_ref();
+    
+    HAsim::Util::common_replacements($model, $replacements_r);
     
     HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$name);    
 
@@ -209,10 +218,12 @@ sub generate_ucf_file {
 
     my $replacements_r = HAsim::Util::empty_hash_ref();
     
+    HAsim::Util::common_replacements($model, $replacements_r);
+    
     my $apm = HAsim::Build::get_model_name($model);
     HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$apm);
 
-    my $final_ucf_file = HAsim::Util::path_append($model->build_dir(),$apm . ".ucf");
+    my $final_ucf_file = HAsim::Util::path_append($model->build_dir(),$xilinx_config_dir,$apm . ".ucf");
 
     CORE::open(UCFFILE, "> $final_ucf_file") || return undef;
 
@@ -236,9 +247,11 @@ sub generate_download_file {
     my $model = shift;
     my $name = HAsim::Build::get_model_name($model);
     
-    my $download_file = HAsim::Util::path_append($model->build_dir(),$name . ".download");
+    my $download_file = HAsim::Util::path_append($model->build_dir(),$xilinx_config_dir,$name . ".download");
 
     my $replacements_r = HAsim::Util::empty_hash_ref();
+    
+    HAsim::Util::common_replacements($model, $replacements_r);
     
     my $apm = HAsim::Build::get_model_name($model);
     HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$apm);

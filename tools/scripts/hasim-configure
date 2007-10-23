@@ -554,43 +554,17 @@ sub __make_symlinks {
 }
 
 
-############################################################
-# makefile_common_replacements: Replacement strings common
-#     to all levels of makefiles.
-sub makefile_common_replacements($$) {
-    my $model = shift;
+
+sub note_builddir($) {
     my $replacements_r = shift;
 
     if (!defined($builddir)) {
       $builddir = $model->build_dir();
     }
-    
-    my @p = ();
-    push(@p, $model->modelroot()->parameters());
-    foreach my $p (@p) {
-        HAsim::Util::hash_set($replacements_r, '@' . $p->name() . '@', $p->value());
-    }
 
     # @BUILD_DIR@
     HAsim::Util::hash_set($replacements_r,'@BUILD_DIR@',$builddir);
-
-    # @APM_NAME@
-    my $apm = HAsim::Build::get_model_name($model);
-    HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$apm);
-
-    # @TMP_XILINX_DIR@
-    HAsim::Util::hash_set($replacements_r,'@TMP_XILINX_DIR@',$HAsim::Xilinx::tmp_xilinx_dir);
-
-    # @TMP_BSC_DIR@
-    HAsim::Util::hash_set($replacements_r,'@TMP_BSC_DIR@',$HAsim::Bluespec::tmp_bsc_dir);
-
-    # @CONNECTION_SCRIPT@
-#    hash_set($replacements_r,'@CONNECTION_SCRIPT@',Asim::resolve("tools/scripts/hasim-connect"));
-
-    # @APM_FILE@
-    HAsim::Util::hash_set($replacements_r,'@APM_FILE@',$model->filename());
 }
-
 
 ############################################################
 # generate_makefile_include: Collect template replacement 
@@ -604,7 +578,8 @@ sub generate_makefile_include {
 
     my $replacements_r = HAsim::Util::empty_hash_ref();
 
-    makefile_common_replacements($model, $replacements_r);
+    HAsim::Util::common_replacements($model, $replacements_r);
+    note_builddir($replacements_r);
 
     # gather other info recursively
     __generate_makefile_include($model->modelroot(),"arch",$replacements_r);
@@ -648,7 +623,8 @@ sub generate_makefile_top {
     
     my $replacements_r = HAsim::Util::empty_hash_ref();
     
-    makefile_common_replacements($model, $replacements_r);
+    HAsim::Util::common_replacements($model, $replacements_r);
+    note_builddir($replacements_r);
 
     #@ROOT_DIR_HW_MODEL@
     my $root = $model->modelroot();
@@ -657,9 +633,6 @@ sub generate_makefile_top {
     } else {
 	HAsim::Util::WARN_AND_DIE("Root module must be a synthesis boundary");
     }
-
-    # @FPGA_PART@
-    HAsim::Util::hash_set($replacements_r,'@FPGA_PART@',$HAsim::Xilinx::part_num);
 
     # @ROOT_DIR_HW@
     my $my_dir = HAsim::Build::get_module_build_dir($root,"arch");
@@ -776,7 +749,8 @@ sub generate_makefile_sub {
     my $model = shift;
     
     my $replacements_r = HAsim::Util::empty_hash_ref();
-    makefile_common_replacements($model, $replacements_r);
+    HAsim::Util::common_replacements($model, $replacements_r);
+    note_builddir($replacements_r);
     __generate_makefile_sub($model,$model->modelroot(),"arch",$replacements_r);
 }
 

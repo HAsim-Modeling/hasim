@@ -71,6 +71,58 @@ sub hash_append {
     return 1;
 }
 
+
+
+############################################################
+# common_replacements: Replacement strings common
+#     to all levels of makefiles.
+sub common_replacements($$) {
+    my $model = shift;
+    my $replacements_r = shift;
+
+    __hash_module_parameters($model->modelroot(), $replacements_r);
+
+    # @APM_NAME@
+    my $apm = HAsim::Build::get_model_name($model);
+    HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$apm);
+
+    # @TMP_XILINX_DIR@
+    HAsim::Util::hash_set($replacements_r,'@TMP_XILINX_DIR@',$HAsim::Xilinx::tmp_xilinx_dir);
+
+    # @TMP_BSC_DIR@
+    HAsim::Util::hash_set($replacements_r,'@TMP_BSC_DIR@',$HAsim::Bluespec::tmp_bsc_dir);
+
+    # @CONNECTION_SCRIPT@
+#    hash_set($replacements_r,'@CONNECTION_SCRIPT@',Asim::resolve("tools/scripts/hasim-connect"));
+
+    # @APM_FILE@
+    HAsim::Util::hash_set($replacements_r,'@APM_FILE@',$model->filename());
+}
+
+# Add all parameters from the model to replacement strings
+sub __hash_module_parameters {
+    my $module = shift;
+    my $replacements_r = shift;
+
+    #
+    # Walk down the module tree BEFORE adding this modules parameters.  That
+    # way definitions higher in the tree override lower ones.
+    #
+    foreach my $child ($module->submodules()) {
+	__hash_module_parameters($child, $replacements_r);
+    }
+
+    my @p = ();
+    push(@p, $module->parameters());
+    foreach my $p (@p) {
+        my $v = $p->value();
+        # Strip quotation marks surrounding strings
+        $v =~ s/^"(.*)"$/$1/;
+        HAsim::Util::hash_set($replacements_r, '@' . $p->name() . '@', $v);
+    }
+}
+
+
 ############################################################
 # WARN
 sub WARN {

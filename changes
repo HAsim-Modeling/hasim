@@ -8609,3 +8609,23 @@ Directory modules/model
 
 Fix test for 64 bit machine.  Python's string find() method returns -1
 when string doesn't match.
+
+----------
+mcadler     Date: Tue Oct 23 14:03:24 EDT 2007  CSN: CSN-hasim-289
+                  Tue Oct 23 18:03:24 UTC 2007
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          288 
+ Util.pm                   Locally Modified          288 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          288 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          288 
+
+- All params from awb files now available in @<foo>@ substitution during
+  hasim-configure.
+- Add @<foo>@ substitution to all files generated in Xilinx.pm
+- Fix LUT usage reporting for Virtex-5 tools

@@ -2,6 +2,9 @@ import hasim_common::*;
 import rrr::*;
 import soft_connections::*;
 
+`include "rrr_services.bsv"
+`define SERVICE_ID  `SOFTWARE_CONTROLLER_SERVICE_ID
+
 `define HWSTATE_IDLE        0
 `define HWSTATE_RUNNING     1
 `define HWSTATE_STOPPED     2
@@ -45,7 +48,7 @@ module [HASim_Module] mkSoftwareController(SoftwareController);
     // sync state of simulator with software
     rule send_state_update_req (reqState == 0 && pollCounter == 0);
         RRR_Request req;
-        req.serviceID  = `SID_SWCON_SERVICE;
+        req.serviceID  = `SERVICE_ID;
         req.param0     = `REQ_STATE_SYNC;
         req.param1     = 0;
         req.param2     = 0;
@@ -68,7 +71,7 @@ module [HASim_Module] mkSoftwareController(SoftwareController);
     rule send_pending_req (reqState == 2);
         
         RRR_Request req;
-        req.serviceID       = `SID_SWCON_SERVICE;
+        req.serviceID       = `SERVICE_ID;
         req.param0          = pendingReqType;
         req.param1          = pendingMsgClass;
         req.param2          = pendingPayload;
@@ -98,7 +101,7 @@ module [HASim_Module] mkSoftwareController(SoftwareController);
     // print message with 1 payload
     method Action printMessage1P(Bit#(32) msgclass, Bit#(32) payload) if (reqState == 0);
         RRR_Request req;
-        req.serviceID       = `SID_SWCON_SERVICE;
+        req.serviceID       = `SERVICE_ID;
         req.param0          = `REQ_PRINT_MSG;
         req.param1          = msgclass;
         req.param2          = payload;
@@ -112,7 +115,7 @@ module [HASim_Module] mkSoftwareController(SoftwareController);
     // print message with 2 payloads
     method Action printMessage2P(Bit#(32) msgclass, Bit#(32) payload0, Bit#(32) payload1) if (reqState == 0);
         RRR_Request req;
-        req.serviceID       = `SID_SWCON_SERVICE;
+        req.serviceID       = `SERVICE_ID;
         req.param0          = `REQ_PRINT_MSG;
         req.param1          = msgclass;
         req.param2          = payload0;
@@ -130,7 +133,7 @@ module [HASim_Module] mkSoftwareController(SoftwareController);
     // print event in 2 stages
     method Action   printEvent(Bit#(8) stringID, Bit#(64) modelcycle, Bit#(32) payload) if (reqState == 0);
         RRR_Request req;
-        req.serviceID       = `SID_SWCON_SERVICE;
+        req.serviceID       = `SERVICE_ID;
         req.param0          = `REQ_PRINT_EVENT;
         req.param1          = zeroExtend(stringID);
         req.param2          = truncate(modelcycle);
@@ -148,7 +151,7 @@ module [HASim_Module] mkSoftwareController(SoftwareController);
     // print stat
     method Action printStat(Bit#(8) stringID, Bit#(32) value) if (reqState == 0);
         RRR_Request req;
-        req.serviceID       = `SID_SWCON_SERVICE;
+        req.serviceID       = `SERVICE_ID;
         req.param0          = `REQ_PRINT_STAT;
         req.param1          = zeroExtend(stringID);
         req.param2          = value;

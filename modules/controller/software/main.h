@@ -5,6 +5,7 @@
 struct GlobalArgs
 {
     char benchmark[256];
+    bool showFrontPanel;
 };
 
 extern GlobalArgs globalArgs;

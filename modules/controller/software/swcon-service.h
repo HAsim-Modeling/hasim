@@ -9,6 +9,9 @@ class SWCON_SERVICE_CLASS:  public RRR_SERVICE_CLASS,
                             public HASIM_SW_MODULE_CLASS
 {
     private:
+        // self-instantiation
+        static SWCON_SERVICE_CLASS  instance;
+
         int                     hwState;
         SOFTWARE_CONTROLLER     controller;
         bool                    connected;
@@ -18,7 +21,7 @@ class SWCON_SERVICE_CLASS:  public RRR_SERVICE_CLASS,
         ~SWCON_SERVICE_CLASS();
 
         // generic RRR methods
-        void    Init(HASIM_SW_MODULE, int);
+        void    Init(HASIM_SW_MODULE);
         void    Uninit();
         bool    Request(UINT32, UINT32, UINT32, UINT32 *);
         void    Poll();
@@ -27,6 +30,9 @@ class SWCON_SERVICE_CLASS:  public RRR_SERVICE_CLASS,
         void    Connect(SOFTWARE_CONTROLLER);
         void    StartHardware();
         void    StopHardware();
+
+        // static methods
+        static SWCON_SERVICE   GetInstance() { return &instance; }
 };
 
 #endif

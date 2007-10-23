@@ -9,6 +9,9 @@
 
 #include "swcon-service.h"
 #include "software-controller.h"
+#include "rrr_services.h"
+
+#define SERVICE_ID  SOFTWARE_CONTROLLER_SERVICE_ID
 
 #define HWSTATE_IDLE    0
 #define HWSTATE_RUNNING 1
@@ -17,8 +20,7 @@
 using namespace std;
 
 // service instantiation
-SWCON_SERVICE_CLASS swconServiceInstance;
-RRR_SERVICE_CLASS   *SWCON_SERVICE_service = &swconServiceInstance;
+SWCON_SERVICE_CLASS SWCON_SERVICE_CLASS::instance;
 
 // constructor
 SWCON_SERVICE_CLASS::SWCON_SERVICE_CLASS()
@@ -26,6 +28,9 @@ SWCON_SERVICE_CLASS::SWCON_SERVICE_CLASS()
     hwState = HWSTATE_IDLE;
     controller = NULL;
     connected = false;
+
+    // register with server's map table
+    RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
 }
 
 // destructor
@@ -37,8 +42,7 @@ SWCON_SERVICE_CLASS::~SWCON_SERVICE_CLASS()
 // init
 void
 SWCON_SERVICE_CLASS::Init(
-    HASIM_SW_MODULE     p,
-    int                 ID)
+    HASIM_SW_MODULE     p)
 {
     if (connected == false)
     {
@@ -49,8 +53,7 @@ SWCON_SERVICE_CLASS::Init(
         CallbackExit(1);
     }
 
-    // set service ID and parent pointer
-    serviceID = ID;
+    // set parent pointer
     parent = p;
 }
 

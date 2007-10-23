@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <string.h>
+#include <getopt.h>
 
 #include "main.h"
 #include "swcon-service.h"
@@ -32,21 +33,13 @@ GlobalArgs globalArgs;
 // create actual software controller
 SOFTWARE_CONTROLLER_CLASS controller;
 
-// RRR service module
-extern SWCON_SERVICE_CLASS swconServiceInstance;
+void process_options(int argc, char *argv[]);
 
 // main
 int main(int argc, char *argv[])
 {
     // parse args and place in global array
-    if (argc == 2)
-    {
-        strcpy(globalArgs.benchmark, argv[1]);
-    }
-    else
-    {
-        strcpy(globalArgs.benchmark, "program.vmh");
-    }
+    process_options(argc, argv);
 
     // transfer control to controller
     controller.Main();
@@ -59,7 +52,7 @@ void
 SOFTWARE_CONTROLLER_CLASS::Main()
 {
     // connect to my (already running) RRR service
-    myService = &swconServiceInstance;
+    myService = SWCON_SERVICE_CLASS::GetInstance();
     myService->Connect(this);
 
     // instantiate channelIO and RRR server.
@@ -78,4 +71,53 @@ SOFTWARE_CONTROLLER_CLASS::Main()
 
     // end of simulation... cleanup and exit
     Uninit();
+}
+
+// process command-line options
+void process_options(int argc, char *argv[])
+{
+    int c;
+
+    // first, set default values for globalArgs
+    globalArgs.showFrontPanel = true;
+    strcpy(globalArgs.benchmark, "program.vmh");
+
+    while (true)
+    {
+        int this_option_optind = optind ? optind : 1;
+        int option_index = 0;
+        static struct option long_options[] =
+        {
+            {"showfp", required_argument, NULL, 0},
+            {0, 0, 0, 0}
+        };
+
+        c = getopt_long (argc, argv, "", long_options, &option_index);
+        if (c == -1)
+        {
+            break;
+        }
+
+        switch (c)
+        {
+            case 0:
+                if (option_index == 0 && optarg && !strcmp(optarg, "0"))
+                {
+                    globalArgs.showFrontPanel = false;
+                }
+                break;
+
+            case '?':
+                break;
+
+            default:
+                fprintf (stderr, "?? getopt returned character code 0%o ??\n", c);
+        }
+    }
+
+    if (optind < argc)
+    {
+        strcpy(globalArgs.benchmark, argv[optind++]);
+    }
+    
 }

@@ -8629,3 +8629,26 @@ Directory modules/model
   hasim-configure.
 - Add @<foo>@ substitution to all files generated in Xilinx.pm
 - Fix LUT usage reporting for Virtex-5 tools
+
+----------
+aparasha    Date: Tue Oct 23 18:33:26 EDT 2007  CSN: CSN-hasim-290
+                  Tue Oct 23 22:33:26 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          289 
+
+Directory modules/controller/software
+ main.cpp                  Locally Modified          289 
+ SoftwareController.bsv    Locally Modified          289 
+ swcon-service.cpp         Locally Modified          289 
+ main.h                    Locally Modified          289 
+ swcon-service.rrr         Locally Modified          289 
+ software-controller.cpp   Locally Modified          289 
+ swcon-service.h           Locally Modified          289 
+
+- added command-line flag to disable front panel from
+  popping up: usage: -showfp=0 or -showfp=1. Default is 1.
+
+- updated controller service to register using the new
+  protocol.

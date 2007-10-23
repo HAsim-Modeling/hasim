@@ -10,24 +10,24 @@ using namespace std;
 const int MSG_TYPES = 7;
 char MSG_TABLE[MSG_TYPES][256] =
 {
-    "[%0d]: controller: program started.\n",
-    "[%0d]: controller: test program finished succesfully.\n",
-    "[%0d]: controller: test program finished, one or more failures occurred.\n",
-    "[%0d]: controller: ERROR: unexpected timing partition response: ",
+    "[%12d]: controller: program started.\n",
+    "[%12d]: controller: test program finished succesfully.\n",
+    "[%12d]: controller: test program finished, one or more failures occurred.\n",
+    "[%12d]: controller: ERROR: unexpected timing partition response: ",
     "0x%x\n",
-    "[%0d]: controller: model cycles completed: ",
-    "%u\n"
+    "[%12d]: controller: model cycles completed: ",
+    "%9u\n"
 };
 
 // events
 const int EVENT_TYPES = 6;
 char EVENT_TABLE[EVENT_TYPES][256] =
 {
-    "[%0d]: 1 FET: ",
-    "[%0d]: 2   DEC: ",
-    "[%0d]: 3     EXE: ",
-    "[%0d]: 4       MEM: ",
-    "[%0d]: 5         WBK: ",
+    "[%9d]: 1 FET: ",
+    "[%9d]: 2   DEC: ",
+    "[%9d]: 3     EXE: ",
+    "[%9d]: 4       MEM: ",
+    "[%9d]: 5         WBK: ",
     "%d\n"
 };
 

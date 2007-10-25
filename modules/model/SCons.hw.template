@@ -2,6 +2,7 @@
 
 import os
 import string
+import sys
 
 Import('*')
 
@@ -47,7 +48,11 @@ ALL_LIB_DIRS_FROM_CWD = ALL_DIRS_FROM_CWD + ':' + ALL_BUILD_DIRS_FROM_CWD
 DERIVED = ''
 if (SURROGATE_BSVS != ''):
     DERIVED = ' -derived "' + SURROGATE_BSVS + '"'
-os.system('hasim-bsc-mkdepend -bdir ' + TMP_BSC_DIR + DERIVED + ' -p +:' + ALL_LIB_DIRS_FROM_CWD + ' ' + WRAPPER_BSVS + ' > .depends-bsv')
+s = os.system('hasim-bsc-mkdepend -bdir ' + TMP_BSC_DIR + DERIVED + ' -p +:' + ALL_LIB_DIRS_FROM_CWD + ' ' + WRAPPER_BSVS + ' > .depends-bsv')
+if (s & 0xffff) != 0:
+    print 'Aborting due to dependence errors'
+    sys.exit(1)
+
 if not os.path.isdir(TMP_BSC_DIR):
     os.mkdir(TMP_BSC_DIR)
 

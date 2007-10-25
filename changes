@@ -8652,3 +8652,13 @@ Directory modules/controller/software
 
 - updated controller service to register using the new
   protocol.
+
+----------
+mcadler     Date: Thu Oct 25 15:13:05 EDT 2007  CSN: CSN-hasim-291
+                  Thu Oct 25 19:13:05 UTC 2007
+
+
+Directory modules/model
+ SCons.hw.template         Locally Modified          290 
+
+Abort if hasim-bsc-mkdepend fails.

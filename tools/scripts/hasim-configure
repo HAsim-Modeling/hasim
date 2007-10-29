@@ -437,22 +437,33 @@ sub __make_bsvfiles {
     # identify correct directory in build tree
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
 
-    # for each module, generate a bsv file in $my_dir
+    ##
+    ## For each module generate two files:  a .bsh header file containing
+    ## the module's parameters and a .bsv file that will be a wrapper for
+    ## compiling the module.
+    ##
+    ## Clients of the module should INCLUDE the .bsh file, which both
+    ## provides the module parameters and import's the Bluespec interface.
+    ##
 
     my $provides = $module->provides();
+    my $bshfile = HAsim::Util::path_append($my_dir,"$provides.bsh");
     my $bsvfile = HAsim::Util::path_append($my_dir,"$provides.bsv");
 
-    CORE::open(BSVFILE, ">$bsvfile");
+    CORE::open(BSHFILE, ">$bshfile");
 
-    print BSVFILE "//\n";
-    print BSVFILE "// Synthesized header file for module: $provides\n";
-    print BSVFILE "//\n";
-    print BSVFILE "//   This file was created by " . basename($0) . "\n";
-    print BSVFILE "//\n";
-    print BSVFILE "\n";
+    print BSHFILE "//\n";
+    print BSHFILE "// Synthesized header file for module: $provides\n";
+    print BSHFILE "//\n";
+    print BSHFILE "//   This file was created by " . basename($0) . "\n";
+    print BSHFILE "//\n";
+    print BSHFILE "\n";
+
+    print BSHFILE "`ifndef INCLUDED_MODULE_${provides}\n";
+    print BSHFILE "`define INCLUDED_MODULE_${provides}\n";
+    print BSHFILE "\n";
 
     # add defines for parameters
-    #   TBD: Support for 
     my @p = ();
     push(@p, $module->parameters());
 
@@ -460,8 +471,33 @@ sub __make_bsvfiles {
       my $pname = $p->name();
       my $pvalue = $p->value();
       
-      print BSVFILE "`define $pname $pvalue\n";
+      print BSHFILE "`define $pname $pvalue\n";
     }
+    print BSHFILE "\n";
+
+    print BSHFILE "`ifndef BUILDING_MODULE_${provides}\n";
+    print BSHFILE "    import ${provides}::*;\n";
+    print BSHFILE "`endif\n";
+
+    print BSHFILE "\n";
+    print BSHFILE "`endif  // INCLUDED_MODULE_${provides}\n";
+
+    CORE::close(BSHFILE);
+    
+
+    CORE::open(BSVFILE, ">$bsvfile");
+
+    print BSVFILE "//\n";
+    print BSVFILE "// Synthesized compilation file for module: $provides\n";
+    print BSVFILE "//\n";
+    print BSVFILE "//   This file was created by " . basename($0) . "\n";
+    print BSVFILE "//\n";
+    print BSVFILE "\n";
+
+    # Prevent circular imports
+    print BSVFILE "`define BUILDING_MODULE_${provides}\n";
+    print BSVFILE "`include \"${provides}.bsh\"\n";
+    print BSVFILE "\n";
 
     # Add includes of public and private bsc files
     if ($public) {

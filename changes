@@ -8662,3 +8662,33 @@ Directory modules/model
  SCons.hw.template         Locally Modified          290 
 
 Abort if hasim-bsc-mkdepend fails.
+
+----------
+mcadler     Date: Mon Oct 29 17:16:47 EDT 2007  CSN: CSN-hasim-292
+                  Mon Oct 29 21:16:47 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          291 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_exe_synth.apm Locally Modified          291 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          291 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          291 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          291 
+ HAsimPlatformInterface.bsv Locally Modified          291 
+
+- All module parameters that used to be written to module level BSV files
+  built by hasim-configure are now written to a file with the BSH suffix.
+  Instead of importing interfaces you should instead include the BSH
+  file.  From the BSH include you get all the `defines.  The BSH file
+  imports the interface.
+- Change platform interface to use LED and switch types from the platform.
+- Change traffic light to use unsized integer values for writing LEDs.
+  The example now works with configurations having 4 or more LEDs.

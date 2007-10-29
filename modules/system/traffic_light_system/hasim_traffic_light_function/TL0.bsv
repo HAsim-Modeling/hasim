@@ -1,8 +1,9 @@
 // Copyright 2000--2006 Bluespec, Inc.  All rights reserved.
 
-import hasim_common::*;
-import soft_connections::*;
-import platform_interface::*;
+`include "hasim_common.bsh"
+`include "soft_connections.bsh"
+`include "platform_interface.bsh"
+`include "front_panel.bsh"
 
 // Simple model of a traffic light
 // (modeled after the light at the intersection of Rte 16 and Broadway
@@ -18,14 +19,14 @@ typedef enum {
 module [HASim_Module] mk_traffic_light();
    Reg#(TLstates) state <- mkReg(RedAfterW);
    
-   Connection_Send#(Bit#(4)) link_leds <- mkConnection_Send("fpga_leds");
-   Connection_Receive#(Bit#(4))    link_switches <- mkConnection_Receive("fpga_switches");
+   Connection_Send#(FRONTP_LEDS) link_leds <- mkConnection_Send("fpga_leds");
+   Connection_Receive#(FRONTP_SWITCHES) link_switches <- mkConnection_Receive("fpga_switches");
    Connection_Receive#(ButtonInfo) link_buttons <- mkConnection_Receive("fpga_buttons");
    
    Reg#(Bit#(32)) waitCount <- mkReg(`MAX_WAIT);
    
    rule waiting (waitCount != 0);
-//      link_leds.send(4'b1001);
+//      link_leds.send('b1001);
       waitCount <= waitCount - 1;
    endrule
    
@@ -41,7 +42,7 @@ module [HASim_Module] mk_traffic_light();
 
    rule fromRedAfterNS (state == RedAfterNS && waitCount == 0);
       state <= GreenE;
-      link_leds.send(4'b0100);
+      link_leds.send('b0100);
       waitCount <= `MAX_WAIT;
    endrule
 
@@ -57,7 +58,7 @@ module [HASim_Module] mk_traffic_light();
 
    rule fromRedAfterE (state == RedAfterE && waitCount == 0);
       state <= GreenW;
-      link_leds.send(4'b0001);
+      link_leds.send('b0001);
       waitCount <= `MAX_WAIT;
    endrule
 
@@ -73,7 +74,7 @@ module [HASim_Module] mk_traffic_light();
 
    rule fromRedAfterW (state == RedAfterW && waitCount == 0);
       state <= GreenNS;
-      link_leds.send(4'b1010);
+      link_leds.send('b1010);
       waitCount <= `MAX_WAIT;
    endrule
 

@@ -114,7 +114,9 @@ except AttributeError:
 ############################################################################
 
 SourceSignatures('MD5')
-TargetSignatures('content')
+# Bluespec compains about signature mismatches if we use this to avoid
+# recompiling across synthesis boundaries.
+#TargetSignatures('content')
 
 APM_NAME = env['DEFS']['APM_NAME']
 BSC = env['DEFS']['BSC']

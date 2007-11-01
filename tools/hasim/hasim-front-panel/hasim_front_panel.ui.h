@@ -15,6 +15,10 @@ void hfpanel::init()
     $ledArray[1] = led1_off;
     $ledArray[2] = led2_off;
     $ledArray[3] = led3_off;
+    $ledArray[4] = led4_off;
+    $ledArray[5] = led5_off;
+    $ledArray[6] = led6_off;
+    $ledArray[7] = led7_off;
 
     $switchArray[0] = switch0;
     $switchArray[1] = switch1;
@@ -79,7 +83,7 @@ void hfpanel::startButton_clicked()
             read(STDIN, $data, 32);
 
             # update LED state: be careful about endian-ness!
-            for (my $led = 0; $led < 4; $led = $led + 1)
+            for (my $led = 0; $led < 8; $led = $led + 1)
             {
                 # in our dialog box, the off-state LED is on top,
                 # so to switch "on" the LED, we need to hide the

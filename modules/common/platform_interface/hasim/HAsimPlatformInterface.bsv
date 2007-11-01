@@ -19,7 +19,7 @@ typedef struct
 module [HASim_Module] mkPlatformInterface(TopLevelWires);
 
     // instantiate connections
-    Connection_Receive#(FRONTP_LEDS)  link_leds       <- mkConnection_Receive("fpga_leds");
+    Connection_Receive#(FRONTP_MASKED_LEDS) link_leds <- mkConnection_Receive("fpga_leds");
     Connection_Send#(FRONTP_SWITCHES) link_switches   <- mkConnection_Send("fpga_switches");
     Connection_Send#(ButtonInfo)      link_buttons    <- mkConnection_Send("fpga_buttons");
 
@@ -46,7 +46,7 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
     
     // rules
     rule set_leds (True);
-        FRONTP_LEDS newval = link_leds.receive();
+        let newval = link_leds.receive();
         link_leds.deq();
 
         // ask front panel to display my current LED state

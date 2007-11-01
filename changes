@@ -8692,3 +8692,22 @@ Directory modules/common/platform_interface/hasim
 - Change platform interface to use LED and switch types from the platform.
 - Change traffic light to use unsized integer values for writing LEDs.
   The example now works with configurations having 4 or more LEDs.
+
+----------
+mcadler     Date: Thu Nov  1 15:00:59 EDT 2007  CSN: CSN-hasim-293
+                  Thu Nov  1 19:00:59 UTC 2007
+
+
+Directory tools/hasim/hasim-front-panel
+ hasim_front_panel.ui      Locally Modified          292 
+ hasim_front_panel.ui.h    Locally Modified          292 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          292 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          292 
+ HAsimPlatformInterface.bsv Locally Modified          292 
+
+- writeLEDs method now needs a mask of which lights to change.
+- Put 8 LEDs on the front panel GUI.

@@ -12,7 +12,7 @@ module [HASim_Module] mkConnectionTerminus();
         Connection_Receive#(ButtonInfo) link_buttons <- mkConnection_Receive("fpga_buttons");
 
     if (`TERM_FPGA_LEDS == 1)
-        Connection_Send#(FRONTP_LEDS) link_leds <- mkConnection_Send("fpga_leds");
+        Connection_Send#(FRONTP_MASKED_LEDS) link_leds <- mkConnection_Send("fpga_leds");
 
     if (`TERM_VDEV_MEMORY == 1)
         Connection_Client#(MEM_Request, MEM_Value) link_memory <- mkConnection_Client("vdev_memory");

@@ -19,14 +19,14 @@ typedef enum {
 module [HASim_Module] mk_traffic_light();
    Reg#(TLstates) state <- mkReg(RedAfterW);
    
-   Connection_Send#(FRONTP_LEDS) link_leds <- mkConnection_Send("fpga_leds");
+   Connection_Send#(FRONTP_MASKED_LEDS) link_leds <- mkConnection_Send("fpga_leds");
    Connection_Receive#(FRONTP_SWITCHES) link_switches <- mkConnection_Receive("fpga_switches");
    Connection_Receive#(ButtonInfo) link_buttons <- mkConnection_Receive("fpga_buttons");
    
    Reg#(Bit#(32)) waitCount <- mkReg(`MAX_WAIT);
+   Reg#(FRONTP_MASKED_LEDS) leds <- mkReg(FRONTP_MASKED_LEDS {state: 0, mask: 'b1111});
    
    rule waiting (waitCount != 0);
-//      link_leds.send('b1001);
       waitCount <= waitCount - 1;
    endrule
    
@@ -42,7 +42,8 @@ module [HASim_Module] mk_traffic_light();
 
    rule fromRedAfterNS (state == RedAfterNS && waitCount == 0);
       state <= GreenE;
-      link_leds.send('b0100);
+      leds.state <= 'b0100;
+      link_leds.send(leds);
       waitCount <= `MAX_WAIT;
    endrule
 
@@ -58,7 +59,8 @@ module [HASim_Module] mk_traffic_light();
 
    rule fromRedAfterE (state == RedAfterE && waitCount == 0);
       state <= GreenW;
-      link_leds.send('b0001);
+      leds.state <= 'b0001;
+      link_leds.send(leds);
       waitCount <= `MAX_WAIT;
    endrule
 
@@ -74,7 +76,8 @@ module [HASim_Module] mk_traffic_light();
 
    rule fromRedAfterW (state == RedAfterW && waitCount == 0);
       state <= GreenNS;
-      link_leds.send('b1010);
+      leds.state <= 'b1010;
+      link_leds.send(leds);
       waitCount <= `MAX_WAIT;
    endrule
 

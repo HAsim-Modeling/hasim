@@ -1,0 +1,34 @@
+
+[Global]
+SaveParameters=0
+Description=HAsim Simulation-Only Controller
+File=hasim_simulation_only_controller
+Version=2.1
+Name=HAsim Simulation-Only Controller
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hasim
+model=Hasim Simulation-Only Simple controller
+
+[Hasim local controller]
+File=modules/controller/local-controller/hasim_local_controller.awb
+Packagehint=hasim
+
+[HAsim Events Controller]
+File=modules/controller/events-controller/hasim_events_controller.awb
+Packagehint=hasim
+
+[HAsim Stats Controller]
+File=modules/controller/stats-controller/hasim_stats_controller.awb
+Packagehint=hasim
+
+[Hasim Simulation-Only Simple controller/Requires]
+hasim_stats_controller=HAsim Stats Controller
+hasim_local_controller=Hasim local controller
+hasim_events_controller=HAsim Events Controller
+
+[Hasim Simulation-Only Simple controller]
+File=modules/controller/hardware-only/simple/hasim_simple_controller.awb
+Packagehint=hasim

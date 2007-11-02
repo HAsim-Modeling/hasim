@@ -1,0 +1,41 @@
+
+[Global]
+SaveParameters=0
+Description=HAsim Hardware-Software Hybrid Simple Controller
+File=hasim_hybrid_simple_controller
+Version=2.1
+Name=HAsim Hardware-Software Hybrid Simple Controller
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hasim
+model=Hasim hybrid simple controller
+
+[Hasim local controller]
+File=modules/controller/local-controller/hasim_local_controller.awb
+Packagehint=hasim
+
+[HAsim Events Controller]
+File=modules/controller/events-controller/hasim_events_controller.awb
+Packagehint=hasim
+
+[HAsim Stats Controller]
+File=modules/controller/stats-controller/hasim_stats_controller.awb
+Packagehint=hasim
+
+
+
+[Hasim hybrid simple controller/Requires]
+software_controller=Hasim software controller for hybrid models
+hasim_stats_controller=HAsim Stats Controller
+hasim_local_controller=Hasim local controller
+hasim_events_controller=HAsim Events Controller
+
+[Hasim hybrid simple controller]
+File=modules/controller/hybrid/simple/hybrid-simple-controller.awb
+Packagehint=hasim
+
+[Hasim software controller for hybrid models]
+File=modules/controller/software/software-controller.awb
+Packagehint=hasim

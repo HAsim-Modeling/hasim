@@ -30,18 +30,6 @@ Packagehint=hasim
 File=modules/system/mem_test/mem_test.awb
 Packagehint=hasim
 
-
-[Hasim hybrid null controller]
-File=modules/controller/hybrid-null/hybrid-null-controller.awb
-Packagehint=hasim
-
-[Hasim hybrid null controller/Requires]
-software_controller=Hasim software controller for hybrid models
-
-[Hasim software controller for hybrid models]
-File=modules/controller/software/software-controller.awb
-Packagehint=hasim
-
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
@@ -50,3 +38,15 @@ Packagehint=platforms
 TERM_VDEV_MEMORY=0
 TERM_RRR_CONTROLLER=0
 TERM_VDEV_MEMORY_INVALIDATE=0
+
+
+[Hasim hybrid null controller]
+File=modules/controller/hybrid/null/hybrid-null-controller.awb
+Packagehint=hasim
+
+[Hasim software controller for hybrid models]
+File=modules/controller/software/software-controller.awb
+Packagehint=hasim
+
+[Hasim hybrid null controller/Requires]
+software_controller=Hasim software controller for hybrid models

@@ -12,6 +12,8 @@
 # %provides hasim_controller
 #
 # %requires hasim_local_controller
+# %requires hasim_events_controller
+# %requires hasim_stats_controller
 # %requires software_controller
 #
 # %attributes hasim

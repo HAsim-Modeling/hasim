@@ -1,30 +1,34 @@
 
-//BSV library imports
+// BSV library imports
 import PrimArray::*;
 import RegFile::*;
 import Connectable::*;
 import FIFO::*;
 
-//HASim library imports
+// HASim library imports
 import hasim_common::*;
-import hasim_modellib::*;
 import soft_connections::*;
+import hasim_modellib::*;
 import platform_interface::*;
 import hasim_local_controller::*;
+import hasim_events_controller::*;
+import hasim_stats_controller::*;
 
-//************* Simple Controller Simulation Only **************
+// ************* Simple Controller Hardware (Simulation) Only **************
 
-//This controller simply loads a single test case, 
-//runs it, and reports the result.
 //
-//Simulation only. No RRR.
+// Simulation only. Does not use RRR. Not appropriate for actually placing onto an FPGA.
 
-//AWB Parameters
-//name:                 default:
-//CTRL_EVENTS_LOGFILE   events_log.out
-//CTRL_EVENTS_COOLDOWN  500
-//CTRL_STATS_LOGFILE    stats_log.out
-//CTRL_BMARK_TIMEOUT    100000
+// AWB Parameters
+// name:		 default:
+// CTRL_EVENTS_LOGFILE   events_log.out
+// CTRL_EVENTS_COOLDOWN  500
+// CTRL_STATS_LOGFILE	 stats_log.out
+// CTRL_BMARK_TIMEOUT	 100000
+
+// ConState
+
+// Internal mode of the Controller
 
 typedef enum
 {
@@ -71,33 +75,56 @@ endfunction
 
 //END DICTIONARY
 
-module [HASim_Module] mkController ();
+// mkController
+
+// This controller simply loads a single test case, 
+// runs it, and reports the result.
+
+module [HASim_Module] mkController
+  // interface:
+                ();
 
 
-  //*********** State ***********
+  // *********** State ***********
   
+  // Current FPGA Clock Cycle
   Reg#(Bit#(64))   cur_fpga_cc     <- mkReg(0);
+  
+  // Current Model Clock Cycle (according to the Events Controller)
   Reg#(Bit#(64))   cur_model_cc    <- mkReg(0);
+  
+  // A cooldown period when we continue to dump events.
   Reg#(Bit#(16))   cooldown_timer  <- mkReg(`CTRL_EVENTS_COOLDOWN);
+  
+  // Did the program pass or fail?
   Reg#(Bool)       passed	   <- mkReg(False);
 
-  Reg#(ConState) state <- mkReg(CON_Init);
+  // Our internal mode.
+  Reg#(ConState)   state           <- mkReg(CON_Init);
   
-  //*********** Logfiles *********
+  // *********** Logfiles ***********
 
+  // Simulation-only output file pointers.
+  
   Reg#(File) event_log <- mkReg(InvalidFile);
   Reg#(File) stats_log <- mkReg(InvalidFile);
   
   
-  //********** Submodules ********
+  // ********** Submodules ***********
   
-  EventController     event_controller    <- mkEventController();
-  StatController      stat_controller     <- mkStatController();
+  // Our communication links to the distributed Events and Stats counters.
   
-  //****** Soft Connections ********
+  EventsController     events_controller    <- mkEventsController();
+  StatsController      stats_controller     <- mkStatsController();
+  
+  // *********** Soft Connections ***********
+  
+  // Our communication links to the local controllers of modules.
   
   Connection_Chain#(Command)   link_command   <- mkConnection_Chain(2);
   Connection_Chain#(Response)  link_response  <- mkConnection_Chain(3);
+  
+  // We tie off the LEDs, switches, and buttons.
   
   Connection_Send#(Bit#(4))           link_leds <- mkConnection_Send("fpga_leds");
   Connection_Receive#(Bit#(4))    link_switches <- mkConnection_Receive("fpga_switches");
@@ -106,7 +133,10 @@ module [HASim_Module] mkController ();
   
   //*********** Rules ***********
   
-  //tick
+  // tick
+  
+  // Count the current FPGA cycle
+  
   rule tick (True);
   
     cur_fpga_cc <= cur_fpga_cc + 1;
@@ -115,16 +145,21 @@ module [HASim_Module] mkController ();
   
   //finish_Commands
   
+  // We are the end of the Command chain, so we just dequeue them when they get to us.
+  
   rule finish_Commands (True);
   
-    //Just finish the chain
     let cmd <- link_command.receive_from_prev();
   
   endrule
   
-  //run_prog
+  //runProg
   
-  rule run_prog (state == CON_Init);
+  // Begin our run. Open all logfiles, then wait until the program completes.
+  
+  rule runProg (state == CON_Init);
+     
+     // Open the events logfile
      
      let event_fd <- $fopen(`CTRL_EVENTS_LOGFILE);
      
@@ -136,6 +171,8 @@ module [HASim_Module] mkController ();
      
      event_log <= event_fd;
      
+     // Open the stats logfile
+     
      let stats_fd <- $fopen(`CTRL_STATS_LOGFILE);
      
      if (stats_fd == InvalidFile)
@@ -146,51 +183,64 @@ module [HASim_Module] mkController ();
 
      stats_log <= stats_fd;
 
+     // Start the program.
+
      link_command.send_to_next(COM_RunProgram);
      
      state <= CON_Running;
      link_leds.send(4'b0011);
      $display("[%0d]: Controller: Program Started.", cur_fpga_cc);
      $fflush();
+
   endrule
   
-  rule get_Response (state == CON_Running);
+  // getResponse
+  
+  // Get a response from the local controllers which are distributed throughout the system.
+  
+  rule getResponse (state == CON_Running);
   
     let resp <- link_response.receive_from_prev();
   
     case (resp) matches
-      tagged RESP_DoneRunning .pf:
+      tagged RESP_DoneRunning .pf: // Program is done running.
 	begin
-	  if (pf)
+	  if (pf)  // It passed
 	  begin
 	    link_leds.send(4'b1001);
 	    $display("[%0d]: Controller: Test program finished succesfully.", cur_fpga_cc);
             $fflush();
 	    passed <= True;
 	  end
-	  else
+	  else // It failed
 	  begin
 	    link_leds.send(4'b1101);
 	    $display("[%0d]: Controller: Test program finished. One or more failures occurred.", cur_fpga_cc);
             $fflush();
 	  end
+	  
+	  // Either way we begin dumping stats.
+	  
 	  $fdisplay(stats_log, "****** Stats Dump Begins ******");
-	  stat_controller.dumpStats();
+	  stats_controller.doCommand(Stats_Dump);
 	  state <= CON_DumpingStats;
 	end
-      default:
+      default: // An unexpected response.
       begin
 	$display("[%0d]: Controller: ERROR: Unexpected Timing Partition Response: 0x%h.", cur_fpga_cc, resp);
         $fflush();
       end
     endcase
-
     
   endrule
   
+  // recordEvents
+  
+  // Record events to the logfile as they come in.
+  
   rule recordEvents (True);
     
-    let evt_info <- event_controller.getNextEvent();
+    let evt_info <- events_controller.getNextEvent();
     
     //Temporary convenience variable
     let tmp_model_cc = cur_model_cc;
@@ -207,27 +257,40 @@ module [HASim_Module] mkController ();
 
   endrule
   
+  // recordStats
+  
+  // Record stats to the logfile as they come in.
+  
   rule recordStats (state == CON_DumpingStats);
     
-    if (stat_controller.noMoreStats())
+    if (stats_controller.noMoreStats()) // Stats are done.
     begin
       $fdisplay(stats_log, "****** Stats Dump Ends ******");
-      state <= CON_Cooldown;
+      state <= CON_Cooldown;  // Start the cooldown.
     end
-    else
+    else // Stats are still not done.
     begin
-      let st_info <- stat_controller.getNextStat();
+      let st_info <- stats_controller.getNextStat();
       String statname = lookup_stat(st_info.statStringID);
       $fdisplay(stats_log, "%s: %0d", statname, st_info.statValue);
     end
   endrule
   
+  // finishUp
+  
+  // A cooldown period for Events to finish dumping. If the Events Controller were smarter
+  // we wouldn't need this.
+  
   rule finishUp (state == CON_Cooldown && cooldown_timer != 0);
-  
-  //Allow some extra time for the event chain to dump
-  
+    
     cooldown_timer <= cooldown_timer - 1;
+
   endrule
+  
+  // endSim
+  
+  // End the simulation. The cooldown period has ended.
+  // The exit-code of the simulation is based on the program's exit status.
   
   rule endSim (state == CON_Cooldown && cooldown_timer == 0);
   

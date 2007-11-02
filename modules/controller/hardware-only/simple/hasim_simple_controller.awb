@@ -7,11 +7,13 @@
 #/*
 # %AWB_START
 #
-# %name Hasim simple controller
-# %desc Hasim simple controller
+# %name Hasim Simulation-Only Simple controller
+# %desc Hasim Simulation-Only Simple controller
 # %provides hasim_controller
 #
 # %requires hasim_local_controller
+# %requires hasim_stats_controller
+# %requires hasim_events_controller
 #
 # %attributes hasim
 #

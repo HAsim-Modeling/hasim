@@ -8711,3 +8711,115 @@ Directory modules/common/platform_interface/hasim
 
 - writeLEDs method now needs a mask of which lights to change.
 - Put 8 LEDs on the front panel GUI.
+
+----------
+pellauer    Date: Fri Nov  2 14:22:27 EDT 2007  CSN: CSN-hasim-294
+                  Fri Nov  2 18:22:27 UTC 2007
+
+
+Directory config/pm/hasim/demos/fsb_dme
+ dme_no_afu.apm            Locally Modified          293 
+
+Directory config/pm/hasim/demos/bram_test
+ bram_test_xup.apm         Locally Modified          293 
+
+Directory config/pm/hasim/demos/fsb_afu
+ afu_add1.apm              Locally Modified          293 
+ afu_pass_through.apm      Locally Modified          293 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          293 
+ traffic_light_xup_synth.apm Locally Modified          293 
+ traffic_light_exe_nosynth.apm Locally Modified          293 
+ traffic_light_exe_synth.apm Locally Modified          293 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          293 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Modified          293 
+ adder4x4_software.apm     Locally Modified          293 
+ echo4x4_xup.apm           Locally Modified          293 
+ square4x4_software.apm    Locally Modified          293 
+ adder4x4_xup.apm          Locally Modified          293 
+ square4x4_xup.apm         Locally Modified          293 
+ multiplier4x4_software.apm Locally Modified          293 
+ multiplier4x4_xup.apm     Locally Modified          293 
+
+Directory config/pm/hasim/demos/mem_test
+ mem_test_hybrid.apm       Locally Modified          293 
+
+Directory config/pm/hasim/submodels
+ controller/               Locally Added               0 
+
+Directory config/pm/hasim/submodels/controller
+ hasim_simulation_only_controller.apm Locally Added               0 
+ hasim_hybrid_simple_controller.apm Locally Added               0 
+
+Directory modules/controller
+ stats-controller/         Locally Added               0 
+
+Directory modules/controller/stats-controller
+ StatsControllerHeader.bsv Locally Added               0 
+ hasim_stats_controller.awb Locally Added               0 
+ StatsController.bsv       Locally Added               0 
+
+Directory modules/controller
+ hybrid/                   Locally Added               0 
+ events-controller/        Locally Added               0 
+
+Directory modules/controller/events-controller
+ hasim_events_controller.awb Locally Added               0 
+ EventsController.bsv      Locally Added               0 
+ EventsControllerHeader.bsv Locally Added               0 
+
+Directory modules/controller
+ hybrid-simple/            Locally Removed           293 
+
+Directory modules/controller/hybrid-simple
+ hybrid-simple-controller.awb Locally Removed           293 
+ HybridSimpleController.bsv Locally Removed           293 
+
+Directory modules/controller
+ hybrid-null/              Locally Removed           293 
+
+Directory modules/controller/hybrid-null
+ hybrid-null-controller.awb Locally Removed           293 
+ HybridNullController.bsv  Locally Removed           293 
+
+Directory modules/controller
+ simple/                   Locally Removed           293 
+
+Directory modules/controller/simple
+ hasim_simple_controller.awb Locally Removed           293 
+ hasim_simple_controller.bsv Locally Removed           293 
+
+Directory modules/controller
+ local/                    Locally Removed           293 
+
+Directory modules/controller/local
+ hasim_local_controller.awb Locally Removed           293 
+ LocalController.bsv       Locally Removed           293 
+
+Directory modules/controller
+ null/                     Locally Removed           293 
+
+Directory modules/controller/null
+ hasim_null_controller.awb Locally Removed           293 
+ hasim_null_controller.bsv Locally Removed           293 
+
+Directory modules/controller
+ hardware-only/            Locally Added               0 
+
+Directory modules/common/modellib
+ hasim_modellib.awb        Locally Modified          293 
+ Stats.bsv                 Locally Modified          293 
+ StatFIFO.bsv              Locally Added               0 
+ Events.bsv                Locally Modified          293 
+
+
+Rearranged the controller so that the Events and Stats controllers are better organized.
+
+Some miscellaneous code cleanup.
+
+Michael P.

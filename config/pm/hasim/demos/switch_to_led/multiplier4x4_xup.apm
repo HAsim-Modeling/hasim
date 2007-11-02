@@ -5,7 +5,7 @@ File=modules/system/switch_to_led_system/switch_to_led_system.awb
 
 [Hasim null controller]
 Packagehint=hasim
-File=modules/controller/null/hasim_null_controller.awb
+File=modules/controller/hardware-only/null/hasim_null_controller.awb
 
 [HAsim Model Foundation]
 Packagehint=hasim
@@ -44,9 +44,6 @@ Packagehint=hasim
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-xup.apm
 Packagehint=platforms
-
-
-
 
 [HAsim Model Foundation/Params]
 MAKE_ALL_TARGET=bit

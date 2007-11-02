@@ -10,7 +10,7 @@ Class=Asim::Model
 
 [Hasim null controller]
 Packagehint=hasim
-File=modules/controller/null/hasim_null_controller.awb
+File=modules/controller/hardware-only/null/hasim_null_controller.awb
 
 [HAsim Model Foundation]
 Packagehint=hasim
@@ -47,9 +47,6 @@ MAX_WAIT='d10
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
 Packagehint=platforms
-
-
-
 
 [Hasim Common Library/Params]
 TERM_FPGA_SWITCHES=0

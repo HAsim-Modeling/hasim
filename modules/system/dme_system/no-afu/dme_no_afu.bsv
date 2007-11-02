@@ -3,11 +3,11 @@ import hasim_common::*;
 //An example DME that simply loads a bunch of addresses, adds 1 to the data, and writes them back
 
 /*
-Mnemonic     Position	Range	Width	Description	   
+Mnemonic     Position	Range	Width	Description   
 ---------------------------------------------------
 reserve	         74:71		4	1111	   
 ADDR	         70:38	35:3	33	Address	   
-TID	         37:26	11:0	12	The TID is used by clusters to associate responses with requests. This field is set only by the original requestor. Forwarding agents should mantain the same ID and should not change them. When generating a response a cluster should use the same TID that came along with the associated request.	   
+TID	         37:26	11:0	12	The TID is used by clusters to associate responses with requests. This field is set only by the original requestor. Forwarding agents should mantain the same ID and should not change them. When generating a response a cluster should use the same TID that came along with the associated request.
 REQ/RSP	         25	1	1	Request   : 0   Response : 1	   
 R/W	         24	1	1	Read : 0   Write : 1	   
 INV	         23	1	1	Invalidate	   
@@ -94,8 +94,8 @@ module [HASim_Module] mkDME_Alg ();
   //Connection_Client#(Bit#(256), Bit#(256)) link_dme <- mkConnection_Server("dme_to_afu");
   Connection_Send#(Tuple3#(Bit#(256), Bool, Bool))     link_to_fsb_data      <- mkConnection_Send("dme_to_fsb_data");
   Connection_Receive#(Tuple3#(Bit#(256), Bool, Bool))  link_from_fsb_data    <- mkConnection_Receive("fsb_to_dme_data");
-  Connection_Send#(Bit#(75))			       link_to_fsb_cmd       <- mkConnection_Send("dme_to_fsb_cmd");
-  Connection_Receive#(Bit#(75)) 		       link_from_fsb_cmd     <- mkConnection_Receive("fsb_to_dme_cmd");
+  Connection_Send#(Bit#(75))                           link_to_fsb_cmd       <- mkConnection_Send("dme_to_fsb_cmd");
+  Connection_Receive#(Bit#(75))                        link_from_fsb_cmd     <- mkConnection_Receive("fsb_to_dme_cmd");
 
   Reg#(Bit#(36)) cur <- mkReg(0);
   

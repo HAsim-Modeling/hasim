@@ -63,7 +63,7 @@ module mkSizedFIFO_BRAM#(Integer depth)
               (FIFO#(data_T))
   provisos
           (Bits#(data_T, data_SZ));
-	  
+
   if (depth > 1024)
     error("BRAM FIFO buffering depth cannot currently exceed 1024.");
   

@@ -20,11 +20,11 @@ import hasim_stats_controller::*;
 // Simulation only. Does not use RRR. Not appropriate for actually placing onto an FPGA.
 
 // AWB Parameters
-// name:		 default:
-// CTRL_EVENTS_LOGFILE   events_log.out
-// CTRL_EVENTS_COOLDOWN  500
-// CTRL_STATS_LOGFILE	 stats_log.out
-// CTRL_BMARK_TIMEOUT	 100000
+// name:                 default:
+// CTRL_EVENTS_LOGFILE    events_log.out
+// CTRL_EVENTS_COOLDOWN   500
+// CTRL_STATS_LOGFILE     stats_log.out
+// CTRL_BMARK_TIMEOUT     100000
 
 // ConState
 
@@ -97,7 +97,7 @@ module [HASim_Module] mkController
   Reg#(Bit#(16))   cooldown_timer  <- mkReg(`CTRL_EVENTS_COOLDOWN);
   
   // Did the program pass or fail?
-  Reg#(Bool)       passed	   <- mkReg(False);
+  Reg#(Bool)       passed           <- mkReg(False);
 
   // Our internal mode.
   Reg#(ConState)   state           <- mkReg(CON_Init);
@@ -204,30 +204,30 @@ module [HASim_Module] mkController
   
     case (resp) matches
       tagged RESP_DoneRunning .pf: // Program is done running.
-	begin
-	  if (pf)  // It passed
-	  begin
-	    link_leds.send(4'b1001);
-	    $display("[%0d]: Controller: Test program finished succesfully.", cur_fpga_cc);
+        begin
+          if (pf)  // It passed
+          begin
+            link_leds.send(4'b1001);
+            $display("[%0d]: Controller: Test program finished succesfully.", cur_fpga_cc);
             $fflush();
-	    passed <= True;
-	  end
-	  else // It failed
-	  begin
-	    link_leds.send(4'b1101);
-	    $display("[%0d]: Controller: Test program finished. One or more failures occurred.", cur_fpga_cc);
+            passed <= True;
+          end
+          else // It failed
+          begin
+            link_leds.send(4'b1101);
+            $display("[%0d]: Controller: Test program finished. One or more failures occurred.", cur_fpga_cc);
             $fflush();
-	  end
-	  
-	  // Either way we begin dumping stats.
-	  
-	  $fdisplay(stats_log, "****** Stats Dump Begins ******");
-	  stats_controller.doCommand(Stats_Dump);
-	  state <= CON_DumpingStats;
-	end
+          end
+          
+          // Either way we begin dumping stats.
+          
+          $fdisplay(stats_log, "****** Stats Dump Begins ******");
+          stats_controller.doCommand(Stats_Dump);
+          state <= CON_DumpingStats;
+        end
       default: // An unexpected response.
       begin
-	$display("[%0d]: Controller: ERROR: Unexpected Timing Partition Response: 0x%h.", cur_fpga_cc, resp);
+        $display("[%0d]: Controller: ERROR: Unexpected Timing Partition Response: 0x%h.", cur_fpga_cc, resp);
         $fflush();
       end
     endcase

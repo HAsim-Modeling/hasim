@@ -32,9 +32,38 @@ module [HASim_Module] mkPort_Send#(String portname)
               (Port_Send#(msg_T))
   provisos
           (Bits#(msg_T, msg_SZ),
-	   Transmittable#(Maybe#(msg_T)));
-	
+           Transmittable#(Maybe#(msg_T)));
+        
   Connection_Send#(Maybe#(msg_T)) con <- mkConnection_Send(portname);
+    
+  method Action send(Maybe#(msg_T) m);
+    
+    con.send(m);
+    
+  endmethod
+  
+  //XXX a temporary set of control info
+    
+  interface Port_Control ctrl;
+
+    method Bool empty() = True;
+    method Bool full() = False;
+    method Bool balanced() = True;
+    method Bool light() = False;
+    method Bool heavy() = False;
+
+  endinterface
+
+endmodule
+
+module [HASim_Module] mkPort_Send_Bypassed#(String portname)
+  //interface:
+              (Port_Send#(msg_T))
+  provisos
+          (Bits#(msg_T, msg_SZ),
+           Transmittable#(Maybe#(msg_T)));
+        
+  Connection_Send#(Maybe#(msg_T)) con <- mkConnection_Send_Bypassed(portname);
     
   method Action send(Maybe#(msg_T) m);
     
@@ -60,10 +89,15 @@ module [HASim_Module] mkPort_Receive#(String portname, Integer latency)
   //interface:
               (Port_Receive#(msg_T))
       provisos
-	        (Bits#(msg_T, msg_SZ),
-		 Transmittable#(Maybe#(msg_T)));
+                (Bits#(msg_T, msg_SZ),
+                 Transmittable#(Maybe#(msg_T)));
   
-  let p <- (latency != 1) ? mkPort_Receive_Buffered(portname, latency, 0) : mkPort_Receive_L1(portname);
+  let p <- case (latency)
+             0: mkPort_Receive_L0(portname);
+             1: mkPort_Receive_L1(portname);
+             default: mkPort_Receive_Buffered(portname, latency, 0);
+           endcase;
+ 
   return p;
 
 endmodule
@@ -72,8 +106,8 @@ module [HASim_Module] mkPort_Receive_Buffered#(String portname, Integer latency,
     //interface:
                 (Port_Receive#(msg_T))
       provisos
-	        (Bits#(msg_T, msg_SZ),
-		 Transmittable#(Maybe#(msg_T)));
+                (Bits#(msg_T, msg_SZ),
+                 Transmittable#(Maybe#(msg_T)));
 
   Connection_Receive#(Maybe#(msg_T)) con <- mkConnection_Receive(portname);
    
@@ -130,14 +164,45 @@ module [HASim_Module] mkPort_Receive_Buffered#(String portname, Integer latency,
 
 endmodule
 
+//Port optimized for latency 0
+
+module [HASim_Module] mkPort_Receive_L0#(String portname)
+    //interface:
+                (Port_Receive#(msg_T))
+      provisos
+                (Bits#(msg_T, msg_SZ),
+                 Transmittable#(Maybe#(msg_T)));
+
+  Connection_Receive#(Maybe#(msg_T)) con <- mkConnection_Receive(portname);
+     
+  method ActionValue#(Maybe#(msg_T)) receive();
+  
+    con.deq();
+    return con.receive();
+    
+  endmethod
+  
+  //XXX a temporary set of control info
+  interface Port_Control ctrl;
+
+    method Bool empty() = False;
+    method Bool full() = True;
+    method Bool balanced() = True;
+    method Bool light() = False;
+    method Bool heavy() = False;
+
+  endinterface
+
+endmodule
+
 //Port optimized for latency 1
 
 module [HASim_Module] mkPort_Receive_L1#(String portname)
     //interface:
                 (Port_Receive#(msg_T))
       provisos
-	        (Bits#(msg_T, msg_SZ),
-		 Transmittable#(Maybe#(msg_T)));
+                (Bits#(msg_T, msg_SZ),
+                 Transmittable#(Maybe#(msg_T)));
 
   Connection_Receive#(Maybe#(msg_T)) con <- mkConnection_Receive(portname);
   Reg#(Bool) initval <- mkReg(True);

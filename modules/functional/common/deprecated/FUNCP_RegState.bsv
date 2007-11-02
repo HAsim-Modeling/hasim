@@ -23,12 +23,12 @@ module [HASim_Module] mkFUNCP_Regstate
                 ()
     provisos
             (Bits#(RName,       rname_SZ),
- 	     Bits#(PRName,      prname_SZ),
-	     Bits#(Value,       value_SZ),
-	     Bits#(Token,       token_SZ),
+              Bits#(PRName,      prname_SZ),
+             Bits#(Value,       value_SZ),
+             Bits#(Token,       token_SZ),
              Bits#(SnapshotPtr, snapshotptr_SZ),
-	     Add#(rname_SZ, rdiff_TMP, prname_SZ),
-	     Add#(snapshotptr_SZ, sdiff_TMP, token_SZ));
+             Add#(rname_SZ, rdiff_TMP, prname_SZ),
+             Add#(snapshotptr_SZ, sdiff_TMP, token_SZ));
   
   
   let debug_log <- mkReg(InvalidFile);
@@ -49,8 +49,8 @@ module [HASim_Module] mkFUNCP_Regstate
 
   //rob                                   old
   BRAM_2#(PRName, Tuple3#(Token, Maybe#(RName), PRName))  rob      <- mkBRAM_2_Full();
-  Reg#(PRName)   					  rob_old  <- mkReg(0);
-  Reg#(PRName) 						  rob_new  <- mkReg(0);
+  Reg#(PRName)                                             rob_old  <- mkReg(0);
+  Reg#(PRName)                                                   rob_new  <- mkReg(0);
 
   Reg#(Vector#(TExp#(snapshotptr_SZ), Bool))  snap_valids        <- mkReg(unpack(0));
   Reg#(Vector#(TExp#(snapshotptr_SZ), TokIndex)) snap_ids        <- mkRegU();
@@ -189,13 +189,13 @@ module [HASim_Module] mkFUNCP_Regstate
   
     if (isJust(mx))
       begin
-	oldPReg = select(maptbl, unJust(mx));
-	newPReg = nPReg;
+        oldPReg = select(maptbl, unJust(mx));
+        newPReg = nPReg;
       end
     else
       begin
-	oldPReg = nPReg;
-	newPReg = ?;
+        oldPReg = nPReg;
+        newPReg = ?;
        end
 
 
@@ -203,10 +203,10 @@ module [HASim_Module] mkFUNCP_Regstate
     if (isJust(mx))
       begin
         $fdisplay(debug_log, "[%d]: New Mapping: R%0d/PR%0d", curCC, unJust(mx), newPReg);
-	Vector#(TExp#(rname_SZ), PRName) new_map = maptbl;
-	new_map = update(new_map, unJust(mx), newPReg);
-	maptbl <= new_map;
-	prf.write(newPReg, tagged Invalid);
+        Vector#(TExp#(rname_SZ), PRName) new_map = maptbl;
+        new_map = update(new_map, unJust(mx), newPReg);
+        maptbl <= new_map;
+        prf.write(newPReg, tagged Invalid);
       end
 
     // write rob
@@ -235,9 +235,9 @@ module [HASim_Module] mkFUNCP_Regstate
 
     if (isJust(midx))
       begin
-	let idx = unJust(midx);
-	snap_valids     <= update(snap_valids, idx, True);
-	snap_ids        <= update(snap_ids   , idx, tok.index);
+        let idx = unJust(midx);
+        snap_valids     <= update(snap_valids, idx, True);
+        snap_ids        <= update(snap_ids   , idx, tok.index);
         snaps.write(idx, tuple3(freelist.current(), rob_new, maptbl));
       end
     
@@ -402,13 +402,13 @@ module [HASim_Module] mkFUNCP_Regstate
     case (midx) matches
       tagged Just .i:
         begin
-	  snaps.read_req(i);
+          snaps.read_req(i);
         end
       tagged Nothing:   //if not write busy and record token
         begin
           busy <= True;
-	  rob.read_req1(rob_new - 1);
-	  rob_new <= rob_new - 1;
+          rob.read_req1(rob_new - 1);
+          rob_new <= rob_new - 1;
           stopToken <= tok;
         end
     endcase

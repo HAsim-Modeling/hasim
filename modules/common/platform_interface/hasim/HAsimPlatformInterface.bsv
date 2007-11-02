@@ -65,7 +65,7 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
         // read in button state from front panel
         FRONTP_BUTTONS bstate = frontPanel.readButtons();
         ButtonInfo bi = ButtonInfo {
-    	                    b_up: bstate[0],
+                            b_up: bstate[0],
                             b_down: bstate[4], 
                             b_left: bstate[1],
                             b_right: bstate[3],

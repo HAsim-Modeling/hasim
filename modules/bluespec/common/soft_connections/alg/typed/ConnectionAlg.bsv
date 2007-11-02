@@ -159,7 +159,7 @@ module connectLocalChain#(List#(CChain_Info) l) (CON_Chain);
       //Connect internal chains
       for (Integer x = 1; x < nLinks; x = x + 1)
       begin
-	CChain_Info c2 = l[x];
+        CChain_Info c2 = l[x];
         //Sanity-check the types
         if ((c.ctype != c2.ctype) && (c.ctype != "") && (c2.ctype != ""))
         begin
@@ -179,8 +179,8 @@ module connectLocalChain#(List#(CChain_Info) l) (CON_Chain);
       //The final chain enqueues to the head and dequeues from the tail
       return (interface CON_Chain;
                 interface incoming = cbegin.conn.incoming;
-		interface outgoing = cend.conn.outgoing;
-	      endinterface);
+                interface outgoing = cend.conn.outgoing;
+              endinterface);
     end
   endcase
 

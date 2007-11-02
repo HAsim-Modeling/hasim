@@ -4,7 +4,7 @@ import platform_interface::*;
 import memory::*;
 
 module [HASim_Module] mkSystem ();
-   
+
     Connection_Client#(MEM_Request, MEM_Value) link_memory <- mkConnection_Client("vdev_memory");
     Connection_Receive#(MEM_Addr) link_memory_inval <- mkConnection_Receive("vdev_memory_invalidate");
 

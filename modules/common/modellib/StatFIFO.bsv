@@ -28,62 +28,62 @@ module [Connected_Module] mkStatFIFO#(String name) (FIFO#(t)) provisos (Bits#(t,
       begin
 
         if (enqW)
-	begin
-	  nextState = OneElem;
+        begin
+          nextState = OneElem;
           //No stat change
-	  noAction;
-	end
-	else
-	begin
-	  //No state change
-	  nextState = state;
-	  stat.incr();
-	end
-	
+          noAction;
+        end
+        else
+        begin
+          //No state change
+          nextState = state;
+          stat.incr();
+        end
+        
       end
       OneElem:
       begin
 
         if (enqW && deqW)
-	begin
+        begin
           //No stat or state change
-	  nextState = state;
-	  noAction;
-	end
-	else if (enqW)
-	begin
-	  nextState = Full;
-	  stat.decr();
-	end
-	else if (deqW)
-	begin
-	  nextState = Empty;
-	  stat.incr();
-	end
-	else
-	begin
-	  //No stat or state change
-	  nextState = state;
-	  noAction;
-	end
-	
+          nextState = state;
+          noAction;
+        end
+        else if (enqW)
+        begin
+          nextState = Full;
+          stat.decr();
+        end
+        else if (deqW)
+        begin
+          nextState = Empty;
+          stat.incr();
+        end
+        else
+        begin
+          //No stat or state change
+          nextState = state;
+          noAction;
+        end
+        
       end
       Full:
       begin
 
         if (deqW)
-	begin
-	  nextState = OneElem;
+        begin
+          nextState = OneElem;
           //No stat change
-	  noAction;
-	end
-	else
-	begin
-	  //No state change
-	  nextState = state;
-	  stat.decr();
-	end
-	
+          noAction;
+        end
+        else
+        begin
+          //No state change
+          nextState = state;
+          stat.decr();
+        end
+        
       end
     endcase
     

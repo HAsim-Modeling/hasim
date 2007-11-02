@@ -20,8 +20,8 @@ module [HASim_Module] mkFUNCP
               ()
   provisos
           (Bits#(TokIndex, idx_SZ),
-	   Bits#(RName, rname_SZ),
-	   Bits#(SnapshotPtr, snapshotptr_SZ));
+           Bits#(RName, rname_SZ),
+           Bits#(SnapshotPtr, snapshotptr_SZ));
 
   //A fake register to hold our debugging file descriptor
   let debug_log <- mkReg(InvalidFile);
@@ -393,15 +393,15 @@ module [HASim_Module] mkFUNCP
       tok_state.is_a_store(tok.index);
     
     let newmap = case (dst) matches
-	tagged Valid .d: return update(maptable, d, pdest);
-	tagged Invalid:  return maptable;
+        tagged Valid .d: return update(maptable, d, pdest);
+        tagged Invalid:  return maptable;
       endcase;
          
     case (dst) matches
       tagged Invalid: noAction;
       tagged Valid .d: 
       begin
-	prf.write(pdest, tagged Invalid);
+        prf.write(pdest, tagged Invalid);
       end
     endcase
     
@@ -426,26 +426,26 @@ module [HASim_Module] mkFUNCP
     tok_state.dec_finish(tok.index);
  
     let map_d = case (dst) matches
-	          tagged Invalid: tagged Invalid;
-		  tagged Valid .d: tagged Valid tuple2(d, pdest);
-		endcase;
+                  tagged Invalid: tagged Invalid;
+                  tagged Valid .d: tagged Valid tuple2(d, pdest);
+                endcase;
  
     let map_s1 = case (s1) matches
-	           tagged Invalid: tagged Invalid;
-		   tagged Valid .r1: tagged Valid tuple2(r1, validValue(w1));
-		 endcase;
+                   tagged Invalid: tagged Invalid;
+                   tagged Valid .r1: tagged Valid tuple2(r1, validValue(w1));
+                 endcase;
 
     let map_s2 = case (s2) matches
-	           tagged Invalid: tagged Invalid;
-		   tagged Valid .r2: tagged Valid tuple2(r2, validValue(w2));
-		 endcase;
+                   tagged Invalid: tagged Invalid;
+                   tagged Valid .r2: tagged Valid tuple2(r2, validValue(w2));
+                 endcase;
 
     let deps = DepInfo 
       { 
       
         dep_dest: map_d,
-	dep_src1: map_s1,
-	dep_src2: map_s2
+        dep_src1: map_s1,
+        dep_src2: map_s2
       };
     
     case (dst) matches
@@ -492,21 +492,21 @@ module [HASim_Module] mkFUNCP
     tok_state.dec_finish(tok.index);
     
     let map_s1 = case (s1) matches
-	           tagged Invalid: tagged Invalid;
-		   tagged Valid .s1: tagged Valid tuple2(s1, validValue(w1));
-		 endcase;
+                   tagged Invalid: tagged Invalid;
+                   tagged Valid .s1: tagged Valid tuple2(s1, validValue(w1));
+                 endcase;
 
     let map_s2 = case (s2) matches
-	           tagged Invalid: tagged Invalid;
-		   tagged Valid .s2: tagged Valid tuple2(s2, validValue(w2));
-		 endcase;
+                   tagged Invalid: tagged Invalid;
+                   tagged Valid .s2: tagged Valid tuple2(s2, validValue(w2));
+                 endcase;
 
     let deps = DepInfo 
       { 
       
         dep_dest: tagged Invalid,
-	dep_src1: map_s1,
-	dep_src2: map_s2
+        dep_src1: map_s1,
+        dep_src2: map_s2
       };
       
     funcp_debug($fwrite(debug_log, "Token %0d: Decode: End JUNK (Dest ignored)", tok.index));
@@ -586,7 +586,7 @@ module [HASim_Module] mkFUNCP
         funcp_debug($fwrite(debug_log, "Token %0d: Execute: Sending to Datapath (V1:0x%h, V2:0x%h)", tok.index, validValue(v1), validValue(v2)));
       else
         funcp_debug($fwrite(debug_log, "Token %0d: Execute: Sending to Datapath JUNK (V1:0x%h, V2:0x%h)", tok.index, validValue(v1), validValue(v2)));
-	
+        
       link_datapath.makeReq(tuple4(inst, addr, validValue(v1), validValue(v2)));
       tok_dest.read_req1(tok.index);
       exe3Q.enq(tok);
@@ -664,13 +664,13 @@ module [HASim_Module] mkFUNCP
     begin
         funcp_debug($fwrite(debug_log, "Token %0d: DMem: Requesting Load (Addr: 0x%h)", tok.index, addr)); 
         link_to_dmem.makeReq(Ld {addr: addr, token: tok});
-	mem2Q.enq(tuple2(tok, dst));
+        mem2Q.enq(tuple2(tok, dst));
     end
     else if (tok_state.isStore(tok.index))
     begin
         funcp_debug($fwrite(debug_log, "Token %0d: DMem: Retreiving Store Value (PR%0d)", tok.index, dst)); 
         prf.read_req3(dst);
-	storeQ.enq(tuple2(tok, addr));
+        storeQ.enq(tuple2(tok, addr));
     end
     else
     begin
@@ -691,7 +691,7 @@ module [HASim_Module] mkFUNCP
       tagged Invalid:
       begin
         $display("FUNCP: ERROR: Doing store for Token %0d which has not been executed.", tok.index);
-	$finish(1);
+        $finish(1);
       end
       tagged Valid .val:
       begin
@@ -806,19 +806,19 @@ module [HASim_Module] mkFUNCP
       SnapshotPtr idx = snap_next; //Find youngest snapshot of this token
       for (Integer x = 0; x < valueof(TExp#(snapshotptr_SZ)); x = x + 1)
       begin
-	
-	let cur = snap_next + fromInteger(x);
-	match {.new_idx, .new_found} = (snap_ids[cur] == tok.index) ? tuple2(cur, True) : tuple2(idx, found);
+        
+        let cur = snap_next + fromInteger(x);
+        match {.new_idx, .new_found} = (snap_ids[cur] == tok.index) ? tuple2(cur, True) : tuple2(idx, found);
         found = new_found;
-	idx = new_idx;
-	
+        idx = new_idx;
+        
       end
       
       if (found)
       begin   
         funcp_debug($fwrite(debug_log, "Fast Rewind confirmed with Snapshot %0d", idx));  
         snaps.read_req(idx);
-	snaps_fl.read_req(idx);
+        snaps_fl.read_req(idx);
       end
       
     end
@@ -859,7 +859,7 @@ module [HASim_Module] mkFUNCP
         funcp_debug($fwrite(debug_log, "Slow Rewind: Lookup up Token %0d", rewindCur));  
         tok_dest.read_req2(rewindCur);
         tok_inst.read_req2(rewindCur);
-	rewindQ.enq(rewindCur);
+        rewindQ.enq(rewindCur);
     end
     
     rewindCur <= rewindCur + 1;
@@ -887,7 +887,7 @@ module [HASim_Module] mkFUNCP
       tagged Valid .d:
       begin
           funcp_debug($fwrite(debug_log, "Slow Rewind: Token %0d: Remapping (R%0d/PR%0d)", t, d, dst));
-	  maptable[d] <= dst;
+          maptable[d] <= dst;
       end
     endcase
     

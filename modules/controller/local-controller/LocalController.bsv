@@ -119,8 +119,8 @@ module [HASim_Module] mkLocalController#(Vector#(n, Port_Control) inports, Vecto
          check_balanced <= False;
          if (balanced_since_query)
            resps.send_to_next(RESP_Balanced);
-	 else
-	   resps.send_to_next(RESP_UnBalanced);
+         else
+           resps.send_to_next(RESP_UnBalanced);
        end
        tagged COM_Step:
        begin

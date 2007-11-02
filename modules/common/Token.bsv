@@ -34,7 +34,7 @@ typedef struct
 
 typedef struct
 {
-  TokIndex	    index;
+  TokIndex          index;
   TIMEP_TokInfo     timep_info;
   FUNCP_TokInfo     funcp_info;
 }

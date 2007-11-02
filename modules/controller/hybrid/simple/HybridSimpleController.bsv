@@ -148,7 +148,7 @@ module [HASim_Module] mkController
             link_leds.send(4'b1101);
             swcon.printMessage1P(2, truncate(curTick)); // Message 2 = Failure
           end
-	  // Either way we begin dumping.
+          // Either way we begin dumping.
           stats_controller.doCommand(Stats_Dump);
           state <= CON_Finished;
         end

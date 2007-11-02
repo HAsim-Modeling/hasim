@@ -22,12 +22,12 @@ module [HASim_Module] mkCalculation4x4(Calculation4x4);
         Bit#(2) y = in[1:0];
      
         if (x == 0 || y == 0)
-	    begin
-	        d <= 0;
-	        r <= 0;
-	    end
+            begin
+                d <= 0;
+                r <= 0;
+            end
         else
-	    begin
+            begin
             d <= zeroExtend(x);
             r <= y; 
         end

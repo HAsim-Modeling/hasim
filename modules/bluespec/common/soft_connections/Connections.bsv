@@ -1,4 +1,5 @@
 import FIFO::*;
+import BypassFIFO::*;
 
 //------------------------- Connections --------------------------//
 //                                                                //
@@ -109,6 +110,40 @@ module [Connected_Module] mkConnection_Send#(String portname)
 
 endmodule
 
+module [Connected_Module] mkConnection_Send_Bypassed#(String portname)
+    //interface:
+                (Connection_Send#(msg_T))
+    provisos
+            (Bits#(msg_T, msg_SZ),
+	     Transmittable#(msg_T));
+
+  //This queue is here for correctness until the system is confirmed to work
+  //Later it could be removed or turned into a BypassFIFO to reduce latency.
+  
+  FIFO#(msg_T) q <- mkBypassFIFO();
+  
+  //Bind the interface to a name for convenience
+  let outg = (interface CON_Out;
+  
+	       method CON_Data try() = marshall(q.first());
+	       
+	       method Action success = q.deq();
+
+	     endinterface);
+
+  //Figure out my type for typechecking
+  msg_T msg = ?;
+  String mytype = printType(typeOf(msg));
+
+  //Add our interface to the ModuleCollect collection
+  let info = CSend_Info {cname: portname, ctype: mytype, conn: outg};
+  addToCollection(tagged LSend info);
+
+  method Action send(msg_T data);
+    q.enq(data);
+  endmethod
+
+endmodule
 module [Connected_Module] mkConnection_Receive#(String portname)
     //interface:
                 (Connection_Receive#(msg_T))

@@ -23,9 +23,9 @@ module [HASim_Module] mkFreeList#(File debug_log, Tick curCC)
                 (FreeList)
     provisos
             (Bits#(RName,       rname_SZ),
- 	     Bits#(PRName,      prname_SZ),
-	     Bits#(Value,       value_SZ),
-	     Bits#(Token,       token_SZ));
+             Bits#(PRName,      prname_SZ),
+             Bits#(Value,       value_SZ),
+             Bits#(Token,       token_SZ));
 
 
 
@@ -39,8 +39,8 @@ module [HASim_Module] mkFreeList#(File debug_log, Tick curCC)
 
   BRAM#(TokIndex, PRName)     old_pregs <- mkBRAM_Full();
   BRAM#(PRName, PRName)       fl        <- mkBRAM_Full();
-  Reg#(PRName)  	      fl_read   <- mkReg(minInitFL);
-  Reg#(PRName)  	      fl_write  <- mkReg(0); 
+  Reg#(PRName)                fl_read   <- mkReg(minInitFL);
+  Reg#(PRName)                fl_write  <- mkReg(0); 
 
   Reg#(Bit#(2))             reqCount <- mkReg(0);
   

@@ -8823,3 +8823,76 @@ Rearranged the controller so that the Events and Stats controllers are better or
 Some miscellaneous code cleanup.
 
 Michael P.
+
+----------
+pellauer    Date: Fri Nov  2 16:18:37 EDT 2007  CSN: CSN-hasim-295
+                  Fri Nov  2 20:18:37 UTC 2007
+
+
+Directory modules/controller/local-controller
+ LocalController.bsv       Locally Modified          294 
+
+Directory modules/controller/hardware-only/simple
+ hasim_simple_controller.bsv Locally Modified          294 
+
+Directory modules/controller/stats-controller
+ StatsController.bsv       Locally Modified          294 
+
+Directory modules/controller/hybrid/simple
+ HybridSimpleController.bsv Locally Modified          294 
+
+Directory modules/common/modellib
+ StatFIFO.bsv              Locally Modified          294 
+ Commands.bsv              Locally Modified          293 
+ Ports.bsv                 Locally Modified          293 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          293 
+
+Directory modules/common
+ Token.bsv                 Locally Modified          293 
+ FPGAFIFOs.bsv             Locally Modified          293 
+ BypassFIFO.bsv            Locally Modified          293 
+
+Directory modules/bluespec/common/soft_connections/alg/typed
+ ConnectionAlg.bsv         Locally Modified          293 
+
+Directory modules/bluespec/common/soft_connections
+ Connections.bsv           Locally Modified          293 
+
+Directory modules/functional/semantic-model
+ FUNCPModel.bsv            Locally Modified          293 
+
+Directory modules/functional/common/deprecated
+ FUNCP_RegState.bsv        Locally Modified          293 
+ FUNCP_Pipeline.bsv        Locally Modified          293 
+ FUNCP_TokGen.bsv          Locally Modified          293 
+ FUNCP_Base.bsv            Locally Modified          293 
+
+Directory modules/functional/freelist
+ FUNCP_FreeList.bsv        Locally Modified          293 
+
+Directory modules/system/dme_system/no-afu
+ dme_no_afu.bsv            Locally Modified          293 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.bsv  Locally Modified          293 
+
+Directory modules/system/switch_to_led_system/calculation4x4/square
+ square4x4.bsv             Locally Modified          293 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ multiplier4x4.bsv         Locally Modified          293 
+
+Directory modules/system/mem_test
+ MemTest.bsv               Locally Modified          293 
+
+
+I finally figured out why my text editor was occaisionally randomly inserting
+tabs into the source code, which was then messing up the formatting for everyone
+else. I have consequently excised all tabs from the source files, as the start
+of moving us towards a unified coding convention.
+
+(The platforms repository is already tab-free.)
+
+Michael P.

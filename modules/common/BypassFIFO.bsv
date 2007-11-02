@@ -18,19 +18,19 @@ module mkBypassFIFO(FIFO#(a)) provisos (Bits#(a,sa));
       result.wset(the_fifof.first());
     else case (enqw.wget()) matches
       tagged Just .r:
-	result.wset(r);
+        result.wset(r);
       tagged Nothing:
-	noAction;
+        noAction;
       endcase
   endrule
 
   rule doUpdate_enq;
     case (enqw.wget()) matches
       tagged Just .r: 
-	if (the_fifof.notEmpty || !isJust(deqw.wget))
+        if (the_fifof.notEmpty || !isJust(deqw.wget))
           the_fifof.enq(r); 
       tagged Nothing:
-	noAction;
+        noAction;
     endcase
   endrule
 
@@ -69,19 +69,19 @@ module mkBypassSizedFIFO#(Integer x) (FIFO#(a)) provisos (Bits#(a,sa));
       result.wset(the_fifof.first());
     else case (enqw.wget()) matches
       tagged Just .r:
-	result.wset(r);
+        result.wset(r);
       tagged Nothing:
-	noAction;
+        noAction;
       endcase
   endrule
 
   rule doUpdate_enq;
     case (enqw.wget()) matches
       tagged Just .r: 
-	if (the_fifof.notEmpty || !isJust(deqw.wget))
+        if (the_fifof.notEmpty || !isJust(deqw.wget))
           the_fifof.enq(r); 
       tagged Nothing:
-	noAction;
+        noAction;
     endcase
   endrule
 
@@ -116,7 +116,7 @@ module mkBypassFIFO_old(FIFO#(a)) provisos (Bits#(a,sa));
 
   rule doUpdate_enq;
     if ((isJust(enqw.wget())) &&
-	(the_fifof.notEmpty || (!(isJust(deqw.wget())))))
+        (the_fifof.notEmpty || (!(isJust(deqw.wget())))))
        //Put into the FIFO if necessary
        the_fifof.enq (unJust(enqw.wget()));
   endrule
@@ -158,7 +158,7 @@ module mkBypassSizedFIFO_old#(Integer x)(FIFO#(a)) provisos (Bits#(a,sa));
   rule doUpdate;
     //Put into the FIFO if necessary
     if ((isJust(enqw.wget())) &&
-	(the_fifof.notEmpty || (!(isJust(deqw.wget())))))
+        (the_fifof.notEmpty || (!(isJust(deqw.wget())))))
        the_fifof.enq (unJust(enqw.wget()));
 
     if((isJust(deqw.wget())) && (!(isJust(enqw.wget()) || the_fifof.notEmpty)))

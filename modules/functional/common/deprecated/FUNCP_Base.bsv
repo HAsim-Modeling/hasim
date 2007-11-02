@@ -19,16 +19,16 @@ import hasim_isa::*;
 //              Functional                :             Timing
 //                                        :
 //                 req +----------+       :  req    +---------------+
-//     +---------+<====|          |<================|		    |
-//     | FP_Unit |     | FP_Stage |       :         |		    |       
-//     +---------+====>|          |================>|		    |
-//                resp +----------+       :  resp   |		    |
-//                          |             :         |		    |
-//                          V next        :         |		    |
-//                 req +----------+       :  req    |	Timing 	    |
-//     +---------+<====|          |<================|	Partition   |
-//     | FP_Unit |     | FP_Stage |       :         |		    |
-//     +---------+====>|          |================>|		    |
+//     +---------+<====|          |<================|               |
+//     | FP_Unit |     | FP_Stage |       :         |               |       
+//     +---------+====>|          |================>|               |
+//                resp +----------+       :  resp   |               |
+//                          |             :         |               |
+//                          V next        :         |               |
+//                 req +----------+       :  req    |   Timing      |
+//     +---------+<====|          |<================|  Partition    |
+//     | FP_Unit |     | FP_Stage |       :         |               |
+//     +---------+====>|          |================>|               |
 //                resp +----------+       :  resp   |               |
 //                          |                       |               |
 //                          V                       |               |
@@ -52,35 +52,35 @@ import hasim_isa::*;
 // mkFP_Stage :: StageName -> FP_Unit -> TableSize -> FP_Stage
 
 interface FUNCP_Stage#(type init_T,
-		       type req_T,
-		       type resp_T,
-		       type next_T);
+                       type req_T,
+                       type resp_T,
+                       type next_T);
 
 endinterface
 
 module [Connected_Module] mkFUNCP_Stage#(String stagename,
                                          String linkname, 
                                          String servername,
-				         String prevname,
-				         String nextname,
-				         String killname) 
+                                         String prevname,
+                                         String nextname,
+                                         String killname) 
     //interface:
                (FUNCP_Stage#(init_T, 
-			     req_T, 
-			     resp_T, 
-			     next_T))
+                             req_T, 
+                             resp_T, 
+                             next_T))
         provisos
           (Bits#(init_T, init_SZ),
            Bits#(req_T, req_SZ),
            Bits#(resp_T, resp_SZ),
            Bits#(next_T, next_SZ),
-	   Transmittable#(Tuple3#(Token, init_T, req_T)),
-	   Transmittable#(Tuple3#(Token, resp_T, next_T)),
-	   Transmittable#(Tuple2#(Token, req_T)),
-	   Transmittable#(Tuple2#(Token, resp_T)),
-	   Transmittable#(Tuple2#(Token, init_T)),
-	   Transmittable#(Tuple2#(Token, next_T)),
-	   Transmittable#(Token));
+           Transmittable#(Tuple3#(Token, init_T, req_T)),
+           Transmittable#(Tuple3#(Token, resp_T, next_T)),
+           Transmittable#(Tuple2#(Token, req_T)),
+           Transmittable#(Tuple2#(Token, resp_T)),
+           Transmittable#(Tuple2#(Token, init_T)),
+           Transmittable#(Tuple2#(Token, next_T)),
+           Transmittable#(Token));
 
 
   //Links
@@ -106,7 +106,7 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
   //...
   link_killToken <- mkConnection_Receive(killname);
 
-  		
+                  
   //BRAM tables
   BRAM#(TokIndex, init_T)   values <- mkBRAM_Full();
   BRAM_2#(TokIndex, Bool)     valids <- mkBRAM_2_Full();
@@ -196,8 +196,8 @@ module [Connected_Module] mkFUNCP_Stage#(String stagename,
     if (valid) // don't insert if it was killed
       begin
         valids.write(tok.index, False);
-	link_from_tp.makeResp(tuple2(tok, resp));
-	link_to_next.send(tuple2(tok, next));
+        link_from_tp.makeResp(tuple2(tok, resp));
+        link_to_next.send(tuple2(tok, next));
       end
       
   endrule

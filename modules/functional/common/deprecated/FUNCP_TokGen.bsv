@@ -72,9 +72,9 @@ module [HASim_Module] mkFUNCP_Stage_TOK#(File debug_log, Tick curCC) ();
     
     let tok = Token
       {
-	index: next,
-	timep_info: ?,
-	funcp_info: inf
+        index: next,
+        timep_info: ?,
+        funcp_info: inf
       };
     link_from_tp.makeResp(tok);
     link_to_next.send(tuple2(tok, ?));

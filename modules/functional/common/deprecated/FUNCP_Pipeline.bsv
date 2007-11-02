@@ -62,10 +62,10 @@ module [HASim_Module] mkFUNCP_Stage_FET#(File debug_log, Tick curCC) ();
   //...
        stage <- mkFUNCP_Stage("FET", 
                               "fp_fet_stage",
-			      "fp_fet",
-			      "fp_tok_to_fet",
-			      "fp_fet_to_dec", 
-			      "fp_fet_kill");  
+                              "fp_fet",
+                              "fp_tok_to_fet",
+                              "fp_fet_to_dec", 
+                              "fp_fet_kill");  
   mkFUNCP_FetchAlg(debug_log, curCC);
 
 endmodule
@@ -76,10 +76,10 @@ module [HASim_Module] mkFUNCP_Stage_DEC#(File debug_log, Tick curCC) ();
   //...
        stage <- mkFUNCP_Stage("DEC", 
                               "fp_dec_stage",
-			      "fp_dec",
-			      "fp_fet_to_dec",
-			      "fp_dec_to_exe",
-			      "fp_dec_kill");  
+                              "fp_dec",
+                              "fp_fet_to_dec",
+                              "fp_dec_to_exe",
+                              "fp_dec_kill");  
   mkFUNCP_DecodeAlg(debug_log, curCC);
 
 endmodule
@@ -90,10 +90,10 @@ module [HASim_Module] mkFUNCP_Stage_EXE#(File debug_log, Tick curCC) ();
   //...
        stage <- mkFUNCP_Stage("EXE", 
                               "fp_exe_stage",
-		              "fp_exe",
-		              "fp_dec_to_exe",
-		              "fp_exe_to_mem",
-			      "fp_exe_kill");
+                              "fp_exe",
+                              "fp_dec_to_exe",
+                              "fp_exe_to_mem",
+                              "fp_exe_kill");
   
   mkFUNCP_ExecuteAlg(debug_log, curCC);
 
@@ -104,11 +104,11 @@ module [HASim_Module] mkFUNCP_Stage_MEM#(File debug_log, Tick curCC) ();
   FUNCP_Stage#(ExecedInst, void, void, InstWBInfo)
   //...
        stage <- mkFUNCP_Stage("MEM", 
-                	      "fp_mem_stage",
-			      "fp_mem",
-			      "fp_exe_to_mem",
-			      "fp_mem_to_lco", 
-			      "fp_mem_kill");
+                              "fp_mem_stage",
+                              "fp_mem",
+                              "fp_exe_to_mem",
+                              "fp_mem_to_lco", 
+                              "fp_mem_kill");
 
   mkFUNCP_MemAlg(debug_log, curCC);
 
@@ -120,10 +120,10 @@ module [HASim_Module] mkFUNCP_Stage_LCO#(File debug_log, Tick curCC) ();
   //...
        stage <- mkFUNCP_Stage("LCO", 
                               "fp_lco_stage",
-			      "fp_lco",
-			      "fp_mem_to_lco",
-			      "fp_lco_to_gco", 
-			      "fp_lco_kill");
+                              "fp_lco",
+                              "fp_mem_to_lco",
+                              "fp_lco_to_gco", 
+                              "fp_lco_kill");
 
   mkFUNCP_LocalCommitAlg(debug_log, curCC);
 
@@ -135,10 +135,10 @@ module [HASim_Module] mkFUNCP_Stage_GCO#(File debug_log, Tick curCC) ();
   //...
        stage <- mkFUNCP_Stage("GCO", 
                               "fp_gco_stage",
-			      "fp_gco",
-			      "fp_lco_to_gco",
-			      "fp_gco_to_tok", 
-			      "fp_gco_kill");
+                              "fp_gco",
+                              "fp_lco_to_gco",
+                              "fp_gco_to_tok", 
+                              "fp_gco_kill");
   
   mkFUNCP_GlobalCommitAlg(debug_log, curCC);
 

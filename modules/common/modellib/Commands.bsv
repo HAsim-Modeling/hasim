@@ -16,10 +16,10 @@ typedef union tagged
   void         COM_Step;           //Run exactly one model CC.
 }
   Command 
-                deriving 
-		        (Eq, Bits);
+          deriving 
+                   (Eq, Bits);
 
-		
+                
 typedef union tagged
 {
   Bool RESP_DoneRunning; //Bool is run passed
@@ -28,6 +28,6 @@ typedef union tagged
   
 }
   Response
-                 deriving
-		         (Eq, Bits);
+           deriving
+                    (Eq, Bits);
 

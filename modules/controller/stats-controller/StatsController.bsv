@@ -91,7 +91,7 @@ module [Connected_Module] mkStatsController
       begin
         cur <= 0;
         state <= SC_Idle;
-	dump_finished <= True;
+        dump_finished <= True;
       end
       default:  //This should never happen
       begin
@@ -115,7 +115,7 @@ module [Connected_Module] mkStatsController
       Stats_Dump:
       begin
         state         <= SC_Dumping;
-	dump_finished <= False;
+        dump_finished <= False;
       end
     endcase
 

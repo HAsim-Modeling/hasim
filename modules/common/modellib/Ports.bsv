@@ -1,3 +1,4 @@
+import RegFile::*;
 
 import hasim_common::*;
 import soft_connections::*;
@@ -148,6 +149,78 @@ module [HASim_Module] mkPort_Receive_Buffered#(String portname, Integer latency,
     
     tail <= overflow_incr(tail);
     return rs[tail._read()]._read();
+    
+  endmethod
+
+  //XXX a temporary set of control info
+  interface Port_Control ctrl;
+
+    method Bool empty() = False;
+    method Bool full() = True;
+    method Bool balanced() = True;
+    method Bool light() = False;
+    method Bool heavy() = False;
+
+  endinterface
+
+endmodule
+
+module [HASim_Module] mkPort_Receive_Waterlevel#(String portname, Integer latency)
+    //interface:
+                (Port_Receive#(msg_T))
+      provisos
+	        (Bits#(msg_T, msg_SZ),
+		 Transmittable#(Maybe#(msg_T)));
+
+  Connection_Receive#(Maybe#(msg_T)) con <- mkConnection_Receive(portname);
+   
+  RegFile#(Bit#(10), Maybe#(msg_T)) rs <- mkRegFileFull();
+  Integer rMax = 1024;
+
+  Reg#(Bool) initializing <- mkReg(True);
+  Reg#(Bit#(10)) head <- mkReg(0);
+  Reg#(Bit#(10)) tail <- mkReg(0);
+  Reg#(Bit#(10)) waterlevel <- mkReg(fromInteger(latency));
+  
+  String         stat_name = strConcat(portname, " Maximum Elements");
+  Stat           level_stat <- mkStatCounter(stat_name);
+  
+  Bool full  = (head + 1 == tail);
+  Bool empty = (head == tail);
+    
+  rule initvals (initializing);
+  
+    rs.upd(head, tagged Invalid);
+    let newhead = head + 1;
+    if (newhead == fromInteger(latency))
+      initializing <= False;
+    
+    head <= newhead;
+  
+  endrule
+  
+  rule shift (!full && !initializing);
+  
+    let d = con.receive();
+    con.deq();
+    
+    rs.upd(head, d);
+    let newhead = head + 1;
+    Bit#(10) current_elems = newhead - tail;
+    if (current_elems > waterlevel)
+    begin
+      waterlevel <= waterlevel + 1;
+      level_stat.incr();
+    end
+    head <= newhead;
+   
+  endrule
+  
+  method ActionValue#(Maybe#(msg_T)) receive() if (!empty && !initializing);
+    
+    let newtail = tail + 1;
+    tail <= newtail;
+    return rs.sub(tail);
     
   endmethod
 

@@ -8922,3 +8922,25 @@ Directory modules/common/smart_synthesis_boundaries
 - hasim-connect now aborts on inputs that look wrong.  Previous behavior
   allowed for unresolved dangling connections.
 - Fix LED masks in simple controller (exposed by type checking).
+
+----------
+pellauer    Date: Mon Nov  5 14:48:23 EST 2007  CSN: CSN-hasim-297
+                  Mon Nov  5 19:48:23 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          296 
+
+Directory modules/common/modellib
+ Ports.bsv                 Locally Modified          296 
+ hasim_modellib.awb        Locally Modified          296 
+
+
+Added Waterlevel Ports to Modellib. These have large buffering, then use Stats
+to track the maximum number of elements they observe. Then you can go back and
+pick optimal buffering for your Ports.
+
+Also a small change in hasim-configure. Cleaned up the surrogates that get
+generated initially.
+
+Michael P.

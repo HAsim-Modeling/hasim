@@ -13,7 +13,7 @@
 #
 # %attributes hasim
 #
-# %public Ports.bsv Events.bsv Stats.bsv Commands.bsv StatFIFO.bsv
+# %public Events.bsv Stats.bsv Commands.bsv StatFIFO.bsv Ports.bsv
 #
 # %param HASIM_EVENTS_ENABLED True "Statically enable/disable Event logging (True/False)."
 # %param HASIM_EVENTS_SIZE 32 "Number of bits for Event parameter."

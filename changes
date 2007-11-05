@@ -8896,3 +8896,29 @@ of moving us towards a unified coding convention.
 (The platforms repository is already tab-free.)
 
 Michael P.
+
+----------
+mcadler     Date: Mon Nov  5 09:01:59 EST 2007  CSN: CSN-hasim-296
+                  Mon Nov  5 14:01:59 UTC 2007
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          295 
+
+Directory modules/model
+ SCons.hw.template         Locally Modified          295 
+
+Directory modules/bluespec/common/soft_connections/alg/typed
+ ConnectionAlg.bsv         Locally Modified          295 
+
+Directory modules/controller/hardware-only/simple
+ hasim_simple_controller.bsv Locally Modified          295 
+
+Directory modules/common/smart_synthesis_boundaries
+ ExposeConnections.bsv     Locally Modified          295 
+ BuryConnections.bsv       Locally Modified          295 
+
+- Enable type checking of ports that span synthesis boundaries.
+- hasim-connect now aborts on inputs that look wrong.  Previous behavior
+  allowed for unresolved dangling connections.
+- Fix LED masks in simple controller (exposed by type checking).

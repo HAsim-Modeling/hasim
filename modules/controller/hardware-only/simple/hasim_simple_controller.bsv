@@ -6,13 +6,14 @@ import Connectable::*;
 import FIFO::*;
 
 // HASim library imports
-import hasim_common::*;
-import soft_connections::*;
-import hasim_modellib::*;
-import platform_interface::*;
-import hasim_local_controller::*;
-import hasim_events_controller::*;
-import hasim_stats_controller::*;
+`include "hasim_common.bsh"
+`include "soft_connections.bsh"
+`include "hasim_modellib.bsh"
+`include "platform_interface.bsh"
+`include "front_panel.bsh"
+`include "hasim_local_controller.bsh"
+`include "hasim_events_controller.bsh"
+`include "hasim_stats_controller.bsh"
 
 // ************* Simple Controller Hardware (Simulation) Only **************
 
@@ -126,9 +127,9 @@ module [HASim_Module] mkController
   
   // We tie off the LEDs, switches, and buttons.
   
-  Connection_Send#(Bit#(4))           link_leds <- mkConnection_Send("fpga_leds");
-  Connection_Receive#(Bit#(4))    link_switches <- mkConnection_Receive("fpga_switches");
-  Connection_Receive#(ButtonInfo)  link_buttons <- mkConnection_Receive("fpga_buttons");
+  Connection_Send#(FRONTP_MASKED_LEDS) link_leds <- mkConnection_Send("fpga_leds");
+  Connection_Receive#(FRONTP_SWITCHES) link_switches <- mkConnection_Receive("fpga_switches");
+  Connection_Receive#(ButtonInfo)      link_buttons <- mkConnection_Receive("fpga_buttons");
   
   
   //*********** Rules ***********
@@ -188,7 +189,7 @@ module [HASim_Module] mkController
      link_command.send_to_next(COM_RunProgram);
      
      state <= CON_Running;
-     link_leds.send(4'b0011);
+     link_leds.send(FRONTP_MASKED_LEDS{ state: 'b0011, mask: 'b1111 });
      $display("[%0d]: Controller: Program Started.", cur_fpga_cc);
      $fflush();
 
@@ -207,14 +208,14 @@ module [HASim_Module] mkController
         begin
           if (pf)  // It passed
           begin
-            link_leds.send(4'b1001);
+            link_leds.send(FRONTP_MASKED_LEDS{ state: 'b1001, mask: 'b1111 });
             $display("[%0d]: Controller: Test program finished succesfully.", cur_fpga_cc);
             $fflush();
             passed <= True;
           end
           else // It failed
           begin
-            link_leds.send(4'b1101);
+            link_leds.send(FRONTP_MASKED_LEDS{ state: 'b1101, mask: 'b1111 });
             $display("[%0d]: Controller: Test program finished. One or more failures occurred.", cur_fpga_cc);
             $fflush();
           end

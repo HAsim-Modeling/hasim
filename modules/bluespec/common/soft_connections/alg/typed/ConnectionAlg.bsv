@@ -91,21 +91,22 @@ module connect#(List#(CSend_Info) sends, List#(CRecv_Info) recvs) (Tuple2#(List#
   for (Integer x = 0; x < nCncts; x = x + 1)
   begin
   
-    match {.cin, .cout} = cncts[x];
+    match {.cout, .cin} = cncts[x];
     
     //Type-Checking: we perform a rudimentary sanity check here
     //But not across synthesis boundaries yet
     
-    if ((cin.ctype != cout.ctype) && (cout.ctype != "") && (cin.ctype != ""))
+    // Make sure connections match or consumer is receiving it as void
+    if (cin.ctype != cout.ctype)
     begin
-      messageM(strConcat("ERROR: data types for Connection ", strConcat(cin.cname, " do not match.")));
       messageM(strConcat("Detected send type: ", cout.ctype));
       messageM(strConcat("Detected receive type: ", cin.ctype));
+      error(strConcat("ERROR: data types for Connection ", strConcat(cin.cname, " do not match.")));
     end
     else
     begin  //Actually do the connection
-      messageM(strConcat("Connecting: ", cin.cname));
-      mkConnection(cin.conn, cout.conn);
+      messageM(strConcat("Connecting dangling port: ", cin.cname));
+      mkConnection(cout.conn, cin.conn);
     end
   
   end

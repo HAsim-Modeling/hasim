@@ -102,7 +102,7 @@ sub create_surrogate {
 
     #print "<<<< $log_file\n";
 
-    CORE::open(SURROGATE, "> $filename");
+    CORE::open(SURROGATE, "> $filename") or die("Failed to open $filename for writing");
     print SURROGATE "$indent // Surrogate for $metatype\n";
 
 
@@ -124,7 +124,7 @@ sub create_surrogate {
     my @recvs_exprs = ();
 
     foreach my $conn_r (@conns) {
-        my $expr = "tuple2(\"" . $conn_r->[2] . "\", " . $conn_r->[1] . ")";
+        my $expr = "tuple3(\"" . $conn_r->[3] . "\", \"" . $conn_r->[1] . "\", " . $conn_r->[2] . ")";
 
         if ($conn_r->[0] eq "Send") {
             push (@sends_exprs, $expr);
@@ -168,31 +168,6 @@ sub make_module_name {
     return "mk_" . $name;
 }
 
-############################################################
-# 
-sub get_module_build_dir2 {
-
-    my $model = shift;
-    my $module = shift;
-
-    my $current = $module;
-    my $path = "";
-
-    while (defined $current) {
-	my $dir = "";
-	if (HAsim::Build::is_synthesis_boundary($current)) {
-	    my $dir = $current->provides();
-	}
-
-	if (!($dir eq "")) {
-	    $path = $dir . "/" . $path;
-        }
-	$current = $current->parent();
-
-    }
-
-    return $path;
-}
 
 ##########################################################
 # 
@@ -239,89 +214,33 @@ sub get_cons_expr {
     return "cons(" . $vars[0] . ", " . get_cons_expr(@vars[1 .. $#vars]) . ")";
 }
 
-############################################################
-# 
-sub get_sub_synth_modules {
-    my $module = shift;
-    my $start_module = shift;
-
-    my @module_list = ();
-    if (HAsim::Build::is_synthesis_boundary($module) && $start_module == 0) {
-	push (@module_list,$module);
-    } else {
-#    } elsif (((is_synthesis_boundary($module) && $start_module == 1)) ||
-#	     ((!is_synthesis_boundary($module) && $start_module == 0))) {
-	foreach my $submodule ($module->submodules()) {
-	    push(@module_list,get_sub_synth_modules($submodule,0));
-	}
-    }
-    return @module_list;
-}
 
 ############################################################
 # 
 sub parse_dangling_connections {
     my $log_file = shift;
 
-#Compilation message: "HASim.bsv", line 518, column 5: Dangling Send [0]: mem_imem_req
-#Compilation message: "HASim.bsv", line 528, column 5: Dangling Rec [0]: mem_imem_resp
+#Compilation message: "HASim.bsv", line 518, column 5: Dangling Send {<type>} [0]: mem_imem_req
+#Compilation message: "HASim.bsv", line 528, column 5: Dangling Rec {<type>} [0]: mem_imem_resp
 
     #print "parsing: $log_file\n";
     my @conns = ();
     CORE::open(LOG, "< $log_file") || return undef;
     while (my $line = <LOG>) {
-	if ($line =~ /.*Dangling\W+(\w+)\W+(\w+)\W+(\w+)\W+/) {
-	    my @connection = ($1,$2,$3);
-	    push(@conns, [@connection]);
-	}
+        if ($line =~ /^Compilation message: .*: Dangling /) {
+            if ($line =~ /.*Dangling (\w+) {(.*)} \[(\d+)\]: (\w+)/) {
+                my @connection = ($1,$2,$3,$4);
+                push(@conns, [@connection]);
+            }
+            else {
+                DIE("Malformed dangling connection message");
+            }
+        }
     }
     CORE::close(LOG);
 
     return @conns;
 }
-
-sub parse_existing_dangling_connections {
-    my ($filename, $ref_sends, $ref_recvs) = @_;
-
-    
-
-#    let dsends_hasim_funcp_memstate = cons(tuple2("mem_imem_resp", 0), cons(tuple2("mem_dmem_resp", 1), List::nil));
-#    let drecvs_hasim_funcp_memstate = cons(tuple2("mem_imem_req", 0), cons(tuple2("mem_dmem_req", 1), cons(tuple2("mem_commit", 2), cons(tuple2("fp_memstate_kill", 3), List::nil))));
-
-    #print "parsing: $filename\n";
-    CORE::open(EXISTING, "< $filename") || return undef;
-    
-    
-    while (my $line = <EXISTING>) {
-	if ($line =~ m/let dsends_/) {
-          @{$ref_sends} = $line =~ m/tuple2\("(\w+)", \d*\)/g;
-	}
-	elsif ($line =~ m/let drecvs_/) {
-          @{$ref_recvs} = $line =~ m/tuple2\("(\w+)", \d*\)/g;
-	}
-    }
-    CORE::close(EXISTING);
-}
-
-sub get_provider {
-    my $module = shift;
-    my $metatype = shift;
-
-    if ($module->provides() eq $metatype) {
-	return $module;
-    }
-
-    # recurse
-    foreach my $submodule ($module->submodules()) {
-	my $result = get_provider($submodule,$metatype);
-	if ($result != 0) {
-	    return $result;
-	}
-    }
-
-    return 0;
-}
-
 
 sub WARN {
     my $msg = shift;

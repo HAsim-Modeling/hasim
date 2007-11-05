@@ -50,7 +50,7 @@ module exposeDanglingSends#(List#(CSend_Info) dsends) (Vector#(CON_Addr, CON_Out
   for (Integer x = 0; x < length(dsends); x = x + 1)
   begin
     let cur = dsends[x];
-    messageM(strConcat(strConcat(strConcat(strConcat(strConcat("Dangling Send {", ""),"} ["), integerToString(cur_out)), "]: "), cur.cname));
+    messageM(strConcat(strConcat(strConcat(strConcat(strConcat("Dangling Send {", cur.ctype),"} ["), integerToString(cur_out)), "]: "), cur.cname));
     res[cur_out] = cur.conn;
     cur_out = cur_out + 1;
     if (cur_out >= valueof(CON_Addr))
@@ -78,7 +78,7 @@ module exposeDanglingRecvs#(List#(CRecv_Info) drecvs) (Vector#(CON_Addr, CON_In)
   for (Integer x = 0; x < length(drecvs); x = x + 1)
   begin
     let cur = drecvs[x];
-    messageM(strConcat(strConcat(strConcat(strConcat(strConcat("Dangling Rec {", ""), "} ["), integerToString(cur_in)), "]: "), cur.cname));
+    messageM(strConcat(strConcat(strConcat(strConcat(strConcat("Dangling Rec {", cur.ctype), "} ["), integerToString(cur_in)), "]: "), cur.cname));
     res[cur_in] = cur.conn;
     cur_in = cur_in + 1;
     if (cur_in >= valueof(CON_Addr))

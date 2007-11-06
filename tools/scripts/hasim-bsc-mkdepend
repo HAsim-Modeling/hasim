@@ -88,6 +88,11 @@ sub FindBSVFile($)
 {
     my ($f) = @_;
 
+    ## Is file a generated file for a subdirectory?
+    if (exists($derivedBSV{$f})) {
+        return "./$f";
+    }
+
     foreach my $s (@bscPath)
     {
         my $p = $s . '/' . $f;
@@ -224,7 +229,6 @@ sub ParseBSVFile($$)
     $bsvFiles{$fName} = $flag;
 
     print STDERR "Parsing input file ${fName}\n" if ($debug);
-    ErrorExit("Can't find file $fName") if (! -f $fName);
 
     # Don't parse the contents of derived files.  We avoid parsing mainly because
     # the file changes after the first build and would cause the build rule to
@@ -235,6 +239,8 @@ sub ParseBSVFile($$)
     my $fn = $fName;
     $fn =~ s/^\.\///;
     return if (exists($derivedBSV{$fn}));
+
+    ErrorExit("Can't find file $fName") if (! -f $fName);
 
     my $inComment = 0;
     my $BSV;
@@ -343,7 +349,12 @@ foreach my $bsv (keys %bsvFiles)
     my $bdir = $1;
     $bdir = defined($bdir) ? $bdir . '/' : '';
         
-    print "${bdir}${bscBDir}/${bo}: ${bsv}\n";
+    my $localBsv = $bsv;
+    $localBsv =~ s/^\.\///;
+    if (! exists($derivedBSV{$localBsv})) {
+        print "${bdir}${bscBDir}/${bo}: ${bsv}\n";
+    }
+
     foreach my $dep (keys %{$bsvDep{$bsv}})
     {
         ## Each file depends on the imported .bsv source files and the files
@@ -353,9 +364,9 @@ foreach my $bsv (keys %bsvFiles)
         {
             # For imports add dependence on built object
             my $d = $dep;
-            $d =~ s/\.bsv$/.bo/;
             $d =~ s/(.*)\///g;
             my $ddir = $1;
+            $d =~ s/\.bsv$/.bo/;
             print "${bdir}${bscBDir}/${bo}: ${ddir}/${bscBDir}/${d}\n";
         }
         else {
@@ -365,34 +376,3 @@ foreach my $bsv (keys %bsvFiles)
     }
     print "\n";
 }
-print "\n";
-
-
-##
-## These pseudo rules note dependence for building all objects and rebuilding
-## the dependence file itself.
-##
-
-foreach my $bsv (keys %bsvFiles)
-{
-    if (! exists($derivedBSV{$bsv}))
-    {
-        print ".depends-bsv: ${bsv}\n";
-    }
-}
-print "\n";
-
-#print ".PHONY: all_intermediate\n";
-foreach my $bsv (keys %bsvFiles)
-{
-    ## Only describe subordinate files.  The top level file must be built by
-    ## a different rule.
-    if ($bsvFiles{$bsv} > 0)
-    {
-        my $b = $bsv;
-        $b =~ s/\.bsv$/.bo/;
-        $b =~ s/.*\///g;
-        #print "all_intermediate: ${bscBDir}/${b}\n";
-    }
-}
-print "\n";

@@ -8944,3 +8944,20 @@ Also a small change in hasim-configure. Cleaned up the surrogates that get
 generated initially.
 
 Michael P.
+
+----------
+mcadler     Date: Mon Nov  5 21:25:18 EST 2007  CSN: CSN-hasim-298
+                  Tue Nov  6 02:25:18 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          297 
+ hasim-bsc-mkdepend        Locally Modified          297 
+
+Directory modules/model
+ SCons.hw.template         Locally Modified          297 
+
+- hasim-configure no longer generates stubs for .bsv files generated following
+  subdirectory compilation.  Yeehaw!
+- Teach hasim-bsc-mkdepend to terminate searches at derived .bsv files.
+- Better SCons rules for building and cleaning derived .bsv files.

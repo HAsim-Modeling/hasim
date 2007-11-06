@@ -92,7 +92,11 @@ def compile_bo(source, target, env, for_signature):
 bsc = Builder(generator = compile_bo, suffix = '.bo', src_suffix = '.bsv',
               emitter = emitter_bo)
 
-env.Append(BUILDERS = {'BSC' : bsc})
+# SUBD method for building generated .bsv file.  Can't use automatic
+# suffix detection since source must be named explicitly.
+bsc_subd = Builder(generator = compile_bo, emitter = emitter_bo)
+
+env.Append(BUILDERS = {'BSC' : bsc, 'BSC_SUBD' : bsc_subd})
 
 
 BuildDir(TMP_BSC_DIR, '.', duplicate=0)
@@ -136,12 +140,8 @@ for s in SUBDIRS.split():
                     sd,
                     'hasim-connect ' + APM_FILE + ' $TARGET')
 
-    # Don't delete the connection file when cleaning
-    env.Precious(c)
-    env.NoClean(c)
-
     # Build rule for the connection file
-    env.BSC(TMP_BSC_DIR + '/' + s)
+    env.BSC_SUBD(TMP_BSC_DIR + '/' + s + '.bo', c)
 
 
 Return('wrapper_builds')

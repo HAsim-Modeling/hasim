@@ -30,6 +30,7 @@ class SOFTWARE_CONTROLLER_CLASS: public HASIM_SW_MODULE_CLASS
         void PrintMessage(UINT32, UINT32);
         void PrintEvent(UINT32, UINT32);
         void PrintStat(UINT32, UINT32);
+        void PrintAssert(UINT32, UINT32);
         void CallbackExit(int);
 };
 

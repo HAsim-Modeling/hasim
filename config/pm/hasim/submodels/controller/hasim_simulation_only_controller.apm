@@ -28,7 +28,12 @@ Packagehint=hasim
 hasim_stats_controller=HAsim Stats Controller
 hasim_local_controller=Hasim local controller
 hasim_events_controller=HAsim Events Controller
+hasim_assertions_controller=HAsim Assertions Controller
 
 [Hasim Simulation-Only Simple controller]
 File=modules/controller/hardware-only/simple/hasim_simple_controller.awb
+Packagehint=hasim
+
+[HAsim Assertions Controller]
+File=modules/controller/assertions-controller/hasim_assertions_controller.awb
 Packagehint=hasim

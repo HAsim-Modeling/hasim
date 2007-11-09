@@ -144,6 +144,7 @@ module [Connected_Module] mkConnection_Send_Bypassed#(String portname)
   endmethod
 
 endmodule
+
 module [Connected_Module] mkConnection_Receive#(String portname)
     //interface:
                 (Connection_Receive#(msg_T))

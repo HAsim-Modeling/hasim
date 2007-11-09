@@ -8961,3 +8961,51 @@ Directory modules/model
   subdirectory compilation.  Yeehaw!
 - Teach hasim-bsc-mkdepend to terminate searches at derived .bsv files.
 - Better SCons rules for building and cleaning derived .bsv files.
+
+----------
+pellauer    Date: Thu Nov  8 22:43:14 EST 2007  CSN: CSN-hasim-299
+                  Fri Nov  9 03:43:14 UTC 2007
+
+
+Directory config/pm/hasim/submodels/controller
+ hasim_simulation_only_controller.apm Locally Modified          298 
+ hasim_hybrid_simple_controller.apm Locally Modified          298 
+
+Directory modules/bluespec/common/soft_connections
+ soft_connections.awb      Locally Modified          298 
+ Connections.bsv           Locally Modified          298 
+
+Directory modules/functional/semantic-model
+ FUNCPTokState.bsv         Locally Modified          298 
+
+Directory modules/functional/freelist
+ FUNCP_FreeList.bsv        Locally Modified          298 
+
+Directory modules/controller/hybrid/simple
+ hybrid-simple-controller.awb Locally Modified          298 
+ HybridSimpleController.bsv Locally Modified          298 
+
+Directory modules/controller/software
+ software-controller.h     Locally Modified          298 
+ SoftwareController.bsv    Locally Modified          298 
+ swcon-service.cpp         Locally Modified          298 
+ software-controller.cpp   Locally Modified          298 
+
+Directory modules/controller/hardware-only/simple
+ hasim_simple_controller.awb Locally Modified          298 
+ hasim_simple_controller.bsv Locally Modified          298 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          298 
+ Assertions.bsv            Locally Added               0 
+
+
+Added a first pass at assertions. The assertions interface is in place, but uses the scanchain.
+
+Assertions are very "imprecise" in that it may be many FPGA cycles before we
+notice an assertion has been raised. Additionally, if more than one assertion is
+raised then it is possible that we will report a derivative assertion rather
+than the one that was the root cause. There's probably no way to avoid this
+without changing the interconnect topology (a longterm project.)
+
+Michael P.

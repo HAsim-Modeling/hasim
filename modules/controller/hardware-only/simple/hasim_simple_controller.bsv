@@ -14,6 +14,7 @@ import FIFO::*;
 `include "hasim_local_controller.bsh"
 `include "hasim_events_controller.bsh"
 `include "hasim_stats_controller.bsh"
+`include "hasim_assertions_controller.bsh"
 
 // ************* Simple Controller Hardware (Simulation) Only **************
 
@@ -74,6 +75,15 @@ function String lookup_event(Bit#(8) evt);
 
 endfunction
 
+function String lookup_assert(Bit#(8) ast);
+
+  case (ast)
+    0: return "FUNCP: Ran out of tokens. Increase the parameter HASIM_TOK_INDEX_BITS and recompile.";
+    1: return "FUNCP: Ran out of physical registers. Recompile with a larger number of physical registers.";
+    default: return "Unknown Assertion";
+  endcase
+
+endfunction
 //END DICTIONARY
 
 // mkController
@@ -97,6 +107,10 @@ module [HASim_Module] mkController
   // A cooldown period when we continue to dump events.
   Reg#(Bit#(16))   cooldown_timer  <- mkReg(`CTRL_EVENTS_COOLDOWN);
   
+  // Every so often we emit a heartbeat just to let the outside world
+  // know that the hardware is still alive.
+  Reg#(Bit#(64)) beat <- mkReg(0);
+  
   // Did the program pass or fail?
   Reg#(Bool)       passed           <- mkReg(False);
 
@@ -117,6 +131,7 @@ module [HASim_Module] mkController
   
   EventsController     events_controller    <- mkEventsController();
   StatsController      stats_controller     <- mkStatsController();
+  AssertionsController    asserts_controller   <- mkAssertionsController();
   
   // *********** Soft Connections ***********
   
@@ -251,6 +266,7 @@ module [HASim_Module] mkController
       tmp_model_cc = tmp_model_cc + 1;
       $fdisplay(event_log, "[%d] ***********", tmp_model_cc);
       cur_model_cc <= cur_model_cc + 1;
+      beat <= beat + 1;
     end
     
     String eventname = lookup_event(evt_info.eventStringID);
@@ -277,6 +293,40 @@ module [HASim_Module] mkController
     end
   endrule
   
+  // assertionFailure
+  
+  // Report assertion failures as they come in.
+  
+  rule assertionFailure (True);
+    
+    let as_info <- asserts_controller.getAssertion();
+    
+    String assert_msg = strConcat("Assertion failed. ", lookup_assert(as_info.assertStringID));
+    
+    case (as_info.assertSeverity)
+      ASSERT_Message: $display(assert_msg);
+      ASSERT_Warning: $display(strConcat("WARNING: ", assert_msg));
+      ASSERT_Error:
+      begin
+        $display(strConcat("ERROR: ", assert_msg));
+        $finish(1);
+      end
+    endcase
+
+  endrule
+  
+  // heartBeat
+
+  // An occaisional heartbeat just to let the outside world know the hardware is alive.
+  // Currently happens every 1000 model cycles.
+
+  rule heartBeat (beat == 1000);
+    
+    $display("[%0d] Controller: 1000 model cycles simulated.", cur_fpga_cc);
+    beat <= 0;
+
+  endrule
+ 
   // finishUp
   
   // A cooldown period for Events to finish dumping. If the Events Controller were smarter

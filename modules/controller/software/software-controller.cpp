@@ -43,6 +43,14 @@ char STAT_TABLE[STAT_TYPES][256] =
     "total cycles           = %u\n"
 };
 
+// asserts
+const int ASSERT_TYPES = 2;
+char ASSERT_TABLE[ASSERT_TYPES][256] =
+{
+    "FUNNCP: Ran out of Tokens!\n",
+    "FUNCP:  Ran out of physical registers!\n"
+};
+
 // constructor
 SOFTWARE_CONTROLLER_CLASS::SOFTWARE_CONTROLLER_CLASS()
 {
@@ -141,6 +149,28 @@ SOFTWARE_CONTROLLER_CLASS::PrintStat(
 
     char *fmtstr = STAT_TABLE[stattype];
     fprintf(statfile, fmtstr, value);
+}
+
+// print assert
+void
+SOFTWARE_CONTROLLER_CLASS::PrintAssert(
+    UINT32 asserttype,
+    UINT32 severity)
+{
+    if (asserttype >= ASSERT_TYPES)
+    {
+        cerr << "software controller: invalid assert type: "
+             << asserttype << endl;
+        CallbackExit(1);
+    }
+
+    char *fmtstr = ASSERT_TABLE[asserttype];
+    printf(fmtstr);
+
+    if (severity > 1)
+    {
+      CallbackExit(1);
+    }
 }
 
 // callback-exit

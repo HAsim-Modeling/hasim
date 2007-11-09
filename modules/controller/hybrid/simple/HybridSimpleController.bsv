@@ -10,9 +10,11 @@ import hasim_common::*;
 import soft_connections::*;
 import platform_interface::*;
 import hasim_modellib::*;
+import front_panel::*;
 import hasim_local_controller::*;
 import hasim_stats_controller::*;
 import hasim_events_controller::*;
+import hasim_assertions_controller::*;
 import software_controller::*;
 
 // ************* Hybrid Simple Controller **************
@@ -69,9 +71,10 @@ module [HASim_Module] mkController
 
   // *********** Submodules ***********
   
-  // Our links to the distributed Stats and Events counters
+  // Our links to the distributed communication nodes throughout the hardware model.
   EventsController     events_controller    <- mkEventsController();
   StatsController      stats_controller     <- mkStatsController();
+  AssertionsController asserts_controller     <- mkAssertionsController();
   
   // Our way of sending Commands to the Local Controllers
   Connection_Chain#(Command)   link_command   <- mkConnection_Chain(2);
@@ -80,8 +83,8 @@ module [HASim_Module] mkController
   Connection_Chain#(Response)  link_response  <- mkConnection_Chain(3);
   
   // We write our state to the LEDs, but ignore the switches and buttons.
-  Connection_Send#(Bit#(4))           link_leds <- mkConnection_Send("fpga_leds");
-  Connection_Receive#(Bit#(4))    link_switches <- mkConnection_Receive("fpga_switches");
+  Connection_Send#(FRONTP_MASKED_LEDS)           link_leds <- mkConnection_Send("fpga_leds");
+  Connection_Receive#(FRONTP_SWITCHES)    link_switches <- mkConnection_Receive("fpga_switches");
   Connection_Receive#(ButtonInfo)  link_buttons <- mkConnection_Receive("fpga_buttons");
 
   // Our link to the software side of things.
@@ -120,7 +123,7 @@ module [HASim_Module] mkController
      link_command.send_to_next(COM_RunProgram);
      
      state <= CON_Running;
-     link_leds.send(4'b0011);
+     link_leds.send(8'b00000011);
 
      swcon.printMessage1P(0, truncate(curTick)); //Message 0 = Program Started.
 
@@ -139,13 +142,13 @@ module [HASim_Module] mkController
         begin
           if (pf)  // It passed
           begin
-            link_leds.send(4'b1001);
+            link_leds.send(8'b00001001);
             swcon.printMessage1P(1, truncate(curTick)); // Message 1 = Success
             passed <= True;
           end
           else  // It failed
           begin
-            link_leds.send(4'b1101);
+            link_leds.send(8'b00001101);
             swcon.printMessage1P(2, truncate(curTick)); // Message 2 = Failure
           end
           // Either way we begin dumping.
@@ -185,6 +188,17 @@ module [HASim_Module] mkController
         beat <= beat + 1;
     end
 
+  endrule
+
+  // passOnAssertion
+  
+  // Passes an Assertion Failure on to the Software Controller for reporting
+
+  rule passOnAssert (True);
+
+    AssertInfo ai <- asserts_controller.getAssertion();
+    swcon.printAssertion(ai.assertStringID, zeroExtend(pack(ai.assertSeverity)));
+ 
   endrule
 
   // heartBeat

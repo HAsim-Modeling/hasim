@@ -1,5 +1,6 @@
 
 import hasim_common::*;
+import soft_connections::*;
 
 import Vector::*;
 import RegFile::*;
@@ -38,7 +39,7 @@ interface FUNCP_TokState;
 endinterface
 
 
-module mkFUNCP_TokState (FUNCP_TokState)
+module [Connected_Module] mkFUNCP_TokState (FUNCP_TokState)
   provisos 
           (Bits#(TokIndex, idx_SZ));
 
@@ -57,7 +58,10 @@ module mkFUNCP_TokState (FUNCP_TokState)
 
   Reg#(TokIndex) next_free_tok <- mkReg(0);
   TokIndex youngest_tok = next_free_tok - 1;
+
   Reg#(TokIndex) oldest_tok <- mkReg(0);
+
+  Assertion assert_enough_tokens <- mkAssertionChecker("Not enough tokens!", ASSERT_Error);
 
   
   TokIndex num_in_flight =  next_free_tok - oldest_tok;
@@ -95,7 +99,7 @@ module mkFUNCP_TokState (FUNCP_TokState)
     
   endmethod
   
-  method ActionValue#(TokIndex) allocate() if (can_allocate && !isBusy(next_free_tok)); //Stall until the youngest quiesces
+  method ActionValue#(TokIndex) allocate() if (!isBusy(next_free_tok)); //Stall until the youngest quiesces
   /*
     if (alloc.sub(t))
     begin
@@ -103,6 +107,9 @@ module mkFUNCP_TokState (FUNCP_TokState)
       $finish(1);
     end
     */
+    
+    assert_enough_tokens(can_allocate);
+    
     let t = next_free_tok;
     
     alloc <= update(alloc, t, True);

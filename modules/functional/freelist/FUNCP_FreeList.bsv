@@ -46,6 +46,8 @@ module [HASim_Module] mkFreeList#(File debug_log, Tick curCC)
   
   Bool full = fl_read + 1 == fl_write;
   
+  Assertion assert_enough_pregs <- mkAssertionChecker("Not enough Physical Registers!", ASSERT_Error);
+  
   rule initialize (initializing);
   
     fl.write(fl_write, fl_write);
@@ -66,7 +68,10 @@ module [HASim_Module] mkFreeList#(File debug_log, Tick curCC)
 
   endrule
   
-  method Action forward_req() if (!full && !initializing);
+  method Action forward_req() if (!initializing);
+  
+    assert_enough_pregs(!full);
+    
     fl.read_req(fl_read);
     fl_read <= fl_read + 1;
     $fdisplay(debug_log, "[%d]: FREELIST: Requesting %0d", curCC, fl_read);

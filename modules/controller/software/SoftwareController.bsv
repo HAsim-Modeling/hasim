@@ -13,6 +13,7 @@ import soft_connections::*;
 `define REQ_PRINT_MSG       1
 `define REQ_PRINT_EVENT     2
 `define REQ_PRINT_STAT      3
+`define REQ_PRINT_ASSERT    4
 
 `define EVENT_STRING_DEC_NEWLINE    5
 
@@ -25,6 +26,7 @@ interface SoftwareController;
     method Action   printMessage2P(Bit#(32) msgclass, Bit#(32) payload0, Bit#(32) payload1);
     method Action   printEvent(Bit#(8) stringID, Bit#(64) modelcycle, Bit#(32) payload);
     method Action   printStat(Bit#(8) stringID, Bit#(32) value);
+    method Action   printAssertion(Bit#(8) stringID, Bit#(8) severity);
 endinterface
 
 module [HASim_Module] mkSoftwareController(SoftwareController);
@@ -155,6 +157,21 @@ module [HASim_Module] mkSoftwareController(SoftwareController);
         req.param0          = `REQ_PRINT_STAT;
         req.param1          = zeroExtend(stringID);
         req.param2          = value;
+        req.needResponse    = False;
+
+        link_rrr_void.send(req);
+
+        reqState <= 0;
+    endmethod
+
+    // print assert
+    method Action printAssertion(Bit#(8) stringID, Bit#(8) severity) if (reqState == 0);
+
+        RRR_Request req;
+        req.serviceID       = `SERVICE_ID;
+        req.param0          = `REQ_PRINT_ASSERT;
+        req.param1          = zeroExtend(stringID);
+        req.param2          = zeroExtend(severity);
         req.needResponse    = False;
 
         link_rrr_void.send(req);

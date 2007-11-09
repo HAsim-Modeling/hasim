@@ -9009,3 +9009,24 @@ than the one that was the root cause. There's probably no way to avoid this
 without changing the interconnect topology (a longterm project.)
 
 Michael P.
+
+----------
+pellauer    Date: Fri Nov  9 14:47:41 EST 2007  CSN: CSN-hasim-300
+                  Fri Nov  9 19:47:41 UTC 2007
+
+
+Directory modules/controller/assertions-controller
+ AssertionsControllerHeader.bsv Locally Added               0 
+ hasim_assertions_controller.awb Locally Added               0 
+ AssertionsController.bsv  Locally Added               0 
+
+Directory modules/controller
+ assertions-controller/    Locally Added               0 
+
+
+Added the assertions controller which was mistakenly ommitted from the 
+previous checkin.
+
+Michael P.
+
+

@@ -2,7 +2,7 @@ import hasim_common::*;
 import rrr::*;
 import soft_connections::*;
 
-`include "rrr_services.bsv"
+`include "rrr_service_ids.bsh"
 `define SERVICE_ID  `SOFTWARE_CONTROLLER_SERVICE_ID
 
 `define HWSTATE_IDLE        0

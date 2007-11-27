@@ -9,7 +9,7 @@ File=modules/model/hasim_model.awb
 
 [HAsim Model Foundation/Requires]
 hasim_system=Hasim - Switch in to LED out system
-hasim_controller=Hasim null controller
+hasim_controller=Hasim hybrid null controller
 hasim_common=Hasim Common Library
 fpgaenv=FPGA Environment
 
@@ -41,14 +41,19 @@ Packagehint=hasim
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
 
-
-
-
 [Hasim Common Library/Params]
 TERM_FPGA_SWITCHES=0
 TERM_FPGA_BUTTONS=0
 TERM_FPGA_LEDS=0
 
-[Hasim null controller]
-File=modules/controller/hardware-only/null/hasim_null_controller.awb
+
+[Hasim hybrid null controller]
+File=modules/controller/hybrid/null/hybrid-null-controller.awb
 Packagehint=hasim
+
+[Hasim software controller for hybrid models]
+File=modules/controller/software/software-controller.awb
+Packagehint=hasim
+
+[Hasim hybrid null controller/Requires]
+software_controller=Hasim software controller for hybrid models

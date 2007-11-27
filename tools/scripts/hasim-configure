@@ -337,8 +337,8 @@ sub make_master_rrr_file {
 
     my $root_module_dir = HAsim::Build::get_module_build_dir($root, $arch_dir);
 
-    my $cppfilename = HAsim::Util::path_append($root_module_dir, "rrr_services.h");
-    my $bsvfilename = HAsim::Util::path_append($root_module_dir, "rrr_services.bsv");
+    my $cppfilename = HAsim::Util::path_append($root_module_dir, "rrr_service_ids.h");
+    my $bsvfilename = HAsim::Util::path_append($root_module_dir, "rrr_service_ids.bsh");
 
     CORE::open(CPPFILE, "> $cppfilename");
     CORE::open(BSVFILE, "> $bsvfilename");
@@ -356,23 +356,27 @@ sub make_master_rrr_file {
     my $serviceID = 0;
     foreach my $f (@rrr_file_list)
     {
-        CORE::open(RRRFILE, $f) || die "make_master_rrr_file: could not open RRR file $f\n";
-        while (my $line = <RRRFILE>)
+        # call hasim-rrr-stubgen to obtain list of services in each RRR file
+        CORE::open(STUBGEN, "hasim-rrr-stubgen -mode=print-service-names $f |")
+            || die "make_master_rrr_file: could not run hasim-rrr-stubgen on $f\n";
+
+        while (my $line = <STUBGEN>)
         {
-            if ($line =~ /ADD_SERVICE\((\w+)\)/)
-            {
-                print CPPFILE "\#define $1_SERVICE_ID $serviceID\n";
-                print BSVFILE "\`define $1_SERVICE_ID $serviceID\n";
-                $serviceID = $serviceID + 1;
-            }
+            chomp $line;
+            print CPPFILE "\#define $line\_SERVICE_ID $serviceID\n";
+            print BSVFILE "\`define $line\_SERVICE_ID $serviceID\n";
+            $serviceID = $serviceID + 1;
         }
-        CORE::close(RRRFILE);
+
+        CORE::close(STUBGEN);
     }
 
     # complete header files
+    print CPPFILE "\#define NUM_SERVICES $serviceID\n";
     print CPPFILE "\n";
     print CPPFILE "\#endif\n";
 
+    print BSVFILE "\`define NUM_SERVICES $serviceID\n";
     print BSVFILE "\n";
     print BSVFILE "\`endif\n";
 
@@ -1012,3 +1016,4 @@ sub generate_wrapper {
 
     CORE::close(WRAPPER);
 }
+

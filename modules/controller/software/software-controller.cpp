@@ -47,8 +47,8 @@ char STAT_TABLE[STAT_TYPES][256] =
 const int ASSERT_TYPES = 2;
 char ASSERT_TABLE[ASSERT_TYPES][256] =
 {
-    "FUNNCP: Ran out of Tokens!\n",
-    "FUNCP:  Ran out of physical registers!\n"
+    "FUNCP: Ran out of Tokens!\n",
+    "FUNCP: Ran out of physical registers!\n"
 };
 
 // constructor
@@ -169,7 +169,7 @@ SOFTWARE_CONTROLLER_CLASS::PrintAssert(
 
     if (severity > 1)
     {
-      CallbackExit(1);
+        CallbackExit(1);
     }
 }
 

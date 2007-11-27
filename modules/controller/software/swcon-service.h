@@ -1,7 +1,7 @@
 #ifndef __SOFTWARE_CONTROLLER_RRR_SERVICE__
 #define __SOFTWARE_CONTROLLER_RRR_SERVICE__
 
-#include "software-rrr-server.h"
+#include "software-server.h"
 #include "software-controller.h"
 
 typedef class SWCON_SERVICE_CLASS* SWCON_SERVICE;

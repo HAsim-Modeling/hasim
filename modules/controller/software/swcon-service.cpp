@@ -9,7 +9,7 @@
 
 #include "swcon-service.h"
 #include "software-controller.h"
-#include "rrr_services.h"
+#include "rrr_service_ids.h"
 
 #define SERVICE_ID  SOFTWARE_CONTROLLER_SERVICE_ID
 
@@ -125,7 +125,7 @@ SWCON_SERVICE_CLASS::Request(
             retval = false;
             break;
 
-        case 4: // print stat
+        case 4: // print assert
             controller->PrintAssert(arg1, arg2);
             retval = false;
             break;

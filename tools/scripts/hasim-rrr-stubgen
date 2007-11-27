@@ -1,0 +1,420 @@
+: # -*-Perl-*-
+eval 'exec perl -w "$0" ${1+"$@"}'
+    if 0;
+
+# *****************************************************************
+# *                                                               *
+# *   Copyright (c) (Fill in here)                                *
+# *                                                               *
+# *****************************************************************
+
+#
+# Author:  Angshuman Parashar
+#
+
+use warnings;
+use strict;
+use re 'eval';
+
+use Getopt::Long;
+
+# parse command line
+my $usage = "usage: hasim-rrr-stubgen -mode=generate-bsv-stub -odir=OUTPUTDIR INPUTFILE\n" .
+            "       hasim-rrr-stubgen -mode=print-service-names INPUTFILE\n" .
+            "       hasim-rrr-stubgen -mode=dump-service-table  INPUTFILE\n";
+
+my $mode = "";
+my $odir = "";
+
+GetOptions("mode=s" => \$mode, "odir=s" => \$odir);
+my $ifile = $ARGV[0];
+
+# check command line
+if ($mode eq ""                         ||
+    ($mode ne "print-service-names"  &&
+        $mode ne "generate-bsv-stub" &&
+        $mode ne "dump-service-table")  ||
+    ($mode eq "generate-bsv-stub"    &&
+        $odir eq ""))
+{
+    print $usage;
+    exit;
+}
+
+my $iprefix;
+if ($ifile =~ /\S+\/(\S+)\.rrr/)
+{
+    $iprefix = $1;
+}
+else
+{
+    print "error: input filename must end with .rrr suffix\n";
+    exit;
+}
+
+# parse input RRR file into data structure
+# note: to read in multiple RRR files, call this subroutine
+# multiple times and append returned list to @serviceTable
+my @serviceTable = parse_rrr_file($ifile);
+
+# find out what to print
+if ($mode eq "print-service-names")
+{
+    print_service_names(@serviceTable);
+}
+elsif ($mode eq "generate-bsv-stub")
+{
+    # generate output file name from input file name
+    if ($odir =~ /(\S+)\/+$/)
+    {
+        # get rid of trailing forward slashes
+        $odir = $1;
+    }
+    my $ofile = $odir . "/" . $iprefix . ".bsv";
+    print_service_stub($ofile, @serviceTable);
+}
+elsif ($mode eq "dump-service-table")
+{
+    dump_service_table(@serviceTable);
+}
+
+############################################################
+# print_service_names: given a parsed service table, print
+#                      out a list of service names
+sub print_service_names {
+
+    my @serviceTable = @_;
+
+    foreach my $service (@serviceTable)
+    {
+        print $service->{name} . "\n";
+    }
+}
+
+############################################################
+# print_rrr_stub: given a parsed service table, print out
+#                 an RRR service stub
+sub print_service_stub {
+
+    my $stubfile = shift;
+    my @serviceTable = @_;
+
+    my $bitsInChunk = 8; # FIXME: need to get this from somewhere
+
+    # make RRR stub files
+    # only open file if we have at least one service
+    if (@serviceTable)
+    {
+        CORE::open(STUBFILE, ">$stubfile") or die "unable to open $stubfile\n";
+
+        print STUBFILE "//\n";
+        print STUBFILE "// Synthesized service stub file\n";
+        print STUBFILE "//\n";
+        print STUBFILE "\n";
+
+        print STUBFILE "`include \"rrr_server.bsh\"\n";
+        print STUBFILE "`include \"rrr_services.bsh\"\n";
+        print STUBFILE "`include \"low_level_platform_interface.bsh\"\n";
+        print STUBFILE "\n";
+
+        print STUBFILE "`define STATE_IDLE          0\n";
+        print STUBFILE "`define STATE_PROCESSING    1\n";
+        print STUBFILE "\n";
+    }
+
+    # create an interface for each service
+    foreach my $service (@serviceTable)
+    {
+        my $serviceName = $service->{name};
+        my @methodlist  = @{ $service->{methods} };
+
+        # write interface with a method prototype for each method
+        print STUBFILE "interface ServiceStub_$serviceName;\n";
+        foreach my $method (@methodlist)
+        {
+            my $methodName  = $method->{name};
+            my $bitsInParam = $$method{reqsize} * 8;
+            print STUBFILE "    method ActionValue#(Bit#($bitsInParam)) acceptRequest_$methodName();\n";
+        }
+        print STUBFILE "endinterface\n";
+        print STUBFILE "\n";
+
+        print STUBFILE "module mkServiceStub_$serviceName (LowLevelPlatformInterface llpi);\n";
+        print STUBFILE "\n";
+
+        print STUBFILE "    Reg#(Bit#(32))  chunksRemaining <- mkReg(0);\n";
+        print STUBFILE "    Vector#(`MAX_CHUNKS_IN_PARAM, Reg#(RRR_Chunk)\n";
+        print STUBFILE "                       currentParam <- replicateM(mkReg(0));\n";
+        print STUBFILE "    Reg#(Bit#(8))   vectorIndex     <- mkReg(0);\n";
+        print STUBFILE "    Reg#(Bit#(32)) currentMethodID  <- mkReg(0);\n";
+        print STUBFILE "\n";
+
+        # write methods
+        my @cipArray = ();
+        foreach my $method (@methodlist)
+        {
+            my $methodName      = $method->{name};
+            my $bitsInParam     = $method->{reqsize} * 8;
+            my $chunksInParam   = ($bitsInParam % $bitsInChunk) == 0   ?
+                                    ($bitsInParam - ($bitsInParam % $bitsInChunk)) / $bitsInChunk :
+                                    (($bitsInParam - ($bitsInParam % $bitsInChunk)) / $bitsInChunk) + 1;
+            push(@cipArray, $chunksInParam);
+
+            print STUBFILE "    method ActionValue#(Bit#($bitsInParam)) acceptRequest_$methodName()\n";
+            print STUBFILE "                            if (state == `STATE_PROCESSING &&\n";
+            print STUBFILE "                                chunksRemaining == 0);\n";
+            print STUBFILE "        Bit#($bitsInParam) param;\n";
+            print STUBFILE "        for (int i = 0; i < $chunksInParam; i++)\n";
+            print STUBFILE "            param[i * $bitsInChunk : ((i+1) * $bitsInChunk) - 1] = currentParam[i];\n";
+            print STUBFILE "        state <= `STATE_IDLE;\n";
+            print STUBFILE "        return param;\n";
+            print STUBFILE "    endmethod\n";
+            print STUBFILE "\n";
+        }
+
+        # write out CHUNKS_IN_PARAM array
+        if (@cipArray)
+        {
+            print STUBFILE "    Bit#(8) CHUNKS_IN_PARAM = { ";
+            for my $i (0 .. $#cipArray - 1)
+            {
+                print STUBFILE "$cipArray[$i], ";
+            }
+            print STUBFILE "$cipArray[$#cipArray-1] };\n";
+            print STUBFILE "\n";
+        }
+
+        print STUBFILE "    rule probe_requests (state == `STATE_IDLE);\n";
+        print STUBFILE "        RRR_Chunk chunk <- llpi.rrrServer.getNextChunk(`$serviceName\_SERVICE_ID);\n";
+        print STUBFILE "        Bit#(8) mid     <= chunk[`CHUNK_MID_START:`CHUNK_MID_END];\n";
+        print STUBFILE "        for (int i = 0; i < `MAX_CHUNKS_IN_PARAM; i++)\n";
+        print STUBFILE "            currentParam[i] <= 0;\n";
+        print STUBFILE "        currentMethodID <= mid;\n";
+        print STUBFILE "        chunksRemaining <= CHUNKS_IN_PARAM[mid];\n";
+        print STUBFILE "        vectorIndex     <= 0;\n";
+        print STUBFILE "        paramStructMask <= chunk_mask;\n";
+        print STUBFILE "        state           <= `STATE_PROCESSING;\n";
+        print STUBFILE "    endrule\n";
+        print STUBFILE "\n";
+
+        print STUBFILE "    rule probe_params (state == `STATE_PROCESSING && chunksRemaining > 0);\n";
+        print STUBFILE "        RRR_Chunk chunk           <- llpi.rrrServer.getNextChunk(`$serviceName\_SERVICE_ID);\n";
+        print STUBFILE "        currentParam[vectorIndex] <= chunk;\n";
+        print STUBFILE "        chunksRemaining           <= chunksRemaining - 1;\n";
+        print STUBFILE "        vectorIndex               <= vectorIndex + 1;\n";
+        print STUBFILE "    endrule\n";
+        print STUBFILE "\n";
+
+        print STUBFILE "endmodule\n";
+        print STUBFILE "\n";
+    }
+
+    # close stub file
+    if (@serviceTable)
+    {
+        CORE::close(STUBFILE);
+    }
+}
+
+############################################################
+# parse_rrr_file: parse an RRR file into a service table
+sub parse_rrr_file {
+
+    my $filename = shift;
+
+    CORE::open(RRRFILE, "< $filename");
+
+    my $source = "";
+    my $line;
+
+    while (defined($line = <RRRFILE>))
+    {
+        chomp $line;
+
+        # get rid of comments
+        if ($line =~ /(.*?)\/\//)
+        {
+            $source .= $1;
+        }
+        else
+        {
+            $source .= $line;
+        }
+    }
+
+    # identifier character
+    my $p_character = qr/[\w_\.]/x;
+
+    # atomics
+    my $p_string = qr/  \s*?
+                        \"
+                        \S+
+                        \"
+                        \s*?
+                     /x;
+
+    my $p_identifier = qr/  \s*?
+                            $p_character+
+                            \s*?
+                         /x;
+
+    my $p_type = qr/    \s*?
+                        $p_character+
+                        \s*?
+                   /x;
+
+    # compounds
+    my $p_arg = qr/
+                    ($p_type)
+                    \s+
+                    ($p_identifier)
+                  /x;
+
+    my $p_arglist = qr/ (
+                            ($p_arg) |
+                            (?:
+                                ($p_arg)
+                                ,
+                                (??{ $p_arglist })
+                            )
+                        )
+                      /x;
+
+    # atomic statements
+    my $p_method = qr/
+                        \s*?
+                        method
+                        \s+
+                        ($p_identifier)
+                        \s*?
+                        \(
+                        ($p_arglist)
+                        \)
+                        \s*?
+                        ;
+                        \s*?
+                     /x;
+
+    # statement
+    my $p_statement = qr/($p_method)/x;
+
+    # partition
+    my $p_partition = qr/
+                            \s*?
+                            partition
+                            ($p_identifier)
+                            \{
+                            \s*?    # careful, possibly ambiguous!
+                            ($p_statement*)
+                            \s*?    # careful, possibly ambiguous!
+                            \}
+                            \s*?
+                            ;
+                            \s*?
+                        /x;
+    
+    # rrr class
+    my $p_rrrclass = qr/
+                        \s*?
+                        rrrclass
+                        ($p_identifier)
+                        \{
+                        ($p_partition*)
+                        \}
+                        \s*?
+                        ;
+                        \s*?
+                       /x;
+    
+    # all set, ready to parse :)
+    my @serviceTable;
+    while ($source =~ /$p_rrrclass/g)
+    {
+        # create a new RRR service class
+        my %service;
+        $service{name} = __trim($1);
+        @{ $service{methods} } = ();
+
+        my $all_partitions = $2;
+        while ($all_partitions =~ /$p_partition/g)
+        {
+            # only process FPGA partition for now
+            if (__trim($1) eq "FPGA")
+            {
+                my $all_statements = $2;
+                while ($all_statements =~ /$p_statement/g)
+                {
+                    my $s = $1;
+                    if ($s =~ /$p_method/)
+                    {
+                        my $name = $1;
+                        my $args = $2;
+
+                        # create a new method
+                        my %method;
+                        $method{name} = __trim($name);
+
+                        while ($args =~ /$p_arglist/g)
+                        {
+                            if ($1 =~ /$p_arg/)
+                            {
+                                my $argtype = __trim($1);
+                                if ($argtype eq "request")
+                                {
+                                    $method{reqsize} = $2;
+                                }
+                                elsif ($argtype eq "response")
+                                {
+                                    $method{respsize} = $2;
+                                }
+                            }
+                        }
+
+                        # push new method into service list
+                        push(@{ $service{methods} }, { %method });
+                    }
+                }
+            }
+        }
+
+        # push service into service table
+        push(@serviceTable, { %service });
+    }
+
+    return @serviceTable;
+}
+
+############################################################
+# dump_service_table: dump a service table in human-readable
+#                     format to STDOUT
+sub dump_service_table {
+
+    my @serviceTable = @_;
+
+    foreach my $service (@serviceTable)
+    {
+        my $serviceName = $service->{name};
+        print "service name: $serviceName\n";
+        print "\n";
+
+        my @methodlist  = @{ $service->{methods} };
+        foreach my $method (@methodlist)
+        {
+            my $methodName      = $method->{name};
+            print "    method name: $methodName\n";
+            print "        request size : $method->{reqsize}\n";
+            print "        response size: $method->{respsize}\n";
+            print "\n";
+        }
+    }
+}
+
+############################################################
+# __trim: remove whitespaces from a string
+sub __trim {
+
+    my $string = shift;
+    $string =~ s/^\s+//;
+    $string =~ s/\s+$//;
+    return $string;
+}

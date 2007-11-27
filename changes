@@ -9030,3 +9030,40 @@ previous checkin.
 Michael P.
 
 
+
+----------
+aparasha    Date: Tue Nov 27 17:52:33 EST 2007  CSN: CSN-hasim-301
+                  Tue Nov 27 22:52:33 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          300 
+ hasim-rrr-stubgen         Locally Added               0 
+
+Directory config/pm/hasim/demos/switch_to_led
+ adder4x4_software.apm     Locally Modified          300 
+
+Directory modules/controller/software
+ software-controller.h     Locally Modified          300 
+ SoftwareController.bsv    Locally Modified          300 
+ swcon-service.cpp         Locally Modified          300 
+ swcon-service.rrr         Locally Modified          300 
+ software-controller.cpp   Locally Modified          300 
+ swcon-service.h           Locally Modified          300 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.bsv  Locally Modified          300 
+
+Directory modules/system/mem_test
+ MemTest.bsv               Locally Modified          300 
+
+- added a new script hasim-rrr-stubgen (only service ID
+  generation is functional).
+
+- modified hasim-configure to use hasim-rrr-stubgen to
+  obtain a list of services in a given .rrr specification
+  file.
+
+- updated .rrr specification file for software controller.
+
+- updated switch2led system to use FRONTP_MASKED_LEDS.

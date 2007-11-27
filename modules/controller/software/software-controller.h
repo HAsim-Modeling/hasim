@@ -5,7 +5,7 @@
 
 #include "main.h"
 #include "sim-channelio-sw.h"
-#include "software-rrr-server.h"
+#include "software-server.h"
 
 class SWCON_SERVICE_CLASS;
 

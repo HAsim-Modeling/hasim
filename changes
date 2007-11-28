@@ -9067,3 +9067,13 @@ Directory modules/system/mem_test
 - updated .rrr specification file for software controller.
 
 - updated switch2led system to use FRONTP_MASKED_LEDS.
+
+----------
+mcadler     Date: Wed Nov 28 16:56:12 EST 2007  CSN: CSN-hasim-302
+                  Wed Nov 28 21:56:12 UTC 2007
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_htg_v5_pcie_synth.apm Locally Added               0 
+
+Add traffic light for Hitech Global PCIe board.

@@ -25,7 +25,8 @@ module [HASim_Module] mkSystem ();
 
     rule disp(True);
         Bit#(4) result = func.getResult();
-        link_leds.send(FRONTP_MASKED_LEDS{ state: result, mask: 'b1111 });
+        FRONTP_LEDS ledstate = zeroExtend(result);
+        link_leds.send(FRONTP_MASKED_LEDS{ state: ledstate, mask: 'b1111 });
     endrule
 
 endmodule

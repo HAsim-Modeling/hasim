@@ -9077,3 +9077,13 @@ Directory config/pm/hasim/demos/traffic_light
  traffic_light_htg_v5_pcie_synth.apm Locally Added               0 
 
 Add traffic light for Hitech Global PCIe board.
+
+----------
+aparasha    Date: Fri Nov 30 18:05:12 EST 2007  CSN: CSN-hasim-303
+                  Fri Nov 30 23:05:12 UTC 2007
+
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.bsv  Locally Modified          302 
+
+- FRONTP_MASED_LEDS-related bugfix in switch2led.

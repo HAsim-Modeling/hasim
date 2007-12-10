@@ -9087,3 +9087,13 @@ Directory modules/system/switch_to_led_system
  switch_to_led_system.bsv  Locally Modified          302 
 
 - FRONTP_MASED_LEDS-related bugfix in switch2led.
+
+----------
+mcadler     Date: Mon Dec 10 14:33:35 EST 2007  CSN: CSN-hasim-304
+                  Mon Dec 10 19:33:35 UTC 2007
+
+
+Directory tools/scripts
+ hasim-dict                Locally Added               0 
+
+Add dictionary builder.

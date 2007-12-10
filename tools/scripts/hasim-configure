@@ -454,6 +454,10 @@ sub __make_bsvfiles {
 
     CORE::open(BSHFILE, ">$bshfile");
 
+    # Bluespec preprocessor doesn't like '-'
+    my $safe_provides = $provides;
+    $safe_provides =~ s/-/_/g;
+
     print BSHFILE "//\n";
     print BSHFILE "// Synthesized header file for module: $provides\n";
     print BSHFILE "//\n";
@@ -461,8 +465,8 @@ sub __make_bsvfiles {
     print BSHFILE "//\n";
     print BSHFILE "\n";
 
-    print BSHFILE "`ifndef INCLUDED_MODULE_${provides}\n";
-    print BSHFILE "`define INCLUDED_MODULE_${provides}\n";
+    print BSHFILE "`ifndef INCLUDED_MODULE_${safe_provides}\n";
+    print BSHFILE "`define INCLUDED_MODULE_${safe_provides}\n";
     print BSHFILE "\n";
 
     # add defines for parameters
@@ -477,12 +481,12 @@ sub __make_bsvfiles {
     }
     print BSHFILE "\n";
 
-    print BSHFILE "`ifndef BUILDING_MODULE_${provides}\n";
+    print BSHFILE "`ifndef BUILDING_MODULE_${safe_provides}\n";
     print BSHFILE "    import ${provides}::*;\n";
     print BSHFILE "`endif\n";
 
     print BSHFILE "\n";
-    print BSHFILE "`endif  // INCLUDED_MODULE_${provides}\n";
+    print BSHFILE "`endif  // INCLUDED_MODULE_${safe_provides}\n";
 
     CORE::close(BSHFILE);
     
@@ -497,7 +501,7 @@ sub __make_bsvfiles {
     print BSVFILE "\n";
 
     # Prevent circular imports
-    print BSVFILE "`define BUILDING_MODULE_${provides}\n";
+    print BSVFILE "`define BUILDING_MODULE_${safe_provides}\n";
     print BSVFILE "`include \"${provides}.bsh\"\n";
     print BSVFILE "\n";
 

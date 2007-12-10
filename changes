@@ -9097,3 +9097,13 @@ Directory tools/scripts
  hasim-dict                Locally Added               0 
 
 Add dictionary builder.
+
+----------
+mcadler     Date: Mon Dec 10 15:05:44 EST 2007  CSN: CSN-hasim-305
+                  Mon Dec 10 20:05:44 UTC 2007
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          303 
+
+Turn '-' to '_' in Bluespec preprocessor macros.

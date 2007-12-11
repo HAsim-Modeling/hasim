@@ -27,7 +27,7 @@ module [HASim_Module] mkSystem ();
             $fflush(stdout);
         end
 
-        if (addr <= 'h10000)
+        if (addr <= 'h2000)
             addr <= addr + 1;
         else
         begin

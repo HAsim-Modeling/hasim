@@ -9107,3 +9107,20 @@ Directory tools/scripts
  hasim-configure           Locally Modified          303 
 
 Turn '-' to '_' in Bluespec preprocessor macros.
+
+----------
+aparasha    Date: Tue Dec 11 12:18:11 EST 2007  CSN: CSN-hasim-306
+                  Tue Dec 11 17:18:11 UTC 2007
+
+
+Directory modules/controller/software
+ software-controller.h     Locally Modified          305 
+
+Directory modules/system/mem_test
+ MemTest.bsv               Locally Modified          305 
+
+- sync'd software controller code with recent channelio cleanup
+  update (required because interface headers are not automatically
+  generated for C++ code).
+
+- minor unimportant changes to MemTest.

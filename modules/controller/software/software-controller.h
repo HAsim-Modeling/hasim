@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #include "main.h"
-#include "sim-channelio-sw.h"
+#include "sim-channelio.h"
 #include "software-server.h"
 
 class SWCON_SERVICE_CLASS;

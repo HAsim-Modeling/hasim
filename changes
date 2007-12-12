@@ -9124,3 +9124,44 @@ Directory modules/system/mem_test
   generated for C++ code).
 
 - minor unimportant changes to MemTest.
+
+----------
+pellauer    Date: Wed Dec 12 11:52:09 EST 2007  CSN: CSN-hasim-307
+                  Wed Dec 12 16:52:09 UTC 2007
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          306 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          306 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_htg.apm           Locally Added               0 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          306 
+ hasim_model.bsv           Locally Modified          306 
+
+Directory modules/bluespec/system/demos/counter
+ System.bsv                Locally Modified          306 
+
+Directory modules/bluespec/system/demos/multiplier
+ System.bsv                Locally Modified          306 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          306 
+
+Directory modules/common/platform_interface/hasim_dme
+ HAsimPlatformInterface.bsv Locally Modified          306 
+
+Directory modules/common/platform_interface/hasim_afu
+ HAsimPlatformInterface.bsv Locally Modified          306 
+
+
+hasim changed to handle physical_platforms rather than toplevel_wires.
+
+TBD: NGC files could be handled better. Currently we assume that they all reside
+in arch/model.
+
+Michael P.

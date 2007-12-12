@@ -1,15 +1,15 @@
 import mkCounter::*;
 import front_panel::*;
-import toplevel_wires::*;
+import physical_platform::*;
 
 (* synthesize *)
-module mkSystem();
+module mkSystem(TOP_LEVEL_WIRES);
 
     Counter         counter <- mkCounter();
     Reg#(Bit#(16))  state   <- mkReg(0);
     
-    TopLevelWiresDriver wires   <- mkTopLevelWiresDriver();
-    FrontPanel          fp      <- mkFrontPanel(wires);
+    PHYSICAL_PLATFORM pp    <- mkPhysicalPlatform();
+    FrontPanel        fp    <- mkFrontPanel(pp.physicalDrivers);
 
     rule step0(state == 0);
         Bit#(8) extended = zeroExtend(fp.readSwitches());
@@ -26,5 +26,7 @@ module mkSystem();
     rule done(state == 2);
         state <= 0;
     endrule
+
+    return pp.topLevelWires;
 
 endmodule

@@ -993,10 +993,10 @@ sub generate_wrapper {
 
     if ($isroot) {
         print WRAPPER "\n";
-        print WRAPPER "import toplevel_wires::*;\n";
+        print WRAPPER "import physical_platform::*;\n";
         print WRAPPER "\n";
         print WRAPPER "(* synthesize *)\n";
-	print WRAPPER "module " . HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($metatype)) . " (TopLevelWires);\n";    
+	print WRAPPER "module " . HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($metatype)) . " (TOP_LEVEL_WIRES);\n";    
     } else {
         print WRAPPER "(* synthesize *)\n";
 	print WRAPPER "module " . HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($metatype)) . " (WithConnections);\n";    

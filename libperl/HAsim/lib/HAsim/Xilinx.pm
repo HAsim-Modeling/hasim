@@ -36,8 +36,9 @@ sub find_all_files_with_suffix {
     }
     
     my @files = ();
-    push(@files, $module->public());
-    push(@files, $module->private());
+    #push(@files, $module->public());
+    #push(@files, $module->private());
+    push(@files, $module->sources("*", "*"));
     
     foreach my $file (@files)
     {

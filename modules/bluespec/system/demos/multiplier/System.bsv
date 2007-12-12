@@ -1,9 +1,9 @@
 import Multiplier::*;
 import front_panel::*;
-import toplevel_wires::*;
+import physical_platform::*;
 
 (* synthesize *)
-module mkSystem();
+module mkSystem(TOP_LEVEL_WIRES);
 
     /* state */
     Multiplier      mult        <- mkMultiplier();
@@ -14,8 +14,8 @@ module mkSystem();
     Reg#(Bit#(32))  in2         <- mkReg(0);
     Reg#(Bit#(1))   go          <- mkReg(0);
 
-    TopLevelWiresDriver wires       <- mkTopLevelWiresDriver();
-    FrontPanel          fp          <- mkFrontPanel(wires);
+    PHYSICAL_PLATFORM  pp       <- mkPhysicalPlatform();
+    FrontPanel         fp       <- mkFrontPanel(pp.physicalDrivers);
 
     /* rules */
     rule latchSwitches(True);
@@ -45,5 +45,7 @@ module mkSystem();
     rule reset(state == 3 && go == 0);
         state <= 0;
     endrule
+
+    return pp.topLevelWires;
 
 endmodule

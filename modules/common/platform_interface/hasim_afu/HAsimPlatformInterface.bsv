@@ -1,8 +1,8 @@
 import hasim_common::*;
 import front_panel::*;
-import toplevel_wires::*;
+import physical_platform::*;
 
-module [HASim_Module] mkPlatformInterface(TopLevelWires);
+module [HASim_Module] mkPlatformInterface(TOP_LEVEL_WIRES);
 
     // instantiate connections
     Connection_Client#(Bit#(256), Bit#(256))    link_afu       <- mkConnection_Client("dme_to_afu");

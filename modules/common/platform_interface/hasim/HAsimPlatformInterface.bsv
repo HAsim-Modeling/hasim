@@ -1,7 +1,7 @@
 import hasim_common::*;
 import soft_connections::*;
 import front_panel::*;
-import toplevel_wires::*;
+import physical_platform::*;
 import low_level_platform_interface::*;
 import memory::*;
 import rrr::*;
@@ -16,7 +16,7 @@ typedef struct
 }
   ButtonInfo deriving (Eq, Bits);
 
-module [HASim_Module] mkPlatformInterface(TopLevelWires);
+module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
 
     // instantiate connections
     Connection_Receive#(FRONTP_MASKED_LEDS) link_leds <- mkConnection_Receive("fpga_leds");
@@ -142,6 +142,6 @@ module [HASim_Module] mkPlatformInterface(TopLevelWires);
     endrule
 
     // return interface to top-level wires
-    return llpint.topLevelWires.wires_out;
+    return llpint.topLevelWires;
 
 endmodule

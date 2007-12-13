@@ -137,7 +137,7 @@ sub generate_prj_file {
 
     #now add all bsc-generated verilog files
 
-    __generate_prj_file($model->modelroot(),"arch",*PRJFILE{IO});
+    __generate_prj_file($model->modelroot(),"hw",*PRJFILE{IO});
     CORE::close(PRJFILE);
 
     return 1;

@@ -96,7 +96,7 @@ sub create_surrogate {
 
     my $log_file = 
        $model->build_dir() . "/" . 
-       get_module_build_dir($module,$root,"arch") . "/" .
+       get_module_build_dir($module,$root,"hw") . "/" .
        "/.bsc/" .
        make_wrapper_name($metatype) . ".log";
 

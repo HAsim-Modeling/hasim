@@ -9165,3 +9165,25 @@ TBD: NGC files could be handled better. Currently we assume that they all reside
 in arch/model.
 
 Michael P.
+
+----------
+mcadler     Date: Thu Dec 13 08:44:05 EST 2007  CSN: CSN-hasim-308
+                  Thu Dec 13 13:44:05 UTC 2007
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          307 
+ Build.pm                  Locally Modified          307 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          307 
+ hasim-connect             Locally Modified          307 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          307 
+ SCons.dict.template       Locally Added               0 
+ hasim_model.awb           Locally Modified          307 
+
+- Add dictionary builder
+- Change 'arch' in build directories to 'hw'.  Eventually the host
+  software side will be built in its own 'sw' top level directory.

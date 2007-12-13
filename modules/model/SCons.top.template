@@ -2,6 +2,7 @@
 
 import os
 import re
+import sys
 import string
 
 defs = {
@@ -34,6 +35,23 @@ defs = {
 env = Environment(ENV = os.environ, DEFS = defs)
 env['ENV']['SHELL'] = '/bin/sh'
 
+
+############################################################################
+############################################################################
+##
+## Build the dictionary first
+##
+############################################################################
+############################################################################
+
+if os.path.isfile('dict/SConstruct'):
+    cmd = 'cd dict; scons'
+    if env.GetOption('clean'):
+        cmd += ' -c'
+    s = os.system(cmd)
+    if (s & 0xffff) != 0:
+        print 'Aborting due to dictionary errors'
+        sys.exit(1)
 
 ############################################################################
 ############################################################################
@@ -275,7 +293,7 @@ Clean(xilinx_ngc,  XILINX_APM_NAME + '.srp')
 xilinx_ngd = env.Command(
     XILINX_APM_NAME + '.ngd',
     xilinx_ngc,
-    [ 'ngdbuild -sd arch/model -uc ' + 'config/' + APM_NAME + '.ucf $SOURCE $TARGET',
+    [ 'ngdbuild -sd ' + env['DEFS']['ROOT_DIR_HW'] + ' -uc ' + 'config/' + APM_NAME + '.ucf $SOURCE $TARGET',
       Move(TMP_XILINX_DIR + '/netlist.lst', 'netlist.lst') ])
 
 Clean(xilinx_ngd, TMP_XILINX_DIR + '/netlist.lst')

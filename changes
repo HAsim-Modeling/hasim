@@ -9187,3 +9187,19 @@ Directory modules/model
 - Add dictionary builder
 - Change 'arch' in build directories to 'hw'.  Eventually the host
   software side will be built in its own 'sw' top level directory.
+
+----------
+aparasha    Date: Sun Dec 16 16:17:33 EST 2007  CSN: CSN-hasim-309
+                  Sun Dec 16 21:17:33 UTC 2007
+
+
+Directory modules/controller/software
+ software-controller.h     Locally Modified          308 
+ main.cpp                  Locally Modified          308 
+ swcon-service.cpp         Locally Modified          308 
+ main.h                    Locally Modified          308 
+ software-controller.cpp   Locally Modified          308 
+ swcon-service.h           Locally Modified          308 
+
+- additional support for software-client/hardware-server.
+  Not yet functional.

@@ -5,17 +5,19 @@
 
 #include "main.h"
 #include "sim-channelio.h"
-#include "software-server.h"
+#include "basic-rrr-server.h"
+#include "basic-rrr-client.h"
 
 class SWCON_SERVICE_CLASS;
 
-// *********** software controller ***********
+// =========== software controller ===========
 typedef class SOFTWARE_CONTROLLER_CLASS* SOFTWARE_CONTROLLER;
-class SOFTWARE_CONTROLLER_CLASS: public HASIM_SW_MODULE_CLASS
+class SOFTWARE_CONTROLLER_CLASS: public HASIM_MODULE_CLASS
 {
     private:
         CHANNELIO               channelio;
         RRR_SERVER              rrrServer;
+        RRR_CLIENT              rrrClient;
         SWCON_SERVICE_CLASS*    myService;
 
         FILE*   eventfile;

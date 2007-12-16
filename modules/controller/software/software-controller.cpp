@@ -80,6 +80,12 @@ SOFTWARE_CONTROLLER_CLASS::Uninit()
         rrrServer = NULL;
     }
 
+    if (rrrClient)
+    {
+        delete rrrClient;
+        rrrClient = NULL;
+    }
+
     if (channelio)
     {
         delete channelio;

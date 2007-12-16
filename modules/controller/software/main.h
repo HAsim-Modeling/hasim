@@ -12,11 +12,11 @@ extern GlobalArgs globalArgs;
 
 
 // *********** HAsim software module *********
-typedef class HASIM_SW_MODULE_CLASS* HASIM_SW_MODULE;
-class HASIM_SW_MODULE_CLASS
+typedef class HASIM_MODULE_CLASS* HASIM_MODULE;
+class HASIM_MODULE_CLASS
 {
     protected:
-        HASIM_SW_MODULE parent;
+        HASIM_MODULE parent;
 
     public:
         virtual void CallbackExit(int exitcode) { parent->CallbackExit(exitcode); }

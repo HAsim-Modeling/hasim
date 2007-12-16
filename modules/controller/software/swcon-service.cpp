@@ -42,7 +42,7 @@ SWCON_SERVICE_CLASS::~SWCON_SERVICE_CLASS()
 // init
 void
 SWCON_SERVICE_CLASS::Init(
-    HASIM_SW_MODULE     p)
+    HASIM_MODULE     p)
 {
     if (connected == false)
     {

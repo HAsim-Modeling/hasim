@@ -60,6 +60,7 @@ SOFTWARE_CONTROLLER_CLASS::Main()
     // initializing the hardware partition
     channelio = new CHANNELIO_CLASS(this);
     rrrServer = new RRR_SERVER_CLASS(this, channelio);
+    rrrClient = new RRR_CLIENT_CLASS(this, channelio);
 
     // send "start" signal to the hardware partition.
     // We currently do it by asking our RRR service to

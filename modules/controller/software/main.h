@@ -1,7 +1,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-// ************* global args **************
+// ============= global args ==============
 struct GlobalArgs
 {
     char benchmark[256];
@@ -11,7 +11,7 @@ struct GlobalArgs
 extern GlobalArgs globalArgs;
 
 
-// *********** HAsim software module *********
+// =========== HAsim software module =========
 typedef class HASIM_MODULE_CLASS* HASIM_MODULE;
 class HASIM_MODULE_CLASS
 {

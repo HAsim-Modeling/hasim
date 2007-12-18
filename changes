@@ -9203,3 +9203,20 @@ Directory modules/controller/software
 
 - additional support for software-client/hardware-server.
   Not yet functional.
+
+----------
+aparasha    Date: Tue Dec 18 09:26:38 EST 2007  CSN: CSN-hasim-310
+                  Tue Dec 18 14:26:38 UTC 2007
+
+
+Directory modules/controller/software
+ main.cpp                  Locally Modified          309 
+ main.h                    Locally Modified          309 
+
+Directory modules/system/mem_test
+ MemTest.bsv               Locally Modified          309 
+
+- temporarily added a global link to RRR client. This will
+  be moved to a software-side LLPI.
+
+- added code to MemTest to look for incoming invalidates.

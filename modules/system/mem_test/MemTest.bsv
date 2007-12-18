@@ -12,8 +12,10 @@ module [HASim_Module] mkSystem ();
     Reg#(Bit#(2)) state <- mkReg(0);
 
     rule send(state == 0);
+
         link_memory.makeReq(tagged MEM_Load addr);
         state <= 1;
+
     endrule
 
     rule recv(state == 1);
@@ -36,6 +38,15 @@ module [HASim_Module] mkSystem ();
         end
 
         state <= 0;
+
+    endrule
+
+    rule accept_invalidates(True);
+
+        MEM_Addr addr = link_memory_inval.receive();
+        link_memory_inval.deq();
+        $display("INVALIDATE %8x", addr);
+        $fflush(stdout);
 
     endrule
 

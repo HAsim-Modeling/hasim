@@ -28,7 +28,10 @@
  ***** ------------------------------- *****/
 
 // globally visible variables
-GlobalArgs globalArgs;
+GlobalArgs  globalArgs;
+
+// DEBUG: temporary link to RRR client
+RRR_CLIENT globalRRRClient;
 
 // create actual software controller
 SOFTWARE_CONTROLLER_CLASS controller;
@@ -61,6 +64,9 @@ SOFTWARE_CONTROLLER_CLASS::Main()
     channelio = new CHANNELIO_CLASS(this);
     rrrServer = new RRR_SERVER_CLASS(this, channelio);
     rrrClient = new RRR_CLIENT_CLASS(this, channelio);
+
+    // DEBUG: expose RRR client globally
+    globalRRRClient = rrrClient;
 
     // send "start" signal to the hardware partition.
     // We currently do it by asking our RRR service to

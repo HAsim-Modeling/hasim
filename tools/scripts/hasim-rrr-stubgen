@@ -19,7 +19,7 @@ use re 'eval';
 use Getopt::Long;
 
 # parse command line
-my $usage = "usage: hasim-rrr-stubgen -mode=generate-bsv-stub -odir=OUTPUTDIR INPUTFILE\n" .
+my $usage = "usage: hasim-rrr-stubgen -mode=generate-stub -odir=OUTPUTDIR INPUTFILE\n" .
             "       hasim-rrr-stubgen -mode=print-service-names INPUTFILE\n" .
             "       hasim-rrr-stubgen -mode=dump-service-table  INPUTFILE\n";
 
@@ -32,9 +32,9 @@ my $ifile = $ARGV[0];
 # check command line
 if ($mode eq ""                         ||
     ($mode ne "print-service-names"  &&
-        $mode ne "generate-bsv-stub" &&
+        $mode ne "generate-stub" &&
         $mode ne "dump-service-table")  ||
-    ($mode eq "generate-bsv-stub"    &&
+    ($mode eq "generate-stub"    &&
         $odir eq ""))
 {
     print $usage;
@@ -62,7 +62,7 @@ if ($mode eq "print-service-names")
 {
     print_service_names(@serviceTable);
 }
-elsif ($mode eq "generate-bsv-stub")
+elsif ($mode eq "generate-stub")
 {
     # generate output file name from input file name
     if ($odir =~ /(\S+)\/+$/)
@@ -70,7 +70,7 @@ elsif ($mode eq "generate-bsv-stub")
         # get rid of trailing forward slashes
         $odir = $1;
     }
-    my $ofile = $odir . "/" . $iprefix . ".bsv";
+    my $ofile = $odir . "/" . $iprefix . ".bsh";
     print_service_stub($ofile, @serviceTable);
 }
 elsif ($mode eq "dump-service-table")
@@ -99,26 +99,38 @@ sub print_service_stub {
     my $stubfile = shift;
     my @serviceTable = @_;
 
-    my $bitsInChunk = 8; # FIXME: need to get this from somewhere
-
     # make RRR stub files
     # only open file if we have at least one service
     if (@serviceTable)
     {
         CORE::open(STUBFILE, ">$stubfile") or die "unable to open $stubfile\n";
 
+        # generate header by looking at the name of the first service
+        # TODO: change semantics such that only one service can be defined
+        # per RRR file
+        my ($first, @tail) = @serviceTable;
+        my $name = $first->{name};
+        print STUBFILE "`ifndef _" . $name . "_SERVICE_STUB_\n";
+        print STUBFILE "`define _" . $name . "_SERVICE_STUB_\n";
+        print STUBFILE "\n";
+
         print STUBFILE "//\n";
         print STUBFILE "// Synthesized service stub file\n";
         print STUBFILE "//\n";
         print STUBFILE "\n";
 
-        print STUBFILE "`include \"rrr_server.bsh\"\n";
-        print STUBFILE "`include \"rrr_services.bsh\"\n";
-        print STUBFILE "`include \"low_level_platform_interface.bsh\"\n";
+        print STUBFILE "`include \"rrr.bsh\"\n";
+        print STUBFILE "`include \"rrr_service_ids.bsh\"\n";
         print STUBFILE "\n";
 
-        print STUBFILE "`define STATE_IDLE          0\n";
-        print STUBFILE "`define STATE_PROCESSING    1\n";
+        print STUBFILE "typedef enum\n";
+        print STUBFILE "{\n";
+        print STUBFILE "    STUB_STATE_idle,\n";
+        print STUBFILE "    STUB_STATE_processing,\n";
+        print STUBFILE "    STUB_STATE_awaitingResponse\n";
+        print STUBFILE "}\n";
+        print STUBFILE "STUB_STATE\n";
+        print STUBFILE "    deriving (Bits, Eq);\n";
         print STUBFILE "\n";
     }
 
@@ -128,82 +140,117 @@ sub print_service_stub {
         my $serviceName = $service->{name};
         my @methodlist  = @{ $service->{methods} };
 
-        # write interface with a method prototype for each method
-        print STUBFILE "interface ServiceStub_$serviceName;\n";
+        # first assign methodIDs
+        # also figure out maximum parameter bitwidth
+        my $methodID = 0;
+        my $maxinsize = 0;
         foreach my $method (@methodlist)
         {
-            my $methodName  = $method->{name};
-            my $bitsInParam = $$method{reqsize} * 8;
-            print STUBFILE "    method ActionValue#(Bit#($bitsInParam)) acceptRequest_$methodName();\n";
+            my $methodname = $method->{name};
+            my $insize     = $$method{insize};
+            my $intype     = $method->{intype};
+            my $outsize    = $method->{outsize};
+            my $outtype    = $method->{outtype};
+
+            # method ID
+            print STUBFILE "`define " . $methodname . "_METHOD_ID " . $methodID . "\n";
+            $methodID = $methodID + 1;
+
+            # max param size
+            if ($insize > $maxinsize)
+            {
+                $maxinsize = $insize;
+            }
+        }
+        print STUBFILE "\n";
+
+        # service interface
+        print STUBFILE "interface ServiceStub_$serviceName;\n";
+
+        # interface entry for each method
+        foreach my $method (@methodlist)
+        {
+            my $methodname = $method->{name};
+            my $insize     = $$method{insize};
+            my $intype     = $method->{intype};
+            my $outsize    = $method->{outsize};
+            my $outtype    = $method->{outtype};
+
+            if ($insize != 0)
+            {
+                print STUBFILE "    method ActionValue#($intype) acceptRequest_$methodname();\n";
+            }
+            else
+            {
+                print STUBFILE "    method Action acceptRequest_$methodname();\n";
+            }
+
+            if ($outsize != 0)
+            {
+                print STUBFILE "    method Action sendResponse_$methodname($outtype);\n";
+            }
         }
         print STUBFILE "endinterface\n";
         print STUBFILE "\n";
 
-        print STUBFILE "module mkServiceStub_$serviceName (LowLevelPlatformInterface llpi);\n";
+        print STUBFILE "module mkServiceStub_$serviceName#(RRRServer server) (ServiceStub_$serviceName);\n";
         print STUBFILE "\n";
 
-        print STUBFILE "    Reg#(Bit#(32))  chunksRemaining <- mkReg(0);\n";
-        print STUBFILE "    Vector#(`MAX_CHUNKS_IN_PARAM, Reg#(RRR_Chunk)\n";
-        print STUBFILE "                       currentParam <- replicateM(mkReg(0));\n";
-        print STUBFILE "    Reg#(Bit#(8))   vectorIndex     <- mkReg(0);\n";
-        print STUBFILE "    Reg#(Bit#(32)) currentMethodID  <- mkReg(0);\n";
+        print STUBFILE "    DeMarshaller#(`UMF_CHUNK_BITS, $maxinsize)\n";
+        print STUBFILE "                        dem   <- mkDeMarshaller();\n";
+        print STUBFILE "    Reg#(UMF_METHOD_ID) mid   <- mkReg(0);\n";
+        print STUBFILE "    Reg#(STUB_STATE)    state <- mkReg(STUB_STATE_idle);\n";
+        print STUBFILE "\n";
+
+        # universal rules
+        print STUBFILE "    rule probe_server_for_header (state == STUB_STATE_idle);\n";
+        print STUBFILE "        UMF_PACKET packet <- server.read(`" . $serviceName . "_SERVICE_ID);\n";
+        print STUBFILE "        mid <= packet.UMF_PACKET_header.methodID;\n";
+        print STUBFILE "        state <= STUB_STATE_processing;\n";
+        print STUBFILE "    endrule\n";
+        print STUBFILE "\n";
+
+        print STUBFILE "    rule probe_dispatcher_for_chunks (state == STUB_STATE_processing);\n";
+        print STUBFILE "        UMF_PACKET packet <- server.read(`" . $serviceName . "_SERVICE_ID);\n";
+        print STUBFILE "        dem.enq(pack(packet.UMF_PACKET_dataChunk));\n";
+        print STUBFILE "    endrule\n";
         print STUBFILE "\n";
 
         # write methods
-        my @cipArray = ();
         foreach my $method (@methodlist)
         {
-            my $methodName      = $method->{name};
-            my $bitsInParam     = $method->{reqsize} * 8;
-            my $chunksInParam   = ($bitsInParam % $bitsInChunk) == 0   ?
-                                    ($bitsInParam - ($bitsInParam % $bitsInChunk)) / $bitsInChunk :
-                                    (($bitsInParam - ($bitsInParam % $bitsInChunk)) / $bitsInChunk) + 1;
-            push(@cipArray, $chunksInParam);
+            my $methodname = $method->{name};
+            my $insize     = $method->{insize};
+            my $intype     = $method->{intype};
+            my $outsize    = $method->{outsize};
+            my $outtype    = $method->{outtype};
 
-            print STUBFILE "    method ActionValue#(Bit#($bitsInParam)) acceptRequest_$methodName()\n";
-            print STUBFILE "                            if (state == `STATE_PROCESSING &&\n";
-            print STUBFILE "                                chunksRemaining == 0);\n";
-            print STUBFILE "        Bit#($bitsInParam) param;\n";
-            print STUBFILE "        for (int i = 0; i < $chunksInParam; i++)\n";
-            print STUBFILE "            param[i * $bitsInChunk : ((i+1) * $bitsInChunk) - 1] = currentParam[i];\n";
-            print STUBFILE "        state <= `STATE_IDLE;\n";
-            print STUBFILE "        return param;\n";
-            print STUBFILE "    endmethod\n";
-            print STUBFILE "\n";
-        }
-
-        # write out CHUNKS_IN_PARAM array
-        if (@cipArray)
-        {
-            print STUBFILE "    Bit#(8) CHUNKS_IN_PARAM = { ";
-            for my $i (0 .. $#cipArray - 1)
+            if ($insize != 0)
             {
-                print STUBFILE "$cipArray[$i], ";
+                print STUBFILE "    method ActionValue#($intype) acceptRequest_$methodname() if (mid == `" . $methodname . "_METHOD_ID);\n";
+                print STUBFILE "        Bit#($maxinsize) a <- dem.deq();\n";
+                print STUBFILE "        MEM_Addr retval = unpack(a);\n";
+                print STUBFILE "        state <= STUB_STATE_idle;\n";
+                print STUBFILE "        return retval;\n";
+                print STUBFILE "    endmethod\n";
             }
-            print STUBFILE "$cipArray[$#cipArray-1] };\n";
+            else
+            {
+                print STUBFILE "    method Action acceptRequest_$methodname() if (mid == `" . $methodname . "_METHOD_ID);\n";
+                print STUBFILE "        noAction;\n";
+                print STUBFILE "        ERROR: NOT SUPPORTED. WRITING JUNK BLUESPEC TO HALT COMPILER\n";
+                print STUBFILE "    endmethod\n";
+            }
             print STUBFILE "\n";
+
+            if ($outsize != 0)
+            {
+                print STUBFILE "    method Action sendResponse_$methodname() if (state == STUB_STATE_awaitingResponse);\n";
+                print STUBFILE "        noAction;\n";
+                print STUBFILE "        ERROR: NOT SUPPORTED. WRITING JUNK BLUESPEC TO HALT COMPILER\n";
+                print STUBFILE "    endmethod\n";
+            }
         }
-
-        print STUBFILE "    rule probe_requests (state == `STATE_IDLE);\n";
-        print STUBFILE "        RRR_Chunk chunk <- llpi.rrrServer.getNextChunk(`$serviceName\_SERVICE_ID);\n";
-        print STUBFILE "        Bit#(8) mid     <= chunk[`CHUNK_MID_START:`CHUNK_MID_END];\n";
-        print STUBFILE "        for (int i = 0; i < `MAX_CHUNKS_IN_PARAM; i++)\n";
-        print STUBFILE "            currentParam[i] <= 0;\n";
-        print STUBFILE "        currentMethodID <= mid;\n";
-        print STUBFILE "        chunksRemaining <= CHUNKS_IN_PARAM[mid];\n";
-        print STUBFILE "        vectorIndex     <= 0;\n";
-        print STUBFILE "        paramStructMask <= chunk_mask;\n";
-        print STUBFILE "        state           <= `STATE_PROCESSING;\n";
-        print STUBFILE "    endrule\n";
-        print STUBFILE "\n";
-
-        print STUBFILE "    rule probe_params (state == `STATE_PROCESSING && chunksRemaining > 0);\n";
-        print STUBFILE "        RRR_Chunk chunk           <- llpi.rrrServer.getNextChunk(`$serviceName\_SERVICE_ID);\n";
-        print STUBFILE "        currentParam[vectorIndex] <= chunk;\n";
-        print STUBFILE "        chunksRemaining           <= chunksRemaining - 1;\n";
-        print STUBFILE "        vectorIndex               <= vectorIndex + 1;\n";
-        print STUBFILE "    endrule\n";
-        print STUBFILE "\n";
 
         print STUBFILE "endmodule\n";
         print STUBFILE "\n";
@@ -212,6 +259,9 @@ sub print_service_stub {
     # close stub file
     if (@serviceTable)
     {
+        print STUBFILE "`endif\n";
+        print STUBFILE "\n";
+
         CORE::close(STUBFILE);
     }
 }
@@ -242,30 +292,48 @@ sub parse_rrr_file {
         }
     }
 
-    # identifier character
+    # characters
     my $p_character = qr/[\w_\.]/x;
+    my $p_digit = qr/\d/x;
 
     # atomics
-    my $p_string = qr/  \s*?
+    my $p_string = qr/
+                        \s*?
                         \"
                         \S+
                         \"
                         \s*?
                      /x;
 
-    my $p_identifier = qr/  \s*?
+    my $p_identifier = qr/
+                            \s*?
                             $p_character+
                             \s*?
                          /x;
 
-    my $p_type = qr/    \s*?
+    my $p_type = qr/
+                        \s*?
                         $p_character+
                         \s*?
                    /x;
 
+    my $p_numeral = qr/
+                        \s*?
+                        $p_digit+
+                        \s*?
+                      /x;
+
     # compounds
     my $p_arg = qr/
+                    (in|out)
+                    \s+
                     ($p_type)
+                    \s*?
+                    \[
+                    \s*?
+                    ($p_numeral)
+                    \s*?
+                    \]
                     \s+
                     ($p_identifier)
                   /x;
@@ -301,7 +369,10 @@ sub parse_rrr_file {
     # partition
     my $p_partition = qr/
                             \s*?
-                            partition
+                            server
+                            ($p_identifier)
+                            \s*?
+                            <-
                             ($p_identifier)
                             \{
                             \s*?    # careful, possibly ambiguous!
@@ -313,10 +384,10 @@ sub parse_rrr_file {
                             \s*?
                         /x;
     
-    # rrr class
-    my $p_rrrclass = qr/
+    # service
+    my $p_service = qr/
                         \s*?
-                        rrrclass
+                        service
                         ($p_identifier)
                         \{
                         ($p_partition*)
@@ -325,10 +396,10 @@ sub parse_rrr_file {
                         ;
                         \s*?
                        /x;
-    
-    # all set, ready to parse :)
+
+    # next parse service defs
     my @serviceTable;
-    while ($source =~ /$p_rrrclass/g)
+    while ($source =~ /$p_service/g)
     {
         # create a new RRR service class
         my %service;
@@ -338,10 +409,11 @@ sub parse_rrr_file {
         my $all_partitions = $2;
         while ($all_partitions =~ /$p_partition/g)
         {
-            # only process FPGA partition for now
-            if (__trim($1) eq "FPGA")
+            # only process hardware partition for now
+            if (__trim($1) eq "hw")
             {
-                my $all_statements = $2;
+                my $clients = $2;           # ignore for now
+                my $all_statements = $3;
                 while ($all_statements =~ /$p_statement/g)
                 {
                     my $s = $1;
@@ -354,18 +426,25 @@ sub parse_rrr_file {
                         my %method;
                         $method{name} = __trim($name);
 
+                        # pre-initialize type sizes
+                        $method{insize} = 0;
+                        $method{outsize} = 0;
+
+                        # parse args and determine actual types
                         while ($args =~ /$p_arglist/g)
                         {
                             if ($1 =~ /$p_arg/)
                             {
                                 my $argtype = __trim($1);
-                                if ($argtype eq "request")
+                                if ($argtype eq "in")
                                 {
-                                    $method{reqsize} = $2;
+                                    $method{intype} = $2;
+                                    $method{insize} = $3;
                                 }
-                                elsif ($argtype eq "response")
+                                elsif ($argtype eq "out")
                                 {
-                                    $method{respsize} = $2;
+                                    $method{outtype} = $2;
+                                    $method{outsize} = $3;
                                 }
                             }
                         }
@@ -402,8 +481,22 @@ sub dump_service_table {
         {
             my $methodName      = $method->{name};
             print "    method name: $methodName\n";
-            print "        request size : $method->{reqsize}\n";
-            print "        response size: $method->{respsize}\n";
+            if ($method->{insize} == 0)
+            {
+                print "        in : void\n";
+            }
+            else
+            {
+                print "        in : $method->{intype}\[$method->{insize}\]\n";
+            }
+            if ($method->{outsize} == 0)
+            {
+                print "        out: void\n";
+            }
+            else
+            {
+                print "        out: $method->{outtype}\[$method->{outsize}\]\n";
+            }
             print "\n";
         }
     }

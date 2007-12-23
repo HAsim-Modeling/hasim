@@ -9220,3 +9220,18 @@ Directory modules/system/mem_test
   be moved to a software-side LLPI.
 
 - added code to MemTest to look for incoming invalidates.
+
+----------
+aparasha    Date: Sun Dec 23 12:19:40 EST 2007  CSN: CSN-hasim-311
+                  Sun Dec 23 17:19:40 UTC 2007
+
+
+Directory modules/controller/software
+ swcon-service.rrr         Locally Modified          309 
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          309 
+
+- updated stubgen. It generates correct hardware service stubs, but
+  the build process needs to be updated to invoke it.
+- updated software controller .rrr spec file.

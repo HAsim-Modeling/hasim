@@ -99,40 +99,53 @@ sub print_service_stub {
     my $stubfile = shift;
     my @serviceTable = @_;
 
-    # make RRR stub files
-    # only open file if we have at least one service
+    # determine if we should write stub at all
+    my $do_write = 0;
     if (@serviceTable)
     {
-        CORE::open(STUBFILE, ">$stubfile") or die "unable to open $stubfile\n";
-
-        # generate header by looking at the name of the first service
-        # TODO: change semantics such that only one service can be defined
-        # per RRR file
-        my ($first, @tail) = @serviceTable;
-        my $name = $first->{name};
-        print STUBFILE "`ifndef _" . $name . "_SERVICE_STUB_\n";
-        print STUBFILE "`define _" . $name . "_SERVICE_STUB_\n";
-        print STUBFILE "\n";
-
-        print STUBFILE "//\n";
-        print STUBFILE "// Synthesized service stub file\n";
-        print STUBFILE "//\n";
-        print STUBFILE "\n";
-
-        print STUBFILE "`include \"rrr.bsh\"\n";
-        print STUBFILE "`include \"rrr_service_ids.bsh\"\n";
-        print STUBFILE "\n";
-
-        print STUBFILE "typedef enum\n";
-        print STUBFILE "{\n";
-        print STUBFILE "    STUB_STATE_idle,\n";
-        print STUBFILE "    STUB_STATE_processing,\n";
-        print STUBFILE "    STUB_STATE_awaitingResponse\n";
-        print STUBFILE "}\n";
-        print STUBFILE "STUB_STATE\n";
-        print STUBFILE "    deriving (Bits, Eq);\n";
-        print STUBFILE "\n";
+        my ($service, @tail) = @serviceTable;
+        my @methodlist  = @{ $service->{methods} };
+        if (@methodlist)
+        {
+            $do_write = 1;
+        }
     }
+
+    if ($do_write == 0)
+    {
+        return;
+    }
+
+    # start writing stub
+    CORE::open(STUBFILE, ">$stubfile") or die "unable to open $stubfile\n";
+
+    # generate header by looking at the name of the first service
+    # TODO: change semantics such that only one service can be defined
+    # per RRR file
+    my ($first, @tail) = @serviceTable;
+    my $name = $first->{name};
+    print STUBFILE "`ifndef _" . $name . "_SERVICE_STUB_\n";
+    print STUBFILE "`define _" . $name . "_SERVICE_STUB_\n";
+    print STUBFILE "\n";
+
+    print STUBFILE "//\n";
+    print STUBFILE "// Synthesized service stub file\n";
+    print STUBFILE "//\n";
+    print STUBFILE "\n";
+
+    print STUBFILE "`include \"rrr.bsh\"\n";
+    print STUBFILE "`include \"channelio.bsh\"\n";
+    print STUBFILE "\n";
+
+    print STUBFILE "typedef enum\n";
+    print STUBFILE "{\n";
+    print STUBFILE "    STUB_STATE_idle,\n";
+    print STUBFILE "    STUB_STATE_processing,\n";
+    print STUBFILE "    STUB_STATE_awaitingResponse\n";
+    print STUBFILE "}\n";
+    print STUBFILE "STUB_STATE\n";
+    print STUBFILE "    deriving (Bits, Eq);\n";
+    print STUBFILE "\n";
 
     # create an interface for each service
     foreach my $service (@serviceTable)
@@ -229,7 +242,7 @@ sub print_service_stub {
             {
                 print STUBFILE "    method ActionValue#($intype) acceptRequest_$methodname() if (mid == `" . $methodname . "_METHOD_ID);\n";
                 print STUBFILE "        Bit#($maxinsize) a <- dem.deq();\n";
-                print STUBFILE "        MEM_Addr retval = unpack(a);\n";
+                print STUBFILE "        $intype retval = unpack(a);\n";
                 print STUBFILE "        state <= STUB_STATE_idle;\n";
                 print STUBFILE "        return retval;\n";
                 print STUBFILE "    endmethod\n";
@@ -257,13 +270,10 @@ sub print_service_stub {
     }
 
     # close stub file
-    if (@serviceTable)
-    {
-        print STUBFILE "`endif\n";
-        print STUBFILE "\n";
+    print STUBFILE "`endif\n";
+    print STUBFILE "\n";
 
-        CORE::close(STUBFILE);
-    }
+    CORE::close(STUBFILE);
 }
 
 ############################################################

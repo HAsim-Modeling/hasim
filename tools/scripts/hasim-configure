@@ -372,6 +372,15 @@ sub make_master_rrr_file {
         }
 
         CORE::close(STUBGEN);
+
+        # call stubgen to generate stub(s) for each service
+        # FIXME: this is currently very hacky since (a) only hw server stubs
+        # are generated, (b) defining multiple services within a single RRR
+        # file has indeterminate results, (c) the stubs are all placed in the
+        # top level of the hw build directory, and (d) stub generation probably
+        # shouldn't be in hasim-configure to beging with
+
+        system("hasim-rrr-stubgen -mode=generate-stub -odir=$root_module_dir $f");
     }
 
     # complete header files

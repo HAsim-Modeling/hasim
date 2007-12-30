@@ -9235,3 +9235,15 @@ Directory tools/scripts
 - updated stubgen. It generates correct hardware service stubs, but
   the build process needs to be updated to invoke it.
 - updated software controller .rrr spec file.
+
+----------
+aparasha    Date: Sat Dec 29 19:52:39 EST 2007  CSN: CSN-hasim-312
+                  Sun Dec 30 00:52:39 UTC 2007
+
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          311 
+ hasim-configure           Locally Modified          310 
+
+- fixed some bugs in hasim-rrr-stubgen
+- added stub-generation step to hasim-configure

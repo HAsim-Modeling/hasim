@@ -9247,3 +9247,15 @@ Directory tools/scripts
 
 - fixed some bugs in hasim-rrr-stubgen
 - added stub-generation step to hasim-configure
+
+----------
+aparasha    Date: Fri Jan  4 15:49:36 EST 2008  CSN: CSN-hasim-313
+                  Fri Jan  4 20:49:36 UTC 2008
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          312 
+ hasim-rrr-stubgen         Locally Modified          312 
+
+- added partial support for generating hw-server-side
+  connection-based stubs.

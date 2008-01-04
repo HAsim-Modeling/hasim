@@ -342,9 +342,12 @@ sub make_master_rrr_file {
 
     my $cppfilename = HAsim::Util::path_append($root_module_dir, "rrr_service_ids.h");
     my $bsvfilename = HAsim::Util::path_append($root_module_dir, "rrr_service_ids.bsh");
+    my $master      = HAsim::Util::path_append($root_module_dir, "master.rrr");
+    my $connections = HAsim::Util::path_append($root_module_dir, "rrr_service_connections.bsh");
 
     CORE::open(CPPFILE, "> $cppfilename");
     CORE::open(BSVFILE, "> $bsvfilename");
+    system("rm -f $master; touch $master");
 
     # start generating header files
     print CPPFILE "\#ifndef __RRR_SERVICES__\n";
@@ -355,12 +358,14 @@ sub make_master_rrr_file {
     print BSVFILE "\`define __RRR_SERVICES__\n";
     print BSVFILE "\n";
 
-    # create a preprocessor macro for each service
+    # also create a global concatenated RRR file
+
+    # for each RRR file
     my $serviceID = 0;
     foreach my $f (@rrr_file_list)
     {
         # call hasim-rrr-stubgen to obtain list of services in each RRR file
-        CORE::open(STUBGEN, "hasim-rrr-stubgen -mode=print-service-names $f |")
+        CORE::open(STUBGEN, "hasim-rrr-stubgen -mode names $f |")
             || die "make_master_rrr_file: could not run hasim-rrr-stubgen on $f\n";
 
         while (my $line = <STUBGEN>)
@@ -378,9 +383,11 @@ sub make_master_rrr_file {
         # are generated, (b) defining multiple services within a single RRR
         # file has indeterminate results, (c) the stubs are all placed in the
         # top level of the hw build directory, and (d) stub generation probably
-        # shouldn't be in hasim-configure to beging with
+        # shouldn't be in hasim-configure to begin with
+        system("hasim-rrr-stubgen -mode stub -target hw -type server -interface method -odir $root_module_dir $f");
 
-        system("hasim-rrr-stubgen -mode=generate-stub -odir=$root_module_dir $f");
+        # concatenate the contents of the into RRR file into the master RRR file
+        system("cat $f >> $master");
     }
 
     # complete header files
@@ -394,6 +401,9 @@ sub make_master_rrr_file {
 
     CORE::close(CPPFILE);
     CORE::close(BSVFILE);
+
+    # call stubgen on the master RRR file to generate the connections stub
+    system("hasim-rrr-stubgen -mode stub -target hw -type server -interface connection -o $connections $master");
 
     return 1;
 }

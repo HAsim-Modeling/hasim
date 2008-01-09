@@ -18,7 +18,7 @@ model=HAsim Model Foundation
 
 [HAsim Model Foundation/Requires]
 hasim_system=Hasim - Virtual Memory Test system
-hasim_controller=Hasim hybrid null controller
+hasim_controller=Hasim Null Controller
 hasim_common=Hasim Common Library
 fpgaenv=FPGA Environment
 
@@ -36,17 +36,11 @@ Packagehint=platforms
 
 [Hasim Common Library/Params]
 TERM_VDEV_MEMORY=0
-TERM_RRR_CONTROLLER=0
 TERM_VDEV_MEMORY_INVALIDATE=0
 
-
-[Hasim hybrid null controller]
-File=modules/controller/hybrid/null/hybrid-null-controller.awb
+[Hasim Null Controller]
+File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
 Packagehint=hasim
 
-[Hasim software controller for hybrid models]
-File=modules/controller/software/software-controller.awb
-Packagehint=hasim
 
-[Hasim hybrid null controller/Requires]
-software_controller=Hasim software controller for hybrid models
+

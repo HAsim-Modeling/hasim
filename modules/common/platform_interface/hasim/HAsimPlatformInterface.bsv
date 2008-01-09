@@ -6,6 +6,8 @@ import low_level_platform_interface::*;
 import memory::*;
 import rrr::*;
 
+`include "rrr_service_connections.bsh"
+
 typedef struct
 {
   Bit#(1) b_up;
@@ -28,11 +30,7 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     Connection_Send#(MEM_Addr)                 link_memory_inval <- mkConnection_Send("vdev_memory_invalidate");
 
     // direct RRR connections
-    Connection_Server#(RRR_Request, RRR_Response) link_rrr_controller_diov <- mkConnection_Server("rrr_controller_diov");
-    Connection_Receive#(RRR_Request) link_rrr_controller_void <- mkConnection_Receive("rrr_controller_void");
-
-    // state of RRR request
-    Reg#(Bit#(2))   rrrState    <- mkReg(0);
+    Connection_Receive#(RRR_Request) link_rrr_terminal <- mkConnection_Receive("rrr_terminal");
 
     // instantiate low-level platform interface
     LowLevelPlatformInterface       llpint          <- mkLowLevelPlatformInterface();
@@ -43,6 +41,9 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
 
     // connection terminus
     let     t <- mkConnectionTerminus();
+
+    // auto-generated submodule for RRR connections
+    let rrr_service_links <- mkServiceConnections(llpint.rrrServer);
     
     // rules
     rule set_leds (True);
@@ -104,41 +105,16 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     
     endrule
 
-    // send non-void RRR request
-    rule send_rrr_req_diov (rrrState == 0);
+    // send RRR request from terminal
+    rule send_rrr_req_void (True);
 
         // read in RRR request from connection and translate
         // it to a method call to RRR client
-        let req = link_rrr_controller_diov.getReq();
-        link_rrr_controller_diov.deq();
+        let req = link_rrr_terminal.receive();
+        link_rrr_terminal.deq();
 
         llpint.rrrClient.makeRequest(req);
 
-        // move to a state where we wait for a response
-        rrrState <= 1;
-
-    endrule
-
-    // send void RRR request
-    rule send_rrr_req_void (rrrState == 0);
-
-        // read in RRR request from connection and translate
-        // it to a method call to RRR client
-        let req = link_rrr_controller_void.receive();
-        link_rrr_controller_void.deq();
-
-        llpint.rrrClient.makeRequest(req);
-
-        // stay in the same state, we don't need a response
-        rrrState <= 0;  
-
-    endrule
-
-    // wait for RRR response
-    rule send_rrr_resp (rrrState == 1);
-        let resp <- llpint.rrrClient.getResponse();
-        link_rrr_controller_diov.makeResp(resp);
-        rrrState <= 0;
     endrule
 
     // return interface to top-level wires

@@ -7,13 +7,16 @@
 #/*
 # %AWB_START
 #
-# %name Hasim null controller
-# %desc Hasim null controller
+# %name Hasim Null Controller
+# %desc Hasim Null Controller
 # %provides hasim_controller
+#
+# %requires hasim_software_controller
+# %requires starter
 #
 # %attributes hasim
 #
-# %public hasim_null_controller.bsv 
+# %sources -t BSV -v PUBLIC  null-controller.bsv 
 #
 # %AWB_END
 # */

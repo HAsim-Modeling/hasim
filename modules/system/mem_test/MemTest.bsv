@@ -3,22 +3,30 @@ import soft_connections::*;
 import platform_interface::*;
 import memory::*;
 
+typedef enum
+{
+    STATE_ready,
+    STATE_awaitingResponse
+}
+STATE
+    deriving (Bits, Eq);
+
 module [HASim_Module] mkSystem ();
 
     Connection_Client#(MEM_Request, MEM_Value) link_memory <- mkConnection_Client("vdev_memory");
     Connection_Receive#(MEM_Addr) link_memory_inval <- mkConnection_Receive("vdev_memory_invalidate");
 
     Reg#(MEM_Addr) addr <- mkReg('h1000);
-    Reg#(Bit#(2)) state <- mkReg(0);
+    Reg#(STATE)    state <- mkReg(STATE_ready);
 
-    rule send(state == 0);
+    rule send(state == STATE_ready);
 
         link_memory.makeReq(tagged MEM_Load addr);
-        state <= 1;
+        state <= STATE_awaitingResponse;
 
     endrule
 
-    rule recv(state == 1);
+    rule recv(state == STATE_awaitingResponse);
 
         MEM_Value v = link_memory.getResp();
         link_memory.deq();
@@ -37,7 +45,7 @@ module [HASim_Module] mkSystem ();
             $finish(0);
         end
 
-        state <= 0;
+        state <= STATE_ready;
 
     endrule
 

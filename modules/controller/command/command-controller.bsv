@@ -15,11 +15,11 @@ import hasim_local_controller::*;
 import hasim_stats_controller::*;
 import hasim_events_controller::*;
 import hasim_assertions_controller::*;
-import software_controller::*;
 
-// ************* Hybrid Simple Controller **************
+`include "starter.bsh"
+`include "streams.bsh"
 
-// The main hardware controller.
+// ************* Command Controller **************
 
 // ConState
 
@@ -34,16 +34,22 @@ typedef enum
   ConState
            deriving (Eq, Bits);
 
-// mkController
+// CommandController
+interface CommandController;
+endinterface
+
+// mkCommandController
 
 // Just communicates Events and Stats to the software controller.
 // Currently just runs one test and then exits. Doesn't really
 // support too many commands.
 
-
-module [HASim_Module] mkController 
+module [HASim_Module] mkCommandController#(Streams streams,
+                                           EventsController events_controller,
+                                           StatsController stats_controller,
+                                           AssertionsController asserts_controller)
   // interface:
-                ();
+                (CommandController);
 
   // *********** State ***********
   
@@ -71,11 +77,6 @@ module [HASim_Module] mkController
 
   // *********** Submodules ***********
   
-  // Our links to the distributed communication nodes throughout the hardware model.
-  EventsController     events_controller    <- mkEventsController();
-  StatsController      stats_controller     <- mkStatsController();
-  AssertionsController asserts_controller     <- mkAssertionsController();
-  
   // Our way of sending Commands to the Local Controllers
   Connection_Chain#(Command)   link_command   <- mkConnection_Chain(2);
   
@@ -87,8 +88,8 @@ module [HASim_Module] mkController
   Connection_Receive#(FRONTP_SWITCHES)    link_switches <- mkConnection_Receive("fpga_switches");
   Connection_Receive#(ButtonInfo)  link_buttons <- mkConnection_Receive("fpga_buttons");
 
-  // Our link to the software side of things.
-  SoftwareController    swcon   <- mkSoftwareController();
+  // Starter
+  Starter starter <- mkStarter();
   
 
   // *********** Rules ***********
@@ -118,14 +119,14 @@ module [HASim_Module] mkController
   
   // Begin a run of the program when the software tells us to.
   
-  rule runProg (state == CON_Init && swcon.getSimState() == 1);
+  rule runProg (state == CON_Init && starter.getSimState() == 1);
   
      link_command.send_to_next(COM_RunProgram);
      
      state <= CON_Running;
      link_leds.send(8'b00000011);
 
-     swcon.printMessage1P(0, truncate(curTick)); //Message 0 = Program Started.
+     streams.printMessage1P(0, truncate(curTick)); //Message 0 = Program Started.
 
   endrule
   
@@ -143,13 +144,13 @@ module [HASim_Module] mkController
           if (pf)  // It passed
           begin
             link_leds.send(8'b00001001);
-            swcon.printMessage1P(1, truncate(curTick)); // Message 1 = Success
+            streams.printMessage1P(1, truncate(curTick)); // Message 1 = Success
             passed <= True;
           end
           else  // It failed
           begin
             link_leds.send(8'b00001101);
-            swcon.printMessage1P(2, truncate(curTick)); // Message 2 = Failure
+            streams.printMessage1P(2, truncate(curTick)); // Message 2 = Failure
           end
           // Either way we begin dumping.
           stats_controller.doCommand(Stats_Dump);
@@ -157,7 +158,7 @@ module [HASim_Module] mkController
         end
       default: // Unexpected Response
       begin
-        swcon.printMessage2P(3, truncate(curTick), 0); // Message 3 = Unexpected Response
+        streams.printMessage2P(3, truncate(curTick), 0); // Message 3 = Unexpected Response
       end
     endcase
 
@@ -170,7 +171,7 @@ module [HASim_Module] mkController
   rule passOnStat (state == CON_Finished && finishing != 0);
 
     StatInfo si <- stats_controller.getNextStat();
-    swcon.printStat(si.statStringID, si.statValue);
+    streams.printStat(si.statStringID, si.statValue);
 
   endrule
 
@@ -181,7 +182,7 @@ module [HASim_Module] mkController
   rule passOnEvent (True);
 
     EventInfo ei <- events_controller.getNextEvent();
-    swcon.printEvent(ei.eventStringID, modelTick, ei.eventData);
+    streams.printEvent(ei.eventStringID, modelTick, ei.eventData);
     if (ei.eventBoundary == 1)
     begin
         modelTick <= modelTick + 1;
@@ -197,7 +198,7 @@ module [HASim_Module] mkController
   rule passOnAssert (True);
 
     AssertInfo ai <- asserts_controller.getAssertion();
-    swcon.printAssertion(ai.assertStringID, zeroExtend(pack(ai.assertSeverity)));
+    streams.printAssertion(ai.assertStringID, zeroExtend(pack(ai.assertSeverity)));
  
   endrule
 
@@ -208,7 +209,7 @@ module [HASim_Module] mkController
 
   rule heartBeat (beat == 1000);
 
-    swcon.printMessage2P(5, truncate(curTick), truncate(modelTick)); //Message 5 = 1000 Cycles simulated.
+    streams.printMessage2P(5, truncate(curTick), truncate(modelTick)); //Message 5 = 1000 Cycles simulated.
     beat <= 0;
 
   endrule

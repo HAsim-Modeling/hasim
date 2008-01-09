@@ -9259,3 +9259,188 @@ Directory tools/scripts
 
 - added partial support for generating hw-server-side
   connection-based stubs.
+
+----------
+aparasha    Date: Wed Jan  9 17:47:09 EST 2008  CSN: CSN-hasim-314
+                  Wed Jan  9 22:47:09 UTC 2008
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          313 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          313 
+ traffic_light_xup_synth.apm Locally Modified          313 
+ traffic_light_htg_v5_pcie_synth.apm Locally Modified          313 
+ traffic_light_exe_nosynth.apm Locally Modified          313 
+ traffic_light_exe_synth.apm Locally Modified          313 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          313 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Modified          313 
+ adder4x4_software.apm     Locally Modified          313 
+ echo4x4_xup.apm           Locally Modified          313 
+ square4x4_software.apm    Locally Modified          313 
+ adder4x4_xup.apm          Locally Modified          313 
+ square4x4_xup.apm         Locally Modified          313 
+ multiplier4x4_software.apm Locally Modified          313 
+ echo4x4_htg.apm           Locally Modified          313 
+ multiplier4x4_xup.apm     Locally Modified          313 
+
+Directory config/pm/hasim/demos/mem_test
+ mem_test_hybrid.apm       Locally Modified          313 
+
+Directory config/pm/hasim/submodels/controller
+ hybrid_standard_controller.apm Locally Added               0 
+ hasim_simulation_only_controller.apm Locally Modified          313 
+ hardware_null_controller.apm Locally Added               0 
+ hasim_hybrid_simple_controller.apm Locally Removed           313 
+ hybrid_null_controller.apm Locally Added               0 
+ hardware_standard_controller.apm Locally Added               0 
+
+Directory modules/controller
+ stats-controller/         Locally Removed           313 
+
+Directory modules/controller/stats-controller
+ StatsControllerHeader.bsv Locally Removed           313 
+ hasim_stats_controller.awb Locally Removed           313 
+ StatsController.bsv       Locally Removed           313 
+
+Directory modules/controller
+ hybrid/                   Locally Removed           313 
+
+Directory modules/controller/hybrid
+ simple/                   Locally Removed           313 
+
+Directory modules/controller/hybrid/simple
+ hybrid-simple-controller.awb Locally Removed           313 
+ HybridSimpleController.bsv Locally Removed           313 
+
+Directory modules/controller/hybrid
+ null/                     Locally Removed           313 
+
+Directory modules/controller/hybrid/null
+ hybrid-null-controller.awb Locally Removed           313 
+ HybridNullController.bsv  Locally Removed           313 
+
+Directory modules/controller
+ starter/                  Locally Added               0 
+
+Directory modules/controller/starter
+ null-starter.h            Locally Added               0 
+ hybrid-basic-starter.cpp  Locally Added               0 
+ hybrid-null-starter.awb   Locally Added               0 
+ null-starter.awb          Locally Added               0 
+ null-starter.bsv          Locally Added               0 
+ hybrid-basic-starter-services.rrr Locally Added               0 
+ hybrid-basic-starter.h    Locally Added               0 
+ hybrid-basic-starter.awb  Locally Added               0 
+ hybrid-basic-starter.bsv  Locally Added               0 
+
+Directory modules/controller
+ null-controller.bsv       Locally Added               0 
+ events-controller/        Locally Removed           313 
+
+Directory modules/controller/events-controller
+ hasim_events_controller.awb Locally Removed           313 
+ EventsController.bsv      Locally Removed           313 
+ EventsControllerHeader.bsv Locally Removed           313 
+
+Directory modules/controller
+ standard-controller.awb   Locally Added               0 
+
+Directory modules/controller/software
+ software-controller.h     Locally Removed           313 
+ control.cpp               Locally Added               0 
+ standard-software-controller.awb Locally Added               0 
+ software-controller.awb   Locally Removed           313 
+ control.h                 Locally Added               0 
+ SoftwareController.bsv    Locally Removed           313 
+ swcon-service.cpp         Locally Removed           313 
+ swcon-service.rrr         Locally Removed           313 
+ null-software-controller.awb Locally Added               0 
+ software-controller.cpp   Locally Removed           313 
+ swcon-service.h           Locally Removed           313 
+
+Directory modules/controller
+ null-controller.awb       Locally Added               0 
+ standard-controller.bsv   Locally Added               0 
+ assertions-controller/    Locally Removed           313 
+
+Directory modules/controller/assertions-controller
+ AssertionsControllerHeader.bsv Locally Removed           313 
+ hasim_assertions_controller.awb Locally Removed           313 
+ AssertionsController.bsv  Locally Removed           313 
+
+Directory modules/controller
+ local-controller/         Locally Removed           313 
+
+Directory modules/controller/local-controller
+ hasim_local_controller.awb Locally Removed           313 
+ LocalController.bsv       Locally Removed           313 
+
+Directory modules/controller/hardware-only/simple
+ hasim_simple_controller.awb Locally Modified          313 
+
+Directory modules/controller/hardware-only
+ null/                     Locally Removed           313 
+
+Directory modules/controller/hardware-only/null
+ hasim_null_controller.awb Locally Removed           313 
+ hasim_null_controller.bsv Locally Removed           313 
+
+Directory modules/controller
+ streams/                  Locally Added               0 
+
+Directory modules/controller/streams
+ hybrid/                   Locally Added               0 
+
+Directory modules/controller/streams/hybrid
+ hybrid-streams-services.rrr Locally Added               0 
+ hybrid-streams.h          Locally Added               0 
+ hybrid-streams.awb        Locally Added               0 
+ hybrid-streams.bsv        Locally Added               0 
+ hybrid-streams.cpp        Locally Added               0 
+
+Directory modules/controller/streams
+ simulation/               Locally Added               0 
+
+Directory modules/controller/streams/simulation
+ simulation-streams.awb    Locally Added               0 
+ simulation-streams.bsv    Locally Added               0 
+
+Directory modules/controller
+ command/                  Locally Added               0 
+
+Directory modules/controller/command
+ command-controller.awb    Locally Added               0 
+ command-controller.bsv    Locally Added               0 
+
+Directory modules/system/mem_test
+ MemTest.bsv               Locally Modified          313 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          313 
+ HAsimPlatformInterface.bsv Locally Modified          313 
+ hasim-platform-interface.awb Locally Modified          313 
+
+- added support for auto-generating C++ header files for AWB interfaces
+
+- major controller reorganization. There are two primary AWB controllers,
+  Null and Standard, and out of these, four new submodels have been created:
+  - Hardware-Only Null Controller
+  - Hardware-Only Standard Controller
+  - Hybrid Null Controller
+  - Hybrid Standard Controller
+
+  Of these, the "Hardware-Only Standard Controller" is not fully functional
+  (it does not display $display messages correctly during pure simulation).
+  Therefore, the old submodel called
+
+  - Simulation-Only Simple Controller (deprecated)
+  
+  has been retained and is being used by all pure-simulation and
+  pure-hardware models until implementation of a dictionary-based streams
+  virtual device is complete.

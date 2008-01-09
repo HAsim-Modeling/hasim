@@ -1,0 +1,23 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Null Starter
+# %desc Null Starter for Hardware-Only models
+# %provides starter
+#
+# %attributes hasim
+#
+# %sources -t BSV -v PUBLIC null-starter.bsv
+#
+# %param HWSTATE_IDLE        0  "encoding for simulation state IDLE"
+# %param HWSTATE_RUNNING     1  "encoding for simulation state RUNNING"
+# %param HWSTATE_STOPPED     2  "encoding for simulation state STOPPED"
+#
+# %AWB_END
+# */

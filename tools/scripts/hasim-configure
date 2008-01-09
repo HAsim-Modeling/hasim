@@ -473,6 +473,7 @@ sub __make_bsvfiles {
     my $provides = $module->provides();
     my $bshfile = HAsim::Util::path_append($my_dir,"$provides.bsh");
     my $bsvfile = HAsim::Util::path_append($my_dir,"$provides.bsv");
+    my $hfile   = HAsim::Util::path_append($my_dir,"$provides.h");
 
     CORE::open(BSHFILE, ">$bshfile");
 
@@ -535,6 +536,45 @@ sub __make_bsvfiles {
     }
 
     CORE::close(BSVFILE);
+
+    # C++ header
+    CORE::open(HFILE, ">$hfile");
+
+    print HFILE "//\n";
+    print HFILE "// Synthesized header file for module: $provides\n";
+    print HFILE "//\n";
+    print HFILE "//   This file was created by " . basename($0) . "\n";
+    print HFILE "//\n";
+    print HFILE "\n";
+
+    print HFILE "#ifndef INCLUDED_MODULE_$provides\n";
+    print HFILE "#define INCLUDED_MODULE_$provides\n";
+    print HFILE "\n";
+
+    # add defines for parameters
+    @p = ();
+    push(@p, $module->parameters());
+
+    foreach my $p (@p) {
+      my $pname = $p->name();
+      my $pvalue = $p->value();
+      
+      print HFILE "#define $pname $pvalue\n";
+    }
+    print HFILE "\n";
+
+    # add includes for all public CPP-type files
+    if ($public) {
+        foreach my $f ($module->sources("CPP", "PUBLIC")) {
+            print HFILE "#include \"$f\"\n";
+        }
+    }
+
+    print HFILE "\n";
+    print HFILE "#endif  // INCLUDED_MODULE_$provides\n";
+
+    CORE::close(HFILE);
+    
     
     # recurse
     HAsim::Build::check_submodules_defined($module);

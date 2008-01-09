@@ -1,0 +1,20 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Software Controller
+# %desc Software Controller and Main
+# %provides hasim_software_controller
+#
+# %attributes hasim
+#
+# %sources -t CPP -v PUBLIC  main.h control.h
+# %sources -t CPP -v PRIVATE main.cpp control.cpp
+#
+# %AWB_END
+# */

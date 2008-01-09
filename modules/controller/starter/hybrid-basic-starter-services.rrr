@@ -1,0 +1,8 @@
+service STARTER
+{
+    server hw <- sw
+    {
+        connection Start(in UINT32[32] payload);
+        connection Stop(in UINT32[32] payload);
+    };
+};

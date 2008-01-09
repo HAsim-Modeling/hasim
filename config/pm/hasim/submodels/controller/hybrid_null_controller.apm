@@ -1,0 +1,29 @@
+
+[Global]
+SaveParameters=0
+Description=HAsim Hardware-Software Hybrid Null Controller
+File=hybrid_null_controller
+Version=2.1
+Name=HAsim Hybrid Null Controller
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hasim
+model=Hasim Null Controller
+
+[Hasim Null Controller]
+File=modules/controller/null-controller.awb
+Packagehint=hasim
+
+[Software Controller]
+File=modules/controller/software/standard-software-controller.awb
+Packagehint=hasim
+
+[Hasim Null Controller/Requires]
+hasim_software_controller=Software Controller
+starter=Hybrid Null Starter
+
+[Hybrid Null Starter]
+File=modules/controller/starter/hybrid-null-starter.awb
+Packagehint=hasim

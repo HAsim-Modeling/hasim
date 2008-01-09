@@ -1,0 +1,17 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Null Software Controller
+# %desc Null Software Controller for Hardware-Only models
+# %provides hasim_software_controller
+#
+# %attributes hasim
+#
+# %AWB_END
+# */

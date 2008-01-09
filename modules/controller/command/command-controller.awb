@@ -7,19 +7,13 @@
 #/*
 # %AWB_START
 #
-# %name Hasim hybrid simple controller
-# %desc Hasim hybrid simple controller
-# %provides hasim_controller
-#
-# %requires hasim_local_controller
-# %requires hasim_events_controller
-# %requires hasim_stats_controller
-# %requires hasim_assertions_controller
-# %requires software_controller
+# %name Hasim Command Controller
+# %desc Hasim Command Controller
+# %provides hasim_command_controller
 #
 # %attributes hasim
 #
-# %sources -t BSV -v PUBLIC HybridSimpleController.bsv 
+# %sources -t BSV -v PUBLIC command-controller.bsv 
 #
 # %param HASIM_CONTROLLER_COOLDOWN 500 "Number of FPGA extra FPGA cycles to finish dumping stats/events"
 #

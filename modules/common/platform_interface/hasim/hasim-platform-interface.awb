@@ -22,7 +22,7 @@
 # %param --global TERM_FPGA_LEDS                1   "termimate fpga_leds?"
 # %param --global TERM_VDEV_MEMORY              1   "termimate vdev_memory?"
 # %param --global TERM_VDEV_MEMORY_INVALIDATE   1   "termimate vdev_memory_invalidate?"
-# %param --global TERM_RRR_CONTROLLER           1   "termimate rrr_controller?"
+# %param --global TERM_RRR_TERMINAL             1   "termimate rrr_terminal?"
 #
 # %AWB_END
 # */

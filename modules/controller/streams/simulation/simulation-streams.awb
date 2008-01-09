@@ -7,16 +7,13 @@
 #/*
 # %AWB_START
 #
-# %name Hasim hybrid null controller
-# %desc Hasim hybrid null controller
-# %provides hasim_controller
-#
-# %requires software_controller
+# %name Simulation Streams
+# %desc Simulation Streams
+# %provides streams
 #
 # %attributes hasim
 #
-# %sources -t BSV -v PUBLIC HybridNullController.bsv 
+# %sources -t BSV -v PUBLIC simulation-streams.bsv
 #
 # %AWB_END
 # */
-

@@ -10,31 +10,14 @@
 #include <getopt.h>
 
 #include "main.h"
-#include "swcon-service.h"
-#include "software-controller.h"
+#include "control.h"
 
-/***** ----- SOFTWARE CONTROLLER ----- *****
-
- This is where a Hybrid model begins
- execution. This module:
- - has the software main()
- - instantiates the software module
-   hierarchy (including the software
-   RRR server)
- - initializes the hardware via RRR
- - also provides some RRR service
-   functions (stats, events, exceptions)
-
- ***** ------------------------------- *****/
+// =======================================
+//                 MAIN
+// =======================================
 
 // globally visible variables
-GlobalArgs  globalArgs;
-
-// DEBUG: temporary link to RRR client
-RRR_CLIENT globalRRRClient;
-
-// create actual software controller
-SOFTWARE_CONTROLLER_CLASS controller;
+GlobalArgs globalArgs;
 
 void process_options(int argc, char *argv[]);
 
@@ -44,40 +27,18 @@ int main(int argc, char *argv[])
     // parse args and place in global array
     process_options(argc, argv);
 
+    // FIXME: we have to dynamically create the controller
+    // since the RRR server (which is a submodule of the
+    // controller) should only be initialized AFTER all static
+    // services have registered themselves with it
+    CONTROLLER controller = new CONTROLLER_CLASS();
+
     // transfer control to controller
-    controller.Main();
+    int exitcode = controller->Main();
 
-    return 0;
-}
-
-// ----- controller's Main -----
-void
-SOFTWARE_CONTROLLER_CLASS::Main()
-{
-    // connect to my (already running) RRR service
-    myService = SWCON_SERVICE_CLASS::GetInstance();
-    myService->Connect(this);
-
-    // instantiate channelIO and RRR server.
-    // instantiating channelio has the side-effect of
-    // initializing the hardware partition
-    channelio = new CHANNELIO_CLASS(this);
-    rrrServer = new RRR_SERVER_CLASS(this, channelio);
-    rrrClient = new RRR_CLIENT_CLASS(this, channelio);
-
-    // DEBUG: expose RRR client globally
-    globalRRRClient = rrrClient;
-
-    // send "start" signal to the hardware partition.
-    // We currently do it by asking our RRR service to
-    // respond "Yes" to a "Should I Start?" RRR request
-    myService->StartHardware();
-
-    // go into the main scheduler loop
-    SchedulerLoop();
-
-    // end of simulation... cleanup and exit
-    Uninit();
+    // cleanup and exit
+    delete controller;
+    return exitcode;
 }
 
 // process command-line options
@@ -126,5 +87,4 @@ void process_options(int argc, char *argv[])
     {
         strcpy(globalArgs.benchmark, argv[optind++]);
     }
-    
 }

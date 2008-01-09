@@ -7,8 +7,8 @@
 #/*
 # %AWB_START
 #
-# %name Hasim Simulation-Only Simple controller
-# %desc Hasim Simulation-Only Simple controller
+# %name Hasim simulation-only simple controller (deprecated)
+# %desc Hasim simulation-only simple controller (deprecated)
 # %provides hasim_controller
 #
 # %requires hasim_local_controller

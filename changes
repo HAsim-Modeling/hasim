@@ -9444,3 +9444,13 @@ Directory modules/common/platform_interface/hasim
   has been retained and is being used by all pure-simulation and
   pure-hardware models until implementation of a dictionary-based streams
   virtual device is complete.
+
+----------
+aparasha    Date: Thu Jan 10 15:04:48 EST 2008  CSN: CSN-hasim-315
+                  Thu Jan 10 20:04:48 UTC 2008
+
+
+Directory modules/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          314 
+
+- sync with changes to platforms

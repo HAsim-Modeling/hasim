@@ -18,12 +18,14 @@ CONTROLLER_CLASS::CONTROLLER_CLASS() :
 // destructor
 CONTROLLER_CLASS::~CONTROLLER_CLASS()
 {
+    Uninit();
 }
 
 // uninit
 void
 CONTROLLER_CLASS::Uninit()
 {
+    channelio.Uninit();
     rrrServer.Uninit();
 }
 

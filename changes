@@ -9464,3 +9464,13 @@ Directory tools/scripts
  hasim-rrr-stubgen         Locally Modified          315 
 
 - sync with platforms bugfix
+
+----------
+aparasha    Date: Thu Jan 10 21:40:46 EST 2008  CSN: CSN-hasim-317
+                  Fri Jan 11 02:40:46 UTC 2008
+
+
+Directory modules/controller/software
+ control.cpp               Locally Modified          315 
+
+- fixed unclean exit bug

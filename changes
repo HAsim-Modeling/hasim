@@ -9454,3 +9454,13 @@ Directory modules/controller/starter
  hybrid-basic-starter.cpp  Locally Modified          314 
 
 - sync with changes to platforms
+
+----------
+aparasha    Date: Thu Jan 10 19:03:13 EST 2008  CSN: CSN-hasim-316
+                  Fri Jan 11 00:03:13 UTC 2008
+
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          315 
+
+- sync with platforms bugfix

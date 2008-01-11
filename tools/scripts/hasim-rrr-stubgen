@@ -268,6 +268,7 @@ sub print_service_methods {
         print $stubfile "    rule probe_server_for_header (state == STUB_STATE_idle);\n";
         print $stubfile "        UMF_PACKET packet <- server.read(`" . $servicename . "_SERVICE_ID);\n";
         print $stubfile "        mid <= packet.UMF_PACKET_header.methodID;\n";
+        print $stubfile "        dem.start(packet.UMF_PACKET_header.numChunks);\n";
         print $stubfile "        state <= STUB_STATE_processing;\n";
         print $stubfile "    endrule\n";
         print $stubfile "\n";
@@ -767,6 +768,7 @@ sub print_service_connections {
             print $stubfile "    rule startmsg_$servicename (state_$servicename == STUB_STATE_idle);\n";
             print $stubfile "        UMF_PACKET packet <- server.read(`" . $servicename . "_SERVICE_ID);\n";
             print $stubfile "        mid_$servicename <= packet.UMF_PACKET_header.methodID;\n";
+            print $stubfile "        dem_$servicename.start(packet.UMF_PACKET_header.numChunks);\n";
             print $stubfile "        state_$servicename <= STUB_STATE_processing;\n";
             print $stubfile "    endrule\n";
             print $stubfile "\n";

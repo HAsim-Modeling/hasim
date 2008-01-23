@@ -124,7 +124,7 @@ module [HASim_Module] mkCommandController#(Streams streams,
      link_command.send_to_next(COM_RunProgram);
      
      state <= CON_Running;
-     link_leds.send(8'b00000011);
+     link_leds.send(FRONTP_MASKED_LEDS {state: zeroExtend(4'b0011), mask: zeroExtend(4'b1111)});
 
      streams.printMessage1P(0, truncate(curTick)); //Message 0 = Program Started.
 
@@ -143,13 +143,13 @@ module [HASim_Module] mkCommandController#(Streams streams,
         begin
           if (pf)  // It passed
           begin
-            link_leds.send(8'b00001001);
+            link_leds.send(FRONTP_MASKED_LEDS {state: zeroExtend(4'b1001), mask: zeroExtend(4'b1111)});
             streams.printMessage1P(1, truncate(curTick)); // Message 1 = Success
             passed <= True;
           end
           else  // It failed
           begin
-            link_leds.send(8'b00001101);
+            link_leds.send(FRONTP_MASKED_LEDS {state: zeroExtend(4'b1101), mask: zeroExtend(4'b1111)});
             streams.printMessage1P(2, truncate(curTick)); // Message 2 = Failure
           end
           // Either way we begin dumping.

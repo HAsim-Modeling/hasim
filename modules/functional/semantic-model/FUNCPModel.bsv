@@ -2,7 +2,7 @@ import FIFO::*;
 import Vector::*;
 import RegFile::*;
 
-import hasim_common::*;
+`include "hasim_common.bsh"
 import soft_connections::*;
 import fpga_components::*;
 

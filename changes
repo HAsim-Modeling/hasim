@@ -9474,3 +9474,19 @@ Directory modules/controller/software
  control.cpp               Locally Modified          315 
 
 - fixed unclean exit bug
+
+----------
+pellauer    Date: Wed Jan 23 11:47:13 EST 2008  CSN: CSN-hasim-318
+                  Wed Jan 23 16:47:13 UTC 2008
+
+
+Directory modules/functional/semantic-model
+ FUNCPModel.bsv            Locally Modified          317 
+
+Directory modules/controller/command
+ command-controller.bsv    Locally Modified          317 
+
+
+Fixed a bit-width mismatch in the command controller.
+
+Michael P.

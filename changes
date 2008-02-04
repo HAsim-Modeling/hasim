@@ -9490,3 +9490,58 @@ Directory modules/controller/command
 Fixed a bit-width mismatch in the command controller.
 
 Michael P.
+
+----------
+mcadler     Date: Mon Feb  4 18:43:54 EST 2008  CSN: CSN-hasim-319
+                  Mon Feb  4 23:43:54 UTC 2008
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          318 
+ hasim-dict                Locally Modified          318 
+ hasim-rrr-stubgen         Locally Modified          318 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_exe_nosynth.apm Locally Modified          318 
+ traffic_light_exe_synth.apm Locally Modified          318 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          318 
+ SCons.iface.template      Locally Added               - 
+ SCons.sw.template         Locally Added               0 
+ hasim_model.awb           Locally Modified          318 
+
+Directory modules/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          318 
+ hybrid-null-starter.awb   Locally Modified          318 
+ hybrid-basic-starter.awb  Locally Modified          318 
+ hybrid-basic-starter.bsv  Locally Modified          318 
+
+Directory modules/controller/software
+ standard-software-controller.awb Locally Modified          318 
+ control.h                 Locally Modified          318 
+
+Directory modules/controller/streams/hybrid
+ hybrid-streams.h          Locally Modified          318 
+ hybrid-streams.awb        Locally Modified          318 
+ hybrid-streams.bsv        Locally Modified          318 
+ hybrid-streams.cpp        Locally Modified          318 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          318 
+
+Major change to the build environment.  All C++/H files now are built
+in a separate software (sw) tree.  All interface files (dict, rrr) are
+built in an iface tree.  The iface tree is built before the hw or
+sw trees.
+
+RRR files are now generated dynamically at build time.  Source changes
+no longer require reconfiguration.
+
+The sw and iface trees are more Asim-like.  Generated header files must
+be included as "asim/provides/foo.h".  The iface is similar.  Dictionary
+files are included as "asim/dict/foo.h" or "asim/dict/foo.bsh" and RRR
+files are "asim/rrr/foo.h".
+
+The hasim-rrr-stubgen now takes all the source .rrr files and generates
+stubs in a single pass.

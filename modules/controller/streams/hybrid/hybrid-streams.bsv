@@ -2,7 +2,7 @@ import hasim_common::*;
 import rrr::*;
 import soft_connections::*;
 
-`include "rrr_service_ids.bsh"
+`include "asim/rrr/rrr_service_ids.bsh"
 `define SERVICE_ID  `STREAMS_SERVICE_ID
 
 `define REQ_PRINT_MSG       0

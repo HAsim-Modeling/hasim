@@ -4,9 +4,9 @@
 #include <stdio.h>
 
 #include "main.h"
-#include "channelio.h"
-#include "rrr.h"
-#include "starter.h"
+#include "asim/provides/channelio.h"
+#include "asim/provides/rrr.h"
+#include "asim/provides/starter.h"
 
 typedef class CONTROLLER_CLASS* CONTROLLER;
 class CONTROLLER_CLASS: public HASIM_MODULE_CLASS

@@ -59,7 +59,7 @@ sub EmitHeader($) {
 sub EmitH($) {
     my $m = shift;
 
-    my $fn = "${tgtDir}dict_${m}.h";
+    my $fn = "${tgtDir}${m}.h";
     my $of = new IO::File($fn, "w");
     die("Failed to open output file ${fn}") if (! defined($of));
 
@@ -129,7 +129,7 @@ END
 sub EmitBSH($) {
     my $m = shift;
 
-    my $fn = "${tgtDir}dict_${m}.bsh";
+    my $fn = "${tgtDir}${m}.bsh";
     my $of = new IO::File($fn, "w");
     die("Failed to open output file ${fn}") if (! defined($of));
 
@@ -164,7 +164,7 @@ sub EmitBSH($) {
 ##   a program should include this file.
 ##
 sub EmitInit() {
-    my $fn = "${tgtDir}dict_init.h";
+    my $fn = "${tgtDir}init.h";
     my $of = new IO::File($fn, "w");
     die("Failed to open output file ${fn}") if (! defined($of));
 
@@ -175,7 +175,7 @@ sub EmitInit() {
     print $of "#endif\n\n";
 
     foreach my $m (sort keys %defs) {
-        print $of "#include \"dict_${m}.h\"\n";
+        print $of "#include \"asim/dict/${m}.h\"\n";
     }
 
 }
@@ -326,8 +326,6 @@ if (! GetOptions(
 }
 
 Usage(0) if ($help);
-
-Usage(1) if ($#ARGV < 0);
 
 foreach my $f (@ARGV) {
     ParseInputFile($f);

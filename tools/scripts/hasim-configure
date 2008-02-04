@@ -268,11 +268,8 @@ sub configure_build_tree {
     # (4) generate files needex by Xilinx tools
     HAsim::Xilinx::generate_files($model);
 
-    # (5) make master RRR file
-    make_master_rrr_file($model);
-
-    # (6) make dictionary
-    make_dictionary($model);
+    # (5) make interface files
+    make_iface($model);
 
     return 1;
 }
@@ -293,7 +290,14 @@ sub make_dirs {
     my $bdir = HAsim::Util::path_append($builddir, $HAsim::Bluespec::tmp_bsc_dir);
     $status = system("mkdir -p " . $bdir);
     
-    __make_dirs($root,HAsim::Util::path_append($builddir,"hw"), 1);
+    __make_dirs($root, HAsim::Util::path_append($builddir,"hw"));
+    __make_wrappers($root, HAsim::Util::path_append($builddir,"hw"), 1);
+
+    # Software (sw) tree.
+    my $swdir = HAsim::Util::path_append($builddir,"sw");
+    __make_dirs($root, $swdir);
+    $status = system("mkdir -p " . ${swdir} . "/include/asim/provides");
+    $status = system("mkdir -p " . ${swdir} . "/include/asim/restricted");
     return 1;
 }
 
@@ -302,14 +306,32 @@ sub make_dirs {
 sub __make_dirs {
     my $module = shift;
     my $parent_dir = shift;
-    my $isroot = shift;
 
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
     if (HAsim::Build::is_synthesis_boundary($module)) {
 	$status = system("mkdir -p $my_dir");
         my $bdir = HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir);
         $status = system("mkdir -p " . $bdir);
-        #Generate a wrapper bsv file for that directory.
+    } 
+    
+    ## recurse
+    HAsim::Build::check_submodules_defined($module);
+    foreach my $child ($module->submodules()) {
+        __make_dirs($child, $my_dir);
+    }
+    
+    return 1;
+}
+
+############################################################
+# __make_wrappers: Recursively make wrappers for synthesis boundaries
+sub __make_wrappers {
+    my $module = shift;
+    my $parent_dir = shift;
+    my $isroot = shift;
+
+    my $my_dir = HAsim::Build::get_module_build_dir($module, $parent_dir);
+    if (HAsim::Build::is_synthesis_boundary($module)) {
         generate_wrapper($module, $my_dir, $isroot);
         $isroot = 0;
     } 
@@ -317,126 +339,10 @@ sub __make_dirs {
     ## recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-	__make_dirs($child,$my_dir, $isroot);
+        __make_wrappers($child, $my_dir, $isroot);
     }
     
     return 1;
-}
-
-############################################################
-# make_master_rrr_file: Make master list of RRR services
-sub make_master_rrr_file {
-    my $model = shift;
-    my $root = $model->modelroot();
-
-    if (!defined($builddir)) {
-      $builddir = $model->build_dir();
-    }
-
-    my $hw_dir = HAsim::Util::path_append($builddir, "hw");
-
-    # obtain global list of all RRR files
-    my @rrr_file_list = __get_rrr_files($root, $hw_dir);
-
-    my $root_module_dir = HAsim::Build::get_module_build_dir($root, $hw_dir);
-
-    my $cppfilename = HAsim::Util::path_append($root_module_dir, "rrr_service_ids.h");
-    my $bsvfilename = HAsim::Util::path_append($root_module_dir, "rrr_service_ids.bsh");
-    my $master      = HAsim::Util::path_append($root_module_dir, "master.rrr");
-    my $connections = HAsim::Util::path_append($root_module_dir, "rrr_service_connections.bsh");
-
-    CORE::open(CPPFILE, "> $cppfilename");
-    CORE::open(BSVFILE, "> $bsvfilename");
-    system("rm -f $master; touch $master");
-
-    # start generating header files
-    print CPPFILE "\#ifndef __RRR_SERVICES__\n";
-    print CPPFILE "\#define __RRR_SERVICES__\n";
-    print CPPFILE "\n";
-
-    print BSVFILE "\`ifndef __RRR_SERVICES__\n";
-    print BSVFILE "\`define __RRR_SERVICES__\n";
-    print BSVFILE "\n";
-
-    # also create a global concatenated RRR file
-
-    # for each RRR file
-    my $serviceID = 0;
-    foreach my $f (@rrr_file_list)
-    {
-        # call hasim-rrr-stubgen to obtain list of services in each RRR file
-        CORE::open(STUBGEN, "hasim-rrr-stubgen -mode names $f |")
-            || die "make_master_rrr_file: could not run hasim-rrr-stubgen on $f\n";
-
-        while (my $line = <STUBGEN>)
-        {
-            chomp $line;
-            print CPPFILE "\#define $line\_SERVICE_ID $serviceID\n";
-            print BSVFILE "\`define $line\_SERVICE_ID $serviceID\n";
-            $serviceID = $serviceID + 1;
-        }
-
-        CORE::close(STUBGEN);
-
-        # call stubgen to generate stub(s) for each service
-        # FIXME: this is currently very hacky since (a) only hw server stubs
-        # are generated, (b) defining multiple services within a single RRR
-        # file has indeterminate results, (c) the stubs are all placed in the
-        # top level of the hw build directory, and (d) stub generation probably
-        # shouldn't be in hasim-configure to begin with
-        system("hasim-rrr-stubgen -mode stub -target hw -type server -interface method -odir $root_module_dir $f");
-
-        # concatenate the contents of the into RRR file into the master RRR file
-        system("cat $f >> $master");
-    }
-
-    # complete header files
-    print CPPFILE "\#define NUM_SERVICES $serviceID\n";
-    print CPPFILE "\n";
-    print CPPFILE "\#endif\n";
-
-    print BSVFILE "\`define NUM_SERVICES $serviceID\n";
-    print BSVFILE "\n";
-    print BSVFILE "\`endif\n";
-
-    CORE::close(CPPFILE);
-    CORE::close(BSVFILE);
-
-    # call stubgen on the master RRR file to generate the connections stub
-    system("hasim-rrr-stubgen -mode stub -target hw -type server -interface connection -o $connections $master");
-
-    return 1;
-}
-
-############################################################
-# __get_rrr_files: Recursively get list of RRR files
-sub __get_rrr_files {
-    my $module = shift;
-    my $parent_dir = shift;
-
-    # identify correct directory in build tree
-    my $my_dir = HAsim::Build::get_module_build_dir($module, $parent_dir);
-
-    # get list of my own RRR files
-    my @rrr_list = $module->sources("RRR", "*");
-
-    # pre-pend absolute path to each file
-    my @rrr_list_fullpath = ();
-    foreach my $f (@rrr_list)
-    {
-        my $fullpath = HAsim::Util::path_append($my_dir, $f);
-        push(@rrr_list_fullpath, $fullpath);
-    }
-
-    # recurse
-    HAsim::Build::check_submodules_defined($module);
-    foreach my $child ($module->submodules())
-    {
-        my @sub_rrr_list = __get_rrr_files($child, $my_dir);
-        push(@rrr_list_fullpath, @sub_rrr_list);
-    }
-
-    return @rrr_list_fullpath;
 }
 
 ############################################################
@@ -448,7 +354,9 @@ sub make_bsvfiles {
     if (!defined($builddir)) {
       $builddir = $model->build_dir();
     }
-    __make_bsvfiles($root,HAsim::Util::path_append($builddir,"hw"));
+    __make_bsvfiles($root,
+                    HAsim::Util::path_append($builddir,"hw"),
+                    HAsim::Util::path_append($builddir,"sw/include/asim/provides"));
     return 1;
 }
 
@@ -457,6 +365,7 @@ sub make_bsvfiles {
 sub __make_bsvfiles {
     my $module = shift;
     my $parent_dir = shift;
+    my $sw_inc_dir = shift;
 
     # identify correct directory in build tree
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
@@ -473,7 +382,7 @@ sub __make_bsvfiles {
     my $provides = $module->provides();
     my $bshfile = HAsim::Util::path_append($my_dir,"$provides.bsh");
     my $bsvfile = HAsim::Util::path_append($my_dir,"$provides.bsv");
-    my $hfile   = HAsim::Util::path_append($my_dir,"$provides.h");
+    my $hfile   = HAsim::Util::path_append($sw_inc_dir,"$provides.h");
 
     CORE::open(BSHFILE, ">$bshfile");
 
@@ -563,10 +472,10 @@ sub __make_bsvfiles {
     }
     print HFILE "\n";
 
-    # add includes for all public CPP-type files
+    # add includes for all public C/C++ include files
     if ($public) {
-        foreach my $f ($module->sources("CPP", "PUBLIC")) {
-            print HFILE "#include \"$f\"\n";
+        foreach my $f ($module->sources("H", "PUBLIC")) {
+            print HFILE "#include \"../restricted/${f}\"\n";
         }
     }
 
@@ -579,7 +488,7 @@ sub __make_bsvfiles {
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-	__make_bsvfiles($child,$my_dir);
+	__make_bsvfiles($child,$my_dir,$sw_inc_dir);
     }
 
     return 1;
@@ -597,9 +506,13 @@ sub make_symlinks {
       $builddir = $model->build_dir();
     }
     
-    my $hw_dir = HAsim::Util::path_append($builddir,"hw");
-    __make_symlinks($root,$hw_dir);
+    my $hw_dir = HAsim::Util::path_append($builddir, "hw");
+    __make_symlinks($root, $hw_dir, undef, '^(CPP|H|DICT|RRR)$', '.*');
     
+    my $sw_dir = HAsim::Util::path_append($builddir, "sw");
+    my $restricted_dir = HAsim::Util::path_append($builddir, "sw/include/asim/restricted");
+    __make_symlinks($root, $sw_dir, $restricted_dir, '^$', '^(CPP|H)$');
+
     return 1;
 }
 
@@ -609,6 +522,9 @@ sub make_symlinks {
 sub __make_symlinks {
     my $module = shift;
     my $parent_dir = shift;
+    my $restricted_dir = shift;
+    my $type_exclude_regexp = shift;
+    my $type_include_regexp = shift;
 
     # identify correct directory in build tree
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
@@ -616,15 +532,19 @@ sub __make_symlinks {
     # for each src file, generate symlink in $my_dir
     my $base_dir = $module->base_dir();
     my @l = ();
+    my @restr = ();
 
     my @types = $module->source_types();
     foreach my $t (@types) {
-        if (! ($t =~ '^(DICT)$')) {
+        if (($t =~ /$type_include_regexp/) && ! ($t =~ /$type_exclude_regexp/)) {
             if ($private) {
                 push(@l, $module->sources($t, "PRIVATE"));
             }
             if ($public) {
                 push(@l, $module->sources($t, "PUBLIC"));
+                if (defined($restricted_dir)) {
+                    push(@restr, $module->sources($t, "PUBLIC"));
+                }
             }
         }
     }
@@ -642,15 +562,32 @@ sub __make_symlinks {
         $status = system("ln -f -s $relsrc $tgt");
     }
 
+    ##
+    ## A second set of links in the "src/include/asim/restricted" directory
+    ## so the public include hierarchy is simpler in C++.
+    ##
+    foreach my $f (@restr) {
+        my $src = Asim::resolve(HAsim::Util::path_append($base_dir,$f));
+        my $tgt = HAsim::Util::path_append($restricted_dir,$f);
+
+        if (! -e $src) {
+          HAsim::Util::WARN_AND_DIE("Module file $f does not exist in $base_dir");
+        }
+        
+        # make src relative
+        my $relsrc = File::Spec->abs2rel($src, dirname($tgt));
+        $status = system("ln -f -s $relsrc $tgt");
+    }
+
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-        __make_symlinks($child,$my_dir);
+        __make_symlinks($child, $my_dir, $restricted_dir,
+                        $type_exclude_regexp, $type_include_regexp);
     }
 
     return 1;
 }
-
 
 
 sub note_builddir($) {
@@ -724,22 +661,25 @@ sub generate_makefile_top {
     HAsim::Util::common_replacements($model, $replacements_r);
     note_builddir($replacements_r);
 
-    #@ROOT_DIR_HW_MODEL@
+    #@ROOT_DIR_MODEL@
     my $root = $model->modelroot();
     if (HAsim::Build::is_synthesis_boundary($root)) {
-	HAsim::Util::hash_set($replacements_r,'@ROOT_DIR_HW_MODEL@',$root->provides());
+	HAsim::Util::hash_set($replacements_r,'@ROOT_DIR_MODEL@',$root->provides());
     } else {
 	HAsim::Util::WARN_AND_DIE("Root module must be a synthesis boundary");
     }
 
-    # @ROOT_DIR_HW@
-    my $my_dir = HAsim::Build::get_module_build_dir($root,"hw");
-    HAsim::Util::hash_set($replacements_r,'@ROOT_DIR_HW@',$my_dir);
+    HAsim::Util::hash_set($replacements_r, '@ROOT_DIR_HW@', "hw");
+    HAsim::Util::hash_set($replacements_r, '@ROOT_DIR_SW@', "sw");
 
-    HAsim::Util::hash_append($replacements_r, ":", '@ALL_HW_DIRS@', 'dict');
+    HAsim::Util::hash_set($replacements_r, '@ROOT_DIR_SW_INC@', "sw/include");
 
     # gather other info recursively
-    __generate_makefile_top($root,"hw",$replacements_r, 1);
+    __generate_makefile_hw_top($root,"hw",$replacements_r, 1);
+    __generate_makefile_sw_top($root,"sw",$replacements_r, 1);
+
+    # Add generated interface include directory to ALL_HW_DIRS
+    HAsim::Util::hash_append($replacements_r, ":", '@ALL_HW_DIRS@', "iface/build/include");
 
     # Generate the makefile
     my $template = HAsim::Build::get_makefile_top_template($model);
@@ -757,9 +697,9 @@ sub generate_makefile_top {
 }
 
 ############################################################
-# __generate_makefile_top: Recursively collect replacements
-#                          for Makefile.top
-sub __generate_makefile_top {
+# __generate_makefile_hw_top: Recursively collect replacements
+#                             for Makefile.top
+sub __generate_makefile_hw_top {
     my $module = shift;
     my $parent_dir = shift;
     my $replacements_r = shift;
@@ -811,12 +751,6 @@ sub __generate_makefile_top {
         HAsim::Util::hash_append($replacements_r," ",'@GIVEN_VS@',HAsim::Util::path_append($my_dir, $f));
     }
 
-    ## @GIVEN_CS@
-
-    foreach my $f ($module->sources("CPP", "*")) {
-        HAsim::Util::hash_append($replacements_r," ",'@GIVEN_CS@',HAsim::Util::path_append($my_dir, $f));
-    }
-
     ## @BDPI_CS@
 
     foreach my $f ($module->sources("BDPI_C", "*")) {
@@ -834,7 +768,33 @@ sub __generate_makefile_top {
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-	__generate_makefile_top($child,$my_dir,$replacements_r, 0);
+        __generate_makefile_hw_top($child,$my_dir,$replacements_r, 0);
+    }
+
+}
+
+
+############################################################
+# __generate_makefile_hw_top: Recursively collect replacements
+#                             for Makefile.top
+sub __generate_makefile_sw_top {
+    my $module = shift;
+    my $parent_dir = shift;
+    my $replacements_r = shift;
+    my $is_root = shift;
+
+    my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
+
+    ## @GIVEN_CS@
+
+    foreach my $f ($module->sources("CPP", "*")) {
+        HAsim::Util::hash_append($replacements_r," ",'@GIVEN_CS@',HAsim::Util::path_append($my_dir, $f));
+    }
+
+    # recurse
+    HAsim::Build::check_submodules_defined($module);
+    foreach my $child ($module->submodules()) {
+        __generate_makefile_sw_top($child,$my_dir,$replacements_r, 0);
     }
 
 }
@@ -851,7 +811,12 @@ sub generate_makefile_sub {
     my $replacements_r = HAsim::Util::empty_hash_ref();
     HAsim::Util::common_replacements($model, $replacements_r);
     note_builddir($replacements_r);
-    __generate_makefile_sub($model,$model->modelroot(),"hw",$replacements_r);
+    __generate_makefile_sub($model, $model->modelroot(), "hw",
+                            HAsim::Build::get_scons_root_template($model, "hw"),
+                            $replacements_r);
+    __generate_makefile_sub($model, $model->modelroot(), "sw",
+                            HAsim::Build::get_scons_root_template($model, "sw"),
+                            $replacements_r);
 }
 
 ############################################################
@@ -863,6 +828,7 @@ sub __generate_makefile_sub {
     my $model = shift;
     my $module = shift;
     my $parent_dir = shift;
+    my $scons_template = shift;
     my $replacements_r = shift;
 
     my $current_replacements_r = $replacements_r;
@@ -878,10 +844,10 @@ sub __generate_makefile_sub {
 
 	## @DIR@
 	HAsim::Util::hash_set($current_replacements_r,'@DIR@',$module->provides());
-	
+
 	## @FULL_DIR@
 	HAsim::Util::hash_set($current_replacements_r,'@FULL_DIR@',"$builddir/$my_dir");
-	
+
 	## @DOTS_TO_MAKEFILE_INCL@
 	my $dots_path = $my_dir;
 	$dots_path =~ s/([^\/])+/../g;
@@ -945,7 +911,7 @@ sub __generate_makefile_sub {
     #recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-	__generate_makefile_sub($model,$child,$my_dir,$current_replacements_r);
+	__generate_makefile_sub($model,$child,$my_dir,$scons_template,$current_replacements_r);
     }
 
     if (!defined($builddir)) {
@@ -954,18 +920,10 @@ sub __generate_makefile_sub {
 
     # on the way up, possibly generate makefile
     if (HAsim::Build::is_synthesis_boundary($module)) {
-        # Generate makefile
-	my $template = HAsim::Build::get_makefile_sub_template($model,$module);
-        if (defined($template)) {
-            my $makefile = HAsim::Util::path_append($builddir,$my_dir,"Makefile");
-            HAsim::Templates::do_replacements($template,$makefile,$current_replacements_r);
-        }
-
         # Generate scons file
-        $template = HAsim::Build::get_scons_hw_sub_template($model, $module);
-        if (defined($template)) {
+        if (defined($scons_template)) {
             my $scons = HAsim::Util::path_append($builddir, $my_dir, "SConscript");
-            HAsim::Templates::do_replacements($template, $scons, $current_replacements_r);
+            HAsim::Templates::do_replacements($scons_template, $scons, $current_replacements_r);
         }
     }
 }
@@ -1093,29 +1051,45 @@ sub generate_wrapper {
 }
 
 ############################################################
-# make_dictionary: Build the dictionary in a separate tree
+# make_iface: Build interface files (RRR and dictionary)
+#             in a separate tree.
 #
-sub make_dictionary {
+sub make_iface {
     my $model = shift;
-    my $my_dir = 'dict';
 
-    my $dir = HAsim::Util::path_append($builddir, "dict");
-    $status = system("mkdir -p " . $dir);
-
-    my $template = HAsim::Build::get_scons_root_template($model, 'dict');
+    my $template = HAsim::Build::get_scons_root_template($model, "iface");
     return if (! defined($template));
-    $status = system("mkdir -p " . $dir . "/src");
+
+    my $dir = HAsim::Util::path_append($builddir, "iface");
+    $status = system("mkdir -p " . $dir);
 
     my $replacements_r = HAsim::Util::empty_hash_ref();
 
     HAsim::Util::common_replacements($model, $replacements_r);
     note_builddir($replacements_r);
 
-    my $scons = HAsim::Util::path_append($builddir, "dict", "SConstruct");
+    my $dict_src_dir = HAsim::Util::path_append($dir, "src/dict");
+    $status = system("mkdir -p " . $dict_src_dir);
+    make_dictionary($model, $dict_src_dir, $replacements_r);
+
+    my $rrr_src_dir = HAsim::Util::path_append($dir, "src/rrr");
+    $status = system("mkdir -p " . $rrr_src_dir);
+    make_rrr($model, $rrr_src_dir, $replacements_r);
+
+    my $scons = HAsim::Util::path_append($builddir, "iface", "SConstruct");
     HAsim::Templates::do_replacements($template, $scons, $replacements_r);
+}
+
+############################################################
+# make_dictionary: Build the dictionary in a separate tree
+#
+sub make_dictionary {
+    my $model = shift;
+    my $dir = shift;
+    my $replacements_r = shift;
 
     # gather other info recursively
-    __make_dictionary($model->modelroot(), $dir);
+    __make_dictionary($model->modelroot(), $dir, $replacements_r);
 }
 
 ############################################################
@@ -1123,7 +1097,8 @@ sub make_dictionary {
 #
 sub __make_dictionary {
     my $module = shift;
-    my $parent_dir = shift;
+    my $dir = shift;
+    my $replacements_r = shift;
 
     my $base_dir = $module->base_dir();
 
@@ -1131,21 +1106,70 @@ sub __make_dictionary {
     my @d = $module->sources("DICT", "*");
     foreach my $f (@d) {
         my $src = Asim::resolve(HAsim::Util::path_append($base_dir,$f));
-        my $tgt = HAsim::Util::path_append($parent_dir, 'src', $f);
 
         if (! -e $src) {
           HAsim::Util::WARN_AND_DIE("Module file $f does not exist in $base_dir");
         }
         
         # make src relative
-        my $relsrc = File::Spec->abs2rel($src, dirname($tgt));
-        $status = system("ln -f -s $relsrc $tgt");
+        my $relsrc = File::Spec->abs2rel($src, $dir);
+        $status = system("ln -f -s $relsrc $dir");
+
+        # Add to list of sources
+        HAsim::Util::hash_append($replacements_r, " ", '@DICT_SRCS@', "src/dict/$f");
     }
 
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-	__make_dictionary($child, $parent_dir);
+	__make_dictionary($child, $dir, $replacements_r);
+    }
+}
+
+############################################################
+# make_master_rrr_file: Make master list of RRR services
+sub make_rrr {
+    my $model = shift;
+    my $dir = shift;
+    my $replacements_r = shift;
+
+    __make_rrr($model->modelroot(), $dir, "src/rrr", $replacements_r);
+}
+
+############################################################
+# __get_rrr_files: Recursively get list of RRR files
+sub __make_rrr {
+    my $module = shift;
+    my $parent_dir = shift;
+    my $rel_dir = shift;
+    my $replacements_r = shift;
+
+    my $my_dir = HAsim::Build::get_module_build_dir($module, $parent_dir);
+    my $base_dir = $module->base_dir();
+
+    $rel_dir = HAsim::Build::get_module_build_dir($module, $rel_dir);
+
+    # Link to dictionaries
+    my @d = $module->sources("RRR", "*");
+    foreach my $f (@d) {
+        my $src = Asim::resolve(HAsim::Util::path_append($base_dir, $f));
+
+        if (! -e $src) {
+          HAsim::Util::WARN_AND_DIE("Module file $f does not exist in $base_dir");
+        }
+        
+        # make src relative
+        my $relsrc = File::Spec->abs2rel($src, $my_dir);
+        system("mkdir -p $my_dir");
+        system("ln -f -s $relsrc $my_dir");
+
+        # Add to list of sources
+        HAsim::Util::hash_append($replacements_r, " ", '@RRR_SRCS@', "$rel_dir/$f");
     }
 
+    # recurse
+    HAsim::Build::check_submodules_defined($module);
+    foreach my $child ($module->submodules()) {
+        __make_rrr($child, $my_dir, $rel_dir, $replacements_r);
+    }
 }

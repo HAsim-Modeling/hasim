@@ -5,6 +5,8 @@ import re
 import sys
 import string
 
+SetOption('implicit_cache', 1)
+
 defs = {
     'ALL_HW_DIRS'        : '@ALL_HW_DIRS@',
     'APM_FILE'           : '@APM_FILE@',
@@ -24,8 +26,10 @@ defs = {
     'GEN_HS'             : 'schedule.h @GEN_HS@',
     'LDFLAGS'            : '-L /usr/lib64/curses -L /usr/lib/curses',
     'MAKE_ALL_TARGET'    : '@MAKE_ALL_TARGET@',
+    'ROOT_DIR_MODEL'     : '@ROOT_DIR_MODEL@',
     'ROOT_DIR_HW'        : '@ROOT_DIR_HW@',
-    'ROOT_DIR_HW_MODEL'  : '@ROOT_DIR_HW_MODEL@',
+    'ROOT_DIR_SW'        : '@ROOT_DIR_SW@',
+    'ROOT_DIR_SW_INC'    : '@ROOT_DIR_SW_INC@',
     'TMP_BSC_DIR'        : '@TMP_BSC_DIR@',
     'TMP_XILINX_DIR'     : '@TMP_XILINX_DIR@',
     'XST_FILE'           : '@XST_FILE@',
@@ -35,22 +39,26 @@ defs = {
 env = Environment(ENV = os.environ, DEFS = defs)
 env['ENV']['SHELL'] = '/bin/sh'
 
+env['DEFS']['ROOT_DIR_HW_MODEL'] = env['DEFS']['ROOT_DIR_HW'] + '/' + \
+                                   env['DEFS']['ROOT_DIR_MODEL'];
+env['DEFS']['ROOT_DIR_SW_MODEL'] = env['DEFS']['ROOT_DIR_SW'] + '/' + \
+                                   env['DEFS']['ROOT_DIR_MODEL'];
 
 ############################################################################
 ############################################################################
 ##
-## Build the dictionary first
+## Build the interface files first
 ##
 ############################################################################
 ############################################################################
 
-if os.path.isfile('dict/SConstruct'):
-    cmd = 'cd dict; scons'
+if os.path.isfile('iface/SConstruct'):
+    cmd = 'cd iface; scons'
     if env.GetOption('clean'):
         cmd += ' -c'
     s = os.system(cmd)
     if (s & 0xffff) != 0:
-        print 'Aborting due to dictionary errors'
+        print 'Aborting due to iface submodel errors'
         sys.exit(1)
 
 ############################################################################
@@ -143,7 +151,7 @@ BSC_FLAGS = env['DEFS']['BSC_FLAGS']
 LDFLAGS = env['DEFS']['LDFLAGS']
 TMP_BSC_DIR = env['DEFS']['TMP_BSC_DIR']
 
-ROOT_WRAPPER_SYNTH_ID = 'mk_' + env['DEFS']['ROOT_DIR_HW_MODEL'] + '_Wrapper'
+ROOT_WRAPPER_SYNTH_ID = 'mk_' + env['DEFS']['ROOT_DIR_MODEL'] + '_Wrapper'
 
 SW_EXE = APM_NAME + '_sw.exe'
 if env['DEFS']['GIVEN_CS'] != '':
@@ -157,9 +165,9 @@ else:
 ## Rules for HW subdirectory.  These are shared by all targets.
 ##
 ############################################################################
-env['DEFS']['CWD_REL'] = env['DEFS']['ROOT_DIR_HW']
+env['DEFS']['CWD_REL'] = env['DEFS']['ROOT_DIR_HW_MODEL']
 Export('env ' + " ".join(utility_names))
-wrapper_v = SConscript([env['DEFS']['ROOT_DIR_HW'] + '/SConscript'])
+wrapper_v = SConscript([env['DEFS']['ROOT_DIR_HW_MODEL'] + '/SConscript'])
 
 BuildDir(TMP_BSC_DIR, '.', duplicate=0)
 
@@ -195,7 +203,9 @@ Clean(cxx,  TMP_BSC_DIR + '/imported_BDPI_functions.h')
 ##
 bsc_ccflags = '-Wall -Wno-unused -g -D_FILE_OFFSET_BITS=64' + \
               ' -DTOP=' + ROOT_WRAPPER_SYNTH_ID + \
-              ' -I' + os.environ['BLUESPECDIR'] + '/Bluesim -fno-rtti'
+              ' -I' + os.environ['BLUESPECDIR'] + '/Bluesim'
+
+bsc_cxxflags = bsc_ccflags + ' -fno-rtti'
 
 bsc_lib_ext = ''
 if (os.environ['HOSTTYPE'].find('_64') >= 0):
@@ -203,6 +213,7 @@ if (os.environ['HOSTTYPE'].find('_64') >= 0):
 
 bsc_cxx_env = env.Clone(
     CCFLAGS = bsc_ccflags,
+    CXXFLAGS = bsc_cxxflags,
     LINKFLAGS = bsc_ccflags,
     LIBPATH = [ '/usr/lib64/curses', '/usr/lib/curses',
                 os.environ['BLUESPECDIR'] + '/Bluesim/g++4' + bsc_lib_ext ],
@@ -223,7 +234,8 @@ for c in clean_split(env['DEFS']['BDPI_CS'], sep=' '):
 
 bsim_build_obj += bdpi_obj
 
-sbin = bsc_cxx_env.Program(APM_NAME + '_hw.exe', bsim_build_obj)
+sbin = bsc_cxx_env.Program(TMP_BSC_DIR + '/' + APM_NAME + '_hw.exe',
+                           bsim_build_obj)
 
 exe = env.Command(
     APM_NAME + '_hw_exe.sh',
@@ -233,6 +245,9 @@ exe = env.Command(
       '@chmod a+x $TARGET',
       Delete('simv'),
       '@ln -fs $TARGET simv' ])
+
+if env.GetOption('clean'):
+    os.system('rm -f simv')
 
 env.Alias('exe', exe)
 
@@ -250,7 +265,7 @@ vexe_gen_command = BSC + ' ' + BSC_FLAGS + ' -I ' + env['ENV']['IVERILOGDIR'] + 
                    ' $SOURCES ' + env['DEFS']['BDPI_BAS']
 
 vbin = env.Command(
-    APM_NAME + '_hw.vexe',
+    TMP_BSC_DIR + '/' + APM_NAME + '_hw.vexe',
     wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' ') + bdpi_obj,
     [ vexe_gen_command,
       Delete('directc.sft') ])
@@ -293,7 +308,7 @@ Clean(xilinx_ngc,  XILINX_APM_NAME + '.srp')
 xilinx_ngd = env.Command(
     XILINX_APM_NAME + '.ngd',
     xilinx_ngc,
-    [ 'ngdbuild -sd ' + env['DEFS']['ROOT_DIR_HW'] + ' -uc ' + 'config/' + APM_NAME + '.ucf $SOURCE $TARGET',
+    [ 'ngdbuild -sd ' + env['DEFS']['ROOT_DIR_HW_MODEL'] + ' -uc ' + 'config/' + APM_NAME + '.ucf $SOURCE $TARGET',
       Move(TMP_XILINX_DIR + '/netlist.lst', 'netlist.lst') ])
 
 Clean(xilinx_ngd, TMP_XILINX_DIR + '/netlist.lst')
@@ -347,13 +362,30 @@ if env.GetOption('clean'):
 
 ############################################################################
 ##
-## Rules for building the software side
+## Rules for building the software side.  Invoke scripts in subdirectories
+## to define the objects needing to be built.  The final link is defined
+## here.
 ##
 ############################################################################
 
 if SW_TGT != []:
-    sw_env = env.Clone(CCFLAGS = '-DAPM_NAME=\\"' + APM_NAME + '\\"')
-    sw_exe = sw_env.Program(SW_EXE, clean_split(env['DEFS']['GIVEN_CS'], sep = ' '))
+    # CPPPATH defines both gcc include path and dependence path for
+    # SCons.  The '#' forces paths to be relative to the root of the build.
+    sw_env = env.Clone(CCFLAGS = '-DAPM_NAME=\\"' + TMP_BSC_DIR + '/' + APM_NAME + '\\"',
+                       CPPPATH = [ '#/' + env['DEFS']['ROOT_DIR_SW_INC'],
+                                   '#/' + env['DEFS']['ROOT_DIR_HW_MODEL'],
+                                   '#/iface/build/include',
+                                   '.' ])
+
+    sw_env['DEFS']['CWD_REL'] = sw_env['DEFS']['ROOT_DIR_SW_MODEL']
+
+    Export('sw_env ' + " ".join(utility_names))
+    sw_build_dir = sw_env['DEFS']['ROOT_DIR_SW'] + '/obj'
+    sw_objects = SConscript([env['DEFS']['ROOT_DIR_SW_MODEL'] + '/SConscript'],
+                            build_dir = sw_build_dir,
+                            duplicate = 0)
+
+    sw_exe = sw_env.Program(sw_build_dir + '/' + SW_EXE, sw_objects)
 
     sw_env.Command(SW_TGT, sw_exe, '@ln -fs $SOURCE $TARGET')
 

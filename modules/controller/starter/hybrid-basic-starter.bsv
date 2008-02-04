@@ -2,7 +2,7 @@ import hasim_common::*;
 import rrr::*;
 import soft_connections::*;
 
-`include "rrr_service_ids.bsh"
+`include "asim/rrr/rrr_service_ids.bsh"
 `define SERVICE_ID  `STARTER_SERVICE_ID
 
 typedef Bit#(8) SIM_STATE;

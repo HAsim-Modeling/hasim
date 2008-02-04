@@ -17,6 +17,8 @@ use strict;
 use re 'eval';
 
 use Getopt::Long;
+use File::Basename;
+use Data::Dumper;
 
 $| = 1;
 
@@ -25,55 +27,56 @@ my $usage = "usage: hasim-rrr-stubgen\n" .
             "           -mode      (stub | names | debug)\n" .
             "           -target    (hw | sw)\n" .
             "           -type      (client | server)\n" .
-            "           -interface (method | connection)\n" .
-            "           (-odir <outputdir> | -o <outputfile>)\n" .
+            "           -odir <outputdir>\n" .
             "           INPUTFILE\n";
 
 my $mode = "";
 my $target = "";
 my $type = "";
-my $interface = "";
 my $odir = "";
-my $ofile = "";
 
 GetOptions("mode=s"      => \$mode,
            "target=s"    => \$target,
            "type=s"      => \$type,
-           "interface=s" => \$interface,
-           "odir=s"      => \$odir,
-           "o=s"         => \$ofile);
-my $ifile = $ARGV[0];
+           "odir=s"      => \$odir);
 
-my $iprefix;
-if ($ifile)
+my @fNames;
+my @sTables;
+my @serviceTable;
+
+
+##
+## Start by parsing all the input files.  After parsing we'll have a few
+## data structures:
+##
+##   @fNames -- an array of the names of input .rrr files
+##   @sTables -- An array of the parsed RRR data from individual files
+##   @serviceTable -- A merged array of sTables merged from all input files
+##
+my $idx = 0;
+foreach my $ifile (@ARGV)
 {
-    if ($ifile =~ /\S+\/(\S+)\.rrr/)
-    {
-        $iprefix = $1;
-    }
-    elsif($ifile =~ /(\S+)\.rrr/)
-    {
-        $iprefix = $1;
-    }
-    else
+    my ($iname, $ipath, $isuffix) = fileparse($ifile, qr/\.[^.]*/);
+
+    if ($isuffix ne '.rrr')
     {
         print "error: input filename $ifile must end with .rrr suffix\n";
-        exit;
+        exit(1);
     }
-}
-else
-{
-    print $usage;
-    exit;
+
+    $fNames[$idx] = $iname;
+
+    # parse input RRR file into data structure
+    @{$sTables[$idx]} = parse_rrr_file($ifile);
+    push (@serviceTable, @{$sTables[$idx]});
+
+    $idx += 1;
 }
 
-# create a handle for the output file
-my $ohandle;
-if ($ofile ne "")
-{
-    CORE::open($ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
-}
-elsif ($ofile eq "" && $odir ne "")
+##
+## Canonicalize output directory specification
+##
+if ($odir ne "")
 {
     # generate output file name from input file name
     if ($odir =~ /(\S+)\/+$/)
@@ -81,53 +84,60 @@ elsif ($ofile eq "" && $odir ne "")
         # get rid of trailing forward slashes
         $odir = $1;
     }
-    $ofile = $odir . "/" . $iprefix . ".bsh";
-    CORE::open($ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
 }
 else
 {
-    # output to STDOUT
-    $ohandle = \*STDOUT;
+    $odir = ".";
 }
 
-# parse input RRR file into data structure
-# note: to read in multiple RRR files, call this subroutine
-# multiple times and append returned list to @serviceTable
-my @serviceTable = parse_rrr_file($ifile);
+##
+## Process according to mode
+##
+if ($mode eq "stub")
+{
+    ##
+    ## Generate individual stubs
+    ##
+    foreach my $idx (0..$#fNames)
+    {
+        my $ofile = $odir . "/" . $fNames[$idx] . ".bsh";
+        open(my $ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
+        print_service_methods($ohandle, @{$sTables[$idx]});
+        close($ohandle);
+    }
 
-# process according to mode
-if ($mode eq "names")
-{
-    print_service_names($ohandle, @serviceTable);
+    ##
+    ## Generate connections
+    ##
+    my $ofile = $odir . "/rrr_service_connections.bsh";
+    open(my $ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
+    print_service_connections($ohandle, @serviceTable);
+    close($ohandle);
+
+    ##
+    ## Global service IDs
+    ##
+    open(my $ohandle_h, "> ${odir}/rrr_service_ids.h") ||
+        die "stubgen: unable to open output file ${odir}/rrr_service_ids.h";
+    open(my $ohandle_bsh, "> ${odir}/rrr_service_ids.bsh") ||
+        die "stubgen: unable to open output file ${odir}/rrr_service_ids.bsh";
+    print_service_ids($ohandle_h, $ohandle_bsh, @serviceTable);
 }
-elsif ($mode eq "stub")
+elsif ($mode eq "names")
 {
-    if ($interface eq "method")
-    {
-        print_service_methods($ohandle, @serviceTable);
-    }
-    else
-    {
-        print_service_connections($ohandle, @serviceTable);
-    }
+    print_service_names(\*STDOUT, @serviceTable);
 }
 elsif ($mode eq "debug")
 {
-    dump_service_table($ohandle, @serviceTable);
+    dump_service_table(\*STDOUT, @serviceTable);
 }
 else
 {
     print $usage;
-    exit(0);
+    exit(1);
 }
 
-# close output file
-if ($ofile ne "")
-{
-    CORE::close($ohandle);
-}
-
-exit;
+exit(0);
 
 ############################################################
 # print_service_names: given a parsed service table, print
@@ -150,6 +160,8 @@ sub print_service_methods {
 
     my $stubfile = shift;
     my @serviceTable = @_;
+
+    print_std_header($stubfile);
 
     # determine if we should write stub at all
     my $do_write = 0;
@@ -655,6 +667,8 @@ sub print_service_connections {
     my $stubfile = shift;
     my @serviceTable = @_;
 
+    print_std_header($stubfile);
+
     # generate common header
     print $stubfile "`ifndef _RRR_SERVICE_CONNECTIONS_\n";
     print $stubfile "`define _RRR_SERVICE_CONNECTIONS_\n";
@@ -668,7 +682,7 @@ sub print_service_connections {
     print $stubfile "`include \"soft_connections.bsh\"\n";
     print $stubfile "`include \"rrr.bsh\"\n";
     print $stubfile "`include \"channelio.bsh\"\n";
-    print $stubfile "`include \"rrr_service_ids.bsh\"\n";
+    print $stubfile "`include \"asim/rrr/rrr_service_ids.bsh\"\n";
     print $stubfile "\n";
 
     print $stubfile "typedef enum\n";
@@ -812,3 +826,52 @@ sub print_service_connections {
     print $stubfile "`endif\n";
     print $stubfile "\n";
 }
+
+
+############################################################
+# print_service_ids: given a parsed service table, print
+#                    service id include files for C++ and BSC
+sub print_service_ids {
+    my $ofile_h = shift;
+    my $ofile_bsh = shift;
+    my @serviceTable = @_;
+
+    print_std_header($ofile_h);
+    print $ofile_h "\#ifndef __RRR_SERVICE_IDS__\n";
+    print $ofile_h "\#define __RRR_SERVICE_IDS__\n";
+    print $ofile_h "\n";
+
+    print_std_header($ofile_bsh);
+    print $ofile_bsh "\`ifndef __RRR_SERVICE_IDS__\n";
+    print $ofile_bsh "\`define __RRR_SERVICE_IDS__\n";
+    print $ofile_bsh "\n";
+
+    my $serviceID = 0;
+    foreach my $service (@serviceTable)
+    {
+        print $ofile_h   "\#define " . $service->{name} . "_SERVICE_ID $serviceID\n";
+        print $ofile_bsh "\`define " . $service->{name} . "_SERVICE_ID $serviceID\n";
+        $serviceID = $serviceID + 1;
+    }
+
+    print $ofile_h "\#define NUM_SERVICES $serviceID\n";
+    print $ofile_h "\n";
+    print $ofile_h "\#endif // __RRR_SERVICE_IDS__\n";
+
+    print $ofile_bsh "\`define NUM_SERVICES $serviceID\n";
+    print $ofile_bsh "\n";
+    print $ofile_bsh "\`endif // __RRR_SERVICE_IDS__\n";
+}
+
+
+############################################################
+# print_std_header: Print a standard header
+#
+sub print_std_header {
+    my $ofile = shift;
+
+    print $ofile "//\n";
+    print $ofile "// Synthesized header file created by hasim-rrr-stubgen\n";
+    print $ofile "//\n\n";
+}
+

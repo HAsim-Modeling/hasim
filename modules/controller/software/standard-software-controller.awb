@@ -13,7 +13,7 @@
 #
 # %attributes hasim
 #
-# %sources -t CPP -v PUBLIC  main.h control.h
+# %sources -t H   -v PUBLIC  main.h control.h
 # %sources -t CPP -v PRIVATE main.cpp control.cpp
 #
 # %AWB_END

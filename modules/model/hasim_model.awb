@@ -16,9 +16,10 @@
 %requires fpgaenv
 
 %makefile Makefile.top.template
-%scons %top  SCons.top.template
-%scons %hw   SCons.hw.template
-%scons %dict SCons.dict.template
+%scons %top   SCons.top.template
+%scons %hw    SCons.hw.template
+%scons %sw    SCons.sw.template
+%scons %iface SCons.iface.template
 
 %public hasim_model.bsv
 

@@ -7,8 +7,8 @@
 #include <signal.h>
 #include <iostream>
 
-#include "streams.h"
-#include "rrr_service_ids.h"
+#include "asim/provides/streams.h"
+#include "asim/rrr/rrr_service_ids.h"
 
 #define SERVICE_ID  STREAMS_SERVICE_ID
 

@@ -1,7 +1,7 @@
 #ifndef _HYBRID_STREAMS_
 #define _HYBRID_STREAMS_
 
-#include "rrr.h"
+#include "asim/provides/rrr.h"
 
 typedef class STREAMS_CLASS* STREAMS;
 class STREAMS_CLASS: public RRR_SERVICE_CLASS,

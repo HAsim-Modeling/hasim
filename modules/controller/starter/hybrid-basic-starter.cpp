@@ -2,9 +2,9 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "starter.h"
-#include "rrr_service_ids.h"
-#include "rrr.h"
+#include "asim/provides/starter.h"
+#include "asim/rrr/rrr_service_ids.h"
+#include "asim/provides/rrr.h"
 
 #define SERVICE_ID  STARTER_SERVICE_ID
 

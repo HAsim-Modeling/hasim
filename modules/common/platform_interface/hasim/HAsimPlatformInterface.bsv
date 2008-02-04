@@ -6,7 +6,7 @@ import low_level_platform_interface::*;
 import memory::*;
 import rrr::*;
 
-`include "rrr_service_connections.bsh"
+`include "asim/rrr/rrr_service_connections.bsh"
 
 typedef struct
 {

@@ -10,6 +10,8 @@ import soft_connections::*;
 
 `define CHAIN_IDX_ASSERTS 4
 
+typedef ASSERTION_DATA AssertData;
+
 // mkAssertionsController
 
 // A module which serially passes Assertion failures back to the main hardware controller.
@@ -30,7 +32,7 @@ module [Connected_Module] mkAssertionsController
   Reg#(Bit#(8))       cur <- mkReg(0);
   
   // The minimum severity of assertions we should pass along
-  Reg#(AssertionSeverity) min_severity <- mkReg(ASSERT_Message);
+  Reg#(AssertionSeverity) min_severity <- mkReg(ASSERT_MESSAGE);
   
   // ***** Rules *****
   
@@ -86,9 +88,9 @@ module [Connected_Module] mkAssertionsController
   method Action doCommand(AssertionsCommand com);
     
     case (com)
-      Asserts_MinSeverity_Message: min_severity <= ASSERT_Message;
-      Asserts_MinSeverity_Warning: min_severity <= ASSERT_Warning;
-      Asserts_MinSeverity_Error:   min_severity <= ASSERT_Error;
+      Asserts_MinSeverity_Message: min_severity <= ASSERT_MESSAGE;
+      Asserts_MinSeverity_Warning: min_severity <= ASSERT_WARNING;
+      Asserts_MinSeverity_Error:   min_severity <= ASSERT_ERROR;
     endcase
     
   endmethod

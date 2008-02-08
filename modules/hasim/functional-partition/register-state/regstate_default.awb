@@ -1,0 +1,25 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Register State for Functional Partition
+# %desc Register State for Functional Partition
+#
+# %provides funcp_regstate
+#
+# %requires funcp_regstate_manager
+# 
+# %attributes hasim funcp regstate
+#
+# %public regstate_default.bsv
+#
+#
+#
+# %AWB_END
+# */
+

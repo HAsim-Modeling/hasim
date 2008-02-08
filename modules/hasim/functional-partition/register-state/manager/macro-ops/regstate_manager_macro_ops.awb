@@ -1,0 +1,28 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Register State Manager using Macro Ops
+# %desc Register State Manager using Macro Ops
+#
+# %provides funcp_regstate_manager
+# 
+# %requires funcp_regstate_scoreboard
+# %requires funcp_regstate_freelist
+#
+# %attributes hasim funcp regstate
+#
+# %public regstate_manager_macro_ops.bsv
+#
+# %param REGSTATE_LOGFILE_NAME "hasim_funcp_regstate.out" "Name of logfile for register state."
+# %param REGSTATE_NUM_SNAPSHOTS 8 "Number of snapshots. Should be a power of 2."
+#
+#
+# %AWB_END
+# */
+

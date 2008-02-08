@@ -52,11 +52,10 @@ function String lookup_stat(Bit#(8) st);
 
   case (st)
     0: return "Instructions Committed";
-    1: return "DCache Misses";
-    2: return "Branch Mispredicts";
-    3: return "ICache Misses";
-    4: return "Instructions Fetched";
-    5: return "Total Cycles";
+    1: return "Branch Mispredicts";
+    2: return "ICache Misses";
+    3: return "Instructions Fetched";
+    4: return "Total Cycles";
     default: return "Unknown Stat";
   endcase
 
@@ -264,13 +263,13 @@ module [HASim_Module] mkController
     if (evt_info.eventBoundary == 1) //A model cycle boundary
     begin
       tmp_model_cc = tmp_model_cc + 1;
-      $fdisplay(event_log, "[%d] ***********", tmp_model_cc);
+      $fdisplay(event_log, "[%0d] ***********", tmp_model_cc);
       cur_model_cc <= cur_model_cc + 1;
       beat <= beat + 1;
     end
     
     String eventname = lookup_event(evt_info.eventStringID);
-    $fdisplay(event_log, "[%d] %s: %0d", tmp_model_cc, eventname, evt_info.eventData);
+    $fdisplay(event_log, "[%0d] %s: %0d", tmp_model_cc, eventname, evt_info.eventData);
 
   endrule
   
@@ -304,9 +303,9 @@ module [HASim_Module] mkController
     String assert_msg = strConcat("Assertion failed. ", lookup_assert(as_info.assertStringID));
     
     case (as_info.assertSeverity)
-      ASSERT_Message: $display(assert_msg);
-      ASSERT_Warning: $display(strConcat("WARNING: ", assert_msg));
-      ASSERT_Error:
+      ASSERT_MESSAGE: $display(assert_msg);
+      ASSERT_WARNING: $display(strConcat("WARNING: ", assert_msg));
+      ASSERT_ERROR:
       begin
         $display(strConcat("ERROR: ", assert_msg));
         $finish(1);

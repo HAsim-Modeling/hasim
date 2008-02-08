@@ -9567,3 +9567,123 @@ Directory modules/controller/streams/hybrid
 - fixed a minor bug in stubgen
 - fixed a minor bug in the echo4x4_htg model config
 - added a hybrid pcie version of mem_test
+
+----------
+pellauer    Date: Fri Feb  8 18:23:00 EST 2008  CSN: CSN-hasim-321
+                  Fri Feb  8 23:23:00 UTC 2008
+
+
+Directory modules
+ hasim/                    Locally Added               0 
+
+Directory modules/hasim
+ common/                   Locally Added               0 
+
+Directory modules/hasim/common
+ new-funcp/                Locally Added               0 
+
+Directory modules/hasim/common/new-funcp
+ Debug.bsv                 Locally Added               0 
+ Assertions.bsv            Locally Added               0 
+ bluespec_common.prj       Locally Added               0 
+ hasim_common_newfuncp.awb Locally Added               0 
+ Token.bsv                 Locally Added               0 
+ HASim.bsv                 Locally Added               0 
+ backwards_compatability.bsv Locally Added               0 
+ FPGAFIFOs.bsv             Locally Added               0 
+ BypassFIFO.bsv            Locally Added               0 
+
+Directory modules/hasim
+ functional-partition/     Locally Added               0 
+
+Directory modules/hasim/functional-partition
+ register-state/           Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state
+ scoreboard/               Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard
+ onehot/                   Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.awb Locally Added               0 
+ regstate_scoreboard_onehot.bsv Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state
+ regstate_default.awb      Locally Added               0 
+ manager/                  Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/manager
+ macro-ops/                Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.awb Locally Added               0 
+ regstate_manager_macro_ops.bsv Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state
+ regstate_default.bsv      Locally Added               0 
+ freelist/                 Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/freelist
+ bram/                     Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.awb   Locally Added               0 
+ funcp_freelist_bram.bsv   Locally Added               0 
+
+Directory modules/hasim/functional-partition
+ memory-state/             Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state
+ cache/                    Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/cache
+ null/                     Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/cache/null
+ memstate_cache_null.awb   Locally Added               0 
+ memstate_cache_null.bsv   Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state
+ store-buffer/             Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer
+ bucket-hash/              Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-hash
+ memstate_storebuffer_bucket_hash.awb Locally Added               0 
+ memstate_storebuffer_bucket_hash.bsv Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state
+ manager/                  Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/manager
+ macro-ops/                Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.awb Locally Added               0 
+ memstate_manager_macro_ops.bsv Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state
+ memstate_default.awb      Locally Added               0 
+ memstate_default.bsv      Locally Added               0 
+
+Directory modules/hasim/functional-partition
+ functional_partition_default.awb Locally Added               0 
+ functional_partition_default.bsv Locally Added               0 
+
+Directory modules/controller/assertions
+ AssertionsController.bsv  Locally Modified          320 
+
+Directory modules/controller/hardware-only/simple
+ hasim_simple_controller.bsv Locally Modified          320 
+
+
+Added new functional partition verson with macro-op style arrangement. Currently
+something is wrong in that the performance is very poor (approximately 24 FPGA
+cycles for one model cycle.)
+
+The new partition follows the standardized coding conventions and will enable
+MIPS ISA support.
+
+Michael P.

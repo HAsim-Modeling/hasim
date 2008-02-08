@@ -1,0 +1,28 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Functional Partition
+# %desc Functional Partition 
+#
+# %provides hasim_funcp
+# 
+# %requires funcp_regstate
+# %requires funcp_memstate
+# %requires hasim_isa_datapath
+#
+# %attributes hasim funcp
+#
+# %public functional_partition_default.bsv
+#
+# %param SYNTH_BOUNDARY mkFunctionalPartition "Name of synthesis boundary"
+#
+#
+# %AWB_END
+# */
+

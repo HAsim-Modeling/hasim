@@ -1,0 +1,26 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Memory State for Functional Partition
+# %desc Memory State for Functional Partition
+#
+# %provides funcp_memstate
+#
+# %requires funcp_memstate_manager
+# 
+# %attributes hasim funcp memstate
+#
+# %public memstate_default.bsv
+#
+# %param SYNTH_BOUNDARY mkFUNCP_MemState "Name of synthesis boundary"
+#
+#
+# %AWB_END
+# */
+

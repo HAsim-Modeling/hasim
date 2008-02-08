@@ -196,6 +196,7 @@ sub print_service_methods {
 
     print $stubfile "`include \"rrr.bsh\"\n";
     print $stubfile "`include \"channelio.bsh\"\n";
+    print $stubfile "`include \"umf.bsh\"\n";
     print $stubfile "\n";
 
     print $stubfile "typedef enum\n";
@@ -682,6 +683,7 @@ sub print_service_connections {
     print $stubfile "`include \"soft_connections.bsh\"\n";
     print $stubfile "`include \"rrr.bsh\"\n";
     print $stubfile "`include \"channelio.bsh\"\n";
+    print $stubfile "`include \"umf.bsh\"\n";
     print $stubfile "`include \"asim/rrr/rrr_service_ids.bsh\"\n";
     print $stubfile "\n";
 

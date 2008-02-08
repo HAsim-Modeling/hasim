@@ -9545,3 +9545,25 @@ files are "asim/rrr/foo.h".
 
 The hasim-rrr-stubgen now takes all the source .rrr files and generates
 stubs in a single pass.
+
+----------
+aparasha    Date: Fri Feb  8 13:26:53 EST 2008  CSN: CSN-hasim-320
+                  Fri Feb  8 18:26:53 UTC 2008
+
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          319 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_htg.apm           Locally Modified          319 
+
+Directory config/pm/hasim/demos/mem_test
+ mem_test_hybrid_htg.apm   Locally Added               0 
+
+Directory modules/controller/streams/hybrid
+ hybrid-streams.cpp        Locally Modified          319 
+
+- fixed a minor bug in streams
+- fixed a minor bug in stubgen
+- fixed a minor bug in the echo4x4_htg model config
+- added a hybrid pcie version of mem_test

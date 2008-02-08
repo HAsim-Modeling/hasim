@@ -23,12 +23,12 @@ STREAMS_CLASS STREAMS_CLASS::instance;
 const int MSG_TYPES = 7;
 char MSG_TABLE[MSG_TYPES][256] =
 {
-    "[%12d]: controller: program started.\n",
-    "[%12d]: controller: test program finished succesfully.\n",
-    "[%12d]: controller: test program finished, one or more failures occurred.\n",
-    "[%12d]: controller: ERROR: unexpected timing partition response: ",
+    "[%12u]: controller: program started.\n",
+    "[%12u]: controller: test program finished succesfully.\n",
+    "[%12u]: controller: test program finished, one or more failures occurred.\n",
+    "[%12u]: controller: ERROR: unexpected timing partition response: ",
     "0x%x\n",
-    "[%12d]: controller: model cycles completed: ",
+    "[%12u]: controller: model cycles completed: ",
     "%9u\n"
 };
 
@@ -36,11 +36,11 @@ char MSG_TABLE[MSG_TYPES][256] =
 const int EVENT_TYPES = 6;
 char EVENT_TABLE[EVENT_TYPES][256] =
 {
-    "[%9d]: 1 FET: ",
-    "[%9d]: 2   DEC: ",
-    "[%9d]: 3     EXE: ",
-    "[%9d]: 4       MEM: ",
-    "[%9d]: 5         WBK: ",
+    "[%9u]: 1 FET: ",
+    "[%9u]: 2   DEC: ",
+    "[%9u]: 3     EXE: ",
+    "[%9u]: 4       MEM: ",
+    "[%9u]: 5         WBK: ",
     "%d\n"
 };
 
@@ -109,6 +109,9 @@ STREAMS_CLASS::Request(
     UINT32 *result)
 {
     bool retval = false;
+
+    //cout << "streams: received request: method " << arg0 << " arg1 "
+    //     << arg1 << " arg2 " << arg2 << endl;
 
     // decode request
     switch(arg0)
@@ -183,6 +186,7 @@ STREAMS_CLASS::PrintEvent(
 
     char *fmtstr = EVENT_TABLE[eventtype];
     fprintf(eventfile, fmtstr, payload);
+    fflush(eventfile);
 }
 
 // print stat

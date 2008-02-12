@@ -37,10 +37,9 @@ Packagehint=platforms
 [Hasim Common Library/Params]
 TERM_VDEV_MEMORY=0
 TERM_VDEV_MEMORY_INVALIDATE=0
+TERM_VDEV_STREAMS=0
 
 [Hasim Null Controller]
 File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
 Packagehint=hasim
-
-
 

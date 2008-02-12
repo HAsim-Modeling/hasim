@@ -13,6 +13,9 @@ CONTROLLER_CLASS::CONTROLLER_CLASS() :
     rrrClient(this, &channelio)
 {
     RRRClient = &rrrClient;
+
+    // setup link to starter client
+    starter = STARTER_CLASS::GetInstance();
 }
 
 // destructor
@@ -34,13 +37,13 @@ int
 CONTROLLER_CLASS::Main()
 {
     // send "start" signal to the hardware partition.
-    starter.StartHardware();
+    starter->StartHardware();
 
     // go into the main scheduler loop
     SchedulerLoop();
 
     // end of simulation... cleanup and exit
-    starter.StopHardware();
+    starter->StopHardware();
 
     return 0;
 }

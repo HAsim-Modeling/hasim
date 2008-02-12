@@ -9,6 +9,7 @@ typedef Bit#(8) SIM_STATE;
 
 interface Starter;
     method SIM_STATE getSimState();
+    method Action endSim(Bit#(1) success);
 endinterface
 
 module [HASim_Module] mkStarter(Starter);
@@ -16,8 +17,10 @@ module [HASim_Module] mkStarter(Starter);
     // ----------- state -----------
     Reg#(SIM_STATE) simState        <- mkReg(`HWSTATE_IDLE);
    
-    Connection_Receive#(UINT32) link_Start <- mkConnection_Receive("rrr_service_STARTER_Start");
-    Connection_Receive#(UINT32) link_Stop  <- mkConnection_Receive("rrr_service_STARTER_Stop");
+    // ----------- links -----------
+    Connection_Receive#(UINT32)   link_Start <- mkConnection_Receive("rrr_service_STARTER_Start");
+    Connection_Receive#(UINT32)   link_Stop  <- mkConnection_Receive("rrr_service_STARTER_Stop");
+    Connection_Send#(RRR_Request) link_rrr   <- mkConnection_Send("rrr_client_starter");
 
     // ----------- rules ------------
 
@@ -54,6 +57,16 @@ module [HASim_Module] mkStarter(Starter);
     // return cached simulation state
     method SIM_STATE getSimState();
         return simState;
+    endmethod
+
+    // signal end of simulation
+    method Action endSim(Bit#(1) success);
+        link_rrr.send(RRR_Request { serviceID   : `SERVICE_ID,
+                                    param0      : 0,
+                                    param1      : zeroExtend(success),
+                                    param2      : ?,
+                                    param3      : ?,
+                                    needResponse: False });
     endmethod
 
 endmodule

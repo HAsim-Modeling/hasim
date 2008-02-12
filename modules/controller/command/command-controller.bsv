@@ -44,7 +44,7 @@ endinterface
 // Currently just runs one test and then exits. Doesn't really
 // support too many commands.
 
-module [HASim_Module] mkCommandController#(Streams streams,
+module [HASim_Module] mkCommandController#(Connection_Send#(STREAMS_REQUEST) link_streams,
                                            EventsController events_controller,
                                            StatsController stats_controller,
                                            AssertionsController asserts_controller)
@@ -126,7 +126,10 @@ module [HASim_Module] mkCommandController#(Streams streams,
      state <= CON_Running;
      link_leds.send(FRONTP_MASKED_LEDS {state: zeroExtend(4'b0011), mask: zeroExtend(4'b1111)});
 
-     streams.printMessage1P(0, truncate(curTick)); //Message 0 = Program Started.
+     link_streams.send(STREAMS_REQUEST { streamID: STREAMS_MESSAGE,
+                                         stringID: tagged STRINGID_message MESSAGES_START,
+                                         payload0: truncate(curTick), // Program Started
+                                         payload1: ? });
 
   endrule
   
@@ -144,13 +147,19 @@ module [HASim_Module] mkCommandController#(Streams streams,
           if (pf)  // It passed
           begin
             link_leds.send(FRONTP_MASKED_LEDS {state: zeroExtend(4'b1001), mask: zeroExtend(4'b1111)});
-            streams.printMessage1P(1, truncate(curTick)); // Message 1 = Success
+            link_streams.send(STREAMS_REQUEST { streamID: STREAMS_MESSAGE,
+                                                stringID: tagged STRINGID_message MESSAGES_SUCCESS,
+                                                payload0: truncate(curTick),
+                                                payload1: ? });
             passed <= True;
           end
           else  // It failed
           begin
             link_leds.send(FRONTP_MASKED_LEDS {state: zeroExtend(4'b1101), mask: zeroExtend(4'b1111)});
-            streams.printMessage1P(2, truncate(curTick)); // Message 2 = Failure
+            link_streams.send(STREAMS_REQUEST { streamID: STREAMS_MESSAGE,
+                                                stringID: tagged STRINGID_message MESSAGES_FAILURE,
+                                                payload0: truncate(curTick),
+                                                payload1: ? });
           end
           // Either way we begin dumping.
           stats_controller.doCommand(Stats_Dump);
@@ -158,7 +167,10 @@ module [HASim_Module] mkCommandController#(Streams streams,
         end
       default: // Unexpected Response
       begin
-        streams.printMessage2P(3, truncate(curTick), 0); // Message 3 = Unexpected Response
+        link_streams.send(STREAMS_REQUEST { streamID: STREAMS_MESSAGE,
+                                            stringID: tagged STRINGID_message MESSAGES_ERROR,
+                                            payload0: truncate(curTick),
+                                            payload1: zeroExtend(pack(resp)) });
       end
     endcase
 
@@ -171,7 +183,23 @@ module [HASim_Module] mkCommandController#(Streams streams,
   rule passOnStat (state == CON_Finished && finishing != 0);
 
     StatInfo si <- stats_controller.getNextStat();
-    streams.printStat(si.statStringID, si.statValue);
+
+    // TEMPORARY: translate stringID by cheating and looking at the stringIDs
+    // produced by hasim-dict. We have to do this because the sub-controller
+    // gives us a hand-written raw ID
+    DICT_STATS stringID = case (si.statStringID)
+                              0: STATS_INSTS_COMMITTED;
+                              1: STATS_DCACHE_MISSES;
+                              2: STATS_BPRED_MISPREDS;
+                              3: STATS_ICACHE_MISSES;
+                              4: STATS_INSTS_FETCHED;
+                              5: STATS_TOTAL_CYCLES;
+                          endcase;
+
+    link_streams.send(STREAMS_REQUEST { streamID: STREAMS_STAT,
+                                        stringID: tagged STRINGID_stat stringID,
+                                        payload0: si.statValue,
+                                        payload1: ? });
 
   endrule
 
@@ -182,7 +210,22 @@ module [HASim_Module] mkCommandController#(Streams streams,
   rule passOnEvent (True);
 
     EventInfo ei <- events_controller.getNextEvent();
-    streams.printEvent(ei.eventStringID, modelTick, ei.eventData);
+
+    // TEMPORARY: translate stringID by cheating and looking at the stringIDs
+    // produced by hasim-dict. We have to do this because the sub-controller
+    // gives us a hand-written raw ID
+    DICT_EVENTS stringID = case (ei.eventStringID)
+                               0: EVENTS_FETCH;
+                               1: EVENTS_DECODE;
+                               2: EVENTS_EXECUTE;
+                               3: EVENTS_MEMORY;
+                               4: EVENTS_WRITEBACK;
+                           endcase;
+
+    link_streams.send(STREAMS_REQUEST { streamID: STREAMS_EVENT,
+                                        stringID: tagged STRINGID_event stringID,
+                                        payload0: truncate(modelTick),
+                                        payload1: pack(ei.eventData) });
     if (ei.eventBoundary == 1)
     begin
         modelTick <= modelTick + 1;
@@ -198,7 +241,19 @@ module [HASim_Module] mkCommandController#(Streams streams,
   rule passOnAssert (True);
 
     AssertInfo ai <- asserts_controller.getAssertion();
-    streams.printAssertion(ai.assertStringID, zeroExtend(pack(ai.assertSeverity)));
+
+    // TEMPORARY: translate stringID by cheating and looking at the stringIDs
+    // produced by hasim-dict. We have to do this because the sub-controller
+    // gives us a hand-written raw ID
+    DICT_ASSERTS stringID = case (ai.assertStringID)
+                                0: ASSERTS_NOTOKENS;
+                                1: ASSERTS_NOREGISTERS;
+                            endcase;
+
+    link_streams.send(STREAMS_REQUEST { streamID: STREAMS_ASSERT,
+                                        stringID: tagged STRINGID_assert stringID,
+                                        payload0: zeroExtend(pack(ai.assertSeverity)),
+                                        payload1: ? });
  
   endrule
 
@@ -209,7 +264,10 @@ module [HASim_Module] mkCommandController#(Streams streams,
 
   rule heartBeat (beat == 1000);
 
-    streams.printMessage2P(5, truncate(curTick), truncate(modelTick)); //Message 5 = 1000 Cycles simulated.
+    link_streams.send(STREAMS_REQUEST { streamID: STREAMS_MESSAGE,
+                                        stringID: tagged STRINGID_message MESSAGES_HEARTBEAT,
+                                        payload0: truncate(curTick),
+                                        payload1: truncate(modelTick) });
     beat <= 0;
 
   endrule
@@ -221,7 +279,6 @@ module [HASim_Module] mkCommandController#(Streams streams,
  
   rule finishUp (state == CON_Finished && finishing != 0);
   
-  
     finishing <= finishing - 1;
 
   endrule
@@ -230,14 +287,13 @@ module [HASim_Module] mkCommandController#(Streams streams,
   
   // The extra time has run out and it's time to actually finish.
   // End the simulation. Our exit code is our pass-fail status.
-  // (In real hardware this rule will be removed by the synthesis tools.)
   
   rule endSim (state == CON_Finished && finishing == 0);
   
     if (passed)
-      $finish(0);
+      starter.endSim(0);
     else
-      $finish(1);
+      starter.endSim(1);
     
   endrule
 

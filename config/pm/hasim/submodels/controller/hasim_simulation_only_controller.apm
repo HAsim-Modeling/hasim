@@ -28,8 +28,6 @@ Packagehint=hasim
 File=modules/controller/assertions/hasim_assertions_controller.awb
 Packagehint=hasim
 
-
-
 [Hasim simulation-only simple controller (deprecated)/Requires]
 hasim_stats_controller=HAsim Stats Controller
 hasim_local_controller=Hasim local controller

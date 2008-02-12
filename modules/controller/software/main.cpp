@@ -11,6 +11,7 @@
 
 #include "main.h"
 #include "control.h"
+#include "asim/dict/init.h"
 
 // =======================================
 //                 MAIN

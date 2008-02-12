@@ -15,6 +15,7 @@
 #
 # %sources -t BSV -v PUBLIC null-starter.bsv
 # %sources -t H   -v PUBLIC null-starter.h
+# %sources -t CPP -v PUBLIC null-starter.cpp
 #
 # %param HWSTATE_IDLE        0  "encoding for simulation state IDLE"
 # %param HWSTATE_RUNNING     1  "encoding for simulation state RUNNING"

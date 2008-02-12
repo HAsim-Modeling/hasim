@@ -28,7 +28,6 @@ hasim_events_controller=HAsim Events Controller
 hasim_stats_controller=HAsim Stats Controller
 hasim_assertions_controller=HAsim Assertions Controller
 hasim_command_controller=Hasim Command Controller
-streams=Hybrid Streams
 
 [Hasim local controller]
 File=modules/controller/local/hasim_local_controller.awb
@@ -50,11 +49,7 @@ Packagehint=hasim
 File=modules/controller/starter/hybrid-basic-starter.awb
 Packagehint=hasim
 
-
 [Hasim Command Controller]
 File=modules/controller/command/command-controller.awb
 Packagehint=hasim
 
-[Hybrid Streams]
-File=modules/controller/streams/hybrid/hybrid-streams.awb
-Packagehint=hasim

@@ -9687,3 +9687,80 @@ The new partition follows the standardized coding conventions and will enable
 MIPS ISA support.
 
 Michael P.
+
+----------
+aparasha    Date: Mon Feb 11 21:40:00 EST 2008  CSN: CSN-hasim-323
+                  Tue Feb 12 02:40:00 UTC 2008
+
+
+Directory config/pm/hasim/demos/mem_test
+ mem_test_hybrid.apm       Locally Modified          322 
+ mem_test_hybrid_htg.apm   Locally Modified          322 
+
+Directory config/pm/hasim/submodels/controller
+ hybrid_standard_controller.apm Locally Modified          322 
+ hasim_simulation_only_controller.apm Locally Modified          322 
+ hardware_null_controller.apm Locally Modified          322 
+ hardware_standard_controller.apm Locally Modified          322 
+
+Directory modules/controller/starter
+ null-starter.h            Locally Modified          322 
+ hybrid-basic-starter.cpp  Locally Modified          322 
+ hybrid-null-starter.awb   Locally Modified          322 
+ null-starter.bsv          Locally Modified          322 
+ hybrid-basic-starter.h    Locally Modified          322 
+ hybrid-basic-starter.bsv  Locally Modified          322 
+ null-starter.cpp          Locally Added               0 
+
+Directory modules/controller
+ standard-controller.awb   Locally Modified          322 
+
+Directory modules/controller/software
+ control.cpp               Locally Modified          322 
+ main.cpp                  Locally Modified          322 
+ control.h                 Locally Modified          322 
+
+Directory modules/controller/assertions
+ AssertionsController.bsv  Locally Modified          322 
+
+Directory modules/controller
+ standard-controller.bsv   Locally Modified          322 
+ streams/                  Locally Removed           322 
+
+Directory modules/controller/streams
+ hybrid/                   Locally Removed           322 
+
+Directory modules/controller/streams/hybrid
+ hybrid-streams-services.rrr Locally Removed           322 
+ hybrid-streams.h          Locally Removed           322 
+ hybrid-streams.awb        Locally Removed           322 
+ hybrid-streams.bsv        Locally Removed           322 
+ hybrid-streams.cpp        Locally Removed           322 
+
+Directory modules/controller/streams
+ simulation/               Locally Removed           322 
+
+Directory modules/controller/streams/simulation
+ simulation-streams.awb    Locally Removed           322 
+ simulation-streams.bsv    Locally Removed           322 
+
+Directory modules/controller/command
+ command-controller.bsv    Locally Modified          322 
+
+Directory modules/system/mem_test
+ mem_test.awb              Locally Modified          322 
+ MemTest.bsv               Locally Modified          322 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          322 
+ HAsimPlatformInterface.bsv Locally Modified          322 
+ hasim-platform-interface.awb Locally Modified          322 
+
+- moved streams to platforms as a virtual device
+- modified command controller to talk to streams virtual device
+- modified memtest to use streams instead of $display
+- added fpga->host endSim RRR call to hybrid Starter
+- added endSim call to simulation Starter that calls $finish()
+- modified command controller to call Starter.endSim() at end
+  of simulation (instead of directly calling $finish()).
+

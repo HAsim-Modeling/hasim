@@ -7,6 +7,7 @@ import memory::*;
 import rrr::*;
 
 `include "asim/rrr/rrr_service_connections.bsh"
+`include "streams.bsh"
 
 typedef struct
 {
@@ -29,18 +30,22 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     Connection_Server#(MEM_Request, MEM_Value) link_memory       <- mkConnection_Server("vdev_memory");
     Connection_Send#(MEM_Addr)                 link_memory_inval <- mkConnection_Send("vdev_memory_invalidate");
 
-    // direct RRR connections
-    Connection_Receive#(RRR_Request) link_rrr_terminal <- mkConnection_Receive("rrr_terminal");
+    // other virtual devices
+    Connection_Receive#(STREAMS_REQUEST) link_streams <- mkConnection_Receive("vdev_streams");
+
+    // direct RRR links (TEMPORARY, these will be automatically generated in future)
+    Connection_Receive#(RRR_Request) link_rrr <- mkConnection_Receive("rrr_client_starter");
 
     // instantiate low-level platform interface
     LowLevelPlatformInterface       llpint          <- mkLowLevelPlatformInterface();
 
     // instantiate virtual devices
-    FrontPanel                      frontPanel      <- mkFrontPanel(llpint);
-    Memory                          memory          <- mkMemory(llpint);
+    FrontPanel frontPanel <- mkFrontPanel(llpint);
+    Memory     memory     <- mkMemory(llpint);
+    Streams    streams    <- mkStreams(llpint);
 
     // connection terminus
-    let     t <- mkConnectionTerminus();
+    let t <- mkConnectionTerminus();
 
     // auto-generated submodule for RRR connections
     let rrr_service_links <- mkServiceConnections(llpint.rrrServer);
@@ -105,14 +110,20 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     
     endrule
 
-    // send RRR request from terminal
-    rule send_rrr_req_void (True);
+    rule send_streams_req (True);
 
-        // read in RRR request from connection and translate
-        // it to a method call to RRR client
-        let req = link_rrr_terminal.receive();
-        link_rrr_terminal.deq();
+        // read in streams request and send it to device
+        let sreq = link_streams.receive();
+        link_streams.deq();
+        streams.makeRequest(sreq);
 
+    endrule
+
+    // direct RRR links (TEMPORARY, these will be automatically generated in future)
+    rule translate_rrr_req (True);
+
+        let req = link_rrr.receive();
+        link_rrr.deq();
         llpint.rrrClient.makeRequest(req);
 
     endrule

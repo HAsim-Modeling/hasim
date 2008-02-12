@@ -20,7 +20,6 @@ Packagehint=hasim
 hasim_software_controller=Null Software Controller
 starter=Null Starter
 
-
 [Null Software Controller]
 File=modules/controller/software/null-software-controller.awb
 Packagehint=hasim

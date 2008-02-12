@@ -3,6 +3,8 @@ import soft_connections::*;
 import memory::*;
 import rrr::*;
 
+`include "streams.bsh"
+
 module [HASim_Module] mkConnectionTerminus();
 
     if (`TERM_FPGA_SWITCHES == 1)
@@ -20,9 +22,11 @@ module [HASim_Module] mkConnectionTerminus();
     if (`TERM_VDEV_MEMORY_INVALIDATE == 1)
         Connection_Receive#(MEM_Addr) link_memory_inval <- mkConnection_Receive("vdev_memory_invalidate");
 
-    if (`TERM_RRR_TERMINAL == 1)
-    begin
-        Connection_Send#(RRR_Request) link_rrr <- mkConnection_Send("rrr_terminal");
-    end
+    if (`TERM_VDEV_STREAMS == 1)
+        Connection_Send#(STREAMS_REQUEST) link_streams <- mkConnection_Send("vdev_streams");
+
+    // direct RRR links (TEMPORARY, these will be automatically generated in future)
+    if (`TERM_RRR_CLIENT_STARTER == 1)
+        Connection_Send#(RRR_Request) link_rrr <- mkConnection_Send("rrr_client_starter");
 
 endmodule

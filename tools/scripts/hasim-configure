@@ -290,11 +290,13 @@ sub make_dirs {
     my $bdir = HAsim::Util::path_append($builddir, $HAsim::Bluespec::tmp_bsc_dir);
     $status = system("mkdir -p " . $bdir);
     
-    __make_dirs($root, HAsim::Util::path_append($builddir,"hw"));
-    __make_wrappers($root, HAsim::Util::path_append($builddir,"hw"), 1);
+    my $hwdir = HAsim::Util::path_append($builddir, "hw");
+    __make_dirs($root, $hwdir);
+    $status = system("mkdir -p " . ${hwdir} . "/include/asim/provides");
+    __make_wrappers($root, $hwdir, 1);
 
     # Software (sw) tree.
-    my $swdir = HAsim::Util::path_append($builddir,"sw");
+    my $swdir = HAsim::Util::path_append($builddir, "sw");
     __make_dirs($root, $swdir);
     $status = system("mkdir -p " . ${swdir} . "/include/asim/provides");
     $status = system("mkdir -p " . ${swdir} . "/include/asim/restricted");
@@ -356,6 +358,7 @@ sub make_bsvfiles {
     }
     __make_bsvfiles($root,
                     HAsim::Util::path_append($builddir,"hw"),
+                    HAsim::Util::path_append($builddir,"hw/include/asim/provides"),
                     HAsim::Util::path_append($builddir,"sw/include/asim/provides"));
     return 1;
 }
@@ -365,6 +368,7 @@ sub make_bsvfiles {
 sub __make_bsvfiles {
     my $module = shift;
     my $parent_dir = shift;
+    my $hw_inc_dir = shift;
     my $sw_inc_dir = shift;
 
     # identify correct directory in build tree
@@ -380,7 +384,7 @@ sub __make_bsvfiles {
     ##
 
     my $provides = $module->provides();
-    my $bshfile = HAsim::Util::path_append($my_dir,"$provides.bsh");
+    my $bshfile = HAsim::Util::path_append($hw_inc_dir,"$provides.bsh");
     my $bsvfile = HAsim::Util::path_append($my_dir,"$provides.bsv");
     my $hfile   = HAsim::Util::path_append($sw_inc_dir,"$provides.h");
 
@@ -421,7 +425,6 @@ sub __make_bsvfiles {
     print BSHFILE "`endif  // INCLUDED_MODULE_${safe_provides}\n";
 
     CORE::close(BSHFILE);
-    
 
     CORE::open(BSVFILE, ">$bsvfile");
 
@@ -434,7 +437,7 @@ sub __make_bsvfiles {
 
     # Prevent circular imports
     print BSVFILE "`define BUILDING_MODULE_${safe_provides}\n";
-    print BSVFILE "`include \"${provides}.bsh\"\n";
+    print BSVFILE "`include \"asim/provides/${provides}.bsh\"\n";
     print BSVFILE "\n";
 
     # Add includes of public and private bsc files
@@ -488,7 +491,7 @@ sub __make_bsvfiles {
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-	__make_bsvfiles($child,$my_dir,$sw_inc_dir);
+	__make_bsvfiles($child, $my_dir, $hw_inc_dir, $sw_inc_dir);
     }
 
     return 1;
@@ -672,6 +675,7 @@ sub generate_makefile_top {
     HAsim::Util::hash_set($replacements_r, '@ROOT_DIR_HW@', "hw");
     HAsim::Util::hash_set($replacements_r, '@ROOT_DIR_SW@', "sw");
 
+    HAsim::Util::hash_set($replacements_r, '@ROOT_DIR_HW_INC@', "hw/include");
     HAsim::Util::hash_set($replacements_r, '@ROOT_DIR_SW_INC@', "sw/include");
 
     # gather other info recursively

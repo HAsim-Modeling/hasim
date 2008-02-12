@@ -28,6 +28,7 @@ defs = {
     'MAKE_ALL_TARGET'    : '@MAKE_ALL_TARGET@',
     'ROOT_DIR_MODEL'     : '@ROOT_DIR_MODEL@',
     'ROOT_DIR_HW'        : '@ROOT_DIR_HW@',
+    'ROOT_DIR_HW_INC'    : '@ROOT_DIR_HW_INC@',
     'ROOT_DIR_SW'        : '@ROOT_DIR_SW@',
     'ROOT_DIR_SW_INC'    : '@ROOT_DIR_SW_INC@',
     'TMP_BSC_DIR'        : '@TMP_BSC_DIR@',

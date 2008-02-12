@@ -9764,3 +9764,29 @@ Directory modules/common/platform_interface/hasim
 - modified command controller to call Starter.endSim() at end
   of simulation (instead of directly calling $finish()).
 
+
+----------
+mcadler     Date: Tue Feb 12 17:08:28 EST 2008  CSN: CSN-hasim-324
+                  Tue Feb 12 22:08:28 UTC 2008
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          323 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          323 
+ SCons.hw.template         Locally Modified          323 
+
+Put generated Bluespec interface include files in asim/provides tree.
+
+For now you can include these interface files either with the new style:
+
+`include "asim/provides/foo.bsh"
+
+or the old style:
+
+`include "foo.bsh"
+
+This works because both the root of the include tree and the leaf are
+on the include search path.  When we are ready we can drop the leaf
+from the search path by editing SCons.hw.template.

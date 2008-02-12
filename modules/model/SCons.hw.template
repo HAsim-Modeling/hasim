@@ -39,6 +39,8 @@ ALL_DIRS_FROM_CWD = ":".join([rebase_directory(x, CWD_REL) for x in clean_split(
 ALL_BUILD_DIRS_FROM_CWD = transform_string_list(ALL_DIRS_FROM_CWD, ':', '', '/' + TMP_BSC_DIR)
 ALL_LIB_DIRS_FROM_CWD = ALL_DIRS_FROM_CWD + ':' + ALL_BUILD_DIRS_FROM_CWD
 
+ROOT_DIR_HW_INC = env['DEFS']['ROOT_DIR_HW_INC']
+ROOT_DIR_HW_INC_REL = rebase_directory(ROOT_DIR_HW_INC, CWD_REL)
 
 ##
 ## First compute dependence.  It runs pretty quickly so we do it every time
@@ -48,7 +50,7 @@ ALL_LIB_DIRS_FROM_CWD = ALL_DIRS_FROM_CWD + ':' + ALL_BUILD_DIRS_FROM_CWD
 DERIVED = ''
 if (SURROGATE_BSVS != ''):
     DERIVED = ' -derived "' + SURROGATE_BSVS + '"'
-s = os.system('hasim-bsc-mkdepend -bdir ' + TMP_BSC_DIR + DERIVED + ' -p +:' + ALL_LIB_DIRS_FROM_CWD + ' ' + WRAPPER_BSVS + ' > .depends-bsv')
+s = os.system('hasim-bsc-mkdepend -bdir ' + TMP_BSC_DIR + DERIVED + ' -p +:' + ROOT_DIR_HW_INC_REL + ':' + ROOT_DIR_HW_INC_REL + '/asim/provides:' + ALL_LIB_DIRS_FROM_CWD + ' ' + WRAPPER_BSVS + ' > .depends-bsv')
 if (s & 0xffff) != 0:
     print 'Aborting due to dependence errors'
     sys.exit(1)
@@ -84,6 +86,7 @@ def compile_bo(source, target, env, for_signature):
     ##         newline emitted by bsc's printType().  New compilers will make
     ##         this unnecessary.
     cmd = BSC + ' ' + BSC_FLAGS + ' -elab -verilog -p +:' + \
+          ROOT_DIR_HW_INC + ':' + ROOT_DIR_HW_INC + '/asim/provides:' + \
           ALL_LIB_DIRS_FROM_ROOT + ':' + TMP_BSC_DIR + ' -bdir ' + bdir + \
           ' -vdir ' + bdir + ' -simdir ' + bdir + ' ' + \
           str(source[0]) + ' 2>&1 | sed \':S;/{[^}]*$/{N;bS};s/\\n/\\\\n/g\' | tee ' + log + ' ; test $${PIPESTATUS[0]} -eq 0'

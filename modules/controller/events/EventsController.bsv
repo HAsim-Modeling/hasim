@@ -3,6 +3,8 @@ import FIFO::*;
 import hasim_modellib::*;
 import soft_connections::*;
 
+`include "streams.bsh"
+
 // EventsController
 
 // Abstracts the communication between the main hardware controller and the 
@@ -30,7 +32,7 @@ typedef enum
 
 // A module which serially passes Events back to the main hardware controller.
 
-module [Connected_Module] mkEventsController
+module [Connected_Module] mkEventsController#(Connection_Send#(STREAMS_REQUEST) link_streams)
     //interface:
                 (EventsController);
 
@@ -52,8 +54,28 @@ module [Connected_Module] mkEventsController
   //Track our internal state
   Reg#(EVC_State)   state <- mkReg(EVC_Enabled);
   
+  // The current FPGA clock cycle
+  Reg#(Bit#(64)) curTick <- mkReg(minBound);
+
+  // The current model clock cycle, according to the Event Controller
+  Reg#(Bit#(64)) modelTick <- mkReg(0);
+  
+  // Every so often we emit a heartbeat just to let the outside world
+  // know that the hardware is still alive.
+  Reg#(Bit#(64)) beat <- mkReg(0);
+
   // ***** Rules *****
   
+  // tick
+  
+  // Count the current FPGA cycle
+  
+  rule tick (True);
+  
+    curTick <= curTick + 1;
+  
+  endrule
+
   // sendReq
   
   // Send the next request to the Events.
@@ -115,6 +137,53 @@ module [Connected_Module] mkEventsController
      
   endrule
   
+  // heartBeat
+
+  // An occaisional heartbeat just to let the outside world know the hardware is alive.
+  // Currently happens every 1000 model cycles.
+
+  rule heartBeat (beat == 1000);
+
+    link_streams.send(STREAMS_REQUEST { streamID: STREAMID_HEARTBEAT,
+                                        stringID: STREAMS_HEARTBEAT_MSG,
+                                        payload0: truncate(curTick),
+                                        payload1: truncate(modelTick()) });
+    beat <= 0;
+
+  endrule
+
+  // printEvent
+  
+  // print the next event via Streams.
+  
+  rule printEvent(beat != 1000);
+  
+    let evt = eventQ.first();
+    eventQ.deq();
+
+    // TEMPORARY: manually translate stringID. We have to do this because
+    // of the incremental way in which raw stringIDs are generated
+    DICT_STREAMS stringID = case (evt.eventStringID)
+                                0: STREAMS_EVENT_FETCH;
+                                1: STREAMS_EVENT_DECODE;
+                                2: STREAMS_EVENT_EXECUTE;
+                                3: STREAMS_EVENT_MEMORY;
+                                4: STREAMS_EVENT_WRITEBACK;
+                            endcase;
+
+    link_streams.send(STREAMS_REQUEST { streamID: STREAMID_EVENT,
+                                        stringID: stringID,
+                                        payload0: truncate(modelTick),
+                                        payload1: pack(evt.eventData) });
+
+    if (evt.eventBoundary == 1)
+    begin
+        modelTick <= modelTick + 1;
+        beat <= beat + 1;
+    end
+
+  endrule
+
   // ***** Methods *****
   
   // doCommand
@@ -130,18 +199,6 @@ module [Connected_Module] mkEventsController
     
   endmethod
 
-  // getNextEvent
-  
-  // Return the next event, which will presumably get passed on to the event dumper.
-  
-  method ActionValue#(EventInfo) getNextEvent();
-  
-    let evt = eventQ.first();
-    eventQ.deq();
-    return evt;
-    
-  endmethod
-  
   // noMoreEvents
   
   // Let the main controller know that no more events are coming.
@@ -152,5 +209,5 @@ module [Connected_Module] mkEventsController
     return isBoundary;
   
   endmethod
-  
+
 endmodule

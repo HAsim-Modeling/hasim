@@ -12,8 +12,10 @@ class STARTER_CLASS: public HASIM_MODULE_CLASS
 
     public:
         static STARTER GetInstance() { return &instance; }
-        void StartHardware() {}
-        void StopHardware()  {}
+        void Run()       {}
+        void Pause()     {}
+        void Sync()      {}
+        void DumpStats() {}
 };
 
 #endif

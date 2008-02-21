@@ -16,6 +16,9 @@
 #
 # %public EventsControllerHeader.bsv EventsController.bsv
 #
+# %sources -t DICT -v PUBLIC event-streams.dic
+# %sources -t DICT -v PUBLIC event-streamid.dic
+#
 # %AWB_END
 # */
 

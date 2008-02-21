@@ -3,6 +3,8 @@ import FIFO::*;
 import hasim_common::*;
 import soft_connections::*;
 
+`include "streams.bsh"
+
 // AssertionsController
 
 // Abstracts the communication between the main hardware controller and the 
@@ -10,13 +12,11 @@ import soft_connections::*;
 
 `define CHAIN_IDX_ASSERTS 4
 
-// typedef ASSERTION_DATA AssertData; -- Angshuman --
-
 // mkAssertionsController
 
 // A module which serially passes Assertion failures back to the main hardware controller.
 
-module [Connected_Module] mkAssertionsController
+module [Connected_Module] mkAssertionsController#(Connection_Send#(STREAMS_REQUEST) link_streams)
     //interface:
                 (AssertionsController);
 
@@ -32,7 +32,7 @@ module [Connected_Module] mkAssertionsController
   Reg#(Bit#(8))       cur <- mkReg(0);
   
   // The minimum severity of assertions we should pass along
-  Reg#(AssertionSeverity) min_severity <- mkReg(ASSERT_Message); // -- Angshuman --
+  Reg#(AssertionSeverity) min_severity <- mkReg(ASSERT_Message);
   
   // ***** Rules *****
   
@@ -79,6 +79,27 @@ module [Connected_Module] mkAssertionsController
      
   endrule
   
+  // printAssert: asses an Assertion Failure on to the Streams for reporting
+
+  rule printAssert (True);
+
+    let ast = failQ.first();
+    failQ.deq();
+
+    // TEMPORARY: manually translate stringID. We have to do this because
+    // of the incremental way in which raw stringIDs are generated
+    DICT_STREAMS stringID = case (ast.assertStringID)
+                                0: STREAMS_ASSERT_NOTOKENS;
+                                1: STREAMS_ASSERT_NOREGISTERS;
+                            endcase;
+
+    link_streams.send(STREAMS_REQUEST { streamID: STREAMID_ASSERT,
+                                        stringID: stringID,
+                                        payload0: zeroExtend(pack(ast.assertSeverity)),
+                                        payload1: ? });
+ 
+  endrule
+
   // ***** Methods *****
   
   // doCommand
@@ -88,23 +109,12 @@ module [Connected_Module] mkAssertionsController
   method Action doCommand(AssertionsCommand com);
     
     case (com)
-      Asserts_MinSeverity_Message: min_severity <= ASSERT_Message; // -- Angshuman --
-      Asserts_MinSeverity_Warning: min_severity <= ASSERT_Warning; // -- Angshuman --
-      Asserts_MinSeverity_Error:   min_severity <= ASSERT_Error;   // -- Angshuman --
+      Asserts_MinSeverity_Message: min_severity <= ASSERT_Message;
+      Asserts_MinSeverity_Warning: min_severity <= ASSERT_Warning;
+      Asserts_MinSeverity_Error:   min_severity <= ASSERT_Error;
     endcase
     
   endmethod
 
-  // getAssertion
-  
-  // Return the next assertion failure, which will presumably get passed on to outside world.
-  
-  method ActionValue#(AssertInfo) getAssertion();
-  
-    let ast = failQ.first();
-    failQ.deq();
-    return ast;
-    
-  endmethod
-  
+
 endmodule

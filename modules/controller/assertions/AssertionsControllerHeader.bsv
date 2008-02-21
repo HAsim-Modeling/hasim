@@ -17,7 +17,6 @@ import hasim_common::*;
 interface AssertionsController;
 
   method Action doCommand(AssertionsCommand com);
-  method ActionValue#(AssertInfo) getAssertion();
 
 endinterface
 

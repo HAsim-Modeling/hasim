@@ -1,0 +1,6 @@
+def STREAMS.STAT_INSTS_COMMITTED  "instructions committed = %u\n";
+def STREAMS.STAT_DCACHE_MISSES    "dcache misses          = %u\n";
+def STREAMS.STAT_BPRED_MISPREDS   "branch mispredicts     = %u\n";
+def STREAMS.STAT_ICACHE_MISSES    "icache misses          = %u\n";
+def STREAMS.STAT_INSTS_FETCHED    "instructions fetched   = %u\n";
+def STREAMS.STAT_TOTAL_CYCLES     "total cycles           = %u\n";

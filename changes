@@ -9790,3 +9790,83 @@ or the old style:
 This works because both the root of the include tree and the leaf are
 on the include search path.  When we are ready we can drop the leaf
 from the search path by editing SCons.hw.template.
+
+----------
+aparasha    Date: Thu Feb 21 14:24:34 EST 2008  CSN: CSN-hasim-325
+                  Thu Feb 21 19:24:34 UTC 2008
+
+
+Directory config/pm/hasim/submodels/controller
+ hybrid_standard_controller.apm Locally Modified          324 
+ hardware_standard_controller.apm Locally Modified          324 
+
+Directory modules/controller/starter
+ null-starter.h            Locally Modified          324 
+ hybrid-basic-starter.cpp  Locally Modified          324 
+ hybrid-basic-starter-services.rrr Locally Modified          324 
+ hybrid-basic-starter.h    Locally Modified          324 
+ hybrid-basic-starter.awb  Locally Modified          324 
+ hybrid-basic-starter.bsv  Locally Modified          324 
+
+Directory modules/controller/events
+ hasim_events_controller.awb Locally Modified          324 
+ EventsController.bsv      Locally Modified          324 
+ event-streamid.dic        Locally Added               0 
+ EventsControllerHeader.bsv Locally Modified          324 
+ event-streams.dic         Locally Added               0 
+
+Directory modules/controller
+ module/                   Locally Added               0 
+
+Directory modules/controller/module
+ module-streams.dic        Locally Added               0 
+ module-controller.bsv     Locally Added               0 
+ module-streamid.dic       Locally Added               0 
+ module-controller.awb     Locally Added               0 
+
+Directory modules/controller
+ standard-controller.awb   Locally Modified          324 
+
+Directory modules/controller/software
+ control.cpp               Locally Modified          324 
+ standard-software-controller.awb Locally Modified          324 
+ control.h                 Locally Modified          324 
+
+Directory modules/controller/assertions
+ AssertionsControllerHeader.bsv Locally Modified          324 
+ assert-streamid.dic       Locally Added               0 
+ hasim_assertions_controller.awb Locally Modified          324 
+ AssertionsController.bsv  Locally Modified          324 
+ assert-streams.dic        Locally Added               0 
+
+Directory modules/controller
+ standard-controller.bsv   Locally Modified          324 
+
+Directory modules/controller/stats
+ stat-streamid.dic         Locally Added               0 
+ StatsControllerHeader.bsv Locally Modified          324 
+ stat-streams.dic          Locally Added               0 
+ hasim_stats_controller.awb Locally Modified          324 
+ StatsController.bsv       Locally Modified          324 
+
+Directory modules/controller
+ command/                  Locally Removed           324 
+
+Directory modules/controller/command
+ command-controller.awb    Locally Removed           324 
+ command-controller.bsv    Locally Removed           324 
+
+Directory modules/system/mem_test
+ memtest-streamid.dic      Locally Added               0 
+ mem_test.awb              Locally Modified          324 
+ MemTest.bsv               Locally Modified          324 
+ memtest-streams.dic       Locally Added               0 
+
+- renamed command controller to module controller
+- re-distributed responsibilities of standard, module,
+  event, stat and assertion controllers.
+- updated 'starter' module to include a new set of
+  command interfaces used by standard controller
+- updated MemTest to use dictionaries.
+- moved dictionaries from streams into the actual
+  subcontroller modules that use them.

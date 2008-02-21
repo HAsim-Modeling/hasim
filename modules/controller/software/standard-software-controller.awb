@@ -16,5 +16,7 @@
 # %sources -t H   -v PUBLIC  main.h control.h
 # %sources -t CPP -v PRIVATE main.cpp control.cpp
 #
+# %param REGISTER_STREAMS 0 "Register with Streams Module"
+#
 # %AWB_END
 # */

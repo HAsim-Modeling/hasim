@@ -30,8 +30,10 @@ class STARTER_CLASS: public RRR_SERVICE_CLASS,
         void Poll();
 
         // client methods
-        void StartHardware();
-        void StopHardware();
+        void Run();
+        void Pause();
+        void Sync();
+        void DumpStats();
 };
 
 #endif

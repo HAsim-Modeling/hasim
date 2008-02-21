@@ -5,9 +5,6 @@ import memory::*;
 
 `include "streams.bsh"
 
-`include "asim/dict/STREAMS.bsh"
-`include "asim/dict/MEMTEST.bsh"
-
 `define LAST_ADDR 'h2000
 
 typedef enum
@@ -43,8 +40,8 @@ module [HASim_Module] mkSystem ();
 
         if (v != 0)
         begin
-            link_streams.send(STREAMS_REQUEST { streamID: STREAMS_MEMTEST,
-                                                stringID: tagged STRINGID_memtest MEMTEST_DATA,
+            link_streams.send(STREAMS_REQUEST { streamID: STREAMID_MEMTEST,
+                                                stringID: STREAMS_MEMTEST_DATA,
                                                 payload0: addr,
                                                 payload1: v });
         end
@@ -56,8 +53,8 @@ module [HASim_Module] mkSystem ();
 
     rule terminate (state != STATE_finished && addr == `LAST_ADDR);
 
-        link_streams.send(STREAMS_REQUEST { streamID: STREAMS_MEMTEST,
-                                            stringID: tagged STRINGID_memtest MEMTEST_DONE,
+        link_streams.send(STREAMS_REQUEST { streamID: STREAMID_MEMTEST,
+                                            stringID: STREAMS_MEMTEST_DONE,
                                             payload0: ?,
                                             payload1: ? });
         state <= STATE_finished;
@@ -76,8 +73,8 @@ module [HASim_Module] mkSystem ();
 
         MEM_Addr addr = link_memory_inval.receive();
         link_memory_inval.deq();
-        link_streams.send(STREAMS_REQUEST { streamID: STREAMS_MEMTEST,
-                                            stringID: tagged STRINGID_memtest MEMTEST_INVAL,
+        link_streams.send(STREAMS_REQUEST { streamID: STREAMID_MEMTEST,
+                                            stringID: STREAMS_MEMTEST_INVAL,
                                             payload0: addr,
                                             payload1: ? });
 

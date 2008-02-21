@@ -7,13 +7,16 @@
 #/*
 # %AWB_START
 #
-# %name Hasim Command Controller
-# %desc Hasim Command Controller
-# %provides hasim_command_controller
+# %name Hasim Module Controller
+# %desc Hasim Module Controller
+# %provides hasim_module_controller
 #
 # %attributes hasim
 #
-# %sources -t BSV -v PUBLIC command-controller.bsv 
+# %sources -t BSV -v PUBLIC module-controller.bsv 
+#
+# %sources -t DICT -v PUBLIC module-streams.dic
+# %sources -t DICT -v PUBLIC module-streamid.dic
 #
 # %param HASIM_CONTROLLER_COOLDOWN 500 "Number of FPGA extra FPGA cycles to finish dumping stats/events"
 #

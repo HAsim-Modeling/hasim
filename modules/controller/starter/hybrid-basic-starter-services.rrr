@@ -2,7 +2,9 @@ service STARTER
 {
     server hw <- sw
     {
-        connection Start(in UINT32[32] payload);
-        connection Stop(in UINT32[32] payload);
+        connection Run       (in UINT32[32] payload);
+        connection Pause     (in UINT32[32] payload);
+        connection Sync      (in UINT32[32] payload);
+        connection DumpStats (in UINT32[32] payload);
     };
 };

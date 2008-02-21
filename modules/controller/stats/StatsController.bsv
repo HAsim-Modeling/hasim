@@ -3,6 +3,8 @@ import FIFO::*;
 import hasim_modellib::*;
 import soft_connections::*;
 
+`include "streams.bsh"
+
 // StatsController: Control all the stats throughout the hardware model.
 
 `define CHAIN_IDX_STATS 1
@@ -27,7 +29,7 @@ typedef enum
 
 // Abstracts all communication from the main controller to individual stat counters.
 
-module [Connected_Module] mkStatsController
+module [Connected_Module] mkStatsController#(Connection_Send#(STREAMS_REQUEST) link_streams)
     //interface:
                 (StatsController);
 
@@ -58,7 +60,6 @@ module [Connected_Module] mkStatsController
 
   rule sendReq (!((state == SC_Idle) || (state == SC_Initializing)));
   
-
     let nextCommand = case (state) matches
                        tagged SC_Dumping:      return tagged ST_Boundary;
                        tagged SC_Enabling:     return tagged ST_Enable;
@@ -102,6 +103,30 @@ module [Connected_Module] mkStatsController
      
   endrule
   
+  // printStat: print the next stat via Streams
+
+  rule printStat (True); // we shouldn't have to check for state == SC_Dumping
+
+    let st = statQ.first();
+    statQ.deq();
+
+    // TEMPORARY: translate stringIDs manually
+    DICT_STREAMS stringID = case (st.statStringID)
+                                0: STREAMS_STAT_INSTS_COMMITTED;
+                                1: STREAMS_STAT_DCACHE_MISSES;
+                                2: STREAMS_STAT_BPRED_MISPREDS;
+                                3: STREAMS_STAT_ICACHE_MISSES;
+                                4: STREAMS_STAT_INSTS_FETCHED;
+                                5: STREAMS_STAT_TOTAL_CYCLES;
+                            endcase;
+
+    link_streams.send(STREAMS_REQUEST { streamID: STREAMID_STAT,
+                                        stringID: stringID,
+                                        payload0: st.statValue,
+                                        payload1: ? });
+
+  endrule
+
   //doCommand
   
   //This method is the main method where the outside world tells us what to do.
@@ -119,18 +144,6 @@ module [Connected_Module] mkStatsController
       end
     endcase
 
-  endmethod
-  
-  // getNextStat
-  
-  // This method returns the next stat we've received from the chain.
-  
-  method ActionValue#(StatInfo) getNextStat();
-    
-    let st = statQ.first();
-    statQ.deq();
-    return st;
-    
   endmethod
   
   // noMoreStats

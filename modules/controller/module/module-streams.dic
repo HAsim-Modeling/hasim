@@ -1,0 +1,4 @@
+def STREAMS.MESSAGE_START     "[%12u]: controller: program started.\n";
+def STREAMS.MESSAGE_SUCCESS   "[%12u]: controller: test program finished succesfully.\n";
+def STREAMS.MESSAGE_FAILURE   "[%12u]: controller: test program finished, one or more failures occurred.\n";
+def STREAMS.MESSAGE_ERROR     "[%12u]: controller: ERROR: unexpected timing partition response: 0x%x\n";

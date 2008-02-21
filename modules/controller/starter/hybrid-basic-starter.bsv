@@ -5,64 +5,73 @@ import soft_connections::*;
 `include "asim/rrr/rrr_service_ids.bsh"
 `define SERVICE_ID  `STARTER_SERVICE_ID
 
-typedef Bit#(8) SIM_STATE;
-
+// Starter
 interface Starter;
-    method SIM_STATE getSimState();
-    method Action endSim(Bit#(1) success);
+
+    // service methods: requests
+    method Action acceptRequest_Run();
+    method Action acceptRequest_Pause();
+    method Action acceptRequest_Sync();
+    method Action acceptRequest_DumpStats();
+
+    // service methods: responses
+    method Action sendResponse_DumpStats();
+
+    // client methods
+    method Action makeRequest_EndSim(Bit#(1) success);
+
 endinterface
 
+// mkStarter
 module [HASim_Module] mkStarter(Starter);
 
-    // ----------- state -----------
-    Reg#(SIM_STATE) simState        <- mkReg(`HWSTATE_IDLE);
-   
     // ----------- links -----------
-    Connection_Receive#(UINT32)   link_Start <- mkConnection_Receive("rrr_service_STARTER_Start");
-    Connection_Receive#(UINT32)   link_Stop  <- mkConnection_Receive("rrr_service_STARTER_Stop");
+    Connection_Receive#(UINT32) link_Run       <- mkConnection_Receive("rrr_service_STARTER_Run");
+    Connection_Receive#(UINT32) link_Pause     <- mkConnection_Receive("rrr_service_STARTER_Pause");
+    Connection_Receive#(UINT32) link_Sync      <- mkConnection_Receive("rrr_service_STARTER_Sync");
+    Connection_Receive#(UINT32) link_DumpStats <- mkConnection_Receive("rrr_service_STARTER_DumpStats");
+
     Connection_Send#(RRR_Request) link_rrr   <- mkConnection_Send("rrr_client_starter");
 
-    // ----------- rules ------------
+    // ----------- service methods: request ------------
 
-    // accept start RRR request over connection
-    rule accept_request_Start (True);
-        UINT32 payload = link_Start.receive();
-        link_Start.deq();
+    // Run
+    method Action acceptRequest_Run ();
+        link_Run.deq();
+    endmethod
 
-        if (simState == `HWSTATE_RUNNING)
-        begin
-            $display("starter: Start request received in RUNNING state");
-            $finish(1);
-        end
+    // Pause
+    method Action acceptRequest_Pause ();
+        link_Pause.deq();
+    endmethod
 
-        simState <= `HWSTATE_RUNNING;
-    endrule
+    // Sync
+    method Action acceptRequest_Sync ();
+        link_Sync.deq();
+    endmethod
 
-    // accept stop RRR request over connection
-    rule accept_request_Stop (True);
-        UINT32 payload = link_Stop.receive();
-        link_Stop.deq();
+    // DumpStats
+    method Action acceptRequest_DumpStats ();
+        link_DumpStats.deq();
+    endmethod
 
-        if (simState != `HWSTATE_RUNNING)
-        begin
-            $display("starter: Stop request received in IDLE or STOPPED state");
-            $finish(1);
-        end
+    // ------------ client methods ------------
 
-        simState <= `HWSTATE_STOPPED;
-    endrule
-
-    // ------------ methods ------------
-
-    // return cached simulation state
-    method SIM_STATE getSimState();
-        return simState;
+    // response to DumpStats is currently implemented as a client request
+    // since hw->sw responses are not yet supported. TEMPORARY
+    method Action sendResponse_DumpStats();
+        link_rrr.send(RRR_Request { serviceID   : `SERVICE_ID,
+                                    param0      : `METHOD_ID_DUMPRESP,
+                                    param1      : ?,
+                                    param2      : ?,
+                                    param3      : ?,
+                                    needResponse: False });
     endmethod
 
     // signal end of simulation
-    method Action endSim(Bit#(1) success);
+    method Action makeRequest_EndSim(Bit#(1) success);
         link_rrr.send(RRR_Request { serviceID   : `SERVICE_ID,
-                                    param0      : 0,
+                                    param0      : `METHOD_ID_ENDSIM,
                                     param1      : zeroExtend(success),
                                     param2      : ?,
                                     param3      : ?,

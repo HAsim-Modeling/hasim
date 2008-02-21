@@ -1,0 +1,2 @@
+def STREAMS.ASSERT_NOTOKENS    "FUNCP: Ran out of Tokens!\n";
+def STREAMS.ASSERT_NOREGISTERS "FUNCP: Ran out of physical registers!\n";

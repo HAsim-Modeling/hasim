@@ -8,9 +8,8 @@
 
 interface StatsController;
 
-  method Action                 doCommand(StatsCommand com);
-  method ActionValue#(StatInfo) getNextStat();
-  method Bool                   noMoreStats();
+  method Action doCommand(StatsCommand com);
+  method Bool   noMoreStats();
 
 endinterface
 

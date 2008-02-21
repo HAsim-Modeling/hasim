@@ -14,6 +14,8 @@
 # %attributes hasim
 #
 # %sources -t BSV  -v PUBLIC MemTest.bsv
+# %sources -t DICT -v PUBLIC memtest-streams.dic
+# %sources -t DICT -v PUBLIC memtest-streamid.dic
 #
 # %AWB_END
 # */

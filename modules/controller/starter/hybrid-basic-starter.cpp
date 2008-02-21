@@ -8,6 +8,12 @@
 
 #define SERVICE_ID  STARTER_SERVICE_ID
 
+// TEMPORARY: cheat and assign client method IDs
+#define METHOD_ID_RUN       0
+#define METHOD_ID_PAUSE     1
+#define METHOD_ID_SYNC      2
+#define METHOD_ID_DUMPSTATS 3
+
 using namespace std;
 
 // ===== service instantiation =====
@@ -54,43 +60,79 @@ STARTER_CLASS::Request(
     UINT32 arg3,
     UINT32 *result)
 {
-    if (arg0 == 0)
+    switch (arg0)
     {
-        cout << "starter: end of simulation." << endl;
-        CallbackExit(arg1);
-    }
-    else
-    {
-        cerr << "starter: invalid methodID." << endl;
-        CallbackExit(1);
+        case METHOD_ID_ENDSIM:
+            // for now, call statsdump directly from here
+            cout << "starter: simulation complete, syncing... ";
+            Sync();
+            cout << "sunk." << endl;
+            cout << "         starting stats dump... ";
+            DumpStats();
+            break;
+
+        case METHOD_ID_DUMPRESP:
+            cout << "dump complete, exiting." << endl;
+            CallbackExit(arg1);
+            break;
+
+        default:
+            cerr << "starter: invalid methodID." << endl;
+            CallbackExit(1);
+            break;
     }
 
     return false;
 }
 
-// client: start hardware partition
+// client: run
 void
-STARTER_CLASS::StartHardware()
+STARTER_CLASS::Run()
 {
     // create message for RRR client
     UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(4);
     msg->SetServiceID(SERVICE_ID);
-    msg->SetMethodID(0);
+    msg->SetMethodID(METHOD_ID_RUN);
     msg->AppendUINT32(0);   // value doesn't matter
 
     RRRClient->MakeRequestNoResponse(msg);
 }
 
-// client: stop hardware partition
+// client: pause
 void
-STARTER_CLASS::StopHardware()
+STARTER_CLASS::Pause()
 {
     // create message for RRR client
     UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(4);
     msg->SetServiceID(SERVICE_ID);
-    msg->SetMethodID(1);
+    msg->SetMethodID(METHOD_ID_PAUSE);
     msg->AppendUINT32(0);   // value doesn't matter
 
     RRRClient->MakeRequestNoResponse(msg);
 }
 
+// client: sync
+void
+STARTER_CLASS::Sync()
+{
+    // create message for RRR client
+    UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(4);
+    msg->SetServiceID(SERVICE_ID);
+    msg->SetMethodID(METHOD_ID_SYNC);
+    msg->AppendUINT32(0);   // value doesn't matter
+
+    RRRClient->MakeRequestNoResponse(msg);
+}
+
+// client: dump stats
+void
+STARTER_CLASS::DumpStats()
+{
+    // create message for RRR client
+    UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(4);
+    msg->SetServiceID(SERVICE_ID);
+    msg->SetMethodID(METHOD_ID_DUMPSTATS);
+    msg->AppendUINT32(0);   // value doesn't matter
+
+    RRRClient->MakeRequestNoResponse(msg);
+}

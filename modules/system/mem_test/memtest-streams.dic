@@ -1,0 +1,3 @@
+def STREAMS.MEMTEST_DATA  "mem[%8X] = %8X\n";
+def STREAMS.MEMTEST_INVAL "invalidating %8X\n";
+def STREAMS.MEMTEST_DONE  "memtest: done\n";

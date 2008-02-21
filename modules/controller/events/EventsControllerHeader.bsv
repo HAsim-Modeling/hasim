@@ -11,8 +11,7 @@ import hasim_modellib::*;
 interface EventsController;
 
   method Action doCommand(EventsCommand com);
-  method ActionValue#(EventInfo) getNextEvent();
-  method Bool                    noMoreEvents();
+  method Bool   noMoreEvents();
 
 endinterface
 

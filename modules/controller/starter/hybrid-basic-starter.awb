@@ -18,9 +18,8 @@
 # %sources -t CPP -v PRIVATE    hybrid-basic-starter.cpp
 # %sources -t RRR -v PUBLIC     hybrid-basic-starter-services.rrr
 #
-# %param HWSTATE_IDLE        0  "encoding for simulation state IDLE"
-# %param HWSTATE_RUNNING     1  "encoding for simulation state RUNNING"
-# %param HWSTATE_STOPPED     2  "encoding for simulation state STOPPED"
+# %param METHOD_ID_ENDSIM   0  "EndSim methodID"
+# %param METHOD_ID_DUMPRESP 1  "DumpStats response methodID"
 
 # %AWB_END
 # */

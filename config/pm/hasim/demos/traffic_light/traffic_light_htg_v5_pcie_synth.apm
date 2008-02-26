@@ -8,7 +8,6 @@ Name=Traffic Light Model - HTG-v5-PCIe with synthesis boundary
 Type=HAsim
 Class=Asim::Model
 
-
 [HAsim Model Foundation]
 Packagehint=hasim
 File=modules/model/hasim_model.awb
@@ -51,5 +50,5 @@ TERM_FPGA_BUTTONS=0
 TERM_FPGA_LEDS=0
 
 [Hasim Null Controller]
-File=config/pm/hasim/submodels/controller/hardware_null_controller.apm
+File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
 Packagehint=hasim

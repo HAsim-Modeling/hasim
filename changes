@@ -9870,3 +9870,14 @@ Directory modules/system/mem_test
 - updated MemTest to use dictionaries.
 - moved dictionaries from streams into the actual
   subcontroller modules that use them.
+
+----------
+aparasha    Date: Mon Feb 25 23:14:10 EST 2008  CSN: CSN-hasim-326
+                  Tue Feb 26 04:14:10 UTC 2008
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_htg_v5_pcie_synth.apm Locally Modified          324 
+
+Fixed traffic light HTG APM file: replaced Hardware-Only Null
+Controller with Hybrid Null controller.

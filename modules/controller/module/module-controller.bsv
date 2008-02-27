@@ -113,8 +113,8 @@ module [HASim_Module] mkModuleController#(Connection_Send#(STREAMS_REQUEST) link
           if (pf)  // It passed
           begin
             link_leds.send(FRONTP_MASKED_LEDS {state: zeroExtend(4'b1001), mask: zeroExtend(4'b1111)});
-            link_streams.send(STREAMS_REQUEST { streamID: STREAMID_MESSAGE,
-                                                stringID: STREAMS_MESSAGE_SUCCESS,
+            link_streams.send(STREAMS_REQUEST { streamID: DICT_STREAMID::MESSAGE,
+                                                stringID: DICT_STREAMS::MESSAGE_SUCCESS,
                                                 payload0: truncate(curTick),
                                                 payload1: ? });
             passed <= True;
@@ -122,8 +122,8 @@ module [HASim_Module] mkModuleController#(Connection_Send#(STREAMS_REQUEST) link
           else  // It failed
           begin
             link_leds.send(FRONTP_MASKED_LEDS {state: zeroExtend(4'b1101), mask: zeroExtend(4'b1111)});
-            link_streams.send(STREAMS_REQUEST { streamID: STREAMID_MESSAGE,
-                                                stringID: STREAMS_MESSAGE_FAILURE,
+            link_streams.send(STREAMS_REQUEST { streamID: DICT_STREAMID::MESSAGE,
+                                                stringID: DICT_STREAMS::MESSAGE_FAILURE,
                                                 payload0: truncate(curTick),
                                                 payload1: ? });
           end
@@ -132,8 +132,8 @@ module [HASim_Module] mkModuleController#(Connection_Send#(STREAMS_REQUEST) link
         end
       default: // Unexpected Response
       begin
-        link_streams.send(STREAMS_REQUEST { streamID: STREAMID_MESSAGE,
-                                            stringID: STREAMS_MESSAGE_ERROR,
+        link_streams.send(STREAMS_REQUEST { streamID: DICT_STREAMID::MESSAGE,
+                                            stringID: DICT_STREAMS::MESSAGE_ERROR,
                                             payload0: truncate(curTick),
                                             payload1: zeroExtend(pack(resp)) });
       end
@@ -157,8 +157,8 @@ module [HASim_Module] mkModuleController#(Connection_Send#(STREAMS_REQUEST) link
      state <= CON_Running;
      link_leds.send(FRONTP_MASKED_LEDS {state: zeroExtend(4'b0011), mask: zeroExtend(4'b1111)});
 
-     link_streams.send(STREAMS_REQUEST { streamID: STREAMID_MESSAGE,
-                                         stringID: STREAMS_MESSAGE_START,
+     link_streams.send(STREAMS_REQUEST { streamID: DICT_STREAMID::MESSAGE,
+                                         stringID: DICT_STREAMS::MESSAGE_START,
                                          payload0: truncate(curTick), // Program Started
                                          payload1: ? });
 

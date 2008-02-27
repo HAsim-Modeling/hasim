@@ -85,7 +85,7 @@ def compile_bo(source, target, env, for_signature):
     ## Note -- we pipe through sed during the build to get rid of an extra
     ##         newline emitted by bsc's printType().  New compilers will make
     ##         this unnecessary.
-    cmd = BSC + ' ' + BSC_FLAGS + ' -elab -verilog -p +:' + \
+    cmd = BSC + ' ' + BSC_FLAGS + ' -p +:' + \
           ROOT_DIR_HW_INC + ':' + ROOT_DIR_HW_INC + '/asim/provides:' + \
           ALL_LIB_DIRS_FROM_ROOT + ':' + TMP_BSC_DIR + ' -bdir ' + bdir + \
           ' -vdir ' + bdir + ' -simdir ' + bdir + ' ' + \

@@ -97,6 +97,11 @@ sub common_replacements($$) {
 
     # @APM_FILE@
     HAsim::Util::hash_set($replacements_r,'@APM_FILE@',$model->filename());
+
+    # @BSC@
+    HAsim::Util::hash_set($replacements_r,'@BSC@','bsc');
+    HAsim::Util::hash_set($replacements_r,'@BSC_FLAGS@',
+                          '-steps 1000000 +RTS -K1000M -RTS -keep-fires -aggressive-conditions -wait-for-license -no-show-method-conf -no-opt-bool -elab -verilog');
 }
 
 # Add all parameters from the model to replacement strings

@@ -684,6 +684,7 @@ sub generate_makefile_top {
 
     # Add generated interface include directory to ALL_HW_DIRS
     HAsim::Util::hash_append($replacements_r, ":", '@ALL_HW_DIRS@', "iface/build/include");
+    HAsim::Util::hash_append($replacements_r, ":", '@ALL_HW_DIRS@', "iface/build/hw");
 
     # Generate the makefile
     my $template = HAsim::Build::get_makefile_top_template($model);

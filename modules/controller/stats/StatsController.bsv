@@ -111,16 +111,16 @@ module [Connected_Module] mkStatsController#(Connection_Send#(STREAMS_REQUEST) l
     statQ.deq();
 
     // TEMPORARY: translate stringIDs manually
-    DICT_STREAMS stringID = case (st.statStringID)
-                                0: STREAMS_STAT_INSTS_COMMITTED;
-                                1: STREAMS_STAT_DCACHE_MISSES;
-                                2: STREAMS_STAT_BPRED_MISPREDS;
-                                3: STREAMS_STAT_ICACHE_MISSES;
-                                4: STREAMS_STAT_INSTS_FETCHED;
-                                5: STREAMS_STAT_TOTAL_CYCLES;
+    DICT_STREAMS::DICT_STREAMS stringID = case (st.statStringID)
+                                0: DICT_STREAMS::STAT_INSTS_COMMITTED;
+                                1: DICT_STREAMS::STAT_DCACHE_MISSES;
+                                2: DICT_STREAMS::STAT_BPRED_MISPREDS;
+                                3: DICT_STREAMS::STAT_ICACHE_MISSES;
+                                4: DICT_STREAMS::STAT_INSTS_FETCHED;
+                                5: DICT_STREAMS::STAT_TOTAL_CYCLES;
                             endcase;
 
-    link_streams.send(STREAMS_REQUEST { streamID: STREAMID_STAT,
+    link_streams.send(STREAMS_REQUEST { streamID: DICT_STREAMID::STAT,
                                         stringID: stringID,
                                         payload0: st.statValue,
                                         payload1: ? });

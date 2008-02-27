@@ -9881,3 +9881,45 @@ Directory config/pm/hasim/demos/traffic_light
 
 Fixed traffic light HTG APM file: replaced Hardware-Only Null
 Controller with Hybrid Null controller.
+
+----------
+mcadler     Date: Wed Feb 27 17:37:03 EST 2008  CSN: CSN-hasim-327
+                  Wed Feb 27 22:37:03 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim
+ Util.pm                   Locally Modified          326 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          326 
+ hasim-dict                Locally Modified          326 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          326 
+ SCons.iface.template      Locally Modified          326 
+ SCons.hw.template         Locally Modified          326 
+
+Directory modules/controller/events
+ EventsController.bsv      Locally Modified          326 
+
+Directory modules/controller/module
+ module-controller.bsv     Locally Modified          326 
+
+Directory modules/controller/assertions
+ AssertionsController.bsv  Locally Modified          326 
+
+Directory modules/controller/stats
+ StatsController.bsv       Locally Modified          326 
+
+Move Bluespec definition of dictionary tokens into compiled bsv files
+instead of bsh header files.  Bluespec does type comparison using a combination
+of module and type name.  In order to avoid redundant strings the names
+of objects in the enumerations no longer have the dictionary name.
+
+No changes for C++ code.
+
+Dictionary types are now specified as DICT_<name>::DICT_<name>, e.g.
+DICT_STREAMS::DICT_STREAMS.
+
+Dictionary entries are now: DICT_<name>::<id>, e..g
+DICT_STREAMS::STAT_INSTS_COMMITTED.

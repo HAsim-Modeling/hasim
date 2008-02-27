@@ -144,8 +144,8 @@ module [Connected_Module] mkEventsController#(Connection_Send#(STREAMS_REQUEST) 
 
   rule heartBeat (beat == 1000);
 
-    link_streams.send(STREAMS_REQUEST { streamID: STREAMID_HEARTBEAT,
-                                        stringID: STREAMS_HEARTBEAT_MSG,
+    link_streams.send(STREAMS_REQUEST { streamID: DICT_STREAMID::HEARTBEAT,
+                                        stringID: DICT_STREAMS::HEARTBEAT_MSG,
                                         payload0: truncate(curTick),
                                         payload1: truncate(modelTick()) });
     beat <= 0;
@@ -163,15 +163,15 @@ module [Connected_Module] mkEventsController#(Connection_Send#(STREAMS_REQUEST) 
 
     // TEMPORARY: manually translate stringID. We have to do this because
     // of the incremental way in which raw stringIDs are generated
-    DICT_STREAMS stringID = case (evt.eventStringID)
-                                0: STREAMS_EVENT_FETCH;
-                                1: STREAMS_EVENT_DECODE;
-                                2: STREAMS_EVENT_EXECUTE;
-                                3: STREAMS_EVENT_MEMORY;
-                                4: STREAMS_EVENT_WRITEBACK;
+    DICT_STREAMS::DICT_STREAMS stringID = case (evt.eventStringID)
+                                0: DICT_STREAMS::EVENT_FETCH;
+                                1: DICT_STREAMS::EVENT_DECODE;
+                                2: DICT_STREAMS::EVENT_EXECUTE;
+                                3: DICT_STREAMS::EVENT_MEMORY;
+                                4: DICT_STREAMS::EVENT_WRITEBACK;
                             endcase;
 
-    link_streams.send(STREAMS_REQUEST { streamID: STREAMID_EVENT,
+    link_streams.send(STREAMS_REQUEST { streamID: DICT_STREAMID::EVENT,
                                         stringID: stringID,
                                         payload0: truncate(modelTick),
                                         payload1: pack(evt.eventData) });

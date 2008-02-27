@@ -88,12 +88,12 @@ module [Connected_Module] mkAssertionsController#(Connection_Send#(STREAMS_REQUE
 
     // TEMPORARY: manually translate stringID. We have to do this because
     // of the incremental way in which raw stringIDs are generated
-    DICT_STREAMS stringID = case (ast.assertStringID)
-                                0: STREAMS_ASSERT_NOTOKENS;
-                                1: STREAMS_ASSERT_NOREGISTERS;
+    DICT_STREAMS::DICT_STREAMS stringID = case (ast.assertStringID)
+                                0: DICT_STREAMS::ASSERT_NOTOKENS;
+                                1: DICT_STREAMS::ASSERT_NOREGISTERS;
                             endcase;
 
-    link_streams.send(STREAMS_REQUEST { streamID: STREAMID_ASSERT,
+    link_streams.send(STREAMS_REQUEST { streamID: DICT_STREAMID::ASSERT,
                                         stringID: stringID,
                                         payload0: zeroExtend(pack(ast.assertSeverity)),
                                         payload1: ? });

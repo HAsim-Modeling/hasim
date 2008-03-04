@@ -9923,3 +9923,20 @@ DICT_STREAMS::DICT_STREAMS.
 
 Dictionary entries are now: DICT_<name>::<id>, e..g
 DICT_STREAMS::STAT_INSTS_COMMITTED.
+
+----------
+mcadler     Date: Tue Mar  4 17:42:12 EST 2008  CSN: CSN-hasim-328
+                  Tue Mar  4 22:42:12 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          327 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          327 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          327 
+
+- Build ucf file dynamically from sources since it no longer needs the APM_NAME.
+- Not dependence of Xilinx xst stage on .v .vhd and .ngc sources.

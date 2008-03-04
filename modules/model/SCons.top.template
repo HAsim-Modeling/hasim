@@ -20,7 +20,7 @@ defs = {
     'FPGA_PART'          : '@FPGA_PART@',
     'GIVEN_CS'           : '@GIVEN_CS@',
     'GIVEN_VS'           : '@GIVEN_VS@',
-    'GIVEN_NGCS'         : '@GIVEN_NGCS@',
+    'GIVEN_UCFS'         : '@GIVEN_UCFS@',
     'GEN_BAS'            : '@GEN_BAS@',
     'GEN_CXXS'           : 'schedule.cxx @GEN_CXXS@',
     'GEN_HS'             : 'schedule.h @GEN_HS@',
@@ -193,7 +193,7 @@ cxx_gen_command = BSC + ' ' + BSC_FLAGS + ' ' + LDFLAGS + \
 
 cxx = env.Command(
     clean_split(cxx_targets + ' ' + h_targets, sep=' '),
-    wrapper_v,
+    wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' '),
     cxx_gen_command)
 
 Clean(cxx,  TMP_BSC_DIR + '/imported_BDPI_functions.h')
@@ -300,16 +300,22 @@ FPGA_PART = env['DEFS']['FPGA_PART']
 
 xilinx_ngc = env.Command(
     XILINX_APM_NAME + '.ngc',
-    wrapper_v,
+    wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' '),
     'xst -ifn config/' + APM_NAME + '.xst -ofn ' + XILINX_APM_NAME + '.srp')
 
 Clean(xilinx_ngc,  XILINX_APM_NAME + '.srp')
 
 
+# Concatenate UCF files
+xilinx_ucf = env.Command(
+    XILINX_APM_NAME + '.ucf',
+    clean_split(env['DEFS']['GIVEN_UCFS'], sep = ' '),
+    'cat $SOURCES > $TARGET')
+
 xilinx_ngd = env.Command(
     XILINX_APM_NAME + '.ngd',
-    xilinx_ngc,
-    [ 'ngdbuild -sd ' + env['DEFS']['ROOT_DIR_HW_MODEL'] + ' -uc ' + 'config/' + APM_NAME + '.ucf $SOURCE $TARGET',
+    xilinx_ngc + xilinx_ucf,
+    [ 'ngdbuild -sd ' + env['DEFS']['ROOT_DIR_HW_MODEL'] + ' -uc ' + XILINX_APM_NAME + '.ucf $SOURCE $TARGET',
       Move(TMP_XILINX_DIR + '/netlist.lst', 'netlist.lst') ])
 
 Clean(xilinx_ngd, TMP_XILINX_DIR + '/netlist.lst')

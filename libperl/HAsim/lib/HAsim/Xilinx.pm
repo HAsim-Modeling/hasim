@@ -68,7 +68,6 @@ sub generate_files {
 
     generate_prj_file($model);
     generate_xst_file($model);
-    generate_ucf_file($model);
     generate_ut_file($model);
     generate_download_file($model);
 
@@ -211,36 +210,6 @@ sub generate_ut_file {
     CORE::close(UTFILE);
 
 }
-
-############################################################
-# generate_ucf_file:
-sub generate_ucf_file {
-    my $model = shift;
-
-    my $replacements_r = HAsim::Util::empty_hash_ref();
-    
-    HAsim::Util::common_replacements($model, $replacements_r);
-    
-    my $apm = HAsim::Build::get_model_name($model);
-    HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$apm);
-
-    my $final_ucf_file = HAsim::Util::path_append($model->build_dir(),$xilinx_config_dir,$apm . ".ucf");
-
-    CORE::open(UCFFILE, "> $final_ucf_file") || return undef;
-
-    #Concatenate all found .ucf files
-
-    my @model_ucf_files = find_all_files_with_suffix($model->modelroot(), ".ucf");
-
-    foreach my $model_ucf_file (@model_ucf_files)
-    {
-      HAsim::Templates::do_template_replacements($model_ucf_file, *UCFFILE{IO}, $replacements_r);
-    
-    }
-    
-    CORE::close(UCFFILE);
-}
-
 
 ############################################################
 # generate_download_file:

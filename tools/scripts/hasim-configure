@@ -752,8 +752,20 @@ sub __generate_makefile_hw_top {
 
     ## @GIVEN_VS@ - raw .v files included in the model
 
-    foreach my $f ($module->sources("VERILOG", "*")) {
+    foreach my $f ($module->sources('VERILOG', "*")) {
         HAsim::Util::hash_append($replacements_r," ",'@GIVEN_VS@',HAsim::Util::path_append($my_dir, $f));
+    }
+    foreach my $f ($module->sources('VHD', "*")) {
+        HAsim::Util::hash_append($replacements_r," ",'@GIVEN_VS@',HAsim::Util::path_append($my_dir, $f));
+    }
+    foreach my $f ($module->sources('NGC', "*")) {
+        HAsim::Util::hash_append($replacements_r," ",'@GIVEN_VS@',HAsim::Util::path_append($my_dir, $f));
+    }
+
+    ## @GIVEN_UCFS@ - raw .ucf files included in the model
+
+    foreach my $f ($module->sources("UCF", "*")) {
+        HAsim::Util::hash_append($replacements_r," ",'@GIVEN_UCFS@',HAsim::Util::path_append($my_dir, $f));
     }
 
     ## @BDPI_CS@

@@ -9940,3 +9940,21 @@ Directory modules/model
 
 - Build ucf file dynamically from sources since it no longer needs the APM_NAME.
 - Not dependence of Xilinx xst stage on .v .vhd and .ngc sources.
+
+----------
+pellauer    Date: Wed Mar  5 12:37:23 EST 2008  CSN: CSN-hasim-329
+                  Wed Mar  5 17:37:23 UTC 2008
+
+
+Directory tools/scripts
+ hasim-dict                Locally Modified          328 
+
+Directory modules/controller/starter
+ null-starter.bsv          Locally Modified          328 
+
+
+hasim-dict now outputs the dict->string function in BSV.
+
+bluesim-only starter now is fleshed out and works properly.
+
+Michael P.

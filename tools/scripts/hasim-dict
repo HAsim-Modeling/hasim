@@ -175,6 +175,21 @@ sub EmitBSV($) {
 
     print $of "\n} DICT_${m} deriving (Bits, Eq, Bounded);\n";
 
+    print $of "\n\n";
+
+    print $of "function String showDICT_${m}(DICT_${m} inp);\n\n";
+    print $of "    case (inp)\n";
+
+    my $idx = 0;
+    foreach my $n (sort keys %{$defs{$m}}) {
+        print $of "        ${n}: return $defs{$m}{$n};\n";
+        $idx += 1;
+    }
+
+    print $of "\n    endcase\n\n";
+
+    print $of "\nendfunction\n";
+
     undef $of;
 }
 

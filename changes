@@ -9958,3 +9958,50 @@ hasim-dict now outputs the dict->string function in BSV.
 bluesim-only starter now is fleshed out and works properly.
 
 Michael P.
+
+----------
+mcadler     Date: Tue Mar 11 16:15:27 EDT 2008  CSN: CSN-hasim-330
+                  Tue Mar 11 20:15:27 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim
+ DictBuilder.pm            Locally Added               0 
+
+Directory libperl/HAsim
+ MANIFEST                  Locally Modified          329 
+
+Directory tools/scripts
+ hasim-dict                Locally Modified          329 
+
+Directory modules/model
+ SCons.iface.template      Locally Modified          329 
+
+Directory modules/controller/events
+ EventsController.bsv      Locally Modified          329 
+
+Directory modules/controller/module
+ module-controller.bsv     Locally Modified          329 
+
+Directory modules/controller/assertions
+ AssertionsController.bsv  Locally Modified          329 
+
+Directory modules/controller/stats
+ StatsController.bsv       Locally Modified          329 
+
+Dictionaries are now hierarchical.  Dictionary A may have a sub-dictionary
+B using the syntax:
+
+   def A.B.FOO "foo string";
+
+Breaking up the dictionary allows modules to define their own sub-dictionaries
+of a larger category.  The sub-dictionaries share the same numbering space.
+Including the header file at a given level in the tree automatically imports
+all definitions below the level.  With this mechanism recompilation due
+to dictionary changes can be minimized.
+
+In C++ the name of the printing class changed from DICT_<NAME> to <NAME>_DICT.
+
+In Bluespec the elements are now preprocessor definitions, e.g.
+     `define STREAMID_ASSERT 0
+The Bluespec ID to string function is now in a module named <NAME>_DICT and
+the function is named show<NAME>_DICT.

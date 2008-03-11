@@ -4,6 +4,8 @@ import hasim_common::*;
 import soft_connections::*;
 
 `include "streams.bsh"
+`include "asim/dict/STREAMS.bsh"
+`include "asim/dict/STREAMID.bsh"
 
 // AssertionsController
 
@@ -88,12 +90,12 @@ module [Connected_Module] mkAssertionsController#(Connection_Send#(STREAMS_REQUE
 
     // TEMPORARY: manually translate stringID. We have to do this because
     // of the incremental way in which raw stringIDs are generated
-    DICT_STREAMS::DICT_STREAMS stringID = case (ast.assertStringID)
-                                0: DICT_STREAMS::ASSERT_NOTOKENS;
-                                1: DICT_STREAMS::ASSERT_NOREGISTERS;
-                            endcase;
+    STREAMS_DICT_TYPE stringID = case (ast.assertStringID)
+                                     0: `STREAMS_ASSERT_NOTOKENS;
+                                     1: `STREAMS_ASSERT_NOREGISTERS;
+                                 endcase;
 
-    link_streams.send(STREAMS_REQUEST { streamID: DICT_STREAMID::ASSERT,
+    link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_ASSERT,
                                         stringID: stringID,
                                         payload0: zeroExtend(pack(ast.assertSeverity)),
                                         payload1: ? });

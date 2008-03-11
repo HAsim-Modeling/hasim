@@ -2,12 +2,38 @@
 eval 'exec perl -w "$0" ${1+"$@"}'
     if 0;
 
+#
+# Copyright (C) 2008 Intel Corporation
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# 
+#
+
+#
+# Author: Michael Adler
+#
+
 use strict;
 use Getopt::Long;
 use IO::File;
 use POSIX qw(ceil floor);
 
-my %defs;
+use HAsim::DictBuilder;
+# use Data::Dumper;
+
+my $root;
 
 # Debugging info
 my $progName = 'hasim-dict';
@@ -29,7 +55,7 @@ sub Error($) {
 sub Usage($) {
     my $status = shift;
 
-    print STDERR "Usage: $0 [--querymodules] [--tgt <dir>] <input files>\n";
+    print STDERR "Usage: $0 [--querymodules] [--tgt-inc <dir>] [--tgt-hw <dir>] <input files>\n";
     print STDERR "  Emit C or Bluespec data dictionaries derived from input files.\n\n";
     print STDERR "  --querymodules:  Just print the module names described in the input\n";
     print STDERR "                   files and exit.\n";
@@ -38,6 +64,12 @@ sub Usage($) {
     exit($status);
 }
 
+
+###########################################################################
+##
+## Output file emitters
+##
+###########################################################################
 
 ##
 ## EmitHeader --
@@ -55,11 +87,56 @@ sub EmitHeader($) {
 
 
 ##
+## EmitEnumValues --
+##   Emit the dictionary name to value mappings.  This code is used by both
+##   EmitH and EmitBSH.
+##
+sub EmitEnumValues($$$$) {
+    my $of = shift;
+    my $m = shift;
+    my $format = shift;
+    my $dict = shift;
+
+    my $shl = $dict->GetUIDNumBits();
+    my $uid = $dict->GetUID();
+    my $idx = -1;
+    my $lastId = 0;
+    foreach my $n ($dict->GetSortedEntries()) {
+        $idx += 1;
+        $lastId = ($idx << $shl) + $uid;
+        printf $of $format, $m, $n, $lastId;
+    }
+
+    if ($idx == -1) {
+        $idx = 0;
+    }
+    else {
+        if ($uid == -1) {
+            Error("UID was never assigned for dictionary ${m}");
+        }
+        if (((($idx << $shl) + $uid) >> $dict->GetTotalNumBits()) != 0) {
+            print "$idx  $shl  $uid  " . $dict->GetTotalNumBits() . "\n";
+            Error("Total bits too small for dictionary ${m}");
+        }
+    }
+
+    return ($idx, $lastId);
+}
+
+
+##
 ## EmitH --
 ##   Emit one H file for specified module.
 ##
-sub EmitH($) {
-    my $m = shift;
+sub EmitH($$$);   # Early declaration for recursion with param. checking
+sub EmitH_SubDictPrint($$$);
+
+sub EmitH($$$) {
+    my $prefix = shift;
+    my $baseDict = shift;
+    my $dict = shift;
+
+    my $m = $prefix . $dict->GetName();
 
     my $fn = "${tgtIncDir}${m}.h";
     my $of = new IO::File($fn, "w");
@@ -67,69 +144,132 @@ sub EmitH($) {
 
     EmitHeader($of);
 
-    print $of "#ifndef __DICT_${m}_H__\n";
-    print $of "#define __DICT_${m}_H__\n\n";
+    print $of "#ifndef __${m}_DICT_H__\n";
+    print $of "#define __${m}_DICT_H__\n\n";
 
-    print $of "enum DICT_${m}_ENUM\n";
-    print $of "{\n";
-    my $idx = 0;
-    foreach my $n (sort keys %{$defs{$m}}) {
-        print $of "    ${m}_${n} = ${idx},\n";
-        $idx += 1;
+    ##
+    ## Include sub dictionaries
+    ##
+    foreach my $subName ($dict->GetSortedDictionaryNames()) {
+        my $sd = $dict->GetDictionary($subName);
+        print $of "#include \"asim/dict/${m}_" . $sd->GetName() . ".h\"\n";
     }
+    print $of "\n";
+
+    print $of "enum ${m}_DICT_ENUM\n";
+    print $of "{\n";
+
+    my ($idx, $lastId) = EmitEnumValues($of, $m, "    %s_%s = %d,\n", $dict);
+
     print $of "};\n\n";
 
-    print $of "#define ${m}_last " . ($idx - 1) . "\n";
-
-    my $bits = ceil(log($idx) / log(2));
-
-    # Technically 0 bits would work if there is only a single dictionary entry.
-    # One bit will probably make code happier.
-    $bits = 1 if ($bits == 0);
-
-    print $of "#define ${m}_bits ${bits}\n";
+    my $nBitsStr = $baseDict->GetName() . "_DICT_BITS";
+    print $of "#ifndef ${nBitsStr}\n";
+    print $of "#define ${nBitsStr} " . $dict->GetTotalNumBits() . "\n";
+    print $of "#endif // ${nBitsStr}\n";
 
     print $of <<END;
-class DICT_${m}
+
+class ${m}_DICT
 {
   private:
     static char * str[];
 
   public:
-    DICT_${m}() {};
-    ~DICT_${m}() {};
+    ${m}_DICT() {};
+    ~${m}_DICT() {};
 
-    static const char * Str(int i) { return str[i]; }
+    static const char * Str(unsigned int i)
+    {
+END
+
+    my $shl = $dict->GetUIDNumBits();
+    my $uid = $dict->GetUID();
+
+    if ($shl == 0) {
+        # No UIDs (single level dictionary)
+        print $of "        return (i <= ${idx} ? str[i] : NULL);\n";
+    }
+    else {
+        # Using UIDs.  Find the right dictionary.
+        print $of "        switch (i & " . ((1 << $shl) - 1) . ") {\n";
+        if ($uid >= 0) {
+            print $of "          case ${uid}:\n";
+            print $of "            i >>= ${shl};\n";
+            print $of "            return (i <= ${idx} ? str[i] : NULL);\n";
+        }
+
+        # Add cases for subordinate dictionaries
+        EmitH_SubDictPrint($of, "${m}_", $dict);
+
+        print $of "          default:\n";
+        print $of "            return NULL;\n";
+        print $of "        }\n";
+    }
+
+    print $of <<END;
+    }
 };
 
-#endif //  __DICT_${m}_H__
+#endif //  __${m}_DICT_H__
 
-#ifdef DICT_INIT
-#ifndef __DICT_${m}_INIT__
-#define __DICT_${m}_INIT__
+#ifdef INIT_DICT
+#ifndef __${m}_DICT_INIT__
+#define __${m}_DICT_INIT__
 
 END
 
-    print $of "char *DICT_${m}::str[] =\n";
+    print $of "char *${m}_DICT::str[] =\n";
     print $of "{\n";
-    foreach my $n (sort keys %{$defs{$m}}) {
-        print $of "    $defs{$m}{$n},\n";
+    foreach my $n ($dict->GetSortedEntries()) {
+        print $of "    " . $dict->GetDefinition($n) . ",\n";
     }
     print $of "};\n\n";
 
-    print $of "#endif // __DICT_${m}_INIT__\n";
-    print $of "#endif // DICT_INIT\n";
+    print $of "#endif // __${m}_DICT_INIT__\n";
+    print $of "#endif // INIT_DICT\n";
 
     undef $of;
+
+    ##
+    ## Emit sub dictionaries
+    ##
+    foreach my $subName ($dict->GetSortedDictionaryNames()) {
+        EmitH("${m}_", $baseDict, $dict->GetDictionary($subName));
+    }
 }
 
+
+sub EmitH_SubDictPrint($$$) {
+    my $of = shift;
+    my $prefix = shift;
+    my $dict = shift;
+
+    foreach my $subName ($dict->GetSortedDictionaryNames()) {
+        my $sd = $dict->GetDictionary($subName);
+        my $uid = $sd->GetUID();
+
+        if ($uid >= 0) {
+            print $of "          case ${uid}:\n";
+            print $of "            return ${prefix}${subName}_DICT::Str(i);\n";
+        }
+
+        EmitH_SubDictPrint($of, "${prefix}${subName}_", $sd);
+    }
+}
 
 ##
 ## EmitBSH --
 ##   Emit one BSH file for specified module.
 ##
-sub EmitBSH($) {
-    my $m = shift;
+sub EmitBSH($$$);
+
+sub EmitBSH($$$) {
+    my $prefix = shift;
+    my $baseDict = shift;
+    my $dict = shift;
+
+    my $m = $prefix . $dict->GetName();
 
     my $fn = "${tgtIncDir}${m}.bsh";
     my $of = new IO::File($fn, "w");
@@ -140,11 +280,40 @@ sub EmitBSH($) {
     print $of "`ifndef INCLUDED_MODULE_DICT_${m}\n";
     print $of "`define INCLUDED_MODULE_DICT_${m}\n\n";
 
-    print $of "import DICT_${m}::*;\n";
+    ##
+    ## Include sub dictionaries
+    ##
+    foreach my $subName ($dict->GetSortedDictionaryNames()) {
+        my $sd = $dict->GetDictionary($subName);
+        print $of "`include \"asim/dict/${m}_" . $sd->GetName() . ".bsh\"\n";
+    }
+    print $of "\n";
+
+    my ($idx, $lastId) = EmitEnumValues($of, $m, "`define %s_%s  %d\n", $dict);
+    print $of "\n";
+
+    my $nBitsStr = $baseDict->GetName() . "_DICT_BITS";
+    print $of "`ifndef ${nBitsStr}\n";
+    print $of "`define ${nBitsStr} " . $dict->GetTotalNumBits() . "\n";
+    print $of "typedef Bit#(`${nBitsStr}) " . $baseDict->GetName() . "_DICT_TYPE;\n";
+    print $of "`endif // ${nBitsStr}\n\n";
+
+    ##
+    ## Import must be last since it depends on definitions above!
+    ##
+    print $of "`ifndef IMPORTED_MODULE_DICT_${m}\n";
+    print $of "import ${m}_DICT::*;\n";
+    print $of "`endif\n";
 
     print $of "\n`endif  // INCLUDED_MODULE_DICT_${m}\n";
-
     undef $of;
+
+    ##
+    ## Emit sub dictionaries
+    ##
+    foreach my $subName ($dict->GetSortedDictionaryNames()) {
+        EmitBSH("${m}_", $baseDict, $dict->GetDictionary($subName));
+    }
 }
 
 
@@ -152,45 +321,90 @@ sub EmitBSH($) {
 ## EmitBSV --
 ##   Emit one BSH file for specified module.
 ##
-sub EmitBSV($) {
-    my $m = shift;
+sub EmitBSV($$$);
+sub EmitBSV_DictEntries($$$);
 
-    my $fn = "${tgtHwDir}DICT_${m}.bsv";
+sub EmitBSV($$$) {
+    my $prefix = shift;
+    my $baseDict = shift;
+    my $dict = shift;
+
+    my $m = $prefix . $dict->GetName();
+
+    my $fn = "${tgtHwDir}${m}_DICT.bsv";
     my $of = new IO::File($fn, "w");
     die("Failed to open output file ${fn}") if (! defined($of));
 
     EmitHeader($of);
 
-    print $of "typedef enum\n";
-    print $of "{\n";
+    print $of "`define IMPORTED_MODULE_DICT_${m}\n\n";
 
-    my $idx = 0;
-    foreach my $n (sort keys %{$defs{$m}}) {
-        if ($idx != 0) {
-            print $of ",\n";
-        }
-        print $of "    ${n} = $idx";
-        $idx += 1;
-    }
+    print $of "`include \"asim/dict/${m}.bsh\"\n\n";
 
-    print $of "\n} DICT_${m} deriving (Bits, Eq, Bounded);\n";
+    ##
+    ## Unlike the C++ code that emits a definition at most once, the Bluespec
+    ## code replicates entries from subordinate dictionaries in the ID to
+    ## string function below.  Getting the code right with BSV modules is
+    ## more complicated.  In addition, this code is used only in debugging
+    ## since the strings are likely to be used only for Bluesim $display
+    ## debugging statements.
+    ##
 
-    print $of "\n\n";
-
-    print $of "function String showDICT_${m}(DICT_${m} inp);\n\n";
+    print $of "function String show${m}_DICT(" . $baseDict->GetName() . "_DICT_TYPE inp);\n";
     print $of "    case (inp)\n";
 
-    my $idx = 0;
-    foreach my $n (sort keys %{$defs{$m}}) {
-        print $of "        ${n}: return $defs{$m}{$n};\n";
-        $idx += 1;
-    }
+    EmitBSV_DictEntries($of, $m, $dict);
+    print $of "        default:\n";
+    print $of "            return \"<<Undefined dictionary entry ID>>\";\n";
 
-    print $of "\n    endcase\n\n";
-
-    print $of "\nendfunction\n";
+    print $of "    endcase\n";
+    print $of "endfunction\n";
 
     undef $of;
+
+    ##
+    ## Emit sub dictionaries
+    ##
+    foreach my $subName ($dict->GetSortedDictionaryNames()) {
+        EmitBSV("${m}_", $baseDict, $dict->GetDictionary($subName));
+    }
+}
+
+
+sub EmitBSV_DictEntries($$$){
+    my $of = shift;
+    my $m = shift;
+    my $dict = shift;
+
+    foreach my $n ($dict->GetSortedEntries()) {
+        print $of "        `${m}_${n}:\n";
+        print $of "            return " . $dict->GetDefinition($n) . ";\n";
+    }
+
+    foreach my $subName ($dict->GetSortedDictionaryNames()) {
+        EmitBSV_DictEntries($of, "${m}_${subName}", $dict->GetDictionary($subName));
+    }
+}
+
+
+##
+## EmitInit_Recursive --
+##   Do the work for EmitInit, walking the dictionary tree recursively.
+##
+sub EmitInit_Recursive {
+    my $of = shift;
+    my $prefix = shift;
+    my $dict = shift;
+
+    my @dNames = $dict->GetSortedDictionaryNames();
+    foreach my $n (@dNames) {
+        my $sd = $dict->GetDictionary($n);
+        my $name = $sd->GetName();
+
+        print $of "#include \"asim/dict/${prefix}${name}.h\"\n";
+
+        EmitInit_Recursive($of, "${prefix}${name}_", $sd);
+    }
 }
 
 
@@ -206,16 +420,126 @@ sub EmitInit() {
 
     EmitHeader($of);
 
-    print $of "#ifndef DICT_INIT\n";
-    print $of "#define DICT_INIT\n";
+    print $of "#ifndef INIT_DICT\n";
+    print $of "#define INIT_DICT\n";
     print $of "#endif\n\n";
 
-    foreach my $m (sort keys %defs) {
-        print $of "#include \"asim/dict/${m}.h\"\n";
-    }
-
+    EmitInit_Recursive($of, "", $root);
 }
 
+
+##
+## EmitModuleNames --
+##   Print names of all dictionary modules.  Also print dependence info so
+##   build scripts can build Bluespec modules.  To get dependence right for
+##   in order parsing print the tree depth first.
+##
+sub EmitModuleNames {
+    my $prefix = shift;
+    my $dict = shift;
+
+    my @dNames = $dict->GetSortedDictionaryNames();
+    foreach my $n (@dNames) {
+        my $sd = $dict->GetDictionary($n);
+        my $name = $sd->GetName();
+
+        EmitModuleNames("${prefix}${name}_", $sd);
+
+        print "${prefix}${name}";
+
+        my @subdNames = $sd->GetSortedDictionaryNames();
+        if (@subdNames) {
+            print ":";
+            foreach my $sn (@subdNames) {
+                print " ${prefix}${name}_${sn}";
+            }
+        }
+
+        print "\n";
+    }
+}
+
+
+###########################################################################
+##
+## Post-parsing analysis.  Mainly UID assignment.
+##
+###########################################################################
+
+##
+## AssignUIDs --
+##   Assign UIDs to each sub dictionary.  Must be run after all dictionary
+##   sources have been parsed.
+##
+my $lastUID = 0;
+my $maxEntryBits = 1;
+sub AssignUIDs {
+    my $dict = shift;
+
+    # This level gets a UID only if it has entries
+    my @e = $dict->GetSortedEntries();
+    if ($#e >= 0) {
+        $dict->SetUID(++$lastUID);
+
+        # Figure out how many bits are needed for dictionary entries
+        my $nBits = ceil(log($#e + 1) / log(2));
+        if ($nBits > $maxEntryBits) {
+            $maxEntryBits = $nBits;
+        }
+    }
+
+    foreach my $n ($dict->GetSortedDictionaryNames()) {
+        AssignUIDs($dict->GetDictionary($n));
+    }
+}
+
+##
+## StoreUIDSize --
+##   Simple recursive routine walks down the dictionary tree and sets the
+##   minimum number of bits to store a UID for the tree.  The size is the
+##   same throughout the subtree.
+##
+sub StoreUIDSize {
+    my $dict = shift;
+    my $nUIDBits = shift;
+    my $nBits = shift;
+
+    $dict->SetUIDNumBits($nUIDBits);
+    $dict->SetTotalNumBits($nBits);
+
+    foreach my $n ($dict->GetSortedDictionaryNames()) {
+        StoreUIDSize($dict->GetDictionary($n), $nUIDBits, $nBits);
+    }
+}
+
+##
+## InitUIDs --
+##   Initialize UID numbering and sizes for each dictionary.  Each top level
+##   dictionary gets its own UID space, hence the assignment of 0 as the UID
+##   for each child of the root.  The result is a smaller numbering space
+##   in the hardware.
+##
+sub InitUIDs() {
+    my @dNames = $root->GetSortedDictionaryNames();
+    foreach my $n (@dNames) {
+        my $sd = $root->GetDictionary($n);
+        $lastUID = -1;
+        AssignUIDs($sd);
+        my $nBits = 0;
+        if ($lastUID > 0) {
+            $nBits = ceil(log($lastUID + 1) / log(2));
+            $nBits = 1 if ($nBits < 1);
+        }
+        StoreUIDSize($sd, $nBits, $maxEntryBits + $nBits);
+    }
+}
+
+
+###########################################################################
+##
+## Input file parsing.
+##
+###########################################################################
 
 ##
 ## AddDef --
@@ -226,15 +550,20 @@ sub AddDef($$) {
     my $value = shift;
 
     my @n = split(/\./, $name);
-    if ($#n != 1) {
-        Error("Illegal definition name");
+    if ($#n < 1) {
+        Error("Illegal definition name ($name)");
     }
 
-    if (exists($defs{$n[0]}{$n[1]})) {
-        Error("Duplicate name ($name)");
+    # Walk down the dictionary tree to the specified level
+    my $dict = $root;
+    foreach my $i ( 0 .. $#n - 1 ) {
+        $dict = $dict->GetOrAddDictionary($n[$i]);
     }
 
-    $defs{$n[0]}{$n[1]} = $value;
+    # Add the definition
+    if ($dict->AddDefinition($n[$#n], $value)) {
+        Error("Duplicate name ($name at $n[$#n])");
+    }
 }
 
 ##
@@ -349,9 +678,11 @@ sub ParseInputFile($) {
 }
 
 
+###########################################################################
 ##
-## main --
+## main
 ##
+###########################################################################
 
 if (! GetOptions(
           'help!'         => \$help,
@@ -363,10 +694,6 @@ if (! GetOptions(
 }
 
 Usage(0) if ($help);
-
-foreach my $f (@ARGV) {
-    ParseInputFile($f);
-}
 
 if ($tgtHwDir ne '') {
     if (! -d $tgtHwDir) {
@@ -384,21 +711,28 @@ if ($tgtIncDir ne '') {
     $tgtIncDir .= '/';
 }
 
+$root = HAsim::DictBuilder::new('root');
+
+foreach my $f (@ARGV) {
+    ParseInputFile($f);
+}
+
+InitUIDs();
+
 if ($queryModules) {
     ##
     ## Just print module names and exit
     ##
-    foreach my $g (sort keys %defs) {
-        print $g . "\n";
-    }
+    EmitModuleNames("", $root);
     exit(0);
 }
 
-foreach my $g (sort keys %defs) {
-    print "  Dictionary: $g\n";
-    EmitBSV($g);
-    EmitBSH($g);
-    EmitH($g);
+foreach my $tName ($root->GetSortedDictionaryNames()) {
+    my $sd = $root->GetDictionary($tName);
+    print "  Dictionary: " . $sd->GetName() . "\n";
+    EmitBSV("", $sd, $sd);
+    EmitBSH("", $sd, $sd);
+    EmitH("", $sd, $sd);
 }
 
 EmitInit();

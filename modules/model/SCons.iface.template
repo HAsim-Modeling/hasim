@@ -25,8 +25,9 @@ BSC = env['DEFS']['BSC']
 BSC_FLAGS = env['DEFS']['BSC_FLAGS']
 TMP_BSC_DIR = env['DEFS']['TMP_BSC_DIR']
 
-dict_inc_tgt = 'build/include/asim/dict/'
-rrr_inc_tgt = 'build/include/asim/rrr/'
+inc_tgt = 'build/include'
+dict_inc_tgt = inc_tgt + '/asim/dict'
+rrr_inc_tgt = inc_tgt + '/asim/rrr'
 hw_tgt = 'build/hw'
 
 if env.GetOption('clean'):
@@ -57,12 +58,32 @@ def dict_emitter(target, source, env):
         src_names += ' ' + str(s)
     # Ask hasim-dict for the output names based on the input files
     for d in os.popen('hasim-dict --querymodules' + src_names).readlines():
-        d = d.rstrip()
-        target.append(dict_inc_tgt + '/' + d + '.bsh')
-        target.append(dict_inc_tgt + '/' + d + '.h')
-        bsv = hw_tgt + '/DICT_' + d + '.bsv'
-        target.append(bsv)
-        all_gen_bsv += [bsv]
+        #
+        # Querymodules describes both targets and dependence info.  Targets
+        # are the first element of each line followed by a colon and a
+        # space separated list of other dictionaries on which the target
+        # depends, e.g.:
+        #     STREAMS: STREAMS_A STREAMS_B
+        #
+        # Start by breaking the line into a one or two element array.  The
+        # first element is a dictionary name.  The second element, if it
+        # exists, is a list of other dictionaries on which the first element
+        # depends.
+        #
+        tgt = d.rstrip().split(':')
+        if (len(tgt) > 1):
+            tgt[1] = [x for x in tgt[1].split(' ') if x != '']
+
+        # Add to the target list for the build
+        target.append(dict_inc_tgt + '/' + tgt[0] + '.bsh')
+        target.append(dict_inc_tgt + '/' + tgt[0] + '.h')
+
+        # Build a list of BSV files for building later
+        bsv = [hw_tgt + '/' + tgt[0] + '_DICT.bsv']
+        target.append(bsv[0])
+        if (len(tgt) > 1):
+            bsv.append([hw_tgt + '/' + x + '_DICT.bsv' for x in tgt[1]])
+        all_gen_bsv.append(bsv)
     return target, source
 
 # Define the dictionary builder
@@ -71,13 +92,13 @@ d_bld = Builder(action = 'hasim-dict --tgt-inc ' + dict_inc_tgt + ' --tgt-hw ' +
 env.Append(BUILDERS = {'DIC' : d_bld})
 
 # Finally, request dictionary build
-d_tgt = env.DIC(dict_inc_tgt + 'init.h', env['DEFS']['DICT_SRCS'].split())
+d_tgt = env.DIC(dict_inc_tgt + '/init.h', env['DEFS']['DICT_SRCS'].split())
 tgt += d_tgt
 
 # Compile RRR stubs
 #  NOTE: like dictionaries, some files must be created even when no .rrr
 #  files exist.
-tgt += env.Command(rrr_inc_tgt + 'rrr_service_ids.h',
+tgt += env.Command(rrr_inc_tgt + '/rrr_service_ids.h',
                    env['DEFS']['RRR_SRCS'].split(),
                    'hasim-rrr-stubgen --odir ' + rrr_inc_tgt + ' --mode stub --target hw --type server $SOURCES')
 
@@ -91,6 +112,7 @@ def emitter_bo(target, source, env):
 def compile_bo(source, target, env, for_signature):
     bdir = os.path.dirname(str(target[0]))
     cmd = BSC + ' ' + BSC_FLAGS + \
+          ' -p +:' + inc_tgt + ':' + hw_tgt + ':' + bdir + \
           ' -bdir ' + bdir + ' -vdir ' + bdir + ' -simdir ' + bdir + ' ' + \
           str(source[0])
     return cmd
@@ -100,10 +122,23 @@ bsc = Builder(generator = compile_bo, suffix = '.bo', src_suffix = '.bsv',
 
 env.Append(BUILDERS = {'BSC' : bsc})
 
-for d in all_gen_bsv:
-    bo = os.path.dirname(d) + '/' + TMP_BSC_DIR + '/' + os.path.splitext(os.path.basename(d))[0] + '.bo'
-    d_bsv_tgt = env.BSC(bo, d)
-    tgt += d_bsv_tgt
+#
+# Describe BSV builds.  At the same time collect a Python dictionary of the
+# targets of the BSV builds.
+#
+bsv_targets = {}
+for bsv in all_gen_bsv:
+    bo = os.path.dirname(bsv[0]) + '/' + TMP_BSC_DIR + '/' + os.path.splitext(os.path.basename(bsv[0]))[0] + '.bo'
+    bsv_targets[bsv[0]] = env.BSC(bo, bsv[0])
+    tgt += bsv_targets[bsv[0]]
+
+#
+# Add BSV module dependence information.
+#
+for bsv in all_gen_bsv:
+    if (len(bsv) > 1):
+       for dep in bsv[1]:
+           Depends(bsv_targets[bsv[0]], bsv_targets[dep])
 
 #
 # Build everything

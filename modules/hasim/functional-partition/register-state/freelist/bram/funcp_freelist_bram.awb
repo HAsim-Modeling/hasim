@@ -15,6 +15,7 @@
 # %attributes hasim funcp
 #
 # %public funcp_freelist_bram.bsv
+# %sources -T DICT -v PUBLIC freelist.dic
 #
 # %AWB_END
 # */

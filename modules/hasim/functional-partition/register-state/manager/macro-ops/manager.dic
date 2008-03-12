@@ -1,0 +1,4 @@
+def STREAMS.ASSERTS.REGMANAGER.LOAD_ON_NONLOAD          "FUNCP: Regstate: Told to do loads on a non-load instruction!";
+def STREAMS.ASSERTS.REGMANAGER.MALFORMED_LOAD_WRITEBACK "FUNCP: Regstate: Told to do a load when the destination register had already been written!";
+def STREAMS.ASSERTS.REGMANAGER.STORE_ON_NONSTORE        "FUNCP: Regstate: Told to do stores for an instruction that is not a store!";
+def STREAMS.ASSERTS.REGMANAGER.COMMIT_STORE_ON_NONSTORE "FUNCP: Regstate: Told to commit a store which was not a store!";

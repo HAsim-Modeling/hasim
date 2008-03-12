@@ -19,6 +19,9 @@ import RegFile::*;
 `include "soft_connections.bsh"
 `include "hasim_isa.bsh"
 
+// Dictionary includes
+`include "asim/dict/STREAMS_ASSERTS_SCOREBOARD.bsh"
+
 // TOKEN_SCOREBOARD
 
 // Because the whole system is made of reg files of Bools, we use
@@ -106,31 +109,30 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     // ***** Assertion Checkers ***** //
 
     // Do we have enough tokens to do everything the timing model wants us to?
-    Assertion assert_enough_tokens <- mkAssertionChecker("FUNCP: Ran out of Tokens!", ASSERT_ERROR);
+    Assertion assert_enough_tokens <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_OUT_OF_TOKENS, ASSERT_ERROR);
 
     // Don't allocate a token which is already allocated.
-    Assertion assert_token_is_not_allocated <- mkAssertionChecker("FUNCP: Allocating an already-allocated Token!", ASSERT_ERROR);
+    Assertion assert_token_is_not_allocated <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_REALLOCATE, ASSERT_ERROR);
 
     // Don't de-allocate a token which isn't allocated.
-    // Assertion assert_token_is_allocated <- mkAssertionChecker("FUNCP: De-allocating an un-allocated Token!", ASSERT_ERROR);
+    // Assertion assert_token_is_allocated <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_DEALLOCATE, ASSERT_ERROR);
 
     // Are we completing tokens in order?
-    // Assertion assert_completing_tokens_in_order <- mkAssertionChecker("FUNCP: Completing Tokens out of order!", ASSERT_WARNING);
+    // Assertion assert_completing_tokens_in_order <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_COMPLETION, ASSERT_WARNING);
 
     // The following assertions make sure things happen at the right time.
-    // Assertion assert_token_can_start_fet  <- mkAssertionChecker("FUNCP: Starting Fetch on token at improper time.", ASSERT_ERROR);
-    Assertion assert_token_can_finish_fet <- mkAssertionChecker("FUNCP: Finish Fetch on token that hasn't started.", ASSERT_ERROR);
-    Assertion assert_token_can_start_dec  <- mkAssertionChecker("FUNCP: Starting Decode on token at improper time.", ASSERT_ERROR);
-    Assertion assert_token_can_finish_dec <- mkAssertionChecker("FUNCP: Finish Decode on token that hasn't started.", ASSERT_ERROR);
-    Assertion assert_token_can_start_exe  <- mkAssertionChecker("FUNCP: Starting Execute on token at improper time.", ASSERT_ERROR);
-    Assertion assert_token_can_finish_exe <- mkAssertionChecker("FUNCP: Finish Execute on token that hasn't started.", ASSERT_ERROR);
-    Assertion assert_token_can_start_load <- mkAssertionChecker("FUNCP: Starting Loads on token at improper time.", ASSERT_ERROR);
-    Assertion assert_token_can_finish_load <- mkAssertionChecker("FUNCP: Finish Loads on token that hasn't started.", ASSERT_ERROR);
-    Assertion assert_token_can_start_store <- mkAssertionChecker("FUNCP: Starting Stores on token at improper time.", ASSERT_ERROR);
-    Assertion assert_token_can_finish_store <- mkAssertionChecker("FUNCP: Finish Stores on token that hasn't started.", ASSERT_ERROR);
-    Assertion assert_token_can_start_commit <- mkAssertionChecker("FUNCP: Starting Commit on token at improper time.", ASSERT_ERROR);
-    Assertion assert_token_has_done_loads   <- mkAssertionChecker("FUNCP: Starting Commit on Load without doing loads!", ASSERT_ERROR);
-    Assertion assert_token_has_done_stores  <- mkAssertionChecker("FUNCP: Starting Commit on Store without doing stores!", ASSERT_ERROR);
+    Assertion assert_token_can_finish_fet   <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_FETCH_FINISH, ASSERT_ERROR);
+    Assertion assert_token_can_start_dec    <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_DECODE_START, ASSERT_ERROR);
+    Assertion assert_token_can_finish_dec   <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_DECODE_FINISH, ASSERT_ERROR);
+    Assertion assert_token_can_start_exe    <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_EXECUTE_START, ASSERT_ERROR);
+    Assertion assert_token_can_finish_exe   <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_EXECUTE_FINISH, ASSERT_ERROR);
+    Assertion assert_token_can_start_load   <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_LOAD_START, ASSERT_ERROR);
+    Assertion assert_token_can_finish_load  <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_LOAD_FINISH, ASSERT_ERROR);
+    Assertion assert_token_can_start_store  <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_STORE_START, ASSERT_ERROR);
+    Assertion assert_token_can_finish_store <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_STORE_FINISH, ASSERT_ERROR);
+    Assertion assert_token_can_start_commit <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_COMMIT_START, ASSERT_ERROR);
+    Assertion assert_token_has_done_loads   <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_COMMIT_WITHOUT_LOAD, ASSERT_ERROR);
+    Assertion assert_token_has_done_stores  <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_ILLEGAL_COMMIT_WITHOUT_STORE, ASSERT_ERROR);
 
     // ***** Helper Functions ***** //
 
@@ -232,7 +234,6 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     method Action fetStart(TOKEN_INDEX t);
 
         // We don't need an assert here, because it's okay to fetch killed tokens.
-        // assert_token_can_start_fet(alloc[t]);
 
         fet_start.upd(t, True);
 

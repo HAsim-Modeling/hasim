@@ -10005,3 +10005,93 @@ In Bluespec the elements are now preprocessor definitions, e.g.
      `define STREAMID_ASSERT 0
 The Bluespec ID to string function is now in a module named <NAME>_DICT and
 the function is named show<NAME>_DICT.
+
+----------
+pellauer    Date: Wed Mar 12 18:55:44 EDT 2008  CSN: CSN-hasim-331
+                  Wed Mar 12 22:55:44 UTC 2008
+
+
+Directory modules/hasim/common/new-funcp
+ Assertions.bsv            Locally Modified          330 
+ hasim_common_newfuncp.awb Locally Modified          330 
+ hasim_common.dic          Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ scoreboard.dic            Locally Added               0 
+ regstate_scoreboard_onehot.awb Locally Modified          330 
+ regstate_scoreboard_onehot.bsv Locally Modified          330 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.awb Locally Modified          330 
+ regstate_manager_macro_ops.bsv Locally Modified          330 
+ manager.dic               Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.awb   Locally Modified          330 
+ funcp_freelist_bram.bsv   Locally Modified          330 
+ freelist.dic              Locally Added               0 
+
+Directory modules/hasim/functional-partition
+ functional_partition_default.awb Locally Modified          330 
+
+Directory modules/bluespec/common/soft_connections
+ Connections.bsv           Locally Modified          330 
+
+Directory modules/functional/semantic-model
+ scoreboard.dic            Locally Added               0 
+ hasim_funcp_tokstate.awb  Locally Modified          330 
+ FUNCPTokState.bsv         Locally Modified          330 
+
+Directory modules/functional/freelist
+ FUNCP_FreeList.bsv        Locally Modified          330 
+ hasim_funcp_freelist.awb  Locally Modified          330 
+ freelist.dic              Locally Added               0 
+
+Directory modules/controller/events
+ EventsController.bsv      Locally Modified          330 
+ EventsControllerHeader.bsv Locally Modified          330 
+ event-streams.dic         Locally Modified          330 
+
+Directory modules/controller/module
+ module-controller.bsv     Locally Modified          330 
+
+Directory modules/controller/assertions
+ AssertionsController.bsv  Locally Modified          330 
+
+Directory modules/controller/local
+ hasim_local_controller.awb Locally Modified          330 
+ LocalController.bsv       Locally Modified          330 
+ local_controller.dic      Locally Added               0 
+
+Directory modules/controller/stats
+ stat-streams.dic          Locally Removed           330 
+ hasim_stats_controller.awb Locally Modified          330 
+ StatsController.bsv       Locally Modified          330 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          330 
+ Assertions.bsv            Locally Modified          330 
+
+Directory modules/common/modellib
+ Ports.bsv                 Locally Modified          330 
+ hasim_modellib.awb        Locally Modified          330 
+ modellib.dic              Locally Added               0 
+ Stats.bsv                 Locally Modified          330 
+ StatFIFO.bsv              Locally Modified          330 
+ Events.bsv                Locally Modified          330 
+
+Directory modules/common
+ hasim_common.dic          Locally Added               0 
+
+
+* Events and Stats and Assertions now use dictionaries.
+* Instantiations have been changed to take a dictionary entry.
+* Ring numbers are now assigned via a dictionary (RINGID).
+
+TODO: Rings for Events and Stats currently send complete StreamIDs. They should
+probably operate on STREAM->EVENT and STREAM->STAT IDs respectively, and their
+controllers should "globalize" the names before sending onto the streams device.
+
+Michael P.
+
+

@@ -1,4 +1,5 @@
 import hasim_modellib::*;
+`include "asim/dict/STREAMS.bsh"
 
 // EventsController
 
@@ -33,9 +34,11 @@ typedef enum
 
 typedef struct
 {
-        Bit#(1)    eventBoundary; // Is it a model cycle boundary?
-        Bit#(8)    eventStringID; // Which Event is it?
-        EventParam eventData;     // User-given Event data.
+        Bit#(1)      eventBoundary; // Is it a model cycle boundary?
+        STREAMS_DICT_TYPE  eventStringID; // Which Event is it?
+        Bit#(32)     modelTick;    // Model tick of the event
+        EventParam   eventData;     // User-given Event data.
+
 }
   EventInfo 
             deriving 

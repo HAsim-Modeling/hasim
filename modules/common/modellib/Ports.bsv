@@ -183,7 +183,7 @@ module [HASim_Module] mkPort_Receive_Waterlevel#(String portname, Integer latenc
   Reg#(Bit#(10)) waterlevel <- mkReg(fromInteger(latency));
   
   String         stat_name = strConcat(portname, " Maximum Elements");
-  Stat           level_stat <- mkStatCounter(stat_name);
+  Stat           level_stat <- mkStatCounter(0); //XXX this needs to use dictionaries.
   
   Bool full  = (head + 1 == tail);
   Bool empty = (head == tail);

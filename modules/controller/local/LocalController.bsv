@@ -12,6 +12,7 @@ import soft_connections::*;
 
 import Vector::*;
 import FIFO::*;
+`include "asim/dict/RINGID.bsh"
 
 
 interface LocalController;
@@ -38,8 +39,8 @@ module [HASim_Module] mkLocalController#(Vector#(n, Port_Control) inports, Vecto
   Reg#(Bool) balanced_since_query <- mkRegU();
   Reg#(Bool) check_balanced <- mkReg(False);
   
-  Connection_Chain#(Command)  cmds  <- mkConnection_Chain(2);
-  Connection_Chain#(Response) resps <- mkConnection_Chain(3);
+  Connection_Chain#(Command)  cmds  <- mkConnection_Chain(`RINGID_MODULE_COMMANDS);
+  Connection_Chain#(Response) resps <- mkConnection_Chain(`RINGID_MODULE_RESPONSES);
 
   //Can this module read from this Port?
 

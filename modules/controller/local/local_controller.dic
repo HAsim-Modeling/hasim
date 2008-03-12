@@ -1,0 +1,2 @@
+def RINGID.MODULE_COMMANDS  "module commands";
+def RINGID.MODULE_RESPONSES "module responses";

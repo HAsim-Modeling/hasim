@@ -17,7 +17,6 @@
 # %public  StatsControllerHeader.bsv
 # %public  StatsController.bsv
 #
-# %sources -t DICT -v PUBLIC stat-streams.dic
 # %sources -t DICT -v PUBLIC stat-streamid.dic
 #
 # %AWB_END

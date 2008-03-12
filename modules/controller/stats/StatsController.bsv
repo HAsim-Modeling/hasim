@@ -6,10 +6,9 @@ import soft_connections::*;
 `include "streams.bsh"
 `include "asim/dict/STREAMS.bsh"
 `include "asim/dict/STREAMID.bsh"
+`include "asim/dict/RINGID.bsh"
 
 // StatsController: Control all the stats throughout the hardware model.
-
-`define CHAIN_IDX_STATS 1
 
 // StatsConState
 
@@ -38,13 +37,10 @@ module [Connected_Module] mkStatsController#(Connection_Send#(STREAMS_REQUEST) l
   // ****** State Elements ******
 
   // Communication link to the Stats themselves
-  Connection_Chain#(StatData) chain <- mkConnection_Chain(`CHAIN_IDX_STATS);
+  Connection_Chain#(StatData) chain <- mkConnection_Chain(`RINGID_STATS);
   
   // Output FIFO of stats to send along
   FIFO#(StatInfo)  statQ  <- mkFIFO();
-  
-  // The current stat we are expecting to report
-  Reg#(Bit#(8))      cur  <- mkReg(0);
 
   // Track if we are done dumping
   Reg#(Bool)      dump_finished  <- mkReg(False);
@@ -63,11 +59,11 @@ module [Connected_Module] mkStatsController#(Connection_Send#(STREAMS_REQUEST) l
   rule sendReq (!((state == SC_Idle) || (state == SC_Initializing)));
   
     let nextCommand = case (state) matches
-                       tagged SC_Dumping:      return tagged ST_Boundary;
+                       tagged SC_Dumping:      return tagged ST_Dump;
                        tagged SC_Enabling:     return tagged ST_Enable;
                        tagged SC_Disabling:    return tagged ST_Disable;
                        tagged SC_Reseting:     return tagged ST_Reset;
-                       default:                return tagged ST_Boundary;
+                       default:                return tagged ST_Dump;
                      endcase;
   
     chain.send_to_next(nextCommand);
@@ -85,48 +81,25 @@ module [Connected_Module] mkStatsController#(Connection_Send#(STREAMS_REQUEST) l
     let st <- chain.receive_from_prev();
     
     case (st) matches
-      tagged ST_Val .d: //A stat to dump
+      tagged ST_Val .stinfo: //A stat to dump
       begin
-        cur <= cur + 1;
-        statQ.enq(StatInfo {statStringID: cur, statValue: d});
+
+        link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_STAT,
+                                            stringID: stinfo.statID,
+                                            payload0: stinfo.value,
+                                            payload1: ? });
       end
-      tagged ST_Boundary:  //We're done dumping
+      tagged ST_Dump:  //We're done dumping
       begin
-        cur <= 0;
         state <= SC_Idle;
         dump_finished <= True;
       end
       default:  //This should never happen
       begin
-        cur <= 0;
         state <= SC_Idle;
       end
     endcase
      
-  endrule
-  
-  // printStat: print the next stat via Streams
-
-  rule printStat (True); // we shouldn't have to check for state == SC_Dumping
-
-    let st = statQ.first();
-    statQ.deq();
-
-    // TEMPORARY: translate stringIDs manually
-    STREAMS_DICT_TYPE stringID = case (st.statStringID)
-                                     0: `STREAMS_STAT_INSTS_COMMITTED;
-                                     1: `STREAMS_STAT_DCACHE_MISSES;
-                                     2: `STREAMS_STAT_BPRED_MISPREDS;
-                                     3: `STREAMS_STAT_ICACHE_MISSES;
-                                     4: `STREAMS_STAT_INSTS_FETCHED;
-                                     5: `STREAMS_STAT_TOTAL_CYCLES;
-                                 endcase;
-
-    link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_STAT,
-                                        stringID: stringID,
-                                        payload0: st.statValue,
-                                        payload1: ? });
-
   endrule
 
   //doCommand

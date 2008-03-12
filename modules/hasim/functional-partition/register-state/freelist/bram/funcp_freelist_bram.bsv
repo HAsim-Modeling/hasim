@@ -14,6 +14,9 @@ import Counter::*;
 
 `include "hasim_isa.bsh"
 
+// Dictionary includes
+`include "asim/dict/STREAMS_ASSERTS_FREELIST.bsh"
+
 // FUNCP_FREELIST
 
 // The interface to the freelist is request/response because of the block ram.
@@ -81,8 +84,8 @@ module [HASim_Module] mkFUNCP_Freelist#(File debug_log, Tick fpga_cc)
 
     // ***** Assertion Checkers *****/
 
-    Assertion assert_enough_pregs <- mkAssertionChecker("FREELIST: Ran out of Physical Registers!", ASSERT_ERROR);
-    Assertion assert_at_least_one_allocated_register <- mkAssertionChecker("FREELIST: Backed up too far!", ASSERT_ERROR);
+    Assertion assert_enough_pregs <- mkAssertionChecker(`STREAMS_ASSERTS_FREELIST_OUT_OF_PREGS, ASSERT_ERROR);
+    Assertion assert_at_least_one_allocated_register <- mkAssertionChecker(`STREAMS_ASSERTS_FREELIST_ILLEGAL_BACKUP, ASSERT_ERROR);
 
     // initialize
 

@@ -153,7 +153,7 @@ module [Connected_Module] mkConnection_Receive#(String portname)
 	     Transmittable#(msg_T));
 
   PulseWire      en_w    <- mkPulseWire();
-  VRWire#(msg_T) data_w  <- vMkRWire();
+  RWire#(msg_T)  data_w  <- mkRWire();
   
   //Bind the interface to a name for convenience
   let inc = (interface CON_In;
@@ -176,11 +176,11 @@ module [Connected_Module] mkConnection_Receive#(String portname)
   let info = CRecv_Info {cname: portname, ctype: mytype, conn: inc};
   addToCollection(tagged LRecv info);
   
-  method msg_T receive() if (data_w.whas());
-    return data_w.wget();
+  method msg_T receive() if (data_w.wget() matches tagged Valid .val);
+    return val;
   endmethod
 
-  method Action deq() if (data_w.whas());
+  method Action deq() if (data_w.wget() matches tagged Valid .val);
     en_w.send();
   endmethod
 
@@ -260,7 +260,7 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
 
-  VRWire#(msg_T) data_w  <- vMkRWire();
+  RWire#(msg_T)  data_w  <- mkRWire();
   PulseWire      en_w    <- mkPulseWire();
   FIFO#(msg_T)   q       <- mkCON_FIFO();
 
@@ -303,10 +303,10 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
     q.enq(data);
   endmethod
 
-  method ActionValue#(msg_T) receive_from_prev() if (data_w.whas());
+  method ActionValue#(msg_T) receive_from_prev() if (data_w.wget() matches tagged Valid .val);
 
     en_w.send();
-    return data_w.wget();
+    return val;
 
   endmethod
 

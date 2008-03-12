@@ -1,7 +1,1 @@
-def STREAMS.EVENT_FETCH     "[%9u]: 1 FET: %d\n";
-def STREAMS.EVENT_DECODE    "[%9u]: 2   DEC: %d\n";
-def STREAMS.EVENT_EXECUTE   "[%9u]: 3     EXE: %d\n";
-def STREAMS.EVENT_MEMORY    "[%9u]: 4       MEM: %d\n";
-def STREAMS.EVENT_WRITEBACK "[%9u]: 5         WBK: %d\n";
-
 def STREAMS.HEARTBEAT_MSG "[%12u]: controller: model cycles completed: %9u\n";

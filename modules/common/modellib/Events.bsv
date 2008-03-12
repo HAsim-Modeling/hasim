@@ -2,12 +2,14 @@
 import FIFO::*;
 import ModuleCollect::*;
 import soft_connections::*;
+`include "asim/dict/RINGID.bsh"
+`include "asim/dict/STREAMID.bsh"
+`include "asim/dict/STREAMS.bsh"
 
 //AWB Parameters
 //name:                  default:
 //HASIM_EVENTS_ENABLED   True
 //HASIM_EVENTS_SIZE      32
-`define CHAIN_IDX_EVENTS 0
 
 typedef Bit#(`HASIM_EVENTS_SIZE) EventParam;
 
@@ -15,11 +17,11 @@ interface EventRecorder;
   method Action recordEvent(Maybe#(EventParam) mdata);
 endinterface
 
-module [Connected_Module] mkEventRecorder#(String eventname)
+module [Connected_Module] mkEventRecorder#(STREAMS_DICT_TYPE eventID)
     //interface:
                 (EventRecorder);
 
-    let m <- (`HASIM_EVENTS_ENABLED) ? mkEventRecorder_Enabled(eventname) : mkEventRecorder_Disabled(eventname);
+    let m <- (`HASIM_EVENTS_ENABLED) ? mkEventRecorder_Enabled(eventID) : mkEventRecorder_Disabled(eventID);
     return m;
 
 endmodule
@@ -28,9 +30,9 @@ endmodule
 
 typedef union tagged
 {
-  Bit#(32)   EVT_Boundary;
-  void       EVT_NoEvent;
-  EventParam EVT_Event;
+  STREAMS_DICT_TYPE EVT_NoEvent;
+  struct {STREAMS_DICT_TYPE event_id; EventParam event_data;} EVT_Event;
+
   void       EVT_Disable;
   void       EVT_Enable;
 }
@@ -38,31 +40,19 @@ typedef union tagged
 
 
 
-module [Connected_Module] mkEventRecorder_Enabled#(String eventname)
+module [Connected_Module] mkEventRecorder_Enabled#(STREAMS_DICT_TYPE eventID)
     //interface:
                 (EventRecorder);
 
-  Connection_Chain#(EventData)  chain  <- mkConnection_Chain(`CHAIN_IDX_EVENTS);
+  Connection_Chain#(EventData)  chain  <- mkConnection_Chain(`RINGID_EVENTS);
   
-  FIFO#(EventData)  localQ <- mkFIFO();
-  Reg#(Bool)         stall <- mkReg(False);
   Reg#(Bool)       enabled <- mkReg(True);
-  
-  rule insert (stall);
-  
-    chain.send_to_next(localQ.first());
     
-    localQ.deq();
-    stall <= False;
-  
-  endrule
-  
-  rule process (!stall);
+  rule process (True);
   
     EventData evt <- chain.receive_from_prev();
 
     case (evt) matches 
-      tagged EVT_Boundary .t: stall     <= True;
       tagged EVT_Disable:     enabled   <= False;
       tagged EVT_Enable:      enabled   <= True;
       default:                noAction;
@@ -77,13 +67,11 @@ module [Connected_Module] mkEventRecorder_Enabled#(String eventname)
       case (mdata) matches
         tagged Invalid:
         begin
-          localQ.enq(tagged EVT_NoEvent);
-          //$display("EVENT %s: No Event", eventname);
+          chain.send_to_next(tagged EVT_NoEvent eventID);
         end
         tagged Valid .data:
         begin
-          localQ.enq(tagged EVT_Event data);
-          //$display("EVENT %s: 0x%h", eventname, data);
+          chain.send_to_next(tagged EVT_Event {event_id: eventID, event_data: data});
         end
       endcase
   
@@ -91,32 +79,29 @@ module [Connected_Module] mkEventRecorder_Enabled#(String eventname)
 
 endmodule
 
-
-module [Connected_Module] mkEventRecorder_Disabled#(String eventname)
+module [Connected_Module] mkEventRecorder_Disabled#(STREAMS_DICT_TYPE eventID)
     //interface:
                 (EventRecorder);
 
-  Connection_Chain#(EventData) chain <- mkConnection_Chain(`CHAIN_IDX_EVENTS); 
-  FIFO#(EventData)  localQ <- mkFIFO();
-  Reg#(Bool)         stall <- mkReg(False);
+  Bit#(8) eventNum = zeroExtend(pack(eventID));
+
+  Connection_Chain#(EventData) chain <- mkConnection_Chain(`RINGID_EVENTS);
+  Reg#(STREAMS_DICT_TYPE)         stall <- mkReg(minBound);
  
-  rule insert (stall);
+  rule insert (stall == eventID);
   
-    chain.send_to_next(tagged EVT_NoEvent);
-    stall <= False;
+    chain.send_to_next(tagged EVT_NoEvent eventID);
+    stall <= unpack(pack(stall) + 1);
   
   endrule
   
-  rule process (!stall);
+  rule process (stall != eventID);
   
     EventData evt <- chain.receive_from_prev();
     chain.send_to_next(evt);
 
-    case (evt) matches 
-      tagged EVT_Boundary .t: stall <= True;
-      default: noAction;
-    endcase
-                  
+    stall <= unpack(pack(stall) + 1);
+
   endrule
 
   method Action recordEvent(Maybe#(EventParam) mdata);

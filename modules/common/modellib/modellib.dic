@@ -1,0 +1,2 @@
+def RINGID.EVENTS "events";
+def RINGID.STATS  "stats";

@@ -18,6 +18,7 @@
 # %attributes hasim funcp regstate
 #
 # %public regstate_manager_macro_ops.bsv
+# %sources -T DICT -v PUBLIC manager.dic
 #
 # %param REGSTATE_LOGFILE_NAME "hasim_funcp_regstate.out" "Name of logfile for register state."
 # %param REGSTATE_NUM_SNAPSHOTS 8 "Number of snapshots. Should be a power of 2."

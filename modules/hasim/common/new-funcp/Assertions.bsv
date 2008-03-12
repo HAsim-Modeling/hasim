@@ -1,6 +1,6 @@
 import FIFOF::*;
-
-`define CHAIN_IDX_ASSERTS 4
+`include "asim/dict/RINGID.bsh"
+`include "asim/dict/STREAMS.bsh"
 
 // Assertions
 
@@ -43,11 +43,10 @@ typedef function Action checkAssert(Bool b) Assertion;
 // Internal datatype for communicating with the AssertionsController
 
 
-typedef union tagged
+typedef struct
 {
-  void               AST_Boundary;
-  void               AST_Passed;
-  ASSERTION_SEVERITY AST_Failed;
+  STREAMS_DICT_TYPE  stringID;
+  ASSERTION_SEVERITY severity;
 }
   ASSERTION_DATA
              deriving (Eq, Bits);
@@ -57,65 +56,28 @@ typedef union tagged
 // Make a module which checks one assertion.
 // The assert() method should be called with the condition to check.
 
-module [Connected_Module] mkAssertionChecker#(String assertmessage, ASSERTION_SEVERITY severity)
+module [Connected_Module] mkAssertionChecker#(STREAMS_DICT_TYPE myID, ASSERTION_SEVERITY my_severity)
   // interface:
                (Assertion);
 
   // *********** Connections ***********
 
   // Connection to the assertions controller
-  Connection_Chain#(ASSERTION_DATA) chain <- mkConnection_Chain(`CHAIN_IDX_ASSERTS);
-  
-  // *********** Local State ***********
-
-  // Local data queue for sending on to the controller.
-  FIFOF#(ASSERTION_DATA)  localQ <- mkFIFOF();
-  
-  //When we get a boundary message from the controller it's time for us to send our own data.
-  Reg#(Bool)         stall <- mkReg(False);
-  
+  Connection_Chain#(ASSERTION_DATA) chain <- mkConnection_Chain(`RINGID_ASSERTS);
+    
   // *********** Rules ***********
 
   // processCmd
   
   // Process a message from the controller
   
-  rule processCmd (!stall);
+  rule processCmd (True);
   
     ASSERTION_DATA ast <- chain.receive_from_prev();
-
-    case (ast) matches 
-      tagged AST_Boundary .t: stall     <= True;
-      default:                noAction;
-    endcase
-
     chain.send_to_next(ast);
-  endrule
-  
-  // respond
 
-  // Give our response to the Controller.
-  
-  // Note: If the queue is empty, we assume the assertion passed.
-  //       This might obscure when exactly an assertion fails.
-  //       IE "imprecise exceptions".
-  
-  rule respond (stall);
-  
-    if (localQ.notEmpty())
-    begin
-      chain.send_to_next(localQ.first());
-      localQ.deq();
-    end
-    else
-    begin
-      chain.send_to_next(tagged AST_Passed);
-    end
-    
-    stall <= False;
-  
   endrule
-  
+    
   // *********** Methods ***********
   
   // assert
@@ -127,14 +89,7 @@ module [Connected_Module] mkAssertionChecker#(String assertmessage, ASSERTION_SE
   
     if (!b) // Check the boolean expression
     begin   // Failed. The system is sad. :(
-      localQ.enq(tagged AST_Failed severity);
-      // In simulation we can display the problem right away.
-      String sevmessage = case (severity)
-                              ASSERT_MESSAGE: "Message";
-                              ASSERT_WARNING: "Warning";
-                              ASSERT_ERROR:   "Error";
-                          endcase;
-      $display("Assertion Failed: %s (Severity: %s)", assertmessage, sevmessage);
+      chain.send_to_next(ASSERTION_DATA {stringID: myID, severity: my_severity});
     end
 
   endaction

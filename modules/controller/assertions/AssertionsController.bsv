@@ -6,13 +6,12 @@ import soft_connections::*;
 `include "streams.bsh"
 `include "asim/dict/STREAMS.bsh"
 `include "asim/dict/STREAMID.bsh"
+`include "asim/dict/RINGID.bsh"
 
 // AssertionsController
 
 // Abstracts the communication between the main hardware controller and the 
 // Event recorders spread throughout the hardware model.
-
-`define CHAIN_IDX_ASSERTS 4
 
 // mkAssertionsController
 
@@ -25,29 +24,12 @@ module [Connected_Module] mkAssertionsController#(Connection_Send#(STREAMS_REQUE
   //***** State Elements *****
   
   // Communication link to the rest of the Assertion checkers
-  Connection_Chain#(AssertData) chain <- mkConnection_Chain(`CHAIN_IDX_ASSERTS);
-  
-  // Output FIFO of failures to pass along
-  FIFO#(AssertInfo) failQ <- mkFIFO();
-  
-  // The current Assert ID we are expecting
-  Reg#(Bit#(8))       cur <- mkReg(0);
-  
+  Connection_Chain#(AssertData) chain <- mkConnection_Chain(`RINGID_ASSERTS);
+    
   // The minimum severity of assertions we should pass along
   Reg#(AssertionSeverity) min_severity <- mkReg(ASSERT_Message);
   
   // ***** Rules *****
-  
-  // sendReq
-  
-  // Send the next request to the Assertion checkers.
-  // We are continually polling for assertion failures.
-  
-  rule sendReq (True);
-  
-    chain.send_to_next(tagged AST_Boundary);
-
-  endrule
   
   // processResp
   
@@ -59,49 +41,16 @@ module [Connected_Module] mkAssertionsController#(Connection_Send#(STREAMS_REQUE
   
     let ast <- chain.receive_from_prev();
     
-    case (ast) matches
-      tagged AST_Passed:  //No problems to report.
-      begin
-        cur <= cur + 1;
-      end
-      tagged AST_Failed .sev: //It failed.
-      begin
-        // Check the minimum severity. If it's over our threshold pass it along.
-        if (sev > min_severity)
-        begin
-          failQ.enq(AssertInfo { assertStringID: cur, assertSeverity: sev});
-        end
-        cur <= cur + 1;
-      end
-      tagged AST_Boundary: //When our boundary gets back to us we've heard from everybody.
-      begin
-        cur <= 0;
-      end
-    endcase
-     
+    if (ast.severity >= min_severity)
+    begin
+      link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_ASSERT,
+                                          stringID: ast.stringID,
+                                          payload0: zeroExtend(pack(ast.severity)),
+                                          payload1: ? });
+    end
+
   endrule
   
-  // printAssert: asses an Assertion Failure on to the Streams for reporting
-
-  rule printAssert (True);
-
-    let ast = failQ.first();
-    failQ.deq();
-
-    // TEMPORARY: manually translate stringID. We have to do this because
-    // of the incremental way in which raw stringIDs are generated
-    STREAMS_DICT_TYPE stringID = case (ast.assertStringID)
-                                     0: `STREAMS_ASSERT_NOTOKENS;
-                                     1: `STREAMS_ASSERT_NOREGISTERS;
-                                 endcase;
-
-    link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_ASSERT,
-                                        stringID: stringID,
-                                        payload0: zeroExtend(pack(ast.assertSeverity)),
-                                        payload1: ? });
- 
-  endrule
-
   // ***** Methods *****
   
   // doCommand

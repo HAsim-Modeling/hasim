@@ -1,5 +1,7 @@
 import FIFO::*;
 
+`include "asim/dict/STREAMS.bsh"
+
 typedef enum
 {
   Empty,
@@ -9,10 +11,9 @@ typedef enum
   FState deriving (Bits, Eq);
   
 
-module [Connected_Module] mkStatFIFO#(String name) (FIFO#(t)) provisos (Bits#(t, t_SZ));
+module [Connected_Module] mkStatFIFO#(STREAMS_DICT_TYPE myID) (FIFO#(t)) provisos (Bits#(t, t_SZ));
 
-  let statname = strConcat("FIFO ", strConcat(name, " rating"));
-  Stat stat <- mkStatCounter(statname);
+  Stat stat <- mkStatCounter(myID);
   
   FIFO#(t) q <- mkFIFO();
   PulseWire enqW <- mkPulseWire();
@@ -112,8 +113,7 @@ module [Connected_Module] mkStatFIFO#(String name) (FIFO#(t)) provisos (Bits#(t,
   endmethod
   
   method Action clear();
-  
-    $display("WARNING: clear() called on StatFIFO %s. This stat will probably be wrong.", name);
+    // Note that if clear is called this will probably be wrong.  
     q.clear();
   
   endmethod

@@ -15,6 +15,7 @@ import hasim_local_controller::*;
 
 `include "starter.bsh"
 `include "streams.bsh"
+`include "asim/dict/RINGID.bsh"
 `include "asim/dict/STREAMS.bsh"
 `include "asim/dict/STREAMID.bsh"
 
@@ -67,10 +68,10 @@ module [HASim_Module] mkModuleController#(Connection_Send#(STREAMS_REQUEST) link
     // =========== Submodules ===========
   
     // Our way of sending Commands to the Local Controllers
-    Connection_Chain#(Command)   link_command   <- mkConnection_Chain(2);
+    Connection_Chain#(Command)   link_command   <- mkConnection_Chain(`RINGID_MODULE_COMMANDS);
   
     // Our way of receiving Responses from the Local Controllers
-    Connection_Chain#(Response)  link_response  <- mkConnection_Chain(3);
+    Connection_Chain#(Response)  link_response  <- mkConnection_Chain(`RINGID_MODULE_RESPONSES);
   
     // We write our state to the LEDs, but ignore the switches and buttons.
     Connection_Send#(FRONTP_MASKED_LEDS) link_leds <- mkConnection_Send("fpga_leds");

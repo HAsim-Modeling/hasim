@@ -15,6 +15,7 @@
 # %attributes hasim
 #
 # %public FUNCPTokState.bsv
+# %sources -t DICT -v PUBLIC scoreboard.dic
 #
 # %AWB_END
 # */

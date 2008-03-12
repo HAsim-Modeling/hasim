@@ -19,6 +19,7 @@
 #
 # %public HASim.bsv Token.bsv BypassFIFO.bsv FPGAFIFOs.bsv Debug.bsv Assertions.bsv
 # %private bluespec_common.prj
+# %sources -t DICT -v PUBLIC hasim_common.dic
 #
 # %param HASIM_TOK_INDEX_BITS 8 "Number of bits in a Token (8 = 256 in-flight instructions)."
 #

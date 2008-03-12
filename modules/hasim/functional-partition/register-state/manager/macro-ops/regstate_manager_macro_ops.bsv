@@ -26,6 +26,9 @@ import RegFile::*;
 `include "hasim_isa.bsh"
 `include "hasim_isa_datapath.bsh"
 
+// Dictionary includes
+`include "asim/dict/STREAMS_ASSERTS_REGMANAGER.bsh"
+
 // ***** Typedefs ***** //
 
 // FUNCP_SNAPSHOT_INDEX
@@ -267,10 +270,10 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     // ***** Assertion Checkers ***** //
 
-    Assertion assert_instruction_is_actually_a_load   <- mkAssertionChecker("FUNCP: Regstate: Told to do loads on a non-load instruction!", ASSERT_WARNING);
-    Assertion assert_load_dest_reg_is_ready           <- mkAssertionChecker("FUNCP: Regstate: Told to do a load when the destination register had already been written!", ASSERT_ERROR);
-    Assertion assert_instruction_is_actually_a_store  <- mkAssertionChecker("FUNCP: Regstate: Told to do stores for an instruction that is not a store!", ASSERT_WARNING);
-    Assertion assert_commited_store_is_actually_store <- mkAssertionChecker("FUNCP: Regstate: Told to commit a store which was not a store!", ASSERT_WARNING);
+    Assertion assert_instruction_is_actually_a_load   <- mkAssertionChecker(`STREAMS_ASSERTS_REGMANAGER_LOAD_ON_NONLOAD, ASSERT_WARNING);
+    Assertion assert_load_dest_reg_is_ready           <- mkAssertionChecker(`STREAMS_ASSERTS_REGMANAGER_MALFORMED_LOAD_WRITEBACK, ASSERT_ERROR);
+    Assertion assert_instruction_is_actually_a_store  <- mkAssertionChecker(`STREAMS_ASSERTS_REGMANAGER_STORE_ON_NONSTORE, ASSERT_WARNING);
+    Assertion assert_commited_store_is_actually_store <- mkAssertionChecker(`STREAMS_ASSERTS_REGMANAGER_COMMIT_STORE_ON_NONSTORE, ASSERT_WARNING);
 
     // ******* Rules *******
 

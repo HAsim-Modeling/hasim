@@ -15,6 +15,7 @@
 # %attributes hasim funcp
 #
 # %public regstate_scoreboard_onehot.bsv
+# %sources -T DICT -v PUBLIC scoreboard.dic
 #
 # %AWB_END
 # */

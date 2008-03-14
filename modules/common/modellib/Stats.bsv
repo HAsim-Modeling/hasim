@@ -85,7 +85,7 @@ module [Connected_Module] mkStatCounter_Enabled#(STREAMS_DICT_TYPE myID)
         chain.send_to_next(st);
         enabled <= True;
       end
-      default: noAction;
+      default: chain.send_to_next(st);
     endcase
 
   endrule

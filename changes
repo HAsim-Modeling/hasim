@@ -10095,3 +10095,22 @@ controllers should "globalize" the names before sending onto the streams device.
 Michael P.
 
 
+
+----------
+pellauer    Date: Fri Mar 14 12:48:34 EDT 2008  CSN: CSN-hasim-332
+                  Fri Mar 14 16:48:34 UTC 2008
+
+
+Directory modules/controller/assertions
+ hasim_assertions_controller.awb Locally Modified          331 
+ assert-streams.dic        Locally Removed           331 
+
+Directory modules/common/modellib
+ Stats.bsv                 Locally Modified          331 
+
+
+* Fixed the bug that was causing only one stat to be dumped.
+
+* Removed deprecated assertions definition from assertions controller.
+
+Michael P.

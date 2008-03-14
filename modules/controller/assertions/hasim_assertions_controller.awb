@@ -16,7 +16,6 @@
 #
 # %public AssertionsControllerHeader.bsv AssertionsController.bsv
 #
-# %sources -t DICT -v PUBLIC  assert-streams.dic
 # %sources -t DICT -v PUBLIC  assert-streamid.dic
 #
 # %AWB_END

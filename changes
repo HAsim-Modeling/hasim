@@ -10114,3 +10114,27 @@ Directory modules/common/modellib
 * Removed deprecated assertions definition from assertions controller.
 
 Michael P.
+
+----------
+pellauer    Date: Fri Mar 14 14:00:14 EDT 2008  CSN: CSN-hasim-333
+                  Fri Mar 14 18:00:14 UTC 2008
+
+
+Directory modules/controller/assertions
+ AssertionsControllerHeader.bsv Locally Modified          331 
+ AssertionsController.bsv  Locally Modified          331 
+
+Directory modules/common
+ Assertions.bsv            Locally Modified          331 
+
+Directory modules/functional/semantic-model
+ FUNCPTokState.bsv         Locally Modified          331 
+
+Directory modules/functional/freelist
+ FUNCP_FreeList.bsv        Locally Modified          331 
+
+
+Updated assertions to the new coding conventions so FUNCP v2 and v3 are
+compatable.
+
+Michael P.

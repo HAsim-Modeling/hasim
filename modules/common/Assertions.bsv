@@ -1,5 +1,4 @@
 import FIFOF::*;
-
 `include "asim/dict/RINGID.bsh"
 `include "asim/dict/STREAMS.bsh"
 
@@ -8,28 +7,28 @@ import FIFOF::*;
 // A way to report to the outside world when something has gone wrong.
 
 
-// AssertionSeverity
+// ASSERTION_SEVERITY
 
 // The severity of an assertion. This could be used to filter things out.
 
 typedef enum
 {
-  ASSERT_Message,
-  ASSERT_Warning,
-  ASSERT_Error
+  ASSERT_MESSAGE,
+  ASSERT_WARNING,
+  ASSERT_ERROR
 }
-  AssertionSeverity 
+  ASSERTION_SEVERITY 
                     deriving (Eq, Bits);
 
-instance Ord#(AssertionSeverity);
+instance Ord#(ASSERTION_SEVERITY);
 
-  function Bool \< (AssertionSeverity x, AssertionSeverity y) = pack(x) < pack(y);
+  function Bool \< (ASSERTION_SEVERITY x, ASSERTION_SEVERITY y) = pack(x) < pack(y);
 
-  function Bool \> (AssertionSeverity x, AssertionSeverity y) = pack(x) > pack(y);
+  function Bool \> (ASSERTION_SEVERITY x, ASSERTION_SEVERITY y) = pack(x) > pack(y);
 
-  function Bool \<= (AssertionSeverity x, AssertionSeverity y) = pack(x) <= pack(y);
+  function Bool \<= (ASSERTION_SEVERITY x, ASSERTION_SEVERITY y) = pack(x) <= pack(y);
 
-  function Bool \>= (AssertionSeverity x, AssertionSeverity y) = pack(x) >= pack(y);
+  function Bool \>= (ASSERTION_SEVERITY x, ASSERTION_SEVERITY y) = pack(x) >= pack(y);
 
 endinstance
 
@@ -39,17 +38,17 @@ endinstance
 
 typedef function Action checkAssert(Bool b) Assertion;
   
-// AssertData
+// ASSERTION_DATA
 
 // Internal datatype for communicating with the AssertionsController
 
 
 typedef struct
 {
-   STREAMS_DICT_TYPE  stringID;
-   AssertionSeverity severity;
+  STREAMS_DICT_TYPE  stringID;
+  ASSERTION_SEVERITY severity;
 }
-  AssertData
+  ASSERTION_DATA
              deriving (Eq, Bits);
 
 // mkAssertionChecker
@@ -57,15 +56,15 @@ typedef struct
 // Make a module which checks one assertion.
 // The assert() method should be called with the condition to check.
 
-module [Connected_Module] mkAssertionChecker#(STREAMS_DICT_TYPE myID, AssertionSeverity my_severity)
+module [Connected_Module] mkAssertionChecker#(STREAMS_DICT_TYPE myID, ASSERTION_SEVERITY my_severity)
   // interface:
                (Assertion);
 
   // *********** Connections ***********
 
   // Connection to the assertions controller
-  Connection_Chain#(AssertData)  chain  <- mkConnection_Chain(`RINGID_ASSERTS);
-  
+  Connection_Chain#(ASSERTION_DATA) chain <- mkConnection_Chain(`RINGID_ASSERTS);
+    
   // *********** Rules ***********
 
   // processCmd
@@ -74,7 +73,7 @@ module [Connected_Module] mkAssertionChecker#(STREAMS_DICT_TYPE myID, AssertionS
   
   rule processCmd (True);
   
-    AssertData ast <- chain.receive_from_prev();
+    ASSERTION_DATA ast <- chain.receive_from_prev();
     chain.send_to_next(ast);
 
   endrule
@@ -88,9 +87,9 @@ module [Connected_Module] mkAssertionChecker#(STREAMS_DICT_TYPE myID, AssertionS
   function Action assert_function(Bool b);
   action
   
-    if (!b) //Check the boolean expression
-    begin //Failed. The system is sad. :(
-      chain.send_to_next(AssertData {stringID: myID, severity: my_severity});
+    if (!b) // Check the boolean expression
+    begin   // Failed. The system is sad. :(
+      chain.send_to_next(ASSERTION_DATA {stringID: myID, severity: my_severity});
     end
 
   endaction

@@ -24,10 +24,10 @@ module [Connected_Module] mkAssertionsController#(Connection_Send#(STREAMS_REQUE
   //***** State Elements *****
   
   // Communication link to the rest of the Assertion checkers
-  Connection_Chain#(AssertData) chain <- mkConnection_Chain(`RINGID_ASSERTS);
+  Connection_Chain#(ASSERTION_DATA) chain <- mkConnection_Chain(`RINGID_ASSERTS);
     
   // The minimum severity of assertions we should pass along
-  Reg#(AssertionSeverity) min_severity <- mkReg(ASSERT_Message);
+  Reg#(ASSERTION_SEVERITY) min_severity <- mkReg(ASSERT_MESSAGE);
   
   // ***** Rules *****
   
@@ -60,9 +60,9 @@ module [Connected_Module] mkAssertionsController#(Connection_Send#(STREAMS_REQUE
   method Action doCommand(AssertionsCommand com);
     
     case (com)
-      Asserts_MinSeverity_Message: min_severity <= ASSERT_Message;
-      Asserts_MinSeverity_Warning: min_severity <= ASSERT_Warning;
-      Asserts_MinSeverity_Error:   min_severity <= ASSERT_Error;
+      Asserts_MinSeverity_Message: min_severity <= ASSERT_MESSAGE;
+      Asserts_MinSeverity_Warning: min_severity <= ASSERT_WARNING;
+      Asserts_MinSeverity_Error:   min_severity <= ASSERT_ERROR;
     endcase
     
   endmethod

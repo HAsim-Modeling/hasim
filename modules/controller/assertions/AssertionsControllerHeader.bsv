@@ -41,7 +41,7 @@ typedef enum
 typedef struct
 {
         Bit#(8)            assertStringID; // Which Assertion is it?
-        AssertionSeverity  assertSeverity; // Message / Warning / Error
+        ASSERTION_SEVERITY assertSeverity; // Message / Warning / Error
 }
   AssertInfo 
             deriving 

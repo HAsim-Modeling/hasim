@@ -62,7 +62,7 @@ module [Connected_Module] mkFUNCP_TokState (FUNCP_TokState)
 
   Reg#(TokIndex) oldest_tok <- mkReg(0);
 
-  Assertion assert_enough_tokens <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_OUT_OF_TOKENS, ASSERT_Error);
+  Assertion assert_enough_tokens <- mkAssertionChecker(`STREAMS_ASSERTS_SCOREBOARD_OUT_OF_TOKENS, ASSERT_ERROR);
 
   
   TokIndex num_in_flight =  next_free_tok - oldest_tok;

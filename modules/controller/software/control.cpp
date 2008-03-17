@@ -8,12 +8,12 @@
 using namespace std;
 
 // constructor
-CONTROLLER_CLASS::CONTROLLER_CLASS() :
-    channelio(this),                    // initializes hardware
-    rrrServer(this, &channelio),
-    rrrClient(this, &channelio)
+CONTROLLER_CLASS::CONTROLLER_CLASS(
+    LLPI l) :
+        HASIM_MODULE_CLASS(NULL)
 {
-    RRRClient = &rrrClient;
+    // setup link to LLPI
+    llpi = l;
 
     // setup link to starter client
     starter = STARTER_CLASS::GetInstance();
@@ -59,10 +59,6 @@ CONTROLLER_CLASS::Uninit()
     fclose(eventfile);
     fclose(statfile);
 #endif
-
-    // uninit submodules
-    channelio.Uninit();
-    rrrServer.Uninit();
 }
 
 // controller's main()
@@ -88,20 +84,9 @@ CONTROLLER_CLASS::SchedulerLoop()
 {
     while (true)
     {
-        // poll submodules
-        channelio.Poll();
-        rrrServer.Poll();
+        // FIXME: directly poll LLPI
+        llpi->Poll();
     }
-}
-
-// callback-exit
-void
-CONTROLLER_CLASS::CallbackExit(
-    int exitcode)
-{
-    // chain-uninit, then exit
-    Uninit();
-    exit(exitcode);
 }
 
 // callback from streams

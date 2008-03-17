@@ -12,6 +12,7 @@
 #include "main.h"
 #include "control.h"
 #include "asim/dict/init.h"
+#include "asim/provides/low_level_platform_interface.h"
 
 // =======================================
 //                 MAIN
@@ -20,6 +21,7 @@
 // globally visible variables
 GlobalArgs globalArgs;
 
+// prototypes
 void process_options(int argc, char *argv[]);
 
 // main
@@ -28,17 +30,20 @@ int main(int argc, char *argv[])
     // parse args and place in global array
     process_options(argc, argv);
 
-    // FIXME: we have to dynamically create the controller
-    // since the RRR server (which is a submodule of the
-    // controller) should only be initialized AFTER all static
-    // services have registered themselves with it
-    CONTROLLER controller = new CONTROLLER_CLASS();
+    // instantiate:
+    // 1. LLPI
+    // 2. Controller
+    // 3. System
+    LLPI       llpi       = new LLPI_CLASS();
+    CONTROLLER controller = new CONTROLLER_CLASS(llpi);
 
     // transfer control to controller
     int exitcode = controller->Main();
 
     // cleanup and exit
     delete controller;
+    delete llpi;
+
     return exitcode;
 }
 

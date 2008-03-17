@@ -11,6 +11,9 @@ class STARTER_CLASS: public HASIM_MODULE_CLASS
         static STARTER_CLASS instance;
 
     public:
+        STARTER_CLASS();
+        ~STARTER_CLASS();
+
         static STARTER GetInstance() { return &instance; }
         void Run()       {}
         void Pause()     {}

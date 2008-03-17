@@ -8,15 +8,15 @@
 #include "asim/provides/rrr.h"
 #include "asim/provides/starter.h"
 #include "asim/provides/streams.h"
+#include "asim/provides/low_level_platform_interface.h"
 
 typedef class CONTROLLER_CLASS* CONTROLLER;
 class CONTROLLER_CLASS: public HASIM_MODULE_CLASS,
                         public STREAMS_CALLBACK_MODULE_CLASS
 {
     private:
-        CHANNELIO_CLASS  channelio;
-        RRR_SERVER_CLASS rrrServer;
-        RRR_CLIENT_CLASS rrrClient;
+        // link to LLPI
+        LLPI    llpi;
 
         // link to starter
         STARTER starter;
@@ -26,12 +26,11 @@ class CONTROLLER_CLASS: public HASIM_MODULE_CLASS,
         FILE *statfile;
 
     public:
-        CONTROLLER_CLASS();
+        CONTROLLER_CLASS(LLPI);
         ~CONTROLLER_CLASS();
         int  Main();
         void Uninit();
         void SchedulerLoop();
-        void CallbackExit(int);
 
         // streams callback
         void StreamsCallback(UINT32, UINT32, UINT32);

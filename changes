@@ -10138,3 +10138,25 @@ Updated assertions to the new coding conventions so FUNCP v2 and v3 are
 compatable.
 
 Michael P.
+
+----------
+aparasha    Date: Mon Mar 17 10:47:28 EDT 2008  CSN: CSN-hasim-334
+                  Mon Mar 17 14:47:28 UTC 2008
+
+
+Directory modules/controller/starter
+ null-starter.h            Locally Modified          333 
+ null-starter.cpp          Locally Modified          333 
+
+Directory modules/controller/software
+ control.cpp               Locally Modified          333 
+ main.cpp                  Locally Modified          333 
+ control.h                 Locally Modified          333 
+ main.h                    Locally Modified          333 
+
+- Removed instantiation of ChannelIO and RRR modules from
+  software controller (these are now instantiated by LLPI in
+  platforms, similar to BSV-side).
+
+- Added instantiation of LLPI to top-level software
+  instantiation tree (in main.cpp)

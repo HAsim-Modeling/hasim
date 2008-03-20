@@ -10188,3 +10188,14 @@ Directory modules/bluespec/common/base
 Partial conversion of pure bluespec models to fpgaenv.
 
 Joel
+
+----------
+aparasha    Date: Thu Mar 20 17:42:50 EDT 2008  CSN: CSN-hasim-336
+                  Thu Mar 20 21:42:50 UTC 2008
+
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          335 
+
+minor modifications to a couple of stubgen's error messages
+

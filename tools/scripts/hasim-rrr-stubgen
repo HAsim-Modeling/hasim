@@ -251,17 +251,10 @@ sub print_service_methods {
             my $outsize    = $method->{outsize};
             my $outtype    = $method->{outtype};
 
-            if ($insize != 0)
-            {
-                print $stubfile "    method ActionValue#($intype) acceptRequest_$methodname();\n";
-            }
-            else
-            {
-                print $stubfile "    method Action acceptRequest_$methodname();\n";
-            }
-
+            print $stubfile "    method ActionValue#($intype) acceptRequest_$methodname();\n";
             if ($outsize != 0)
             {
+                die "response path not implemented";
                 print $stubfile "    method Action sendResponse_$methodname($outtype);\n";
             }
         }
@@ -292,7 +285,7 @@ sub print_service_methods {
         print $stubfile "    endrule\n";
         print $stubfile "\n";
 
-        # write methods
+        # print methods
         foreach my $method (@methodlist)
         {
             my $methodname = $method->{name};
@@ -301,29 +294,30 @@ sub print_service_methods {
             my $outsize    = $method->{outsize};
             my $outtype    = $method->{outtype};
 
-            if ($insize != 0)
+            # print REQUEST method definition
+            print $stubfile "    method ActionValue#($intype) acceptRequest_$methodname() if (mid == `" . $methodname . "_METHOD_ID);\n";
+            print $stubfile "        Bit#($maxinsize) a <- dem.deq();\n";
+
+            # if insize is smaller than maxinsize, then we need to truncate
+            if ($insize < $maxinsize)
             {
-                print $stubfile "    method ActionValue#($intype) acceptRequest_$methodname() if (mid == `" . $methodname . "_METHOD_ID);\n";
-                print $stubfile "        Bit#($maxinsize) a <- dem.deq();\n";
-                print $stubfile "        $intype retval = unpack(a);\n";
-                print $stubfile "        state <= STUB_STATE_idle;\n";
-                print $stubfile "        return retval;\n";
-                print $stubfile "    endmethod\n";
+                print $stubfile "        $intype retval = truncate(unpack(a));\n";
             }
             else
             {
-                print $stubfile "    method Action acceptRequest_$methodname() if (mid == `" . $methodname . "_METHOD_ID);\n";
-                print $stubfile "        noAction;\n";
-                print $stubfile "        ERROR: NOT SUPPORTED. WRITING JUNK BLUESPEC TO HALT COMPILER\n";
-                print $stubfile "    endmethod\n";
+                print $stubfile "        $intype retval = unpack(a);\n";
             }
+            print $stubfile "        state <= STUB_STATE_idle;\n";
+            print $stubfile "        return retval;\n";
+            print $stubfile "    endmethod\n";
             print $stubfile "\n";
 
+            # print RESPONSE method definition
             if ($outsize != 0)
             {
+                die "response path not implemented";
                 print $stubfile "    method Action sendResponse_$methodname() if (state == STUB_STATE_awaitingResponse);\n";
                 print $stubfile "        noAction;\n";
-                print $stubfile "        ERROR: NOT SUPPORTED. WRITING JUNK BLUESPEC TO HALT COMPILER\n";
                 print $stubfile "    endmethod\n";
             }
         }
@@ -750,13 +744,13 @@ sub print_service_connections {
             my $outsize    = $connection->{outsize};
             my $outtype    = $connection->{outtype};
 
-            # currently we only support connections with non-void inputs and void outputs
-            if ($insize == 0 || $outsize != 0)
+            # print connection definitions
+            print $stubfile "    Connection_Send#($intype) link_$servicename" . "_$connectionname <- mkConnection_Send(\"rrr_service_$servicename\_$connectionname\");\n";
+            if ($outsize != 0)
             {
-                die "zero input sizes and non-zero output sizes are not supported";
+                die "response path not implemented";
             }
 
-            print $stubfile "    Connection_Send#($intype) link_$servicename" . "_$connectionname <- mkConnection_Send(\"rrr_service_$servicename\_$connectionname\");\n";
         }
         print $stubfile "\n";
     }
@@ -805,18 +799,27 @@ sub print_service_connections {
             my $outsize    = $connection->{outsize};
             my $outtype    = $connection->{outtype};
 
-            if ($insize == 0 || $outsize != 0)
-            {
-                die "zero input sizes and non-zero output sizes are not supported";
-            }
-
+            # print rules to transfer requests to the connection
             print $stubfile "    rule acceptRequest_$servicename\_$connectionname (mid_$servicename == `$servicename\_$connectionname\_METHOD_ID);\n";
             print $stubfile "        Bit#($maxinsize) a <- dem_$servicename.deq();\n";
-            print $stubfile "        $intype retval = unpack(a);\n";
+            # if insize is less than maxinsize, we need to truncate
+            if ($insize < $maxinsize)
+            {
+                print $stubfile "        $intype retval = truncate(unpack(a));\n";
+            }
+            else
+            {
+                print $stubfile "        $intype retval = unpack(a);\n";
+            }
             print $stubfile "        state_$servicename <= STUB_STATE_idle;\n";
             print $stubfile "        link_$servicename\_$connectionname.send(retval);\n";
             print $stubfile "    endrule\n";
             print $stubfile "\n";
+
+            if ($outsize != 0)
+            {
+                die "response path not implemented";
+            }
         }
     }
 

@@ -10160,3 +10160,31 @@ Directory modules/controller/software
 
 - Added instantiation of LLPI to top-level software
   instantiation tree (in main.cpp)
+
+----------
+jsemer      Date: Thu Mar 20 15:04:10 EDT 2008  CSN: CSN-hasim-335
+                  Thu Mar 20 19:04:10 UTC 2008
+
+
+Directory config/pm/bluespec/demos
+ counter.apm               Locally Modified          334 
+
+Directory modules/bluespec/model/pure-bluespec
+ SCons.top.template        Locally Added               0 
+ mkModel.bsv               Locally Modified          334 
+ SCons.dict.template       Locally Added               0 
+ pure_bluespec_model.awb   Locally Modified          334 
+ SCons.iface.template      Locally Added               0 
+ SCons.sw.template         Locally Added               0 
+ Makefile.top.template     Locally Modified          334 
+ SCons.hw.template         Locally Added               0 
+
+Directory modules/bluespec/system/demos/counter
+ System.bsv                Locally Modified          334 
+
+Directory modules/bluespec/common/base
+ bluespec_base.awb         Locally Modified          334 
+
+Partial conversion of pure bluespec models to fpgaenv.
+
+Joel

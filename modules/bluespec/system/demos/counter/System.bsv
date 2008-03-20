@@ -1,15 +1,19 @@
 import mkCounter::*;
+
+import memory::*;
 import front_panel::*;
 import physical_platform::*;
+import low_level_platform_interface::*;
 
 (* synthesize *)
-module mkSystem(TOP_LEVEL_WIRES);
+module mkSystem#(LowLevelPlatformInterface llpi);
+
+    // instantiate virtual devices
+    FrontPanel      fp      <- mkFrontPanel(llpi);
 
     Counter         counter <- mkCounter();
     Reg#(Bit#(16))  state   <- mkReg(0);
-    
-    PHYSICAL_PLATFORM pp    <- mkPhysicalPlatform();
-    FrontPanel        fp    <- mkFrontPanel(pp.physicalDrivers);
+
 
     rule step0(state == 0);
         Bit#(8) extended = zeroExtend(fp.readSwitches());
@@ -18,8 +22,9 @@ module mkSystem(TOP_LEVEL_WIRES);
     endrule
 
     rule step1(state == 1);
-        Bit#(4) truncated = truncate(counter.read());
-        fp.writeLEDs(truncated);
+        let value = counter.read();
+
+        fp.writeLEDs(FRONTP_MASKED_LEDS {state: truncate(value), mask: '1});
         state <= 2;
     endrule
 
@@ -27,6 +32,5 @@ module mkSystem(TOP_LEVEL_WIRES);
         state <= 0;
     endrule
 
-    return pp.topLevelWires;
 
 endmodule

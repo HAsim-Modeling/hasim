@@ -9,8 +9,6 @@
 
 %provides bluespec_common
 
-%requires fpgaenv
-
 %attributes bluespec
 
 %public

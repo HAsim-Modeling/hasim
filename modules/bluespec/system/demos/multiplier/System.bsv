@@ -1,9 +1,15 @@
-import Multiplier::*;
-import front_panel::*;
-import physical_platform::*;
+`include "memory.bsh"
+`include "front_panel.bsh"
+`include "physical_platform.bsh"
+`include "low_level_platform_interface.bsh"
 
-(* synthesize *)
-module mkSystem(TOP_LEVEL_WIRES);
+import Multiplier::*;
+
+
+module mkSystem#(LowLevelPlatformInterface llpi)();
+
+    // instantiate virtual devices
+    FrontPanel      fp      <- mkFrontPanel(llpi);
 
     /* state */
     Multiplier      mult        <- mkMultiplier();
@@ -14,15 +20,14 @@ module mkSystem(TOP_LEVEL_WIRES);
     Reg#(Bit#(32))  in2         <- mkReg(0);
     Reg#(Bit#(1))   go          <- mkReg(0);
 
-    PHYSICAL_PLATFORM  pp       <- mkPhysicalPlatform();
-    FrontPanel         fp       <- mkFrontPanel(pp.physicalDrivers);
-
     /* rules */
     rule latchSwitches(True);
         Bit#(4) switchVector = fp.readSwitches();
         Bit#(5) buttonVector = fp.readButtons();
+
         in1 <= zeroExtend(switchVector[1:0]);
         in2 <= zeroExtend(switchVector[3:2]);
+
         go  <= buttonVector[2];
     endrule: latchSwitches
 
@@ -38,14 +43,13 @@ module mkSystem(TOP_LEVEL_WIRES);
     endrule: waitForResult
 
     rule outputResult(state == 2);
-        fp.writeLEDs(result[3:0]);
+        fp.writeLEDs(FRONTP_MASKED_LEDS {state: truncate(result), mask: '1});
+
         state <= 3;
     endrule: outputResult
 
     rule reset(state == 3 && go == 0);
         state <= 0;
     endrule
-
-    return pp.topLevelWires;
 
 endmodule

@@ -1,12 +1,11 @@
-import mkCounter::*;
+import Counter::*;
 
-import memory::*;
-import front_panel::*;
-import physical_platform::*;
-import low_level_platform_interface::*;
+`include "memory.bsh"
+`include "front_panel.bsh"
+`include "physical_platform.bsh"
+`include "low_level_platform_interface.bsh"
 
-(* synthesize *)
-module mkSystem#(LowLevelPlatformInterface llpi);
+module mkSystem#(LowLevelPlatformInterface llpi)();
 
     // instantiate virtual devices
     FrontPanel      fp      <- mkFrontPanel(llpi);

@@ -4,7 +4,6 @@ interface Counter;
     method Action increment();
 endinterface
 
-(* synthesize *)
 module mkCounter(Counter);
 
     Reg#(Bit#(8)) value <- mkReg(0);

@@ -988,17 +988,12 @@ sub generate_wrapper {
     my $dirname = shift;
     my $isroot = shift;
 
+    my $usesmartsynthesisboundaries = 1;
+
     my $metatype = $module->provides();
     my $wrapper = HAsim::Build::make_wrapper_name($metatype) . ".bsv";
     
     CORE::open(WRAPPER, "> $dirname/$wrapper") || return undef;
-
-    print WRAPPER "// These are well-known/required hasim modules\n";
-    if ($isroot) {
-      print WRAPPER "import soft_connections_alg::*;\n";
-    } else {
-      print WRAPPER "import smart_synth_boundaries::*;\n";
-    }
 
     print WRAPPER "\n";
 
@@ -1015,9 +1010,25 @@ sub generate_wrapper {
       my $pname = $p->name();
       my $pvalue = $p->value();
 
+      if ($pname eq "SMART_SYNTH_BOUNDARY") {
+          $usesmartsynthesisboundaries = $pvalue;
+      }
+
       print WRAPPER "`define $pname $pvalue\n";
     }
     print WRAPPER "\n";
+
+    if ($usesmartsynthesisboundaries) {
+      print WRAPPER "// These are well-known/required hasim modules\n";
+
+      if ($isroot) {
+        print WRAPPER "import soft_connections_alg::*;\n";
+        print WRAPPER "import physical_platform::*;\n";
+      } else {
+        print WRAPPER "import smart_synth_boundaries::*;\n";
+      }
+      print WRAPPER "\n";
+    }
 
     #
     # add includes for public sources
@@ -1039,8 +1050,6 @@ sub generate_wrapper {
 
     if ($isroot) {
         print WRAPPER "\n";
-        print WRAPPER "import physical_platform::*;\n";
-        print WRAPPER "\n";
         print WRAPPER "(* synthesize *)\n";
 	print WRAPPER "module " . HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($metatype)) . " (TOP_LEVEL_WIRES);\n";    
     } else {
@@ -1052,10 +1061,15 @@ sub generate_wrapper {
     my @child_info_vars = ();
     my $synth_id = HAsim::Build::get_synthesis_boundary_name($module);
     print WRAPPER "    // instantiate own module\n";
-    if ($isroot) {
-	print WRAPPER "    let m <- instantiateWithConnections($synth_id);\n";
+
+    if ( ! $usesmartsynthesisboundaries ) {
+      print WRAPPER "     let m <- $synth_id();\n";
     } else {
-	print WRAPPER "    let m <- instantiateSmartBoundary($synth_id);\n";
+      if ($isroot) {
+        print WRAPPER "    let m <- instantiateWithConnections($synth_id);\n";
+      } else {
+        print WRAPPER "    let m <- instantiateSmartBoundary($synth_id);\n";
+      }
     }
     print WRAPPER "\n";
 

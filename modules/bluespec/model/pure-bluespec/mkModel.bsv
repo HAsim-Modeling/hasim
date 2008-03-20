@@ -1,8 +1,8 @@
 
 `include "bluespec_system.bsh"
 `include "fpgaenv.bsh"
+`include "low_level_platform_interface.bsh"
 
-(* synthesize *)
 module mkModel(TOP_LEVEL_WIRES);
 
     // Name must be pi_llpint --- explain!!!

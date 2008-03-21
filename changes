@@ -10240,3 +10240,14 @@ The pure Bluespec 'multiplier' model was updated.
 
 Joel
 
+
+----------
+jsemer      Date: Fri Mar 21 11:51:25 EDT 2008  CSN: CSN-hasim-338
+                  Fri Mar 21 15:51:25 UTC 2008
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          337 
+
+Do proper imports in model_Wrapper.bsv. I got snookered in my 
+testing because scons was too smart...

@@ -206,6 +206,7 @@ sub setup_benchmark {
 
 ############################################################
 # build_build_tree
+
 sub build_build_tree {
     my $modelfile = shift;
     my $model = Asim::Model->new($modelfile);
@@ -1017,13 +1018,11 @@ sub generate_wrapper {
       print WRAPPER "`define $pname $pvalue\n";
     }
     print WRAPPER "\n";
+    print WRAPPER "// These are well-known/required hasim modules\n";
 
     if ($usesmartsynthesisboundaries) {
-      print WRAPPER "// These are well-known/required hasim modules\n";
-
       if ($isroot) {
         print WRAPPER "import soft_connections_alg::*;\n";
-        print WRAPPER "import physical_platform::*;\n";
       } else {
         print WRAPPER "import smart_synth_boundaries::*;\n";
       }
@@ -1049,6 +1048,9 @@ sub generate_wrapper {
     print WRAPPER "\n";
 
     if ($isroot) {
+        print WRAPPER "\n";
+        print WRAPPER "// Get defintion of TOP_LEVEL_WIRES\n";
+        print WRAPPER "import physical_platform::*;\n";
         print WRAPPER "\n";
         print WRAPPER "(* synthesize *)\n";
 	print WRAPPER "module " . HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($metatype)) . " (TOP_LEVEL_WIRES);\n";    

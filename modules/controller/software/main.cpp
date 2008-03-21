@@ -53,7 +53,7 @@ void process_options(int argc, char *argv[])
     int c;
 
     // first, set default values for globalArgs
-    globalArgs.showFrontPanel = true;
+    globalArgs.showFrontPanel = false;
     strcpy(globalArgs.benchmark, "program.vmh");
 
     while (true)

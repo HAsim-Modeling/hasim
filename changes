@@ -10285,3 +10285,14 @@ Directory modules/bluespec/system/demos/switch2led
 Added simple pure bluespec hybrid designs. 
 
 Angshu & Joel
+
+----------
+aparasha    Date: Fri Mar 21 16:54:41 EDT 2008  CSN: CSN-hasim-340
+                  Fri Mar 21 20:54:41 UTC 2008
+
+
+Directory modules/controller/software
+ main.cpp                  Locally Modified          339 
+
+modified default option for popping up hasim-front-panel for hybrid
+models (it will NOT pop up by default)

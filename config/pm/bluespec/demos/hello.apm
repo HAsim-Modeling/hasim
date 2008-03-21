@@ -1,0 +1,38 @@
+
+[Global]
+SaveParameters=0
+Description=Hello World Demo using hybrid streams
+File=hello
+Version=2.1
+Name=Hello World
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hybrid bluespec
+model=Pure Bluespec Hybrid Model Foundation
+
+
+
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
+Packagehint=platforms
+
+[Bluespec Null Library]
+File=modules/bluespec/common/null/bluespec_null.awb
+Packagehint=hasim
+
+
+[Bluespec Hello World Example]
+File=modules/bluespec/system/demos/hello/hello_system.awb
+Packagehint=hasim
+
+[Pure Bluespec Hybrid Model Foundation]
+File=modules/bluespec/model/pure-bluespec/pure_bluespec_hybrid_model.awb
+Packagehint=hasim
+
+[Pure Bluespec Hybrid Model Foundation/Requires]
+bluespec_common=Bluespec Null Library
+bluespec_system=Bluespec Hello World Example
+fpgaenv=FPGA Environment

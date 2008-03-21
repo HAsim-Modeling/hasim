@@ -10251,3 +10251,37 @@ Directory tools/scripts
 
 Do proper imports in model_Wrapper.bsv. I got snookered in my 
 testing because scons was too smart...
+
+----------
+jsemer      Date: Fri Mar 21 16:29:46 EDT 2008  CSN: CSN-hasim-339
+                  Fri Mar 21 20:29:46 UTC 2008
+
+
+Directory config/pm/bluespec/demos
+ hello.apm                 Locally Added               0 
+ switch2led.apm            Locally Added               0 
+
+Directory modules/bluespec/model/pure-bluespec
+ main.cpp                  Locally Added               0 
+ pure_bluespec_hybrid_model.awb Locally Added               0 
+ main.h                    Locally Added               0 
+
+Directory modules/bluespec/system/demos
+ hello/                    Locally Added               0 
+
+Directory modules/bluespec/system/demos/hello
+ hello_system.awb          Locally Added               0 
+ hello-streams-messages.dic Locally Added               0 
+ hello-streams-id.dic      Locally Added               0 
+ System.bsv                Locally Added               0 
+
+Directory modules/bluespec/system/demos
+ switch2led/               Locally Added               0 
+
+Directory modules/bluespec/system/demos/switch2led
+ switch2led_system.awb     Locally Added               0 
+ System.bsv                Locally Added               0 
+
+Added simple pure bluespec hybrid designs. 
+
+Angshu & Joel

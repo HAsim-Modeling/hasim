@@ -10296,3 +10296,23 @@ Directory modules/controller/software
 
 modified default option for popping up hasim-front-panel for hybrid
 models (it will NOT pop up by default)
+
+----------
+aparasha    Date: Fri Mar 21 17:59:05 EDT 2008  CSN: CSN-hasim-341
+                  Fri Mar 21 21:59:05 UTC 2008
+
+
+Directory config/pm/bluespec/demos
+ hello.apm                 Locally Modified          340 
+ hello_htg.apm             Locally Added               0 
+
+Directory modules/bluespec/common/base
+ bluespec_base.awb         Locally Modified          340 
+ bluespec_common.prj       Locally Added               0 
+
+- added a HTG version of the pure-bluespec Hello World demo.
+
+- added a required file bluespec_common.prj to bluespec common
+  AWB module. There is a copy of this file in hasim_common. This
+  should probably be changed by making hasim_common import
+  bluespec_common.

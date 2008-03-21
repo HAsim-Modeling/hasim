@@ -1,10 +1,10 @@
 
 [Global]
 SaveParameters=0
-Description=Hello World Demo using hybrid streams
-File=hello
+Description=Hello World Demo using hybrid streams for HTG v5 PCIe
+File=hello_htg
 Version=2.1
-Name=Hello World
+Name=Hello World for HTG v5 PCIe
 Type=HAsim
 Class=Asim::Model
 
@@ -13,7 +13,7 @@ DefaultAttributes=hybrid bluespec
 model=Pure Bluespec Hybrid Model Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
 Packagehint=platforms
 
 [Bluespec Hello World Example]
@@ -25,11 +25,13 @@ File=modules/bluespec/model/pure-bluespec/pure_bluespec_hybrid_model.awb
 Packagehint=hasim
 
 [Pure Bluespec Hybrid Model Foundation/Requires]
-bluespec_common=Bluespec Null Library
+bluespec_common=Bluespec Common Library with FPGA
 bluespec_system=Bluespec Hello World Example
 fpgaenv=FPGA Environment
 
-
-[Bluespec Null Library]
-File=modules/bluespec/common/null/bluespec_null.awb
+[Bluespec Common Library with FPGA]
+File=modules/bluespec/common/base/bluespec_base.awb
 Packagehint=hasim
+
+[Pure Bluespec Hybrid Model Foundation/Params]
+MAKE_ALL_TARGET=bit

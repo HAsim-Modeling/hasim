@@ -11,6 +11,6 @@
 
 %attributes bluespec
 
-%public
+%private bluespec_common.prj
 
 %AWB_END

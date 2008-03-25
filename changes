@@ -10316,3 +10316,13 @@ Directory modules/bluespec/common/base
   AWB module. There is a copy of this file in hasim_common. This
   should probably be changed by making hasim_common import
   bluespec_common.
+
+----------
+aparasha    Date: Tue Mar 25 18:20:14 EDT 2008  CSN: CSN-hasim-342
+                  Tue Mar 25 22:20:14 UTC 2008
+
+
+Directory modules/controller/software
+ main.cpp                  Locally Modified          341 
+
+fixed a bug with setting the front-panel popup option

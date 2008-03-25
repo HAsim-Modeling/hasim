@@ -75,9 +75,16 @@ void process_options(int argc, char *argv[])
         switch (c)
         {
             case 0:
-                if (option_index == 0 && optarg && !strcmp(optarg, "0"))
+                if (option_index == 0 && optarg)
                 {
-                    globalArgs.showFrontPanel = false;
+                    if (!strcmp(optarg, "0"))
+                    {
+                        globalArgs.showFrontPanel = false;
+                    }
+                    else
+                    {
+                        globalArgs.showFrontPanel = true;
+                    }
                 }
                 break;
 

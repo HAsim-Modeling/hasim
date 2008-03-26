@@ -51,7 +51,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
   Connection_Server#(Addr, PackedInst) link_imem      <- mkConnection_Server("mem_imem");
   Connection_Server#(MemReq, MemResp)  link_dmem      <- mkConnection_Server("mem_dmem");
   Connection_Client#(SB_Command, SB_Response) link_stbuffer <- mkConnection_Client("mem_storebuf");
-  Connection_Client#(MEM_Request, MEM_Value)  link_cache     <- mkConnection_Client("mem_cache");
+  Connection_Client#(MEM_REQUEST, MEM_VALUE)  link_cache     <- mkConnection_Client("mem_cache");
   Connection_Receive#(Token)           link_commit    <- mkConnection_Receive("mem_commit");
   Connection_Receive#(Tuple2#(TokIndex, TokIndex))           link_rewindToToken <- mkConnection_Receive("mem_rewind");
 
@@ -65,14 +65,14 @@ module [HASim_Module] mkFUNCP_Memstate ()
     link_imem.deq();
     
     //We assume no self-modifying code, otherwise we would go to the store buffer here.
-    link_cache.makeReq(tagged MEM_Load a);
+    link_cache.makeReq(tagged MEM_LOAD a);
     pathQ.enq(IMem);
     
   endrule
   
   rule handleIMEM_resp (pathQ.first() == IMem);
   
-    MEM_Value v = link_cache.getResp();
+    MEM_VALUE v = link_cache.getResp();
     link_cache.deq();
     
     link_imem.makeResp(v);
@@ -129,7 +129,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
     
     link_stbuffer.deq();
     
-    link_cache.makeReq(tagged MEM_Store {addr:a, val: v});
+    link_cache.makeReq(tagged MEM_STORE {addr:a, val: v});
     
   endrule
   
@@ -165,7 +165,7 @@ module [HASim_Module] mkFUNCP_Memstate ()
     
     link_stbuffer.deq();
     
-    link_cache.makeReq(tagged MEM_Load addr);
+    link_cache.makeReq(tagged MEM_LOAD addr);
     pathQ.enq(DMem);
   
   endrule

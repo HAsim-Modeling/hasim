@@ -32,7 +32,7 @@ interface FUNCP_FREELIST;
   // Go back to a specific point (from a snapshot).
   method Action backTo(FUNCP_PHYSICAL_REG_INDEX r);
   // Get the current location (to record it in a snapshot).
-  method PRName current();
+  method FUNCP_PHYSICAL_REG_INDEX current();
   // Put a register back onto the freelist.
   method Action free(FUNCP_PHYSICAL_REG_INDEX r);
   
@@ -42,7 +42,7 @@ endinterface
 
 // An implementation of the freelist which uses block RAM to store everything.
 
-module [HASim_Module] mkFUNCP_Freelist#(File debug_log, Tick fpga_cc)
+module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
     //interface:
                 (FUNCP_FREELIST)
     provisos
@@ -56,10 +56,10 @@ module [HASim_Module] mkFUNCP_Freelist#(File debug_log, Tick fpga_cc)
     // The architectural registers begin allocated, so the freelist pointer starts at
     // one position beyond that.
     Bit#(prname_SZ) minInitFL_bits = zeroExtend(pack(maxR)) + 1;
-    PRName initFL = unpack(minInitFL_bits);
+    FUNCP_PHYSICAL_REG_INDEX initFL = unpack(minInitFL_bits);
 
     // The maximum number of physical registers.
-    PRName maxFL = maxBound;
+    FUNCP_PHYSICAL_REG_INDEX maxFL = maxBound;
 
     // Register to track if we're initializing.
     Reg#(Bool) initializing <- mkReg(True);
@@ -68,24 +68,24 @@ module [HASim_Module] mkFUNCP_Freelist#(File debug_log, Tick fpga_cc)
     BRAM#(FUNCP_PHYSICAL_REG_INDEX, FUNCP_PHYSICAL_REG_INDEX) fl <- mkBRAM_Full();
 
     // The read pointer is the next register to allocate.
-    Reg#(FUNCP_PHYSICAL_REG_INDEX) fl_read   <- mkReg(initFL);
+    Reg#(FUNCP_PHYSICAL_REG_INDEX) flRead   <- mkReg(initFL);
 
     // The write pointer is the next register to overwrite.
-    Reg#(FUNCP_PHYSICAL_REG_INDEX) fl_write  <- mkReg(0); 
+    Reg#(FUNCP_PHYSICAL_REG_INDEX) flWrite  <- mkReg(0); 
 
     // The number of requests in flight is used to make sure we do not rewind in an unsure state.
-    Counter#(2)                         req_count <- mkCounter(0);
+    Counter#(2)                    reqCount <- mkCounter(0);
 
     // We are empty if the write equals the read.
-    Bool empty = fl_read == fl_write;
+    Bool empty = flRead == flWrite;
 
     // We are out of physical registers when the pointers overlap.
-    Bool full = fl_read + 1 == fl_write;
+    Bool full = flRead + 1 == flWrite;
 
     // ***** Assertion Checkers *****/
 
-    Assertion assert_enough_pregs <- mkAssertionChecker(`STREAMS_ASSERTS_FREELIST_OUT_OF_PREGS, ASSERT_ERROR);
-    Assertion assert_at_least_one_allocated_register <- mkAssertionChecker(`STREAMS_ASSERTS_FREELIST_ILLEGAL_BACKUP, ASSERT_ERROR);
+    Assertion assertEnoughPRegs <- mkAssertionChecker(`STREAMS_ASSERTS_FREELIST_OUT_OF_PREGS, ASSERT_ERROR);
+    Assertion assertAtLeastOneAllocatedRegister <- mkAssertionChecker(`STREAMS_ASSERTS_FREELIST_ILLEGAL_BACKUP, ASSERT_ERROR);
 
     // initialize
 
@@ -95,13 +95,13 @@ module [HASim_Module] mkFUNCP_Freelist#(File debug_log, Tick fpga_cc)
     rule initialize (initializing);
 
         // Add architectural register X to the freelist.
-        fl.write(fl_write, fl_write);
+        fl.write(flWrite, flWrite);
 
         // X = X + 1.
-        fl_write <= fl_write + 1;
+        flWrite <= flWrite + 1;
 
         // done initializing if X == maxFL.
-        if (fl_write == maxFL)
+        if (flWrite == maxFL)
           initializing <= False;
 
     endrule
@@ -115,19 +115,19 @@ module [HASim_Module] mkFUNCP_Freelist#(File debug_log, Tick fpga_cc)
     method Action forwardReq() if (!initializing);
 
         // Assert that we're not out of physical registers.
-        assert_enough_pregs(!full);
+        assertEnoughPRegs(!full);
 
         // Log it.
-        $fdisplay(debug_log, "[%d]: FREELIST: Requesting %0d", fpga_cc, fl_read);
+        $fdisplay(debugLog, "[%d]: FREELIST: Requesting %0d", fpgaCC, flRead);
 
         // Read the next entry.
-        fl.read_req(fl_read);
+        fl.read_req(flRead);
 
         // Update the pointer.
-        fl_read <= fl_read + 1;
+        flRead <= flRead + 1;
 
         // Update the number of in-flight requests.
-        req_count.up();
+        reqCount.up();
 
     endmethod
 
@@ -136,16 +136,16 @@ module [HASim_Module] mkFUNCP_Freelist#(File debug_log, Tick fpga_cc)
     // When:   Any time.
     // Effect: Return the result from BRAM to the requestor.
 
-    method ActionValue#(PRName) forwardResp() if (!initializing);
+    method ActionValue#(FUNCP_PHYSICAL_REG_INDEX) forwardResp() if (!initializing);
 
         // Get the response from BRAM.
         let rsp <- fl.read_resp();
 
         // Log it.
-        $fdisplay(debug_log, "[%d]: FREELIST: Allocating PR%0d %0d", fpga_cc, rsp, fl_read);
+        $fdisplay(debugLog, "[%d]: FREELIST: Allocating PR%0d %0d", fpgaCC, rsp, flRead);
 
         // Update the number of in-flight requests.
-        req_count.down();
+        reqCount.down();
 
         // Return the response to the requestor.
         return rsp;
@@ -160,12 +160,12 @@ module [HASim_Module] mkFUNCP_Freelist#(File debug_log, Tick fpga_cc)
     method Action free(FUNCP_PHYSICAL_REG_INDEX r) if (!initializing);
 
         // Add it back to the freelist.
-        fl.write(fl_write, r);
+        fl.write(flWrite, r);
         // Update the write pointer.
-        fl_write <= fl_write + 1;
+        flWrite <= flWrite + 1;
 
         // Log it.
-        $fdisplay(debug_log, "[%d]: FREELIST: Freeing PR%0d %0d", fpga_cc, r, fl_write + 1);
+        $fdisplay(debugLog, "[%d]: FREELIST: Freeing PR%0d %0d", fpgaCC, r, flWrite + 1);
 
     endmethod
 
@@ -177,10 +177,10 @@ module [HASim_Module] mkFUNCP_Freelist#(File debug_log, Tick fpga_cc)
     method Action back() if (!initializing);
 
         // If the freelist is empty this is an exception.
-        assert_at_least_one_allocated_register(!empty);
+        assertAtLeastOneAllocatedRegister(!empty);
 
         // Update the pointer.
-        fl_read <= fl_read - 1;
+        flRead <= flRead - 1;
 
     endmethod
 
@@ -189,17 +189,17 @@ module [HASim_Module] mkFUNCP_Freelist#(File debug_log, Tick fpga_cc)
     // When:   When there are no inflight requests.
     // Effect: Reset the pointer to the given value.
 
-    method Action backTo(PRName r) if (!initializing && req_count.value() == 0);
+    method Action backTo(FUNCP_PHYSICAL_REG_INDEX r) if (!initializing && reqCount.value() == 0);
 
         // Log it.
-        $fdisplay(debug_log, "[%d]: FREELIST: Going back to PR%0d", fpga_cc, r);
+        $fdisplay(debugLog, "[%d]: FREELIST: Going back to PR%0d", fpgaCC, r);
 
         // Check for errors.
-        if(fl_read > fl_write && r < fl_write || fl_read < fl_write && r < fl_write && r > fl_read)
+        if(flRead > flWrite && r < flWrite || flRead < flWrite && r < flWrite && r > flRead)
             $display("ERROR: Backed up the freelist too far! (r = %0d)", r);
 
         // Update the pointer.
-        fl_read <= r;
+        flRead <= r;
 
     endmethod
   
@@ -208,9 +208,9 @@ module [HASim_Module] mkFUNCP_Freelist#(File debug_log, Tick fpga_cc)
     // When:   Any time.
     // Get the current pointer value (for snapshots).
 
-    method PRName current();
+    method FUNCP_PHYSICAL_REG_INDEX current();
 
-        return fl_read;
+        return flRead;
 
     endmethod
 

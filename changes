@@ -10326,3 +10326,46 @@ Directory modules/controller/software
  main.cpp                  Locally Modified          341 
 
 fixed a bug with setting the front-panel popup option
+
+----------
+pellauer    Date: Wed Mar 26 18:07:36 EDT 2008  CSN: CSN-hasim-343
+                  Wed Mar 26 22:07:36 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          342 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          342 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          342 
+
+Directory modules/hasim/functional-partition/memory-state/cache/null
+ memstate_cache_null.bsv   Locally Modified          342 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-hash
+ memstate_storebuffer_bucket_hash.bsv Locally Modified          342 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          342 
+
+Directory modules/functional/memstate
+ FUNCP_NullCache.bsv       Locally Modified          342 
+ FUNCP_MemState_Cached.bsv Locally Modified          342 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          342 
+ HAsimPlatformInterface.bsv Locally Modified          342 
+
+
+* Added support for load byte/halfword/word in Functional Partition V3.
+
+* Support is done in the functional partition using a read-modify-write loop so
+the memory device / cache / store buffer are agnostic to this capabiilty.
+
+* This will be used in the full MIPS ISA.
+
+* Changed Platform Interface to use the new memory virtual device.
+
+Michael P.

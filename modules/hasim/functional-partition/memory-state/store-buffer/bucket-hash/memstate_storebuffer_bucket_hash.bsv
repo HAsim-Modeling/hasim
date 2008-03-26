@@ -28,8 +28,8 @@ import RegFile::*;
 
 typedef union tagged
 {
-    struct {TOKEN tok; MEM_Value value; MEM_Addr addr;}    SBUFFER_REQ_INSERT;
-    struct {TOKEN tok; MEM_Addr addr;}                     SBUFFER_REQ_LOOKUP;
+    struct {TOKEN tok; MEM_VALUE value; MEM_ADDRESS addr;}    SBUFFER_REQ_INSERT;
+    struct {TOKEN tok; MEM_ADDRESS addr;}                     SBUFFER_REQ_LOOKUP;
     TOKEN                                                  SBUFFER_REQ_COMMIT;
     struct {TOKEN_INDEX rewind; TOKEN_INDEX youngest;}     SBUFFER_REQ_REWIND;
 }
@@ -43,8 +43,8 @@ typedef union tagged
 
 typedef union tagged
 {
-    struct {TOKEN tok; MEM_Addr addr; Maybe#(MEM_Value) mresult;}        SBUFFER_RSP_LOOKUP;
-    struct {TOKEN tok; MEM_Addr addr; Bit#(1) unused; MEM_Value value;}  SBUFFER_RSP_COMMIT;
+    struct {TOKEN tok; MEM_ADDRESS addr; Maybe#(MEM_VALUE) mresult;}        SBUFFER_RSP_LOOKUP;
+    struct {TOKEN tok; MEM_ADDRESS addr; Bit#(1) unused; MEM_VALUE value;}  SBUFFER_RSP_COMMIT;
 }
     MEMSTATE_SBUFFER_RSP
         deriving 
@@ -68,11 +68,11 @@ typedef enum
             (Eq, Bits);
 
 
-// MEM_Addr_HASH
+// MEM_ADDRESS_HASH
 
 // A convenience.
 
-typedef Bit#(`SBUFFER_HASH_BITS) MEM_Addr_HASH;
+typedef Bit#(`SBUFFER_HASH_BITS) MEM_ADDRESS_HASH;
 
 // mkFUNCP_StoreBuffer
 
@@ -98,12 +98,12 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
 
     // The actual values in the list are (Addr, Value) pairs.
 
-    BRAM#(TOKEN_INDEX, Tuple2#(MEM_Addr, MEM_Value)) listvalues <- mkBRAM_Full();
+    BRAM#(TOKEN_INDEX, Tuple2#(MEM_ADDRESS, MEM_VALUE)) listvalues <- mkBRAM_Full();
 
     // The bucket hash divides things into N lists. This RegFile stores the heads of
     // these lists. Invalid indicates empty list.
 
-    RegFile#(MEM_Addr_HASH, Maybe#(TOKEN)) heads <- mkRegFileFull();
+    RegFile#(MEM_ADDRESS_HASH, Maybe#(TOKEN)) heads <- mkRegFileFull();
 
     // Intermediate state for list operations.
 
@@ -117,11 +117,11 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
 
     // The current bucket we are looking into.
 
-    Reg#(MEM_Addr_HASH) cur_list <- mkRegU();
+    Reg#(MEM_ADDRESS_HASH) cur_list <- mkRegU();
 
     // The best result we have found so far (if any).
 
-    Reg#(Maybe#(Tuple2#(TOKEN, MEM_Value))) best_so_far <- mkReg(Invalid);
+    Reg#(Maybe#(Tuple2#(TOKEN, MEM_VALUE))) best_so_far <- mkReg(Invalid);
 
     // What state is the store buffer in?
 
@@ -160,7 +160,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
     // The hash is simple truncation for now. 
     // (Last two bits are ignored since the memory is word-aligned.)
 
-    function MEM_Addr_HASH hash(MEM_Addr a) = truncate(a>>2);
+    function MEM_ADDRESS_HASH hash(MEM_ADDRESS a) = truncate(a>>2);
 
     // isBetter
 
@@ -168,7 +168,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
     // than the existing candidate.
     // A token is better if it is younger and of the same epoch.
 
-    function Bool isBetter(TOKEN t, Maybe#(Tuple2#(TOKEN, MEM_Value)) mt);
+    function Bool isBetter(TOKEN t, Maybe#(Tuple2#(TOKEN, MEM_VALUE)) mt);
 
         case (mt) matches
           tagged Invalid: // Certainly not better.
@@ -191,7 +191,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
     // A helper function which records that we are entering a mode where we are
     // cleaning up the lists by removing dead elements.
 
-    function Action beginListCleanup(MEM_Addr_HASH list);
+    function Action beginListCleanup(MEM_ADDRESS_HASH list);
     action
 
         // Record the current bucket.
@@ -740,7 +740,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
               // This would be really bad. Luckily it's never been observed in the wild.
               if (next_tok.index == candidate.index)
               begin
-                $display("ERROR: FUNCP: Store Buffer: Infinite loop in list on TOKEN %0d (MEM_Addr: 0x%h, MEM_Value: 0x%h)", candidate.index, a, v);
+                $display("ERROR: FUNCP: Store Buffer: Infinite loop in list on TOKEN %0d (MEM_ADDRESS: 0x%h, MEM_VALUE: 0x%h)", candidate.index, a, v);
                 $finish(1);
               end
 

@@ -54,8 +54,8 @@ interface FUCNCP_SCOREBOARD;
   method Action commitStart(TOKEN_INDEX t);
   
   // Set the memory type that we use for accessing memory.
-  method Action setLoadType(TOKEN_INDEX t,  ISA_LOAD_TYPE mt);
-  method Action setStoreType(TOKEN_INDEX t, ISA_STORE_TYPE mt);
+  method Action setLoadType(TOKEN_INDEX t,  ISA_MEMOP_TYPE mt);
+  method Action setStoreType(TOKEN_INDEX t, ISA_MEMOP_TYPE mt);
   
   // Rollback the allocations younger than t.
   method Action rewindTo(TOKEN_INDEX t);
@@ -64,8 +64,8 @@ interface FUCNCP_SCOREBOARD;
   method Bool isAllocated(TOKEN_INDEX t);
   method Bool isLoad(TOKEN_INDEX t);
   method Bool isStore(TOKEN_INDEX t);
-  method ISA_LOAD_TYPE getLoadType(TOKEN_INDEX t);
-  method ISA_STORE_TYPE getStoreType(TOKEN_INDEX t);
+  method ISA_MEMOP_TYPE getLoadType(TOKEN_INDEX t);
+  method ISA_MEMOP_TYPE getStoreType(TOKEN_INDEX t);
   method TOKEN_INDEX youngest();
   method TOKEN_INDEX oldest();
   
@@ -97,8 +97,8 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     TOKEN_SCOREBOARD store_finish <- mkRegFileFull();
     TOKEN_SCOREBOARD commit_start <- mkRegFileFull();
 
-    RegFile#(TOKEN_INDEX, ISA_LOAD_TYPE) load_type  <- mkRegFileFull();
-    RegFile#(TOKEN_INDEX, ISA_STORE_TYPE) store_type <- mkRegFileFull();
+    RegFile#(TOKEN_INDEX, ISA_MEMOP_TYPE) load_type  <- mkRegFileFull();
+    RegFile#(TOKEN_INDEX, ISA_MEMOP_TYPE) store_type <- mkRegFileFull();
 
     // A pointer to the next token to be allocated.
     Reg#(TOKEN_INDEX) next_free_tok <- mkReg(0);
@@ -380,7 +380,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     // When:   Any time.
     // Effect: Record the store type and mark the token as a store.
 
-    method Action setLoadType(TOKEN_INDEX t, ISA_LOAD_TYPE mtype);
+    method Action setLoadType(TOKEN_INDEX t, ISA_MEMOP_TYPE mtype);
     
         is_load.upd(t, True);
         
@@ -393,7 +393,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     // When:   Any time.
     // Effect: Record the store type and mark the token as a store.
 
-    method Action setStoreType(TOKEN_INDEX t, ISA_STORE_TYPE mtype);
+    method Action setStoreType(TOKEN_INDEX t, ISA_MEMOP_TYPE mtype);
     
         is_store.upd(t, True);
         
@@ -464,7 +464,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     // When:   Any time.
     // Effect: Accessor method.
 
-    method ISA_LOAD_TYPE getLoadType(TOKEN_INDEX t);
+    method ISA_MEMOP_TYPE getLoadType(TOKEN_INDEX t);
     
         return load_type.sub(t);
     
@@ -475,7 +475,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     // When:   Any time.
     // Effect: Accessor method
 
-    method ISA_STORE_TYPE getStoreType(TOKEN_INDEX t);
+    method ISA_MEMOP_TYPE getStoreType(TOKEN_INDEX t);
     
         return store_type.sub(t);
     

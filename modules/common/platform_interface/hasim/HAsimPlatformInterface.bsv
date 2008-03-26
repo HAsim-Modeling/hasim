@@ -27,8 +27,8 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     Connection_Send#(ButtonInfo)      link_buttons    <- mkConnection_Send("fpga_buttons");
 
     // Currently only one user can read and write memory
-    Connection_Server#(MEM_Request, MEM_Value) link_memory       <- mkConnection_Server("vdev_memory");
-    Connection_Send#(MEM_Addr)                 link_memory_inval <- mkConnection_Send("vdev_memory_invalidate");
+    Connection_Server#(MEM_REQUEST, MEM_VALUE) link_memory       <- mkConnection_Server("vdev_memory");
+    Connection_Send#(MEM_ADDRESS)              link_memory_inval <- mkConnection_Send("vdev_memory_invalidate");
 
     // other virtual devices
     Connection_Receive#(STREAMS_REQUEST) link_streams <- mkConnection_Receive("vdev_streams");
@@ -40,9 +40,9 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     LowLevelPlatformInterface       llpint          <- mkLowLevelPlatformInterface();
 
     // instantiate virtual devices
-    FrontPanel frontPanel <- mkFrontPanel(llpint);
-    Memory     memory     <- mkMemory(llpint);
-    Streams    streams    <- mkStreams(llpint);
+    FrontPanel   frontPanel <- mkFrontPanel(llpint);
+    MEMORY_VIRTUAL_DEVICE  memory     <- mkMemoryVirtualDevice(llpint);
+    Streams      streams    <- mkStreams(llpint);
 
     // connection terminus
     let t <- mkConnectionTerminus();

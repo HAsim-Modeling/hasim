@@ -12,9 +12,9 @@ module [HASim_Module] mkFUNCP_Cache ();
 
   //Connections
 
-  Connection_Server#(MEM_Request, MEM_Value)   link_memstate     <- mkConnection_Server("mem_cache");
-  Connection_Client#(MEM_Request, MEM_Value)   link_vdev_memory     <- mkConnection_Client("vdev_memory");
-  Connection_Receive#(MEM_Addr)               link_vdev_memory_inval     <- mkConnection_Receive("vdev_memory_invalidate");
+  Connection_Server#(MEM_REQUEST, MEM_VALUE)   link_memstate     <- mkConnection_Server("mem_cache");
+  Connection_Client#(MEM_REQUEST, MEM_VALUE)   link_vdev_memory     <- mkConnection_Client("vdev_memory");
+  Connection_Receive#(MEM_ADDRESS)               link_vdev_memory_inval     <- mkConnection_Receive("vdev_memory_invalidate");
 
   //handleRequest
  
@@ -33,7 +33,7 @@ module [HASim_Module] mkFUNCP_Cache ();
   
   rule handleResponse (True);
   
-    MEM_Value v = link_vdev_memory.getResp();
+    MEM_VALUE v = link_vdev_memory.getResp();
     link_vdev_memory.deq();
     
     link_memstate.makeResp(v);
@@ -44,7 +44,7 @@ module [HASim_Module] mkFUNCP_Cache ();
   
   rule handleInvalidate (True);
   
-    MEM_Value a = link_vdev_memory_inval.receive();
+    MEM_VALUE a = link_vdev_memory_inval.receive();
     link_vdev_memory_inval.deq();
         
   endrule

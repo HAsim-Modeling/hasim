@@ -251,7 +251,7 @@ sub print_service_methods {
         print $stubfile "endinterface\n";
         print $stubfile "\n";
 
-        print $stubfile "module mkServiceStub_$servicename#(RRRServer server) (ServiceStub_$servicename);\n";
+        print $stubfile "module mkServiceStub_$servicename#(RRR_SERVER server) (ServiceStub_$servicename);\n";
         print $stubfile "\n";
 
         print $stubfile "    DEMARSHALLER#(UMF_CHUNK, Bit#($maxinsize))\n";
@@ -261,14 +261,14 @@ sub print_service_methods {
 
         # universal rules
         print $stubfile "    rule probe_server_for_header (True);\n";
-        print $stubfile "        UMF_PACKET packet <- server.read(`" . $servicename . "_SERVICE_ID);\n";
+        print $stubfile "        UMF_PACKET packet <- server.requestPorts[`" . $servicename . "_SERVICE_ID].acceptRequest();\n";
         print $stubfile "        mid <= packet.UMF_PACKET_header.methodID;\n";
         print $stubfile "        dem.start(packet.UMF_PACKET_header.numChunks);\n";
         print $stubfile "    endrule\n";
         print $stubfile "\n";
 
         print $stubfile "    rule probe_dispatcher_for_chunks (True);\n";
-        print $stubfile "        UMF_PACKET packet <- server.read(`" . $servicename . "_SERVICE_ID);\n";
+        print $stubfile "        UMF_PACKET packet <- server.requestPorts[`" . $servicename . "_SERVICE_ID].acceptRequest();\n";
         print $stubfile "        dem.insert(packet.UMF_PACKET_dataChunk);\n";
         print $stubfile "    endrule\n";
         print $stubfile "\n";
@@ -669,7 +669,7 @@ sub print_service_connections {
     print $stubfile "\n";
 
     # main module definition
-    print $stubfile "module [HASim_Module] mkServiceConnections#(RRRServer server) ();\n";
+    print $stubfile "module [HASim_Module] mkServiceConnections#(RRR_SERVER server) ();\n";
     print $stubfile "\n";
 
     # for each service
@@ -751,14 +751,14 @@ sub print_service_connections {
         {
             print $stubfile "\n";
             print $stubfile "    rule startmsg_$servicename (True);\n";
-            print $stubfile "        UMF_PACKET packet <- server.read(`" . $servicename . "_SERVICE_ID);\n";
+            print $stubfile "        UMF_PACKET packet <- server.requestPorts[`" . $servicename . "_SERVICE_ID].acceptRequest();\n";
             print $stubfile "        mid_$servicename <= packet.UMF_PACKET_header.methodID;\n";
             print $stubfile "        dem_$servicename.start(packet.UMF_PACKET_header.numChunks);\n";
             print $stubfile "    endrule\n";
             print $stubfile "\n";
 
             print $stubfile "    rule contmsg_$servicename (True);\n";
-            print $stubfile "        UMF_PACKET packet <- server.read(`" . $servicename . "_SERVICE_ID);\n";
+            print $stubfile "        UMF_PACKET packet <- server.requestPorts[`" . $servicename . "_SERVICE_ID].acceptRequest();\n";
             print $stubfile "        dem_$servicename.insert(packet.UMF_PACKET_dataChunk);\n";
             print $stubfile "    endrule\n";
             print $stubfile "\n";

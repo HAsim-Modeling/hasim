@@ -10369,3 +10369,16 @@ the memory device / cache / store buffer are agnostic to this capabiilty.
 * Changed Platform Interface to use the new memory virtual device.
 
 Michael P.
+
+----------
+aparasha    Date: Thu Mar 27 17:06:14 EDT 2008  CSN: CSN-hasim-344
+                  Thu Mar 27 21:06:14 UTC 2008
+
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          343 
+
+Updated hardware RRR service stubs to match slightly modified
+Demarshaller interface. The new stubs are also simpler in
+functionality because they rely on the Demarshaller's internal
+state machine to take care of flow control.

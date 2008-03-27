@@ -199,16 +199,6 @@ sub print_service_methods {
     print $stubfile "`include \"umf.bsh\"\n";
     print $stubfile "\n";
 
-    print $stubfile "typedef enum\n";
-    print $stubfile "{\n";
-    print $stubfile "    STUB_STATE_idle,\n";
-    print $stubfile "    STUB_STATE_processing,\n";
-    print $stubfile "    STUB_STATE_awaitingResponse\n";
-    print $stubfile "}\n";
-    print $stubfile "STUB_STATE\n";
-    print $stubfile "    deriving (Bits, Eq);\n";
-    print $stubfile "\n";
-
     # create an interface for each service
     foreach my $service (@serviceTable)
     {
@@ -264,24 +254,22 @@ sub print_service_methods {
         print $stubfile "module mkServiceStub_$servicename#(RRRServer server) (ServiceStub_$servicename);\n";
         print $stubfile "\n";
 
-        print $stubfile "    DeMarshaller#(`UMF_CHUNK_BITS, $maxinsize)\n";
+        print $stubfile "    DEMARSHALLER#(UMF_CHUNK, Bit#($maxinsize))\n";
         print $stubfile "                        dem   <- mkDeMarshaller();\n";
         print $stubfile "    Reg#(UMF_METHOD_ID) mid   <- mkReg(0);\n";
-        print $stubfile "    Reg#(STUB_STATE)    state <- mkReg(STUB_STATE_idle);\n";
         print $stubfile "\n";
 
         # universal rules
-        print $stubfile "    rule probe_server_for_header (state == STUB_STATE_idle);\n";
+        print $stubfile "    rule probe_server_for_header (True);\n";
         print $stubfile "        UMF_PACKET packet <- server.read(`" . $servicename . "_SERVICE_ID);\n";
         print $stubfile "        mid <= packet.UMF_PACKET_header.methodID;\n";
         print $stubfile "        dem.start(packet.UMF_PACKET_header.numChunks);\n";
-        print $stubfile "        state <= STUB_STATE_processing;\n";
         print $stubfile "    endrule\n";
         print $stubfile "\n";
 
-        print $stubfile "    rule probe_dispatcher_for_chunks (state == STUB_STATE_processing);\n";
+        print $stubfile "    rule probe_dispatcher_for_chunks (True);\n";
         print $stubfile "        UMF_PACKET packet <- server.read(`" . $servicename . "_SERVICE_ID);\n";
-        print $stubfile "        dem.enq(pack(packet.UMF_PACKET_dataChunk));\n";
+        print $stubfile "        dem.insert(packet.UMF_PACKET_dataChunk);\n";
         print $stubfile "    endrule\n";
         print $stubfile "\n";
 
@@ -296,7 +284,7 @@ sub print_service_methods {
 
             # print REQUEST method definition
             print $stubfile "    method ActionValue#($intype) acceptRequest_$methodname() if (mid == `" . $methodname . "_METHOD_ID);\n";
-            print $stubfile "        Bit#($maxinsize) a <- dem.deq();\n";
+            print $stubfile "        Bit#($maxinsize) a <- dem.readAndDelete();\n";
 
             # if insize is smaller than maxinsize, then we need to truncate
             if ($insize < $maxinsize)
@@ -307,7 +295,6 @@ sub print_service_methods {
             {
                 print $stubfile "        $intype retval = unpack(a);\n";
             }
-            print $stubfile "        state <= STUB_STATE_idle;\n";
             print $stubfile "        return retval;\n";
             print $stubfile "    endmethod\n";
             print $stubfile "\n";
@@ -316,7 +303,7 @@ sub print_service_methods {
             if ($outsize != 0)
             {
                 die "response path not implemented";
-                print $stubfile "    method Action sendResponse_$methodname() if (state == STUB_STATE_awaitingResponse);\n";
+                print $stubfile "    method Action sendResponse_$methodname() if (True);\n";
                 print $stubfile "        noAction;\n";
                 print $stubfile "    endmethod\n";
             }
@@ -681,16 +668,6 @@ sub print_service_connections {
     print $stubfile "`include \"asim/rrr/rrr_service_ids.bsh\"\n";
     print $stubfile "\n";
 
-    print $stubfile "typedef enum\n";
-    print $stubfile "{\n";
-    print $stubfile "    STUB_STATE_idle,\n";
-    print $stubfile "    STUB_STATE_processing,\n";
-    print $stubfile "    STUB_STATE_awaitingResponse\n";
-    print $stubfile "}\n";
-    print $stubfile "STUB_STATE\n";
-    print $stubfile "    deriving (Bits, Eq);\n";
-    print $stubfile "\n";
-
     # main module definition
     print $stubfile "module [HASim_Module] mkServiceConnections#(RRRServer server) ();\n";
     print $stubfile "\n";
@@ -723,15 +700,14 @@ sub print_service_connections {
                 $maxinsize = $insize;
             }
         }
-        print $stubfile "\n";
 
         # per-service state elements: only print if there's at least one connection
         if (@connectionlist)
         {
-            print $stubfile "    DeMarshaller#(`UMF_CHUNK_BITS, $maxinsize)\n";
+            print $stubfile "\n";
+            print $stubfile "    DEMARSHALLER#(UMF_CHUNK, Bit#($maxinsize))\n";
             print $stubfile "                        dem_$servicename   <- mkDeMarshaller();\n";
             print $stubfile "    Reg#(UMF_METHOD_ID) mid_$servicename   <- mkReg(0);\n";
-            print $stubfile "    Reg#(STUB_STATE)    state_$servicename <- mkReg(STUB_STATE_idle);\n";
             print $stubfile "\n";
         }
 
@@ -750,9 +726,7 @@ sub print_service_connections {
             {
                 die "response path not implemented";
             }
-
         }
-        print $stubfile "\n";
     }
 
     # again, for each service
@@ -775,17 +749,17 @@ sub print_service_connections {
         # per-service rules
         if (@connectionlist)
         {
-            print $stubfile "    rule startmsg_$servicename (state_$servicename == STUB_STATE_idle);\n";
+            print $stubfile "\n";
+            print $stubfile "    rule startmsg_$servicename (True);\n";
             print $stubfile "        UMF_PACKET packet <- server.read(`" . $servicename . "_SERVICE_ID);\n";
             print $stubfile "        mid_$servicename <= packet.UMF_PACKET_header.methodID;\n";
             print $stubfile "        dem_$servicename.start(packet.UMF_PACKET_header.numChunks);\n";
-            print $stubfile "        state_$servicename <= STUB_STATE_processing;\n";
             print $stubfile "    endrule\n";
             print $stubfile "\n";
 
-            print $stubfile "    rule contmsg_$servicename (state_$servicename == STUB_STATE_processing);\n";
+            print $stubfile "    rule contmsg_$servicename (True);\n";
             print $stubfile "        UMF_PACKET packet <- server.read(`" . $servicename . "_SERVICE_ID);\n";
-            print $stubfile "        dem_$servicename.enq(pack(packet.UMF_PACKET_dataChunk));\n";
+            print $stubfile "        dem_$servicename.insert(packet.UMF_PACKET_dataChunk);\n";
             print $stubfile "    endrule\n";
             print $stubfile "\n";
         }
@@ -801,7 +775,7 @@ sub print_service_connections {
 
             # print rules to transfer requests to the connection
             print $stubfile "    rule acceptRequest_$servicename\_$connectionname (mid_$servicename == `$servicename\_$connectionname\_METHOD_ID);\n";
-            print $stubfile "        Bit#($maxinsize) a <- dem_$servicename.deq();\n";
+            print $stubfile "        Bit#($maxinsize) a <- dem_$servicename.readAndDelete();\n";
             # if insize is less than maxinsize, we need to truncate
             if ($insize < $maxinsize)
             {
@@ -811,7 +785,6 @@ sub print_service_connections {
             {
                 print $stubfile "        $intype retval = unpack(a);\n";
             }
-            print $stubfile "        state_$servicename <= STUB_STATE_idle;\n";
             print $stubfile "        link_$servicename\_$connectionname.send(retval);\n";
             print $stubfile "    endrule\n";
             print $stubfile "\n";

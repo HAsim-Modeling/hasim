@@ -10,7 +10,7 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
 
     rule switch_to_led (True);
         let value = fp.readSwitches();
-        fp.writeLEDs(FRONTP_MASKED_LEDS {state: truncate(value), mask: '1});
+        fp.writeLEDs(truncate(value), '1);
     endrule
 
 

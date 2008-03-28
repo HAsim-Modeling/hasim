@@ -1,0 +1,2 @@
+def STREAMS.MESSAGE_START     "Starting... intial value = %d\n";
+def STREAMS.MESSAGE_FINISH    "Finishing...final value  = %d\n";

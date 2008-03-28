@@ -56,7 +56,7 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
         link_leds.deq();
 
         // ask front panel to display my current LED state
-        frontPanel.writeLEDs(newval);
+        frontPanel.writeLEDs(newval.state, newval.mask);
     endrule
   
     rule send_switches (True);
@@ -115,7 +115,10 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
         // read in streams request and send it to device
         let sreq = link_streams.receive();
         link_streams.deq();
-        streams.makeRequest(sreq);
+        streams.makeRequest(sreq.streamID,
+                            sreq.stringID,
+                            sreq.payload0,
+                            sreq.payload1);
 
     endrule
 

@@ -10393,3 +10393,77 @@ Directory tools/scripts
 
 Updated stubs to match new hardware RRR server's vector-of-ports
 interface for requests. Response support is still missing.
+
+----------
+jsemer      Date: Fri Mar 28 11:52:04 EDT 2008  CSN: CSN-hasim-346
+                  Fri Mar 28 15:52:04 UTC 2008
+
+
+Directory config/pm/bluespec/demos
+ hello.apm                 Locally Removed           345 
+ hello_htg.apm             Locally Removed           345 
+ multiplier.apm            Locally Removed           345 
+ hello/                    Locally Added               0 
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_exe.apm      Locally Added               - 
+ hello_hybrid_htg.apm      Locally Added               - 
+
+Directory config/pm/bluespec/demos
+ switch2led.apm            Locally Removed           345 
+ simple/                   Locally Added               0 
+
+Directory config/pm/bluespec/demos/simple
+ multiplier.apm            Locally Added               - 
+ switch2led.apm            Locally Added               - 
+ counter.apm               Locally Added               - 
+
+Directory config/pm/bluespec/demos
+ counter.apm               Locally Removed           345 
+ devtest/                  Locally Added               0 
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hwonly_vexe.apm   Locally Added               0 
+ devtest_hwonly_xup.apm    Locally Added               0 
+ devtest_hybrid_exe.apm    Locally Added               0 
+ devtest_hybrid_htg.apm    Locally Added               0 
+
+Directory modules/bluespec/system/demos/counter
+ System.bsv                Locally Modified          345 
+
+Directory modules/bluespec/system/demos/hello
+ hello_system.awb          Locally Removed           345 
+ hello-streams-messages.dic Locally Removed           345 
+ hello_streams_messages.dic Locally Added               - 
+ hello-streams-id.dic      Locally Removed           345 
+ hello_streams_id.dic      Locally Added               - 
+ hello.awb                 Locally Added               - 
+ hello.bsv                 Locally Added               - 
+ System.bsv                Locally Removed           345 
+
+Directory modules/bluespec/system/demos/multiplier
+ System.bsv                Locally Modified          345 
+
+Directory modules/bluespec/system/demos/switch2led
+ System.bsv                Locally Modified          345 
+
+Directory modules/bluespec/system/demos
+ devtest/                  Locally Added               0 
+
+Directory modules/bluespec/system/demos/devtest
+ devtest_streams_messages.dic Locally Added               0 
+ devtest.awb               Locally Added               0 
+ devtest_streams_id.dic    Locally Added               0 
+ devtest.bsv               Locally Added               0 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          345 
+
+Updated the hasim platform interface to use the front panel
+and streams virtual devices with individual arguments
+to the remote methods rather than passing a struct as
+the only argument.
+
+Also updated the pure Bluespec demos to do the same. Added
+a demo that uses both the streams, and front panel devices.
+And did a re-arrangement of the bluespec demo models.

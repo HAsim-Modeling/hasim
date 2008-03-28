@@ -43,7 +43,7 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
     endrule: waitForResult
 
     rule outputResult(state == 2);
-        fp.writeLEDs(FRONTP_MASKED_LEDS {state: truncate(result), mask: '1});
+        fp.writeLEDs(truncate(result),'1);
 
         state <= 3;
     endrule: outputResult

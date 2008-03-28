@@ -23,7 +23,7 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
     rule step1(state == 1);
         let value = counter.read();
 
-        fp.writeLEDs(FRONTP_MASKED_LEDS {state: truncate(value), mask: '1});
+        fp.writeLEDs(truncate(value), '1);
         state <= 2;
     endrule
 

@@ -11,8 +11,8 @@
 
 %attributes bluespec
 
-%sources -t BSV  -v PUBLIC System.bsv
-%sources -t DICT -v PUBLIC hello-streams-id.dic
-%sources -t DICT -v PUBLIC hello-streams-messages.dic
+%sources -t BSV  -v PUBLIC hello.bsv
+%sources -t DICT -v PUBLIC hello_streams_id.dic
+%sources -t DICT -v PUBLIC hello_streams_messages.dic
 
 %AWB_END

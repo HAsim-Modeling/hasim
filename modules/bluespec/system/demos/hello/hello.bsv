@@ -25,10 +25,10 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
 
     rule hello (state == STATE_start);
 
-       streams.makeRequest(STREAMS_REQUEST { streamID: `STREAMID_MESSAGE,
-                                             stringID: `STREAMS_MESSAGE_HELLO,
-                                             payload0: ?,
-                                             payload1: ? });
+       streams.makeRequest(`STREAMID_MESSAGE,
+                           `STREAMS_MESSAGE_HELLO,
+                           ?,
+                           ?);
   
        state <= STATE_finish;
 

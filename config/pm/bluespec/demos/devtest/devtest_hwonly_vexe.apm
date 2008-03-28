@@ -1,0 +1,37 @@
+
+[Global]
+SaveParameters=0
+Description=Device tester using hardware-only streams
+File=devtest_hwonly_vexe
+Version=2.1
+Name=Device Tester - vexe
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hybrid bluespec
+model=Pure Bluespec Model Foundation
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
+Packagehint=platforms
+
+[Bluespec Null Library]
+File=modules/bluespec/common/null/bluespec_null.awb
+Packagehint=hasim
+
+[Bluespec Device Tester]
+File=modules/bluespec/system/demos/devtest/devtest.awb
+Packagehint=hasim
+
+[Pure Bluespec Model Foundation/Requires]
+bluespec_common=Bluespec Null Library
+bluespec_system=Bluespec Device Tester
+fpgaenv=FPGA Environment
+
+[Pure Bluespec Model Foundation]
+File=modules/bluespec/model/pure-bluespec/pure_bluespec_model.awb
+Packagehint=hasim
+
+[Pure Bluespec Model Foundation/Params]
+MAKE_ALL_TARGET=vexe

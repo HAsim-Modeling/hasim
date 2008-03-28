@@ -12,7 +12,7 @@
 %attributes bluespec
 
 %sources -t BSV  -v PUBLIC devtest.bsv
-%sources -t DICT -v PUBLIC devtest_streams_id.dic
-%sources -t DICT -v PUBLIC devtest_streams_messages.dic
+%sources -t DICT -v PUBLIC devtest-streams-id.dic
+%sources -t DICT -v PUBLIC devtest-streams-messages.dic
 
 %AWB_END

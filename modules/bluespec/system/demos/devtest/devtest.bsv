@@ -31,10 +31,10 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
     Reg#(FRONTP_LEDS) value   <- mkReg(0);
     Reg#(STATE)       state   <- mkReg(STATE_start);
 
-
     rule start (state == STATE_start);
 
        let newvalue = 0;
+
        value <= newvalue;
        fp.writeLEDs(newvalue, '1);
 
@@ -52,6 +52,7 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
     //
 
     rule debounce (state == STATE_debounce);
+
       let buttons = fp.readButtons();
 
       if (buttons == 0)
@@ -67,24 +68,24 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
     //
 
     rule doit (state == STATE_doit);
+      FRONTP_LEDS       newvalue;
+
       let buttons = fp.readButtons();
 
       // OK button
    
       if (buttons[2] == 1)
       begin      
-        let newvalue = fp.readSwitches();
-        fp.writeLEDs(zeroExtend(newvalue), '1);
-        value <= zeroExtend(newvalue);
+        newvalue = fp.readSwitches();
+
+        state <= STATE_debounce;
       end
 
       // UP button
 
       else if (buttons[0] == 1)
       begin
-        let newvalue = value + 1;
-        fp.writeLEDs(truncate(newvalue), '1);
-        value <= newvalue;
+        newvalue = value + 1;
 
         state <= STATE_debounce;
       end
@@ -93,9 +94,7 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
 
       else if (buttons[4] == 1)
       begin
-        let newvalue = value - 1;
-        fp.writeLEDs(truncate(newvalue), '1);
-        value <= newvalue;
+        newvalue = value - 1;
 
         state <= STATE_debounce;
       end
@@ -104,17 +103,29 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
 
       else if (buttons[1] == 1)
       begin
+        newvalue = value;
+
         state <= STATE_start;
       end
-
 
       // RIGHT button
 
       else if (buttons[3] == 1)
       begin
+        newvalue = value;
+
         state <= STATE_finish;
       end
-      
+      else
+      begin
+        newvalue = value;
+      end
+
+      // Write the LEDs and save the value
+
+      fp.writeLEDs(zeroExtend(newvalue), '1);
+      value <= zeroExtend(newvalue);
+
     endrule
 
     //

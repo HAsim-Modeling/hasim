@@ -10467,3 +10467,28 @@ the only argument.
 Also updated the pure Bluespec demos to do the same. Added
 a demo that uses both the streams, and front panel devices.
 And did a re-arrangement of the bluespec demo models.
+
+----------
+jsemer      Date: Fri Mar 28 13:45:24 EDT 2008  CSN: CSN-hasim-347
+                  Fri Mar 28 17:45:24 UTC 2008
+
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hwonly_xup.apm    Locally Modified          346 
+ devtest_hybrid_htg.apm    Locally Modified          346 
+
+Directory modules/bluespec/system/demos/devtest
+ devtest_streams_messages.dic Locally Removed           346 
+ devtest-streams-id.dic    Locally Added               - 
+ devtest.awb               Locally Modified          346 
+ devtest_streams_id.dic    Locally Removed           346 
+ devtest.bsv               Locally Modified          346 
+ devtest-streams-messages.dic Locally Added               - 
+
+Minor code cleanup in devtest system.
+
+Renamed some devtest files to conform with file naming
+convention.
+
+XUP and HTG models need the FPGA version of bluespec common.
+

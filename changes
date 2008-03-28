@@ -10492,3 +10492,13 @@ convention.
 
 XUP and HTG models need the FPGA version of bluespec common.
 
+
+----------
+jsemer      Date: Fri Mar 28 15:54:53 EDT 2008  CSN: CSN-hasim-348
+                  Fri Mar 28 19:54:53 UTC 2008
+
+
+Directory modules/bluespec/system/demos/devtest
+ devtest.bsv               Locally Modified          347 
+
+Fixed a cast, and added some comments.

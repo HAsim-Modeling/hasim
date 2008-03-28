@@ -1,9 +1,29 @@
+//
+// Devtest
+//
+// This is a small demo program that exercises a variety of 
+// of the virtual platform devices, i.e., the front panel
+// buttons, switches and LEDs and streams I/O. It operates as 
+// follows:
+//
+//     Button          Action
+//     ------          ------
+//     Ok              Load switches into LEDs
+//     Up              Increment LEDs by 1
+//     Down            Decrement LEDs by 1
+//     Left            Return to initial state
+//     Right           Finish
+//
+
+// Include virtual devices
+
+`include "low_level_platform_interface.bsh"
+`include "physical_platform.bsh"
 
 `include "front_panel.bsh"
-`include "physical_platform.bsh"
-`include "low_level_platform_interface.bsh"
-
 `include "streams.bsh"
+
+// Include symbol defintions
 
 `include "asim/dict/STREAMID.bsh"
 `include "asim/dict/STREAMS.bsh"
@@ -11,8 +31,8 @@
 typedef enum 
     {
         STATE_start, 
-        STATE_doit,
         STATE_debounce,
+        STATE_doit,
         STATE_finish,
         STATE_shutdown
     } 
@@ -21,15 +41,20 @@ typedef enum
 
 module mkSystem#(LowLevelPlatformInterface llpi)();
 
-    // instantiate virtual devices
+    // Instantiate virtual devices
 
     FrontPanel       fp       <- mkFrontPanel(llpi);
     Streams          streams  <- mkStreams(llpi);
 
-    // instatiate our local state
+    // Instantiate our local state
 
     Reg#(FRONTP_LEDS) value   <- mkReg(0);
     Reg#(STATE)       state   <- mkReg(STATE_start);
+
+
+    //
+    // Initialization state
+    //
 
     rule start (state == STATE_start);
 
@@ -46,6 +71,7 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
 
        state <= STATE_debounce;
     endrule
+
 
     //
     // Wait until no button is pushed
@@ -76,7 +102,7 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
    
       if (buttons[2] == 1)
       begin      
-        newvalue = fp.readSwitches();
+        newvalue = zeroExtend(fp.readSwitches());
 
         state <= STATE_debounce;
       end
@@ -127,6 +153,7 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
       value <= zeroExtend(newvalue);
 
     endrule
+
 
     //
     // Write final message

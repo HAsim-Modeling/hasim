@@ -10502,3 +10502,28 @@ Directory modules/bluespec/system/demos/devtest
  devtest.bsv               Locally Modified          347 
 
 Fixed a cast, and added some comments.
+
+----------
+mcadler     Date: Fri Mar 28 17:32:57 EDT 2008  CSN: CSN-hasim-349
+                  Fri Mar 28 21:32:57 UTC 2008
+
+
+Directory tools/scripts
+ hasim-bsc-mkdepend        Locally Modified          348 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          348 
+
+- hasim-bsc-mkdepend can now use iverilog as a preprocessor.  bsc is slow because
+  it allocates a license each time it runs.  The script still uses bsc if
+  iverilog isn't found.
+
+- SCons.top.template now supports the latest Bluespec compiler release.  The
+  method for building Bluesim objects keeps changing.  Instead of trying to keep
+  up we now use the standard bsc command.  This gives up on some parallelism,
+  but the latest compiler can change the C++ optimization level.  I picked -O1
+  because the binaries generated are faster by at least as much as the extra
+  compilation time.
+
+- SCons.top.template now queries the Bluespec compiler version.  As a result,
+  the script remains compatible with older Bluespec releases.

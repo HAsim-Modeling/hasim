@@ -4,6 +4,7 @@ eval 'exec perl -w "$0" ${1+"$@"}'
 
 use strict;
 use File::Basename;
+use File::Temp qw/ tempfile /;
 use Getopt::Long;
 
 my $debug = 0;
@@ -19,10 +20,18 @@ my %derivedBSV;
 my %bsvFiles;
 my %bsvDep;             # Dependence on source files.
 
+my $preprocessor;
+my $ivlpp_tmpfile = undef;      # MUST DELETE THIS FILE ON EXIT!
+
 sub ErrorExit($)
 {
     my ($str) = @_;
     print STDERR "hasim-bsc-mkdepend error: ${str}\n";
+
+    if (defined($ivlpp_tmpfile)) {
+        unlink($ivlpp_tmpfile);
+    }
+
     exit(1);
 }
 
@@ -33,6 +42,7 @@ sub Usage()
     print STDERR "  ${prog}: [-p path] <bsv files>\n";
     exit(1);
 }
+
 
 ##
 ## SetSearchPath --
@@ -81,6 +91,59 @@ sub SetSearchPath($)
     {
         print STDERR "BSC Search Path: " . join(':', @bscPath) . "\n";
     }
+}
+
+
+##
+## InitPreprocessor --
+##   Ideally we would just use "bsc -E" as the preprocessor.  Unfortunately,
+##   bsc allocates a license to run the preprocessor.  This can make dependence
+##   analysis exceptionally slow, especially when the flexlm server is remote.
+##   This function checks to see whether iverilog is available.  If it is,
+##   ivlpp will be used as the preprocessor.
+##
+##   The argument must be the search path from the command line (-p argument).
+##
+sub InitPreprocessor($)
+{
+    my ($path) = @_;
+
+    SetSearchPath($path);
+
+    ##
+    ## bsc -E is the default preprocessor...
+    ##
+    $preprocessor = "bsc -E -wait-for-license -p $bscPathArg";
+
+    ##
+    ## Can we fine iverilog?  If so, figure out where ivlpp is.  Unfortunately
+    ## it isn't installed on the search path.  Even worse:  the -E argument to
+    ## iverilog doesn't emit `line directives and there is no way to turn
+    ## them on from iverilog.  The code below finds ivlpp and then prepares
+    ## an environment using it.
+    ##
+    if (! open(IVL, 'iverilog -E -v -o - /dev/null 2>&1 | grep preprocess | sed \'s/^.*: //\' | sed \'s/ivlpp .*/ivlpp/\' |')) {
+        return;
+    }
+    my $ivlpp = <IVL>;
+    return if (! defined($ivlpp));
+    chomp($ivlpp);
+    return if ($ivlpp eq '');
+
+    ##
+    ## We will use ivlpp.  Unfortunately, it doesn't take the search path on the
+    ## command line.  Build a file describing the search path.
+    ##
+    (my $TMP, $ivlpp_tmpfile) = tempfile("/tmp/hasim-bsc-mkdepend.XXXXXX");
+
+    foreach my $s (@bscPath)
+    {
+        print $TMP "I:${s}\n";
+    }
+
+    close($TMP);
+
+    $preprocessor = "${ivlpp} -L -F${ivlpp_tmpfile}";
 }
 
 
@@ -145,7 +208,7 @@ sub NoteImport($$)
 
 
 ##
-## Note include files by parsing the `line directive emitted by bsc -E
+## Note include files by parsing the `line directive emitted by the preprocessor
 ##
 sub NoteIncludes($$)
 {
@@ -244,7 +307,8 @@ sub ParseBSVFile($$)
 
     my $inComment = 0;
     my $BSV;
-    open($BSV, "bsc -E -wait-for-license -p $bscPathArg $fName |");
+
+    open($BSV, "${preprocessor} $fName |") or ErrorExit("Failed to open $fName");
     while (<$BSV>)
     {
         chomp;
@@ -318,7 +382,7 @@ if (! GetOptions('bdir=s' => \$bscBDir,
 }
 Usage() if ($#ARGV < 0);
 
-SetSearchPath($pathArg);
+InitPreprocessor($pathArg);
 
 ##
 ## Build a hash of derived BSV files.  We won't claim that the .depends file
@@ -335,6 +399,10 @@ if (defined($derived))
 foreach my $bsv (@ARGV)
 {
     ParseBSVFile($bsv, 0);
+}
+
+if (defined($ivlpp_tmpfile)) {
+    unlink($ivlpp_tmpfile);
 }
 
 ##

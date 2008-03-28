@@ -161,6 +161,24 @@ else:
     SW_TGT = []
 
 
+# What is the Bluespec compiler version?
+bsc_version = 0
+
+bsc_ostream = os.popen('bsc -verbose')
+ver_regexp = re.compile('^Bluespec Compiler, version.*\(build ([0-9]+),')
+for ln in bsc_ostream.readlines():
+    m = ver_regexp.match(ln)
+    if (m):
+        bsc_version = int(m.group(1))
+bsc_ostream.close()
+
+if bsc_version == 0:
+    print "Failed to get Bluespec compiler version"
+    sys.exit(1)
+
+env['DEFS']['BSC_VERSION'] = bsc_version
+
+
 ############################################################################
 ##
 ## Rules for HW subdirectory.  These are shared by all targets.
@@ -181,62 +199,24 @@ BuildDir(TMP_BSC_DIR, '.', duplicate=0)
 ##
 ############################################################################
 
-##
-## C++ files are generated in the .bsc directories by a single Bluespec invocation
-##
-cxx_targets = transform_string_list(env['DEFS']['GEN_CXXS'], ' ', TMP_BSC_DIR + '/', '')
-h_targets = transform_string_list(env['DEFS']['GEN_HS'], ' ', TMP_BSC_DIR + '/', '')
+bsc_sim_command = BSC + ' ' + BSC_FLAGS + ' ' + LDFLAGS + ' -o $TARGET'
 
-cxx_gen_command = BSC + ' ' + BSC_FLAGS + ' ' + LDFLAGS + \
-                  ' -KILLsimBlocksToC -sim -e ' + ROOT_WRAPPER_SYNTH_ID + ' -simdir ' + \
-                  TMP_BSC_DIR + ' ' + env['DEFS']['GEN_BAS'] + ' ' + env['DEFS']['BDPI_BAS']
+if (env['DEFS']['BSC_VERSION'] >= 13013):
+    # 2008.01.A compiler allows us to pass C++ arguments.
+    bsc_sim_command += ' -Xc++ -O1'
 
-cxx = env.Command(
-    clean_split(cxx_targets + ' ' + h_targets, sep=' '),
-    wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' '),
-    cxx_gen_command)
+bsc_sim_command += \
+    ' -sim -e ' + ROOT_WRAPPER_SYNTH_ID + ' -simdir ' + \
+    TMP_BSC_DIR + ' ' + env['DEFS']['GEN_BAS'] + ' ' + env['DEFS']['BDPI_BAS'] + \
+    ' ' + env['DEFS']['BDPI_CS']
 
-Clean(cxx,  TMP_BSC_DIR + '/imported_BDPI_functions.h')
+sbin = env.Command(
+    TMP_BSC_DIR + '/' + APM_NAME + '_hw.exe',
+    wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' ') + clean_split(env['DEFS']['BDPI_CS'], sep=' '),
+    bsc_sim_command)
 
-##
-## Compile the C++ into a Bluesim executable.  First define a compilation
-## environment with the right flags.
-##
-bsc_ccflags = '-Wall -Wno-unused -g -D_FILE_OFFSET_BITS=64' + \
-              ' -DTOP=' + ROOT_WRAPPER_SYNTH_ID + \
-              ' -I' + os.environ['BLUESPECDIR'] + '/Bluesim'
-
-bsc_cxxflags = bsc_ccflags + ' -fno-rtti'
-
-bsc_lib_ext = ''
-if (os.environ['HOSTTYPE'].find('_64') >= 0):
-    bsc_lib_ext = '_64'
-
-bsc_cxx_env = env.Clone(
-    CCFLAGS = bsc_ccflags,
-    CXXFLAGS = bsc_cxxflags,
-    LINKFLAGS = bsc_ccflags,
-    LIBPATH = [ '/usr/lib64/curses', '/usr/lib/curses',
-                os.environ['BLUESPECDIR'] + '/Bluesim/g++4' + bsc_lib_ext ],
-    LIBS = ['bsui', 'edit', 'bskernel', 'bsprim', 'curses'])
-
-bsim_build_obj = []
-
-for c in clean_split(cxx_targets, sep=' '):
-    bsim_build_obj += bsc_cxx_env.Object(c)
-
-bdpi_obj = []
-for c in clean_split(env['DEFS']['BDPI_CS'], sep=' '):
-    # Build BDPI C files into the top level temporary directory
-    tgt = TMP_BSC_DIR + '/' + clean_split(c, '/')[-1]
-    # Strip suffix (scons will add the right one)
-    tgt = re.compile(r'\.[cx]+$').sub('', tgt)
-    bdpi_obj += bsc_cxx_env.Object(target=tgt, source=c)
-
-bsim_build_obj += bdpi_obj
-
-sbin = bsc_cxx_env.Program(TMP_BSC_DIR + '/' + APM_NAME + '_hw.exe',
-                           bsim_build_obj)
+if env.GetOption('clean'):
+    os.system('rm -rf .bsc')
 
 exe = env.Command(
     APM_NAME + '_hw_exe.sh',
@@ -261,13 +241,14 @@ env.Alias('exe', exe)
 ##
 ############################################################################
 
-vexe_gen_command = BSC + ' ' + BSC_FLAGS + ' -I ' + env['ENV']['IVERILOGDIR'] + '/include' + \
-                   ' -verilog -e ' + ROOT_WRAPPER_SYNTH_ID + ' -o $TARGET' + \
-                   ' $SOURCES ' + env['DEFS']['BDPI_BAS']
+vexe_gen_command = \
+    BSC + ' ' + BSC_FLAGS + ' -I ' + env['ENV']['IVERILOGDIR'] + '/include' + \
+    ' -o $TARGET -verilog -e ' + ROOT_WRAPPER_SYNTH_ID + \
+    ' $SOURCES ' + env['DEFS']['BDPI_BAS']
 
 vbin = env.Command(
     TMP_BSC_DIR + '/' + APM_NAME + '_hw.vexe',
-    wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' ') + bdpi_obj,
+    wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' ') + clean_split(env['DEFS']['BDPI_CS'], sep=' '),
     [ vexe_gen_command,
       Delete('directc.sft') ])
 
@@ -347,9 +328,7 @@ xilinx_bit = env.Command(
 loader = env.Command(
     APM_NAME,
     xilinx_bit + SW_TGT,
-    [ '@echo "#!/bin/sh" > $TARGET',
-      '@echo "impact -batch ' + env['DEFS']['BUILD_DIR'] + '/config/' + APM_NAME + '.download" >> $TARGET',
-      Chmod('$TARGET', 0755),
+    [ '@ln -fs ' + env['DEFS']['BUILD_DIR'] + '/config/' + APM_NAME + '.download $TARGET',
       '@echo "++++++++++++ Post-Synthesis ++++++++++++"',
       '@grep "out of" ' + XILINX_APM_NAME + '.srp',
       '@grep "Maximum Frequency" ' + XILINX_APM_NAME + '.srp',

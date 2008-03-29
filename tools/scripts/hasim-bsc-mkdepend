@@ -131,19 +131,51 @@ sub InitPreprocessor($)
     return if ($ivlpp eq '');
 
     ##
-    ## We will use ivlpp.  Unfortunately, it doesn't take the search path on the
-    ## command line.  Build a file describing the search path.
+    ## Different versions of ivlpp take input directory search list as either
+    ## arguments or in a file.
     ##
-    (my $TMP, $ivlpp_tmpfile) = tempfile("/tmp/hasim-bsc-mkdepend.XXXXXX");
+    if (! open(IVLPP, "${ivlpp} -h 2>&1 |")) {
+        return;
+    }
+    my $incArg = '';
+    while (<IVLPP>) {
+        chomp;
+        if (/^\s+-([A-Z])/) {
+            my $a = $1;
+            if ($a =~ /[IF]/) {
+                $incArg = $a;
+            }
+        }
+    }
+    close(IVLPP);
 
-    foreach my $s (@bscPath)
-    {
-        print $TMP "I:${s}\n";
+    if ($incArg eq 'F') {
+        ##
+        ## Newer versions of ivlpp take the search path on the
+        ## command line.  Build a file describing the search path.
+        ##
+        (my $TMP, $ivlpp_tmpfile) = tempfile("/tmp/hasim-bsc-mkdepend.XXXXXX");
+
+        foreach my $s (@bscPath)
+        {
+            print $TMP "I:${s}\n";
+        }
+
+        close($TMP);
+
+        $preprocessor = "${ivlpp} -L -F${ivlpp_tmpfile}";
     }
 
-    close($TMP);
-
-    $preprocessor = "${ivlpp} -L -F${ivlpp_tmpfile}";
+    if ($incArg eq 'I') {
+        ##
+        ## Older versions of ivlpp take the search path on the command line.
+        ##
+        $preprocessor = "${ivlpp} -L";
+        foreach my $s (@bscPath)
+        {
+            $preprocessor .= " -I${s}";
+        }
+    }
 }
 
 
@@ -383,6 +415,9 @@ if (! GetOptions('bdir=s' => \$bscBDir,
 Usage() if ($#ARGV < 0);
 
 InitPreprocessor($pathArg);
+if ($debug) {
+    print STDERR "Preprocessor: ${preprocessor}\n";
+}
 
 ##
 ## Build a hash of derived BSV files.  We won't claim that the .depends file

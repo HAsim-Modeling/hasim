@@ -10527,3 +10527,14 @@ Directory modules/model
 
 - SCons.top.template now queries the Bluespec compiler version.  As a result,
   the script remains compatible with older Bluespec releases.
+
+----------
+mcadler     Date: Sat Mar 29 07:36:13 EDT 2008  CSN: CSN-hasim-350
+                  Sat Mar 29 11:36:13 UTC 2008
+
+
+Directory tools/scripts
+ hasim-bsc-mkdepend        Locally Modified          349 
+
+Check the iverilog version and use ivlpp arguments appropriate for the
+version.

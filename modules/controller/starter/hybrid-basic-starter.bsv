@@ -29,7 +29,7 @@ module [HASim_Module] mkStarter(Starter);
     Connection_Receive#(UINT32) link_Run       <- mkConnection_Receive("rrr_service_STARTER_Run");
     Connection_Receive#(UINT32) link_Pause     <- mkConnection_Receive("rrr_service_STARTER_Pause");
     Connection_Receive#(UINT32) link_Sync      <- mkConnection_Receive("rrr_service_STARTER_Sync");
-    Connection_Receive#(UINT32) link_DumpStats <- mkConnection_Receive("rrr_service_STARTER_DumpStats");
+    Connection_Server#(UINT32, UINT32)  link_DumpStats <- mkConnection_Server("rrr_service_STARTER_DumpStats");
 
     Connection_Send#(RRR_Request) link_rrr   <- mkConnection_Send("rrr_client_starter");
 
@@ -57,15 +57,9 @@ module [HASim_Module] mkStarter(Starter);
 
     // ------------ client methods ------------
 
-    // response to DumpStats is currently implemented as a client request
-    // since hw->sw responses are not yet supported. TEMPORARY
+    // send response to DumpStats
     method Action sendResponse_DumpStats();
-        link_rrr.send(RRR_Request { serviceID   : `SERVICE_ID,
-                                    param0      : `METHOD_ID_DUMPRESP,
-                                    param1      : ?,
-                                    param2      : ?,
-                                    param3      : ?,
-                                    needResponse: False });
+        link_DumpStats.makeResp(0);
     endmethod
 
     // signal end of simulation

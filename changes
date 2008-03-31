@@ -10538,3 +10538,43 @@ Directory tools/scripts
 
 Check the iverilog version and use ivlpp arguments appropriate for the
 version.
+
+----------
+aparasha    Date: Mon Mar 31 18:54:37 EDT 2008  CSN: CSN-hasim-351
+                  Mon Mar 31 22:54:37 UTC 2008
+
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          350 
+
+Directory modules/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          350 
+ hybrid-basic-starter-services.rrr Locally Modified          350 
+ hybrid-basic-starter.bsv  Locally Modified          350 
+
+- added support for RRR response path for sw client/hwserver to stubgen.
+
+- changed the manner in which connection-type stubs are generated. The
+  monolithic module with all service connections and interface code has
+  been done away with. Individual modules are now created for each
+  service and placed into independent files (similar to how stubs are
+  created for direct method-call stubs). All stub functionalities (i.e.,
+  interfacing with the RRR server, creating the de/marshallers, type
+  conversions etc.) are inside these modules.
+
+  These modules are then instantiated by a wrapper module
+  mkServiceConnections(), which also instantiates the necessary soft
+  connections and rules to translate method calls to connection messages.
+
+- changed the naming convention for generated RRR stub files. Filenames
+  are no longer generated based on input filename; they are derived from
+  the names of the Services as specified in the RRR spec file. (e.g.,
+  old = "hybrid-basic-starter.bsh", new = "rrr_service_stub_STARTER.bsh").
+
+- re-organized stubgen code to remove large unreadable code blocks. Also
+  got rid of a lot of code that was replicated between connection-style
+  and method-style stub generation. 
+
+- updated hybrid basic Starter to use newly available response path for
+  the DumpStats method (previously, it was using the hw->sw RRR client
+  to send the response).

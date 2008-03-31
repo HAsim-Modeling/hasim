@@ -100,9 +100,10 @@ if ($mode eq "stub")
     ##
     foreach my $idx (0..$#fNames)
     {
-        my $ofile = $odir . "/" . $fNames[$idx] . ".bsh";
+        # my $ofile = $odir . "/" . $fNames[$idx] . ".bsh";
+        my $ofile = $odir . "/rrr_service_stub_" . get_service_name(@{$sTables[$idx]}) . ".bsh";
         open(my $ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
-        print_service_methods($ohandle, @{$sTables[$idx]});
+        print_service_stub($ohandle, @{$sTables[$idx]});
         close($ohandle);
     }
 
@@ -140,10 +141,19 @@ else
 exit(0);
 
 ############################################################
+# get_service_name: given a parsed service table, return the
+#                   name of the first service in the table
+sub get_service_name
+{
+    my ($head, @tail) = @_;
+    return $head->{name};
+}
+
+############################################################
 # print_service_names: given a parsed service table, print
 #                      out a list of service names
-sub print_service_names {
-
+sub print_service_names
+{
     my $ofile = shift;
     my @serviceTable = @_;
 
@@ -153,175 +163,11 @@ sub print_service_names {
     }
 }
 
-############################################################
-# print_service_methods: given a parsed service table, print out
-#                        a method-style RRR service stub
-sub print_service_methods {
-
-    my $stubfile = shift;
-    my @serviceTable = @_;
-
-    print_std_header($stubfile);
-
-    # determine if we should write stub at all
-    my $do_write = 0;
-    if (@serviceTable)
-    {
-        my ($service, @tail) = @serviceTable;
-        my @methodlist  = @{ $service->{methods} };
-        if (@methodlist)
-        {
-            $do_write = 1;
-        }
-    }
-
-    if ($do_write == 0)
-    {
-        return;
-    }
-
-    # generate header by looking at the name of the first service
-    # TODO: change semantics such that only one service can be defined
-    # per RRR file
-    my ($first, @tail) = @serviceTable;
-    my $name = $first->{name};
-    print $stubfile "`ifndef _" . $name . "_SERVICE_STUB_\n";
-    print $stubfile "`define _" . $name . "_SERVICE_STUB_\n";
-    print $stubfile "\n";
-
-    print $stubfile "//\n";
-    print $stubfile "// Synthesized service stub file\n";
-    print $stubfile "//\n";
-    print $stubfile "\n";
-
-    print $stubfile "`include \"rrr.bsh\"\n";
-    print $stubfile "`include \"channelio.bsh\"\n";
-    print $stubfile "`include \"umf.bsh\"\n";
-    print $stubfile "\n";
-
-    # create an interface for each service
-    foreach my $service (@serviceTable)
-    {
-        my $servicename = $service->{name};
-        my @methodlist  = @{ $service->{methods} };
-
-        # first assign methodIDs
-        # also figure out maximum parameter bitwidth
-        my $methodID = 0;
-        my $maxinsize = 0;
-        foreach my $method (@methodlist)
-        {
-            my $methodname = $method->{name};
-            my $insize     = $method->{insize};
-            my $intype     = $method->{intype};
-            my $outsize    = $method->{outsize};
-            my $outtype    = $method->{outtype};
-
-            # method ID
-            print $stubfile "`define " . $methodname . "_METHOD_ID " . $methodID . "\n";
-            $methodID = $methodID + 1;
-
-            # max param size
-            if ($insize > $maxinsize)
-            {
-                $maxinsize = $insize;
-            }
-        }
-        print $stubfile "\n";
-
-        # service interface
-        print $stubfile "interface ServiceStub_$servicename;\n";
-
-        # interface entry for each method
-        foreach my $method (@methodlist)
-        {
-            my $methodname = $method->{name};
-            my $insize     = $method->{insize};
-            my $intype     = $method->{intype};
-            my $outsize    = $method->{outsize};
-            my $outtype    = $method->{outtype};
-
-            print $stubfile "    method ActionValue#($intype) acceptRequest_$methodname();\n";
-            if ($outsize != 0)
-            {
-                die "response path not implemented";
-                print $stubfile "    method Action sendResponse_$methodname($outtype);\n";
-            }
-        }
-        print $stubfile "endinterface\n";
-        print $stubfile "\n";
-
-        print $stubfile "module mkServiceStub_$servicename#(RRR_SERVER server) (ServiceStub_$servicename);\n";
-        print $stubfile "\n";
-
-        print $stubfile "    DEMARSHALLER#(UMF_CHUNK, Bit#($maxinsize))\n";
-        print $stubfile "                        dem   <- mkDeMarshaller();\n";
-        print $stubfile "    Reg#(UMF_METHOD_ID) mid   <- mkReg(0);\n";
-        print $stubfile "\n";
-
-        # universal rules
-        print $stubfile "    rule probe_server_for_header (True);\n";
-        print $stubfile "        UMF_PACKET packet <- server.requestPorts[`" . $servicename . "_SERVICE_ID].acceptRequest();\n";
-        print $stubfile "        mid <= packet.UMF_PACKET_header.methodID;\n";
-        print $stubfile "        dem.start(packet.UMF_PACKET_header.numChunks);\n";
-        print $stubfile "    endrule\n";
-        print $stubfile "\n";
-
-        print $stubfile "    rule probe_dispatcher_for_chunks (True);\n";
-        print $stubfile "        UMF_PACKET packet <- server.requestPorts[`" . $servicename . "_SERVICE_ID].acceptRequest();\n";
-        print $stubfile "        dem.insert(packet.UMF_PACKET_dataChunk);\n";
-        print $stubfile "    endrule\n";
-        print $stubfile "\n";
-
-        # print methods
-        foreach my $method (@methodlist)
-        {
-            my $methodname = $method->{name};
-            my $insize     = $method->{insize};
-            my $intype     = $method->{intype};
-            my $outsize    = $method->{outsize};
-            my $outtype    = $method->{outtype};
-
-            # print REQUEST method definition
-            print $stubfile "    method ActionValue#($intype) acceptRequest_$methodname() if (mid == `" . $methodname . "_METHOD_ID);\n";
-            print $stubfile "        Bit#($maxinsize) a <- dem.readAndDelete();\n";
-
-            # if insize is smaller than maxinsize, then we need to truncate
-            if ($insize < $maxinsize)
-            {
-                print $stubfile "        $intype retval = truncate(unpack(a));\n";
-            }
-            else
-            {
-                print $stubfile "        $intype retval = unpack(a);\n";
-            }
-            print $stubfile "        return retval;\n";
-            print $stubfile "    endmethod\n";
-            print $stubfile "\n";
-
-            # print RESPONSE method definition
-            if ($outsize != 0)
-            {
-                die "response path not implemented";
-                print $stubfile "    method Action sendResponse_$methodname() if (True);\n";
-                print $stubfile "        noAction;\n";
-                print $stubfile "    endmethod\n";
-            }
-        }
-
-        print $stubfile "endmodule\n";
-        print $stubfile "\n";
-    }
-
-    # close stub file
-    print $stubfile "`endif\n";
-    print $stubfile "\n";
-}
 
 ############################################################
 # parse_rrr_file: parse an RRR file into a service table
-sub parse_rrr_file {
-
+sub parse_rrr_file
+{
     my $filename = shift;
 
     CORE::open(RRRFILE, "< $filename") || die "stubgen: unable to open input file $filename";
@@ -395,6 +241,7 @@ sub parse_rrr_file {
                             (?:
                                 ($p_arg)
                                 ,
+                                \s*?
                                 (??{ $p_arglist })
                             )
                         )
@@ -569,8 +416,8 @@ sub parse_rrr_file {
 ############################################################
 # dump_service_table: dump a service table in human-readable
 #                     format to given file handle
-sub dump_service_table {
-
+sub dump_service_table
+{
     my $ofile = shift;
     my @serviceTable = @_;
 
@@ -632,8 +479,8 @@ sub dump_service_table {
 
 ############################################################
 # __trim: remove whitespaces from a string
-sub __trim {
-
+sub __trim
+{
     my $string = shift;
     $string =~ s/^\s+//;
     $string =~ s/\s+$//;
@@ -641,175 +488,10 @@ sub __trim {
 }
 
 ############################################################
-# print_service_connections: given a parsed service table,
-#                            print out a connection-style
-#                            RRR service stub
-sub print_service_connections {
-
-    my $stubfile = shift;
-    my @serviceTable = @_;
-
-    print_std_header($stubfile);
-
-    # generate common header
-    print $stubfile "`ifndef _RRR_SERVICE_CONNECTIONS_\n";
-    print $stubfile "`define _RRR_SERVICE_CONNECTIONS_\n";
-    print $stubfile "\n";
-
-    print $stubfile "//\n";
-    print $stubfile "// Synthesized service connections file\n";
-    print $stubfile "//\n";
-    print $stubfile "\n";
-
-    print $stubfile "`include \"soft_connections.bsh\"\n";
-    print $stubfile "`include \"rrr.bsh\"\n";
-    print $stubfile "`include \"channelio.bsh\"\n";
-    print $stubfile "`include \"umf.bsh\"\n";
-    print $stubfile "`include \"asim/rrr/rrr_service_ids.bsh\"\n";
-    print $stubfile "\n";
-
-    # main module definition
-    print $stubfile "module [HASim_Module] mkServiceConnections#(RRR_SERVER server) ();\n";
-    print $stubfile "\n";
-
-    # for each service
-    foreach my $service (@serviceTable)
-    {
-        my $servicename = $service->{name};
-        my @connectionlist  = @{ $service->{connections} };
-
-        # - assign connectionIDs
-        # - figure out maximum parameter bitwidth
-        my $connectionID = 0;
-        my $maxinsize = 0;
-        foreach my $connection (@connectionlist)
-        {
-            my $connectionname = $connection->{name};
-            my $insize     = $connection->{insize};
-            my $intype     = $connection->{intype};
-            my $outsize    = $connection->{outsize};
-            my $outtype    = $connection->{outtype};
-
-            # connection ID
-            print $stubfile "    `define $servicename" . "_$connectionname" . "_METHOD_ID $connectionID \n";
-            $connectionID = $connectionID + 1;
-
-            # max param size
-            if ($insize > $maxinsize)
-            {
-                $maxinsize = $insize;
-            }
-        }
-
-        # per-service state elements: only print if there's at least one connection
-        if (@connectionlist)
-        {
-            print $stubfile "\n";
-            print $stubfile "    DEMARSHALLER#(UMF_CHUNK, Bit#($maxinsize))\n";
-            print $stubfile "                        dem_$servicename   <- mkDeMarshaller();\n";
-            print $stubfile "    Reg#(UMF_METHOD_ID) mid_$servicename   <- mkReg(0);\n";
-            print $stubfile "\n";
-        }
-
-        # per-connection state elements
-        foreach my $connection (@connectionlist)
-        {
-            my $connectionname = $connection->{name};
-            my $insize     = $connection->{insize};
-            my $intype     = $connection->{intype};
-            my $outsize    = $connection->{outsize};
-            my $outtype    = $connection->{outtype};
-
-            # print connection definitions
-            print $stubfile "    Connection_Send#($intype) link_$servicename" . "_$connectionname <- mkConnection_Send(\"rrr_service_$servicename\_$connectionname\");\n";
-            if ($outsize != 0)
-            {
-                die "response path not implemented";
-            }
-        }
-    }
-
-    # again, for each service
-    foreach my $service (@serviceTable)
-    {
-        my $servicename = $service->{name};
-        my @connectionlist  = @{ $service->{connections} };
-
-        # again compute maxinsize TODO: do this more efficiently
-        my $maxinsize = 0;
-        foreach my $connection (@connectionlist)
-        {
-            my $insize     = $connection->{insize};
-            if ($insize > $maxinsize)
-            {
-                $maxinsize = $insize;
-            }
-        }
-
-        # per-service rules
-        if (@connectionlist)
-        {
-            print $stubfile "\n";
-            print $stubfile "    rule startmsg_$servicename (True);\n";
-            print $stubfile "        UMF_PACKET packet <- server.requestPorts[`" . $servicename . "_SERVICE_ID].acceptRequest();\n";
-            print $stubfile "        mid_$servicename <= packet.UMF_PACKET_header.methodID;\n";
-            print $stubfile "        dem_$servicename.start(packet.UMF_PACKET_header.numChunks);\n";
-            print $stubfile "    endrule\n";
-            print $stubfile "\n";
-
-            print $stubfile "    rule contmsg_$servicename (True);\n";
-            print $stubfile "        UMF_PACKET packet <- server.requestPorts[`" . $servicename . "_SERVICE_ID].acceptRequest();\n";
-            print $stubfile "        dem_$servicename.insert(packet.UMF_PACKET_dataChunk);\n";
-            print $stubfile "    endrule\n";
-            print $stubfile "\n";
-        }
-
-        # connections
-        foreach my $connection (@connectionlist)
-        {
-            my $connectionname = $connection->{name};
-            my $insize     = $connection->{insize};
-            my $intype     = $connection->{intype};
-            my $outsize    = $connection->{outsize};
-            my $outtype    = $connection->{outtype};
-
-            # print rules to transfer requests to the connection
-            print $stubfile "    rule acceptRequest_$servicename\_$connectionname (mid_$servicename == `$servicename\_$connectionname\_METHOD_ID);\n";
-            print $stubfile "        Bit#($maxinsize) a <- dem_$servicename.readAndDelete();\n";
-            # if insize is less than maxinsize, we need to truncate
-            if ($insize < $maxinsize)
-            {
-                print $stubfile "        $intype retval = truncate(unpack(a));\n";
-            }
-            else
-            {
-                print $stubfile "        $intype retval = unpack(a);\n";
-            }
-            print $stubfile "        link_$servicename\_$connectionname.send(retval);\n";
-            print $stubfile "    endrule\n";
-            print $stubfile "\n";
-
-            if ($outsize != 0)
-            {
-                die "response path not implemented";
-            }
-        }
-    }
-
-    # end module
-    print $stubfile "endmodule\n";
-    print $stubfile "\n";
-
-    # end stub file
-    print $stubfile "`endif\n";
-    print $stubfile "\n";
-}
-
-
-############################################################
 # print_service_ids: given a parsed service table, print
 #                    service id include files for C++ and BSC
-sub print_service_ids {
+sub print_service_ids
+{
     my $ofile_h = shift;
     my $ofile_bsh = shift;
     my @serviceTable = @_;
@@ -845,7 +527,8 @@ sub print_service_ids {
 ############################################################
 # print_std_header: Print a standard header
 #
-sub print_std_header {
+sub print_std_header
+{
     my $ofile = shift;
 
     print $ofile "//\n";
@@ -853,3 +536,469 @@ sub print_std_header {
     print $ofile "//\n\n";
 }
 
+############################################################
+# print_service_connections: given a parsed service table,
+#                            print out a wrapper module that
+#                            (a) instantiates a stub module
+#                                for each service, and
+#                            (b) creates connection
+#                                interfaces to each stub
+#                                module
+sub print_service_connections
+{
+    my $stubfile = shift;
+    my @serviceTable = @_;
+
+    print_std_header($stubfile);
+
+    # generate common header
+    print $stubfile "`ifndef _RRR_SERVICE_CONNECTIONS_\n";
+    print $stubfile "`define _RRR_SERVICE_CONNECTIONS_\n";
+    print $stubfile "\n";
+
+    print_std_header($stubfile);
+
+    print $stubfile "`include \"soft_connections.bsh\"\n";
+    print $stubfile "`include \"rrr.bsh\"\n";
+    print $stubfile "`include \"channelio.bsh\"\n";
+    print $stubfile "`include \"umf.bsh\"\n";
+    print $stubfile "`include \"asim/rrr/rrr_service_ids.bsh\"\n";
+    print $stubfile "\n";
+
+    # import header files for generated stubs
+    foreach my $service (@serviceTable)
+    {
+        my $servicename = $service->{name};
+        my @connectionlist  = @{ $service->{connections} };
+
+        if (@connectionlist)
+        {
+            print $stubfile "`include \"asim/rrr/rrr_service_stub_$servicename.bsh\"\n";
+        }
+    }
+    print $stubfile "\n";
+
+    # main module definition
+    print $stubfile "module [HASim_Module] mkServiceConnections#(RRR_SERVER server) ();\n";
+    print $stubfile "\n";
+
+    # for each service
+    foreach my $service (@serviceTable)
+    {
+        my $servicename = $service->{name};
+        my @connectionlist  = @{ $service->{connections} };
+
+        if (@connectionlist)
+        {
+            # instantiate stub module
+            print $stubfile "    let stub_$servicename <- mkServiceStub_$servicename(server);\n";
+            print $stubfile "\n";
+        }
+
+        # per-connection state elements
+        foreach my $connection (@connectionlist)
+        {
+            print_connection_instantiation($stubfile, $servicename, $connection);
+        }
+
+        print $stubfile "\n";
+    }
+
+    # again, for each service
+    foreach my $service (@serviceTable)
+    {
+        my $servicename = $service->{name};
+        my @connectionlist  = @{ $service->{connections} };
+
+        # create a rule for each method in the service, binding it to a connection
+        foreach my $connection (@connectionlist)
+        {
+            print_wrapper_rules($stubfile, $servicename, $connection);
+        }
+    }
+
+    # end module
+    print $stubfile "endmodule\n";
+    print $stubfile "\n";
+
+    # end stub file
+    print $stubfile "`endif\n";
+    print $stubfile "\n";
+}
+
+################################################################
+# print_connection_instantiation: instantiate a connection
+#
+sub print_connection_instantiation
+{
+    my $stubfile = shift;
+    my $servicename = shift;
+    my $connection = shift;
+
+    my $connectionname = $connection->{name};
+    my $insize     = $connection->{insize};
+    my $intype     = $connection->{intype};
+    my $outsize    = $connection->{outsize};
+    my $outtype    = $connection->{outtype};
+    
+    # print connection definitions
+    if ($outsize == 0)
+    {
+        # void return type: create Send-type connection
+        print $stubfile "    Connection_Send#($intype) link_$servicename" . "_$connectionname <- mkConnection_Send(\"rrr_service_$servicename\_$connectionname\");\n";
+    }
+    else
+    {
+        # non-void return type: create Client-type connection
+        print $stubfile "    Connection_Client#($intype, $outtype) link_$servicename" . "_$connectionname <- mkConnection_Client(\"rrr_service_$servicename\_$connectionname\");\n";
+    }
+}
+
+################################################################
+# print_wrapper_rules: given a service connection, print wrapper
+#                      rules that bind service methods to one
+#                      end of the connection
+sub print_wrapper_rules
+{
+    my $stubfile = shift;
+    my $servicename = shift;
+    my $connection = shift;
+
+    my $connectionname = $connection->{name};
+    my $insize     = $connection->{insize};
+    my $intype     = $connection->{intype};
+    my $outsize    = $connection->{outsize};
+    my $outtype    = $connection->{outtype};
+    
+    # print rules to transfer request and response to the connection
+    if ($outsize == 0)
+    {
+        # void return type: create only request rule, use send()
+        print $stubfile "    rule acceptRequest_$servicename\_$connectionname (True);\n";
+        print $stubfile "        $intype req <- stub_$servicename.acceptRequest\_$connectionname();\n";
+        print $stubfile "        link_$servicename\_$connectionname.send(req);\n";
+        print $stubfile "    endrule\n";
+        print $stubfile "\n";
+    }
+    else
+    {
+        # non-void return type: create request and response rules, use makeReq()
+        print $stubfile "    rule acceptRequest_$servicename\_$connectionname (True);\n";
+        print $stubfile "        $intype req <- stub_$servicename.acceptRequest\_$connectionname();\n";
+        print $stubfile "        link_$servicename\_$connectionname.makeReq(req);\n";
+        print $stubfile "    endrule\n";
+        print $stubfile "\n";
+        
+        print $stubfile "    rule sendResponse_$servicename\_$connectionname (True);\n";
+        print $stubfile "        $outtype resp = link_$servicename\_$connectionname.getResp();\n";
+        print $stubfile "        link_$servicename\_$connectionname.deq();\n";
+        print $stubfile "        stub_$servicename.sendResponse\_$connectionname(resp);\n";
+        print $stubfile "    endrule\n";
+        print $stubfile "\n";
+    }
+}
+
+################################################################
+# print_service_stub: given a parsed service table, print out
+#                     a full service stub
+sub print_service_stub
+{
+    my $stubfile = shift;
+    my @serviceTable = @_;
+
+    print_std_header($stubfile);
+
+    # determine if we should write stub at all
+    my $do_write = 0;
+    if (@serviceTable)
+    {
+        my ($service, @tail) = @serviceTable;
+
+        # get list of regular methods
+        my @regmethodlist  = @{ $service->{methods} };
+
+        # get list of connection-based methods
+        my @connectionlist = @{ $service->{connections} };
+
+        # append both lists
+        my @methodlist = (@regmethodlist, @connectionlist);
+
+        if (@methodlist)
+        {
+            $do_write = 1;
+        }
+    }
+
+    if ($do_write == 0)
+    {
+        return;
+    }
+
+    # generate header by looking at the name of the first service
+    # TODO: change semantics such that only one service can be defined
+    # per RRR file
+    my ($first, @tail) = @serviceTable;
+    my $name = $first->{name};
+    print $stubfile "`ifndef _" . $name . "_SERVICE_STUB_\n";
+    print $stubfile "`define _" . $name . "_SERVICE_STUB_\n";
+    print $stubfile "\n";
+
+    print $stubfile "//\n";
+    print $stubfile "// Synthesized service stub file\n";
+    print $stubfile "//\n";
+    print $stubfile "\n";
+
+    print $stubfile "`include \"rrr.bsh\"\n";
+    print $stubfile "`include \"channelio.bsh\"\n";
+    print $stubfile "`include \"umf.bsh\"\n";
+    print $stubfile "\n";
+
+    # create a module for each service
+    foreach my $service (@serviceTable)
+    {
+        my $servicename = $service->{name};
+        my @regmethodlist  = @{ $service->{methods} };
+        my @connectionlist  = @{ $service->{connections} };
+
+        my @methodlist = (@regmethodlist, @connectionlist);
+
+        print_service_module($stubfile, $servicename, @methodlist);
+    }
+
+    # close stub file
+    print $stubfile "`endif\n";
+    print $stubfile "\n";
+}
+
+##############################################################
+# print_service_module: given a list of method definitions for
+#                       a service, print out a stub interface
+#                       and module
+sub print_service_module
+{
+    my $stubfile = shift;
+    my $servicename = shift;
+    my @methodlist = @_;
+
+    # compute max request and response bitwidths
+    my $maxinsize = 0;
+    my $maxoutsize = 0;
+    foreach my $method (@methodlist)
+    {
+        my $insize  = $method->{insize};
+        my $outsize = $method->{outsize};
+        
+        if ($insize > $maxinsize)
+        {
+            $maxinsize = $insize;
+        }
+        
+        if ($outsize > $maxoutsize)
+        {
+            $maxoutsize = $outsize;
+        }
+    }
+
+    # helper definition for service ID
+    print $stubfile "`define SERVICE_ID `$servicename\_SERVICE_ID\n";
+    print $stubfile "\n";
+
+    # interface ...
+    print $stubfile "interface ServiceStub_$servicename;\n";
+    
+    # interface entry for each method
+    foreach my $method (@methodlist)
+    {
+        print_method_declarations($stubfile, $method);
+    }
+    
+    # endinterface
+    print $stubfile "endinterface\n";
+    print $stubfile "\n";
+    
+    # module mk...
+    print $stubfile "module mkServiceStub_$servicename#(RRR_SERVER server) (ServiceStub_$servicename);\n";
+    print $stubfile "\n";
+    
+    # module state
+    print_module_state($stubfile, $maxinsize, $maxoutsize);
+    
+    # per-method state and definitions
+    print_method_state_all($stubfile, @methodlist);
+
+    # global (i.e., not RRR-method-specific) rules
+    print_module_rules_request($stubfile);
+    if ($maxoutsize != 0)
+    {
+        print_module_rules_response($stubfile);
+    }
+
+    # method definitions
+    foreach my $method (@methodlist)
+    {
+        print_method_definitions($stubfile, $servicename, $maxinsize, $maxoutsize, $method);
+    }
+    
+    # endmodule
+    print $stubfile "endmodule\n";
+    print $stubfile "\n";
+}
+
+##############################################################
+# print_method_declarations: print request and response method
+#                            declarations for interface
+sub print_method_declarations
+{
+    my $stubfile = shift;
+    my $method   = shift;
+
+    my $methodname = $method->{name};
+    my $insize     = $method->{insize};
+    my $intype     = $method->{intype};
+    my $outsize    = $method->{outsize};
+    my $outtype    = $method->{outtype};
+
+    # request
+    print $stubfile "    method ActionValue#($intype) acceptRequest_$methodname();\n";
+
+    # response
+    if ($outsize != 0)
+    {
+        print $stubfile "    method Action sendResponse_$methodname($outtype resp);\n";
+    }
+}
+
+##############################################################
+# print_module_state: print global module state
+sub print_module_state
+{
+    my $stubfile   = shift;
+    my $maxinsize  = shift;
+    my $maxoutsize = shift;
+
+    print $stubfile "    DEMARSHALLER#(UMF_CHUNK, Bit#($maxinsize)) dem <- mkDeMarshaller();\n";
+    print $stubfile "    Reg#(UMF_METHOD_ID) mid <- mkReg(0);\n";
+    print $stubfile "\n";
+    if ($maxoutsize != 0)
+    {
+        print $stubfile "    MARSHALLER#(Bit#($maxoutsize), UMF_CHUNK) mar <- mkMarshaller();\n";
+        print $stubfile "\n";
+    }
+}
+
+##############################################################
+# print_module_rules_request: print global request rules for a
+#                             service module
+sub print_module_rules_request
+{
+    my $stubfile = shift;
+
+    print $stubfile "    rule startRequest (True);\n";
+    print $stubfile "        UMF_PACKET packet <- server.requestPorts[`SERVICE_ID].read();\n";
+    print $stubfile "        mid <= packet.UMF_PACKET_header.methodID;\n";
+    print $stubfile "        dem.start(packet.UMF_PACKET_header.numChunks);\n";
+    print $stubfile "    endrule\n";
+    print $stubfile "\n";
+    
+    print $stubfile "    rule continueRequest (True);\n";
+    print $stubfile "        UMF_PACKET packet <- server.requestPorts[`SERVICE_ID].read();\n";
+    print $stubfile "        dem.insert(packet.UMF_PACKET_dataChunk);\n";
+    print $stubfile "    endrule\n";
+    print $stubfile "\n";
+}
+
+##############################################################
+# print_module_rules_response: print global response rules for
+#                              a service module
+sub print_module_rules_response
+{
+    my $stubfile = shift;
+    my $servicename = shift;
+
+    print $stubfile "    rule continueResponse (True);\n";
+    print $stubfile "        UMF_CHUNK chunk = mar.first();\n";
+    print $stubfile "        mar.deq();\n";
+    print $stubfile "        server.responsePorts[`SERVICE_ID].write(tagged UMF_PACKET_dataChunk chunk);\n";
+    print $stubfile "    endrule\n";
+    print $stubfile "\n";
+}
+
+##############################################################
+# print_method_state_all: print per-method local state and
+#                         definitions for all methods
+sub print_method_state_all
+{
+    my $stubfile = shift;
+    my @methodlist = @_;
+
+    my $methodID = 0;
+    foreach my $method (@methodlist)
+    {
+        my $methodname = $method->{name};
+        my $outsize    = $method->{outsize};
+
+        print $stubfile "    Integer mid_$methodname = $methodID;\n";
+        $methodID = $methodID + 1;
+
+        if ($outsize != 0)
+        {
+            print $stubfile "    Integer numChunks_$methodname = ($outsize % `UMF_CHUNK_BITS) == 0 ?\n";
+            print $stubfile "        ($outsize / `UMF_CHUNK_BITS) :\n";
+            print $stubfile "        ($outsize / `UMF_CHUNK_BITS) + 1;\n";
+        }
+    }
+    print $stubfile "\n";    
+}
+
+##############################################################
+# print_method_definitions: print request and response method
+#                           definitions for a particulat RRR
+#                           service method
+sub print_method_definitions
+{
+    my $stubfile    = shift;
+    my $servicename = shift;
+    my $maxinsize   = shift;
+    my $maxoutsize  = shift;
+    my $method      = shift;
+
+    my $methodname = $method->{name};
+    my $insize     = $method->{insize};
+    my $intype     = $method->{intype};
+    my $outsize    = $method->{outsize};
+    my $outtype    = $method->{outtype};
+
+    # print REQUEST method definition
+    print $stubfile "    method ActionValue#($intype) acceptRequest_$methodname() if (mid == fromInteger(mid_$methodname));\n";
+    print $stubfile "        Bit#($maxinsize) a <- dem.readAndDelete();\n";
+    
+    # if insize is smaller than maxinsize, then we need to truncate
+    if ($insize < $maxinsize)
+    {
+        print $stubfile "        $intype retval = truncate(unpack(a));\n";
+    }
+    else
+    {
+        print $stubfile "        $intype retval = unpack(a);\n";
+    }
+    print $stubfile "        return retval;\n";
+    print $stubfile "    endmethod\n";
+    print $stubfile "\n";
+    
+    # print RESPONSE method definition
+    if ($outsize != 0)
+    {
+        print $stubfile "    method Action sendResponse_$methodname($outtype resp) if (True);\n";
+        print $stubfile "        UMF_PACKET header = tagged UMF_PACKET_header\n";
+        print $stubfile "                            {\n";
+        print $stubfile "                                channelID: ?,\n";
+        print $stubfile "                                serviceID: `SERVICE_ID,\n";
+        print $stubfile "                                methodID : fromInteger(mid_$methodname),\n";
+        print $stubfile "                                numChunks: fromInteger(numChunks_$methodname)\n";
+        print $stubfile "                            };\n";
+        print $stubfile "        server.responsePorts[`SERVICE_ID].write(header);\n";
+        print $stubfile "        mar.enq(resp);\n";
+        print $stubfile "    endmethod\n";
+        print $stubfile "\n";
+    }
+}

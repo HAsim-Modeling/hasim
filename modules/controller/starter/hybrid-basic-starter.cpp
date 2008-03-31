@@ -69,11 +69,8 @@ STARTER_CLASS::Request(
             cout << "sunk." << endl;
             cout << "         starting stats dump... ";
             DumpStats();
-            break;
-
-        case METHOD_ID_DUMPRESP:
             cout << "dump complete, exiting." << endl;
-            CallbackExit(arg1);
+            CallbackExit(0);
             break;
 
         default:
@@ -134,5 +131,9 @@ STARTER_CLASS::DumpStats()
     msg->SetMethodID(METHOD_ID_DUMPSTATS);
     msg->AppendUINT32(0);   // value doesn't matter
 
-    RRRClient->MakeRequestNoResponse(msg);
+    // make blocking RRR call
+    UMF_MESSAGE resp = RRRClient->MakeRequest(msg);
+
+    // response simply means stats dump is over
+    delete resp;
 }

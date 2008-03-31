@@ -5,6 +5,6 @@ service STARTER
         connection Run       (in UINT32[32] payload);
         connection Pause     (in UINT32[32] payload);
         connection Sync      (in UINT32[32] payload);
-        connection DumpStats (in UINT32[32] payload);
+        connection DumpStats (in UINT32[32] payload, out UINT32[32] retval);
     };
 };

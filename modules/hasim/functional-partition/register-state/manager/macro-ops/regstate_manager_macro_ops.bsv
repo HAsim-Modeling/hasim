@@ -425,6 +425,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Input from previous stage.
         let tok = instQ.first();
         instQ.deq();
+        memPathQ.deq();
 
         // Get resp from the Mem State.
         MEM_VALUE v = linkToMem.getResp();
@@ -855,7 +856,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Elaborated Rule: N copies, where N is the maximum number of dests minus 2.
     //                  These two are handled at the end when we pass on to the next stage.
 
-    for (Integer x = 2; x < valueof(ISA_MAX_SRCS); x = x + 1)
+    for (Integer x = 0; x < (valueof(ISA_MAX_SRCS) - 2); x = x + 1)
     begin
     
       // This rule ensures that if there is no writer, it is marked ready to go.
@@ -1178,6 +1179,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Get the data from the previous stage.
         match {.tok, .addr} = load2Q.first();
         load2Q.deq();
+        memPathQ.deq();
 
         // Get the load type.
         ISA_MEMOP_TYPE lType = tokScoreboard.getLoadType(tok.index);
@@ -1372,6 +1374,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Get the data from the previous stage.
         match {.tok, .mem_addr, .addr, .val, .st_type} = store3Q.first();
         store3Q.deq();
+        memPathQ.deq();
 
         // Pop the response from the memory state.
         let existing_val = linkToMem.getResp();

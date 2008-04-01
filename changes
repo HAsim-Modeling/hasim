@@ -10578,3 +10578,16 @@ Directory modules/controller/starter
 - updated hybrid basic Starter to use newly available response path for
   the DumpStats method (previously, it was using the hw->sw RRR client
   to send the response).
+
+----------
+pellauer    Date: Tue Apr  1 17:53:46 EDT 2008  CSN: CSN-hasim-352
+                  Tue Apr  1 21:53:46 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          351 
+
+
+Fixed a bug in V3 of the functional partition.
+
+Michael P.

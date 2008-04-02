@@ -10657,3 +10657,14 @@ Directory tools/scripts/bluespec
 
 The null script is still wrong, but at least it gets the arguments in
 the right order so it doesn't write garbage in the source tree.
+
+----------
+aparasha    Date: Wed Apr  2 18:36:00 EDT 2008  CSN: CSN-hasim-356
+                  Wed Apr  2 22:36:00 UTC 2008
+
+
+Directory modules/controller/software
+ hasim-module.cpp          Locally Added               0 
+ hasim-module.h            Locally Added               0 
+
+added hasim-module.h and cpp.

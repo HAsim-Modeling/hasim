@@ -6,12 +6,25 @@
 using namespace std;
 
 // ============= global args ==============
-struct GlobalArgs
+typedef class HASIM_GLOBAL_ARGS_CLASS* HASIM_GLOBAL_ARGS;
+class HASIM_GLOBAL_ARGS_CLASS
 {
-    char benchmark[256];
+  public:
+    const char *Benchmark() const { return benchmark; };
+    const char *ModelDir() const { return modelDir; };
+    bool ShowFrontPanel() const { return showFrontPanel; };
+
+    void Usage();
+
+    HASIM_GLOBAL_ARGS_CLASS(int argc, char *argv[]);
+    ~HASIM_GLOBAL_ARGS_CLASS() {};
+
+  private:
+    char* benchmark;            // Benchmark image (user-mode) 
+    char* modelDir;             // Model (pm) directory
     bool showFrontPanel;
 };
 
-extern GlobalArgs globalArgs;
+extern HASIM_GLOBAL_ARGS globalArgs;
 
 #endif

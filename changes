@@ -10618,3 +10618,31 @@ Directory modules/controller/software
   through its list of children and chain-uninit them.
 
 - removed explicit Uninit() method from hybrid-basic-starter.
+
+----------
+mcadler     Date: Wed Apr  2 14:04:26 EDT 2008  CSN: CSN-hasim-354
+                  Wed Apr  2 18:04:26 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          353 
+ Util.pm                   Locally Modified          353 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          353 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          353 
+
+Directory modules/controller/software
+ main.cpp                  Locally Modified          353 
+ main.h                    Locally Modified          353 
+
+Changes to support improved benchmark run scripts:
+
+- SCons.top.template puts builds in consistent places across varying targets.
+- Added more command line options to main (like being able to specify the
+  model directory so hybrid models can find Bluesim executables)
+- hasim-configure builds more state needed by benchmarks
+- *** Changed the order of parameters to the benchmark setup script to be
+      consistent with Asim. ***

@@ -21,6 +21,8 @@ use AsimShell;
 
 use HAsim;
 
+use Data::Dumper;
+
 use warnings;
 use strict;
 
@@ -141,7 +143,7 @@ sub run_model {
     my $model = Asim::Model->new($modelfile);
     
     if (!defined($benchmarkfile)) {
-      WARN_AND_DIE("Undefined Benchmark for running.");
+      HAsim::Util::WARN_AND_DIE("Undefined Benchmark for running.");
     }
     
     if (!defined($rundir)) {
@@ -155,15 +157,6 @@ sub run_model {
     return 1;
 }
 
-#### SETUP
-# What are we given? .cfg? or NM.cfx/bmark.cfg
-# Essentially open the benchmark.cfg
-# Parse the CFG
-# Find setup script
-# Create the directory in build/model/bm? Or is that rundir?
-# Invoke setup script with arguments SRC DEST OTHERS
-# SETUP Script: Link to the model. Compile the benchmark. Create the run script.
-
 ############################################################
 # setup_benchmark
 sub setup_benchmark {
@@ -173,9 +166,12 @@ sub setup_benchmark {
     my $model = Asim::Model->new($modelfile);
     
     if (!defined($benchmarkfile)) {
-      WARN_AND_DIE("Undefined Benchmark for setup.");
+      HAsim::Util::WARN_AND_DIE("Undefined Benchmark for setup.");
     }
     
+    if (!defined($builddir)) {
+      $builddir = $model->build_dir();
+    }
     if (!defined($rundir)) {
       $rundir = $model->run_dir($benchmarkfile);
     }
@@ -184,22 +180,49 @@ sub setup_benchmark {
     
     print STDOUT "RUNDir: $rundir\n";
     
-    $status = system("rm -rf " . $rundir);
-    $status = system("mkdir -p " . $rundir);
-
     my $benchmark = Asim::Benchmark->new($benchmarkfile);
+    if (! defined($benchmark)) {
+        HAsim::Util::WARN_AND_DIE("Failed to open benchmark file $benchmarkfile");
+    }
       
     my $setup_command = $benchmark->setup_command();
     my $setup_args = $benchmark->setup_args();
-    my $srcdir = $benchmark->setup_srcdir();
-    
-    print STDOUT "SCRIPT: $setup_command\n";
+    my $srcdir = dirname($setup_command);
    
-    #Run the setup script with appropriate params
+    # Create the run dir
+    $status = system("rm -rf $rundir");
+    $status = system("mkdir -p ${rundir}/config");
     
-    #DOUBLE IS THE SRC/DST DIR CONSISTENT WITH AMC?
-    print STDOUT "COMMAND: $setup_command $srcdir $rundir $setup_args\n";
-    $status = system("$setup_command $srcdir $rundir $setup_args");
+    # Invoke the setup script
+    my $model_name = HAsim::Build::get_model_name($model);
+    my $cmd = "env ASIM_CONFIG_MODEL=$model_name $setup_command $setup_args $srcdir $rundir";
+    print STDOUT "COMMAND: $cmd\n";
+    $status = system($cmd);
+
+    my $relmodeldir = "${builddir}";
+    $relmodeldir = File::Spec->abs2rel($relmodeldir, $rundir);
+
+    # Add a .bsc link to the model directory.  This is needed for Bluesim.
+    system("cd ${rundir}; ln -fs ${relmodeldir}/.bsc .bsc");
+
+    ##
+    ## Add the runtime initialization stub
+    ##
+    ##   The output of this file must be simple so it can be parsed in multiple
+    ##   scripting languages.  For /bin/sh it should just be loadable.  For
+    ##   Perl or Python it should be just a series of assignments.
+    ##
+    open(STUB, "> ${rundir}/config/env.sh") or HAsim::Util::WARN_AND_DIE("Failed to open ${rundir}/config/env.sh");
+    print STUB "#!/bin/sh\n";
+    print STUB "#\n";
+    print STUB "# Generated automatically by hasim-configure\n";
+    print STUB "#\n\n";
+    print STUB "modelDir=\"${relmodeldir}\"\n";
+    print STUB "model=\"${model_name}\"\n";
+    print STUB "genFlags=\"" . ${benchmark}->general_flags() . "\"\n";
+    print STUB "sysFlags=\"" . ${benchmark}->system_flags() . "\"\n";
+    print STUB "feedFlags=\"" . ${benchmark}->feeder_flags() . "\"\n";
+    close(STUB);
 
     return 1;
 }
@@ -681,7 +704,7 @@ sub generate_makefile_top {
 
     # gather other info recursively
     __generate_makefile_hw_top($root,"hw",$replacements_r, 1);
-    __generate_makefile_sw_top($root,"sw",$replacements_r, 1);
+    my $isHybridModel = __generate_makefile_sw_top($root,"sw",$replacements_r, 1);
 
     # Add generated interface include directory to ALL_HW_DIRS
     HAsim::Util::hash_append($replacements_r, ":", '@ALL_HW_DIRS@', "iface/build/include");
@@ -700,6 +723,23 @@ sub generate_makefile_top {
         my $scons = HAsim::Util::path_append($builddir, "SConstruct");
         HAsim::Templates::do_replacements($template, $scons, $replacements_r);
     }
+
+    ##
+    ## Add a model description stub for benchmarks
+    ##
+    ##   The output of this file must be simple so it can be parsed in multiple
+    ##   scripting languages.  For /bin/sh it should just be loadable.  For
+    ##   Perl or Python it should be just a series of assignments.
+    ##
+    mkdir("${builddir}/config");
+    open(STUB, "> ${builddir}/config/env.sh") or HAsim::Util::WARN_AND_DIE("Failed to open ${builddir}/config/env.sh");
+    print STUB "#!/bin/sh\n";
+    print STUB "#\n";
+    print STUB "# Generated automatically by hasim-configure\n";
+    print STUB "#\n\n";
+    print STUB "isHybridModel=${isHybridModel}\n";
+    close(STUB);
+    
 }
 
 ############################################################
@@ -795,11 +835,16 @@ sub __generate_makefile_hw_top {
 ############################################################
 # __generate_makefile_hw_top: Recursively collect replacements
 #                             for Makefile.top
+#
+#     Returns 1 if the model has a software component, otherwise 0.
+#
 sub __generate_makefile_sw_top {
     my $module = shift;
     my $parent_dir = shift;
     my $replacements_r = shift;
     my $is_root = shift;
+
+    my $isHybridModel = 0;
 
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
 
@@ -807,14 +852,16 @@ sub __generate_makefile_sw_top {
 
     foreach my $f ($module->sources("CPP", "*")) {
         HAsim::Util::hash_append($replacements_r," ",'@GIVEN_CS@',HAsim::Util::path_append($my_dir, $f));
+        $isHybridModel = 1;
     }
 
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-        __generate_makefile_sw_top($child,$my_dir,$replacements_r, 0);
+        $isHybridModel |= __generate_makefile_sw_top($child,$my_dir,$replacements_r, 0);
     }
 
+    return $isHybridModel;
 }
 
 

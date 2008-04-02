@@ -81,7 +81,7 @@ sub generate_xst_file {
     my $name = HAsim::Build::get_model_name($model);
     my $final_xst_file = HAsim::Util::path_append($model->build_dir(),$xilinx_config_dir,$name . ".xst");
 
-    CORE::open(XSTFILE, "> $final_xst_file") || return undef;
+    open(XSTFILE, "> $final_xst_file") || return undef;
 
     my $replacements_r = HAsim::Util::empty_hash_ref();
 
@@ -102,7 +102,7 @@ sub generate_xst_file {
       HAsim::Templates::do_template_replacements($model_xst_file, *XSTFILE{IO}, $replacements_r);
     }
     
-    CORE::close(XSTFILE);
+    close(XSTFILE);
 }
 
 ############################################################
@@ -116,7 +116,7 @@ sub generate_prj_file {
    
     #first add all local .prj files
 
-    CORE::open(PRJFILE, "> $final_prj_file") || return undef;
+    open(PRJFILE, "> $final_prj_file") || return undef;
     
     my @model_prj_files = find_all_files_with_suffix($model->modelroot(), ".prj");
     
@@ -137,7 +137,7 @@ sub generate_prj_file {
     #now add all bsc-generated verilog files
 
     __generate_prj_file($model->modelroot(),"hw",*PRJFILE{IO});
-    CORE::close(PRJFILE);
+    close(PRJFILE);
 
     return 1;
 }
@@ -190,7 +190,7 @@ sub generate_ut_file {
     
     my $final_ut_file = HAsim::Util::path_append($model->build_dir(),$xilinx_config_dir,$name . ".ut");
 
-    CORE::open(UTFILE, "> $final_ut_file") || return undef;
+    open(UTFILE, "> $final_ut_file") || return undef;
 
     #Concatenate all found .ut files
     
@@ -207,7 +207,7 @@ sub generate_ut_file {
       HAsim::Templates::do_template_replacements($model_ut_file, *UTFILE{IO}, $replacements_r);
     }
 
-    CORE::close(UTFILE);
+    close(UTFILE);
 
 }
 
@@ -226,7 +226,10 @@ sub generate_download_file {
     my $apm = HAsim::Build::get_model_name($model);
     HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$apm);
 
-    CORE::open(DWNFILE, "> $download_file") || return undef;
+    open(DWNFILE, "> $download_file") || return undef;
+
+    print DWNFILE "#!/bin/sh\n";
+    print DWNFILE "impact -batch <<EOF\n";
 
     #Concatenate all found .download files
 
@@ -238,7 +241,10 @@ sub generate_download_file {
     
     }
     
-    CORE::close(DWNFILE);
+    print DWNFILE "EOF\n";
+
+    close(DWNFILE);
+    chmod(0755, $download_file);
 }
 
 ############################################################

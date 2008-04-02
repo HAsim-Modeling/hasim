@@ -154,11 +154,12 @@ TMP_BSC_DIR = env['DEFS']['TMP_BSC_DIR']
 
 ROOT_WRAPPER_SYNTH_ID = 'mk_' + env['DEFS']['ROOT_DIR_MODEL'] + '_Wrapper'
 
-SW_EXE = APM_NAME + '_sw.exe'
 if env['DEFS']['GIVEN_CS'] != '':
-    SW_TGT = ['simx']
+    SW_EXE_OR_TARGET = env['DEFS']['ROOT_DIR_SW'] + '/obj/' + APM_NAME + '_sw.exe'
+    SW_EXE = [SW_EXE_OR_TARGET]
 else:
-    SW_TGT = []
+    SW_EXE_OR_TARGET = '$TARGET'
+    SW_EXE = []
 
 
 # What is the Bluespec compiler version?
@@ -218,20 +219,22 @@ sbin = env.Command(
 if env.GetOption('clean'):
     os.system('rm -rf .bsc')
 
+#
+# The final step must leave a few well known names:
+#   APM_NAME must be the software side, if there is one.  If there isn't, then
+#   it must be the Bluesim image.  The APM_NAME_hw.download file must NOT
+#   be present.  Lack of a .download script is a clue to the benchmark run
+#   scripts that Bluesim is being used.
+#
 exe = env.Command(
-    APM_NAME + '_hw_exe.sh',
-    sbin + SW_TGT,
-    [ '@echo "#!/bin/sh" > $TARGET',
-      '@echo "' + env['DEFS']['BUILD_DIR'] + '/$SOURCE \$*" >> $TARGET',
-      '@chmod a+x $TARGET',
-      Delete('simv'),
-      '@ln -fs $TARGET simv' ])
-
-if env.GetOption('clean'):
-    os.system('rm -f simv')
+    APM_NAME + '_hw.exe',
+    sbin + SW_EXE,
+    [ '@ln -fs $SOURCE $TARGET',
+      '@ln -fs ' + SW_EXE_OR_TARGET + ' ' + APM_NAME,
+      Delete(APM_NAME + '_hw.vexe'),
+      Delete(APM_NAME + '_hw.download') ])
 
 env.Alias('exe', exe)
-
 
 
 
@@ -255,15 +258,15 @@ vbin = env.Command(
 
 vexe = env.Command(
     APM_NAME + '_hw_vexe.sh',
-    vbin + SW_TGT,
+    vbin + SW_EXE,
     [ '@echo "#!/bin/sh" > $TARGET',
       '@echo "' + env['DEFS']['BUILD_DIR'] + '/$SOURCE +bscvcd \$*" >> $TARGET',
       '@chmod a+x $TARGET',
-      Delete('simv'),
-      '@ln -fs $TARGET simv' ])
+      '@ln -fs ' + SW_EXE_OR_TARGET + ' ' + APM_NAME,
+      Delete(APM_NAME + '_hw.exe'),
+      Delete(APM_NAME + '_hw.download') ])
 
 env.Alias('vexe', vexe)
-
 
 
 
@@ -324,11 +327,18 @@ xilinx_bit = env.Command(
     'bitgen -f $SOURCES')
 
 
-# Loader script
+#
+# The final step must leave a few files in well-known locations since they are
+# used by the run scripts.  APM_NAME_hw.download is the script to download the
+# bit file to the FPGA.  APM_NAME is the software side, if there is one.
+#
 loader = env.Command(
-    APM_NAME,
-    xilinx_bit + SW_TGT,
-    [ '@ln -fs ' + env['DEFS']['BUILD_DIR'] + '/config/' + APM_NAME + '.download $TARGET',
+    APM_NAME + '_hw.download',
+    xilinx_bit + SW_EXE,
+    [ '@ln -fs config/' + APM_NAME + '.download $TARGET',
+      '@ln -fs ' + SW_EXE_OR_TARGET + ' ' + APM_NAME,
+      Delete(APM_NAME + '_hw.exe'),
+      Delete(APM_NAME + '_hw.vexe'),
       '@echo "++++++++++++ Post-Synthesis ++++++++++++"',
       '@grep "out of" ' + XILINX_APM_NAME + '.srp',
       '@grep "Maximum Frequency" ' + XILINX_APM_NAME + '.srp',
@@ -344,6 +354,7 @@ env.Alias('bit', loader)
 ##
 if env.GetOption('clean'):
     os.system('cd ' + TMP_XILINX_DIR + '; rm -f ' + APM_NAME + '*')
+    os.system('rm -f APM_NAME')
 
 
 ############################################################################
@@ -354,7 +365,7 @@ if env.GetOption('clean'):
 ##
 ############################################################################
 
-if SW_TGT != []:
+if SW_EXE != []:
     # CPPPATH defines both gcc include path and dependence path for
     # SCons.  The '#' forces paths to be relative to the root of the build.
     sw_env = env.Clone(CCFLAGS = '-DAPM_NAME=\\"' + TMP_BSC_DIR + '/' + APM_NAME + '\\"',
@@ -371,9 +382,7 @@ if SW_TGT != []:
                             build_dir = sw_build_dir,
                             duplicate = 0)
 
-    sw_exe = sw_env.Program(sw_build_dir + '/' + SW_EXE, sw_objects)
-
-    sw_env.Command(SW_TGT, sw_exe, '@ln -fs $SOURCE $TARGET')
+    sw_exe = sw_env.Program(SW_EXE, sw_objects)
 
 
 ############################################################################

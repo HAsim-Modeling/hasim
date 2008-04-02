@@ -20,9 +20,9 @@ if [ $# -ne 3 ]; then
    exit 1
 fi
 
-srcdir=$1
-destdir=$2
-bmark=$3
+bmark=$1
+srcdir=$2
+destdir=$3
 
 # echo "BMARK: $bmark"
 # echo "SRC: $srcdir"

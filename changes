@@ -10646,3 +10646,14 @@ Changes to support improved benchmark run scripts:
 - hasim-configure builds more state needed by benchmarks
 - *** Changed the order of parameters to the benchmark setup script to be
       consistent with Asim. ***
+
+----------
+mcadler     Date: Wed Apr  2 15:46:21 EDT 2008  CSN: CSN-hasim-355
+                  Wed Apr  2 19:46:21 UTC 2008
+
+
+Directory tools/scripts/bluespec
+ setup-bmark-bsv           Locally Modified          354 
+
+The null script is still wrong, but at least it gets the arguments in
+the right order so it doesn't write garbage in the source tree.

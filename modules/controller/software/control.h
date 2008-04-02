@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-#include "main.h"
+#include "hasim-module.h"
 #include "asim/provides/channelio.h"
 #include "asim/provides/rrr.h"
 #include "asim/provides/starter.h"
@@ -28,8 +28,10 @@ class CONTROLLER_CLASS: public HASIM_MODULE_CLASS,
     public:
         CONTROLLER_CLASS(LLPI);
         ~CONTROLLER_CLASS();
+
         int  Main();
         void Uninit();
+        void Cleanup();
         void SchedulerLoop();
 
         // streams callback

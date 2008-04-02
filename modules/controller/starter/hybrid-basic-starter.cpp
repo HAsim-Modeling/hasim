@@ -39,12 +39,6 @@ STARTER_CLASS::Init(
     parent = p;
 }
 
-// uninit
-void
-STARTER_CLASS::Uninit()
-{
-}
-
 // poll
 void
 STARTER_CLASS::Poll()

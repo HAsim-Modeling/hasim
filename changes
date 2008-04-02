@@ -10591,3 +10591,30 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 Fixed a bug in V3 of the functional partition.
 
 Michael P.
+
+----------
+aparasha    Date: Wed Apr  2 11:58:20 EDT 2008  CSN: CSN-hasim-353
+                  Wed Apr  2 15:58:20 UTC 2008
+
+
+Directory modules/controller/starter
+ null-starter.h            Locally Modified          352 
+ hybrid-basic-starter.cpp  Locally Modified          352 
+ hybrid-basic-starter.h    Locally Modified          352 
+
+Directory modules/controller/software
+ control.cpp               Locally Modified          352 
+ standard-software-controller.awb Locally Modified          352 
+ control.h                 Locally Modified          352 
+ main.h                    Locally Modified          352 
+
+- moved definition of HASIM_MODULE_CLASS into a separate file.
+
+- added automatic child registration to any C++ class derived
+  from HASIM_MODULE_CLASS (only parent pointers used to exist
+  earlier).
+
+- updated default Uninit() base-class function to traverse
+  through its list of children and chain-uninit them.
+
+- removed explicit Uninit() method from hybrid-basic-starter.

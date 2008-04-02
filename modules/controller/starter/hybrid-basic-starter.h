@@ -25,7 +25,6 @@ class STARTER_CLASS: public RRR_SERVICE_CLASS,
 
         // required RRR service methods
         void Init(HASIM_MODULE);
-        void Uninit();
         bool Request(UINT32, UINT32, UINT32, UINT32, UINT32 *);
         void Poll();
 

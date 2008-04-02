@@ -1,7 +1,7 @@
 #ifndef _STARTER_
 #define _STARTER_
 
-#include "main.h"
+#include "hasim-module.h"
 
 typedef class STARTER_CLASS* STARTER;
 class STARTER_CLASS: public HASIM_MODULE_CLASS

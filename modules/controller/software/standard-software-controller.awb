@@ -13,8 +13,12 @@
 #
 # %attributes hasim
 #
-# %sources -t H   -v PUBLIC  main.h control.h
-# %sources -t CPP -v PRIVATE main.cpp control.cpp
+# %sources -t H   -v PUBLIC  main.h
+# %sources -t H   -v PUBLIC  control.h
+# %sources -t H   -v PUBLIC  hasim-module.h
+# %sources -t CPP -v PRIVATE main.cpp
+# %sources -t CPP -v PRIVATE control.cpp
+# %sources -t CPP -v PRIVATE hasim-module.cpp
 #
 # %param REGISTER_STREAMS 0 "Register with Streams Module"
 #

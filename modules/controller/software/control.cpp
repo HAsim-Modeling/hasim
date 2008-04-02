@@ -47,12 +47,23 @@ CONTROLLER_CLASS::CONTROLLER_CLASS(
 // destructor
 CONTROLLER_CLASS::~CONTROLLER_CLASS()
 {
-    Uninit();
+    Cleanup();
 }
 
-// uninit
+// uninit: override
 void
 CONTROLLER_CLASS::Uninit()
+{
+    // cleanup
+    Cleanup();
+
+    // chain
+    HASIM_MODULE_CLASS::Uninit();
+}
+
+// cleanup
+void
+CONTROLLER_CLASS::Cleanup()
 {
 #if (REGISTER_STREAMS == 1)
     // close open files

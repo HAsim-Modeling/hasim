@@ -10668,3 +10668,63 @@ Directory modules/controller/software
  hasim-module.h            Locally Added               0 
 
 added hasim-module.h and cpp.
+
+----------
+jsemer      Date: Thu Apr  3 09:22:43 EDT 2008  CSN: CSN-hasim-357
+                  Thu Apr  3 13:22:43 UTC 2008
+
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_exe.apm      Locally Modified          356 
+ hello_hybrid_htg.apm      Locally Modified          356 
+
+Directory config/pm/bluespec/demos/simple
+ multiplier.apm            Locally Modified          356 
+ switch2led.apm            Locally Modified          356 
+ counter.apm               Locally Modified          356 
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hwonly_vexe.apm   Locally Modified          356 
+ devtest_hwonly_xup.apm    Locally Modified          356 
+ devtest_hybrid_exe.apm    Locally Modified          356 
+ devtest_hybrid_htg.apm    Locally Modified          356 
+
+Directory modules/model
+ pure_bluespec_main.cpp    Locally Added               - 
+ pure_bluespec_model.awb   Locally Added               - 
+ pure_bluespec_hybrid_model.awb Locally Added               - 
+ pure_bluespec_main.h      Locally Added               - 
+ pure_bluespec_model.bsv   Locally Added               - 
+
+Directory modules/bluespec
+ model/                    Locally Removed           356 
+
+Directory modules/bluespec/model
+ pure-bluespec/            Locally Removed           356 
+
+Directory modules/bluespec/model/pure-bluespec
+ Makefile.sub.template     Locally Removed           356 
+ SCons.top.template        Locally Removed           356 
+ mkModel.bsv               Locally Removed           356 
+ SCons.dict.template       Locally Removed           356 
+ pure_bluespec_model.awb   Locally Removed           356 
+ SCons.iface.template      Locally Removed           356 
+ main.cpp                  Locally Removed           356 
+ pure_bluespec_hybrid_model.awb Locally Removed           356 
+ SCons.sw.template         Locally Removed           356 
+ Makefile.top.template     Locally Removed           356 
+ Makefile.include.template Locally Removed           356 
+ main.h                    Locally Removed           356 
+ SCons.hw.template         Locally Removed           356 
+
+Moved the pure Bluespec model foundations into the same
+directory as the Hasim model foundations so they can 
+share the build scripts. 
+
+Fixed up the pure Bluespec models to use the moved
+model modules.
+
+These models still don't build because of the new
+hasim-module.{h,cpp} files used by some fpgaenv modules.
+The problem is that hasim-module lives in the controller, 
+which isn't used in pure Bluespec models.

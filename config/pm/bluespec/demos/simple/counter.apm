@@ -13,7 +13,7 @@ DefaultAttributes=bluespec
 model=Pure Bluespec Model Foundation
 
 [Pure Bluespec Model Foundation]
-File=modules/bluespec/model/pure-bluespec/pure_bluespec_model.awb
+File=modules/model/pure_bluespec_model.awb
 Packagehint=hasim
 
 [Bluespec Counter Example]

@@ -27,7 +27,7 @@ bluespec_system=Bluespec Device Tester
 fpgaenv=FPGA Environment
 
 [Pure Bluespec Model Foundation]
-File=modules/bluespec/model/pure-bluespec/pure_bluespec_model.awb
+File=modules/model/pure_bluespec_model.awb
 Packagehint=hasim
 
 [Pure Bluespec Model Foundation/Params]

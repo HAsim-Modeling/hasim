@@ -15,7 +15,7 @@ bluespec_system=Bluespec Multiplier Example
 fpgaenv=FPGA Environment
 
 [Pure Bluespec Model Foundation]
-File=modules/bluespec/model/pure-bluespec/pure_bluespec_model.awb
+File=modules/model/pure_bluespec_model.awb
 Packagehint=hasim
 
 [Bluespec Multiplier Example]

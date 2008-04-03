@@ -4,8 +4,8 @@
 
 %AWB_START
 
-%name Pure Bluespec Model Foundation
-%desc Pure Bluespec Model Foundation
+%name Pure Bluespec Hybrid Model Foundation
+%desc Pure Bluespec Hybrid Model Foundation
 %attributes bluespec model
 
 %provides model
@@ -14,7 +14,10 @@
 %requires bluespec_common
 %requires fpgaenv
 
-%public mkModel.bsv
+%public pure_bluespec_main.h
+%private pure_bluespec_main.cpp
+
+%public pure_bluespec_model.bsv
 
 %makefile Makefile.top.template
 %scons %top   SCons.top.template

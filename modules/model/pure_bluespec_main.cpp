@@ -9,7 +9,7 @@
 #include <string.h>
 #include <getopt.h>
 
-#include "main.h"
+#include "pure_bluespec_main.h"
 
 #include "asim/dict/init.h"
 #include "asim/provides/low_level_platform_interface.h"

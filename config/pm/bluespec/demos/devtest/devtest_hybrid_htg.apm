@@ -25,7 +25,7 @@ Packagehint=hasim
 MAKE_ALL_TARGET=bit
 
 [Pure Bluespec Hybrid Model Foundation]
-File=modules/bluespec/model/pure-bluespec/pure_bluespec_hybrid_model.awb
+File=modules/model/pure_bluespec_hybrid_model.awb
 Packagehint=hasim
 
 [Pure Bluespec Hybrid Model Foundation/Requires]

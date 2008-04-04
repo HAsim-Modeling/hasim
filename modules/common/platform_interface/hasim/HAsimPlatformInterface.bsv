@@ -34,7 +34,8 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     Connection_Receive#(STREAMS_REQUEST) link_streams <- mkConnection_Receive("vdev_streams");
 
     // direct RRR links (TEMPORARY, these will be automatically generated in future)
-    Connection_Receive#(RRR_Request) link_rrr <- mkConnection_Receive("rrr_client_starter");
+    Connection_Receive#(RRR_Request) link_rrr_starter <- mkConnection_Receive("rrr_client_starter");
+    Connection_Receive#(RRR_Request) link_rrr_events  <- mkConnection_Receive("rrr_client_events");
 
     // instantiate low-level platform interface
     LowLevelPlatformInterface       llpint          <- mkLowLevelPlatformInterface();
@@ -123,10 +124,18 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     endrule
 
     // direct RRR links (TEMPORARY, these will be automatically generated in future)
-    rule translate_rrr_req (True);
+    rule translate_rrr_starter_req (True);
 
-        let req = link_rrr.receive();
-        link_rrr.deq();
+        let req = link_rrr_starter.receive();
+        link_rrr_starter.deq();
+        llpint.rrrClient.makeRequest(req);
+
+    endrule
+
+    rule translate_rrr_events_req (True);
+
+        let req = link_rrr_events.receive();
+        link_rrr_events.deq();
         llpint.rrrClient.makeRequest(req);
 
     endrule

@@ -30,7 +30,7 @@ File=modules/controller/local/hasim_local_controller.awb
 Packagehint=hasim
 
 [HAsim Events Controller]
-File=modules/controller/events/hasim_events_controller.awb
+File=modules/controller/events/stream_based/hasim_events_controller.awb
 Packagehint=hasim
 
 [HAsim Stats Controller]
@@ -48,8 +48,6 @@ Packagehint=hasim
 [Null Starter]
 File=modules/controller/starter/null-starter.awb
 Packagehint=hasim
-
-
 
 [Hasim Module Controller]
 File=modules/controller/module/module-controller.awb

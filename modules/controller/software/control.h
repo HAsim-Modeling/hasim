@@ -7,6 +7,7 @@
 #include "asim/provides/channelio.h"
 #include "asim/provides/rrr.h"
 #include "asim/provides/starter.h"
+#include "asim/provides/hasim_events_controller.h"
 #include "asim/provides/streams.h"
 #include "asim/provides/low_level_platform_interface.h"
 
@@ -20,6 +21,9 @@ class CONTROLLER_CLASS: public HASIM_MODULE_CLASS,
 
         // link to starter
         STARTER starter;
+
+        // events controller
+        EVENTS_CONTROLLER eventsController;
 
         // event and stat files
         FILE *eventfile;

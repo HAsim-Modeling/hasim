@@ -29,7 +29,7 @@ module [HASim_Module] mkController ();
 
     // instantiate sub-controllers
     ModuleController     moduleController  <- mkModuleController(link_streams);
-    EventsController     eventsController  <- mkEventsController(link_streams);
+    EVENTS_CONTROLLER    eventsController  <- mkEventsController(link_streams);
     StatsController      statsController   <- mkStatsController(link_streams);
     AssertionsController assertsController <- mkAssertionsController(link_streams);
 

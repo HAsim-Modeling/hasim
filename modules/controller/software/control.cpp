@@ -4,6 +4,7 @@
 
 #include "asim/provides/hasim_software_controller.h"
 #include "asim/provides/streams.h"
+#include "asim/provides/hasim_events_controller.h"
 
 using namespace std;
 
@@ -18,6 +19,9 @@ CONTROLLER_CLASS::CONTROLLER_CLASS(
     // setup link to starter client
     starter = STARTER_CLASS::GetInstance();
 
+    // setup events
+    eventsController = EVENTS_CONTROLLER_CLASS::GetInstance();
+
     // ================= Streams Registration =============== //
     //                   --------------------                 //
     // This code is sharead by the hybrid standard controller //
@@ -30,10 +34,6 @@ CONTROLLER_CLASS::CONTROLLER_CLASS(
 #if (REGISTER_STREAMS==1)
     // default streams behavior is to route messages to stdout
     STREAMS streams = STREAMS_CLASS::GetInstance();
-
-    // map events
-    eventfile = fopen("software_events.out", "w+");
-    streams->MapStream(STREAMID_EVENT, eventfile);
 
     // map stats
     statfile = fopen("software_stats.out", "w+");

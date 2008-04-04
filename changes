@@ -10728,3 +10728,75 @@ These models still don't build because of the new
 hasim-module.{h,cpp} files used by some fpgaenv modules.
 The problem is that hasim-module lives in the controller, 
 which isn't used in pure Bluespec models.
+
+----------
+pellauer    Date: Fri Apr  4 16:06:56 EDT 2008  CSN: CSN-hasim-358
+                  Fri Apr  4 20:06:56 UTC 2008
+
+
+Directory config/pm/hasim/submodels/controller
+ hybrid_standard_controller.apm Locally Modified          357 
+ hardware_standard_controller.apm Locally Modified          357 
+
+Directory modules/bluespec/system/demos/hello
+ hello_streams_messages.dic Locally Modified          357 
+
+Directory modules/bluespec/system/demos/devtest
+ devtest-streams-messages.dic Locally Modified          357 
+
+Directory modules/controller/events
+ hasim_events_controller.awb Locally Removed           357 
+ EventsController.bsv      Locally Removed           357 
+ hybrid/                   Locally Added               0 
+
+Directory modules/controller/events/hybrid
+ hybrid_events_controller.awb Locally Added               0 
+ hybrid_events_controller.bsv Locally Added               0 
+ event-streamid.dic        Locally Added               0 
+ events.rrr                Locally Added               0 
+ hybrid_events_controller.cpp Locally Added               0 
+ event-streams.dic         Locally Added               0 
+ hybrid_events_controller.h Locally Added               0 
+
+Directory modules/controller/events
+ event-streamid.dic        Locally Removed           357 
+ stream_based/             Locally Added               0 
+
+Directory modules/controller/events/stream_based
+ hasim_events_controller.awb Locally Added               - 
+ EventsController.bsv      Locally Added               - 
+ event-streamid.dic        Locally Added               - 
+ EventsControllerHeader.bsv Locally Added               - 
+ event-streams.dic         Locally Added               - 
+
+Directory modules/controller/events
+ EventsControllerHeader.bsv Locally Removed           357 
+ event-streams.dic         Locally Removed           357 
+
+Directory modules/controller/module
+ module-streams.dic        Locally Modified          357 
+
+Directory modules/controller/software
+ control.cpp               Locally Modified          357 
+ hasim-module.cpp          Locally Modified          357 
+ control.h                 Locally Modified          357 
+
+Directory modules/controller
+ standard-controller.bsv   Locally Modified          357 
+
+Directory modules/system/mem_test
+ memtest-streams.dic       Locally Modified          357 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          357 
+
+Directory modules/common/modellib
+ Events.bsv                Locally Modified          357 
+
+
+* Events now use RRR instead of streams.
+* Events-controller is now a hybrid hardware/software module.
+* Event instantiations should be updated to use the correct dictionary.
+* Events now take "event name" strings at instantiation rather than a message.
+
+Michael P.

@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <assert.h>
 
 #include "hasim-module.h"
 

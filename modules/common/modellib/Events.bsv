@@ -3,8 +3,7 @@ import FIFO::*;
 import ModuleCollect::*;
 import soft_connections::*;
 `include "asim/dict/RINGID.bsh"
-`include "asim/dict/STREAMID.bsh"
-`include "asim/dict/STREAMS.bsh"
+`include "asim/dict/EVENTS.bsh"
 
 //AWB Parameters
 //name:                  default:
@@ -17,7 +16,7 @@ interface EventRecorder;
   method Action recordEvent(Maybe#(EventParam) mdata);
 endinterface
 
-module [Connected_Module] mkEventRecorder#(STREAMS_DICT_TYPE eventID)
+module [Connected_Module] mkEventRecorder#(EVENTS_DICT_TYPE eventID)
     //interface:
                 (EventRecorder);
 
@@ -30,8 +29,8 @@ endmodule
 
 typedef union tagged
 {
-  STREAMS_DICT_TYPE EVT_NoEvent;
-  struct {STREAMS_DICT_TYPE event_id; EventParam event_data;} EVT_Event;
+  EVENTS_DICT_TYPE EVT_NoEvent;
+  struct {EVENTS_DICT_TYPE event_id; EventParam event_data;} EVT_Event;
 
   void       EVT_Disable;
   void       EVT_Enable;
@@ -40,7 +39,7 @@ typedef union tagged
 
 
 
-module [Connected_Module] mkEventRecorder_Enabled#(STREAMS_DICT_TYPE eventID)
+module [Connected_Module] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
     //interface:
                 (EventRecorder);
 
@@ -79,14 +78,14 @@ module [Connected_Module] mkEventRecorder_Enabled#(STREAMS_DICT_TYPE eventID)
 
 endmodule
 
-module [Connected_Module] mkEventRecorder_Disabled#(STREAMS_DICT_TYPE eventID)
+module [Connected_Module] mkEventRecorder_Disabled#(EVENTS_DICT_TYPE eventID)
     //interface:
                 (EventRecorder);
 
   Bit#(8) eventNum = zeroExtend(pack(eventID));
 
   Connection_Chain#(EventData) chain <- mkConnection_Chain(`RINGID_EVENTS);
-  Reg#(STREAMS_DICT_TYPE)         stall <- mkReg(minBound);
+  Reg#(EVENTS_DICT_TYPE)         stall <- mkReg(minBound);
  
   rule insert (stall == eventID);
   

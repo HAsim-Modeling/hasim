@@ -24,17 +24,13 @@ Packagehint=hasim
 hasim_software_controller=Software Controller
 starter=Hybrid Basic Starter
 hasim_local_controller=Hasim local controller
-hasim_events_controller=HAsim Events Controller
+hasim_events_controller=Hybrid Events Controller
 hasim_stats_controller=HAsim Stats Controller
 hasim_assertions_controller=HAsim Assertions Controller
 hasim_module_controller=Hasim Module Controller
 
 [Hasim local controller]
 File=modules/controller/local/hasim_local_controller.awb
-Packagehint=hasim
-
-[HAsim Events Controller]
-File=modules/controller/events/hasim_events_controller.awb
 Packagehint=hasim
 
 [HAsim Stats Controller]
@@ -55,3 +51,8 @@ Packagehint=hasim
 
 [Software Controller/Params]
 REGISTER_STREAMS=1
+
+
+[Hybrid Events Controller]
+File=modules/controller/events/hybrid/hybrid_events_controller.awb
+Packagehint=hasim

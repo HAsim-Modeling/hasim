@@ -19,13 +19,13 @@
 // =======================================
 
 // globally visible variables
-HASIM_GLOBAL_ARGS globalArgs;
+GLOBAL_ARGS globalArgs;
 
 // main
 int main(int argc, char *argv[])
 {
     // parse args and place in global array
-    globalArgs = new HASIM_GLOBAL_ARGS_CLASS(argc, argv);
+    globalArgs = new GLOBAL_ARGS_CLASS(argc, argv);
 
     // instantiate:
     // 1. LLPI
@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 }
 
 // process command-line options
-HASIM_GLOBAL_ARGS_CLASS::HASIM_GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
+GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
     benchmark("program.vmh"),
     modelDir("."),
     showFrontPanel(false)
@@ -108,7 +108,7 @@ HASIM_GLOBAL_ARGS_CLASS::HASIM_GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
 
 
 void
-HASIM_GLOBAL_ARGS_CLASS::Usage()
+GLOBAL_ARGS_CLASS::Usage()
 {
     fprintf(stderr, "\nArguments:\n");
     fprintf(stderr, "   [--[no]showfp]         Show/don't show front panel\n");

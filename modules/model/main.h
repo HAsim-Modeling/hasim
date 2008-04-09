@@ -6,8 +6,8 @@
 using namespace std;
 
 // ============= global args ==============
-typedef class HASIM_GLOBAL_ARGS_CLASS* HASIM_GLOBAL_ARGS;
-class HASIM_GLOBAL_ARGS_CLASS
+typedef class GLOBAL_ARGS_CLASS* GLOBAL_ARGS;
+class GLOBAL_ARGS_CLASS
 {
   public:
     const char *Benchmark() const { return benchmark; };
@@ -16,8 +16,8 @@ class HASIM_GLOBAL_ARGS_CLASS
 
     void Usage();
 
-    HASIM_GLOBAL_ARGS_CLASS(int argc, char *argv[]);
-    ~HASIM_GLOBAL_ARGS_CLASS() {};
+    GLOBAL_ARGS_CLASS(int argc, char *argv[]);
+    ~GLOBAL_ARGS_CLASS() {};
 
   private:
     char* benchmark;            // Benchmark image (user-mode) 
@@ -25,6 +25,6 @@ class HASIM_GLOBAL_ARGS_CLASS
     bool showFrontPanel;
 };
 
-extern HASIM_GLOBAL_ARGS globalArgs;
+extern GLOBAL_ARGS globalArgs;
 
 #endif

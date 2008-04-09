@@ -11087,3 +11087,30 @@ Still Ongoing:
 * Refactor modellib into local controllers.
 * Rename model files to be more consistent.
 
+
+----------
+pellauer    Date: Wed Apr  9 16:52:54 EDT 2008  CSN: CSN-hasim-360
+                  Wed Apr  9 20:52:54 UTC 2008
+
+
+Directory modules/model
+ pure_bluespec_main.cpp    Locally Modified          359 
+ pure_bluespec_main.h      Locally Modified          359 
+ main.cpp                  Locally Modified          359 
+ main.h                    Locally Modified          359 
+
+Directory modules/hasim/controller
+ platforms-module.h        Locally Removed           359 
+ controller-standard.awb   Locally Modified          359 
+ platforms-module.cpp      Locally Removed           359 
+
+
+Updated pure-bluespec main to new global arguments format.
+
+Moved platforms-module to low-level-platforms-interface. (Again it should really
+be a library.)
+
+TODO: Global Arguments should be part of a library once we support it, rather
+than in main.h.
+
+Michael P.

@@ -6,48 +6,25 @@
 using namespace std;
 
 // ============= global args ==============
-struct GlobalArgs
+typedef class GLOBAL_ARGS_CLASS* GLOBAL_ARGS;
+class GLOBAL_ARGS_CLASS
 {
-    char benchmark[256];
+  public:
+    const char *Benchmark() const { return benchmark; };
+    const char *ModelDir() const { return modelDir; };
+    bool ShowFrontPanel() const { return showFrontPanel; };
+
+    void Usage();
+
+    GLOBAL_ARGS_CLASS(int argc, char *argv[]);
+    ~GLOBAL_ARGS_CLASS() {};
+
+  private:
+    char* benchmark;            // Benchmark image (user-mode) 
+    char* modelDir;             // Model (pm) directory
     bool showFrontPanel;
 };
 
-extern GlobalArgs globalArgs;
-
-
-// =========== HAsim software module =========
-typedef class HASIM_MODULE_CLASS* HASIM_MODULE;
-class HASIM_MODULE_CLASS
-{
-    protected:
-        HASIM_MODULE parent;
-
-    public:
-        // constructors
-        HASIM_MODULE_CLASS()               { parent = NULL; }
-        HASIM_MODULE_CLASS(HASIM_MODULE p) { parent = p; }
-
-        // destructor
-        ~HASIM_MODULE_CLASS() { Uninit(); }
-
-        // uninit
-        virtual void Uninit() {}
-
-        // callback function
-        virtual void CallbackExit(int exitcode)
-        {
-            if (parent == NULL)
-            {
-                // chain-uninit, then exit
-                Uninit();
-                exit(exitcode);
-            }
-            else
-            {
-                // transfer to parent
-                parent->CallbackExit(exitcode);
-            }
-        }
-};
+extern GLOBAL_ARGS globalArgs;
 
 #endif

@@ -10,7 +10,6 @@
 #include <getopt.h>
 
 #include "pure_bluespec_main.h"
-
 #include "asim/dict/init.h"
 #include "asim/provides/low_level_platform_interface.h"
 
@@ -19,16 +18,13 @@
 // =======================================
 
 // globally visible variables
-GlobalArgs globalArgs;
-
-// prototypes
-void process_options(int argc, char *argv[]);
+GLOBAL_ARGS globalArgs;
 
 // main
 int main(int argc, char *argv[])
 {
     // parse args and place in global array
-    process_options(argc, argv);
+    globalArgs = new GLOBAL_ARGS_CLASS(argc, argv);
 
     // instantiate:
     // 1. LLPI
@@ -50,13 +46,20 @@ int main(int argc, char *argv[])
 }
 
 // process command-line options
-void process_options(int argc, char *argv[])
+GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
+    benchmark("program.vmh"),
+    modelDir("."),
+    showFrontPanel(false)
 {
-    int c;
+    enum 
+    {
+        OPT_BENCHMARK,
+        OPT_MODELDIR,
+        OPT_SHOWFP,
+        OPT_NOSHOWFP
+    };
 
-    // first, set default values for globalArgs
-    globalArgs.showFrontPanel = true;
-    strcpy(globalArgs.benchmark, "program.vmh");
+    int c;
 
     while (true)
     {
@@ -64,7 +67,10 @@ void process_options(int argc, char *argv[])
         int option_index = 0;
         static struct option long_options[] =
         {
-            {"showfp", required_argument, NULL, 0},
+            {"benchmark", required_argument, NULL, OPT_BENCHMARK},
+            {"modeldir", required_argument, NULL, OPT_MODELDIR},
+            {"showfp", no_argument, NULL, OPT_SHOWFP},
+            {"noshowfp", no_argument, NULL, OPT_NOSHOWFP},
             {0, 0, 0, 0}
         };
 
@@ -76,23 +82,38 @@ void process_options(int argc, char *argv[])
 
         switch (c)
         {
-            case 0:
-                if (option_index == 0 && optarg && !strcmp(optarg, "0"))
-                {
-                    globalArgs.showFrontPanel = false;
-                }
-                break;
+          case OPT_BENCHMARK:
+            benchmark = strdup(optarg);
+            break;
 
-            case '?':
-                break;
+          case OPT_MODELDIR:
+            modelDir = strdup(optarg);
+            break;
 
-            default:
-                fprintf (stderr, "?? getopt returned character code 0%o ??\n", c);
+          case OPT_SHOWFP:
+            showFrontPanel = true;
+            break;
+
+          case OPT_NOSHOWFP:
+            showFrontPanel = false;
+            break;
+
+          case '?':
+            Usage();
+
+          default:
+            Usage();
         }
     }
+}
 
-    if (optind < argc)
-    {
-        strcpy(globalArgs.benchmark, argv[optind++]);
-    }
+
+void
+GLOBAL_ARGS_CLASS::Usage()
+{
+    fprintf(stderr, "\nArguments:\n");
+    fprintf(stderr, "   [--[no]showfp]         Show/don't show front panel\n");
+    fprintf(stderr, "   [--modeldir <dir>]     Model directory\n");
+    fprintf(stderr, "   [--benchmark <name>]   User-model benchmark image\n");
+    exit(1);
 }

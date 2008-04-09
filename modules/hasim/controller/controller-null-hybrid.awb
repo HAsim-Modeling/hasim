@@ -18,8 +18,6 @@
 # %sources -t BSV -v PUBLIC  controller-null.bsv 
 # %sources -t H   -v PUBLIC  controller-null.h
 # %sources -t CPP -v PUBLIC  controller-null.cpp
-# %sources -t H   -v PRIVATE platforms-module.h
-# %sources -t CPP -v PRIVATE platforms-module.cpp
 #
 # %AWB_END
 # */

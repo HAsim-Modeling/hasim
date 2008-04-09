@@ -9,23 +9,14 @@ Type=HAsim
 Class=Asim::Model
 
 
-[HAsim Model Foundation]
-Packagehint=hasim
-File=modules/model/hasim_model.awb
-
 [Hasim - Traffic light system]
 Packagehint=hasim
 File=modules/system/traffic_light_system/traffic_light_system.awb
 
 [Model]
-DefaultAttributes=traffic-light software hasim
-model=HAsim Model Foundation
+DefaultAttributes=traffic-light hybrid simulation hasim
+model=HAsim Hybrid Model Foundation
 
-[HAsim Model Foundation/Requires]
-hasim_system=Hasim - Traffic light system
-hasim_controller=Hasim Null Controller
-hasim_common=Hasim Common Library
-fpgaenv=FPGA Environment
 
 [Hasim - Traffic light system/Requires]
 hasim_traffic_light_function=Hasim - Traffic light function w. synthesis boundary
@@ -42,7 +33,7 @@ File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
 
 [Hasim Common Library/Params]
@@ -50,6 +41,16 @@ TERM_FPGA_SWITCHES=0
 TERM_FPGA_BUTTONS=0
 TERM_FPGA_LEDS=0
 
-[Hasim Null Controller]
-File=config/pm/hasim/submodels/controller/hardware_null_controller.apm
+[Hybrid Null Controller]
+File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
+Packagehint=hasim
+
+[HAsim Hybrid Model Foundation/Requires]
+hasim_common=Hasim Common Library
+hasim_system=Hasim - Traffic light system
+hasim_controller=Hybrid Null Controller
+fpgaenv=FPGA Environment
+
+[HAsim Hybrid Model Foundation]
+File=modules/model/hasim_model.awb
 Packagehint=hasim

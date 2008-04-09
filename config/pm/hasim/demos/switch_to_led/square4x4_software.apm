@@ -4,15 +4,6 @@ Packagehint=hasim
 File=modules/system/switch_to_led_system/switch_to_led_system.awb
 
 
-[HAsim Model Foundation]
-Packagehint=hasim
-File=modules/model/hasim_model.awb
-
-[HAsim Model Foundation/Requires]
-hasim_system=Hasim - Switch in to LED out system
-hasim_controller=Hasim Null Controller
-hasim_common=Hasim Common Library
-fpgaenv=FPGA Environment
 
 [Global]
 SaveParameters=0
@@ -24,8 +15,8 @@ Name=Switch to LED w. square - simulation
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=switch2led hasim simulation
-model=HAsim Model Foundation
+DefaultAttributes=switch2led hasim hybrid simulation
+model=HAsim Hybrid Model Foundation
 
 [Hasim - Switch in to LED out system/Requires]
 calculation4x4=Hasim - 4x4 square
@@ -39,7 +30,7 @@ File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
 
 [Hasim Common Library/Params]
@@ -47,6 +38,17 @@ TERM_FPGA_SWITCHES=0
 TERM_FPGA_BUTTONS=0
 TERM_FPGA_LEDS=0
 
-[Hasim Null Controller]
-File=config/pm/hasim/submodels/controller/hardware_null_controller.apm
+
+[HAsim Hybrid Model Foundation/Requires]
+hasim_common=Hasim Common Library
+hasim_system=Hasim - Switch in to LED out system
+hasim_controller=Hybrid Null Controller
+fpgaenv=FPGA Environment
+
+[Hybrid Null Controller]
+File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
+Packagehint=hasim
+
+[HAsim Hybrid Model Foundation]
+File=modules/model/hasim_model.awb
 Packagehint=hasim

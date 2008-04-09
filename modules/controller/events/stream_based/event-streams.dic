@@ -1,1 +1,0 @@
-def STREAMS.HEARTBEAT_MSG "[%12u]: controller: model cycles completed: %9u\n";

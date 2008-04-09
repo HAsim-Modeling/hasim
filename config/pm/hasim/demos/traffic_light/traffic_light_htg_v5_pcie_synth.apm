@@ -8,23 +8,15 @@ Name=Traffic Light Model - HTG-v5-PCIe with synthesis boundary
 Type=HAsim
 Class=Asim::Model
 
-[HAsim Model Foundation]
-Packagehint=hasim
-File=modules/model/hasim_model.awb
 
 [Hasim - Traffic light system]
 Packagehint=hasim
 File=modules/system/traffic_light_system/traffic_light_system.awb
 
 [Model]
-DefaultAttributes=traffic-light htg-v5-pcie hasim
-model=HAsim Model Foundation
+DefaultAttributes=traffic-light hybrid htg hasim
+model=HAsim Hybrid Model Foundation
 
-[HAsim Model Foundation/Requires]
-hasim_system=Hasim - Traffic light system
-hasim_controller=Hasim Null Controller
-hasim_common=Hasim Common Library
-fpgaenv=FPGA Environment
 
 [Hasim - Traffic light system/Requires]
 hasim_traffic_light_function=Hasim - Traffic light function w. synthesis boundary
@@ -41,14 +33,26 @@ Packagehint=hasim
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
 Packagehint=platforms
 
-[HAsim Model Foundation/Params]
-MAKE_ALL_TARGET=bit
 
 [Hasim Common Library/Params]
 TERM_FPGA_SWITCHES=0
 TERM_FPGA_BUTTONS=0
 TERM_FPGA_LEDS=0
 
-[Hasim Null Controller]
+
+[Hybrid Null Controller]
 File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
+Packagehint=hasim
+
+[HAsim Hybrid Model Foundation/Requires]
+hasim_common=Hasim Common Library
+hasim_system=Hasim - Traffic light system
+hasim_controller=Hybrid Null Controller
+fpgaenv=FPGA Environment
+
+[HAsim Hybrid Model Foundation/Params]
+MAKE_ALL_TARGET=bit
+
+[HAsim Hybrid Model Foundation]
+File=modules/model/hasim_model.awb
 Packagehint=hasim

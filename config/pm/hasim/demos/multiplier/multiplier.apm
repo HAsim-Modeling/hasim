@@ -8,20 +8,9 @@ Name=Multiplier Model
 Type=HAsim
 Class=Asim::Model
 
-
-[HAsim Model Foundation]
-Packagehint=hasim
-File=modules/model/hasim_model.awb
-
 [Model]
 DefaultAttributes=demo hasim software
-model=HAsim Model Foundation
-
-[HAsim Model Foundation/Requires]
-hasim_system=Hasim - Multiplier system
-hasim_controller=Hasim Null Controller
-hasim_common=Hasim Common Library
-fpgaenv=FPGA Environment
+model=HAsim Hardware-Only Model Foundation
 
 [Hasim - Multiplier system]
 Packagehint=hasim
@@ -32,10 +21,19 @@ File=config/pm/hasim/submodels/hasim_common.apm
 Packagehint=hasim
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
 
+[Hybrid Null Controller]
+File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
+Packagehint=hasim
 
-[Hasim Null Controller]
-File=config/pm/hasim/submodels/controller/hardware_null_controller.apm
+[HAsim Hardware-Only Model Foundation/Requires]
+hasim_common=Hasim Common Library
+hasim_system=Hasim - Multiplier system
+hasim_controller=Hybrid Null Controller
+fpgaenv=FPGA Environment
+
+[HAsim Hardware-Only Model Foundation]
+File=modules/model/hasim_hwonly_model.awb
 Packagehint=hasim

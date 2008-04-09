@@ -23,13 +23,11 @@ File=modules/bluespec/system/demos/multiplier/mult_system.awb
 Packagehint=hasim
 
 [Model]
-DefaultAttributes=
+DefaultAttributes=simulation bluespec
 model=Pure Bluespec Model Foundation
 
-
-
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-null.apm
 Packagehint=platforms
 
 [Bluespec Null Library]

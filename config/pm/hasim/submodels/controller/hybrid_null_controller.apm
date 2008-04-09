@@ -10,20 +10,18 @@ Class=Asim::Model
 
 [Model]
 DefaultAttributes=hasim
-model=Hasim Null Controller
+model=Hybrid Null Controller
 
-[Hasim Null Controller]
-File=modules/controller/null-controller.awb
-Packagehint=hasim
 
-[Software Controller]
-File=modules/controller/software/standard-software-controller.awb
-Packagehint=hasim
 
-[Hasim Null Controller/Requires]
-hasim_software_controller=Software Controller
-starter=Hybrid Null Starter
 
 [Hybrid Null Starter]
-File=modules/controller/starter/hybrid-null-starter.awb
+File=modules/hasim/controller/starter/hybrid-null-starter.awb
+Packagehint=hasim
+
+[Hybrid Null Controller/Requires]
+starter=Hybrid Null Starter
+
+[Hybrid Null Controller]
+File=modules/hasim/controller/controller-null-hybrid.awb
 Packagehint=hasim

@@ -9,13 +9,12 @@ Type=HAsim
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=hybrid bluespec
+DefaultAttributes=hybrid htg bluespec
 model=Pure Bluespec Hybrid Model Foundation
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
 Packagehint=platforms
-
 
 [Bluespec Device Tester]
 File=modules/bluespec/system/demos/devtest/devtest.awb

@@ -1,0 +1,25 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hybrid Basic Starter
+# %desc Hybrid Basic Starter
+# %provides starter
+#
+# %attributes hasim
+#
+# %sources -t BSV -v PUBLIC     hybrid-basic-starter.bsv
+# %sources -t H   -v PUBLIC     starter-common.h
+# %sources -t CPP -v PRIVATE    hybrid-basic-starter.cpp
+# %sources -t RRR -v PUBLIC     hybrid-basic-starter-services.rrr
+#
+# %param METHOD_ID_ENDSIM   0  "EndSim methodID"
+# %param METHOD_ID_DUMPRESP 1  "DumpStats response methodID"
+
+# %AWB_END
+# */

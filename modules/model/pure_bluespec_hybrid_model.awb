@@ -6,7 +6,7 @@
 
 %name Pure Bluespec Hybrid Model Foundation
 %desc Pure Bluespec Hybrid Model Foundation
-%attributes bluespec model
+%attributes bluespec hybrid
 
 %provides model
 

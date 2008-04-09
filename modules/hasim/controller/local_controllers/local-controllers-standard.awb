@@ -1,0 +1,16 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Standard Local Controllers
+# %desc Standard Local Controllers
+# %provides local_controllers
+#
+# %attributes hasim
+#
+# %requires module_local_controller

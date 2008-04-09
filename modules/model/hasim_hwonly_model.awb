@@ -1,0 +1,29 @@
+********************************************************************
+* Awb module specification
+********************************************************************
+
+%AWB_START
+
+%name HAsim Hardware-Only Model Foundation
+%desc HAsim Hardware-Only Model Foundation
+%attributes hasim hwonly
+
+%provides model
+
+%requires hasim_controller
+%requires hasim_system
+%requires hasim_common
+%requires fpgaenv
+
+%makefile Makefile.top.template
+%scons %top   SCons.top.template
+%scons %hw    SCons.hw.template
+%scons %sw    SCons.sw.template
+%scons %iface SCons.iface.template
+
+%public hasim_model.bsv
+
+%param SYNTH_BOUNDARY  mkModel "name of synthesis boundary"
+%param MAKE_ALL_TARGET exe     "Target of 'make all'.  Most likely bit, exe or vexe."
+
+%AWB_END

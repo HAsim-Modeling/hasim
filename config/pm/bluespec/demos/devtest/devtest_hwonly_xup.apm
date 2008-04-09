@@ -1,7 +1,7 @@
 
 [Global]
 SaveParameters=0
-Description=Device tester using hybrid streams
+Description=Device tester hwonly XUP
 File=devtest_hwonly_xup
 Version=2.1
 Name=Device Tester - hwonly - XUP
@@ -9,13 +9,12 @@ Type=HAsim
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=hybrid bluespec
+DefaultAttributes=hwonly xup bluespec
 model=Pure Bluespec Model Foundation
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-xup.apm
 Packagehint=platforms
-
 
 [Bluespec Device Tester]
 File=modules/bluespec/system/demos/devtest/devtest.awb

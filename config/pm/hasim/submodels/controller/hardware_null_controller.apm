@@ -10,20 +10,12 @@ Class=Asim::Model
 
 [Model]
 DefaultAttributes=hasim
-model=Hasim Null Controller
+model=Hardware-Only Null Controller
 
-[Hasim Null Controller]
-File=modules/controller/null-controller.awb
-Packagehint=hasim
 
-[Hasim Null Controller/Requires]
-hasim_software_controller=Null Software Controller
-starter=Null Starter
 
-[Null Software Controller]
-File=modules/controller/software/null-software-controller.awb
-Packagehint=hasim
 
-[Null Starter]
-File=modules/controller/starter/null-starter.awb
+
+[Hardware-Only Null Controller]
+File=modules/hasim/controller/controller-null-hardware-only.awb
 Packagehint=hasim

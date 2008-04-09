@@ -24,6 +24,7 @@
 # %param --global TERM_VDEV_MEMORY_INVALIDATE   1   "termimate vdev_memory_invalidate?"
 # %param --global TERM_VDEV_STREAMS             1   "termimate vdev_streams?"
 # %param --global TERM_RRR_CLIENT_STARTER       1   "termimate rrr_client_starter?"
+# %param --global TERM_RRR_CLIENT_EVENTS        1   "termimate rrr_client_events?"
 #
 # %AWB_END
 # */

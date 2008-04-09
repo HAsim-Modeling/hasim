@@ -9,7 +9,7 @@ Type=HAsim
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=hybrid bluespec
+DefaultAttributes=hybrid htg bluespec
 model=Pure Bluespec Hybrid Model Foundation
 
 [FPGA Environment]

@@ -9,7 +9,7 @@ Type=HAsim
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=bluespec
+DefaultAttributes=bluespec sim
 model=Pure Bluespec Model Foundation
 
 [Pure Bluespec Model Foundation]
@@ -26,7 +26,7 @@ bluespec_system=Bluespec Counter Example
 fpgaenv=FPGA Environment
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-null.apm
 Packagehint=platforms
 
 [Bluespec Null Library]

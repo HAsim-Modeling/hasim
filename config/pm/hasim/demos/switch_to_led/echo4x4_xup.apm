@@ -3,17 +3,6 @@
 Packagehint=hasim
 File=modules/system/switch_to_led_system/switch_to_led_system.awb
 
-
-[HAsim Model Foundation]
-Packagehint=hasim
-File=modules/model/hasim_model.awb
-
-[HAsim Model Foundation/Requires]
-hasim_system=Hasim - Switch in to LED out system
-hasim_controller=Hasim Null Controller
-hasim_common=Hasim Common Library
-fpgaenv=FPGA Environment
-
 [Global]
 SaveParameters=0
 Description=Switch to LED w. echo - xup
@@ -24,8 +13,8 @@ Name=Switch to LED w. echo - xup
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=switch2led hasim xup
-model=HAsim Model Foundation
+DefaultAttributes=switch2led hasim hwonly xup
+model=HAsim Hardware-Only Model Foundation
 
 [Hasim - Switch in to LED out system/Requires]
 calculation4x4=Hasim - 4x4 echo
@@ -42,14 +31,24 @@ Packagehint=hasim
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-xup.apm
 Packagehint=platforms
 
-[HAsim Model Foundation/Params]
-MAKE_ALL_TARGET=bit
-
 [Hasim Common Library/Params]
 TERM_FPGA_SWITCHES=0
 TERM_FPGA_BUTTONS=0
 TERM_FPGA_LEDS=0
 
-[Hasim Null Controller]
+[HAsim Hardware-Only Model Foundation/Requires]
+hasim_common=Hasim Common Library
+hasim_system=Hasim - Switch in to LED out system
+hasim_controller=Hardware-Only Null Controller
+fpgaenv=FPGA Environment
+
+[Hardware-Only Null Controller]
 File=config/pm/hasim/submodels/controller/hardware_null_controller.apm
 Packagehint=hasim
+
+[HAsim Hardware-Only Model Foundation]
+File=modules/model/hasim_hwonly_model.awb
+Packagehint=hasim
+
+[HAsim Hardware-Only Model Foundation/Params]
+MAKE_ALL_TARGET=bit

@@ -10800,3 +10800,290 @@ Directory modules/common/modellib
 * Events now take "event name" strings at instantiation rather than a message.
 
 Michael P.
+
+----------
+pellauer    Date: Wed Apr  9 15:24:06 EDT 2008  CSN: CSN-hasim-359
+                  Wed Apr  9 19:24:06 UTC 2008
+
+
+Directory config/pm/hasim/demos
+ fsb_dme/                  Locally Removed           358 
+
+Directory config/pm/hasim/demos/fsb_dme
+ dme_no_afu.apm            Locally Removed           358 
+
+Directory config/pm/hasim/demos
+ bram_test/                Locally Removed           358 
+
+Directory config/pm/hasim/demos/bram_test
+ bram_test_xup.apm         Locally Removed           358 
+
+Directory config/pm/hasim/demos
+ fsb_afu/                  Locally Removed           358 
+
+Directory config/pm/hasim/demos/fsb_afu
+ afu_add1.apm              Locally Removed           358 
+ afu_pass_through.apm      Locally Removed           358 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          358 
+ traffic_light_htg_v5_pcie_synth.apm Locally Modified          358 
+ traffic_light_xup_synth.apm Locally Modified          358 
+ traffic_light_exe_nosynth.apm Locally Modified          358 
+ traffic_light_exe_synth.apm Locally Modified          358 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          358 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Modified          358 
+ echo4x4_xup.apm           Locally Modified          358 
+ square4x4_software.apm    Locally Modified          358 
+ adder4x4_xup.apm          Locally Modified          358 
+ square4x4_xup.apm         Locally Modified          358 
+ echo4x4_htg.apm           Locally Modified          358 
+ multiplier4x4_software.apm Locally Modified          358 
+ multiplier4x4_xup.apm     Locally Modified          358 
+
+Directory config/pm/hasim/submodels/controller
+ hybrid_standard_controller.apm Locally Modified          358 
+ hasim_simulation_only_controller.apm Locally Removed           358 
+ hardware_null_controller.apm Locally Modified          358 
+ hybrid_null_controller.apm Locally Modified          358 
+ hardware_standard_controller.apm Locally Removed           358 
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_exe.apm      Locally Modified          358 
+ hello_hybrid_htg.apm      Locally Modified          358 
+
+Directory config/pm/bluespec/demos/simple
+ multiplier.apm            Locally Modified          358 
+ counter.apm               Locally Modified          358 
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hwonly_vexe.apm   Locally Modified          358 
+ devtest_hwonly_xup.apm    Locally Modified          358 
+ devtest_hybrid_exe.apm    Locally Modified          358 
+ devtest_hybrid_htg.apm    Locally Modified          358 
+
+Directory modules/model
+ pure_bluespec_model.awb   Locally Modified          358 
+ pure_bluespec_hybrid_model.awb Locally Modified          358 
+ hasim_model.awb           Locally Modified          358 
+ hasim_hwonly_model.awb    Locally Added               0 
+ main.cpp                  Locally Added               0 
+ main.h                    Locally Added               0 
+
+Directory modules/hasim
+ controller/               Locally Added               0 
+
+Directory modules/hasim/controller
+ platforms-module.h        Locally Added               0 
+ local_controllers/        Locally Added               0 
+
+Directory modules/hasim/controller/local_controllers
+ local-controllers-standard.awb Locally Added               0 
+ module/                   Locally Added               0 
+
+Directory modules/hasim/controller/local_controllers/module
+ local-controller-module-standard.awb Locally Added               0 
+ local-controller-module-standard.bsv Locally Added               0 
+ local-controller-module.dic Locally Added               0 
+
+Directory modules/hasim/controller
+ controller-null.h         Locally Added               0 
+ controller-null-hybrid.awb Locally Added               0 
+ controller-standard.cpp   Locally Added               0 
+ controller-null.bsv       Locally Added               0 
+ starter/                  Locally Added               0 
+
+Directory modules/hasim/controller/starter
+ starter-common.h          Locally Added               0 
+ hybrid-null-starter.awb   Locally Added               0 
+ hybrid-basic-starter.cpp  Locally Added               0 
+ null-starter.awb          Locally Added               0 
+ hybrid-basic-starter-services.rrr Locally Added               0 
+ hybrid-basic-starter.h    Locally Added               0 
+ hybrid-basic-starter.awb  Locally Added               0 
+ hybrid-basic-starter.bsv  Locally Added               0 
+ null-starter.cpp          Locally Added               0 
+
+Directory modules/hasim/controller
+ controller-standard.h     Locally Added               0 
+ controller-standard.awb   Locally Added               0 
+ controller-standard.bsv   Locally Added               0 
+ platforms-module.cpp      Locally Added               0 
+ controller-null.cpp       Locally Added               0 
+ controller-null-hardware-only.awb Locally Added               0 
+ central_controllers/      Locally Added               0 
+
+Directory modules/hasim/controller/central_controllers
+ central-controllers-standard.h Locally Added               0 
+ central-controllers-standard.awb Locally Added               0 
+ central-controllers-standard.bsv Locally Added               0 
+ events/                   Locally Added               0 
+
+Directory modules/hasim/controller/central_controllers/events
+ events-controller-streams.dic Locally Added               0 
+ events-controller-hybrid.cpp Locally Added               0 
+ events-controller.rrr     Locally Added               0 
+ events-controller-streamid.dic Locally Added               0 
+ events-controller-hybrid.h Locally Added               0 
+ events-controller-hybrid.awb Locally Added               0 
+ events-controller-hybrid.bsv Locally Added               0 
+
+Directory modules/hasim/controller/central_controllers
+ module/                   Locally Added               0 
+
+Directory modules/hasim/controller/central_controllers/module
+ module-controller-streams.dic Locally Added               0 
+ module-controller-streamid.dic Locally Added               0 
+ module-controller-standard.awb Locally Added               0 
+ module-controller-standard.bsv Locally Added               0 
+
+Directory modules/hasim/controller/central_controllers
+ assertions/               Locally Added               0 
+
+Directory modules/hasim/controller/central_controllers/assertions
+ assertions-controller-hybrid.h Locally Added               0 
+ assertions-controller-streams.bsv Locally Added               0 
+ assertions-controller-hybrid.awb Locally Added               0 
+ assert-streamid.dic       Locally Added               0 
+ assertions-controller-hybrid.cpp Locally Added               0 
+
+Directory modules/hasim/controller/central_controllers
+ central-controllers-standard.cpp Locally Added               0 
+ stats/                    Locally Added               0 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Added               0 
+ stats-controller-common.bsh Locally Added               0 
+ stats-controller-streamid.dic Locally Added               0 
+ stats-controller-hybrid.h Locally Added               0 
+ stats-controller-streams.bsv Locally Added               0 
+ stats-controller-streams.bsh Locally Added               0 
+ stats-controller-hybrid.awb Locally Added               0 
+
+Directory modules
+ controller/               Locally Removed           358 
+
+Directory modules/controller
+ null-controller.awb       Locally Removed           358 
+ events/                   Locally Removed           358 
+
+Directory modules/controller/events
+ hybrid/                   Locally Removed           358 
+
+Directory modules/controller/events/hybrid
+ hybrid_events_controller.awb Locally Removed           358 
+ hybrid_events_controller.bsv Locally Removed           358 
+ event-streamid.dic        Locally Removed           358 
+ events.rrr                Locally Removed           358 
+ hybrid_events_controller.cpp Locally Removed           358 
+ event-streams.dic         Locally Removed           358 
+ hybrid_events_controller.h Locally Removed           358 
+
+Directory modules/controller/events
+ stream_based/             Locally Removed           358 
+
+Directory modules/controller/events/stream_based
+ hasim_events_controller.awb Locally Removed           358 
+ EventsController.bsv      Locally Removed           358 
+ event-streamid.dic        Locally Removed           358 
+ EventsControllerHeader.bsv Locally Removed           358 
+ event-streams.dic         Locally Removed           358 
+
+Directory modules/controller
+ starter/                  Locally Removed           358 
+
+Directory modules/controller/starter
+ null-starter.h            Locally Removed           358 
+ hybrid-basic-starter.cpp  Locally Removed           358 
+ hybrid-null-starter.awb   Locally Removed           358 
+ null-starter.awb          Locally Removed           358 
+ null-starter.bsv          Locally Removed           358 
+ hybrid-basic-starter-services.rrr Locally Removed           358 
+ hybrid-basic-starter.h    Locally Removed           358 
+ hybrid-basic-starter.awb  Locally Removed           358 
+ hybrid-basic-starter.bsv  Locally Removed           358 
+ null-starter.cpp          Locally Removed           358 
+
+Directory modules/controller
+ null-controller.bsv       Locally Removed           358 
+ module/                   Locally Removed           358 
+
+Directory modules/controller/module
+ module-controller.bsv     Locally Removed           358 
+ module-streams.dic        Locally Removed           358 
+ module-streamid.dic       Locally Removed           358 
+ module-controller.awb     Locally Removed           358 
+
+Directory modules/controller
+ standard-controller.awb   Locally Removed           358 
+ assertions/               Locally Removed           358 
+
+Directory modules/controller/assertions
+ AssertionsControllerHeader.bsv Locally Removed           358 
+ assert-streamid.dic       Locally Removed           358 
+ hasim_assertions_controller.awb Locally Removed           358 
+ AssertionsController.bsv  Locally Removed           358 
+
+Directory modules/controller
+ local/                    Locally Removed           358 
+
+Directory modules/controller/local
+ hasim_local_controller.awb Locally Removed           358 
+ LocalController.bsv       Locally Removed           358 
+ local_controller.dic      Locally Removed           358 
+
+Directory modules/controller
+ software/                 Locally Removed           358 
+
+Directory modules/controller/software
+ control.cpp               Locally Removed           358 
+ standard-software-controller.awb Locally Removed           358 
+ hasim-module.cpp          Locally Removed           358 
+ main.cpp                  Locally Removed           358 
+ control.h                 Locally Removed           358 
+ hasim-module.h            Locally Removed           358 
+ main.h                    Locally Removed           358 
+ null-software-controller.awb Locally Removed           358 
+
+Directory modules/controller
+ standard-controller.bsv   Locally Removed           358 
+ hardware-only/            Locally Removed           358 
+
+Directory modules/controller/hardware-only
+ simple/                   Locally Removed           358 
+
+Directory modules/controller/hardware-only/simple
+ hasim_simple_controller.awb Locally Removed           358 
+ hasim_simple_controller.bsv Locally Removed           358 
+
+Directory modules/controller
+ stats/                    Locally Removed           358 
+
+Directory modules/controller/stats
+ stat-streamid.dic         Locally Removed           358 
+ StatsControllerHeader.bsv Locally Removed           358 
+ hasim_stats_controller.awb Locally Removed           358 
+ StatsController.bsv       Locally Removed           358 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          358 
+ hasim-platform-interface.awb Locally Modified          358 
+
+
+* Rearranged Controllers to the new organization. There are now only 3 controllers:
+     * Hybrid Standard
+     * Hybrid Null
+     * Hardware-Only Null
+* Split HAsim Model into Hybrid and Hardware-only models.
+* Removed some obsolete models.
+* Reconfigured all models to use the new model/controller/fpgaenv organization. 
+* This organization should now be consistent: Hybrid everywhere or HW-only everywhere.
+
+Still Ongoing:
+* Refactor modellib into local controllers.
+* Rename model files to be more consistent.
+

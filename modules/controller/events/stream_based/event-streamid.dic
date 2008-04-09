@@ -1,2 +1,0 @@
-def STREAMID.EVENT     "event";
-def STREAMID.HEARTBEAT "heartbeat";

@@ -4,9 +4,9 @@
 
 %AWB_START
 
-%name Pure Bluespec Model Foundation
-%desc Pure Bluespec Model Foundation
-%attributes bluespec model
+%name Pure Bluespec Hardware-Only Model Foundation
+%desc Pure Bluespec Hardware-Only Model Foundation
+%attributes bluespec hwonly
 
 %provides model
 

@@ -9,11 +9,11 @@ Type=HAsim
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=hybrid bluespec
+DefaultAttributes=hwonly simulation bluespec
 model=Pure Bluespec Model Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-software.apm
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-null.apm
 Packagehint=platforms
 
 [Bluespec Null Library]

@@ -3,15 +3,7 @@
 Packagehint=hasim
 File=modules/system/switch_to_led_system/switch_to_led_system.awb
 
-[HAsim Model Foundation]
-Packagehint=hasim
-File=modules/model/hasim_model.awb
 
-[HAsim Model Foundation/Requires]
-hasim_system=Hasim - Switch in to LED out system
-hasim_controller=Hasim Null Controller
-hasim_common=Hasim Common Library
-fpgaenv=FPGA Environment
 
 [Global]
 SaveParameters=0
@@ -23,8 +15,8 @@ Name=Switch to LED w. echo - HTG
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=switch2led hasim htg
-model=HAsim Model Foundation
+DefaultAttributes=switch2led hasim hybrid htg
+model=HAsim Hybrid Model Foundation
 
 [Hasim - Switch in to LED out system/Requires]
 calculation4x4=Hasim - 4x4 echo
@@ -41,14 +33,26 @@ Packagehint=hasim
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
 Packagehint=platforms
 
-[HAsim Model Foundation/Params]
-MAKE_ALL_TARGET=bit
 
 [Hasim Common Library/Params]
 TERM_FPGA_SWITCHES=0
 TERM_FPGA_BUTTONS=0
 TERM_FPGA_LEDS=0
 
-[Hasim Null Controller]
+
+[Hybrid Null Controller]
 File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
+Packagehint=hasim
+
+[HAsim Hybrid Model Foundation/Requires]
+hasim_common=Hasim Common Library
+hasim_system=Hasim - Switch in to LED out system
+hasim_controller=Hybrid Null Controller
+fpgaenv=FPGA Environment
+
+[HAsim Hybrid Model Foundation/Params]
+MAKE_ALL_TARGET=bit
+
+[HAsim Hybrid Model Foundation]
+File=modules/model/hasim_model.awb
 Packagehint=hasim

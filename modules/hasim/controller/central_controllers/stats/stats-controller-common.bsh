@@ -1,0 +1,29 @@
+// STATS_CONTROLLER
+
+// Controls all the stats throughout the hardware model.
+
+// A StatsController can accept commands from the main hardware controller.
+// After Dump command is asserted it returns the next stat with 
+// getNextStat() until noMoreStats() is true.
+
+interface STATS_CONTROLLER;
+
+  method Action doCommand(STATS_COMMAND com);
+  method Bool   noMoreStats();
+
+endinterface
+
+// STATS_COMMAND
+
+// Commands that can be given to the Stats Controller
+
+typedef enum
+{
+  STATS_Enable,
+  STATS_Disable,
+  STATS_Reset,
+  STATS_Dump
+}
+  STATS_COMMAND
+               deriving (Eq, Bits);
+

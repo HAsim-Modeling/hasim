@@ -1,58 +1,63 @@
 
-[Global]
-SaveParameters=0
-Description=HAsim Hardware-Software Hybrid Standard Controller
-File=hybrid_standard_controller
-Version=2.1
-Name=HAsim Hybrid Standard Controller
-Type=HAsim
-Class=Asim::Model
-
-[Model]
-DefaultAttributes=hasim
-model=Hasim Standard Controller
-
-[Software Controller]
-File=modules/controller/software/standard-software-controller.awb
-Packagehint=hasim
-
-[Hasim Standard Controller]
-File=modules/controller/standard-controller.awb
-Packagehint=hasim
+[Central Controllers/Requires]
+assertions_controller=Hybrid Assertions Controller
+module_controller=Module Controller
+events_controller=Hybrid Events Controller
+stats_controller=Hybrid Stats Controller
 
 [Hasim Standard Controller/Requires]
-hasim_software_controller=Software Controller
+central_controllers=Central Controllers
+local_controllers=Local Controllers
 starter=Hybrid Basic Starter
-hasim_local_controller=Hasim local controller
-hasim_events_controller=Hybrid Events Controller
-hasim_stats_controller=HAsim Stats Controller
-hasim_assertions_controller=HAsim Assertions Controller
-hasim_module_controller=Hasim Module Controller
 
-[Hasim local controller]
-File=modules/controller/local/hasim_local_controller.awb
-Packagehint=hasim
-
-[HAsim Stats Controller]
-File=modules/controller/stats/hasim_stats_controller.awb
-Packagehint=hasim
-
-[HAsim Assertions Controller]
-File=modules/controller/assertions/hasim_assertions_controller.awb
-Packagehint=hasim
+[Global]
+Type=Asim
+Version=2.1
+File=hybrid_standard_controller
+SaveParameters=0
+Class=Asim::Model
+Description=Hybrid Standard Controller
+Name=Hybrid Standard Controller
 
 [Hybrid Basic Starter]
-File=modules/controller/starter/hybrid-basic-starter.awb
+File=modules/hasim/controller/starter/hybrid-basic-starter.awb
 Packagehint=hasim
 
-[Hasim Module Controller]
-File=modules/controller/module/module-controller.awb
+[Model]
+DefaultAttributes=
+model=Hasim Standard Controller
+
+[Hasim Standard Controller]
+File=modules/hasim/controller/controller-standard.awb
 Packagehint=hasim
 
-[Software Controller/Params]
-REGISTER_STREAMS=1
-
+[Module Controller]
+File=modules/hasim/controller/central_controllers/module/module-controller-standard.awb
+Packagehint=hasim
 
 [Hybrid Events Controller]
-File=modules/controller/events/hybrid/hybrid_events_controller.awb
+File=modules/hasim/controller/central_controllers/events/events-controller-hybrid.awb
 Packagehint=hasim
+
+[Hybrid Stats Controller]
+File=modules/hasim/controller/central_controllers/stats/stats-controller-hybrid.awb
+Packagehint=hasim
+
+[Local Controllers]
+File=modules/hasim/controller/local_controllers/local-controllers-standard.awb
+Packagehint=hasim
+
+[Hybrid Assertions Controller]
+File=modules/hasim/controller/central_controllers/assertions/assertions-controller-hybrid.awb
+Packagehint=hasim
+
+[Central Controllers]
+File=modules/hasim/controller/central_controllers/central-controllers-standard.awb
+Packagehint=hasim
+
+[Hasim Module Local Controller]
+File=modules/hasim/controller/local_controllers/module/local-controller-module-standard.awb
+Packagehint=hasim
+
+[Local Controllers/Requires]
+module_local_controller=Hasim Module Local Controller

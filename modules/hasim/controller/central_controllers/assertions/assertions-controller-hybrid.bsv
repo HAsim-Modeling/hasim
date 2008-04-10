@@ -3,9 +3,10 @@ import FIFO::*;
 import hasim_common::*;
 import soft_connections::*;
 
-`include "streams.bsh"
-`include "asim/dict/STREAMS.bsh"
-`include "asim/dict/STREAMID.bsh"
+`include "asim/provides/rrr.bsh"
+
+`include "asim/rrr/rrr_service_ids.bsh"
+`include "asim/dict/ASSERTIONS.bsh"
 `include "asim/dict/RINGID.bsh"
 
 // AssertionsController
@@ -46,7 +47,7 @@ typedef enum
 
 // A module which serially passes Assertion failures back to the software.
 
-module [Connected_Module] mkAssertionsController#(Connection_Send#(STREAMS_REQUEST) link_streams)
+module [Connected_Module] mkAssertionsController
     //interface:
                 (ASSERTIONS_CONTROLLER);
 
@@ -54,11 +55,24 @@ module [Connected_Module] mkAssertionsController#(Connection_Send#(STREAMS_REQUE
   
   // Communication link to the rest of the Assertion checkers
   Connection_Chain#(ASSERTION_DATA) chain <- mkConnection_Chain(`RINGID_ASSERTS);
-    
+  
+  // Communication link to our RRR Service
+  Connection_Send#(RRR_Request) link_rrr <- mkConnection_Send("rrr_client_assertions");
+  
   // The minimum severity of assertions we should pass along
   Reg#(ASSERTION_SEVERITY) min_severity <- mkReg(ASSERT_MESSAGE);
   
+  Reg#(Bit#(32)) fpgaCC <- mkReg(0);
+  
   // ***** Rules *****
+  
+  // countCC
+  
+  rule countCC (True);
+  
+    fpgaCC <= fpgaCC + 1;
+  
+  endrule
   
   // processResp
   
@@ -72,10 +86,12 @@ module [Connected_Module] mkAssertionsController#(Connection_Send#(STREAMS_REQUE
     
     if (ast.severity >= min_severity)
     begin
-      link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_ASSERT,
-                                          stringID: ast.stringID,
-                                          payload0: zeroExtend(pack(ast.severity)),
-                                          payload1: ? });
+      link_rrr.send(RRR_Request { serviceID:    `ASSERTIONS_SERVICE_ID,
+                                  param0:       0, //unused for now. Reserved for methodID.
+                                  param1:       zeroExtend(pack(ast.assertID)),
+                                  param2:       fpgaCC,
+                                  param3:       zeroExtend(pack(ast.severity)),
+                                  needResponse: False });
     end
 
   endrule

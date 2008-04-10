@@ -11,8 +11,7 @@
 #include "asim/rrr/rrr_service_ids.h"
 #include "asim/provides/stats_controller.h"
 
-// TEMPORARY:: Commented out until we migrate stats.
-// include "asim/dict/STATS.h"
+#include "asim/dict/STATS.h"
 
 #define SERVICE_ID       STATS_SERVICE_ID
 
@@ -27,8 +26,7 @@ STATS_CONTROLLER_CLASS STATS_CONTROLLER_CLASS::instance;
 STATS_CONTROLLER_CLASS::STATS_CONTROLLER_CLASS()
 {
     // register with server's map table
-    // TEMPORARY:: Commented out until we migrate stats.
-    // RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
+    RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
 }
 
 // destructor
@@ -52,6 +50,7 @@ STATS_CONTROLLER_CLASS::Init(
 void
 STATS_CONTROLLER_CLASS::Uninit()
 {
+    fclose(statsFile);
     // simply chain
     PLATFORMS_MODULE_CLASS::Uninit();
 }
@@ -66,34 +65,24 @@ STATS_CONTROLLER_CLASS::Request(
     UINT32 *result)
 {
 
-    // TEMPORARY:: Commented out until we migrate stats
-/*
     // extract event ID, data, and modelCC
     UINT32 unused = arg0; // Reserved to be methodID later if needed.
     UINT32 stat_id = arg1;
-    UINT32 fpga_cc = arg2;
-    UINT32 severity = arg3;
+    UINT32 stat_data = arg2;
+    UINT32 unused2 = arg3;
 
     // lookup event name from dictionary
-    const char *assert_msg = STATS_DICT::Str(assert_id);
-    if (assert_msg == NULL)
+    const char *stat_msg = STATS_DICT::Str(stat_id);
+    if (stat_msg == NULL)
     {
-        cerr << "streams: " << STATS_DICT::Str(assert_id)
-             << ": invalid assert_id: " << event_id << endl;
+        cerr << "streams: " << STATS_DICT::Str(stat_id)
+             << ": invalid stat_id: " << stat_id << endl;
         CallbackExit(1);
     }
 
     // write to file
-    fprintf(assertFile, "[%010u]: %s\n", fpga_cc, assert_msg);
-    
-    // if severity is great, end the simulation.
-    if (severity > 1)
-    {
-        printf(STDERR, "ERROR: Fatal HAsim assertion failure.\n");
-        printf(STDERR, "MESSAGE: %s\n", assert_msg);
-	CallbackExit(1);
-    }
-*/
+    fprintf(statsFile, "%s: %u\n", stat_msg, stat_data);
+
     // no RRR response
     return false;
 }

@@ -3,7 +3,7 @@ import fpga_components::*;
 import hasim_common::*;
 
 import hasim_isa::*;
-`include "asim/dict/STREAMS_ASSERTS_FREELIST.bsh"
+`include "asim/dict/ASSERTIONS_FREELIST.bsh"
 
 
 interface FreeList;
@@ -47,7 +47,7 @@ module [HASim_Module] mkFreeList#(File debug_log, Tick curCC)
   
   Bool full = fl_read + 1 == fl_write;
   
-  Assertion assert_enough_pregs <- mkAssertionChecker(`STREAMS_ASSERTS_FREELIST_OUT_OF_PREGS, ASSERT_ERROR);
+  Assertion assert_enough_pregs <- mkAssertionChecker(`ASSERTIONS_FREELIST_OUT_OF_PREGS, ASSERT_ERROR);
   
   rule initialize (initializing);
   

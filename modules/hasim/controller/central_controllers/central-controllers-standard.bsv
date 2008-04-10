@@ -39,8 +39,8 @@ module [HASim_Module] mkCentralControllers
     // instantiate sub-controllers
     MODULE_CONTROLLER     moduleCtrl  <- mkModuleController(link_streams);
     EVENTS_CONTROLLER     eventsCtrl  <- mkEventsController(link_streams);
-    STATS_CONTROLLER      statsCtrl   <- mkStatsController(link_streams);
-    ASSERTIONS_CONTROLLER assertsCtrl <- mkAssertionsController(link_streams);
+    STATS_CONTROLLER      statsCtrl   <- mkStatsController();
+    ASSERTIONS_CONTROLLER assertsCtrl <- mkAssertionsController();
 
     interface moduleController  = moduleCtrl;
     interface eventsController  = eventsCtrl;

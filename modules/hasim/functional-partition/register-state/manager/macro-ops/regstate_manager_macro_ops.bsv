@@ -28,7 +28,7 @@ import RegFile::*;
 `include "hasim_isa_datapath.bsh"
 
 // Dictionary includes
-`include "asim/dict/STREAMS_ASSERTS_REGMANAGER.bsh"
+`include "asim/dict/ASSERTIONS_REGMANAGER.bsh"
 
 // ***** Typedefs ***** //
 
@@ -287,10 +287,10 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     // ***** Assertion Checkers ***** //
 
-    Assertion assertInstructionIsActuallyALoad    <- mkAssertionChecker(`STREAMS_ASSERTS_REGMANAGER_LOAD_ON_NONLOAD, ASSERT_WARNING);
-    Assertion assertLoadDestRegIsReady            <- mkAssertionChecker(`STREAMS_ASSERTS_REGMANAGER_MALFORMED_LOAD_WRITEBACK, ASSERT_ERROR);
-    Assertion assertInstructionIsActuallyAStore   <- mkAssertionChecker(`STREAMS_ASSERTS_REGMANAGER_STORE_ON_NONSTORE, ASSERT_WARNING);
-    Assertion assertCommitedStoreIsActuallyAStore <- mkAssertionChecker(`STREAMS_ASSERTS_REGMANAGER_COMMIT_STORE_ON_NONSTORE, ASSERT_WARNING);
+    Assertion assertInstructionIsActuallyALoad    <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_LOAD_ON_NONLOAD, ASSERT_WARNING);
+    Assertion assertLoadDestRegIsReady            <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_MALFORMED_LOAD_WRITEBACK, ASSERT_ERROR);
+    Assertion assertInstructionIsActuallyAStore   <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_STORE_ON_NONSTORE, ASSERT_WARNING);
+    Assertion assertCommitedStoreIsActuallyAStore <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_COMMIT_STORE_ON_NONSTORE, ASSERT_WARNING);
 
     // ******* Rules *******
 

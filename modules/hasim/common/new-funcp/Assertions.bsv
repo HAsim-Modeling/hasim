@@ -1,6 +1,6 @@
 import FIFOF::*;
 `include "asim/dict/RINGID.bsh"
-`include "asim/dict/STREAMS.bsh"
+`include "asim/dict/ASSERTIONS.bsh"
 
 // Assertions
 
@@ -20,15 +20,15 @@ typedef enum
   ASSERTION_SEVERITY 
                     deriving (Eq, Bits);
 
-instance Ord#(AssertionSeverity);
+instance Ord#(ASSERTION_SEVERITY);
 
-  function Bool \< (AssertionSeverity x, AssertionSeverity y) = pack(x) < pack(y);
+  function Bool \< (ASSERTION_SEVERITY x, ASSERTION_SEVERITY y) = pack(x) < pack(y);
 
-  function Bool \> (AssertionSeverity x, AssertionSeverity y) = pack(x) > pack(y);
+  function Bool \> (ASSERTION_SEVERITY x, ASSERTION_SEVERITY y) = pack(x) > pack(y);
 
-  function Bool \<= (AssertionSeverity x, AssertionSeverity y) = pack(x) <= pack(y);
+  function Bool \<= (ASSERTION_SEVERITY x, ASSERTION_SEVERITY y) = pack(x) <= pack(y);
 
-  function Bool \>= (AssertionSeverity x, AssertionSeverity y) = pack(x) >= pack(y);
+  function Bool \>= (ASSERTION_SEVERITY x, ASSERTION_SEVERITY y) = pack(x) >= pack(y);
 
 endinstance
 
@@ -45,7 +45,7 @@ typedef function Action checkAssert(Bool b) Assertion;
 
 typedef struct
 {
-  STREAMS_DICT_TYPE  stringID;
+  ASSERTIONS_DICT_TYPE  assertID;
   ASSERTION_SEVERITY severity;
 }
   ASSERTION_DATA
@@ -56,7 +56,7 @@ typedef struct
 // Make a module which checks one assertion.
 // The assert() method should be called with the condition to check.
 
-module [Connected_Module] mkAssertionChecker#(STREAMS_DICT_TYPE myID, ASSERTION_SEVERITY my_severity)
+module [Connected_Module] mkAssertionChecker#(ASSERTIONS_DICT_TYPE myID, ASSERTION_SEVERITY my_severity)
   // interface:
                (Assertion);
 
@@ -89,7 +89,7 @@ module [Connected_Module] mkAssertionChecker#(STREAMS_DICT_TYPE myID, ASSERTION_
   
     if (!b) // Check the boolean expression
     begin   // Failed. The system is sad. :(
-      chain.send_to_next(ASSERTION_DATA {stringID: myID, severity: my_severity});
+      chain.send_to_next(ASSERTION_DATA {assertID: myID, severity: my_severity});
     end
 
   endaction

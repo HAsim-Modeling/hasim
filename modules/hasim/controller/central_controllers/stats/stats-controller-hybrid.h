@@ -17,7 +17,7 @@ class STATS_CONTROLLER_CLASS: public RRR_SERVICE_CLASS,
         // self-instantiation
         static STATS_CONTROLLER_CLASS instance;
         
-        // File for output until we use DRAL.
+        // File for output until we use some standard tool.
         FILE* statsFile;
 
     public:

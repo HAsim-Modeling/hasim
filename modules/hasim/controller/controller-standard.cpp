@@ -24,12 +24,6 @@ CONTROLLER_CLASS::CONTROLLER_CLASS(
     // default streams behavior is to route messages to stdout
     STREAMS streams = STREAMS_CLASS::GetInstance();
 
-    // map stats
-    statfile = fopen("software_stats.out", "w+");
-    streams->MapStream(STREAMID_STAT, statfile);
-
-    // map assertions
-    streams->RegisterCallback(STREAMID_ASSERT, this);
 }
 
 // destructor
@@ -53,8 +47,6 @@ CONTROLLER_CLASS::Uninit()
 void
 CONTROLLER_CLASS::Cleanup()
 {
-    // close open files
-    fclose(statfile);
 }
 
 // controller's main()
@@ -82,19 +74,5 @@ CONTROLLER_CLASS::SchedulerLoop()
     {
         // FIXME: directly poll LLPI
         llpi->Poll();
-    }
-}
-
-// callback from streams
-void
-CONTROLLER_CLASS::StreamsCallback(
-    UINT32 stringID,
-    UINT32 payload0,
-    UINT32 payload1)
-{
-    // payload0 = severity
-    if (payload0 > 1)
-    {
-        CallbackExit(1);
     }
 }

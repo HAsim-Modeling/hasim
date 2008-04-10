@@ -31,4 +31,11 @@ module [HASim_Module] mkConnectionTerminus();
 
     if (`TERM_RRR_CLIENT_EVENTS == 1)
         Connection_Send#(RRR_Request) link_rrr_events <- mkConnection_Send("rrr_client_events");
+        
+    if (`TERM_RRR_CLIENT_STATS == 1) 
+        Connection_Send#(RRR_Request) link_rrr_stats <- mkConnection_Send("rrr_client_stats");
+        
+    if (`TERM_RRR_CLIENT_ASSERTIONS == 1)
+        Connection_Send#(RRR_Request) link_rrr_assertions <- mkConnection_Send("rrr_client_assertions");
+    
 endmodule

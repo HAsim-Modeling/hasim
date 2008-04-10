@@ -36,6 +36,8 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     // direct RRR links (TEMPORARY, these will be automatically generated in future)
     Connection_Receive#(RRR_Request) link_rrr_starter <- mkConnection_Receive("rrr_client_starter");
     Connection_Receive#(RRR_Request) link_rrr_events  <- mkConnection_Receive("rrr_client_events");
+    Connection_Receive#(RRR_Request) link_rrr_stats   <- mkConnection_Receive("rrr_client_stats");
+    Connection_Receive#(RRR_Request) link_rrr_assertions <- mkConnection_Receive("rrr_client_assertions");
 
     // instantiate low-level platform interface
     LowLevelPlatformInterface       llpint          <- mkLowLevelPlatformInterface();
@@ -124,6 +126,11 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     endrule
 
     // direct RRR links (TEMPORARY, these will be automatically generated in future)
+    // NOTE: When this is automatically generated we will need some kind of
+    // dynamic fairness. For now we can use our high-level knowledge to give
+    // a static urgency. Otherwise Events will starve everyone else.
+
+    (* descending_urgency= "translate_rrr_assertions_req, translate_rrr_starter_req, translate_rrr_stats_req, translate_rrr_events_req" *)
     rule translate_rrr_starter_req (True);
 
         let req = link_rrr_starter.receive();
@@ -138,6 +145,22 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
         link_rrr_events.deq();
         llpint.rrrClient.makeRequest(req);
 
+    endrule
+
+    rule translate_rrr_stats_req (True);
+    
+        let req = link_rrr_stats.receive();
+        link_rrr_stats.deq();
+        llpint.rrrClient.makeRequest(req);
+    
+    endrule
+    
+    rule translate_rrr_assertions_req (True);
+    
+        let req = link_rrr_assertions.receive();
+        link_rrr_assertions.deq();
+        llpint.rrrClient.makeRequest(req);
+    
     endrule
 
     // return interface to top-level wires

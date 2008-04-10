@@ -15,7 +15,7 @@ import Counter::*;
 `include "hasim_isa.bsh"
 
 // Dictionary includes
-`include "asim/dict/STREAMS_ASSERTS_FREELIST.bsh"
+`include "asim/dict/ASSERTIONS_FREELIST.bsh"
 
 // FUNCP_FREELIST
 
@@ -84,8 +84,8 @@ module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
 
     // ***** Assertion Checkers *****/
 
-    Assertion assertEnoughPRegs <- mkAssertionChecker(`STREAMS_ASSERTS_FREELIST_OUT_OF_PREGS, ASSERT_ERROR);
-    Assertion assertAtLeastOneAllocatedRegister <- mkAssertionChecker(`STREAMS_ASSERTS_FREELIST_ILLEGAL_BACKUP, ASSERT_ERROR);
+    Assertion assertEnoughPRegs <- mkAssertionChecker(`ASSERTIONS_FREELIST_OUT_OF_PREGS, ASSERT_ERROR);
+    Assertion assertAtLeastOneAllocatedRegister <- mkAssertionChecker(`ASSERTIONS_FREELIST_ILLEGAL_BACKUP, ASSERT_ERROR);
 
     // initialize
 

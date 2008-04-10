@@ -3,14 +3,46 @@ import FIFO::*;
 import hasim_modellib::*;
 import soft_connections::*;
 
-`include "streams.bsh"
-`include "asim/dict/STREAMS.bsh"
-`include "asim/dict/STREAMID.bsh"
+`include "asim/provides/rrr.bsh"
+
+`include "asim/rrr/rrr_service_ids.bsh"
 `include "asim/dict/RINGID.bsh"
+`include "asim/dict/STATS.bsh"
 
-// StatsController: Control all the stats throughout the hardware model.
 
-// StatsConState
+// STATS_CONTROLLER: Control all the stats throughout the hardware model.
+
+// STATS_CONTROLLER
+
+// Controls all the stats throughout the hardware model.
+
+// A StatsController can accept commands from the main hardware controller.
+// After Dump command is asserted it returns the next stat with 
+// getNextStat() until noMoreStats() is true.
+
+interface STATS_CONTROLLER;
+
+  method Action doCommand(STATS_COMMAND com);
+  method Bool   noMoreStats();
+
+endinterface
+
+// STATS_COMMAND
+
+// Commands that can be given to the Stats Controller
+
+typedef enum
+{
+  STATS_Enable,
+  STATS_Disable,
+  STATS_Reset,
+  STATS_Dump
+}
+  STATS_COMMAND
+               deriving (Eq, Bits);
+
+
+// STATS_CON_STATE
 
 // An internal datatype to track the state of the stats controller
 
@@ -23,27 +55,30 @@ typedef enum
   SC_Disabling,    //Executing the Disable command
   SC_Reseting      //Executing the Reset command
 }
-  StatsConState
+  STATS_CON_STATE
                deriving (Eq, Bits);
 
 // mkStatsController
 
 // Abstracts all communication from the main controller to individual stat counters.
 
-module [Connected_Module] mkStatsController#(Connection_Send#(STREAMS_REQUEST) link_streams)
+module [Connected_Module] mkStatsController
     //interface:
                 (STATS_CONTROLLER);
 
   // ****** State Elements ******
 
   // Communication link to the Stats themselves
-  Connection_Chain#(StatData) chain <- mkConnection_Chain(`RINGID_STATS);
+  Connection_Chain#(STAT_DATA) chain <- mkConnection_Chain(`RINGID_STATS);
+ 
+  // Communication to our RRR server
+  Connection_Send#(RRR_Request) link_rrr <- mkConnection_Send("rrr_client_stats");
   
   // Track if we are done dumping
   Reg#(Bool)      dump_finished  <- mkReg(False);
   
   // Our internal state
-  Reg#(StatsConState)  state <- mkReg(SC_Idle);
+  Reg#(STATS_CON_STATE)  state <- mkReg(SC_Idle);
     
   // ****** Rules ******
   
@@ -81,10 +116,12 @@ module [Connected_Module] mkStatsController#(Connection_Send#(STREAMS_REQUEST) l
       tagged ST_Val .stinfo: //A stat to dump
       begin
 
-        link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_STAT,
-                                            stringID: stinfo.statID,
-                                            payload0: stinfo.value,
-                                            payload1: ? });
+        link_rrr.send(RRR_Request { serviceID:    `STATS_SERVICE_ID,
+                                    param0:       0, // unused for now. Reserved for method ID.
+                                    param1:       zeroExtend(pack(stinfo.statID)),
+                                    param2:       zeroExtend(pack(stinfo.value)),
+                                    param3:       0, // unused
+                                    needResponse: False });
       end
       tagged ST_Dump:  //We're done dumping
       begin

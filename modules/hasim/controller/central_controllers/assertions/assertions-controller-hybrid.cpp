@@ -11,8 +11,7 @@
 #include "asim/provides/assertions_controller.h"
 #include "asim/rrr/rrr_service_ids.h"
 
-// TEMPORARY:: Commented out until we migrate assertions.
-// include "asim/dict/ASSERTIONS.h"
+#include "asim/dict/ASSERTIONS.h"
 
 #define SERVICE_ID       ASSERTIONS_SERVICE_ID
 
@@ -67,7 +66,7 @@ ASSERTIONS_CONTROLLER_CLASS::Request(
 {
 
     // TEMPORARY:: Commented out until we migrate assertions.
-/*
+
     // extract event ID, data, and modelCC
     UINT32 unused = arg0; // Reserved to be methodID later if needed.
     UINT32 assert_id = arg1;
@@ -79,21 +78,21 @@ ASSERTIONS_CONTROLLER_CLASS::Request(
     if (assert_msg == NULL)
     {
         cerr << "streams: " << ASSERTIONS_DICT::Str(assert_id)
-             << ": invalid assert_id: " << event_id << endl;
+             << ": invalid assert_id: " << assert_id << endl;
         CallbackExit(1);
     }
 
     // write to file
-    fprintf(assertFile, "[%010u]: %s\n", fpga_cc, assert_msg);
+    fprintf(assertionsFile, "[%010u]: %s\n", fpga_cc, assert_msg);
     
     // if severity is great, end the simulation.
     if (severity > 1)
     {
-        printf(STDERR, "ERROR: Fatal HAsim assertion failure.\n");
-        printf(STDERR, "MESSAGE: %s\n", assert_msg);
+        cerr << "ERROR: Fatal HAsim assertion failure.\n";
+        cerr << "MESSAGE: " << assert_msg << "\n";
 	CallbackExit(1);
     }
-*/
+
     // no RRR response
     return false;
 }

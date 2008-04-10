@@ -11127,3 +11127,76 @@ Directory modules/hasim/controller
 Removed extraneous files from the null hybrid controller.
 
 Michael P.
+
+----------
+pellauer    Date: Thu Apr 10 15:30:13 EDT 2008  CSN: CSN-hasim-362
+                  Thu Apr 10 19:30:13 UTC 2008
+
+
+Directory modules/hasim/controller
+ controller-standard.cpp   Locally Modified          361 
+ controller-standard.h     Locally Modified          361 
+
+Directory modules/hasim/controller/central_controllers
+ central-controllers-standard.bsv Locally Modified          361 
+
+Directory modules/hasim/controller/central_controllers/assertions
+ assertions-controller.rrr Locally Added               0 
+ assertions-controller-streams.bsv Locally Removed           361 
+ assertions-controller-hybrid.awb Locally Modified          361 
+ assertions-controller-hybrid.bsv Locally Added               0 
+ assert-streamid.dic       Locally Removed           361 
+ assertions-controller-hybrid.cpp Locally Modified          361 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          361 
+ stats-controller-common.bsh Locally Removed           361 
+ stats-controller-streamid.dic Locally Removed           361 
+ stats-controller.rrr      Locally Added               0 
+ stats-controller-hybrid.h Locally Modified          361 
+ stats-controller-streams.bsv Locally Removed           361 
+ stats-controller-hybrid.awb Locally Modified          361 
+ stats-controller-streams.bsh Locally Removed           361 
+ stats-controller-hybrid.bsv Locally Added               - 
+
+Directory modules/hasim/common/new-funcp
+ Assertions.bsv            Locally Modified          361 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ scoreboard.dic            Locally Modified          361 
+ regstate_scoreboard_onehot.bsv Locally Modified          361 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          361 
+ manager.dic               Locally Modified          361 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          361 
+ freelist.dic              Locally Modified          361 
+
+Directory modules/functional/semantic-model
+ scoreboard.dic            Locally Modified          361 
+ FUNCPTokState.bsv         Locally Modified          361 
+
+Directory modules/functional/freelist
+ FUNCP_FreeList.bsv        Locally Modified          361 
+ freelist.dic              Locally Modified          361 
+
+Directory modules/common
+ Assertions.bsv            Locally Modified          361 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          361 
+ HAsimPlatformInterface.bsv Locally Modified          361 
+ hasim-platform-interface.awb Locally Modified          361 
+
+Directory modules/common/modellib
+ Stats.bsv                 Locally Modified          361 
+ StatFIFO.bsv              Locally Modified          361 
+
+
+* Stats and Assertions no longer use streams.
+* Stat- and Assertion-controllers are hybrid.
+* Changed instantiations to use correct dictionary
+
+Michael P.

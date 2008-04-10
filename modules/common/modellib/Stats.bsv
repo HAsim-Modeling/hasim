@@ -6,7 +6,7 @@ import Counter::*;
 //HASIM_STATS_ENABLED   True
 //HASIM_STATS_SIZE      32
 `include "asim/dict/RINGID.bsh"
-`include "asim/dict/STREAMS.bsh"
+`include "asim/dict/STATS.bsh"
 
 interface Stat;
   
@@ -17,7 +17,7 @@ endinterface
 
 typedef Bit#(`HASIM_STATS_SIZE) STAT_VALUE;
 
-module [Connected_Module] mkStatCounter#(STREAMS_DICT_TYPE statID)
+module [Connected_Module] mkStatCounter#(STATS_DICT_TYPE statID)
     //interface:
                 (Stat);
 
@@ -31,26 +31,26 @@ typedef union tagged
   void ST_Dump;
   void ST_Enable;
   void ST_Disable;
-  struct {STREAMS_DICT_TYPE statID; STAT_VALUE value;}  ST_Val;
+  struct {STATS_DICT_TYPE statID; STAT_VALUE value;}  ST_Val;
   void ST_Reset;
 }
-  StatData
+  STAT_DATA
            deriving (Eq, Bits);
 
 typedef enum
 {
   Recording, Dumping
 }
-  StatState
+  STAT_STATE
             deriving (Eq, Bits);
 
-module [Connected_Module] mkStatCounter_Enabled#(STREAMS_DICT_TYPE myID)
+module [Connected_Module] mkStatCounter_Enabled#(STATS_DICT_TYPE myID)
   //interface:
               (Stat);
 
-  Connection_Chain#(StatData) chain <- mkConnection_Chain(`RINGID_STATS);
+  Connection_Chain#(STAT_DATA) chain <- mkConnection_Chain(`RINGID_STATS);
   Counter#(`HASIM_STATS_SIZE) stat  <- mkCounter(0);
-  Reg#(StatState)             state <- mkReg(Recording);
+  Reg#(STAT_STATE)             state <- mkReg(Recording);
   Reg#(Bool)                  enabled <- mkReg(True);
  
   rule dump (state == Dumping);
@@ -62,7 +62,7 @@ module [Connected_Module] mkStatCounter_Enabled#(STREAMS_DICT_TYPE myID)
 
   rule shift (state == Recording);
   
-    StatData st <- chain.receive_from_prev();
+    STAT_DATA st <- chain.receive_from_prev();
 
     case (st) matches 
       tagged ST_Dump:
@@ -106,11 +106,11 @@ module [Connected_Module] mkStatCounter_Enabled#(STREAMS_DICT_TYPE myID)
 
 endmodule
 
-module [Connected_Module] mkStatCounter_Disabled#(STREAMS_DICT_TYPE statname)
+module [Connected_Module] mkStatCounter_Disabled#(STATS_DICT_TYPE statname)
   //interface:
               (Stat);
 
-  Connection_Chain#(StatData) chain <- mkConnection_Chain(`RINGID_STATS);
+  Connection_Chain#(STAT_DATA) chain <- mkConnection_Chain(`RINGID_STATS);
   
   rule shift (True);
   

@@ -1,6 +1,6 @@
 import FIFO::*;
 
-`include "asim/dict/STREAMS.bsh"
+`include "asim/dict/STATS.bsh"
 
 typedef enum
 {
@@ -11,7 +11,7 @@ typedef enum
   FState deriving (Bits, Eq);
   
 
-module [Connected_Module] mkStatFIFO#(STREAMS_DICT_TYPE myID) (FIFO#(t)) provisos (Bits#(t, t_SZ));
+module [Connected_Module] mkStatFIFO#(STATS_DICT_TYPE myID) (FIFO#(t)) provisos (Bits#(t, t_SZ));
 
   Stat stat <- mkStatCounter(myID);
   

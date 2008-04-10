@@ -10,8 +10,7 @@
 #include "asim/provides/central_controllers.h"
 
 typedef class CONTROLLER_CLASS* CONTROLLER;
-class CONTROLLER_CLASS: public PLATFORMS_MODULE_CLASS,
-                        public STREAMS_CALLBACK_MODULE_CLASS
+class CONTROLLER_CLASS: public PLATFORMS_MODULE_CLASS
 {
     private:
         // link to LLPI
@@ -23,9 +22,6 @@ class CONTROLLER_CLASS: public PLATFORMS_MODULE_CLASS,
         // central controllers
         CENTRAL_CONTROLLERS centralControllers;
 
-        // stat files
-        FILE *statfile;
-
     public:
         CONTROLLER_CLASS(LLPI);
         ~CONTROLLER_CLASS();
@@ -35,11 +31,8 @@ class CONTROLLER_CLASS: public PLATFORMS_MODULE_CLASS,
         void Cleanup();
         void SchedulerLoop();
 
-        // streams callback
-        void StreamsCallback(UINT32, UINT32, UINT32);
-
         // static methods
-        static EVENTS_CONTROLLER GetInstance();
+        static CONTROLLER GetInstance();
 
 };
 

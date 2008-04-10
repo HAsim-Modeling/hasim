@@ -14,11 +14,11 @@
 #
 # %attributes hasim
 #
-# %sources -t BSV  -v PUBLIC assertions-controller-streams.bsv
+# %sources -t BSV  -v PUBLIC assertions-controller-hybrid.bsv
 # %sources -t H    -v PUBLIC assertions-controller-hybrid.h
 # %sources -t CPP  -v PUBLIC assertions-controller-hybrid.cpp
 # 
-# %sources -t DICT -v PUBLIC assert-streamid.dic
+# %sources -t RRR  -v PUBLIC assertions-controller.rrr
 #
 # %AWB_END
 # */

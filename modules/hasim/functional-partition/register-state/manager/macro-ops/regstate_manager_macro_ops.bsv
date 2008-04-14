@@ -30,6 +30,10 @@ import RegFile::*;
 // Dictionary includes
 `include "asim/dict/ASSERTIONS_REGMANAGER.bsh"
 
+// RRR includes
+`include "asim/provides/rrr.bsh"
+`include "asim/rrr/rrr_service_ids.bsh"
+
 // ***** Typedefs ***** //
 
 // FUNCP_SNAPSHOT_INDEX
@@ -50,6 +54,10 @@ typedef enum
 }
   MEM_PATH
       deriving (Eq, Bits);
+
+// TEMPORARY: Define our RRR Method IDs by hand for now.
+`define UPDATE_REGISTER_METHOD_ID 0
+`define EMULATE_INSTRUCTION_METHOD_ID 1
 
 
 
@@ -183,9 +191,6 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // This register stores the current Phys Reg we are initializing.
     Reg#(FUNCP_PHYSICAL_REG_INDEX)   initCur <- mkReg(0);
 
-    // We are only ready to go if we are neither rewinding nor initializing.
-    let ready = !rewinding && !initializing;
-
     // These support "slow rewinds" which are currently not quite right.
     Reg#(TOKEN_INDEX) rewindTok <- mkRegU();
     Reg#(TOKEN_INDEX) rewindCur <- mkRegU();
@@ -214,6 +219,18 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Record the result for the timing model while we're writing back.
     Reg#(ISA_EXECUTION_RESULT) execWritebackResult <- mkRegU();
     
+    // Are we pausing to emulate an instruction in software?
+    Reg#(Bool) emulatingInstruction <- mkReg(False);
+    // Which token's instruction are we emulating?
+    Reg#(TOKEN) emulatingToken <- mkRegU();
+    // Are we synchronizing are registers with software?
+    Reg#(Bool) synchronizingRegs <- mkReg(False);
+    // Which register are we currently synchronizing?
+    Reg#(ISA_REG_INDEX) synchronizingCurReg <- mkReg(0);
+            
+    // We are only ready to go if we are neither rewinding, initializing, nor emulating
+    let ready = !rewinding && !initializing && !emulatingInstruction;
+
     // Does the commit stage have to free more registers?
     Reg#(Vector#(TSub#(ISA_MAX_DSTS, 1), Maybe#(FUNCP_PHYSICAL_REG_INDEX))) additionalRegsToFree <- mkReg(Vector::replicate(tagged Invalid));
     
@@ -228,6 +245,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     FIFO#(TOKEN) res1Q  <- mkFIFO();
     FIFO#(TOKEN) res2Q <- mkFIFO();
     FIFO#(TOKEN) res3Q   <- mkFIFO();
+    FIFO#(ISA_REG_INDEX) syncQ <- mkFIFO();
     FIFO#(TOKEN) load1Q  <- mkFIFO();
     FIFO#(Tuple2#(TOKEN, MEM_ADDRESS)) load2Q  <- mkFIFO();
     FIFO#(TOKEN) store1Q <- mkFIFO();
@@ -253,7 +271,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
                        Tuple2#(TOKEN, ISA_DEPENDENCY_INFO))    linkGetDeps   <- mkConnection_Server("funcp_getDependencies");
 
     Connection_Server#(TOKEN, 
-                       Tuple2#(TOKEN, ISA_EXECUTION_RESULT)) linkGetResults <- mkConnection_Server("funcp_getResults");
+                       Tuple2#(TOKEN, ISA_EXECUTION_RESULT))   linkGetResults <- mkConnection_Server("funcp_getResults");
 
     Connection_Server#(TOKEN, 
                        TOKEN)                                  linkDoLoads   <- mkConnection_Server("funcp_doLoads");
@@ -284,6 +302,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     Connection_Client#(Tuple3#(ISA_INSTRUCTION, ISA_ADDRESS, ISA_SOURCE_VALUES), 
                        Tuple3#(ISA_EXECUTION_RESULT, ISA_ADDRESS, ISA_RESULT_VALUES)) linkToDatapath <- mkConnection_Client("isa_datapath");
+    
+    // Connections to RRR
+    
+    Connection_Send#(RRR_Request) linkRRRSync <- mkConnection_Send("rrr_client_sync");
+    Connection_Send#(RRR_Request) linkRRREmulate <- mkConnection_Send("rrr_client_emulate");
+    Connection_Receive#(Bit#(64)) linkRRRUpdate <- mkConnection_Receive("rrr_service_ISA_EMULATOR_updateRegister");
+    Connection_Receive#(Bit#(32)) linkRRRFinished <- mkConnection_Receive("rrr_service_ISA_EMULATOR_emulationFinished");
+    
 
     // ***** Assertion Checkers ***** //
 
@@ -291,6 +317,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Assertion assertLoadDestRegIsReady            <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_MALFORMED_LOAD_WRITEBACK, ASSERT_ERROR);
     Assertion assertInstructionIsActuallyAStore   <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_STORE_ON_NONSTORE, ASSERT_WARNING);
     Assertion assertCommitedStoreIsActuallyAStore <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_COMMIT_STORE_ON_NONSTORE, ASSERT_WARNING);
+    Assertion assertRegUpdateAtExpectedTime       <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_REG_UPDATE, ASSERT_WARNING);
+    Assertion assertEmulationFinishedAtExpectedTime <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_EMULATION_FINISHED, ASSERT_WARNING);
 
     // ******* Rules *******
 
@@ -605,6 +633,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         if (isaIsStore(inst))
             tokScoreboard.setStoreType(tok.index, isaStoreType(inst));
+            
+        tokScoreboard.setEmulation(tok.index, isaEmulateInstruction(inst));
 
         // Make a snapshot for branches.
         // Note that there is an implicit assumption here that no branch instruction has more than one destination.  
@@ -758,7 +788,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   When the timing model starts a getResults().
     // Effect: Lookup the locations of this token's sources.
 
-    rule getResults1 (ready);
+    rule getResults1 (ready && !emulatingInstruction);
 
         // Get parameter from the timing model. Begin macro-operation.
         let tok = linkGetResults.getReq();
@@ -769,12 +799,26 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         // Update the scoreboard.
         tokScoreboard.exeStart(tok.index);
+        
+        if (tokScoreboard.emulateInstruction(tok.index))
+        begin
+            
+            emulatingInstruction <= True;
+            emulatingToken <= tok;
+            synchronizingRegs <= True;
+            synchronizingCurReg <= 0;
+            
+        end
+        else
+        begin
+        
+            // Look up the writers.
+            tokWriters.read_req(tok.index);
 
-        // Look up the writers.
-        tokWriters.read_req(tok.index);
-
-        // Pass it along to the next stage.
-        res1Q.enq(tok);
+            // Pass it along to the next stage.
+            res1Q.enq(tok);
+        
+        end
 
     endrule
 
@@ -1084,6 +1128,169 @@ module [HASim_Module] mkFUNCP_RegStateManager
       endrule
     
     end
+
+    
+    // ******* emulateInstruction ******* //
+    // 3-stage macro-operation that interacts with software via RRR.
+    
+    // When:   After the getResults operation detects an instruction which must be emulated.
+    // Effect: First this sends every archtectural register value to software.
+    //         Then it makes a call to emulate the instruction.
+    //         Then it accepts any number of register updates from software.
+    //         Finally it gets an ACK and returns the result of getResults to the timing model.
+    
+    // emulateInstruction1_Req
+    
+    // When:   After the getResults operation puts us into the emulation state, this
+    //         rule happens once for each architectural register.
+    // Effect: Look up the current physical register in the maptable and request it from the regfile.
+    
+    
+    rule emulateInstruction1_Req (emulatingInstruction && synchronizingRegs);
+    
+        // Lookup which register to send next.
+        FUNCP_PHYSICAL_REG_INDEX current_pr = maptable[synchronizingCurReg];
+        
+        // Make the request to the regfile.
+        prf.read_req1(current_pr);
+        
+        // Pass it on to the next stage.
+        syncQ.enq(synchronizingCurReg);
+        
+        // Move on to the next register.
+        ISA_REG_INDEX next_r = synchronizingCurReg + 1;
+        
+        // Was this our last request?
+        if (next_r == 0)
+        begin
+        
+            // End the loop.
+            synchronizingRegs <= False;
+            // Request the inst and current PC
+            tokInst.read_req1(emulatingToken.index);
+            tokAddr.read_req(emulatingToken.index);
+        
+        end
+        
+        // Increment, and possibly repeat.
+        synchronizingCurReg <= next_r;
+        
+    
+    endrule
+
+    // emulateInstruction1_Rsp
+    
+    // When:   After each occurance of emulateInstruction1_Req
+    // Effect: Get the register value response and send it on to software via RRR.
+
+    rule emulateInstruction1_Rsp (True);
+    
+        // Get the register from the previous stage.
+        ISA_REG_INDEX arch_reg = syncQ.first();
+        syncQ.deq();
+        
+        // Get the register value from the regfile.
+        ISA_VALUE reg_val <- prf.read_resp1();
+        
+        // Send the regsiter on to software via RRR
+        linkRRRSync.send(RRR_Request
+                         {
+                            serviceID:    `ISA_EMULATOR_SERVICE_ID,
+                            param0:       `UPDATE_REGISTER_METHOD_ID,
+                            param1:       zeroExtend(pack(arch_reg)),
+                            param2:       zeroExtend(pack(reg_val)),
+                            param3:       0, // Unused
+                            needResponse: False
+                         });
+    
+    endrule
+    
+    // emulateInstruction2
+    
+    // When:   After emulateInstruction1 has transmitted every architectural register.
+    // Effect: Send the instruction emulation request to software via RRR.
+
+    rule emulateInstruction2 (emulatingInstruction && !synchronizingRegs);
+        
+        // Get the instruction and current pc
+        ISA_INSTRUCTION inst <- tokInst.read_resp1();
+        ISA_ADDRESS       pc <- tokAddr.read_resp();
+        
+        // Send the request on to software via RRR
+        linkRRREmulate.send(RRR_Request
+                            {
+                               serviceID:    `ISA_EMULATOR_SERVICE_ID,
+                               param0:       `EMULATE_INSTRUCTION_METHOD_ID,
+                               param1:       inst,
+                               param2:       pc,
+                               param3:       0, // Unused
+                               needResponse: False
+                            });
+
+    
+    endrule
+
+    // emulateInstruction2_UpdateReg
+    
+    // When:   Whenever the software decides that it should update a register in hardware.
+    //         These updates should really only occur when we're emulating an instruction.
+    //         If they come during any other time then this is a fatal error.
+    // Effect: Update the register to the new value.
+
+
+    rule emulateInstruction2_UpdateReg (True);
+        
+        // Get an update request from software.
+        Bit#(64) r_and_v = linkRRRUpdate.receive();
+        linkRRRUpdate.deq();
+        
+        //Temporary: get the rname and value out of the bit 64.
+        ISA_REG_INDEX r = r_and_v[36:32];
+        ISA_VALUE     v = r_and_v[31:0];
+        
+        // Assert that we're in the state we expected to be in.
+        assertRegUpdateAtExpectedTime(emulatingInstruction && !synchronizingRegs);
+        
+        // Lookup the current physical register in the maptable.
+        FUNCP_PHYSICAL_REG_INDEX pr = maptable[r];
+        
+        
+        // Update the regfile.
+        // Note: It's possible that we should be allocating new physical registers instead of
+        //       updating the current ones.
+        prf.write(pr, v);
+        prfValids[pr] <= True;
+    
+    endrule
+
+    // emulateInstruction3
+    
+    // When:   After the software has finished all of its register writes it will send an ACK.
+    // Effect: This means the emulation is complete. Resume normal operations.
+    //         Return a NOP to the timing model.
+
+    rule emulateInstruction3 (True);
+        
+        // Get the ACK from software that they're complete.
+        let ack = linkRRRFinished.receive();
+        linkRRRFinished.deq();
+        
+        // Assert that we're in the state we expected to be in.
+        assertEmulationFinishedAtExpectedTime(emulatingInstruction && !synchronizingRegs);
+        
+        // We are no longer emulating an instruction.
+        // Resume normal operations.
+        emulatingInstruction <= False;
+
+        // Update scoreboard.
+        tokScoreboard.exeFinish(emulatingToken.index);
+            
+        // Send the response to the timing model.
+        // NOTE: Currently only No-Ops can be returned to the timing model.
+        // End of macro-operation.
+        linkGetResults.makeResp(tuple2(emulatingToken, RNop));
+    
+    endrule
 
     // ******* doLoads ******* //
 

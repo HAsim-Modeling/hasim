@@ -38,4 +38,9 @@ module [HASim_Module] mkConnectionTerminus();
     if (`TERM_RRR_CLIENT_ASSERTIONS == 1)
         Connection_Send#(RRR_Request) link_rrr_assertions <- mkConnection_Send("rrr_client_assertions");
     
+    if (`TERM_RRR_CLIENT_SYNC == 1)
+        Connection_Send#(RRR_Request) link_rrr_sync <- mkConnection_Send("rrr_client_sync");
+                                                                                            
+    if (`TERM_RRR_CLIENT_EMULATE == 1)
+        Connection_Send#(RRR_Request) link_rrr_emulate <- mkConnection_Send("rrr_client_emulate");
 endmodule

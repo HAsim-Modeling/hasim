@@ -1,0 +1,9 @@
+service ISA_EMULATOR
+{
+    server hw <- sw
+    {
+        connection updateRegister(in UINT64[64] rname_and_rval);
+        connection emulationFinished(in UINT32[32] unused);
+    };
+};
+

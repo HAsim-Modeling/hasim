@@ -1,0 +1,23 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name ISA Emulator
+# %desc ISA Emulator - currently just printfs
+# %provides hasim_isa_emulator
+#
+#
+# %attributes hasim
+#
+# %sources -t H   -v PUBLIC  isa-emulator-common.h
+# %sources -t CPP -v PRIVATE isa-emulator.cpp
+# %sources -T RRR  -v PUBLIC isa-emulator.rrr
+#
+# %AWB_END
+# */
+

@@ -19,6 +19,9 @@ import RegFile::*;
 `include "soft_connections.bsh"
 `include "hasim_isa.bsh"
 
+// RRR includes
+`include "asim/rrr/rrr_service_ids.bsh"
+
 // Dictionary includes
 `include "asim/dict/ASSERTIONS_SCOREBOARD.bsh"
 
@@ -57,6 +60,9 @@ interface FUCNCP_SCOREBOARD;
   method Action setLoadType(TOKEN_INDEX t,  ISA_MEMOP_TYPE mt);
   method Action setStoreType(TOKEN_INDEX t, ISA_MEMOP_TYPE mt);
   
+  // Set whether or not the instruction should be emulated in software.
+  method Action setEmulation(TOKEN_INDEX t, Bool em);
+  
   // Rollback the allocations younger than t.
   method Action rewindTo(TOKEN_INDEX t);
   
@@ -64,6 +70,7 @@ interface FUCNCP_SCOREBOARD;
   method Bool isAllocated(TOKEN_INDEX t);
   method Bool isLoad(TOKEN_INDEX t);
   method Bool isStore(TOKEN_INDEX t);
+  method Bool emulateInstruction(TOKEN_INDEX t);
   method ISA_MEMOP_TYPE getLoadType(TOKEN_INDEX t);
   method ISA_MEMOP_TYPE getStoreType(TOKEN_INDEX t);
   method TOKEN_INDEX youngest();
@@ -99,6 +106,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     RegFile#(TOKEN_INDEX, ISA_MEMOP_TYPE) load_type  <- mkRegFileFull();
     RegFile#(TOKEN_INDEX, ISA_MEMOP_TYPE) store_type <- mkRegFileFull();
+    TOKEN_SCOREBOARD emulation <- mkRegFileFull();
 
     // A pointer to the next token to be allocated.
     Reg#(TOKEN_INDEX) next_free_tok <- mkReg(0);
@@ -401,6 +409,17 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     
     endmethod
 
+    // setEmulation
+
+    // When:   Any time.
+    // Effect: Record whether or not the token should be emulated.
+
+    method Action setEmulation(TOKEN_INDEX t, Bool em);
+    
+        emulation.upd(t, em);
+            
+    endmethod
+
     // rewindTo
     
     // When:   Any time.
@@ -456,6 +475,17 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     method Bool isStore(TOKEN_INDEX t);
 
         return is_store.sub(t);
+
+    endmethod
+
+    // emulateInstruction
+    
+    // When:   Any time.
+    // Effect: Accessor method.
+
+    method Bool emulateInstruction(TOKEN_INDEX t);
+
+        return emulation.sub(t);
 
     endmethod
 

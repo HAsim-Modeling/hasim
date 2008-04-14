@@ -1,13 +1,8 @@
 
-[Central Controllers/Requires]
-assertions_controller=Hybrid Assertions Controller
-module_controller=Module Controller
-events_controller=Hybrid Events Controller
-stats_controller=Hybrid Stats Controller
 
 [Hasim Standard Controller/Requires]
-central_controllers=Central Controllers
-local_controllers=Local Controllers
+central_controllers=Standard Central Controllers
+local_controllers=Standard Local Controllers
 starter=Hybrid Basic Starter
 
 [Global]
@@ -43,21 +38,35 @@ Packagehint=hasim
 File=modules/hasim/controller/central_controllers/stats/stats-controller-hybrid.awb
 Packagehint=hasim
 
-[Local Controllers]
-File=modules/hasim/controller/local_controllers/local-controllers-standard.awb
-Packagehint=hasim
 
 [Hybrid Assertions Controller]
 File=modules/hasim/controller/central_controllers/assertions/assertions-controller-hybrid.awb
 Packagehint=hasim
 
-[Central Controllers]
-File=modules/hasim/controller/central_controllers/central-controllers-standard.awb
-Packagehint=hasim
 
 [Hasim Module Local Controller]
 File=modules/hasim/controller/local_controllers/module/local-controller-module-standard.awb
 Packagehint=hasim
 
-[Local Controllers/Requires]
+
+[Emulation Controller Printf]
+File=modules/hasim/controller/central_controllers/emulation/emulation-controller-printf.awb
+Packagehint=hasim
+
+[Standard Local Controllers/Requires]
 module_local_controller=Hasim Module Local Controller
+
+[Standard Central Controllers/Requires]
+assertions_controller=Hybrid Assertions Controller
+module_controller=Module Controller
+events_controller=Hybrid Events Controller
+stats_controller=Hybrid Stats Controller
+emulation_controller=Emulation Controller Printf
+
+[Standard Central Controllers]
+File=modules/hasim/controller/central_controllers/central-controllers-standard.awb
+Packagehint=hasim
+
+[Standard Local Controllers]
+File=modules/hasim/controller/local_controllers/local-controllers-standard.awb
+Packagehint=hasim

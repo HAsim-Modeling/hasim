@@ -27,6 +27,8 @@
 # %param --global TERM_RRR_CLIENT_EVENTS        1   "termimate rrr_client_events?"
 # %param --global TERM_RRR_CLIENT_STATS         1   "terminate rrr_client_stats?"
 # %param --global TERM_RRR_CLIENT_ASSERTIONS    1   "terminate rrr_client_assertions?"
+# %param --global TERM_RRR_CLIENT_SYNC          1   "terminate rrr_client_sync?"
+# %param --global TERM_RRR_CLIENT_EMULATE       1   "terminate rrr_client_emulate?"
 #
 # %AWB_END
 # */

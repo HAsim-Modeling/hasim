@@ -11200,3 +11200,57 @@ Directory modules/common/modellib
 * Changed instantiations to use correct dictionary
 
 Michael P.
+
+----------
+pellauer    Date: Mon Apr 14 14:57:27 EDT 2008  CSN: CSN-hasim-363
+                  Mon Apr 14 18:57:27 UTC 2008
+
+
+Directory config/pm/hasim/submodels/controller
+ hybrid_standard_controller.apm Locally Modified          362 
+
+Directory modules/hasim/controller
+ controller-standard.cpp   Locally Modified          362 
+
+Directory modules/hasim/controller/central_controllers
+ central-controllers-standard.h Locally Modified          362 
+ central-controllers-standard.cpp Locally Modified          362 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          362 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          362 
+ manager.dic               Locally Modified          362 
+
+Directory modules/hasim/functional-partition
+ isa-emulator/             Locally Added               0 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Added               0 
+ isa-emulator.rrr          Locally Added               0 
+ isa-emulator.awb          Locally Added               0 
+ isa-emulator-common.h     Locally Added               0 
+
+Directory modules/hasim/functional-partition
+ functional_partition_default.awb Locally Modified          362 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          362 
+ HAsimPlatformInterface.bsv Locally Modified          362 
+ hasim-platform-interface.awb Locally Modified          362 
+
+
+Version 3 of the Functional Partition now supports an isa-emulator service via
+RRR.
+
+Upon encountering an emulated instruction, the current value of all registers is
+passed to the software via the RRR syncRegister() call. Then a call to
+emulateInstruction() is made. The software makes one or more calls to
+updateRegister(), and finally a call to emulationFinished(). (This last call
+will eventually be replaced with an ACK.)
+
+Removed some exraneous instantiations from the controller.
+
+Michael P.
+

@@ -7,14 +7,15 @@
 #/*
 # %AWB_START
 #
-# %name Functional Partition
-# %desc Functional Partition 
+# %name Functional Partition Version 3
+# %desc Functional Partition Version 3
 #
 # %provides hasim_funcp
 # 
 # %requires funcp_regstate
 # %requires funcp_memstate
 # %requires hasim_isa_datapath
+# %requires hasim_isa_emulator
 #
 # %attributes hasim funcp
 #

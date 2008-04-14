@@ -19,10 +19,7 @@ CONTROLLER_CLASS::CONTROLLER_CLASS(
     starter = STARTER_CLASS::GetInstance();
 
     // setup central controllers
-    centralControllers = CENTRAL_CONTROLLERS_CLASS::GetInstance();
-
-    // default streams behavior is to route messages to stdout
-    STREAMS streams = STREAMS_CLASS::GetInstance();
+    centralControllers = new CENTRAL_CONTROLLERS_CLASS();
 
 }
 
@@ -30,6 +27,7 @@ CONTROLLER_CLASS::CONTROLLER_CLASS(
 CONTROLLER_CLASS::~CONTROLLER_CLASS()
 {
     Cleanup();
+    delete centralControllers;
 }
 
 // uninit: override

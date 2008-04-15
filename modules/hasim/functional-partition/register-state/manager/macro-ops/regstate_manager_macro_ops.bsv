@@ -142,7 +142,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     // The highest register in the ISA (the last one which is initially valid).
     ISA_REG_INDEX            highestReg = maxBound;
-    FUNCP_PHYSICAL_REG_INDEX maxInit = zeroExtend(highestReg);
+    FUNCP_PHYSICAL_REG_INDEX maxInit = zeroExtend(pack(highestReg));
 
     // The initial map is that all architectural registers are mapped 1-to-1 to
     // physical registers and are all valid.
@@ -226,7 +226,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Are we synchronizing are registers with software?
     Reg#(Bool) synchronizingRegs <- mkReg(False);
     // Which register are we currently synchronizing?
-    Reg#(ISA_REG_INDEX) synchronizingCurReg <- mkReg(0);
+    Reg#(ISA_REG_INDEX) synchronizingCurReg <- mkReg(minBound);
             
     // We are only ready to go if we are neither rewinding, initializing, nor emulating
     let ready = !rewinding && !initializing && !emulatingInstruction;
@@ -806,7 +806,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             emulatingInstruction <= True;
             emulatingToken <= tok;
             synchronizingRegs <= True;
-            synchronizingCurReg <= 0;
+            synchronizingCurReg <= minBound;
             
         end
         else

@@ -11279,3 +11279,16 @@ Directory modules/model
   model build step knows to link with m5 when a magic parameter is set.
 - main() passes command line parameters to the virtual platform (m5).
   This will need to be more intelligent to pass the right subset of parameters.
+
+----------
+pellauer    Date: Tue Apr 15 11:56:17 EDT 2008  CSN: CSN-hasim-365
+                  Tue Apr 15 15:56:17 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          364 
+
+
+Small bugfix in V3 of the functional partition.
+
+Michael P.

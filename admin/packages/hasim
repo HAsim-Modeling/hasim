@@ -1,8 +1,8 @@
 [Global]
 Description=Hardware Asim Base Library
-CSN=CSN-hasim-363
+CSN=CSN-hasim-364
 Name=hasim
 Tag=HEAD
 Lock=asim-hasim
 Buildorder=4
-Dependencies=hasim/HEAD 
+Dependencies=simcore/HEAD asimcore/HEAD

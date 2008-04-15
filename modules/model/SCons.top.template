@@ -26,6 +26,9 @@ defs = {
     'GEN_HS'             : 'schedule.h @GEN_HS@',
     'LDFLAGS'            : '-L /usr/lib64/curses -L /usr/lib/curses',
     'MAKE_ALL_TARGET'    : '@MAKE_ALL_TARGET@',
+    'M5_BUILD_DIR'       : '@M5_BUILD_DIR@',    # Defined if m5 simulator is present
+    'M5_BUILD_NAME'      : '@M5_BUILD_NAME@',
+    'WORKSPACE_ROOT'     : '@MODEL_ROOT@',
     'ROOT_DIR_MODEL'     : '@ROOT_DIR_MODEL@',
     'ROOT_DIR_HW'        : '@ROOT_DIR_HW@',
     'ROOT_DIR_HW_INC'    : '@ROOT_DIR_HW_INC@',
@@ -33,6 +36,7 @@ defs = {
     'ROOT_DIR_SW_INC'    : '@ROOT_DIR_SW_INC@',
     'TMP_BSC_DIR'        : '@TMP_BSC_DIR@',
     'TMP_XILINX_DIR'     : '@TMP_XILINX_DIR@',
+    'WORKSPACE_ROOT'     : '@WORKSPACE_ROOT@',
     'XST_FILE'           : '@XST_FILE@',
 }
 
@@ -151,6 +155,7 @@ BSC = env['DEFS']['BSC']
 BSC_FLAGS = env['DEFS']['BSC_FLAGS']
 LDFLAGS = env['DEFS']['LDFLAGS']
 TMP_BSC_DIR = env['DEFS']['TMP_BSC_DIR']
+WORKSPACE_ROOT = env['DEFS']['WORKSPACE_ROOT']
 
 ROOT_WRAPPER_SYNTH_ID = 'mk_' + env['DEFS']['ROOT_DIR_MODEL'] + '_Wrapper'
 
@@ -366,13 +371,23 @@ if env.GetOption('clean'):
 ############################################################################
 
 if SW_EXE != []:
+    ##
+    ## These will be defined if the m5 simulator is part of the model
+    ##
+    M5_BUILD_DIR  = env['DEFS']['M5_BUILD_DIR']
+    M5_BUILD_NAME = env['DEFS']['M5_BUILD_NAME'] 
+    m5_path = []
+    if (M5_BUILD_DIR != ''):
+        m5_dir = WORKSPACE_ROOT + '/src/' + M5_BUILD_DIR + '/'
+        m5_path = [ m5_dir + M5_BUILD_NAME ]
+
     # CPPPATH defines both gcc include path and dependence path for
     # SCons.  The '#' forces paths to be relative to the root of the build.
     sw_env = env.Clone(CCFLAGS = '-DAPM_NAME=\\"' + TMP_BSC_DIR + '/' + APM_NAME + '\\"',
                        CPPPATH = [ '#/' + env['DEFS']['ROOT_DIR_SW_INC'],
                                    '#/' + env['DEFS']['ROOT_DIR_HW_MODEL'],
                                    '#/iface/build/include',
-                                   '.' ])
+                                   '.' ] + m5_path)
 
     sw_env['DEFS']['CWD_REL'] = sw_env['DEFS']['ROOT_DIR_SW_MODEL']
 
@@ -382,8 +397,46 @@ if SW_EXE != []:
                             build_dir = sw_build_dir,
                             duplicate = 0)
 
-    sw_exe = sw_env.Program(SW_EXE, sw_objects)
+    sw_libpath = [ '.' ]
+    sw_libs = []
 
+    sw_link_tgt = SW_EXE
+
+    ##
+    ## Add m5 libraries, if needed
+    ##
+    if (M5_BUILD_DIR != ''):
+        sw_libpath += m5_path
+        sw_libs += [ 'm5_debug' ]
+
+        sw_libpath += [ m5_dir + '/libelf' ]
+        sw_libs += [ 'elf' ]
+
+        sw_libpath += [ '/proj/vssad/local/x86_64_linux26/pkgs/Python-2.5.2/lib' ]
+        sw_libs += [ 'python2.5' ]
+
+        sw_libs += [ 'z' ]
+
+        # m5 needs python
+        sw_libpath += [ os.path.join(sys.exec_prefix, 'lib') ]
+        sw_libs += [ 'python' + sys.version[:3] ]
+
+        # m5 links a temporary file then adds Python code
+        sw_link_tgt = [ SW_EXE[0] + '.no_python' ]
+
+    sw_exe = sw_env.Program(sw_link_tgt, sw_objects, LIBPATH=sw_libpath, LIBS=sw_libs)
+
+    if (M5_BUILD_DIR != ''):
+        ##
+        ## Define a simple SCons builder to concatenate files.  Used to append the
+        ## Python zip archive to the executable.
+        ##
+        concat_builder = Builder(action = Action(['cat $SOURCES > $TARGET',
+                                                  'chmod +x $TARGET']))
+        sw_env.Append(BUILDERS = { 'Concat' : concat_builder })
+
+        # Append Python code to the binary
+        sw_exe = sw_env.Concat(SW_EXE, [ sw_exe, m5_path[0] + '/m5py.zip' ])
 
 ############################################################################
 ############################################################################

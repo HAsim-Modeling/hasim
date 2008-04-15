@@ -82,6 +82,11 @@ sub common_replacements($$) {
 
     __hash_module_parameters($model->modelroot(), $replacements_r);
 
+    # @WORKSPACE_ROOT@
+    my $workspace_root = `awb-resolver --config=workspace`;
+    chomp($workspace_root);
+    HAsim::Util::hash_set($replacements_r,'@WORKSPACE_ROOT@',$workspace_root);
+
     # @APM_NAME@
     my $apm = HAsim::Build::get_model_name($model);
     HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$apm);

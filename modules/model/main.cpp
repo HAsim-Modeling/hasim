@@ -12,6 +12,7 @@
 #include "main.h"
 #include "asim/provides/hasim_controller.h"
 #include "asim/dict/init.h"
+#include "asim/provides/virtual_platform.h"
 #include "asim/provides/low_level_platform_interface.h"
 
 // =======================================
@@ -28,9 +29,10 @@ int main(int argc, char *argv[])
     globalArgs = new GLOBAL_ARGS_CLASS(argc, argv);
 
     // instantiate:
-    // 1. LLPI
-    // 2. Controller
-    // 3. System
+    // 1. Virtual platform
+    // 2. LLPI
+    // 3. Controller
+    VIRTUAL_PLATFORM vp   = new VIRTUAL_PLATFORM_CLASS(argc, argv);
     LLPI       llpi       = new LLPI_CLASS();
     CONTROLLER controller = new CONTROLLER_CLASS(llpi);
 
@@ -40,6 +42,7 @@ int main(int argc, char *argv[])
     // cleanup and exit
     delete controller;
     delete llpi;
+    delete vp;
 
     return exitcode;
 }

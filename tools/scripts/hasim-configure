@@ -178,8 +178,6 @@ sub setup_benchmark {
     
     #Actually create rundir
     
-    print STDOUT "RUNDir: $rundir\n";
-    
     my $benchmark = Asim::Benchmark->new($benchmarkfile);
     if (! defined($benchmark)) {
         HAsim::Util::WARN_AND_DIE("Failed to open benchmark file $benchmarkfile");

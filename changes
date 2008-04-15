@@ -11254,3 +11254,28 @@ Removed some exraneous instantiations from the controller.
 
 Michael P.
 
+
+----------
+mcadler     Date: Mon Apr 14 21:06:54 EDT 2008  CSN: CSN-hasim-364
+                  Tue Apr 15 01:06:54 UTC 2008
+
+
+Directory admin/packages
+ hasim                     Locally Modified          363 
+
+Directory libperl/HAsim/lib/HAsim
+ Util.pm                   Locally Modified          363 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          363 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          363 
+ main.cpp                  Locally Modified          363 
+
+- Teach the scons software-side builder to link with m5.  m5 sources aren't
+  configured as part of the model.  Instead, m5 is built as part of the
+  configure/make step in checking out an ISA-specific repository.  The
+  model build step knows to link with m5 when a magic parameter is set.
+- main() passes command line parameters to the virtual platform (m5).
+  This will need to be more intelligent to pass the right subset of parameters.

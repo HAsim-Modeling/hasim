@@ -11292,3 +11292,57 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 Small bugfix in V3 of the functional partition.
 
 Michael P.
+
+----------
+mcadler     Date: Wed Apr 16 15:11:38 EDT 2008  CSN: CSN-hasim-366
+                  Wed Apr 16 19:11:38 UTC 2008
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          365 
+ bmark/                    Locally Added               0 
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Added               0 
+ m5_configs/               Locally Added               0 
+
+Directory tools/scripts/bmark/m5_configs
+ common/                   Locally Added               0 
+
+Directory tools/scripts/bmark/m5_configs/common
+ Options.py                Locally Added               0 
+ Simulation.py             Locally Added               0 
+ Caches.py                 Locally Added               0 
+
+Directory tools/scripts/bmark/m5_configs
+ se.py                     Locally Added               0 
+
+Directory tools/scripts/bmark
+ setup-bmark               Locally Added               0 
+
+Directory modules/model
+ Makefile.top.template     Locally Modified          365 
+ SCons.top.template        Locally Modified          365 
+ main.cpp                  Locally Modified          365 
+ main.h                    Locally Modified          365 
+
+Directory modules/system/single_chip_system
+ hasim_system.awb          Locally Modified          365 
+
+Time for HAsim software build environment to grow up:
+  - Honor command line DEBUG/OPT and workspace default in awb.config.
+  - Use %library and %include directives from config files
+  - We now build with libasim and libdral.
+  - We don't yet use asim/syntax.h, but should soon.
+
+- main() now parses an argument (--funcp="<arg>") to a separate argument
+  vector and passes it to the functional platform.  The --benchmark
+  parameter is gone.
+
+- All benchmarks (smips and alpha) are now set up by a single script
+
+- Alpha/m5 simulation now loads a standard Alpha binary and returns control
+  to HAsim.
+
+- The benchmark run scripts now take a --gdb argument.  The script invokes
+  gdb and passes all the necessary commands to run a benchmark.

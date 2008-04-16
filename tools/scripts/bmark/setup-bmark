@@ -1,0 +1,127 @@
+: # -*-Perl-*-
+eval 'exec perl -w "$0" ${1+"$@"}'
+    if 0;
+
+##############################################################
+#
+# Benchmark setup for HAsim
+#
+# Usage: setup-bmark <bmark> <srcdir> <destdir>
+#
+# Setup benchmark to run in <destdir>
+#
+##############################################################
+
+use strict;
+use warnings;
+use File::Basename;
+use Getopt::Long;
+
+sub SubstCopyFile($$);
+sub Usage();
+sub ErrorExit($);
+
+my $feeder = '';
+my $group = undef;
+my $isa = "unknown_ISA";
+
+#
+# Find the root of the benchmarks directory tree.
+#
+my $benchmark_root = `awb-resolver --config=benchmarkdir`;
+chomp($benchmark_root);
+ErrorExit("Can't find benchmark root") if ($benchmark_root eq '');
+
+if (! GetOptions('feeder=s' => \$feeder,
+                 'group=s' => \$group,
+                 'isa=s' => \$isa,
+                )) {
+    Usage();
+}
+
+if ($#ARGV != 2) {
+    Usage();
+}
+
+my $bmark = $ARGV[0];
+my $srcdir = $ARGV[1];
+my $dstdir = $ARGV[2];
+
+print "BMARK: $bmark\n";
+print "SRC: $srcdir";
+print "DST: $dstdir";
+
+if (! defined($group)) {
+    $group = $bmark;
+}
+
+chdir($dstdir) or ErrorExit("Failed to cd to $dstdir");
+mkdir('program') or ErrorExit("Failed to make 'program' directory");
+
+my $src_prog;
+
+if (-f "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.bin") {
+    $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.bin";
+}
+elsif (-f "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.vmh") {
+    $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.vmh";
+}
+else {
+    print STDERR "Can't find binary in ${benchmark_root}/hasim/${isa}/${group}\n";
+    exit(1);
+}
+
+my $dst_prog = "program/" . basename($src_prog);
+
+unlink($dst_prog);
+symlink($src_prog, $dst_prog) or ErrorExit("Failed to symlink $dst_prog => $src_prog");
+
+SubstCopyFile("${srcdir}/run.bmark", "${dstdir}/run");
+chmod(0755, "${dstdir}/run");
+
+
+# Set up m5 environment
+if ($feeder eq 'm5') {
+    system("(cd $srcdir; tar cf - ./m5_configs) | (cd $dstdir; tar xf -)");
+}
+
+
+exit(0);
+
+
+
+##
+## Copy file from src to dst, substituting a bunch of XX<foo>XX strings for
+## values computed in this setup script.  This allows for generic script
+## files that are made specific when the workload is set up.
+##
+sub SubstCopyFile($$)
+{
+    my ($src, $dst) = @_;
+
+    open(INPUT, "<$src") or ErrorExit("Can't open input $src: $!\n");
+    open(OUTPUT, ">$dst") or ErrorExit("Can't open output $dst: $!\n");
+
+    local $_;
+    while (<INPUT>)
+    {
+        s/\@BENCHMARK\@/${bmark}/g;
+        s/\@ISA\@/${isa}/g;
+        print OUTPUT $_;
+    }
+
+    close(INPUT);
+    close(OUTPUT);
+}
+
+
+sub Usage() {
+    print STDERR "Usage: setup-bmark [--group <name>] [--isa <name>] <bmark> <srcdir> <dstdir>\n";
+    exit(1);
+}
+
+
+sub ErrorExit($) {
+    print STDERR @_ . "\n";
+    exit(1);
+}

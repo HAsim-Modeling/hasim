@@ -1,0 +1,179 @@
+: # -*-Perl-*-
+eval 'exec perl -w "$0" ${1+"$@"}'
+    if 0;
+
+use strict;
+use warnings;
+use Getopt::Long qw(:config no_auto_abbrev no_ignore_case pass_through);
+
+##
+## Benchmark run script
+##
+
+sub Exec($$);
+sub ReadConfig($);
+
+my $gdb = 0;
+my $noProgram = 0;
+my $noReserve = 0;
+
+my $status = GetOptions("gdb!" => \$gdb,
+                        "noprogram!" => \$noProgram,
+                        "noreserve!" => \$noReserve,
+                       );
+if (! $status) {
+    print STDERR "Usage: run [--gdb] [--noprogram] [--noreserve] [model options]\n\n";
+    print STDERR "  --gdb Invokes the software side in gdb\n";
+    print STDERR "  --noprogram Skips the FPGA load and reservation steps\n";
+    print STDERR "  --noreserve skips the FPGA reservation steps\n";
+    exit(1);
+}
+
+
+#############################################################################
+#############################################################################
+##
+## Start by figuring out the model location and type.
+##
+#############################################################################
+#############################################################################
+
+my %config;
+
+ReadConfig("config/env.sh");
+ReadConfig("$config{modelDir}/config/env.sh");
+
+##
+## Pseudo-enumeration of possible model types
+##
+my $MODEL_FPGA = 1;                     # Model runs on FPGA hardware
+my $MODEL_BLUESIM = 2;                  # Bluesim
+my $MODEL_VSIM = 3;                     # Verilog simulator
+
+my $mType = 0;
+
+if (-f "$config{modelDir}/$config{model}_hw.download") {
+    $mType = $MODEL_FPGA;
+}
+elsif (-f "$config{modelDir}/$config{model}_hw.exe") {
+    $mType = $MODEL_BLUESIM;
+}
+elsif (-f "$config{modelDir}/$config{model}_hw.vexe") {
+    $mType = $MODEL_VSIM;
+}
+else {
+    die("Can't determine model type");
+}
+
+my $cmd = "$config{modelDir}/$config{model} --modeldir=$config{modelDir} --funcp=\"$config{feedFlags}\" $config{genFlags}";
+foreach my $c (@ARGV) {
+    $cmd .= " $c";
+}
+
+# Adjust the arguments for Bluesim if it is being invoked directly
+if (! $config{isHybridModel} && ($mType == $MODEL_BLUESIM)) {
+    $cmd =~ s/\s--/ +--/g;
+
+    # Bluesim may expect to load a program from a well known file
+    unlink('program.vmh');
+    link('program/@BENCHMARK@.@ISA@.vmh', 'program.vmh');
+}
+
+
+#############################################################################
+#############################################################################
+##
+## Load the FPGA and run the model
+##
+#############################################################################
+#############################################################################
+
+if ($mType == $MODEL_FPGA) {
+    # Load FPGA
+    if (! $noProgram) {
+        if (! $noReserve) {
+            Exec("hasim-fpga-ctrl --reserve", "Failed to reserve FPGA");
+        }
+
+        Exec("hasim-fpga-ctrl --program", "Failed to enter FPGA programming mode");
+        Exec("(cd $config{modelDir}; ./$config{model}_hw.download) 2>&1 | tee FPGA_programming.log | grep -e INFO:iMPACT -e Programmed -e Error", "Failed to program FPGA");
+        Exec("hasim-fpga-ctrl --activate", "Failed to activate FPGA or driver");
+    }
+}
+
+# Run the software side or a hardware simulator
+if ($config{isHybridModel} || ($mType != $MODEL_FPGA)) {
+    if ($gdb) {
+        system("gdb -args ${cmd}");
+    }
+    else {
+        system("${cmd} | tee @BENCHMARK@.@ISA@.out");
+    }
+}
+
+if (-f "hasim_events.out") {
+    system("sort hasim_events.out -o hasim_events.out.$$; mv -f hasim_events.out.$$ hasim_events.out");
+}
+
+if (($mType == $MODEL_FPGA) && ! $noProgram && ! $noReserve) {
+    Exec("hasim-fpga-ctrl --drop-reservation", "Failed to drop FPGA reservation");
+}
+
+# Done.
+exit(0);
+
+
+sub ErrorExit($) {
+    my $msg = shift;
+
+    print STDERR "${msg}\n";
+
+    if (($mType == $MODEL_FPGA) && ! $noProgram && ! $noReserve) {
+        system("hasim-fpga-ctrl --drop-reservation");
+    }
+
+    exit(1);
+}
+
+
+sub Exec($$) {
+    my $cmd = shift;
+    my $errmsg = shift;
+
+    system($cmd);
+    if ($? == -1) {
+        ErrorExit("Failed to execute $cmd: $!");
+    }
+    elsif ($? & 127) {
+        ErrorExit("Child died with signal " . ($? & 127) . ", " . (($? & 128) ? 'with' : 'without') . " coredump");
+    }
+    elsif (($? >> 8) != 0) {
+        ErrorExit("${errmsg}");
+    }
+}
+
+
+#
+# Read the configuration file
+#
+sub ReadConfig($) {
+    my $conf = shift;
+
+    open(CONFIG, "< $conf") or die("Failed to open $conf");
+    while (<CONFIG>) {
+        chomp;
+        my $t = $_;
+        $t =~ s/#.*//;
+        if ($t =~ /^\s*([^\s]+)\s*=\s*"(.*)"\s*$/) {
+            my $c = $1;
+            my $v = $2;
+            $v =~ s/^["'](.*)["']$/$1/;         # Drop quotation marks
+            $config{$c} = $v;
+        }
+        elsif ($t =~ /^\s*([^\s]+)\s*=\s*([^\s]+)\s*$/) {
+            my $c = $1;
+            my $v = $2;
+            $config{$c} = $v;
+        }
+    }
+}

@@ -191,9 +191,14 @@ sub setup_benchmark {
     $status = system("rm -rf $rundir");
     $status = system("mkdir -p ${rundir}/config");
     
+    my $feed_arg = '';
+    if (${benchmark}->feeder() ne '') {
+        $feed_arg = "--feeder " . ${benchmark}->feeder();
+    }
+
     # Invoke the setup script
     my $model_name = HAsim::Build::get_model_name($model);
-    my $cmd = "env ASIM_CONFIG_MODEL=$model_name $setup_command $setup_args $srcdir $rundir";
+    my $cmd = "env ASIM_CONFIG_MODEL=$model_name $setup_command $feed_arg $setup_args $srcdir $rundir";
     print STDOUT "COMMAND: $cmd\n";
     $status = system($cmd);
 
@@ -217,6 +222,7 @@ sub setup_benchmark {
     print STUB "#\n\n";
     print STUB "modelDir=\"${relmodeldir}\"\n";
     print STUB "model=\"${model_name}\"\n";
+    print STUB "feeder=\"" . ${benchmark}->feeder() . "\"\n";
     print STUB "genFlags=\"" . ${benchmark}->general_flags() . "\"\n";
     print STUB "sysFlags=\"" . ${benchmark}->system_flags() . "\"\n";
     print STUB "feedFlags=\"" . ${benchmark}->feeder_flags() . "\"\n";
@@ -818,6 +824,26 @@ sub __generate_makefile_hw_top {
         }
         else {
             HAsim::Util::hash_append($replacements_r," ",'@BDPI_CS@',HAsim::Util::path_append($my_dir, $f));
+        }
+    }
+
+    ## @SW_LIBS@
+    foreach my $f ($module->library()) {
+        $f = `awb-resolver $f`;
+        chomp($f);
+        if ($f ne '') {
+            HAsim::Util::hash_append($replacements_r," ",'@SW_LIBS@',$f);
+            # Automatically add library directory as an include path
+            HAsim::Util::hash_append($replacements_r," ",'@SW_INC_DIRS@',HAsim::Util::path_append(dirname($f),'include'));
+        }
+    }
+
+    ## @SW_INC_DIRS@
+    foreach my $f ($module->include()) {
+        $f = `awb-resolver $f`;
+        chomp($f);
+        if ($f ne '') {
+            HAsim::Util::hash_append($replacements_r," ",'@SW_INC_DIRS@',$f);
         }
     }
 

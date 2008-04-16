@@ -5,22 +5,30 @@
 ## and invokes SCons.
 ##
 
+ARGS=
+ifdef DEBUG
+    ARGS+= DEBUG=1
+endif
+ifdef OPT
+    ARGS+= OPT=1
+endif
+
 .PHONY: all
 all:
-	@scons
+	scons $(ARGS)
 
 .PHONY: exe
 exe:
-	@scons exe
+	scons exe $(ARGS)
 
 .PHONY: vexe
 vexe:
-	@scons vexe
+	scons vexe $(ARGS)
 
 .PHONY: bit
 bit:
-	@scons bit
+	scons bit $(ARGS)
 
 .PHONY: clean
 clean:
-	@scons -c
+	scons -c $(ARGS)

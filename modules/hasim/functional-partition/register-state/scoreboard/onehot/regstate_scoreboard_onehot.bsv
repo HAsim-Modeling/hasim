@@ -20,7 +20,7 @@ import RegFile::*;
 `include "hasim_isa.bsh"
 
 // RRR includes
-`include "asim/rrr/rrr_service_ids.bsh"
+`include "asim/rrr/service_ids.bsh"
 
 // Dictionary includes
 `include "asim/dict/ASSERTIONS_SCOREBOARD.bsh"

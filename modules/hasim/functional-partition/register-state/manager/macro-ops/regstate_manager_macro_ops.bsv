@@ -32,7 +32,7 @@ import RegFile::*;
 
 // RRR includes
 `include "asim/provides/rrr.bsh"
-`include "asim/rrr/rrr_service_ids.bsh"
+`include "asim/rrr/service_ids.bsh"
 
 // ***** Typedefs ***** //
 

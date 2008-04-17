@@ -6,21 +6,14 @@
 # *****************************************************************
 
 #
-# Author:  Martha Mercaldi
+# Author:  Angshuman Parashar
 #
 
-package HAsim;
+package HAsim::RRR;
 
 use warnings;
 use strict;
 
-use HAsim::Bluespec;
-use HAsim::Build;
-use HAsim::Templates;
-use HAsim::Util;
-use HAsim::Xilinx;
-use HAsim::RRR;
-
-our $VERSION = "0.02";
+use HAsim::RRR::Service;
 
 return 1;

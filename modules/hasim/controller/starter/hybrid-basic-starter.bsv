@@ -2,7 +2,7 @@ import hasim_common::*;
 import rrr::*;
 import soft_connections::*;
 
-`include "asim/rrr/rrr_service_ids.bsh"
+`include "asim/rrr/service_ids.bsh"
 `define SERVICE_ID  `STARTER_SERVICE_ID
 
 // Starter

@@ -11346,3 +11346,65 @@ Time for HAsim software build environment to grow up:
 
 - The benchmark run scripts now take a --gdb argument.  The script invokes
   gdb and passes all the necessary commands to run a benchmark.
+
+----------
+aparasha    Date: Thu Apr 17 00:19:06 EDT 2008  CSN: CSN-hasim-367
+                  Thu Apr 17 04:19:06 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim
+ RRR.pm                    Locally Added               0 
+ RRR/                      Locally Added               0 
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Server.pm                 Locally Added               0 
+ Collection.pm             Locally Added               0 
+ Service.pm                Locally Added               0 
+ Method.pm                 Locally Added               0 
+ Type.pm                   Locally Added               0 
+ Identifier.pm             Locally Added               0 
+ Argument.pm               Locally Added               0 
+ Numeral.pm                Locally Added               0 
+
+Directory libperl/HAsim/lib
+ HAsim.pm                  Locally Modified          366 
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          366 
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          366 
+ hybrid-basic-starter-services.rrr Locally Modified          366 
+ hybrid-basic-starter.bsv  Locally Modified          366 
+
+Directory modules/hasim/controller/central_controllers/events
+ events-controller-hybrid.cpp Locally Modified          366 
+ events-controller-hybrid.bsv Locally Modified          366 
+
+Directory modules/hasim/controller/central_controllers/assertions
+ assertions-controller-hybrid.bsv Locally Modified          366 
+ assertions-controller-hybrid.cpp Locally Modified          366 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          366 
+ stats-controller-hybrid.bsv Locally Modified          366 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          366 
+
+- Stubgen completely restructured, but no additional functionality
+  is visible yet. All existing models should behave exactly as
+  before.
+
+- Changed naming conventions for generated RRR files. All "rrr_"
+  prefixes are unnecessary (since all generated files are anyway
+  in an rrr/ directory) and have been removed.
+
+- The term "service stub" is ambiguous since a service has a
+  server component and a client component. All server-side stubs
+  are now called "server_stub_<servicename>". Client stubs will
+  be called "client_stub_<servicename>" once this functionality
+  is enabled. All generated stub filenames now reflect this
+  nomenclature.
+
+- Updated module BSV files to include the renamed stubs.

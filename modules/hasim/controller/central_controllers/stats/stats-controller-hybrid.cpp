@@ -8,7 +8,7 @@
 #include <string.h>
 #include <iostream>
 
-#include "asim/rrr/rrr_service_ids.h"
+#include "asim/rrr/service_ids.h"
 #include "asim/provides/stats_controller.h"
 
 #include "asim/dict/STATS.h"

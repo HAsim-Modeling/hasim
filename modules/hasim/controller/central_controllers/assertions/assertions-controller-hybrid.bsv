@@ -5,7 +5,7 @@ import soft_connections::*;
 
 `include "asim/provides/rrr.bsh"
 
-`include "asim/rrr/rrr_service_ids.bsh"
+`include "asim/rrr/service_ids.bsh"
 `include "asim/dict/ASSERTIONS.bsh"
 `include "asim/dict/RINGID.bsh"
 

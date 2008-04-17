@@ -11,7 +11,7 @@ import soft_connections::*;
 
 `include "streams.bsh"
 `include "rrr.bsh"
-`include "asim/rrr/rrr_service_ids.bsh"
+`include "asim/rrr/service_ids.bsh"
 
 // EVENTS_CONTROLLER
 

@@ -9,7 +9,7 @@
 #include <iostream>
 
 #include "asim/provides/assertions_controller.h"
-#include "asim/rrr/rrr_service_ids.h"
+#include "asim/rrr/service_ids.h"
 
 #include "asim/dict/ASSERTIONS.h"
 

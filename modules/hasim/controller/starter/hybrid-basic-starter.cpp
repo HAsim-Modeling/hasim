@@ -3,7 +3,7 @@
 #include <iostream>
 
 #include "starter-common.h"
-#include "asim/rrr/rrr_service_ids.h"
+#include "asim/rrr/service_ids.h"
 
 #define SERVICE_ID  STARTER_SERVICE_ID
 

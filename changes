@@ -11484,3 +11484,14 @@ Directory modules/common
 
 - changed some more incorrect "...service..." names
   to "...server...".
+
+----------
+vmurali     Date: Thu Apr 17 16:58:30 EDT 2008  CSN: CSN-hasim-372
+                  Thu Apr 17 20:58:30 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          371 
+
+Changed rrr_service to rrr_server
+

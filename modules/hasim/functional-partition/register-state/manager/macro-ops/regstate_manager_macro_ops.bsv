@@ -307,8 +307,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
     
     Connection_Send#(RRR_Request) linkRRRSync <- mkConnection_Send("rrr_client_sync");
     Connection_Send#(RRR_Request) linkRRREmulate <- mkConnection_Send("rrr_client_emulate");
-    Connection_Receive#(Bit#(64)) linkRRRUpdate <- mkConnection_Receive("rrr_service_ISA_EMULATOR_updateRegister");
-    Connection_Receive#(Bit#(32)) linkRRRFinished <- mkConnection_Receive("rrr_service_ISA_EMULATOR_emulationFinished");
+    Connection_Receive#(Bit#(64)) linkRRRUpdate <- mkConnection_Receive("rrr_server_ISA_EMULATOR_updateRegister");
+    Connection_Receive#(Bit#(32)) linkRRRFinished <- mkConnection_Receive("rrr_server_ISA_EMULATOR_emulationFinished");
     
 
     // ***** Assertion Checkers ***** //

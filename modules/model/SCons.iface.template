@@ -98,7 +98,7 @@ tgt += d_tgt
 # Compile RRR stubs
 #  NOTE: like dictionaries, some files must be created even when no .rrr
 #  files exist.
-tgt += env.Command(rrr_inc_tgt + '/rrr_service_ids.h',
+tgt += env.Command(rrr_inc_tgt + '/service_ids.h',
                    env['DEFS']['RRR_SRCS'].split(),
                    'hasim-rrr-stubgen --odir ' + rrr_inc_tgt + ' --mode stub --target hw --type server $SOURCES')
 

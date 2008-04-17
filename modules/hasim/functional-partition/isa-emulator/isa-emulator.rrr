@@ -1,9 +1,9 @@
 service ISA_EMULATOR
 {
-    server hw <- sw
+    server hw (bsv, connection) <- sw (cpp, method)
     {
-        connection updateRegister(in UINT64[64] rname_and_rval);
-        connection emulationFinished(in UINT32[32] unused);
+        method updateRegister(in UINT64[64] rname_and_rval);
+        method emulationFinished(in UINT32[32] unused);
     };
 };
 

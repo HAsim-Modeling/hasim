@@ -11437,3 +11437,17 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 
 
 Changed asim/rrr/rrr_service_ids.bsh asim/rrr/service_ids.bsh
+
+----------
+mcadler     Date: Thu Apr 17 15:15:50 EDT 2008  CSN: CSN-hasim-370
+                  Thu Apr 17 19:15:50 UTC 2008
+
+
+Directory modules/model
+ SCons.iface.template      Locally Modified          369 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          369 
+ isa-emulator.rrr          Locally Modified          369 
+
+A few RRR fixes.

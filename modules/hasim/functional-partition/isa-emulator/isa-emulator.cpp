@@ -3,7 +3,7 @@
 #include <iostream>
 
 #include "isa-emulator-common.h"
-#include "asim/rrr/rrr_service_ids.h"
+#include "asim/rrr/service_ids.h"
 
 #define SERVICE_ID  ISA_EMULATOR_SERVICE_ID
 

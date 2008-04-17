@@ -26,10 +26,10 @@ endinterface
 module [HASim_Module] mkStarter(Starter);
 
     // ----------- links -----------
-    Connection_Receive#(UINT32) link_Run       <- mkConnection_Receive("rrr_service_STARTER_Run");
-    Connection_Receive#(UINT32) link_Pause     <- mkConnection_Receive("rrr_service_STARTER_Pause");
-    Connection_Receive#(UINT32) link_Sync      <- mkConnection_Receive("rrr_service_STARTER_Sync");
-    Connection_Server#(UINT32, UINT32)  link_DumpStats <- mkConnection_Server("rrr_service_STARTER_DumpStats");
+    Connection_Receive#(UINT32) link_Run       <- mkConnection_Receive("rrr_server_STARTER_Run");
+    Connection_Receive#(UINT32) link_Pause     <- mkConnection_Receive("rrr_server_STARTER_Pause");
+    Connection_Receive#(UINT32) link_Sync      <- mkConnection_Receive("rrr_server_STARTER_Sync");
+    Connection_Server#(UINT32, UINT32)  link_DumpStats <- mkConnection_Server("rrr_server_STARTER_DumpStats");
 
     Connection_Send#(RRR_Request) link_rrr   <- mkConnection_Send("rrr_client_starter");
 

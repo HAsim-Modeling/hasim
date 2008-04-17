@@ -102,18 +102,33 @@ if ($mode eq "stub")
     ##
     foreach my $service (@serviceTable)
     {
+        # server
         my $ofile = $odir . "/server_stub_" . $service->name() . ".bsh";
         open(my $ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
         print_server_stub($ohandle, $target, $service);
+        close($ohandle);
+
+        # client
+        $ofile = $odir . "/client_stub_" . $service->name() . ".bsh";
+        open($ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
+        print_client_stub($ohandle, $target, $service);
         close($ohandle);
     }
 
     ##
     ## Generate connections
     ##
+
+    # server
     my $ofile = $odir . "/server_connections.bsh";
     open(my $ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
     print_server_connections($ohandle, $target, @serviceTable);
+    close($ohandle);
+
+    # client
+    $ofile = $odir . "/client_connections.bsh";
+    open($ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
+    print_client_connections($ohandle, $target, @serviceTable);
     close($ohandle);
 
     ##
@@ -270,13 +285,13 @@ sub print_server_stub
     }
 
     # generate header
-    print $file "`ifndef _" . $service->name() . "_SERVICE_STUB_\n";
-    print $file "`define _" . $service->name() . "_SERVICE_STUB_\n";
+    print $file "//\n";
+    print $file "// Synthesized server stub file\n";
+    print $file "//\n";
     print $file "\n";
 
-    print $file "//\n";
-    print $file "// Synthesized service stub file\n";
-    print $file "//\n";
+    print $file "`ifndef _" . $service->name() . "_SERVER_STUB_\n";
+    print $file "`define _" . $service->name() . "_SERVER_STUB_\n";
     print $file "\n";
 
     print $file "`include \"rrr.bsh\"\n";
@@ -310,8 +325,8 @@ sub print_server_connections
     print $file "//\n";
     print $file "// Synthesized header file created by hasim-rrr-stubgen\n";
     print $file "//\n\n";
-    print $file "`ifndef _RRR_SERVICE_CONNECTIONS_\n";
-    print $file "`define _RRR_SERVICE_CONNECTIONS_\n";
+    print $file "`ifndef _RRR_SERVER_CONNECTIONS_\n";
+    print $file "`define _RRR_SERVER_CONNECTIONS_\n";
     print $file "\n";
 
     print $file "`include \"soft_connections.bsh\"\n";
@@ -333,7 +348,7 @@ sub print_server_connections
     print $file "\n";
 
     # main module definition
-    print $file "module [HASim_Module] mkServiceConnections#(RRR_SERVER server) ();\n";
+    print $file "module [HASim_Module] mkServerConnections#(RRR_SERVER server) ();\n";
     print $file "\n";
 
     # for each service
@@ -354,6 +369,119 @@ sub print_server_connections
         if ($service->needs_server_connections($target))
         {
             $service->print_server_link_rules($file, "    ", $target);
+        }
+    }
+
+    # end module
+    print $file "endmodule\n";
+    print $file "\n";
+
+    # end stub file
+    print $file "`endif\n";
+    print $file "\n";
+}
+
+################################################################
+# print_client_stub: given a parsed service table, print out a
+#                    full client stub for a given target
+sub print_client_stub
+{
+    my $file    = shift;
+    my $target  = shift;
+    my $service = shift;
+
+    # determine if we should write stub at all
+    my $do_write = 0;
+    if ($service->needs_client_stub($target) == 0)
+    {
+        return;
+    }
+
+    # generate header
+    print $file "//\n";
+    print $file "// Synthesized client stub file\n";
+    print $file "//\n";
+    print $file "\n";
+
+    print $file "`ifndef _" . $service->name() . "_CLIENT_STUB_\n";
+    print $file "`define _" . $service->name() . "_CLIENT_STUB_\n";
+    print $file "\n";
+
+    print $file "`include \"rrr.bsh\"\n";
+    print $file "`include \"channelio.bsh\"\n";
+    print $file "`include \"umf.bsh\"\n";
+    print $file "\n";
+
+    # ask the service to print the actual module
+    $service->print_client_stub($file, $target);
+
+    # closing stamements
+    print $file "`endif\n";
+    print $file "\n";
+}
+
+############################################################
+# print_client_connections: given a parsed service table,
+#                           print out a wrapper module that
+#                           (a) instantiates a stub module
+#                               for each service, and
+#                           (b) creates connection
+#                               interfaces to each stub
+#                               module
+sub print_client_connections
+{
+    my $file = shift;
+    my $target = shift;
+    my @serviceTable = @_;
+
+    # generate common header
+    print $file "//\n";
+    print $file "// Synthesized header file created by hasim-rrr-stubgen\n";
+    print $file "//\n\n";
+    print $file "`ifndef _RRR_CLIENT_CONNECTIONS_\n";
+    print $file "`define _RRR_CLIENT_CONNECTIONS_\n";
+    print $file "\n";
+
+    print $file "`include \"soft_connections.bsh\"\n";
+    print $file "`include \"rrr.bsh\"\n";
+    print $file "`include \"channelio.bsh\"\n";
+    print $file "`include \"umf.bsh\"\n";
+    print $file "`include \"asim/rrr/service_ids.bsh\"\n";
+    print $file "\n";
+
+    # import header files for generated stubs
+    foreach my $service (@serviceTable)
+    {
+        my $servicename = $service->name();
+        if ($service->needs_client_connections($target))
+        {
+            print $file "`include \"asim/rrr/client_stub_$servicename.bsh\"\n";
+        }
+    }
+    print $file "\n";
+
+    # main module definition
+    print $file "module [HASim_Module] mkClientConnections#(RRR_CLIENT client) ();\n";
+    print $file "\n";
+
+    # for each service
+    foreach my $service (@serviceTable)
+    {
+        # print module and connection instantiations
+        if ($service->needs_client_connections($target))
+        {
+            $service->print_client_connections($file, "    ", $target);
+            print $file "\n";
+        }
+    }
+
+    # again, for each service
+    foreach my $service (@serviceTable)
+    {
+        # print wrapper rules
+        if ($service->needs_client_connections($target))
+        {
+            $service->print_client_link_rules($file, "    ", $target);
         }
     }
 

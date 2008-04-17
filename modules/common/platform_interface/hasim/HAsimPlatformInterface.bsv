@@ -7,6 +7,7 @@ import memory::*;
 import rrr::*;
 
 `include "asim/rrr/server_connections.bsh"
+`include "asim/rrr/client_connections.bsh"
 `include "streams.bsh"
 
 typedef struct
@@ -52,8 +53,9 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     // connection terminus
     let t <- mkConnectionTerminus();
 
-    // auto-generated submodule for RRR connections
-    let rrr_service_links <- mkServiceConnections(llpint.rrrServer);
+    // auto-generated submodules for RRR connections
+    let rrr_server_links <- mkServerConnections(llpint.rrrServer);
+    let rrr_client_links <- mkClientConnections(llpint.rrrClient);
     
     // rules
     rule set_leds (True);
@@ -137,7 +139,7 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
 
         let req = link_rrr_starter.receive();
         link_rrr_starter.deq();
-        llpint.rrrClient.makeRequest(req);
+        llpint.oldrrrClient.makeRequest(req);
 
     endrule
 
@@ -145,7 +147,7 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
 
         let req = link_rrr_events.receive();
         link_rrr_events.deq();
-        llpint.rrrClient.makeRequest(req);
+        llpint.oldrrrClient.makeRequest(req);
 
     endrule
 
@@ -153,7 +155,7 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     
         let req = link_rrr_stats.receive();
         link_rrr_stats.deq();
-        llpint.rrrClient.makeRequest(req);
+        llpint.oldrrrClient.makeRequest(req);
     
     endrule
     
@@ -161,7 +163,7 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     
         let req = link_rrr_assertions.receive();
         link_rrr_assertions.deq();
-        llpint.rrrClient.makeRequest(req);
+        llpint.oldrrrClient.makeRequest(req);
     
     endrule
 
@@ -169,7 +171,7 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     
         let req = link_rrr_sync.receive();
         link_rrr_sync.deq();
-        llpint.rrrClient.makeRequest(req);
+        llpint.oldrrrClient.makeRequest(req);
     
     endrule
 
@@ -177,7 +179,7 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     
         let req = link_rrr_emulate.receive();
         link_rrr_emulate.deq();
-        llpint.rrrClient.makeRequest(req);
+        llpint.oldrrrClient.makeRequest(req);
     
     endrule
 

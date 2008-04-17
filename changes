@@ -11451,3 +11451,36 @@ Directory modules/hasim/functional-partition/isa-emulator
  isa-emulator.rrr          Locally Modified          369 
 
 A few RRR fixes.
+
+----------
+aparasha    Date: Thu Apr 17 15:28:14 EDT 2008  CSN: CSN-hasim-371
+                  Thu Apr 17 19:28:14 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Server.pm                 Locally Modified          370 
+ Client.pm                 Locally Added               0 
+ Service.pm                Locally Modified          370 
+ Method.pm                 Locally Modified          370 
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          370 
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.bsv  Locally Modified          370 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          370 
+
+Directory modules/common
+ hasim_common.dic          Locally Modified          370 
+
+- added support for hardware-side Client stub printing
+  and automatic generation of client connections (not
+  fully tested).
+
+- added a null entry to the ASSERTIONS dictionary to
+  enable demo hybrid models to build correctly.
+
+- changed some more incorrect "...service..." names
+  to "...server...".

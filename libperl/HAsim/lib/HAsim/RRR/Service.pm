@@ -18,7 +18,7 @@ use Text::Balanced;
 
 use HAsim::RRR::Collection;
 use HAsim::RRR::Server;
-# use HAsim::RRR::Client;
+use HAsim::RRR::Client;
 
 # regex
 my $REGEX = qr/
@@ -90,11 +90,11 @@ sub _parse
 
         # re-arrange collections into a lists of clients and servers
         my @serverlist = HAsim::RRR::Server->new($service->{name}, @collectionlist);
-        # my @clientlist = HAsim::RRR::Client->new(@collectionlist);
+        my @clientlist = HAsim::RRR::Client->new($service->{name}, @collectionlist);
 
         # add client and server lists to service
         push (@{ $service->{serverlist} }, @serverlist);
-        # push (@{ $service->{clientlist} }, @clientlist);
+        push (@{ $service->{clientlist} }, @clientlist);
 
         # add service to service list
         push(@servicelist, $service);
@@ -127,13 +127,19 @@ sub serverlist
     return $self->{serverlist};
 }
 
-# return the list of clients
-# sub clientlist
-# {
-#     my $self = shift;
-# 
-#     return $self->{clientlist};
-# }
+##
+## return the list of clients
+##
+sub clientlist
+{
+    my $self = shift;
+
+    return $self->{clientlist};
+}
+
+######################################
+#       SERVER STUB GENERATION       #
+######################################
 
 ##
 ## do we need to generate a server stub for this service and target?
@@ -269,6 +275,151 @@ sub print_server_link_rules
         {
             # ask the server to print out a wrapper rule
             $server->print_link_rules($file, $indent);
+        }
+
+        # NOTE: we are guaranteed to only print one rule
+        # for a given target
+    }
+}
+
+######################################
+#       CLIENT STUB GENERATION       #
+######################################
+
+##
+## do we need to generate a client stub for this service and target?
+##
+sub needs_client_stub
+{
+    # capture params
+    my $self   = shift;
+    my $target = shift;
+
+    # for each entry in my list of clients...
+    foreach my $client (@{ $self->{clientlist} })
+    {
+        # look for the specified target name. It is guaranteed that
+        # each client in this list will have a unique target name.
+        if ($client->target() eq $target)
+        {
+            # return true
+            return 1;
+        }
+
+        # NOTE: we are guaranteed to only print one stub
+        # for a given target
+    }
+
+    # no match found, return false
+    return 0;
+}   
+
+##
+## print client stub for a given target into a given file
+##
+sub print_client_stub
+{
+    # capture params
+    my $self   = shift;
+    my $file   = shift;
+    my $target = shift;
+
+    # for each entry in my list of clients...
+    foreach my $client (@{ $self->{clientlist} })
+    {
+        # look for the specified target name. It is guaranteed that
+        # each client in this list will have a unique target name.
+        if ($client->target() eq $target)
+        {
+            # ask the client to print out a stub
+            $client->print_stub($file);
+        }
+
+        # NOTE: we are guaranteed to only print one stub
+        # for a given target
+    }
+}
+
+##
+## do we need to generate a client connections for this service and target?
+##
+sub needs_client_connections
+{
+    # capture params
+    my $self   = shift;
+    my $target = shift;
+
+    # for each entry in my list of clients...
+    foreach my $client (@{ $self->{clientlist} })
+    {
+        # look for the specified target name. It is guaranteed that
+        # each client in this list will have a unique target name.
+        if ($client->target() eq $target)
+        {
+            # now check type of client interface
+            if ($client->interface() eq "connection")
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        # NOTE: we are guaranteed to only print one stub
+        # for a given target
+    }
+
+    # no match found, return false
+    return 0;
+}   
+
+##
+## print client connections for a given target into a given file
+##
+sub print_client_connections
+{
+    my $self   = shift;
+    my $file   = shift;
+    my $indent = shift;
+    my $target = shift;
+
+    # for each entry in my list of clients...
+    foreach my $client (@{ $self->{clientlist} })
+    {
+        # look for the specified target name. It is guaranteed that
+        # each client in this list will have a unique target name.
+        if ($client->target() eq $target)
+        {
+            # ask the client to print out a connection instantiation
+            $client->print_connections($file, $indent);
+        }
+
+        # NOTE: we are guaranteed to only print one connection
+        # for a given target
+    }
+}
+
+##
+## print client link rules for a given target into a given file
+##
+sub print_client_link_rules
+{
+    my $self   = shift;
+    my $file   = shift;
+    my $indent = shift;
+    my $target = shift;
+
+    # for each entry in my list of clients...
+    foreach my $client (@{ $self->{clientlist} })
+    {
+        # look for the specified target name. It is guaranteed that
+        # each client in this list will have a unique target name.
+        if ($client->target() eq $target)
+        {
+            # ask the client to print out a wrapper rule
+            $client->print_link_rules($file, $indent);
         }
 
         # NOTE: we are guaranteed to only print one rule

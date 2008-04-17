@@ -417,9 +417,9 @@ sub print_server_connection
         # no return: create Send-type connection
         print $file $indent . "Connection_Send#("        .
                     $self->inarg()->type()->string_bsv() .
-                    ") link_$servicename" . "_"          .
+                    ") link_server_$servicename" . "_"          .
                     $self->{name}                        .
-                    " <- mkConnection_Send(\"rrr_service_$servicename\_" .
+                    " <- mkConnection_Send(\"rrr_server_$servicename\_" .
                     $self->{name} . "\");\n";
     }
     else
@@ -429,9 +429,9 @@ sub print_server_connection
                     $self->inarg()->type()->string_bsv()  .
                     ", "                                  .
                     $self->outarg()->type()->string_bsv() .
-                    ") link_$servicename" . "_"           .
+                    ") link_server_$servicename" . "_"           .
                     $self->{name}                         .
-                    " <- mkConnection_Client(\"rrr_service_$servicename\_" .
+                    " <- mkConnection_Client(\"rrr_server_$servicename\_" .
                     $self->{name} . "\");\n";
     }
 }
@@ -454,9 +454,9 @@ sub print_server_link_rules
     if (!defined($self->outarg()))
     {
         # no return: create only request rule, use send()
-        print $file $indent . "rule acceptRequest_$servicename\_$methodname (True);\n";
-        print $file $indent . "    $intype req <- stub_$servicename.acceptRequest\_$methodname();\n";
-        print $file $indent . "    link_$servicename\_$methodname.send(req);\n";
+        print $file $indent . "rule server_acceptRequest_$servicename\_$methodname (True);\n";
+        print $file $indent . "    $intype req <- stub_server_$servicename.acceptRequest\_$methodname();\n";
+        print $file $indent . "    link_server_$servicename\_$methodname.send(req);\n";
         print $file $indent . "endrule\n";
         print $file $indent . "\n";
     }
@@ -466,16 +466,16 @@ sub print_server_link_rules
         my $outtype = $self->outarg()->type()->string_bsv();
 
         # need return: create request and response rules, use makeReq()
-        print $file $indent . "rule acceptRequest_$servicename\_$methodname (True);\n";
-        print $file $indent . "    $intype req <- stub_$servicename.acceptRequest\_$methodname();\n";
-        print $file $indent . "    link_$servicename\_$methodname.makeReq(req);\n";
+        print $file $indent . "rule server_acceptRequest_$servicename\_$methodname (True);\n";
+        print $file $indent . "    $intype req <- stub_server_$servicename.acceptRequest\_$methodname();\n";
+        print $file $indent . "    link_server_$servicename\_$methodname.makeReq(req);\n";
         print $file $indent . "endrule\n";
         print $file $indent . "\n";
         
-        print $file $indent . "rule sendResponse_$servicename\_$methodname (True);\n";
-        print $file $indent . "    $outtype resp = link_$servicename\_$methodname.getResp();\n";
-        print $file $indent . "    link_$servicename\_$methodname.deq();\n";
-        print $file $indent . "    stub_$servicename.sendResponse\_$methodname(resp);\n";
+        print $file $indent . "rule server_sendResponse_$servicename\_$methodname (True);\n";
+        print $file $indent . "    $outtype resp = link_server_$servicename\_$methodname.getResp();\n";
+        print $file $indent . "    link_server_$servicename\_$methodname.deq();\n";
+        print $file $indent . "    stub_server_$servicename.sendResponse\_$methodname(resp);\n";
         print $file $indent . "endrule\n";
         print $file $indent . "\n";
     }
@@ -665,6 +665,89 @@ sub _print_get_response_header
     print $file "getResponse_" .
                 $self->{name}  .
                 "()";
+}
+
+##### CONNECTION RULES #####
+
+##
+## print connection instantiation
+##
+sub print_client_connection
+{
+    my $self        = shift;
+    my $file        = shift;
+    my $indent      = shift;
+    my $servicename = shift;
+
+    # print connection definitions
+    if (!defined($self->outarg()))
+    {
+        # no return: create Receive-type connection
+        print $file $indent . "Connection_Receive#("        .
+                    $self->inarg()->type()->string_bsv() .
+                    ") link_client_$servicename" . "_"          .
+                    $self->{name}                        .
+                    " <- mkConnection_Send(\"rrr_client_$servicename\_" .
+                    $self->{name} . "\");\n";
+    }
+    else
+    {
+        # need return: create Server-type connection
+        print $file $indent . "Connection_Server#("       .
+                    $self->inarg()->type()->string_bsv()  .
+                    ", "                                  .
+                    $self->outarg()->type()->string_bsv() .
+                    ") link_client_$servicename" . "_"           .
+                    $self->{name}                         .
+                    " <- mkConnection_Server(\"rrr_client_$servicename\_" .
+                    $self->{name} . "\");\n";
+    }
+}
+
+##
+## print rules to link method calls to a connection
+##
+sub print_client_link_rules
+{
+    my $self        = shift;
+    my $file        = shift;
+    my $indent      = shift;
+    my $servicename = shift;
+
+    my $methodname = $self->{name};
+    my $insize     = $self->insize();
+    my $intype     = $self->inarg()->type()->string_bsv();
+    
+    # print rules to transfer request and response to the connection
+    if (!defined($self->outarg()))
+    {
+        # no return: create only request rule, use receive()
+        print $file $indent . "rule client_makeRequest_$servicename\_$methodname (True);\n";
+        print $file $indent . "    $intype req = link_client_$servicename\_$methodname.receive();\n";
+        print $file $indent . "    link_client_$servicename\_$methodname.deq();\n";
+        print $file $indent . "    stub_client_$servicename.makeRequest\_$methodname(req);\n";
+        print $file $indent . "endrule\n";
+        print $file $indent . "\n";
+    }
+    else
+    {
+        my $outsize = $self->outsize();
+        my $outtype = $self->outarg()->type()->string_bsv();
+
+        # need return: create request and response rules, use getReq()
+        print $file $indent . "rule client_makeRequest_$servicename\_$methodname (True);\n";
+        print $file $indent . "    $intype req = link_client_$servicename\_$methodname.getReq();\n";
+        print $file $indent . "    link_client_$servicename\_$methodname.deq();\n";
+        print $file $indent . "    stub_client_$servicename.makeRequest\_$methodname(req);\n";
+        print $file $indent . "endrule\n";
+        print $file $indent . "\n";
+
+        print $file $indent . "rule client_getResponse_$servicename\_$methodname (True);\n";
+        print $file $indent . "    $outtype resp <- stub_client_$servicename.getResponse\_$methodname();\n";
+        print $file $indent . "    link_client_$servicename\_$methodname.makeResp(resp);\n";
+        print $file $indent . "endrule\n";
+        print $file $indent . "\n";
+    }
 }
 
 ######################################

@@ -46,12 +46,13 @@ module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
     //interface:
                 (FUNCP_FREELIST)
     provisos
-             (Bits#(FUNCP_PHYSICAL_REG_INDEX, prname_SZ)); // Physical register index size
+             (Bits#(ISA_REG_INDEX, rname_SZ),
+              Bits#(FUNCP_PHYSICAL_REG_INDEX, prname_SZ)); // Physical register index size
 
     // ***** Local State ***** //
 
     // The maximum achitectural register.
-    ISA_REG_INDEX maxR = maxBound;
+    Bit#(rname_SZ) maxR = maxBound;
 
     // The architectural registers begin allocated, so the freelist pointer starts at
     // one position beyond that.

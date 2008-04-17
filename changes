@@ -11408,3 +11408,18 @@ Directory modules/common/platform_interface/hasim
   nomenclature.
 
 - Updated module BSV files to include the renamed stubs.
+
+----------
+vmurali     Date: Thu Apr 17 01:38:02 EDT 2008  CSN: CSN-hasim-368
+                  Thu Apr 17 05:38:02 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          367 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          367 
+
+
+I believe there was a type in regstate_manager_macro_ops.bsv, line 987.
+I also changed the ISA_REG_INDEX to a bit-vector type because it uses maxBound, and is used in array indexing, both of which can't be done easily with tagged unions. I will be changing the return type of getIsaSrc and getIsaDst to return Bits instead.

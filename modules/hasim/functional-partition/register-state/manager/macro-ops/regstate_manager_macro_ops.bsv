@@ -141,7 +141,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Also this lets us snapshot/reload the entire maptable in a single cyle.
 
     // The highest register in the ISA (the last one which is initially valid).
-    ISA_REG_INDEX            highestReg = maxBound;
+    Bit#(rname_SZ)            highestReg = maxBound;
     FUNCP_PHYSICAL_REG_INDEX maxInit = zeroExtend(pack(highestReg));
 
     // The initial map is that all architectural registers are mapped 1-to-1 to
@@ -209,7 +209,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Reg#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) execStallWriters <- mkReg(Vector::replicate(tagged Invalid));
     // Record the values that have come back while stalling.
     Reg#(Vector#(TSub#(ISA_MAX_SRCS, 2), Maybe#(ISA_VALUE))) execStallValues <- mkReg(Vector::replicate(tagged Invalid));
-    
+ 
     // Is the getResult stage writing back more values?
     Reg#(Bool) execWritebackMore <- mkReg(False);
     // The token we're stalling on.
@@ -226,7 +226,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Are we synchronizing are registers with software?
     Reg#(Bool) synchronizingRegs <- mkReg(False);
     // Which register are we currently synchronizing?
-    Reg#(ISA_REG_INDEX) synchronizingCurReg <- mkReg(minBound);
+    Reg#(Bit#(rname_SZ)) synchronizingCurReg <- mkReg(minBound);
             
     // We are only ready to go if we are neither rewinding, initializing, nor emulating
     let ready = !rewinding && !initializing && !emulatingInstruction;
@@ -245,7 +245,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     FIFO#(TOKEN) res1Q  <- mkFIFO();
     FIFO#(TOKEN) res2Q <- mkFIFO();
     FIFO#(TOKEN) res3Q   <- mkFIFO();
-    FIFO#(ISA_REG_INDEX) syncQ <- mkFIFO();
+    FIFO#(Bit#(rname_SZ)) syncQ <- mkFIFO();
     FIFO#(TOKEN) load1Q  <- mkFIFO();
     FIFO#(Tuple2#(TOKEN, MEM_ADDRESS)) load2Q  <- mkFIFO();
     FIFO#(TOKEN) store1Q <- mkFIFO();
@@ -546,12 +546,12 @@ module [HASim_Module] mkFUNCP_RegStateManager
         begin
 
             // Get the architectural src (if any);
-            Maybe#(ISA_REG_INDEX) arc_src = isaGetSrc(inst, x);
+            Maybe#(Bit#(rname_SZ)) arc_src = isaGetSrc(inst, x);
 
             // If there is a src, fill it in from the maptable.
             let phys_src = case (arc_src) matches
                                tagged Invalid:  tagged Invalid;
-                               tagged Valid .r: tagged Valid select(maptable, r);
+                               tagged Valid .r: tagged Valid select(maptable,r);
                            endcase;
 
             phy_srcs[x] = phys_src;
@@ -565,7 +565,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         end
 
         // Create vectors with info on the destinations.
-        Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX))            arc_dsts = newVector();
+        Vector#(ISA_MAX_DSTS, Maybe#(Bit#(rname_SZ)))            arc_dsts = newVector();
         Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_dsts = replicate(Invalid);
         Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_MAPPING))          map_dsts = newVector();
         Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_regs_to_free = replicate(Invalid);
@@ -984,7 +984,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         for (Integer x = 2; x < valueof(ISA_MAX_SRCS); x = x + 1)
         begin
 
-           values[x] = validValue(execStallValues[x]);
+           values[x] = validValue(execStallValues[x-2]);
 
         end
 
@@ -1158,7 +1158,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         syncQ.enq(synchronizingCurReg);
         
         // Move on to the next register.
-        ISA_REG_INDEX next_r = synchronizingCurReg + 1;
+        Bit#(rname_SZ) next_r = synchronizingCurReg + 1;
         
         // Was this our last request?
         if (next_r == 0)
@@ -1186,7 +1186,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     rule emulateInstruction1_Rsp (True);
     
         // Get the register from the previous stage.
-        ISA_REG_INDEX arch_reg = syncQ.first();
+        Bit#(rname_SZ) arch_reg = syncQ.first();
         syncQ.deq();
         
         // Get the register value from the regfile.
@@ -1245,7 +1245,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         linkRRRUpdate.deq();
         
         //Temporary: get the rname and value out of the bit 64.
-        ISA_REG_INDEX r = r_and_v[36:32];
+        Bit#(rname_SZ) r = r_and_v[36:32];
         ISA_VALUE     v = r_and_v[31:0];
         
         // Assert that we're in the state we expected to be in.

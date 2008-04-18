@@ -1,0 +1,48 @@
+
+[Global]
+SaveParameters=0
+Description=HAsim Common Library as a submodel - V2
+File=hasim_common_v2
+Version=2.1
+Name=HAsim Common Default Configuration - V2
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hasim
+model=New Hasim Common Library
+
+
+
+[Hasim Modeling Library]
+File=modules/common/modellib/hasim_modellib.awb
+Packagehint=hasim
+
+[Smart Synthesis Boundaries]
+File=modules/common/smart_synthesis_boundaries/smart_synth_boundaries.awb
+Packagehint=hasim
+
+[Soft Connections/Requires]
+soft_connections_alg=Soft Connection Algorithm
+
+[Soft Connections]
+File=modules/bluespec/common/soft_connections/soft_connections.awb
+Packagehint=hasim
+
+[Soft Connection Algorithm]
+File=modules/bluespec/common/soft_connections/alg/typed/soft_connections_alg.awb
+Packagehint=hasim
+
+[Hasim Platform Interface]
+File=modules/common/platform_interface/hasim/hasim-platform-interface.awb
+Packagehint=hasim
+
+[New Hasim Common Library]
+File=modules/hasim/common/new-funcp/hasim_common_newfuncp.awb
+Packagehint=hasim
+
+[New Hasim Common Library/Requires]
+smart_synth_boundaries=Smart Synthesis Boundaries
+platform_interface=Hasim Platform Interface
+soft_connections=Soft Connections
+hasim_modellib=Hasim Modeling Library

@@ -11507,3 +11507,16 @@ Directory libperl/HAsim/lib/HAsim/RRR
  Method.pm                 Locally Modified          372 
 
 fixed some bugs with client stub implementation
+
+----------
+jsemer      Date: Fri Apr 18 07:03:11 EDT 2008  CSN: CSN-hasim-374
+                  Fri Apr 18 11:03:11 UTC 2008
+
+
+Directory config/pm/hasim/submodels
+ common/                   Locally Added               0 
+
+Directory config/pm/hasim/submodels/common
+ hasim_common_v2.apm       Locally Added               0 
+
+Added a submodel with the new (v2) hasim common module.

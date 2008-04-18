@@ -11495,3 +11495,15 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 
 Changed rrr_service to rrr_server
 
+
+----------
+aparasha    Date: Thu Apr 17 22:15:43 EDT 2008  CSN: CSN-hasim-373
+                  Fri Apr 18 02:15:43 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Server.pm                 Locally Modified          372 
+ Client.pm                 Locally Modified          372 
+ Method.pm                 Locally Modified          372 
+
+fixed some bugs with client stub implementation

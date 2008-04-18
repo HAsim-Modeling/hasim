@@ -755,9 +755,9 @@ sub print_client_link_rules
 ######################################
 
 ##
-## print state
+## print server state
 ##
-sub print_state
+sub print_server_state
 {
     my $self   = shift;
     my $file   = shift;
@@ -776,6 +776,27 @@ sub print_state
         print $file $indent . "    ($outsize / `UMF_CHUNK_BITS) :\n";
         print $file $indent . "    ($outsize / `UMF_CHUNK_BITS) + 1;\n";
     }
+}
+
+##
+## print client state
+##
+sub print_client_state
+{
+    my $self   = shift;
+    my $file   = shift;
+    my $indent = shift;
+    my $id     = shift;
+
+    print $file $indent . "Integer mid_" . $self->{name} . " = $id;\n";
+
+    my $insize = $self->insize();
+    
+    print $file $indent . "Integer numChunks_" .
+                $self->{name}        .
+                " = ($insize % `UMF_CHUNK_BITS) == 0 ?\n";
+    print $file $indent . "    ($insize / `UMF_CHUNK_BITS) :\n";
+    print $file $indent . "    ($insize / `UMF_CHUNK_BITS) + 1;\n";
 }
 
 1;

@@ -194,7 +194,7 @@ sub print_stub
     my $methodID = 0;
     foreach my $method (@{ $self->{methodlist} })
     {
-        $method->print_state($file, $indent, $methodID);
+        $method->print_server_state($file, $indent, $methodID);
         $methodID = $methodID + 1;
     }
     print $file "\n";    

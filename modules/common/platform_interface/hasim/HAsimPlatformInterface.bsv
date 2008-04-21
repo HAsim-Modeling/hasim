@@ -3,7 +3,7 @@ import soft_connections::*;
 import front_panel::*;
 import physical_platform::*;
 import low_level_platform_interface::*;
-import memory::*;
+import funcp_memory::*;
 import rrr::*;
 
 `include "asim/rrr/server_connections.bsh"

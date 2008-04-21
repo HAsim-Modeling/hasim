@@ -1,0 +1,22 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Hybrid ISA Semantics
+# %desc Hybrid ISA Semantics
+#
+# %provides hasim_isa_semantics
+# 
+# %requires hasim_isa_datapath
+# %requires isa_emulator
+#
+# %attributes hasim funcp
+#
+# %AWB_END
+# */
+

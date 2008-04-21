@@ -12,7 +12,7 @@
 #
 # %provides funcp_memstate
 #
-# %requires funcp_memstate_manager
+# %requires funcp_memstate_manager funcp_memory
 # 
 # %attributes hasim funcp memstate
 #

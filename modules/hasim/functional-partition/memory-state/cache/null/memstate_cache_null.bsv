@@ -13,7 +13,7 @@ import FIFO::*;
 
 // The memory virtual device
 
-`include "memory.bsh"
+`include "funcp_memory.bsh"
 
 // mkFUNCP_Cache
 

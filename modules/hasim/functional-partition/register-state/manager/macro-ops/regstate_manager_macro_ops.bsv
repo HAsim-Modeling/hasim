@@ -14,7 +14,7 @@ import RegFile::*;
 `include "hasim_common.bsh"
 `include "soft_connections.bsh"
 `include "fpga_components.bsh"
-`include "memory.bsh"
+`include "funcp_memory.bsh"
 
 // Functional Partition includes.
 

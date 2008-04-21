@@ -14,7 +14,7 @@ import Vector::*;
 `include "hasim_common.bsh"
 `include "fpga_components.bsh"
 `include "soft_connections.bsh"
-`include "memory.bsh"
+`include "funcp_memory.bsh"
 
 // Memstate imports
 

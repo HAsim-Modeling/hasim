@@ -17,7 +17,7 @@ import RegFile::*;
 `include "fpga_components.bsh"
 `include "hasim_common.bsh"
 `include "soft_connections.bsh"
-`include "memory.bsh"
+`include "funcp_memory.bsh"
 
 
 // ***** Typedefs ***** //

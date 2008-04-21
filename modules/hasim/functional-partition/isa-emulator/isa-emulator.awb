@@ -7,9 +7,9 @@
 #/*
 # %AWB_START
 #
-# %name ISA Emulator
-# %desc ISA Emulator - currently just printfs
-# %provides hasim_isa_emulator
+# %name Hybrid ISA Emulator
+# %desc Hybrid ISA Emulator
+# %provides isa_emulator
 #
 #
 # %attributes hasim

@@ -11549,3 +11549,77 @@ Directory modules/common/platform_interface/hasim
 - moved starter client calls to new hw->sw RRR path
 - removed manual starter RRR links from platform interface
 - removed unused file hybrid-basic-starter.h
+
+----------
+mcadler     Date: Mon Apr 21 15:50:56 EDT 2008  CSN: CSN-hasim-376
+                  Mon Apr 21 19:50:56 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          375 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          375 
+ isa-emulator.awb          Locally Modified          375 
+ isa-emulator-common.h     Locally Modified          375 
+
+Directory modules/hasim/functional-partition/memory-state/cache/null
+ memstate_cache_null.bsv   Locally Modified          375 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-hash
+ memstate_storebuffer_bucket_hash.bsv Locally Modified          375 
+
+Directory modules/hasim/functional-partition/memory-state
+ memory/                   Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/memory
+ hybrid/                   Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-memory-sw.cpp      Locally Added               0 
+ hybrid-memory-sw.h        Locally Added               0 
+ memory_virtual_device_datatypes.bsv Locally Added               0 
+ memory_virtual_device_hybrid.awb Locally Added               0 
+ memory_virtual_device_hybrid.bsv Locally Added               0 
+ vmh/                      Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
+ vmh-memory.awb            Locally Added               0 
+ vmh-utils.cpp             Locally Added               0 
+ vmh-utils.h               Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-memory-services.rrr Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          375 
+
+Directory modules/hasim/functional-partition/memory-state
+ memstate_default.awb      Locally Modified          375 
+
+Directory modules/hasim/functional-partition
+ functional_partition_default.awb Locally Modified          375 
+ hybrid_isa_semantics.awb  Locally Added               0 
+
+Directory modules/functional/memstate
+ FUNCP_NullCache.bsv       Locally Modified          375 
+ FUNCP_MemState_Cached.bsv Locally Modified          375 
+
+Directory modules/functional/semantic-model
+ hasim_funcp_model.awb     Locally Modified          375 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          375 
+ HAsimPlatformInterface.bsv Locally Modified          375 
+
+- Separate memory into two categories.  Functional model memory now is defined
+  under the functional model.  The memory defined in the FPGA environment
+  is now just scratchpad memory.  Either memory may be hybrid.
+- Hybrid functional memory is two components:  communication with the host and
+  memory management.  Separate the two.  VMH is defined as a manager.  Soon
+  m5 will be, too.
+- Put isa_emulator in hasim_funcp.  hasim_funcp now requires hasim_isa_semantics.
+  If the ISA semantics are hybrid then a hybrid isa_emulator may be chosen under
+  semantics.
+
+

@@ -1,0 +1,8 @@
+
+%name VMH hybrid memory
+%desc VMH hybrid memory
+
+%provides funcp_simulated_memory
+
+%sources -t CPP -v PRIVATE  vmh-utils.cpp
+%sources -t H   -v PRIVATE  vmh-utils.h

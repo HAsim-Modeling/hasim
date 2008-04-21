@@ -9,7 +9,7 @@ import Vector::*;
 import fpga_components::*;
 import hasim_common::*;
 import soft_connections::*;
-import memory::*;
+import funcp_memory::*;
 
 import hasim_isa::*;
 

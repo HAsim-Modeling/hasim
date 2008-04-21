@@ -11,7 +11,7 @@
 # %desc Hasim functional partition semantic model
 # %provides hasim_funcp
 # 
-# %requires hasim_funcp_memstate_ifc hasim_funcp_memstate 
+# %requires hasim_funcp_memstate_ifc hasim_funcp_memstate funcp_memory
 # %requires hasim_funcp_tokstate
 # %requires hasim_funcp_freelist
 # %requires hasim_isa_datapath

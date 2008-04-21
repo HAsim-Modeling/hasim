@@ -14,8 +14,7 @@
 # 
 # %requires funcp_regstate
 # %requires funcp_memstate
-# %requires hasim_isa_datapath
-# %requires hasim_isa_emulator
+# %requires hasim_isa_semantics
 #
 # %attributes hasim funcp
 #

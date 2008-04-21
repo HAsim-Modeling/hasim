@@ -1,6 +1,6 @@
 import hasim_common::*;
 import soft_connections::*;
-import memory::*;
+import funcp_memory::*;
 import rrr::*;
 
 `include "streams.bsh"

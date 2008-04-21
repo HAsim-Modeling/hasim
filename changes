@@ -11520,3 +11520,32 @@ Directory config/pm/hasim/submodels/common
  hasim_common_v2.apm       Locally Added               0 
 
 Added a submodel with the new (v2) hasim common module.
+
+----------
+aparasha    Date: Mon Apr 21 11:24:22 EDT 2008  CSN: CSN-hasim-375
+                  Mon Apr 21 15:24:22 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Method.pm                 Locally Modified          374 
+
+Directory modules/hasim/controller/starter
+ starter-common.h          Locally Modified          374 
+ hybrid-basic-starter.cpp  Locally Modified          374 
+ hybrid-basic-starter-services.rrr Locally Modified          374 
+ hybrid-basic-starter.h    Locally Removed           374 
+ hybrid-basic-starter.bsv  Locally Modified          374 
+ null-starter.cpp          Locally Modified          374 
+
+Directory modules/hasim/controller
+ controller-standard.bsv   Locally Modified          374 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          374 
+ HAsimPlatformInterface.bsv Locally Modified          374 
+ hasim-platform-interface.awb Locally Modified          374 
+
+- fixed some bugs with hw client-side connection generation
+- moved starter client calls to new hw->sw RRR path
+- removed manual starter RRR links from platform interface
+- removed unused file hybrid-basic-starter.h

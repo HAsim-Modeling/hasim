@@ -373,7 +373,7 @@ sub print_send_response_definition
     print $file ")\n";
     print $file $indent . "                        };\n";
     print $file $indent . "    server.responsePorts[`SERVICE_ID].write(header);\n";
-    print $file $indent . "    mar.enq(resp);\n";
+    print $file $indent . "    mar.enq(zeroExtend(pack(resp)));\n";
 
     # endmethod
     print $file $indent . "endmethod\n";
@@ -539,7 +539,7 @@ sub print_make_request_definition
     print $file ")\n";
     print $file $indent . "                        };\n";
     print $file $indent . "    client.requestPorts[`SERVICE_ID].write(header);\n";
-    print $file $indent . "    mar.enq(req);\n";
+    print $file $indent . "    mar.enq(zeroExtend(pack(req)));\n";
 
     # endmethod
     print $file $indent . "endmethod\n";
@@ -687,7 +687,7 @@ sub print_client_connection
                     $self->inarg()->type()->string_bsv() .
                     ") link_client_$servicename" . "_"          .
                     $self->{name}                        .
-                    " <- mkConnection_Send(\"rrr_client_$servicename\_" .
+                    " <- mkConnection_Receive(\"rrr_client_$servicename\_" .
                     $self->{name} . "\");\n";
     }
     else

@@ -18,7 +18,7 @@ interface Starter;
     method Action sendResponse_DumpStats();
 
     // client methods
-    method Action makeRequest_EndSim(Bit#(1) success);
+    method Action makeRequest_EndSim(Bool success);
 
 endinterface
 
@@ -26,12 +26,11 @@ endinterface
 module [HASim_Module] mkStarter(Starter);
 
     // ----------- links -----------
-    Connection_Receive#(UINT32) link_Run       <- mkConnection_Receive("rrr_server_STARTER_Run");
-    Connection_Receive#(UINT32) link_Pause     <- mkConnection_Receive("rrr_server_STARTER_Pause");
-    Connection_Receive#(UINT32) link_Sync      <- mkConnection_Receive("rrr_server_STARTER_Sync");
-    Connection_Server#(UINT32, UINT32)  link_DumpStats <- mkConnection_Server("rrr_server_STARTER_DumpStats");
-
-    Connection_Send#(RRR_Request) link_rrr   <- mkConnection_Send("rrr_client_starter");
+    Connection_Receive#(UINT32)        link_Run       <- mkConnection_Receive("rrr_server_STARTER_Run");
+    Connection_Receive#(UINT32)        link_Pause     <- mkConnection_Receive("rrr_server_STARTER_Pause");
+    Connection_Receive#(UINT32)        link_Sync      <- mkConnection_Receive("rrr_server_STARTER_Sync");
+    Connection_Server#(UINT32, UINT32) link_DumpStats <- mkConnection_Server("rrr_server_STARTER_DumpStats");
+    Connection_Send#(Bool)             link_EndSim    <- mkConnection_Send("rrr_client_STARTER_EndSim");
 
     // ----------- service methods: request ------------
 
@@ -55,21 +54,16 @@ module [HASim_Module] mkStarter(Starter);
         link_DumpStats.deq();
     endmethod
 
-    // ------------ client methods ------------
-
     // send response to DumpStats
     method Action sendResponse_DumpStats();
         link_DumpStats.makeResp(0);
     endmethod
 
+    // ------------ client methods ------------
+
     // signal end of simulation
-    method Action makeRequest_EndSim(Bit#(1) success);
-        link_rrr.send(RRR_Request { serviceID   : `SERVICE_ID,
-                                    param0      : `METHOD_ID_ENDSIM,
-                                    param1      : zeroExtend(success),
-                                    param2      : ?,
-                                    param3      : ?,
-                                    needResponse: False });
+    method Action makeRequest_EndSim(Bool success);
+        link_EndSim.send(success);
     endmethod
 
 endmodule

@@ -7,4 +7,9 @@ service STARTER
         method Sync      (in UINT32[32] payload);
         method DumpStats (in UINT32[32] payload, out UINT32[32] retval);
     };
+
+    server sw (cpp, method) <- hw (bsv, connection)
+    {
+        method EndSim (in Bool[1] success);
+    };
 };

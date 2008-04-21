@@ -65,7 +65,7 @@ module [HASim_Module] mkController ();
     // monitor module controller
     rule monitor_module_controller (state == CONTROL_STATE_running);
         let success = centralControllers.moduleController.queryResult();
-        starter.makeRequest_EndSim(success ? 1 : 0);
+        starter.makeRequest_EndSim(success);
         state <= CONTROL_STATE_paused;
     endrule
 

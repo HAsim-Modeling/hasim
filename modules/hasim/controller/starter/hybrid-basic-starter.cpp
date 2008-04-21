@@ -45,24 +45,36 @@ STARTER_CLASS::Poll()
 }
 
 // handle service request
-bool
+UMF_MESSAGE
 STARTER_CLASS::Request(
-    UINT32 arg0,
-    UINT32 arg1,
-    UINT32 arg2,
-    UINT32 arg3,
-    UINT32 *result)
+    UMF_MESSAGE req)
 {
-    switch (arg0)
+    // extract info
+    UINT32 methodID = req->GetMethodID();
+    UINT32 success  = req->ExtractUINT32();
+
+    // delete object
+    delete req;
+
+    switch (req->GetMethodID())
     {
         case METHOD_ID_ENDSIM:
             // for now, call statsdump directly from here
-            cout << "starter: simulation complete, syncing... ";
+            if (success == 1)
+            {
+                cout << "starter: simulation completed successfully." << endl;
+                cout << "         syncing... ";
+            }
+            else
+            {
+                cout << "starter: simulation completed with errors." << endl;
+                cout << "         syncing... ";
+            }
             Sync();
             cout << "sunk." << endl;
             cout << "         starting stats dump... ";
             DumpStats();
-            cout << "dump complete, exiting." << endl;
+            cout << "done." << endl;
             CallbackExit(0);
             break;
 
@@ -72,7 +84,8 @@ STARTER_CLASS::Request(
             break;
     }
 
-    return false;
+    // no response
+    return NULL;
 }
 
 // client: run

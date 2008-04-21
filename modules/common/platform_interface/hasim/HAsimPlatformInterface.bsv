@@ -35,7 +35,6 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     Connection_Receive#(STREAMS_REQUEST) link_streams <- mkConnection_Receive("vdev_streams");
 
     // direct RRR links (TEMPORARY, these will be automatically generated in future)
-    Connection_Receive#(RRR_Request) link_rrr_starter <- mkConnection_Receive("rrr_client_starter");
     Connection_Receive#(RRR_Request) link_rrr_events  <- mkConnection_Receive("rrr_client_events");
     Connection_Receive#(RRR_Request) link_rrr_stats   <- mkConnection_Receive("rrr_client_stats");
     Connection_Receive#(RRR_Request) link_rrr_assertions <- mkConnection_Receive("rrr_client_assertions");
@@ -134,14 +133,7 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     // dynamic fairness. For now we can use our high-level knowledge to give
     // a static urgency. Otherwise Events will starve everyone else.
 
-    (* descending_urgency= "translate_rrr_assertions_req, translate_rrr_starter_req, translate_rrr_stats_req, translate_rrr_sync_req, translate_rrr_emulate_req, translate_rrr_events_req" *)
-    rule translate_rrr_starter_req (True);
-
-        let req = link_rrr_starter.receive();
-        link_rrr_starter.deq();
-        llpint.oldrrrClient.makeRequest(req);
-
-    endrule
+    (* descending_urgency= "translate_rrr_assertions_req, translate_rrr_stats_req, translate_rrr_sync_req, translate_rrr_emulate_req, translate_rrr_events_req" *)
 
     rule translate_rrr_events_req (True);
 

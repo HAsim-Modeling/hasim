@@ -26,9 +26,6 @@ module [HASim_Module] mkConnectionTerminus();
         Connection_Send#(STREAMS_REQUEST) link_streams <- mkConnection_Send("vdev_streams");
 
     // direct RRR links (TEMPORARY, these will be automatically generated in future)
-    if (`TERM_RRR_CLIENT_STARTER == 1)
-        Connection_Send#(RRR_Request) link_rrr_starter <- mkConnection_Send("rrr_client_starter");
-
     if (`TERM_RRR_CLIENT_EVENTS == 1)
         Connection_Send#(RRR_Request) link_rrr_events <- mkConnection_Send("rrr_client_events");
         

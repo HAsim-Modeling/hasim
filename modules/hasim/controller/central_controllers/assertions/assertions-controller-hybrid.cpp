@@ -26,8 +26,7 @@ ASSERTIONS_CONTROLLER_CLASS ASSERTIONS_CONTROLLER_CLASS::instance;
 ASSERTIONS_CONTROLLER_CLASS::ASSERTIONS_CONTROLLER_CLASS()
 {
     // register with server's map table
-    // TEMPORARY:: Commented out until we migrate assertions.
-    // RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
+    RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
 }
 
 // destructor

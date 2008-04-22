@@ -11677,3 +11677,13 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
   code.
 - The simulated memory interface now supports accesses of any size.  The RRR
   code still uses on 32 bit references.  That part will need to change.
+
+----------
+mcadler     Date: Tue Apr 22 16:10:53 EDT 2008  CSN: CSN-hasim-379
+                  Tue Apr 22 20:10:53 UTC 2008
+
+
+Directory modules/hasim/controller/central_controllers/assertions
+ assertions-controller-hybrid.cpp Locally Modified          377 
+
+Register the assertions service.

@@ -373,7 +373,9 @@ sub print_send_response_definition
     print $file ")\n";
     print $file $indent . "                        };\n";
     print $file $indent . "    server.responsePorts[`SERVICE_ID].write(header);\n";
-    print $file $indent . "    mar.enq(zeroExtend(pack(resp)));\n";
+    print $file $indent . "    mar.enq(zeroExtend(pack(resp)), fromInteger(numChunks_";
+    print $file $self->{name};
+    print $file "));\n";
 
     # endmethod
     print $file $indent . "endmethod\n";
@@ -539,7 +541,9 @@ sub print_make_request_definition
     print $file ")\n";
     print $file $indent . "                        };\n";
     print $file $indent . "    client.requestPorts[`SERVICE_ID].write(header);\n";
-    print $file $indent . "    mar.enq(zeroExtend(pack(req)));\n";
+    print $file $indent . "    mar.enq(zeroExtend(pack(req)), fromInteger(numChunks_";
+     print $file $self->{name};
+    print $file "));\n";
 
     # endmethod
     print $file $indent . "endmethod\n";
@@ -615,7 +619,7 @@ sub print_get_response_definition
 
     # print method header after indenting it
     print $file $indent;
-    _print_make_request_header($self, $file);
+    _print_get_response_header($self, $file);
 
     # conditions
     print $file " if (mid == fromInteger(mid_";

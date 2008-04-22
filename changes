@@ -11687,3 +11687,13 @@ Directory modules/hasim/controller/central_controllers/assertions
  assertions-controller-hybrid.cpp Locally Modified          377 
 
 Register the assertions service.
+
+----------
+aparasha    Date: Tue Apr 22 17:36:21 EDT 2008  CSN: CSN-hasim-380
+                  Tue Apr 22 21:36:21 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Method.pm                 Locally Modified          379 
+
+fixed a bug in the hw client stub code.

@@ -11623,3 +11623,14 @@ Directory modules/common/platform_interface/hasim
   semantics.
 
 
+
+----------
+vmurali     Date: Tue Apr 22 11:39:21 EDT 2008  CSN: CSN-hasim-377
+                  Tue Apr 22 15:39:21 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          376 
+
+
+Changed places where ISA_REG_INDEX is used to Bit#() as ISA_REG_INDEX was giving me errors for array accesses if it was not a bit type.

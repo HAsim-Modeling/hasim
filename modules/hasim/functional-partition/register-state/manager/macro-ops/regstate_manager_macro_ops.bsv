@@ -559,7 +559,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             // Also record the info for the timing partition.
             map_srcs[x] = case (arc_src) matches
                               tagged Invalid:  tagged Invalid;
-                              tagged Valid .r: tagged Valid tuple2(r, select(maptable, r));
+                              tagged Valid .r: tagged Valid tuple2(unpack(r), select(maptable, r));
                           endcase;
 
         end
@@ -580,7 +580,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
           arc_dsts[x] = arc_dst;
           map_dsts[x] = case (arc_dst) matches
                            tagged Invalid:  tagged Invalid;
-                           tagged Valid .r: tagged Valid tuple2(r, new_preg); //This could be overwritten by the next stage.
+                           tagged Valid .r: tagged Valid tuple2(unpack(r), new_preg); //This could be overwritten by the next stage.
                        endcase;
         end
 
@@ -714,13 +714,13 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let new_map_dsts = update(map_dsts, num, tagged Valid tuple2(arc_dst, phy_dst));
 
         // The reg to free is the old writer of this destination.
-        let new_phy_regs_to_free = update(phy_regs_to_free, num, tagged Valid select(maptable, arc_dst));
+        let new_phy_regs_to_free = update(phy_regs_to_free, num, tagged Valid select(maptable, pack(arc_dst)));
 
         if (tok.timep_info.epoch == epoch) //Don't update the maptable if this token is getting killed
         begin
 
             // Update the maptable.
-            maptable <= update(maptable, arc_dst, phy_dst);
+            maptable <= update(maptable, pack(arc_dst), phy_dst);
             // Reset the reg to unready.
             prfValids[phy_dst] <= False;
         end

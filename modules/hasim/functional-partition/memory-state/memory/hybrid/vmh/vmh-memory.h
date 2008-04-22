@@ -11,33 +11,39 @@
  * of use.
 */
  
-#ifndef __HYBRID_MEMORY__
-#define __HYBRID_MEMORY__
+/**
+ * @file vmh-memory.h
+ * @brief Implementation of funcp_simulated_memory using VMH images.
+ * @author Michael Adler
+ */
 
-#include "asim/provides/rrr.h"
-#include "asim/provides/funcp_simulated_memory.h"
+#ifndef __VMH_MEMORY__
+#define __VMH_MEMORY__
 
-#define CMD_LOAD    0
-#define CMD_STORE   1
 
-class HYBRID_FUNCP_MEMORY_CLASS: public RRR_SERVICE_CLASS,
-                                 public PLATFORMS_MODULE_CLASS
+#include "asim/syntax.h"
+#include "vmh-utils.h"
+
+typedef class FUNCP_SIMULATED_MEMORY_CLASS *FUNCP_SIMULATED_MEMORY;
+
+class FUNCP_SIMULATED_MEMORY_CLASS
 {
-  private:
-    // self-instantiation
-    static HYBRID_FUNCP_MEMORY_CLASS instance;
-
-    FUNCP_SIMULATED_MEMORY memory;
-
   public:
-    HYBRID_FUNCP_MEMORY_CLASS();
-    ~HYBRID_FUNCP_MEMORY_CLASS();
+    //
+    // Required public interface
+    //
 
-    void    Init(PLATFORMS_MODULE);
-    void    Uninit();
-    void    Cleanup();
-    bool    Request(UINT32, UINT32, UINT32, UINT32, UINT32 *);
-    void    Poll();
+    FUNCP_SIMULATED_MEMORY_CLASS();
+    ~FUNCP_SIMULATED_MEMORY_CLASS();
+
+    void Read(UINT64 addr, UINT64 size, void *dest);
+    void Write(UINT64 addr, UINT64 size, void *src);
+
+  private:
+    //
+    // VMH-specific code...
+    //
+    UINT8 *memory;
 };
 
-#endif
+#endif // __VMH_MEMORY__

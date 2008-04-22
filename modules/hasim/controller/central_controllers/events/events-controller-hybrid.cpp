@@ -73,8 +73,7 @@ EVENTS_CONTROLLER_CLASS::Request(
     const char *event_name = EVENTS_DICT::Str(event_id);
     if (event_name == NULL)
     {
-        cerr << "streams: " << EVENTS_DICT::Str(event_id)
-             << ": invalid event_id: " << event_id << endl;
+        cerr << "streams: invalid event_id: " << event_id << endl;
         CallbackExit(1);
     }
 

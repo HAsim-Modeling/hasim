@@ -4,19 +4,24 @@
 #include "vmh-utils.h"
 
 /* load image into memory */
-int vmh_load_image(const char *filename, UINT32 *M, int memsize)
+bool vmh_load_image(const char *filename, void *memory, UINT64 memsize)
 {
     /* assume file is in VMH format */
     char *line;
     size_t len = 0;
     int read;
+
+    /* deal in chunks of 32 bits */
+    UINT32 *M = (UINT32*)(memory);
+    memsize >>= 2;
+
     FILE *file = fopen(filename, "r");
 
     if (file == NULL)
     {
         fprintf(stderr, "vmh-utils: could not open VMH file %s.\n",
                 filename);
-        return -1;
+        return false;
     }
 
     /* current address pointer */
@@ -61,7 +66,7 @@ int vmh_load_image(const char *filename, UINT32 *M, int memsize)
             {
                 fprintf(stderr, "memory overflow: image is too large.\n");
                 fclose(file);
-                return -1;
+                return false;
             }
         }
     }
@@ -70,5 +75,7 @@ int vmh_load_image(const char *filename, UINT32 *M, int memsize)
     if (line)
         free(line);
     fclose(file);
+
+    return true;
 }
 

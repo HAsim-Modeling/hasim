@@ -3,6 +3,6 @@
 
 #include "asim/provides/rrr.h"
 
-int vmh_load_image(const char *filename, UINT32 *M, int memsize);
+bool vmh_load_image(const char *filename, void *memory, UINT64 memsize);
 
 #endif

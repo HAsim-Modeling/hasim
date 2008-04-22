@@ -186,7 +186,7 @@ END
     my $shl = $dict->GetUIDNumBits();
     my $uid = $dict->GetUID();
 
-    if ($shl == 0) {
+    if (($uid >= 0) && ($shl == 0)) {
         # No UIDs (single level dictionary)
         print $of "        return (i <= ${idx} ? str[i] : NULL);\n";
     }

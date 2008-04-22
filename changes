@@ -11634,3 +11634,46 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 
 
 Changed places where ISA_REG_INDEX is used to Bit#() as ISA_REG_INDEX was giving me errors for array accesses if it was not a bit type.
+
+----------
+mcadler     Date: Tue Apr 22 14:01:33 EDT 2008  CSN: CSN-hasim-378
+                  Tue Apr 22 18:01:33 UTC 2008
+
+
+Directory tools/scripts
+ hasim-dict                Locally Modified          377 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          377 
+
+Directory modules/hasim/controller/central_controllers/events
+ events-controller-hybrid.cpp Locally Modified          377 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-memory-sw.cpp      Locally Modified          377 
+ hybrid-memory-sw.h        Locally Modified          377 
+ memory_virtual_device_hybrid.bsv Locally Modified          377 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
+ vmh-memory.cpp            Locally Added               0 
+ vmh-memory.h              Locally Added               0 
+ vmh-memory.awb            Locally Modified          377 
+ vmh-utils.cpp             Locally Modified          377 
+ vmh-utils.h               Locally Modified          377 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-memory-services.rrr Locally Modified          377 
+
+- Fix sw side preprocessor definitions for 32-bit Linux.  Resulted in wrong
+  definition of UINT64.
+- Add support for standard Asim TRACE
+- hasim-dict generated the wrong code when there was exactly one object in
+  the dictionary and the object was in a sub-dictionary.
+- Fix the printing of errors in the events controller.
+
+- Break apart hybrid functional memory into two clean pieces.  One handles RRR
+  and the other handles simulated memory.  There is a clean interface to
+  simulated memory so VMH could be replaced by m5 with no changes to the RRR
+  code.
+- The simulated memory interface now supports accesses of any size.  The RRR
+  code still uses on 32 bit references.  That part will need to change.

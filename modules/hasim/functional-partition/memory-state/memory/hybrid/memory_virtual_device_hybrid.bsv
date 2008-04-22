@@ -7,7 +7,7 @@
 `include "rrr.bsh"
 `include "channelio.bsh"
 `include "asim/rrr/service_ids.bsh"
-`include "asim/rrr/server_stub_MEMORY.bsh"
+`include "asim/rrr/server_stub_HYBRID_FUNCP_MEMORY.bsh"
 
 
 // ***** Modules *****
@@ -27,7 +27,7 @@ module mkMemoryVirtualDevice#(LowLevelPlatformInterface llpint)
     Reg#(Bit#(8)) state   <- mkReg(0);
     
     // The stub to the memory RRR service.
-    ServerStub_MEMORY stub <- mkServerStub_MEMORY(llpint.rrrServer);
+    ServerStub_HYBRID_FUNCP_MEMORY stub <- mkServerStub_HYBRID_FUNCP_MEMORY(llpint.rrrServer);
 
     // ***** Methods ******
 
@@ -42,7 +42,7 @@ module mkMemoryVirtualDevice#(LowLevelPlatformInterface llpint)
 
           // send request via RRR
           RRR_Request request;
-          request.serviceID       = `MEMORY_SERVICE_ID;  /* memory */
+          request.serviceID       = `HYBRID_FUNCP_MEMORY_SERVICE_ID;  /* memory */
           request.param0          = 0;            /* load */
           request.param1          = addr;         /* address */
           request.param2          = 0;            /* don't care */
@@ -59,7 +59,7 @@ module mkMemoryVirtualDevice#(LowLevelPlatformInterface llpint)
 
           // send request via RRR
           RRR_Request request;
-          request.serviceID       = `MEMORY_SERVICE_ID;  /* memory */
+          request.serviceID       = `HYBRID_FUNCP_MEMORY_SERVICE_ID;  /* memory */
           request.param0          = 1;            /* store */
           request.param1          = stinfo.addr;  /* address */
           request.param2          = stinfo.val;   /* data */

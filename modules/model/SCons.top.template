@@ -119,16 +119,23 @@ def transform_string_list(str, sep, prefix, suffix):
     t = [ prefix + a + suffix for a in clean_split(str, sep) ]
     return string.join(t, sep)
     
+##
+## one_line_cmd --
+##     Issue a shell command and return the first line of output
+##
+def one_line_cmd(cmd):
+    p = os.popen(cmd)
+    r = p.read().rstrip()
+    p.close()
+    return r
+
 
 ##
 ## awb_resolver --
 ##     Ask awb-resolver for some info.  Return the first line.
 ##
 def awb_resolver(arg):
-    awb = os.popen("awb-resolver " + arg)
-    r = awb.read().rstrip()
-    awb.close()
-    return r
+    return one_line_cmd("awb-resolver " + arg)
 
 
 ############################################################################
@@ -179,6 +186,13 @@ elif (int(ARGUMENTS.get('DEBUG', 0))):
     DEBUG = 1
 else:
     DEBUG = int(awb_resolver('-config=debug'))
+
+##
+## Enable tracing (software side debugging)?  Always enabled in debug mode.
+##
+TRACE = int(ARGUMENTS.get('TRACE', 0))
+if (DEBUG):
+    TRACE = 1
 
 ROOT_WRAPPER_SYNTH_ID = 'mk_' + env['DEFS']['ROOT_DIR_MODEL'] + '_Wrapper'
 
@@ -396,10 +410,30 @@ if env.GetOption('clean'):
 ##
 ############################################################################
 
+def host_defs():
+    hostos = one_line_cmd('uname -s')
+    hostmachine = one_line_cmd('uname -m')
+
+    if (hostos == 'FreeBSD'):
+        hflags = '-DHOST_FREEBSD'
+    else:
+        hflags = '-DHOST_LINUX'
+        if (hostmachine == 'ia64'):
+            hflags += ' -DHOST_LINUX_IA64'
+        else:
+            hflags += ' -DHOST_LINUX_X86'
+
+    return hflags
+
+
 if SW_EXE != []:
     inc_paths = clean_split(env['DEFS']['SW_INC_DIRS'], sep = ' ')
     libs = clean_split(env['DEFS']['SW_LIBS'], sep = ' ')
-    cc_flags = '-DHOST_LINUX -DAPM_NAME=\\"' + TMP_BSC_DIR + '/' + APM_NAME + '\\"'
+    cc_flags = host_defs()
+    cc_flags += ' -DASIM_ENABLE_ASSERTIONS -DASIM_ENABLE_EVENTS'
+    if (TRACE):
+        cc_flags += ' -DASIM_ENABLE_TRACE'
+    cc_flags += ' -DAPM_NAME=\\"' + TMP_BSC_DIR + '/' + APM_NAME + '\\"'
 
     ##
     ## These will be defined if the m5 simulator is part of the model

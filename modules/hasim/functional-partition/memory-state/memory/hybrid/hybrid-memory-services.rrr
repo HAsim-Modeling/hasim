@@ -1,4 +1,4 @@
-service MEMORY
+service HYBRID_FUNCP_MEMORY
 {
     server hw (bsv, method) <- sw (cpp, method)
     {

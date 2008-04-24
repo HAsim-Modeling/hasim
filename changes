@@ -11711,3 +11711,13 @@ Directory modules/hasim/functional-partition/register-state/freelist/bram
 
 - Multiple destination regs in free list had a bug
 - RRR update register request is handled in a parameterized way now ( previously it assumed 5 bit addressing )
+
+----------
+mcadler     Date: Thu Apr 24 07:57:06 EDT 2008  CSN: CSN-hasim-382
+                  Thu Apr 24 11:57:06 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          381 
+
+Off by one in initialization caused an infinite loop.

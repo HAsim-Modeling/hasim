@@ -351,7 +351,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         prfValids[initCur] <= True;
         
         // We're done if we've initialized the last register.
-        initializing <= (initCur <= maxInit);
+        initializing <= (initCur < maxInit);
         initCur <= initCur + 1;
 
     endrule

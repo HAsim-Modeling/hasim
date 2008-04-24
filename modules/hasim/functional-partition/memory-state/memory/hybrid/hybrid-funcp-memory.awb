@@ -1,15 +1,14 @@
-
 %name Hybrid Memory for Functional Partition
 %desc Hybrid Memory for Functional Partition
 
 %provides funcp_memory
 %requires funcp_simulated_memory
 
-%sources -t BSV -v PUBLIC   memory_virtual_device_datatypes.bsv
-%sources -t BSV -v PUBLIC   memory_virtual_device_hybrid.bsv
-%sources -t CPP -v PRIVATE  hybrid-memory-sw.cpp
-%sources -t H   -v PUBLIC   hybrid-memory-sw.h
-%sources -t RRR -v PRIVATE  hybrid-memory-services.rrr
+%sources -t BSV -v PUBLIC   hybrid-funcp-memory-datatypes.bsv
+%sources -t BSV -v PUBLIC   hybrid-funcp-memory.bsv
+%sources -t CPP -v PRIVATE  hybrid-funcp-memory.cpp
+%sources -t H   -v PUBLIC   hybrid-funcp-memory.h
+%sources -t RRR -v PRIVATE  hybrid-funcp-memory.rrr
 
 %param MEMORY_ADDR_SIZE 32 "Number of bits to address memory."
 %param MEMORY_VALUE_SIZE 32 "Number of bits to read from and write to memory."

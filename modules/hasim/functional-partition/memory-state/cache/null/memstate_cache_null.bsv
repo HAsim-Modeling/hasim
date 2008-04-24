@@ -25,8 +25,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
   // ***** Soft Connections ***** //
 
   Connection_Server#(MEM_REQUEST, MEM_VALUE)   link_memstate          <- mkConnection_Server("mem_cache");
-  Connection_Client#(MEM_REQUEST, MEM_VALUE)   link_vdev_memory       <- mkConnection_Client("vdev_memory");
-  Connection_Receive#(MEM_ADDRESS)             link_vdev_memory_inval <- mkConnection_Receive("vdev_memory_invalidate");
+  Connection_Client#(MEM_REQUEST, MEM_VALUE)   link_vdev_memory       <- mkConnection_Client("funcp_memory");
+  Connection_Receive#(MEM_ADDRESS)             link_vdev_memory_inval <- mkConnection_Receive("funcp_memory_invalidate");
 
   // ***** Rules ***** //
 

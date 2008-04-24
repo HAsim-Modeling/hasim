@@ -3,9 +3,10 @@ import soft_connections::*;
 import front_panel::*;
 import physical_platform::*;
 import low_level_platform_interface::*;
-import funcp_memory::*;
 import rrr::*;
 
+`include "funcp_memory.bsh" // FIXME: NEED THIS FOR TYPES, REMOVE
+`include "scratchpad_memory.bsh"
 `include "asim/rrr/server_connections.bsh"
 `include "asim/rrr/client_connections.bsh"
 `include "streams.bsh"

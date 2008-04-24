@@ -11731,3 +11731,52 @@ Directory modules/model
  SCons.top.template        Locally Modified          381 
 
 Always link with libpthread.
+
+----------
+aparasha    Date: Thu Apr 24 13:08:15 EDT 2008  CSN: CSN-hasim-384
+                  Thu Apr 24 17:08:15 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/cache/null
+ memstate_cache_null.bsv   Locally Modified          383 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-memory-sw.cpp      Locally Removed           383 
+ hybrid-funcp-memory.cpp   Locally Added               0 
+ hybrid-memory-sw.h        Locally Removed           383 
+ memory_virtual_device_datatypes.bsv Locally Removed           383 
+ hybrid-funcp-memory.rrr   Locally Added               0 
+ hybrid-funcp-memory-datatypes.bsv Locally Added               0 
+ memory_virtual_device_hybrid.awb Locally Removed           383 
+ hybrid-funcp-memory.h     Locally Added               0 
+ memory_virtual_device_hybrid.bsv Locally Removed           383 
+ hybrid-funcp-memory.awb   Locally Added               0 
+ hybrid-funcp-memory.bsv   Locally Added               0 
+ hybrid-memory-services.rrr Locally Removed           383 
+
+Directory modules/hasim/functional-partition/memory-state
+ memstate_default.bsv      Locally Modified          383 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          383 
+
+- modified Funcp Memory to behave as an RRR service talking to
+  the platform via auto-generated connections (instead of a
+  virtual device). This breaks Funcp v2.
+
+- generalized Funcp Memory to support multiple address and data
+  widths. The widths can be changed now by simply modifying the
+  AWB parameters.
+
+- changed name of links between FuncpMemory and MemstateCache
+  to "funcp_memory..." instead of "vdev_memory...".
+
+- modified Platform Interface to translate calls to scratchpad
+  memory instead of funcp memory.
+
+- retained the temporary include for funcp_memory.bsh in Platform
+  Interface. This is required for the connection types to be
+  visible at Platform Interface, which instantiates the auto-
+  generated connections module. This causes all non-SMIPS
+  HAsim models to break (they were already broken before this
+  check in). This will be fixed soon.

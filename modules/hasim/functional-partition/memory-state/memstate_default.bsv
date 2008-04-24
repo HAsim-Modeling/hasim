@@ -10,11 +10,13 @@
 // Project includes
 
 `include "funcp_memstate_manager.bsh"
+`include "funcp_memory.bsh"
 
 module [HASIM_MODULE] mkFUNCP_MemState
     // interface:
         ();
 
     let manager <- mkFUNCP_MemStateManager();
+    let memory  <- mkFUNCP_Memory();
 
 endmodule

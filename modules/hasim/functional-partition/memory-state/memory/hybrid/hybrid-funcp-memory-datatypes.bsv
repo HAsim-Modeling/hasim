@@ -26,6 +26,15 @@ typedef Bit#(`MEMORY_VALUE_SIZE) MEM_VALUE;
 
 // A request to the memory virtual device is either a load or a store.
 
+typedef struct
+{
+  MEM_ADDRESS addr;
+  MEM_VALUE   val;
+}
+  MEM_STORE_INFO
+    deriving
+            (Eq, Bits);
+
 typedef union tagged 
 {
   MEM_ADDRESS MEM_LOAD;
@@ -35,15 +44,3 @@ typedef union tagged
     deriving
             (Eq, Bits);
 
-
-// MEMORY_VIRTUAL_DEVICE
-
-// The interface of the memory virtual device.
-
-interface MEMORY_VIRTUAL_DEVICE;
-
-    method Action makeMemRequest(MEM_REQUEST req);
-    method ActionValue#(MEM_VALUE) getMemResponse(); //Data is assumed to come back inorder
-    method ActionValue#(MEM_ADDRESS) getInvalidateRequest();
-
-endinterface

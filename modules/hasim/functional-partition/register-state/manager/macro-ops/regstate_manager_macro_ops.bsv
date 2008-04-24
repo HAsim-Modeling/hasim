@@ -547,12 +547,12 @@ module [HASim_Module] mkFUNCP_RegStateManager
         begin
 
             // Get the architectural src (if any);
-            Maybe#(Bit#(rname_SZ)) arc_src = isaGetSrc(inst, x);
+            Maybe#(ISA_REG_INDEX) arc_src = isaGetSrc(inst, x);
 
             // If there is a src, fill it in from the maptable.
             let phys_src = case (arc_src) matches
                                tagged Invalid:  tagged Invalid;
-                               tagged Valid .r: tagged Valid select(maptable,r);
+                               tagged Valid .r: tagged Valid select(maptable,pack(r));
                            endcase;
 
             phy_srcs[x] = phys_src;
@@ -560,13 +560,13 @@ module [HASim_Module] mkFUNCP_RegStateManager
             // Also record the info for the timing partition.
             map_srcs[x] = case (arc_src) matches
                               tagged Invalid:  tagged Invalid;
-                              tagged Valid .r: tagged Valid tuple2(unpack(r), select(maptable, r));
+                              tagged Valid .r: tagged Valid tuple2(r, select(maptable, pack(r)));
                           endcase;
 
         end
 
         // Create vectors with info on the destinations.
-        Vector#(ISA_MAX_DSTS, Maybe#(Bit#(rname_SZ)))            arc_dsts = newVector();
+        Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX))            arc_dsts = newVector();
         Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_dsts = replicate(Invalid);
         Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_MAPPING))          map_dsts = newVector();
         Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_regs_to_free = replicate(Invalid);
@@ -581,7 +581,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
           arc_dsts[x] = arc_dst;
           map_dsts[x] = case (arc_dst) matches
                            tagged Invalid:  tagged Invalid;
-                           tagged Valid .r: tagged Valid tuple2(unpack(r), new_preg); //This could be overwritten by the next stage.
+                           tagged Valid .r: tagged Valid tuple2(r, new_preg); //This could be overwritten by the next stage.
                        endcase;
         end
 
@@ -594,7 +594,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         let new_map = case (arc_dsts[0]) matches
             tagged Invalid:  return maptable;
-            tagged Valid .d: return update(maptable, d, new_preg);
+            tagged Valid .d: return update(maptable, pack(d), new_preg);
           endcase;
 
         if (tok.timep_info.epoch == epoch) //Don't update the maptable if this token is getting killed
@@ -620,7 +620,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         phy_regs_to_free[0] = case (arc_dsts[0]) matches
                                  tagged Invalid:  tagged Valid new_preg; // Free the dummy when you free this token.
-                                 tagged Valid .d: tagged Valid select(maptable, d); // Free the actual old writer.
+                                 tagged Valid .d: tagged Valid select(maptable, pack(d)); // Free the actual old writer.
                               endcase;
 
         // Update the token tables with all this information.

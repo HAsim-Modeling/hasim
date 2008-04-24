@@ -11780,3 +11780,13 @@ Directory modules/common/platform_interface/hasim
   generated connections module. This causes all non-SMIPS
   HAsim models to break (they were already broken before this
   check in). This will be fixed soon.
+
+----------
+vmurali     Date: Thu Apr 24 16:09:34 EDT 2008  CSN: CSN-hasim-385
+                  Thu Apr 24 20:09:34 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          384 
+
+- Modified regstate manager to work with ISA_REG_INDEX

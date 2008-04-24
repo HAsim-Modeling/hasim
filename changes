@@ -11721,3 +11721,13 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
  regstate_manager_macro_ops.bsv Locally Modified          381 
 
 Off by one in initialization caused an infinite loop.
+
+----------
+mcadler     Date: Thu Apr 24 12:00:43 EDT 2008  CSN: CSN-hasim-383
+                  Thu Apr 24 16:00:43 UTC 2008
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          381 
+
+Always link with libpthread.

@@ -11697,3 +11697,17 @@ Directory libperl/HAsim/lib/HAsim/RRR
  Method.pm                 Locally Modified          379 
 
 fixed a bug in the hw client stub code.
+
+----------
+vmurali     Date: Wed Apr 23 21:58:12 EDT 2008  CSN: CSN-hasim-381
+                  Thu Apr 24 01:58:12 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          380 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          380 
+
+- Multiple destination regs in free list had a bug
+- RRR update register request is handled in a parameterized way now ( previously it assumed 5 bit addressing )

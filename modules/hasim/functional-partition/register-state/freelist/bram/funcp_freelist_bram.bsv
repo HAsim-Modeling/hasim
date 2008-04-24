@@ -6,6 +6,7 @@
 // Library imports
 
 import Counter::*;
+import RWire::*;
 
 // Project foundation imports
 
@@ -93,6 +94,21 @@ module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
     // When:   At the beginning of time.
     // Effect: Put every architectural register onto the freelist and update the pointers to match.
 
+    // Wires for enabling firing of forwardReq, back and backTo (needed to support multiple destinations in regstate_manager
+    Wire#(Bool) forwardReqEn <- mkDWire(False);
+    Wire#(Bool)       backEn <- mkDWire(False);
+    Wire#(Bool)     backToEn <- mkDWire(False);
+    Wire#(FUNCP_PHYSICAL_REG_INDEX)   flReadWire <- mkDWire(?);
+
+    rule update_flRead(True);
+        if(backToEn)
+            flRead <= flReadWire;
+        else if(forwardReqEn && !backEn)
+            flRead <= flRead + 1;
+        else if(!forwardReqEn && backEn)
+            flRead <= flRead - 1;
+    endrule
+
     rule initialize (initializing);
 
         // Add architectural register X to the freelist.
@@ -124,8 +140,9 @@ module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
         // Read the next entry.
         fl.read_req(flRead);
 
+        forwardReqEn <= True;
         // Update the pointer.
-        flRead <= flRead + 1;
+        //flRead <= flRead + 1;
 
         // Update the number of in-flight requests.
         reqCount.up();
@@ -180,8 +197,9 @@ module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
         // If the freelist is empty this is an exception.
         assertAtLeastOneAllocatedRegister(!empty);
 
+        backEn <= True;
         // Update the pointer.
-        flRead <= flRead - 1;
+        //flRead <= flRead - 1;
 
     endmethod
 
@@ -200,7 +218,9 @@ module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
             $display("ERROR: Backed up the freelist too far! (r = %0d)", r);
 
         // Update the pointer.
-        flRead <= r;
+        backToEn <= True;
+        flReadWire <= r;
+        //flRead <= r;
 
     endmethod
   

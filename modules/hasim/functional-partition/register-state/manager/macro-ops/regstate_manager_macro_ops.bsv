@@ -71,6 +71,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     provisos
             (Bits#(TOKEN_INDEX, idx_SZ),      // The number of tokens.
              Bits#(ISA_REG_INDEX, rname_SZ),  // The number of architectural registers.
+             Bits#(ISA_VALUE, isa_val_SZ), // The width of arch regs.
              Bits#(FUNCP_SNAPSHOT_INDEX, snapshotptr_SZ)); // The number of snapshots.
 
     // ******* Debuging State *******
@@ -1245,8 +1246,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
         linkRRRUpdate.deq();
         
         //Temporary: get the rname and value out of the bit 64.
-        Bit#(rname_SZ) r = r_and_v[36:32];
-        ISA_VALUE     v = r_and_v[31:0];
+        ISA_VALUE v = truncate(r_and_v);
+        Bit#(rname_SZ) r = truncate(r_and_v >> valueOf(isa_val_SZ));
         
         // Assert that we're in the state we expected to be in.
         assertRegUpdateAtExpectedTime(emulatingInstruction && !synchronizingRegs);

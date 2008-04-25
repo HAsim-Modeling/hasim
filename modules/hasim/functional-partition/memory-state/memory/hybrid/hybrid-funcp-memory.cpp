@@ -94,6 +94,8 @@ FUNCP_MEMORY_CLASS::Request(
     MEM_ADDRESS addr;
     MEM_VALUE   data;
 
+    UMF_MESSAGE resp;
+
     ASSERTX(memory != NULL);
 
     // decode command
@@ -109,7 +111,7 @@ FUNCP_MEMORY_CLASS::Request(
         T1("\tfuncp_memory: LD (" << sizeof(MEM_VALUE) << ") [0x" << fmt_x(addr) << "] -> 0x" << fmt_x(data));
 
         // create response message
-        UMF_MESSAGE resp = new UMF_MESSAGE_CLASS(sizeof(MEM_VALUE));
+        resp = new UMF_MESSAGE_CLASS(sizeof(MEM_VALUE));
         resp->SetMethodID(CMD_LOAD);
         resp->AppendUINT(data, sizeof(MEM_VALUE));
 

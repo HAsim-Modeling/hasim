@@ -11848,3 +11848,17 @@ Directory modules/common/modellib
 
 - added null Asserts dictionary entry to v3 hasim_common.dic. This
   was already present in v2's hasim_common.dic.
+
+----------
+vmurali     Date: Fri Apr 25 16:12:48 EDT 2008  CSN: CSN-hasim-389
+                  Fri Apr 25 20:12:48 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          388 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          388 
+
+- Declaration inside case statement didn't work in my version of the compiler
+- Added isa_emulator.bsh in the list of include files for HAsimPlatformInterface

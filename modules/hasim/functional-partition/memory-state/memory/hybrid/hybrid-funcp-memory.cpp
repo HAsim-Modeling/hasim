@@ -1,3 +1,17 @@
+//
+// INTEL CONFIDENTIAL
+// Copyright (c) 2008 Intel Corp.  Recipient is granted a non-sublicensable 
+// copyright license under Intel copyrights to copy and distribute this code 
+// internally only. This code is provided "AS IS" with no support and with no 
+// warranties of any kind, including warranties of MERCHANTABILITY,
+// FITNESS FOR ANY PARTICULAR PURPOSE or INTELLECTUAL PROPERTY INFRINGEMENT. 
+// By making any use of this code, Recipient agrees that no other licenses 
+// to any Intel patents, trade secrets, copyrights or other intellectual 
+// property rights are granted herein, and no other licenses shall arise by 
+// estoppel, implication or by operation of law. Recipient accepts all risks 
+// of use.
+//
+ 
 #include <stdio.h>
 #include <unistd.h>
 #include <strings.h>
@@ -21,8 +35,11 @@ extern RRR_CLIENT globalRRRClient;
 FUNCP_MEMORY_CLASS FUNCP_MEMORY_CLASS::instance;
 
 // constructor
-FUNCP_MEMORY_CLASS::FUNCP_MEMORY_CLASS()
+FUNCP_MEMORY_CLASS::FUNCP_MEMORY_CLASS() :
+    memory(NULL)
 {
+    SetTraceableName("funcp_memory");
+
     // register with server's map table
     RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
 }
@@ -41,13 +58,7 @@ FUNCP_MEMORY_CLASS::Init(
     // set parent pointer
     parent = p;
 
-    // allocate and zero out memory
-    M = new MEM_VALUE[MEM_SIZE];
-    bzero(M, MEM_SIZE * sizeof(MEM_VALUE));
-
-    // don't load memory image now; load it
-    // only when we actually receive a request
-    vmhLoaded = false;
+    memory = new FUNCP_SIMULATED_MEMORY_CLASS();
 }
 
 // uninit: override
@@ -65,11 +76,7 @@ FUNCP_MEMORY_CLASS::Uninit()
 void
 FUNCP_MEMORY_CLASS::Cleanup()
 {
-    if (M)
-    {
-        delete [] M;
-        M = NULL;
-    }
+    delete memory;
 }
 
 // poll
@@ -87,77 +94,50 @@ FUNCP_MEMORY_CLASS::Request(
     MEM_ADDRESS addr;
     MEM_VALUE   data;
 
-    // check to see if our image is ready
-    if (vmhLoaded == false)
-    {
-        char *benchmark = "program.vmh";
-        if (globalArgs->FuncPlatformArgc() > 1)
-        {
-            benchmark = globalArgs->FuncPlatformArgv()[1];
-        }
-        if (vmh_load_image(benchmark, M, MEM_SIZE) == -1)
-        {
-            exit(1);
-        }
-        vmhLoaded = true;
-    }
+    ASSERTX(memory != NULL);
 
     // decode command
     switch (req->GetMethodID())
     {
-        case CMD_LOAD:
+      case CMD_LOAD:
+        addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS)));
 
-            // only word-aligned accesses are allowed in our current implementation
-            addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS))) >> 2;
+        // free
+        delete req;
 
-            if (addr >= MEM_SIZE)
-            {
-                fprintf(stderr, "memory: load address out of bounds: 0x%8x\n", addr);
-                parent->CallbackExit(1);
-            }
+        memory->Read(addr, sizeof(MEM_VALUE), &data);
+        T1("\tfuncp_memory: LD (" << sizeof(MEM_VALUE) << ") [0x" << fmt_x(addr) << "] -> 0x" << fmt_x(data));
 
-            // free
-            delete req;
+        // create response message
+        UMF_MESSAGE resp = new UMF_MESSAGE_CLASS(sizeof(MEM_VALUE));
+        resp->SetMethodID(CMD_LOAD);
+        resp->AppendUINT(data, sizeof(MEM_VALUE));
 
-            // create response message
-            UMF_MESSAGE resp = new UMF_MESSAGE_CLASS(sizeof(MEM_VALUE));
-            resp->SetMethodID(CMD_LOAD);
-            resp->AppendUINT(M[addr], sizeof(MEM_VALUE));
+        // return response
+        return resp;
 
-            // return response
-            return resp;
+        break;
 
-            break;
+      case CMD_STORE:
+        // extract data
+        data = MEM_VALUE(req->ExtractUINT(sizeof(MEM_VALUE)));
+        addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS)));
 
-        case CMD_STORE:
+        memory->Write(addr, sizeof(MEM_VALUE), &data);
+        T1("\tfuncp_memory: ST (" << sizeof(MEM_VALUE) << ") [0x" << fmt_x(addr) << "] <- 0x" << fmt_x(data));
 
-            // extract data
-            data = MEM_VALUE(req->ExtractUINT(sizeof(MEM_VALUE)));
+        // free
+        delete req;
 
-            // only word-aligned accesses are allowed in our current implementation
-            addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS))) >> 2;
-            if (addr >= MEM_SIZE)
-            {
-                fprintf(stderr, "memory: load address out of bounds: 0x%8x\n", addr);
-                parent->CallbackExit(1);
-            }
-
-            // do the store
-            M[addr] = data;
-
-            // free
-            delete req;
-
-            // no response
-            return NULL;
+        // no response
+        return NULL;
  
-            break;
+        break;
 
-        default:
-
-            fprintf(stderr, "memory: invalid command\n");
-            parent->CallbackExit(1);
-            break;
+      default:
+        ASIMWARNING("Invalid command\n");
+        parent->CallbackExit(1);
+        break;
     }
 
     return NULL;

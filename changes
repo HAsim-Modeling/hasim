@@ -11790,3 +11790,20 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
  regstate_manager_macro_ops.bsv Locally Modified          384 
 
 - Modified regstate manager to work with ISA_REG_INDEX
+
+----------
+mcadler     Date: Thu Apr 24 21:15:17 EDT 2008  CSN: CSN-hasim-386
+                  Fri Apr 25 01:15:17 UTC 2008
+
+
+Directory modules/model
+ main.cpp                  Locally Modified          385 
+ main.h                    Locally Modified          385 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          385 
+ hybrid-funcp-memory.h     Locally Modified          385 
+
+- Enable Asim-style tracing (-tr option)
+- Clean separation of VMH and hybrid functional memory interface.  The interface
+  no longer has its own backing store.

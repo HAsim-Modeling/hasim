@@ -9,6 +9,10 @@
 #include <string.h>
 #include <getopt.h>
 
+#include "asim/syntax.h"
+#include "asim/mesg.h"
+#include "asim/trace.h"
+
 #include "main.h"
 #include "asim/provides/hasim_controller.h"
 #include "asim/dict/init.h"
@@ -32,9 +36,7 @@ int main(int argc, char *argv[])
     // 1. Virtual platform
     // 2. LLPI
     // 3. Controller
-    VIRTUAL_PLATFORM vp   = new VIRTUAL_PLATFORM_CLASS(
-        globalArgs->FuncPlatformArgc(),
-        globalArgs->FuncPlatformArgv());
+    VIRTUAL_PLATFORM vp   = new VIRTUAL_PLATFORM_CLASS();
     LLPI       llpi       = new LLPI_CLASS();
     CONTROLLER controller = new CONTROLLER_CLASS(llpi);
 
@@ -59,6 +61,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
         OPT_FUNCP,
         OPT_MODELDIR,
         OPT_SHOWFP,
+        OPT_TR,
         OPT_NOSHOWFP
     };
 
@@ -69,18 +72,18 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
 
     while (true)
     {
-        int this_option_optind = optind ? optind : 1;
         int option_index = 0;
         static struct option long_options[] =
         {
             {"funcp", required_argument, NULL, OPT_FUNCP},
             {"modeldir", required_argument, NULL, OPT_MODELDIR},
             {"showfp", no_argument, NULL, OPT_SHOWFP},
+            {"tr", optional_argument, NULL, OPT_TR},
             {"noshowfp", no_argument, NULL, OPT_NOSHOWFP},
             {0, 0, 0, 0}
         };
 
-        c = getopt_long (argc, argv, "", long_options, &option_index);
+        c = getopt_long_only(argc, argv, "", long_options, &option_index);
         if (c == -1)
         {
             break;
@@ -114,6 +117,10 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
             showFrontPanel = true;
             break;
 
+          case OPT_TR:
+            ParseTraceCmd(optarg);
+            break;
+
           case OPT_NOSHOWFP:
             showFrontPanel = false;
             break;
@@ -124,6 +131,12 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
           default:
             Usage();
         }
+    }
+
+    if (optind < argc)
+    {
+        fprintf(stderr, "Unexpected argument: %s\n", argv[optind]);
+        Usage();
     }
 
     if (funcpArgc == 0)
@@ -173,6 +186,66 @@ GLOBAL_ARGS_CLASS::ParseStringToArgs(const string& line)
 }
 
 
+void
+GLOBAL_ARGS_CLASS::ParseTraceCmd(const char *command) 
+{
+    string regex;
+    int level;
+
+    if (command == NULL)
+    {
+        // no regex given, match every name
+        regex = ".*";
+        level = 1;
+    }
+    else
+    {
+        regex = command;
+        int pos = regex.size() - 1;
+        // the last char should be '0', '1', or '2'
+        if (regex[pos] != '0' && regex[pos] != '1' && regex[pos] != '2') 
+        {
+            // If a level was not given, defaul to 1.
+            level = 1;
+        } 
+        else 
+        {
+            level = regex[pos] - '0';
+            pos--;
+
+            if ((pos >= 0) && regex[pos] != '=')
+            {
+                cerr << "\nExpected -tr=[/regex/[=012]]" << endl;
+                exit(1);
+            }
+            pos--;
+        }
+
+        // remove the '/' at front and back
+        if ((pos >= 0) && (regex[pos] != '/' || regex[0] != '/'))
+        {
+            cerr << "\nExpected -tr=[/regex/[=012]]" << endl;
+            exit(1);
+        }
+
+        if (pos <= 1)
+        {
+            // Empty regular expression.  Use default.
+            regex = ".*";
+        }
+        else
+        {
+            // Drop everything but the text inside the slashes.
+            regex.erase(pos);
+            regex.erase(0,1);
+        }
+        
+    }
+
+    TRACEABLE_CLASS::EnableTraceByRegex(regex, level);
+}
+
+
 GLOBAL_ARGS_CLASS::~GLOBAL_ARGS_CLASS()
 {
     for (int i = 0; i < funcpArgc; i++)
@@ -187,8 +260,11 @@ void
 GLOBAL_ARGS_CLASS::Usage()
 {
     fprintf(stderr, "\nArguments:\n");
-    fprintf(stderr, "   [--[no]showfp]         Show/don't show front panel\n");
-    fprintf(stderr, "   [--modeldir <dir>]     Model directory\n");
-    fprintf(stderr, "   [--funcp \"<args>\"]   Arguments for the functional partition\n");
+    fprintf(stderr, "   [--[no]showfp]          Show/don't show front panel\n");
+    fprintf(stderr, "   [--modeldir=<dir>]      Model directory\n");
+    fprintf(stderr, "   [--funcp=\"<args>\"]    Arguments for the functional partition\n");
+    fprintf(stderr, "   [--tr=[</regex/[=012]]] Set trace level by regular expression. Can be given\n");
+    fprintf(stderr, "                           multiple times.  If not specified, the trace level will\n");
+    fprintf(stderr, "                           default to 1 and the regex to .*\n");
     exit(1);
 }

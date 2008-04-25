@@ -32,6 +32,7 @@ class GLOBAL_ARGS_CLASS
     char **funcpArgv;
 
     vector<string> ParseStringToArgs(const string& line);
+    void ParseTraceCmd(const char *command);
 };
 
 extern GLOBAL_ARGS globalArgs;

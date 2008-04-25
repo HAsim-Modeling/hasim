@@ -11807,3 +11807,27 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
 - Enable Asim-style tracing (-tr option)
 - Clean separation of VMH and hybrid functional memory interface.  The interface
   no longer has its own backing store.
+
+----------
+mcadler     Date: Fri Apr 25 08:56:39 EDT 2008  CSN: CSN-hasim-387
+                  Fri Apr 25 12:56:39 UTC 2008
+
+
+Directory modules/model
+ SCons.iface.template      Locally Modified          385 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.rrr   Locally Modified          385 
+ hybrid-funcp-memory.awb   Locally Modified          385 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          385 
+ hasim-rrr-stubgen         Locally Modified          385 
+
+- hasim-rrr-stubgen preprocesses all input files through cpp, allowing us
+  to include awb generated .h stubs in order to do param replacement
+- Add AWB_DEFS_ONLY option to generated .h files so rrr gets only #defines
+- Compute accurate dependence on included files
+
+- Modify functional memory service to use awb params so it can work with
+  both 32 and 64 bit systems.

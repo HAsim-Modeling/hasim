@@ -12,3 +12,4 @@
 
 %param MEMORY_ADDR_SIZE 32 "Number of bits to address memory."
 %param MEMORY_VALUE_SIZE 32 "Number of bits to read from and write to memory."
+%param MEMORY_STORE_INFO_SIZE 64 "Must be MEMORY_ADDR_SIZE + MEMORY_VALUE_SIZE."

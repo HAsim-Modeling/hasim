@@ -1,13 +1,15 @@
+#include "asim/provides/funcp_memory.h"
+
 service FUNCP_MEMORY
 {
     server hw (bsv, connection) <- sw (cpp, method)
     {
-        method Invalidate(in MEM_ADDRESS[32] addr);
+        method Invalidate(in MEM_ADDRESS[MEMORY_ADDR_SIZE] addr);
     };
 
     server sw (cpp, method) <- hw (bsv, connection)
     {
-        method Load (in MEM_ADDRESS[32]    addr, out MEM_VALUE[32] data);
-        method Store(in MEM_STORE_INFO[64] info);
+        method Load (in MEM_ADDRESS[MEMORY_ADDR_SIZE] addr, out MEM_VALUE[MEMORY_VALUE_SIZE] data);
+        method Store(in MEM_STORE_INFO[MEMORY_STORE_INFO_SIZE] info);
     };
 };

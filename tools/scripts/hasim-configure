@@ -503,6 +503,8 @@ sub __make_bsvfiles {
     }
     print HFILE "\n";
 
+    print HFILE "#ifndef AWB_DEFS_ONLY\n";
+
     # add includes for all public C/C++ include files
     if ($public) {
         foreach my $f ($module->sources("H", "PUBLIC")) {
@@ -510,6 +512,7 @@ sub __make_bsvfiles {
         }
     }
 
+    print HFILE "#endif  // AWB_DEFS_ONLY\n";
     print HFILE "\n";
     print HFILE "#endif  // INCLUDED_MODULE_$provides\n";
 
@@ -1171,6 +1174,8 @@ sub make_iface {
 
     HAsim::Util::common_replacements($model, $replacements_r);
     note_builddir($replacements_r);
+
+    HAsim::Util::hash_set($replacements_r, '@ROOT_DIR_SW_INC@', "../sw/include");
 
     my $dict_src_dir = HAsim::Util::path_append($dir, "src/dict");
     $status = system("mkdir -p " . $dict_src_dir);

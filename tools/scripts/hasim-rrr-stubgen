@@ -29,17 +29,20 @@ my $usage = "usage: hasim-rrr-stubgen\n" .
             "           -mode      (stub | names | debug)\n" .
             "           -target    (hw | sw)\n" .
             "           -type      (client | server)\n" .
+            "           -incdirs   (colon separate include directory list)\n" .
             "           -odir <outputdir>\n" .
             "           INPUTFILE\n";
 
 my $mode = "";
 my $target = "";
 my $type = "";
+my $incdirs = "";
 my $odir = "";
 
 GetOptions("mode=s"      => \$mode,
            "target=s"    => \$target,
            "type=s"      => \$type,
+           "incdirs=s"   => \$incdirs,
            "odir=s"      => \$odir);
 
 my @fNames;
@@ -186,8 +189,19 @@ sub parse_rrr_file
 {
     my $filename = shift;
 
+    my $searchpath = "";
+    if ($incdirs ne "")
+    {
+        $searchpath = '-I ' . join(' -I ', split(':', $incdirs));
+    }
+
+    my $cmd = "cpp $searchpath -D AWB_DEFS_ONLY -P";
+
+    # First update dependence file
+    system("$cmd -M -MT build/include/asim/rrr/service_ids.h -MF .depends-rrr-" . basename($filename) . " $filename");
+
     # open input RRR file and read it into a string
-    CORE::open(RRRFILE, "< $filename") || die "stubgen: unable to open input file $filename";
+    CORE::open(RRRFILE, "$cmd $filename |") || die "stubgen: unable to open input file $filename";
 
     my $source = "";
     my $line;

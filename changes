@@ -11831,3 +11831,20 @@ Directory tools/scripts
 
 - Modify functional memory service to use awb params so it can work with
   both 32 and 64 bit systems.
+
+----------
+aparasha    Date: Fri Apr 25 09:03:39 EDT 2008  CSN: CSN-hasim-388
+                  Fri Apr 25 13:03:39 UTC 2008
+
+
+Directory modules/hasim/common/new-funcp
+ hasim_common.dic          Locally Modified          387 
+
+Directory modules/common/modellib
+ modellib.dic              Locally Modified          387 
+
+- added null Events and Stats dictionary entries to modellib. This
+  takes care of both v2 and v3 funcps.
+
+- added null Asserts dictionary entry to v3 hasim_common.dic. This
+  was already present in v2's hasim_common.dic.

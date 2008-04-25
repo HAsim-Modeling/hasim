@@ -1,2 +1,5 @@
 def RINGID.EVENTS "events";
 def RINGID.STATS  "stats";
+
+def EVENTS.NULL   "null";
+def STATS.NULL    "null";

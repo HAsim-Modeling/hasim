@@ -8,6 +8,9 @@
 #include <string.h>
 #include <iostream>
 
+#include "asim/syntax.h"
+#include "asim/mesg.h"
+
 #include "asim/provides/events_controller.h"
 #include "asim/rrr/service_ids.h"
 
@@ -43,13 +46,22 @@ EVENTS_CONTROLLER_CLASS::Init(
     parent = p;
     
     // Open the output file
+#ifdef HASIM_EVENTS_ENABLED
     eventFile = fopen("hasim_events.out", "w+");
+#else
+    eventFile = NULL;
+#endif    
 }
 
 // uninit: we have to write this explicitly
 void
 EVENTS_CONTROLLER_CLASS::Uninit()
 {
+    if (eventFile != NULL)
+    {
+        fclose(eventFile);
+    }
+
     // simply chain
     PLATFORMS_MODULE_CLASS::Uninit();
 }
@@ -76,6 +88,11 @@ EVENTS_CONTROLLER_CLASS::Request(
         cerr << "streams: invalid event_id: " << event_id << endl;
         CallbackExit(1);
     }
+
+#ifndef HASIM_EVENTS_ENABLED
+    ASIMERROR("Event id " << event_id << " (" << event_name << ") received but events are disabled");
+#endif
+    ASSERTX(eventFile != NULL);
 
     // write to file
     // eventually this will be replaced with calls to DRAL.

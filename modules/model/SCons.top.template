@@ -194,6 +194,24 @@ TRACE = int(ARGUMENTS.get('TRACE', 0))
 if (DEBUG):
     TRACE = 1
 
+##
+## Build events into model?
+##
+enable_events = int(ARGUMENTS.get('EVENTS', -1))
+if (enable_events == -1):
+    enable_events = int(awb_resolver('-config=events'))
+
+if (enable_events == 0):
+    bsc_events_flag = '-D HASIM_EVENTS_ENABLED=False'
+    cpp_events_flag = ''
+else:
+    bsc_events_flag = '-D HASIM_EVENTS_ENABLED=True'
+    cpp_events_flag = '-DHASIM_EVENTS_ENABLED'
+
+BSC_FLAGS += ' ' + bsc_events_flag
+env['DEFS']['BSC_FLAGS'] = BSC_FLAGS
+
+
 ROOT_WRAPPER_SYNTH_ID = 'mk_' + env['DEFS']['ROOT_DIR_MODEL'] + '_Wrapper'
 
 if env['DEFS']['GIVEN_CS'] != '':
@@ -430,7 +448,8 @@ if SW_EXE != []:
     inc_paths = clean_split(env['DEFS']['SW_INC_DIRS'], sep = ' ')
     libs = clean_split(env['DEFS']['SW_LIBS'], sep = ' ')
     cc_flags = host_defs()
-    cc_flags += ' -DASIM_ENABLE_ASSERTIONS -DASIM_ENABLE_EVENTS'
+    cc_flags += ' ' + cpp_events_flag
+    cc_flags += ' -DASIM_ENABLE_ASSERTIONS'
     if (TRACE):
         cc_flags += ' -DASIM_ENABLE_TRACE'
     cc_flags += ' -DAPM_NAME=\\"' + TMP_BSC_DIR + '/' + APM_NAME + '\\"'

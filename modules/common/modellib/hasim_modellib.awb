@@ -16,7 +16,6 @@
 # %public Events.bsv Stats.bsv Commands.bsv StatFIFO.bsv Ports.bsv
 # %sources -t DICT -v PUBLIC modellib.dic
 #
-# %param HASIM_EVENTS_ENABLED True "Statically enable/disable Event logging (True/False)."
 # %param HASIM_EVENTS_SIZE 32 "Number of bits for Event parameter."
 #
 # %param HASIM_STATS_ENABLED True "Statically enable/disable Stats logging (True/False)."

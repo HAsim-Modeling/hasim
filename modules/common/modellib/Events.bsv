@@ -7,8 +7,16 @@ import soft_connections::*;
 
 //AWB Parameters
 //name:                  default:
-//HASIM_EVENTS_ENABLED   True
 //HASIM_EVENTS_SIZE      32
+
+//HASIM_EVENTS_ENABLED   comes from build environment (SCons script)
+
+`ifndef HASIM_EVENTS_ENABLED
+// This should only happen when looking for dependence in hasim-bsc-mkdepend.
+// We should eventually fix it by teaching the build scrips to pass
+// command line defines to the dependence processor.
+`define HASIM_EVENTS_ENABLED False
+`endif
 
 typedef Bit#(`HASIM_EVENTS_SIZE) EventParam;
 

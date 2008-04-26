@@ -11862,3 +11862,26 @@ Directory modules/common/platform_interface/hasim
 
 - Declaration inside case statement didn't work in my version of the compiler
 - Added isa_emulator.bsh in the list of include files for HAsimPlatformInterface
+
+----------
+mcadler     Date: Sat Apr 26 10:24:43 EDT 2008  CSN: CSN-hasim-390
+                  Sat Apr 26 14:24:43 UTC 2008
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          389 
+
+Directory modules/hasim/controller/central_controllers/events
+ events-controller-hybrid.cpp Locally Modified          389 
+
+Directory modules/common/modellib
+ hasim_modellib.awb        Locally Modified          389 
+ Events.bsv                Locally Modified          389 
+
+Building with events support is no longer an awb parameter.  By default
+events are now off.  If you want events do one of the following:
+
+  - Add "EVENTS=1" to the awb.config file in your workspace
+  - Add "EVENTS=1" to the build command line
+
+The build command line overrides the value from the workspace.

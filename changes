@@ -11885,3 +11885,22 @@ events are now off.  If you want events do one of the following:
   - Add "EVENTS=1" to the build command line
 
 The build command line overrides the value from the workspace.
+
+----------
+mcadler     Date: Sun Apr 27 15:18:12 EDT 2008  CSN: CSN-hasim-391
+                  Sun Apr 27 19:18:12 UTC 2008
+
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          389 
+
+Directory config/pm/hasim/submodels
+ hasim_common.apm          Locally Removed           389 
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Added               - 
+ hasim_common_v2.apm       Locally Removed           389 
+
+- v2 of common definition now the only version (now called hasim_common.apm)
+- ISA emulator now stops at the first request to emulate in instruction instead
+  of continuing on forever, printing useless messages.

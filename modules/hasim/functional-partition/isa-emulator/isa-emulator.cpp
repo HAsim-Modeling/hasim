@@ -15,6 +15,9 @@
 #include <cstdlib>
 #include <iostream>
 
+#include "asim/syntax.h"
+#include "asim/mesg.h"
+
 #include "isa-emulator-common.h"
 #include "asim/rrr/service_ids.h"
 
@@ -77,8 +80,7 @@ ISA_EMULATOR_CLASS::Request(
         case METHOD_ID_EMULATE_INST:
             cout << "isa emulator: received emulate inst request: inst: "
                  << arg1 << " cur pc: " << arg2 << "\n";
-            // For now immediately finish.
-            this->emulationFinished();
+            ASIMERROR("ISA Emulation not supported");
             break;
 
         default:

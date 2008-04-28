@@ -11914,3 +11914,22 @@ Directory libperl/HAsim/lib/HAsim/RRR
  Method.pm                 Locally Modified          391 
 
 Changed RRR stug gen library to use unpack(truncate()) instead of truncate(unpack())
+
+----------
+vmurali     Date: Mon Apr 28 01:47:16 EDT 2008  CSN: CSN-hasim-393
+                  Mon Apr 28 05:47:16 UTC 2008
+
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Modified          392 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          392 
+ isa-emulator.rrr          Locally Modified          392 
+ isa-emulator.awb          Locally Modified          392 
+ isa-emulator-common.h     Locally Modified          392 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          392 
+
+Changed isa-emulator to work with new RRR interface and 64 bits. (Didn't test 32 bits yet).

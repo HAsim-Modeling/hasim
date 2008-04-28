@@ -44,3 +44,6 @@ smart_synth_boundaries=Smart Synthesis Boundaries
 platform_interface=Hasim Platform Interface
 soft_connections=Soft Connections
 hasim_modellib=Hasim Modeling Library
+
+[Soft Connections/Params]
+CON_CWIDTH=400

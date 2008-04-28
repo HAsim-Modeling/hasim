@@ -20,12 +20,13 @@
 
 #include "isa-emulator-common.h"
 #include "asim/rrr/service_ids.h"
+#include "asim/provides/isa_emulator.h"
 
 #define SERVICE_ID  ISA_EMULATOR_SERVICE_ID
 
 // TEMPORARY: cheat and assign client method IDs
-#define METHOD_ID_SYNC_REG      0
-#define METHOD_ID_EMULATE_INST  1
+#define CMD_SYNC     0
+#define CMD_EMULATE  1
 #define METHOD_ID_UPDATE_REG    0
 #define METHOD_ID_EMULATION_FINISHED  1
 
@@ -60,6 +61,48 @@ ISA_EMULATOR_CLASS::Poll()
 {
 }
 
+#if (MEMORY_VALUE_BYTES == 4)
+typedef UINT32 ISA_VALUE;
+#else
+typedef UINT64 ISA_VALUE;
+#endif
+
+#if (MEMORY_ADDR_BYTES == 4)
+typedef UINT32 ISA_ADDRESS;
+#else
+typedef UINT64 ISA_ADDRESS;
+#endif
+
+typedef UINT8 ISA_REG_INDEX;
+
+typedef UINT32 ISA_INSTRUCTION;
+
+// handle service request
+UMF_MESSAGE
+ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
+{
+    ISA_VALUE rval;
+    ISA_REG_INDEX rname;
+    ISA_ADDRESS pc;
+    ISA_INSTRUCTION inst;
+
+    switch(req->GetMethodID())
+    {
+        case CMD_SYNC:
+            rval = req->ExtractUINT(8);
+            rname = req->ExtractUINT(1);
+            cout << "RRR Sync: reg-index: " << rname << " reg-val: " << hex << rval << endl; 
+            break;
+        case CMD_EMULATE:
+            pc = req->ExtractUINT(8);
+            inst = req->ExtractUINT(4);
+            cout << "RRR Emulate: pc: " << pc << " inst: " << hex << inst << endl;
+            break;
+    }
+}
+
+
+/*
 // handle service request
 bool
 ISA_EMULATOR_CLASS::Request(
@@ -91,6 +134,7 @@ ISA_EMULATOR_CLASS::Request(
 
     return false;
 }
+*/
 
 // client: update register
 void

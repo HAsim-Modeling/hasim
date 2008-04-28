@@ -38,7 +38,7 @@ class ISA_EMULATOR_CLASS: public RRR_SERVICE_CLASS,
 
         // required RRR service methods
         void Init(PLATFORMS_MODULE);
-        bool Request(UINT32, UINT32, UINT32, UINT32, UINT32 *);
+        UMF_MESSAGE Request(UMF_MESSAGE req);
         void Poll();
 
         // client methods

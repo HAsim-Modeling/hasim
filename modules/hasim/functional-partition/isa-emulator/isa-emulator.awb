@@ -16,7 +16,11 @@
 #
 # %sources -t H   -v PUBLIC  isa-emulator-common.h
 # %sources -t CPP -v PRIVATE isa-emulator.cpp
-# %sources -T RRR  -v PUBLIC isa-emulator.rrr
+# %sources -t RRR  -v PUBLIC isa-emulator.rrr
+# %sources -t BSV -v PUBLIC isa-emulator-datatypes.bsv
+#
+# %param MEMORY_ADDR_BYTES 4 "Bytes for memory address"
+# %param MEMORY_VALUE_BYTES 4 "Bytes for memory value"
 #
 # %AWB_END
 # */

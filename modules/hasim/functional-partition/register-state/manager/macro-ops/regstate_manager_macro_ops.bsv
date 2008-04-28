@@ -34,6 +34,8 @@ import RegFile::*;
 `include "asim/provides/rrr.bsh"
 `include "asim/rrr/service_ids.bsh"
 
+`include "asim/provides/isa_emulator.bsh"
+
 // ***** Typedefs ***** //
 
 // FUNCP_SNAPSHOT_INDEX
@@ -306,9 +308,9 @@ module [HASim_Module] mkFUNCP_RegStateManager
     
     // Connections to RRR
     
-    Connection_Send#(RRR_Request) linkRRRSync <- mkConnection_Send("rrr_client_sync");
-    Connection_Send#(RRR_Request) linkRRREmulate <- mkConnection_Send("rrr_client_emulate");
-    Connection_Receive#(Bit#(64)) linkRRRUpdate <- mkConnection_Receive("rrr_server_ISA_EMULATOR_updateRegister");
+    Connection_Send#(RNAME_RVAL_TUPLE) linkRRRSync <- mkConnection_Send("rrr_client_ISA_EMULATOR_sync");
+    Connection_Send#(INST_ISA_ADDR_TUPLE) linkRRREmulate <- mkConnection_Send("rrr_client_ISA_EMULATOR_emulate");
+    Connection_Receive#(RNAME_RVAL_TUPLE) linkRRRUpdate <- mkConnection_Receive("rrr_server_ISA_EMULATOR_updateRegister");
     Connection_Receive#(Bit#(32)) linkRRRFinished <- mkConnection_Receive("rrr_server_ISA_EMULATOR_emulationFinished");
     
 
@@ -1194,15 +1196,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         ISA_VALUE reg_val <- prf.read_resp1();
         
         // Send the regsiter on to software via RRR
-        linkRRRSync.send(RRR_Request
-                         {
-                            serviceID:    `ISA_EMULATOR_SERVICE_ID,
-                            param0:       `UPDATE_REGISTER_METHOD_ID,
-                            param1:       zeroExtend(pack(arch_reg)),
-                            param2:       zeroExtend(pack(reg_val)),
-                            param3:       0, // Unused
-                            needResponse: False
-                         });
+        linkRRRSync.send(tuple2(unpack(arch_reg), reg_val));
     
     endrule
     
@@ -1218,17 +1212,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
         ISA_ADDRESS       pc <- tokAddr.read_resp();
         
         // Send the request on to software via RRR
-        linkRRREmulate.send(RRR_Request
-                            {
-                               serviceID:    `ISA_EMULATOR_SERVICE_ID,
-                               param0:       `EMULATE_INSTRUCTION_METHOD_ID,
-                               param1:       inst,
-                               param2:       pc,
-                               param3:       0, // Unused
-                               needResponse: False
-                            });
+        linkRRREmulate.send(tuple2(inst, pc));
 
-    
     endrule
 
     // emulateInstruction2_UpdateReg
@@ -1242,18 +1227,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
     rule emulateInstruction2_UpdateReg (True);
         
         // Get an update request from software.
-        Bit#(64) r_and_v = linkRRRUpdate.receive();
+        match {.r, .v} = linkRRRUpdate.receive();
         linkRRRUpdate.deq();
-        
-        //Temporary: get the rname and value out of the bit 64.
-        ISA_VALUE v = truncate(r_and_v);
-        Bit#(rname_SZ) r = truncate(r_and_v >> valueOf(isa_val_SZ));
         
         // Assert that we're in the state we expected to be in.
         assertRegUpdateAtExpectedTime(emulatingInstruction && !synchronizingRegs);
         
         // Lookup the current physical register in the maptable.
-        FUNCP_PHYSICAL_REG_INDEX pr = maptable[r];
+        FUNCP_PHYSICAL_REG_INDEX pr = maptable[pack(r)];
         
         
         // Update the regfile.

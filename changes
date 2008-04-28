@@ -11933,3 +11933,91 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
  regstate_manager_macro_ops.bsv Locally Modified          392 
 
 Changed isa-emulator to work with new RRR interface and 64 bits. (Didn't test 32 bits yet).
+
+----------
+pellauer    Date: Mon Apr 28 13:27:43 EDT 2008  CSN: CSN-hasim-395
+                  Mon Apr 28 17:27:43 UTC 2008
+
+
+Directory modules
+ functional/               Locally Removed           394 
+
+Directory modules/functional
+ memstate/                 Locally Removed           394 
+
+Directory modules/functional/memstate
+ hasim_funcp_memstate_sequenced.awb Locally Removed           394 
+ hasim_funcp_null_cache.awb Locally Removed           394 
+ FUNCP_NullCache.bsv       Locally Removed           394 
+ FUNCP_MemState.bsv        Locally Removed           394 
+ hasim_funcp_memstate.awb  Locally Removed           394 
+ FUNCP_MemState_ifc.bsv    Locally Removed           394 
+ hasim_funcp_memstate_ifc.awb Locally Removed           394 
+ FUNCP_MemState_Cached.bsv Locally Removed           394 
+ hasim_funcp_memstate_cached.awb Locally Removed           394 
+ FUNCP_MemState_Seq.bsv    Locally Removed           394 
+
+Directory modules/functional
+ semantic-model/           Locally Removed           394 
+
+Directory modules/functional/semantic-model
+ scoreboard.dic            Locally Removed           394 
+ hasim_funcp_tokstate.awb  Locally Removed           394 
+ FUNCPTokState.bsv         Locally Removed           394 
+ hasim_funcp_model.awb     Locally Removed           394 
+ FUNCPModel.bsv            Locally Removed           394 
+
+Directory modules/functional
+ store-buffer/             Locally Removed           394 
+
+Directory modules/functional/store-buffer
+ FUNCP_StoreBuffer_Seq.bsv Locally Removed           394 
+ hasim_funcp_storebuffer_sequenced.awb Locally Removed           394 
+ FUNCP_StoreBuffer.bsv     Locally Removed           394 
+ hasim_funcp_storebuffer.awb Locally Removed           394 
+
+Directory modules/functional
+ common/                   Locally Removed           394 
+
+Directory modules/functional/common
+ deprecated/               Locally Removed           394 
+
+Directory modules/functional/common/deprecated
+ FUNCP_RegState.bsv        Locally Removed           394 
+ hasim_funcp_regstate.awb  Locally Removed           394 
+ FUNCP.bsv                 Locally Removed           394 
+ hasim_funcp_deprecated.awb Locally Removed           394 
+ FUNCP_Checker.bsv         Locally Removed           394 
+ hasim_funcp_checker.awb   Locally Removed           394 
+ FUNCP_Pipeline.bsv        Locally Removed           394 
+ hasim_funcp_pipeline.awb  Locally Removed           394 
+ FUNCP_Loader.bsv          Locally Removed           394 
+ hasim_funcp_loader.awb    Locally Removed           394 
+ test-cases/               Locally Removed           394 
+
+Directory modules/functional/common/deprecated/test-cases
+ common/                   Locally Removed           394 
+
+Directory modules/functional/common/deprecated/test-cases/common
+ hasim_testcase_common.awb Locally Removed           394 
+ TestCase_Base.bsv         Locally Removed           394 
+
+Directory modules/functional/common/deprecated
+ FUNCP_TokGen.bsv          Locally Removed           394 
+ FUNCP_Base.bsv            Locally Removed           394 
+ hasim_funcp_base.awb      Locally Removed           394 
+
+Directory modules/functional
+ freelist/                 Locally Removed           394 
+
+Directory modules/functional/freelist
+ FUNCP_FreeList.bsv        Locally Removed           394 
+ hasim_funcp_freelist.awb  Locally Removed           394 
+ freelist.dic              Locally Removed           394 
+
+
+Removed deprecated Version 2 of the Functional Partition.
+
+Version 3 of the Functional Partition is now the default.
+
+Michael P.

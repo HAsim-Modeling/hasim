@@ -1,1 +1,0 @@
-def ASSERTIONS.FREELIST.OUT_OF_PREGS "Freelist: Not enough physical registers!";

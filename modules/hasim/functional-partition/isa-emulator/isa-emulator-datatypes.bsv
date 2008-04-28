@@ -1,0 +1,4 @@
+`include "hasim_isa.bsh"
+
+typedef Tuple2#(ISA_REG_INDEX, ISA_VALUE) RNAME_RVAL_TUPLE;
+typedef Tuple2#(ISA_INSTRUCTION, ISA_ADDRESS) INST_ISA_ADDR_TUPLE;

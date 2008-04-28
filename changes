@@ -12021,3 +12021,28 @@ Removed deprecated Version 2 of the Functional Partition.
 Version 3 of the Functional Partition is now the default.
 
 Michael P.
+
+----------
+vmurali     Date: Mon Apr 28 18:12:45 EDT 2008  CSN: CSN-hasim-396
+                  Mon Apr 28 22:12:45 UTC 2008
+
+
+Directory modules/model
+ main.cpp                  Locally Modified          395 
+ main.h                    Locally Modified          395 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          395 
+ isa-emulator.rrr          Locally Modified          395 
+ isa-emulator-common.h     Locally Modified          395 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          395 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
+ vmh-memory.cpp            Locally Modified          395 
+
+
+- vmh-memory.cpp bug fix ( bits vs bytes )
+- isa-emulator returns new pc ( if return pc's high bit is 0, then its a branch to that location or else its a NOP )
+- Added a new flag -bluesimargs

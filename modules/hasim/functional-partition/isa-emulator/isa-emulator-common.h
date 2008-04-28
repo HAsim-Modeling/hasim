@@ -43,7 +43,6 @@ class ISA_EMULATOR_CLASS: public RRR_SERVICE_CLASS,
 
         // client methods
         void updateRegister(UINT32 rname, UINT32 rval);
-        void emulationFinished();
 };
 
 #endif

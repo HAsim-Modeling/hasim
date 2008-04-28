@@ -67,16 +67,16 @@ FUNCP_SIMULATED_MEMORY_CLASS::Read(
 
     switch (size)
     {
-      case 64:
+      case 8:
         *(UINT64*)dest = *(UINT64*)(&memory[addr]);
         break;
-      case 32:
+      case 4:
         *(UINT32*)dest = *(UINT32*)(&memory[addr]);
         break;
-      case 16:
+      case 2:
         *(UINT16*)dest = *(UINT16*)(&memory[addr]);
         break;
-      case 8:
+      case 1:
         *(UINT8*)dest = *(UINT8*)(&memory[addr]);
         break;
       default:
@@ -95,16 +95,16 @@ FUNCP_SIMULATED_MEMORY_CLASS::Write(
     ASSERTX(addr + size <= MEM_SIZE);
     switch (size)
     {
-      case 64:
+      case 8:
         *(UINT64*)(&memory[addr]) = *(UINT64*)src;
         break;
-      case 32:
+      case 4:
         *(UINT32*)(&memory[addr]) = *(UINT32*)src;
         break;
-      case 16:
+      case 2:
         *(UINT16*)(&memory[addr]) = *(UINT16*)src;
         break;
-      case 8:
+      case 1:
         *(UINT8*)(&memory[addr]) = *(UINT8*)src;
         break;
       default:

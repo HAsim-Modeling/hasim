@@ -3,13 +3,12 @@ service ISA_EMULATOR
     server sw (cpp, method) <- hw (bsv, connection)
     {
         method sync(in RNAME_RVAL_TUPLE[72] rname_and_rval);
-        method emulate(in INST_ISA_ADDR_TUPLE[96] inst_and_pc);
+        method emulate(in INST_ISA_ADDR_TUPLE[96] inst_and_pc, out UINT64[64] newPc);
     };
 
     server hw (bsv, connection) <- sw (cpp, method)
     {
         method updateRegister(in RNAME_RVAL_TUPLE[72] rname_and_rval);
-        method emulationFinished(in UINT32[32] unused);
     };
 };
 

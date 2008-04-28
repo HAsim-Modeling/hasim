@@ -54,12 +54,14 @@ int main(int argc, char *argv[])
 // process command-line options
 GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
     modelDir("."),
+    bluesimArgs(""),
     showFrontPanel(false)
 {
     enum 
     {
         OPT_FUNCP,
         OPT_MODELDIR,
+        OPT_BLUESIM_ARGS,
         OPT_SHOWFP,
         OPT_TR,
         OPT_NOSHOWFP
@@ -77,6 +79,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
         {
             {"funcp", required_argument, NULL, OPT_FUNCP},
             {"modeldir", required_argument, NULL, OPT_MODELDIR},
+            {"bluesimargs", required_argument, NULL, OPT_BLUESIM_ARGS},
             {"showfp", no_argument, NULL, OPT_SHOWFP},
             {"tr", optional_argument, NULL, OPT_TR},
             {"noshowfp", no_argument, NULL, OPT_NOSHOWFP},
@@ -111,6 +114,10 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
 
           case OPT_MODELDIR:
             modelDir = strdup(optarg);
+            break;
+
+          case OPT_BLUESIM_ARGS:
+            bluesimArgs = strdup(optarg);
             break;
 
           case OPT_SHOWFP:

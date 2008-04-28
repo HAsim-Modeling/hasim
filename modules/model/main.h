@@ -14,6 +14,7 @@ class GLOBAL_ARGS_CLASS
 {
   public:
     const char *ModelDir() const { return modelDir; };
+    const char *BluesimArgs() const { return bluesimArgs; };
     bool ShowFrontPanel() const { return showFrontPanel; };
 
     int FuncPlatformArgc() const { return funcpArgc; }
@@ -26,6 +27,7 @@ class GLOBAL_ARGS_CLASS
 
   private:
     char* modelDir;             // Model (pm) directory
+    char* bluesimArgs;          // Bluesim arguments
     bool showFrontPanel;
 
     int funcpArgc;

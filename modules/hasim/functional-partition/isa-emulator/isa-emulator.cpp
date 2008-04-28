@@ -28,7 +28,6 @@
 #define CMD_SYNC     0
 #define CMD_EMULATE  1
 #define METHOD_ID_UPDATE_REG    0
-#define METHOD_ID_EMULATION_FINISHED  1
 
 using namespace std;
 
@@ -73,7 +72,7 @@ typedef UINT32 ISA_ADDRESS;
 typedef UINT64 ISA_ADDRESS;
 #endif
 
-typedef UINT8 ISA_REG_INDEX;
+typedef UINT32 ISA_REG_INDEX;
 
 typedef UINT32 ISA_INSTRUCTION;
 
@@ -86,55 +85,31 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
     ISA_ADDRESS pc;
     ISA_INSTRUCTION inst;
 
+    UMF_MESSAGE resp;
+
     switch(req->GetMethodID())
     {
         case CMD_SYNC:
             rval = req->ExtractUINT(8);
-            rname = req->ExtractUINT(1);
-            cout << "RRR Sync: reg-index: " << rname << " reg-val: " << hex << rval << endl; 
+            rname = req->ExtractUINT(4);
+            cout << "RRR Sync: reg-index: " << rname << " reg-val: " << hex << rval << endl;
+            delete req;
+            return NULL;
             break;
         case CMD_EMULATE:
             pc = req->ExtractUINT(8);
             inst = req->ExtractUINT(4);
-            cout << "RRR Emulate: pc: " << pc << " inst: " << hex << inst << endl;
+            cout << "RRR Emulate: pc: " << hex << pc << " inst: " << hex << inst << endl;
+            delete req;
+
+            resp = new UMF_MESSAGE_CLASS(8);
+            resp->SetMethodID(CMD_EMULATE);
+            resp->AppendUINT(pc + 4, 8);
+            return resp;
             break;
     }
 }
 
-
-/*
-// handle service request
-bool
-ISA_EMULATOR_CLASS::Request(
-    UINT32 arg0,
-    UINT32 arg1,
-    UINT32 arg2,
-    UINT32 arg3,
-    UINT32 *result)
-{
-    switch (arg0)
-    {
-        // Here we should call a handler rather than just doing a printf.
-        case METHOD_ID_SYNC_REG:
-            cout << "isa emulator: received sync reg request: reg " 
-                 << arg1 << " <= " << arg2 << "\n";
-            break;
-
-        case METHOD_ID_EMULATE_INST:
-            cout << "isa emulator: received emulate inst request: inst: "
-                 << arg1 << " cur pc: " << arg2 << "\n";
-            ASIMERROR("ISA Emulation not supported");
-            break;
-
-        default:
-            cerr << "isa emulator: invalid methodID." << endl;
-            CallbackExit(1);
-            break;
-    }
-
-    return false;
-}
-*/
 
 // client: update register
 void
@@ -146,19 +121,6 @@ ISA_EMULATOR_CLASS::updateRegister(UINT32 rname, UINT32 rval)
     msg->SetMethodID(METHOD_ID_UPDATE_REG);
     msg->AppendUINT32(rname);
     msg->AppendUINT32(rval);
-
-    RRRClient->MakeRequestNoResponse(msg);
-}
-
-// client: emulation finished
-void
-ISA_EMULATOR_CLASS::emulationFinished()
-{
-    // create message for RRR client
-    UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(4);
-    msg->SetServiceID(SERVICE_ID);
-    msg->SetMethodID(METHOD_ID_EMULATION_FINISHED);
-    msg->AppendUINT32(0);   // value doesn't matter
 
     RRRClient->MakeRequestNoResponse(msg);
 }

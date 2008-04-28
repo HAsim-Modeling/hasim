@@ -309,9 +309,9 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Connections to RRR
     
     Connection_Send#(RNAME_RVAL_TUPLE) linkRRRSync <- mkConnection_Send("rrr_client_ISA_EMULATOR_sync");
-    Connection_Send#(INST_ISA_ADDR_TUPLE) linkRRREmulate <- mkConnection_Send("rrr_client_ISA_EMULATOR_emulate");
+    Connection_Client#(INST_ISA_ADDR_TUPLE,
+                       ISA_ADDRESS) linkRRREmulate <- mkConnection_Client("rrr_client_ISA_EMULATOR_emulate");
     Connection_Receive#(RNAME_RVAL_TUPLE) linkRRRUpdate <- mkConnection_Receive("rrr_server_ISA_EMULATOR_updateRegister");
-    Connection_Receive#(Bit#(32)) linkRRRFinished <- mkConnection_Receive("rrr_server_ISA_EMULATOR_emulationFinished");
     
 
     // ***** Assertion Checkers ***** //
@@ -1212,7 +1212,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         ISA_ADDRESS       pc <- tokAddr.read_resp();
         
         // Send the request on to software via RRR
-        linkRRREmulate.send(tuple2(inst, pc));
+        linkRRREmulate.makeReq(tuple2(inst, pc));
 
     endrule
 
@@ -1254,8 +1254,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
     rule emulateInstruction3 (True);
         
         // Get the ACK from software that they're complete.
-        let ack = linkRRRFinished.receive();
-        linkRRRFinished.deq();
+        let newPc = linkRRREmulate.getResp();
+        linkRRREmulate.deq();
         
         // Assert that we're in the state we expected to be in.
         assertEmulationFinishedAtExpectedTime(emulatingInstruction && !synchronizingRegs);
@@ -1266,12 +1266,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         // Update scoreboard.
         tokScoreboard.exeFinish(emulatingToken.index);
-            
+
+        // FIXME: Hardcoded to 64 bits
+        let resp = (newPc[63] == 0)? tagged RBranchTaken newPc: tagged RNop;
+
         // Send the response to the timing model.
-        // NOTE: Currently only No-Ops can be returned to the timing model.
         // End of macro-operation.
-        linkGetResults.makeResp(tuple2(emulatingToken, RNop));
-    
+        linkGetResults.makeResp(tuple2(emulatingToken, resp));
+
     endrule
 
     // ******* doLoads ******* //

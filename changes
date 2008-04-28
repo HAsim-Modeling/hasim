@@ -11904,3 +11904,13 @@ Directory config/pm/hasim/submodels/common
 - v2 of common definition now the only version (now called hasim_common.apm)
 - ISA emulator now stops at the first request to emulate in instruction instead
   of continuing on forever, printing useless messages.
+
+----------
+vmurali     Date: Sun Apr 27 21:52:48 EDT 2008  CSN: CSN-hasim-392
+                  Mon Apr 28 01:52:48 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Method.pm                 Locally Modified          391 
+
+Changed RRR stug gen library to use unpack(truncate()) instead of truncate(unpack())

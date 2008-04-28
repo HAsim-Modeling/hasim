@@ -276,12 +276,12 @@ sub print_accept_request_definition
 
     # TODO: support multiple params
     print $file $self->inarg()->type()->string_bsv();
-    print $file " retval = truncate(unpack(a));\n";
+    print $file " retval = unpack(truncate(a));\n";
 
     # if insize is smaller than maxinsize, then we need to truncate
     # if ($arg->type()->size() lt $maxinsize)
     # {
-    #     print $file "truncate(unpack(a))";
+    #     print $file "unpack(truncate(a))";
     # }
     # else
     # {
@@ -630,12 +630,12 @@ sub print_get_response_definition
     print $file $indent . "    let a <- dem.readAndDelete();\n";
     print $file $indent . "    ";
     print $file $self->outarg()->type()->string_bsv();
-    print $file " retval = truncate(unpack(a));\n";
+    print $file " retval = unpack(truncate(a));\n";
 
     # if outsize is smaller than maxoutsize, then we need to truncate
     # if ($arg->type()->size() < $maxoutsize)
     # {
-    #     print $file "truncate(unpack(a))";
+    #     print $file "unpack(truncate(a))";
     # }
     # else
     # {

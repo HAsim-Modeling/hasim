@@ -54,7 +54,6 @@ int main(int argc, char *argv[])
 // process command-line options
 GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
     modelDir("."),
-    bluesimArgs(""),
     showFrontPanel(false)
 {
     enum 
@@ -67,7 +66,6 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
         OPT_NOSHOWFP
     };
 
-    vector<string> funcp;
     int c;
 
     funcpArgc = 0;
@@ -95,21 +93,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
         switch (c)
         {
           case OPT_FUNCP:
-            // Convert functional platform arguments to an argv array
-            funcp = ParseStringToArgs(optarg);
-            funcpArgc = funcp.size() + 1;
-            funcpArgv = new char *[funcpArgc + 2];
-
-            // First argument remains program path
-            funcpArgv[0] = new char[strlen(argv[0])+1];
-            strcpy(funcpArgv[0], argv[0]);
-
-            for (int i = 0; i < funcp.size(); i++)
-            {
-                funcpArgv[i+1] = new char[funcp[i].length() + 1];
-                strcpy(funcpArgv[i+1], funcp[i].c_str());
-            }
-            funcpArgv[funcpArgc+1] = NULL;
+            InitArgcArgvPair(optarg, argv[0], funcpArgc, funcpArgv);
             break;
 
           case OPT_MODELDIR:
@@ -117,7 +101,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
             break;
 
           case OPT_BLUESIM_ARGS:
-            bluesimArgs = strdup(optarg);
+            InitArgcArgvPair(optarg, argv[0], bluesimArgc, bluesimArgv);
             break;
 
           case OPT_SHOWFP:
@@ -146,15 +130,40 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
         Usage();
     }
 
+    if (bluesimArgc == 0)
+    {
+        InitArgcArgvPair("", argv[0], bluesimArgc, bluesimArgv);
+    }
     if (funcpArgc == 0)
     {
-        funcpArgc = 1;
-        funcpArgv = new char*[2];
-        funcpArgv[0] = new char[strlen(argv[0])+1];
-        strcpy(funcpArgv[0], argv[0]);
-        funcpArgv[1] = NULL;
+        InitArgcArgvPair("", argv[0], funcpArgc, funcpArgv);
     }
 }
+
+void
+GLOBAL_ARGS_CLASS::InitArgcArgvPair(
+    const string& line,
+    const char *orig_argv0,
+    int& argc,
+    char**& argv)
+{
+            // Convert functional platform arguments to an argv array
+    vector<string> av = ParseStringToArgs(line);
+    argc = av.size() + 1;
+    argv = new char *[argc + 2];
+
+    // First argument remains program path.
+    argv[0] = new char[strlen(orig_argv0) + 1];
+    strcpy(argv[0], orig_argv0);
+
+    for (int i = 0; i < av.size(); i++)
+    {
+        argv[i + 1] = new char[av[i].length() + 1];
+        strcpy(argv[i + 1], av[i].c_str());
+    }
+    argv[argc] = NULL;
+}
+
 
 vector<string>
 GLOBAL_ARGS_CLASS::ParseStringToArgs(const string& line)
@@ -270,8 +279,14 @@ GLOBAL_ARGS_CLASS::Usage()
     fprintf(stderr, "   [--[no]showfp]          Show/don't show front panel\n");
     fprintf(stderr, "   [--modeldir=<dir>]      Model directory\n");
     fprintf(stderr, "   [--funcp=\"<args>\"]    Arguments for the functional partition\n");
+    fprintf(stderr, "   [--bluesim=\"<args>\"]  Arguments to Bluesim\n");
     fprintf(stderr, "   [--tr=[</regex/[=012]]] Set trace level by regular expression. Can be given\n");
     fprintf(stderr, "                           multiple times.  If not specified, the trace level will\n");
     fprintf(stderr, "                           default to 1 and the regex to .*\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "NOTE:  A benchmark run script may strip quotation marks delimiting arguments.\n");
+    fprintf(stderr, "       You may need to escape quotation marks, e.g.:\n");
+    fprintf(stderr, "          ./run --bluesim=\\\"<args>\\\"\n");
+    fprintf(stderr, "\n");
     exit(1);
 }

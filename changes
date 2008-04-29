@@ -12046,3 +12046,24 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
 - vmh-memory.cpp bug fix ( bits vs bytes )
 - isa-emulator returns new pc ( if return pc's high bit is 0, then its a branch to that location or else its a NOP )
 - Added a new flag -bluesimargs
+
+----------
+mcadler     Date: Tue Apr 29 17:21:49 EDT 2008  CSN: CSN-hasim-397
+                  Tue Apr 29 21:21:49 UTC 2008
+
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          396 
+
+Directory modules/model
+ main.cpp                  Locally Modified          396 
+ main.h                    Locally Modified          396 
+
+- Generalize the argc/argv building code and promote --bluesimargs to
+  an argc/argv pair.
+- Invoke bluesim with execvp()
+- Add --funcp-prefix and --funcp-suffix options to the run script for specifying
+  options to m5.
+
+NOTE:  The run script may strip quotation marks around the bluesimargs option.
+       From a shell you probably need to use: ./run --bluesimargs=\"-V elvis\"

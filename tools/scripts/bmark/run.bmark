@@ -16,16 +16,24 @@ sub ReadConfig($);
 my $gdb = 0;
 my $noProgram = 0;
 my $noReserve = 0;
+my $funcpPrefix = "";
+my $funcpSuffix = "";
 
 my $status = GetOptions("gdb!" => \$gdb,
                         "noprogram!" => \$noProgram,
                         "noreserve!" => \$noReserve,
+                        "funcp-prefix=s" => \$funcpPrefix,
+                        "funcp-suffix=s" => \$funcpSuffix,
                        );
 if (! $status) {
     print STDERR "Usage: run [--gdb] [--noprogram] [--noreserve] [model options]\n\n";
-    print STDERR "  --gdb Invokes the software side in gdb\n";
-    print STDERR "  --noprogram Skips the FPGA load and reservation steps\n";
-    print STDERR "  --noreserve skips the FPGA reservation steps\n";
+    print STDERR "  --gdb           Invokes the software side in gdb\n";
+    print STDERR "  --noprogram     Skips the FPGA load and reservation steps\n";
+    print STDERR "  --noreserve     Skips the FPGA reservation steps\n";
+    print STDERR "  --funcp-prefix=\"<prefix>\"\n";
+    print STDERR "                  Prepend prefix to HAsim's --funcp argument\n";
+    print STDERR "  --funcp-suffix=\"<suffix>\"\n";
+    print STDERR "                  Append suffix to HAsim's --funcp argument\n";
     exit(1);
 }
 
@@ -65,7 +73,9 @@ else {
     die("Can't determine model type");
 }
 
-my $cmd = "$config{modelDir}/$config{model} --modeldir=$config{modelDir} --funcp=\"$config{feedFlags}\" $config{genFlags}";
+my $feedFlags = "${funcpPrefix} $config{feedFlags} ${funcpSuffix}";
+
+my $cmd = "$config{modelDir}/$config{model} --modeldir=$config{modelDir} --funcp=\"${feedFlags}\" $config{genFlags}";
 foreach my $c (@ARGV) {
     $cmd .= " $c";
 }

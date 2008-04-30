@@ -8,7 +8,7 @@ typedef Tuple3#(String, String, Integer) ConMap;
 
 //Add the parsed information back is as normal connections
 
-module [Connected_Module] addConnections#(WithConnections mod, List#(ConMap) sends, List#(ConMap) recs) ();
+module [Connected_Module] addConnections#(WithConnections#(numIn, numOut) mod, List#(ConMap) sends, List#(ConMap) recs) ();
    
    //Add Sends
    

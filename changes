@@ -12129,3 +12129,40 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 
 
 - Took care of r31 hopefully
+
+----------
+mcadler     Date: Wed Apr 30 15:01:51 EDT 2008  CSN: CSN-hasim-400
+                  Wed Apr 30 19:01:51 UTC 2008
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          399 
+ hasim-connect             Locally Modified          399 
+ hasim-bsc-mkdepend        Locally Modified          399 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_htg_v5_pcie_synth.apm Locally Modified          399 
+ traffic_light_exe_nosynth.apm Locally Modified          399 
+ traffic_light_exe_synth.apm Locally Modified          399 
+
+Directory modules/model
+ SCons.hw.template         Locally Modified          399 
+
+Directory modules/common/smart_synthesis_boundaries
+ ExposeConnections.bsv     Locally Modified          399 
+ WithConnections.bsv       Locally Modified          399 
+ BuryConnections.bsv       Locally Modified          399 
+ smart_synth_boundaries.awb Locally Modified          399 
+
+Compute the array sizes for cross-synthesis-boundary soft connections
+at compile time instead of using large static arrays using a two pass
+compilation scheme.  Only early phases of the compiler are used for the
+first pass to avoid wasting time.
+
+Reducing the array sizes saves 70% of the Xilinx Xst (synthesis) time
+for the smips 5 stage model.  Down to 50 minutes.  There is still room
+for improvement!
+
+The maximum array sizes (100) are now defined in the wrapper template
+created by hasim-configure.  Bluespec gets slow beyond about 100,
+otherwise there is no reason it has to be so low.

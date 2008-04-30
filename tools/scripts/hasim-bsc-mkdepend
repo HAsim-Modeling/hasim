@@ -403,6 +403,19 @@ sub ParseBSVFile($$)
 }
 
 
+sub PrintBODep($$)
+{
+    my ($tgt, $src) = @_;
+
+    print "${tgt}: ${src}\n";
+
+    # Hack for wrapper log files (two pass compilation for soft connections)
+    if (${tgt} =~ '(.*)_Wrapper\.bo$') {
+        print "${1}_Wrapper.log: ${src}\n";
+    }
+}
+
+
 my $pathArg = '';
 
 if (! GetOptions('bdir=s' => \$bscBDir,
@@ -455,7 +468,7 @@ foreach my $bsv (keys %bsvFiles)
     my $localBsv = $bsv;
     $localBsv =~ s/^\.\///;
     if (! exists($derivedBSV{$localBsv})) {
-        print "${bdir}${bscBDir}/${bo}: ${bsv}\n";
+        PrintBODep("${bdir}${bscBDir}/${bo}", $bsv);
     }
 
     foreach my $dep (keys %{$bsvDep{$bsv}})
@@ -470,10 +483,10 @@ foreach my $bsv (keys %bsvFiles)
             $d =~ s/(.*)\///g;
             my $ddir = $1;
             $d =~ s/\.bsv$/.bo/;
-            print "${bdir}${bscBDir}/${bo}: ${ddir}/${bscBDir}/${d}\n";
+            PrintBODep("${bdir}${bscBDir}/${bo}", "${ddir}/${bscBDir}/${d}");
         }
         else {
-            print "${bdir}${bscBDir}/${bo}: ${dep}\n";
+            PrintBODep("${bdir}${bscBDir}/${bo}", $dep);
         }
 
     }

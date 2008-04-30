@@ -8,7 +8,6 @@ Name=Traffic Light Model - Exe
 Type=HAsim
 Class=Asim::Model
 
-
 [Hasim - Traffic light system]
 Packagehint=hasim
 File=modules/system/traffic_light_system/traffic_light_system.awb
@@ -17,7 +16,6 @@ File=modules/system/traffic_light_system/traffic_light_system.awb
 DefaultAttributes=traffic-light hasim hybrid simulation
 model=HAsim Hybrid Model Foundation
 
-
 [Hasim - Traffic light system/Requires]
 hasim_traffic_light_function=Hasim - Traffic light function w.o synthesis boundary
 
@@ -25,9 +23,6 @@ hasim_traffic_light_function=Hasim - Traffic light function w.o synthesis bounda
 File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function.awb
 Packagehint=hasim
 
-[Hasim Common Library]
-File=config/pm/hasim/submodels/hasim_common.apm
-Packagehint=hasim
 
 [Hasim - Traffic light function w.o synthesis boundary/Params]
 MAX_WAIT='d500
@@ -36,14 +31,9 @@ MAX_WAIT='d500
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
 
-[Hasim Common Library/Params]
-TERM_FPGA_SWITCHES=0
-TERM_FPGA_BUTTONS=0
-TERM_FPGA_LEDS=0
-
 
 [HAsim Hybrid Model Foundation/Requires]
-hasim_common=Hasim Common Library
+hasim_common=New Hasim Common Library
 hasim_system=Hasim - Traffic light system
 hasim_controller=Hybrid Null Controller
 fpgaenv=FPGA Environment
@@ -54,4 +44,8 @@ Packagehint=hasim
 
 [HAsim Hybrid Model Foundation]
 File=modules/model/hasim_model.awb
+Packagehint=hasim
+
+[New Hasim Common Library]
+File=config/pm/hasim/submodels/common/hasim_common.apm
 Packagehint=hasim

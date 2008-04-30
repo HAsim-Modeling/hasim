@@ -15,9 +15,6 @@
 #
 # %public WithConnections.bsv ExposeConnections.bsv BuryConnections.bsv
 #
-# %param BOUNDARY_CON_WIDTH 256 "Maximum soft connection width at a synthesis boundary."
-# %param BOUNDARY_CON_NUMBER 32 "Maximum number of dangling connections per synthesis boundary."
-#
 # %AWB_END
 # */
 

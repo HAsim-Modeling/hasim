@@ -1070,7 +1070,7 @@ sub generate_wrapper {
     
     CORE::open(WRAPPER, "> $dirname/$wrapper") || return undef;
 
-    print WRAPPER "\n";
+    print WRAPPER "//\n// Generated automatically by hasim-configure\n//\n\n";
 
     #
     # add defines for parameters
@@ -1121,16 +1121,28 @@ sub generate_wrapper {
     }
     print WRAPPER "\n";
 
+    my $synth_name = HAsim::Build::make_wrapper_name($metatype);
+    my $module_name = HAsim::Build::make_module_name($synth_name);
+
     if ($isroot) {
         print WRAPPER "\n";
         print WRAPPER "// Get defintion of TOP_LEVEL_WIRES\n";
         print WRAPPER "import physical_platform::*;\n";
         print WRAPPER "\n";
         print WRAPPER "(* synthesize *)\n";
-	print WRAPPER "module " . HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($metatype)) . " (TOP_LEVEL_WIRES);\n";    
+	print WRAPPER "module ${module_name} (TOP_LEVEL_WIRES);\n";    
     } else {
+        print WRAPPER "`ifndef CONNECTION_SIZES_KNOWN\n";
+        print WRAPPER "// First pass to see how large the vectors should be\n";
+        print WRAPPER "`define CON_RECV_${metatype} 100\n";
+        print WRAPPER "`define CON_SEND_${metatype} 100\n";
+        print WRAPPER "`else\n";
+        print WRAPPER "// Real build pass.  Include file built dynamically.\n";
+        print WRAPPER "`include \"${synth_name}_con_size.bsh\"\n";
+        print WRAPPER "`endif\n";
+        print WRAPPER "\n";
         print WRAPPER "(* synthesize *)\n";
-	print WRAPPER "module " . HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($metatype)) . " (WithConnections);\n";    
+	print WRAPPER "module ${module_name} (WithConnections#(`CON_RECV_${metatype}, `CON_SEND_${metatype}));\n";    
     }
     print WRAPPER "\n";
 

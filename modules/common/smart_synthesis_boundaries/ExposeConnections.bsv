@@ -3,7 +3,7 @@ import soft_connections_alg::*;
 
 //Instantiate a module with connections exposed
 
-module [Module] instantiateSmartBoundary#(Connected_Module#(inter_T) m) (WithConnections);
+module [Module] instantiateSmartBoundary#(Connected_Module#(inter_T) m) (WithConnections#(numIn, numOut));
 
   match {.m, .col} <- getCollection(m);
   
@@ -19,7 +19,7 @@ endmodule
 
 //toWithConnections :: [ConnectionData] -> Module WithConnections
 
-module [Module] toWithConnections#(List#(ConnectionData) ld, inter_T i)       (WithConnections);
+module [Module] toWithConnections#(List#(ConnectionData) ld, inter_T i)       (WithConnections#(numIn, numOut));
 
   //Group connections by type  
   match {.sends, .recvs, .chns} = splitConnections(ld);
@@ -41,24 +41,25 @@ endmodule
 
 //exposeDangingSends :: [CSend_Info] -> Module [CON_Out]
 
-module exposeDanglingSends#(List#(CSend_Info) dsends) (Vector#(CON_Addr, CON_Out));
+module exposeDanglingSends#(List#(CSend_Info) dsends) (Vector#(n, CON_Out));
 
-  Vector#(CON_Addr, CON_Out) res = newVector();
+  Vector#(n, CON_Out) res = newVector();
   Integer cur_out = 0;
 
   //Output a compilation message and tie it to the next free outport
   for (Integer x = 0; x < length(dsends); x = x + 1)
   begin
+    if (cur_out >= valueof(n))
+      error(strConcat(strConcat("ERROR: Too many dangling Send Connections (max ", integerToString(valueof(n))), "). Increase the numOut parameter to WithConnections."));
+
     let cur = dsends[x];
     messageM(strConcat(strConcat(strConcat(strConcat(strConcat("Dangling Send {", cur.ctype),"} ["), integerToString(cur_out)), "]: "), cur.cname));
     res[cur_out] = cur.conn;
     cur_out = cur_out + 1;
-    if (cur_out >= valueof(CON_Addr))
-      error("ERROR: Too many dangling Send Connections. Increase the parameter BOUNDARY_CON_NUMBER");
   end
   
   //Zero out unused dangling sends
-  for (Integer x = cur_out; x < valueOf(CON_Addr); x = x + 1)
+  for (Integer x = cur_out; x < valueOf(n); x = x + 1)
     res[x] = ?;
   
   return res;
@@ -69,24 +70,25 @@ endmodule
 
 //exposeDangingRecvs :: [CRecv_Info] -> Module [CON_In]
 
-module exposeDanglingRecvs#(List#(CRecv_Info) drecvs) (Vector#(CON_Addr, CON_In));
+module exposeDanglingRecvs#(List#(CRecv_Info) drecvs) (Vector#(n, CON_In));
 
-  Vector#(CON_Addr, CON_In) res = newVector();
+  Vector#(n, CON_In) res = newVector();
   Integer cur_in = 0;
   
   //Output a compilation message and tie it to the next free inport
   for (Integer x = 0; x < length(drecvs); x = x + 1)
   begin
+    if (cur_in >= valueof(n))
+      error(strConcat(strConcat("ERROR: Too many dangling Receive Connections (max ", integerToString(valueof(n))), "). Increase the numIn parameter to WithConnections."));
+
     let cur = drecvs[x];
     messageM(strConcat(strConcat(strConcat(strConcat(strConcat("Dangling Rec {", cur.ctype), "} ["), integerToString(cur_in)), "]: "), cur.cname));
     res[cur_in] = cur.conn;
     cur_in = cur_in + 1;
-    if (cur_in >= valueof(CON_Addr))
-      error("ERROR: Too many dangling Receive Connections. Increase the parameter BOUNDARY_CON_NUMBER");
   end
   
   //Zero out unused dangling recvs
-  for (Integer x = cur_in; x < valueOf(CON_Addr); x = x + 1)
+  for (Integer x = cur_in; x < valueOf(n); x = x + 1)
     res[x] = ?;
   
   return res;

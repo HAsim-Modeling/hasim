@@ -40,6 +40,9 @@ FUNCP_MEMORY_CLASS::FUNCP_MEMORY_CLASS() :
 {
     SetTraceableName("funcp_memory");
 
+    ASSERT(MEMORY_STORE_INFO_SIZE == FUNCP_ISA_ADDR_SIZE + FUNCP_ISA_INT_REG_SIZE,
+           "Awb parameters are inconsistent: MEMORY_STORE_INFO_SIZE != FUNCP_ISA_ADDR_SIZE + FUNCP_ISA_INT_REG_SIZE");
+
     // register with server's map table
     RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
 }

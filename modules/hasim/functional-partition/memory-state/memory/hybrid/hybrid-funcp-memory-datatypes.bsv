@@ -4,22 +4,22 @@
 
 // You probably won't need to change these.
 
+`include "funcp_base_types.bsh"
 
 // ***** Datatype definitions *****
-
 
 // MEM_ADDRESS
 
 // The address space the memory virtual device uses. A parameter by default.
 
-typedef Bit#(`MEMORY_ADDR_SIZE) MEM_ADDRESS;
+typedef FUNCP_ADDR MEM_ADDRESS;
 
 
 // MEM_VALUE
 
 // The type of values stored in memory. A parameter by default.
 
-typedef Bit#(`MEMORY_VALUE_SIZE) MEM_VALUE;
+typedef FUNCP_INT_REG MEM_VALUE;
 
 
 // MEM_REQUEST

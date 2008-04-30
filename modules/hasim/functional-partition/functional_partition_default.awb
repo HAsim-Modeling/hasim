@@ -12,6 +12,7 @@
 #
 # %provides hasim_funcp
 # 
+# %requires funcp_base_types
 # %requires funcp_regstate
 # %requires funcp_memstate
 # %requires hasim_isa_semantics

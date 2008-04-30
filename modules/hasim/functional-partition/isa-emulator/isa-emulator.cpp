@@ -60,18 +60,6 @@ ISA_EMULATOR_CLASS::Poll()
 {
 }
 
-#if (MEMORY_VALUE_BYTES == 4)
-typedef UINT32 ISA_VALUE;
-#else
-typedef UINT64 ISA_VALUE;
-#endif
-
-#if (MEMORY_ADDR_BYTES == 4)
-typedef UINT32 ISA_ADDRESS;
-#else
-typedef UINT64 ISA_ADDRESS;
-#endif
-
 typedef UINT32 ISA_REG_INDEX;
 
 typedef UINT32 ISA_INSTRUCTION;
@@ -80,47 +68,47 @@ typedef UINT32 ISA_INSTRUCTION;
 UMF_MESSAGE
 ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
 {
-    ISA_VALUE rval;
+    FUNCP_INT_REG rval;
     ISA_REG_INDEX rname;
-    ISA_ADDRESS pc;
+    FUNCP_ADDR pc;
     ISA_INSTRUCTION inst;
 
     UMF_MESSAGE resp;
 
     switch(req->GetMethodID())
     {
-        case CMD_SYNC:
-            rval = req->ExtractUINT(8);
-            rname = req->ExtractUINT(4);
-            cout << "RRR Sync: reg-index: " << rname << " reg-val: " << hex << rval << endl;
-            delete req;
-            return NULL;
-            break;
-        case CMD_EMULATE:
-            pc = req->ExtractUINT(8);
-            inst = req->ExtractUINT(4);
-            cout << "RRR Emulate: pc: " << hex << pc << " inst: " << hex << inst << endl;
-            delete req;
+      case CMD_SYNC:
+          rval = req->ExtractUINT(sizeof(rval));
+          rname = req->ExtractUINT(4);
+          cout << "RRR Sync: reg-index: " << rname << " reg-val: " << hex << rval << endl;
+          delete req;
+          return NULL;
+          break;
+      case CMD_EMULATE:
+        pc = req->ExtractUINT(sizeof(pc));
+        inst = req->ExtractUINT(4);
+        cout << "RRR Emulate: pc: " << hex << pc << " inst: " << hex << inst << endl;
+        delete req;
 
-            resp = new UMF_MESSAGE_CLASS(8);
-            resp->SetMethodID(CMD_EMULATE);
-            resp->AppendUINT(pc + 4, 8);
-            return resp;
-            break;
+        resp = new UMF_MESSAGE_CLASS(8);
+        resp->SetMethodID(CMD_EMULATE);
+        resp->AppendUINT(7, sizeof(pc));     // terminate
+        return resp;
+        break;
     }
 }
 
 
 // client: update register
 void
-ISA_EMULATOR_CLASS::updateRegister(UINT32 rname, UINT32 rval)
+ISA_EMULATOR_CLASS::updateRegister(UINT32 rname, FUNCP_INT_REG rval)
 {
     // create message for RRR client
     UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(8);
     msg->SetServiceID(SERVICE_ID);
     msg->SetMethodID(METHOD_ID_UPDATE_REG);
     msg->AppendUINT32(rname);
-    msg->AppendUINT32(rval);
+    msg->AppendUINT(rval, sizeof(rval));
 
     RRRClient->MakeRequestNoResponse(msg);
 }

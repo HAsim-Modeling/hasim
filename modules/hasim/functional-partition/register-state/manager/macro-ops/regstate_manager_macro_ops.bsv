@@ -1267,8 +1267,18 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Update scoreboard.
         tokScoreboard.exeFinish(emulatingToken.index);
 
-        // FIXME: Hardcoded to 64 bits
-        let resp = (newPc[63] == 0)? tagged RBranchTaken newPc: tagged RNop;
+        // Hack alert -- until RRR allows us to pass multiple objects cleanly
+        // we pass a branch target and flags as a single 64 bit value.  We use
+        // the low 2 bits as flags.  This works for Alpha and MIPS but won't
+        // work for x86.
+        let tgtFlags = newPc[1:0];
+        newPc[1:0] = 0;                         // Clear the flags
+        let resp = case(tgtFlags)
+                       0: tagged RNop;
+                       1: tagged RBranchTaken newPc;
+                       2: tagged RNop;          // Unused
+                       3: tagged RTerminate (newPc[2] == 1); // Bit 2 is 1 for pass
+                   endcase;
 
         // Send the response to the timing model.
         // End of macro-operation.

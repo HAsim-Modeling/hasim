@@ -12067,3 +12067,54 @@ Directory modules/model
 
 NOTE:  The run script may strip quotation marks around the bluesimargs option.
        From a shell you probably need to use: ./run --bluesimargs=\"-V elvis\"
+
+----------
+mcadler     Date: Wed Apr 30 08:27:26 EDT 2008  CSN: CSN-hasim-398
+                  Wed Apr 30 12:27:26 UTC 2008
+
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          397 
+ isa-emulator.rrr          Locally Modified          397 
+ isa-emulator.awb          Locally Modified          397 
+ isa-emulator-common.h     Locally Modified          397 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          397 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          397 
+ hybrid-funcp-memory.rrr   Locally Modified          397 
+ hybrid-funcp-memory-datatypes.bsv Locally Modified          397 
+ hybrid-funcp-memory.h     Locally Modified          397 
+ hybrid-funcp-memory.awb   Locally Modified          397 
+
+Directory modules/hasim/functional-partition
+ functional_partition_default.awb Locally Modified          397 
+ base-types/               Locally Added               0 
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.h        Locally Added               0 
+ funcp-base-types.awb      Locally Added               0 
+ funcp-base-types.bsv      Locally Added               0 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          397 
+ HAsimPlatformInterface.bsv Locally Modified          397 
+
+Tired of redundant sizes sprinkled through the functional partition
+configurations.  Created one, top level, "funcp_base_types" requirement.
+Files in the base types must be terminal within the functional partition.
+For now defined here is the ISA address size and the integer register
+size.  From these other parts of the functional partition pick sizes
+for funcp_memory and isa_emulator.  The only remaining other place where
+a size is needed is the memory_store_info_size in funcp_memory, due to
+temporary RRR limitations.  The sw side of the memory interface verifies
+that memory_store_info_size is set correctly.
+
+Also changed the protocol for ISA emulator to return a branch.  Using
+the high bit caused problems since we can't know where the high bit is
+without assuming a PC size.  Since the branch bit as part of the returned
+PC is a temporary hack I used bits 1:0, which must be 0 for both Alpha and
+MIPS.  Of the 4 states, 0 is no branch, 1 is branch, 2 is unused and 3
+means terminate.  The exit status is in bit 2 for terminate.

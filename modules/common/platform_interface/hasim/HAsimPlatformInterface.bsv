@@ -7,6 +7,7 @@ import rrr::*;
 
 `include "funcp_memory.bsh" // FIXME: NEED THIS FOR TYPES, REMOVE
 `include "isa_emulator.bsh" // FIXME: NEED THIS FOR TYPES, REMOVE
+`include "funcp_base_types.bsh"  // FIXME: NEED THIS FOR TYPES, REMOVE
 `include "scratchpad_memory.bsh"
 `include "asim/rrr/server_connections.bsh"
 `include "asim/rrr/client_connections.bsh"
@@ -30,8 +31,8 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     Connection_Send#(ButtonInfo)      link_buttons    <- mkConnection_Send("fpga_buttons");
 
     // Currently only one user can read and write memory
-    Connection_Server#(MEM_REQUEST, MEM_VALUE) link_memory       <- mkConnection_Server("vdev_memory");
-    Connection_Send#(MEM_ADDRESS)              link_memory_inval <- mkConnection_Send("vdev_memory_invalidate");
+    Connection_Server#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory       <- mkConnection_Server("vdev_memory");
+    Connection_Send#(SCRATCHPAD_MEM_ADDRESS)              link_memory_inval <- mkConnection_Send("vdev_memory_invalidate");
 
     // other virtual devices
     Connection_Receive#(STREAMS_REQUEST) link_streams <- mkConnection_Receive("vdev_streams");
@@ -48,7 +49,7 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
 
     // instantiate virtual devices
     FrontPanel   frontPanel <- mkFrontPanel(llpint);
-    MEMORY_VIRTUAL_DEVICE  memory     <- mkMemoryVirtualDevice(llpint);
+    SCRATCHPAD_MEMORY_VIRTUAL_DEVICE  memory     <- mkMemoryVirtualDevice(llpint);
     Streams      streams    <- mkStreams(llpint);
 
     // connection terminus

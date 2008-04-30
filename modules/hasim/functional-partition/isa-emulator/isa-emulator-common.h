@@ -18,6 +18,8 @@
 
 #include "../platforms-module.h"
 #include "asim/provides/rrr.h"
+#include "asim/provides/funcp_base_types.h"
+#include "asim/provides/isa_emulator.h"
 
 // this module provides both client and service functionalities
 
@@ -42,7 +44,7 @@ class ISA_EMULATOR_CLASS: public RRR_SERVICE_CLASS,
         void Poll();
 
         // client methods
-        void updateRegister(UINT32 rname, UINT32 rval);
+        void updateRegister(UINT32 rname, FUNCP_INT_REG rval);
 };
 
 #endif

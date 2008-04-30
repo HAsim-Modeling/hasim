@@ -20,24 +20,13 @@
 #include "asim/trace.h"
 
 #include "asim/provides/rrr.h"
+#include "asim/provides/funcp_base_types.h"
 #include "asim/provides/funcp_simulated_memory.h"
 
 // types
-#if   (MEMORY_ADDR_SIZE == 32)
-typedef UINT32 MEM_ADDRESS;
-#elif (MEMORY_ADDR_SIZE == 64)
-typedef UINT64 MEM_ADDRESS;
-#else
-#error "invalid memory address size"
-#endif
 
-#if   (MEMORY_VALUE_SIZE == 32)
-typedef UINT32 MEM_VALUE;
-#elif (MEMORY_VALUE_SIZE == 64)
-typedef UINT64 MEM_VALUE;
-#else
-#error "invalid memory value size"
-#endif
+typedef FUNCP_ADDR    MEM_ADDRESS;;
+typedef FUNCP_INT_REG MEM_VALUE;
 
 
 #define CMD_LOAD    0

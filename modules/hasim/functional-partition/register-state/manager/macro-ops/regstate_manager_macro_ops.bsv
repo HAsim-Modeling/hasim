@@ -717,9 +717,10 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let new_map_dsts = update(map_dsts, num, tagged Valid tuple2(arc_dst, phy_dst));
 
         // The reg to free is the old writer of this destination.
-        let new_phy_regs_to_free = update(phy_regs_to_free, num, tagged Valid select(maptable, pack(arc_dst)));
+        let actual_phy_reg_to_free = isValid(map_dsts[num])? tagged Valid select(maptable, pack(arc_dst)): tagged Valid phy_dst;
+        let new_phy_regs_to_free = update(phy_regs_to_free, num, actual_phy_reg_to_free);
 
-        if (tok.timep_info.epoch == epoch) //Don't update the maptable if this token is getting killed
+        if (isValid(map_dsts[num]) && tok.timep_info.epoch == epoch) //Don't update the maptable if this token is getting killed
         begin
 
             // Update the maptable.

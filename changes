@@ -12118,3 +12118,14 @@ without assuming a PC size.  Since the branch bit as part of the returned
 PC is a temporary hack I used bits 1:0, which must be 0 for both Alpha and
 MIPS.  Of the 4 states, 0 is no branch, 1 is branch, 2 is unused and 3
 means terminate.  The exit status is in bit 2 for terminate.
+
+----------
+vmurali     Date: Wed Apr 30 14:17:56 EDT 2008  CSN: CSN-hasim-399
+                  Wed Apr 30 18:17:56 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          398 
+
+
+- Took care of r31 hopefully

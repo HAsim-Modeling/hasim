@@ -34,7 +34,7 @@ using namespace std;
 ISA_EMULATOR_CLASS ISA_EMULATOR_CLASS::instance;
 
 // constructor
-ISA_EMULATOR_CLASS::ISA_EMULATOR_CLASS()
+ISA_EMULATOR_CLASS::ISA_EMULATOR_CLASS() : emulator(NULL)
 {
     SetTraceableName("funcp_memory");
 
@@ -43,8 +43,6 @@ ISA_EMULATOR_CLASS::ISA_EMULATOR_CLASS()
 
     // register with server's map table
     RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
-
-    emulator = new ISA_EMULATOR_IMPL_CLASS(this);
 }
 
 // destructor
@@ -59,6 +57,8 @@ ISA_EMULATOR_CLASS::Init(
     PLATFORMS_MODULE p)
 {
     parent = p;
+
+    emulator = new ISA_EMULATOR_IMPL_CLASS(this);
 }
 
 // poll

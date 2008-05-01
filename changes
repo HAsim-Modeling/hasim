@@ -12221,3 +12221,13 @@ Directory modules/hasim/functional-partition/isa-emulator
  isa-emulator.awb          Locally Modified          401 
 
 Rename include file.
+
+----------
+mcadler     Date: Thu May  1 17:54:00 EDT 2008  CSN: CSN-hasim-403
+                  Thu May  1 21:54:00 UTC 2008
+
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          402 
+
+Static construction is too early to call m5.  Wait until Init() method.

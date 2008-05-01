@@ -14,7 +14,7 @@
 #
 # %attributes hasim
 #
-# %sources -v PUBLIC  isa-emulator-common.h
+# %sources -v PUBLIC  isa-emulator.h
 # %sources -v PRIVATE isa-emulator.cpp
 # %sources -v PUBLIC  isa-emulator.rrr
 # %sources -v PUBLIC  isa-emulator-datatypes.bsv

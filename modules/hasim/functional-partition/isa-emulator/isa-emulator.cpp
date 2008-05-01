@@ -18,7 +18,6 @@
 #include "asim/syntax.h"
 #include "asim/mesg.h"
 
-#include "isa-emulator-common.h"
 #include "asim/rrr/service_ids.h"
 #include "asim/provides/isa_emulator.h"
 

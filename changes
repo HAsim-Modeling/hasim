@@ -12208,3 +12208,16 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
     We can now be sure in an unpiplined timing model that all memory stores
     for earlier cycles complete before an ISA emulation request is transmitted
     to software.  We can still make no guarantees for pipelined timing models.
+
+----------
+mcadler     Date: Thu May  1 15:36:24 EDT 2008  CSN: CSN-hasim-402
+                  Thu May  1 19:36:25 UTC 2008
+
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator-common.h     Locally Removed           401 
+ isa-emulator.cpp          Locally Modified          401 
+ isa-emulator.h            Locally Added               - 
+ isa-emulator.awb          Locally Modified          401 
+
+Rename include file.

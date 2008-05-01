@@ -1152,14 +1152,20 @@ module [HASim_Module] mkFUNCP_RegStateManager
     
     rule emulateInstruction1_Req (emulatingInstruction && synchronizingRegs);
     
-        // Lookup which register to send next.
-        FUNCP_PHYSICAL_REG_INDEX current_pr = maptable[synchronizingCurReg];
+        // Some ISA's have a sparse packing of register names.  Don't sync
+        // a register if the current index doesn't map to a real register index.
+        ISA_REG_INDEX isa_reg = unpack(synchronizingCurReg);
+        if (pack(isa_reg) == synchronizingCurReg)
+        begin
+            // Lookup which register to send next.
+            FUNCP_PHYSICAL_REG_INDEX current_pr = maptable[synchronizingCurReg];
         
-        // Make the request to the regfile.
-        prf.read_req1(current_pr);
+            // Make the request to the regfile.
+            prf.read_req1(current_pr);
         
-        // Pass it on to the next stage.
-        syncQ.enq(synchronizingCurReg);
+            // Pass it on to the next stage.
+            syncQ.enq(synchronizingCurReg);
+        end
         
         // Move on to the next register.
         Bit#(rname_SZ) next_r = synchronizingCurReg + 1;

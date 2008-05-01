@@ -12166,3 +12166,45 @@ for improvement!
 The maximum array sizes (100) are now defined in the wrapper template
 created by hasim-configure.  Bluespec gets slow beyond about 100,
 otherwise there is no reason it has to be so low.
+
+----------
+mcadler     Date: Thu May  1 15:14:59 EDT 2008  CSN: CSN-hasim-401
+                  Thu May  1 19:14:59 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Client.pm                 Locally Modified          400 
+ Method.pm                 Locally Modified          400 
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          400 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          400 
+ isa-emulator.awb          Locally Modified          400 
+ null/                     Locally Added               0 
+
+Directory modules/hasim/functional-partition/isa-emulator/null
+ null-isa-emulator-impl.h  Locally Added               0 
+ null-isa-emulator-impl.awb Locally Added               0 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator-common.h     Locally Modified          400 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          400 
+
+- Break apart ISA emulation into two components:  one to handle RRR that
+  is simulator independent and an ISA emulator implementation that is
+  simulator (e.g. m5) dependent.
+- Defined a NULL emulator implementation that forces a failed exit in the
+  hardware if called.
+
+- Priority hacks in RRR stub generation:
+  - Force Bluespec scheduler to give priority to methods in order of method
+    number.  (Low number == highest priority)
+  - Force a service named FUNCP_MEMORY to be service ID 0.  The priority tree
+    for favors services sorted by ID.  This gives memory the highest priority.
+    We can now be sure in an unpiplined timing model that all memory stores
+    for earlier cycles complete before an ISA emulation request is transmitted
+    to software.  We can still make no guarantees for pipelined timing models.

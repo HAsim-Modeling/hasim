@@ -37,13 +37,21 @@ ISA_EMULATOR_CLASS ISA_EMULATOR_CLASS::instance;
 // constructor
 ISA_EMULATOR_CLASS::ISA_EMULATOR_CLASS()
 {
+    SetTraceableName("funcp_memory");
+
+    VERIFYX(sizeof(ISA_ADDRESS) == sizeof(FUNCP_ADDR));
+    VERIFYX(sizeof(ISA_VALUE) == sizeof(FUNCP_INT_REG));
+
     // register with server's map table
     RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
+
+    emulator = new ISA_EMULATOR_IMPL_CLASS(this);
 }
 
 // destructor
 ISA_EMULATOR_CLASS::~ISA_EMULATOR_CLASS()
 {
+    delete emulator;
 }
 
 // init
@@ -60,17 +68,15 @@ ISA_EMULATOR_CLASS::Poll()
 {
 }
 
-typedef UINT32 ISA_REG_INDEX;
-
 typedef UINT32 ISA_INSTRUCTION;
 
 // handle service request
 UMF_MESSAGE
 ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
 {
-    FUNCP_INT_REG rval;
-    ISA_REG_INDEX rname;
+    FUNCP_INT_REG rVal;
     FUNCP_ADDR pc;
+    ISA_REG_INDEX_CLASS rName;
     ISA_INSTRUCTION inst;
 
     UMF_MESSAGE resp;
@@ -78,21 +84,79 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
     switch(req->GetMethodID())
     {
       case CMD_SYNC:
-          rval = req->ExtractUINT(sizeof(rval));
-          rname = req->ExtractUINT(4);
-          cout << "RRR Sync: reg-index: " << rname << " reg-val: " << hex << rval << endl;
-          delete req;
-          return NULL;
-          break;
+        rVal = req->ExtractUINT(sizeof(rVal));
+        rName = req->ExtractUINT(4);
+        delete req;
+
+        if (TRACING(1))
+        {
+            if (rName.IsArchReg())
+            {
+                T1("\tisa_emulator: Sync ArchReg " << rName.ArchRegNum() << ": 0x" << fmt_x(rVal));
+            }
+            if (rName.IsControlReg())
+            {
+                T1("\tisa_emulator: Sync ControlReg: 0x" << fmt_x(rVal));
+            }
+            if (rName.IsLockReg())
+            {
+                T1("\tisa_emulator: Sync LockReg: 0x" << fmt_x(rVal));
+            }
+            if (rName.IsLockAddrReg())
+            {
+                T1("\tisa_emulator: Sync LockAddrReg: 0x" << fmt_x(rVal));
+            }
+            if (rName.IsIllegalReg())
+            {
+                T1("\tisa_emulator: Illegal register number: " << UINT32(rName));
+            }
+        }
+
+        emulator->SyncReg(rName, rVal);
+
+        return NULL;
+        break;
+
       case CMD_EMULATE:
         pc = req->ExtractUINT(sizeof(pc));
         inst = req->ExtractUINT(4);
-        cout << "RRR Emulate: pc: " << hex << pc << " inst: " << hex << inst << endl;
         delete req;
+
+        T1("\tisa_emulator: Emulate PC 0x" << fmt_x(pc) << ", Inst 0x" << fmt_x(inst));
+        
+        FUNCP_ADDR newPC;
+        ISA_EMULATOR_RESULT r = emulator->Emulate(pc, inst, &newPC);
+
+        //
+        // Hack.  Result is sent in low 2 bits of the returned PC.  This works
+        // for Alpha and MIPS until we get support for multiple returned objects
+        // in RRR.
+        //
+        newPC ^= (newPC & 3);       // Clear low 2 bits
+        switch (r)
+        {
+          case ISA_EMULATOR_NORMAL:
+            break;
+
+          case ISA_EMULATOR_BRANCH:
+            newPC |= 1;
+            break;
+
+          case ISA_EMULATOR_EXIT_OK:
+            newPC = 7;
+            break;
+
+          case ISA_EMULATOR_EXIT_FAIL:
+            newPC = 3;
+            break;
+
+          default:
+            ASIMERROR("Unexpected result from ISA emulator implementation");
+        }
 
         resp = new UMF_MESSAGE_CLASS(8);
         resp->SetMethodID(CMD_EMULATE);
-        resp->AppendUINT(7, sizeof(pc));     // terminate
+        resp->AppendUINT(newPC, sizeof(newPC));     // terminate
         return resp;
         break;
     }
@@ -101,14 +165,14 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
 
 // client: update register
 void
-ISA_EMULATOR_CLASS::updateRegister(UINT32 rname, FUNCP_INT_REG rval)
+ISA_EMULATOR_CLASS::UpdateRegister(ISA_REG_INDEX_CLASS rName, FUNCP_INT_REG rVal)
 {
     // create message for RRR client
-    UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(8);
+    UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(sizeof(rVal) + 4);
     msg->SetServiceID(SERVICE_ID);
     msg->SetMethodID(METHOD_ID_UPDATE_REG);
-    msg->AppendUINT32(rname);
-    msg->AppendUINT(rval, sizeof(rval));
+    msg->AppendUINT(rVal, sizeof(rVal));
+    msg->AppendUINT32(rName);
 
     RRRClient->MakeRequestNoResponse(msg);
 }

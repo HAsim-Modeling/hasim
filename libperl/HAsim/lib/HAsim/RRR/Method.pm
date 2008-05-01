@@ -709,6 +709,27 @@ sub print_client_connection
 }
 
 ##
+## return an array of names that will be emitted for client rules
+##
+sub client_link_rule_names
+{
+    my $self        = shift;
+    my $servicename = shift;
+
+    my $methodname = $self->{name};
+    
+    if (!defined($self->outarg()))
+    {
+        return ( "client_makeRequest_$servicename\_$methodname" );
+    }
+    else
+    {
+        return ( "client_makeRequest_$servicename\_$methodname",
+                 "client_getResponse_$servicename\_$methodname" );
+    }
+}
+
+##
 ## print rules to link method calls to a connection
 ##
 sub print_client_link_rules

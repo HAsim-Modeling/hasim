@@ -16,35 +16,66 @@
 
 #include <stdio.h>
 
-#include "../platforms-module.h"
+#include "asim/syntax.h"
+#include "asim/mesg.h"
+#include "asim/trace.h"
+
+#include "asim/provides/model.h"
 #include "asim/provides/rrr.h"
 #include "asim/provides/funcp_base_types.h"
-#include "asim/provides/isa_emulator.h"
+#include "asim/provides/hasim_isa.h"
+
 
 // this module provides both client and service functionalities
 
-typedef class ISA_EMULATOR_CLASS* ISA_EMULATOR;
-class ISA_EMULATOR_CLASS: public RRR_SERVICE_CLASS,
-                     public PLATFORMS_MODULE_CLASS
+//
+// Possible results from ISA emulator implementations to communicate back
+// to the hardware client.
+//
+typedef enum
 {
-    private:
-        // self-instantiation
-        static ISA_EMULATOR_CLASS instance;
+    ISA_EMULATOR_NORMAL,        // Standard instruction, next PC returned as a hint
+    ISA_EMULATOR_BRANCH,        // Branch to new PC
+    ISA_EMULATOR_EXIT_OK,       // Program done, success
+    ISA_EMULATOR_EXIT_FAIL      // Program done, failure
+}
+ISA_EMULATOR_RESULT;
 
-    public:
-        ISA_EMULATOR_CLASS();
-        ~ISA_EMULATOR_CLASS();
+// Early declaration since of the circular dependence
+typedef class ISA_EMULATOR_IMPL_CLASS* ISA_EMULATOR_IMPL;
 
-        // static methods
-        static ISA_EMULATOR GetInstance() { return &instance; }
+typedef class ISA_EMULATOR_CLASS* ISA_EMULATOR;
 
-        // required RRR service methods
-        void Init(PLATFORMS_MODULE);
-        UMF_MESSAGE Request(UMF_MESSAGE req);
-        void Poll();
+class ISA_EMULATOR_CLASS: public RRR_SERVICE_CLASS,
+                          public PLATFORMS_MODULE_CLASS,
+                          public TRACEABLE_CLASS
+{
+  private:
+    // self-instantiation
+    static ISA_EMULATOR_CLASS instance;
+    ISA_EMULATOR_IMPL emulator;
 
-        // client methods
-        void updateRegister(UINT32 rname, FUNCP_INT_REG rval);
+  public:
+    ISA_EMULATOR_CLASS();
+    ~ISA_EMULATOR_CLASS();
+
+    // static methods
+    static ISA_EMULATOR GetInstance() { return &instance; }
+
+    // required RRR service methods
+    void Init(PLATFORMS_MODULE);
+    UMF_MESSAGE Request(UMF_MESSAGE req);
+    void Poll();
+
+    // client methods
+    void UpdateRegister(ISA_REG_INDEX_CLASS rName, FUNCP_INT_REG rVal);
 };
+
+
+//
+// Include of the implementation must be delayed to here so that
+// ISA_EMULATOR_RESULT and a pointer to ISA_EMULATOR_CLASS are defined.
+//
+#include "asim/provides/isa_emulator_impl.h"
 
 #endif

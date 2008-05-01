@@ -45,20 +45,14 @@ GetOptions("mode=s"      => \$mode,
            "incdirs=s"   => \$incdirs,
            "odir=s"      => \$odir);
 
-my @fNames;
-my @sTables;
 my @serviceTable;
 
 
 ##
-## Start by parsing all the input files.  After parsing we'll have a few
-## data structures:
+## Start by parsing all the input files.  After parsing we'll have a table:
 ##
-##   @fNames -- an array of the names of input .rrr files
-##   @sTables -- An array of the parsed RRR data from individual files
 ##   @serviceTable -- A merged array of sTables merged from all input files
 ##
-my $idx = 0;
 foreach my $ifile (@ARGV)
 {
     my ($iname, $ipath, $isuffix) = fileparse($ifile, qr/\.[^.]*/);
@@ -69,13 +63,25 @@ foreach my $ifile (@ARGV)
         exit(1);
     }
 
-    $fNames[$idx] = $iname;
-
     # parse input RRR file into data structure
-    @{$sTables[$idx]} = parse_rrr_file($ifile);
-    push (@serviceTable, @{$sTables[$idx]});
+    push (@serviceTable, parse_rrr_file($ifile));
+}
 
-    $idx += 1;
+##
+## HACK!  Statically force memory service to be first.  This gives it highest
+## priority in the current priority encoder.
+##
+if ($#serviceTable > 0)
+{
+    for my $idx ( 1 .. $#serviceTable )
+    {
+        if ($serviceTable[$idx]->name() eq 'FUNCP_MEMORY')
+        {
+            my $t = $serviceTable[0];
+            $serviceTable[0] = $serviceTable[$idx];
+            $serviceTable[$idx] = $t;
+        }
+    }
 }
 
 ##

@@ -1,0 +1,21 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Null ISA Emulator Implementation
+# %desc Null ISA Emulator Implementation
+# %provides isa_emulator_impl
+#
+#
+# %attributes hasim
+#
+# %sources -v PUBLIC  null-isa-emulator-impl.h
+#
+# %AWB_END
+# */
+

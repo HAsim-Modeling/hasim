@@ -325,6 +325,19 @@ sub print_link_rules
     # check if RRR file requested a connection for this client
     if ($self->{ifc} eq "connection")
     {
+        # Hack:  give priority to low method ids.  This lets us guarantee
+        # delivery of one method ahead of another.
+        # Start by gathering method names...
+        my @names = ();
+        foreach my $method (@{ $self->{methodlist} })
+        {
+            push(@names, $method->client_link_rule_names($self->{name}));
+        }
+        if ($#names > 0)
+        {
+            print $file "${indent}(* descending_urgency= \"" . join(', ', @names) . "\" *)\n\n";
+        }
+
         # for each method
         foreach my $method (@{ $self->{methodlist} })
         {

@@ -10,14 +10,14 @@
 # %name Hybrid ISA Emulator
 # %desc Hybrid ISA Emulator
 # %provides isa_emulator
-#
+# %requires isa_emulator_impl
 #
 # %attributes hasim
 #
-# %sources -t H   -v PUBLIC  isa-emulator-common.h
-# %sources -t CPP -v PRIVATE isa-emulator.cpp
-# %sources -t RRR  -v PUBLIC isa-emulator.rrr
-# %sources -t BSV -v PUBLIC isa-emulator-datatypes.bsv
+# %sources -v PUBLIC  isa-emulator-common.h
+# %sources -v PRIVATE isa-emulator.cpp
+# %sources -v PUBLIC  isa-emulator.rrr
+# %sources -v PUBLIC  isa-emulator-datatypes.bsv
 #
 # %AWB_END
 # */

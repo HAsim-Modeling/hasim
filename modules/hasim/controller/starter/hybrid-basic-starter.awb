@@ -18,8 +18,7 @@
 # %sources -t CPP -v PRIVATE    hybrid-basic-starter.cpp
 # %sources -t RRR -v PUBLIC     hybrid-basic-starter-services.rrr
 #
-# %param METHOD_ID_ENDSIM   0  "EndSim methodID"
-# %param METHOD_ID_DUMPRESP 1  "DumpStats response methodID"
-
+# %param METHOD_ID_ENDSIM    0  "EndSim methodID"
+# %param METHOD_ID_HEARTBEAT 1  "DumpStats response methodID"
 # %AWB_END
 # */

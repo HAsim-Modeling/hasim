@@ -19,6 +19,7 @@ interface Starter;
 
     // client methods
     method Action makeRequest_EndSim(Bool success);
+    method Action makeRequest_Heartbeat(Bit#(64) fpga_cycles, Bit#(64) model_cycles);
 
 endinterface
 
@@ -31,6 +32,7 @@ module [HASim_Module] mkStarter(Starter);
     Connection_Receive#(UINT32)        link_Sync      <- mkConnection_Receive("rrr_server_STARTER_Sync");
     Connection_Server#(UINT32, UINT32) link_DumpStats <- mkConnection_Server("rrr_server_STARTER_DumpStats");
     Connection_Send#(Bool)             link_EndSim    <- mkConnection_Send("rrr_client_STARTER_EndSim");
+    Connection_Send#(Bit#(128))        link_Heartbeat <- mkConnection_Send("rrr_client_STARTER_Heartbeat");
 
     // ----------- service methods: request ------------
 
@@ -64,6 +66,14 @@ module [HASim_Module] mkStarter(Starter);
     // signal end of simulation
     method Action makeRequest_EndSim(Bool success);
         link_EndSim.send(success);
+    endmethod
+
+    // Heartbeat
+    method Action makeRequest_Heartbeat(Bit#(64) fpga_cycles, Bit#(64) model_cycles);
+        Bit#(128) cycles;
+        cycles[63:0] = model_cycles;
+        cycles[127:64] = fpga_cycles;
+        link_Heartbeat.send(cycles);
     endmethod
 
 endmodule

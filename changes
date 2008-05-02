@@ -12231,3 +12231,26 @@ Directory modules/hasim/functional-partition/isa-emulator
  isa-emulator.cpp          Locally Modified          402 
 
 Static construction is too early to call m5.  Wait until Init() method.
+
+----------
+mcadler     Date: Fri May  2 16:56:23 EDT 2008  CSN: CSN-hasim-404
+                  Fri May  2 20:56:23 UTC 2008
+
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          402 
+ hybrid-basic-starter-services.rrr Locally Modified          402 
+ hybrid-basic-starter.awb  Locally Modified          402 
+ hybrid-basic-starter.bsv  Locally Modified          402 
+
+Directory modules/hasim/controller
+ controller-standard.awb   Locally Modified          402 
+ controller-standard.bsv   Locally Modified          402 
+
+Directory modules/hasim/controller/central_controllers/events
+ events-controller-streams.dic Locally Removed           402 
+ events-controller-streamid.dic Locally Removed           402 
+ events-controller-hybrid.awb Locally Modified          402 
+ events-controller-hybrid.bsv Locally Modified          402 
+
+Move heartbeat to the controller and remove it from events.

@@ -14,8 +14,6 @@
 #
 # %attributes hasim
 #
-# %sources -t DICT -v PUBLIC  events-controller-streams.dic
-# %sources -t DICT -v PUBLIC  events-controller-streamid.dic
 # %sources -t RRR  -v PUBLIC  events-controller.rrr
 # %sources -t BSV  -v PUBLIC  events-controller-hybrid.bsv
 # %sources -t H    -v PUBLIC  events-controller-hybrid.h

@@ -51,15 +51,14 @@ STARTER_CLASS::Request(
 {
     // extract info
     UINT32 methodID = req->GetMethodID();
-    UINT32 success  = req->ExtractUINT32();
-
-    // delete object
-    delete req;
 
     switch (req->GetMethodID())
     {
         case METHOD_ID_ENDSIM:
             // for now, call statsdump directly from here
+            UINT32 success  = req->ExtractUINT32();
+            delete req;
+
             if (success == 1)
             {
                 cout << "starter: simulation completed successfully." << endl;
@@ -78,7 +77,19 @@ STARTER_CLASS::Request(
             CallbackExit(0);
             break;
 
+        case METHOD_ID_HEARTBEAT:
+            UINT64 model_cycles = req->ExtractUINT64();
+            UINT64 fpga_cycles = req->ExtractUINT64();
+            delete req;
+            fprintf(stdout, "[%12u]: controller: model cycles completed: %9u (FMR=%.1f)\n",
+                    fpga_cycles,
+                    model_cycles,
+                    (double)fpga_cycles / (double)model_cycles);
+            fflush(stdout);
+            break;
+
         default:
+            delete req;
             cerr << "starter: invalid methodID." << endl;
             CallbackExit(1);
             break;

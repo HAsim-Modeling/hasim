@@ -12266,3 +12266,21 @@ Directory modules/hasim/controller/starter
 
 Clean up:  move method ids out of awb file so we remember to get rid of
 them.
+
+----------
+mcadler     Date: Sat May  3 09:16:55 EDT 2008  CSN: CSN-hasim-406
+                  Sat May  3 13:16:55 UTC 2008
+
+
+Directory modules/model
+ main.cpp                  Locally Modified          404 
+ main.h                    Locally Modified          404 
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          404 
+
+- Run script puts quotation marks back around arguments when needed so
+  you can just say, e.g., --bluesim="-m 1000" on the command line instead
+  of adding shell escapes.
+- Merge help messages from run script and model using a hidden switch to
+  the model.

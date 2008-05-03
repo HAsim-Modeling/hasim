@@ -13,30 +13,6 @@ use Getopt::Long qw(:config no_auto_abbrev no_ignore_case pass_through);
 sub Exec($$);
 sub ReadConfig($);
 
-my $gdb = 0;
-my $noProgram = 0;
-my $noReserve = 0;
-my $funcpPrefix = "";
-my $funcpSuffix = "";
-
-my $status = GetOptions("gdb!" => \$gdb,
-                        "noprogram!" => \$noProgram,
-                        "noreserve!" => \$noReserve,
-                        "funcp-prefix=s" => \$funcpPrefix,
-                        "funcp-suffix=s" => \$funcpSuffix,
-                       );
-if (! $status) {
-    print STDERR "Usage: run [--gdb] [--noprogram] [--noreserve] [model options]\n\n";
-    print STDERR "  --gdb           Invokes the software side in gdb\n";
-    print STDERR "  --noprogram     Skips the FPGA load and reservation steps\n";
-    print STDERR "  --noreserve     Skips the FPGA reservation steps\n";
-    print STDERR "  --funcp-prefix=\"<prefix>\"\n";
-    print STDERR "                  Prepend prefix to HAsim's --funcp argument\n";
-    print STDERR "  --funcp-suffix=\"<suffix>\"\n";
-    print STDERR "                  Append suffix to HAsim's --funcp argument\n";
-    exit(1);
-}
-
 
 #############################################################################
 #############################################################################
@@ -72,6 +48,63 @@ elsif (-f "$config{modelDir}/$config{model}_hw.vexe") {
 else {
     die("Can't determine model type");
 }
+
+#############################################################################
+#############################################################################
+##
+## Process command line arguments
+##
+#############################################################################
+#############################################################################
+
+my $help = 0;
+my $gdb = 0;
+my $noProgram = 0;
+my $noReserve = 0;
+my $funcpPrefix = "";
+my $funcpSuffix = "";
+
+my $status = GetOptions("help!" => \$help,
+                        "gdb!" => \$gdb,
+                        "noprogram!" => \$noProgram,
+                        "noreserve!" => \$noReserve,
+                        "funcp-prefix=s" => \$funcpPrefix,
+                        "funcp-suffix=s" => \$funcpSuffix,
+                       );
+
+if ($help || ! $status) {
+    print STDERR "\nArguments:\n";
+    print STDERR "   [--gdb]                 Invokes the software side in gdb\n";
+    print STDERR "   [--noprogram]           Skips the FPGA load and reservation steps\n";
+    print STDERR "   [--noreserve]           Skips the FPGA reservation steps\n";
+    print STDERR "   [--funcp-prefix=\"<prefix>\"]\n";
+    print STDERR "                           Prepend prefix to HAsim's --funcp argument\n";
+    print STDERR "   [--funcp-suffix=\"<suffix>\"]\n";
+    print STDERR "                           Append suffix to HAsim's --funcp argument\n";
+
+    if ($config{isHybridModel}) {
+        my $cmd = "$config{modelDir}/$config{model} --help-run-append";
+        system($cmd);
+    }
+
+    exit(1);
+}
+
+# Put quotation marks back on arguments that have spaces since they will be
+# passed through a shell once more.
+foreach my $i ( 0 .. $#ARGV ) {
+    if (($ARGV[$i] =~ /\s/) && ! ($ARGV[$i] =~ /['"]$/)) {
+        $ARGV[$i] = '"' . $ARGV[$i] . '"';
+    }
+}
+
+#############################################################################
+#############################################################################
+##
+## Adjust model arguments
+##
+#############################################################################
+#############################################################################
 
 my $feedFlags = "${funcpPrefix} $config{feedFlags} ${funcpSuffix}";
 

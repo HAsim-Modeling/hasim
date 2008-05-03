@@ -23,6 +23,7 @@ class GLOBAL_ARGS_CLASS
     char **BluesimArgv() const { return bluesimArgv; }
 
     void Usage();
+    void ShowArgsHelp(bool fromRunScript = false);
 
     GLOBAL_ARGS_CLASS(int argc, char *argv[]);
     ~GLOBAL_ARGS_CLASS();

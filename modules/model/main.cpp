@@ -58,12 +58,14 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
 {
     enum 
     {
-        OPT_FUNCP,
-        OPT_MODELDIR,
         OPT_BLUESIM_ARGS,
+        OPT_FUNCP,
+        OPT_HELP,
+        OPT_HELP_RUN_APPEND,
+        OPT_MODELDIR,
         OPT_SHOWFP,
+        OPT_NOSHOWFP,
         OPT_TR,
-        OPT_NOSHOWFP
     };
 
     int c;
@@ -75,12 +77,14 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
         int option_index = 0;
         static struct option long_options[] =
         {
-            {"funcp", required_argument, NULL, OPT_FUNCP},
-            {"modeldir", required_argument, NULL, OPT_MODELDIR},
             {"bluesimargs", required_argument, NULL, OPT_BLUESIM_ARGS},
+            {"funcp", required_argument, NULL, OPT_FUNCP},
+            {"help", no_argument, NULL, OPT_HELP},
+            {"help-run-append", no_argument, NULL, OPT_HELP_RUN_APPEND},
+            {"modeldir", required_argument, NULL, OPT_MODELDIR},
             {"showfp", no_argument, NULL, OPT_SHOWFP},
-            {"tr", optional_argument, NULL, OPT_TR},
             {"noshowfp", no_argument, NULL, OPT_NOSHOWFP},
+            {"tr", optional_argument, NULL, OPT_TR},
             {0, 0, 0, 0}
         };
 
@@ -92,33 +96,38 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
 
         switch (c)
         {
+          case OPT_BLUESIM_ARGS:
+            InitArgcArgvPair(optarg, argv[0], bluesimArgc, bluesimArgv);
+            break;
+
           case OPT_FUNCP:
             InitArgcArgvPair(optarg, argv[0], funcpArgc, funcpArgv);
+            break;
+
+          case OPT_HELP_RUN_APPEND:
+            // Run script already printed some help.  Add model specific help.
+            ShowArgsHelp(true);
+            exit(0);
             break;
 
           case OPT_MODELDIR:
             modelDir = strdup(optarg);
             break;
 
-          case OPT_BLUESIM_ARGS:
-            InitArgcArgvPair(optarg, argv[0], bluesimArgc, bluesimArgv);
-            break;
-
           case OPT_SHOWFP:
             showFrontPanel = true;
-            break;
-
-          case OPT_TR:
-            ParseTraceCmd(optarg);
             break;
 
           case OPT_NOSHOWFP:
             showFrontPanel = false;
             break;
 
-          case '?':
-            Usage();
+          case OPT_TR:
+            ParseTraceCmd(optarg);
+            break;
 
+          case OPT_HELP:
+          case '?':
           default:
             Usage();
         }
@@ -276,17 +285,23 @@ void
 GLOBAL_ARGS_CLASS::Usage()
 {
     fprintf(stderr, "\nArguments:\n");
+    ShowArgsHelp();
+    exit(1);
+}
+
+void
+GLOBAL_ARGS_CLASS::ShowArgsHelp(bool fromRunScript)
+{
+    if (! fromRunScript)
+    {
+        // Hide arguments set automatically by a run script
+        fprintf(stderr, "   [--modeldir=<dir>]      Model directory\n");
+        fprintf(stderr, "   [--funcp=\"<args>\"]      Arguments for the functional partition\n");
+    }
     fprintf(stderr, "   [--[no]showfp]          Show/don't show front panel\n");
-    fprintf(stderr, "   [--modeldir=<dir>]      Model directory\n");
-    fprintf(stderr, "   [--funcp=\"<args>\"]    Arguments for the functional partition\n");
-    fprintf(stderr, "   [--bluesim=\"<args>\"]  Arguments to Bluesim\n");
+    fprintf(stderr, "   [--bluesim=\"<args>\"]    Arguments to Bluesim\n");
     fprintf(stderr, "   [--tr=[</regex/[=012]]] Set trace level by regular expression. Can be given\n");
     fprintf(stderr, "                           multiple times.  If not specified, the trace level will\n");
     fprintf(stderr, "                           default to 1 and the regex to .*\n");
     fprintf(stderr, "\n");
-    fprintf(stderr, "NOTE:  A benchmark run script may strip quotation marks delimiting arguments.\n");
-    fprintf(stderr, "       You may need to escape quotation marks, e.g.:\n");
-    fprintf(stderr, "          ./run --bluesim=\\\"<args>\\\"\n");
-    fprintf(stderr, "\n");
-    exit(1);
 }

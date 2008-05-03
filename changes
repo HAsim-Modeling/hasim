@@ -12254,3 +12254,15 @@ Directory modules/hasim/controller/central_controllers/events
  events-controller-hybrid.bsv Locally Modified          402 
 
 Move heartbeat to the controller and remove it from events.
+
+----------
+mcadler     Date: Fri May  2 20:36:57 EDT 2008  CSN: CSN-hasim-405
+                  Sat May  3 00:36:57 UTC 2008
+
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          404 
+ hybrid-basic-starter.awb  Locally Modified          404 
+
+Clean up:  move method ids out of awb file so we remember to get rid of
+them.

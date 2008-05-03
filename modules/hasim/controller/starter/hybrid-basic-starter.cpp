@@ -13,6 +13,9 @@
 #define METHOD_ID_SYNC      2
 #define METHOD_ID_DUMPSTATS 3
 
+#define METHOD_ID_ENDSIM    0
+#define METHOD_ID_HEARTBEAT 1
+
 using namespace std;
 
 // ===== service instantiation =====

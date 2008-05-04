@@ -2,8 +2,8 @@ import hasim_common::*;
 import rrr::*;
 import soft_connections::*;
 
-`include "asim/rrr/service_ids.bsh"
-`define SERVICE_ID  `STARTER_SERVICE_ID
+`include "asim/rrr/remote_client_stub_STARTER.bsh"
+`include "asim/rrr/remote_server_stub_STARTER.bsh"
 
 // Starter
 interface Starter;
@@ -26,46 +26,42 @@ endinterface
 // mkStarter
 module [HASim_Module] mkStarter(Starter);
 
-    // ----------- links -----------
-    Connection_Receive#(UINT32)        link_Run       <- mkConnection_Receive("rrr_server_STARTER_Run");
-    Connection_Receive#(UINT32)        link_Pause     <- mkConnection_Receive("rrr_server_STARTER_Pause");
-    Connection_Receive#(UINT32)        link_Sync      <- mkConnection_Receive("rrr_server_STARTER_Sync");
-    Connection_Server#(UINT32, UINT32) link_DumpStats <- mkConnection_Server("rrr_server_STARTER_DumpStats");
-    Connection_Send#(Bool)             link_EndSim    <- mkConnection_Send("rrr_client_STARTER_EndSim");
-    Connection_Send#(Bit#(128))        link_Heartbeat <- mkConnection_Send("rrr_client_STARTER_Heartbeat");
-
+    // ----------- stubs -----------
+    ClientStub_STARTER client_stub <- mkClientStub_STARTER();
+    ServerStub_STARTER server_stub <- mkServerStub_STARTER();
+    
     // ----------- service methods: request ------------
 
     // Run
     method Action acceptRequest_Run ();
-        link_Run.deq();
+        let r <- server_stub.acceptRequest_Run();
     endmethod
 
     // Pause
     method Action acceptRequest_Pause ();
-        link_Pause.deq();
+        let r <- server_stub.acceptRequest_Pause();
     endmethod
 
     // Sync
     method Action acceptRequest_Sync ();
-        link_Sync.deq();
+        let r <- server_stub.acceptRequest_Sync();
     endmethod
 
     // DumpStats
     method Action acceptRequest_DumpStats ();
-        link_DumpStats.deq();
+        let r <- server_stub.acceptRequest_DumpStats();
     endmethod
 
     // send response to DumpStats
     method Action sendResponse_DumpStats();
-        link_DumpStats.makeResp(0);
+        server_stub.sendResponse_DumpStats(0);
     endmethod
 
     // ------------ client methods ------------
 
     // signal end of simulation
     method Action makeRequest_EndSim(Bool success);
-        link_EndSim.send(success);
+        client_stub.makeRequest_EndSim(success);
     endmethod
 
     // Heartbeat
@@ -73,7 +69,7 @@ module [HASim_Module] mkStarter(Starter);
         Bit#(128) cycles;
         cycles[63:0] = model_cycles;
         cycles[127:64] = fpga_cycles;
-        link_Heartbeat.send(cycles);
+        client_stub.makeRequest_Heartbeat(cycles);
     endmethod
 
 endmodule

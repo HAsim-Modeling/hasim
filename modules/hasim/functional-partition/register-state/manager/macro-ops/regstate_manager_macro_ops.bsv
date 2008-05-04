@@ -33,8 +33,9 @@ import RegFile::*;
 // RRR includes
 `include "asim/provides/rrr.bsh"
 `include "asim/rrr/service_ids.bsh"
-
 `include "asim/provides/isa_emulator.bsh"
+`include "asim/rrr/remote_client_stub_ISA_EMULATOR.bsh"
+`include "asim/rrr/remote_server_stub_ISA_EMULATOR.bsh"
 
 // ***** Typedefs ***** //
 
@@ -306,14 +307,10 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Connection_Client#(Tuple3#(ISA_INSTRUCTION, ISA_ADDRESS, ISA_SOURCE_VALUES), 
                        Tuple3#(ISA_EXECUTION_RESULT, ISA_ADDRESS, ISA_RESULT_VALUES)) linkToDatapath <- mkConnection_Client("isa_datapath");
     
-    // Connections to RRR
+    // RRR Stubs.
+    ClientStub_ISA_EMULATOR client_stub <- mkClientStub_ISA_EMULATOR();
+    ServerStub_ISA_EMULATOR server_stub <- mkServerStub_ISA_EMULATOR();
     
-    Connection_Send#(RNAME_RVAL_TUPLE) linkRRRSync <- mkConnection_Send("rrr_client_ISA_EMULATOR_sync");
-    Connection_Client#(INST_ISA_ADDR_TUPLE,
-                       ISA_ADDRESS) linkRRREmulate <- mkConnection_Client("rrr_client_ISA_EMULATOR_emulate");
-    Connection_Receive#(RNAME_RVAL_TUPLE) linkRRRUpdate <- mkConnection_Receive("rrr_server_ISA_EMULATOR_updateRegister");
-    
-
     // ***** Assertion Checkers ***** //
 
     Assertion assertInstructionIsActuallyALoad    <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_LOAD_ON_NONLOAD, ASSERT_WARNING);
@@ -1203,7 +1200,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         ISA_VALUE reg_val <- prf.read_resp1();
         
         // Send the regsiter on to software via RRR
-        linkRRRSync.send(tuple2(unpack(arch_reg), reg_val));
+        client_stub.makeRequest_sync(tuple2(unpack(arch_reg), reg_val));
     
     endrule
     
@@ -1219,7 +1216,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         ISA_ADDRESS       pc <- tokAddr.read_resp();
         
         // Send the request on to software via RRR
-        linkRRREmulate.makeReq(tuple2(inst, pc));
+        client_stub.makeRequest_emulate(tuple2(inst, pc));
 
     endrule
 
@@ -1234,8 +1231,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     rule emulateInstruction2_UpdateReg (True);
         
         // Get an update request from software.
-        match {.r, .v} = linkRRRUpdate.receive();
-        linkRRRUpdate.deq();
+        match {.r, .v} <- server_stub.acceptRequest_updateRegister();
         
         // Assert that we're in the state we expected to be in.
         assertRegUpdateAtExpectedTime(emulatingInstruction && !synchronizingRegs);
@@ -1261,8 +1257,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     rule emulateInstruction3 (True);
         
         // Get the ACK from software that they're complete.
-        let newPc = linkRRREmulate.getResp();
-        linkRRREmulate.deq();
+        let newPc <- client_stub.getResponse_emulate();
         
         // Assert that we're in the state we expected to be in.
         assertEmulationFinishedAtExpectedTime(emulatingInstruction && !synchronizingRegs);

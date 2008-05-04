@@ -117,10 +117,22 @@ if ($mode eq "stub")
         print_server_stub($ohandle, $target, $service);
         close($ohandle);
 
+        # remote-server
+        $ofile = $odir . "/remote_server_stub_" . $service->name() . ".bsh";
+        open($ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
+        print_remote_server_stub($ohandle, $target, $service);
+        close($ohandle);
+
         # client
         $ofile = $odir . "/client_stub_" . $service->name() . ".bsh";
         open($ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
         print_client_stub($ohandle, $target, $service);
+        close($ohandle);
+
+        # remote-client
+        $ofile = $odir . "/remote_client_stub_" . $service->name() . ".bsh";
+        open($ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
+        print_remote_client_stub($ohandle, $target, $service);
         close($ohandle);
     }
 
@@ -327,6 +339,47 @@ sub print_server_stub
     print $file "\n";
 }
 
+################################################################
+# print_remote_server_stub: given a parsed service table, print
+#                           remote server stub for given target
+sub print_remote_server_stub
+{
+    my $file    = shift;
+    my $target  = shift;
+    my $service = shift;
+
+    # determine if we should write stub at all, and use connection
+    # test to find out if we need to print this stub
+    my $do_write = 0;
+    if ($service->needs_server_connections($target) == 0)
+    {
+        return;
+    }
+
+    # generate header
+    print $file "//\n";
+    print $file "// Synthesized remote server stub file\n";
+    print $file "//\n";
+    print $file "\n";
+
+    print $file "`ifndef _" . $service->name() . "_REMOTE_SERVER_STUB_\n";
+    print $file "`define _" . $service->name() . "_REMOTE_SERVER_STUB_\n";
+    print $file "\n";
+
+    print $file "`include \"soft_connections.bsh\"\n";
+    print $file "`include \"rrr.bsh\"\n";
+    print $file "`include \"channelio.bsh\"\n";
+    print $file "`include \"umf.bsh\"\n";
+    print $file "\n";
+
+    # ask the service to print the actual module
+    $service->print_remote_server_stub($file, $target);
+
+    # closing stamements
+    print $file "`endif\n";
+    print $file "\n";
+}
+
 ############################################################
 # print_server_connections: given a parsed service table,
 #                           print out a wrapper module that
@@ -434,6 +487,47 @@ sub print_client_stub
 
     # ask the service to print the actual module
     $service->print_client_stub($file, $target);
+
+    # closing stamements
+    print $file "`endif\n";
+    print $file "\n";
+}
+
+################################################################
+# print_remote_client_stub: given a parsed service table, print
+#                           remote client stub for given target
+sub print_remote_client_stub
+{
+    my $file    = shift;
+    my $target  = shift;
+    my $service = shift;
+
+    # determine if we should write stub at all, and for remote
+    # stubs, use connection test
+    my $do_write = 0;
+    if ($service->needs_client_connections($target) == 0)
+    {
+        return;
+    }
+
+    # generate header
+    print $file "//\n";
+    print $file "// Synthesized remote client stub file\n";
+    print $file "//\n";
+    print $file "\n";
+
+    print $file "`ifndef _" . $service->name() . "_REMOTE_CLIENT_STUB_\n";
+    print $file "`define _" . $service->name() . "_REMOTE_CLIENT_STUB_\n";
+    print $file "\n";
+
+    print $file "`include \"soft_connections.bsh\"\n";
+    print $file "`include \"rrr.bsh\"\n";
+    print $file "`include \"channelio.bsh\"\n";
+    print $file "`include \"umf.bsh\"\n";
+    print $file "\n";
+
+    # ask the service to print the actual module
+    $service->print_remote_client_stub($file, $target);
 
     # closing stamements
     print $file "`endif\n";

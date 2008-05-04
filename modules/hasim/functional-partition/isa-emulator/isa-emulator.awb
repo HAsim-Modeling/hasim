@@ -19,6 +19,9 @@
 # %sources -v PUBLIC  isa-emulator.rrr
 # %sources -v PUBLIC  isa-emulator-datatypes.bsv
 #
+# %param RNAME_RVAL_TUPLE_BITS    70 "Bits in RNAME/RVAL tuple"
+# %param INST_ISA_ADDR_TUPLE_BITS 96 "Bits in INST/ISA_ADDRESS tuple"
+#
 # %AWB_END
 # */
 

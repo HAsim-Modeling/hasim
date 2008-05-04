@@ -12284,3 +12284,66 @@ Directory tools/scripts/bmark
   of adding shell escapes.
 - Merge help messages from run script and model using a hidden switch to
   the model.
+
+----------
+aparasha    Date: Sun May  4 10:35:51 EDT 2008  CSN: CSN-hasim-407
+                  Sun May  4 14:35:51 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Server.pm                 Locally Modified          406 
+ Client.pm                 Locally Modified          406 
+ Method.pm                 Locally Modified          406 
+ Service.pm                Locally Modified          406 
+ Type.pm                   Locally Modified          406 
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          406 
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.bsv  Locally Modified          406 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.rrr          Locally Modified          406 
+ isa-emulator.awb          Locally Modified          406 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          406 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          406 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          406 
+
+- Updated implementation and UI for connection-based stubs. These RRR
+  services now generate the following 3 entities:
+
+  - a regular client/server stub that talks to the RRR stack. This stub
+    uses packed-Bit#() types, and so does not need to include the definitions
+    of any abstract RRR types.
+
+  - a set of connections and rules as part of HAsim Platform Interface
+    (in client_connections.bsh and server_connections.bsh), which also use
+    packed-Bit#() types, thereby avoiding any include requirements.
+
+  - a "remote" client/serve stub that uses the abstract types specified in the
+    RRR spec file. Since this remote stub is going to be instantiated by the
+    end-user module that "owns" these abstract types, it has access to them.
+    Internally, this stub talks to the remote end of the connection(s) and
+    performs the pack/unpack.
+
+  Note that the remote end-user module must now include "remote_client_stub_XXX"
+  instead of "client_stub_XXX", but the actual Bluespec interface and module names
+  do not need any prefix, e.g., ClientStub_XXX <- mkClientStub_XXX();
+
+  Services still use multiple connections for their various methods, but this
+  can now be changed internally without impacting the end-user modules' syntax.
+
+- Updated regstate manager and hybrid starter to use the new remote stubs.
+
+- Removed unnecessary `includes from HAsimPlatformInterface.bsv. HAsim Demo models
+  should now work, but haven't been tested yet.
+
+- Added a couple of params to isa-emulator.awb to explicitly specify the
+  bit-widths of aggregated RRR types.

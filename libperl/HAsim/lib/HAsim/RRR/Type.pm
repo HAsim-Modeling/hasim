@@ -96,14 +96,29 @@ sub string_bsv
 {
     # get object
     my $self = shift;
+    my $pack = shift;
 
-    if (defined($self->name()))
+    if ($pack == 0)
     {
-        return $self->name();
+        if (defined($self->name()))
+        {
+            return $self->name();
+        }
+        else
+        {
+            die ref($self) . ": invalid, cannot extract string.";
+        }
     }
     else
     {
-        die ref($self) . ": invalid, cannot extract string.";
+        if (defined($self->size()))
+        {
+            return "Bit#(" . $self->size() . ")";
+        }
+        else
+        {
+            die ref($self) . ": invalid, cannot extract string.";
+        }
     }
 }
 
@@ -115,15 +130,30 @@ sub print_bsv
 
     # get file handle
     my $file = shift;
+    my $pack = shift;
 
     # print into file
-    if (defined($self->name()))
+    if ($pack == 0)
     {
-        print $file $self->name();
+        if (defined($self->name()))
+        {
+            print $file $self->name();
+        }
+        else
+        {
+            die ref($self) . ": invalid, cannot print.";
+        }
     }
     else
     {
-        die ref($self) . ": invalid, cannot print.";
+        if (defined($self->size()))
+        {
+            print $file "Bit#(" . $self->size() . ")";
+        }
+        else
+        {
+            die ref($self) . ": invalid, cannot print.";
+        }
     }
 }
 

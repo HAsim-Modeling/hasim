@@ -241,9 +241,11 @@ sub print_accept_request_declaration
     # get indentation
     my $indent = shift;
 
+    my $pack = shift;
+
     # print method header after indenting it
     print $file $indent;
-    _print_accept_request_header($self, $file);
+    _print_accept_request_header($self, $file, $pack);
     print $file ";\n";
 }
 
@@ -261,9 +263,12 @@ sub print_accept_request_definition
     # get indentation
     my $indent = shift;
 
+    # pack?
+    my $pack = shift;
+
     # print method header after indenting it
     print $file $indent;
-    _print_accept_request_header($self, $file);
+    _print_accept_request_header($self, $file, $pack);
 
     # conditions
     print $file " if (mid == fromInteger(mid_";
@@ -275,24 +280,57 @@ sub print_accept_request_definition
     print $file $indent . "    ";
 
     # TODO: support multiple params
-    print $file $self->inarg()->type()->string_bsv();
+    print $file $self->inarg()->type()->string_bsv($pack);
     print $file " retval = unpack(truncate(a));\n";
-
-    # if insize is smaller than maxinsize, then we need to truncate
-    # if ($arg->type()->size() lt $maxinsize)
-    # {
-    #     print $file "unpack(truncate(a))";
-    # }
-    # else
-    # {
-    #     print $file "unpack(a)";
-    # }
-    # print $file ";\n";
-
     print $file $indent . "    return retval;\n";
 
     # endmethod
-    print $file $indent . "endmethod\n";
+    print $file $indent . "endmethod\n\n";
+}
+
+##
+## print remote accept_request definition that wraps the remote
+## (module) end of a connection
+##
+sub print_remote_accept_request_definition
+{
+    # get object
+    my $self = shift;
+
+    # get file handle
+    my $file = shift;
+
+    # get indentation
+    my $indent = shift;
+
+    # force pack to 0
+    my $pack = 0;
+
+    # print method header after indenting it
+    print $file $indent;
+    _print_accept_request_header($self, $file, $pack);
+
+    # no conditions
+    print $file ";\n";
+
+    # body
+    if (defined($self->outarg()))
+    {
+        # server-type connection
+        print $file $indent . "    let a = link_" . $self->{name} . ".getReq();\n";
+        print $file $indent . "    link_" . $self->{name} . ".deq();\n";
+        print $file $indent . "    return unpack(a);\n";
+    }
+    else
+    {
+        # receive-type connection
+        print $file $indent . "    let a = link_" . $self->{name} . ".receive();\n";
+        print $file $indent . "    link_" . $self->{name} . ".deq();\n";
+        print $file $indent . "    return unpack(a);\n";
+    }
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
 }
 
 ##
@@ -306,9 +344,12 @@ sub _print_accept_request_header
     # get file handle
     my $file = shift;
 
+    # pack?
+    my $pack = shift;
+
     # print into file
     print $file "method ActionValue#(" .
-                $self->inarg()->type()->string_bsv() .
+                $self->inarg()->type()->string_bsv($pack) .
                 ") ";
 
     # method name
@@ -327,6 +368,7 @@ sub print_send_response_declaration
     my $self = shift;
     my $file = shift;
     my $indent = shift;
+    my $pack = shift;
 
     # return if we don't need a response
     if (!defined($self->outarg()))
@@ -336,7 +378,7 @@ sub print_send_response_declaration
 
     # print method header after indenting it
     print $file $indent;
-    _print_send_response_header($self, $file);
+    _print_send_response_header($self, $file, $pack);
     print $file ";\n";
 }
 
@@ -348,6 +390,7 @@ sub print_send_response_definition
     my $self = shift;
     my $file = shift;
     my $indent = shift;
+    my $pack = shift;
 
     # return if we don't need a response
     if (!defined($self->outarg()))
@@ -357,7 +400,7 @@ sub print_send_response_definition
 
     # print method header after indenting it
     print $file $indent;
-    _print_send_response_header($self, $file);
+    _print_send_response_header($self, $file, $pack);
     print $file ";\n";
 
     # body
@@ -378,7 +421,38 @@ sub print_send_response_definition
     print $file "));\n";
 
     # endmethod
-    print $file $indent . "endmethod\n";
+    print $file $indent . "endmethod\n\n";
+}
+
+##
+## print remote send_response definition that wraps the remote
+## (module) end of a connection
+##
+sub print_remote_send_response_definition
+{
+    my $self = shift;
+    my $file = shift;
+    my $indent = shift;
+
+    # force pack to 0
+    my $pack = 0;
+
+    # return if we don't need a response
+    if (!defined($self->outarg()))
+    {
+        return;
+    }
+
+    # print method header after indenting it
+    print $file $indent;
+    _print_send_response_header($self, $file, $pack);
+    print $file ";\n";
+
+    # body
+    print $file $indent . "    link_" . $self->{name} . ".makeResp(pack(resp));\n";
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
 }
 
 ##
@@ -391,13 +465,14 @@ sub _print_send_response_header
 
     # get file handle
     my $file = shift;
+    my $pack = shift;
 
     # print into file
     print $file "method Action sendResponse_";
 
     # method name
     print $file $self->{name} . "("                   .
-                $self->outarg()->type()->string_bsv() .
+                $self->outarg()->type()->string_bsv($pack) .
                 " resp)"; # std formal param
 }
 
@@ -413,12 +488,15 @@ sub print_server_connection
     my $indent      = shift;
     my $servicename = shift;
 
+    # force pack to 1
+    my $pack = 1;
+
     # print connection definitions
     if (!defined($self->outarg()))
     {
         # no return: create Send-type connection
         print $file $indent . "Connection_Send#("        .
-                    $self->inarg()->type()->string_bsv() .
+                    $self->inarg()->type()->string_bsv($pack) .
                     ") link_server_$servicename" . "_"          .
                     $self->{name}                        .
                     " <- mkConnection_Send(\"rrr_server_$servicename\_" .
@@ -428,9 +506,9 @@ sub print_server_connection
     {
         # need return: create Client-type connection
         print $file $indent . "Connection_Client#("       .
-                    $self->inarg()->type()->string_bsv()  .
+                    $self->inarg()->type()->string_bsv($pack)  .
                     ", "                                  .
-                    $self->outarg()->type()->string_bsv() .
+                    $self->outarg()->type()->string_bsv($pack) .
                     ") link_server_$servicename" . "_"           .
                     $self->{name}                         .
                     " <- mkConnection_Client(\"rrr_server_$servicename\_" .
@@ -448,9 +526,12 @@ sub print_server_link_rules
     my $indent      = shift;
     my $servicename = shift;
 
+    # force pack to 1
+    my $pack = 1;
+
     my $methodname = $self->{name};
     my $insize     = $self->insize();
-    my $intype     = $self->inarg()->type()->string_bsv();
+    my $intype     = $self->inarg()->type()->string_bsv($pack);
     
     # print rules to transfer request and response to the connection
     if (!defined($self->outarg()))
@@ -465,7 +546,7 @@ sub print_server_link_rules
     else
     {
         my $outsize = $self->outsize();
-        my $outtype = $self->outarg()->type()->string_bsv();
+        my $outtype = $self->outarg()->type()->string_bsv($pack);
 
         # need return: create request and response rules, use makeReq()
         print $file $indent . "rule server_acceptRequest_$servicename\_$methodname (True);\n";
@@ -480,6 +561,44 @@ sub print_server_link_rules
         print $file $indent . "    stub_server_$servicename.sendResponse\_$methodname(resp);\n";
         print $file $indent . "endrule\n";
         print $file $indent . "\n";
+    }
+}
+
+##
+## print remote server connection wrapper instantiation
+##
+sub print_remote_server_connection
+{
+    my $self        = shift;
+    my $file        = shift;
+    my $indent      = shift;
+    my $servicename = shift;
+
+    # force pack to 1
+    my $pack = 1;
+
+    # print connection definitions
+    if (!defined($self->outarg()))
+    {
+        # no return: create receive-type connection
+        print $file $indent . "Connection_Receive#("          .
+                    $self->inarg()->type()->string_bsv($pack) .
+                    ") link_"                                 .
+                    $self->{name}                             .
+                    " <- mkConnection_Receive(\"rrr_server_$servicename\_" .
+                    $self->{name} . "\");\n";
+    }
+    else
+    {
+        # need return: create server-type connection
+        print $file $indent . "Connection_Server#("            .
+                    $self->inarg()->type()->string_bsv($pack)  .
+                    ", "                                       .
+                    $self->outarg()->type()->string_bsv($pack) .
+                    ") link_"                                  .
+                    $self->{name}                              .
+                    " <- mkConnection_Server(\"rrr_server_$servicename\_" .
+                    $self->{name} . "\");\n";
     }
 }
 
@@ -503,9 +622,12 @@ sub print_make_request_declaration
     # get indentation
     my $indent = shift;
 
+    # pack?
+    my $pack = shift;
+
     # print method header after indenting it
     print $file $indent;
-    _print_make_request_header($self, $file);
+    _print_make_request_header($self, $file, $pack);
     print $file ";\n";
 }
 
@@ -523,9 +645,12 @@ sub print_make_request_definition
     # get indentation
     my $indent = shift;
 
+    # pack?
+    my $pack = shift;
+
     # print method header after indenting it
     print $file $indent;
-    _print_make_request_header($self, $file);
+    _print_make_request_header($self, $file, $pack);
     print $file ";\n";
 
     # body
@@ -546,7 +671,46 @@ sub print_make_request_definition
     print $file "));\n";
 
     # endmethod
-    print $file $indent . "endmethod\n";
+    print $file $indent . "endmethod\n\n";
+}
+
+##
+## print remote make_request definition that wraps the remote
+## (module) end of a connection
+##
+sub print_remote_make_request_definition
+{
+    # get object
+    my $self = shift;
+
+    # get file handle
+    my $file = shift;
+
+    # get indentation
+    my $indent = shift;
+
+    # force pack to 0 for header printing
+    my $pack = 0;
+
+    # print method header after indenting it
+    print $file $indent;
+    _print_make_request_header($self, $file, $pack);
+    print $file ";\n";
+
+    # body
+    if (defined($self->outarg()))
+    {
+        # client-type connection
+        print $file $indent . "    link_" . $self->{name} . ".makeReq(pack(req));\n";
+    }
+    else
+    {
+        # send-type connection
+        print $file $indent . "    link_" . $self->{name} . ".send(pack(req));\n";
+    }
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
 }
 
 ##
@@ -559,13 +723,14 @@ sub _print_make_request_header
 
     # get file handle
     my $file = shift;
+    my $pack = shift;
 
     # print into file
     print $file "method Action makeRequest_";
 
     # method name
     print $file $self->{name} . "("                  .
-                $self->inarg()->type()->string_bsv() .
+                $self->inarg()->type()->string_bsv($pack) .
                 " req)"; # std formal param
 }
 
@@ -585,6 +750,9 @@ sub print_get_response_declaration
     # get indentation
     my $indent = shift;
 
+    # pack?
+    my $pack = shift;
+
     # return if we don't need a response
     if (!defined($self->outarg()))
     {
@@ -593,7 +761,7 @@ sub print_get_response_declaration
 
     # print method header after indenting it
     print $file $indent;
-    _print_get_response_header($self, $file);
+    _print_get_response_header($self, $file, $pack);
     print $file ";\n";
 }
 
@@ -611,6 +779,9 @@ sub print_get_response_definition
     # get indentation
     my $indent = shift;
 
+    # pack?
+    my $pack = shift;
+
     # return if we don't need a response
     if (!defined($self->outarg()))
     {
@@ -619,7 +790,7 @@ sub print_get_response_definition
 
     # print method header after indenting it
     print $file $indent;
-    _print_get_response_header($self, $file);
+    _print_get_response_header($self, $file, $pack);
 
     # conditions
     print $file " if (mid == fromInteger(mid_";
@@ -629,24 +800,52 @@ sub print_get_response_definition
     # body
     print $file $indent . "    let a <- dem.readAndDelete();\n";
     print $file $indent . "    ";
-    print $file $self->outarg()->type()->string_bsv();
+    print $file $self->outarg()->type()->string_bsv($pack);
     print $file " retval = unpack(truncate(a));\n";
-
-    # if outsize is smaller than maxoutsize, then we need to truncate
-    # if ($arg->type()->size() < $maxoutsize)
-    # {
-    #     print $file "unpack(truncate(a))";
-    # }
-    # else
-    # {
-    #     print $file "unpack(a)";
-    # }
-    # print $file ";\n";
-
     print $file $indent . "    return retval;\n";
 
     # endmethod
-    print $file $indent . "endmethod\n";
+    print $file $indent . "endmethod\n\n";
+}
+
+##
+## print remote get_response definition that wraps the remote
+## (module) end of a connection
+##
+sub print_remote_get_response_definition
+{
+    # get object
+    my $self = shift;
+
+    # get file handle
+    my $file = shift;
+
+    # get indentation
+    my $indent = shift;
+
+    # force pack to 0 for header printing
+    my $pack = 0;
+
+    # return if we don't need a response
+    if (!defined($self->outarg()))
+    {
+        return;
+    }
+
+    # print method header after indenting it
+    print $file $indent;
+    _print_get_response_header($self, $file, $pack);
+
+    # no conditions
+    print $file ";\n";
+
+    # body
+    print $file $indent . "    let a = link_" . $self->{name} . ".getResp();\n";
+    print $file $indent . "    link_" . $self->{name} . ".deq();\n";
+    print $file $indent . "    return unpack(a);\n";
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
 }
 
 ##
@@ -659,10 +858,11 @@ sub _print_get_response_header
 
     # get file handle
     my $file = shift;
+    my $pack = shift;
 
     # print into file
     print $file "method ActionValue#("                .
-                $self->outarg()->type()->string_bsv() .
+                $self->outarg()->type()->string_bsv($pack) .
                 ") ";
 
     # method name
@@ -683,12 +883,15 @@ sub print_client_connection
     my $indent      = shift;
     my $servicename = shift;
 
+    # force pack to 1
+    my $pack = 1;
+
     # print connection definitions
     if (!defined($self->outarg()))
     {
         # no return: create Receive-type connection
         print $file $indent . "Connection_Receive#("        .
-                    $self->inarg()->type()->string_bsv() .
+                    $self->inarg()->type()->string_bsv($pack) .
                     ") link_client_$servicename" . "_"          .
                     $self->{name}                        .
                     " <- mkConnection_Receive(\"rrr_client_$servicename\_" .
@@ -698,9 +901,9 @@ sub print_client_connection
     {
         # need return: create Server-type connection
         print $file $indent . "Connection_Server#("       .
-                    $self->inarg()->type()->string_bsv()  .
+                    $self->inarg()->type()->string_bsv($pack)  .
                     ", "                                  .
-                    $self->outarg()->type()->string_bsv() .
+                    $self->outarg()->type()->string_bsv($pack) .
                     ") link_client_$servicename" . "_"           .
                     $self->{name}                         .
                     " <- mkConnection_Server(\"rrr_client_$servicename\_" .
@@ -739,9 +942,12 @@ sub print_client_link_rules
     my $indent      = shift;
     my $servicename = shift;
 
+    # force pack to 1
+    my $pack = 1;
+
     my $methodname = $self->{name};
     my $insize     = $self->insize();
-    my $intype     = $self->inarg()->type()->string_bsv();
+    my $intype     = $self->inarg()->type()->string_bsv($pack);
     
     # print rules to transfer request and response to the connection
     if (!defined($self->outarg()))
@@ -757,7 +963,7 @@ sub print_client_link_rules
     else
     {
         my $outsize = $self->outsize();
-        my $outtype = $self->outarg()->type()->string_bsv();
+        my $outtype = $self->outarg()->type()->string_bsv($pack);
 
         # need return: create request and response rules, use getReq()
         print $file $indent . "rule client_makeRequest_$servicename\_$methodname (True);\n";
@@ -772,6 +978,44 @@ sub print_client_link_rules
         print $file $indent . "    link_client_$servicename\_$methodname.makeResp(resp);\n";
         print $file $indent . "endrule\n";
         print $file $indent . "\n";
+    }
+}
+
+##
+## print remote client connection wrapper instantiation
+##
+sub print_remote_client_connection
+{
+    my $self        = shift;
+    my $file        = shift;
+    my $indent      = shift;
+    my $servicename = shift;
+
+    # force pack to 1
+    my $pack = 1;
+
+    # print connection definitions
+    if (!defined($self->outarg()))
+    {
+        # no return: create send-type connection
+        print $file $indent . "Connection_Send#("             .
+                    $self->inarg()->type()->string_bsv($pack) .
+                    ") link_"                                 .
+                    $self->{name}                             .
+                    " <- mkConnection_Send(\"rrr_client_$servicename\_" .
+                    $self->{name} . "\");\n";
+    }
+    else
+    {
+        # need return: create client-type connection
+        print $file $indent . "Connection_Client#("            .
+                    $self->inarg()->type()->string_bsv($pack)  .
+                    ", "                                       .
+                    $self->outarg()->type()->string_bsv($pack) .
+                    ") link_"                                  .
+                    $self->{name}                              .
+                    " <- mkConnection_Client(\"rrr_client_$servicename\_" .
+                    $self->{name} . "\");\n";
     }
 }
 

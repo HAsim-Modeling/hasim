@@ -1,16 +1,16 @@
 #include "asim/provides/funcp_base_types.h"
+#include "asim/provides/isa_emulator.h"
 
 service ISA_EMULATOR
 {
     server sw (cpp, method) <- hw (bsv, connection)
     {
-        method sync(in RNAME_RVAL_TUPLE[72] rname_and_rval);
-        method emulate(in INST_ISA_ADDR_TUPLE[96] inst_and_pc, out FUNCP_ADDR[FUNCP_ISA_ADDR_SIZE] newPc);
+        method sync(in RNAME_RVAL_TUPLE[RNAME_RVAL_TUPLE_BITS] rname_and_rval);
+        method emulate(in INST_ISA_ADDR_TUPLE[INST_ISA_ADDR_TUPLE_BITS] inst_and_pc, out ISA_ADDRESS[FUNCP_ISA_ADDR_SIZE] newPc);
     };
 
     server hw (bsv, connection) <- sw (cpp, method)
     {
-        method updateRegister(in RNAME_RVAL_TUPLE[72] rname_and_rval);
+        method updateRegister(in RNAME_RVAL_TUPLE[RNAME_RVAL_TUPLE_BITS] rname_and_rval);
     };
 };
-

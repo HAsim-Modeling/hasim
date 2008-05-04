@@ -144,6 +144,13 @@ sub print_stub
         return;
     }
 
+    # should we pack types?
+    my $pack = 0;
+    if ($self->{ifc} eq "connection")
+    {
+        $pack = 1;
+    }
+
     # compute max request and response bitwidths
     my $maxinsize = 0;
     my $maxoutsize = 0;
@@ -174,8 +181,8 @@ sub print_stub
     # interface entry for each method
     foreach my $method (@{ $self->{methodlist} })
     {
-        $method->print_accept_request_declaration($file, $indent);
-        $method->print_send_response_declaration($file, $indent);
+        $method->print_accept_request_declaration($file, $indent, $pack);
+        $method->print_send_response_declaration($file, $indent, $pack);
     }
     
     # endinterface
@@ -209,10 +216,8 @@ sub print_stub
     # method definitions
     foreach my $method (@{ $self->{methodlist} })
     {
-        $method->print_accept_request_definition($file, $indent, $self->{name});
-        print $file "\n";
-        $method->print_send_response_definition($file, $indent, $self->{name});
-        print $file "\n";
+        $method->print_accept_request_definition($file, $indent, $pack);
+        $method->print_send_response_definition($file, $indent, $pack);
     }
     
     # endmodule
@@ -331,6 +336,104 @@ sub print_link_rules
             $method->print_server_link_rules($file, $indent, $self->{name});
         }
     }
+}
+
+######################################
+#           REMOTE STUBS             #
+######################################
+
+##
+## print remote stub into a given file in bsv
+##
+sub print_remote_stub
+{
+    # capture params
+    my $self   = shift;
+    my $file   = shift;
+
+    # make sure it's a Bluespec target
+    if ($self->{lang} ne "bsv")
+    {
+        return;
+    }    
+
+    # determine if we should write stub at all
+    if ($#{ $self->{methodlist} } == -1)
+    {
+        return;
+    }
+
+    # interface should be connection
+    if ($self->{ifc} ne "connection")
+    {
+        die "remote stubs are valid only for connection-type interfaces";
+    }
+
+    # compute max request and response bitwidths
+    my $maxinsize = 0;
+    my $maxoutsize = 0;
+    my @list = @{ $self->{methodlist} };
+    foreach my $method (@list)
+    {
+        if ($method->insize() > $maxinsize)
+        {
+            $maxinsize = $method->insize();
+        }
+        
+        if ($method->outsize() > $maxoutsize)
+        {
+            $maxoutsize = $method->outsize();
+        }
+    }
+
+    # helper definition for service ID
+    print $file "`define SERVICE_ID `" . $self->{name} ."_SERVICE_ID\n";
+    print $file "\n";
+
+    # interface ...
+    print $file "interface ServerStub_" . $self->{name} . ";\n";
+
+    # indent
+    my $indent = "    ";
+
+    # force pack to 0
+    my $pack = 0;
+
+    # interface entry for each method
+    foreach my $method (@{ $self->{methodlist} })
+    {
+        # use same methods as non-remote declarations
+        $method->print_accept_request_declaration($file, $indent, $pack);
+        $method->print_send_response_declaration($file, $indent, $pack);
+    }
+    
+    # endinterface
+    print $file "endinterface\n";
+    print $file "\n";
+    
+    # module mk...
+    print $file "module [HASim_Module] mkServerStub_" . $self->{name};
+    print $file " (ServerStub_" . $self->{name} . ");\n";
+    print $file "\n";
+    
+    # instantiate connections
+    foreach my $method (@{ $self->{methodlist} })
+    {
+        # ask method to print out a connection instantiation
+        $method->print_remote_server_connection($file, $indent, $self->{name});
+    }
+    print $file "\n";
+    
+    # method definitions
+    foreach my $method (@{ $self->{methodlist} })
+    {
+        $method->print_remote_accept_request_definition($file, $indent);
+        $method->print_remote_send_response_definition($file, $indent);
+    }
+    
+    # endmodule
+    print $file "endmodule\n";
+    print $file "\n";
 }
 
 1;

@@ -23,22 +23,14 @@ calculation4x4=Hasim - 4x4 multiplier
 File=modules/system/switch_to_led_system/calculation4x4/multiplier/multiplier4x4.awb
 Packagehint=hasim
 
-[Hasim Common Library]
-File=config/pm/hasim/submodels/hasim_common.apm
-Packagehint=hasim
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
 
-[Hasim Common Library/Params]
-TERM_FPGA_SWITCHES=0
-TERM_FPGA_BUTTONS=0
-TERM_FPGA_LEDS=0
-
 
 [HAsim Hybrid Model Foundation/Requires]
-hasim_common=Hasim Common Library
+hasim_common=New Hasim Common Library
 hasim_system=Hasim - Switch in to LED out system
 hasim_controller=Hybrid Null Controller
 fpgaenv=FPGA Environment
@@ -49,4 +41,8 @@ Packagehint=hasim
 
 [Hybrid Null Controller]
 File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
+Packagehint=hasim
+
+[New Hasim Common Library]
+File=config/pm/hasim/submodels/common/hasim_common.apm
 Packagehint=hasim

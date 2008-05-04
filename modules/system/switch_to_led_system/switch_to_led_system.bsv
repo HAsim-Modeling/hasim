@@ -2,7 +2,6 @@
 `include "soft_connections.bsh"
 `include "platform_interface.bsh"
 `include "front_panel.bsh"
-`include "memory.bsh"
 
 import calculation4x4::*;
 

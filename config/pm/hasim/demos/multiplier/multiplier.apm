@@ -16,9 +16,6 @@ model=HAsim Hardware-Only Model Foundation
 Packagehint=hasim
 File=modules/system/mulitplier_system/multiplier_system.awb
 
-[Hasim Common Library]
-File=config/pm/hasim/submodels/hasim_common.apm
-Packagehint=hasim
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
@@ -29,11 +26,15 @@ File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
 Packagehint=hasim
 
 [HAsim Hardware-Only Model Foundation/Requires]
-hasim_common=Hasim Common Library
+hasim_common=New Hasim Common Library
 hasim_system=Hasim - Multiplier system
 hasim_controller=Hybrid Null Controller
 fpgaenv=FPGA Environment
 
 [HAsim Hardware-Only Model Foundation]
 File=modules/model/hasim_hwonly_model.awb
+Packagehint=hasim
+
+[New Hasim Common Library]
+File=config/pm/hasim/submodels/common/hasim_common.apm
 Packagehint=hasim

@@ -12347,3 +12347,41 @@ Directory modules/common/platform_interface/hasim
 
 - Added a couple of params to isa-emulator.awb to explicitly specify the
   bit-widths of aggregated RRR types.
+
+----------
+jsemer      Date: Sun May  4 13:26:29 EDT 2008  CSN: CSN-hasim-408
+                  Sun May  4 17:26:29 UTC 2008
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          407 
+ traffic_light_xup_synth.apm Locally Modified          407 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          407 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_software.apm      Locally Modified          407 
+ adder4x4_software.apm     Locally Modified          407 
+ echo4x4_xup.apm           Locally Modified          407 
+ square4x4_software.apm    Locally Modified          407 
+ adder4x4_xup.apm          Locally Modified          407 
+ square4x4_xup.apm         Locally Modified          407 
+ multiplier4x4_software.apm Locally Modified          407 
+ echo4x4_htg.apm           Locally Modified          407 
+ multiplier4x4_xup.apm     Locally Modified          407 
+
+Directory config/pm/hasim/demos/mem_test
+ mem_test_hybrid.apm       Locally Modified          407 
+ mem_test_hybrid_htg.apm   Locally Modified          407 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.bsv  Locally Modified          407 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          407 
+
+Updated models to use latest version of hasim-common.
+
+Removed gratuitous reference to functional memory from
+platform interface module ConnectionTerminus.

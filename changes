@@ -12385,3 +12385,20 @@ Updated models to use latest version of hasim-common.
 
 Removed gratuitous reference to functional memory from
 platform interface module ConnectionTerminus.
+
+----------
+jsemer      Date: Sun May  4 13:32:57 EDT 2008  CSN: CSN-hasim-409
+                  Sun May  4 17:32:57 UTC 2008
+
+
+Directory config/pm/hasim/demos/switch_to_led
+ multiplier4x4_exe.apm     Locally Added               - 
+ echo4x4_software.apm      Locally Removed           408 
+ adder4x4_software.apm     Locally Removed           408 
+ multiplier4x4_software.apm Locally Removed           408 
+ square4x4_exe.apm         Locally Added               - 
+ square4x4_software.apm    Locally Removed           408 
+ echo4x4_exe.apm           Locally Added               - 
+ adder4x4_exe.apm          Locally Added               - 
+
+Renamed models incordance with new naming convention.

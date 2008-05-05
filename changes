@@ -12462,3 +12462,13 @@ bluespec_common module. Also added non-functional support for
 switches needed by the platform. We still need to modularize
 switch processing better.
 
+
+----------
+mcadler     Date: Mon May  5 12:39:54 EDT 2008  CSN: CSN-hasim-412
+                  Mon May  5 16:39:54 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          411 
+
+Clean up logic for reading > 2 sources.

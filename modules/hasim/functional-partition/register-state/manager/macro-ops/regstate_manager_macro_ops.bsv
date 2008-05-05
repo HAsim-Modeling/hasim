@@ -954,29 +954,24 @@ module [HASim_Module] mkFUNCP_RegStateManager
           execStallDidReads[x-2] <= True;
       endrule
       
-      // Get the response and record it.
+      //
+      // allowReadResp is similar to allowReadReq above.  It ensures that each
+      // source is read exactly once and forces the read responses to be processed
+      // in the order they were requested.
+      //
+      Bool allowReadResp;
       if (x == 2)
-      begin
-          rule getResults2StallRsp (execStalling);
-      
-            let v <- prf.read_resp1();
-            execStallValues[x-2] <= tagged Valid v;
-      
-          endrule
-      end
+          allowReadResp = !isValid(execStallValues[x-2]);
       else
-      begin
-          //
-          // Similar to allowReadReq, force an order to receiving register read
-          // responses.
-          //
-          rule getResults2StallRsp (execStalling &&& execStallValues[x-3] matches tagged Valid .prev_val);
+          allowReadResp = isValid(execStallValues[x-3]) && !isValid(execStallValues[x-2]);
+
+      // Get the response and record it.
+      rule getResults2StallRsp (execStalling && allowReadResp);
       
-            let v <- prf.read_resp1();
-            execStallValues[x-2] <= tagged Valid v;
+        let v <- prf.read_resp1();
+        execStallValues[x-2] <= tagged Valid v;
       
-          endrule
-      end
+      endrule
       
       // Note: in the future these rules could be expanded to also use PRF port 2.
     

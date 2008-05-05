@@ -15,4 +15,7 @@
 %sources -t DICT -v PUBLIC devtest-streams-id.dic
 %sources -t DICT -v PUBLIC devtest-streams-messages.dic
 
+%library lib/libasim/libasim.a
+%library lib/libdral/libdral.a
+
 %AWB_END

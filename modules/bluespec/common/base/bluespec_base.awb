@@ -1,8 +1,6 @@
-********************************************************************
-* Awb module specification
-********************************************************************
-
-%AWB_START
+#/********************************************************************
+#* Awb module specification
+#********************************************************************/
 
 %name Bluespec Common Library with FPGA
 %desc Bluespec Common Library with FPGA
@@ -13,4 +11,5 @@
 
 %private bluespec_common.prj
 
-%AWB_END
+%library lib/libasim/libasim.a
+

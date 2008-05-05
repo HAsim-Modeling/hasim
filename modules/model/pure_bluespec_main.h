@@ -14,6 +14,9 @@ class GLOBAL_ARGS_CLASS
     const char *ModelDir() const { return modelDir; };
     bool ShowFrontPanel() const { return showFrontPanel; };
 
+    int BluesimArgc() const { return 0; }
+    char **BluesimArgv() const { return (char **) 0; }
+
     void Usage();
 
     GLOBAL_ARGS_CLASS(int argc, char *argv[]);
@@ -23,6 +26,13 @@ class GLOBAL_ARGS_CLASS
     char* benchmark;            // Benchmark image (user-mode) 
     char* modelDir;             // Model (pm) directory
     bool showFrontPanel;
+
+   // Bluesim arguments
+    int bluesimArgc;
+    char **bluesimArgv;
+
+ 
+    
 };
 
 extern GLOBAL_ARGS globalArgs;

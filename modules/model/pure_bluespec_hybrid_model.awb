@@ -1,8 +1,6 @@
-********************************************************************
-* Awb module specification
-********************************************************************
-
-%AWB_START
+#/********************************************************************
+$* Awb module specification
+#********************************************************************/
 
 %name Pure Bluespec Hybrid Model Foundation
 %desc Pure Bluespec Hybrid Model Foundation
@@ -11,8 +9,8 @@
 %provides model
 
 %requires bluespec_system 
-%requires bluespec_common
 %requires fpgaenv
+%requires bluespec_common
 
 %public pure_bluespec_main.h
 %private pure_bluespec_main.cpp
@@ -30,4 +28,3 @@
 %param SMART_SYNTH_BOUNDARY 0        "use smart synthesis boundaries"
 %param SYNTH_BOUNDARY       mkModel  "name of synthesis boundary"
 
-%AWB_END

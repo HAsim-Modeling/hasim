@@ -1,9 +1,8 @@
 import Counter::*;
 
-`include "memory.bsh"
-`include "front_panel.bsh"
-`include "physical_platform.bsh"
 `include "low_level_platform_interface.bsh"
+`include "physical_platform.bsh"
+`include "front_panel.bsh"
 
 module mkSystem#(LowLevelPlatformInterface llpi)();
 

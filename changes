@@ -12424,3 +12424,41 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
     smaller than a full load returned the wrong value
   - Fix the protocol for 3+ input instructions.  Tested for exactly 3 (Alpha).
     Not tested above 3.
+
+----------
+jsemer      Date: Mon May  5 11:45:15 EDT 2008  CSN: CSN-hasim-411
+                  Mon May  5 15:45:15 UTC 2008
+
+
+Directory modules/model
+ pure_bluespec_model.awb   Locally Modified          410 
+ pure_bluespec_hybrid_model.awb Locally Modified          410 
+ pure_bluespec_main.h      Locally Modified          410 
+
+Directory modules/bluespec/system/demos/counter
+ System.bsv                Locally Modified          410 
+
+Directory modules/bluespec/system/demos/multiplier
+ System.bsv                Locally Modified          410 
+
+Directory modules/bluespec/system/demos/devtest
+ devtest.awb               Locally Modified          410 
+
+Directory modules/bluespec/common/base
+ bluespec_base.awb         Locally Modified          410 
+
+Directory modules/bluespec/common/null
+ bluespec_null.awb         Locally Modified          410 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.awb  Locally Modified          410 
+
+Fixes to get simpler non-model designs running. Major change
+was adding %library directive for libasim into bluespec_common.
+This, unfortunately, is an unnecessary dependency for non-hybrid
+models, so probably should change, either by moving the %library
+directive or creating hybrid and non-hybrid versions of the
+bluespec_common module. Also added non-functional support for
+switches needed by the platform. We still need to modularize
+switch processing better.
+

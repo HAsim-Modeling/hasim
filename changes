@@ -12472,3 +12472,16 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
  regstate_manager_macro_ops.bsv Locally Modified          411 
 
 Clean up logic for reading > 2 sources.
+
+----------
+mcadler     Date: Mon May  5 18:39:08 EDT 2008  CSN: CSN-hasim-413
+                  Mon May  5 22:39:08 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          412 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          412 
+
+Write Xilinx config files to the true build directory.

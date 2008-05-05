@@ -62,14 +62,15 @@ our $xilinx_config_dir = "config";
 # generate_files:
 sub generate_files {
     my $model = shift;
+    my $builddir = shift;
 
-    my $config_dir = HAsim::Util::path_append($model->build_dir(), $xilinx_config_dir);
+    my $config_dir = HAsim::Util::path_append($builddir, $xilinx_config_dir);
     system("mkdir -p $config_dir");
 
-    generate_prj_file($model);
-    generate_xst_file($model);
-    generate_ut_file($model);
-    generate_download_file($model);
+    generate_prj_file($model, $builddir);
+    generate_xst_file($model, $builddir);
+    generate_ut_file($model, $builddir);
+    generate_download_file($model, $builddir);
 
 }
 
@@ -77,9 +78,10 @@ sub generate_files {
 # generate_xst_file:
 sub generate_xst_file {
     my $model = shift;
+    my $builddir = shift;
     
     my $name = HAsim::Build::get_model_name($model);
-    my $final_xst_file = HAsim::Util::path_append($model->build_dir(),$xilinx_config_dir,$name . ".xst");
+    my $final_xst_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".xst");
 
     open(XSTFILE, "> $final_xst_file") || return undef;
 
@@ -110,9 +112,10 @@ sub generate_xst_file {
 sub generate_prj_file {
 
     my $model = shift;
+    my $builddir = shift;
     my $name = HAsim::Build::get_model_name($model);
     
-    my $final_prj_file = HAsim::Util::path_append($model->build_dir(),$xilinx_config_dir,$name . ".prj");
+    my $final_prj_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".prj");
    
     #first add all local .prj files
 
@@ -186,9 +189,10 @@ sub __generate_prj_file {
 # generate_ut_file:
 sub generate_ut_file {
     my $model = shift;
+    my $builddir = shift;
     my $name = HAsim::Build::get_model_name($model);
     
-    my $final_ut_file = HAsim::Util::path_append($model->build_dir(),$xilinx_config_dir,$name . ".ut");
+    my $final_ut_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".ut");
 
     open(UTFILE, "> $final_ut_file") || return undef;
 
@@ -215,9 +219,10 @@ sub generate_ut_file {
 # generate_download_file:
 sub generate_download_file {
     my $model = shift;
+    my $builddir = shift;
     my $name = HAsim::Build::get_model_name($model);
     
-    my $download_file = HAsim::Util::path_append($model->build_dir(),$xilinx_config_dir,$name . ".download");
+    my $download_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".download");
 
     my $replacements_r = HAsim::Util::empty_hash_ref();
     

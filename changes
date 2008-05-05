@@ -12402,3 +12402,25 @@ Directory config/pm/hasim/demos/switch_to_led
  adder4x4_exe.apm          Locally Added               - 
 
 Renamed models incordance with new naming convention.
+
+----------
+mcadler     Date: Mon May  5 10:33:52 EDT 2008  CSN: CSN-hasim-410
+                  Mon May  5 14:33:52 UTC 2008
+
+
+Directory modules/hasim/controller/central_controllers/module
+ module-controller-streams.dic Locally Modified          409 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          409 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          409 
+ manager.dic               Locally Modified          409 
+
+- Better tracing in ISA emulator
+- Regstate manager:
+  - Calls to isaValueFromMemValue() were dropped on the floor, so loads
+    smaller than a full load returned the wrong value
+  - Fix the protocol for 3+ input instructions.  Tested for exactly 3 (Alpha).
+    Not tested above 3.

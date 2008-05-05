@@ -36,7 +36,7 @@ ISA_EMULATOR_CLASS ISA_EMULATOR_CLASS::instance;
 // constructor
 ISA_EMULATOR_CLASS::ISA_EMULATOR_CLASS() : emulator(NULL)
 {
-    SetTraceableName("funcp_memory");
+    SetTraceableName("isa_emulator");
 
     VERIFYX(sizeof(ISA_ADDRESS) == sizeof(FUNCP_ADDR));
     VERIFYX(sizeof(ISA_VALUE) == sizeof(FUNCP_INT_REG));
@@ -93,21 +93,21 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
             {
                 T1("\tisa_emulator: Sync ArchReg " << rName.ArchRegNum() << ": 0x" << fmt_x(rVal));
             }
-            if (rName.IsControlReg())
+            else if (rName.IsControlReg())
             {
                 T1("\tisa_emulator: Sync ControlReg: 0x" << fmt_x(rVal));
             }
-            if (rName.IsLockReg())
+            else if (rName.IsLockReg())
             {
                 T1("\tisa_emulator: Sync LockReg: 0x" << fmt_x(rVal));
             }
-            if (rName.IsLockAddrReg())
+            else if (rName.IsLockAddrReg())
             {
                 T1("\tisa_emulator: Sync LockAddrReg: 0x" << fmt_x(rVal));
             }
-            if (rName.IsIllegalReg())
+            else
             {
-                T1("\tisa_emulator: Illegal register number: " << UINT32(rName));
+                ASIMERROR("Unknown register type");
             }
         }
 
@@ -135,17 +135,21 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
         switch (r)
         {
           case ISA_EMULATOR_NORMAL:
+            T1("\tisa_emulator: Done with emulation");
             break;
 
           case ISA_EMULATOR_BRANCH:
+            T1("\tisa_emulator: Done with emulation, BRANCH to next PC 0x" << fmt_x(newPC));
             newPC |= 1;
             break;
 
           case ISA_EMULATOR_EXIT_OK:
+            T1("\tisa_emulator: Emulation forcing normal exit");
             newPC = 7;
             break;
 
           case ISA_EMULATOR_EXIT_FAIL:
+            T1("\tisa_emulator: Emulation forcing normal ERROR exit");
             newPC = 3;
             break;
 
@@ -166,6 +170,30 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
 void
 ISA_EMULATOR_CLASS::UpdateRegister(ISA_REG_INDEX_CLASS rName, FUNCP_INT_REG rVal)
 {
+    if (TRACING(1))
+    {
+        if (rName.IsArchReg())
+        {
+            T1("\tisa_emulator: Updating ArchReg " << rName.ArchRegNum() << ": 0x" << fmt_x(rVal));
+        }
+        else if (rName.IsControlReg())
+        {
+            T1("\tisa_emulator: Updating ControlReg: 0x" << fmt_x(rVal));
+        }
+        else if (rName.IsLockReg())
+        {
+            T1("\tisa_emulator: Updating LockReg: 0x" << fmt_x(rVal));
+        }
+        else if (rName.IsLockAddrReg())
+        {
+            T1("\tisa_emulator: Updating LockAddrReg: 0x" << fmt_x(rVal));
+        }
+        else
+        {
+            ASIMERROR("Unknown register type");
+        }
+    }
+
     // create message for RRR client
     UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(sizeof(rVal) + 4);
     msg->SetServiceID(SERVICE_ID);

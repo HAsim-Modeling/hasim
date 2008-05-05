@@ -15,6 +15,7 @@ import RegFile::*;
 `include "soft_connections.bsh"
 `include "fpga_components.bsh"
 `include "funcp_memory.bsh"
+`include "hasim_modellib.bsh"
 
 // Functional Partition includes.
 
@@ -29,6 +30,7 @@ import RegFile::*;
 
 // Dictionary includes
 `include "asim/dict/ASSERTIONS_REGMANAGER.bsh"
+`include "asim/dict/STATS_REGMANAGER.bsh"
 
 // RRR includes
 `include "asim/provides/rrr.bsh"
@@ -213,6 +215,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Reg#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) execStallWriters <- mkReg(Vector::replicate(tagged Invalid));
     // Record the values that have come back while stalling.
     Reg#(Vector#(TSub#(ISA_MAX_SRCS, 2), Maybe#(ISA_VALUE))) execStallValues <- mkReg(Vector::replicate(tagged Invalid));
+    Reg#(Vector#(TSub#(ISA_MAX_SRCS, 2), Bool)) execStallDidReads <- mkReg(Vector::replicate(False));
  
     // Is the getResult stage writing back more values?
     Reg#(Bool) execWritebackMore <- mkReg(False);
@@ -319,6 +322,10 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Assertion assertCommitedStoreIsActuallyAStore <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_COMMIT_STORE_ON_NONSTORE, ASSERT_WARNING);
     Assertion assertRegUpdateAtExpectedTime       <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_REG_UPDATE, ASSERT_WARNING);
     Assertion assertEmulationFinishedAtExpectedTime <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_EMULATION_FINISHED, ASSERT_WARNING);
+
+    // ***** Statistics ***** //
+
+    Stat stat_isa_emul <- mkStatCounter(`STATS_REGMANAGER_EMULATED_INSTRS);
 
     // ******* Rules *******
 
@@ -844,13 +851,28 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // We are ready when all the source PRs are valid.
 
         Bool ready = True;
-        for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
+        for (Integer x = 0; x < 2; x = x + 1)
         begin
             let src_is_ready = case (ws[x]) matches
                                   tagged Invalid:  True; // No writer, so it is ready.
                                   tagged Valid .v: prfValids[v]; // Ready if phys reg is valid.
                                endcase;
+
+            if (ws[x] matches tagged Valid .v)
+            begin
+                funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Source %0d PR%0d is %sready", tok.index, fromInteger(x), v, prfValids[v]? "" : "not "));
+            end
+
             ready = ready && src_is_ready; // We are ready when ALL are ready.
+        end
+
+        // Must stall for more than 2 sources
+        for (Integer x = 2; x < valueof(ISA_MAX_SRCS); x = x + 1)
+        begin
+            if (ws[x] matches tagged Valid .v)
+            begin
+                ready = False;
+            end
         end
 
         // Additionally let junk proceed
@@ -873,7 +895,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             tokInst.read_req2(tok.index);
 
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Reg Read Complete", tok.index));
+            funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Reading from PR%0d and PR%0d", tok.index, validValue(ws[0]), validValue(ws[1])));
 
             // Pass on to the next stage.
             res2Q.enq(tok);
@@ -887,6 +909,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             execStallTok <= tok;
             execStallWriters <= ws;
             execStallValues <= Vector::replicate(tagged Invalid);
+            execStallDidReads <= Vector::replicate(False);
         end
 
     endrule
@@ -901,28 +924,59 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Elaborated Rule: N copies, where N is the maximum number of dests minus 2.
     //                  These two are handled at the end when we pass on to the next stage.
 
-    for (Integer x = 0; x < (valueof(ISA_MAX_SRCS) - 2); x = x + 1)
+    for (Integer x = 2; x < valueof(ISA_MAX_SRCS); x = x + 1)
     begin
     
       // This rule ensures that if there is no writer, it is marked ready to go.
-      rule getResults2StallPass (execStalling && !isValid(execStallValues[x]) &&& execStallWriters[x] matches tagged Invalid);
-          execStallValues[x] <= tagged Valid(?);
+      rule getResults2StallPass (execStalling && !isValid(execStallValues[x-2]) &&& execStallWriters[x] matches tagged Invalid);
+          execStallValues[x-2] <= tagged Valid(?);
       endrule
       
+      //
+      // allowReadReq governs the order of register reads.  In order to make
+      // a request two things must be true:  a request must have been issued
+      // for the preceding register and the request for this register has not
+      // already been emitted.  Slot 2 is first, so no preceding register
+      // check is needed.
+      //
+      Bool allowReadReq;
+      if (x == 2)
+          allowReadReq = !execStallDidReads[x-2];
+      else
+          allowReadReq = execStallDidReads[x-3] && !execStallDidReads[x-2];
+
       // If there was a writer, when the RF is ready we request it and send it onwards.
-      rule getResults2StallReq (execStalling && !isValid(execStallValues[x]) &&& 
+      rule getResults2StallReq (execStalling && !isValid(execStallValues[x-2]) &&& 
                                 execStallWriters[x] matches tagged Valid .r &&& 
+                                allowReadReq &&&
                                 prfValids[r]);
           prf.read_req1(r);
+          execStallDidReads[x-2] <= True;
       endrule
       
       // Get the response and record it.
-      rule getResults2StallRsp (execStalling);
+      if (x == 2)
+      begin
+          rule getResults2StallRsp (execStalling);
       
-        let v <- prf.read_resp1();
-        execStallValues[x] <= tagged Valid v;
+            let v <- prf.read_resp1();
+            execStallValues[x-2] <= tagged Valid v;
       
-      endrule
+          endrule
+      end
+      else
+      begin
+          //
+          // Similar to allowReadReq, force an order to receiving register read
+          // responses.
+          //
+          rule getResults2StallRsp (execStalling &&& execStallValues[x-3] matches tagged Valid .prev_val);
+      
+            let v <- prf.read_resp1();
+            execStallValues[x-2] <= tagged Valid v;
+      
+          endrule
+      end
       
       // Note: in the future these rules could be expanded to also use PRF port 2.
     
@@ -976,6 +1030,9 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let addr <- tokAddr.read_resp();
         let inst <- tokInst.read_resp2();
 
+        funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: src0 is 0x%x", tok.index, v1));
+        funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: src1 is 0x%x", tok.index, v2));
+
         // Combine the data we just go with any possible data from stalling.
         Vector#(ISA_MAX_SRCS, ISA_VALUE) values = newVector();
 
@@ -986,6 +1043,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         begin
 
            values[x] = validValue(execStallValues[x-2]);
+           funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: src%0d is 0x%x", tok.index, fromInteger(x), values[x]));
 
         end
 
@@ -1035,6 +1093,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             begin // Do the first writeback.
                 prf.write(dst, v);
                 prfValids[dst] <= True;
+                funcpDebug($fwrite(debugLog, "TOKEN %0d: getResults4: Writing (PR%0d <= 0x%x)", tok.index, dst, v));
             end
         endcase
         
@@ -1108,6 +1167,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
         prf.write(dst, val);
         prfValids[dst] <= True;
         execWritebackValues[x] <= tagged Invalid;
+
+        funcpDebug($fwrite(debugLog, "getResults4AdditionalWriteback: Writing (PR%0d <= 0x%x)", dst, val));
         
         // When the last rule fires it also finishes up the macro-op.
         
@@ -1217,6 +1278,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         
         // Send the request on to software via RRR
         client_stub.makeRequest_emulate(tuple2(inst, pc));
+        stat_isa_emul.incr();
 
     endrule
 
@@ -1245,6 +1307,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         //       updating the current ones.
         prf.write(pr, v);
         prfValids[pr] <= True;
+        funcpDebug($fwrite(debugLog, "emulateInstruction: Writing (PR%0d <= 0x%x)", pr, v));
     
     endrule
 
@@ -1388,11 +1451,11 @@ module [HASim_Module] mkFUNCP_RegStateManager
         ISA_MEMOP_TYPE lType = tokScoreboard.getLoadType(tok.index);
         
         // Pop the response from the memory state.
-        let val = linkToMem.getResp();
+        let mem_val = linkToMem.getResp();
         linkToMem.deq();
 
         // Convert the response into value using the ISA-provided function.
-        let final_val = isaValueFromMemValue(val, lType, addr);
+        let val = isaValueFromMemValue(mem_val, lType, addr);
 
         // Get the destination for the purposes of writeback.
         let dsts <- tokDsts.read_resp2();
@@ -1401,7 +1464,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let dst = validValue(dsts[0]);
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads3: Load Response (PR%0d <= 0x%h)", tok.index, dst, val));
+        funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads3: Load Response writing (PR%0d <= 0x%h)", tok.index, dst, val));
 
         // Update the physical register file.
         prf.write(dst, val);

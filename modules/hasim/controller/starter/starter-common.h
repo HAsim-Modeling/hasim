@@ -34,6 +34,12 @@ class STARTER_CLASS: public RRR_SERVICE_CLASS,
         void Pause();
         void Sync();
         void DumpStats();
+
+    private:
+        // These let us compute FMR starting after the first heartbeat is received.
+        // We can thus eliminate model start-up cycles from FMR.
+        UINT64 fpga_start_cycle;
+        UINT64 model_start_cycle;
 };
 
 #endif

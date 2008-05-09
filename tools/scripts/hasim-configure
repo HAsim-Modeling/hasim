@@ -222,6 +222,7 @@ sub setup_benchmark {
     print STUB "#\n\n";
     print STUB "modelDir=\"${relmodeldir}\"\n";
     print STUB "model=\"${model_name}\"\n";
+    print STUB "workload=\"" . basename($rundir) . "\"\n";
     print STUB "feeder=\"" . ${benchmark}->feeder() . "\"\n";
     print STUB "genFlags=\"" . ${benchmark}->general_flags() . "\"\n";
     print STUB "sysFlags=\"" . ${benchmark}->system_flags() . "\"\n";

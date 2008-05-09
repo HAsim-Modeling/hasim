@@ -12485,3 +12485,38 @@ Directory tools/scripts
  hasim-configure           Locally Modified          412 
 
 Write Xilinx config files to the true build directory.
+
+----------
+mcadler     Date: Fri May  9 09:34:43 EDT 2008  CSN: CSN-hasim-414
+                  Fri May  9 13:34:43 UTC 2008
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          413 
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          413 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          413 
+ main.cpp                  Locally Modified          413 
+ main.h                    Locally Modified          413 
+
+Directory modules/hasim/controller/starter
+ starter-common.h          Locally Modified          413 
+ hybrid-basic-starter.cpp  Locally Modified          413 
+
+Directory modules/hasim/controller/central_controllers/assertions
+ assertions-controller-hybrid.cpp Locally Modified          413 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          413 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          413 
+
+- RegFile#(TOKEN_INDEX, ISA_MEMOP_TYPE) was being put in BRAM by Xst and
+  didn't meet timing.  Changed to a Reg#(Vector#...)
+- Make stats file name <workload>.stats to keep regression tester happy
+- FMR computation now ignores startup costs
+- Clean up for iverilog simulation.  Still needs a few more tweaks.

@@ -10,6 +10,7 @@
 
 #include "asim/rrr/service_ids.h"
 #include "asim/provides/stats_controller.h"
+#include "asim/provides/model.h"
 
 #include "asim/dict/STATS.h"
 
@@ -43,7 +44,8 @@ STATS_CONTROLLER_CLASS::Init(
     parent = p;
     
     // Open the output file
-    statsFile = fopen("hasim_stats.out", "w+");
+    string stats_name = string(globalArgs->Workload()) + ".stats";
+    statsFile = fopen(stats_name.c_str(), "w+");
 }
 
 // uninit: we have to write this explicitly

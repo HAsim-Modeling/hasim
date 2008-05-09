@@ -50,6 +50,8 @@ ASSERTIONS_CONTROLLER_CLASS::Init(
 void
 ASSERTIONS_CONTROLLER_CLASS::Uninit()
 {
+    fclose(assertionsFile);
+
     // simply chain
     PLATFORMS_MODULE_CLASS::Uninit();
 }
@@ -83,6 +85,7 @@ ASSERTIONS_CONTROLLER_CLASS::Request(
 
     // write to file
     fprintf(assertionsFile, "[%010u]: %s\n", fpga_cc, assert_msg);
+    fflush(assertionsFile);
     
     // if severity is great, end the simulation.
     if (severity > 1)

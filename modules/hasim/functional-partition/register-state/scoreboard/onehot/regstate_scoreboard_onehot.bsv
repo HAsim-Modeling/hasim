@@ -104,8 +104,8 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     TOKEN_SCOREBOARD store_finish <- mkRegFileFull();
     TOKEN_SCOREBOARD commit_start <- mkRegFileFull();
 
-    RegFile#(TOKEN_INDEX, ISA_MEMOP_TYPE) load_type  <- mkRegFileFull();
-    RegFile#(TOKEN_INDEX, ISA_MEMOP_TYPE) store_type <- mkRegFileFull();
+    Reg#(Vector#(TExp#(idx_SZ), ISA_MEMOP_TYPE)) load_type  <- mkRegU();
+    Reg#(Vector#(TExp#(idx_SZ), ISA_MEMOP_TYPE)) store_type <- mkRegU();
     TOKEN_SCOREBOARD emulation <- mkRegFileFull();
 
     // A pointer to the next token to be allocated.
@@ -226,6 +226,8 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         store_start.upd(next_free_tok, False);
         store_finish.upd(next_free_tok, False);
         commit_start.upd(next_free_tok, False);
+
+        emulation.upd(next_free_tok, False);
 
         // Update the free pointer.
         next_free_tok <= next_free_tok + 1;
@@ -392,7 +394,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     
         is_load.upd(t, True);
         
-        load_type.upd(t, mtype);
+        load_type[t] <= mtype;
     
     endmethod
 
@@ -405,7 +407,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     
         is_store.upd(t, True);
         
-        store_type.upd(t, mtype);
+        store_type[t] <= mtype;
     
     endmethod
 
@@ -496,7 +498,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method ISA_MEMOP_TYPE getLoadType(TOKEN_INDEX t);
     
-        return load_type.sub(t);
+        return load_type[t];
     
     endmethod
 
@@ -507,7 +509,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method ISA_MEMOP_TYPE getStoreType(TOKEN_INDEX t);
     
-        return store_type.sub(t);
+        return store_type[t];
     
     endmethod
 

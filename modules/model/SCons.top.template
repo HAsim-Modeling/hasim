@@ -320,7 +320,7 @@ vbin = env.Command(
 
 
 vexe = env.Command(
-    APM_NAME + '_hw_vexe.sh',
+    APM_NAME + '_hw.vexe',
     vbin + SW_EXE,
     [ '@echo "#!/bin/sh" > $TARGET',
       '@echo "' + env['DEFS']['BUILD_DIR'] + '/$SOURCE +bscvcd \$*" >> $TARGET',
@@ -452,7 +452,7 @@ if SW_EXE != []:
     cc_flags += ' -DASIM_ENABLE_ASSERTIONS'
     if (TRACE):
         cc_flags += ' -DASIM_ENABLE_TRACE'
-    cc_flags += ' -DAPM_NAME=\\"' + TMP_BSC_DIR + '/' + APM_NAME + '\\"'
+    cc_flags += ' -DAPM_NAME=\\"' + APM_NAME + '\\"'
 
     ##
     ## These will be defined if the m5 simulator is part of the model

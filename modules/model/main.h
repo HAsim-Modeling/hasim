@@ -14,6 +14,7 @@ class GLOBAL_ARGS_CLASS
 {
   public:
     const char *ModelDir() const { return modelDir; };
+    const char *Workload() const { return workload; };
     bool ShowFrontPanel() const { return showFrontPanel; };
 
     int FuncPlatformArgc() const { return funcpArgc; }
@@ -30,6 +31,7 @@ class GLOBAL_ARGS_CLASS
 
   private:
     char* modelDir;             // Model (pm) directory
+    char* workload;             // Name of the workload (affects stats file name)
     bool showFrontPanel;
 
     // Functional partition arguments

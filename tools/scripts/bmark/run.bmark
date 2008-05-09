@@ -108,7 +108,7 @@ foreach my $i ( 0 .. $#ARGV ) {
 
 my $feedFlags = "${funcpPrefix} $config{feedFlags} ${funcpSuffix}";
 
-my $cmd = "$config{modelDir}/$config{model} --modeldir=$config{modelDir} --funcp=\"${feedFlags}\" $config{genFlags}";
+my $cmd = "$config{modelDir}/$config{model} --modeldir=$config{modelDir} --workload=$config{workload} --funcp=\"${feedFlags}\" $config{genFlags}";
 foreach my $c (@ARGV) {
     $cmd .= " $c";
 }

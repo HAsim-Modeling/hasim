@@ -54,6 +54,7 @@ int main(int argc, char *argv[])
 // process command-line options
 GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
     modelDir("."),
+    workload(APM_NAME),
     showFrontPanel(false)
 {
     enum 
@@ -66,6 +67,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
         OPT_SHOWFP,
         OPT_NOSHOWFP,
         OPT_TR,
+        OPT_WORKLOAD,
     };
 
     int c;
@@ -85,6 +87,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
             {"showfp", no_argument, NULL, OPT_SHOWFP},
             {"noshowfp", no_argument, NULL, OPT_NOSHOWFP},
             {"tr", optional_argument, NULL, OPT_TR},
+            {"workload", required_argument, NULL, OPT_WORKLOAD},
             {0, 0, 0, 0}
         };
 
@@ -124,6 +127,10 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
 
           case OPT_TR:
             ParseTraceCmd(optarg);
+            break;
+
+          case OPT_WORKLOAD:
+            workload = strdup(optarg);
             break;
 
           case OPT_HELP:
@@ -297,6 +304,7 @@ GLOBAL_ARGS_CLASS::ShowArgsHelp(bool fromRunScript)
         // Hide arguments set automatically by a run script
         fprintf(stderr, "   [--modeldir=<dir>]      Model directory\n");
         fprintf(stderr, "   [--funcp=\"<args>\"]      Arguments for the functional partition\n");
+        fprintf(stderr, "   [--workload=\"<args>\"]   Workload name (affects .stats file name)\n");
     }
     fprintf(stderr, "   [--[no]showfp]          Show/don't show front panel\n");
     fprintf(stderr, "   [--bluesim=\"<args>\"]    Arguments to Bluesim\n");

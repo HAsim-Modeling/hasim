@@ -32,6 +32,9 @@ my $benchmark_root = `awb-resolver --config=benchmarkdir`;
 chomp($benchmark_root);
 ErrorExit("Can't find benchmark root") if ($benchmark_root eq '');
 
+#
+# Parse the command line switches
+#
 if (! GetOptions('feeder=s' => \$feeder,
                  'group=s' => \$group,
                  'isa=s' => \$isa,
@@ -56,34 +59,38 @@ if (! defined($group)) {
 }
 
 chdir($dstdir) or ErrorExit("Failed to cd to $dstdir");
-mkdir('program') or ErrorExit("Failed to make 'program' directory");
 
-my $src_prog;
+# Set up benchmark for non-null feeders
+if ($feeder ne "none") {
+    my $src_prog;
 
-if (-f "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.bin") {
-    $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.bin";
+    mkdir('program') or ErrorExit("Failed to make 'program' directory");
+
+    if (-f "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.bin") {
+        $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.bin";
+    }
+    elsif (-f "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.vmh") {
+        $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.vmh";
+    }
+    else {
+        print STDERR "Can't find binary in ${benchmark_root}/hasim/${isa}/${group}\n";
+        exit(1);
+    }
+
+    my $dst_prog = "program/" . basename($src_prog);
+
+    unlink($dst_prog);
+    symlink($src_prog, $dst_prog) or ErrorExit("Failed to symlink $dst_prog => $src_prog");
 }
-elsif (-f "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.vmh") {
-    $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.vmh";
-}
-else {
-    print STDERR "Can't find binary in ${benchmark_root}/hasim/${isa}/${group}\n";
-    exit(1);
-}
-
-my $dst_prog = "program/" . basename($src_prog);
-
-unlink($dst_prog);
-symlink($src_prog, $dst_prog) or ErrorExit("Failed to symlink $dst_prog => $src_prog");
-
-SubstCopyFile("${srcdir}/run.bmark", "${dstdir}/run");
-chmod(0755, "${dstdir}/run");
-
 
 # Set up m5 environment
 if ($feeder eq 'm5') {
     system("(cd $srcdir; tar cf - ./m5_configs) | (cd $dstdir; tar xf -)");
 }
+
+
+SubstCopyFile("${srcdir}/run.bmark", "${dstdir}/run");
+chmod(0755, "${dstdir}/run");
 
 
 exit(0);

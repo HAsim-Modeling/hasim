@@ -12609,3 +12609,28 @@ the convention in the the pure bluespec designs.
 
 Added a  regression run for the base hasim package. This benchmark
 currently builds but does not run properly.
+
+----------
+jsemer      Date: Fri May  9 19:38:37 EDT 2008  CSN: CSN-hasim-416
+                  Fri May  9 23:38:37 UTC 2008
+
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          415 
+ setup-bmark               Locally Modified          415 
+
+Directory config/bm/bluespec
+ demo.cfx                  Locally Modified          415 
+
+Switched the null benchmark to use the standard setup-bmark
+script and modified that script to handle the 'none' feeder
+and the run.bmark script to create a fake stats file for that
+feeder as well.
+
+Now the 'hello world' hybrid demo runs and passes as a 
+regression. So in your asimrc file one can test the hasim,
+hasim-alpha, and hasim-mips package with the lines:
+
+[regression.launcher]
+PACKAGES=hasim,hasim-alpha,hasim-mips
+

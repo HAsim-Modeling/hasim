@@ -154,6 +154,11 @@ if ($config{isHybridModel} || ($mType != $MODEL_FPGA)) {
     }
 }
 
+# Create a stats file for null workloads to make regression.launcher happy (HACK)
+if ( $config{workload} eq "null" ) {
+  system("touch null.stats");
+}
+
 if (-f "hasim_events.out") {
     system("sort hasim_events.out -o hasim_events.out.$$; mv -f hasim_events.out.$$ hasim_events.out");
 }

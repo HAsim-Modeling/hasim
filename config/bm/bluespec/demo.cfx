@@ -14,14 +14,13 @@ my $gcfg = Asim::GenCFG->new();
 
 my @bmarks = ("null",
 	     );
-	      
+
 foreach my $bmark (@bmarks) {
         $gcfg->add(name => $bmark,
                   tree => [ "benchmarks" ],
-                  setup => "tools/scripts/bluespec/setup-bmark-bsv $bmark",
-		  feeder => "vcs",
+                  setup => "tools/scripts/bmark/setup-bmark $bmark",
+		  feeder => "none",
                   ccount => 800000,
                   );
    }
-
 $gcfg->action(@ARGV);

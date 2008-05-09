@@ -20,7 +20,7 @@
 #include "asim/syntax.h"
 #include "asim/mesg.h"
 
-#include "asim/provides/model.h"
+#include "asim/provides/command_switches.h"
 #include "asim/provides/funcp_simulated_memory.h"
 
 

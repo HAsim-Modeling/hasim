@@ -1,9 +1,9 @@
 
-
 [Hasim Standard Controller/Requires]
 central_controllers=Standard Central Controllers
 local_controllers=Standard Local Controllers
 starter=Hybrid Basic Starter
+command_switches=Standard Command Switches
 
 [Global]
 Type=Asim
@@ -38,20 +38,14 @@ Packagehint=hasim
 File=modules/hasim/controller/central_controllers/stats/stats-controller-hybrid.awb
 Packagehint=hasim
 
-
 [Hybrid Assertions Controller]
 File=modules/hasim/controller/central_controllers/assertions/assertions-controller-hybrid.awb
 Packagehint=hasim
-
 
 [Hasim Module Local Controller]
 File=modules/hasim/controller/local_controllers/module/local-controller-module-standard.awb
 Packagehint=hasim
 
-
-[Emulation Controller Printf]
-File=modules/hasim/controller/central_controllers/emulation/emulation-controller-printf.awb
-Packagehint=hasim
 
 [Standard Local Controllers/Requires]
 module_local_controller=Hasim Module Local Controller
@@ -61,7 +55,6 @@ assertions_controller=Hybrid Assertions Controller
 module_controller=Module Controller
 events_controller=Hybrid Events Controller
 stats_controller=Hybrid Stats Controller
-emulation_controller=Emulation Controller Printf
 
 [Standard Central Controllers]
 File=modules/hasim/controller/central_controllers/central-controllers-standard.awb
@@ -69,4 +62,8 @@ Packagehint=hasim
 
 [Standard Local Controllers]
 File=modules/hasim/controller/local_controllers/local-controllers-standard.awb
+Packagehint=hasim
+
+[Standard Command Switches]
+File=modules/hasim/controller/command_switches/standard-command-switches.awb
 Packagehint=hasim

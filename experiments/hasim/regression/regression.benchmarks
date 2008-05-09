@@ -4,8 +4,8 @@
 #
 # ***************
 
-experiments = traffic_light
+experiments = hello traffic_light
 #
-# As simple configuration
+# A simple configuration
 #
 config/bm/bluespec/demo.cfx/benchmarks/null.cfg

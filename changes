@@ -12520,3 +12520,92 @@ Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
 - Make stats file name <workload>.stats to keep regression tester happy
 - FMR computation now ignores startup costs
 - Clean up for iverilog simulation.  Still needs a few more tweaks.
+
+----------
+jsemer      Date: Fri May  9 15:29:58 EDT 2008  CSN: CSN-hasim-415
+                  Fri May  9 19:29:58 UTC 2008
+
+
+Directory experiments/hasim
+ regression/               Locally Added               0 
+
+Directory experiments/hasim/regression
+ regression.models         Locally Added               0 
+ regression.benchmarks     Locally Added               0 
+
+Directory experiments/hasim/quick
+ quick.benchmarks          Locally Modified          414 
+
+Directory config/pm/hasim/submodels/controller
+ hybrid_standard_controller.apm Locally Modified          414 
+ hardware_null_controller.apm Locally Modified          414 
+ hybrid_null_controller.apm Locally Modified          414 
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_exe.apm      Locally Modified          414 
+ hello_hybrid_htg.apm      Locally Modified          414 
+
+Directory config/pm/bluespec/demos/simple
+ multiplier.apm            Locally Modified          414 
+ switch2led.apm            Locally Modified          414 
+ counter.apm               Locally Modified          414 
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hwonly_vexe.apm   Locally Modified          414 
+ devtest_hwonly_xup.apm    Locally Modified          414 
+ devtest_hybrid_exe.apm    Locally Modified          414 
+ devtest_hybrid_htg.apm    Locally Modified          414 
+
+Directory modules/model
+ pure_bluespec_main.cpp    Locally Modified          414 
+ pure_bluespec_model.awb   Locally Modified          414 
+ pure_bluespec_hybrid_model.awb Locally Modified          414 
+ pure_bluespec_main.h      Locally Modified          414 
+ main.cpp                  Locally Modified          414 
+ main.h                    Locally Modified          414 
+
+Directory modules/hasim/controller
+ controller-null-hybrid.awb Locally Modified          414 
+ command_switches/         Locally Added               0 
+
+Directory modules/hasim/controller/command_switches
+ standard-command-switches.cpp Locally Added               0 
+ standard-command-switches.h Locally Added               0 
+ standard-command-switches.awb Locally Added               0 
+
+Directory modules/hasim/controller
+ controller-standard.awb   Locally Modified          414 
+ controller-null-hardware-only.awb Locally Modified          414 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          414 
+
+Directory modules/hasim/common/new-funcp
+ hasim_common_newfuncp.awb Locally Modified          414 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
+ vmh-memory.cpp            Locally Modified          414 
+
+Directory modules/bluespec/system/demos/hello
+ hello.bsv                 Locally Modified          414 
+
+Directory modules/bluespec/system/demos/devtest
+ devtest.awb               Locally Modified          414 
+
+Directory modules/system/single_chip_system
+ hasim_system.awb          Locally Modified          414 
+
+Directory modules/system/mem_test
+ MemTest.bsv               Locally Modified          414 
+
+Created a separate module for command line switch processing. That
+module is used by main and %required by the hybrid controllers. A
+controller was added to the pure bluespec models so they can share the
+switch parsing. Those models are currently using the full hasim switch
+parser, which is overkill but works. 
+
+Moved the %library specification of libasim to hasim_common to match
+the convention in the the pure bluespec designs.
+
+Added a  regression run for the base hasim package. This benchmark
+currently builds but does not run properly.

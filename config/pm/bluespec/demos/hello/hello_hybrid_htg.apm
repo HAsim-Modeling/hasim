@@ -28,6 +28,7 @@ Packagehint=hasim
 bluespec_common=Bluespec Common Library with FPGA
 bluespec_system=Bluespec Hello World Example
 fpgaenv=FPGA Environment
+hasim_controller=Hybrid Null Controller
 
 [Bluespec Common Library with FPGA]
 File=modules/bluespec/common/base/bluespec_base.awb
@@ -35,3 +36,7 @@ Packagehint=hasim
 
 [Pure Bluespec Hybrid Model Foundation/Params]
 MAKE_ALL_TARGET=bit
+
+[Hybrid Null Controller]
+File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
+Packagehint=hasim

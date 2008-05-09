@@ -9,8 +9,10 @@
 #include <iostream>
 
 #include "asim/rrr/service_ids.h"
+#include "asim/provides/command_switches.h"
+
 #include "asim/provides/stats_controller.h"
-#include "asim/provides/model.h"
+
 
 #include "asim/dict/STATS.h"
 

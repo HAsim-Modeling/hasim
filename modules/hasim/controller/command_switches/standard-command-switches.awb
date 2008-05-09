@@ -1,0 +1,14 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+%name Standard Command Switches
+%desc Standard Command Switches
+%attributes hasim
+
+%provides command_switches
+
+%sources -t H   -v PUBLIC  standard-command-switches.h
+%sources -t CPP -v PRIVATE standard-command-switches.cpp

@@ -4,21 +4,15 @@
 # *
 # *******************************************************************/
 
-#/*
-# %AWB_START
-#
-# %name Hybrid Null Controller
-# %desc Hybrid Null Controller
-# %provides hasim_controller
-#
-# %requires starter
-#
-# %attributes hasim
-#
-# %sources -t BSV -v PUBLIC  controller-null.bsv 
-# %sources -t H   -v PUBLIC  controller-null.h
-# %sources -t CPP -v PUBLIC  controller-null.cpp
-#
-# %AWB_END
-# */
+%name Hybrid Null Controller
+%desc Hybrid Null Controller
+%attributes hasim
 
+%provides hasim_controller
+
+%requires command_switches
+%requires starter
+
+%sources -t BSV -v PUBLIC  controller-null.bsv 
+%sources -t H   -v PUBLIC  controller-null.h
+%sources -t CPP -v PUBLIC  controller-null.cpp

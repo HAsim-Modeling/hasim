@@ -11,6 +11,7 @@
 typedef enum 
     {
         STATE_start, 
+        STATE_exit,
         STATE_finish 
     } 
     STATE deriving(Bits,Eq);
@@ -30,12 +31,24 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
                            ?,
                            ?);
   
+       state <= STATE_exit;
+
+    endrule
+
+
+    rule exit (state == STATE_exit);
+
+       streams.makeRequest(`STREAMID_MESSAGE,
+                           `STREAMS_MESSAGE_EXIT,
+                           0,
+                           ?);
+  
        state <= STATE_finish;
 
     endrule
 
 
-    rule goodbye (state == STATE_finish);
+    rule finish (state == STATE_finish);
        noAction;
     endrule
 

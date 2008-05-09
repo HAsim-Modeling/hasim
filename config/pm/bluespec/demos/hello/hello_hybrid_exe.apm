@@ -28,7 +28,12 @@ Packagehint=hasim
 bluespec_common=Bluespec Null Library
 bluespec_system=Bluespec Hello World Example
 fpgaenv=FPGA Environment
+hasim_controller=Hybrid Null Controller
 
 [Bluespec Null Library]
 File=modules/bluespec/common/null/bluespec_null.awb
+Packagehint=hasim
+
+[Hybrid Null Controller]
+File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
 Packagehint=hasim

@@ -1,15 +1,12 @@
-%AWB_START
+
 
 %name Hasim - Hardware (fpga) based system
 %desc Hasim - Hardware (fpga) based system
-%provides hasim_system
-%requires hasim_chip hasim_funcp hasim_isa 
-
 %attributes hasim
+
+%provides hasim_system
+
+%requires hasim_chip hasim_funcp hasim_isa 
 
 %public System.bsv
 
-%library lib/libasim/libasim.a
-%library lib/libdral/libdral.a
-
-%AWB_END

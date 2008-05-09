@@ -12,16 +12,18 @@ Class=Asim::Model
 DefaultAttributes=hasim
 model=Hybrid Null Controller
 
-
-
-
 [Hybrid Null Starter]
 File=modules/hasim/controller/starter/hybrid-null-starter.awb
 Packagehint=hasim
 
 [Hybrid Null Controller/Requires]
 starter=Hybrid Null Starter
+command_switches=Standard Command Switches
 
 [Hybrid Null Controller]
 File=modules/hasim/controller/controller-null-hybrid.awb
+Packagehint=hasim
+
+[Standard Command Switches]
+File=modules/hasim/controller/command_switches/standard-command-switches.awb
 Packagehint=hasim

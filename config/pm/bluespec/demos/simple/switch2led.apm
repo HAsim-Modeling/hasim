@@ -24,13 +24,16 @@ Packagehint=hasim
 File=modules/bluespec/system/demos/switch2led/switch2led_system.awb
 Packagehint=hasim
 
-
-
 [Pure Bluespec Hybrid Model Foundation/Requires]
 bluespec_common=Bluespec Null Library
 bluespec_system=Bluespec Switch to Led Example
 fpgaenv=FPGA Environment
+hasim_controller=Hybrid Null Controller
 
 [Pure Bluespec Hybrid Model Foundation]
 File=modules/model/pure_bluespec_hybrid_model.awb
+Packagehint=hasim
+
+[Hybrid Null Controller]
+File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
 Packagehint=hasim

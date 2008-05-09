@@ -1,5 +1,5 @@
 #/********************************************************************
-$* Awb module specification
+#* Awb module specification
 #********************************************************************/
 
 %name Pure Bluespec Hybrid Model Foundation
@@ -8,6 +8,7 @@ $* Awb module specification
 
 %provides model
 
+%requires hasim_controller
 %requires bluespec_system 
 %requires fpgaenv
 %requires bluespec_common

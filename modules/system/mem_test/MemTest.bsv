@@ -1,8 +1,8 @@
 import hasim_common::*;
 import soft_connections::*;
 import platform_interface::*;
-import memory::*;
 
+`include "scratchpad_memory.bsh"
 `include "streams.bsh"
 
 `define LAST_ADDR 'h2000

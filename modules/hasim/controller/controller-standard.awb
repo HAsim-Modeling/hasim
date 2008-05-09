@@ -3,6 +3,7 @@
 %desc Hasim Standard Controller
 %provides hasim_controller
 
+%requires command_switches
 %requires starter
 %requires central_controllers
 %requires local_controllers

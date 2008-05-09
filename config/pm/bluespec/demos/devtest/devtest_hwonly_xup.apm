@@ -10,7 +10,7 @@ Class=Asim::Model
 
 [Model]
 DefaultAttributes=hwonly xup bluespec
-model=Pure Bluespec Model Foundation
+model=Pure Bluespec Hardware-Only Model Foundation
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-xup.apm
@@ -20,18 +20,26 @@ Packagehint=platforms
 File=modules/bluespec/system/demos/devtest/devtest.awb
 Packagehint=hasim
 
-[Pure Bluespec Model Foundation/Requires]
-bluespec_common=Bluespec Common Library with FPGA
-bluespec_system=Bluespec Device Tester
-fpgaenv=FPGA Environment
 
-[Pure Bluespec Model Foundation]
-File=modules/model/pure_bluespec_model.awb
-Packagehint=hasim
 
-[Pure Bluespec Model Foundation/Params]
-MAKE_ALL_TARGET=bit
 
 [Bluespec Common Library with FPGA]
 File=modules/bluespec/common/base/bluespec_base.awb
+Packagehint=hasim
+
+[Pure Bluespec Hardware-Only Model Foundation/Requires]
+bluespec_common=Bluespec Common Library with FPGA
+bluespec_system=Bluespec Device Tester
+hasim_controller=Hardware-Only Null Controller
+fpgaenv=FPGA Environment
+
+[Hardware-Only Null Controller]
+File=config/pm/hasim/submodels/controller/hardware_null_controller.apm
+Packagehint=hasim
+
+[Pure Bluespec Hardware-Only Model Foundation/Params]
+MAKE_ALL_TARGET=bit
+
+[Pure Bluespec Hardware-Only Model Foundation]
+File=modules/model/pure_bluespec_model.awb
 Packagehint=hasim

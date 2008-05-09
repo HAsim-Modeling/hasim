@@ -4,16 +4,10 @@
 # *
 # *******************************************************************/
 
-#/*
-# %AWB_START
-#
-# %name Hardware-Only Null Controller
-# %desc Hardware-Only Null Controller
-# %provides hasim_controller
-#
-# %attributes hasim
-#
-# %sources -t BSV -v PUBLIC  controller-null.bsv 
-#
-# %AWB_END
-# */
+%name Hardware-Only Null Controller
+%desc Hardware-Only Null Controller
+%attributes hasim
+
+%provides hasim_controller
+
+%sources -t BSV -v PUBLIC  controller-null.bsv 

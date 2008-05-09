@@ -8,6 +8,7 @@
 
 %provides model
 
+%requires hasim_controller
 %requires bluespec_system 
 %requires fpgaenv
 %requires bluespec_common

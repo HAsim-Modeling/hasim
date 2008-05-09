@@ -10,20 +10,13 @@ Class=Asim::Model
 
 [Model]
 DefaultAttributes=bluespec sim
-model=Pure Bluespec Model Foundation
+model=Pure Bluespec Hardware-Only Model Foundation
 
-[Pure Bluespec Model Foundation]
-File=modules/model/pure_bluespec_model.awb
-Packagehint=hasim
 
 [Bluespec Counter Example]
 File=modules/bluespec/system/demos/counter/counter_system.awb
 Packagehint=hasim
 
-[Pure Bluespec Model Foundation/Requires]
-bluespec_common=Bluespec Null Library
-bluespec_system=Bluespec Counter Example
-fpgaenv=FPGA Environment
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-null.apm
@@ -33,3 +26,17 @@ Packagehint=platforms
 File=modules/bluespec/common/null/bluespec_null.awb
 Packagehint=hasim
 
+
+[Pure Bluespec Hardware-Only Model Foundation/Requires]
+bluespec_common=Bluespec Null Library
+bluespec_system=Bluespec Counter Example
+hasim_controller=Hardware-Only Null Controller
+fpgaenv=FPGA Environment
+
+[Hardware-Only Null Controller]
+File=config/pm/hasim/submodels/controller/hardware_null_controller.apm
+Packagehint=hasim
+
+[Pure Bluespec Hardware-Only Model Foundation]
+File=modules/model/pure_bluespec_model.awb
+Packagehint=hasim

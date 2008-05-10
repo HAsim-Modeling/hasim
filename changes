@@ -12670,3 +12670,17 @@ Directory modules/model
 
 Explictly added libmysqlclient library to link line for
 m5-based models. 
+
+----------
+jsemer      Date: Sat May 10 17:23:23 EDT 2008  CSN: CSN-hasim-420
+                  Sat May 10 21:23:23 UTC 2008
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          419 
+
+Cope with the fact that m5 uses mysql if it exists and doesn't
+if it doesn't. So we need to conditionally link in mysqlclient.a.
+
+I think we should figure out a way to get all this meta-logic out of
+the main SConscript...

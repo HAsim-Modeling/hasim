@@ -56,12 +56,15 @@ STARTER_CLASS::Request(
 {
     // extract info
     UINT32 methodID = req->GetMethodID();
+    UINT32 success;
+    UINT64 model_cycles;
+    UINT64 fpga_cycles;
 
     switch (req->GetMethodID())
     {
         case METHOD_ID_ENDSIM:
             // for now, call statsdump directly from here
-            UINT32 success  = req->ExtractUINT32();
+            success  = req->ExtractUINT32();
             delete req;
 
             if (success == 1)
@@ -83,8 +86,8 @@ STARTER_CLASS::Request(
             break;
 
         case METHOD_ID_HEARTBEAT:
-            UINT64 model_cycles = req->ExtractUINT64();
-            UINT64 fpga_cycles = req->ExtractUINT64();
+            model_cycles = req->ExtractUINT64();
+            fpga_cycles = req->ExtractUINT64();
             delete req;
 
             if (fpga_start_cycle == 0)

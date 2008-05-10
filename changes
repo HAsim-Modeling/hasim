@@ -12648,3 +12648,14 @@ Added traffic light models (nosynth and synth) to the regression
 set. Number of cycles are limited and LED outputs go to
 STDOUT.
 
+
+----------
+emer        Date: Sat May 10 12:21:12 EDT 2008  CSN: CSN-hasim-418
+                  Sat May 10 16:21:12 UTC 2008
+
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          417 
+
+Moved some declarations out of a switch statement to make
+gcc 4.1.3 happy.

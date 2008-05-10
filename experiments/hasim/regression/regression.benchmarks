@@ -4,7 +4,7 @@
 #
 # ***************
 
-experiments = hello traffic_light
+experiments = hello traffic_light_nosynth traffic_light_synth
 #
 # A simple configuration
 #

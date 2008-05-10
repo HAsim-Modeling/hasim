@@ -507,10 +507,12 @@ if SW_EXE != []:
 
 
     ##
-    ## m5 needs libz and Python library
+    ## m5 needs libz, libmysqlclient and Python library
     ##
     if (M5_BUILD_DIR != ''):
         sw_link_libs += [ 'z' ]
+
+        sw_link_libs += [ 'mysqlclient' ]
 
         # m5 needs python
         sw_libpath += [ os.path.join(sys.exec_prefix, 'lib') ]

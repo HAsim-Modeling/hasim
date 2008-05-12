@@ -12684,3 +12684,16 @@ if it doesn't. So we need to conditionally link in mysqlclient.a.
 
 I think we should figure out a way to get all this meta-logic out of
 the main SConscript...
+
+----------
+jsemer      Date: Mon May 12 11:43:49 EDT 2008  CSN: CSN-hasim-421
+                  Mon May 12 15:43:49 UTC 2008
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          420 
+
+Modified SContruct file so that if the IVERILOGDIR environment
+variable is NOT set then assume that iverilog is installed in
+the normal place (/usr). Note: No check is done to guarantee that 
+it is really installed (in either place).

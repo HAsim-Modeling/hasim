@@ -307,8 +307,13 @@ env.Alias('exe', exe)
 ##
 ############################################################################
 
+if (env['ENV'].has_key('IVERILOGDIR')):
+    iverilogdir = env['ENV']['IVERILOGDIR']
+else:
+    iverilogdir = '/usr'
+
 vexe_gen_command = \
-    BSC + ' ' + BSC_FLAGS + ' -I ' + env['ENV']['IVERILOGDIR'] + '/include' + \
+    BSC + ' ' + BSC_FLAGS + ' -I ' + iverilogdir + '/include' + \
     ' -o $TARGET -verilog -e ' + ROOT_WRAPPER_SYNTH_ID + \
     ' $SOURCES ' + env['DEFS']['BDPI_BAS']
 

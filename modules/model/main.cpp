@@ -29,6 +29,11 @@ GLOBAL_ARGS globalArgs;
 // main
 int main(int argc, char *argv[])
 {
+    // Set line buffering to avoid fflush() everywhere.  stderr was probably
+    // unbuffered already, but be sure.
+    setvbuf(stdout, NULL, _IOLBF, 0);
+    setvbuf(stderr, NULL, _IOLBF, 0);
+
     // parse args and place in global array
     globalArgs = new GLOBAL_ARGS_CLASS(argc, argv);
 

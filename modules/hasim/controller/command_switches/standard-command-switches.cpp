@@ -20,7 +20,8 @@
 GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
     modelDir("."),
     workload(APM_NAME),
-    showFrontPanel(false)
+    showFrontPanel(false),
+    showLEDsOnStdOut(true)
 {
     enum 
     {
@@ -49,7 +50,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
             {"help", no_argument, NULL, OPT_HELP},
             {"help-run-append", no_argument, NULL, OPT_HELP_RUN_APPEND},
             {"modeldir", required_argument, NULL, OPT_MODELDIR},
-            {"showfp", no_argument, NULL, OPT_SHOWFP},
+            {"showfp", optional_argument, NULL, OPT_SHOWFP},
             {"noshowfp", no_argument, NULL, OPT_NOSHOWFP},
             {"tr", optional_argument, NULL, OPT_TR},
             {"workload", required_argument, NULL, OPT_WORKLOAD},
@@ -83,11 +84,31 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
             break;
 
           case OPT_SHOWFP:
-            showFrontPanel = true;
+            if (optarg == NULL)
+            {
+                showFrontPanel = true;
+                showLEDsOnStdOut = false;
+            }
+            else if (strcmp(optarg, "stdout") == 0)
+            {
+                showFrontPanel = false;
+                showLEDsOnStdOut = true;
+            }
+            else if (strncmp(optarg, "no", 2) == 0)
+            {
+                showFrontPanel = false;
+                showLEDsOnStdOut = false;
+            }
+            else
+            {
+                showFrontPanel = true;
+                showLEDsOnStdOut = false;
+            }
             break;
 
           case OPT_NOSHOWFP:
             showFrontPanel = false;
+            showLEDsOnStdOut = false;
             break;
 
           case OPT_TR:
@@ -271,7 +292,9 @@ GLOBAL_ARGS_CLASS::ShowArgsHelp(bool fromRunScript)
         fprintf(stderr, "   [--funcp=\"<args>\"]      Arguments for the functional partition\n");
         fprintf(stderr, "   [--workload=\"<args>\"]   Workload name (affects .stats file name)\n");
     }
-    fprintf(stderr, "   [--[no]showfp]          Show/don't show front panel\n");
+    fprintf(stderr, "   [--noshowfp]            Don't show front panel\n");
+    fprintf(stderr, "   [--showfp[=gui|stdout|none]]\n");
+    fprintf(stderr, "                           Front panel control: GUI, LEDs to stdout or none\n");
     fprintf(stderr, "   [--bluesim=\"<args>\"]    Arguments to Bluesim\n");
     fprintf(stderr, "   [--tr=[</regex/[=012]]] Set trace level by regular expression. Can be given\n");
     fprintf(stderr, "                           multiple times.  If not specified, the trace level will\n");

@@ -5,10 +5,9 @@ import soft_connections::*;
 
 `include "asim/provides/rrr.bsh"
 
-`include "asim/rrr/service_ids.bsh"
+`include "asim/rrr/remote_client_stub_STATS.bsh"
 `include "asim/dict/RINGID.bsh"
 `include "asim/dict/STATS.bsh"
-
 
 // STATS_CONTROLLER: Control all the stats throughout the hardware model.
 
@@ -58,6 +57,15 @@ typedef enum
   STATS_CON_STATE
                deriving (Eq, Bits);
 
+// RRR type STAT_INFO
+typedef struct
+{
+  UINT32 statID;
+  UINT32 value;
+}
+  STAT_INFO
+               deriving (Eq, Bits);
+
 // mkStatsController
 
 // Abstracts all communication from the main controller to individual stat counters.
@@ -72,10 +80,12 @@ module [Connected_Module] mkStatsController
   Connection_Chain#(STAT_DATA) chain <- mkConnection_Chain(`RINGID_STATS);
  
   // Communication to our RRR server
-  Connection_Send#(RRR_Request) link_rrr <- mkConnection_Send("rrr_client_stats");
+  ClientStub_STATS client_stub <- mkClientStub_STATS();
+  // Connection_Send#(RRR_Request) link_rrr <- mkConnection_Send("rrr_client_stats");
   
   // Track if we are done dumping
-  Reg#(Bool)      dump_finished  <- mkReg(False);
+  Reg#(Bool) flush_requested <- mkReg(False);
+  Reg#(Bool) dump_finished  <- mkReg(False);
   
   // Our internal state
   Reg#(STATS_CON_STATE)  state <- mkReg(SC_Idle);
@@ -115,27 +125,39 @@ module [Connected_Module] mkStatsController
     case (st) matches
       tagged ST_Val .stinfo: //A stat to dump
       begin
-
-        link_rrr.send(RRR_Request { serviceID:    `STATS_SERVICE_ID,
-                                    param0:       0, // unused for now. Reserved for method ID.
-                                    param1:       zeroExtend(pack(stinfo.statID)),
-                                    param2:       zeroExtend(pack(stinfo.value)),
-                                    param3:       0, // unused
-                                    needResponse: False });
+          
+        client_stub.makeRequest_Print(STAT_INFO { statID: zeroExtend(stinfo.statID), value: stinfo.value });
+          
       end
       tagged ST_Dump:  //We're done dumping
       begin
+        
+        client_stub.makeRequest_Flush(?);
         state <= SC_Idle;
-        dump_finished <= True;
+        flush_requested <= True;
+          
       end
       default:  //This should never happen
       begin
+            
         state <= SC_Idle;
+          
       end
     endcase
      
   endrule
-
+    
+  // waitForFlushAck
+    
+  // Wait for response to Flush() RRR request
+    
+  rule waitForFlushAck (flush_requested);
+    
+      let a <- client_stub.getResponse_Flush();
+      dump_finished <= True;
+      
+  endrule
+    
   //doCommand
   
   //This method is the main method where the outside world tells us what to do.

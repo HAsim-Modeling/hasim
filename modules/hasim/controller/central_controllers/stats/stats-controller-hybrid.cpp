@@ -18,6 +18,10 @@
 
 #define SERVICE_ID       STATS_SERVICE_ID
 
+// temporary
+#define METHOD_ID_PRINT 0
+#define METHOD_ID_FLUSH 1
+
 using namespace std;
 
 // ===== service instantiation =====
@@ -60,35 +64,65 @@ STATS_CONTROLLER_CLASS::Uninit()
 }
 
 // request
-bool
+UMF_MESSAGE
 STATS_CONTROLLER_CLASS::Request(
-    UINT32 arg0,
-    UINT32 arg1,
-    UINT32 arg2,
-    UINT32 arg3,
-    UINT32 *result)
+    UMF_MESSAGE request)
 {
 
     // extract event ID, data, and modelCC
-    UINT32 unused = arg0; // Reserved to be methodID later if needed.
-    UINT32 stat_id = arg1;
-    UINT32 stat_data = arg2;
-    UINT32 unused2 = arg3;
+    UINT32 methodID  = request->GetMethodID();
 
-    // lookup event name from dictionary
-    const char *stat_msg = STATS_DICT::Str(stat_id);
-    if (stat_msg == NULL)
+    // decode
+    if (methodID == METHOD_ID_PRINT)
     {
-        cerr << "streams: " << STATS_DICT::Str(stat_id)
-             << ": invalid stat_id: " << stat_id << endl;
+        UINT32 stat_data = request->ExtractUINT32();
+        UINT32 stat_id   = request->ExtractUINT32();
+
+        // lookup event name from dictionary
+        const char *stat_msg = STATS_DICT::Str(stat_id);
+        if (stat_msg == NULL)
+        {
+            cerr << "stats: " << STATS_DICT::Str(stat_id)
+                 << ": invalid stat_id: " << stat_id << endl << flush;
+            CallbackExit(1);
+        }
+        
+        // write to file
+        fprintf(statsFile, "%s: %u\n", stat_msg, stat_data);
+        
+        // free
+        delete request;
+
+        // no RRR response
+        return NULL;
+    }
+    else if (methodID == METHOD_ID_FLUSH)
+    {
+        // flush
+        fflush(statsFile);
+
+        // prepare response
+        UMF_MESSAGE response = new UMF_MESSAGE_CLASS(4);
+        response->SetMethodID(METHOD_ID_FLUSH);
+        response->AppendUINT32(0);
+
+        // free
+        delete request;
+
+        // send response
+        return response;
+    }
+    else
+    {
+        // error
+        cerr << "stats: invalid methodID\n" << flush;
+
+        // free
+        delete request;
+
+        // exit
         CallbackExit(1);
     }
-
-    // write to file
-    fprintf(statsFile, "%s: %u\n", stat_msg, stat_data);
-
-    // no RRR response
-    return false;
 }
 
 // poll

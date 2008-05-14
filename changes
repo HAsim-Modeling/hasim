@@ -12718,3 +12718,30 @@ Directory modules/hasim/controller/command_switches
 - Enhance showfp switch.  Now takes arguments:  gui, stdout and none.
   Null benchmark defaults to stdout.  Others default to none.  Logic
   controlled mostly in run.bmark.
+
+----------
+aparasha    Date: Wed May 14 17:48:37 EDT 2008  CSN: CSN-hasim-423
+                  Wed May 14 21:48:37 UTC 2008
+
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          422 
+
+Directory modules/hasim/controller/starter
+ starter-common.h          Locally Modified          422 
+ hybrid-basic-starter.cpp  Locally Modified          422 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          422 
+ stats-controller.rrr      Locally Modified          422 
+ stats-controller-hybrid.h Locally Modified          422 
+ stats-controller-hybrid.bsv Locally Modified          422 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.awb  Locally Modified          422 
+
+- added includes for "hasim_common.bsh" to generated stubs.
+- added wall-clock time measurement to starter.
+- updated stats controller to use new RRR path.
+- added a new Flush() RRR method to stats controller. All stats
+  now get printed before the model exits.

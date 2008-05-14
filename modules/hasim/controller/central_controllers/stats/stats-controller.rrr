@@ -1,3 +1,8 @@
 service STATS
 {
+    server sw (cpp, method) <- hw (bsv, connection)
+    {
+        method Print(in STAT_INFO[64] si);
+        method Flush(in UINT8[8] syn, out UINT8[8] ack);
+    };
 };

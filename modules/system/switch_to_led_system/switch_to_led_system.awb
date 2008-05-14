@@ -9,6 +9,9 @@
 %provides hasim_system
 %requires calculation4x4
 
+%library lib/libasim/libasim.a
+%library lib/libdral/libdral.a
+
 %attributes hasim
 
 %public switch_to_led_system.bsv

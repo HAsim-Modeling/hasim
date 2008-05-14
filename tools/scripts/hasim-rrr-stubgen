@@ -366,6 +366,7 @@ sub print_remote_server_stub
     print $file "`define _" . $service->name() . "_REMOTE_SERVER_STUB_\n";
     print $file "\n";
 
+    print $file "`include \"hasim_common.bsh\"\n";
     print $file "`include \"soft_connections.bsh\"\n";
     print $file "`include \"rrr.bsh\"\n";
     print $file "`include \"channelio.bsh\"\n";
@@ -402,6 +403,7 @@ sub print_server_connections
     print $file "`define _RRR_SERVER_CONNECTIONS_\n";
     print $file "\n";
 
+    print $file "`include \"hasim_common.bsh\"\n";
     print $file "`include \"soft_connections.bsh\"\n";
     print $file "`include \"rrr.bsh\"\n";
     print $file "`include \"channelio.bsh\"\n";
@@ -520,6 +522,7 @@ sub print_remote_client_stub
     print $file "`define _" . $service->name() . "_REMOTE_CLIENT_STUB_\n";
     print $file "\n";
 
+    print $file "`include \"hasim_common.bsh\"\n";
     print $file "`include \"soft_connections.bsh\"\n";
     print $file "`include \"rrr.bsh\"\n";
     print $file "`include \"channelio.bsh\"\n";
@@ -556,6 +559,7 @@ sub print_client_connections
     print $file "`define _RRR_CLIENT_CONNECTIONS_\n";
     print $file "\n";
 
+    print $file "`include \"hasim_common.bsh\"\n";
     print $file "`include \"soft_connections.bsh\"\n";
     print $file "`include \"rrr.bsh\"\n";
     print $file "`include \"channelio.bsh\"\n";

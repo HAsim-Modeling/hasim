@@ -2,6 +2,7 @@
 #define _STARTER_
 
 #include <stdio.h>
+#include <sys/time.h>
 
 #include "platforms-module.h"
 #include "asim/provides/rrr.h"
@@ -16,6 +17,9 @@ class STARTER_CLASS: public RRR_SERVICE_CLASS,
     private:
         // self-instantiation
         static STARTER_CLASS instance;
+
+        // wall-clock time tracking
+        struct timeval startTime;
 
     public:
         STARTER_CLASS();

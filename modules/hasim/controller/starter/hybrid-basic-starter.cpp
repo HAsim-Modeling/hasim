@@ -63,6 +63,13 @@ STARTER_CLASS::Request(
     switch (req->GetMethodID())
     {
         case METHOD_ID_ENDSIM:
+            // stop the clock
+            struct timeval end_time;
+            gettimeofday(&end_time, NULL);
+            double sec = double(end_time.tv_sec) - double(startTime.tv_sec);
+            double usec = double(end_time.tv_usec) - double(startTime.tv_usec);
+            double elapsed = sec + usec/1000000;
+
             // for now, call statsdump directly from here
             success  = req->ExtractUINT32();
             delete req;
@@ -82,6 +89,8 @@ STARTER_CLASS::Request(
             cout << "         starting stats dump... ";
             DumpStats();
             cout << "done." << endl;
+            printf("         elapsed (wall-clock) time = %.4f seconds.\n", elapsed);
+
             CallbackExit(0);
             break;
 
@@ -130,6 +139,9 @@ STARTER_CLASS::Run()
     msg->SetServiceID(SERVICE_ID);
     msg->SetMethodID(METHOD_ID_RUN);
     msg->AppendUINT32(0);   // value doesn't matter
+
+    // log start time
+    gettimeofday(&startTime, NULL);
 
     RRRClient->MakeRequestNoResponse(msg);
 }

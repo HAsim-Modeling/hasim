@@ -1,0 +1,24 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Direct-Mapped Write-Through Cache
+# %desc Direct-Mapped Write-Through Cache
+#
+# %provides funcp_memstate_cache
+#
+# %attributes hasim funcp memstate
+#
+# %public memstate_cache_direct_writethrough.bsv
+#
+#
+# %param CACHE_IDX_BITS 8 "Number of index bits, which also determines size of cache."
+#
+# %AWB_END
+# */
+

@@ -12745,3 +12745,24 @@ Directory modules/system/switch_to_led_system
 - updated stats controller to use new RRR path.
 - added a new Flush() RRR method to stats controller. All stats
   now get printed before the model exits.
+
+----------
+pellauer    Date: Mon May 19 09:37:15 EDT 2008  CSN: CSN-hasim-424
+                  Mon May 19 13:37:15 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/cache
+ direct-mapped/            Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped
+ write-through/            Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.awb Locally Added               0 
+ memstate_cache_direct_writethrough.bsv Locally Added               0 
+
+
+Added extremely simple direct-mapped write-through cache to functional 
+partition mem state.
+
+

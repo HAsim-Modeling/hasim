@@ -12766,3 +12766,20 @@ Added extremely simple direct-mapped write-through cache to functional
 partition mem state.
 
 
+
+----------
+vmurali     Date: Mon May 19 19:06:45 EDT 2008  CSN: CSN-hasim-425
+                  Mon May 19 23:06:45 UTC 2008
+
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          424 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          424 
+
+
+- Modified a memory conversion interfaces for making aligned stores work
+- hybrid-basic-starter : Declaration of variables inside case statement doesnt compile in my compiler. So moved it outside
+
+

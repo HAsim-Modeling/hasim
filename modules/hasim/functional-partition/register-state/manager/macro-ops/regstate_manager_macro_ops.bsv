@@ -246,7 +246,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     
     // These Queues are intermediate state between the pipeline stages.
 
-    FIFO#(TOKEN) instQ  <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) instQ  <- mkFIFO();
     FIFO#(TOKEN) deps1Q <- mkFIFO();
     FIFO#(TOKEN) deps2Q <- mkFIFO();
     FIFO#(TOKEN) res1Q  <- mkFIFO();
@@ -440,13 +440,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
         MEM_ADDRESS mem_addr = isaAddressToMemAddress(addr);
 
         // Kick to Mem State.
+        //linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: mem_addr});
         linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: mem_addr});
         
         // Record that the result should come to us.
         memPathQ.enq(PATH_INST);
 
         // Send on to getInstruction2.
-        instQ.enq(tok);
+        instQ.enq(tuple2(tok, addr));
 
     endrule
 
@@ -458,7 +459,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     rule getInstruction2 (ready && memPathQ.first() == PATH_INST);
 
         // Input from previous stage.
-        let tok = instQ.first();
+        match{.tok, .addr} = instQ.first();
         instQ.deq();
         memPathQ.deq();
 
@@ -468,7 +469,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         // Convert the value to an instruction using the ISA-provided conversion
         // function.
-        ISA_INSTRUCTION inst = isaInstructionFromMemValue(v);
+        ISA_INSTRUCTION inst = isaInstructionFromMemValue(v, addr);
 
         // Log it.
         funcpDebug($fwrite(debugLog, "TOKEN %0d: Fetch: End (INSTRUCTION: 0x%h)", tok.index, inst));
@@ -1613,7 +1614,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
           let mem_val = isaValueToMemValue(val, st_type, addr);
       
           // Make the request to the memory state.
-          linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, addr: mem_addr, val: mem_val});
+          linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, addr: addr, val: mem_val});
 
           // Update the scoreboard.
           tokScoreboard.storeFinish(tok.index);

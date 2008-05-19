@@ -59,16 +59,19 @@ STARTER_CLASS::Request(
     UINT32 success;
     UINT64 model_cycles;
     UINT64 fpga_cycles;
+    double sec;
+    double usec;
+    double elapsed;
+    struct timeval end_time;
 
     switch (req->GetMethodID())
     {
         case METHOD_ID_ENDSIM:
             // stop the clock
-            struct timeval end_time;
             gettimeofday(&end_time, NULL);
-            double sec = double(end_time.tv_sec) - double(startTime.tv_sec);
-            double usec = double(end_time.tv_usec) - double(startTime.tv_usec);
-            double elapsed = sec + usec/1000000;
+            sec = double(end_time.tv_sec) - double(startTime.tv_sec);
+            usec = double(end_time.tv_usec) - double(startTime.tv_usec);
+            elapsed = sec + usec/1000000;
 
             // for now, call statsdump directly from here
             success  = req->ExtractUINT32();

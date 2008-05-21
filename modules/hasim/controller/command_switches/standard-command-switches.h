@@ -18,6 +18,8 @@ class GLOBAL_ARGS_CLASS
     bool ShowFrontPanel() const { return showFrontPanel; };
     bool ShowLEDsOnStdOut() const { return showLEDsOnStdOut; };
 
+    unsigned long ProgressMsgInterval() const { return progressMsgInterval; };
+
     int FuncPlatformArgc() const { return funcpArgc; }
     char **FuncPlatformArgv() const { return funcpArgv; }
 
@@ -33,6 +35,7 @@ class GLOBAL_ARGS_CLASS
   private:
     char* modelDir;             // Model (pm) directory
     char* workload;             // Name of the workload (affects stats file name)
+    unsigned long progressMsgInterval;
     bool showFrontPanel;
     bool showLEDsOnStdOut;
 

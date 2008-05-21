@@ -12783,3 +12783,27 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 - hybrid-basic-starter : Declaration of variables inside case statement doesnt compile in my compiler. So moved it outside
 
 
+
+----------
+mcadler     Date: Wed May 21 18:03:09 EDT 2008  CSN: CSN-hasim-426
+                  Wed May 21 22:03:09 UTC 2008
+
+
+Directory tools/scripts/bmark/m5_configs
+ se.py                     Locally Modified          425 
+
+Directory modules/hasim/controller/starter
+ starter-common.h          Locally Modified          425 
+ hybrid-basic-starter.cpp  Locally Modified          425 
+
+Directory modules/hasim/controller/command_switches
+ standard-command-switches.cpp Locally Modified          425 
+ standard-command-switches.h Locally Modified          425 
+
+Directory modules/hasim/controller
+ controller-standard.awb   Locally Modified          425 
+
+- Add --output and --errout options to m5 configuration script.
+- Add a way to control the frequency of heartbeat messages using a --pc
+  (print cycle) option, similar to Asim.  Messages can be turned off
+  with --pc=0.

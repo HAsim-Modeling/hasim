@@ -4,6 +4,7 @@
 
 #include "starter-common.h"
 #include "asim/rrr/service_ids.h"
+#include "asim/provides/command_switches.h"
 
 #define SERVICE_ID  STARTER_SERVICE_ID
 
@@ -24,7 +25,8 @@ STARTER_CLASS STARTER_CLASS::instance;
 // constructor
 STARTER_CLASS::STARTER_CLASS() :
     fpga_start_cycle(0),
-    model_start_cycle(0)
+    model_start_cycle(0),
+    next_progress_msg_cycle(0)
 {
     // register with server's map table
     RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
@@ -41,6 +43,7 @@ STARTER_CLASS::Init(
     PLATFORMS_MODULE p)
 {
     parent = p;
+    next_progress_msg_cycle = globalArgs->ProgressMsgInterval();
 }
 
 // poll
@@ -106,18 +109,26 @@ STARTER_CLASS::Request(
             {
                 fpga_start_cycle = fpga_cycles;
                 model_start_cycle = model_cycles;
-
-                fprintf(stdout, "[%12u]: controller: model cycles completed: %9u\n",
-                        fpga_cycles,
-                        model_cycles);
             }
-            else
+
+            if (next_progress_msg_cycle && (model_cycles >= next_progress_msg_cycle))
             {
-                fprintf(stdout, "[%12u]: controller: model cycles completed: %9u (FMR=%.1f)\n",
-                        fpga_cycles,
-                        model_cycles,
-                        (double)(fpga_cycles - fpga_start_cycle) /
-                            (double)(model_cycles - model_start_cycle));
+                next_progress_msg_cycle += globalArgs->ProgressMsgInterval();
+
+                if ((fpga_cycles - fpga_start_cycle) == 0)
+                {
+                    fprintf(stdout, "[%12u]: controller: model cycles completed: %9u\n",
+                            fpga_cycles,
+                            model_cycles);
+                }
+                else
+                {
+                    fprintf(stdout, "[%12u]: controller: model cycles completed: %9u (FMR=%.1f)\n",
+                            fpga_cycles,
+                            model_cycles,
+                            (double)(fpga_cycles - fpga_start_cycle) /
+                              (double)(model_cycles - model_start_cycle));
+                }
             }
             fflush(stdout);
             break;

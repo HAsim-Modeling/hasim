@@ -13,13 +13,14 @@
 #include "asim/mesg.h"
 #include "asim/trace.h"
 
-#include "standard-command-switches.h"
+#include "asim/provides/command_switches.h"
 
 // process command-line options
 
 GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
     modelDir("."),
     workload(APM_NAME),
+    progressMsgInterval(1),
     showFrontPanel(false),
     showLEDsOnStdOut(true)
 {
@@ -30,6 +31,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
         OPT_HELP,
         OPT_HELP_RUN_APPEND,
         OPT_MODELDIR,
+        OPT_PC,
         OPT_SHOWFP,
         OPT_NOSHOWFP,
         OPT_TR,
@@ -50,6 +52,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
             {"help", no_argument, NULL, OPT_HELP},
             {"help-run-append", no_argument, NULL, OPT_HELP_RUN_APPEND},
             {"modeldir", required_argument, NULL, OPT_MODELDIR},
+            {"pc", required_argument, NULL, OPT_PC},
             {"showfp", optional_argument, NULL, OPT_SHOWFP},
             {"noshowfp", no_argument, NULL, OPT_NOSHOWFP},
             {"tr", optional_argument, NULL, OPT_TR},
@@ -81,6 +84,11 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
 
           case OPT_MODELDIR:
             modelDir = strdup(optarg);
+            break;
+
+          case OPT_PC:
+            // Progress (hearbeat) interval
+            progressMsgInterval = strtoul(optarg, NULL, 10);
             break;
 
           case OPT_SHOWFP:
@@ -296,6 +304,12 @@ GLOBAL_ARGS_CLASS::ShowArgsHelp(bool fromRunScript)
     fprintf(stderr, "   [--showfp[=gui|stdout|none]]\n");
     fprintf(stderr, "                           Front panel control: GUI, LEDs to stdout or none\n");
     fprintf(stderr, "   [--bluesim=\"<args>\"]    Arguments to Bluesim\n");
+    fprintf(stderr, "   [--pc=interval]         Progress message (hearbeat) interval.\n");
+    fprintf(stderr, "                           Messages are triggered by heartbeats that arrive\n");
+    fprintf(stderr, "                           from the hardware side, so messages can be no more\n");
+    fprintf(stderr, "                           frequent than the hardware heartbeat interval.\n");
+    fprintf(stderr, "                           0 means no messages.  Any value <= the heartbeat\n");
+    fprintf(stderr, "                           interval (e.g. 1) triggers a message on every beat.\n");
     fprintf(stderr, "   [--tr=[</regex/[=012]]] Set trace level by regular expression. Can be given\n");
     fprintf(stderr, "                           multiple times.  If not specified, the trace level will\n");
     fprintf(stderr, "                           default to 1 and the regex to .*\n");

@@ -44,6 +44,8 @@ class STARTER_CLASS: public RRR_SERVICE_CLASS,
         // We can thus eliminate model start-up cycles from FMR.
         UINT64 fpga_start_cycle;
         UINT64 model_start_cycle;
+
+        UINT64 next_progress_msg_cycle;
 };
 
 #endif

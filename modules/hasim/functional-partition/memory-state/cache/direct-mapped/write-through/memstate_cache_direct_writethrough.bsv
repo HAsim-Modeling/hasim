@@ -29,19 +29,27 @@ import FIFOF::*;
 
 // A direct-mapped write-through cache.
 
+// one cache-line = one word.
 
 typedef Bit#(`CACHE_IDX_BITS) CACHE_IDX;
-typedef Bit#(TSub#(`FUNCP_ISA_ADDR_SIZE, `CACHE_IDX_BITS)) CACHE_TAG;
+typedef Bit#(TLog#(TDiv#(`FUNCP_ISA_INT_REG_SIZE,8))) WORD_OFFSET;
+typedef Bit#(TSub#(`FUNCP_ISA_ADDR_SIZE,TAdd#(`CACHE_IDX_BITS,TLog#(TDiv#(`FUNCP_ISA_INT_REG_SIZE,8))))) CACHE_TAG;
 
 function CACHE_IDX cacheIdx(MEM_ADDRESS addr);
 
-  return addr[`CACHE_IDX_BITS+1:2];
+  Tuple3#(CACHE_TAG,CACHE_IDX,WORD_OFFSET) tup = unpack(addr);
+  match { .tag, .idx, .woff } = tup;
+  // assert woff == 0
+  return idx;
 
 endfunction
 
 function CACHE_TAG cacheTag(MEM_ADDRESS addr);
 
-  return (addr>>(`CACHE_IDX_BITS+2))[`FUNCP_ISA_ADDR_SIZE - `CACHE_IDX_BITS - 1:0];
+  Tuple3#(CACHE_TAG,CACHE_IDX,WORD_OFFSET) tup = unpack(addr);
+  match { .tag, .idx, .woff } = tup;
+  // assert woff == 0
+  return tag;
 
 endfunction
 
@@ -52,11 +60,15 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
   Connection_Server#(MEM_REQUEST, MEM_VALUE)   link_memstate          <- mkConnection_Server("mem_cache");
   Connection_Client#(MEM_REQUEST, MEM_VALUE)   link_funcp_memory       <- mkConnection_Client("funcp_memory");
   Connection_Receive#(MEM_ADDRESS)             link_funcp_memory_inval <- mkConnection_Receive("funcp_memory_invalidate");
+  Connection_Receive#(Bit#(0))                 link_funcp_memory_inval_all <- mkConnection_Receive("funcp_memory_invalidate_all");
 
   BRAM#(CACHE_IDX, Maybe#(CACHE_TAG)) cache_tags <- mkBRAM_Full();
   BRAM#(CACHE_IDX, MEM_VALUE) cache_data <- mkBRAM_Full();
   FIFOF#(MEM_ADDRESS) readQ <- mkFIFOF();
   FIFOF#(MEM_ADDRESS) fillQ <- mkFIFOF();
+
+  Reg#(Bool)      invalidating_all <- mkReg(False);
+  Reg#(CACHE_IDX) invalidate_iter  <- mkReg(0);
 
   // ***** Rules ***** //
 
@@ -65,7 +77,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
   // When:   When the mem state requests a load.
   // Effect: Pass the request on to the rams so we can see if it's a hit.
 
-  rule handleLoad1 (link_memstate.getReq() matches tagged MEM_LOAD .addr);
+  rule handleLoad1 (!invalidating_all &&& link_memstate.getReq() matches tagged MEM_LOAD .addr);
   
     // Deq the request.
     link_memstate.deq();
@@ -138,7 +150,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
   // When:   When a store request comes from the mem state.
   // Effect: Write the data into the cache and write it through to main memory.
   
-  rule handleStore (link_memstate.getReq() matches tagged MEM_STORE .st_info);
+  rule handleStore (!invalidating_all &&& link_memstate.getReq() matches tagged MEM_STORE .st_info);
   
       // Deq the request.
       link_memstate.deq();
@@ -167,4 +179,17 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
         
   endrule
 
+  // invalidate all; starts an FSM to invalidate every entry.
+
+  rule invalidate_all_start (True);
+      link_funcp_memory_inval_all.deq();
+      invalidating_all <= True;
+  endrule
+
+  rule invalidate_all (invalidating_all);
+      invalidate_iter <= invalidate_iter + 1;
+      cache_tags.write(invalidate_iter, tagged Invalid);
+      if (invalidate_iter == maxBound)
+          invalidating_all <= False;
+  endrule
 endmodule

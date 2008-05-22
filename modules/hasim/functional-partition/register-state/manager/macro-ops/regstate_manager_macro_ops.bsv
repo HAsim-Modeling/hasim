@@ -305,6 +305,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Connection_Send#(Tuple2#(TOKEN_INDEX, 
                              TOKEN_INDEX))                     linkMemRewind <- mkConnection_Send("funcp_mem_rewind");
 
+    Connection_Send#(Bit#(0))                                  link_funcp_memory_inval_all <- mkConnection_Send("funcp_memory_invalidate_all");
+
     // Connection to Datapath.
 
     Connection_Client#(Tuple3#(ISA_INSTRUCTION, ISA_ADDRESS, ISA_SOURCE_VALUES), 
@@ -816,7 +818,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             emulatingToken <= tok;
             synchronizingRegs <= True;
             synchronizingCurReg <= minBound;
-            
+            link_funcp_memory_inval_all.send(?);
         end
         else
         begin

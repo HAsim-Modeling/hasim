@@ -12807,3 +12807,41 @@ Directory modules/hasim/controller
 - Add a way to control the frequency of heartbeat messages using a --pc
   (print cycle) option, similar to Asim.  Messages can be turned off
   with --pc=0.
+
+----------
+nikhil      Date: Thu May 22 15:28:28 CDT 2008  CSN: CSN-hasim-427
+                  Thu May 22 20:28:28 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          426 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.bsv Locally Modified          426 
+
+
+- I have changed the size of the offset to 3 bits instead of 2, and
+  parametrized it in the process, so the number 3 actually comes from
+  log(`FUNCP_ISA_INT_REG_SIZE/8). (8 is hardcoded, because 8 bits make a byte,
+  and that's not really going to change :) )
+
+- There was another (minor) bug: the tag was defined to have (64-8) bits, when
+  it should have been (64-8-2) bits. Fixed that.
+
+- I have added a soft-connection funcp_invalidate_all from
+  mkFUNCP_RegStateManager to mkFUNCP_Cache. Whenever the reg-state decides to
+  emulate an instruction, it sends an invalidate_all request to the cache. Not
+  sure, if this should be routed through the mem-state instead.
+
+- Currently, this blocks all future cache requests, and does not bypass them.
+
+- I am still not sure how we sync (or plan to sync) all memory operations
+  right before an instruction needs to be ISA-emulated; so I am just assuming
+  that there will not be any pending requests in the cache/memory hierarchy
+  when this invalidate is received. In other words, invalidation can start
+  immediately and does not need to be blocked by anything. Also, it seems that
+  the current cache can be invalidated on a per-line basis already via a
+  soft-connection "funcp_invalidate" from mkFUNCP_Memory in
+  memory/hybrid/hybrid-funcp-memory.bsv, and this invalidation is also not
+  blocked on anything.
+ 

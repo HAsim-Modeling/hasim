@@ -27,6 +27,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
   Connection_Server#(MEM_REQUEST, MEM_VALUE)   link_memstate          <- mkConnection_Server("mem_cache");
   Connection_Client#(MEM_REQUEST, MEM_VALUE)   link_vdev_memory       <- mkConnection_Client("funcp_memory");
   Connection_Receive#(MEM_ADDRESS)             link_vdev_memory_inval <- mkConnection_Receive("funcp_memory_invalidate");
+  Connection_Receive#(Bit#(0))                 link_vdev_memory_inval_all <- mkConnection_Receive("funcp_memory_invalidate_all");
 
   // ***** Rules ***** //
 
@@ -68,6 +69,18 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
   
     MEM_VALUE a = link_vdev_memory_inval.receive();
     link_vdev_memory_inval.deq();
+        
+  endrule
+
+  // invalidate_all
+  
+  // When:   When the regstate sends an invalidate_all before beginning isa-emulation
+  // Effect: Since we are not caching anything, we can ignore invalidates.
+    
+  rule invalidate_all (True);
+  
+    Bit#(0) a = link_vdev_memory_inval_all.receive();
+    link_vdev_memory_inval_all.deq();
         
   endrule
 

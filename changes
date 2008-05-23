@@ -12845,3 +12845,14 @@ Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/wr
   memory/hybrid/hybrid-funcp-memory.bsv, and this invalidation is also not
   blocked on anything.
  
+
+----------
+napatil     Date: Fri May 23 09:38:48 EDT 2008  CSN: CSN-hasim-428
+                  Fri May 23 13:38:48 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/cache/null
+ memstate_cache_null.bsv   Locally Modified          427 
+
+
+added the invalidate_all soft connection to the null cache. fixes regression failures in the smips_hybrid_5stage_exe model.

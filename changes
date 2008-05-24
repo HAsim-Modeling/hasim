@@ -12856,3 +12856,15 @@ Directory modules/hasim/functional-partition/memory-state/cache/null
 
 
 added the invalidate_all soft connection to the null cache. fixes regression failures in the smips_hybrid_5stage_exe model.
+
+----------
+jsemer      Date: Sat May 24 18:55:21 EDT 2008  CSN: CSN-hasim-429
+                  Sat May 24 22:55:21 UTC 2008
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          428 
+
+Propagate error status up to main from the action routines and exit 
+with proper process exit status for: run, build, setup, nuke and 
+partially for configure. 

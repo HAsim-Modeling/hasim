@@ -114,25 +114,25 @@ print "Opening... $model\n" if $debug;
 
 if ($configure) {
     print "Configuring build tree for $model . . . ";
-    configure_build_tree($model);
+    $status = configure_build_tree($model);
 } elsif ($nuke) {
     print "Nuking build tree. . . ";
-    delete_build_tree($model);
+    $status = delete_build_tree($model);
 } elsif ($setup) {
-    setup_benchmark($model, $benchmark);
+    $status = setup_benchmark($model, $benchmark);
 } elsif ($build) {
 #	WARN_AND_DIE("build command not yet implemented");
     print "Compiling build tree. . . ";
-    build_build_tree($model);
+    $status = build_build_tree($model);
 } elsif ($run) {
     print "Running model. . . ";
-    run_model($model, $benchmark);
+    $status = run_model($model, $benchmark);
 #	WARN_AND_DIE("run command not yet implemented");
 }
 
 print "done\n";
-   
-exit 0;
+
+exit !$status;
 
 ############################################################
 # run_model
@@ -141,20 +141,22 @@ sub run_model {
     my $benchmarkfile = shift;
 
     my $model = Asim::Model->new($modelfile);
-    
+    my $sys_status;
+
     if (!defined($benchmarkfile)) {
-      HAsim::Util::WARN_AND_DIE("Undefined Benchmark for running.");
+      print "Undefined Benchmark for running.";
+      return 0;
     }
-    
+
     if (!defined($rundir)) {
       $rundir = $model->run_dir($benchmarkfile);
     }
-    
-    my $exe = HAsim::Util::path_append($rundir, "run $runopt");
-    
-    $status = system("cd $rundir; $exe");
 
-    return 1;
+    my $exe = HAsim::Util::path_append($rundir, "run $runopt");
+
+    $sys_status = system("cd $rundir; $exe");
+
+    return ($sys_status == 0);
 }
 
 ############################################################
@@ -164,33 +166,45 @@ sub setup_benchmark {
     my $benchmarkfile = shift;
 
     my $model = Asim::Model->new($modelfile);
-    
+    my $sys_status;
+
     if (!defined($benchmarkfile)) {
-      HAsim::Util::WARN_AND_DIE("Undefined Benchmark for setup.");
+      print "Undefined Benchmark for setup.";
+      return 0;
     }
-    
+
     if (!defined($builddir)) {
       $builddir = $model->build_dir();
     }
     if (!defined($rundir)) {
       $rundir = $model->run_dir($benchmarkfile);
     }
-    
+
     #Actually create rundir
-    
+
     my $benchmark = Asim::Benchmark->new($benchmarkfile);
     if (! defined($benchmark)) {
-        HAsim::Util::WARN_AND_DIE("Failed to open benchmark file $benchmarkfile");
+        print "Failed to open benchmark file $benchmarkfile";
+        return 0;
     }
-      
+
     my $setup_command = $benchmark->setup_command();
     my $setup_args = $benchmark->setup_args();
     my $srcdir = dirname($setup_command);
-   
+
     # Create the run dir
-    $status = system("rm -rf $rundir");
-    $status = system("mkdir -p ${rundir}/config");
-    
+    $sys_status = system("rm -rf $rundir");
+    if ($sys_status) {
+      print "Could not remove rundir ($rundir)\n";
+      return 0;
+    }
+
+    $sys_status = system("mkdir -p ${rundir}/config");
+    if ($sys_status) {
+      print "Could not create config in rundir ($rundir)\n";
+      return 0;
+    }
+
     my $feed_arg = '';
     if (${benchmark}->feeder() ne '') {
         $feed_arg = "--feeder " . ${benchmark}->feeder();
@@ -199,8 +213,14 @@ sub setup_benchmark {
     # Invoke the setup script
     my $model_name = HAsim::Build::get_model_name($model);
     my $cmd = "env ASIM_CONFIG_MODEL=$model_name $setup_command $feed_arg $setup_args $srcdir $rundir";
+
     print STDOUT "COMMAND: $cmd\n";
-    $status = system($cmd);
+    $sys_status = system($cmd);
+    if ($sys_status) {
+      print "Command failed\n";
+      return 0;
+    }
+
 
     my $relmodeldir = "${builddir}";
     $relmodeldir = File::Spec->abs2rel($relmodeldir, $rundir);
@@ -237,33 +257,37 @@ sub setup_benchmark {
 
 sub build_build_tree {
     my $modelfile = shift;
+
     my $model = Asim::Model->new($modelfile);
+    my $sys_status;
     
     if (!defined($builddir)) {
       $builddir = $model->build_dir();
     }
     
     ## NOTE: make target should come from argument to hasim-configure
-    $status = system("make -C $builddir $buildopt");
+    $sys_status = system("make -C $builddir $buildopt");
 
-    return 1;
+    return ($sys_status == 0);
 }
 
 ############################################################
 # delete_build_tree
 sub delete_build_tree {
     my $modelfile = shift;
+
     my $model = Asim::Model->new($modelfile);
-    
+    my $sys_status;
+
     if (!defined($builddir)) {
       $builddir = $model->build_dir();
     }
-    
+
     my $above_builddir = $builddir;
     $above_builddir =~ s/\/pm$//g; # strip off pm directory to make parent first
-    $status = system("rm -fr $above_builddir");
-    
-    return 1;
+    $sys_status = system("rm -fr $above_builddir");
+
+    return ($sys_status == 0);
 }
 
 
@@ -272,16 +296,20 @@ sub delete_build_tree {
 #                       populated with Makefiles, for it 
 sub configure_build_tree {
     my $modelfile = shift;
+
     my $model = Asim::Model->new($modelfile);
+    my $status;
 
     if (defined(&Asim::Model::embed_submodels)) {
       print "Using Asim::Model embed_submodels\n";
       $model->embed_submodels();
     } else {
       print "Using Asim::Model without embed_submodels\n";
-    }   
+    }
+
     # (1) make directories
-    make_dirs($model);
+    make_dirs($model) || return 0;
+
 
     # (2a) make synthesized bsv files
     make_bsvfiles($model);
@@ -307,28 +335,41 @@ sub configure_build_tree {
 # make_dirs: Make directories for build tree
 sub make_dirs {
     my $model = shift;
+
     my $root = $model->modelroot();
+    my $sys_status;
 
     if (!defined($builddir)) {
       $builddir = $model->build_dir();
     }
-    
+
     my $dir = HAsim::Util::path_append($builddir,$HAsim::Xilinx::tmp_xilinx_dir);
-    $status = system("mkdir -p " . $dir);
+    $sys_status = system("mkdir -p " . $dir);
 
     my $bdir = HAsim::Util::path_append($builddir, $HAsim::Bluespec::tmp_bsc_dir);
-    $status = system("mkdir -p " . $bdir);
-    
+    $sys_status |= system("mkdir -p " . $bdir);
+
+    # Hardware (hw) tree.
     my $hwdir = HAsim::Util::path_append($builddir, "hw");
-    __make_dirs($root, $hwdir);
-    $status = system("mkdir -p " . ${hwdir} . "/include/asim/provides");
+
+    $sys_status |= __make_dirs($root, $hwdir);
+    $sys_status |= system("mkdir -p " . ${hwdir} . "/include/asim/provides");
+
     __make_wrappers($root, $hwdir, 1);
 
     # Software (sw) tree.
     my $swdir = HAsim::Util::path_append($builddir, "sw");
-    __make_dirs($root, $swdir);
-    $status = system("mkdir -p " . ${swdir} . "/include/asim/provides");
-    $status = system("mkdir -p " . ${swdir} . "/include/asim/restricted");
+
+    $sys_status |= __make_dirs($root, $swdir);
+    $sys_status |= system("mkdir -p " . ${swdir} . "/include/asim/provides");
+    $sys_status |= system("mkdir -p " . ${swdir} . "/include/asim/restricted");
+
+
+    if ($sys_status != 0) {
+      print "Directory creation failed somewhere in $builddir\n";
+      return 0;
+    }
+
     return 1;
 }
 
@@ -339,19 +380,23 @@ sub __make_dirs {
     my $parent_dir = shift;
 
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
+    my $sys_status = 0;
+
     if (HAsim::Build::is_synthesis_boundary($module)) {
-	$status = system("mkdir -p $my_dir");
+	$sys_status |= system("mkdir -p $my_dir");
+
         my $bdir = HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir);
-        $status = system("mkdir -p " . $bdir);
-    } 
-    
+        $sys_status |= system("mkdir -p " . $bdir);
+    }
+
     ## recurse
     HAsim::Build::check_submodules_defined($module);
+
     foreach my $child ($module->submodules()) {
-        __make_dirs($child, $my_dir);
+        $sys_status |= __make_dirs($child, $my_dir);
     }
-    
-    return 1;
+
+    return $sys_status;
 }
 
 ############################################################

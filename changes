@@ -12868,3 +12868,24 @@ Directory tools/scripts
 Propagate error status up to main from the action routines and exit 
 with proper process exit status for: run, build, setup, nuke and 
 partially for configure. 
+
+----------
+mcadler     Date: Tue May 27 16:52:25 EDT 2008  CSN: CSN-hasim-430
+                  Tue May 27 20:52:25 UTC 2008
+
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          429 
+
+Directory modules/hasim/controller/central_controllers/module
+ module-controller-streams.dic Locally Modified          429 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.awb Locally Modified          429 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
+ vmh-memory.awb            Locally Modified          429 
+
+- VMH start address remains 0x1000 (now passed as an awb parameter)
+- Fix heartbeat cycle printing for cycles >= 2^32
+- Make the functional cache 32x larger since there is room on the LX110T.

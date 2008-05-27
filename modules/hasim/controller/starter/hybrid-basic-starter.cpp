@@ -6,6 +6,8 @@
 #include "asim/rrr/service_ids.h"
 #include "asim/provides/command_switches.h"
 
+#include "asim/ioformat.h"
+
 #define SERVICE_ID  STARTER_SERVICE_ID
 
 // TEMPORARY: cheat and assign client method IDs
@@ -115,20 +117,20 @@ STARTER_CLASS::Request(
             {
                 next_progress_msg_cycle += globalArgs->ProgressMsgInterval();
 
-                if ((fpga_cycles - fpga_start_cycle) == 0)
+                cout << "[" << setw(13) << fpga_cycles
+                     << "]: controller: model cycles completed: "
+                     << setw(10) << model_cycles;
+
+                if ((fpga_cycles - fpga_start_cycle) != 0)
                 {
-                    fprintf(stdout, "[%12u]: controller: model cycles completed: %9u\n",
-                            fpga_cycles,
-                            model_cycles);
+                    cout << " (FMR="
+                         << IoFormat::fmt(".1f", 
+                                (double)(fpga_cycles - fpga_start_cycle) /
+                                  (double)(model_cycles - model_start_cycle))
+                         << ")";
                 }
-                else
-                {
-                    fprintf(stdout, "[%12u]: controller: model cycles completed: %9u (FMR=%.1f)\n",
-                            fpga_cycles,
-                            model_cycles,
-                            (double)(fpga_cycles - fpga_start_cycle) /
-                              (double)(model_cycles - model_start_cycle));
-                }
+
+                cout << endl;
             }
             fflush(stdout);
             break;

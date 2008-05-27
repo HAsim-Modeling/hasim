@@ -8,3 +8,5 @@
 %sources -v PRIVATE  vmh-memory.cpp
 %sources -v PRIVATE  vmh-utils.cpp
 %sources -v PRIVATE  vmh-utils.h
+
+%param PROGRAM_START_ADDR 4096          "Address where model should start fetching"

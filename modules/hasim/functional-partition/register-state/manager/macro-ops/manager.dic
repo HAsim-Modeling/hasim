@@ -4,5 +4,7 @@ def ASSERTIONS.REGMANAGER.STORE_ON_NONSTORE        "FUNCP: Regstate: Told to do 
 def ASSERTIONS.REGMANAGER.COMMIT_STORE_ON_NONSTORE "FUNCP: Regstate: Told to commit a store which was not a store!";
 def ASSERTIONS.REGMANAGER.UNEXPECTED_REG_UPDATE    "FUNCP: Regstate: Got a register update from software at an unexpected time!";
 def ASSERTIONS.REGMANAGER.UNEXPECTED_EMULATION_FINISHED "FUNCP: Regstate: Got an emmulation finished message from software at an unexpected time!";
+def ASSERTIONS.REGMANAGER.EMULATED_INSTR_HAS_DST   "FUNCP: Regstate: Emulated instructions may not have destination registers!";
+def ASSERTIONS.REGMANAGER.INVALID_NUM_DSTS         "FUNCP: Regstate: Instruction has more destinations than ISA definition claims!";
 
 def STATS.REGMANAGER.EMULATED_INSTRS    "FUNCP: Emulated Instructions";

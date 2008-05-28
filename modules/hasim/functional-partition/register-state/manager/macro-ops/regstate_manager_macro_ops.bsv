@@ -326,6 +326,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Assertion assertCommitedStoreIsActuallyAStore <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_COMMIT_STORE_ON_NONSTORE, ASSERT_WARNING);
     Assertion assertRegUpdateAtExpectedTime       <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_REG_UPDATE, ASSERT_WARNING);
     Assertion assertEmulationFinishedAtExpectedTime <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_EMULATION_FINISHED, ASSERT_WARNING);
+    Assertion assertEmulatedInstrNoDsts           <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_EMULATED_INSTR_HAS_DST, ASSERT_ERROR);
+    Assertion assertInvalidNumDsts                <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_INVALID_NUM_DSTS, ASSERT_ERROR);
 
     // ***** Statistics ***** //
 
@@ -584,16 +586,23 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         // Use a for-loop to fill in the architectural dests.
 
+        Integer true_n_dsts = 0;        
+
         for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
         begin
           // Get the architectural dst from the ISA.
           let arc_dst = isaGetDst(inst, x);
           // Update the vectors.
           arc_dsts[x] = arc_dst;
-          map_dsts[x] = case (arc_dst) matches
-                           tagged Invalid:  tagged Invalid;
-                           tagged Valid .r: tagged Valid tuple2(r, new_preg); //This could be overwritten by the next stage.
-                       endcase;
+          if (arc_dst matches tagged Valid .r)
+          begin
+              map_dsts[x] = tagged Valid tuple2(r, new_preg); //This could be overwritten by the next stage.
+              true_n_dsts = true_n_dsts + 1;
+          end
+          else
+          begin
+              map_dsts[x] = tagged Invalid;
+          end
         end
 
         // Unfortunately we can only record one physical dest here, since we only got one from
@@ -646,7 +655,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
         if (isaIsStore(inst))
             tokScoreboard.setStoreType(tok.index, isaStoreType(inst));
             
-        tokScoreboard.setEmulation(tok.index, isaEmulateInstruction(inst));
+        let is_emulated = isaEmulateInstruction(inst);
+        tokScoreboard.setEmulation(tok.index, is_emulated);
 
         // Make a snapshot for branches.
         // Note that there is an implicit assumption here that no branch instruction has more than one destination.  
@@ -678,6 +688,9 @@ module [HASim_Module] mkFUNCP_RegStateManager
         
         let num_dsts = isaGetNumDsts(inst);
         
+        assertInvalidNumDsts(num_dsts >= true_n_dsts);
+        assertEmulatedInstrNoDsts((num_dsts == 0) || ! is_emulated);
+
         if (num_dsts <= 1)
         begin
 

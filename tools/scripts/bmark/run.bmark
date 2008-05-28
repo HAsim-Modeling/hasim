@@ -10,6 +10,7 @@ use Getopt::Long qw(:config no_auto_abbrev no_ignore_case pass_through);
 ## Benchmark run script
 ##
 
+sub ExecModel($);
 sub Exec($$);
 sub ReadConfig($);
 
@@ -127,6 +128,11 @@ else {
     $showfp = 'none';
 }
 
+if ($config{feeder} eq 'm5') {
+    # Tell m5 to be quiet
+    $config{feedFlags} = "--quiet " . $config{feedFlags};
+}
+
 my $feedFlags = "${funcpPrefix} $config{feedFlags} ${funcpSuffix}";
 
 my $cmd = "$config{modelDir}/$config{model} --modeldir=$config{modelDir} --workload=$config{workload} --showfp=${showfp} --funcp=\"${feedFlags}\" $config{genFlags}";
@@ -166,13 +172,9 @@ if ($mType == $MODEL_FPGA) {
 }
 
 # Run the software side or a hardware simulator
+my $run_status = 0;
 if ($config{isHybridModel} || ($mType != $MODEL_FPGA)) {
-    if ($gdb) {
-        system("gdb -args ${cmd}");
-    }
-    else {
-        system("${cmd} | tee @BENCHMARK@.@ISA@.out");
-    }
+    $run_status = ExecModel($cmd);
 }
 
 # Create a stats file for null workloads to make regression.launcher happy (HACK)
@@ -189,7 +191,7 @@ if (($mType == $MODEL_FPGA) && ! $noProgram && ! $noReserve) {
 }
 
 # Done.
-exit(0);
+exit($run_status);
 
 
 sub ErrorExit($) {
@@ -202,6 +204,66 @@ sub ErrorExit($) {
     }
 
     exit(1);
+}
+
+
+##
+## ExecModel --
+##   This is the routine that actually invokes the model.  stdout and stderr
+##   are logged in a file.  The return value is the exit status of the model.
+##
+sub ExecModel($) {
+    my $cmd = shift;
+
+    if ($gdb) {
+        ## gdb needs stdin.  Just use system() and don't do logging.
+        system("gdb -args " . $cmd);
+        return 0;
+    }
+
+    if (! open(P, "${cmd} 2>&1 |")) {
+        print STDERR "Error running command: ${cmd}\n";
+        return 2;
+    }
+
+    if (! open(LOG, ">@BENCHMARK@.@ISA@.out")) {
+        print STDERR "Error opening log file @BENCHMARK@.@ISA@.out\n";
+    }
+
+    while (1) {
+        my $buf;
+        my $n = sysread(P, $buf, 4096);
+
+        last if ($n == 0);
+
+        syswrite(STDOUT, $buf);
+        syswrite(LOG, $buf);
+    }
+
+    close(LOG);
+
+    my $status = 0;
+
+    my $close_ok = close(P);
+
+    if ($? == -1) {
+        print STDERR "Model execution failed\n";
+        $status = 1;
+    }
+    elsif ($? & 127) {
+        print STDERR "Child died with signal " . ($? & 127) . ", " . (($? & 128) ? 'with' : 'without') . " coredump\n";
+        $status = 1;
+    }
+    elsif (($? >> 8) != 0) {
+        $status = $? >> 8;
+        print "Model exited with status $status\n";
+    }
+    elsif (! $close_ok) {
+        print STDERR "Model pipe operation failed\n";
+        $status = 1;
+    }
+
+    return $status;
 }
 
 

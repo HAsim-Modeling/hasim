@@ -99,7 +99,7 @@ STARTER_CLASS::Request(
             cout << "done." << endl;
             printf("         elapsed (wall-clock) time = %.4f seconds.\n", elapsed);
 
-            CallbackExit(0);
+            CallbackExit(success == 0);
             break;
 
         case METHOD_ID_HEARTBEAT:

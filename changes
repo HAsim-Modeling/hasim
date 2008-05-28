@@ -12912,3 +12912,25 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 
 
 Temporary fix for mips. Correct and works but probably will have to do a major cleaning up soon.
+
+----------
+mcadler     Date: Wed May 28 11:55:22 EDT 2008  CSN: CSN-hasim-433
+                  Wed May 28 15:55:22 UTC 2008
+
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          432 
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          432 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          432 
+ manager.dic               Locally Modified          432 
+
+- Pass exit status out of run script so regressions see model exit status
+- Make m5 quieter
+- Add two assertions to the model:
+  - The true number of destination regs must be <= the claimed max. destinations
+    for the opcode.
+  - Emulated instructions must have 0 destinations.

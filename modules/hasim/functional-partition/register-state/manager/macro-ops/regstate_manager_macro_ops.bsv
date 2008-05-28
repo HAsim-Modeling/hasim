@@ -1159,35 +1159,38 @@ module [HASim_Module] mkFUNCP_RegStateManager
     //                  an instruction can have, minus one. (The one we wrote back
     //                  in getResult4.)
     
-    rule getResult4AdditionalWriteback (execWritebackMore &&& execWritebackValues[execWritebackNum] matches tagged Valid {.dst, .val});
+    if(valueOf(ISA_MAX_DSTS) > 1)
+    begin
+        rule getResult4AdditionalWriteback (execWritebackMore &&& execWritebackValues[execWritebackNum] matches tagged Valid {.dst, .val});
     
-      // Do the writeback.
-      prf.write(dst, val);
-      prfValids[dst] <= True;
-      execWritebackValues[execWritebackNum] <= tagged Invalid;
+            // Do the writeback.
+            prf.write(dst, val);
+            prfValids[dst] <= True;
+            execWritebackValues[execWritebackNum] <= tagged Invalid;
 
-      funcpDebug($fwrite(debugLog, "getResults4AdditionalWriteback: Writing (PR%0d <= 0x%x)", dst, val));
+            funcpDebug($fwrite(debugLog, "getResults4AdditionalWriteback: Writing (PR%0d <= 0x%x)", dst, val));
 
-      execWritebackNum <= execWritebackNum + 1;
+            execWritebackNum <= execWritebackNum + 1;
       
-      // When the last rule fires it also finishes up the macro-op.
-      if(execWritebackNum == fromInteger(valueOf(ISA_MAX_DSTS) - 2))
-      begin
+            // When the last rule fires it also finishes up the macro-op.
+            if(execWritebackNum == fromInteger(valueOf(ISA_MAX_DSTS) - 2))
+            begin
       
-          // We're done.
-          execWritebackMore <= False;
+                // We're done.
+                execWritebackMore <= False;
       
-          // Log it.
-          funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Additonal writebacks complete.", execWritebackTok.index));
+                // Log it.
+                funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Additonal writebacks complete.", execWritebackTok.index));
 
-          // Update scoreboard.
-          tokScoreboard.exeFinish(execWritebackTok.index);
+                // Update scoreboard.
+                tokScoreboard.exeFinish(execWritebackTok.index);
           
-          // Return to timing model. End of macro-operation (path 2).
-          linkGetResults.makeResp(tuple2(execWritebackTok, execWritebackResult));
-      end
+                // Return to timing model. End of macro-operation (path 2).
+                linkGetResults.makeResp(tuple2(execWritebackTok, execWritebackResult));
+            end
     
-    endrule
+        endrule
+    end
 
     
     // ******* emulateInstruction ******* //

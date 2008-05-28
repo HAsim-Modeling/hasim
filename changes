@@ -12901,3 +12901,14 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 
 - Fixed bug for load reserve store conditional
 
+
+----------
+vmurali     Date: Wed May 28 10:40:55 EDT 2008  CSN: CSN-hasim-432
+                  Wed May 28 14:40:55 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          431 
+
+
+Temporary fix for mips. Correct and works but probably will have to do a major cleaning up soon.

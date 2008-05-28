@@ -234,6 +234,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Reg#(Bool) synchronizingRegs <- mkReg(False);
     // Which register are we currently synchronizing?
     Reg#(Bit#(rname_SZ)) synchronizingCurReg <- mkReg(minBound);
+
+    Reg#(Bit#(TLog#(ISA_MAX_DSTS))) execWritebackNum <- mkRegU();
             
     // We are only ready to go if we are neither rewinding, initializing, nor emulating
     let ready = !rewinding && !initializing && !emulatingInstruction;
@@ -1127,9 +1129,9 @@ module [HASim_Module] mkFUNCP_RegStateManager
             // Marshall up the values for writeback.
 
             Vector#(TSub#(ISA_MAX_DSTS, 1), Maybe#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE))) remaining_values = newVector();
-            for (Integer x = 0; x < valueof(ISA_MAX_DSTS) - 1; x = x + 1)
+            for (Integer x = 1; x < valueof(ISA_MAX_DSTS) ; x = x + 1)
             begin
-                remaining_values[x] = case (dsts[x]) matches
+                remaining_values[x-1] = case (dsts[x]) matches
                                          tagged Invalid:  tagged Invalid;
                                          tagged Valid .d:
                                            case (wbvals[x]) matches 
@@ -1143,6 +1145,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             execWritebackValues   <= remaining_values;
             execWritebackResult <= res;
             execWritebackTok <= tok;
+            execWritebackNum <= 0;
         end
       
     endrule
@@ -1156,38 +1159,35 @@ module [HASim_Module] mkFUNCP_RegStateManager
     //                  an instruction can have, minus one. (The one we wrote back
     //                  in getResult4.)
     
-    for (Integer x = 0; x < (valueOf(ISA_MAX_DSTS) - 1); x = x + 1)
-    begin
+    rule getResult4AdditionalWriteback (execWritebackMore &&& execWritebackValues[execWritebackNum] matches tagged Valid {.dst, .val});
     
-      rule getResult4AdditionalWriteback (execWritebackMore &&& execWritebackValues[x] matches tagged Valid {.dst, .val});
-      
-        // Do the writeback.
-        prf.write(dst, val);
-        prfValids[dst] <= True;
-        execWritebackValues[x] <= tagged Invalid;
+      // Do the writeback.
+      prf.write(dst, val);
+      prfValids[dst] <= True;
+      execWritebackValues[execWritebackNum] <= tagged Invalid;
 
-        funcpDebug($fwrite(debugLog, "getResults4AdditionalWriteback: Writing (PR%0d <= 0x%x)", dst, val));
-        
-        // When the last rule fires it also finishes up the macro-op.
-        
-        if (x == 0)
-        begin
-            // We're done.
-            execWritebackMore <= False;
-        
-            // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Additonal writebacks complete.", execWritebackTok.index));
+      funcpDebug($fwrite(debugLog, "getResults4AdditionalWriteback: Writing (PR%0d <= 0x%x)", dst, val));
 
-            // Update scoreboard.
-            tokScoreboard.exeFinish(execWritebackTok.index);
-            
-            // Return to timing model. End of macro-operation (path 2).
-            linkGetResults.makeResp(tuple2(execWritebackTok, execWritebackResult));
-        end
+      execWritebackNum <= execWritebackNum + 1;
       
-      endrule
+      // When the last rule fires it also finishes up the macro-op.
+      if(execWritebackNum == fromInteger(valueOf(ISA_MAX_DSTS) - 2))
+      begin
+      
+          // We're done.
+          execWritebackMore <= False;
+      
+          // Log it.
+          funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Additonal writebacks complete.", execWritebackTok.index));
+
+          // Update scoreboard.
+          tokScoreboard.exeFinish(execWritebackTok.index);
+          
+          // Return to timing model. End of macro-operation (path 2).
+          linkGetResults.makeResp(tuple2(execWritebackTok, execWritebackResult));
+      end
     
-    end
+    endrule
 
     
     // ******* emulateInstruction ******* //

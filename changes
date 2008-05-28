@@ -12889,3 +12889,15 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
 - VMH start address remains 0x1000 (now passed as an awb parameter)
 - Fix heartbeat cycle printing for cycles >= 2^32
 - Make the functional cache 32x larger since there is room on the LX110T.
+
+----------
+vmurali     Date: Tue May 27 21:31:12 EDT 2008  CSN: CSN-hasim-431
+                  Wed May 28 01:31:12 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          430 
+
+
+- Fixed bug for load reserve store conditional
+

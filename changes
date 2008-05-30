@@ -13007,3 +13007,18 @@ Directory .
     - <module> and <param name> should be all capital letters
     - The Param interface has a _read method so you can get a parameter value
       just by using the object name.  There is intentionally no write method.
+
+----------
+mcadler     Date: Fri May 30 18:17:10 EDT 2008  CSN: CSN-hasim-435
+                  Fri May 30 22:17:10 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          433 
+
+Get rid of the warnings about conflicting writes to the prfValids vector
+by adding an execution_order pragma.  According to Bluespec this does not
+affect the scheduler.  It only affects the priority encoder for outputs
+of a cycle.  When the warning is printed the compiler picks a priority
+anyway, so there is no problem using the pragma.  There is a longer
+discussion at http://bluespec.com/forum/viewtopic.php?p=281

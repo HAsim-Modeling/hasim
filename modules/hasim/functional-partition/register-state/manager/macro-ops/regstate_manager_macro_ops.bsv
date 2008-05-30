@@ -729,7 +729,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   When an instruction in the previous stage had more than one destination.
     // Effect: Keep allocating destinations until you've got them all.
     
-     rule getDependencies2AdditonalMappings (!initializing &&& finishDeps matches tagged Valid {.tok, .num, .map_srcs, .map_dsts, .phy_regs_to_free});
+     rule getDependencies2AdditionalMappings (!initializing &&& finishDeps matches tagged Valid {.tok, .num, .map_srcs, .map_dsts, .phy_regs_to_free});
       
         // Get the new phys reg.
         let phy_dst <- freelist.forwardResp();
@@ -1202,6 +1202,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
                 linkGetResults.makeResp(tuple2(execWritebackTok, execWritebackResult));
             end
     
+        endrule
+    end
+    else
+    begin
+        //
+        // Dummy rule to keep execution_order pragma below happy
+        //
+        rule getResult4AdditionalWriteback (True);
         endrule
     end
 
@@ -1960,7 +1968,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
     
     // Do not change the following lines unless you understand all this and have a good reason.
 
-    (* descending_urgency= "rewindToTokenSlow2, rewindToTokenSlow1, rewindToToken2, rewindToToken1, commitStores, commitResults2, commitResults1, doStores3ReadModifyWrite, doStores3, doStores2, doStores1, doLoads3, doLoads2, doLoads1, getResults4, getResults3, getResults2StallEnd, getResults2, getResults1, getDependencies2AdditonalMappings, getDependencies2, getDependencies1, getInstruction2, getInstruction1, newInFlight" *)
+    (* descending_urgency= "rewindToTokenSlow2, rewindToTokenSlow1, rewindToToken2, rewindToToken1, commitStores, commitResults2, commitResults1, doStores3ReadModifyWrite, doStores3, doStores2, doStores1, doLoads3, doLoads2, doLoads1, getResults4, getResult4AdditionalWriteback, getResults3, getResults2StallEnd, getResults2, getResults1, getDependencies2AdditionalMappings, getDependencies2, getDependencies1, getInstruction2, getInstruction1, newInFlight, emulateInstruction2_UpdateReg" *)
+
+    // The execution_order pragma doesn't affect the schedule but does get rid of
+    // compiler warnings caused by the appearance of multiple writers to the
+    // prfvalids vector.  According to Bluespec the order here affects the
+    // priority encoder within a cycle but not the scheduling rules.
+
+    (* execution_order = "getResults4, getResult4AdditionalWriteback, getDependencies2AdditionalMappings, getDependencies2" *)
 
     rule rewindToTokenSlow2 (True);
 

@@ -16,14 +16,17 @@ import FIFOF::*;
 
 // Project foundation imports.
 
-`include "hasim_common.bsh"
-`include "soft_connections.bsh"
-`include "fpga_components.bsh"
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/hasim_modellib.bsh"
+`include "asim/provides/soft_connections.bsh"
+`include "asim/provides/fpga_components.bsh"
 
 // The memory virtual device
 
-`include "funcp_base_types.bsh"
-`include "funcp_memory.bsh"
+`include "asim/provides/funcp_base_types.bsh"
+`include "asim/provides/funcp_memory.bsh"
+
+`include "asim/dict/PARAMS_FUNCP_MEMSTATE_CACHE.bsh"
 
 // mkFUNCP_Cache
 
@@ -70,6 +73,9 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
   Reg#(Bool)      invalidating_all <- mkReg(False);
   Reg#(CACHE_IDX) invalidate_iter  <- mkReg(0);
 
+  Param#(1) enableCacheParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_ENABLE_FUNCP_MEM_CACHE);
+  function Bool enableCache() = (enableCacheParam == 1);
+
   // ***** Rules ***** //
 
   // handleLoad1
@@ -107,7 +113,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
     let val <- cache_data.read_resp();
     
     // Is it a hit?
-    if (mtag matches tagged Valid .tag &&& tag == cacheTag(addr))
+    if (enableCache &&& mtag matches tagged Valid .tag &&& tag == cacheTag(addr))
     begin
         // It's a hit, return the value.
         link_memstate.makeResp(val);

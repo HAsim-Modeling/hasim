@@ -15,6 +15,7 @@ eval 'exec perl -w "$0" ${1+"$@"}'
 use File::Basename;
 use File::Spec;
 use Getopt::Long;
+use IO::File;
 
 use Asim;
 use AsimShell;
@@ -26,6 +27,12 @@ use Data::Dumper;
 use warnings;
 use strict;
 
+
+##
+## Dynamic param arrays are initialized by make_bsvfiles() and used later
+##
+my %dynamic_params;
+my %all_params;
 
 
 ############################################################
@@ -422,18 +429,157 @@ sub __make_wrappers {
 }
 
 ############################################################
+# init_sim_config_file:  Create and write header to sim_config.h
+sub init_sim_config_file($)
+{
+    my $sconfig = shift;
+    my $sim_config = new IO::File($sconfig, 'w') or
+        die("Failed to create $sconfig");
+
+    $sim_config->print("//\n");
+    $sim_config->print("// Synthesized header file for module parameters\n");
+    $sim_config->print("//\n");
+    $sim_config->print("//   This file was created by " . basename($0) . "\n");
+    $sim_config->print("//\n");
+    $sim_config->print("\n");
+
+    $sim_config->print("#ifndef Register\n");
+    $sim_config->print("#define Register(NAME,DESC,TYPE,VAR,VAL)\n");
+    $sim_config->print("#endif\n\n");
+
+    $sim_config->print("#ifndef Declare\n");
+    $sim_config->print("#define Declare(DECL)\n");
+    $sim_config->print("#endif\n\n");
+
+    $sim_config->print("#ifndef RegisterDyn\n");
+    $sim_config->print("#define RegisterDyn(NAME,DESC,TYPE,VAR)\n");
+    $sim_config->print("#endif\n\n");
+
+    $sim_config->print("#ifndef RegisterDynDict\n");
+    $sim_config->print("#define RegisterDynDict(VAR,DICT_ENTRY)\n");
+    $sim_config->print("#endif\n\n");
+
+    return $sim_config;
+}
+
+############################################################
+# dyn_params:  set up include files for parameter registration
+sub dyn_params()
+{
+    ##
+    ## Add some include files needed for parameter registration
+    ##
+    foreach my $fname ('config.h', 'param.h') {
+        my $base;
+        if ($fname eq 'config.h') {
+            $base = `awb-resolver base/hasim-$fname`;
+        }       
+        else {
+            $base = `awb-resolver base/$fname`;
+        }
+        chomp($base);
+        if ($base ne '') {
+            system("ln -f -s $base " . HAsim::Util::path_append($builddir, "sw/include/asim", $fname));
+        }
+    }
+
+    my $base_dir = HAsim::Util::path_append($builddir,"sw/model");
+    my $base = `awb-resolver base/hasim-config.cpp`;
+    chomp($base);
+    if ($base ne '') {
+        system("ln -f -s $base ${base_dir}/config.cpp");
+    }
+
+    ##
+    ## Dynamic params
+    ##
+    open(PARAM, ">$base_dir/dynamic_params.cpp") or die("Failed to create $base_dir/dynamic_params.cpp");
+    print PARAM "//\n";
+    print PARAM "// Synthesized dynamic parameter manager\n";
+    print PARAM "//\n";
+    print PARAM "//   This file was created by " . basename($0) . "\n";
+    print PARAM "//\n";
+    print PARAM "\n";
+
+    print PARAM "#include \"asim/param.h\"\n";
+    print PARAM "#include \"asim/atoi.h\"\n\n";
+
+    foreach my $param (sort keys(%dynamic_params)) {
+        print PARAM "$dynamic_params{$param}[2] ${param} = $dynamic_params{$param}[1];\n";
+    }
+
+    print PARAM "\n";
+    print PARAM "bool SetParam(char *name, char *value)\n";
+    print PARAM "{\n";
+    print PARAM "    bool found = true;\n";
+
+    my $first = 1;
+    foreach my $param (sort keys(%dynamic_params)) {
+        if ($first) {
+            $first = 0;
+            print PARAM "    ";
+        }
+        else {
+            print PARAM "    else ";
+        }
+        print PARAM "if (strcasecmp(name, \"${param}\") == 0) {\n";
+        if ($dynamic_params{$param}[2] eq "std::string") {
+            print PARAM "        ${param} = value;\n";
+        }
+        else {
+            print PARAM "        ${param} = atoi_general_unsigned(value);\n";
+        }
+        print PARAM "    }\n";
+    }
+
+    if ($first) {
+        print PARAM "    found = false;\n";
+    }
+    else {
+        print PARAM "    else {\n        found = false;\n    }\n";
+    }
+
+    print PARAM "    return found;\n";
+    print PARAM "}\n\n";
+
+    print PARAM "void ListParams(void)\n";
+    print PARAM "{\n";
+    foreach my $param (sort keys(%dynamic_params)) {
+        my $value = $dynamic_params{$param}[1];
+        $value =~ s/"/\\"/g;
+        print PARAM "    cout << \"    ${param}\ = \" << ${param} << endl;\n";
+    }
+    print PARAM "}\n";
+
+    close(PARAM);
+}
+
+############################################################
 # make_bsvfiles: Make asim metatype bsv files
 sub make_bsvfiles {
     my $model = shift;
     my $root = $model->modelroot();
 
     if (!defined($builddir)) {
-      $builddir = $model->build_dir();
+        $builddir = $model->build_dir();
     }
+
+    ##
+    ## Parameters are all described in a sim_config.h so they can be written
+    ## to the stats file.
+    ##
+    my $sim_config = init_sim_config_file(HAsim::Util::path_append($builddir,"sw/include/asim/provides/sim_config.h"));
+
     __make_bsvfiles($root,
+                    $sim_config,
                     HAsim::Util::path_append($builddir,"hw"),
                     HAsim::Util::path_append($builddir,"hw/include/asim/provides"),
                     HAsim::Util::path_append($builddir,"sw/include/asim/provides"));
+
+    $sim_config->close();
+
+    dyn_params();
+
     return 1;
 }
 
@@ -441,6 +587,7 @@ sub make_bsvfiles {
 # __make_bsvfiles: Recursively make asim metatype bsv files
 sub __make_bsvfiles {
     my $module = shift;
+    my $sim_config = shift;
     my $parent_dir = shift;
     my $hw_inc_dir = shift;
     my $sw_inc_dir = shift;
@@ -458,9 +605,12 @@ sub __make_bsvfiles {
     ##
 
     my $provides = $module->provides();
+    my $description = $module->description();
     my $bshfile = HAsim::Util::path_append($hw_inc_dir,"$provides.bsh");
     my $bsvfile = HAsim::Util::path_append($my_dir,"$provides.bsv");
     my $hfile   = HAsim::Util::path_append($sw_inc_dir,"$provides.h");
+
+    $sim_config->print("Register(\"Module_${provides}\",\"provides ${provides} (${description})\",UINT64,module_${provides},true)\n");
 
     CORE::open(BSHFILE, ">$bshfile");
 
@@ -542,10 +692,42 @@ sub __make_bsvfiles {
     push(@p, $module->parameters());
 
     foreach my $p (@p) {
-      my $pname = $p->name();
-      my $pvalue = $p->value();
+        my $pname = $p->name();
+        my $pvalue = $p->value();
       
-      print HFILE "#define $pname $pvalue\n";
+        if (! $p->isString() && ! $p->isInt()) {
+            # Unknown parameter type
+            print HFILE "#define $pname $pvalue\n";
+            if ($p->dynamic()) {
+                print STDERR "Dynamic parameter $provides $pname must be string or integer\n";
+                exit(1);
+            }
+        }
+        else {
+            if (exists($all_params{$pname})) {
+                print STDERR "Parameter $pname is defined twice ($all_params{$pname} and $provides)\n";
+                exit(1);
+            }
+            $all_params{$pname} = $provides;
+
+            my $type = $p->isInt() ? "UINT64" : "std::string";
+
+            if (! $p->dynamic()) {
+                print HFILE "#define $pname $pvalue\n";
+                $sim_config->print("Register(\"Param_${pname}\",\"parameter ${pname}\",${type},param_${pname},${pvalue})\n");
+            }
+            else {
+                print HFILE "extern ${type} ${pname};\n";
+
+                $sim_config->print("Declare(extern ${type} ${pname})\n");
+                $sim_config->print("RegisterDyn(\"Param_${pname}\",\"(dynamic) parameter ${pname}\",${type},${pname})\n");
+                if ($p->isInt()) {
+                    $sim_config->print("RegisterDynDict(${pname},PARAMS_" . uc($safe_provides) . "_" . uc($pname) . ")\n");
+                }
+
+                $dynamic_params{$pname} = [$safe_provides, $pvalue, $type, $p->description()];
+            }
+        }
     }
     print HFILE "\n";
 
@@ -568,7 +750,7 @@ sub __make_bsvfiles {
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-	__make_bsvfiles($child, $my_dir, $hw_inc_dir, $sw_inc_dir);
+	__make_bsvfiles($child, $sim_config, $my_dir, $hw_inc_dir, $sw_inc_dir);
     }
 
     return 1;
@@ -948,6 +1130,7 @@ sub generate_makefile_sub {
     
     my $replacements_r = HAsim::Util::empty_hash_ref();
     HAsim::Util::common_replacements($model, $replacements_r);
+
     note_builddir($replacements_r);
     __generate_makefile_sub($model, $model->modelroot(), "hw",
                             HAsim::Build::get_scons_root_template($model, "hw"),
@@ -1011,6 +1194,12 @@ sub __generate_makefile_sub {
 
     ## FOR BOTH SYNTH & NON_SYNTH
     ## @BSVS@ & @SRCS@ @CSRCS@
+
+    if ($model->modelroot() == $module) {
+        # At top level add a few CPP files automatically provided for the model
+        HAsim::Util::hash_append($current_replacements_r, " ", '@CSRCS@', "config.cpp");
+        HAsim::Util::hash_append($current_replacements_r, " ", '@CSRCS@', "dynamic_params.cpp");
+    }
 
     my $deps = "";
     my $mod_bsv = $module->provides() . ".bsv";
@@ -1233,6 +1422,7 @@ sub make_iface {
     HAsim::Util::common_replacements($model, $replacements_r);
     note_builddir($replacements_r);
 
+    HAsim::Util::hash_set($replacements_r, '@DICT_SRCS@', "src/dict/dynamic_params.dic");
     HAsim::Util::hash_set($replacements_r, '@ROOT_DIR_SW_INC@', "../sw/include");
 
     my $dict_src_dir = HAsim::Util::path_append($dir, "src/dict");
@@ -1242,6 +1432,26 @@ sub make_iface {
     my $rrr_src_dir = HAsim::Util::path_append($dir, "src/rrr");
     $status = system("mkdir -p " . $rrr_src_dir);
     make_rrr($model, $rrr_src_dir, $replacements_r);
+
+    ##
+    ## Build the dynamic parameter dictionary
+    ##
+    my $params = HAsim::Util::path_append($builddir, "iface/src/dict/dynamic_params.dic");
+    open(PARAM, ">$params") or die("Failed to create $params");
+    print PARAM "//\n";
+    print PARAM "// Synthesized dynamic parameter manager\n";
+    print PARAM "//\n";
+    print PARAM "//   This file was created by " . basename($0) . "\n";
+    print PARAM "//\n";
+    print PARAM "\n";
+
+    foreach my $param (sort keys(%dynamic_params)) {
+        if ($dynamic_params{$param}[2] eq "UINT64") {
+            print PARAM "def PARAMS." . uc($dynamic_params{$param}[0]) . "." . uc($param) . " \"" . $dynamic_params{$param}[3] . "\";\n";
+        }
+    }
+
+    close(PARAM);
 
     my $scons = HAsim::Util::path_append($builddir, "iface", "SConstruct");
     HAsim::Templates::do_replacements($template, $scons, $replacements_r);

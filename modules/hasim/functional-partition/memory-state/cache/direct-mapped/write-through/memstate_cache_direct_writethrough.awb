@@ -1,24 +1,11 @@
-#/********************************************************************
-# *
-# * Awb module specification
-# *
-# *******************************************************************/
+%name Direct-Mapped Write-Through Cache
+%desc Direct-Mapped Write-Through Cache
 
-#/*
-# %AWB_START
-#
-# %name Direct-Mapped Write-Through Cache
-# %desc Direct-Mapped Write-Through Cache
-#
-# %provides funcp_memstate_cache
-#
-# %attributes hasim funcp memstate
-#
-# %public memstate_cache_direct_writethrough.bsv
-#
-#
-# %param CACHE_IDX_BITS 13 "Number of index bits, which also determines size of cache."
-#
-# %AWB_END
-# */
+%provides funcp_memstate_cache
 
+%attributes hasim funcp memstate
+
+%public memstate_cache_direct_writethrough.bsv
+
+%param --dynamic ENABLE_FUNCP_MEM_CACHE  1        "Enable the functional partition's memory cache"
+%param CACHE_IDX_BITS   13       "Number of index bits, which also determines size of cache."

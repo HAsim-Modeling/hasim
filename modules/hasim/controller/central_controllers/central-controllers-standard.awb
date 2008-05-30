@@ -1,24 +1,15 @@
-#/********************************************************************
-# *
-# * Awb module specification
-# *
-# *******************************************************************/
+%name Standard Central Controllers
+%desc Standard Central Controllers Grouping
+%provides central_controllers
 
-#/*
-# %AWB_START
-#
-# %name Standard Central Controllers
-# %desc Standard Central Controllers Grouping
-# %provides central_controllers
-#
-# %attributes hasim
-#
-# %requires module_controller
-# %requires events_controller
-# %requires stats_controller
-# %requires assertions_controller
-#
-# %sources -t H   -v PUBLIC  central-controllers-standard.h
-# %sources -t CPP -v PRIVATE central-controllers-standard.cpp
-# %sources -t BSV -v PUBLIC  central-controllers-standard.bsv
-#
+%attributes hasim
+
+%requires module_controller
+%requires events_controller
+%requires stats_controller
+%requires assertions_controller
+%requires params_controller
+
+%sources -v PUBLIC  central-controllers-standard.h
+%sources -v PRIVATE central-controllers-standard.cpp
+%sources -v PUBLIC  central-controllers-standard.bsv

@@ -7,6 +7,7 @@
 #include "asim/provides/events_controller.h"
 #include "asim/provides/stats_controller.h"
 #include "asim/provides/assertions_controller.h"
+#include "asim/provides/params_controller.h"
 
 
 typedef class CENTRAL_CONTROLLERS_CLASS* CENTRAL_CONTROLLERS;

@@ -1,0 +1,14 @@
+service PARAMS
+{
+    ##
+    ## Send one dynamic parameter ID and value to the hardware.  An ACK
+    ## with no value is returned iff the parameter ID is PARAMS_NULL.
+    ## This allows for sending an efficient stream of parameters with
+    ## synchronization at the end to guarnatee all parameters have been
+    ## received.
+    ##
+    server hw (bsv, connection) <- sw (cpp, method)
+    {
+        method sendParam(in UMF_UINT96[96] pname_and_pval, out UINT8[8] ack);
+    };
+};

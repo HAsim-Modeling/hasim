@@ -12934,3 +12934,76 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
   - The true number of destination regs must be <= the claimed max. destinations
     for the opcode.
   - Emulated instructions must have 0 destinations.
+
+----------
+mcadler     Date: Fri May 30 15:44:23 EDT 2008  CSN: CSN-hasim-434
+                  Fri May 30 19:44:23 UTC 2008
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          433 
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          433 
+
+Directory config/pm/hasim/submodels/controller
+ hybrid_standard_controller.apm Locally Modified          433 
+
+Directory modules/hasim/controller
+ controller-standard.cpp   Locally Modified          433 
+
+Directory modules/hasim/controller/command_switches
+ standard-command-switches.cpp Locally Modified          433 
+
+Directory modules/hasim/controller
+ controller-standard.awb   Locally Modified          433 
+ controller-standard.bsv   Locally Modified          433 
+
+Directory modules/hasim/controller/central_controllers
+ central-controllers-standard.h Locally Modified          433 
+ central-controllers-standard.awb Locally Modified          433 
+ central-controllers-standard.bsv Locally Modified          433 
+ params/                   Locally Added               0 
+
+Directory modules/hasim/controller/central_controllers/params
+ params-controller-hybrid.cpp Locally Added               0 
+ params-controller-hybrid.rrr Locally Added               0 
+ params-controller-hybrid.h Locally Added               0 
+ params-controller-hybrid.awb Locally Added               0 
+ params-controller-hybrid.bsv Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.awb Locally Modified          433 
+ memstate_cache_direct_writethrough.bsv Locally Modified          433 
+
+Directory modules/common/modellib
+ hasim_modellib.awb        Locally Modified          433 
+ modellib.dic              Locally Modified          433 
+ Params.bsv                Locally Added               0 
+
+Directory base
+ hasim-config.cpp          Locally Added               0 
+ hasim-config.h            Locally Added               0 
+
+Directory .
+ base/                     Locally Added               0 
+
+- Use a pseuty TTY for logging stdout/stderr in run.bmark.  This causes
+  both the timing model and Bluesim to use line buffered output.
+
+- Dynamic parameters now work in both hardware and software.  Parameters
+  are derived from awb --dynamic params.  Software parameters are just like
+  Asim.  Only integer parameters are supported in hardware.  At the beginning
+  of a run the software side streams all dynamic parameters through a ring
+  in the hardware.  Declare parameters in Bluespec with:
+
+    `include "asim/provides/hasim_modellib.bsh"
+    `include "asim/dict/PARAMS_<module>.bsh"
+    ...
+    Param#(<bits>) param <- mkDynamicParameter(`PARAMS_<module>_<param name>);
+
+  Notes:
+    - <bits> may be up to 64 bits
+    - <module> and <param name> should be all capital letters
+    - The Param interface has a _read method so you can get a parameter value
+      just by using the object name.  There is intentionally no write method.

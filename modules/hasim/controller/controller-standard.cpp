@@ -51,6 +51,9 @@ CONTROLLER_CLASS::Cleanup()
 int
 CONTROLLER_CLASS::Main()
 {
+    // Send all dynamic parameters to the hardware
+    PARAMS_CONTROLLER_CLASS::GetInstance()->SendAllParams();
+
     // send "start" signal to the hardware partition.
     starter->Run();
 

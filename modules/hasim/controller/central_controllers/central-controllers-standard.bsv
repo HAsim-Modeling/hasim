@@ -1,11 +1,12 @@
-`include "hasim_common.bsh"
-`include "soft_connections.bsh"
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/soft_connections.bsh"
 
-`include "streams.bsh"
-`include "stats_controller.bsh"
-`include "events_controller.bsh"
-`include "assertions_controller.bsh"
-`include "module_controller.bsh"
+`include "asim/provides/streams.bsh"
+`include "asim/provides/stats_controller.bsh"
+`include "asim/provides/events_controller.bsh"
+`include "asim/provides/assertions_controller.bsh"
+`include "asim/provides/params_controller.bsh"
+`include "asim/provides/module_controller.bsh"
 
 // control state
 typedef enum
@@ -24,6 +25,7 @@ interface CENTRAL_CONTROLLERS;
     interface EVENTS_CONTROLLER eventsController;
     interface STATS_CONTROLLER statsController;
     interface ASSERTIONS_CONTROLLER assertsController;
+    interface PARAMS_CONTROLLER paramsController;
 
 endinterface
 
@@ -41,10 +43,12 @@ module [HASim_Module] mkCentralControllers
     EVENTS_CONTROLLER     eventsCtrl  <- mkEventsController(link_streams);
     STATS_CONTROLLER      statsCtrl   <- mkStatsController();
     ASSERTIONS_CONTROLLER assertsCtrl <- mkAssertionsController();
+    PARAMS_CONTROLLER     paramsCtrl  <- mkParamsController();
 
     interface moduleController  = moduleCtrl;
     interface eventsController  = eventsCtrl;
     interface statsController   = statsCtrl;
     interface assertsController = assertsCtrl;
+    interface paramsController  = paramsCtrl;
 
 endmodule

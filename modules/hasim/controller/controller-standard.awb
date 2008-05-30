@@ -14,7 +14,6 @@
 %sources -t H   -v PUBLIC  controller-standard.h
 %sources -t CPP -v PRIVATE controller-standard.cpp
 
-%param --global HASIM_CONTROLLER_COOLDOWN 500 "Number of FPGA extra FPGA cycles to finish dumping stats/events"
 %param REGISTER_STREAMS 0 "Register with Streams Module"
 %param --global HEARTBEAT_TRIGGER_BIT 13 "Transitions of this bit in the model cycle counter trigger heartbeat messages"
 

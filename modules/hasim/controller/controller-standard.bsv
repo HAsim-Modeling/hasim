@@ -1,12 +1,13 @@
-`include "hasim_common.bsh"
-`include "soft_connections.bsh"
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/soft_connections.bsh"
 
-`include "central_controllers.bsh"
-`include "module_controller.bsh"
-`include "events_controller.bsh"
-`include "stats_controller.bsh"
-`include "assertions_controller.bsh"
-`include "starter.bsh"
+`include "asim/provides/central_controllers.bsh"
+`include "asim/provides/module_controller.bsh"
+`include "asim/provides/events_controller.bsh"
+`include "asim/provides/stats_controller.bsh"
+`include "asim/provides/params_controller.bsh"
+`include "asim/provides/assertions_controller.bsh"
+`include "asim/provides/starter.bsh"
 
 // control state
 typedef enum

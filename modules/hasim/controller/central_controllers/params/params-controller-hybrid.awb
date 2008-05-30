@@ -1,0 +1,11 @@
+%name Hybrid Dynamic Parameters Controller
+%desc Hybrid Dynamic Parameters Controller
+
+%provides params_controller
+
+%attributes hasim
+
+%sources -v PUBLIC  params-controller-hybrid.bsv
+%sources -v PUBLIC  params-controller-hybrid.h
+%sources -v PRIVATE params-controller-hybrid.cpp
+%sources -v PRIVATE params-controller-hybrid.rrr

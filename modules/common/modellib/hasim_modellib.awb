@@ -13,7 +13,7 @@
 #
 # %attributes hasim
 #
-# %public Events.bsv Stats.bsv Commands.bsv StatFIFO.bsv Ports.bsv
+# %public Events.bsv Stats.bsv Commands.bsv StatFIFO.bsv Ports.bsv Params.bsv
 # %sources -t DICT -v PUBLIC modellib.dic
 #
 # %param HASIM_EVENTS_SIZE 32 "Number of bits for Event parameter."

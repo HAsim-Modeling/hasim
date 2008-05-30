@@ -12,6 +12,7 @@
 #include "asim/syntax.h"
 #include "asim/mesg.h"
 #include "asim/trace.h"
+#include "asim/param.h"
 
 #include "asim/provides/command_switches.h"
 
@@ -36,9 +37,14 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
         OPT_NOSHOWFP,
         OPT_TR,
         OPT_WORKLOAD,
+        OPT_PARAM,
+        OPT_LISTPARAM,
     };
 
     int c;
+    char * name;
+    char * eq;
+    char * value;
 
     funcpArgc = 0;
 
@@ -57,6 +63,8 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
             {"noshowfp", no_argument, NULL, OPT_NOSHOWFP},
             {"tr", optional_argument, NULL, OPT_TR},
             {"workload", required_argument, NULL, OPT_WORKLOAD},
+            {"param", required_argument, NULL, OPT_PARAM},
+            {"listparam", no_argument, NULL, OPT_LISTPARAM},
             {0, 0, 0, 0}
         };
 
@@ -125,6 +133,37 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
 
           case OPT_WORKLOAD:
             workload = strdup(optarg);
+            break;
+
+          case OPT_PARAM:
+            name = strdup(optarg);
+            eq = index(name, '=');
+            if ( ! eq )
+            {
+                ASIMERROR("Invalid parameter specification in '"
+                          << "--param " << name << "'" << endl
+                          << "    Correct syntax: -param <name>=<value>" << endl);
+            }
+            else
+            {
+                value = eq + 1;
+                *eq = '\0';
+                if ( ! SetParam(name, value))
+                {
+                    *eq = '=';
+                    ASIMERROR("Don't know about dynamic parameter "
+                              << name << endl
+                              << "    ignoring command line portion '"
+                              << argv[0] << " " << argv[1]  << "'" << endl);
+                }
+                *eq = '=';
+            }
+            free(name);
+            break;
+
+          case OPT_LISTPARAM:
+            ListParams();
+            exit(0);
             break;
 
           case OPT_HELP:
@@ -304,6 +343,8 @@ GLOBAL_ARGS_CLASS::ShowArgsHelp(bool fromRunScript)
     fprintf(stderr, "   [--showfp[=gui|stdout|none]]\n");
     fprintf(stderr, "                           Front panel control: GUI, LEDs to stdout or none\n");
     fprintf(stderr, "   [--bluesim=\"<args>\"]    Arguments to Bluesim\n");
+    fprintf(stderr, "   [--listparam]           List dynamic parameters\n");
+    fprintf(stderr, "   [--param NAME=VALUE]    Set a dynamic parameter\n");
     fprintf(stderr, "   [--pc=interval]         Progress message (hearbeat) interval.\n");
     fprintf(stderr, "                           Messages are triggered by heartbeats that arrive\n");
     fprintf(stderr, "                           from the hardware side, so messages can be no more\n");

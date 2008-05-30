@@ -46,7 +46,6 @@ Packagehint=hasim
 File=modules/hasim/controller/local_controllers/module/local-controller-module-standard.awb
 Packagehint=hasim
 
-
 [Standard Local Controllers/Requires]
 module_local_controller=Hasim Module Local Controller
 
@@ -55,6 +54,7 @@ assertions_controller=Hybrid Assertions Controller
 module_controller=Module Controller
 events_controller=Hybrid Events Controller
 stats_controller=Hybrid Stats Controller
+params_controller=Hybrid Dynamic Parameters Controller
 
 [Standard Central Controllers]
 File=modules/hasim/controller/central_controllers/central-controllers-standard.awb
@@ -66,4 +66,8 @@ Packagehint=hasim
 
 [Standard Command Switches]
 File=modules/hasim/controller/command_switches/standard-command-switches.awb
+Packagehint=hasim
+
+[Hybrid Dynamic Parameters Controller]
+File=modules/hasim/controller/central_controllers/params/params-controller-hybrid.awb
 Packagehint=hasim

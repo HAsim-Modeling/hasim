@@ -5,6 +5,7 @@ eval 'exec perl -w "$0" ${1+"$@"}'
 use strict;
 use warnings;
 use Getopt::Long qw(:config no_auto_abbrev no_ignore_case pass_through);
+use IO::Pty;
 
 ##
 ## Benchmark run script
@@ -221,46 +222,72 @@ sub ExecModel($) {
         return 0;
     }
 
-    if (! open(P, "${cmd} 2>&1 |")) {
-        print STDERR "Error running command: ${cmd}\n";
-        return 2;
+    ##
+    ## Invoke the model, but log its output both to stdout and to a file.
+    ## Use a pty so the invoked program will use line buffering instead
+    ## of fully buffered writes.  (Libc sets up stdout line buffered when
+    ## it thinks it is writing to a terminal.  It uses fully buffered
+    ## writing to a pipe.)
+    ##
+
+    my $pty = new IO::Pty;
+    my $slave = $pty->slave();
+
+    my $pid = fork();
+    die "Couldn't fork: $!" unless defined $pid;
+
+    if (! $pid) {
+        # Child process is the monitoring process
+        $pty->make_slave_controlling_terminal();
+
+        if (! open(LOG, ">@BENCHMARK@.@ISA@.out")) {
+            print STDERR "Error opening log file @BENCHMARK@.@ISA@.out\n";
+        }
+
+        # Unbuffered I/O loop
+        while (1) {
+            my $buf;
+            my $n = sysread($slave, $buf, 4096);
+
+            last if ($n == 0);
+
+            syswrite(STDOUT, $buf);
+            syswrite(LOG, $buf);
+        }
+
+        close(LOG);
+        exit(0);
     }
 
-    if (! open(LOG, ">@BENCHMARK@.@ISA@.out")) {
-        print STDERR "Error opening log file @BENCHMARK@.@ISA@.out\n";
-    }
+    # Bind new PTY to STDOUT (but save old STDOUT)
+    $pty->close_slave();
+    open(my $oldOut, ">&", STDOUT) or die $!;
+    open(STDOUT, ">&", $pty) or die $!;
 
-    while (1) {
-        my $buf;
-        my $n = sysread(P, $buf, 4096);
+    # Run model
+    my $result = system("${cmd} 2>&1");
 
-        last if ($n == 0);
+    # Send ^d to end child logging thread
+    print "\cD";
 
-        syswrite(STDOUT, $buf);
-        syswrite(LOG, $buf);
-    }
+    # Return to normal STDOUT
+    close(STDOUT);
+    open(STDOUT, ">&", $oldOut) or die $!;
+    close($oldOut);
 
-    close(LOG);
-
+    # Compute exit status of model
     my $status = 0;
-
-    my $close_ok = close(P);
-
-    if ($? == -1) {
+    if ($result == -1) {
         print STDERR "Model execution failed\n";
         $status = 1;
     }
-    elsif ($? & 127) {
-        print STDERR "Child died with signal " . ($? & 127) . ", " . (($? & 128) ? 'with' : 'without') . " coredump\n";
+    elsif ($result & 127) {
+        print STDERR "Child died with signal " . ($result & 127) . ", " . (($result & 128) ? 'with' : 'without') . " coredump\n";
         $status = 1;
     }
-    elsif (($? >> 8) != 0) {
-        $status = $? >> 8;
+    elsif (($result >> 8) != 0) {
+        $status = $result >> 8;
         print "Model exited with status $status\n";
-    }
-    elsif (! $close_ok) {
-        print STDERR "Model pipe operation failed\n";
-        $status = 1;
     }
 
     return $status;

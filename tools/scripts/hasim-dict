@@ -173,7 +173,7 @@ sub EmitH($$$) {
 class ${m}_DICT
 {
   private:
-    static char * str[];
+    static const char * str[];
 
   public:
     ${m}_DICT() {};
@@ -219,7 +219,7 @@ END
 
 END
 
-    print $of "char *${m}_DICT::str[] =\n";
+    print $of "const char *${m}_DICT::str[] =\n";
     print $of "{\n";
     foreach my $n ($dict->GetSortedEntries()) {
         print $of "    " . $dict->GetDefinition($n) . ",\n";

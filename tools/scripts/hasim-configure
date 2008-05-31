@@ -112,6 +112,9 @@ if (!defined($model)) {
 ############################################################
 # main body of script
 
+select STDERR; $| = 1;
+select STDOUT; $| = 1;
+
 Asim::init()
     || die("Unable to initialize Asim::\n");
 
@@ -137,9 +140,14 @@ if ($configure) {
 #	WARN_AND_DIE("run command not yet implemented");
 }
 
-print "done\n";
-
-exit !$status;
+if ($status) {
+    print "Done\n";
+    exit(0);
+}
+else {
+    print "hasim-configure exiting with errors\n";
+    exit(1);
+}
 
 ############################################################
 # run_model
@@ -314,6 +322,9 @@ sub configure_build_tree {
       print "Using Asim::Model without embed_submodels\n";
     }
 
+    # (0) validate model structure
+    validate_model($model) || return 0;
+
     # (1) make directories
     make_dirs($model) || return 0;
 
@@ -336,6 +347,46 @@ sub configure_build_tree {
     make_iface($model);
 
     return 1;
+}
+
+############################################################
+# validate_model: Validate model structure
+
+my %required_modules;
+
+sub validate_model {
+    my $model = shift;
+
+    undef %required_modules;
+    my $result = __validate_model($model->modelroot(), "");
+    undef %required_modules;
+    return $result;
+}
+
+sub __validate_model {
+    my $module = shift;
+    my $module_tree = shift;
+
+    my $result = 1;
+
+    my $provides = $module->provides();
+
+    if (exists($required_modules{$provides})) {
+        print STDERR "Module ${provides} is required twice:\n";
+        print STDERR "    $required_modules{$provides} and\n";
+        print STDERR "    ${module_tree}\n";
+        $result = 0;
+    }
+
+    if ($result) {
+        $required_modules{$provides} = $module_tree;
+        $module_tree .= "/$provides";
+        foreach my $child ($module->submodules()) {
+            $result &= __validate_model($child, $module_tree);
+        }
+    }
+
+    return $result;
 }
 
 ############################################################

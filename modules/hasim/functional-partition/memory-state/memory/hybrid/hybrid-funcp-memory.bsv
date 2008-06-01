@@ -24,7 +24,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
     ServerStub_FUNCP_MEMORY server_stub <- mkServerStub_FUNCP_MEMORY();
     
     // Links that we expose to the outside world
-    Connection_Server#(MEM_REQUEST, MEM_VALUE) link_memory       <- mkConnection_Server("funcp_memory");
+    Connection_Server#(MEM_REQUEST, MEM_REPLY) link_memory       <- mkConnection_Server("funcp_memory");
     Connection_Send#(MEM_ADDRESS)              link_memory_inval <- mkConnection_Send("funcp_memory_invalidate");
 
     // ***** Rules ******
@@ -50,6 +50,17 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
             end
             
+            tagged MEM_LOAD_CACHELINE .addr:
+            begin
+
+                // send request via RRR
+                client_stub.makeRequest_LoadCacheLine(addr);
+                
+                // wait for response
+                state <= 2;
+
+            end
+
             tagged MEM_STORE .stinfo:
             begin
 
@@ -71,7 +82,16 @@ module [HASIM_MODULE] mkFUNCP_Memory
         MEM_VALUE v <- client_stub.getResponse_Load();
         state <= 0;
 
-        link_memory.makeResp(v);
+        link_memory.makeResp(tagged MEM_REPLY_LOAD v);
+
+    endrule
+
+    rule get_mem_response2 (state == 2);
+
+        MEM_CACHELINE v <- client_stub.getResponse_LoadCacheLine();
+        state <= 0;
+
+        link_memory.makeResp(tagged MEM_REPLY_LOAD_CACHELINE v);
 
     endrule
 

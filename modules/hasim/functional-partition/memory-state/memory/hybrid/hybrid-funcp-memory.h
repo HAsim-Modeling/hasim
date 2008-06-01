@@ -25,12 +25,15 @@
 
 // types
 
-typedef FUNCP_ADDR    MEM_ADDRESS;;
-typedef FUNCP_INT_REG MEM_VALUE;
+typedef FUNCP_ADDR      MEM_ADDRESS;
+typedef FUNCP_INT_REG   MEM_VALUE;
+typedef struct {
+    char _x[FUNCP_CACHELINE_BITS/8];
+} MEM_CACHELINE;
 
-
-#define CMD_LOAD    0
-#define CMD_STORE   1
+#define CMD_LOAD           0
+#define CMD_LOAD_CACHELINE 1
+#define CMD_STORE          2
 
 class FUNCP_MEMORY_CLASS: public RRR_SERVICE_CLASS,
                           public PLATFORMS_MODULE_CLASS,

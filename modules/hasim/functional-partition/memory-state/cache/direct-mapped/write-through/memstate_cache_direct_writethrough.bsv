@@ -12,7 +12,8 @@
 
 // Library imports.
 
-import FIFOF::*;
+import FIFO::*;
+import Vector::*;
 
 // Project foundation imports.
 
@@ -32,27 +33,48 @@ import FIFOF::*;
 
 // A direct-mapped write-through cache.
 
-// one cache-line = one word.
-
-typedef Bit#(`CACHE_IDX_BITS) CACHE_IDX;
-typedef Bit#(TLog#(TDiv#(`FUNCP_ISA_INT_REG_SIZE,8))) WORD_OFFSET;
-typedef Bit#(TSub#(`FUNCP_ISA_ADDR_SIZE,TAdd#(`CACHE_IDX_BITS,TLog#(TDiv#(`FUNCP_ISA_INT_REG_SIZE,8))))) CACHE_TAG;
+typedef Bit#(TLog#(TDiv#(`FUNCP_ISA_INT_REG_SIZE,8)))                                                  WORD_OFFSET;
+typedef Bit#(TLog#(TDiv#(`FUNCP_CACHELINE_BITS,`FUNCP_ISA_INT_REG_SIZE)))                              CACHELINE_OFFSET;
+typedef Bit#(`CACHE_IDX_BITS)                                                                          CACHE_IDX;
+typedef Bit#(TSub#(`FUNCP_ISA_ADDR_SIZE,TAdd#(`CACHE_IDX_BITS,TLog#(TDiv#(`FUNCP_CACHELINE_BITS,8))))) CACHE_TAG;
 
 function CACHE_IDX cacheIdx(MEM_ADDRESS addr);
 
-  Tuple3#(CACHE_TAG,CACHE_IDX,WORD_OFFSET) tup = unpack(addr);
-  match { .tag, .idx, .woff } = tup;
-  // assert woff == 0
+  Tuple4#(CACHE_TAG,CACHE_IDX,CACHELINE_OFFSET,WORD_OFFSET) tup = unpack(addr);
+  match { .tag, .idx, .cloff, .woff } = tup;
   return idx;
 
 endfunction
 
 function CACHE_TAG cacheTag(MEM_ADDRESS addr);
 
-  Tuple3#(CACHE_TAG,CACHE_IDX,WORD_OFFSET) tup = unpack(addr);
-  match { .tag, .idx, .woff } = tup;
-  // assert woff == 0
+  Tuple4#(CACHE_TAG,CACHE_IDX,CACHELINE_OFFSET,WORD_OFFSET) tup = unpack(addr);
+  match { .tag, .idx, .cloff, .woff } = tup;
   return tag;
+
+endfunction
+
+function CACHELINE_OFFSET cacheLineOffset(MEM_ADDRESS addr);
+
+  Tuple4#(CACHE_TAG,CACHE_IDX,CACHELINE_OFFSET,WORD_OFFSET) tup = unpack(addr);
+  match { .tag, .idx, .cloff, .woff } = tup;
+  return cloff;
+
+endfunction
+
+function WORD_OFFSET cacheWordOffset(MEM_ADDRESS addr);
+
+  Tuple4#(CACHE_TAG,CACHE_IDX,CACHELINE_OFFSET,WORD_OFFSET) tup = unpack(addr);
+  match { .tag, .idx, .cloff, .woff } = tup;
+  return woff;
+
+endfunction
+
+function MEM_ADDRESS getLineAddr (MEM_ADDRESS addr);
+
+    CACHELINE_OFFSET cloff_0 = 0;
+    WORD_OFFSET      woff_0  = 0;
+    return pack(tuple4(cacheTag(addr),cacheIdx(addr),cloff_0,woff_0));
 
 endfunction
 
@@ -60,17 +82,18 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
 
   // ***** Soft Connections ***** //
 
-  Connection_Server#(MEM_REQUEST, MEM_VALUE)   link_memstate          <- mkConnection_Server("mem_cache");
-  Connection_Client#(MEM_REQUEST, MEM_VALUE)   link_funcp_memory       <- mkConnection_Client("funcp_memory");
-  Connection_Receive#(MEM_ADDRESS)             link_funcp_memory_inval <- mkConnection_Receive("funcp_memory_invalidate");
+  Connection_Server#(MEM_REQUEST, MEM_VALUE)   link_memstate               <- mkConnection_Server("mem_cache");
+  Connection_Client#(MEM_REQUEST, MEM_REPLY)   link_funcp_memory           <- mkConnection_Client("funcp_memory");
+  Connection_Receive#(MEM_ADDRESS)             link_funcp_memory_inval     <- mkConnection_Receive("funcp_memory_invalidate");
   Connection_Receive#(Bit#(0))                 link_funcp_memory_inval_all <- mkConnection_Receive("funcp_memory_invalidate_all");
 
-  BRAM#(CACHE_IDX, Maybe#(CACHE_TAG)) cache_tags <- mkBRAM_Full();
-  BRAM#(CACHE_IDX, MEM_VALUE) cache_data <- mkBRAM_Full();
-  FIFOF#(MEM_ADDRESS) readQ <- mkFIFOF();
-  FIFOF#(MEM_ADDRESS) fillQ <- mkFIFOF();
+  BRAM#(CACHE_IDX, Maybe#(CACHE_TAG))                   cache_tags <- mkBRAM_Full();
+  Vector#(CACHELINE_WORDS, BRAM#(CACHE_IDX, MEM_VALUE)) cache_data <- replicateM(mkBRAM_Full());
 
-  Reg#(Bool)      invalidating_all <- mkReg(False);
+  FIFO#(MEM_REQUEST) pendingQ <- mkFIFO1; // size=1 -> blocking. we'll need a searchable fifo for size >=2.
+  Reg#(Bool)         waiting  <- mkReg(False);
+
+  Reg#(Bool)      invalidating_all <- mkReg(True); // at reset, invalidate the blockrams.
   Reg#(CACHE_IDX) invalidate_iter  <- mkReg(0);
 
   Param#(1) enableCacheParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_ENABLE_FUNCP_MEM_CACHE);
@@ -78,98 +101,75 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
 
   // ***** Rules ***** //
 
-  // handleLoad1
-
-  // When:   When the mem state requests a load.
-  // Effect: Pass the request on to the rams so we can see if it's a hit.
-
-  rule handleLoad1 (!invalidating_all &&& link_memstate.getReq() matches tagged MEM_LOAD .addr);
-  
-    // Deq the request.
-    link_memstate.deq();
-    
-    // Read the rams.
-    cache_tags.read_req(cacheIdx(addr));
-    cache_data.read_req(cacheIdx(addr));
-    
-    // Pass the address on to the next stage.
-    readQ.enq(addr);
-    
-  endrule
-  
-  // handleLoad2
-
-  // When:   After handleLoad1 and we're not blocking.
-  // Effect: If it's a hit, return the data, otherwise send the request to main memory.
-
-  rule handleLoad2 (!fillQ.notEmpty());
-  
-    // Get the address from the previous stage.
-    let addr = readQ.first();
-    readQ.deq();
-    
-    // Get the responses from the rams.
-    let mtag <- cache_tags.read_resp();
-    let val <- cache_data.read_resp();
-    
-    // Is it a hit?
-    if (enableCache &&& mtag matches tagged Valid .tag &&& tag == cacheTag(addr))
-    begin
-        // It's a hit, return the value.
-        link_memstate.makeResp(val);
-    end
-    else
-    begin
-        // It's a miss, send to main memory.
-        link_funcp_memory.makeReq(tagged MEM_LOAD addr);
-        // Send the address to the final stage.
-        fillQ.enq(addr);
-    end
-  endrule
-
-  // handleLoad3
-  
-  // When:   When a load response come back from the main memory.
-  // Effect: Fill the cache line and pass the response back to the mem state.
-  
-  rule handleLoad3 (True);
-  
-    // Get the response from the memory.
-    MEM_VALUE v = link_funcp_memory.getResp();
-    link_funcp_memory.deq();
-    
-    // Get the address from the previous stage.
-    let addr = fillQ.first();
-    fillQ.deq();
-    
-    // Write into the RAMs. 
-    cache_tags.write(cacheIdx(addr), tagged Valid cacheTag(addr));
-    cache_data.write(cacheIdx(addr), v);
-    
-    // Send the response
-    link_memstate.makeResp(v);
-        
-  endrule
-  
-  // handleStore
-  
-  // When:   When a store request comes from the mem state.
-  // Effect: Write the data into the cache and write it through to main memory.
-  
-  rule handleStore (!invalidating_all &&& link_memstate.getReq() matches tagged MEM_STORE .st_info);
-  
-      // Deq the request.
+  rule handleReq (!invalidating_all);
+      let req = link_memstate.getReq();
       link_memstate.deq();
-     
-      // Update the RAMs.
-      cache_tags.write(cacheIdx(st_info.addr), tagged Valid cacheTag(st_info.addr));
-      cache_data.write(cacheIdx(st_info.addr), st_info.val);
-        
-      // Send it on to main memory.
-      link_funcp_memory.makeReq(tagged MEM_STORE st_info);
-
+      pendingQ.enq(req);
+      let addr = case (req) matches
+                    tagged MEM_LOAD  .a: a;
+                    tagged MEM_STORE .s: s.addr;
+                 endcase;
+      cache_tags.read_req(cacheIdx(addr));
+      cache_data[cacheLineOffset(addr)].read_req(cacheIdx(addr));
   endrule
-  
+
+  rule handleLoad (!waiting &&& pendingQ.first matches tagged MEM_LOAD .addr);
+      let mtag <- cache_tags.read_resp();
+      let val  <- cache_data[cacheLineOffset(addr)].read_resp();
+
+      if (enableCache &&& mtag matches tagged Valid .tag &&& tag == cacheTag(addr)) begin
+          link_memstate.makeResp(val);
+          pendingQ.deq();
+      end
+      else begin
+          link_funcp_memory.makeReq(tagged MEM_LOAD_CACHELINE getLineAddr(addr));
+          waiting <= True;
+      end
+  endrule
+
+  rule handleStore (!waiting &&& pendingQ.first matches tagged MEM_STORE .st_info);
+      let addr = st_info.addr;
+      let mtag <- cache_tags.read_resp();
+      let val  <- cache_data[cacheLineOffset(addr)].read_resp();
+
+      if (enableCache &&& mtag matches tagged Valid .tag &&& tag == cacheTag(addr)) begin
+          cache_data[cacheLineOffset(addr)].write(cacheIdx(addr), st_info.val);
+          link_funcp_memory.makeReq(tagged MEM_STORE st_info);
+          pendingQ.deq();
+      end
+      else begin
+          link_funcp_memory.makeReq(tagged MEM_LOAD_CACHELINE getLineAddr(addr));
+          waiting <= True;
+      end
+  endrule
+
+  rule handleFill (waiting &&& link_funcp_memory.getResp() matches tagged MEM_REPLY_LOAD_CACHELINE .v);
+    link_funcp_memory.deq();
+    waiting <= False;
+    pendingQ.deq();
+    case (pendingQ.first) matches
+        tagged MEM_LOAD .addr:
+            begin
+                link_memstate.makeResp(v[cacheLineOffset(addr)]);
+                for (Integer i = 0; i < valueof(CACHELINE_WORDS); i = i + 1)
+                    cache_data[i].write(cacheIdx(addr), v[i]);
+                cache_tags.write(cacheIdx(addr), tagged Valid cacheTag(addr));
+            end
+        tagged MEM_STORE .st_info:
+            begin
+                let addr = st_info.addr;
+                for (Integer i = 0; i < valueof(CACHELINE_WORDS); i = i + 1) begin
+                    if (fromInteger(i) == cacheLineOffset(addr))
+                        cache_data[i].write(cacheIdx(addr), st_info.val);
+                    else
+                        cache_data[i].write(cacheIdx(addr), v[i]);
+                end
+                cache_tags.write(cacheIdx(addr), tagged Valid cacheTag(addr));
+                link_funcp_memory.makeReq(tagged MEM_STORE st_info);
+            end
+    endcase
+  endrule
+
   // invalidate
   
   // When:   When main memory sends an invalidate.
@@ -178,16 +178,15 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
     
   rule invalidate (True);
   
-    MEM_VALUE a = link_funcp_memory_inval.receive();
+    MEM_ADDRESS a = link_funcp_memory_inval.receive();
     link_funcp_memory_inval.deq();
 
     cache_tags.write(cacheIdx(a), tagged Invalid);
-        
   endrule
 
   // invalidate all; starts an FSM to invalidate every entry.
 
-  rule invalidate_all_start (True);
+  rule invalidate_all_start (!waiting);
       link_funcp_memory_inval_all.deq();
       invalidating_all <= True;
   endrule
@@ -198,4 +197,5 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
       if (invalidate_iter == maxBound)
           invalidating_all <= False;
   endrule
+
 endmodule

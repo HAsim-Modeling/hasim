@@ -96,6 +96,7 @@ FUNCP_MEMORY_CLASS::Request(
 {
     MEM_ADDRESS addr;
     MEM_VALUE   data;
+    MEM_CACHELINE line;
 
     UMF_MESSAGE resp;
 
@@ -117,6 +118,29 @@ FUNCP_MEMORY_CLASS::Request(
         resp = new UMF_MESSAGE_CLASS(sizeof(MEM_VALUE));
         resp->SetMethodID(CMD_LOAD);
         resp->AppendUINT(data, sizeof(MEM_VALUE));
+
+        // return response
+        return resp;
+
+        break;
+
+      case CMD_LOAD_CACHELINE:
+        addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS)));
+
+        // free
+        delete req;
+
+        memory->Read(addr, sizeof(MEM_CACHELINE), &line);
+        T1("\tfuncp_memory: LDline (" << sizeof(MEM_CACHELINE) << ") [0x" << fmt_x(addr) << "] -> line:");
+        for (int i = 0; i < sizeof(MEM_CACHELINE)/8; i++) {
+            MEM_VALUE v = ((MEM_VALUE *)&line) [i];
+            T1("\t\t0x" << fmt_x(v));
+        }
+
+        // create response message
+        resp = new UMF_MESSAGE_CLASS(sizeof(MEM_CACHELINE));
+        resp->SetMethodID(CMD_LOAD_CACHELINE);
+        resp->AppendBytes(sizeof(MEM_CACHELINE), (unsigned char *) &line);
 
         // return response
         return resp;

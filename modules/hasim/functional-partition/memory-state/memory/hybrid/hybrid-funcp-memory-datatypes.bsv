@@ -5,6 +5,9 @@
 // You probably won't need to change these.
 
 `include "funcp_base_types.bsh"
+`include "funcp_memory.bsh"
+
+import Vector::*;
 
 // ***** Datatype definitions *****
 
@@ -21,6 +24,13 @@ typedef FUNCP_ADDR MEM_ADDRESS;
 
 typedef FUNCP_INT_REG MEM_VALUE;
 
+// MEM_CACHELINE
+
+// This is defined here because size of the cache-line must be known outside of
+// the cache.
+
+typedef TDiv#(`FUNCP_CACHELINE_BITS,`FUNCP_ISA_INT_REG_SIZE) CACHELINE_WORDS;
+typedef Vector#(CACHELINE_WORDS, MEM_VALUE) MEM_CACHELINE;
 
 // MEM_REQUEST
 
@@ -38,9 +48,19 @@ typedef struct
 typedef union tagged 
 {
   MEM_ADDRESS MEM_LOAD;
+  MEM_ADDRESS MEM_LOAD_CACHELINE;
   struct {MEM_ADDRESS addr; MEM_VALUE val; } MEM_STORE;
 }
   MEM_REQUEST
+    deriving
+            (Eq, Bits);
+
+typedef union tagged 
+{
+  MEM_VALUE     MEM_REPLY_LOAD;
+  MEM_CACHELINE MEM_REPLY_LOAD_CACHELINE;
+}
+  MEM_REPLY
     deriving
             (Eq, Bits);
 

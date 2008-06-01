@@ -11,6 +11,7 @@ service FUNCP_MEMORY
     server sw (cpp, method) <- hw (bsv, connection)
     {
         method Load (in MEM_ADDRESS[FUNCP_ISA_ADDR_SIZE] addr, out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
+        method LoadCacheLine (in MEM_ADDRESS[FUNCP_ISA_ADDR_SIZE] addr, out MEM_CACHELINE[FUNCP_CACHELINE_BITS] data);
         method Store(in MEM_STORE_INFO[MEMORY_STORE_INFO_SIZE] info);
     };
 };

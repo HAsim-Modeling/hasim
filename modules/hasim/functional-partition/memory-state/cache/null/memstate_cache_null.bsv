@@ -25,7 +25,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
   // ***** Soft Connections ***** //
 
   Connection_Server#(MEM_REQUEST, MEM_VALUE)   link_memstate          <- mkConnection_Server("mem_cache");
-  Connection_Client#(MEM_REQUEST, MEM_VALUE)   link_vdev_memory       <- mkConnection_Client("funcp_memory");
+  Connection_Client#(MEM_REQUEST, MEM_REPLY)   link_vdev_memory       <- mkConnection_Client("funcp_memory");
   Connection_Receive#(MEM_ADDRESS)             link_vdev_memory_inval <- mkConnection_Receive("funcp_memory_invalidate");
   Connection_Receive#(Bit#(0))                 link_vdev_memory_inval_all <- mkConnection_Receive("funcp_memory_invalidate_all");
 
@@ -53,11 +53,12 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
   
   rule response (True);
   
-    MEM_VALUE v = link_vdev_memory.getResp();
+    MEM_REPLY v = link_vdev_memory.getResp();
     link_vdev_memory.deq();
     
-    link_memstate.makeResp(v);
-        
+    if (v matches tagged MEM_REPLY_LOAD .val)
+        link_memstate.makeResp(val);
+    //$display("FUNCP CACHE NULL: cache-reply=0x%0h", v);
   endrule
   
   // invalidate
@@ -67,7 +68,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
     
   rule invalidate (True);
   
-    MEM_VALUE a = link_vdev_memory_inval.receive();
+    MEM_ADDRESS a = link_vdev_memory_inval.receive();
     link_vdev_memory_inval.deq();
         
   endrule

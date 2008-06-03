@@ -13065,3 +13065,15 @@ must be translated into a load to memory.
 The valid bits of the cache were not explicitly initialized to zero; fixed.
 
 Passes hello and memory_tests_aligned in bluesim.
+----------
+napatil     Date: Tue Jun  3 15:11:40 EDT 2008  CSN: CSN-hasim-438
+                  Tue Jun  3 19:11:40 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/cache/null
+ memstate_cache_null.bsv   Locally Modified          437 
+
+
+Modified null cache to support the new return type for memory replies.
+This now breaks the demarshaller code, so hasim-5stage regressions will
+continue to fail.

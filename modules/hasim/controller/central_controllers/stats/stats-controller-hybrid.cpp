@@ -91,7 +91,7 @@ STATS_CONTROLLER_CLASS::Request(
         fprintf(statsFile, "%s: %u\n", stat_msg, stat_data);
         
         // free
-        delete request;
+        request->Delete();
 
         // no RRR response
         return NULL;
@@ -101,13 +101,14 @@ STATS_CONTROLLER_CLASS::Request(
         // flush
         fflush(statsFile);
 
+        // free request
+        request->Delete();
+
         // prepare response
-        UMF_MESSAGE response = new UMF_MESSAGE_CLASS(4);
+        UMF_MESSAGE response = UMF_MESSAGE_CLASS::New();
+        response->SetLength(4);
         response->SetMethodID(METHOD_ID_FLUSH);
         response->AppendUINT32(0);
-
-        // free
-        delete request;
 
         // send response
         return response;
@@ -118,7 +119,7 @@ STATS_CONTROLLER_CLASS::Request(
         cerr << "stats: invalid methodID\n" << flush;
 
         // free
-        delete request;
+        request->Delete();
 
         // exit
         CallbackExit(1);
@@ -130,5 +131,3 @@ void
 STATS_CONTROLLER_CLASS::Poll()
 {
 }
-
-

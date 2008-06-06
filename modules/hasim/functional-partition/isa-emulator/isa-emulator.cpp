@@ -85,7 +85,7 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
       case CMD_SYNC:
         rVal = req->ExtractUINT(sizeof(rVal));
         rName = req->ExtractUINT(4);
-        delete req;
+        req->Delete();
 
         if (TRACING(1))
         {
@@ -119,7 +119,7 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
       case CMD_EMULATE:
         pc = req->ExtractUINT(sizeof(pc));
         inst = req->ExtractUINT(4);
-        delete req;
+        req->Delete();
 
         T1("\tisa_emulator: Emulate PC 0x" << fmt_x(pc) << ", Inst 0x" << fmt_x(inst));
         
@@ -157,7 +157,8 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
             ASIMERROR("Unexpected result from ISA emulator implementation");
         }
 
-        resp = new UMF_MESSAGE_CLASS(8);
+        resp = UMF_MESSAGE_CLASS::New();
+        resp->SetLength(8);
         resp->SetMethodID(CMD_EMULATE);
         resp->AppendUINT(newPC, sizeof(newPC));     // terminate
         return resp;
@@ -195,7 +196,8 @@ ISA_EMULATOR_CLASS::UpdateRegister(ISA_REG_INDEX_CLASS rName, FUNCP_INT_REG rVal
     }
 
     // create message for RRR client
-    UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(sizeof(rVal) + 4);
+    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
+    msg->SetLength(sizeof(rVal) + 4);
     msg->SetServiceID(SERVICE_ID);
     msg->SetMethodID(METHOD_ID_UPDATE_REG);
     msg->AppendUINT(rVal, sizeof(rVal));

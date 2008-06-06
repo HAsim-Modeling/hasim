@@ -109,13 +109,14 @@ FUNCP_MEMORY_CLASS::Request(
         addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS)));
 
         // free
-        delete req;
+        req->Delete();
 
         memory->Read(addr, sizeof(MEM_VALUE), &data);
         T1("\tfuncp_memory: LD (" << sizeof(MEM_VALUE) << ") [0x" << fmt_x(addr) << "] -> 0x" << fmt_x(data));
 
         // create response message
-        resp = new UMF_MESSAGE_CLASS(sizeof(MEM_VALUE));
+        resp = UMF_MESSAGE_CLASS::New();
+        resp->SetLength(sizeof(MEM_VALUE));
         resp->SetMethodID(CMD_LOAD);
         resp->AppendUINT(data, sizeof(MEM_VALUE));
 
@@ -128,7 +129,7 @@ FUNCP_MEMORY_CLASS::Request(
         addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS)));
 
         // free
-        delete req;
+        req->Delete();
 
         memory->Read(addr, sizeof(MEM_CACHELINE), &line);
         T1("\tfuncp_memory: LDline (" << sizeof(MEM_CACHELINE) << ") [0x" << fmt_x(addr) << "] -> line:");
@@ -138,7 +139,8 @@ FUNCP_MEMORY_CLASS::Request(
         }
 
         // create response message
-        resp = new UMF_MESSAGE_CLASS(sizeof(MEM_CACHELINE));
+        resp = UMF_MESSAGE_CLASS::New();
+        resp->SetLength(sizeof(MEM_CACHELINE));
         resp->SetMethodID(CMD_LOAD_CACHELINE);
         resp->AppendBytes(sizeof(MEM_CACHELINE), (unsigned char *) &line);
 
@@ -156,7 +158,7 @@ FUNCP_MEMORY_CLASS::Request(
         T1("\tfuncp_memory: ST (" << sizeof(MEM_VALUE) << ") [0x" << fmt_x(addr) << "] <- 0x" << fmt_x(data));
 
         // free
-        delete req;
+        req->Delete();
 
         // no response
         return NULL;

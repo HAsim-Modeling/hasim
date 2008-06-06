@@ -136,7 +136,8 @@ PARAMS_CONTROLLER_CLASS::SendAllParams()
     UINT32 i = 0;
     while (paramValues[i])
     {
-        msg = new UMF_MESSAGE_CLASS(sizeof(UINT32) + sizeof(UINT64));
+        msg = UMF_MESSAGE_CLASS::New();
+        msg->SetLength(sizeof(UINT32) + sizeof(UINT64));
         msg->SetServiceID(SERVICE_ID);
         msg->SetMethodID(METHOD_ID_SEND_PARAM);
         msg->AppendUINT64(*paramValues[i]);
@@ -151,12 +152,13 @@ PARAMS_CONTROLLER_CLASS::SendAllParams()
     // Send NULL parameter as the last token.  Hardware responds with an ACK
     // to this one so we know everything is done.
     //
-    msg = new UMF_MESSAGE_CLASS(sizeof(UINT32) + sizeof(UINT64));
+    msg = UMF_MESSAGE_CLASS::New();
+    msg->SetLength(sizeof(UINT32) + sizeof(UINT64));
     msg->SetServiceID(SERVICE_ID);
     msg->SetMethodID(METHOD_ID_SEND_PARAM);
     msg->AppendUINT64(0);
     msg->AppendUINT32(PARAMS_NULL);
 
     UMF_MESSAGE resp = RRRClient->MakeRequest(msg);
-    delete resp;
+    resp->Delete();
 }

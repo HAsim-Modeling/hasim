@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <iomanip>
 
 #include "starter-common.h"
 #include "asim/rrr/service_ids.h"
@@ -80,7 +81,7 @@ STARTER_CLASS::Request(
 
             // for now, call statsdump directly from here
             success  = req->ExtractUINT32();
-            delete req;
+            req->Delete();
 
             if (success == 1)
             {
@@ -105,7 +106,7 @@ STARTER_CLASS::Request(
         case METHOD_ID_HEARTBEAT:
             model_cycles = req->ExtractUINT64();
             fpga_cycles = req->ExtractUINT64();
-            delete req;
+            req->Delete();
 
             if (fpga_start_cycle == 0)
             {
@@ -117,9 +118,9 @@ STARTER_CLASS::Request(
             {
                 next_progress_msg_cycle += globalArgs->ProgressMsgInterval();
 
-                cout << "[" << setw(13) << fpga_cycles
+                cout << "[" << std::setw(13) << fpga_cycles
                      << "]: controller: model cycles completed: "
-                     << setw(10) << model_cycles;
+                     << std::setw(10) << model_cycles;
 
                 if ((fpga_cycles - fpga_start_cycle) != 0)
                 {
@@ -136,7 +137,7 @@ STARTER_CLASS::Request(
             break;
 
         default:
-            delete req;
+            req->Delete();
             cerr << "starter: invalid methodID." << endl;
             CallbackExit(1);
             break;
@@ -151,7 +152,8 @@ void
 STARTER_CLASS::Run()
 {
     // create message for RRR client
-    UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(4);
+    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
+    msg->SetLength(4);
     msg->SetServiceID(SERVICE_ID);
     msg->SetMethodID(METHOD_ID_RUN);
     msg->AppendUINT32(0);   // value doesn't matter
@@ -167,7 +169,8 @@ void
 STARTER_CLASS::Pause()
 {
     // create message for RRR client
-    UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(4);
+    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
+    msg->SetLength(4);
     msg->SetServiceID(SERVICE_ID);
     msg->SetMethodID(METHOD_ID_PAUSE);
     msg->AppendUINT32(0);   // value doesn't matter
@@ -180,7 +183,8 @@ void
 STARTER_CLASS::Sync()
 {
     // create message for RRR client
-    UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(4);
+    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
+    msg->SetLength(4);
     msg->SetServiceID(SERVICE_ID);
     msg->SetMethodID(METHOD_ID_SYNC);
     msg->AppendUINT32(0);   // value doesn't matter
@@ -193,7 +197,8 @@ void
 STARTER_CLASS::DumpStats()
 {
     // create message for RRR client
-    UMF_MESSAGE msg = new UMF_MESSAGE_CLASS(4);
+    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
+    msg->SetLength(4);
     msg->SetServiceID(SERVICE_ID);
     msg->SetMethodID(METHOD_ID_DUMPSTATS);
     msg->AppendUINT32(0);   // value doesn't matter
@@ -202,5 +207,5 @@ STARTER_CLASS::DumpStats()
     UMF_MESSAGE resp = RRRClient->MakeRequest(msg);
 
     // response simply means stats dump is over
-    delete resp;
+    resp->Delete();
 }

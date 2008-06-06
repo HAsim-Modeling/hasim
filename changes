@@ -13077,3 +13077,24 @@ Directory modules/hasim/functional-partition/memory-state/cache/null
 Modified null cache to support the new return type for memory replies.
 This now breaks the demarshaller code, so hasim-5stage regressions will
 continue to fail.
+----------
+aparasha    Date: Fri Jun  6 01:27:52 EDT 2008  CSN: CSN-hasim-439
+                  Fri Jun  6 05:27:52 UTC 2008
+
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          438 
+
+Directory modules/hasim/controller/central_controllers/params
+ params-controller-hybrid.cpp Locally Modified          438 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          438 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          438 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          438 
+
+Updated RRR services to conform to new UMF changes (see platforms commit)

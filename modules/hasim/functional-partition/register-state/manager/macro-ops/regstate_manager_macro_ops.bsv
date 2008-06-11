@@ -887,9 +887,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         endcase
     endrule
 
-    let noMoreStalls = execStallReqNum == fromInteger(valueOf(ISA_MAX_SRCS)) && execStallRespNum == fromInteger(valueOf(ISA_MAX_SRCS));
-
-    rule getResults2StallEnd (ready && execStalling && noMoreStalls);
+    rule getResults2StallEnd (ready && execStalling && execStallReqNum == fromInteger(valueOf(ISA_MAX_SRCS)) && execStallRespNum == fromInteger(valueOf(ISA_MAX_SRCS)));
         execStalling <= False;
         res2Q.enq(execStallTok);
         tokAddr.read_req(execStallTok.index);

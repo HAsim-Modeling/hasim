@@ -13125,3 +13125,24 @@ Directory modules/common/modellib
 
 
 Added time muxed bandwidth ports. No one uses these yet.
+
+----------
+vmurali     Date: Wed Jun 11 13:37:10 EDT 2008  CSN: CSN-hasim-442
+                  Wed Jun 11 17:37:10 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          441 
+
+Directory modules/hasim/functional-partition/register-state/snapshot
+ bram/                     Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/snapshot/bram
+ funcp_snapshot_bram.awb   Locally Added               0 
+ funcp_snapshot_bram.bsv   Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state
+ snapshot/                 Locally Added               0 
+
+
+Added the snapshot files

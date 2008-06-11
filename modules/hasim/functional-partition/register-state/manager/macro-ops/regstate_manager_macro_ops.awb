@@ -14,6 +14,7 @@
 # 
 # %requires funcp_regstate_scoreboard
 # %requires funcp_regstate_freelist
+# %requires funcp_regstate_snapshot
 #
 # %attributes hasim funcp regstate
 #
@@ -21,7 +22,6 @@
 # %sources -T DICT -v PUBLIC manager.dic
 #
 # %param REGSTATE_LOGFILE_NAME "hasim_funcp_regstate.out" "Name of logfile for register state."
-# %param REGSTATE_NUM_SNAPSHOTS 8 "Number of snapshots. Should be a power of 2."
 #
 #
 # %AWB_END

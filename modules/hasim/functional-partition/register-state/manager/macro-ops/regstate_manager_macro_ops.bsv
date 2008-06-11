@@ -21,6 +21,7 @@ import RegFile::*;
 
 `include "funcp_regstate_scoreboard.bsh"
 `include "funcp_regstate_freelist.bsh"
+`include "funcp_regstate_snapshot.bsh"
 `include "funcp_memstate_manager.bsh"
 
 // ISA includes
@@ -40,12 +41,6 @@ import RegFile::*;
 `include "asim/rrr/remote_server_stub_ISA_EMULATOR.bsh"
 
 // ***** Typedefs ***** //
-
-// FUNCP_SNAPSHOT_INDEX
-
-// The index into the snapshots, as defined by the parameter.
-
-typedef Bit#(TLog#(`REGSTATE_NUM_SNAPSHOTS)) FUNCP_SNAPSHOT_INDEX;
 
 // MEM_PATH
 
@@ -167,21 +162,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Snapshots 
     // Allow for fast rewinds.
 
-    // The valid bits tell us which location contains a valid snapshot.
-    Reg#(Vector#(TExp#(idx_SZ), Bool))                snapValids     <- mkReg(replicate(False));
-
-    // The IDs tell us which snapshot is in a given location.
-    Reg#(Vector#(TExp#(snapshotptr_SZ), TOKEN_INDEX)) snapIDs        <- mkRegU();
-    
-    // The next pointer points to the next location where we should write a snapshot.
-    // (Possibly overwriting an old snapshot, which is okay.)
-    Reg#(FUNCP_SNAPSHOT_INDEX)                          snapNext       <- mkReg(0);
-
-    // The actual snapshots of the entire maptable.
-    BRAM#(FUNCP_SNAPSHOT_INDEX, Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX)) snaps    <- mkBRAM_Full();
-
-    // An additional snapshot of the location of the freelist.
-    BRAM#(FUNCP_SNAPSHOT_INDEX, FUNCP_PHYSICAL_REG_INDEX)                           snapsFL <- mkBRAM_Full();
+    Snapshot#(rname_SZ) snapshot <- mkSnapshot(debugLog);
 
     // ******* Miscellaneous *******
 
@@ -214,8 +195,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Record the writers we've requested so far while stalling.
     Reg#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) execStallWriters <- mkReg(Vector::replicate(tagged Invalid));
     // Record the values that have come back while stalling.
-    Reg#(Vector#(TSub#(ISA_MAX_SRCS, 2), Maybe#(ISA_VALUE))) execStallValues <- mkReg(Vector::replicate(tagged Invalid));
-    Reg#(Vector#(TSub#(ISA_MAX_SRCS, 2), Bool)) execStallDidReads <- mkReg(Vector::replicate(False));
+    Reg#(Vector#(ISA_MAX_SRCS, Maybe#(ISA_VALUE))) execStallValues <- mkReg(Vector::replicate(tagged Invalid));
  
     // Is the getResult stage writing back more values?
     Reg#(Bool) execWritebackMore <- mkReg(False);
@@ -246,6 +226,9 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // This queue records where load responses should be sent.
     FIFO#(MEM_PATH) memPathQ <- mkSizedFIFO(16);
     
+    Reg#(Bit#(TLog#(TAdd#(ISA_MAX_SRCS, 1))))  execStallReqNum <- mkReg(?);
+    Reg#(Bit#(TLog#(TAdd#(ISA_MAX_SRCS, 1)))) execStallRespNum <- mkReg(?);
+
     // These Queues are intermediate state between the pipeline stages.
 
     FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) instQ  <- mkFIFO();
@@ -270,7 +253,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     // Connections to the timing partition.
 
-    Connection_Server#(void, 
+    Connection_Server#(Bit#(1), 
                        TOKEN)                                  linkNewInFlight <- mkConnection_Server("funcp_newInFlight");
 
     Connection_Server#(Tuple2#(TOKEN, ISA_ADDRESS),
@@ -294,7 +277,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Connection_Server#(TOKEN,
                        TOKEN)                                  linkCommitStores  <- mkConnection_Server("funcp_commitStores");  
 
-    Connection_Receive#(TOKEN)                                 linkRewindToToken <- mkConnection_Receive("funcp_rewindToToken");
+    Connection_Server#(TOKEN,
+                       Bit#(1))                                linkRewindToToken <- mkConnection_Server("funcp_rewindToToken");
 
 
     // Connections to Mem State.
@@ -612,7 +596,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         // If we have a dest, update the maptable with the correct physical register.
 
-        let new_map = case (arc_dsts[0]) matches
+        Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX) new_map = case (arc_dsts[0]) matches
             tagged Invalid:  return maptable;
             tagged Valid .d: return update(maptable, pack(d), new_preg);
           endcase;
@@ -620,6 +604,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         if (tok.timep_info.epoch == epoch) //Don't update the maptable if this token is getting killed
         begin
 
+            funcpDebug($fwrite(debugLog, "Token %0d: epoch: %0d", tok.index, tok.timep_info.epoch));
             maptable <= new_map;
             // Also we must reset the physical register dest to Invalid.
             prfValids[new_preg] <= False;
@@ -650,7 +635,10 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         // Use the scoreboard to record other relevant info.
         if (isaIsLoad(inst))
+        begin
+            funcpDebug($fwrite(debugLog, "Token %0d: isa Load"));
             tokScoreboard.setLoadType(tok.index, isaLoadType(inst));
+        end
 
         if (isaIsStore(inst))
             tokScoreboard.setStoreType(tok.index, isaStoreType(inst));
@@ -662,26 +650,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Note that there is an implicit assumption here that no branch instruction has more than one destination.  
 
         if (isaIsBranch(inst))
-        begin
-
-            // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: getDeps: Branch Detected. Making Snapshot (Number %0d).", tok.index, snapNext));
-
-            // Mark the snap as valid.
-            snapValids[tok.index] <= True;
-
-            // Record which token is at this snapshot.
-            snapIDs[snapNext] <= tok.index;
-
-            // Snapshot the maptable.
-            snaps.write(snapNext, new_map);
-
-            // Snapshot the freelist.
-            snapsFL.write(snapNext, freelist.current());
-
-            // Increment the current snapshot pointer (with overflow, but we don't care if we erase an old snapshot.)
-            snapNext <= snapNext + 1;
-        end
+            snapshot.makeSnapshot(tok.index, new_map, freelist.current());
 
 
         // If there was one dest or less, we are done.
@@ -866,167 +835,67 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Response from previous stage.
         let ws <- tokWriters.read_resp();
 
-        // We are ready when all the source PRs are valid.
-
-        Bool ready = True;
-        for (Integer x = 0; x < 2; x = x + 1)
-        begin
-            let src_is_ready = case (ws[x]) matches
-                                  tagged Invalid:  True; // No writer, so it is ready.
-                                  tagged Valid .v: prfValids[v]; // Ready if phys reg is valid.
-                               endcase;
-
-            if (ws[x] matches tagged Valid .v)
-            begin
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Source %0d PR%0d is %sready", tok.index, fromInteger(x), v, prfValids[v]? "" : "not "));
-            end
-
-            ready = ready && src_is_ready; // We are ready when ALL are ready.
-        end
-
-        // Must stall for more than 2 sources
-        for (Integer x = 2; x < valueof(ISA_MAX_SRCS); x = x + 1)
-        begin
-            if (ws[x] matches tagged Valid .v)
-            begin
-                ready = False;
-            end
-        end
+        execStallTok <= tok;
+        execStallWriters <= ws;
 
         // Additionally let junk proceed
-        let is_junk = !tokScoreboard.isAllocated(tok.index);
-
-        // Log it.
-        if (is_junk)
+        if (!tokScoreboard.isAllocated(tok.index))
+        begin
+            execStalling <= False;
             funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Letting Junk Proceed!", tok.index));
-
-
-        if (ready || is_junk) // Go ahead and pass it to the next stage.
-        begin
-
-            // Request the first 2 sources (harmless if they don't exist).
-            prf.read_req1(validValue(ws[0]));
-            prf.read_req2(validValue(ws[1]));
-
-            // Also look up the PC of the instruction and the instruction itself.
-            tokAddr.read_req(tok.index);
-            tokInst.read_req2(tok.index);
-
-            // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Reading from PR%0d and PR%0d", tok.index, validValue(ws[0]), validValue(ws[1])));
-
-            // Pass on to the next stage.
             res2Q.enq(tok);
+            tokAddr.read_req(execStallTok.index);
+            tokInst.read_req2(execStallTok.index);
         end
-        else // We're stalling.
+        else
         begin
-            // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Reg Read Stalling!", tok.index));
-
             execStalling <= True;
-            execStallTok <= tok;
-            execStallWriters <= ws;
+            funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Reg Read Stalling!", tok.index));
             execStallValues <= Vector::replicate(tagged Invalid);
-            execStallDidReads <= Vector::replicate(False);
+            execStallReqNum <= 0;
+            execStallRespNum <= 0;
         end
 
     endrule
-    
+
     // getResults2Stall
-    
-    // When:   Occurs when a getResults2 stalls because of one of two reasons.
-    //         A) An operation has more than 2 sources.
-    //         B) An operation's sources were not all ready.
-    // Effect: Once all the sources are ready, retrieve them and send them on to the next stage.
-    
-    // Elaborated Rule: N copies, where N is the maximum number of dests minus 2.
-    //                  These two are handled at the end when we pass on to the next stage.
+    rule getResults2StallReq (ready && execStalling && execStallReqNum < fromInteger(valueOf(ISA_MAX_SRCS)));
+        case (execStallWriters[execStallReqNum]) matches
+            tagged Valid .r:
+            begin
+                if(prfValids[r])
+                begin
+                    prf.read_req1(r);
+                    execStallReqNum <= execStallReqNum + 1;
+                end
+            end
+            tagged Invalid:
+                execStallReqNum <= execStallReqNum + 1;
+        endcase
+    endrule
 
-    for (Integer x = 2; x < valueof(ISA_MAX_SRCS); x = x + 1)
-    begin
-    
-      // This rule ensures that if there is no writer, it is marked ready to go.
-      rule getResults2StallPass (execStalling && !isValid(execStallValues[x-2]) &&& execStallWriters[x] matches tagged Invalid);
-          execStallValues[x-2] <= tagged Valid(?);
-      endrule
-      
-      //
-      // allowReadReq governs the order of register reads.  In order to make
-      // a request two things must be true:  a request must have been issued
-      // for the preceding register and the request for this register has not
-      // already been emitted.  Slot 2 is first, so no preceding register
-      // check is needed.
-      //
-      Bool allowReadReq;
-      if (x == 2)
-          allowReadReq = !execStallDidReads[x-2];
-      else
-          allowReadReq = execStallDidReads[x-3] && !execStallDidReads[x-2];
+    rule getResults2StallResp (ready && execStalling && execStallRespNum < fromInteger(valueOf(ISA_MAX_SRCS)));
+        execStallRespNum <= execStallRespNum + 1;
+        case (execStallWriters[execStallRespNum]) matches
+            tagged Invalid:
+                (execStallValues[execStallRespNum]) <= tagged Valid (?);
+            tagged Valid .r:
+            begin
+                let v <- prf.read_resp1();
+                execStallValues[execStallRespNum] <= tagged Valid v;
+            end
+        endcase
+    endrule
 
-      // If there was a writer, when the RF is ready we request it and send it onwards.
-      rule getResults2StallReq (execStalling && !isValid(execStallValues[x-2]) &&& 
-                                execStallWriters[x] matches tagged Valid .r &&& 
-                                allowReadReq &&&
-                                prfValids[r]);
-          prf.read_req1(r);
-          execStallDidReads[x-2] <= True;
-      endrule
-      
-      //
-      // allowReadResp is similar to allowReadReq above.  It ensures that each
-      // source is read exactly once and forces the read responses to be processed
-      // in the order they were requested.
-      //
-      Bool allowReadResp;
-      if (x == 2)
-          allowReadResp = !isValid(execStallValues[x-2]);
-      else
-          allowReadResp = isValid(execStallValues[x-3]) && !isValid(execStallValues[x-2]);
+    let noMoreStalls = execStallReqNum == fromInteger(valueOf(ISA_MAX_SRCS)) && execStallRespNum == fromInteger(valueOf(ISA_MAX_SRCS));
 
-      // Get the response and record it.
-      rule getResults2StallRsp (execStalling && allowReadResp);
-      
-        let v <- prf.read_resp1();
-        execStallValues[x-2] <= tagged Valid v;
-      
-      endrule
-      
-      // Note: in the future these rules could be expanded to also use PRF port 2.
-    
-    end
-    
-    // Some helper functions to determine when we're done stalling.
-    
-    let noMoreVectorStalls = Vector::all(isValid, execStallValues);
-    let src1IsRdy = case (execStallWriters[0]) matches
-                        tagged Invalid: True;
-                        tagged Valid .r: prfValids[r];
-                    endcase;
-    let src2IsRdy = case (execStallWriters[1]) matches
-                        tagged Invalid: True;
-                        tagged Valid .r: prfValids[r];
-                    endcase;
-    let noMoreStalls = noMoreVectorStalls && src1IsRdy && src2IsRdy;
-    
-    rule getResults2StallEnd (execStalling && noMoreStalls);
-        
+    rule getResults2StallEnd (ready && execStalling && noMoreStalls);
         execStalling <= False;
-    
-        // Finish up the work of getResult2.
-    
-        // Request the first 2 sources (harmless if no sources).
-        prf.read_req1(validValue(execStallWriters[0]));
-        prf.read_req2(validValue(execStallWriters[1]));
-
-        // Also look up the PC of the instruction and the instruction itself.
+        res2Q.enq(execStallTok);
         tokAddr.read_req(execStallTok.index);
         tokInst.read_req2(execStallTok.index);
-
-        // Pass on to the next stage.
-        res2Q.enq(execStallTok);
-
     endrule
-    
+
     // getResults3
     // When:    After getResults2 or alternatively getResults2StallEnd
     // Effect:  Send all the data to the datapath.
@@ -1038,25 +907,17 @@ module [HASim_Module] mkFUNCP_RegStateManager
         res2Q.deq();
 
         // Get all the data the previous stage kicked off.
-        let v1 <- prf.read_resp1();
-        let v2 <- prf.read_resp2();
         let addr <- tokAddr.read_resp();
         let inst <- tokInst.read_resp2();
-
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: src0 is 0x%x", tok.index, v1));
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: src1 is 0x%x", tok.index, v2));
 
         // Combine the data we just go with any possible data from stalling.
         Vector#(ISA_MAX_SRCS, ISA_VALUE) values = newVector();
 
-        values[0] = v1;
-        values[1] = v2;
-
-        for (Integer x = 2; x < valueof(ISA_MAX_SRCS); x = x + 1)
+        for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
         begin
 
-           values[x] = validValue(execStallValues[x-2]);
-           funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: src%0d is 0x%x", tok.index, fromInteger(x), values[x]));
+           values[x] = validValue(execStallValues[x]);
+           funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: src%0d is %0b 0x%x", tok.index, fromInteger(x), isValid(execStallWriters[x]), values[x]));
 
         end
 
@@ -1819,7 +1680,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     rule rewindToToken1 (ready);
       
         // Get the input from the timing model.
-        let tok = linkRewindToToken.receive();
+        let tok = linkRewindToToken.getReq();
         linkRewindToToken.deq();
 
         // Log it.
@@ -1836,44 +1697,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         // Check to see if we have a snapshot.
 
-        Bool found = False;
-        if (snapValids[tok.index]) // There's a chance we have a snapshot
-        begin
-
-          // Log it.
-          funcpDebug($fwrite(debugLog, "Potential Fast Rewind"));
-
-          // Find the most recent snapshot of this token
-
-          // Start at oldest entry in the list.        
-          FUNCP_SNAPSHOT_INDEX idx = snapNext;
-
-          for (Integer x = 0; x < valueof(TExp#(snapshotptr_SZ)); x = x + 1)
-          begin
-              // We look the list at an offset from the oldest entry.
-              let cur = snapNext + fromInteger(x);
-
-              // If the entry we examine is of the appropriate token, we've found a candidate!
-              match {.new_idx, .new_found} = (snapIDs[cur] == tok.index) ? tuple2(cur, True) : tuple2(idx, found);
-              found = new_found;
-              idx = new_idx;
-
-          end
-
-          // Alright did we find anything?
-
-          if (found)
-          begin 
-              // Log our success!
-              funcpDebug($fwrite(debugLog, "Fast Rewind confirmed with Snapshot %0d", idx));
-
-              // Retrieve the snapshots.
-              snaps.read_req(idx);
-              snapsFL.read_req(idx);
-          end
-
-        end
-
+        Bool found <- snapshot.hasSnapshot(tok.index);
         if (!found)
         begin
 
@@ -1904,8 +1728,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     rule rewindToToken2 (rewinding && fastRewind);
 
         // Get the snapshots.
-        let snp_map <- snaps.read_resp();
-        let snp_fl  <- snapsFL.read_resp();
+        match {.snp_map, .snp_fl} <- snapshot.returnSnapshot();
 
         // Update the maptable.
         maptable <= snp_map;
@@ -1918,7 +1741,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         // We're done. End of macro-operation (path 1).
         rewinding <= False;
-
+        linkRewindToToken.makeResp(?);
     endrule
 
     //Slow rewind. Walk the tokens in age order
@@ -1941,6 +1764,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
       if (rewindCur == rewindTok) //Must take into account the last instruction
       begin
+        linkRewindToToken.makeResp(?);
         rewinding <= False;
         funcpDebug($fwrite(debugLog, "Slow Rewind: No more tokens to lookup."));  
       end

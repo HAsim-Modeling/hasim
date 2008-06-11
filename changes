@@ -13098,3 +13098,16 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
  hybrid-funcp-memory.cpp   Locally Modified          438 
 
 Updated RRR services to conform to new UMF changes (see platforms commit)
+
+----------
+vmurali     Date: Wed Jun 11 02:08:27 EDT 2008  CSN: CSN-hasim-440
+                  Wed Jun 11 06:08:27 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.awb Locally Modified          439 
+ regstate_manager_macro_ops.bsv Locally Modified          439 
+
+
+1) Sequentialized getResults (atleast first part) and getDependencies. More to follow
+2) Added a rewind Response

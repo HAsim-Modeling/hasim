@@ -13111,3 +13111,17 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 
 1) Sequentialized getResults (atleast first part) and getDependencies. More to follow
 2) Added a rewind Response
+
+----------
+vmurali     Date: Wed Jun 11 04:07:22 EDT 2008  CSN: CSN-hasim-441
+                  Wed Jun 11 08:07:22 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          440 
+
+Directory modules/common/modellib
+ Ports.bsv                 Locally Modified          439 
+
+
+Added time muxed bandwidth ports. No one uses these yet.

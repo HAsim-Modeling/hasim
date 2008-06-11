@@ -1771,36 +1771,6 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     endrule
 
-    // Urgency
-    
-    // A total ordering of all non-trivial rules in the system specifying who should get to
-    // proceed in the case of a conflict. The logic here is straightforward. In terms of
-    // macro-operations, the "later" operations are favored:
-    
-    // newInFlight < getInst < getDeps < getResult < doLoads < doStores < commitResults < commitStores
-    
-    // Thus getResults() should be favored over getDeps().
-    
-    // Within a single macro-operation a similar philosophy holds: favor the later stages 
-    // of the pipeline. Thus:
-    
-    // doLoads1 < doLoads2 < doLoads3
-    
-    // This is _particularly_ important for the getDeps stages, which modify the maptable.
-    
-    // We specify all of this as a TOTAL ORDER, which is tedious, but guaranteed to be complete.
-    
-    // Do not change the following lines unless you understand all this and have a good reason.
-
-    (* descending_urgency= "rewindToTokenSlow2, rewindToTokenSlow1, rewindToToken2, rewindToToken1, commitStores, commitResults2, commitResults1, doStores3ReadModifyWrite, doStores3, doStores2, doStores1, doLoads3, doLoads2, doLoads1, getResults4, getResult4AdditionalWriteback, getResults3, getResults2StallEnd, getResults2, getResults1, getDependencies2AdditionalMappings, getDependencies2, getDependencies1, getInstruction2, getInstruction1, newInFlight, emulateInstruction2_UpdateReg" *)
-
-    // The execution_order pragma doesn't affect the schedule but does get rid of
-    // compiler warnings caused by the appearance of multiple writers to the
-    // prfvalids vector.  According to Bluespec the order here affects the
-    // priority encoder within a cycle but not the scheduling rules.
-
-    (* execution_order = "getResults4, getResult4AdditionalWriteback, getDependencies2AdditionalMappings, getDependencies2" *)
-
     rule rewindToTokenSlow2 (True);
 
       let t = rewindQ.first();

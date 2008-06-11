@@ -1,4 +1,5 @@
 import RegFile::*;
+import FIFOF::*;
 
 import hasim_common::*;
 import soft_connections::*;
@@ -12,6 +13,77 @@ interface Port_Control;
   method Bool heavy();
 
 endinterface
+
+interface PortReceive#(type msgT, numeric type latency, numeric type bandwidth);
+    method ActionValue#(Maybe#(msgT)) receive();
+    interface Port_Control ctrl;
+endinterface
+
+interface PortSend#(type msgT);
+    method Action send(Maybe#(msgT) m);
+    interface Port_Control ctrl;
+endinterface
+
+module [HASim_Module] mkPortTimeSharedReceive#(String portName)(PortReceive#(msgT, latency, bandwidth))
+    provisos (Bits#(msgT, msgSz),
+              Transmittable#(Maybe#(msgT)),
+              Add#(latency, 1, l1),
+              Mul#(latency, bandwidth, b0),
+              Mul#(l1, bandwidth, b),
+              Add#(b, 1, b1),
+              Log#(b1, bLog));
+
+    Connection_Receive#(Maybe#(msgT)) con <- mkConnection_Receive(portName);
+
+    Reg#(Bit#(bLog)) lat <- mkReg(fromInteger(valueOf(b1)));
+
+    FIFOF#(Maybe#(msgT)) fifo <- mkSizedFIFOF(valueOf(b));
+
+    rule fillFifo(True);
+        fifo.enq(con.receive());
+        con.deq();
+    endrule
+
+    method ActionValue#(Maybe#(msgT)) receive();
+        if(lat == 0)
+        begin
+            fifo.deq();
+            return fifo.first();
+        end
+        else
+        begin
+            lat <= lat - 1;
+            return tagged Invalid;
+        end
+    endmethod
+
+    interface Port_Control ctrl;
+        method Bool empty() = False;
+        method Bool full() = True;
+        method Bool balanced() = True;
+        method Bool light() = False;
+        method Bool heavy() = False;
+    endinterface
+endmodule
+
+module [HASim_Module] mkPortTimeSharedSend#(String portName)(PortSend#(msgT))
+    provisos (Bits#(msgT, msgSz),
+              Transmittable#(Maybe#(msgT)));
+
+    Connection_Send#(Maybe#(msgT)) con <- mkConnection_Send(portName);
+
+    method Action send(Maybe#(msgT) msg);
+        con.send(msg);
+    endmethod
+
+    interface Port_Control ctrl;
+        method Bool empty() = True;
+        method Bool full() = False;
+        method Bool balanced() = True;
+        method Bool light() = False;
+        method Bool heavy() = False;
+    endinterface
+endmodule
 
 interface Port_Send#(type msg_T);
   

@@ -16,6 +16,7 @@ parser = optparse.OptionParser()
 
 # Benchmark options
 parser.add_option("--hasim-sim", action="store_true")
+parser.add_option("--physmem", default="512MB", help="Physical memory")
 parser.add_option("-c", "--cmd",
                   default="",
                   help="The binary to run in syscall emulation mode.")
@@ -103,7 +104,7 @@ CPUClass.clock = '2GHz'
 np = options.num_cpus
 
 system = System(cpu = [CPUClass(cpu_id=i) for i in xrange(np)],
-                physmem = PhysicalMemory(range=AddrRange("512MB")),
+                physmem = PhysicalMemory(range=AddrRange(options.physmem)),
                 membus = Bus(), mem_mode = test_mem_mode)
 
 system.physmem.port = system.membus.port

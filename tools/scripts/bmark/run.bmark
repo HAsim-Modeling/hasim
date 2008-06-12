@@ -13,6 +13,7 @@ use IO::Pty;
 
 sub ExecModel($);
 sub Exec($$);
+sub CompareOutput();
 sub ReadConfig($);
 
 
@@ -32,24 +33,13 @@ ReadConfig("$config{modelDir}/config/env.sh");
 ##
 ## Pseudo-enumeration of possible model types
 ##
+my $MODEL_NONE = 0;
 my $MODEL_FPGA = 1;                     # Model runs on FPGA hardware
 my $MODEL_BLUESIM = 2;                  # Bluesim
 my $MODEL_VSIM = 3;                     # Verilog simulator
 
-my $mType = 0;
+my $mType = $MODEL_NONE;
 
-if (-f "$config{modelDir}/$config{model}_hw.download") {
-    $mType = $MODEL_FPGA;
-}
-elsif (-f "$config{modelDir}/$config{model}_hw.exe") {
-    $mType = $MODEL_BLUESIM;
-}
-elsif (-f "$config{modelDir}/$config{model}_hw.vexe") {
-    $mType = $MODEL_VSIM;
-}
-else {
-    die("Can't determine model type");
-}
 
 #############################################################################
 #############################################################################
@@ -60,6 +50,8 @@ else {
 #############################################################################
 
 my $help = 0;
+my $onlyCompare = 0;
+my $noCompare = 0;
 my $gdb = 0;
 my $noProgram = 0;
 my $noReserve = 0;
@@ -67,6 +59,7 @@ my $funcpPrefix = "";
 my $funcpSuffix = "";
 my $noshowfp = 0;
 my $showfp = undef;
+my $m5run = 0;
 
 my $status = GetOptions("help!" => \$help,
                         "gdb!" => \$gdb,
@@ -75,7 +68,10 @@ my $status = GetOptions("help!" => \$help,
                         "funcp-prefix=s" => \$funcpPrefix,
                         "funcp-suffix=s" => \$funcpSuffix,
                         "noshowfp!" => \$noshowfp,
+                        "onlycompare!" => \$onlyCompare,
+                        "nocompare!" => \$noCompare,
                         "showfp:s" => \$showfp,
+                        "m5!" => \$m5run,
                        );
 
 if ($help || ! $status) {
@@ -87,6 +83,9 @@ if ($help || ! $status) {
     print STDERR "                           Prepend prefix to HAsim's --funcp argument\n";
     print STDERR "   [--funcp-suffix=\"<suffix>\"]\n";
     print STDERR "                           Append suffix to HAsim's --funcp argument\n";
+    print STDERR "   [--onlycompare]         Only compare output files (without running)\n";
+    print STDERR "   [--nocompare]           Skip comparison of output files\n";
+    print STDERR "   [--m5]                  Run workload in m5 without HAsim\n";
 
     if ($config{isHybridModel}) {
         my $cmd = "$config{modelDir}/$config{model} --help-run-append";
@@ -102,6 +101,26 @@ foreach my $i ( 0 .. $#ARGV ) {
     if (($ARGV[$i] =~ /\s/) && ! ($ARGV[$i] =~ /['"]$/)) {
         $ARGV[$i] = '"' . $ARGV[$i] . '"';
     }
+}
+
+if ($onlyCompare != 0) {
+    exit(CompareOutput());
+}
+
+if ($m5run != 0) {
+    $mType = $MODEL_NONE;
+}
+elsif (-f "$config{modelDir}/$config{model}_hw.download") {
+    $mType = $MODEL_FPGA;
+}
+elsif (-f "$config{modelDir}/$config{model}_hw.exe") {
+    $mType = $MODEL_BLUESIM;
+}
+elsif (-f "$config{modelDir}/$config{model}_hw.vexe") {
+    $mType = $MODEL_VSIM;
+}
+else {
+    die("Can't determine model type");
 }
 
 #############################################################################
@@ -129,16 +148,47 @@ else {
     $showfp = 'none';
 }
 
-if ($config{feeder} eq 'm5') {
-    # Tell m5 to be quiet
-    $config{feedFlags} = "--quiet " . $config{feedFlags};
-}
-
 my $feedFlags = "${funcpPrefix} $config{feedFlags} ${funcpSuffix}";
 
-my $cmd = "$config{modelDir}/$config{model} --modeldir=$config{modelDir} --workload=$config{workload} --showfp=${showfp} --funcp=\"${feedFlags}\" $config{genFlags}";
-foreach my $c (@ARGV) {
-    $cmd .= " $c";
+if ($config{feeder} eq 'm5') {
+    # Tell m5 to be quiet and not to enable the remote gdb port.  Under netbatch
+    # it appears there are sometimes attempts to connect to the port, which
+    # stops simulation.
+    $feedFlags = "--quiet --remote-gdb-port=0 ${feedFlags}";
+}
+
+my $cmd;
+
+if ($m5run == 0) {
+    # Normal run
+    $cmd = "$config{modelDir}/$config{model} --modeldir=$config{modelDir} --workload=$config{workload} --showfp=${showfp} --funcp=\"${feedFlags}\" $config{genFlags}";
+    foreach my $c (@ARGV) {
+        $cmd .= " $c";
+    }
+}
+else {
+    if ($config{feeder} ne 'm5') {
+        die("This workload does not use m5");
+    }
+
+    # Running inside m5 without HAsim
+    my $m5cmd;
+    if (exists($ENV{M5BIN})) {
+        $m5cmd = $ENV{M5BIN};
+    }
+    else {
+        my $m5bin = "platform/m5/build/ALPHA_SE/m5." . ($gdb ? "debug" : "opt");
+        $m5cmd = `awb-resolver ${m5bin}`;
+        chomp($m5cmd);
+        die("Failed to find $m5bin") if ($m5cmd eq '');
+    }
+
+    $cmd = "${m5cmd} ${feedFlags}";
+
+    # Drop --hasim-sim
+    $cmd =~ s/--hasim-sim //;
+    # Drop escaping of quotes
+    $cmd =~ s/\\"/"/g;
 }
 
 # Adjust the arguments for Bluesim if it is being invoked directly
@@ -147,7 +197,7 @@ if (! $config{isHybridModel} && ($mType == $MODEL_BLUESIM)) {
 
     # Bluesim may expect to load a program from a well known file
     unlink('program.vmh');
-    link('program/@BENCHMARK@.@ISA@.vmh', 'program.vmh');
+    link("program/$config{workload}.$config{ISA}.vmh", 'program.vmh');
 }
 
 
@@ -191,8 +241,12 @@ if (($mType == $MODEL_FPGA) && ! $noProgram && ! $noReserve) {
     Exec("hasim-fpga-ctrl --drop-reservation", "Failed to drop FPGA reservation");
 }
 
-# Done.
-exit($run_status);
+if ($run_status != 0) {
+    exit($run_status);
+}
+else {
+    exit(CompareOutput());
+}
 
 
 sub ErrorExit($) {
@@ -240,8 +294,8 @@ sub ExecModel($) {
         # Child process is the monitoring process
         $pty->make_slave_controlling_terminal();
 
-        if (! open(LOG, ">@BENCHMARK@.@ISA@.out")) {
-            print STDERR "Error opening log file @BENCHMARK@.@ISA@.out\n";
+        if (! open(LOG, ">$config{workload}.$config{ISA}.out")) {
+            print STDERR "Error opening log file $config{workload}.$config{ISA}.out\n";
         }
 
         # Unbuffered I/O loop
@@ -308,6 +362,36 @@ sub Exec($$) {
     elsif (($? >> 8) != 0) {
         ErrorExit("${errmsg}");
     }
+}
+
+
+sub CompareOutput() {
+    return 0 if ($noCompare != 0);
+    return 0 if (! exists($config{compare}) || ($config{compare} eq ''));
+
+    my $result = 0;
+
+    foreach my $cmp (split(':', $config{compare})) {
+        system($cmp);
+        if ($? == -1) {
+            ErrorExit("Failed to execute $cmp: $!");
+        }
+        elsif ($? & 127) {
+            ErrorExit("Child died with signal " . ($? & 127) . ", " . (($? & 128) ? 'with' : 'without') . " coredump");
+        }
+        elsif (($? >> 8) != 0) {
+            $result = $? >> 8;
+        }
+    }
+
+    if ($result == 0) {
+        print STDERR "*** Output comparison passed ***\n";
+    }
+    else {
+        print STDERR "*** Output comparison failed ***\n";
+    }
+
+    return $result;
 }
 
 

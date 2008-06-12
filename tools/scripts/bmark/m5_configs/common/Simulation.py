@@ -321,7 +321,6 @@ def run(options, root, testsys, cpu_class):
         if options.fast_forward:
             m5.stats.reset()
         print "**** REAL SIMULATION ****"
-        return
         exit_event = m5.simulate(maxtick)
 
         while exit_event.getCause() == "checkpoint":

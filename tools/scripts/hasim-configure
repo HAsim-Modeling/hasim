@@ -225,23 +225,13 @@ sub setup_benchmark {
         $feed_arg = "--feeder " . ${benchmark}->feeder();
     }
 
-    # Invoke the setup script
-    my $model_name = HAsim::Build::get_model_name($model);
-    my $cmd = "env ASIM_CONFIG_MODEL=$model_name $setup_command $feed_arg $setup_args $srcdir $rundir";
-
-    print STDOUT "COMMAND: $cmd\n";
-    $sys_status = system($cmd);
-    if ($sys_status) {
-      print "Command failed\n";
-      return 0;
-    }
-
-
     my $relmodeldir = "${builddir}";
     $relmodeldir = File::Spec->abs2rel($relmodeldir, $rundir);
 
     # Add a .bsc link to the model directory.  This is needed for Bluesim.
     system("cd ${rundir}; ln -fs ${relmodeldir}/.bsc .bsc");
+
+    my $model_name = HAsim::Build::get_model_name($model);
 
     ##
     ## Add the runtime initialization stub
@@ -263,6 +253,17 @@ sub setup_benchmark {
     print STUB "sysFlags=\"" . ${benchmark}->system_flags() . "\"\n";
     print STUB "feedFlags=\"" . ${benchmark}->feeder_flags() . "\"\n";
     close(STUB);
+
+
+    # Invoke the setup script
+    my $cmd = "env ASIM_CONFIG_MODEL=$model_name $setup_command $feed_arg $setup_args $srcdir $rundir";
+
+    print STDOUT "COMMAND: $cmd\n";
+    $sys_status = system($cmd);
+    if ($sys_status) {
+      print "Command failed\n";
+      return 0;
+    }
 
     return 1;
 }

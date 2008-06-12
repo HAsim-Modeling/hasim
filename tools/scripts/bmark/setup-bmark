@@ -17,13 +17,16 @@ use warnings;
 use File::Basename;
 use Getopt::Long;
 
-sub SubstCopyFile($$);
 sub Usage();
 sub ErrorExit($);
 
+my $binary = undef;
+my $compare = undef;
+my $data = undef;
 my $feeder = '';
 my $group = undef;
 my $isa = "unknown_ISA";
+my $linkto = undef;
 
 #
 # Find the root of the benchmarks directory tree.
@@ -35,9 +38,13 @@ ErrorExit("Can't find benchmark root") if ($benchmark_root eq '');
 #
 # Parse the command line switches
 #
-if (! GetOptions('feeder=s' => \$feeder,
+if (! GetOptions('binary=s' => \$binary,
+                 'compare=s' => \$compare,
+                 'data=s' => \$data,
+                 'feeder=s' => \$feeder,
                  'group=s' => \$group,
                  'isa=s' => \$isa,
+                 'linkto=s' => \$linkto,
                 )) {
     Usage();
 }
@@ -51,8 +58,8 @@ my $srcdir = $ARGV[1];
 my $dstdir = $ARGV[2];
 
 print "BMARK: $bmark\n";
-print "SRC: $srcdir";
-print "DST: $dstdir";
+print "SRC: $srcdir\n";
+print "DST: $dstdir\n";
 
 if (! defined($group)) {
     $group = $bmark;
@@ -66,7 +73,10 @@ if ($feeder ne "none") {
 
     mkdir('program') or ErrorExit("Failed to make 'program' directory");
 
-    if (-f "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.bin") {
+    if (defined($binary)) {
+        $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${binary}";
+    }
+    elsif (-f "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.bin") {
         $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.bin";
     }
     elsif (-f "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.vmh") {
@@ -83,47 +93,68 @@ if ($feeder ne "none") {
     symlink($src_prog, $dst_prog) or ErrorExit("Failed to symlink $dst_prog => $src_prog");
 }
 
-# Set up m5 environment
-if ($feeder eq 'm5') {
-    system("(cd $srcdir; tar cf - ./m5_configs) | (cd $dstdir; tar xf -)");
+# Copy input data files
+if (defined($data)) {
+    if ($data =~ /\.tar\.gz$/) {
+        system("tar xzf ${data}");
+    }
+    elsif ($data =~ /\.tar$/) {
+        system("tar xf ${data}");
+    }
 }
 
+# Link to files or directories
+if (defined($linkto)) {
+    foreach my $tgt (split(':', $linkto)) {
+        if ($tgt =~ /\/$/) {
+            # Trailing slash means link to all the files individually within
+            # a directory.
+            if (-d $tgt) {
+                opendir(DIR, $tgt) || die("Cannot open directory for --linkto $tgt\n");
+                my @tgt_objs = readdir(DIR);
+                closedir(DIR);
+                foreach my $t (@tgt_objs) {
+                    if (! (($t eq '.') || ($t eq '..'))) {
+                        symlink("${tgt}${t}", basename($t)) or die("Failed to link to ${tgt}${t}");
+                    }
+                }
+            }
+        }
+        else {
+            # No trailing slash. Just link to a single object
+            symlink($tgt, basename($tgt)) or die("Failed to link to $tgt");
+        }
+    }
+}
 
-SubstCopyFile("${srcdir}/run.bmark", "${dstdir}/run");
-chmod(0755, "${dstdir}/run");
+# Store compare rules to config
+open(ENV, '>>config/env.sh') or die("Failed to open config/env.sh");
+print ENV "ISA=\"${isa}\"\n";
+if (defined($compare)) {
+    print ENV "compare=\"${compare}\"\n";
+}
+close(ENV);
 
+# Set up m5 environment
+if ($feeder eq 'm5') {
+    system("(cd $srcdir; tar cf - ./m5_configs) | tar xf -");
+}
+
+system("cp -f ${srcdir}/run.bmark run");
+chmod(0755, "run");
 
 exit(0);
 
 
 
-##
-## Copy file from src to dst, substituting a bunch of XX<foo>XX strings for
-## values computed in this setup script.  This allows for generic script
-## files that are made specific when the workload is set up.
-##
-sub SubstCopyFile($$)
-{
-    my ($src, $dst) = @_;
-
-    open(INPUT, "<$src") or ErrorExit("Can't open input $src: $!\n");
-    open(OUTPUT, ">$dst") or ErrorExit("Can't open output $dst: $!\n");
-
-    local $_;
-    while (<INPUT>)
-    {
-        s/\@BENCHMARK\@/${bmark}/g;
-        s/\@ISA\@/${isa}/g;
-        print OUTPUT $_;
-    }
-
-    close(INPUT);
-    close(OUTPUT);
-}
-
-
 sub Usage() {
-    print STDERR "Usage: setup-bmark [--group <name>] [--isa <name>] <bmark> <srcdir> <dstdir>\n";
+    print STDERR "Usage: setup-bmark [--binary <name>]\n";
+    print STDERR "                   [--compare <compare commands>]\n";
+    print STDERR "                   [--data <tar file>]\n";
+    print STDERR "                   [--group <name>]\n";
+    print STDERR "                   [--isa <name>]\n";
+    print STDERR "                   [--linkto <target0>:...:<targetN>]\n";
+    print STDERR "                   <bmark> <srcdir> <dstdir>\n";
     exit(1);
 }
 

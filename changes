@@ -13146,3 +13146,42 @@ Directory modules/hasim/functional-partition/register-state
 
 
 Added the snapshot files
+
+----------
+mcadler     Date: Thu Jun 12 16:29:31 EDT 2008  CSN: CSN-hasim-443
+                  Thu Jun 12 20:29:31 UTC 2008
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          442 
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          442 
+
+Directory tools/scripts/bmark/m5_configs/common
+ Simulation.py             Locally Modified          442 
+
+Directory tools/scripts/bmark/m5_configs
+ se.py                     Locally Modified          442 
+
+Directory tools/scripts/bmark
+ setup-bmark               Locally Modified          442 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.awb Locally Modified          442 
+
+- Reduce functional cache index bits to 11 now that the cache is 4x larger due
+  to 32 byte lines.
+
+- New workload setup options for input files and output comparison.  SPEC
+  benchmarks compare output files after runs complete.
+
+- Benchmark run script now gets all its parameters from the config/env.sh file.
+  The script is no longer modified by the benchmark setup script.
+
+- Add physical memory size option to m5 Python script
+
+- Changes to benchmark run arguments:
+  --m5: Run workload in m5 without HAsim
+  --nocompare: Skip comparison of output files
+  --onlycompare: Do comparison of output files to expected values

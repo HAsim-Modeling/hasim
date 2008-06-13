@@ -399,8 +399,8 @@ xilinx_bit = env.Command(
 signature = env.Command(
     'config/signature.sh',
     xilinx_bit,
-    [ '@echo \'#!/bin/sh\' > config/signature.sh',
-      '@echo signature=\\"' + APM_NAME + '-`md5sum .xilinx/alpha_unpipelined_htg_par.bit | sed \'s/ .*//\'`\\" >> config/signature.sh' ])
+    [ '@echo \'#!/bin/sh\' > $TARGET',
+      '@echo signature=\\"' + APM_NAME + '-`md5sum $SOURCE | sed \'s/ .*//\'`\\" >> $TARGET' ])
 
 #
 # The final step must leave a few files in well-known locations since they are

@@ -13201,3 +13201,13 @@ Directory modules/model
 - Don't reprogram an FPGA if the bitfile is already loaded.  (Disabled
   due to comment on run.bmark line 228 until Angshuman finishes software
   controlled reset.)
+
+----------
+mcadler     Date: Fri Jun 13 16:42:55 EDT 2008  CSN: CSN-hasim-445
+                  Fri Jun 13 20:42:55 UTC 2008
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          444 
+
+Forgot to remove model-specific file names.

@@ -14,7 +14,7 @@ use IO::Pty;
 sub ExecModel($);
 sub Exec($$);
 sub CompareOutput();
-sub ReadConfig($);
+sub ReadConfig($$);
 
 
 #############################################################################
@@ -27,8 +27,9 @@ sub ReadConfig($);
 
 my %config;
 
-ReadConfig("config/env.sh");
-ReadConfig("$config{modelDir}/config/env.sh");
+ReadConfig("config/env.sh", 1);
+ReadConfig("$config{modelDir}/config/env.sh", 1);
+ReadConfig("$config{modelDir}/config/signature.sh", 0);
 
 ##
 ## Pseudo-enumeration of possible model types
@@ -216,8 +217,26 @@ if ($mType == $MODEL_FPGA) {
             Exec("hasim-fpga-ctrl --reserve", "Failed to reserve FPGA");
         }
 
-        Exec("hasim-fpga-ctrl --program", "Failed to enter FPGA programming mode");
-        Exec("(cd $config{modelDir}; ./$config{model}_hw.download) 2>&1 | tee FPGA_programming.log | grep -e INFO:iMPACT -e Programmed -e Error", "Failed to program FPGA");
+        # Is the FPGA already programmed with the correct bit file?
+        my $needProgram = 1;
+        if (exists($config{signature})) {
+            my $curSignature = `hasim-fpga-ctrl --getsignature`;
+            chomp($curSignature);
+            if ($curSignature eq $config{signature}) {
+                print "FPGA is already programmed (signature match)...\n";
+# Uncomment when reset works
+#                $needProgram = 0;
+            }
+        }
+
+        if ($needProgram) {
+            Exec("hasim-fpga-ctrl --program", "Failed to enter FPGA programming mode");
+            Exec("(cd $config{modelDir}; ./$config{model}_hw.download) 2>&1 | tee FPGA_programming.log | grep -e INFO:iMPACT -e Programmed -e Error", "Failed to program FPGA");
+            if (exists($config{signature})) {
+                Exec("hasim-fpga-ctrl --setsignature=$config{signature}", "Failed to set FPGA bit image signature");
+            }
+        }
+
         Exec("hasim-fpga-ctrl --activate", "Failed to activate FPGA or driver");
     }
 }
@@ -385,10 +404,10 @@ sub CompareOutput() {
     }
 
     if ($result == 0) {
-        print STDERR "*** Output comparison passed ***\n";
+        print "*** Output comparison passed ***\n";
     }
     else {
-        print STDERR "*** Output comparison failed ***\n";
+        print "*** Output comparison failed ***\n";
     }
 
     return $result;
@@ -398,10 +417,16 @@ sub CompareOutput() {
 #
 # Read the configuration file
 #
-sub ReadConfig($) {
+sub ReadConfig($$) {
     my $conf = shift;
+    my $required = shift;
 
-    open(CONFIG, "< $conf") or die("Failed to open $conf");
+    my $status = open(CONFIG, "< $conf");
+    if (! $status) {
+        return if (! $required);
+        die("Failed to open $conf");
+    }
+
     while (<CONFIG>) {
         chomp;
         my $t = $_;

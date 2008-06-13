@@ -392,8 +392,15 @@ xilinx_par = env.Command(
 xilinx_bit = env.Command(
     XILINX_APM_NAME + '_par.bit',
     [ 'config/' + APM_NAME + '.ut', xilinx_par ],
-    'bitgen -f $SOURCES')
+    [ Delete('config/signature.sh'),
+      'bitgen -f $SOURCES' ])
 
+# Generate the signature for the FPGA image
+signature = env.Command(
+    'config/signature.sh',
+    xilinx_bit,
+    [ '@echo \'#!/bin/sh\' > config/signature.sh',
+      '@echo signature=\\"' + APM_NAME + '-`md5sum .xilinx/alpha_unpipelined_htg_par.bit | sed \'s/ .*//\'`\\" >> config/signature.sh' ])
 
 #
 # The final step must leave a few files in well-known locations since they are
@@ -402,7 +409,7 @@ xilinx_bit = env.Command(
 #
 loader = env.Command(
     APM_NAME + '_hw.download',
-    xilinx_bit + SW_EXE,
+    signature + SW_EXE,
     [ '@ln -fs config/' + APM_NAME + '.download $TARGET',
       '@ln -fs ' + SW_EXE_OR_TARGET + ' ' + APM_NAME,
       Delete(APM_NAME + '_hw.exe'),

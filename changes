@@ -13185,3 +13185,19 @@ Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/wr
   --m5: Run workload in m5 without HAsim
   --nocompare: Skip comparison of output files
   --onlycompare: Do comparison of output files to expected values
+
+----------
+mcadler     Date: Fri Jun 13 13:23:30 EDT 2008  CSN: CSN-hasim-444
+                  Fri Jun 13 17:23:30 UTC 2008
+
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          443 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          442 
+
+- Record an md5 signature of bit files as they are built.
+- Don't reprogram an FPGA if the bitfile is already loaded.  (Disabled
+  due to comment on run.bmark line 228 until Angshuman finishes software
+  controlled reset.)

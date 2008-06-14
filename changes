@@ -13211,3 +13211,15 @@ Directory modules/model
  SCons.top.template        Locally Modified          444 
 
 Forgot to remove model-specific file names.
+
+----------
+nikhil      Date: Sat Jun 14 00:25:54 CDT 2008  CSN: CSN-hasim-446
+                  Sat Jun 14 05:25:54 UTC 2008
+
+
+Directory modules/common/modellib
+ hasim_modellib.awb        Locally Modified          445 
+ StallPorts.bsv            Locally Added               0 
+
+Initial implementation of the StallPorts that model a ping-pong buffer/double
+buffer.

@@ -3,8 +3,10 @@ import FIFO::*;
 import hasim_common::*;
 import soft_connections::*;
 
+/* -------------------------------------------------------------------------- */
 // The StallPorts model a ping-pong buffer/double buffer.
 //
+// Description of a ping-pong buffer
 // A ping-pong buffer is an implementation of a pipeline latch which has
 // storage for two cycles worth of information. If at the beginning of a cycle,
 // both entries in the buffer are occupied, the producer will not do any work,
@@ -12,6 +14,29 @@ import soft_connections::*;
 // The advantage of this implementation is that there is no combinational path
 // from the consumer to the producer. For those familiar with bluespec, this is
 // exactly the bluespec mkFIFO.
+//
+// Here is an example that demonstrates the operation of a ping pong buffer as
+// well as bubble squishing. A-F are instructions, FDXMW are pipeline stages.
+// || is the ping-pong buffer and S represents a stall. Note that unlike
+// conventional pipeline diagrams, I am showing the instructions as sitting
+// inside the buffer as opposed to inside a stage.
+//
+// time       F  ||  D  ||  X  ||  M  ||  W
+//    0
+//    1           A
+//    2           B      A
+//    3           C      B      A  S            # S = stall due to cache-miss
+//    4           D      C     BA  S
+//    5           E     DC     BA
+//    6          FE     DC      B      A
+//    7          FE  S1  D      C      B        # S1 = stall due to dependency on B
+//    8          FE  S1         D  S2  C        # S2 = stall due to cache miss
+//    9          FE             D  S2
+//   10           F      E      D  S2           # bubble squished
+//
+
+/* -------------------------------------------------------------------------- */
+// StallPorts Interface:
 //
 // StallPorts guard the producer from enq-ing valid data when the modelled
 // buffering is fully occupied. Only when canSend is True, the producer can
@@ -26,6 +51,23 @@ import soft_connections::*;
 // entry in the buffer, there is also a peek method which will show the data
 // without removing it from the buffer. The receive method, on the other hand,
 // and also deq it from the fifo.
+
+/* -------------------------------------------------------------------------- */
+// Implementation Notes:
+//
+// The pC & cC are state for a 4 stage FSM as shown:
+//
+// State pC  cC        Description                       Action
+//   A    0   0  Beginning of model cycle     None.
+//   B    0   1  Consumer model cycle ended   Block consumer from pulling more data.
+//   C    1   0  Producer model cycle ended   Block producer from pulling more data.
+//   D    1   1  Both P&C model cycles ended  Determine can_send & can_receive for next cycle.
+//
+// Legal paths: A -> B -> D -> A and A -> C -> D -> A
+//
+// Note that the implementation allows the producer and consumer to "finish"
+// their model cycle in any order, but prevents them from going ahead for more
+// than 1 model cycle.
 
 interface StallPort_Send#(type a);
     method Action send(Maybe#(a) x);
@@ -71,20 +113,20 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
     Connection_Send#(Bool)         con_cred <- mkConnection_Send   (s + ":cred");
 
     FIFOF#(a) fifo <- mkUGSizedFIFOF(2);
-    
-    Reg#(Bool) pC <- mkReg(True);
-    Reg#(Bool) cC <- mkReg(True);
 
-    Reg#(Bool) cN <- mkReg(?);
+    Reg#(Bool) pC <- mkReg(True); // producer model cycle completed
+    Reg#(Bool) cC <- mkReg(True); // consumer model cycle completed
+
+    Reg#(Bool) can_receive <- mkReg(?);
 
     rule work (pC && cC);
         con_cred.send(fifo.notFull());
-        cN <= fifo.notEmpty();
+        can_receive <= fifo.notEmpty();
         pC <= False;
         cC <= False;
     endrule
 
-    rule enq;
+    rule enq (!pC);
         con_data.deq();
         let mx = con_data.receive();
         if (mx matches tagged Valid .x)
@@ -95,11 +137,11 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
     method ActionValue#(Maybe#(a)) receive() if (!cC);
         fifo.deq();
         cC <= True;
-        return cN ? Valid (fifo.first) : Invalid;
+        return can_receive ? Valid (fifo.first) : Invalid;
     endmethod
 
     method Maybe#(a) peek() if (!cC);
-        return cN ? Valid (fifo.first) : Invalid;
+        return can_receive ? Valid (fifo.first) : Invalid;
     endmethod
 
     method Action pass() if (!cC);

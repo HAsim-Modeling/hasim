@@ -13223,3 +13223,15 @@ Directory modules/common/modellib
 
 Initial implementation of the StallPorts that model a ping-pong buffer/double
 buffer.
+
+----------
+nikhil      Date: Sat Jun 14 20:35:09 CDT 2008  CSN: CSN-hasim-447
+                  Sun Jun 15 01:35:09 UTC 2008
+
+
+Directory modules/common/modellib
+ StallPorts.bsv            Locally Modified          446 
+
+
+StallPorts: Added an example of bubble squishing, added a few implementation
+notes, and added a guard on the enq rule to make intent clear.

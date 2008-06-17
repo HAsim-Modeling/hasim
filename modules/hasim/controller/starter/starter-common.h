@@ -14,38 +14,45 @@ typedef class STARTER_CLASS* STARTER;
 class STARTER_CLASS: public RRR_SERVICE_CLASS,
                      public PLATFORMS_MODULE_CLASS
 {
-    private:
-        // self-instantiation
-        static STARTER_CLASS instance;
+  private:
+    // self-instantiation
+    static STARTER_CLASS instance;
 
-        // wall-clock time tracking
-        struct timeval startTime;
+    // wall-clock time tracking
+    struct timeval startTime;
 
-    public:
-        STARTER_CLASS();
-        ~STARTER_CLASS();
+    void EndSimulation(int exitValue);
 
-        // static methods
-        static STARTER GetInstance() { return &instance; }
+  public:
+    STARTER_CLASS();
+    ~STARTER_CLASS();
 
-        // required RRR service methods
-        void Init(PLATFORMS_MODULE);
-        UMF_MESSAGE Request(UMF_MESSAGE);
-        void Poll();
+    // static methods
+    static STARTER GetInstance() { return &instance; }
 
-        // client methods
-        void Run();
-        void Pause();
-        void Sync();
-        void DumpStats();
+    // required RRR service methods
+    void Init(PLATFORMS_MODULE);
+    UMF_MESSAGE Request(UMF_MESSAGE);
+    void Poll();
 
-    private:
-        // These let us compute FMR starting after the first heartbeat is received.
-        // We can thus eliminate model start-up cycles from FMR.
-        UINT64 fpga_start_cycle;
-        UINT64 model_start_cycle;
+    // client methods
+    void Run();
+    void Pause();
+    void Sync();
+    void DumpStats();
 
-        UINT64 next_progress_msg_cycle;
+  private:
+    // These let us compute FMR starting after the first heartbeat is received.
+    // We can thus eliminate model start-up cycles from FMR.
+    UINT64 fpga_start_cycle;
+    UINT64 model_start_cycle;
+
+    UINT64 next_progress_msg_cycle;
+
+    // Cycle when statistics were last scanned
+    UINT64 last_stats_scan_cycle;
+    // Mask of bits to monitor for triggering statistics scan out from HW
+    UINT64 stats_scan_mask;
 };
 
 #endif

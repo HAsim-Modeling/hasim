@@ -13,6 +13,7 @@
 #include "asim/mesg.h"
 #include "asim/trace.h"
 #include "asim/param.h"
+#include "asim/atoi.h"
 
 #include "asim/provides/command_switches.h"
 
@@ -21,6 +22,7 @@
 GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
     modelDir("."),
     workload(APM_NAME),
+    stopCycle(0),
     progressMsgInterval(1),
     showFrontPanel(false),
     showLEDsOnStdOut(true)
@@ -28,6 +30,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
     enum 
     {
         OPT_BLUESIM_ARGS,
+        OPT_CYCLES,
         OPT_FUNCP,
         OPT_HELP,
         OPT_HELP_RUN_APPEND,
@@ -54,6 +57,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
         static struct option long_options[] =
         {
             {"bluesimargs", required_argument, NULL, OPT_BLUESIM_ARGS},
+            {"cycles", required_argument, NULL, OPT_CYCLES},
             {"funcp", required_argument, NULL, OPT_FUNCP},
             {"help", no_argument, NULL, OPT_HELP},
             {"help-run-append", no_argument, NULL, OPT_HELP_RUN_APPEND},
@@ -80,6 +84,10 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
             InitArgcArgvPair(optarg, argv[0], bluesimArgc, bluesimArgv);
             break;
 
+          case OPT_CYCLES:
+            stopCycle = atoi_general_unsigned(optarg);
+            break;
+
           case OPT_FUNCP:
             InitArgcArgvPair(optarg, argv[0], funcpArgc, funcpArgv);
             break;
@@ -96,7 +104,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
 
           case OPT_PC:
             // Progress (hearbeat) interval
-            progressMsgInterval = strtoul(optarg, NULL, 10);
+            progressMsgInterval = atoi_general_unsigned(optarg);
             break;
 
           case OPT_SHOWFP:
@@ -345,7 +353,8 @@ GLOBAL_ARGS_CLASS::ShowArgsHelp(bool fromRunScript)
     fprintf(stderr, "   [--bluesim=\"<args>\"]    Arguments to Bluesim\n");
     fprintf(stderr, "   [--listparam]           List dynamic parameters\n");
     fprintf(stderr, "   [--param NAME=VALUE]    Set a dynamic parameter\n");
-    fprintf(stderr, "   [--pc=interval]         Progress message (hearbeat) interval.\n");
+    fprintf(stderr, "   [--cycles=<n>]          Stop simulation after n cycles\n");
+    fprintf(stderr, "   [--pc=<interval>]       Progress message (hearbeat) interval.\n");
     fprintf(stderr, "                           Messages are triggered by heartbeats that arrive\n");
     fprintf(stderr, "                           from the hardware side, so messages can be no more\n");
     fprintf(stderr, "                           frequent than the hardware heartbeat interval.\n");

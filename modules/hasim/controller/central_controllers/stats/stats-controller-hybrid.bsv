@@ -84,7 +84,7 @@ module [Connected_Module] mkStatsController
   // Connection_Send#(RRR_Request) link_rrr <- mkConnection_Send("rrr_client_stats");
   
   // Track if we are done dumping
-  Reg#(Bool) flush_requested <- mkReg(False);
+  Reg#(Bool) done_requested <- mkReg(False);
   Reg#(Bool) dump_finished  <- mkReg(False);
   
   // Our internal state
@@ -126,15 +126,15 @@ module [Connected_Module] mkStatsController
       tagged ST_Val .stinfo: //A stat to dump
       begin
           
-        client_stub.makeRequest_Print(STAT_INFO { statID: zeroExtend(stinfo.statID), value: stinfo.value });
+        client_stub.makeRequest_Send(STAT_INFO { statID: zeroExtend(stinfo.statID), value: stinfo.value });
           
       end
       tagged ST_Dump:  //We're done dumping
       begin
         
-        client_stub.makeRequest_Flush(?);
+        client_stub.makeRequest_Done(?);
         state <= SC_Idle;
-        flush_requested <= True;
+        done_requested <= True;
           
       end
       default:  //This should never happen
@@ -147,13 +147,13 @@ module [Connected_Module] mkStatsController
      
   endrule
     
-  // waitForFlushAck
+  // waitForDoneAck
     
-  // Wait for response to Flush() RRR request
+  // Wait for response to Done() RRR request
     
-  rule waitForFlushAck (flush_requested);
+  rule waitForDoneAck (done_requested);
     
-      let a <- client_stub.getResponse_Flush();
+      let a <- client_stub.getResponse_Done();
       dump_finished <= True;
       
   endrule

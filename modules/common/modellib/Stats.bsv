@@ -50,7 +50,7 @@ module [Connected_Module] mkStatCounter_Enabled#(STATS_DICT_TYPE myID)
 
   Connection_Chain#(STAT_DATA) chain <- mkConnection_Chain(`RINGID_STATS);
   Counter#(`HASIM_STATS_SIZE) stat  <- mkCounter(0);
-  Reg#(STAT_STATE)             state <- mkReg(Recording);
+  Reg#(STAT_STATE)            state <- mkReg(Recording);
   Reg#(Bool)                  enabled <- mkReg(True);
  
   rule dump (state == Dumping);
@@ -67,7 +67,13 @@ module [Connected_Module] mkStatCounter_Enabled#(STATS_DICT_TYPE myID)
     case (st) matches 
       tagged ST_Dump:
       begin
+        //
+        // Send the current value of the counter along the chain and reset
+        // the counter.  If the run continues the software side will request
+        // more stats dumps and compute the sum.
+        //
         chain.send_to_next(tagged ST_Val {statID: myID, value: stat.value()});
+        stat.setC(0);
         state <= Dumping;
       end
       tagged ST_Reset: 

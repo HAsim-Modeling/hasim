@@ -6,6 +6,8 @@
 #include <string>
 #include <sstream>
 
+#include "asim/syntax.h"
+
 using namespace std;
 
 // ============= global args ==============
@@ -18,7 +20,8 @@ class GLOBAL_ARGS_CLASS
     bool ShowFrontPanel() const { return showFrontPanel; };
     bool ShowLEDsOnStdOut() const { return showLEDsOnStdOut; };
 
-    unsigned long ProgressMsgInterval() const { return progressMsgInterval; };
+    UINT64 StopCycle() const { return stopCycle; };
+    UINT64 ProgressMsgInterval() const { return progressMsgInterval; };
 
     int FuncPlatformArgc() const { return funcpArgc; }
     char **FuncPlatformArgv() const { return funcpArgv; }
@@ -35,7 +38,8 @@ class GLOBAL_ARGS_CLASS
   private:
     char* modelDir;             // Model (pm) directory
     char* workload;             // Name of the workload (affects stats file name)
-    unsigned long progressMsgInterval;
+    UINT64 stopCycle;           // Cycle on which to force simulation to end
+    UINT64 progressMsgInterval;
     bool showFrontPanel;
     bool showLEDsOnStdOut;
 

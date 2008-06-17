@@ -6,6 +6,9 @@
 #include "starter-common.h"
 #include "asim/rrr/service_ids.h"
 #include "asim/provides/command_switches.h"
+#include "asim/provides/central_controllers.h"
+#include "asim/provides/hasim_controller.h"
+#include "asim/provides/hasim_modellib.h"
 
 #include "asim/ioformat.h"
 
@@ -33,6 +36,25 @@ STARTER_CLASS::STARTER_CLASS() :
 {
     // register with server's map table
     RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
+
+    //
+    // The timing model doesn't stop running while statistics are scanned out.
+    // Make sure the counters are big enough so they don't wrap while the
+    // scan is running.  At least 24 bits should be safe.
+    //
+    ASSERT(HASIM_STATS_SIZE >= 24, "Statistics counter too small");
+
+    //
+    // We assume that HW statistics counters may be incremented at most once
+    // per model cycle.  The heartbeat will be used to trigger scanning out
+    // intermediate counter values in the middle of a run.  Here we confirm
+    // that the heartbeat is frequent enough.
+    //
+    ASSERT(HEARTBEAT_TRIGGER_BIT < HASIM_STATS_SIZE - 2,
+           "Heartbeat too infrequent for triggering statistics scan out");
+
+    stats_scan_mask = 1 << (HASIM_STATS_SIZE - 2);
+    last_stats_scan_cycle = 0;
 }
 
 // destructor
@@ -65,87 +87,119 @@ STARTER_CLASS::Request(
     UINT32 success;
     UINT64 model_cycles;
     UINT64 fpga_cycles;
-    double sec;
-    double usec;
-    double elapsed;
-    struct timeval end_time;
 
     switch (req->GetMethodID())
     {
-        case METHOD_ID_ENDSIM:
-            // stop the clock
-            gettimeofday(&end_time, NULL);
-            sec = double(end_time.tv_sec) - double(startTime.tv_sec);
-            usec = double(end_time.tv_usec) - double(startTime.tv_usec);
-            elapsed = sec + usec/1000000;
+      case METHOD_ID_ENDSIM:
+        success  = req->ExtractUINT32();
+        req->Delete();
 
-            // for now, call statsdump directly from here
-            success  = req->ExtractUINT32();
-            req->Delete();
+        if (success == 1)
+        {
+            cout << "starter: simulation completed successfully." << endl;
+        }
+        else
+        {
+            cout << "starter: simulation completed with errors." << endl;
+        }
 
-            if (success == 1)
+        EndSimulation(success == 0);
+        break;
+
+      case METHOD_ID_HEARTBEAT:
+        model_cycles = req->ExtractUINT64();
+        fpga_cycles = req->ExtractUINT64();
+        req->Delete();
+
+        if (fpga_start_cycle == 0)
+        {
+            fpga_start_cycle = fpga_cycles;
+            model_start_cycle = model_cycles;
+        }
+
+        if (next_progress_msg_cycle && (model_cycles >= next_progress_msg_cycle))
+        {
+            next_progress_msg_cycle += globalArgs->ProgressMsgInterval();
+
+            cout << "[" << std::setw(13) << fpga_cycles
+                 << "]: controller: model cycles completed: "
+                 << std::setw(10) << model_cycles;
+
+            if ((fpga_cycles - fpga_start_cycle) != 0)
             {
-                cout << "starter: simulation completed successfully." << endl;
-                cout << "         syncing... ";
+                cout << " (FMR="
+                     << IoFormat::fmt(".1f", 
+                                      (double)(fpga_cycles - fpga_start_cycle) /
+                                      (double)(model_cycles - model_start_cycle))
+                     << ")";
             }
-            else
-            {
-                cout << "starter: simulation completed with errors." << endl;
-                cout << "         syncing... ";
-            }
-            Sync();
-            cout << "sunk." << endl;
-            cout << "         starting stats dump... ";
+
+            cout << endl;
+        }
+
+
+        //
+        // HW statistics counters are smaller than full counters to save
+        // space.  Time to scan out intermediate statistics values before
+        // they wrap around?
+        //
+        if (((model_cycles ^ last_stats_scan_cycle) & stats_scan_mask) != 0)
+        {
+            last_stats_scan_cycle = model_cycles;
             DumpStats();
-            cout << "done." << endl;
-            printf("         elapsed (wall-clock) time = %.4f seconds.\n", elapsed);
+        }
 
-            CallbackExit(success == 0);
-            break;
+        //
+        // Done?
+        //
+        UINT64 stopCycle = globalArgs->StopCycle();
+        if (stopCycle && (model_cycles >= stopCycle))
+        {
+            cout << "starter: simulation reached stop cycle." << endl;
+            EndSimulation(0);
+        }
+        break;
 
-        case METHOD_ID_HEARTBEAT:
-            model_cycles = req->ExtractUINT64();
-            fpga_cycles = req->ExtractUINT64();
-            req->Delete();
-
-            if (fpga_start_cycle == 0)
-            {
-                fpga_start_cycle = fpga_cycles;
-                model_start_cycle = model_cycles;
-            }
-
-            if (next_progress_msg_cycle && (model_cycles >= next_progress_msg_cycle))
-            {
-                next_progress_msg_cycle += globalArgs->ProgressMsgInterval();
-
-                cout << "[" << std::setw(13) << fpga_cycles
-                     << "]: controller: model cycles completed: "
-                     << std::setw(10) << model_cycles;
-
-                if ((fpga_cycles - fpga_start_cycle) != 0)
-                {
-                    cout << " (FMR="
-                         << IoFormat::fmt(".1f", 
-                                (double)(fpga_cycles - fpga_start_cycle) /
-                                  (double)(model_cycles - model_start_cycle))
-                         << ")";
-                }
-
-                cout << endl;
-            }
-            fflush(stdout);
-            break;
-
-        default:
-            req->Delete();
-            cerr << "starter: invalid methodID." << endl;
-            CallbackExit(1);
-            break;
+      default:
+        req->Delete();
+        cerr << "starter: invalid methodID." << endl;
+        CallbackExit(1);
+        break;
     }
 
     // no response
     return NULL;
 }
+
+
+void
+STARTER_CLASS::EndSimulation(int exitValue)
+{
+    struct timeval end_time;
+    double sec;
+    double usec;
+    double elapsed;
+
+    // stop the clock
+    gettimeofday(&end_time, NULL);
+    sec = double(end_time.tv_sec) - double(startTime.tv_sec);
+    usec = double(end_time.tv_usec) - double(startTime.tv_usec);
+    elapsed = sec + usec/1000000;
+
+    cout << "         syncing... ";
+    Sync();
+    cout << "sunk." << endl;
+
+    cout << "         starting stats dump... ";
+    DumpStats();
+    StatsEmitFile();
+    cout << "done." << endl;
+
+    printf("         elapsed (wall-clock) time = %.4f seconds.\n", elapsed);
+
+    CallbackExit(exitValue);
+}
+
 
 // client: run
 void

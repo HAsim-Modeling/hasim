@@ -13245,3 +13245,39 @@ Directory modules/common/modellib
  StallPorts.bsv            Locally Modified          447 
 
 StallPorts: fix bug in receive method.
+
+----------
+mcadler     Date: Tue Jun 17 17:44:48 EDT 2008  CSN: CSN-hasim-449
+                  Tue Jun 17 21:44:48 UTC 2008
+
+
+Directory tools/scripts
+ hasim-dict                Locally Modified          448 
+
+Directory modules/hasim/controller/starter
+ starter-common.h          Locally Modified          448 
+ hybrid-basic-starter.cpp  Locally Modified          448 
+
+Directory modules/hasim/controller/command_switches
+ standard-command-switches.cpp Locally Modified          448 
+ standard-command-switches.h Locally Modified          448 
+
+Directory modules/hasim/controller
+ controller-standard.bsv   Locally Modified          448 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          448 
+ stats-controller.rrr      Locally Modified          448 
+ stats-controller-hybrid.h Locally Modified          448 
+ stats-controller-hybrid.bsv Locally Modified          448 
+
+Directory modules/common/modellib
+ Stats.bsv                 Locally Modified          448 
+
+- Scan out statistics from HW frequently enough to avoid overflow.  Sum them
+  on the software side and emit at the end of a run.  Scan out happens while
+  the simulation remains live.
+- Change stats file format to a compromise between machine readable (CSV) and
+  human readable.
+- Add --cycles option to stop simulation after some number of cycles.  (Will
+  stop after the first heartbeat is received > requested cycle.)

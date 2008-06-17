@@ -46,6 +46,9 @@ module [HASim_Module] mkController ();
     // Heartbeat trigger bit
     Reg#(Bit#(1)) heartbeatTrigger <- mkReg(0);
 
+    // In the middle of dumping statistics?
+    Reg#(Bool) dumpingStats <- mkReg(False);
+
     // === rules ===
 
     // Count the current FPGA cycle
@@ -74,13 +77,6 @@ module [HASim_Module] mkController ();
         state <= CONTROL_STATE_idle;
     endrule
 
-    // accept DumpStats request from starter
-    rule accept_request_DumpStats (state == CONTROL_STATE_idle);
-        starter.acceptRequest_DumpStats();
-        centralControllers.statsController.doCommand(STATS_Dump);
-        state <= CONTROL_STATE_dumping;
-    endrule
-
     // monitor module controller
     rule monitor_module_controller (state == CONTROL_STATE_running);
         let success = centralControllers.moduleController.queryResult();
@@ -88,10 +84,17 @@ module [HASim_Module] mkController ();
         state <= CONTROL_STATE_paused;
     endrule
 
+    // accept DumpStats request from starter
+    rule accept_request_DumpStats (! dumpingStats);
+        starter.acceptRequest_DumpStats();
+        centralControllers.statsController.doCommand(STATS_Dump);
+        dumpingStats <= True;
+    endrule
+
     // monitor stats controller
-    rule sync_model (state == CONTROL_STATE_dumping && centralControllers.statsController.noMoreStats());
+    rule sync_model (dumpingStats && centralControllers.statsController.noMoreStats());
         starter.sendResponse_DumpStats();
-        state <= CONTROL_STATE_idle;
+        dumpingStats <= False;
     endrule
 
     // Count the model cycle and send heartbeat updates

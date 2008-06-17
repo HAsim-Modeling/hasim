@@ -13235,3 +13235,13 @@ Directory modules/common/modellib
 
 StallPorts: Added an example of bubble squishing, added a few implementation
 notes, and added a guard on the enq rule to make intent clear.
+
+----------
+napatil     Date: Tue Jun 17 16:21:43 EDT 2008  CSN: CSN-hasim-448
+                  Tue Jun 17 20:21:43 UTC 2008
+
+
+Directory modules/common/modellib
+ StallPorts.bsv            Locally Modified          447 
+
+StallPorts: fix bug in receive method.

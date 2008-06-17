@@ -135,13 +135,20 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
     endrule
 
     method ActionValue#(Maybe#(a)) receive() if (!cC);
-        fifo.deq();
+        Maybe#(a) val = Invalid;
+        if (can_receive) begin
+            fifo.deq();
+            val = Valid (fifo.first);
+        end
         cC <= True;
-        return can_receive ? Valid (fifo.first) : Invalid;
+        return val;
     endmethod
 
     method Maybe#(a) peek() if (!cC);
-        return can_receive ? Valid (fifo.first) : Invalid;
+        if (can_receive)
+           return Valid (fifo.first);
+        else
+           return Invalid;
     endmethod
 
     method Action pass() if (!cC);

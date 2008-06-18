@@ -13,8 +13,8 @@
 #
 # %attributes hasim
 #
-# %sources -t H   -v PUBLIC starter-common.h
-# %sources -t CPP -v PUBLIC null-starter.cpp
+# %sources -v PUBLIC null-starter.h
+# %sources -v PRIVATE null-starter.cpp
 #
 # %param HWSTATE_IDLE        0  "encoding for simulation state IDLE"
 # %param HWSTATE_RUNNING     1  "encoding for simulation state RUNNING"

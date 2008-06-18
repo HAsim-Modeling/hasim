@@ -6,6 +6,6 @@
 %attributes hasim
 
 %sources -t BSV -v PUBLIC     hybrid-basic-starter.bsv
-%sources -t H   -v PUBLIC     starter-common.h
+%sources -t H   -v PUBLIC     hybrid-basic-starter.h
 %sources -t CPP -v PRIVATE    hybrid-basic-starter.cpp
 %sources -t RRR -v PUBLIC     hybrid-basic-starter-services.rrr

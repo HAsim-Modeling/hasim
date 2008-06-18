@@ -13281,3 +13281,25 @@ Directory modules/common/modellib
   human readable.
 - Add --cycles option to stop simulation after some number of cycles.  (Will
   stop after the first heartbeat is received > requested cycle.)
+
+----------
+mcadler     Date: Wed Jun 18 08:16:36 EDT 2008  CSN: CSN-hasim-450
+                  Wed Jun 18 12:16:36 UTC 2008
+
+
+Directory modules/hasim/controller/starter
+ starter-common.h          Locally Removed           449 
+ hybrid-basic-starter.cpp  Locally Modified          449 
+ hybrid-basic-starter.h    Locally Added               - 
+ null-starter.cpp          Locally Modified          448 
+ null-starter.h            Locally Added               0 
+ hybrid-null-starter.awb   Locally Modified          448 
+ hybrid-basic-starter.awb  Locally Modified          448 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          449 
+
+- Write statistics as 64 bit objects
+- Break starter-common.h into separate include files since it isn't
+  common any more.  Thought about building a base class and deriving from
+  it, but that was even more work.

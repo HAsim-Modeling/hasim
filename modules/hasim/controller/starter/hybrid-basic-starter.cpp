@@ -3,8 +3,8 @@
 #include <iostream>
 #include <iomanip>
 
-#include "starter-common.h"
 #include "asim/rrr/service_ids.h"
+#include "asim/provides/starter.h"
 #include "asim/provides/command_switches.h"
 #include "asim/provides/central_controllers.h"
 #include "asim/provides/hasim_controller.h"
@@ -152,8 +152,7 @@ STARTER_CLASS::Request(
         //
         // Done?
         //
-        UINT64 stopCycle = globalArgs->StopCycle();
-        if (stopCycle && (model_cycles >= stopCycle))
+        if (globalArgs->StopCycle() && (model_cycles >= globalArgs->StopCycle()))
         {
             cout << "starter: simulation reached stop cycle." << endl;
             EndSimulation(0);

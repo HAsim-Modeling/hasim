@@ -147,11 +147,15 @@ STATS_CONTROLLER_CLASS::Poll()
 void
 STATS_CONTROLLER_CLASS::EmitFile()
 {
-    FILE* statsFile;
-
     // Open the output file
     string statsFileName = string(globalArgs->Workload()) + ".stats";
-    statsFile = fopen(statsFileName.c_str(), "w+");
+    ofstream statsFile(statsFileName.c_str());
+
+    if (! statsFile.is_open())
+    {
+        cerr << "Failed to open stats file: " << statsFile << endl;
+        ASIMERROR("Can't dump statistics");
+    }
 
     for (unsigned int i = 0; i < STATS_DICT_ENTRIES; i++)
     {
@@ -161,11 +165,11 @@ STATS_CONTROLLER_CLASS::EmitFile()
 
         if ((i != STATS_NULL) && (statName != NULL))
         {
-            fprintf(statsFile, "%s,%s,%u\n", statName, statStr, statValues[i]);
+            statsFile << statName << "," << statStr << "," << statValues[i] << endl;
         }
     }
 
-    fclose(statsFile);
+    statsFile.close();
 }
 
 

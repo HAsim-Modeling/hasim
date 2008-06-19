@@ -192,10 +192,23 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Reg#(Bool)     execStalling <- mkReg(False);
     // The token we're stalling on.
     Reg#(TOKEN)    execStallTok <- mkRegU();
-    // Record the writers we've requested so far while stalling.
+    // Record the writers for the token.
     Reg#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) execStallWriters <- mkReg(Vector::replicate(tagged Invalid));
+    // Record the writers we need to request.
+    Vector#(ISA_MAX_SRCS, Reg#(Bool)) execStallValuesNeeded = newVector();    
+    // Record if the request is in flight.
+    Vector#(ISA_MAX_SRCS, Reg#(Bool)) execStallReqsMade = newVector();
     // Record the values that have come back while stalling.
-    Reg#(Vector#(ISA_MAX_SRCS, Maybe#(ISA_VALUE))) execStallValues <- mkReg(Vector::replicate(tagged Invalid));
+    Vector#(ISA_MAX_SRCS, Reg#(ISA_VALUE)) execStallValues = newVector();
+    // Initialize the registers.
+    for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
+    begin
+        
+        execStallReqsMade[x] <- mkRegU();
+        execStallValuesNeeded[x] <- mkRegU();
+        execStallValues[x] <- mkRegU();
+    
+    end
  
     // Is the getResult stage writing back more values?
     Reg#(Bool) execWritebackMore <- mkReg(False);
@@ -226,9 +239,6 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // This queue records where load responses should be sent.
     FIFO#(MEM_PATH) memPathQ <- mkSizedFIFO(16);
     
-    Reg#(Bit#(TLog#(TAdd#(ISA_MAX_SRCS, 1))))  execStallReqNum <- mkReg(?);
-    Reg#(Bit#(TLog#(TAdd#(ISA_MAX_SRCS, 1)))) execStallRespNum <- mkReg(?);
-
     // These Queues are intermediate state between the pipeline stages.
 
     FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) instQ  <- mkFIFO();
@@ -834,68 +844,166 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         // Response from previous stage.
         let ws <- tokWriters.read_resp();
-
-        execStallTok <= tok;
-        execStallWriters <= ws;
-
-        // Additionally let junk proceed
+        
+        // We let junk proceed
         if (!tokScoreboard.isAllocated(tok.index))
         begin
-            execStalling <= False;
+            // No values are needed for junk
+            execStalling          <= True;
+            execStallTok          <= tok;
+            execStallWriters      <= ws;
+            for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
+            begin
+                execStallValuesNeeded[x] <= False;
+                execStallReqsMade[x] <= True;
+            end
             funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Letting Junk Proceed!", tok.index));
-            res2Q.enq(tok);
-            tokAddr.read_req(execStallTok.index);
-            tokInst.read_req2(execStallTok.index);
         end
         else
         begin
-            execStalling <= True;
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Reg Read Stalling!", tok.index));
-            execStallValues <= Vector::replicate(tagged Invalid);
-            execStallReqNum <= 0;
-            execStallRespNum <= 0;
+
+            // We use a mask to determine which values are needed.
+            Vector#(ISA_MAX_SRCS, Bool) values_needed = newVector();
+            
+            // We only need a value if there's a writer for it.
+            for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
+            begin
+                values_needed[x] = isValid(ws[x]);
+            end
+            
+            funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Need to request the srcs in this mask: %b", tok.index, pack(values_needed)));
+            
+            // Now we use a separate mask to record which requests have been made.
+            // To speed things up we try to make the first 2 requests now.
+            Vector#(ISA_MAX_SRCS, Bool) reqs_made = Vector::replicate(False);
+
+            // Request src 0 if it is ready.
+            case (ws[0]) matches
+                tagged Invalid: noAction; // No src0 to request.
+                tagged Valid .r: 
+                begin
+                    if (prfValids[r]) // The source is ready so we can make the request.
+                    begin
+                        prf.read_req1(r);
+                        reqs_made[0] = True;
+                        funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Requesting src 0 early!", tok.index));
+                    end
+                end
+            endcase
+
+            // If there's a source 1, try to request that too.
+            if (valueof(ISA_MAX_SRCS) > 1)
+                case (ws[1]) matches
+                    tagged Invalid: noAction; // No src1 to request.
+                    tagged Valid .r: 
+                    begin
+                        if (prfValids[r]) // The source is ready so we can make the request.
+                        begin
+                            prf.read_req2(r);
+                            reqs_made[1] = True;
+                            funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Requesting src 1 early!", tok.index));
+                        end
+                    end
+                endcase
+            
+            // Scoreboard stuff for the next rules.
+            execStalling          <= True;
+            execStallTok          <= tok;
+            execStallWriters      <= ws;
+            for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
+            begin
+                execStallValuesNeeded[x] <= values_needed[x];
+                execStallReqsMade[x] <= reqs_made[x];
+            end
         end
 
     endrule
 
-    // getResults2Stall
-    rule getResults2StallReq (ready && execStalling && execStallReqNum < fromInteger(valueOf(ISA_MAX_SRCS)));
-        case (execStallWriters[execStallReqNum]) matches
-            tagged Valid .r:
-            begin
-                if(prfValids[r])
-                begin
-                    prf.read_req1(r);
-                    execStallReqNum <= execStallReqNum + 1;
-                end
-            end
-            tagged Invalid:
-                execStallReqNum <= execStallReqNum + 1;
-        endcase
-    endrule
+    // getResults2Stall (Req/Rsp) and (Odd/Even)
+    
+    // Elaborated Rule: N copies, one for each possible instruction source.
+    
+    // When:    After getResults2 and not all sources were available.
+    // Effect:  Once a source becomes available the Req rules read the PRF.
+    //          The Rsp rules get the response and record it.
+    //          There are odd/even copies soley for performance: to use 2 ports of the PRF.
 
-    rule getResults2StallResp (ready && execStalling && execStallRespNum < fromInteger(valueOf(ISA_MAX_SRCS)));
-        execStallRespNum <= execStallRespNum + 1;
-        case (execStallWriters[execStallRespNum]) matches
-            tagged Invalid:
-                (execStallValues[execStallRespNum]) <= tagged Valid (?);
-            tagged Valid .r:
-            begin
-                let v <- prf.read_resp1();
-                execStallValues[execStallRespNum] <= tagged Valid v;
-            end
-        endcase
-    endrule
+    for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 2)
+    begin
+    
+        rule getResults2StallReqEven (ready && execStalling &&&
+                                      execStallWriters[x] matches tagged Valid .r &&& // We need this register...
+                                      prfValids[r] &&& // The register is ready...
+                                      !execStallReqsMade[x]); //We haven't made the request yet.
+            
+            prf.read_req1(r);
+            execStallReqsMade[x] <= True;
+            funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Requesting src %0d.", execStallTok.index, fromInteger(x)));
 
-    rule getResults2StallEnd (ready && execStalling && execStallReqNum == fromInteger(valueOf(ISA_MAX_SRCS)) && execStallRespNum == fromInteger(valueOf(ISA_MAX_SRCS)));
+        endrule
+    
+        rule getResults2StallRspEven (ready && execStalling &&&
+                                      execStallValuesNeeded[x] &&& // We need this register.
+                                      execStallReqsMade[x]); //We made the request already.
+            
+            let v <- prf.read_resp1();
+            execStallValues[x] <= v;
+            execStallValuesNeeded[x] <= False;
+            funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Receiving src %0d.", execStallTok.index, fromInteger(x)));
+
+        endrule
+        
+        // Repeat the above two rules using the second PRF port. (Should be exact copies except for index.)
+        if (x+1 < valueof(ISA_MAX_SRCS))
+        begin
+            rule getResults2StallReqOdd (ready && execStalling &&&
+                                          execStallWriters[x+1] matches tagged Valid .r &&& // We need this register...
+                                          prfValids[r] &&& // The register is ready...
+                                          !execStallReqsMade[x+1]); //We haven't made the request yet.
+
+                prf.read_req2(r);
+                execStallReqsMade[x+1] <= True;
+                funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Requesting src %0d.", execStallTok.index, fromInteger(x+1)));
+
+            endrule
+
+            rule getResults2StallRspOdd (ready && execStalling &&&
+                                         execStallValuesNeeded[x+1] &&& // We need this register
+                                         execStallReqsMade[x+1]); //We made the request already.
+
+                let v <- prf.read_resp2();
+                execStallValues[x+1] <= v;
+                execStallValuesNeeded[x+1] <= False;
+                funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Receiving src %0d.", execStallTok.index, fromInteger(x+1)));
+
+            endrule
+        end
+        
+    end
+
+    // getResults2StallEnd
+    // When:    After getResults2 or the getResults2Stall rules have succesfully retrieved their data.
+    // Effect:  Unstall and lookup the address and inst.
+
+    Bool noMoreStalls = True;
+    
+    for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
+    begin
+        noMoreStalls = noMoreStalls && !execStallValuesNeeded[x];
+    end
+    
+    rule getResults2StallEnd (ready && execStalling && noMoreStalls);
+
         execStalling <= False;
         res2Q.enq(execStallTok);
         tokAddr.read_req(execStallTok.index);
         tokInst.read_req2(execStallTok.index);
+        funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: All sources ready. Proceeding...", execStallTok.index));
+
     endrule
 
     // getResults3
-    // When:    After getResults2 or alternatively getResults2StallEnd
+    // When:    After getResults2StallEnd.
     // Effect:  Send all the data to the datapath.
 
     rule getResults3 (ready);
@@ -908,15 +1016,11 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let addr <- tokAddr.read_resp();
         let inst <- tokInst.read_resp2();
 
-        // Combine the data we just go with any possible data from stalling.
         Vector#(ISA_MAX_SRCS, ISA_VALUE) values = newVector();
-
+        
         for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
         begin
-
-           values[x] = validValue(execStallValues[x]);
-           funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: src%0d is %0b 0x%x", tok.index, fromInteger(x), isValid(execStallWriters[x]), values[x]));
-
+            values[x] = execStallValues[x];
         end
 
         // Log it.
@@ -1768,6 +1872,36 @@ module [HASim_Module] mkFUNCP_RegStateManager
       end
 
     endrule
+
+    // Urgency
+    
+    // A total ordering of all non-trivial rules in the system specifying who should get to
+    // proceed in the case of a conflict. The logic here is straightforward. In terms of
+    // macro-operations, the "later" operations are favored:
+    
+    // newInFlight < getInst < getDeps < getResult < doLoads < doStores < commitResults < commitStores
+    
+    // Thus getResults() should be favored over getDeps().
+    
+    // Within a single macro-operation a similar philosophy holds: favor the later stages 
+    // of the pipeline. Thus:
+    
+    // doLoads1 < doLoads2 < doLoads3
+    
+    // This is _particularly_ important for the getDeps stages, which modify the maptable.
+    
+    // We specify all of this as a TOTAL ORDER, which is tedious, but guaranteed to be complete.
+    
+    // Do not change the following lines unless you understand all this and have a good reason.
+
+    (* descending_urgency= "rewindToTokenSlow2, rewindToTokenSlow1, rewindToToken2, rewindToToken1, commitStores, commitResults2, commitResults1, doStores3ReadModifyWrite, doStores3, doStores2, doStores1, doLoads3, doLoads2, doLoads1, getResults4, getResult4AdditionalWriteback, getResults3, getResults2StallEnd, getResults2, getResults1, getDependencies2AdditionalMappings, getDependencies2, getDependencies1, getInstruction2, getInstruction1, newInFlight, emulateInstruction2_UpdateReg" *)
+
+    // The execution_order pragma doesn't affect the schedule but does get rid of
+    // compiler warnings caused by the appearance of multiple writers to the
+    // prfvalids vector.  According to Bluespec the order here affects the
+    // priority encoder within a cycle but not the scheduling rules.
+
+    (* execution_order = "getResults4, getResult4AdditionalWriteback, getDependencies2AdditionalMappings, getDependencies2" *)
 
     rule rewindToTokenSlow2 (True);
 

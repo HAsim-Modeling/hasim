@@ -13340,3 +13340,20 @@ Directory modules/common/platform_interface/hasim
 - added support for propagating soft reset signal via platform interface
 - updated memstate and register state to use initialized BRAMs
 - added ReserEither.v to .prj files.
+
+----------
+mpellaue    Date: Thu Jun 19 15:06:52 EDT 2008  CSN: CSN-hasim-452
+                  Thu Jun 19 19:06:52 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          451 
+
+
+* Restored some of the parallelism in the functional partition by using both
+  ports of the regfile to do reads in getResults
+  
+* Restored urgency pragmas which reduce warnings and help ensure correctness.
+
+Michael P.
+

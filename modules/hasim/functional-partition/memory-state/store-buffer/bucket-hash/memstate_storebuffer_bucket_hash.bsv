@@ -94,7 +94,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
     // The "next" pointer in the list. IE token 2 is followed by token 10.
     // Invalid indicates end of list.
 
-    BRAM#(TOKEN_INDEX, Maybe#(TOKEN)) listnodes <- mkBRAM_Full();
+    BRAM#(TOKEN_INDEX, Maybe#(TOKEN)) listnodes <- mkInitializedBRAM_Full(tagged Invalid);
 
     // The actual values in the list are (Addr, Value) pairs.
 
@@ -109,15 +109,15 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
 
     // The place in the list we should examine next.
 
-    Reg#(TOKEN) candidate <- mkRegU();
+    Reg#(TOKEN) candidate <- mkReg(?);
 
     // The last valid token we have observed. Used to rearrange the list as we go.
 
-    Reg#(Maybe#(TOKEN)) last_valid_tok <- mkRegU();
+    Reg#(Maybe#(TOKEN)) last_valid_tok <- mkReg(tagged Invalid);
 
     // The current bucket we are looking into.
 
-    Reg#(MEM_ADDRESS_HASH) cur_list <- mkRegU();
+    Reg#(MEM_ADDRESS_HASH) cur_list <- mkReg(?);
 
     // The best result we have found so far (if any).
 

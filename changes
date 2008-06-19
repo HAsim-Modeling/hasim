@@ -13303,3 +13303,40 @@ Directory modules/hasim/controller/central_controllers/stats
 - Break starter-common.h into separate include files since it isn't
   common any more.  Thought about building a base class and deriving from
   it, but that was even more work.
+
+----------
+aparasha    Date: Thu Jun 19 12:49:10 EDT 2008  CSN: CSN-hasim-451
+                  Thu Jun 19 16:49:10 UTC 2008
+
+
+Directory config/pm/bluespec/demos/simple
+ switch2led.apm            Locally Modified          450 
+
+Directory modules/model
+ pure_bluespec_model.bsv   Locally Modified          450 
+ hasim_model.bsv           Locally Modified          450 
+
+Directory modules/hasim/common/new-funcp
+ bluespec_common.prj       Locally Modified          450 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          450 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.bsv Locally Modified          450 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-hash
+ memstate_storebuffer_bucket_hash.bsv Locally Modified          450 
+
+Directory modules/bluespec/common/base
+ bluespec_common.prj       Locally Modified          450 
+
+Directory modules/system/mem_test
+ MemTest.bsv               Locally Modified          450 
+
+Directory modules/common/platform_interface/hasim
+ HAsimPlatformInterface.bsv Locally Modified          450 
+
+- added support for propagating soft reset signal via platform interface
+- updated memstate and register state to use initialized BRAMs
+- added ReserEither.v to .prj files.

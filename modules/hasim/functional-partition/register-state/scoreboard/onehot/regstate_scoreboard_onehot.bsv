@@ -104,8 +104,8 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     TOKEN_SCOREBOARD store_finish <- mkRegFileFull();
     TOKEN_SCOREBOARD commit_start <- mkRegFileFull();
 
-    Reg#(Vector#(TExp#(idx_SZ), ISA_MEMOP_TYPE)) load_type  <- mkRegU();
-    Reg#(Vector#(TExp#(idx_SZ), ISA_MEMOP_TYPE)) store_type <- mkRegU();
+    Reg#(Vector#(TExp#(idx_SZ), ISA_MEMOP_TYPE)) load_type  <- mkReg(?);
+    Reg#(Vector#(TExp#(idx_SZ), ISA_MEMOP_TYPE)) store_type <- mkReg(?);
     TOKEN_SCOREBOARD emulation <- mkRegFileFull();
 
     // A pointer to the next token to be allocated.

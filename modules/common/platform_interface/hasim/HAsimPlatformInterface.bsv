@@ -27,7 +27,10 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
     Connection_Send#(FRONTP_SWITCHES) link_switches   <- mkConnection_Send("fpga_switches");
     Connection_Send#(ButtonInfo)      link_buttons    <- mkConnection_Send("fpga_buttons");
 
-    // Currently only one user can read and write memory
+    // soft reset
+    Connection_Send#(Bool) link_reset <- mkConnection_Send("soft_reset");
+
+    // currently only one user can read and write memory
     Connection_Server#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory       <- mkConnection_Server("vdev_memory");
     Connection_Send#(SCRATCHPAD_MEM_ADDRESS)              link_memory_inval <- mkConnection_Send("vdev_memory_invalidate");
 
@@ -87,7 +90,13 @@ module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
         // send button info over the connection
         link_buttons.send(bi);
     endrule
-
+    
+    rule send_reset (True);
+        // accept soft reset request and send it out to whoever cares
+        llpint.physicalDrivers.soft_reset();
+        link_reset.send(?);
+    endrule
+    
     rule send_mem_req (True);
       //Read in memory request and pass it on.
       //Eventually we'll have to arbitrate between different users

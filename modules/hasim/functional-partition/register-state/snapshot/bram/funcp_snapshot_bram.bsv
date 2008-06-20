@@ -12,10 +12,13 @@ endinterface
 
 typedef Bit#(TLog#(`REGSTATE_NUM_SNAPSHOTS)) FUNCP_SNAPSHOT_INDEX;
 
-module mkSnapshot#(File debugLog)(Snapshot#(rname_SZ))
-    provisos(Bits#(TOKEN_INDEX, idx_SZ),
-             Bits#(ISA_REG_INDEX, rname_SZ),
-             Bits#(FUNCP_SNAPSHOT_INDEX, snapshotptr_SZ));
+module mkSnapshot#(File debugLog, Bit#(32) fpgaCC)
+    //interface:
+        (Snapshot#(rname_SZ))
+    provisos
+        (Bits#(TOKEN_INDEX, idx_SZ),
+         Bits#(ISA_REG_INDEX, rname_SZ),
+         Bits#(FUNCP_SNAPSHOT_INDEX, snapshotptr_SZ));
 
     // The valid bits tell us which location contains a valid snapshot.
     Reg#(Vector#(TExp#(idx_SZ), Bool))             snapValids <- mkReg(replicate(False));
@@ -34,7 +37,7 @@ module mkSnapshot#(File debugLog)(Snapshot#(rname_SZ))
     BRAM#(FUNCP_SNAPSHOT_INDEX, FUNCP_PHYSICAL_REG_INDEX)                         snapsFL <- mkBRAM_Full();
 
     method Action makeSnapshot(TOKEN_INDEX tokIndex, Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX) newMap, FUNCP_PHYSICAL_REG_INDEX currPhysReg);
-        $fwrite(debugLog, "TOKEN %0d: getDeps: Branch Detected. Making Snapshot (Number %0d).", tokIndex, snapNext);
+        $fdisplay(debugLog, "[%d]: TOKEN %0d: Snapshot: Making Snapshot (Number %0d).", fpgaCC, tokIndex, snapNext);
         snapValids[tokIndex] <= True;
         snapIDs[snapNext] <= tokIndex;
         snaps.write(snapNext, newMap);
@@ -46,7 +49,7 @@ module mkSnapshot#(File debugLog)(Snapshot#(rname_SZ))
         Bool found = False;
         if (snapValids[tokIndex]) // There's a chance we have a snapshot
         begin
-            $fwrite(debugLog, "Potential Fast Rewind");
+            $fwrite(debugLog, "[%d]: Snapshot: Potential Fast Rewind", fpgaCC);
 
             FUNCP_SNAPSHOT_INDEX idx = snapNext;
 
@@ -65,7 +68,7 @@ module mkSnapshot#(File debugLog)(Snapshot#(rname_SZ))
             if (found)
             begin 
                 // Log our success!
-                $fwrite(debugLog, "Fast Rewind confirmed with Snapshot %0d", idx);
+                $fwrite(debugLog, "[%d]: Snapshot: Fast Rewind confirmed with Snapshot %0d", fpgaCC, idx);
 
                 // Retrieve the snapshots.
                 snaps.read_req(idx);

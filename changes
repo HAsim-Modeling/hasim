@@ -13371,3 +13371,21 @@ Directory modules/common/modellib
 
 StallPorts: add explicit a-ports to stall-ports implementation.
 Also, changes to adhere to coding convention. 
+
+----------
+mpellaue    Date: Fri Jun 20 15:24:51 EDT 2008  CSN: CSN-hasim-454
+                  Fri Jun 20 19:24:51 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/snapshot/bram
+ funcp_snapshot_bram.bsv   Locally Modified          453 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          453 
+
+
+* Fix bug which was preventing Alpha regression from passing.
+* 5-stage is now robust enough it should probably be added to regressions.
+* Add fpgaCC to $fdisplays in snapshots.
+
+Michael P.

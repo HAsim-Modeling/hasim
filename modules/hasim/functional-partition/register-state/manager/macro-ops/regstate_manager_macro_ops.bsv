@@ -162,7 +162,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Snapshots 
     // Allow for fast rewinds.
 
-    Snapshot#(rname_SZ) snapshot <- mkSnapshot(debugLog);
+    Snapshot#(rname_SZ) snapshot <- mkSnapshot(debugLog, fpgaCC);
 
     // ******* Miscellaneous *******
 
@@ -209,6 +209,10 @@ module [HASim_Module] mkFUNCP_RegStateManager
         execStallValues[x] <- mkRegU();
     
     end
+    // Queues to guide the stall responses.
+    FIFO#(Bit#(4)) resEvenQ <- mkFIFO();
+    FIFO#(Bit#(4)) resOddQ  <- mkFIFO();
+   
  
     // Is the getResult stage writing back more values?
     Reg#(Bool) execWritebackMore <- mkReg(False);
@@ -886,6 +890,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
                     begin
                         prf.read_req1(r);
                         reqs_made[0] = True;
+                        resEvenQ.enq(0);
                         funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Requesting src 0 early!", tok.index));
                     end
                 end
@@ -901,6 +906,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
                         begin
                             prf.read_req2(r);
                             reqs_made[1] = True;
+                            resOddQ.enq(1);
                             funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Requesting src 1 early!", tok.index));
                         end
                     end
@@ -938,17 +944,20 @@ module [HASim_Module] mkFUNCP_RegStateManager
             
             prf.read_req1(r);
             execStallReqsMade[x] <= True;
+            resEvenQ.enq(fromInteger(x));
             funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Requesting src %0d.", execStallTok.index, fromInteger(x)));
 
         endrule
     
         rule getResults2StallRspEven (ready && execStalling &&&
                                       execStallValuesNeeded[x] &&& // We need this register.
-                                      execStallReqsMade[x]); //We made the request already.
+                                      execStallReqsMade[x] &&&  //We made the request already.
+                                      resEvenQ.first() == fromInteger(x)); // Our response is next in line.
             
             let v <- prf.read_resp1();
             execStallValues[x] <= v;
             execStallValuesNeeded[x] <= False;
+            resEvenQ.deq();
             funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Receiving src %0d.", execStallTok.index, fromInteger(x)));
 
         endrule
@@ -963,17 +972,20 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
                 prf.read_req2(r);
                 execStallReqsMade[x+1] <= True;
+                resOddQ.enq(fromInteger(x+1));
                 funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Requesting src %0d.", execStallTok.index, fromInteger(x+1)));
 
             endrule
 
             rule getResults2StallRspOdd (ready && execStalling &&&
                                          execStallValuesNeeded[x+1] &&& // We need this register
-                                         execStallReqsMade[x+1]); //We made the request already.
+                                         execStallReqsMade[x+1] &&&  //We made the request already.
+                                         resOddQ.first() == fromInteger(x+1)); // Our response is next in line.
 
                 let v <- prf.read_resp2();
                 execStallValues[x+1] <= v;
                 execStallValuesNeeded[x+1] <= False;
+                resOddQ.deq();
                 funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Receiving src %0d.", execStallTok.index, fromInteger(x+1)));
 
             endrule

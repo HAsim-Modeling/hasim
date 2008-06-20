@@ -13357,3 +13357,17 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 
 Michael P.
 
+
+----------
+nikhil      Date: Thu Jun 19 20:41:24 CDT 2008  CSN: CSN-hasim-453
+                  Fri Jun 20 01:41:24 UTC 2008
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          452 
+
+Directory modules/common/modellib
+ StallPorts.bsv            Locally Modified          452 
+
+StallPorts: add explicit a-ports to stall-ports implementation.
+Also, changes to adhere to coding convention. 

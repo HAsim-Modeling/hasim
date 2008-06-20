@@ -526,6 +526,8 @@ if SW_EXE != []:
 
         if (os.path.exists(os.path.join(sys.exec_prefix, 'lib' , 'libmysqlclient.a'))):
             sw_link_libs += [ 'mysqlclient' ]
+        elif (os.path.exists(os.path.join(sys.exec_prefix, 'lib', 'mysql' , 'libmysqlclient.a'))):
+            sw_link_libs += [ 'mysqlclient' ]
 
         # m5 needs python
         sw_libpath += [ os.path.join(sys.exec_prefix, 'lib') ]

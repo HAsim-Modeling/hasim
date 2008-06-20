@@ -59,9 +59,9 @@ import soft_connections::*;
 //
 // State pC  cC        Description                       Action
 //   A    0   0  Beginning of model cycle     None.
-//   B    0   1  Consumer model cycle ended   Block consumer from pulling more data.
-//   C    1   0  Producer model cycle ended   Block producer from pulling more data.
-//   D    1   1  Both P&C model cycles ended  Determine can_send & can_receive for next cycle.
+//   B    0   1  Consumer model cycle ended   Block consumer from consuming more data.
+//   C    1   0  Producer model cycle ended   Block producer from producing more data.
+//   D    1   1  Both P&C model cycles ended  Determine canSend & canReceive for next cycle.
 //
 // Legal paths: A -> B -> D -> A and A -> C -> D -> A
 //
@@ -81,27 +81,36 @@ interface StallPort_Receive#(type a);
     method Action                  pass();
 endinterface
 
+typedef Bit#(1) UNIT; // move this to a global place?
+
 module [HASIM_MODULE] mkStallPort_Send#(String s)
                        (StallPort_Send#(a))
             provisos (Bits#(a, sa),
                       Transmittable#(Maybe#(a)));
 
-    Connection_Send#(Maybe#(a)) con_data <- mkConnection_Send   (s + ":data");
-    Connection_Receive#(Bool)   con_cred <- mkConnection_Receive(s + ":cred");
+    Connection_Send#(Maybe#(a)) conData <- mkConnection_Send   (s + ":data");
+    Connection_Receive#(Bool)   conCred <- mkConnection_Receive(s + ":cred");
 
-    let can_send = con_cred.receive();
+    Port_Send#(UNIT)    portData <- mkPort_Send   (s + ":portData");
+    Port_Receive#(UNIT) portCred <- mkPort_Receive(s + ":portCred", 0);
 
-    method Action send (Maybe#(a) x) if (can_send);
-        con_cred.deq();
-        con_data.send(x);
+    let _canSend = conCred.receive();
+
+    method Action send (Maybe#(a) x) if (_canSend);
+        conCred.deq();
+        conData.send(x);
+        portData.send(?);
+        let p <- portCred.receive();
     endmethod
 
-    method Action pass() if (!can_send);
-        con_cred.deq();
-        con_data.send(Invalid);
+    method Action pass() if (!_canSend);
+        conCred.deq();
+        conData.send(Invalid);
+        portData.send(?);
+        let p <- portCred.receive();
     endmethod
 
-    method Bool canSend() = can_send;
+    method Bool canSend() = _canSend;
 endmodule
 
 module [HASIM_MODULE] mkStallPort_Receive#(String s)
@@ -109,26 +118,31 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
             provisos (Bits#(a, sa),
                       Transmittable#(Maybe#(a)));
 
-    Connection_Receive#(Maybe#(a)) con_data <- mkConnection_Receive(s + ":data");
-    Connection_Send#(Bool)         con_cred <- mkConnection_Send   (s + ":cred");
+    Connection_Receive#(Maybe#(a)) conData <- mkConnection_Receive(s + ":data");
+    Connection_Send#(Bool)         conCred <- mkConnection_Send   (s + ":cred");
+
+    Port_Receive#(UNIT) portData <- mkPort_Receive(s + ":portData", 1);
+    Port_Send#(UNIT)    portCred <- mkPort_Send   (s + ":portCred");
 
     FIFOF#(a) fifo <- mkUGSizedFIFOF(2);
 
     Reg#(Bool) pC <- mkReg(True); // producer model cycle completed
     Reg#(Bool) cC <- mkReg(True); // consumer model cycle completed
 
-    Reg#(Bool) can_receive <- mkReg(?);
+    Reg#(Bool) canReceive <- mkReg(?);
 
     rule work (pC && cC);
-        con_cred.send(fifo.notFull());
-        can_receive <= fifo.notEmpty();
+        portCred.send(?);
+        conCred.send(fifo.notFull());
+        canReceive <= fifo.notEmpty();
         pC <= False;
         cC <= False;
     endrule
 
     rule enq (!pC);
-        con_data.deq();
-        let mx = con_data.receive();
+        let p <- portData.receive();
+        conData.deq();
+        let mx = conData.receive();
         if (mx matches tagged Valid .x)
             fifo.enq(x);
         pC <= True;
@@ -136,7 +150,8 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
 
     method ActionValue#(Maybe#(a)) receive() if (!cC);
         Maybe#(a) val = Invalid;
-        if (can_receive) begin
+        if (canReceive)
+        begin
             fifo.deq();
             val = Valid (fifo.first);
         end
@@ -145,7 +160,7 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
     endmethod
 
     method Maybe#(a) peek() if (!cC);
-        if (can_receive)
+        if (canReceive)
            return Valid (fifo.first);
         else
            return Invalid;

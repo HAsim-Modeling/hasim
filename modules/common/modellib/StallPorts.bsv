@@ -88,26 +88,20 @@ module [HASIM_MODULE] mkStallPort_Send#(String s)
             provisos (Bits#(a, sa),
                       Transmittable#(Maybe#(a)));
 
-    Connection_Send#(Maybe#(a)) conData <- mkConnection_Send   (s + ":data");
-    Connection_Receive#(Bool)   conCred <- mkConnection_Receive(s + ":cred");
+    Connection_Receive#(Bool)     conCred <- mkConnection_Receive(s + ":cred");
 
-    Port_Send#(UNIT)    portData <- mkPort_Send   (s + ":portData");
-    Port_Receive#(UNIT) portCred <- mkPort_Receive(s + ":portCred", 0);
+    Port_Send#(a) portDataEnqSend <- mkPort_Send(s + ":portDataEnq");
 
     let _canSend = conCred.receive();
 
     method Action send (Maybe#(a) x) if (_canSend);
         conCred.deq();
-        conData.send(x);
-        portData.send(?);
-        let p <- portCred.receive();
+        portDataEnqSend.send(x);
     endmethod
 
     method Action pass() if (!_canSend);
         conCred.deq();
-        conData.send(Invalid);
-        portData.send(?);
-        let p <- portCred.receive();
+        portDataEnqSend.send(tagged Invalid);
     endmethod
 
     method Bool canSend() = _canSend;
@@ -118,11 +112,12 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
             provisos (Bits#(a, sa),
                       Transmittable#(Maybe#(a)));
 
-    Connection_Receive#(Maybe#(a)) conData <- mkConnection_Receive(s + ":data");
-    Connection_Send#(Bool)         conCred <- mkConnection_Send   (s + ":cred");
+    Connection_Send#(Bool)         conCred <- mkConnection_Send(s + ":cred");
 
-    Port_Receive#(UNIT) portData <- mkPort_Receive(s + ":portData", 1);
-    Port_Send#(UNIT)    portCred <- mkPort_Send   (s + ":portCred");
+    Port_Receive#(UNIT) portDataDeqReceive <- mkPort_Receive(s + ":portDataDeq", 1);
+    Port_Send#(UNIT)       portDataDeqSend <- mkPort_Send(s + ":portDataDeq");
+
+    Port_Receive#(a) portDataEnqReceive <- mkPort_Receive(s + "portDataEnq", 1);
 
     FIFOF#(a) fifo <- mkUGSizedFIFOF(2);
 
@@ -132,7 +127,7 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
     Reg#(Bool) canReceive <- mkReg(?);
 
     rule work (pC && cC);
-        portCred.send(?);
+        let p <- portDataDeqReceive.receive();
         conCred.send(fifo.notFull());
         canReceive <= fifo.notEmpty();
         pC <= False;
@@ -140,15 +135,14 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
     endrule
 
     rule enq (!pC);
-        let p <- portData.receive();
-        conData.deq();
-        let mx = conData.receive();
+        let mx <- portDataEnqReceive.receive();
         if (mx matches tagged Valid .x)
             fifo.enq(x);
         pC <= True;
     endrule
 
     method ActionValue#(Maybe#(a)) receive() if (!cC);
+        portDataDeqSend.send(?);
         Maybe#(a) val = Invalid;
         if (canReceive)
         begin
@@ -167,6 +161,7 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
     endmethod
 
     method Action pass() if (!cC);
+        portDataDeqSend.send(?);
         cC <= True;
     endmethod
 

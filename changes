@@ -13389,3 +13389,24 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 * Add fpgaCC to $fdisplays in snapshots.
 
 Michael P.
+
+----------
+mvijayar    Date: Fri Jun 20 15:32:34 EDT 2008  CSN: CSN-hasim-455
+                  Fri Jun 20 19:32:34 UTC 2008
+
+
+Directory modules/common/modellib
+ StallPorts.bsv            Locally Modified          454 
+
+Marked the cycle passage with A-ports as discussed with Nikhil. Basically the module looks like this:
+
+  1(enq)    1(deq)
+   --->     <---
+      ------
+        | | |
+      ------
+   <---
+ 0(notFull)
+
+The numbers are the A-ports latency. Currently the 0 latency A-ports are not there, but they must be added if we want to have non-zero latency credits.
+

@@ -94,11 +94,11 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
     // The "next" pointer in the list. IE token 2 is followed by token 10.
     // Invalid indicates end of list.
 
-    BRAM#(TOKEN_INDEX, Maybe#(TOKEN)) listnodes <- mkInitializedBRAM_Full(tagged Invalid);
+    Bram#(idx_SZ, Maybe#(TOKEN)) listnodes <- mkBramInitialized(tagged Invalid);
 
     // The actual values in the list are (Addr, Value) pairs.
 
-    BRAM#(TOKEN_INDEX, Tuple2#(MEM_ADDRESS, MEM_VALUE)) listvalues <- mkBRAM_Full();
+    Bram#(idx_SZ, Tuple2#(MEM_ADDRESS, MEM_VALUE)) listvalues <- mkBramInitialized(?);
 
     // The bucket hash divides things into N lists. This RegFile stores the heads of
     // these lists. Invalid indicates empty list.
@@ -109,15 +109,15 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
 
     // The place in the list we should examine next.
 
-    Reg#(TOKEN) candidate <- mkReg(?);
+    Reg#(TOKEN) candidate <- mkRegU();
 
     // The last valid token we have observed. Used to rearrange the list as we go.
 
-    Reg#(Maybe#(TOKEN)) last_valid_tok <- mkReg(tagged Invalid);
+    Reg#(Maybe#(TOKEN)) last_valid_tok <- mkRegU();
 
     // The current bucket we are looking into.
 
-    Reg#(MEM_ADDRESS_HASH) cur_list <- mkReg(?);
+    Reg#(MEM_ADDRESS_HASH) cur_list <- mkRegU();
 
     // The best result we have found so far (if any).
 
@@ -420,7 +420,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
             // We are no longer idle.
             state <= SB_INSERTING;
             // Start retrieving the list.
-            listnodes.read_req(validValue(oldHead).index);
+            listnodes.readReq(validValue(oldHead).index);
             // The position after oldHead is the first position we will examine.
             candidate <= validValue(oldHead);
             // We should also clean up the list as we go.
@@ -441,7 +441,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
     rule insert2Walk (state == SB_INSERTING &&& link_memstate.getReq() matches tagged SBUFFER_REQ_INSERT {value:.v, addr: .a, tok: .tok});
 
        // Retrieve the next node to be examined. (May be invalid).
-       let mnext <- listnodes.read_resp();
+       let mnext <- listnodes.readResp();
 
        // Is the guy to be inserted younger than the next node in the list?
 
@@ -471,7 +471,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
            // Clean up the current node.
            cleanupListNode(candidate);
            // Request the next node to examine.
-           listnodes.read_req(validValue(mnext).index);
+           listnodes.readReq(validValue(mnext).index);
            // The node we were just examining becomes the candidate.
            candidate <= validValue(mnext);
 
@@ -518,8 +518,8 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
     rule commit1 (state == SB_READY &&& link_memstate.getReq() matches tagged SBUFFER_REQ_COMMIT .tok);
 
         // Retrieve the values.
-        listvalues.read_req(tok.index);
-        listnodes.read_req(tok.index);
+        listvalues.readReq(tok.index);
+        listnodes.readReq(tok.index);
         // We are no longer idle.
         state <= SB_COMMITTING;
 
@@ -538,8 +538,8 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
         $fdisplay(debug_log, "[%d]: Committing TOKEN %0d", fpga_cc, tok.index);
 
         // Get the responses.
-        match {.a, .v} <- listvalues.read_resp();
-        let nextNode <- listnodes.read_resp();
+        match {.a, .v} <- listvalues.readResp();
+        let nextNode <- listnodes.readResp();
         
         // Hash the address to see which list "bucket" the node was in.
         let h = hash(a);
@@ -657,8 +657,8 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
               // Log it.
               $fdisplay(debug_log, "[%d]: Begining lookup of TOKEN %0d in list #%0d", fpga_cc, tok.index, hash(addr)); 
               // Retrieve the list info from RAM.
-              listvalues.read_req(c.index);
-              listnodes.read_req(c.index);
+              listvalues.readReq(c.index);
+              listnodes.readReq(c.index);
               // Record the candidate.
               candidate <= c;
               // We haven't found a best match yet.
@@ -681,8 +681,8 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
     rule lookup2Walk (state == SB_SEARCHING &&& link_memstate.getReq() matches tagged SBUFFER_REQ_LOOKUP {addr:.addr, tok:.tok});
 
         // Get the data we requested previously.
-        match {.a, .v} <- listvalues.read_resp();
-        let mnext_tok <- listnodes.read_resp();
+        match {.a, .v} <- listvalues.readResp();
+        let mnext_tok <- listnodes.readResp();
 
         // Is the guy we are examining the new best potential answer?
         
@@ -751,8 +751,8 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
               cleanupListNode(candidate);
 
               // Retrieve the values from RAM for the next go.
-              listvalues.read_req(next_tok.index);
-              listnodes.read_req(next_tok.index);
+              listvalues.readReq(next_tok.index);
+              listnodes.readReq(next_tok.index);
               
               // The next becomes the candiate.
               candidate <= next_tok;

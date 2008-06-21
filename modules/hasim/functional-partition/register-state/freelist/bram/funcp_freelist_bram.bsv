@@ -67,7 +67,7 @@ module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
     Reg#(Bool) initializing <- mkReg(True);
 
     // The actual freelist
-    BRAM#(FUNCP_PHYSICAL_REG_INDEX, FUNCP_PHYSICAL_REG_INDEX) fl <- mkBRAM_Full();
+    Bram#(prname_SZ, FUNCP_PHYSICAL_REG_INDEX) fl <- mkBramInitialized(?);
 
     // The read pointer is the next register to allocate.
     Reg#(FUNCP_PHYSICAL_REG_INDEX) flRead   <- mkReg(initFL);
@@ -138,7 +138,7 @@ module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
         $fdisplay(debugLog, "[%d]: FREELIST: Requesting %0d", fpgaCC, flRead);
 
         // Read the next entry.
-        fl.read_req(flRead);
+        fl.readReq(flRead);
 
         forwardReqEn <= True;
         // Update the pointer.
@@ -157,7 +157,7 @@ module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
     method ActionValue#(FUNCP_PHYSICAL_REG_INDEX) forwardResp() if (!initializing);
 
         // Get the response from BRAM.
-        let rsp <- fl.read_resp();
+        let rsp <- fl.readResp();
 
         // Log it.
         $fdisplay(debugLog, "[%d]: FREELIST: Allocating PR%0d %0d", fpgaCC, rsp, flRead);

@@ -13410,3 +13410,22 @@ Marked the cycle passage with A-ports as discussed with Nikhil. Basically the mo
 
 The numbers are the A-ports latency. Currently the 0 latency A-ports are not there, but they must be added if we want to have non-zero latency credits.
 
+
+----------
+mvijayar    Date: Fri Jun 20 20:12:54 EDT 2008  CSN: CSN-hasim-456
+                  Sat Jun 21 00:12:54 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          454 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          454 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.bsv Locally Modified          454 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-hash
+ memstate_storebuffer_bucket_hash.bsv Locally Modified          454 
+
+Changed the funcp to make use of the new Brams

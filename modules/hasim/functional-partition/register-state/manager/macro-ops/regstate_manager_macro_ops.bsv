@@ -71,6 +71,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     provisos
             (Bits#(TOKEN_INDEX, idx_SZ),      // The number of tokens.
              Bits#(ISA_REG_INDEX, rname_SZ),  // The number of architectural registers.
+             Bits#(FUNCP_PHYSICAL_REG_INDEX, pname_SZ),
              Bits#(ISA_VALUE, isa_val_SZ), // The width of arch regs.
              Bits#(FUNCP_SNAPSHOT_INDEX, snapshotptr_SZ)); // The number of snapshots.
 
@@ -107,26 +108,26 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Tables to track info about in-flight instructions.
 
     // The address we got the instruction from (told to us by the timing model).
-    BRAM#(TOKEN_INDEX, ISA_ADDRESS)     tokAddr <- mkBRAM_Full();
+    Bram#(idx_SZ, ISA_ADDRESS) tokAddr <- mkBramInitialized(0);
 
     // The instruction that was at that address (from mem_state).
-    BRAM_2#(TOKEN_INDEX, ISA_INSTRUCTION) tokInst <- mkBRAM_2_Full();
+    MultiReadBram#(2, idx_SZ, ISA_INSTRUCTION) tokInst <- mkMultiReadBramInitialized(0);
 
-    // The destinations of the instruction (a convenience which saves us from reading the instruction/maptable). 
-    BRAM_3#(TOKEN_INDEX, Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) tokDsts <- mkBRAM_3_Full();
+    // The destinations of the instruction (a convenience which saves us from reading the instruction/maptable).
+    MultiReadBram#(3, idx_SZ, Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) tokDsts <- mkMultiReadBramInitialized(?);
 
     // If an instruction has sources in other inflight instructions it will be noted here.
-    BRAM#(TOKEN_INDEX, Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)))   tokWriters <- mkBRAM_Full();
+    Bram#(idx_SZ, Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)))   tokWriters <- mkBramInitialized(?);
 
     // The memaddress is used by Loads/Stores so we don't have to repeat the calculation.
-    BRAM_2#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr <- mkBRAM_2_Full();
+    MultiReadBram#(2, idx_SZ, ISA_ADDRESS) tokMemAddr <- mkMultiReadBramInitialized(0);
 
     // The physical registers to free when the token is committed/killed.
-    BRAM#(TOKEN_INDEX, Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) tokRegsToFree <- mkBRAM_Full();
+    Bram#(idx_SZ, Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) tokRegsToFree <- mkBramInitialized(?);
 
     // The Physical Register File
 
-    BRAM_3#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE) prf <- mkBRAM_3_Full();
+    MultiReadBram#(3, pname_SZ, ISA_VALUE) prf <- mkMultiReadBram();
     
     // Valid bits for PRF
     Vector#(FUNCP_PHYSICAL_REGS, Reg#(Bool)) prfValids = newVector();
@@ -520,7 +521,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         tokScoreboard.decStart(tok.index);
         
         // Retrieve the instruction.
-        tokInst.read_req1(tok.index);
+        tokInst.req[0].read(tok.index);
 
         // Everyone gets a Physical Register, even if they don't have a destination.
         // Otherwise we would need another stage here.
@@ -544,7 +545,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         deps1Q.deq();
 
         //Get the info the previous stage requested.
-        let inst     <- tokInst.read_resp1();
+        let inst     <- tokInst.resp[0].read();
         let new_preg <- freelist.forwardResp();
 
         // Decode the instruction using ISA-provided functions.
@@ -822,7 +823,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         begin
         
             // Look up the writers.
-            tokWriters.read_req(tok.index);
+            tokWriters.readReq(tok.index);
 
             // Pass it along to the next stage.
             res1Q.enq(tok);
@@ -847,7 +848,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Reg Read", tok.index));
 
         // Response from previous stage.
-        let ws <- tokWriters.read_resp();
+        let ws <- tokWriters.readResp();
         
         // We let junk proceed
         if (!tokScoreboard.isAllocated(tok.index))
@@ -888,7 +889,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
                 begin
                     if (prfValids[r]) // The source is ready so we can make the request.
                     begin
-                        prf.read_req1(r);
+                        prf.req[0].read(r);
                         reqs_made[0] = True;
                         resEvenQ.enq(0);
                         funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Requesting src 0 early!", tok.index));
@@ -904,7 +905,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
                     begin
                         if (prfValids[r]) // The source is ready so we can make the request.
                         begin
-                            prf.read_req2(r);
+                            prf.req[1].read(r);
                             reqs_made[1] = True;
                             resOddQ.enq(1);
                             funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Requesting src 1 early!", tok.index));
@@ -942,7 +943,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
                                       prfValids[r] &&& // The register is ready...
                                       !execStallReqsMade[x]); //We haven't made the request yet.
             
-            prf.read_req1(r);
+            prf.req[0].read(r);
             execStallReqsMade[x] <= True;
             resEvenQ.enq(fromInteger(x));
             funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Requesting src %0d.", execStallTok.index, fromInteger(x)));
@@ -954,7 +955,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
                                       execStallReqsMade[x] &&&  //We made the request already.
                                       resEvenQ.first() == fromInteger(x)); // Our response is next in line.
             
-            let v <- prf.read_resp1();
+            let v <- prf.resp[0].read();
             execStallValues[x] <= v;
             execStallValuesNeeded[x] <= False;
             resEvenQ.deq();
@@ -970,7 +971,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
                                           prfValids[r] &&& // The register is ready...
                                           !execStallReqsMade[x+1]); //We haven't made the request yet.
 
-                prf.read_req2(r);
+                prf.req[1].read(r);
                 execStallReqsMade[x+1] <= True;
                 resOddQ.enq(fromInteger(x+1));
                 funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Requesting src %0d.", execStallTok.index, fromInteger(x+1)));
@@ -982,7 +983,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
                                          execStallReqsMade[x+1] &&&  //We made the request already.
                                          resOddQ.first() == fromInteger(x+1)); // Our response is next in line.
 
-                let v <- prf.read_resp2();
+                let v <- prf.resp[1].read();
                 execStallValues[x+1] <= v;
                 execStallValuesNeeded[x+1] <= False;
                 resOddQ.deq();
@@ -1008,14 +1009,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         execStalling <= False;
         res2Q.enq(execStallTok);
-        tokAddr.read_req(execStallTok.index);
-        tokInst.read_req2(execStallTok.index);
+        tokAddr.readReq(execStallTok.index);
+        tokInst.req[1].read(execStallTok.index);
         funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: All sources ready. Proceeding...", execStallTok.index));
 
     endrule
 
     // getResults3
-    // When:    After getResults2StallEnd.
+    // When:    After getResults2 or alternatively getResults2StallEnd
     // Effect:  Send all the data to the datapath.
 
     rule getResults3 (ready);
@@ -1025,15 +1026,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
         res2Q.deq();
 
         // Get all the data the previous stage kicked off.
-        let addr <- tokAddr.read_resp();
-        let inst <- tokInst.read_resp2();
+        let addr <- tokAddr.readResp();
+        let inst <- tokInst.resp[1].read();
 
+        // Combine the data we just go with any possible data from stalling.
         Vector#(ISA_MAX_SRCS, ISA_VALUE) values = newVector();
-        
+
         for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
-        begin
-            values[x] = execStallValues[x];
-        end
+           values[x] = execStallValues[x];
 
         // Log it.
         funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Sending to Datapath.", tok.index));
@@ -1042,7 +1042,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         linkToDatapath.makeReq(tuple3(inst, addr, values));
 
         // Look up the destinations for the writeback.
-        tokDsts.read_req1(tok.index);
+        tokDsts.req[0].read(tok.index);
 
         // Pass it to the next stage.
         res3Q.enq(tok);
@@ -1069,7 +1069,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         tokMemAddr.write(tok.index, eaddr);
 
         // Get the destination response
-        let dsts <- tokDsts.read_resp1();
+        let dsts <- tokDsts.resp[0].read();
         
         // The first dest should always be valid (it may not be architecturally visible)
         let dst = validValue(dsts[0]);
@@ -1216,7 +1216,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             FUNCP_PHYSICAL_REG_INDEX current_pr = maptable[synchronizingCurReg];
         
             // Make the request to the regfile.
-            prf.read_req1(current_pr);
+            prf.req[0].read(current_pr);
         
             // Pass it on to the next stage.
             syncQ.enq(synchronizingCurReg);
@@ -1232,8 +1232,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
             // End the loop.
             synchronizingRegs <= False;
             // Request the inst and current PC
-            tokInst.read_req1(emulatingToken.index);
-            tokAddr.read_req(emulatingToken.index);
+            tokInst.req[0].read(emulatingToken.index);
+            tokAddr.readReq(emulatingToken.index);
         
         end
         
@@ -1255,7 +1255,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         syncQ.deq();
         
         // Get the register value from the regfile.
-        ISA_VALUE reg_val <- prf.read_resp1();
+        ISA_VALUE reg_val <- prf.resp[0].read();
         
         // Send the regsiter on to software via RRR
         client_stub.makeRequest_sync(tuple2(unpack(arch_reg), reg_val));
@@ -1270,8 +1270,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
     rule emulateInstruction2 (emulatingInstruction && !synchronizingRegs);
         
         // Get the instruction and current pc
-        ISA_INSTRUCTION inst <- tokInst.read_resp1();
-        ISA_ADDRESS       pc <- tokAddr.read_resp();
+        ISA_INSTRUCTION inst <- tokInst.resp[0].read();
+        ISA_ADDRESS       pc <- tokAddr.readResp();
         
         // Send the request on to software via RRR
         client_stub.makeRequest_emulate(tuple2(inst, pc));
@@ -1389,7 +1389,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             tokScoreboard.loadStart(tok.index);
 
             // Read the effective address.
-            tokMemAddr.read_req1(tok.index);
+            tokMemAddr.req[0].read(tok.index);
 
             // Pass to the next stage.
             load1Q.enq(tok);
@@ -1410,7 +1410,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         load1Q.deq();
 
         // Get the address.
-        let addr <- tokMemAddr.read_resp1();
+        let addr <- tokMemAddr.resp[0].read();
 
         // Log it.
         funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads2: Requesting Load (Addr: 0x%h)", tok.index, addr));
@@ -1422,7 +1422,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: mem_addr});
 
         // Read the destination so we can writeback the correct register.
-        tokDsts.read_req2(tok.index);
+        tokDsts.req[1].read(tok.index);
         
         // Record that the load response should go to us.
         memPathQ.enq(PATH_LOAD);
@@ -1455,7 +1455,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let val = isaValueFromMemValue(mem_val, lType, addr);
 
         // Get the destination for the purposes of writeback.
-        let dsts <- tokDsts.read_resp2();
+        let dsts <- tokDsts.resp[1].read();
 
         // We assume that the destination for the load is destination 1.
         let dst = validValue(dsts[0]);
@@ -1523,7 +1523,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             tokScoreboard.storeStart(tok.index);
 
             // Read the destination.
-            tokDsts.read_req3(tok.index);
+            tokDsts.req[2].read(tok.index);
 
             // Pass to the next stage.
             store1Q.enq(tok);
@@ -1544,7 +1544,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         store1Q.deq();
 
         // Get the destination.
-        let dsts <- tokDsts.read_resp3();
+        let dsts <- tokDsts.resp[2].read();
         
         // We use destination zero of a store for the value in order to avoid
         // figuring out where the source comes from.
@@ -1552,10 +1552,10 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let dst = validValue(dsts[0]);
 
         // Look up the register value.
-        prf.read_req3(dst);
+        prf.req[2].read(dst);
 
         // Read the effective address.
-        tokMemAddr.read_req2(tok.index);
+        tokMemAddr.req[1].read(tok.index);
 
         // Log it.
         funcpDebug($fwrite(debugLog, "TOKEN %0d: doStores2: Retrieving Store Value (PR%0d)", tok.index, dst)); 
@@ -1580,10 +1580,10 @@ module [HASim_Module] mkFUNCP_RegStateManager
       store2Q.deq();
 
       // Get the address.
-      let addr <- tokMemAddr.read_resp2();
+      let addr <- tokMemAddr.resp[1].read();
       
       // Get the value.
-      let val  <- prf.read_resp3();
+      let val  <- prf.resp[2].read();
 
       // Log it.
       funcpDebug($fwrite(debugLog, "TOKEN %0d: DMem: Requesting Store (Addr: 0x%h <= 0x%h)", tok.index, addr, val)); 
@@ -1686,7 +1686,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         tokScoreboard.commitStart(tok.index);
         
         // Request the registers to be freed.
-        tokRegsToFree.read_req(tok.index);
+        tokRegsToFree.readReq(tok.index);
 
         // Pass to the next stage.
         commQ.enq(tok);
@@ -1712,7 +1712,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         commQ.deq();
 
         // Retrieve the registers to be freed.
-        let regsToFree  <- tokRegsToFree.read_resp();
+        let regsToFree  <- tokRegsToFree.readResp();
 
         // Go ahead and free the first register, if present.
         case (regsToFree[0]) matches
@@ -1869,7 +1869,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
           // Log it.
           funcpDebug($fwrite(debugLog, "Slow Rewind: Lookup TOKEN %0d", rewindCur));  
           // Look up the destinations
-          tokDsts.read_req2(rewindCur);
+          tokDsts.req[1].read(rewindCur);
           // Pass it to the next stage who will free it.
           rewindQ.enq(rewindCur);
       end
@@ -1922,8 +1922,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
 
       freelist.back();
-      let dst  <- tokDsts.read_resp2();
-      let inst <- tokInst.read_resp2();
+      let dst  <- tokDsts.resp[1].read();
+      let inst <- tokInst.resp[1].read();
       // Commented out for now:
       
       /*

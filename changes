@@ -13429,3 +13429,40 @@ Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-ha
  memstate_storebuffer_bucket_hash.bsv Locally Modified          454 
 
 Changed the funcp to make use of the new Brams
+
+----------
+mcadler     Date: Mon Jun 23 00:06:22 EDT 2008  CSN: CSN-hasim-457
+                  Mon Jun 23 04:06:22 UTC 2008
+
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          456 
+
+Directory modules/model
+ hasim_model.bsv           Locally Modified          456 
+
+Directory modules/hasim/common/new-funcp
+ FPGAFIFOs.bsv             Locally Modified          456 
+
+Directory modules/hasim/functional-partition/register-state/snapshot/bram
+ funcp_snapshot_bram.bsv   Locally Modified          456 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          456 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.awb Locally Modified          456 
+ memstate_cache_direct_writethrough.bsv Locally Modified          456 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory-datatypes.bsv Locally Modified          456 
+
+- Enable model ID detection in run.bmark to avoid reloading FPGA when it already
+  has the right bitfile.  Just reset.
+- hasim_model.bsv now holds reset signal for 128 cycles.  Probably overkill.
+- Scoreboard didn't recover from reset properly due to test for live tokens
+  reading uninitialized values without checking an "allocated" flag.
+- Clean up functional direct mapped cache.
+
+- Clean up some bugs keeping the models from compiling after Murali's BRAM
+  check-in.

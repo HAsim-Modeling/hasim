@@ -31,10 +31,10 @@ module mkSnapshot#(File debugLog, Bit#(32) fpgaCC)
     Reg#(FUNCP_SNAPSHOT_INDEX)                       snapNext <- mkReg(0);
 
     // The actual snapshots of the entire maptable.
-    BRAM#(FUNCP_SNAPSHOT_INDEX, Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX)) snaps <- mkBRAM_Full();
+    BRAM#(snapshotptr_SZ, Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX)) snaps <- mkBramInitialized(?);
 
     // An additional snapshot of the location of the freelist.
-    BRAM#(FUNCP_SNAPSHOT_INDEX, FUNCP_PHYSICAL_REG_INDEX)                         snapsFL <- mkBRAM_Full();
+    BRAM#(snapshotptr_SZ, FUNCP_PHYSICAL_REG_INDEX)                         snapsFL <- mkBramInitialized(?);
 
     method Action makeSnapshot(TOKEN_INDEX tokIndex, Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX) newMap, FUNCP_PHYSICAL_REG_INDEX currPhysReg);
         $fdisplay(debugLog, "[%d]: TOKEN %0d: Snapshot: Making Snapshot (Number %0d).", fpgaCC, tokIndex, snapNext);
@@ -71,16 +71,16 @@ module mkSnapshot#(File debugLog, Bit#(32) fpgaCC)
                 $fwrite(debugLog, "[%d]: Snapshot: Fast Rewind confirmed with Snapshot %0d", fpgaCC, idx);
 
                 // Retrieve the snapshots.
-                snaps.read_req(idx);
-                snapsFL.read_req(idx);
+                snaps.readReq(idx);
+                snapsFL.readReq(idx);
             end
         end
         return found;
     endmethod
 
     method ActionValue#(Tuple2#(Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX), FUNCP_PHYSICAL_REG_INDEX)) returnSnapshot();
-        let snp_map <- snaps.read_resp();
-        let snp_fl  <- snapsFL.read_resp();
+        let snp_map <- snaps.readResp();
+        let snp_fl  <- snapsFL.readResp();
 
         return tuple2(snp_map, snp_fl);
     endmethod

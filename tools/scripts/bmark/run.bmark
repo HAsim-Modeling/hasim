@@ -210,6 +210,13 @@ if (! $config{isHybridModel} && ($mType == $MODEL_BLUESIM)) {
 #############################################################################
 #############################################################################
 
+#
+# Move old stats file so we are sure statistics come from this run
+#
+if (-f "$config{workload}.stats") {
+    rename("$config{workload}.stats", "$config{workload}.stats.old");
+}
+
 if ($mType == $MODEL_FPGA) {
     # Load FPGA
     if (! $noProgram) {
@@ -224,8 +231,7 @@ if ($mType == $MODEL_FPGA) {
             chomp($curSignature);
             if ($curSignature eq $config{signature}) {
                 print "FPGA is already programmed (signature match)...\n";
-# Uncomment when reset works
-#                $needProgram = 0;
+                $needProgram = 0;
             }
         }
 
@@ -254,6 +260,9 @@ if ( $config{workload} eq "null" ) {
 
 if (-f "hasim_events.out") {
     system("sort hasim_events.out -o hasim_events.out.$$; mv -f hasim_events.out.$$ hasim_events.out");
+}
+if (-f "$config{workload}.stats") {
+    system("sort $config{workload}.stats -o $config{workload}.stats.$$; mv -f $config{workload}.stats.$$ $config{workload}.stats");
 }
 
 if (($mType == $MODEL_FPGA) && ! $noProgram && ! $noReserve) {

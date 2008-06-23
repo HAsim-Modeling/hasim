@@ -166,10 +166,11 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         let exe_busy =       exe_start.sub(t) && !exe_finish.sub(t);
         let load_busy =     load_start.sub(t) && !load_finish.sub(t);
         let store_busy =   store_start.sub(t) && !store_finish.sub(t);
-        let commit_busy = commit_start.sub(t) && alloc[t]; // It's not done committing if it's still allocated.
+        // It's not done committing if it's still allocated.  alloc[t] tested later.
+        let commit_busy = commit_start.sub(t);
 
         // If it is in any macro operation it is busy.
-        return fet_busy || dec_busy || exe_busy || load_busy || store_busy || commit_busy;
+        return alloc[t] && (fet_busy || dec_busy || exe_busy || load_busy || store_busy || commit_busy);
 
     endfunction
 

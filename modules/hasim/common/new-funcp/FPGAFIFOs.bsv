@@ -56,21 +56,24 @@ module mkSizedFIFO_DRAM#(Integer depth)
 
 endmodule
 
+typedef Bit#(10) FIFO_IDX;
 
 module mkSizedFIFO_BRAM#(Integer depth) 
   //
   //interface:
               (FIFO#(data_T))
   provisos
-          (Bits#(data_T, data_SZ));
+          (Literal#(data_T),
+           Bits#(data_T, data_SZ),
+           Bits#(FIFO_IDX, fifo_idx_SZ));
 
   if (depth > 1024)
     error("BRAM FIFO buffering depth cannot currently exceed 1024.");
   
-  BRAM#(Bit#(10), data_T) bram <- mkBRAM(0, depth);
+  BRAM#(fifo_idx_SZ, data_T) bram <- mkBramInitialized(0);
     
-  Reg#(Bit#(10)) head <- mkReg(0);
-  Reg#(Bit#(10)) tail <- mkReg(0);
+  Reg#(FIFO_IDX) head <- mkReg(0);
+  Reg#(FIFO_IDX) tail <- mkReg(0);
   
   PulseWire deqW <- mkPulseWire();
   PulseWire enqW <- mkPulseWire();
@@ -94,20 +97,20 @@ module mkSizedFIFO_BRAM#(Integer depth)
     begin
     
       let newtail = overflow_incr(tail);
-      bram.read_req(newtail);
+      bram.readReq(newtail);
       tail <= newtail;
     
     end
     else
     begin
-      bram.read_req(tail);
+      bram.readReq(tail);
     end
   
   endrule 
   
   rule prebuf_resp (True);
   
-    let p <- bram.read_resp();
+    let p <- bram.readResp();
     bufW <= p;
 
   endrule

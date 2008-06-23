@@ -13466,3 +13466,13 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
 
 - Clean up some bugs keeping the models from compiling after Murali's BRAM
   check-in.
+
+----------
+nikhil      Date: Mon Jun 23 18:56:31 CDT 2008  CSN: CSN-hasim-458
+                  Mon Jun 23 23:56:31 UTC 2008
+
+
+Directory modules/common/modellib
+ StallPorts.bsv            Locally Modified          457 
+
+fixed bug in a string literal in stallports.

@@ -113,8 +113,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     Connection_Receive#(MEM_ADDRESS)             link_funcp_memory_inval     <- mkConnection_Receive("funcp_memory_invalidate");
     Connection_Receive#(Bit#(0))                 link_funcp_memory_inval_all <- mkConnection_Receive("funcp_memory_invalidate_all");
 
-    Bram#(cache_SZ, Maybe#(CACHE_TAG))                   cache_tags <- mkBramInitialized(tagged Invalid);
-    Vector#(CACHELINE_WORDS, Bram#(cache_SZ, MEM_VALUE)) cache_data <- replicateM(mkBramInitialized(?));
+    BRAM#(cache_SZ, Maybe#(CACHE_TAG))                   cache_tags <- mkBramInitialized(tagged Invalid);
+    Vector#(CACHELINE_WORDS, BRAM#(cache_SZ, MEM_VALUE)) cache_data <- replicateM(mkBramInitialized(?));
 
     FIFO#(CACHE_ACCESS) pendingQ <- mkFIFO1; // size=1 -> blocking. we'll need a searchable fifo for size >=2.
     Reg#(Bool)          waiting  <- mkReg(False);

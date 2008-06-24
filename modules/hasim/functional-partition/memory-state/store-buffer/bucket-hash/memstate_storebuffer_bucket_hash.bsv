@@ -94,11 +94,11 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
     // The "next" pointer in the list. IE token 2 is followed by token 10.
     // Invalid indicates end of list.
 
-    Bram#(idx_SZ, Maybe#(TOKEN)) listnodes <- mkBramInitialized(tagged Invalid);
+    BRAM#(idx_SZ, Maybe#(TOKEN)) listnodes <- mkBramInitialized(tagged Invalid);
 
     // The actual values in the list are (Addr, Value) pairs.
 
-    Bram#(idx_SZ, Tuple2#(MEM_ADDRESS, MEM_VALUE)) listvalues <- mkBramInitialized(?);
+    BRAM#(idx_SZ, Tuple2#(MEM_ADDRESS, MEM_VALUE)) listvalues <- mkBramInitialized(?);
 
     // The bucket hash divides things into N lists. This RegFile stores the heads of
     // these lists. Invalid indicates empty list.

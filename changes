@@ -13476,3 +13476,23 @@ Directory modules/common/modellib
  StallPorts.bsv            Locally Modified          457 
 
 fixed bug in a string literal in stallports.
+
+----------
+mvijayar    Date: Tue Jun 24 13:16:13 EDT 2008  CSN: CSN-hasim-459
+                  Tue Jun 24 17:16:13 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          458 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          458 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.bsv Locally Modified          458 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-hash
+ memstate_storebuffer_bucket_hash.bsv Locally Modified          458 
+
+Changed Bram instantiations to BRAM
+

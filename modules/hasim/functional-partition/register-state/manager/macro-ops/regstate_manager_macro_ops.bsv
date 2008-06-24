@@ -108,26 +108,26 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Tables to track info about in-flight instructions.
 
     // The address we got the instruction from (told to us by the timing model).
-    Bram#(idx_SZ, ISA_ADDRESS) tokAddr <- mkBramInitialized(0);
+    BRAM#(idx_SZ, ISA_ADDRESS) tokAddr <- mkBramInitialized(0);
 
     // The instruction that was at that address (from mem_state).
-    MultiReadBram#(2, idx_SZ, ISA_INSTRUCTION) tokInst <- mkMultiReadBramInitialized(0);
+    BRAM_MULTI_READ#(2, idx_SZ, ISA_INSTRUCTION) tokInst <- mkMultiReadBramInitialized(0);
 
     // The destinations of the instruction (a convenience which saves us from reading the instruction/maptable).
-    MultiReadBram#(3, idx_SZ, Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) tokDsts <- mkMultiReadBramInitialized(?);
+    BRAM_MULTI_READ#(3, idx_SZ, Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) tokDsts <- mkMultiReadBramInitialized(?);
 
     // If an instruction has sources in other inflight instructions it will be noted here.
-    Bram#(idx_SZ, Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)))   tokWriters <- mkBramInitialized(?);
+    BRAM#(idx_SZ, Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)))   tokWriters <- mkBramInitialized(?);
 
     // The memaddress is used by Loads/Stores so we don't have to repeat the calculation.
-    MultiReadBram#(2, idx_SZ, ISA_ADDRESS) tokMemAddr <- mkMultiReadBramInitialized(0);
+    BRAM_MULTI_READ#(2, idx_SZ, ISA_ADDRESS) tokMemAddr <- mkMultiReadBramInitialized(0);
 
     // The physical registers to free when the token is committed/killed.
-    Bram#(idx_SZ, Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) tokRegsToFree <- mkBramInitialized(?);
+    BRAM#(idx_SZ, Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) tokRegsToFree <- mkBramInitialized(?);
 
     // The Physical Register File
 
-    MultiReadBram#(3, pname_SZ, ISA_VALUE) prf <- mkMultiReadBram();
+    BRAM_MULTI_READ#(3, pname_SZ, ISA_VALUE) prf <- mkMultiReadBram();
     
     // Valid bits for PRF
     Vector#(FUNCP_PHYSICAL_REGS, Reg#(Bool)) prfValids = newVector();

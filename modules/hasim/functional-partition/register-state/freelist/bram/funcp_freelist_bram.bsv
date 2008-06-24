@@ -67,7 +67,7 @@ module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
     Reg#(Bool) initializing <- mkReg(True);
 
     // The actual freelist
-    Bram#(prname_SZ, FUNCP_PHYSICAL_REG_INDEX) fl <- mkBramInitialized(?);
+    BRAM#(prname_SZ, FUNCP_PHYSICAL_REG_INDEX) fl <- mkBramInitialized(?);
 
     // The read pointer is the next register to allocate.
     Reg#(FUNCP_PHYSICAL_REG_INDEX) flRead   <- mkReg(initFL);

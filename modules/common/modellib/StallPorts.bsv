@@ -117,7 +117,7 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
     Port_Receive#(UNIT) portDataDeqReceive <- mkPort_Receive(s + ":portDataDeq", 1);
     Port_Send#(UNIT)       portDataDeqSend <- mkPort_Send(s + ":portDataDeq");
 
-    Port_Receive#(a) portDataEnqReceive <- mkPort_Receive(s + ":portDataEnq", 1);
+    Port_Receive#(a) portDataEnqReceive <- mkPort_Receive(s + ":portDataEnq", 0);
 
     FIFOF#(a) fifo <- mkUGSizedFIFOF(2);
 

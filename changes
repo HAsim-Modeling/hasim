@@ -13522,3 +13522,14 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 * This now allows the 5-stage model to pass all Alpha bechmarks in simulation.
 
 Michael P.
+
+----------
+nikhil      Date: Thu Jun 26 14:06:22 CDT 2008  CSN: CSN-hasim-461
+                  Thu Jun 26 19:06:22 UTC 2008
+
+
+Directory modules/common/modellib
+ StallPorts.bsv            Locally Modified          460 
+
+StallPorts: previous changes had introduced a bug; hacking around it for now.
+Need to work on a cleaner fix.

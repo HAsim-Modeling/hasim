@@ -12,6 +12,7 @@
 
 import Vector::*;
 import RegFile::*;
+import Counter::*;
 
 // Project imports
 
@@ -75,6 +76,8 @@ interface FUCNCP_SCOREBOARD;
   method ISA_MEMOP_TYPE getStoreType(TOKEN_INDEX t);
   method TOKEN_INDEX youngest();
   method TOKEN_INDEX oldest();
+  method Bool canEmulate();
+  method Bool canRewind();
   
 endinterface
 
@@ -113,6 +116,16 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     // A pointer to the oldest active token.
     Reg#(TOKEN_INDEX) oldest_tok <- mkReg(0);
+    
+    // A register tracking how many tokens are active in pipelines.
+    Counter#(idx_SZ) num_in_fet <- mkCounter(0);
+    Counter#(idx_SZ) num_in_dec <- mkCounter(0);
+    Counter#(idx_SZ) num_in_exe <- mkCounter(0);
+    Counter#(idx_SZ) num_in_load <- mkCounter(0);
+    Counter#(idx_SZ) num_in_store <- mkCounter(0);
+    Counter#(idx_SZ) num_in_commit <- mkCounter(0);
+    
+    
 
     // ***** Assertion Checkers ***** //
 
@@ -192,6 +205,9 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
         // Update the allocation table.
         alloc <=  update(alloc, t, False);
+        
+        // Record that the token has finished commit.
+        num_in_commit.down();
 
     endmethod
 
@@ -247,6 +263,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         // We don't need an assert here, because it's okay to fetch killed tokens.
 
         fet_start.upd(t, True);
+        num_in_fet.up();
 
     endmethod
 
@@ -260,6 +277,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         assert_token_can_finish_fet(fet_start.sub(t));
 
         fet_finish.upd(t, True);
+        num_in_fet.down();
 
     endmethod
 
@@ -273,6 +291,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         assert_token_can_start_dec(fet_finish.sub(t));
 
         dec_start.upd(t, True);
+        num_in_dec.up();
 
     endmethod
 
@@ -286,6 +305,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         assert_token_can_finish_dec(dec_start.sub(t));
 
         dec_finish.upd(t, True);
+        num_in_dec.down();
 
     endmethod
 
@@ -299,6 +319,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         assert_token_can_start_exe(dec_finish.sub(t));
 
         exe_start.upd(t, True);
+        num_in_exe.up();
 
     endmethod
 
@@ -312,6 +333,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         assert_token_can_finish_exe(exe_start.sub(t));
 
         exe_finish.upd(t, True);
+        num_in_exe.down();
 
     endmethod
 
@@ -325,6 +347,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         assert_token_can_start_load(exe_finish.sub(t));
 
         load_start.upd(t, True);
+        num_in_load.up();
 
     endmethod
 
@@ -338,6 +361,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         assert_token_can_finish_load(load_start.sub(t));
 
         load_finish.upd(t, True);
+        num_in_load.down();
 
     endmethod
 
@@ -351,6 +375,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         assert_token_can_start_store(exe_finish.sub(t));
 
         store_start.upd(t, True);
+        num_in_store.up();
 
     endmethod
 
@@ -364,6 +389,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         assert_token_can_finish_store(store_start.sub(t));
 
         store_finish.upd(t, True);
+        num_in_store.down();
 
     endmethod
 
@@ -383,6 +409,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         assert_token_can_start_commit(exe_finish.sub(t));
 
         commit_start.upd(t, True);
+        num_in_commit.up();
 
     endmethod
 
@@ -536,4 +563,25 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     endmethod
 
+    // canEmulate
+
+    // When:   Any time.
+    // Effect: Accessor method. Returns true if no instructions are in any pipeline except EXE.
+
+    method Bool canEmulate();
+
+        return num_in_fet.value() == 0 && num_in_dec.value() == 0 && num_in_load.value() == 0 && num_in_store.value() == 0 && num_in_commit.value() == 0;
+
+    endmethod
+
+    // canRewind
+
+    // When:   Any time.
+    // Effect: Accessor method. Returns true if no instructions are in any pipeline.
+
+    method Bool canRewind();
+
+        return num_in_fet.value() == 0 && num_in_dec.value() == 0 && num_in_exe.value() == 0 && num_in_load.value() == 0 && num_in_store.value() == 0 && num_in_commit.value() == 0;
+
+    endmethod
 endmodule

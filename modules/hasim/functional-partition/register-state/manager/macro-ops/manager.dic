@@ -6,5 +6,6 @@ def ASSERTIONS.REGMANAGER.UNEXPECTED_REG_UPDATE    "FUNCP: Regstate: Got a regis
 def ASSERTIONS.REGMANAGER.UNEXPECTED_EMULATION_FINISHED "FUNCP: Regstate: Got an emmulation finished message from software at an unexpected time!";
 def ASSERTIONS.REGMANAGER.EMULATED_INSTR_HAS_DST   "FUNCP: Regstate: Emulated instructions may not have destination registers!";
 def ASSERTIONS.REGMANAGER.INVALID_NUM_DSTS         "FUNCP: Regstate: Instruction has more destinations than ISA definition claims!";
-
+def ASSERTIONS.REGMANAGER.NO_EMULATION_SNAPSHOT    "FUNCP: Regstate: Tried to emulate an instruction that did not have a snapshot!";
+def ASSERTIONS.REGMANAGER.SLOW_REWIND_UNIMPLEMENTED "FUNCP: Regstate: Tried to rewind to a token with no snapshot. (Slow rewinds are currently unimplemented.)!";
 def STATS.REGMANAGER.EMULATED_INSTRS    "FUNCP: Emulated Instructions";

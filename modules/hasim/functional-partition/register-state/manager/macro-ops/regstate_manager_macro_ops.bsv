@@ -55,11 +55,23 @@ typedef enum
   MEM_PATH
       deriving (Eq, Bits);
 
-// TEMPORARY: Define our RRR Method IDs by hand for now.
-`define UPDATE_REGISTER_METHOD_ID 0
-`define EMULATE_INSTRUCTION_METHOD_ID 1
+// REGMANAGER_STATE
 
+// A type to indicating what we're doing on a high level.
 
+typedef enum
+{
+  RSM_Initializing,
+  RSM_Running,
+  RSM_DrainingForRewind,
+  RSM_Rewinding,
+  RSM_DrainingForEmulate,
+  RSM_SyncingRegisters,
+  RSM_RequestingEmulation,
+  RSM_UpdatingRegisters
+}
+  REGMANAGER_STATE
+      deriving (Eq, Bits);
 
 // mkFUNCP_RegStateManager
 
@@ -163,18 +175,12 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Snapshots 
     // Allow for fast rewinds.
 
-    Snapshot#(rname_SZ) snapshot <- mkSnapshot(debugLog, fpgaCC);
+    Snapshot#(rname_SZ) snapshots <- mkSnapshot();
 
     // ******* Miscellaneous *******
 
-    // Are we currently doing a "rewind"?
-    Reg#(Bool)     rewinding <- mkReg(False);
-
     // Is it a fast rewind or a slow one?
     Reg#(Bool)     fastRewind <- mkReg(False);
-
-    // Are we initializing after a reset?
-    Reg#(Bool)     initializing <- mkReg(True);
 
     // This register stores the current Phys Reg we are initializing.
     Reg#(FUNCP_PHYSICAL_REG_INDEX)   initCur <- mkReg(0);
@@ -224,20 +230,23 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Record the result for the timing model while we're writing back.
     Reg#(ISA_EXECUTION_RESULT) execWritebackResult <- mkRegU();
     
-    // Are we pausing to emulate an instruction in software?
-    Reg#(Bool) emulatingInstruction <- mkReg(False);
+    // Which snapshot should we refer to for emulation?
+    Reg#(FUNCP_SNAPSHOT_INDEX) emulatingSnap <- mkRegU();
     // Which token's instruction are we emulating?
     Reg#(TOKEN) emulatingToken <- mkRegU();
-    // Are we synchronizing are registers with software?
-    Reg#(Bool) synchronizingRegs <- mkReg(False);
     // Which register are we currently synchronizing?
     Reg#(Bit#(rname_SZ)) synchronizingCurReg <- mkReg(minBound);
 
     Reg#(Bit#(TLog#(ISA_MAX_DSTS))) execWritebackNum <- mkRegU();
-            
-    // We are only ready to go if we are neither rewinding, initializing, nor emulating
-    let ready = !rewinding && !initializing && !emulatingInstruction;
-
+    
+    // A state variable to indicate what we're doing on a high-level.
+    Reg#(REGMANAGER_STATE) state <- mkReg(RSM_Initializing);
+    
+    // We are only ready to put a new operation into a pipeline if we are neither rewinding, initializing, nor emulating
+    let readyToBegin = state == RSM_Running;
+    // We allow operations in pipelines to proceed under a looser set of circumstances.
+    let readyToContinue = state == RSM_Running || state == RSM_DrainingForRewind || state == RSM_DrainingForEmulate;
+    
     // Does the commit stage have to free more registers?
     Reg#(Vector#(TSub#(ISA_MAX_DSTS, 1), Maybe#(FUNCP_PHYSICAL_REG_INDEX))) additionalRegsToFree <- mkReg(Vector::replicate(tagged Invalid));
     
@@ -252,7 +261,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     FIFO#(TOKEN) res1Q  <- mkFIFO();
     FIFO#(TOKEN) res2Q <- mkFIFO();
     FIFO#(TOKEN) res3Q   <- mkFIFO();
-    FIFO#(Bit#(rname_SZ)) syncQ <- mkFIFO();
+    FIFO#(Tuple2#(Bit#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX)) syncQ <- mkFIFO();
     FIFO#(TOKEN) load1Q  <- mkFIFO();
     FIFO#(Tuple2#(TOKEN, MEM_ADDRESS)) load2Q  <- mkFIFO();
     FIFO#(TOKEN) store1Q <- mkFIFO();
@@ -327,6 +336,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Assertion assertEmulationFinishedAtExpectedTime <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_EMULATION_FINISHED, ASSERT_WARNING);
     Assertion assertEmulatedInstrNoDsts           <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_EMULATED_INSTR_HAS_DST, ASSERT_ERROR);
     Assertion assertInvalidNumDsts                <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_INVALID_NUM_DSTS, ASSERT_ERROR);
+    Assertion assertSlowRewindsUnimplemented      <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_SLOW_REWIND_UNIMPLEMENTED, ASSERT_ERROR);
+    Assertion assertHaveSnapshotOfEmulatedInstruction <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_NO_EMULATION_SNAPSHOT, ASSERT_ERROR);
 
     // ***** Statistics ***** //
 
@@ -340,7 +351,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Effects: Makes sure all RAMS are in the right state before we begin computing.
     //          Additionally the first time it runs it will open the debug logfiles.
 
-    rule initialize (initializing);
+    rule initialize (state == RSM_Initializing);
 
         //Open the debug logs. (First time only. Afterwards it is not InvalidFile.)
 
@@ -362,7 +373,10 @@ module [HASim_Module] mkFUNCP_RegStateManager
         prfValids[initCur] <= True;
         
         // We're done if we've initialized the last register.
-        initializing <= (initCur < maxInit);
+        if (initCur >= maxInit)
+        begin
+            state <= RSM_Running;
+        end
         initCur <= initCur + 1;
 
     endrule
@@ -386,7 +400,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Soft Inputs:  req from timing model
     // Soft Returns: a TOKEN which the timing model can use to refer to that slot.
 
-    rule newInFlight (ready);
+    rule newInFlight (readyToBegin);
 
         // Get the input from the timing model. Begin macro operation.
         let x = linkNewInFlight.getReq();
@@ -425,7 +439,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   The timing model makes a new FETCH req.
     // Effect: Record the address, kick over to Mem State. 
 
-    rule getInstruction1 (ready);
+    rule getInstruction1 (readyToBegin);
 
         // Read input. Beginning of macro-operation.
         match {.tok, .addr} = linkGetInst.getReq();
@@ -461,7 +475,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   Some time after fetch1.
     // Effect: Record the instruction, kick back to timing model.
 
-    rule getInstruction2 (ready && memPathQ.first() == PATH_INST);
+    rule getInstruction2 (readyToContinue && memPathQ.first() == PATH_INST);
 
         // Input from previous stage.
         match{.tok, .addr} = instQ.first();
@@ -508,7 +522,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   When the timing partition starts a new getDeps operation.
     // Effect: Update the scoreboard, start retrieving the instruction, start allocating a dest.
 
-    rule getDependencies1 (ready);
+    rule getDependencies1 (readyToBegin);
 
         // Read inputs. Begin macro-operation.
         let tok = linkGetDeps.getReq();
@@ -538,7 +552,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     //         If an instruction has more than one dest then the third stage will occur,
     //         otherwise this rule itself will return the result to the timing model.
 
-    rule getDependencies2 (!initializing &&& finishDeps matches tagged Invalid);
+    rule getDependencies2 (readyToContinue &&& finishDeps matches tagged Invalid);
 
         // Get the info from the previous stage.
         let tok = deps1Q.first();
@@ -618,9 +632,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         if (tok.timep_info.epoch == epoch) //Don't update the maptable if this token is getting killed
         begin
-
-            funcpDebug($fwrite(debugLog, "Token %0d: epoch: %0d", tok.index, tok.timep_info.epoch));
-            maptable <= new_map;
+             maptable <= new_map;
             // Also we must reset the physical register dest to Invalid.
             prfValids[new_preg] <= False;
         end
@@ -651,7 +663,6 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Use the scoreboard to record other relevant info.
         if (isaIsLoad(inst))
         begin
-            funcpDebug($fwrite(debugLog, "Token %0d: isa Load"));
             tokScoreboard.setLoadType(tok.index, isaLoadType(inst));
         end
 
@@ -661,12 +672,19 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let is_emulated = isaEmulateInstruction(inst);
         tokScoreboard.setEmulation(tok.index, is_emulated);
 
-        // Make a snapshot for branches.
-        // Note that there is an implicit assumption here that no branch instruction has more than one destination.  
-
+        // Make a snapshot for branches or emulated instructions.
+        // Note that there is an implicit assumption here that no branch or emulated instruction has more than one destination.
         if (isaIsBranch(inst))
-            snapshot.makeSnapshot(tok.index, new_map, freelist.current());
-
+        begin
+             funcpDebug($fwrite(debugLog, "TOKEN %0d: getDeps: Making Snapshot of Branch.", tok.index));
+             snapshots.makeSnapshot(tok.index, new_map, freelist.current());
+        end
+        else if (is_emulated)
+        begin
+             funcpDebug($fwrite(debugLog, "TOKEN %0d: getDeps: Making Snapshot of Emulated Instruction.", tok.index));
+             snapshots.makeSnapshot(tok.index, new_map, freelist.current());
+        end
+             
 
         // If there was one dest or less, we are done.
         
@@ -713,7 +731,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   When an instruction in the previous stage had more than one destination.
     // Effect: Keep allocating destinations until you've got them all.
     
-     rule getDependencies2AdditionalMappings (!initializing &&& finishDeps matches tagged Valid {.tok, .num, .map_srcs, .map_dsts, .phy_regs_to_free});
+     rule getDependencies2AdditionalMappings (readyToContinue &&& finishDeps matches tagged Valid {.tok, .num, .map_srcs, .map_dsts, .phy_regs_to_free});
       
         // Get the new phys reg.
         let phy_dst <- freelist.forwardResp();
@@ -798,7 +816,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   When the timing model starts a getResults().
     // Effect: Lookup the locations of this token's sources.
 
-    rule getResults1 (ready && !emulatingInstruction);
+    rule getResults1 (readyToBegin);
 
         // Get parameter from the timing model. Begin macro-operation.
         let tok = linkGetResults.getReq();
@@ -812,12 +830,24 @@ module [HASim_Module] mkFUNCP_RegStateManager
         
         if (tokScoreboard.emulateInstruction(tok.index))
         begin
-            
-            emulatingInstruction <= True;
+
+            // Record that we're emulating an instruction.
+            state <= RSM_DrainingForEmulate;
+            // Record which token is being emulated.
             emulatingToken <= tok;
-            synchronizingRegs <= True;
-            synchronizingCurReg <= minBound;
+            // Invalidate the cache.
             link_funcp_memory_inval_all.send(?);
+            // Lookup the snapshot we should be working with.
+            let msnap = snapshots.hasSnapshot(tok.index);
+            // If there's no snapshot, something is really wrong.
+            assertHaveSnapshotOfEmulatedInstruction(isValid(msnap));
+            // Record which snap we should use.
+            emulatingSnap <= validValue(msnap);
+            // Pre-request the first snapshot.
+            snapshots.requestSnapshot(validValue(msnap));
+             // Log it.
+            funcpDebug($fwrite(debugLog, "TOKEN %0d: Execute: Beginning Instruction Emulation.", tok.index));
+
         end
         else
         begin
@@ -838,7 +868,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     //         Also retreive the instruction itself and the PC.
     //         If the writers are not all ready then a stall can occur.
 
-    rule getResults2 (ready && !execStalling);
+    rule getResults2 (readyToContinue && !execStalling);
 
         // Get input from getResults1.
         let tok = res1Q.first();
@@ -938,7 +968,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 2)
     begin
     
-        rule getResults2StallReqEven (ready && execStalling &&&
+        rule getResults2StallReqEven (readyToContinue && execStalling &&&
                                       execStallWriters[x] matches tagged Valid .r &&& // We need this register...
                                       prfValids[r] &&& // The register is ready...
                                       !execStallReqsMade[x]); //We haven't made the request yet.
@@ -950,7 +980,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         endrule
     
-        rule getResults2StallRspEven (ready && execStalling &&&
+        rule getResults2StallRspEven (readyToContinue && execStalling &&&
                                       execStallValuesNeeded[x] &&& // We need this register.
                                       execStallReqsMade[x] &&&  //We made the request already.
                                       resEvenQ.first() == fromInteger(x)); // Our response is next in line.
@@ -966,7 +996,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Repeat the above two rules using the second PRF port. (Should be exact copies except for index.)
         if (x+1 < valueof(ISA_MAX_SRCS))
         begin
-            rule getResults2StallReqOdd (ready && execStalling &&&
+            rule getResults2StallReqOdd (readyToContinue && execStalling &&&
                                           execStallWriters[x+1] matches tagged Valid .r &&& // We need this register...
                                           prfValids[r] &&& // The register is ready...
                                           !execStallReqsMade[x+1]); //We haven't made the request yet.
@@ -978,7 +1008,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
             endrule
 
-            rule getResults2StallRspOdd (ready && execStalling &&&
+            rule getResults2StallRspOdd (readyToContinue && execStalling &&&
                                          execStallValuesNeeded[x+1] &&& // We need this register
                                          execStallReqsMade[x+1] &&&  //We made the request already.
                                          resOddQ.first() == fromInteger(x+1)); // Our response is next in line.
@@ -1005,7 +1035,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         noMoreStalls = noMoreStalls && !execStallValuesNeeded[x];
     end
     
-    rule getResults2StallEnd (ready && execStalling && noMoreStalls);
+    rule getResults2StallEnd (readyToContinue && execStalling && noMoreStalls);
 
         execStalling <= False;
         res2Q.enq(execStallTok);
@@ -1019,7 +1049,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:    After getResults2 or alternatively getResults2StallEnd
     // Effect:  Send all the data to the datapath.
 
-    rule getResults3 (ready);
+    rule getResults3 (readyToContinue);
 
         // Get input from the previous stage.
         let tok = res2Q.first();
@@ -1055,7 +1085,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     //         return the result to the timing partition.
     //         If more results then the getResults4AdditionalWriteback rule will take care of it.
 
-    rule getResults4 (ready && !execWritebackMore);
+    rule getResults4 (readyToContinue && !execWritebackMore);
 
         // Get the token from the previous stage.
         let tok = res3Q.first();
@@ -1190,14 +1220,32 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     
     // ******* emulateInstruction ******* //
-    // 3-stage macro-operation that interacts with software via RRR.
+    // 4-stage macro-operation that interacts with software via RRR.
     
     // When:   After the getResults operation detects an instruction which must be emulated.
     // Effect: First this sends every archtectural register value to software.
     //         Then it makes a call to emulate the instruction.
     //         Then it accepts any number of register updates from software.
     //         Finally it gets an ACK and returns the result of getResults to the timing model.
+
+    // finishDrainForEmulate
     
+    // When:   After getResults operation puts us in the emulation state.
+    // Effect: Stall until all younger operations have completed, and the cache is emptied. Then we can proceed.
+    
+    rule finishDrainForEmulate (state == RSM_DrainingForEmulate && tokScoreboard.canEmulate());
+
+       // Get the response from the cache.
+       //link_funcp_memory_inval_all.deq();
+
+       // Reset the counter for syncing registers.
+       synchronizingCurReg <= minBound;
+
+       // Start syncing registers.
+       state <= RSM_SyncingRegisters;
+               
+    endrule
+
     // emulateInstruction1_Req
     
     // When:   After the getResults operation puts us into the emulation state, this
@@ -1205,21 +1253,28 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Effect: Look up the current physical register in the maptable and request it from the regfile.
     
     
-    rule emulateInstruction1_Req (emulatingInstruction && synchronizingRegs);
+    rule emulateInstruction1_Req (state == RSM_SyncingRegisters);
     
         // Some ISA's have a sparse packing of register names.  Don't sync
         // a register if the current index doesn't map to a real register index.
         ISA_REG_INDEX isa_reg = unpack(synchronizingCurReg);
         if (pack(isa_reg) == synchronizingCurReg)
         begin
+
+            // Get the maptable at the time of the emulated instruction.
+            match {.emulation_map, .emu_fl} <- snapshots.returnSnapshot();
+
             // Lookup which register to send next.
-            FUNCP_PHYSICAL_REG_INDEX current_pr = maptable[synchronizingCurReg];
+            FUNCP_PHYSICAL_REG_INDEX current_pr = emulation_map[synchronizingCurReg];
         
             // Make the request to the regfile.
             prf.req[0].read(current_pr);
         
+            // Pre-load the snapshot for next time.
+            snapshots.requestSnapshot(emulatingSnap);
+        
             // Pass it on to the next stage.
-            syncQ.enq(synchronizingCurReg);
+            syncQ.enq(tuple2(synchronizingCurReg, current_pr));
         end
         
         // Move on to the next register.
@@ -1229,11 +1284,11 @@ module [HASim_Module] mkFUNCP_RegStateManager
         if (next_r == 0)
         begin
         
-            // End the loop.
-            synchronizingRegs <= False;
             // Request the inst and current PC
             tokInst.req[0].read(emulatingToken.index);
             tokAddr.readReq(emulatingToken.index);
+            // End the loop.
+            state <= RSM_RequestingEmulation;
         
         end
         
@@ -1251,7 +1306,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     rule emulateInstruction1_Rsp (True);
     
         // Get the register from the previous stage.
-        Bit#(rname_SZ) arch_reg = syncQ.first();
+        match {.arch_reg, .phys_reg} = syncQ.first();
         syncQ.deq();
         
         // Get the register value from the regfile.
@@ -1259,6 +1314,9 @@ module [HASim_Module] mkFUNCP_RegStateManager
         
         // Send the regsiter on to software via RRR
         client_stub.makeRequest_sync(tuple2(unpack(arch_reg), reg_val));
+
+        //Log it.
+        funcpDebug($fwrite(debugLog, "TOKEN %0d: emulateInstruction: Transmitting Register R%0d (PR%0d) = 0x%h.", emulatingToken.index, unpack(arch_reg), phys_reg, reg_val));
     
     endrule
     
@@ -1267,7 +1325,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   After emulateInstruction1 has transmitted every architectural register.
     // Effect: Send the instruction emulation request to software via RRR.
 
-    rule emulateInstruction2 (emulatingInstruction && !synchronizingRegs);
+    rule emulateInstruction2 (state == RSM_RequestingEmulation);
         
         // Get the instruction and current pc
         ISA_INSTRUCTION inst <- tokInst.resp[0].read();
@@ -1275,8 +1333,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
         
         // Send the request on to software via RRR
         client_stub.makeRequest_emulate(tuple2(inst, pc));
+        
+        //Log it.
+        funcpDebug($fwrite(debugLog, "TOKEN %0d: emulateInstruction: Requesting Emulation of inst 0x%h from address 0x%h", emulatingToken.index, inst, pc));
         stat_isa_emul.incr();
 
+        //Go to receiving updates.
+        state <= RSM_UpdatingRegisters;
+        
     endrule
 
     // emulateInstruction2_UpdateReg
@@ -1292,19 +1356,25 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Get an update request from software.
         match {.r, .v} <- server_stub.acceptRequest_updateRegister();
         
+        // Get the maptable at the time of the emulated instruction.
+        match {.emulation_map, .emu_fl} <- snapshots.returnSnapshot();
+
         // Assert that we're in the state we expected to be in.
-        assertRegUpdateAtExpectedTime(emulatingInstruction && !synchronizingRegs);
+        assertRegUpdateAtExpectedTime(state == RSM_UpdatingRegisters);
         
-        // Lookup the current physical register in the maptable.
-        FUNCP_PHYSICAL_REG_INDEX pr = maptable[pack(r)];
-        
+        // Lookup the current physical register in the snapshot maptable.
+        FUNCP_PHYSICAL_REG_INDEX pr = emulation_map[pack(r)];
         
         // Update the regfile.
-        // Note: It's possible that we should be allocating new physical registers instead of
-        //       updating the current ones.
         prf.write(pr, v);
         prfValids[pr] <= True;
         funcpDebug($fwrite(debugLog, "emulateInstruction: Writing (PR%0d <= 0x%x)", pr, v));
+    
+        // Get the snapshot for the next time.
+        snapshots.requestSnapshot(emulatingSnap);
+        
+        // Log it.
+        funcpDebug($fwrite(debugLog, "TOKEN %0d: emulateInstruction: Writing (PR%0d <= 0x%x)", emulatingToken.index, pr, v));
     
     endrule
 
@@ -1320,11 +1390,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let newPc <- client_stub.getResponse_emulate();
         
         // Assert that we're in the state we expected to be in.
-        assertEmulationFinishedAtExpectedTime(emulatingInstruction && !synchronizingRegs);
+        assertEmulationFinishedAtExpectedTime(state == RSM_UpdatingRegisters);
         
+        // Dequeue the final snapshot response.
+        let junk <- snapshots.returnSnapshot();
+
         // We are no longer emulating an instruction.
         // Resume normal operations.
-        emulatingInstruction <= False;
+        state <= RSM_Running;
 
         // Update scoreboard.
         tokScoreboard.exeFinish(emulatingToken.index);
@@ -1342,6 +1415,9 @@ module [HASim_Module] mkFUNCP_RegStateManager
                        3: tagged RTerminate (newPc[2] == 1); // Bit 2 is 1 for pass
                    endcase;
 
+        //Log it
+        funcpDebug($fwrite(debugLog, "TOKEN %0d: emulateInstruction: Emulation finished.", emulatingToken.index));
+  
         // Send the response to the timing model.
         // End of macro-operation.
         linkGetResults.makeResp(tuple2(emulatingToken, resp));
@@ -1362,7 +1438,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   When the timing model starts a doLoads().
     // Effect: Lookup the effective address of this token.
 
-    rule doLoads1 (ready);
+    rule doLoads1 (readyToBegin);
 
         // Get the input from the timing model. Begin macro-operation.
         let tok = linkDoLoads.getReq();
@@ -1372,11 +1448,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let isLoad = tokScoreboard.isLoad(tok.index);
         assertInstructionIsActuallyALoad(isLoad);
 
-        if (!isLoad)
+        if (tokScoreboard.emulateInstruction(tok.index)) // Emulated loads were taken care of previously.
         begin
 
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads1: I WAS TOLD TO LOAD THIS BUT IT'S NOT A LOAD!", tok.index));
+            funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads1: Ignoring emulated instruction.", tok.index));
+
+            // Respond to the timing model. End of macro-operation.
+            linkDoLoads.makeResp(tok);
 
         end
         else // Everything's okay.
@@ -1403,7 +1482,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   After doLoads1 occurs
     // Effect: Make the request to the memory state.
 
-    rule doLoads2 (ready);
+    rule doLoads2 (readyToContinue);
 
         // Read the parameters from the previous stage.
         let tok = load1Q.first();
@@ -1437,7 +1516,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   After doLoads2 occurs and we get a response from the memory state.
     // Effect: Record the result and pass it back to the timing model.
 
-    rule doLoads3 (ready && memPathQ.first() == PATH_LOAD);
+    rule doLoads3 (readyToContinue && memPathQ.first() == PATH_LOAD);
 
         // Get the data from the previous stage.
         match {.tok, .addr} = load2Q.first();
@@ -1496,7 +1575,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   When the timing model starts a doStores().
     // Effect: Lookup the destination of this token.
 
-    rule doStores1 (ready);
+    rule doStores1 (readyToBegin);
 
         // Get the input from the timing model. Begin macro-operation.
         let tok = linkDoStores.getReq();
@@ -1506,11 +1585,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let isStore = tokScoreboard.isStore(tok.index);
         assertInstructionIsActuallyAStore(isStore);
 
-        if (!isStore)
+        if (tokScoreboard.emulateInstruction(tok.index)) // Emulated stores were taken care of previously.
         begin
 
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: I WAS TOLD TO STORE THIS BUT IT'S NOT A STORE!", tok.index));
+            funcpDebug($fwrite(debugLog, "TOKEN %0d: doStores1: Ignoring emulated instruction.", tok.index));
+
+            // Respond to the timing model. End of macro-operation.
+            linkDoLoads.makeResp(tok);
 
         end
         else // Everything's fine.
@@ -1537,7 +1619,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   After doStores1 occurs
     // Effect: Read the physical register file and the effective address. 
 
-    rule doStores2 (ready);
+    rule doStores2 (readyToContinue);
 
         // Read the parameters from the previous stage.
         let tok = store1Q.first();
@@ -1573,7 +1655,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     //         before the memory state actually completes the store. The semantics of the
     //         memory state must be such that this is safe.
      
-    rule doStores3 (ready);
+    rule doStores3 (readyToContinue);
 
       // Get the result from the previous stage.
       let tok = store2Q.first();
@@ -1632,7 +1714,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Effect: Get the store response from the memory state and discard it.
     //         Note that we have already replied to the timing model in doStores3.
 
-    rule doStores3ReadModifyWrite (ready && memPathQ.first() == PATH_STORE);
+    rule doStores3ReadModifyWrite (readyToContinue && memPathQ.first() == PATH_STORE);
 
         // Get the data from the previous stage.
         match {.tok, .mem_addr, .addr, .val, .st_type} = store3Q.first();
@@ -1673,7 +1755,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   When the timing model starts a commitResults().
     // Effect: Lookup the destinations of this token, and the registers to free.
 
-    rule commitResults1 (ready);
+    rule commitResults1 (readyToBegin);
 
         // Get the input from the timing model. Begin macro-operation.
         let tok = linkCommitResults.getReq();
@@ -1705,7 +1787,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     Bool moreRegsToFree = Vector::any(isValid, additionalRegsToFree);
 
-    rule commitResults2 (ready && !moreRegsToFree);
+    rule commitResults2 (readyToContinue && !moreRegsToFree);
 
         // Get the input from the previous stage.
         let tok = commQ.first();
@@ -1757,7 +1839,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // Soft Inputs:  Token
     // Soft Returns: Token
     
-    rule commitStores (ready);
+    rule commitStores (readyToBegin);
 
         // Get the input from the timing model. Begin macro-operation.
         let tok = linkCommitStores.getReq();
@@ -1791,7 +1873,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   When the timing model starts a rewindToToken()
     // Effect: Lookup the destinations of this token, and the registers to free.
 
-    rule rewindToToken1 (ready);
+    rule rewindToToken1 (readyToBegin);
       
         // Get the input from the timing model.
         let tok = linkRewindToToken.getReq();
@@ -1810,28 +1892,58 @@ module [HASim_Module] mkFUNCP_RegStateManager
         epoch <= epoch + 1;
 
         // Check to see if we have a snapshot.
+        Maybe#(FUNCP_SNAPSHOT_INDEX) midx = snapshots.hasSnapshot(tok.index);
 
-        Bool found <- snapshot.hasSnapshot(tok.index);
-        if (!found)
-        begin
+        // Alright did we find anything?
+        case (midx) matches
+            tagged Valid .idx:
+            begin 
 
-            // Log our failure.
-            funcpDebug($fwrite(debugLog, "Initiating slow Rewind (Oldest: %0d)", tokScoreboard.oldest()));  
+                // Log our success!
+                funcpDebug($fwrite(debugLog, "Rewind: Fast Rewind confirmed with Snapshot %0d", idx));
 
-        end
+                // Retrieve the snapshots.
+                snapshots.requestSnapshot(idx);
+                
+                fastRewind <= True;
 
-        // Temporarily disable all the other operations.
-        rewinding <= True;
+            end
+            tagged Invalid:
+            begin
 
-        // Are we going fast or slow?
-        fastRewind <= found;
+                // Log our failure.
+                funcpDebug($fwrite(debugLog, "Rewind: Initiating slow Rewind (Oldest: %0d)", tokScoreboard.oldest()));
+                
+                // When slow rewinds are implemented this assertion will go away...
+                assertSlowRewindsUnimplemented(isValid(midx));
 
-        // ??? XXX
-        rewindTok <= tokScoreboard.youngest();
+                // Retrieve the last good snapshot.
+                // snapshots.requestLastGoodSnapshot();
+                
+                fastRewind <= False;
+
+            end
+        endcase
+        
+        // Disable everything else.
+        state <= RSM_DrainingForRewind;
+
+        // Stop when we get to the token.
+        rewindTok <= tok.index;
 
         // Start at the oldest and go forward.
         rewindCur <= tokScoreboard.oldest();
 
+    endrule
+
+    rule finishDraining (state == RSM_DrainingForRewind && tokScoreboard.canRewind());
+    
+        // Log it.
+        funcpDebug($fwrite(debugLog, "Rewind: Draining finished.", tokScoreboard.oldest()));
+    
+        // Proceed with rewind.
+        state <= RSM_Rewinding;
+    
     endrule
 
     // rewindToToken2
@@ -1839,10 +1951,10 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // When:   After rewindToToken1 AND we have a snapshot.
     // Effect: Use the snapshot to overwrite existing values. Reply to the timing partition.
 
-    rule rewindToToken2 (rewinding && fastRewind);
+    rule rewindToToken2 (state == RSM_Rewinding && fastRewind);
 
         // Get the snapshots.
-        match {.snp_map, .snp_fl} <- snapshot.returnSnapshot();
+        match {.snp_map, .snp_fl} <- snapshots.returnSnapshot();
 
         // Update the maptable.
         maptable <= snp_map;
@@ -1854,14 +1966,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
         funcpDebug($fwrite(debugLog, "Fast Rewind finished."));  
 
         // We're done. End of macro-operation (path 1).
-        rewinding <= False;
+        state <= RSM_Running;
         linkRewindToToken.makeResp(?);
     endrule
 
     //Slow rewind. Walk the tokens in age order
     //and reconstruct the maptable
 
-    rule rewindToTokenSlow1 (rewinding && !fastRewind);
+    rule rewindToTokenSlow1 (state == RSM_Rewinding && !fastRewind);
     
       // Don't remap killed tokens
       if (tokScoreboard.isAllocated(rewindCur))
@@ -1879,7 +1991,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
       if (rewindCur == rewindTok) //Must take into account the last instruction
       begin
         linkRewindToToken.makeResp(?);
-        rewinding <= False;
+        state <= RSM_Running;
         funcpDebug($fwrite(debugLog, "Slow Rewind: No more tokens to lookup."));  
       end
 
@@ -1915,7 +2027,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     (* execution_order = "getResults4, getResult4AdditionalWriteback, getDependencies2AdditionalMappings, getDependencies2" *)
 
-    rule rewindToTokenSlow2 (True);
+    rule rewindToTokenSlow2 (state == RSM_Rewinding && !fastRewind);
 
       let t = rewindQ.first();
       rewindQ.deq();

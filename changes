@@ -13496,3 +13496,29 @@ Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-ha
 
 Changed Bram instantiations to BRAM
 
+
+----------
+mpellaue    Date: Thu Jun 26 12:34:00 EDT 2008  CSN: CSN-hasim-460
+                  Thu Jun 26 16:34:00 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/snapshot/bram
+ funcp_snapshot_bram.bsv   Locally Modified          459 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          459 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          459 
+ manager.dic               Locally Modified          459 
+
+
+* Update the regstate manager to drain its pipelines before any invalidate or
+  fast rewind.
+
+* Slow rewinds are still unimplemented, but now cause an assertion failure. We
+  think we know how to do slow rewinds.
+
+* This now allows the 5-stage model to pass all Alpha bechmarks in simulation.
+
+Michael P.

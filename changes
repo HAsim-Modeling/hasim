@@ -13543,3 +13543,24 @@ Directory modules/common/modellib
  StallPorts.bsv            Locally Modified          461 
 
 StallPorts: using the latency-1 a-port correctly now.
+
+----------
+mcadler     Date: Fri Jun 27 16:39:24 EDT 2008  CSN: CSN-hasim-463
+                  Fri Jun 27 20:39:24 UTC 2008
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          462 
+
+Directory modules/hasim/common/new-funcp
+ Assertions.bsv            Locally Modified          462 
+
+- Speed up compilation by taking the ring write out of the assertions predicate
+  test.  Testing an assertion now conditionally writes a register.  Another rule
+  copies the register to the assertions ring.  This appears to speed up
+  compilation.
+
+- hasim-configure now does an unlink() of a destination before writing a
+  generated file.  This should avoid writing through a link and overwriting
+  sources when a source file has the same name as an AWB interface.  It also
+  should complain when such a name class exists and exit.  Untested.

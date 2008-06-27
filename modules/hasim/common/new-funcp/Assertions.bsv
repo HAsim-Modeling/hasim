@@ -1,3 +1,4 @@
+import FIFO::*;
 import FIFOF::*;
 `include "asim/dict/RINGID.bsh"
 `include "asim/dict/ASSERTIONS.bsh"
@@ -65,7 +66,23 @@ module [Connected_Module] mkAssertionChecker#(ASSERTIONS_DICT_TYPE myID, ASSERTI
   // Connection to the assertions controller
   Connection_Chain#(ASSERTION_DATA) chain <- mkConnection_Chain(`RINGID_ASSERTS);
     
+
+  Reg#(Maybe#(ASSERTION_DATA)) localAssert <- mkReg(Invalid);
+
   // *********** Rules ***********
+
+  (* descending_urgency= "processLocal, processCmd" *)
+
+  // processLocal
+  
+  // Process a local assertion
+  
+  rule processLocal (localAssert matches tagged Valid .ast);
+  
+    chain.send_to_next(ast);
+    localAssert <= tagged Invalid;
+
+  endrule
 
   // processCmd
   
@@ -77,7 +94,7 @@ module [Connected_Module] mkAssertionChecker#(ASSERTIONS_DICT_TYPE myID, ASSERTI
     chain.send_to_next(ast);
 
   endrule
-    
+
   // *********** Methods ***********
   
   // assert
@@ -87,9 +104,12 @@ module [Connected_Module] mkAssertionChecker#(ASSERTIONS_DICT_TYPE myID, ASSERTI
   function Action assert_function(Bool b);
   action
   
-    if (!b) // Check the boolean expression
+    // Don't write directly to the ring in the checker so rules with assertions
+    // don't need to schedule around the ring.
+    //
+    if (!b && !isValid(localAssert)) // Check the boolean expression
     begin   // Failed. The system is sad. :(
-      chain.send_to_next(ASSERTION_DATA {assertID: myID, severity: my_severity});
+      localAssert <= tagged Valid ASSERTION_DATA {assertID: myID, severity: my_severity};
     end
 
   endaction

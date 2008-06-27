@@ -88,7 +88,7 @@ module [HASIM_MODULE] mkStallPort_Send#(String s)
             provisos (Bits#(a, sa),
                       Transmittable#(Maybe#(a)));
 
-    Connection_Receive#(Bool)     conCred <- mkConnection_Receive(s + ":cred");
+    Connection_Receive#(Bool) conCred <- mkConnection_Receive(s + ":cred");
 
     Port_Send#(a) portDataEnqSend <- mkPort_Send(s + ":portDataEnq");
 
@@ -117,12 +117,12 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
     Port_Receive#(UNIT) portDataDeqReceive <- mkPort_Receive(s + ":portDataDeq", 1);
     Port_Send#(UNIT)       portDataDeqSend <- mkPort_Send(s + ":portDataDeq");
 
-    Port_Receive#(a) portDataEnqReceive <- mkPort_Receive(s + ":portDataEnq", 0);
+    Port_Receive#(a) portDataEnqReceive <- mkPort_Receive(s + ":portDataEnq", 1);
 
     FIFOF#(a) fifo <- mkUGSizedFIFOF(2);
 
-    Reg#(Bool) pC <- mkReg(True); // producer model cycle completed
-    Reg#(Bool) cC <- mkReg(True); // consumer model cycle completed
+    Reg#(Bool) pC <- mkReg(False); // producer model cycle completed
+    Reg#(Bool) cC <- mkReg(True);  // consumer model cycle completed
 
     Reg#(Bool) canReceive <- mkReg(?);
 

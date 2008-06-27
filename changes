@@ -13533,3 +13533,13 @@ Directory modules/common/modellib
 
 StallPorts: previous changes had introduced a bug; hacking around it for now.
 Need to work on a cleaner fix.
+
+----------
+nikhil      Date: Thu Jun 26 22:19:12 CDT 2008  CSN: CSN-hasim-462
+                  Fri Jun 27 03:19:12 UTC 2008
+
+
+Directory modules/common/modellib
+ StallPorts.bsv            Locally Modified          461 
+
+StallPorts: using the latency-1 a-port correctly now.

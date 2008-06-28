@@ -315,7 +315,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Connection_Send#(Tuple2#(TOKEN_INDEX, 
                              TOKEN_INDEX))                     linkMemRewind <- mkConnection_Send("funcp_mem_rewind");
 
-    Connection_Send#(Bit#(0))                                  link_funcp_memory_inval_all <- mkConnection_Send("funcp_memory_invalidate_all");
+    Connection_Send#(Bool)                                     link_funcp_memory_inval_all <- mkConnection_Send("funcp_memory_invalidate_all");
+    Connection_Receive#(Bool)                                  link_funcp_memory_inval_all_done <- mkConnection_Receive("funcp_memory_invalidate_all_done");
 
     // Connection to Datapath.
 
@@ -1255,6 +1256,13 @@ module [HASim_Module] mkFUNCP_RegStateManager
     
     rule emulateInstruction1_Req (state == RSM_SyncingRegisters);
     
+        // Wait for memory to sync
+        if (synchronizingCurReg == minBound)
+        begin
+            link_funcp_memory_inval_all_done.deq();
+            funcpDebug($fwrite(debugLog, "emulateInstruction: Starting register sync"));
+        end
+
         // Some ISA's have a sparse packing of register names.  Don't sync
         // a register if the current index doesn't map to a real register index.
         ISA_REG_INDEX isa_reg = unpack(synchronizingCurReg);
@@ -1340,7 +1348,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
         //Go to receiving updates.
         state <= RSM_UpdatingRegisters;
-        
+
     endrule
 
     // emulateInstruction2_UpdateReg
@@ -1421,6 +1429,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Send the response to the timing model.
         // End of macro-operation.
         linkGetResults.makeResp(tuple2(emulatingToken, resp));
+
+        funcpDebug($fwrite(debugLog, "emulateInstruction: Done"));
 
     endrule
 

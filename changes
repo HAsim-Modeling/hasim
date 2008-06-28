@@ -13564,3 +13564,43 @@ Directory modules/hasim/common/new-funcp
   generated file.  This should avoid writing through a link and overwriting
   sources when a source file has the same name as an AWB interface.  It also
   should complain when such a name class exists and exit.  Untested.
+
+----------
+mcadler     Date: Sat Jun 28 11:09:06 EDT 2008  CSN: CSN-hasim-464
+                  Sat Jun 28 15:09:06 UTC 2008
+
+
+Directory modules/hasim/controller/command_switches
+ standard-command-switches.cpp Locally Modified          463 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          463 
+
+Directory modules/hasim/functional-partition/memory-state/cache
+ set-associative/          Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.awb Locally Added               0 
+ memstate-cache-set-assoc.bsv Locally Added               0 
+ memstate-cache-set-assoc.dic Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/cache/null
+ memstate_cache_null.bsv   Locally Modified          463 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.bsv Locally Modified          463 
+
+- Add set-associative cache functional cache.  There are two dynamic parameters:
+   ENABLE_FUNCP_MEM_CACHE:
+     0: Cache disabled.  All requests bypass cache and go directly to memory.
+     1: Cache enabled.
+
+   FUNCP_MEM_CACHE_WRITE_BACK:
+     0: Write back.  Stores flushed on victimization.
+     1: Write through.  Stores write to memory directly and cache dirty bits
+        are never set.
+
+- Add done signal for flushing from cache to regstate manager to guarantee
+  all dirty lines are flushed before hybrid instruction emulation begins.
+
+- Print a warning when using --tr command line switch and TRACE is disabled.

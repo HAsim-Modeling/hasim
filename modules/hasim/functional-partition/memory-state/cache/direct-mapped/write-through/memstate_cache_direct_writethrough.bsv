@@ -111,7 +111,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     Connection_Server#(MEM_REQUEST, MEM_VALUE)   link_memstate               <- mkConnection_Server("mem_cache");
     Connection_Client#(MEM_REQUEST, MEM_REPLY)   link_funcp_memory           <- mkConnection_Client("funcp_memory");
     Connection_Receive#(MEM_ADDRESS)             link_funcp_memory_inval     <- mkConnection_Receive("funcp_memory_invalidate");
-    Connection_Receive#(Bit#(0))                 link_funcp_memory_inval_all <- mkConnection_Receive("funcp_memory_invalidate_all");
+    Connection_Receive#(Bool)                    link_funcp_memory_inval_all <- mkConnection_Receive("funcp_memory_invalidate_all");
+    Connection_Send#(Bool)                  link_funcp_memory_inval_all_done <- mkConnection_Send("funcp_memory_invalidate_all_done");
 
     BRAM#(cache_SZ, Maybe#(CACHE_TAG))                   cache_tags <- mkBramInitialized(tagged Invalid);
     Vector#(CACHELINE_WORDS, BRAM#(cache_SZ, MEM_VALUE)) cache_data <- replicateM(mkBramInitialized(?));
@@ -278,7 +279,10 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         invalidate_iter <= invalidate_iter + 1;
         cache_tags.write(invalidate_iter, tagged Invalid);
         if (invalidate_iter == maxBound)
+        begin
             invalidating_all <= False;
+            link_funcp_memory_inval_all_done.send(?);
+        end
     endrule
 
 endmodule

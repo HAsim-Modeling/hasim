@@ -1,0 +1,25 @@
+//
+// INTEL CONFIDENTIAL
+// Copyright (c) 2008 Intel Corp.  Recipient is granted a non-sublicensable 
+// copyright license under Intel copyrights to copy and distribute this code 
+// internally only. This code is provided "AS IS" with no support and with no 
+// warranties of any kind, including warranties of MERCHANTABILITY,
+// FITNESS FOR ANY PARTICULAR PURPOSE or INTELLECTUAL PROPERTY INFRINGEMENT. 
+// By making any use of this code, Recipient agrees that no other licenses 
+// to any Intel patents, trade secrets, copyrights or other intellectual 
+// property rights are granted herein, and no other licenses shall arise by 
+// estoppel, implication or by operation of law. Recipient accepts all risks 
+// of use.
+//
+ 
+def ASSERTIONS.FUNCP_MEMSTATE_CACHE.ILLEGAL_SIZE        "FUNCP Cache: FUNCP_CACHE_WAYS and CACHELINE_WORDS must be powers of 2";
+def ASSERTIONS.FUNCP_MEMSTATE_CACHE.INVALID_REQUEST     "FUNCP Cache: Invalid incoming request!";
+
+def STATS.FUNCP_MEMSTATE_CACHE.LOAD_HIT     "FUNCP Cache: Load hits";
+def STATS.FUNCP_MEMSTATE_CACHE.LOAD_MISS    "FUNCP Cache: Load misses";
+def STATS.FUNCP_MEMSTATE_CACHE.LOAD_MISS_VALID_VICTIM "FUNCP Cache: Load misses and victim is valid";
+
+def STATS.FUNCP_MEMSTATE_CACHE.STORE_HIT    "FUNCP Cache: Store hits";
+def STATS.FUNCP_MEMSTATE_CACHE.STORE_MISS   "FUNCP Cache: Store misses";
+def STATS.FUNCP_MEMSTATE_CACHE.STORE_MISS_VALID_VICTIM "FUNCP Cache: Store misses and victim is valid";
+def STATS.FUNCP_MEMSTATE_CACHE.DIRTY_LINE_FLUSH "FUNCP Cache: Dirty lines flushed to memory";

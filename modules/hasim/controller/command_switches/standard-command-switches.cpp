@@ -137,6 +137,10 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
 
           case OPT_TR:
             ParseTraceCmd(optarg);
+            if (! BUILT_WITH_TRACE_FLAGS)
+            {
+                ASIMWARNING("--tr IGNORED!  Model built without TRACE support." << endl);
+            }
             break;
 
           case OPT_WORKLOAD:

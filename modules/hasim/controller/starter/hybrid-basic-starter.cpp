@@ -88,6 +88,8 @@ STARTER_CLASS::Request(
     UINT64 model_cycles;
     UINT64 fpga_cycles;
 
+    static double latest_fmr = -1;
+
     switch (req->GetMethodID())
     {
       case METHOD_ID_ENDSIM:
@@ -96,11 +98,16 @@ STARTER_CLASS::Request(
 
         if (success == 1)
         {
-            cout << "starter: simulation completed successfully." << endl;
+            cout << "        starter: simulation completed successfully.";
         }
         else
         {
-            cout << "starter: simulation completed with errors." << endl;
+            cout << "        starter: simulation completed with errors.";
+        }
+
+        if (latest_fmr >= 0)
+        {
+            cout << "  (FMR=" << IoFormat::fmt(".1f", latest_fmr) << ")" << endl;
         }
 
         EndSimulation(success == 0);
@@ -116,6 +123,11 @@ STARTER_CLASS::Request(
             fpga_start_cycle = fpga_cycles;
             model_start_cycle = model_cycles;
         }
+        else
+        {
+            latest_fmr = (double)(fpga_cycles - fpga_start_cycle) /
+                         (double)(model_cycles - model_start_cycle);
+        }
 
         if (next_progress_msg_cycle && (model_cycles >= next_progress_msg_cycle))
         {
@@ -125,13 +137,9 @@ STARTER_CLASS::Request(
                  << "]: controller: model cycles completed: "
                  << std::setw(10) << model_cycles;
 
-            if ((fpga_cycles - fpga_start_cycle) != 0)
+            if (latest_fmr >= 0)
             {
-                cout << " (FMR="
-                     << IoFormat::fmt(".1f", 
-                                      (double)(fpga_cycles - fpga_start_cycle) /
-                                      (double)(model_cycles - model_start_cycle))
-                     << ")";
+                cout << " (FMR=" << IoFormat::fmt(".1f", latest_fmr) << ")";
             }
 
             cout << endl;

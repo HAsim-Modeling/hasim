@@ -59,6 +59,7 @@ my $noReserve = 0;
 my $funcpPrefix = "";
 my $funcpSuffix = "";
 my $noshowfp = 0;
+my $printCycle = undef;
 my $showfp = undef;
 my $m5run = 0;
 
@@ -71,6 +72,7 @@ my $status = GetOptions("help!" => \$help,
                         "noshowfp!" => \$noshowfp,
                         "onlycompare!" => \$onlyCompare,
                         "nocompare!" => \$noCompare,
+                        "pc=s" => \$printCycle,
                         "showfp:s" => \$showfp,
                         "m5!" => \$m5run,
                        );
@@ -166,6 +168,10 @@ if ($m5run == 0) {
     foreach my $c (@ARGV) {
         $cmd .= " $c";
     }
+
+    if (defined($printCycle)) {
+        $cmd .= " --pc=${printCycle}";
+    }
 }
 else {
     if ($config{feeder} ne 'm5') {
@@ -190,6 +196,8 @@ else {
     $cmd =~ s/--hasim-sim //;
     # Drop escaping of quotes
     $cmd =~ s/\\"/"/g;
+
+    $noProgram = 1;
 }
 
 # Adjust the arguments for Bluesim if it is being invoked directly
@@ -218,6 +226,12 @@ if (-f "$config{workload}.stats") {
 }
 
 if ($mType == $MODEL_FPGA) {
+    if (! defined($printCycle)) {
+        # User didn't specify a cycle printing interval.  Pick one more reasonable
+        # for HW.
+        $cmd .= " --pc=10000000";
+    }
+
     # Load FPGA
     if (! $noProgram) {
         if (! $noReserve) {

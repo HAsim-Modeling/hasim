@@ -13604,3 +13604,19 @@ Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/wr
   all dirty lines are flushed before hybrid instruction emulation begins.
 
 - Print a warning when using --tr command line switch and TRACE is disabled.
+
+----------
+mcadler     Date: Mon Jun 30 19:00:46 EDT 2008  CSN: CSN-hasim-465
+                  Mon Jun 30 23:00:46 UTC 2008
+
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          464 
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          464 
+
+- Print progress message every 10 million model cycles for HW simulation.
+  The --pc switch can override the default.
+- Print FMR as part of completed message so you still get a message even
+  if no progress messages are printed.

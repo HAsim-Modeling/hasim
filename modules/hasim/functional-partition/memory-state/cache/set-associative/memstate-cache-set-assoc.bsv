@@ -214,8 +214,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     Connection_Server#(MEM_REQUEST, MEM_VALUE) link_memstate               <- mkConnection_Server("mem_cache");
     Connection_Client#(MEM_REQUEST, MEM_REPLY) link_funcp_memory           <- mkConnection_Client("funcp_memory");
     Connection_Receive#(MEM_ADDRESS)           link_funcp_memory_inval     <- mkConnection_Receive("funcp_memory_invalidate");
-    Connection_Receive#(Bool)                  link_funcp_memory_inval_all <- mkConnection_Receive("funcp_memory_invalidate_all");
-    Connection_Send#(Bool)                link_funcp_memory_inval_all_done <- mkConnection_Send("funcp_memory_invalidate_all_done");
+    Connection_Receive#(Bool)              link_funcp_memory_prep_for_emul <- mkConnection_Receive("funcp_memory_prepare_to_emulate");
+    Connection_Send#(Bool)            link_funcp_memory_prep_for_emul_done <- mkConnection_Send("funcp_memory_prepare_to_emulate_done");
 
     // ***** Cache data *****
 
@@ -237,6 +237,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     Reg#(CACHELINE_OFFSET) fillLineOffset <- mkReg(0);
     Reg#(CACHELINE_OFFSET) flushLineOffset <- mkReg(0);
     Reg#(CACHE_WAY)        flushWay <- mkReg(0);
+    Reg#(MEM_CACHELINE)    flushLineData <- mkRegU();
 
     Param#(1) enableCacheParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_ENABLE_FUNCP_MEM_CACHE);
     function Bool enableCache() = (enableCacheParam == 1);
@@ -770,11 +771,19 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         let v <- cacheData.readResp();
 
         // Done with the line?
-        flushLineOffset <= flushLineOffset + 1;
         if (flushLineOffset == maxBound)
         begin
-            // Done.  Pass the request on to the fill stage, if appropriate.
+            // Done
             flushDirtyLine.deq();
+
+            // Write to memory
+            let flushData = flushLineData;
+            flushData[flushLineOffset] = v;
+            let addr = cacheAddr(tag, 0);
+            link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE MEM_STORE_CACHELINE_INFO { addr: addr, val: flushData});
+            cacheDebug($fwrite(debugLog, "Write back DIRTY: addr=0x%x, set=0x%x, data=0x%x", addr, set, flushData));
+
+            // Pass the request on to the fill stage, if appropriate.
             if (reqFill)
                 fillVictim.enq(tuple2(set, way));
             
@@ -786,11 +795,10 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
             cacheData.readReq(getDataIdx(set, way, flushLineOffset + 1));
         end
 
-        let addr = cacheAddr(tag, flushLineOffset);
-        link_funcp_memory.makeReq(tagged MEM_STORE { addr: addr, val: v});
-        
-        cacheDebug($fwrite(debugLog, "Write back DIRTY: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", addr, set, way, v));
+        flushLineData[flushLineOffset] <= v;
 
+        flushLineOffset <= flushLineOffset + 1;
+        
     endrule
 
 
@@ -874,15 +882,17 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
 
     //
-    // invalidate all --
-    //     Invalidate entire cache using a FSM.
+    // prepare_to_emulate --
+    //     Invoked by register state manager before calling the hybrid instruction
+    //     emulation service.
     //
-    rule invalidate_all_start (!invalidatingAll && !waiting);
+    rule prepare_to_emulate (!invalidatingAll && !waiting);
         cacheDebug($fwrite(debugLog, "New request: INVAL ALL"));
-        link_funcp_memory_inval_all.deq();
+        link_funcp_memory_prep_for_emul.deq();
         cacheMeta.readReq(0);
         invalidatingAll <= True;
     endrule
+
 
     rule invalidate_all (invalidatingAll);
         
@@ -896,7 +906,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         if (invalidateAllSet == maxBound)
         begin
             invalidatingAll <= False;
-            link_funcp_memory_inval_all_done.send(?);
+            link_funcp_memory_prep_for_emul_done.send(?);
             cacheDebug($fwrite(debugLog, "Request done: INVAL ALL"));
         end
         else

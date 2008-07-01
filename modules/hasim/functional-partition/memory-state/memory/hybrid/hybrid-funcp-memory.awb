@@ -10,5 +10,7 @@
 %sources -t H   -v PUBLIC   hybrid-funcp-memory.h
 %sources -t RRR -v PRIVATE  hybrid-funcp-memory.rrr
 
-%param MEMORY_STORE_INFO_SIZE 64 "Must be FUNCP_ISA_ADDR_SIZE + FUNCP_ISA_INT_REG_SIZE."
 %param FUNCP_CACHELINE_BITS 256 "Cache line size in bits"
+
+%param MEMORY_STORE_INFO_SIZE 64 "Must be FUNCP_ISA_ADDR_SIZE + FUNCP_ISA_INT_REG_SIZE."
+%param MEMORY_STORE_CACHELINE_INFO_SIZE 288 "Must be FUNCP_ISA_ADDR_SIZE + FUNCP_CACHELINE_BITS."

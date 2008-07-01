@@ -315,8 +315,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Connection_Send#(Tuple2#(TOKEN_INDEX, 
                              TOKEN_INDEX))                     linkMemRewind <- mkConnection_Send("funcp_mem_rewind");
 
-    Connection_Send#(Bool)                                     link_funcp_memory_inval_all <- mkConnection_Send("funcp_memory_invalidate_all");
-    Connection_Receive#(Bool)                                  link_funcp_memory_inval_all_done <- mkConnection_Receive("funcp_memory_invalidate_all_done");
+    Connection_Send#(Bool)                                     link_funcp_memory_prep_for_emul <- mkConnection_Send("funcp_memory_prepare_to_emulate");
+    Connection_Receive#(Bool)                                  link_funcp_memory_prep_for_emul_done <- mkConnection_Receive("funcp_memory_prepare_to_emulate_done");
 
     // Connection to Datapath.
 
@@ -837,7 +837,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             // Record which token is being emulated.
             emulatingToken <= tok;
             // Invalidate the cache.
-            link_funcp_memory_inval_all.send(?);
+            link_funcp_memory_prep_for_emul.send(?);
             // Lookup the snapshot we should be working with.
             let msnap = snapshots.hasSnapshot(tok.index);
             // If there's no snapshot, something is really wrong.
@@ -1237,7 +1237,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
     rule finishDrainForEmulate (state == RSM_DrainingForEmulate && tokScoreboard.canEmulate());
 
        // Get the response from the cache.
-       //link_funcp_memory_inval_all.deq();
+        link_funcp_memory_prep_for_emul_done.deq();
+        funcpDebug($fwrite(debugLog, "TOKEN %0d: finishDrainForEmulate: Memory sync done", emulatingToken.index));
 
        // Reset the counter for syncing registers.
        synchronizingCurReg <= minBound;
@@ -1256,13 +1257,6 @@ module [HASim_Module] mkFUNCP_RegStateManager
     
     rule emulateInstruction1_Req (state == RSM_SyncingRegisters);
     
-        // Wait for memory to sync
-        if (synchronizingCurReg == minBound)
-        begin
-            link_funcp_memory_inval_all_done.deq();
-            funcpDebug($fwrite(debugLog, "emulateInstruction: Starting register sync"));
-        end
-
         // Some ISA's have a sparse packing of register names.  Don't sync
         // a register if the current index doesn't map to a real register index.
         ISA_REG_INDEX isa_reg = unpack(synchronizingCurReg);
@@ -2035,7 +2029,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // prfvalids vector.  According to Bluespec the order here affects the
     // priority encoder within a cycle but not the scheduling rules.
 
-    (* execution_order = "getResults4, getResult4AdditionalWriteback, getDependencies2AdditionalMappings, getDependencies2" *)
+    (* execution_order = "getResults4, getResult4AdditionalWriteback, emulateInstruction2_UpdateReg, getDependencies2AdditionalMappings, getDependencies2" *)
 
     rule rewindToTokenSlow2 (state == RSM_Rewinding && !fastRewind);
 

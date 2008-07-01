@@ -111,8 +111,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     Connection_Server#(MEM_REQUEST, MEM_VALUE)   link_memstate               <- mkConnection_Server("mem_cache");
     Connection_Client#(MEM_REQUEST, MEM_REPLY)   link_funcp_memory           <- mkConnection_Client("funcp_memory");
     Connection_Receive#(MEM_ADDRESS)             link_funcp_memory_inval     <- mkConnection_Receive("funcp_memory_invalidate");
-    Connection_Receive#(Bool)                    link_funcp_memory_inval_all <- mkConnection_Receive("funcp_memory_invalidate_all");
-    Connection_Send#(Bool)                  link_funcp_memory_inval_all_done <- mkConnection_Send("funcp_memory_invalidate_all_done");
+    Connection_Receive#(Bool)              link_funcp_memory_prep_for_emul   <- mkConnection_Receive("funcp_memory_prepare_to_emulate");
+    Connection_Send#(Bool)            link_funcp_memory_prep_for_emul_done   <- mkConnection_Send("funcp_memory_prepare_to_emulate_done");
 
     BRAM#(cache_SZ, Maybe#(CACHE_TAG))                   cache_tags <- mkBramInitialized(tagged Invalid);
     Vector#(CACHELINE_WORDS, BRAM#(cache_SZ, MEM_VALUE)) cache_data <- replicateM(mkBramInitialized(?));
@@ -267,11 +267,12 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
 
     //
-    // invalidate all --
-    //     Invalidate entire cache using a FSM.
+    // prepare_to_emulate --
+    //     Invoked by register state manager before calling the hybrid instruction
+    //     emulation service.
     //
-    rule invalidate_all_start (!waiting);
-        link_funcp_memory_inval_all.deq();
+    rule prepare_to_emulate (!invalidating_all && !waiting);
+        link_funcp_memory_prep_for_emul.deq();
         invalidating_all <= True;
     endrule
 
@@ -281,7 +282,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         if (invalidate_iter == maxBound)
         begin
             invalidating_all <= False;
-            link_funcp_memory_inval_all_done.send(?);
+            link_funcp_memory_prep_for_emul_done.send(?);
         end
     endrule
 

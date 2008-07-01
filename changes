@@ -13620,3 +13620,41 @@ Directory modules/hasim/controller/starter
   The --pc switch can override the default.
 - Print FMR as part of completed message so you still get a message even
   if no progress messages are printed.
+
+----------
+mcadler     Date: Tue Jul  1 12:43:03 EDT 2008  CSN: CSN-hasim-466
+                  Tue Jul  1 16:43:03 UTC 2008
+
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          465 
+ isa-emulator.h            Locally Modified          465 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          465 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          465 
+
+Directory modules/hasim/functional-partition/memory-state/cache/null
+ memstate_cache_null.bsv   Locally Modified          465 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.bsv Locally Modified          465 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          465 
+ hybrid-funcp-memory.rrr   Locally Modified          465 
+ hybrid-funcp-memory-datatypes.bsv Locally Modified          465 
+ hybrid-funcp-memory.h     Locally Modified          465 
+ hybrid-funcp-memory.awb   Locally Modified          465 
+ hybrid-funcp-memory.bsv   Locally Modified          465 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          465 
+
+- Add MEM_STORE_CACHELINE request.  Before we were sending multiple hybrid memory
+  store requests to flush a cache line.
+- Change soft connection name between register state manager and cache to
+  a name making it obvious the sync is for emulation.
+- Clean up trace messages (zero pad) and some memory data structures.

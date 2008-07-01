@@ -55,6 +55,10 @@ class ISA_EMULATOR_CLASS: public RRR_SERVICE_CLASS,
     static ISA_EMULATOR_CLASS instance;
     ISA_EMULATOR_IMPL emulator;
 
+    Format fmt_regnum;
+    Format fmt_regval;
+    Format fmt_inst;
+
   public:
     ISA_EMULATOR_CLASS();
     ~ISA_EMULATOR_CLASS();

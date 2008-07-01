@@ -43,8 +43,19 @@ FUNCP_MEMORY_CLASS::FUNCP_MEMORY_CLASS() :
     ASSERT(MEMORY_STORE_INFO_SIZE == FUNCP_ISA_ADDR_SIZE + FUNCP_ISA_INT_REG_SIZE,
            "Awb parameters are inconsistent: MEMORY_STORE_INFO_SIZE != FUNCP_ISA_ADDR_SIZE + FUNCP_ISA_INT_REG_SIZE");
 
+    ASSERT(MEMORY_STORE_CACHELINE_INFO_SIZE == FUNCP_ISA_ADDR_SIZE + FUNCP_CACHELINE_BITS,
+           "Awb parameters are inconsistent: MEMORY_STORE_INFO_SIZE != FUNCP_ISA_ADDR_SIZE + FUNCP_ISA_INT_REG_SIZE");
+
     // register with server's map table
     RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
+
+    char fmt[16];
+
+    sprintf(fmt, "0%dx", sizeof(MEM_ADDRESS) * 2);
+    fmt_addr = Format("0x", fmt);
+
+    sprintf(fmt, "0%dx", sizeof(MEM_VALUE) * 2);
+    fmt_data = Format("0x", fmt);
 }
 
 // destructor
@@ -112,7 +123,7 @@ FUNCP_MEMORY_CLASS::Request(
         req->Delete();
 
         memory->Read(addr, sizeof(MEM_VALUE), &data);
-        T1("\tfuncp_memory: LD (" << sizeof(MEM_VALUE) << ") [0x" << fmt_x(addr) << "] -> 0x" << fmt_x(data));
+        T1("\tfuncp_memory: LD (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] -> " << fmt_data(data));
 
         // create response message
         resp = UMF_MESSAGE_CLASS::New();
@@ -132,10 +143,13 @@ FUNCP_MEMORY_CLASS::Request(
         req->Delete();
 
         memory->Read(addr, sizeof(MEM_CACHELINE), &line);
-        T1("\tfuncp_memory: LDline (" << sizeof(MEM_CACHELINE) << ") [0x" << fmt_x(addr) << "] -> line:");
-        for (int i = 0; i < sizeof(MEM_CACHELINE)/8; i++) {
-            MEM_VALUE v = ((MEM_VALUE *)&line) [i];
-            T1("\t\t0x" << fmt_x(v));
+        if (TRACING(1))
+        {
+            T1("\tfuncp_memory: LDline (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
+            for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
+                MEM_VALUE v = ((MEM_VALUE *)&line) [i];
+                T1("\t\t" << fmt_data(v));
+            }
         }
 
         // create response message
@@ -155,7 +169,30 @@ FUNCP_MEMORY_CLASS::Request(
         addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS)));
 
         memory->Write(addr, sizeof(MEM_VALUE), &data);
-        T1("\tfuncp_memory: ST (" << sizeof(MEM_VALUE) << ") [0x" << fmt_x(addr) << "] <- 0x" << fmt_x(data));
+        T1("\tfuncp_memory: ST (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] <- " << fmt_data(data));
+
+        // free
+        req->Delete();
+
+        // no response
+        return NULL;
+ 
+        break;
+
+      case CMD_STORE_CACHELINE:
+        // extract data
+        req->ExtractBytes(sizeof(MEM_CACHELINE), (unsigned char *) &line);
+        addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS)));
+
+        memory->Write(addr, sizeof(MEM_CACHELINE), &line);
+        if (TRACING(1))
+        {
+            T1("\tfuncp_memory: STline (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
+            for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
+                MEM_VALUE v = ((MEM_VALUE *)&line) [i];
+                T1("\t\t" << fmt_data(v));
+            }
+        }
 
         // free
         req->Delete();

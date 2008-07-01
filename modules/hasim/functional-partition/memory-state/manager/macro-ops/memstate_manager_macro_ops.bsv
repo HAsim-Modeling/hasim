@@ -187,7 +187,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
       linkStoreBuffer.deq();
 
       // Send the actual store to the cache.
-      linkCache.makeReq(tagged MEM_STORE {addr:a, val: v});
+      linkCache.makeReq(tagged MEM_STORE MEM_STORE_INFO {addr:a, val: v});
 
     endrule
 

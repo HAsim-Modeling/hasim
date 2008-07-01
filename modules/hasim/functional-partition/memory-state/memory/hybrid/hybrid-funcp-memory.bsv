@@ -65,7 +65,18 @@ module [HASIM_MODULE] mkFUNCP_Memory
             begin
 
                 // send request via RRR
-                client_stub.makeRequest_Store(MEM_STORE_INFO {addr: stinfo.addr, val: stinfo.val});
+                client_stub.makeRequest_Store(stinfo);
+                
+                // done
+                state <= 0;
+                
+            end
+
+            tagged MEM_STORE_CACHELINE .stinfo:
+            begin
+
+                // send request via RRR
+                client_stub.makeRequest_StoreCacheLine(stinfo);
                 
                 // done
                 state <= 0;

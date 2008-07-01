@@ -31,9 +31,10 @@ typedef struct {
     char _x[FUNCP_CACHELINE_BITS/8];
 } MEM_CACHELINE;
 
-#define CMD_LOAD           0
-#define CMD_LOAD_CACHELINE 1
-#define CMD_STORE          2
+#define CMD_LOAD            0
+#define CMD_LOAD_CACHELINE  1
+#define CMD_STORE           2
+#define CMD_STORE_CACHELINE 3
 
 class FUNCP_MEMORY_CLASS: public RRR_SERVICE_CLASS,
                           public PLATFORMS_MODULE_CLASS,
@@ -44,6 +45,9 @@ class FUNCP_MEMORY_CLASS: public RRR_SERVICE_CLASS,
     static FUNCP_MEMORY_CLASS instance;
 
     FUNCP_SIMULATED_MEMORY memory;
+
+    Format fmt_addr;
+    Format fmt_data;
 
   public:
     FUNCP_MEMORY_CLASS();

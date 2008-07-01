@@ -43,6 +43,12 @@ ISA_EMULATOR_CLASS::ISA_EMULATOR_CLASS() : emulator(NULL)
 
     // register with server's map table
     RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
+
+    char fmt[16];
+    sprintf(fmt, "0%dx", sizeof(ISA_VALUE) * 2);
+    fmt_regval = Format("0x", fmt);
+    fmt_regnum = Format("3d");
+    fmt_inst = Format("0x", "08x");
 }
 
 // destructor
@@ -91,19 +97,19 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
         {
             if (rName.IsArchReg())
             {
-                T1("\tisa_emulator: Sync ArchReg " << rName.ArchRegNum() << ": 0x" << fmt_x(rVal));
+                T1("\tisa_emulator: Sync ArchReg " << fmt_regnum(rName.ArchRegNum()) << ": " << fmt_regval(rVal));
             }
             else if (rName.IsControlReg())
             {
-                T1("\tisa_emulator: Sync ControlReg: 0x" << fmt_x(rVal));
+                T1("\tisa_emulator: Sync ControlReg:  " << fmt_regval(rVal));
             }
             else if (rName.IsLockReg())
             {
-                T1("\tisa_emulator: Sync LockReg: 0x" << fmt_x(rVal));
+                T1("\tisa_emulator: Sync LockReg:     " << fmt_regval(rVal));
             }
             else if (rName.IsLockAddrReg())
             {
-                T1("\tisa_emulator: Sync LockAddrReg: 0x" << fmt_x(rVal));
+                T1("\tisa_emulator: Sync LockAddrReg: " << fmt_regval(rVal));
             }
             else
             {
@@ -121,7 +127,7 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
         inst = req->ExtractUINT(4);
         req->Delete();
 
-        T1("\tisa_emulator: Emulate PC 0x" << fmt_x(pc) << ", Inst 0x" << fmt_x(inst));
+        T1("\tisa_emulator: Emulate PC " << fmt_regval(pc) << ", Inst " << fmt_inst(inst));
         
         FUNCP_ADDR newPC;
         ISA_EMULATOR_RESULT r = emulator->Emulate(pc, inst, &newPC);
@@ -139,7 +145,7 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
             break;
 
           case ISA_EMULATOR_BRANCH:
-            T1("\tisa_emulator: Done with emulation, BRANCH to next PC 0x" << fmt_x(newPC));
+            T1("\tisa_emulator: Done with emulation, BRANCH to next PC " << fmt_regval(newPC));
             newPC |= 1;
             break;
 
@@ -175,19 +181,19 @@ ISA_EMULATOR_CLASS::UpdateRegister(ISA_REG_INDEX_CLASS rName, FUNCP_INT_REG rVal
     {
         if (rName.IsArchReg())
         {
-            T1("\tisa_emulator: Updating ArchReg " << rName.ArchRegNum() << ": 0x" << fmt_x(rVal));
+            T1("\tisa_emulator: Updating ArchReg " << fmt_regnum(rName.ArchRegNum()) << ": " << fmt_regval(rVal));
         }
         else if (rName.IsControlReg())
         {
-            T1("\tisa_emulator: Updating ControlReg: 0x" << fmt_x(rVal));
+            T1("\tisa_emulator: Updating ControlReg: " << fmt_regval(rVal));
         }
         else if (rName.IsLockReg())
         {
-            T1("\tisa_emulator: Updating LockReg: 0x" << fmt_x(rVal));
+            T1("\tisa_emulator: Updating LockReg: " << fmt_regval(rVal));
         }
         else if (rName.IsLockAddrReg())
         {
-            T1("\tisa_emulator: Updating LockAddrReg: 0x" << fmt_x(rVal));
+            T1("\tisa_emulator: Updating LockAddrReg: " << fmt_regval(rVal));
         }
         else
         {

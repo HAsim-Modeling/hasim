@@ -27,8 +27,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
   Connection_Server#(MEM_REQUEST, MEM_VALUE)   link_memstate          <- mkConnection_Server("mem_cache");
   Connection_Client#(MEM_REQUEST, MEM_REPLY)   link_vdev_memory       <- mkConnection_Client("funcp_memory");
   Connection_Receive#(MEM_ADDRESS)             link_vdev_memory_inval <- mkConnection_Receive("funcp_memory_invalidate");
-  Connection_Receive#(Bool)                link_vdev_memory_inval_all <- mkConnection_Receive("funcp_memory_invalidate_all");
-  Connection_Send#(Bool)             link_funcp_memory_inval_all_done <- mkConnection_Send("funcp_memory_invalidate_all_done");
+  Connection_Receive#(Bool)           link_funcp_memory_prep_for_emul <- mkConnection_Receive("funcp_memory_prepare_to_emulate");
+  Connection_Send#(Bool)         link_funcp_memory_prep_for_emul_done <- mkConnection_Send("funcp_memory_prepare_to_emulate_done");
 
   // ***** Rules ***** //
 
@@ -81,8 +81,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
     
   rule invalidate_all (True);
   
-    link_vdev_memory_inval_all.deq();
-    link_funcp_memory_inval_all_done.send(?);
+    link_funcp_memory_prep_for_emul.deq();
+    link_funcp_memory_prep_for_emul_done.send(?);
         
   endrule
 

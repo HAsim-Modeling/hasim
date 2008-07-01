@@ -38,30 +38,42 @@ typedef Vector#(CACHELINE_WORDS, MEM_VALUE) MEM_CACHELINE;
 
 typedef struct
 {
-  MEM_ADDRESS addr;
-  MEM_VALUE   val;
+    MEM_ADDRESS addr;
+    MEM_VALUE   val;
 }
-  MEM_STORE_INFO
+MEM_STORE_INFO
     deriving
-            (Eq, Bits);
+        (Eq, Bits);
+
+typedef struct
+{
+    MEM_ADDRESS addr;
+    MEM_CACHELINE val;
+}
+MEM_STORE_CACHELINE_INFO
+    deriving
+        (Eq, Bits);
 
 typedef union tagged 
 {
-  MEM_ADDRESS MEM_LOAD;
-  struct {MEM_ADDRESS addr; MEM_VALUE val; } MEM_STORE;
-  MEM_ADDRESS MEM_LOAD_CACHELINE;
-  MEM_ADDRESS MEM_INVALIDATE_CACHELINE;
+    MEM_ADDRESS MEM_LOAD;
+    MEM_STORE_INFO MEM_STORE;
+
+    MEM_ADDRESS MEM_LOAD_CACHELINE;
+    MEM_STORE_CACHELINE_INFO MEM_STORE_CACHELINE;
+
+    MEM_ADDRESS MEM_INVALIDATE_CACHELINE;
 }
-  MEM_REQUEST
+MEM_REQUEST
     deriving
-            (Eq, Bits);
+        (Eq, Bits);
 
 typedef union tagged 
 {
-  MEM_VALUE     MEM_REPLY_LOAD;
-  MEM_CACHELINE MEM_REPLY_LOAD_CACHELINE;
+    MEM_VALUE     MEM_REPLY_LOAD;
+    MEM_CACHELINE MEM_REPLY_LOAD_CACHELINE;
 }
-  MEM_REPLY
+MEM_REPLY
     deriving
-            (Eq, Bits);
+        (Eq, Bits);
 

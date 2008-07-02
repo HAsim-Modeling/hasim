@@ -698,7 +698,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
 
         // Log the result of all this.
         if (newbest != best_so_far)
-           $fdisplay(debug_log, "[%d]: TOKEN %0d is the new best match.", fpga_cc);
+           $fdisplay(debug_log, "[%d]: TOKEN %0d is the new best match.", fpga_cc, candidate.index);
 
         // Examine the next position in the list.
 

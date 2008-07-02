@@ -13658,3 +13658,19 @@ Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
 - Change soft connection name between register state manager and cache to
   a name making it obvious the sync is for emulation.
 - Clean up trace messages (zero pad) and some memory data structures.
+
+----------
+mpellaue    Date: Wed Jul  2 17:36:06 EDT 2008  CSN: CSN-hasim-467
+                  Wed Jul  2 21:36:07 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-hash
+ memstate_storebuffer_bucket_hash.bsv Locally Modified          466 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          466 
+
+
+Fix a bug in memstate whereby store buffer responses can be returned out-of-order.
+
+Michael P.

@@ -20,6 +20,15 @@ typedef enum
 CONTROL_STATE
     deriving (Bits, Eq);
 
+
+// Instructions committed this cycle.  The width here must be large enough for
+// the commit bandwidth of the largest model.
+typedef Bit#(4) MODEL_NUM_COMMITS;
+
+
+typedef Bit#(TAdd#(`HEARTBEAT_TRIGGER_BIT, 1)) HEARTBEAT_MODEL_CYCLES;
+
+
 // ================ Standard Controller ===============
 
 module [HASim_Module] mkController ();
@@ -34,17 +43,20 @@ module [HASim_Module] mkController ();
     // it is the token request stage at the head of the pipeline.
     Connection_Receive#(Bool) link_model_cycle <- mkConnection_Receive("model_cycle");
 
+    Connection_Receive#(MODEL_NUM_COMMITS) link_model_commit <- mkConnection_Receive("model_commits");
+
     // state
     Reg#(CONTROL_STATE) state <- mkReg(CONTROL_STATE_idle);
 
     // The current FPGA clock cycle
     Reg#(Bit#(64)) fpga_cycle <- mkReg(minBound);
   
-    // The current model cycle
-    Reg#(Bit#(64)) curModelCycle <- mkReg(minBound);
+    // Model cycles since last heartbeat message sent to software
+    Reg#(HEARTBEAT_MODEL_CYCLES) curModelCycle <- mkReg(0);
 
-    // Heartbeat trigger bit
-    Reg#(Bit#(1)) heartbeatTrigger <- mkReg(0);
+    // Committed instructions since last heartbeat message sent to software.
+    // If Bit#(32) isn't big enough the heartbeat isn't being sent often enough.
+    Reg#(Bit#(32)) instrCommits <- mkReg(0);
 
     // In the middle of dumping statistics?
     Reg#(Bool) dumpingStats <- mkReg(False);
@@ -97,17 +109,30 @@ module [HASim_Module] mkController ();
         dumpingStats <= False;
     endrule
 
+    (* descending_urgency = "model_cycles, model_tick" *)
+
     // Count the model cycle and send heartbeat updates
     rule model_tick (True);
         link_model_cycle.deq();
 
-        curModelCycle <= curModelCycle + 1;
         let trigger = curModelCycle[`HEARTBEAT_TRIGGER_BIT];
-        if (trigger != heartbeatTrigger)
+        if (trigger == 1)
         begin
-            heartbeatTrigger <= trigger;
-            starter.makeRequest_Heartbeat(fpga_cycle, curModelCycle);
+            starter.makeRequest_Heartbeat(fpga_cycle, zeroExtend(curModelCycle), instrCommits);
+            curModelCycle <= 1;
+            instrCommits <= 0;
         end
+        else
+        begin
+            curModelCycle <= curModelCycle + 1;
+        end
+    endrule
+
+    rule model_cycles (True);
+        Bit#(32) commits = zeroExtend(link_model_commit.receive());
+        link_model_commit.deq();
+
+        instrCommits <= instrCommits + commits;
     endrule
 
 endmodule

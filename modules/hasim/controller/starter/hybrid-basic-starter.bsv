@@ -19,7 +19,18 @@ interface Starter;
 
     // client methods
     method Action makeRequest_EndSim(Bool success);
-    method Action makeRequest_Heartbeat(Bit#(64) fpga_cycles, Bit#(64) model_cycles);
+    
+    //
+    // Heartbeat --
+    //   Message comes from the central controller.
+    //
+    //   Arguments:
+    //     fpga_cycles   -- Unlike other arguments, cycles since beginning of time.
+    //                      This is to keep fpga_cycle counting easy.
+    //     model_cycles  -- Model cycles since the last heartbeat.
+    //     instr_commits -- Committed instructions since the last heartbeat.
+    //
+    method Action makeRequest_Heartbeat(Bit#(64) fpga_cycles, Bit#(32) model_cycles, Bit#(32) instr_commits);
 
 endinterface
 
@@ -65,11 +76,12 @@ module [HASim_Module] mkStarter(Starter);
     endmethod
 
     // Heartbeat
-    method Action makeRequest_Heartbeat(Bit#(64) fpga_cycles, Bit#(64) model_cycles);
-        Bit#(128) cycles;
-        cycles[63:0] = model_cycles;
-        cycles[127:64] = fpga_cycles;
-        client_stub.makeRequest_Heartbeat(cycles);
+    method Action makeRequest_Heartbeat(Bit#(64) fpga_cycles, Bit#(32) model_cycles, Bit#(32) instr_commits);
+        Bit#(128) info;
+        info[31:0] = instr_commits;
+        info[63:32] = model_cycles;
+        info[127:64] = fpga_cycles;
+        client_stub.makeRequest_Heartbeat(info);
     endmethod
 
 endmodule

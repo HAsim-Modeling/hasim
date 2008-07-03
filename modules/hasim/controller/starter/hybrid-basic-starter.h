@@ -47,6 +47,14 @@ class STARTER_CLASS: public RRR_SERVICE_CLASS,
     UINT64 fpga_start_cycle;
     UINT64 model_start_cycle;
 
+    double latest_fmr;
+    struct timeval last_heartbeat_time;
+
+    // Keep running totals of model cycles and committed instructions since
+    // heartbeat provides total since last beat.
+    UINT64 instr_commits;
+    UINT64 model_cycles;
+
     UINT64 next_progress_msg_cycle;
 
     // Cycle when statistics were last scanned

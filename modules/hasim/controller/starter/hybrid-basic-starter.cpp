@@ -32,6 +32,9 @@ STARTER_CLASS STARTER_CLASS::instance;
 STARTER_CLASS::STARTER_CLASS() :
     fpga_start_cycle(0),
     model_start_cycle(0),
+    latest_fmr(-1),
+    instr_commits(0),
+    model_cycles(0),
     next_progress_msg_cycle(0)
 {
     // register with server's map table
@@ -85,10 +88,7 @@ STARTER_CLASS::Request(
     // extract info
     UINT32 methodID = req->GetMethodID();
     UINT32 success;
-    UINT64 model_cycles;
     UINT64 fpga_cycles;
-
-    static double latest_fmr = -1;
 
     switch (req->GetMethodID())
     {
@@ -105,18 +105,16 @@ STARTER_CLASS::Request(
             cout << "        starter: simulation completed with errors.";
         }
 
-        if (latest_fmr >= 0)
-        {
-            cout << "  (FMR=" << IoFormat::fmt(".1f", latest_fmr) << ")" << endl;
-        }
-
         EndSimulation(success == 0);
         break;
 
       case METHOD_ID_HEARTBEAT:
-        model_cycles = req->ExtractUINT64();
+        instr_commits += req->ExtractUINT32();
+        model_cycles += req->ExtractUINT32();
         fpga_cycles = req->ExtractUINT64();
         req->Delete();
+
+        gettimeofday(&last_heartbeat_time, NULL);
 
         if (fpga_start_cycle == 0)
         {
@@ -134,15 +132,15 @@ STARTER_CLASS::Request(
             next_progress_msg_cycle += globalArgs->ProgressMsgInterval();
 
             cout << "[" << std::setw(13) << fpga_cycles
-                 << "]: controller: model cycles completed: "
+                 << "]: controller: model cycles: "
                  << std::setw(10) << model_cycles;
 
+            cout << " (IPC=" << IoFormat::fmt(".2f", (double)instr_commits / (double)model_cycles);
             if (latest_fmr >= 0)
             {
-                cout << " (FMR=" << IoFormat::fmt(".1f", latest_fmr) << ")";
+                cout << " / FMR=" << IoFormat::fmt(".1f", latest_fmr);
             }
-
-            cout << endl;
+            cout << ")" << endl;
         }
 
 
@@ -192,6 +190,26 @@ STARTER_CLASS::EndSimulation(int exitValue)
     sec = double(end_time.tv_sec) - double(startTime.tv_sec);
     usec = double(end_time.tv_usec) - double(startTime.tv_usec);
     elapsed = sec + usec/1000000;
+
+    if (model_cycles > 0)
+    {
+        double sec = double(last_heartbeat_time.tv_sec) - double(startTime.tv_sec);
+        double usec = double(last_heartbeat_time.tv_usec) - double(startTime.tv_usec);
+        double heartbeat_run_time = sec + usec/1000000;
+
+        cout << "  (IPC=" << IoFormat::fmt(".2f", (double)instr_commits / (double)model_cycles);
+        if (latest_fmr >= 0)
+        {
+            cout << " / FMR=" << IoFormat::fmt(".1f", latest_fmr);
+        }   
+        cout << ")" << endl;
+
+        if (heartbeat_run_time > 0)
+        {
+            cout << "        starter: Instructions / second = "
+                 << IoFormat::fmt(".2f", (double)instr_commits / heartbeat_run_time) << endl;
+        }
+    }
 
     cout << "         syncing... ";
     Sync();

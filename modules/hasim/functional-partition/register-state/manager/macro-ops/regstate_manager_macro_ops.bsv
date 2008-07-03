@@ -15,6 +15,7 @@ import RegFile::*;
 `include "soft_connections.bsh"
 `include "fpga_components.bsh"
 `include "funcp_memory.bsh"
+`include "funcp_memory_tlb.bsh"
 `include "hasim_modellib.bsh"
 
 // Functional Partition includes.
@@ -114,6 +115,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     // The Freelist tracks which physical registers are available.
     let freelist <- mkFUNCP_Freelist(debugLog, fpgaCC);
+
+    let tlb <- mkFUNCP_TLB();
 
     // ******* Local State *******
 
@@ -252,20 +255,24 @@ module [HASim_Module] mkFUNCP_RegStateManager
     
     // This queue records where load responses should be sent.
     FIFO#(MEM_PATH) memPathQ <- mkSizedFIFO(16);
+
+    // This queue records where TLB responses should be sent.
+    FIFO#(MEM_PATH) tlbPathQ <- mkSizedFIFO(16);
     
     // These Queues are intermediate state between the pipeline stages.
 
     FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) instQ  <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) instTLBQ <- mkFIFO();
     FIFO#(TOKEN) deps1Q <- mkFIFO();
-    FIFO#(TOKEN) deps2Q <- mkFIFO();
     FIFO#(TOKEN) res1Q  <- mkFIFO();
     FIFO#(TOKEN) res2Q <- mkFIFO();
     FIFO#(TOKEN) res3Q   <- mkFIFO();
     FIFO#(Tuple2#(Bit#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX)) syncQ <- mkFIFO();
     FIFO#(TOKEN) load1Q  <- mkFIFO();
-    FIFO#(Tuple2#(TOKEN, MEM_ADDRESS)) load2Q  <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) loadTLBQ <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) loadFinalQ <- mkFIFO();
     FIFO#(TOKEN) store1Q <- mkFIFO();
-    FIFO#(TOKEN) store2Q <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) store2Q <- mkFIFO();
     FIFO#(Tuple5#(TOKEN, MEM_ADDRESS, ISA_ADDRESS, ISA_VALUE, ISA_MEMOP_TYPE)) store3Q <- mkFIFO();
     FIFO#(TOKEN) commQ   <- mkFIFO();
     FIFO#(TOKEN_INDEX) rewindQ <- mkFIFO();
@@ -315,8 +322,11 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Connection_Send#(Tuple2#(TOKEN_INDEX, 
                              TOKEN_INDEX))                     linkMemRewind <- mkConnection_Send("funcp_mem_rewind");
 
-    Connection_Send#(Bool)                                     link_funcp_memory_prep_for_emul <- mkConnection_Send("funcp_memory_prepare_to_emulate");
-    Connection_Receive#(Bool)                                  link_funcp_memory_prep_for_emul_done <- mkConnection_Receive("funcp_memory_prepare_to_emulate_done");
+    Connection_Client#(Bool, Bool)                             link_funcp_memory_prep_for_emul <- mkConnection_Client("funcp_memory_prepare_to_emulate");
+
+    // Connection to TLB
+
+    Connection_Client#(ISA_ADDRESS, Maybe#(MEM_ADDRESS))       link_tlb <- mkConnection_Client("funcp_tlb");
 
     // Connection to Datapath.
 
@@ -339,6 +349,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Assertion assertInvalidNumDsts                <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_INVALID_NUM_DSTS, ASSERT_ERROR);
     Assertion assertSlowRewindsUnimplemented      <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_SLOW_REWIND_UNIMPLEMENTED, ASSERT_ERROR);
     Assertion assertHaveSnapshotOfEmulatedInstruction <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_NO_EMULATION_SNAPSHOT, ASSERT_ERROR);
+    Assertion assertNoPhysicalTranslation         <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_NO_PHYSICAL_TRANSLATION, ASSERT_ERROR);
 
     // ***** Statistics ***** //
 
@@ -427,7 +438,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     // ******* getInstruction ******* //
 
-    // 2-stage macro-operation
+    // 2 or 3-stage macro-operation, depending on TLB lookup
     
     // When:         The timing model tells us to fetch the instruction at a given address.
     // Effect:       Reads the memstate, updates the scoreboard.
@@ -455,28 +466,78 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Record the address. (For relative branches, etc.)
         tokAddr.write(tok.index, addr);
 
-        // Transform the Address from an ISA address to an actual address 
-        // using the ISA-provided conversion function.
-        MEM_ADDRESS mem_addr = isaAddressToMemAddress(addr);
+        // Convert to physical
+        Maybe#(MEM_ADDRESS) m_addr = tlb.quickTranslateVA(addr);
+        if (m_addr matches tagged Valid .mem_addr)
+        begin
+            //
+            // Hit in the quick path.  Make the memory request now.
+            //
 
-        // Kick to Mem State.
-        //linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: mem_addr});
-        linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: mem_addr});
-        
-        // Record that the result should come to us.
-        memPathQ.enq(PATH_INST);
+            // Log it.
+            funcpDebug($fwrite(debugLog, "TOKEN %0d: FETCH: Start (VA: 0x%h, PA: 0x%h)", tok.index, addr, mem_addr));
 
-        // Send on to getInstruction2.
-        instQ.enq(tuple2(tok, addr));
+            // Kick to Mem State.
+            linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: mem_addr});
+
+            // Record that the result should come to us.
+            memPathQ.enq(PATH_INST);
+
+            // Send on to getInstruction3
+            instQ.enq(tuple2(tok, addr));
+        end
+        else
+        begin
+            //
+            // Need to talk the long TLB lookup path
+            //
+            link_tlb.makeReq(isaAlignAddress(addr));
+            tlbPathQ.enq(PATH_INST);
+            funcpDebug($fwrite(debugLog, "TOKEN %0d: FETCH: TLB lookup (VA: 0x%h)", tok.index, addr));
+
+            // Send on to getInstruction2
+            instTLBQ.enq(tuple2(tok, addr));
+        end
 
     endrule
 
     // getInstruction2
+    
+    // When:   Physical translation available
+    // Effect: Request instruction from memory
 
-    // When:   Some time after fetch1.
+    rule getInstruction2 (readyToContinue && tlbPathQ.first() == PATH_INST);
+        
+        match{.tok, .addr} = instTLBQ.first();
+        instTLBQ.deq();
+        tlbPathQ.deq();
+
+        Maybe#(MEM_ADDRESS) translated_addr = link_tlb.getResp();
+        link_tlb.deq();
+
+        assertNoPhysicalTranslation(isValid(translated_addr));
+        MEM_ADDRESS mem_addr = fromMaybe(0, translated_addr);
+
+        // Log it.
+        funcpDebug($fwrite(debugLog, "TOKEN %0d: getInstruction2: Start (VA: 0x%h, PA: 0x%h)", tok.index, addr, mem_addr));
+
+        // Kick to Mem State.
+        linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: mem_addr});
+
+        // Record that the result should come to us.
+        memPathQ.enq(PATH_INST);
+
+        // Send on to getInstruction3
+        instQ.enq(tuple2(tok, addr));
+
+    endrule
+
+    // getInstruction3
+
+    // When:   Physical address and instruction are available.
     // Effect: Record the instruction, kick back to timing model.
 
-    rule getInstruction2 (readyToContinue && memPathQ.first() == PATH_INST);
+    rule getInstruction3 (readyToContinue && memPathQ.first() == PATH_INST);
 
         // Input from previous stage.
         match{.tok, .addr} = instQ.first();
@@ -837,7 +898,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             // Record which token is being emulated.
             emulatingToken <= tok;
             // Invalidate the cache.
-            link_funcp_memory_prep_for_emul.send(?);
+            link_funcp_memory_prep_for_emul.makeReq(?);
             // Lookup the snapshot we should be working with.
             let msnap = snapshots.hasSnapshot(tok.index);
             // If there's no snapshot, something is really wrong.
@@ -1237,7 +1298,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     rule finishDrainForEmulate (state == RSM_DrainingForEmulate && tokScoreboard.canEmulate());
 
        // Get the response from the cache.
-        link_funcp_memory_prep_for_emul_done.deq();
+        link_funcp_memory_prep_for_emul.deq();
         funcpDebug($fwrite(debugLog, "TOKEN %0d: finishDrainForEmulate: Memory sync done", emulatingToken.index));
 
        // Reset the counter for syncing registers.
@@ -1430,7 +1491,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     // ******* doLoads ******* //
 
-    // 3-stage macro operation which makes Loads read memory.
+    // 3 or 4-stage macro operation which makes Loads read memory.
 
     // When:   When the timing model requests it.
     // Effect: Read the effective address, do a load from the memory state, and write it back.
@@ -1495,36 +1556,86 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Get the address.
         let addr <- tokMemAddr.resp[0].read();
 
-        // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads2: Requesting Load (Addr: 0x%h)", tok.index, addr));
-        
-        // Convert the address using the ISA-provided conversion function.
-        MEM_ADDRESS mem_addr = isaAddressToMemAddress(addr);
+        // Convert to physical
+        Maybe#(MEM_ADDRESS) m_addr = tlb.quickTranslateVA(addr);
+        if (m_addr matches tagged Valid .mem_addr)
+        begin
+            //
+            // Hit in the quick path.  Make the memory request now.
+            //
 
-        // Make the request to the DMem.
-        linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: mem_addr});
+            // Log it.
+            funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads2: Requesting Load (VA: 0x%h, PA: 0x%h)", tok.index, addr, mem_addr));
+
+            // Make the request to the DMem.
+            linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: mem_addr});
+
+            // Record that the load response should go to us.
+            memPathQ.enq(PATH_LOAD);
+        
+            // Pass it on to the final stage.
+            loadFinalQ.enq(tuple2(tok, addr));
+        end
+        else
+        begin
+            //
+            // Need to talk the long TLB lookup path
+            //
+            link_tlb.makeReq(isaAlignAddress(addr));
+            tlbPathQ.enq(PATH_LOAD);
+            funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads2: TLB lookup (VA: 0x%h)", tok.index, addr));
+        
+            // Pass it on to the TLB lookup stage
+            loadTLBQ.enq(tuple2(tok, addr));
+        end
 
         // Read the destination so we can writeback the correct register.
         tokDsts.req[1].read(tok.index);
-        
-        // Record that the load response should go to us.
-        memPathQ.enq(PATH_LOAD);
-        
-        // Pass it on to the final stage.
-        load2Q.enq(tuple2(tok, addr));
 
     endrule
 
     // doLoads3
+    
+    // When:   Physical translation available
+    // Effect: Request value from memory
 
-    // When:   After doLoads2 occurs and we get a response from the memory state.
+    rule doLoads3 (readyToContinue && tlbPathQ.first() == PATH_LOAD);
+        
+        match{.tok, .addr} = loadTLBQ.first();
+        loadTLBQ.deq();
+        tlbPathQ.deq();
+
+        // Get physical address from TLB
+        Maybe#(MEM_ADDRESS) translated_addr = link_tlb.getResp();
+        link_tlb.deq();
+
+        assertNoPhysicalTranslation(isValid(translated_addr));
+        MEM_ADDRESS mem_addr = fromMaybe(0, translated_addr);
+
+        // Log it.
+        funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads3: Requesting Load (VA: 0x%h, PA: 0x%h)", tok.index, addr, mem_addr));
+
+        // Make the request to the DMem.
+        linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: mem_addr});
+
+        // Record that the load response should go to us.
+        memPathQ.enq(PATH_LOAD);
+        
+        // Pass it on to the final stage.
+        loadFinalQ.enq(tuple2(tok, addr));
+
+    endrule
+
+    // doLoads4
+
+    // When:   After memory state is returned.
     // Effect: Record the result and pass it back to the timing model.
 
-    rule doLoads3 (readyToContinue && memPathQ.first() == PATH_LOAD);
+    rule doLoads4 (readyToContinue && memPathQ.first() == PATH_LOAD);
 
         // Get the data from the previous stage.
-        match {.tok, .addr} = load2Q.first();
-        load2Q.deq();
+        match {.tok, .addr} = loadFinalQ.first();
+        loadFinalQ.deq();
         memPathQ.deq();
 
         // Get the load type.
@@ -1544,7 +1655,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let dst = validValue(dsts[0]);
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads3: Load Response writing (PR%0d <= 0x%h)", tok.index, dst, val));
+        funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads4: Load Response writing (PR%0d <= 0x%h)", tok.index, dst, val));
 
         // Update the physical register file.
         prf.write(dst, val);
@@ -1611,6 +1722,9 @@ module [HASim_Module] mkFUNCP_RegStateManager
             // Read the destination.
             tokDsts.req[2].read(tok.index);
 
+            // Read the effective address.
+            tokMemAddr.req[1].read(tok.index);
+
             // Pass to the next stage.
             store1Q.enq(tok);
 
@@ -1640,14 +1754,18 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Look up the register value.
         prf.req[2].read(dst);
 
-        // Read the effective address.
-        tokMemAddr.req[1].read(tok.index);
+        // Get the address.
+        let addr <- tokMemAddr.resp[1].read();
+      
+        // Convert address to physical
+        link_tlb.makeReq(isaAlignAddress(addr));
+        tlbPathQ.enq(PATH_STORE);
 
         // Log it.
         funcpDebug($fwrite(debugLog, "TOKEN %0d: doStores2: Retrieving Store Value (PR%0d)", tok.index, dst)); 
 
         // Pass it on to the final stage.
-        store2Q.enq(tok);
+        store2Q.enq(tuple2(tok, addr));
 
     endrule
 
@@ -1659,27 +1777,29 @@ module [HASim_Module] mkFUNCP_RegStateManager
     //         before the memory state actually completes the store. The semantics of the
     //         memory state must be such that this is safe.
      
-    rule doStores3 (readyToContinue);
+    rule doStores3 (readyToContinue && tlbPathQ.first() == PATH_STORE);
 
       // Get the result from the previous stage.
-      let tok = store2Q.first();
+      match{.tok, .addr} = store2Q.first();
       store2Q.deq();
+      tlbPathQ.deq();
 
-      // Get the address.
-      let addr <- tokMemAddr.resp[1].read();
+      // Get physical address from TLB
+      Maybe#(MEM_ADDRESS) translated_addr = link_tlb.getResp();
+      link_tlb.deq();
+
+      assertNoPhysicalTranslation(isValid(translated_addr));
+      MEM_ADDRESS mem_addr = fromMaybe(0, translated_addr);
       
       // Get the value.
       let val  <- prf.resp[2].read();
 
-      // Log it.
-      funcpDebug($fwrite(debugLog, "TOKEN %0d: DMem: Requesting Store (Addr: 0x%h <= 0x%h)", tok.index, addr, val)); 
-      
       // Get the store type.
       ISA_MEMOP_TYPE st_type = tokScoreboard.getStoreType(tok.index);
       
-      // Convert the address using the ISA-provided conversion function.
-      MEM_ADDRESS mem_addr = isaAddressToMemAddress(addr);
-
+      // Log it.
+      funcpDebug($fwrite(debugLog, "TOKEN %0d: DMem: Requesting Store (Addr: 0x%h, PA: 0x%h <= 0x%h)", tok.index, addr, mem_addr, val)); 
+      
       // Use the ISA-provided function to see if we're doing read-modify-write.
       if (isaMemOpRequiresReadModifyWrite(st_type))
       begin
@@ -1701,7 +1821,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
           let mem_val = isaValueToMemValue(val, st_type, addr);
       
           // Make the request to the memory state.
-          linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, addr: addr, val: mem_val});
+          linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, addr: mem_addr, val: mem_val});
 
           // Update the scoreboard.
           tokScoreboard.storeFinish(tok.index);
@@ -2022,7 +2142,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
     
     // Do not change the following lines unless you understand all this and have a good reason.
 
-    (* descending_urgency= "rewindToTokenSlow2, rewindToTokenSlow1, rewindToToken2, rewindToToken1, commitStores, commitResults2, commitResults1, doStores3ReadModifyWrite, doStores3, doStores2, doStores1, doLoads3, doLoads2, doLoads1, getResults4, getResult4AdditionalWriteback, getResults3, getResults2StallEnd, getResults2, getResults1, getDependencies2AdditionalMappings, getDependencies2, getDependencies1, getInstruction2, getInstruction1, newInFlight, emulateInstruction2_UpdateReg" *)
+    (* descending_urgency= "rewindToTokenSlow2, rewindToTokenSlow1, rewindToToken2, rewindToToken1, commitStores, commitResults2, commitResults1, doStores3ReadModifyWrite, doStores3, doStores2, doStores1, doLoads4, doLoads2, doLoads1, getResults4, getResult4AdditionalWriteback, getResults3, getResults2StallEnd, getResults2, getResults1, getDependencies2AdditionalMappings, getDependencies2, getDependencies1, getInstruction3, getInstruction1, newInFlight, emulateInstruction2_UpdateReg" *)
 
     // The execution_order pragma doesn't affect the schedule but does get rid of
     // compiler warnings caused by the appearance of multiple writers to the

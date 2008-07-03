@@ -35,6 +35,7 @@ typedef struct {
 #define CMD_LOAD_CACHELINE  1
 #define CMD_STORE           2
 #define CMD_STORE_CACHELINE 3
+#define CMD_VTOP            4
 
 class FUNCP_MEMORY_CLASS: public RRR_SERVICE_CLASS,
                           public PLATFORMS_MODULE_CLASS,

@@ -1,0 +1,8 @@
+%name Null TLB
+%desc Null TLB
+
+%provides funcp_memory_tlb
+
+%attributes hasim funcp memstate
+
+%public funcp-tlb-null.bsv

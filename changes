@@ -13674,3 +13674,75 @@ Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
 Fix a bug in memstate whereby store buffer responses can be returned out-of-order.
 
 Michael P.
+
+----------
+mcadler     Date: Wed Jul  2 22:00:26 EDT 2008  CSN: CSN-hasim-468
+                  Thu Jul  3 02:00:26 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          467 
+ manager.dic               Locally Modified          467 
+
+Directory modules/hasim/functional-partition/memory-state
+ tlb/                      Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/tlb
+ hybrid/                   Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid
+ null/                     Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/null
+ funcp-tlb-null.awb        Locally Added               0 
+ funcp-tlb-null.bsv        Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid
+ std/                      Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.dic         Locally Added               0 
+ funcp-tlb-std.awb         Locally Added               0 
+ funcp-tlb-std.bsv         Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          467 
+
+Directory modules/hasim/functional-partition/memory-state/cache/null
+ memstate_cache_null.bsv   Locally Modified          467 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.bsv Locally Modified          467 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          467 
+ hybrid-funcp-memory.rrr   Locally Modified          467 
+ hybrid-funcp-memory.h     Locally Modified          467 
+ hybrid-funcp-memory.awb   Locally Modified          467 
+ hybrid-funcp-memory.bsv   Locally Modified          467 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
+ vmh-memory.h              Locally Modified          467 
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.awb      Locally Modified          467 
+ funcp-base-types.bsv      Locally Modified          467 
+
+- Clean up emulation control signals to the functional cache
+
+- Add a functional TLB through which all loads and stores now pass.  Two
+  versions are available:  one that maps directly from VA to PA.  Another
+  is a hybrid version.  m5 now uses the hybrid version and all addresses
+  going through RRR are physical.  Translation is currently private to the
+  functional model, but we can change that.  A few notes:
+
+  - The current implementation of the TLB is pretty poor.  Just 8 entries
+    in LUTs and a one entry victim buffer.  It is big and has too many
+    misses.  That's just a local policy, though.  Slowdown isn't typically
+    huge and I'll fix it soon.
+  - Using physical addresses will let us avoid invalidating the cache on
+    emulated instructions.  That's next week's work.
+  - For stores, a hit in the TLB takes no extra time in the functional
+    model.  For fetches and loads there is a quick path that checks a small
+    cache in LUTs for which there is no penalty.  There is a one stage
+    bubble waiting for the full TLB before issuing the load in a longer path.

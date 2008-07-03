@@ -1,25 +1,17 @@
-#/********************************************************************
-# *
-# * Awb module specification
-# *
-# *******************************************************************/
+%AWB_START
 
-#/*
-# %AWB_START
-#
-# %name Functional Partition Base Types
-# %desc Functional Partition Base Types
-#
-# %provides funcp_base_types
-# 
-# %attributes hasim funcp
-#
-# %public funcp-base-types.h
-# %public funcp-base-types.bsv
-#
-# %param FUNCP_ISA_ADDR_SIZE    32 "Number of bits to address memory."
-# %param FUNCP_ISA_INT_REG_SIZE 32 "Bits in an integer register."
-#
-# %AWB_END
-# */
+%name Functional Partition Base Types
+%desc Functional Partition Base Types
 
+%provides funcp_base_types
+
+%attributes hasim funcp
+
+%public funcp-base-types.h
+%public funcp-base-types.bsv
+
+%param FUNCP_ISA_INT_REG_SIZE 32    "Bits in an integer register"
+%param FUNCP_ISA_ADDR_SIZE    32    "Number of bits to address physical memory"
+%param FUNCP_ISA_PAGE_SHIFT   13    "Low 0 bits in a physical page"
+
+%AWB_END

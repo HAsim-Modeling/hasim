@@ -1,10 +1,13 @@
-`include "hasim_common.bsh"
-`include "soft_connections.bsh"
-`include "rrr.bsh"
-`include "channelio.bsh"
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/soft_connections.bsh"
+`include "asim/provides/rrr.bsh"
+`include "asim/provides/channelio.bsh"
 
 `include "asim/rrr/remote_client_stub_FUNCP_MEMORY.bsh"
 `include "asim/rrr/remote_server_stub_FUNCP_MEMORY.bsh"
+
+// Can't include hasim_isa.bsh here or it causes a loop
+typedef MEM_VALUE ISA_ADDRESS;
 
 // ***** Modules *****
 
@@ -16,22 +19,20 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
     // ***** Local State *****
     
-    // Our state.
-    Reg#(Bit#(8)) state <- mkReg(0);
-    
     // Stubs to the funcp_memory RRR service.
     ClientStub_FUNCP_MEMORY client_stub <- mkClientStub_FUNCP_MEMORY();
     ServerStub_FUNCP_MEMORY server_stub <- mkServerStub_FUNCP_MEMORY();
     
     // Links that we expose to the outside world
-    Connection_Server#(MEM_REQUEST, MEM_REPLY) link_memory       <- mkConnection_Server("funcp_memory");
-    Connection_Send#(MEM_ADDRESS)              link_memory_inval <- mkConnection_Send("funcp_memory_invalidate");
+    Connection_Server#(MEM_REQUEST, MEM_REPLY)   link_memory <- mkConnection_Server("funcp_memory");
+    Connection_Server#(ISA_ADDRESS, MEM_ADDRESS) link_tlb    <- mkConnection_Server("funcp_memory_VtoP");
+    Connection_Send#(MEM_ADDRESS)          link_memory_inval <- mkConnection_Send("funcp_memory_invalidate");
 
     // ***** Rules ******
 
     // Service a funcp_memory request by passing it on to the RRR service.
 
-    rule make_mem_request (state == 0);
+    rule make_mem_request (True);
 
         // pop a request from the link
         MEM_REQUEST req = link_memory.getReq();
@@ -44,9 +45,6 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
                 // send request via RRR
                 client_stub.makeRequest_Load(addr);
-                
-                // wait for response
-                state <= 1;
 
             end
             
@@ -55,9 +53,6 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
                 // send request via RRR
                 client_stub.makeRequest_LoadCacheLine(addr);
-                
-                // wait for response
-                state <= 2;
 
             end
 
@@ -67,9 +62,6 @@ module [HASIM_MODULE] mkFUNCP_Memory
                 // send request via RRR
                 client_stub.makeRequest_Store(stinfo);
                 
-                // done
-                state <= 0;
-                
             end
 
             tagged MEM_STORE_CACHELINE .stinfo:
@@ -78,9 +70,6 @@ module [HASIM_MODULE] mkFUNCP_Memory
                 // send request via RRR
                 client_stub.makeRequest_StoreCacheLine(stinfo);
                 
-                // done
-                state <= 0;
-                
             end
         endcase
 
@@ -88,19 +77,17 @@ module [HASIM_MODULE] mkFUNCP_Memory
   
     // Get a response from the stub and pass it back to the user.
 
-    rule get_mem_response (state == 1);
+    rule get_mem_response (True);
 
         MEM_VALUE v <- client_stub.getResponse_Load();
-        state <= 0;
 
         link_memory.makeResp(tagged MEM_REPLY_LOAD v);
 
     endrule
 
-    rule get_mem_response2 (state == 2);
+    rule get_mem_response2 (True);
 
         MEM_CACHELINE v <- client_stub.getResponse_LoadCacheLine();
-        state <= 0;
 
         link_memory.makeResp(tagged MEM_REPLY_LOAD_CACHELINE v);
 
@@ -114,6 +101,27 @@ module [HASIM_MODULE] mkFUNCP_Memory
         MEM_ADDRESS inval_addr <- server_stub.acceptRequest_Invalidate();
 
         link_memory_inval.send(inval_addr);
+
+    endrule
+
+
+    //
+    // Virtual to physical translation
+    //
+
+    rule translate_VtoP_request (True);
+
+        ISA_ADDRESS va = link_tlb.getReq();
+        link_tlb.deq();
+
+        client_stub.makeRequest_VtoP(va);
+
+    endrule
+
+    rule translate_VtoP_response (True);
+
+        MEM_ADDRESS pa <- client_stub.getResponse_VtoP();
+        link_tlb.makeResp(pa);
 
     endrule
 

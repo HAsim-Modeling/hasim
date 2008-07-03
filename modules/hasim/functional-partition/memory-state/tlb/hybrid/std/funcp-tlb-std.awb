@@ -1,0 +1,11 @@
+%name Standard Hybrid TLB
+%desc Standard Hybrid TLB
+
+%provides funcp_memory_tlb
+
+%attributes hasim funcp memstate
+
+%public funcp-tlb-std.bsv
+%public funcp-tlb-std.dic
+
+%param FUNCP_TLB_LOGFILE_NAME "hasim_funcp_tlb.out" "Name of logfile for functional TLB cache"

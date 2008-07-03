@@ -11,23 +11,5 @@
 // estoppel, implication or by operation of law. Recipient accepts all risks 
 // of use.
 //
- 
-//
-// Base types for functional partition
-//
 
-//
-// Integer register size.  For now also used as the fundamental access size
-// for functional hybrid memory.
-//
-typedef Bit#(`FUNCP_ISA_INT_REG_SIZE) FUNCP_INT_REG;
-
-//
-// Physical address size.
-//
-typedef Bit#(`FUNCP_ISA_ADDR_SIZE) FUNCP_ADDR;
-
-//
-// Page of memory
-//
-typedef Bit#(`FUNCP_ISA_PAGE_SHIFT) FUNCP_PAGE;
+def STATS.FUNCP_TLB.MISS    "FUNCP TLB: Misses";

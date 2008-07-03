@@ -39,6 +39,8 @@ class FUNCP_SIMULATED_MEMORY_CLASS
     void Read(UINT64 addr, UINT64 size, void *dest);
     void Write(UINT64 addr, UINT64 size, void *src);
 
+    UINT64 VtoP(UINT64 va) { return va; };
+
   private:
     //
     // VMH-specific code...

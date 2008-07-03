@@ -107,6 +107,7 @@ FUNCP_MEMORY_CLASS::Request(
 {
     MEM_ADDRESS addr;
     MEM_VALUE   data;
+    MEM_VALUE   va;
     MEM_CACHELINE line;
 
     UMF_MESSAGE resp;
@@ -201,6 +202,24 @@ FUNCP_MEMORY_CLASS::Request(
         return NULL;
  
         break;
+
+      case CMD_VTOP:
+        // extract data.  VA comes in as a register sized MEM_VALUE.
+        va = MEM_VALUE(req->ExtractUINT(sizeof(MEM_VALUE)));
+        req->Delete();
+
+        MEM_ADDRESS pa = memory->VtoP(va);
+
+        T1("\tfuncp_memory: VtoP VA " << fmt_data(va) << " -> PA " << fmt_addr(pa));
+
+        // create response message
+        resp = UMF_MESSAGE_CLASS::New();
+        resp->SetLength(sizeof(MEM_ADDRESS));
+        resp->SetMethodID(CMD_VTOP);
+        resp->AppendBytes(sizeof(MEM_ADDRESS), (unsigned char *) &pa);
+
+        // return response
+        return resp;
 
       default:
         ASIMWARNING("Invalid command\n");

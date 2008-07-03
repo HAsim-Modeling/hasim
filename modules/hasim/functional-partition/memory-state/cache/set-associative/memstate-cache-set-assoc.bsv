@@ -214,8 +214,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     Connection_Server#(MEM_REQUEST, MEM_VALUE) link_memstate               <- mkConnection_Server("mem_cache");
     Connection_Client#(MEM_REQUEST, MEM_REPLY) link_funcp_memory           <- mkConnection_Client("funcp_memory");
     Connection_Receive#(MEM_ADDRESS)           link_funcp_memory_inval     <- mkConnection_Receive("funcp_memory_invalidate");
-    Connection_Receive#(Bool)              link_funcp_memory_prep_for_emul <- mkConnection_Receive("funcp_memory_prepare_to_emulate");
-    Connection_Send#(Bool)            link_funcp_memory_prep_for_emul_done <- mkConnection_Send("funcp_memory_prepare_to_emulate_done");
+    Connection_Server#(Bool, Bool)         link_funcp_memory_prep_for_emul <- mkConnection_Server("funcp_memory_prepare_to_emulate");
 
     // ***** Cache data *****
 
@@ -906,7 +905,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         if (invalidateAllSet == maxBound)
         begin
             invalidatingAll <= False;
-            link_funcp_memory_prep_for_emul_done.send(?);
+            link_funcp_memory_prep_for_emul.makeResp(?);
             cacheDebug($fwrite(debugLog, "Request done: INVAL ALL"));
         end
         else

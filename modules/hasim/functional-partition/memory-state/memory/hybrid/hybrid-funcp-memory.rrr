@@ -15,5 +15,7 @@ service FUNCP_MEMORY
 
         method Store(in MEM_STORE_INFO[MEMORY_STORE_INFO_SIZE] info);
         method StoreCacheLine(in MEM_STORE_CACHELINE_INFO[MEMORY_STORE_CACHELINE_INFO_SIZE] info);
+
+        method VtoP(in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] va, out MEM_ADDRESS[FUNCP_ISA_ADDR_SIZE] pa);
     };
 };

@@ -40,18 +40,21 @@ int main(int argc, char *argv[])
     // instantiate:
     // 1. Virtual platform
     // 2. LLPI
-    // 3. Controller
-    VIRTUAL_PLATFORM vp   = new VIRTUAL_PLATFORM_CLASS();
-    LLPI       llpi       = new LLPI_CLASS();
-    CONTROLLER controller = new CONTROLLER_CLASS(llpi);
+    // 3. System
+    // 4. Controller
+    VIRTUAL_PLATFORM vp         = new VIRTUAL_PLATFORM_CLASS();
+    LLPI             llpi       = new LLPI_CLASS();
+    SYSTEM           system     = new SYSTEM_CLASS();
+    CONTROLLER       controller = new CONTROLLER_CLASS(llpi, system);
 
     // transfer control to controller
-    int exitcode = controller->Main();
+    controller->Main();
 
     // cleanup and exit
     delete controller;
+    delete system;
     delete llpi;
     delete vp;
 
-    return exitcode;
+    return 0;
 }

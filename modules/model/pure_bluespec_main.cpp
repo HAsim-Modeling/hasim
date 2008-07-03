@@ -13,11 +13,13 @@
 
 #include "asim/provides/command_switches.h"
 #include "asim/provides/low_level_platform_interface.h"
+#include "asim/provides/hasim_controller.h"
+#include "asim/provides/bluespec_system.h"
 
 #include "pure_bluespec_main.h"
 
 // =======================================
-//                 MAIN
+//           PURE BLUESPEC MAIN
 // =======================================
 
 // globally visible variables
@@ -34,17 +36,16 @@ int main(int argc, char *argv[])
     // 2. Controller
     // 3. System
     LLPI       llpi       = new LLPI_CLASS();
+    SYSTEM     system     = new BLUESPEC_SYSTEM_CLASS();
+    CONTROLLER controller = new CONTROLLER_CLASS(llpi, system);
 
     // transfer control to controller
-    while (true)
-    {
-        // FIXME: directly poll LLPI
-        llpi->Poll();
-    }
+    controller->Main();
 
     // cleanup and exit
+    delete controller;
+    delete system;
     delete llpi;
 
     return 0;
 }
-

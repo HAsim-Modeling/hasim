@@ -1,0 +1,40 @@
+
+[Global]
+SaveParameters=0
+Description=RRR Test and Benchmarking Program (Bluesim)
+File=rrrtest_hybrid_exe
+Version=2.1
+Name=RRR Test and Benchmarking Program (Bluesim)
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hybrid simulation bluespec
+model=Pure Bluespec Hybrid Model Foundation
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
+Packagehint=platforms
+
+
+[Pure Bluespec Hybrid Model Foundation]
+File=modules/model/pure_bluespec_hybrid_model.awb
+Packagehint=hasim
+
+[Pure Bluespec Hybrid Model Foundation/Requires]
+bluespec_common=Bluespec Null Library
+bluespec_system=Bluespec RRR Test and Benchmarking Program
+fpgaenv=FPGA Environment
+hasim_controller=Hybrid Null Controller
+
+[Bluespec Null Library]
+File=modules/bluespec/common/null/bluespec_null.awb
+Packagehint=hasim
+
+[Hybrid Null Controller]
+File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
+Packagehint=hasim
+
+[Bluespec RRR Test and Benchmarking Program]
+File=modules/bluespec/system/demos/rrrtest/rrrtest.awb
+Packagehint=hasim

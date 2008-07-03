@@ -3,31 +3,28 @@
 #include <iostream>
 
 #include "controller-standard.h"
-#include "asim/provides/central_controllers.h"
+#include "asim/provides/starter.h"
 
 using namespace std;
 
+// globally-visible threadID of system thread
+pthread_t monitorThreadID;
+
 // constructor
 CONTROLLER_CLASS::CONTROLLER_CLASS(
-    LLPI l) :
+    LLPI   l,
+    SYSTEM s) :
         PLATFORMS_MODULE_CLASS(NULL)
 {
-    // setup link to LLPI
+    // setup links
     llpi = l;
-
-    // setup link to starter client
-    starter = STARTER_CLASS::GetInstance();
-
-    // setup central controllers
-    centralControllers = new CENTRAL_CONTROLLERS_CLASS();
-
+    system = s;
 }
 
 // destructor
 CONTROLLER_CLASS::~CONTROLLER_CLASS()
 {
     Cleanup();
-    delete centralControllers;
 }
 
 // uninit: override
@@ -47,33 +44,44 @@ CONTROLLER_CLASS::Cleanup()
 {
 }
 
+// *** trampolene function for LLPI's Main() ***
+void * LLPI_Main(void *argv)
+{
+    LLPI instance = LLPI(argv);
+    instance->Main();
+    return NULL;
+}
+
 // controller's main()
-int
+void
 CONTROLLER_CLASS::Main()
 {
-    // Send all dynamic parameters to the hardware
+    // spawn off Monitor/Service thread by calling LLPI's Main()
+    if (pthread_create(&monitorThreadID,
+                       NULL,
+                       LLPI_Main,
+                       (void *)llpi) != 0)
+    {
+        perror("pthread_create");
+        exit(1);
+    }
+
+    //
+    // I am now the System thread
+    //
+
+    // send all dynamic parameters to the hardware
     PARAMS_CONTROLLER_CLASS::GetInstance()->SendAllParams();
 
     // send "start" signal to the hardware partition.
-    starter->Run();
+    STARTER_CLASS::GetInstance()->Run();
 
-    // go into the main scheduler loop
-    SchedulerLoop();
+    // transfer control to System
+    system->Main();
 
-    // we should never reach here
-    starter->Pause();
-    starter->Sync();
+    // system's Main() exited => end simulation
 
-    return 0;
-}
-
-// scheduler loop
-void
-CONTROLLER_CLASS::SchedulerLoop()
-{
-    while (true)
-    {
-        // FIXME: directly poll LLPI
-        llpi->Poll();
-    }
+    // stop hardware
+    STARTER_CLASS::GetInstance()->Pause();
+    STARTER_CLASS::GetInstance()->Sync();
 }

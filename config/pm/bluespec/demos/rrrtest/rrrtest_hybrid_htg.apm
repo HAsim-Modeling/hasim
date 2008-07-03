@@ -1,0 +1,43 @@
+
+[Global]
+SaveParameters=0
+Description=RRR Test and Benchmarking Program for HTG v5 PCIe
+File=rrrtest_hybrid_htg
+Version=2.1
+Name=RRR Test and Benchmarking Program for HTG v5 PCIe
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hybrid htg bluespec
+model=Pure Bluespec Hybrid Model Foundation
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
+Packagehint=platforms
+
+
+[Pure Bluespec Hybrid Model Foundation]
+File=modules/model/pure_bluespec_hybrid_model.awb
+Packagehint=hasim
+
+[Pure Bluespec Hybrid Model Foundation/Requires]
+bluespec_common=Bluespec Common Library with FPGA
+bluespec_system=Bluespec RRR Test and Benchmarking Program
+fpgaenv=FPGA Environment
+hasim_controller=Hybrid Null Controller
+
+[Bluespec Common Library with FPGA]
+File=modules/bluespec/common/base/bluespec_base.awb
+Packagehint=hasim
+
+[Pure Bluespec Hybrid Model Foundation/Params]
+MAKE_ALL_TARGET=bit
+
+[Hybrid Null Controller]
+File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
+Packagehint=hasim
+
+[Bluespec RRR Test and Benchmarking Program]
+File=modules/bluespec/system/demos/rrrtest/rrrtest.awb
+Packagehint=hasim

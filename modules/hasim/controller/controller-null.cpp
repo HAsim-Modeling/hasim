@@ -6,16 +6,18 @@
 
 using namespace std;
 
+// globally-visible threadID of system thread
+pthread_t monitorThreadID;
+
 // constructor
 CONTROLLER_CLASS::CONTROLLER_CLASS(
-    LLPI l) :
+    LLPI   l,
+    SYSTEM s) :
         PLATFORMS_MODULE_CLASS(NULL)
 {
-    // setup link to LLPI
+    // setup links
     llpi = l;
-
-    // setup link to starter client
-    starter = STARTER_CLASS::GetInstance();
+    system = s;
 }
 
 // destructor
@@ -41,31 +43,41 @@ CONTROLLER_CLASS::Cleanup()
 {
 }
 
+// *** trampolene function for LLPI's Main() ***
+void * LLPI_Main(void *argv)
+{
+    LLPI instance = LLPI(argv);
+    instance->Main();
+    return NULL;
+}
+
 // controller's main()
-int
+void
 CONTROLLER_CLASS::Main()
 {
-    // send "start" signal to the hardware partition.
-    starter->Run();
-
-    // go into the main scheduler loop
-    SchedulerLoop();
-
-    // we should never reach here
-    starter->Pause();
-    starter->Sync();
-
-    return 0;
-}
-
-// scheduler loop
-void
-CONTROLLER_CLASS::SchedulerLoop()
-{
-    while (true)
+    // spawn off Monitor/Service thread by calling LLPI's Main()
+    if (pthread_create(&monitorThreadID,
+                       NULL,
+                       LLPI_Main,
+                       (void *)llpi) != 0)
     {
-        // FIXME: directly poll LLPI
-        llpi->Poll();
+        perror("pthread_create");
+        exit(1);
     }
-}
 
+    //
+    // I am now the System thread
+    //
+
+    // send "start" signal to the hardware partition.
+    STARTER_CLASS::GetInstance()->Run();
+
+    // transfer control to System
+    system->Main();
+
+    // system's Main() exited => end simulation
+
+    // stop hardware
+    STARTER_CLASS::GetInstance()->Pause();
+    STARTER_CLASS::GetInstance()->Sync();
+}

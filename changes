@@ -13746,3 +13746,64 @@ Directory modules/hasim/functional-partition/base-types
     model.  For fetches and loads there is a quick path that checks a small
     cache in LUTs for which there is no penalty.  There is a one stage
     bubble waiting for the full TLB before issuing the load in a longer path.
+
+----------
+aparasha    Date: Thu Jul  3 11:59:58 EDT 2008  CSN: CSN-hasim-469
+                  Thu Jul  3 15:59:58 UTC 2008
+
+
+Directory config/pm/bluespec/demos
+ rrrtest/                  Locally Added               0 
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_exe.apm    Locally Added               0 
+ rrrtest_hybrid_htg.apm    Locally Added               0 
+
+Directory modules/model
+ pure_bluespec_main.cpp    Locally Modified          468 
+ main.cpp                  Locally Modified          468 
+
+Directory modules/hasim/controller
+ controller-null.h         Locally Modified          468 
+ controller-standard.cpp   Locally Modified          468 
+ controller-standard.h     Locally Modified          468 
+ controller-null.cpp       Locally Modified          468 
+
+Directory modules/bluespec/system/demos/hello
+ hello.cpp                 Locally Added               0 
+ hello.h                   Locally Added               0 
+ hello.awb                 Locally Modified          468 
+
+Directory modules/bluespec/system/demos
+ rrrtest/                  Locally Added               0 
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest-server.h          Locally Added               0 
+ rrrtest-client.cpp        Locally Added               0 
+ rrrtest.cpp               Locally Added               0 
+ rrrtest-client.h          Locally Added               0 
+ rrrtest.rrr               Locally Added               0 
+ rrrtest-server.cpp        Locally Added               0 
+ rrrtest.h                 Locally Added               0 
+ rrrtest.awb               Locally Added               0 
+ rrrtest.bsv               Locally Added               0 
+
+- split software stack into two threads: a Monitor/Service thread and a
+  System thread. The Monitor/Service thread monitors the hw/sw channel
+  and calls service methods if required. The System thread executes the
+  software side's primary application. The two threads are spawned by
+  the Controller. If the System thread terminates, the software process
+  will exit.
+
+  All "pure" Bluespec hybrid models now need to define a
+  BLUESPEC_SYSTEM_CLASS as part of the System AWB module. This might not
+  be a good idea since some simple systems (e.g. counter demo) used to be
+  agnostic to whether they were being built into a hybrid or standalone
+  model.
+
+  HAsim systems currently get around this requirement by using a hack:
+  all top-level Controllers define a base SYSTEM_CLASS which simply blocks
+  on a pthread condition variable that never gets signaled, thereby
+  preserving the existing behavior of HAsim models.
+
+- added a pure Bluespec RRR test/benchmark model.

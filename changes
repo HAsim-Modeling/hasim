@@ -13822,3 +13822,21 @@ Directory modules/hasim/controller
  controller-standard.bsv   Locally Modified          469 
 
 Add a commit message to the controller so heartbeat can calculate IPC.
+
+----------
+nikhil      Date: Tue Jul  8 14:22:02 CDT 2008  CSN: CSN-hasim-471
+                  Tue Jul  8 19:22:02 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-hash
+ memstate_storebuffer_bucket_hash.bsv Locally Modified          470 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          470 
+
+Directory modules/common/modellib
+ StallPorts.bsv            Locally Modified          470 
+
+- fixed some $display's in the store buffer code.
+- added the PortControl interface to StallPorts. The current values
+  are dummy, and probably just wrong.

@@ -73,12 +73,15 @@ interface StallPort_Send#(type a);
     method Action send(Maybe#(a) x);
     method Action pass();
     method Bool   canSend();
+    interface Port_Control ctrl;
+
 endinterface
 
 interface StallPort_Receive#(type a);
     method ActionValue#(Maybe#(a)) receive();
     method Maybe#(a)               peek();
     method Action                  pass();
+    interface Port_Control ctrl;
 endinterface
 
 typedef Bit#(1) UNIT; // move this to a global place?
@@ -105,6 +108,14 @@ module [HASIM_MODULE] mkStallPort_Send#(String s)
     endmethod
 
     method Bool canSend() = _canSend;
+
+    interface Port_Control ctrl;
+        method Bool empty() = True;
+        method Bool full() = False;
+        method Bool balanced() = True;
+        method Bool light() = False;
+        method Bool heavy() = False;
+    endinterface
 endmodule
 
 module [HASIM_MODULE] mkStallPort_Receive#(String s)
@@ -165,5 +176,12 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
         cC <= True;
     endmethod
 
+    interface Port_Control ctrl;
+        method Bool empty() = False;
+        method Bool full() = True;
+        method Bool balanced() = True;
+        method Bool light() = False;
+        method Bool heavy() = False;
+    endinterface
 endmodule
 

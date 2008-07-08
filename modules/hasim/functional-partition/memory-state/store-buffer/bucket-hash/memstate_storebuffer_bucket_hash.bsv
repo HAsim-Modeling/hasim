@@ -242,7 +242,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
         else  // This guy was invalid and will be removed when we do find a valid guy (or hit the end of the list).
         begin
           // Log it.
-          $fdisplay(debug_log, "[%d]: Clean-up #%0d: Removing invalid TOKEN %0d from list.", fpga_cc, candidate.index); 
+          $fdisplay(debug_log, "[%d]: Clean-up #%0d: Removing invalid TOKEN %0d from list.", fpga_cc, cur_list, candidate.index); 
         end
 
     endaction
@@ -296,7 +296,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
                 // Update its pointer.
                 listnodes.write(t.index, tagged Invalid);
                 // Log it.
-                $fdisplay(debug_log, "[%d]: Clean-up #%0d (Finished): Setting %0d to be the tail of the list.", fpga_cc, t.index); 
+                $fdisplay(debug_log, "[%d]: Clean-up #%0d (Finished): Setting %0d to be the tail of the list.", fpga_cc, cur_list, t.index); 
               end
             endcase
 

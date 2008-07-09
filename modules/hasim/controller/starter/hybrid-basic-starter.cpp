@@ -138,7 +138,7 @@ STARTER_CLASS::Request(
         {
             next_progress_msg_cycle += globalArgs->ProgressMsgInterval();
 
-            cout << "[" << std::setw(13) << fpga_cycles
+            cout << "[" << std::dec << std::setw(13) << fpga_cycles
                  << "]: model cycles: "
                  << std::setw(10) << model_cycles;
 

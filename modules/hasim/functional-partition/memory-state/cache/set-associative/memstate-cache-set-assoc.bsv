@@ -108,105 +108,6 @@ typedef struct
   CACHE_DATA_IDX
     deriving(Eq, Bits);
 
-//
-// cacheSet --
-//     The cache index hash function here is not the traditional direct copying
-//     of low bits from the address.  The goal is an even distribution of index
-//     values independent of the memory access pattern.
-//
-function CACHE_SET cacheSet(MEM_ADDRESS addr);
-
-    Tuple3#(CACHE_TAG,CACHELINE_OFFSET,WORD_OFFSET) tup = unpack(addr);
-    match { .tag, .cloff, .woff } = tup;
-
-    // Don't know whether tag is bigger or smaller than 32 bits, hence this hack...
-    Bit#(32) d = truncate({ 32'b0, tag });
-    Bit#(32) set;
-
-    //
-    // CRC-32 (IEEE802.3), polynomial 0 1 2 4 5 7 8 10 11 12 16 22 23 26 32
-    //   Define a large CRC result so we can grow the caches without changing
-    //   this code.  Bluespec optimizer will drop extra bits.
-    //
-    set[0] = d[31] ^ d[30] ^ d[29] ^ d[28] ^ d[26] ^ d[25] ^ d[24] ^ 
-             d[16] ^ d[12] ^ d[10] ^ d[9] ^ d[6] ^ d[0];
-    set[1] = d[28] ^ d[27] ^ d[24] ^ d[17] ^ d[16] ^ d[13] ^ d[12] ^ 
-             d[11] ^ d[9] ^ d[7] ^ d[6] ^ d[1] ^ d[0];
-    set[2] = d[31] ^ d[30] ^ d[26] ^ d[24] ^ d[18] ^ d[17] ^ d[16] ^ 
-             d[14] ^ d[13] ^ d[9] ^ d[8] ^ d[7] ^ d[6] ^ d[2] ^ 
-             d[1] ^ d[0];
-    set[3] = d[31] ^ d[27] ^ d[25] ^ d[19] ^ d[18] ^ d[17] ^ d[15] ^ 
-             d[14] ^ d[10] ^ d[9] ^ d[8] ^ d[7] ^ d[3] ^ d[2] ^ 
-             d[1];
-    set[4] = d[31] ^ d[30] ^ d[29] ^ d[25] ^ d[24] ^ d[20] ^ d[19] ^ 
-             d[18] ^ d[15] ^ d[12] ^ d[11] ^ d[8] ^ d[6] ^ d[4] ^ 
-             d[3] ^ d[2] ^ d[0];
-    set[5] = d[29] ^ d[28] ^ d[24] ^ d[21] ^ d[20] ^ d[19] ^ d[13] ^ 
-             d[10] ^ d[7] ^ d[6] ^ d[5] ^ d[4] ^ d[3] ^ d[1] ^ d[0];
-    set[6] = d[30] ^ d[29] ^ d[25] ^ d[22] ^ d[21] ^ d[20] ^ d[14] ^ 
-             d[11] ^ d[8] ^ d[7] ^ d[6] ^ d[5] ^ d[4] ^ d[2] ^ d[1];
-    set[7] = d[29] ^ d[28] ^ d[25] ^ d[24] ^ d[23] ^ d[22] ^ d[21] ^ 
-             d[16] ^ d[15] ^ d[10] ^ d[8] ^ d[7] ^ d[5] ^ d[3] ^ 
-             d[2] ^ d[0];
-    set[8] = d[31] ^ d[28] ^ d[23] ^ d[22] ^ d[17] ^ d[12] ^ d[11] ^ 
-             d[10] ^ d[8] ^ d[4] ^ d[3] ^ d[1] ^ d[0];
-    set[9] = d[29] ^ d[24] ^ d[23] ^ d[18] ^ d[13] ^ d[12] ^ d[11] ^ 
-             d[9] ^ d[5] ^ d[4] ^ d[2] ^ d[1];
-    set[10] = d[31] ^ d[29] ^ d[28] ^ d[26] ^ d[19] ^ d[16] ^ d[14] ^ 
-              d[13] ^ d[9] ^ d[5] ^ d[3] ^ d[2] ^ d[0];
-    set[11] = d[31] ^ d[28] ^ d[27] ^ d[26] ^ d[25] ^ d[24] ^ d[20] ^ 
-              d[17] ^ d[16] ^ d[15] ^ d[14] ^ d[12] ^ d[9] ^ d[4] ^ 
-              d[3] ^ d[1] ^ d[0];
-    set[12] = d[31] ^ d[30] ^ d[27] ^ d[24] ^ d[21] ^ d[18] ^ d[17] ^ 
-              d[15] ^ d[13] ^ d[12] ^ d[9] ^ d[6] ^ d[5] ^ d[4] ^ 
-              d[2] ^ d[1] ^ d[0];
-    set[13] = d[31] ^ d[28] ^ d[25] ^ d[22] ^ d[19] ^ d[18] ^ d[16] ^ 
-              d[14] ^ d[13] ^ d[10] ^ d[7] ^ d[6] ^ d[5] ^ d[3] ^ 
-              d[2] ^ d[1];
-    set[14] = d[29] ^ d[26] ^ d[23] ^ d[20] ^ d[19] ^ d[17] ^ d[15] ^ 
-              d[14] ^ d[11] ^ d[8] ^ d[7] ^ d[6] ^ d[4] ^ d[3] ^ 
-              d[2];
-    set[15] = d[30] ^ d[27] ^ d[24] ^ d[21] ^ d[20] ^ d[18] ^ d[16] ^ 
-              d[15] ^ d[12] ^ d[9] ^ d[8] ^ d[7] ^ d[5] ^ d[4] ^ 
-              d[3];
-    set[16] = d[30] ^ d[29] ^ d[26] ^ d[24] ^ d[22] ^ d[21] ^ d[19] ^ 
-              d[17] ^ d[13] ^ d[12] ^ d[8] ^ d[5] ^ d[4] ^ d[0];
-    set[17] = d[31] ^ d[30] ^ d[27] ^ d[25] ^ d[23] ^ d[22] ^ d[20] ^ 
-              d[18] ^ d[14] ^ d[13] ^ d[9] ^ d[6] ^ d[5] ^ d[1];
-    set[18] = d[31] ^ d[28] ^ d[26] ^ d[24] ^ d[23] ^ d[21] ^ d[19] ^ 
-              d[15] ^ d[14] ^ d[10] ^ d[7] ^ d[6] ^ d[2];
-    set[19] = d[29] ^ d[27] ^ d[25] ^ d[24] ^ d[22] ^ d[20] ^ d[16] ^ 
-              d[15] ^ d[11] ^ d[8] ^ d[7] ^ d[3];
-    set[20] = d[30] ^ d[28] ^ d[26] ^ d[25] ^ d[23] ^ d[21] ^ d[17] ^ 
-              d[16] ^ d[12] ^ d[9] ^ d[8] ^ d[4];
-    set[21] = d[31] ^ d[29] ^ d[27] ^ d[26] ^ d[24] ^ d[22] ^ d[18] ^ 
-              d[17] ^ d[13] ^ d[10] ^ d[9] ^ d[5];
-    set[22] = d[31] ^ d[29] ^ d[27] ^ d[26] ^ d[24] ^ d[23] ^ d[19] ^ 
-              d[18] ^ d[16] ^ d[14] ^ d[12] ^ d[11] ^ d[9] ^ d[0];
-    set[23] = d[31] ^ d[29] ^ d[27] ^ d[26] ^ d[20] ^ d[19] ^ d[17] ^ 
-              d[16] ^ d[15] ^ d[13] ^ d[9] ^ d[6] ^ d[1] ^ d[0];
-    set[24] = d[30] ^ d[28] ^ d[27] ^ d[21] ^ d[20] ^ d[18] ^ d[17] ^ 
-              d[16] ^ d[14] ^ d[10] ^ d[7] ^ d[2] ^ d[1];
-    set[25] = d[31] ^ d[29] ^ d[28] ^ d[22] ^ d[21] ^ d[19] ^ d[18] ^ 
-              d[17] ^ d[15] ^ d[11] ^ d[8] ^ d[3] ^ d[2];
-    set[26] = d[31] ^ d[28] ^ d[26] ^ d[25] ^ d[24] ^ d[23] ^ d[22] ^ 
-              d[20] ^ d[19] ^ d[18] ^ d[10] ^ d[6] ^ d[4] ^ d[3] ^ 
-              d[0];
-    set[27] = d[29] ^ d[27] ^ d[26] ^ d[25] ^ d[24] ^ d[23] ^ d[21] ^ 
-              d[20] ^ d[19] ^ d[11] ^ d[7] ^ d[5] ^ d[4] ^ d[1];
-    set[28] = d[30] ^ d[28] ^ d[27] ^ d[26] ^ d[25] ^ d[24] ^ d[22] ^ 
-              d[21] ^ d[20] ^ d[12] ^ d[8] ^ d[6] ^ d[5] ^ d[2];
-    set[29] = d[31] ^ d[29] ^ d[28] ^ d[27] ^ d[26] ^ d[25] ^ d[23] ^ 
-              d[22] ^ d[21] ^ d[13] ^ d[9] ^ d[7] ^ d[6] ^ d[3];
-    set[30] = d[30] ^ d[29] ^ d[28] ^ d[27] ^ d[26] ^ d[24] ^ d[23] ^ 
-              d[22] ^ d[14] ^ d[10] ^ d[8] ^ d[7] ^ d[4];
-    set[31] = d[31] ^ d[30] ^ d[29] ^ d[28] ^ d[27] ^ d[25] ^ d[24] ^ 
-              d[23] ^ d[15] ^ d[11] ^ d[9] ^ d[8] ^ d[5];
-
-    return truncate(set);
-
-endfunction
-
 
 module [HASIM_MODULE] mkFUNCP_Cache ()
     provisos(Bits#(CACHE_SET, cache_set_SZ),
@@ -322,6 +223,9 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
 
     // ***** Indexing functions *****
+
+    function CACHE_SET cacheSet(MEM_ADDRESS addr) = truncate(hashTo32(addr));
+
 
     function Bit#(cache_data_idx_SZ) getDataIdx (CACHE_SET set, CACHE_WAY way, CACHELINE_OFFSET offset);
 

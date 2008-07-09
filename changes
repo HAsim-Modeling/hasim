@@ -13897,3 +13897,24 @@ Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
 Bugfix in the TLB where responses could come out of order.
 
 Michael P.
+
+----------
+mcadler     Date: Wed Jul  9 16:23:44 EDT 2008  CSN: CSN-hasim-474
+                  Wed Jul  9 20:23:44 UTC 2008
+
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          473 
+
+Directory modules/hasim/common/new-funcp
+ hasim_common_newfuncp.awb Locally Modified          473 
+ Hash.bsv                  Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          473 
+
+- Move hash function used in functional memory cache to HAsim common.
+  hashTo32() takes an arbitrary number of bits as input and yields a 32 bit
+  hash.  It is safe to truncate the resulting hash to any size.
+
+- Starter was sometimes printing counters in hex.

@@ -13918,3 +13918,13 @@ Directory modules/hasim/functional-partition/memory-state/cache/set-associative
   hash.  It is safe to truncate the resulting hash to any size.
 
 - Starter was sometimes printing counters in hex.
+
+----------
+nikhil      Date: Wed Jul  9 16:09:54 CDT 2008  CSN: CSN-hasim-475
+                  Wed Jul  9 21:09:54 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          474 
+
+added brace brackets in switch stmt clause to avoid gcc-4 error

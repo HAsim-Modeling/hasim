@@ -235,7 +235,7 @@ FUNCP_MEMORY_CLASS::Request(
  
         break;
 
-      case CMD_VTOP:
+      case CMD_VTOP: {
         // extract data.  VA comes in as a register sized MEM_VALUE.
         va = MEM_VALUE(req->ExtractUINT(sizeof(MEM_VALUE)));
         req->Delete();
@@ -252,7 +252,7 @@ FUNCP_MEMORY_CLASS::Request(
 
         // return response
         return resp;
-
+      }
       default:
         ASIMWARNING("Invalid command\n");
         parent->CallbackExit(1);

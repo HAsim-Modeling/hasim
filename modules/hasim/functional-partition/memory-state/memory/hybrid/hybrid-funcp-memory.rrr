@@ -5,7 +5,8 @@ service FUNCP_MEMORY
 {
     server hw (bsv, connection) <- sw (cpp, method)
     {
-        method Invalidate(in MEM_ADDRESS[FUNCP_ISA_ADDR_SIZE] addr);
+        method Invalidate(in MEM_INVAL_CACHELINE_INFO_RRR_HACK[MEMORY_INVAL_CACHELINE_INFO_SIZE] info, out UINT32[32] ack);
+        method InvalidateAll(in UINT32[32] req, out UINT32[32] ack);
     };
 
     server sw (cpp, method) <- hw (bsv, connection)
@@ -15,6 +16,8 @@ service FUNCP_MEMORY
 
         method Store(in MEM_STORE_INFO[MEMORY_STORE_INFO_SIZE] info);
         method StoreCacheLine(in MEM_STORE_CACHELINE_INFO[MEMORY_STORE_CACHELINE_INFO_SIZE] info);
+        // Store cache line with ACK
+        method StoreCacheLine_Sync(in MEM_STORE_CACHELINE_INFO[MEMORY_STORE_CACHELINE_INFO_SIZE] info, out UINT32[32] ack);
 
         method VtoP(in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] va, out MEM_ADDRESS[FUNCP_ISA_ADDR_SIZE] pa);
     };

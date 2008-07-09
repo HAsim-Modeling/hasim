@@ -322,8 +322,6 @@ module [HASim_Module] mkFUNCP_RegStateManager
     Connection_Send#(Tuple2#(TOKEN_INDEX, 
                              TOKEN_INDEX))                     linkMemRewind <- mkConnection_Send("funcp_mem_rewind");
 
-    Connection_Client#(Bool, Bool)                             link_funcp_memory_prep_for_emul <- mkConnection_Client("funcp_memory_prepare_to_emulate");
-
     // Connection to TLB
 
     Connection_Client#(ISA_ADDRESS, Maybe#(MEM_ADDRESS))       link_tlb <- mkConnection_Client("funcp_tlb");
@@ -467,7 +465,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         tokAddr.write(tok.index, addr);
 
         // Convert to physical
-        Maybe#(MEM_ADDRESS) m_addr = tlb.quickTranslateVA(addr);
+        Maybe#(MEM_ADDRESS) m_addr = tlb.quickTranslateVA(isaAlignAddress(addr));
         if (m_addr matches tagged Valid .mem_addr)
         begin
             //
@@ -897,8 +895,6 @@ module [HASim_Module] mkFUNCP_RegStateManager
             state <= RSM_DrainingForEmulate;
             // Record which token is being emulated.
             emulatingToken <= tok;
-            // Invalidate the cache.
-            link_funcp_memory_prep_for_emul.makeReq(?);
             // Lookup the snapshot we should be working with.
             let msnap = snapshots.hasSnapshot(tok.index);
             // If there's no snapshot, something is really wrong.
@@ -1293,13 +1289,9 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // finishDrainForEmulate
     
     // When:   After getResults operation puts us in the emulation state.
-    // Effect: Stall until all younger operations have completed, and the cache is emptied. Then we can proceed.
+    // Effect: Stall until all younger operations have completed. Then we can proceed.
     
     rule finishDrainForEmulate (state == RSM_DrainingForEmulate && tokScoreboard.canEmulate());
-
-       // Get the response from the cache.
-        link_funcp_memory_prep_for_emul.deq();
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: finishDrainForEmulate: Memory sync done", emulatingToken.index));
 
        // Reset the counter for syncing registers.
        synchronizingCurReg <= minBound;
@@ -1557,7 +1549,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let addr <- tokMemAddr.resp[0].read();
 
         // Convert to physical
-        Maybe#(MEM_ADDRESS) m_addr = tlb.quickTranslateVA(addr);
+        Maybe#(MEM_ADDRESS) m_addr = tlb.quickTranslateVA(isaAlignAddress(addr));
         if (m_addr matches tagged Valid .mem_addr)
         begin
             //

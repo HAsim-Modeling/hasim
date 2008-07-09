@@ -1,15 +1,19 @@
 //
-// INTEL CONFIDENTIAL
-// Copyright (c) 2008 Intel Corp.  Recipient is granted a non-sublicensable 
-// copyright license under Intel copyrights to copy and distribute this code 
-// internally only. This code is provided "AS IS" with no support and with no 
-// warranties of any kind, including warranties of MERCHANTABILITY,
-// FITNESS FOR ANY PARTICULAR PURPOSE or INTELLECTUAL PROPERTY INFRINGEMENT. 
-// By making any use of this code, Recipient agrees that no other licenses 
-// to any Intel patents, trade secrets, copyrights or other intellectual 
-// property rights are granted herein, and no other licenses shall arise by 
-// estoppel, implication or by operation of law. Recipient accepts all risks 
-// of use.
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
 //
@@ -33,6 +37,7 @@
 // Library imports.
 
 import FIFO::*;
+import FIFOF::*;
 import Vector::*;
 
 // Project foundation imports.
@@ -212,9 +217,10 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     // ***** Soft Connections *****
 
     Connection_Server#(MEM_REQUEST, MEM_VALUE) link_memstate               <- mkConnection_Server("mem_cache");
+
     Connection_Client#(MEM_REQUEST, MEM_REPLY) link_funcp_memory           <- mkConnection_Client("funcp_memory");
-    Connection_Receive#(MEM_ADDRESS)           link_funcp_memory_inval     <- mkConnection_Receive("funcp_memory_invalidate");
-    Connection_Server#(Bool, Bool)         link_funcp_memory_prep_for_emul <- mkConnection_Server("funcp_memory_prepare_to_emulate");
+    Connection_Server#(MEM_INVAL_CACHELINE_INFO, Bool) link_funcp_memory_inval <- mkConnection_Server("funcp_memory_cache_invalidate");
+    Connection_Server#(Bool, Bool)                 link_funcp_memory_inval_all <- mkConnection_Server("funcp_memory_cache_invalidate_all");
 
     // ***** Cache data *****
 
@@ -227,8 +233,10 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
     // ***** Internal state *****
 
-    FIFO#(CACHE_ACCESS) pendingQ <- mkFIFO1; // size=1 -> blocking. we'll need a searchable fifo for size >=2.
-    Reg#(Bool)          waiting  <- mkReg(False);
+    Reg#(Bool) cacheIsEmpty <- mkReg(True);
+
+    FIFOF#(CACHE_ACCESS) pendingQ <- mkFIFOF1; // size=1 -> blocking. we'll need a searchable fifo for size >=2.
+    Reg#(Bool)           waiting  <- mkReg(False);
 
     Reg#(Bool)      invalidatingAll  <- mkReg(False);
     Reg#(CACHE_SET) invalidateAllSet <- mkReg(0);
@@ -243,6 +251,13 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
     Param#(1) writeBackParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEM_CACHE_WRITE_BACK);
     function Bool writeBackCache() = (writeBackParam == 1);
+
+    Reg#(Bool)        invalidate_just_flush <- mkRegU();
+    Reg#(MEM_ADDRESS) invalidate_addr    <- mkRegU();
+    Reg#(UInt#(8))    invalidate_n_lines <- mkReg(0);
+    Reg#(Bool)        invalidate_need_ack <- mkReg(False);
+
+    Reg#(UInt#(4))    inflightSyncFlushes <- mkReg(0);
 
     // ***** Queues between internal pipeline stages *****
 
@@ -495,6 +510,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
             tagged MEM_LOAD  .a: noAction;
             tagged MEM_STORE .s: noAction;
             tagged MEM_INVALIDATE_CACHELINE .a: noAction;
+            tagged MEM_FLUSH_CACHELINE .a: noAction;
             default: assertValidRequest(False);
         endcase
 
@@ -502,6 +518,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
                       tagged MEM_LOAD  .a: a;
                       tagged MEM_STORE .s: s.addr;
                       tagged MEM_INVALIDATE_CACHELINE .a: a;
+                      tagged MEM_FLUSH_CACHELINE .a: a;
                    endcase;
 
         let set = cacheSet(addr);
@@ -510,6 +527,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
                            tagged MEM_LOAD  .a: "LOAD";
                            tagged MEM_STORE .s: "STORE";
                            tagged MEM_INVALIDATE_CACHELINE .a: "INVAL";
+                           tagged MEM_FLUSH_CACHELINE .a: "INVAL";
                        endcase;
         cacheDebug($fwrite(debugLog, "New request: %s addr=0x%x, set=0x%x", req_kind, addr, set));
 
@@ -555,8 +573,9 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     //
     rule handleInval (pendingQ.first.req matches tagged MEM_INVALIDATE_CACHELINE .addr);
         let set = pendingQ.first.set;
-        let cur_lru = cacheLRU.readResp();
+        let cur_lru <- cacheLRU.readResp();
         let meta <- cacheMeta.readResp();
+        Bool done = True;
 
         if (findWayMatch(addr, meta) matches tagged Valid .inval_way)
         begin
@@ -564,11 +583,40 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
             begin
                 flushDirtyLine.enq(tuple4(m.tag, set, inval_way, False));
                 cacheData.readReq(getDataIdx(set, inval_way, 0));
+                done = False;
             end
 
             meta[inval_way] = tagged Invalid;
             cacheMeta.write(set, meta);
         end
+        
+        if (done)
+            pendingQ.deq();
+    endrule
+
+
+    //
+    // handleFlush --
+    //     Flush a single line if it matches the tag.
+    //
+    rule handleFlush (pendingQ.first.req matches tagged MEM_FLUSH_CACHELINE .addr);
+        let set = pendingQ.first.set;
+        let cur_lru <- cacheLRU.readResp();
+        let meta <- cacheMeta.readResp();
+        Bool done = True;
+
+        if (findWayMatch(addr, meta) matches tagged Valid .inval_way)
+        begin
+            if (meta[inval_way] matches tagged Valid .m &&& m.dirty)
+            begin
+                flushDirtyLine.enq(tuple4(m.tag, set, inval_way, False));
+                cacheData.readReq(getDataIdx(set, inval_way, 0));
+                done = False;
+            end
+        end
+        
+        if (done)
+            pendingQ.deq();
     endrule
 
 
@@ -599,7 +647,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
         // Request the new value from memory
         link_funcp_memory.makeReq(tagged MEM_LOAD_CACHELINE getLineAddr(addr));
-            
+        cacheIsEmpty <= False;
+
         // Update LRU
         let new_lru = pushMRU(cur_lru, fill_way);
         cacheLRU.write(set, new_lru);
@@ -764,7 +813,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     endrule
 
 
-    rule handleFlushDirtyWay (True);
+    rule handleFlushDirtyLine (inflightSyncFlushes != maxBound);
         
         match {.tag, .set, .way, .reqFill} = flushDirtyLine.first();
         let v <- cacheData.readResp();
@@ -779,14 +828,26 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
             let flushData = flushLineData;
             flushData[flushLineOffset] = v;
             let addr = cacheAddr(tag, 0);
-            link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE MEM_STORE_CACHELINE_INFO { addr: addr, val: flushData});
-            cacheDebug($fwrite(debugLog, "Write back DIRTY: addr=0x%x, set=0x%x, data=0x%x", addr, set, flushData));
 
-            // Pass the request on to the fill stage, if appropriate.
-            if (reqFill)
-                fillVictim.enq(tuple2(set, way));
+            if (reqFill || invalidatingAll)
+            begin
+                // Normal flush before a fill
+                link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE MEM_STORE_CACHELINE_INFO { addr: addr, val: flushData});
+
+                // Pass the request on to the fill stage
+                if (! invalidatingAll)
+                    fillVictim.enq(tuple2(set, way));
+            end
+            else
+            begin
+                // Flush for invalidate request.  Use sync method to know the data arrived.
+                link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE_SYNC MEM_STORE_CACHELINE_INFO { addr: addr, val: flushData});
+                inflightSyncFlushes <= inflightSyncFlushes + 1;
+                pendingQ.deq();
+            end
             
             statDirtyLineFlush.incr();
+            cacheDebug($fwrite(debugLog, "Write back DIRTY: addr=0x%x, set=0x%x, data=0x%x", addr, set, flushData));
         end
         else
         begin
@@ -859,37 +920,90 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
 
     //
-    // invalidate --
-    //     Handle requests from hybrid memory (software-side) to invalidate
-    //     a specific address.
+    // invalidate / flush --
+    //     Handle requests from hybrid memory (software-side) to flush and
+    //     possibly invalidate a specific address.
     //    
-    rule invalidate (!invalidatingAll);
-        MEM_ADDRESS addr = link_funcp_memory_inval.receive();
+    rule invalidate_req (!invalidatingAll && invalidate_n_lines == 0);
+        MEM_INVAL_CACHELINE_INFO info = link_funcp_memory_inval.getReq();
         link_funcp_memory_inval.deq();
 
-        let set = cacheSet(addr);
+        invalidate_just_flush <= info.onlyFlush;
+        invalidate_addr <= info.addr;
+        invalidate_n_lines <= info.nLines;
+        
+        cacheDebug($fwrite(debugLog, "New request: INVAL addr=0x%x, nLines=%d, onlyflush=%d", info.addr, info.nLines, info.onlyFlush));
+
+        if (info.nLines == 0)
+            link_funcp_memory_inval.makeResp(?);
+    endrule
+
+
+    rule invalidate_or_flush_lines (!invalidatingAll && invalidate_n_lines != 0);
+        let set = cacheSet(invalidate_addr);
 
         CACHE_ACCESS access;
-        access.req = tagged MEM_INVALIDATE_CACHELINE addr;
         access.set = set;
+        if (invalidate_just_flush)
+        begin
+            access.req = tagged MEM_FLUSH_CACHELINE invalidate_addr;
+            cacheDebug($fwrite(debugLog, "New request: FLUSH addr=0x%x, set=0x%x", invalidate_addr, set));
+        end
+        else
+        begin
+            access.req = tagged MEM_INVALIDATE_CACHELINE invalidate_addr;
+            cacheDebug($fwrite(debugLog, "New request: INVAL addr=0x%x, set=0x%x", invalidate_addr, set));
+        end
+
+        pendingQ.enq(access);
 
         cacheLRU.readReq(set);
         cacheMeta.readReq(set);
 
-        cacheDebug($fwrite(debugLog, "New request: INVAL addr=0x%x, set=0x%x", addr, set));
+        // Done?
+        if (invalidate_n_lines == 1)
+            invalidate_need_ack <= True;
+
+        invalidate_addr <= invalidate_addr + (`FUNCP_CACHELINE_BITS / 8);
+        invalidate_n_lines <= invalidate_n_lines - 1;
     endrule
 
 
+    rule invalidate_ack (invalidate_need_ack &&
+                         (inflightSyncFlushes == 0) &&
+                         ! pendingQ.notEmpty());
+
+        cacheDebug($fwrite(debugLog, "FLUSH or INVAL done"));
+        link_funcp_memory_inval.makeResp(?);
+        invalidate_need_ack <= False;
+
+    endrule
+
+
+    rule handle_flush_ack (link_funcp_memory.getResp() matches tagged MEM_REPLY_STORE_CACHELINE_ACK .v);
+        link_funcp_memory.deq();
+        inflightSyncFlushes <= inflightSyncFlushes - 1;
+    endrule
+
     //
-    // prepare_to_emulate --
-    //     Invoked by register state manager before calling the hybrid instruction
-    //     emulation service.
+    // invalidate_all_req --
+    //     Memory system may request invalidation of the entire cache if it
+    //     doesn't know which lines may need to be flushed.
     //
-    rule prepare_to_emulate (!invalidatingAll && !waiting);
+    rule invalidate_all_req (!invalidatingAll && !waiting);
         cacheDebug($fwrite(debugLog, "New request: INVAL ALL"));
-        link_funcp_memory_prep_for_emul.deq();
-        cacheMeta.readReq(0);
-        invalidatingAll <= True;
+        link_funcp_memory_inval_all.deq();
+
+        if (cacheIsEmpty)
+        begin
+            link_funcp_memory_inval_all.makeResp(?);
+        end
+        else
+        begin
+            cacheMeta.readReq(0);
+            invalidatingAll <= True;
+            cacheIsEmpty <= True;
+        end
     endrule
 
 
@@ -905,7 +1019,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         if (invalidateAllSet == maxBound)
         begin
             invalidatingAll <= False;
-            link_funcp_memory_prep_for_emul.makeResp(?);
+            link_funcp_memory_inval_all.makeResp(?);
             cacheDebug($fwrite(debugLog, "Request done: INVAL ALL"));
         end
         else
@@ -915,6 +1029,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
     endrule
 
+    (* descending_urgency= "handleBypass, handleFlushDirtyLine, handleFlushDirtySet, handleInval, handleFlush, handleLoad, handleStore, loadCacheHit, invalidate_all" *)
 
     //
     // Check configured parameters

@@ -26,7 +26,9 @@ module [HASIM_MODULE] mkFUNCP_Memory
     // Links that we expose to the outside world
     Connection_Server#(MEM_REQUEST, MEM_REPLY)   link_memory <- mkConnection_Server("funcp_memory");
     Connection_Server#(ISA_ADDRESS, MEM_ADDRESS) link_tlb    <- mkConnection_Server("funcp_memory_VtoP");
-    Connection_Send#(MEM_ADDRESS)          link_memory_inval <- mkConnection_Send("funcp_memory_invalidate");
+
+    Connection_Client#(MEM_INVAL_CACHELINE_INFO, Bool)  link_memory_inval <- mkConnection_Client("funcp_memory_cache_invalidate");
+    Connection_Client#(Bool, Bool)                  link_memory_inval_all <- mkConnection_Client("funcp_memory_cache_invalidate_all");
 
     // ***** Rules ******
 
@@ -42,34 +44,27 @@ module [HASIM_MODULE] mkFUNCP_Memory
         case (req) matches
             tagged MEM_LOAD .addr:
             begin
-
-                // send request via RRR
                 client_stub.makeRequest_Load(addr);
-
             end
             
             tagged MEM_LOAD_CACHELINE .addr:
             begin
-
-                // send request via RRR
                 client_stub.makeRequest_LoadCacheLine(addr);
-
             end
 
             tagged MEM_STORE .stinfo:
             begin
-
-                // send request via RRR
                 client_stub.makeRequest_Store(stinfo);
-                
             end
 
             tagged MEM_STORE_CACHELINE .stinfo:
             begin
-
-                // send request via RRR
                 client_stub.makeRequest_StoreCacheLine(stinfo);
-                
+            end
+
+            tagged MEM_STORE_CACHELINE_SYNC .stinfo:
+            begin
+                client_stub.makeRequest_StoreCacheLine_Sync(stinfo);
             end
         endcase
 
@@ -78,30 +73,53 @@ module [HASIM_MODULE] mkFUNCP_Memory
     // Get a response from the stub and pass it back to the user.
 
     rule get_mem_response (True);
-
         MEM_VALUE v <- client_stub.getResponse_Load();
-
         link_memory.makeResp(tagged MEM_REPLY_LOAD v);
-
     endrule
 
-    rule get_mem_response2 (True);
-
+    rule get_mem_response_ldline (True);
         MEM_CACHELINE v <- client_stub.getResponse_LoadCacheLine();
-
         link_memory.makeResp(tagged MEM_REPLY_LOAD_CACHELINE v);
+    endrule
 
+    rule get_mem_response_stline_sync (True);
+        let dummy <- client_stub.getResponse_StoreCacheLine_Sync();
+        link_memory.makeResp(tagged MEM_REPLY_STORE_CACHELINE_ACK True);
     endrule
 
 
-    // Get an invalidate request from the RRR service and pass it to anybody caching the memory.
+    //
+    // Pass invalidate and flush requests from the software side to local FPGA
+    // caches.
+    //
 
     rule get_invalidate_request (True);
+        // Number of lines comes in as a 32 bit quantity instead of 8 due to
+        // data packing in the channel.
+        MEM_INVAL_CACHELINE_INFO_RRR_HACK info <- server_stub.acceptRequest_Invalidate();
 
-        MEM_ADDRESS inval_addr <- server_stub.acceptRequest_Invalidate();
+        MEM_INVAL_CACHELINE_INFO inval_info;
+        inval_info.onlyFlush = info.onlyFlush;
+        inval_info.nLines = info.nLines;
+        inval_info.addr = info.addr;
 
-        link_memory_inval.send(inval_addr);
+        link_memory_inval.makeReq(inval_info);
+    endrule
 
+    rule get_invalidate_response (True);
+        link_memory_inval.deq();
+        server_stub.sendResponse_Invalidate(?);
+    endrule
+
+
+    rule get_invalidate_all_request (True);
+        let dummy <- server_stub.acceptRequest_InvalidateAll();
+        link_memory_inval_all.makeReq(?);
+    endrule
+
+    rule get_invalidate_all_response (True);
+        link_memory_inval_all.deq();
+        server_stub.sendResponse_InvalidateAll(?);
     endrule
 
 

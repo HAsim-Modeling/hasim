@@ -1,15 +1,19 @@
 //
-// INTEL CONFIDENTIAL
-// Copyright (c) 2008 Intel Corp.  Recipient is granted a non-sublicensable 
-// copyright license under Intel copyrights to copy and distribute this code 
-// internally only. This code is provided "AS IS" with no support and with no 
-// warranties of any kind, including warranties of MERCHANTABILITY,
-// FITNESS FOR ANY PARTICULAR PURPOSE or INTELLECTUAL PROPERTY INFRINGEMENT. 
-// By making any use of this code, Recipient agrees that no other licenses 
-// to any Intel patents, trade secrets, copyrights or other intellectual 
-// property rights are granted herein, and no other licenses shall arise by 
-// estoppel, implication or by operation of law. Recipient accepts all risks 
-// of use.
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
 // memstate_cache_direct_writethrough
@@ -110,8 +114,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
     Connection_Server#(MEM_REQUEST, MEM_VALUE)   link_memstate               <- mkConnection_Server("mem_cache");
     Connection_Client#(MEM_REQUEST, MEM_REPLY)   link_funcp_memory           <- mkConnection_Client("funcp_memory");
-    Connection_Receive#(MEM_ADDRESS)             link_funcp_memory_inval     <- mkConnection_Receive("funcp_memory_invalidate");
-    Connection_Server#(Bool, Bool)           link_funcp_memory_prep_for_emul <- mkConnection_Server("funcp_memory_prepare_to_emulate");
+    Connection_Server#(MEM_INVAL_CACHELINE_INFO, Bool) link_funcp_memory_inval <- mkConnection_Server("funcp_memory_cache_invalidate");
+    Connection_Server#(Bool, Bool)               link_funcp_memory_inval_all <- mkConnection_Server("funcp_memory_cache_invalidate_all");
 
     BRAM#(cache_SZ, Maybe#(CACHE_TAG))                   cache_tags <- mkBramInitialized(tagged Invalid);
     Vector#(CACHELINE_WORDS, BRAM#(cache_SZ, MEM_VALUE)) cache_data <- replicateM(mkBramInitialized(?));
@@ -124,6 +128,9 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
     Param#(1) enableCacheParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_ENABLE_FUNCP_MEM_CACHE);
     function Bool enableCache() = (enableCacheParam == 1);
+
+    Reg#(MEM_ADDRESS) invalidate_addr    <- mkRegU();
+    Reg#(UInt#(8))    invalidate_n_lines <- mkReg(0);
 
     // ***** Rules ***** //
 
@@ -165,6 +172,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         begin
             cache_tags.write(idx, tagged Invalid);
         end
+
+        pendingQ.deq();
     endrule
 
 
@@ -246,32 +255,55 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
 
     //
-    // invalidate --
-    //     Handle requests from hybrid memory (software-side) to invalidate
-    //     a specific address.
+    // invalidate / flush --
+    //     Handle requests from hybrid memory (software-side) to flush and
+    //     possibly invalidate a specific address.
     //    
-    rule invalidate (!invalidating_all);
-        MEM_ADDRESS addr = link_funcp_memory_inval.receive();
+    rule invalidate_req (!invalidating_all && invalidate_n_lines == 0);
+        MEM_INVAL_CACHELINE_INFO info = link_funcp_memory_inval.getReq();
         link_funcp_memory_inval.deq();
 
-        let idx = cacheIdx(addr);
+        if ((info.nLines == 0) || info.onlyFlush)
+        begin
+            link_funcp_memory_inval.makeResp(?);
+        end
+        else
+        begin
+            invalidate_addr <= info.addr;
+            invalidate_n_lines <= info.nLines;
+        end
+    endrule
+
+    rule invalidate_lines (!invalidating_all && invalidate_n_lines != 0);
+        let idx = cacheIdx(invalidate_addr);
 
         CACHE_ACCESS access;
-        access.req = tagged MEM_INVALIDATE_CACHELINE addr;
         access.idx = idx;
+        access.req = tagged MEM_INVALIDATE_CACHELINE invalidate_addr;
+
+        pendingQ.enq(access);
 
         cache_tags.readReq(idx);
-        cache_data[cacheLineOffset(addr)].readReq(idx);
+        cache_data[cacheLineOffset(invalidate_addr)].readReq(idx);
+
+        // Done?
+        if (invalidate_n_lines == 1)
+        begin
+            link_funcp_memory_inval.makeResp(?);
+        end
+
+        invalidate_addr <= invalidate_addr + (`FUNCP_CACHELINE_BITS / 8);
+        invalidate_n_lines <= invalidate_n_lines - 1;
     endrule
 
 
     //
-    // prepare_to_emulate --
-    //     Invoked by register state manager before calling the hybrid instruction
-    //     emulation service.
+    // invalidate_all_req --
+    //     Memory system may request invalidation of the entire cache if it
+    //     doesn't know which lines may need to be flushed.
     //
-    rule prepare_to_emulate (!invalidating_all && !waiting);
-        link_funcp_memory_prep_for_emul.deq();
+    rule invalidate_all_req (!invalidating_all && !waiting);
+        link_funcp_memory_inval_all.deq();
         invalidating_all <= True;
     endrule
 
@@ -281,7 +313,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         if (invalidate_iter == maxBound)
         begin
             invalidating_all <= False;
-            link_funcp_memory_prep_for_emul.makeResp(?);
+            link_funcp_memory_inval_all.makeResp(?);
         end
     endrule
 

@@ -28,6 +28,16 @@
 
 #define SERVICE_ID  FUNCP_MEMORY_SERVICE_ID
 
+#define CMD_LOAD                 0
+#define CMD_LOAD_CACHELINE       1
+#define CMD_STORE                2
+#define CMD_STORE_CACHELINE      3
+#define CMD_STORE_CACHELINE_SYNC 4
+#define CMD_VTOP                 5
+
+#define METHOD_ID_INVALIDATE     0
+#define METHOD_ID_INVALIDATE_ALL 1
+
 // DEBUG: temporary link to RRR client
 extern RRR_CLIENT globalRRRClient;
 
@@ -44,7 +54,10 @@ FUNCP_MEMORY_CLASS::FUNCP_MEMORY_CLASS() :
            "Awb parameters are inconsistent: MEMORY_STORE_INFO_SIZE != FUNCP_ISA_ADDR_SIZE + FUNCP_ISA_INT_REG_SIZE");
 
     ASSERT(MEMORY_STORE_CACHELINE_INFO_SIZE == FUNCP_ISA_ADDR_SIZE + FUNCP_CACHELINE_BITS,
-           "Awb parameters are inconsistent: MEMORY_STORE_INFO_SIZE != FUNCP_ISA_ADDR_SIZE + FUNCP_ISA_INT_REG_SIZE");
+           "Awb parameters are inconsistent: MEMORY_STORE_CACHELINE_INFO_SIZE != FUNCP_ISA_ADDR_SIZE + FUNCP_ISA_INT_REG_SIZE");
+
+    ASSERT(MEMORY_INVAL_CACHELINE_INFO_SIZE == FUNCP_ISA_ADDR_SIZE + 32,
+           "Awb parameters are inconsistent: MEMORY_INVAL_CACHELINE_INFO_SIZE != FUNCP_ISA_ADDR_SIZE + 32");
 
     // register with server's map table
     RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
@@ -105,6 +118,7 @@ UMF_MESSAGE
 FUNCP_MEMORY_CLASS::Request(
     UMF_MESSAGE req)
 {
+    bool need_response;
     MEM_ADDRESS addr;
     MEM_VALUE   data;
     MEM_VALUE   va;
@@ -181,25 +195,43 @@ FUNCP_MEMORY_CLASS::Request(
         break;
 
       case CMD_STORE_CACHELINE:
+      case CMD_STORE_CACHELINE_SYNC:
+        need_response = (req->GetMethodID() == CMD_STORE_CACHELINE_SYNC);
+
         // extract data
         req->ExtractBytes(sizeof(MEM_CACHELINE), (unsigned char *) &line);
         addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS)));
 
-        memory->Write(addr, sizeof(MEM_CACHELINE), &line);
         if (TRACING(1))
         {
-            T1("\tfuncp_memory: STline (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
+            T1("\tfuncp_memory: STline" << (need_response ? " SYNC " : "") << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
             for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
                 MEM_VALUE v = ((MEM_VALUE *)&line) [i];
                 T1("\t\t" << fmt_data(v));
             }
         }
 
+        memory->Write(addr, sizeof(MEM_CACHELINE), &line);
+
         // free
         req->Delete();
 
-        // no response
-        return NULL;
+        if (! need_response)
+        {
+            // no response
+            return NULL;
+        }
+        else
+        {
+            // create response message
+            resp = UMF_MESSAGE_CLASS::New();
+            resp->SetLength(4);
+            resp->SetMethodID(CMD_STORE_CACHELINE_SYNC);
+            resp->AppendUINT32(0);
+
+            // return response
+            return resp;
+        }
  
         break;
 
@@ -228,4 +260,109 @@ FUNCP_MEMORY_CLASS::Request(
     }
 
     return NULL;
+}
+
+
+//***********************************************************************
+//
+// FPGA-side cache management.  When simulated memory is modified or
+// read by software (e.g. instruction emulation) these routines flush
+// or invalidate the FPGA-side cache.
+//
+//***********************************************************************
+
+void
+FUNCP_MEMORY_CLASS::NoteSystemMemoryWriteUnknownAddr()
+{
+    instance.InvalidateAllCaches();
+}
+
+void
+FUNCP_MEMORY_CLASS::InvalidateAllCaches()
+{
+    T1("\tfuncp_memory: INVAL ALL");
+
+    // create message for RRR client
+    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
+    msg->SetLength(4);
+    msg->SetServiceID(SERVICE_ID);
+    msg->SetMethodID(METHOD_ID_INVALIDATE_ALL);
+    msg->AppendUINT32(0);
+
+    UMF_MESSAGE resp = RRRClient->MakeRequest(msg);
+
+    // Response indicates flush is done
+    resp->Delete();
+}
+
+
+void
+FUNCP_MEMORY_CLASS::NoteSystemMemoryRead(MEM_ADDRESS addr, MEM_ADDRESS size)
+{
+    instance.SystemMemoryRef(addr, size, false);
+}
+
+void
+FUNCP_MEMORY_CLASS::NoteSystemMemoryWrite(MEM_ADDRESS addr, MEM_ADDRESS size)
+{
+//    NoteSystemMemoryWriteUnknownAddr();
+    instance.SystemMemoryRef(addr, size, true);
+}
+
+void
+FUNCP_MEMORY_CLASS::SystemMemoryRef(MEM_ADDRESS addr, UINT64 size, bool isWrite)
+{
+    T1("\tfuncp_memory: Note system memory " << (isWrite ? "WRITE" : "READ") << " (Addr=" << fmt_addr(addr) << " bytes=" << fmt_addr(size) << ")");
+
+    MEM_ADDRESS endAddr = addr + size + sizeof(MEM_CACHELINE) - 1;
+
+    // Cache-line align the start and end address
+    addr &= ~ MEM_ADDRESS(sizeof(MEM_CACHELINE) - 1);
+    endAddr &= ~ MEM_ADDRESS(sizeof(MEM_CACHELINE) - 1);
+
+    UINT64 nLines = (endAddr - addr) / sizeof(MEM_CACHELINE);
+
+    //
+    // Number of lines per message is stored in 8 bits in FPGA messages.
+    // Generated messages to cover the range.
+    //
+    while (nLines > 0)
+    {
+        UINT8 tLines = (nLines < 0xffff) ? nLines : 0xffff;
+
+        // create message for RRR client
+        UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
+        msg->SetLength(sizeof(MEM_ADDRESS) + 4);
+        msg->SetServiceID(SERVICE_ID);
+        msg->SetMethodID(METHOD_ID_INVALIDATE);
+        msg->AppendUINT(addr, sizeof(addr));
+
+        // Number of lines is encoded as a byte, but passed as 32 bits to keep
+        // RRR happy.  Whether only flushing is required (without invalidating)
+        // is encoded in bit 8.
+        UINT32 lines_and_flush_bit = tLines;
+
+        if (isWrite)
+        {
+            // Flush pending stores & invalidate in preparation for writes.
+            T1("\tfuncp_memory: INVAL Addr=" << fmt_addr(addr) << " nLines=" << UINT32(tLines));
+        }
+        else
+        {
+            // Just flush pending stores for reads.  No need to invalidate.
+            lines_and_flush_bit |= 0x100;       // Only flush -- no invalidate
+            T1("\tfuncp_memory: FLUSH Addr=" << fmt_addr(addr) << " nLines=" << UINT32(tLines));
+        }
+
+        // Pass 8 bit tLines as 32 bits to keep channel I/O happy
+        msg->AppendUINT32(lines_and_flush_bit);
+
+        UMF_MESSAGE resp = RRRClient->MakeRequest(msg);
+
+        // Response indicates flush is done
+        resp->Delete();
+
+        addr += MEM_ADDRESS(tLines) * sizeof(MEM_CACHELINE);
+        nLines -= tLines;
+    }
 }

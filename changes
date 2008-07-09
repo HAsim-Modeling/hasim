@@ -13840,3 +13840,47 @@ Directory modules/common/modellib
 - fixed some $display's in the store buffer code.
 - added the PortControl interface to StallPorts. The current values
   are dummy, and probably just wrong.
+
+----------
+mcadler     Date: Wed Jul  9 07:23:42 EDT 2008  CSN: CSN-hasim-472
+                  Wed Jul  9 11:23:42 UTC 2008
+
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          471 
+ hybrid-basic-starter.h    Locally Modified          471 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          471 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/null
+ funcp-tlb-null.bsv        Locally Modified          471 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          471 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          471 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.bsv Locally Modified          471 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          471 
+ hybrid-funcp-memory.rrr   Locally Modified          471 
+ hybrid-funcp-memory-datatypes.bsv Locally Modified          471 
+ hybrid-funcp-memory.h     Locally Modified          471 
+ hybrid-funcp-memory.awb   Locally Modified          471 
+ hybrid-funcp-memory.bsv   Locally Modified          471 
+
+- Fix a couple of address alignment bugs in TLB quick path calls from regstate mgr.
+
+- Register state manager no longer invalidates caches before ISA emulation.
+  It is the emulator's responsibility to invalidate on write or just flush
+  dirty lines on read during software-side emulation.  There is an RRR method
+  for invalidating the whole cache for clueless software emulators.
+
+  Note:  invalidate all as a sw -> hw service is not well tested since no ISA
+  emulator currently uses it.
+
+- Improve heartbeat info. printing.

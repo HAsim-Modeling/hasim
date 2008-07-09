@@ -22,6 +22,7 @@ class STARTER_CLASS: public RRR_SERVICE_CLASS,
     struct timeval startTime;
 
     void EndSimulation(int exitValue);
+    void ProgressStats();
 
   public:
     STARTER_CLASS();
@@ -46,9 +47,11 @@ class STARTER_CLASS: public RRR_SERVICE_CLASS,
     // We can thus eliminate model start-up cycles from FMR.
     UINT64 fpga_start_cycle;
     UINT64 model_start_cycle;
+    UINT64 model_start_instrs;
 
     double latest_fmr;
-    struct timeval last_heartbeat_time;
+    struct timeval heartbeat_start_time;
+    struct timeval heartbeat_last_time;
 
     // Keep running totals of model cycles and committed instructions since
     // heartbeat provides total since last beat.

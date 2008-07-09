@@ -31,11 +31,6 @@ typedef struct {
     char _x[FUNCP_CACHELINE_BITS/8];
 } MEM_CACHELINE;
 
-#define CMD_LOAD            0
-#define CMD_LOAD_CACHELINE  1
-#define CMD_STORE           2
-#define CMD_STORE_CACHELINE 3
-#define CMD_VTOP            4
 
 class FUNCP_MEMORY_CLASS: public RRR_SERVICE_CLASS,
                           public PLATFORMS_MODULE_CLASS,
@@ -59,6 +54,17 @@ class FUNCP_MEMORY_CLASS: public RRR_SERVICE_CLASS,
     void    Cleanup();
     UMF_MESSAGE Request(UMF_MESSAGE);
     void    Poll();
+
+    //
+    // Incoming messages from the software side (e.g. instruction emulation)
+    // that may cause changes in the FPGA-side cache of simulated memory.
+    //
+    static void NoteSystemMemoryRead(MEM_ADDRESS addr, MEM_ADDRESS size);
+    static void NoteSystemMemoryWrite(MEM_ADDRESS addr, MEM_ADDRESS size);
+    static void NoteSystemMemoryWriteUnknownAddr();
+
+    void SystemMemoryRef(MEM_ADDRESS addr, UINT64 size, bool isWrite);
+    void InvalidateAllCaches();
 };
 
 #endif

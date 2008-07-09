@@ -32,6 +32,7 @@ STARTER_CLASS STARTER_CLASS::instance;
 STARTER_CLASS::STARTER_CLASS() :
     fpga_start_cycle(0),
     model_start_cycle(0),
+    model_start_instrs(0),
     latest_fmr(-1),
     instr_commits(0),
     model_cycles(0),
@@ -98,11 +99,11 @@ STARTER_CLASS::Request(
 
         if (success == 1)
         {
-            cout << "        starter: simulation completed successfully.";
+            cout << "        starter: completed successfully. ";
         }
         else
         {
-            cout << "        starter: simulation completed with errors.";
+            cout << "        starter: completed with errors.  ";
         }
 
         EndSimulation(success == 0);
@@ -114,12 +115,18 @@ STARTER_CLASS::Request(
         fpga_cycles = req->ExtractUINT64();
         req->Delete();
 
-        gettimeofday(&last_heartbeat_time, NULL);
+        gettimeofday(&heartbeat_last_time, NULL);
 
         if (fpga_start_cycle == 0)
         {
+            //
+            // First heartbeat, which is some distance in to the run.  Record
+            // first values seen so startup timing doesn't affect reported values.
+            //
             fpga_start_cycle = fpga_cycles;
             model_start_cycle = model_cycles;
+            model_start_instrs = instr_commits;
+            heartbeat_start_time = heartbeat_last_time;
         }
         else
         {
@@ -132,17 +139,11 @@ STARTER_CLASS::Request(
             next_progress_msg_cycle += globalArgs->ProgressMsgInterval();
 
             cout << "[" << std::setw(13) << fpga_cycles
-                 << "]: controller: model cycles: "
+                 << "]: model cycles: "
                  << std::setw(10) << model_cycles;
 
-            cout << " (IPC=" << IoFormat::fmt(".2f", (double)instr_commits / (double)model_cycles);
-            if (latest_fmr >= 0)
-            {
-                cout << " / FMR=" << IoFormat::fmt(".1f", latest_fmr);
-            }
-            cout << ")" << endl;
+            ProgressStats();
         }
-
 
         //
         // HW statistics counters are smaller than full counters to save
@@ -193,22 +194,7 @@ STARTER_CLASS::EndSimulation(int exitValue)
 
     if (model_cycles > 0)
     {
-        double sec = double(last_heartbeat_time.tv_sec) - double(startTime.tv_sec);
-        double usec = double(last_heartbeat_time.tv_usec) - double(startTime.tv_usec);
-        double heartbeat_run_time = sec + usec/1000000;
-
-        cout << "  (IPC=" << IoFormat::fmt(".2f", (double)instr_commits / (double)model_cycles);
-        if (latest_fmr >= 0)
-        {
-            cout << " / FMR=" << IoFormat::fmt(".1f", latest_fmr);
-        }   
-        cout << ")" << endl;
-
-        if (heartbeat_run_time > 0)
-        {
-            cout << "        starter: Instructions / second = "
-                 << IoFormat::fmt(".2f", (double)instr_commits / heartbeat_run_time) << endl;
-        }
+        ProgressStats();
     }
 
     cout << "         syncing... ";
@@ -223,6 +209,31 @@ STARTER_CLASS::EndSimulation(int exitValue)
     printf("         elapsed (wall-clock) time = %.4f seconds.\n", elapsed);
 
     CallbackExit(exitValue);
+}
+
+
+void
+STARTER_CLASS::ProgressStats()
+{
+    double sec = double(heartbeat_last_time.tv_sec) - double(heartbeat_start_time.tv_sec);
+    double usec = double(heartbeat_last_time.tv_usec) - double(heartbeat_start_time.tv_usec);
+    double heartbeat_run_time = sec + usec/1000000;
+
+    cout << " (IPC=" << IoFormat::fmt(".2f", (double)instr_commits / (double)model_cycles);
+
+    UINT64 commits = instr_commits - model_start_instrs;
+    if ((heartbeat_run_time > 0) && (commits > 0))
+    {
+        cout << " / IPS="
+             << IoFormat::fmt(".2f", (double)commits / heartbeat_run_time);
+    }
+
+    if (latest_fmr >= 0)
+    {
+        cout << " / FMR=" << IoFormat::fmt(".1f", latest_fmr);
+    }
+
+    cout << ")" << endl;
 }
 
 

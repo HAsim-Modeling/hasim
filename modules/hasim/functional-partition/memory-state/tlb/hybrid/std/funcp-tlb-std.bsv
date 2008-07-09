@@ -52,6 +52,15 @@ endinterface
 
 `define QUICK_CACHE_ENTRIES 8
 
+typedef union tagged
+{
+
+  MEM_ADDRESS SB_Hit;
+  void SB_Miss;
+
+}
+  RESP_PATH
+        deriving (Eq, Bits);    
 
 module [HASIM_MODULE] mkFUNCP_TLB
     // Interface:
@@ -68,6 +77,7 @@ module [HASIM_MODULE] mkFUNCP_TLB
     Connection_Client#(ISA_ADDRESS, MEM_ADDRESS) link_memory <- mkConnection_Client("funcp_memory_VtoP");
 
     FIFO#(ISA_ADDRESS) translateQ <- mkFIFO();
+    FIFO#(RESP_PATH)   pathQ <- mkSizedFIFO(8);
 
     Vector#(`QUICK_CACHE_ENTRIES, Reg#(Maybe#(ISA_ADDRESS))) lastVA <- replicateM(mkReg(tagged Invalid));
     Vector#(`QUICK_CACHE_ENTRIES, Reg#(MEM_ADDRESS)) lastPA <- replicateM(mkRegU());
@@ -194,7 +204,7 @@ module [HASIM_MODULE] mkFUNCP_TLB
             //
             printDebug($fwrite(debugLog, "Quick hit: VA 0x%x -> PA 0x%x", va, pa));
 
-            link_regstate.makeResp(tagged Valid pa);
+            pathQ.enq(tagged SB_Hit pa);
         end
         else if (victimVA matches tagged Valid .last_va &&& pageAlign(va) == last_va)
         begin
@@ -212,7 +222,7 @@ module [HASIM_MODULE] mkFUNCP_TLB
 
             printDebug($fwrite(debugLog, "Victim hit: VA 0x%x -> PA 0x%x", va, pa));
 
-            link_regstate.makeResp(tagged Valid pa);
+            pathQ.enq(tagged SB_Hit pa);
         end
         else
         begin
@@ -222,14 +232,16 @@ module [HASIM_MODULE] mkFUNCP_TLB
             ISA_ADDRESS alignedVA = pageAlign(va);
             link_memory.makeReq(alignedVA);
             translateQ.enq(va);
+            pathQ.enq(tagged SB_Miss);
         end
 
     endrule
 
-    rule translate_VtoP_response (True);
+    rule translate_VtoP_response (pathQ.first() matches tagged SB_Miss);
 
         let va = translateQ.first();
         translateQ.deq();
+        pathQ.deq();
 
         // pop a request from the link
         MEM_ADDRESS pa = link_memory.getResp();
@@ -267,6 +279,13 @@ module [HASIM_MODULE] mkFUNCP_TLB
 
     endrule
 
+    rule give_hit_response (pathQ.first() matches tagged SB_Hit .pa);
+
+        pathQ.deq();
+
+        link_regstate.makeResp(tagged Valid pa);
+
+    endrule
     // ***** Methods *****
 
     method Maybe#(MEM_ADDRESS) quickTranslateVA(ISA_ADDRESS va);

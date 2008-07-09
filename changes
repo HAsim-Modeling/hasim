@@ -13884,3 +13884,16 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
   emulator currently uses it.
 
 - Improve heartbeat info. printing.
+
+----------
+mpellaue    Date: Wed Jul  9 15:10:18 EDT 2008  CSN: CSN-hasim-473
+                  Wed Jul  9 19:10:18 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          472 
+
+
+Bugfix in the TLB where responses could come out of order.
+
+Michael P.

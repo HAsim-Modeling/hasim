@@ -1,6 +1,6 @@
 [Global]
 Description=Hardware Asim Base Library
-CSN=CSN-hasim-472
+CSN=CSN-hasim-473
 Name=hasim
 Tag=HEAD
 Lock=asim-hasim

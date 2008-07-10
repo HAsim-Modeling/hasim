@@ -224,9 +224,6 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
     // ***** Indexing functions *****
 
-    function CACHE_SET cacheSet(MEM_ADDRESS addr) = truncate(hashTo32(addr));
-
-
     function Bit#(cache_data_idx_SZ) getDataIdx (CACHE_SET set, CACHE_WAY way, CACHELINE_OFFSET offset);
 
         return pack(CACHE_DATA_IDX { set: set, way: way, offset: offset });
@@ -247,6 +244,14 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         Tuple3#(CACHE_TAG,CACHELINE_OFFSET,WORD_OFFSET) tup = unpack(addr);
         match { .tag, .cloff, .woff } = tup;
         return tag;
+
+    endfunction
+
+
+    function CACHE_SET cacheSet(MEM_ADDRESS addr);
+    
+        let tag = cacheTag(addr);
+        return truncate(hashTo32(tag));
 
     endfunction
 

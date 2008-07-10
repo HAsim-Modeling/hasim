@@ -13928,3 +13928,13 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
  hybrid-funcp-memory.cpp   Locally Modified          474 
 
 added brace brackets in switch stmt clause to avoid gcc-4 error
+
+----------
+mcadler     Date: Thu Jul 10 13:52:02 EDT 2008  CSN: CSN-hasim-476
+                  Thu Jul 10 17:52:02 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          475 
+
+Including line offset as input to cache set hash == bad idea.

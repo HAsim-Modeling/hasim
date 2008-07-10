@@ -51,7 +51,7 @@ import Vector::*;
 typedef Bit#(TLog#(TDiv#(`FUNCP_ISA_INT_REG_SIZE,8)))                           WORD_OFFSET;
 typedef Bit#(TLog#(TDiv#(`FUNCP_CACHELINE_BITS,`FUNCP_ISA_INT_REG_SIZE)))       CACHELINE_OFFSET;
 typedef Bit#(`FUNCP_CACHE_IDX_BITS)                                             CACHE_IDX;
-typedef Bit#(TSub#(`FUNCP_ISA_ADDR_SIZE,TAdd#(`FUNCP_CACHE_IDX_BITS,TLog#(TDiv#(`FUNCP_CACHELINE_BITS,8))))) CACHE_TAG;
+typedef Bit#(TSub#(`FUNCP_ISA_P_ADDR_SIZE,TAdd#(`FUNCP_CACHE_IDX_BITS,TLog#(TDiv#(`FUNCP_CACHELINE_BITS,8))))) CACHE_TAG;
 
 //
 // Request structure passed along the cache.

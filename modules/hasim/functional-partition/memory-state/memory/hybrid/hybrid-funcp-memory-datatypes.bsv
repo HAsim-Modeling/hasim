@@ -15,7 +15,7 @@ import Vector::*;
 
 // The address space the memory virtual device uses. A parameter by default.
 
-typedef FUNCP_ADDR MEM_ADDRESS;
+typedef FUNCP_PADDR MEM_ADDRESS;
 
 
 // MEM_VALUE
@@ -66,21 +66,6 @@ MEM_INVAL_CACHELINE_INFO
     deriving
         (Eq, Bits);
 
-//
-// This hack exists to get the data across RRR with an aligned object.  It
-// is used only at the interface.
-//
-typedef struct
-{
-    Bit#(23) unused;
-    Bool onlyFlush;
-    UInt#(8) nLines;
-    MEM_ADDRESS addr;
-}
-MEM_INVAL_CACHELINE_INFO_RRR_HACK
-    deriving
-        (Eq, Bits);
-
 
 typedef union tagged 
 {
@@ -98,6 +83,7 @@ MEM_REQUEST
     deriving
         (Eq, Bits);
 
+
 typedef union tagged 
 {
     MEM_VALUE     MEM_REPLY_LOAD;
@@ -108,3 +94,46 @@ MEM_REPLY
     deriving
         (Eq, Bits);
 
+
+
+// ***** RRR Datatype definitions *****
+
+//
+// Until RRR can deal with complex types that aren't aligned on 32 bit boundaries
+// we will use these types for passing data between HW and SW.  The types above
+// are compact for use on the FPGA.  The types below are expanded to simplify
+// data transfer.
+//
+
+typedef Bit#(64) MEM_ADDRESS_RRR;
+
+typedef struct
+{
+    MEM_ADDRESS_RRR addr;
+    MEM_VALUE val;
+}
+MEM_STORE_INFO_RRR
+    deriving
+        (Eq, Bits);
+
+
+typedef struct
+{
+    MEM_ADDRESS_RRR addr;
+    MEM_CACHELINE val;
+}
+MEM_STORE_CACHELINE_INFO_RRR
+    deriving
+        (Eq, Bits);
+
+
+typedef struct
+{
+    Bit#(23) unused;
+    Bool onlyFlush;             // Don't have to invalidate -- just flush stores
+    UInt#(8) nLines;
+    MEM_ADDRESS_RRR addr;
+}
+MEM_INVAL_CACHELINE_INFO_RRR
+    deriving
+        (Eq, Bits);

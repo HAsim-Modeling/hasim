@@ -22,19 +22,21 @@
 //
 #if (FUNCP_ISA_INT_REG_SIZE == 32)
 typedef UINT32 FUNCP_INT_REG;
-#elif (FUNCP_ISA_INT_REG_SIZE == 64)
-typedef UINT64 FUNCP_INT_REG;
 #else
-#error "invalid int reg value size"
+typedef UINT64 FUNCP_INT_REG;
 #endif
 
 //
 // Address size.  Also defines the PC size.
 //
-#if (FUNCP_ISA_ADDR_SIZE == 32)
-typedef UINT32 FUNCP_ADDR;
-#elif (FUNCP_ISA_ADDR_SIZE == 64)
-typedef UINT64 FUNCP_ADDR;
+#if (FUNCP_ISA_V_ADDR_SIZE == 32)
+typedef UINT32 FUNCP_VADDR;
 #else
-#error "invalid memory address size"
+typedef UINT64 FUNCP_VADDR;
+#endif
+
+#if (FUNCP_ISA_P_ADDR_SIZE == 32)
+typedef UINT32 FUNCP_PADDR;
+#else
+typedef UINT64 FUNCP_PADDR;
 #endif

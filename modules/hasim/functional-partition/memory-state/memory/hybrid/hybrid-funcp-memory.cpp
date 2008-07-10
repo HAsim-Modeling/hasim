@@ -50,14 +50,11 @@ FUNCP_MEMORY_CLASS::FUNCP_MEMORY_CLASS() :
 {
     SetTraceableName("funcp_memory");
 
-    ASSERT(MEMORY_STORE_INFO_SIZE == FUNCP_ISA_ADDR_SIZE + FUNCP_ISA_INT_REG_SIZE,
-           "Awb parameters are inconsistent: MEMORY_STORE_INFO_SIZE != FUNCP_ISA_ADDR_SIZE + FUNCP_ISA_INT_REG_SIZE");
+    ASSERT(MEMORY_STORE_INFO_SIZE == 64 + FUNCP_ISA_INT_REG_SIZE,
+           "Awb parameters are inconsistent: MEMORY_STORE_INFO_SIZE != 64 + FUNCP_ISA_INT_REG_SIZE");
 
-    ASSERT(MEMORY_STORE_CACHELINE_INFO_SIZE == FUNCP_ISA_ADDR_SIZE + FUNCP_CACHELINE_BITS,
-           "Awb parameters are inconsistent: MEMORY_STORE_CACHELINE_INFO_SIZE != FUNCP_ISA_ADDR_SIZE + FUNCP_ISA_INT_REG_SIZE");
-
-    ASSERT(MEMORY_INVAL_CACHELINE_INFO_SIZE == FUNCP_ISA_ADDR_SIZE + 32,
-           "Awb parameters are inconsistent: MEMORY_INVAL_CACHELINE_INFO_SIZE != FUNCP_ISA_ADDR_SIZE + 32");
+    ASSERT(MEMORY_STORE_CACHELINE_INFO_SIZE == 64 + FUNCP_CACHELINE_BITS,
+           "Awb parameters are inconsistent: MEMORY_STORE_CACHELINE_INFO_SIZE != 64 + FUNCP_ISA_INT_REG_SIZE");
 
     // register with server's map table
     RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
@@ -132,7 +129,7 @@ FUNCP_MEMORY_CLASS::Request(
     switch (req->GetMethodID())
     {
       case CMD_LOAD:
-        addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS)));
+        addr = MEM_ADDRESS(req->ExtractUINT64());
 
         // free
         req->Delete();
@@ -152,7 +149,7 @@ FUNCP_MEMORY_CLASS::Request(
         break;
 
       case CMD_LOAD_CACHELINE:
-        addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS)));
+        addr = MEM_ADDRESS(req->ExtractUINT64());
 
         // free
         req->Delete();
@@ -181,7 +178,7 @@ FUNCP_MEMORY_CLASS::Request(
       case CMD_STORE:
         // extract data
         data = MEM_VALUE(req->ExtractUINT(sizeof(MEM_VALUE)));
-        addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS)));
+        addr = MEM_ADDRESS(req->ExtractUINT64());
 
         memory->Write(addr, sizeof(MEM_VALUE), &data);
         T1("\tfuncp_memory: ST (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] <- " << fmt_data(data));
@@ -200,7 +197,7 @@ FUNCP_MEMORY_CLASS::Request(
 
         // extract data
         req->ExtractBytes(sizeof(MEM_CACHELINE), (unsigned char *) &line);
-        addr = MEM_ADDRESS(req->ExtractUINT(sizeof(MEM_ADDRESS)));
+        addr = MEM_ADDRESS(req->ExtractUINT64());
 
         if (TRACING(1))
         {
@@ -246,9 +243,9 @@ FUNCP_MEMORY_CLASS::Request(
 
         // create response message
         resp = UMF_MESSAGE_CLASS::New();
-        resp->SetLength(sizeof(MEM_ADDRESS));
+        resp->SetLength(8);
         resp->SetMethodID(CMD_VTOP);
-        resp->AppendBytes(sizeof(MEM_ADDRESS), (unsigned char *) &pa);
+        resp->AppendUINT64(pa);
 
         // return response
         return resp;
@@ -332,10 +329,10 @@ FUNCP_MEMORY_CLASS::SystemMemoryRef(MEM_ADDRESS addr, UINT64 size, bool isWrite)
 
         // create message for RRR client
         UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
-        msg->SetLength(sizeof(MEM_ADDRESS) + 4);
+        msg->SetLength(12);
         msg->SetServiceID(SERVICE_ID);
         msg->SetMethodID(METHOD_ID_INVALIDATE);
-        msg->AppendUINT(addr, sizeof(addr));
+        msg->AppendUINT64(addr);
 
         // Number of lines is encoded as a byte, but passed as 32 bits to keep
         // RRR happy.  Whether only flushing is required (without invalidating)

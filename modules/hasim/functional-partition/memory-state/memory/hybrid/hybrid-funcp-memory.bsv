@@ -44,27 +44,30 @@ module [HASIM_MODULE] mkFUNCP_Memory
         case (req) matches
             tagged MEM_LOAD .addr:
             begin
-                client_stub.makeRequest_Load(addr);
+                client_stub.makeRequest_Load(zeroExtend(addr));
             end
             
             tagged MEM_LOAD_CACHELINE .addr:
             begin
-                client_stub.makeRequest_LoadCacheLine(addr);
+                client_stub.makeRequest_LoadCacheLine(zeroExtend(addr));
             end
 
             tagged MEM_STORE .stinfo:
             begin
-                client_stub.makeRequest_Store(stinfo);
+                MEM_STORE_INFO_RRR st = MEM_STORE_INFO_RRR {addr: zeroExtend(stinfo.addr), val: stinfo.val};
+                client_stub.makeRequest_Store(st);
             end
 
             tagged MEM_STORE_CACHELINE .stinfo:
             begin
-                client_stub.makeRequest_StoreCacheLine(stinfo);
+                MEM_STORE_CACHELINE_INFO_RRR st = MEM_STORE_CACHELINE_INFO_RRR {addr: zeroExtend(stinfo.addr), val: stinfo.val};
+                client_stub.makeRequest_StoreCacheLine(st);
             end
 
             tagged MEM_STORE_CACHELINE_SYNC .stinfo:
             begin
-                client_stub.makeRequest_StoreCacheLine_Sync(stinfo);
+                MEM_STORE_CACHELINE_INFO_RRR st = MEM_STORE_CACHELINE_INFO_RRR {addr: zeroExtend(stinfo.addr), val: stinfo.val};
+                client_stub.makeRequest_StoreCacheLine_Sync(st);
             end
         endcase
 
@@ -96,12 +99,12 @@ module [HASIM_MODULE] mkFUNCP_Memory
     rule get_invalidate_request (True);
         // Number of lines comes in as a 32 bit quantity instead of 8 due to
         // data packing in the channel.
-        MEM_INVAL_CACHELINE_INFO_RRR_HACK info <- server_stub.acceptRequest_Invalidate();
+        MEM_INVAL_CACHELINE_INFO_RRR info <- server_stub.acceptRequest_Invalidate();
 
         MEM_INVAL_CACHELINE_INFO inval_info;
         inval_info.onlyFlush = info.onlyFlush;
         inval_info.nLines = info.nLines;
-        inval_info.addr = info.addr;
+        inval_info.addr = truncate(info.addr);
 
         link_memory_inval.makeReq(inval_info);
     endrule
@@ -138,8 +141,8 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
     rule translate_VtoP_response (True);
 
-        MEM_ADDRESS pa <- client_stub.getResponse_VtoP();
-        link_tlb.makeResp(pa);
+        let pa <- client_stub.getResponse_VtoP();
+        link_tlb.makeResp(truncate(pa));
 
     endrule
 

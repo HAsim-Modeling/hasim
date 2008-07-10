@@ -59,7 +59,7 @@ import Vector::*;
 
 typedef Bit#(TLog#(TDiv#(`FUNCP_ISA_INT_REG_SIZE,8)))  WORD_OFFSET;
 typedef Bit#(TLog#(CACHELINE_WORDS))                   CACHELINE_OFFSET;
-typedef Bit#(TSub#(`FUNCP_ISA_ADDR_SIZE,TLog#(TDiv#(`FUNCP_CACHELINE_BITS,8)))) CACHE_TAG;
+typedef Bit#(TSub#(`FUNCP_ISA_P_ADDR_SIZE,TLog#(TDiv#(`FUNCP_CACHELINE_BITS,8)))) CACHE_TAG;
 
 typedef Bit#(`FUNCP_CACHE_IDX_BITS) CACHE_SET;
 typedef UInt#(TLog#(`FUNCP_CACHE_WAYS)) CACHE_WAY;

@@ -25,7 +25,7 @@
 
 // types
 
-typedef FUNCP_ADDR      MEM_ADDRESS;
+typedef FUNCP_PADDR     MEM_ADDRESS;
 typedef FUNCP_INT_REG   MEM_VALUE;
 typedef struct {
     char _x[FUNCP_CACHELINE_BITS/8];

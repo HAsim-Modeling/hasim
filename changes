@@ -13938,3 +13938,42 @@ Directory modules/hasim/functional-partition/memory-state/cache/set-associative
  memstate-cache-set-assoc.bsv Locally Modified          475 
 
 Including line offset as input to cache set hash == bad idea.
+
+----------
+mcadler     Date: Thu Jul 10 15:54:40 EDT 2008  CSN: CSN-hasim-477
+                  Thu Jul 10 19:54:40 UTC 2008
+
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          476 
+ isa-emulator.rrr          Locally Modified          476 
+
+Directory modules/hasim/functional-partition/isa-emulator/null
+ null-isa-emulator-impl.h  Locally Modified          476 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          476 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          476 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.bsv Locally Modified          476 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          476 
+ hybrid-funcp-memory.rrr   Locally Modified          476 
+ hybrid-funcp-memory-datatypes.bsv Locally Modified          476 
+ hybrid-funcp-memory.h     Locally Modified          476 
+ hybrid-funcp-memory.awb   Locally Modified          476 
+ hybrid-funcp-memory.bsv   Locally Modified          476 
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.h        Locally Modified          476 
+ funcp-base-types.awb      Locally Modified          476 
+ funcp-base-types.bsv      Locally Modified          476 
+
+More careful separation of virtual and physical address sizes.  MEM_ADDRESS
+is passed between HW and SW through RRR as 64 bits, independent of the size
+of a physical address inside the FPGA.  This lets us choose physical address
+sizes between 32 and 64 bits.

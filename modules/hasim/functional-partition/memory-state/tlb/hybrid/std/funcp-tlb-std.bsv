@@ -143,9 +143,9 @@ module [HASIM_MODULE] mkFUNCP_TLB
 
     endfunction
 
-    function ISA_ADDRESS pageOffset(ISA_ADDRESS va);
+    function MEM_ADDRESS pageOffset(ISA_ADDRESS va);
     
-        return va & ~pageMask();
+        return truncate(va & ~pageMask());
     
     endfunction
 

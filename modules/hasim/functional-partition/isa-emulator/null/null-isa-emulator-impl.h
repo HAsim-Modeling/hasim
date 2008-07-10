@@ -37,9 +37,9 @@ class ISA_EMULATOR_IMPL_CLASS
     void SyncReg(ISA_REG_INDEX_CLASS rName, FUNCP_INT_REG rVal) {};
 
     ISA_EMULATOR_RESULT Emulate(
-        FUNCP_ADDR pc,
+        FUNCP_VADDR pc,
         ISA_INSTRUCTION inst,
-        FUNCP_ADDR *newPC)
+        FUNCP_VADDR *newPC)
     {
         //
         // At this point you could update register values in the hardware

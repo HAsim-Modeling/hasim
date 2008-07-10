@@ -11,7 +11,8 @@
 %public funcp-base-types.bsv
 
 %param FUNCP_ISA_INT_REG_SIZE 32    "Bits in an integer register"
-%param FUNCP_ISA_ADDR_SIZE    32    "Number of bits to address physical memory"
+%param FUNCP_ISA_V_ADDR_SIZE  32    "Number of bits to address virtual memory"
+%param FUNCP_ISA_P_ADDR_SIZE  32    "Number of bits to address physical memory"
 %param FUNCP_ISA_PAGE_SHIFT   13    "Low 0 bits in a physical page"
 
 %AWB_END

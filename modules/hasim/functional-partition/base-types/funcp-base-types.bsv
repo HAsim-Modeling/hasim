@@ -23,9 +23,14 @@
 typedef Bit#(`FUNCP_ISA_INT_REG_SIZE) FUNCP_INT_REG;
 
 //
+// Virtual address size.
+//
+typedef Bit#(`FUNCP_ISA_V_ADDR_SIZE) FUNCP_VADDR;
+
+//
 // Physical address size.
 //
-typedef Bit#(`FUNCP_ISA_ADDR_SIZE) FUNCP_ADDR;
+typedef Bit#(`FUNCP_ISA_P_ADDR_SIZE) FUNCP_PADDR;
 
 //
 // Page of memory

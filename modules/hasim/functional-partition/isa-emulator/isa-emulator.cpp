@@ -38,7 +38,7 @@ ISA_EMULATOR_CLASS::ISA_EMULATOR_CLASS() : emulator(NULL)
 {
     SetTraceableName("isa_emulator");
 
-    VERIFYX(sizeof(ISA_ADDRESS) == sizeof(FUNCP_ADDR));
+    VERIFYX(sizeof(ISA_ADDRESS) == sizeof(FUNCP_VADDR));
     VERIFYX(sizeof(ISA_VALUE) == sizeof(FUNCP_INT_REG));
 
     // register with server's map table
@@ -80,7 +80,7 @@ UMF_MESSAGE
 ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
 {
     FUNCP_INT_REG rVal;
-    FUNCP_ADDR pc;
+    FUNCP_VADDR pc;
     ISA_REG_INDEX_CLASS rName;
     ISA_INSTRUCTION inst;
 
@@ -129,7 +129,7 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
 
         T1("\tisa_emulator: Emulate PC " << fmt_regval(pc) << ", Inst " << fmt_inst(inst));
         
-        FUNCP_ADDR newPC;
+        FUNCP_VADDR newPC;
         ISA_EMULATOR_RESULT r = emulator->Emulate(pc, inst, &newPC);
 
         //

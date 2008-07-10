@@ -6,7 +6,7 @@ service ISA_EMULATOR
     server sw (cpp, method) <- hw (bsv, connection)
     {
         method sync(in RNAME_RVAL_TUPLE[RNAME_RVAL_TUPLE_BITS] rname_and_rval);
-        method emulate(in INST_ISA_ADDR_TUPLE[INST_ISA_ADDR_TUPLE_BITS] inst_and_pc, out ISA_ADDRESS[FUNCP_ISA_ADDR_SIZE] newPc);
+        method emulate(in INST_ISA_ADDR_TUPLE[INST_ISA_ADDR_TUPLE_BITS] inst_and_pc, out ISA_ADDRESS[FUNCP_ISA_V_ADDR_SIZE] newPc);
     };
 
     server hw (bsv, connection) <- sw (cpp, method)

@@ -23,8 +23,9 @@
 //
 
 function Bit#(32) hashTo32(Bit#(n) x)
-    // A very silly proviso required by the compiler: a__+32 == n+32
-    provisos(Add#(a__, 32, TAdd#(32, n)));
+    // A very silly pair of provisos required by the compiler: a__+32 == n+32
+    provisos(Add#(32, n, TAdd#(a__, 32)),
+             Add#(a__, 32, TAdd#(32, n)));
 
     //
     // Hash function really wants a 32 bit input.  Construct one.

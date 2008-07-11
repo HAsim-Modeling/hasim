@@ -14057,3 +14057,13 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
   with other cache options.
 - Software-side statistics receiver now confirms that a statistic appears at
   most once in the hardware.
+
+----------
+mcadler     Date: Fri Jul 11 11:27:11 EDT 2008  CSN: CSN-hasim-480
+                  Fri Jul 11 15:27:11 UTC 2008
+
+
+Directory modules/hasim/common/new-funcp
+ Hash.bsv                  Locally Modified          478 
+
+Bluespec 2008.06.E doesn't believe in commutivity for TAdd() in provisos.

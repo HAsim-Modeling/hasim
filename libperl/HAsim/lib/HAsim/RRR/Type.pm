@@ -1,8 +1,23 @@
-# *****************************************************************
-# *                                                               *
-# *   Copyright (c) (Fill in here)                                *
-# *                                                               *
-# *****************************************************************
+# *****************************************************************************
+# * Type.pm
+# *
+# * Copyright (C) 2008 Intel Corporation
+# *
+# * This program is free software; you can redistribute it and/or
+# * modify it under the terms of the GNU General Public License
+# * as published by the Free Software Foundation; either version 2
+# * of the License, or (at your option) any later version.
+# *
+# * This program is distributed in the hope that it will be useful,
+# * but WITHOUT ANY WARRANTY; without even the implied warranty of
+# * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# * GNU General Public License for more details.
+# *
+# * You should have received a copy of the GNU General Public License
+# * along with this program; if not, write to the Free Software
+# * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# *
+# *****************************************************************************
 
 #
 # Author:  Angshuman Parashar
@@ -154,6 +169,42 @@ sub print_bsv
         {
             die ref($self) . ": invalid, cannot print.";
         }
+    }
+}
+
+# return a string representing the type in CPP
+sub string_cpp
+{
+    # get object
+    my $self = shift;
+
+    if (defined($self->name()))
+    {
+        return $self->name();
+    }
+    else
+    {
+        die ref($self) . ": invalid, cannot extract string.";
+    }
+}
+
+# print a type in CPP format
+sub print_cpp
+{
+    # get object
+    my $self = shift;
+
+    # get file handle
+    my $file = shift;
+
+    # print into file
+    if (defined($self->name()))
+    {
+        print $file $self->name();
+    }
+    else
+    {
+        die ref($self) . ": invalid, cannot print.";
     }
 }
 

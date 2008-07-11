@@ -13977,3 +13977,42 @@ More careful separation of virtual and physical address sizes.  MEM_ADDRESS
 is passed between HW and SW through RRR as 64 bits, independent of the size
 of a physical address inside the FPGA.  This lets us choose physical address
 sizes between 32 and 64 bits.
+
+----------
+aparasha    Date: Thu Jul 10 21:39:13 EDT 2008  CSN: CSN-hasim-478
+                  Fri Jul 11 01:39:13 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Method/                   Locally Added               0 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ BSV.pm                    Locally Added               0 
+ CPP.pm                    Locally Added               0 
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Server.pm                 Locally Modified          477 
+ Collection.pm             Locally Modified          477 
+ Server/                   Locally Added               0 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Server
+ BSV.pm                    Locally Added               0 
+ CPP.pm                    Locally Added               0 
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Client.pm                 Locally Modified          477 
+ Method.pm                 Locally Modified          477 
+ Service.pm                Locally Modified          477 
+ Type.pm                   Locally Modified          477 
+ Argument.pm               Locally Modified          477 
+ Identifier.pm             Locally Modified          477 
+ Numeral.pm                Locally Modified          477 
+ Client/                   Locally Added               0 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Client
+ BSV.pm                    Locally Added               0 
+ CPP.pm                    Locally Added               0 
+
+- re-factored RRR Perl library to create structure for supporting
+  C++ stubs.
+- added Intel/GPL copyright headers to RRR Perl library files.

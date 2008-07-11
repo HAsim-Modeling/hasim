@@ -14067,3 +14067,18 @@ Directory modules/hasim/common/new-funcp
  Hash.bsv                  Locally Modified          478 
 
 Bluespec 2008.06.E doesn't believe in commutivity for TAdd() in provisos.
+
+----------
+jsemer      Date: Fri Jul 11 14:34:00 EDT 2008  CSN: CSN-hasim-481
+                  Fri Jul 11 18:34:00 UTC 2008
+
+
+Directory experiments/hasim
+ nightly/                  Locally Added               0 
+
+Directory experiments/hasim/nightly
+ nightly.models            Locally Added               0 
+ nightly.benchmarks        Locally Added               0 
+
+Added nightly regressions with the 'nightly' experiment name. Checkin 
+regressions still exist under the 'regression' experiment name. 

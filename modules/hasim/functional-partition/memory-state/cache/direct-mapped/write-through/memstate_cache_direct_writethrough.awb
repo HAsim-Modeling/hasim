@@ -7,5 +7,5 @@
 
 %public memstate_cache_direct_writethrough.bsv
 
-%param --dynamic ENABLE_FUNCP_MEM_CACHE  1        "Enable the functional partition's memory cache"
+%param --dynamic FUNCP_MEM_CACHE_ENABLE  1        "Enable the functional partition's memory cache"
 %param FUNCP_CACHE_IDX_BITS   11       "Number of index bits, which also determines size of cache."

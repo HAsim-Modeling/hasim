@@ -14016,3 +14016,44 @@ Directory libperl/HAsim/lib/HAsim/RRR/Client
 - re-factored RRR Perl library to create structure for supporting
   C++ stubs.
 - added Intel/GPL copyright headers to RRR Perl library files.
+
+----------
+mcadler     Date: Fri Jul 11 09:12:39 EDT 2008  CSN: CSN-hasim-479
+                  Fri Jul 11 13:12:39 UTC 2008
+
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          478 
+ stats-controller-hybrid.h Locally Modified          478 
+ stats-controller-hybrid.bsv Locally Modified          478 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          478 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/null
+ funcp-tlb-null.bsv        Locally Modified          478 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.dic         Locally Modified          478 
+ funcp-tlb-std.bsv         Locally Modified          478 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.awb Locally Modified          478 
+ memstate-cache-set-assoc.bsv Locally Modified          478 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.awb Locally Modified          478 
+ memstate_cache_direct_writethrough.bsv Locally Modified          478 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          478 
+
+- Split TLB into separate ITLB and DTLB.
+- Change TLB soft connection to the one upon which we agreed.  No takes a tuple
+  of token and address.  Kept quickTranslateVA() method to avoid modifying
+  regstate manager interface, but we'll drop the method after regstate manager
+  changes.
+- Rename option to turn off cache FUNCP_MEM_CACHE_ENABLE so it gets sorted
+  with other cache options.
+- Software-side statistics receiver now confirms that a statistic appears at
+  most once in the hardware.

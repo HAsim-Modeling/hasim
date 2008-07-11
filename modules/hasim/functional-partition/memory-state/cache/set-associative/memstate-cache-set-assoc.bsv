@@ -23,7 +23,7 @@
 //
 // Run-time parameters controlling behavior:
 //
-// ENABLE_FUNCP_MEM_CACHE:
+// FUNCP_MEM_CACHE_ENABLE:
 //   0: Cache disabled.  All requests bypass cache and go directly to memory.
 //   1: Cache enabled.
 //
@@ -147,7 +147,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     Reg#(CACHE_WAY)        flushWay <- mkReg(0);
     Reg#(MEM_CACHELINE)    flushLineData <- mkRegU();
 
-    Param#(1) enableCacheParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_ENABLE_FUNCP_MEM_CACHE);
+    Param#(1) enableCacheParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEM_CACHE_ENABLE);
     function Bool enableCache() = (enableCacheParam == 1);
 
     Param#(1) writeBackParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEM_CACHE_WRITE_BACK);

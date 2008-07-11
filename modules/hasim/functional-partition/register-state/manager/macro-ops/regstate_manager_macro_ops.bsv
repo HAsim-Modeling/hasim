@@ -116,8 +116,6 @@ module [HASim_Module] mkFUNCP_RegStateManager
     // The Freelist tracks which physical registers are available.
     let freelist <- mkFUNCP_Freelist(debugLog, fpgaCC);
 
-    let tlb <- mkFUNCP_TLB();
-
     // ******* Local State *******
 
     // Tables to track info about in-flight instructions.
@@ -324,7 +322,11 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     // Connection to TLB
 
-    Connection_Client#(ISA_ADDRESS, Maybe#(MEM_ADDRESS))       link_tlb <- mkConnection_Client("funcp_tlb");
+    let itlb <- mkFUNCP_TLB(FUNCP_ITLB, "funcp_itlb");
+    let dtlb <- mkFUNCP_TLB(FUNCP_DTLB, "funcp_dtlb");
+
+    Connection_Client#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS))       link_itlb <- mkConnection_Client("funcp_itlb");
+    Connection_Client#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS))       link_dtlb <- mkConnection_Client("funcp_dtlb");
 
     // Connection to Datapath.
 
@@ -465,7 +467,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         tokAddr.write(tok.index, addr);
 
         // Convert to physical
-        Maybe#(MEM_ADDRESS) m_addr = tlb.quickTranslateVA(isaAlignAddress(addr));
+        Maybe#(MEM_ADDRESS) m_addr = itlb.quickTranslateVA(tuple2(tok, isaAlignAddress(addr)));
         if (m_addr matches tagged Valid .mem_addr)
         begin
             //
@@ -489,7 +491,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             //
             // Need to talk the long TLB lookup path
             //
-            link_tlb.makeReq(isaAlignAddress(addr));
+            link_itlb.makeReq(tuple2(tok, isaAlignAddress(addr)));
             tlbPathQ.enq(PATH_INST);
             funcpDebug($fwrite(debugLog, "TOKEN %0d: FETCH: TLB lookup (VA: 0x%h)", tok.index, addr));
 
@@ -510,8 +512,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
         instTLBQ.deq();
         tlbPathQ.deq();
 
-        Maybe#(MEM_ADDRESS) translated_addr = link_tlb.getResp();
-        link_tlb.deq();
+        Maybe#(MEM_ADDRESS) translated_addr = link_itlb.getResp();
+        link_itlb.deq();
 
         assertNoPhysicalTranslation(isValid(translated_addr));
         MEM_ADDRESS mem_addr = fromMaybe(0, translated_addr);
@@ -1549,7 +1551,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let addr <- tokMemAddr.resp[0].read();
 
         // Convert to physical
-        Maybe#(MEM_ADDRESS) m_addr = tlb.quickTranslateVA(isaAlignAddress(addr));
+        Maybe#(MEM_ADDRESS) m_addr = dtlb.quickTranslateVA(tuple2(tok, isaAlignAddress(addr)));
         if (m_addr matches tagged Valid .mem_addr)
         begin
             //
@@ -1573,7 +1575,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             //
             // Need to talk the long TLB lookup path
             //
-            link_tlb.makeReq(isaAlignAddress(addr));
+            link_dtlb.makeReq(tuple2(tok, isaAlignAddress(addr)));
             tlbPathQ.enq(PATH_LOAD);
             funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads2: TLB lookup (VA: 0x%h)", tok.index, addr));
         
@@ -1598,8 +1600,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
         tlbPathQ.deq();
 
         // Get physical address from TLB
-        Maybe#(MEM_ADDRESS) translated_addr = link_tlb.getResp();
-        link_tlb.deq();
+        Maybe#(MEM_ADDRESS) translated_addr = link_dtlb.getResp();
+        link_dtlb.deq();
 
         assertNoPhysicalTranslation(isValid(translated_addr));
         MEM_ADDRESS mem_addr = fromMaybe(0, translated_addr);
@@ -1750,7 +1752,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
         let addr <- tokMemAddr.resp[1].read();
       
         // Convert address to physical
-        link_tlb.makeReq(isaAlignAddress(addr));
+        link_dtlb.makeReq(tuple2(tok, isaAlignAddress(addr)));
         tlbPathQ.enq(PATH_STORE);
 
         // Log it.
@@ -1777,8 +1779,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
       tlbPathQ.deq();
 
       // Get physical address from TLB
-      Maybe#(MEM_ADDRESS) translated_addr = link_tlb.getResp();
-      link_tlb.deq();
+      Maybe#(MEM_ADDRESS) translated_addr = link_dtlb.getResp();
+      link_dtlb.deq();
 
       assertNoPhysicalTranslation(isValid(translated_addr));
       MEM_ADDRESS mem_addr = fromMaybe(0, translated_addr);

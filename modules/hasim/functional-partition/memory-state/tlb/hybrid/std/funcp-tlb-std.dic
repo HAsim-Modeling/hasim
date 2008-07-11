@@ -12,4 +12,5 @@
 // of use.
 //
 
-def STATS.FUNCP_TLB.MISS    "FUNCP TLB: Misses";
+def STATS.FUNCP_TLB.I_MISS   "FUNCP ITLB: Misses";
+def STATS.FUNCP_TLB.D_MISS   "FUNCP DTLB: Misses";

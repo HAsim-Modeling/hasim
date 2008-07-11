@@ -10,7 +10,7 @@
 
 %param FUNCP_CACHE_LOGFILE_NAME "hasim_funcp_memcache.out" "Name of logfile for functional memory cache"
 
-%param --dynamic ENABLE_FUNCP_MEM_CACHE     1   "Enable the functional partition's memory cache"
+%param --dynamic FUNCP_MEM_CACHE_ENABLE     1   "Enable the functional partition's memory cache"
 %param --dynamic FUNCP_MEM_CACHE_WRITE_BACK 1   "1 for write-back, 0 for write-through"
 
 %param FUNCP_CACHE_IDX_BITS    9       "Number of set index bits, which also determines size of cache"

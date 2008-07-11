@@ -32,6 +32,24 @@
 `include "asim/provides/funcp_memory.bsh"
 
 
+//
+// TLB type (instruction or data)
+//
+typedef enum
+{
+  FUNCP_ITLB,
+  FUNCP_DTLB
+}
+  FUNCP_TLB_TYPE
+      deriving (Eq, Bits);
+
+
+//
+// Query passed to TLB server
+//
+typedef Tuple2#(TOKEN, ISA_ADDRESS) FUNCP_TLB_QUERY;
+
+
 interface FUNCP_TLB;
     
     //
@@ -39,12 +57,12 @@ interface FUNCP_TLB;
     // finds a hit in a small set of LUTs.  If the method returns false then
     // the caller should resort to making a request to the "funcp_tlb" server.
     //
-    method Maybe#(MEM_ADDRESS) quickTranslateVA(ISA_ADDRESS va);
+    method Maybe#(MEM_ADDRESS) quickTranslateVA(FUNCP_TLB_QUERY query);
     
 endinterface
 
 
-module [HASIM_MODULE] mkFUNCP_TLB
+module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType, String serverConn)
     // Interface:
         (FUNCP_TLB)
     provisos
@@ -53,10 +71,11 @@ module [HASIM_MODULE] mkFUNCP_TLB
    
     // ***** Local State *****
     
-    Connection_Server#(ISA_ADDRESS, Maybe#(MEM_ADDRESS)) link_regstate <- mkConnection_Server("funcp_tlb");
+    Connection_Server#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS)) link_regstate <- mkConnection_Server(serverConn);
 
     // Connection to memory translation service
-    Connection_Client#(ISA_ADDRESS, MEM_ADDRESS) link_memory <- mkConnection_Client("funcp_memory_VtoP");
+    let memory_link_name = (tlbType == FUNCP_ITLB) ? "funcp_memory_VtoP_I" : "funcp_memory_VtoP_D";
+    Connection_Client#(ISA_ADDRESS, MEM_ADDRESS) link_memory <- mkConnection_Client(memory_link_name);
 
 
     // ***** Internal functions *****
@@ -73,7 +92,7 @@ module [HASIM_MODULE] mkFUNCP_TLB
     rule translate_VtoP_request (True);
 
         // pop a request from the link
-        ISA_ADDRESS va = link_regstate.getReq();
+        match { .tok, .va } = link_regstate.getReq();
         link_regstate.deq();
 
         link_regstate.makeResp(doQuickTranslateVA(va));
@@ -83,8 +102,9 @@ module [HASIM_MODULE] mkFUNCP_TLB
 
     // ***** Methods *****
 
-    method Maybe#(MEM_ADDRESS) quickTranslateVA(ISA_ADDRESS va);
+    method Maybe#(MEM_ADDRESS) quickTranslateVA(FUNCP_TLB_QUERY query);
     
+        match { .tok, .va } = query;
         return doQuickTranslateVA(va);
 
     endmethod

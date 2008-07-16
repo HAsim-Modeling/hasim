@@ -1,40 +1,28 @@
-#/********************************************************************
-# *
-# * Awb module specification
-# *
-# *******************************************************************/
+%name New Hasim Common Library
+%desc New Hasim Common Library
+%provides hasim_common
+%requires hasim_modellib
+%requires platform_interface
+%requires smart_synth_boundaries
+%requires soft_connections
 
-#/*
-# %AWB_START
-#
-# %name New Hasim Common Library
-# %desc New Hasim Common Library
-# %provides hasim_common
-# %requires hasim_modellib
-# %requires platform_interface
-# %requires smart_synth_boundaries
-# %requires soft_connections
-#
-# %library lib/libasim/libasim.a
-#
-# %attributes hasim
-#
-# %public HASim.bsv Token.bsv BypassFIFO.bsv FPGAFIFOs.bsv Debug.bsv Assertions.bsv Hash.bsv backwards_compatability.bsv
-# %sources -t DICT -v PUBLIC hasim_common.dic
-# %private bluespec_common.prj
-#
-# %param TOKEN_INDEX_BITS 8 "Number of bits in a Token (8 = 256 in-flight instructions)."
-#
-# %param TOKEN_TIMEP_EPOCH_BITS 2 "Number of bits in timing model token epoch (2 = 4 in-flight branches)."
-# %param TOKEN_TIMEP_SCRATCHPAD_BITS 5 "Number of bits in timing model token scratchpad."
-#
-# %param TOKEN_FUNCP_EPOCH_BITS 2 "Number of bits in functional partition token epoch."
-# %param TOKEN_FUNCP_SCRATCHPAD_BITS 5 "Number of bits in functional partition token scratchpad."
-#
-# %param TOKEN_EVENTS_ENABLED True "Statically enable/disable Event logging (True/False)."
-# %param TOKEN_EVENTS_LOGFILE "hasim_events.out" "Name of Event logfile."
-#
-#
-# %AWB_END
-# */
+%library lib/libasim/libasim.a
 
+%attributes hasim
+
+%public HASim.bsv Token.bsv BypassFIFO.bsv FPGAFIFOs.bsv Debug.bsv Assertions.bsv Hash.bsv backwards_compatability.bsv
+%public regfile_initialized.bsv
+
+%sources -t DICT -v PUBLIC hasim_common.dic
+%private bluespec_common.prj
+
+%param TOKEN_INDEX_BITS 8 "Number of bits in a Token (8 = 256 in-flight instructions)."
+
+%param TOKEN_TIMEP_EPOCH_BITS 2 "Number of bits in timing model token epoch (2 = 4 in-flight branches)."
+%param TOKEN_TIMEP_SCRATCHPAD_BITS 5 "Number of bits in timing model token scratchpad."
+
+%param TOKEN_FUNCP_EPOCH_BITS 2 "Number of bits in functional partition token epoch."
+%param TOKEN_FUNCP_SCRATCHPAD_BITS 5 "Number of bits in functional partition token scratchpad."
+
+%param TOKEN_EVENTS_ENABLED True "Statically enable/disable Event logging (True/False)."
+%param TOKEN_EVENTS_LOGFILE "hasim_events.out" "Name of Event logfile."

@@ -1,0 +1,7 @@
+%name Functional Partition Interface
+%desc Functional Partition Interface
+
+%provides funcp_interface
+%attributes hasim funcp
+
+%public funcp-timing-interface.bsv

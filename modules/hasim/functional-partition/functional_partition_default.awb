@@ -1,29 +1,16 @@
-#/********************************************************************
-# *
-# * Awb module specification
-# *
-# *******************************************************************/
+%name Functional Partition Version 3
+%desc Functional Partition Version 3
 
-#/*
-# %AWB_START
-#
-# %name Functional Partition Version 3
-# %desc Functional Partition Version 3
-#
-# %provides hasim_funcp
-# 
-# %requires funcp_base_types
-# %requires funcp_regstate
-# %requires funcp_memstate
-# %requires hasim_isa_semantics
-#
-# %attributes hasim funcp
-#
-# %public functional_partition_default.bsv
-#
-# %param SYNTH_BOUNDARY mkFUNCP "Name of synthesis boundary"
-#
-#
-# %AWB_END
-# */
+%provides hasim_funcp
 
+%requires funcp_base_types
+%requires funcp_interface
+%requires funcp_regstate
+%requires funcp_memstate
+%requires hasim_isa_semantics
+
+%attributes hasim funcp
+
+%public functional_partition_default.bsv
+
+%param SYNTH_BOUNDARY mkFUNCP "Name of synthesis boundary"

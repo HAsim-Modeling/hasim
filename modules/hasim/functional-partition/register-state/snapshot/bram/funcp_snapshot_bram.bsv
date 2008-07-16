@@ -6,10 +6,10 @@ import Vector::*;
 
 interface Snapshot#(numeric type rname_SZ);
 
-    method Action makeSnapshot(TOKEN_INDEX tokIndex, Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX) newMap, FUNCP_PHYSICAL_REG_INDEX currPhysReg);
+    method Action makeSnapshot(TOKEN_INDEX tokIndex, Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX) newMap);
     method Action requestSnapshot(FUNCP_SNAPSHOT_INDEX tokIndex);
     method Maybe#(FUNCP_SNAPSHOT_INDEX) hasSnapshot(TOKEN_INDEX tokIndex);
-    method ActionValue#(Tuple2#(Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX), FUNCP_PHYSICAL_REG_INDEX)) returnSnapshot();
+    method ActionValue#(Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX)) returnSnapshot();
 
 endinterface
 
@@ -36,14 +36,10 @@ module mkSnapshot
     // The actual snapshots of the entire maptable.
     BRAM#(snapshotptr_SZ, Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX)) snaps <- mkBramInitialized(?);
 
-    // An additional snapshot of the location of the freelist.
-    BRAM#(snapshotptr_SZ, FUNCP_PHYSICAL_REG_INDEX)                         snapsFL <- mkBramInitialized(?);
-
-    method Action makeSnapshot(TOKEN_INDEX tokIndex, Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX) newMap, FUNCP_PHYSICAL_REG_INDEX currPhysReg);
+    method Action makeSnapshot(TOKEN_INDEX tokIndex, Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX) newMap);
         snapValids[tokIndex] <= True;
         snapIDs[snapNext] <= tokIndex;
         snaps.write(snapNext, newMap);
-        snapsFL.write(snapNext, currPhysReg);
         snapNext <= snapNext + 1;
     endmethod
 
@@ -75,15 +71,14 @@ module mkSnapshot
     
         // Retrieve the snapshots.
         snaps.readReq(idx);
-        snapsFL.readReq(idx);
 
     endmethod
 
-    method ActionValue#(Tuple2#(Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX), FUNCP_PHYSICAL_REG_INDEX)) returnSnapshot();
-        let snp_map <- snaps.readResp();
-        let snp_fl  <- snapsFL.readResp();
+    method ActionValue#(Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX)) returnSnapshot();
 
-        return tuple2(snp_map, snp_fl);
+        let snp_map <- snaps.readResp();
+        return snp_map;
+
     endmethod
 
 endmodule

@@ -14082,3 +14082,51 @@ Directory experiments/hasim/nightly
 
 Added nightly regressions with the 'nightly' experiment name. Checkin 
 regressions still exist under the 'regression' experiment name. 
+
+----------
+mcadler     Date: Wed Jul 16 18:25:06 EDT 2008  CSN: CSN-hasim-482
+                  Wed Jul 16 22:25:06 UTC 2008
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          481 
+
+Directory modules/hasim/controller/command_switches
+ standard-command-switches.cpp Locally Modified          481 
+
+Directory modules/hasim/common/new-funcp
+ hasim_common_newfuncp.awb Locally Modified          481 
+ regfile_initialized.bsv   Locally Added               0 
+
+Directory modules/hasim/functional-partition
+ interface/                Locally Added               0 
+
+Directory modules/hasim/functional-partition/interface
+ funcp-interface.awb       Locally Added               0 
+ funcp-timing-interface.bsv Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/snapshot/bram
+ funcp_snapshot_bram.bsv   Locally Modified          481 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          481 
+ manager.dic               Locally Modified          481 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          481 
+
+Directory modules/hasim/functional-partition
+ functional_partition_default.awb Locally Modified          481 
+
+- Implement slow rewind.  Moved register freelist pointer from snapshot
+  to regstate manager, since it is needed for fast snapshot-based rewinds
+  and slow rewinds.
+- Add a module that holds just interface classes for communication between
+  timing models and the functional partition (interface/funcp-timing-interface.bsv).
+  Instead of passing tuples we will start to pass structs so fields can be
+  added without having to modify all timing models.
+- Add mkRegFileInitialized() and mkRegFileFullInitialized.  Same interface
+  as standard Bluespec types but initializes the RegFile before first use.
+- Fix off-by-one error in command line parsing of quoted arguments that have
+  escapes.  This was breaking mcf and any other benchmark with command line
+  arguments.

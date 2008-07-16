@@ -328,7 +328,7 @@ vexe = env.Command(
     APM_NAME + '_hw.vexe',
     vbin + SW_EXE,
     [ '@echo "#!/bin/sh" > $TARGET',
-      '@echo "' + env['DEFS']['BUILD_DIR'] + '/$SOURCE +bscvcd \$*" >> $TARGET',
+      '@echo "./$SOURCE +bscvcd \$*" >> $TARGET',
       '@chmod a+x $TARGET',
       '@ln -fs ' + SW_EXE_OR_TARGET + ' ' + APM_NAME,
       Delete(APM_NAME + '_hw.exe'),

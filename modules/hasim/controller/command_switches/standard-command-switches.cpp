@@ -252,7 +252,7 @@ GLOBAL_ARGS_CLASS::ParseStringToArgs(const string& line)
             else
             {
                 // A single quoted word.  Drop trailing quote
-                item = item.substr(1, lastItemPosition-1);
+                item = item.substr(0, lastItemPosition);
             }
         }
 

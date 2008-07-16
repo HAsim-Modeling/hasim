@@ -215,7 +215,10 @@ module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
 
         // Check for errors.
         if(flRead > flWrite && r < flWrite || flRead < flWrite && r < flWrite && r > flRead)
+        begin
+            $fdisplay(debugLog, "ERROR: Backed up the freelist too far! (r = %0d, flRead = %0d, flWrite = %0d)", r, flRead, flWrite);
             $display("ERROR: Backed up the freelist too far! (r = %0d)", r);
+        end
 
         // Update the pointer.
         backToEn <= True;

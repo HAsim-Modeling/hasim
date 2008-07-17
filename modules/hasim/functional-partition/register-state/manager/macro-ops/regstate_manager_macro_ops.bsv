@@ -1746,7 +1746,7 @@ module [HASim_Module] mkFUNCP_RegStateManager
             funcpDebug($fwrite(debugLog, "TOKEN %0d: doStores1: Ignoring emulated instruction.", tok.index));
 
             // Respond to the timing model. End of macro-operation.
-            linkDoLoads.makeResp(tok);
+            linkDoStores.makeResp(tok);
 
         end
         else // Everything's fine.

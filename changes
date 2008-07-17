@@ -14130,3 +14130,16 @@ Directory modules/hasim/functional-partition
 - Fix off-by-one error in command line parsing of quoted arguments that have
   escapes.  This was breaking mcf and any other benchmark with command line
   arguments.
+
+----------
+mpellaue    Date: Thu Jul 17 14:53:33 EDT 2008  CSN: CSN-hasim-483
+                  Thu Jul 17 18:53:33 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          482 
+
+
+Fix a copy-and-paste bug in the functional partition.
+
+Michael P.

@@ -8,42 +8,43 @@
 //                                                                           //
 ///////////////////////////////////////////////////////////////////////////////
 
-typedef Bit#(`HASIM_TOK_INDEX_BITS) TokIndex;
+typedef Bit#(`TOKEN_INDEX_BITS) TOKEN_INDEX;
 
-typedef Bit#(`HASIM_TIMEP_EPOCH_BITS) TIMEP_Epoch;
-typedef Bit#(`HASIM_TIMEP_SCRATCHPAD_BITS) TIMEP_Scratchpad;
+typedef Bit#(`TOKEN_TIMEP_EPOCH_BITS)      TOKEN_TIMEP_EPOCH;
+typedef Bit#(`TOKEN_TIMEP_SCRATCHPAD_BITS) TOKEN_TIMEP_SCRATCHPAD;
 
-typedef Bit#(`HASIM_FUNCP_EPOCH_BITS) FUNCP_Epoch;
-typedef Bit#(`HASIM_FUNCP_SCRATCHPAD_BITS)FUNCP_Scratchpad;
+typedef Bit#(`TOKEN_FUNCP_EPOCH_BITS)     TOKEN_FUNCP_EPOCH;
+typedef Bit#(`TOKEN_FUNCP_SCRATCHPAD_BITS)TOKEN_FUNCP_SCRATCHPAD;
 
 typedef struct
 {
-  TIMEP_Epoch   epoch;
-  TIMEP_Scratchpad scratchpad;
+    TOKEN_TIMEP_EPOCH      epoch;
+    TOKEN_TIMEP_SCRATCHPAD scratchpad;
 }
-  TIMEP_TokInfo 
+    TOKEN_TIMEP_INFO 
+        deriving 
+            (Eq, Bits);
+
+typedef struct
+{
+    TOKEN_FUNCP_EPOCH      epoch;
+    TOKEN_FUNCP_SCRATCHPAD scratchpad;
+}
+  TOKEN_FUNCP_INFO 
     deriving (Eq, Bits);
 
 typedef struct
 {
-  FUNCP_Epoch   epoch;
-  FUNCP_Scratchpad scratchpad;
+  TOKEN_INDEX       index;
+  TOKEN_TIMEP_INFO  timep_info;
+  TOKEN_FUNCP_INFO  funcp_info;
 }
-  FUNCP_TokInfo 
-    deriving (Eq, Bits);
-
-typedef struct
-{
-  TokIndex          index;
-  TIMEP_TokInfo     timep_info;
-  FUNCP_TokInfo     funcp_info;
-}
-  Token 
+  TOKEN 
     deriving (Eq, Bits);
 
 //isOlder: predicated on the idea that only half the tokens are in flight at once.
 
-function Bool isOlder(TokIndex t1, TokIndex t2);
+function Bool isOlder(TOKEN_INDEX t1, TOKEN_INDEX t2);
 
   return (t1 - t2) > (t2 - t1);
 

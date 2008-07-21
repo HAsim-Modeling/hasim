@@ -14143,3 +14143,45 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 Fix a copy-and-paste bug in the functional partition.
 
 Michael P.
+
+----------
+mcadler     Date: Mon Jul 21 16:38:23 EDT 2008  CSN: CSN-hasim-484
+                  Mon Jul 21 20:38:23 UTC 2008
+
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Modified          483 
+
+Directory modules/hasim
+ common/                   Locally Removed           483 
+
+Directory modules/hasim/common
+ new-funcp/                Locally Removed           483 
+
+Directory modules/hasim/common/new-funcp
+ Debug.bsv                 Locally Removed           483 
+ Assertions.bsv            Locally Removed           483 
+ bluespec_common.prj       Locally Removed           483 
+ hasim_common_newfuncp.awb Locally Removed           483 
+ hasim_common.dic          Locally Removed           483 
+ Token.bsv                 Locally Removed           483 
+ HASim.bsv                 Locally Removed           483 
+ backwards_compatability.bsv Locally Removed           483 
+ regfile_initialized.bsv   Locally Removed           483 
+ Hash.bsv                  Locally Removed           483 
+ FPGAFIFOs.bsv             Locally Removed           483 
+ BypassFIFO.bsv            Locally Removed           483 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          483 
+ Assertions.bsv            Locally Modified          483 
+ HASim.bsv                 Locally Modified          483 
+ regfile_initialized.bsv   Locally Added               - 
+ FPGAFIFOs.bsv             Locally Modified          483 
+ bluespec_common.prj       Locally Modified          483 
+ Token.bsv                 Locally Modified          483 
+ backwards_compatability.bsv Locally Added               - 
+ Hash.bsv                  Locally Added               - 
+
+Remove duplicate offerings of hasim_common.  Replace older one with copy
+from new-funcp.

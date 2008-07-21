@@ -10,7 +10,7 @@ Class=Asim::Model
 
 [Model]
 DefaultAttributes=hasim
-model=New Hasim Common Library
+model=Hasim Common Library
 
 [Hasim Modeling Library]
 File=modules/common/modellib/hasim_modellib.awb
@@ -35,11 +35,11 @@ Packagehint=hasim
 File=modules/common/platform_interface/hasim/hasim-platform-interface.awb
 Packagehint=hasim
 
-[New Hasim Common Library]
-File=modules/hasim/common/new-funcp/hasim_common_newfuncp.awb
+[Hasim Common Library]
+File=modules/common/hasim_common.awb
 Packagehint=hasim
 
-[New Hasim Common Library/Requires]
+[Hasim Common Library/Requires]
 smart_synth_boundaries=Smart Synthesis Boundaries
 platform_interface=Hasim Platform Interface
 soft_connections=Soft Connections

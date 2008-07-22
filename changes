@@ -14185,3 +14185,13 @@ Directory modules/common
 
 Remove duplicate offerings of hasim_common.  Replace older one with copy
 from new-funcp.
+
+----------
+mvijayar    Date: Tue Jul 22 15:10:39 EDT 2008  CSN: CSN-hasim-485
+                  Tue Jul 22 19:10:39 UTC 2008
+
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Modified          484 
+
+Uses a Bit#(5) for epoch , as the timing model can handle 32 outstanding mispredicts

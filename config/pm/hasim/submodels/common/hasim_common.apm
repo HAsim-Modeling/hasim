@@ -47,3 +47,7 @@ hasim_modellib=Hasim Modeling Library
 
 [Soft Connections/Params]
 CON_CWIDTH=400
+
+[New Hasim Common Library/Params]
+TOKEN_TIMEP_EPOCH_BITS=5
+TOKEN_FUNCP_EPOCH_BITS=5

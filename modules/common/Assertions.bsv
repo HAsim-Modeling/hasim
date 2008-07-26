@@ -1,5 +1,24 @@
-import FIFO::*;
+//
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+
+import Vector::*;
 import FIFOF::*;
+
 `include "asim/dict/RINGID.bsh"
 `include "asim/dict/ASSERTIONS.bsh"
 
@@ -14,12 +33,14 @@ import FIFOF::*;
 
 typedef enum
 {
-  ASSERT_MESSAGE,
-  ASSERT_WARNING,
-  ASSERT_ERROR
+    ASSERT_NONE,
+    ASSERT_MESSAGE,
+    ASSERT_WARNING,
+    ASSERT_ERROR
 }
-  ASSERTION_SEVERITY 
-                    deriving (Eq, Bits);
+    ASSERTION_SEVERITY 
+        deriving (Eq, Bits);
+
 
 instance Ord#(ASSERTION_SEVERITY);
 
@@ -33,88 +54,164 @@ instance Ord#(ASSERTION_SEVERITY);
 
 endinstance
 
+
 // Assertion
 
 // The interface checks if a boolean expression is true or false.
 
-typedef function Action checkAssert(Bool b) Assertion;
+typedef function Action checkAssert(Bool b) ASSERTION;
   
 // ASSERTION_DATA
 
-// Internal datatype for communicating with the AssertionsController
+// Vector of severity values for assertions baseID + index
+typedef Vector#(`ASSERTIONS_PER_NODE, ASSERTION_SEVERITY) ASSERTION_NODE_VECTOR;
 
-
+// Internal datatype for communicating with the assertions controller
 typedef struct
 {
-  ASSERTIONS_DICT_TYPE  assertID;
-  ASSERTION_SEVERITY severity;
+    ASSERTION_NODE_VECTOR assertions;
+    ASSERTIONS_DICT_TYPE baseID;
 }
-  ASSERTION_DATA
-             deriving (Eq, Bits);
+    ASSERTION_DATA
+        deriving (Eq, Bits);
 
-// mkAssertionChecker
-
-// Make a module which checks one assertion.
-// The assert() method should be called with the condition to check.
-
-module [Connected_Module] mkAssertionChecker#(ASSERTIONS_DICT_TYPE myID, ASSERTION_SEVERITY my_severity)
-  // interface:
-               (Assertion);
-
-  // *********** Connections ***********
-
-  // Connection to the assertions controller
-  Connection_Chain#(ASSERTION_DATA) chain <- mkConnection_Chain(`RINGID_ASSERTS);
+interface ASSERTION_NODE;
+            
+    method Action raiseAssertion(ASSERTIONS_DICT_TYPE myID, ASSERTION_SEVERITY mySeverity);
     
+endinterface
 
-  Reg#(Maybe#(ASSERTION_DATA)) localAssert <- mkReg(Invalid);
+//
+// mkAssertionNode --
+//     An assertion node is a group of assertions sharing a node on the
+//     assertion ring.  Each assertion must be a member of a node in order
+//     to pass the assertion to software.  Up to ASSERTIONS_PER_NODE assertions
+//     may be allocated for a given node.  These assertions must be numerically
+//     related to the node by sharing the same base identifier.  This sharing
+//     is managed automatically by the dictionary builder.  An assertion named
+//     ASSERTIONS.FOO.BAR in the dictionary gets an ID ASSERTIONS_FOO_BAR and
+//     belongs to node ID ASSERTIONS_FOO__BASE.
+//
+module [Connected_Module] mkAssertionNode#(ASSERTIONS_DICT_TYPE baseID)
+    // interface:
+        (ASSERTION_NODE);
 
-  // *********** Rules ***********
+    // *********** Connections ***********
 
-  (* descending_urgency= "processLocal, processCmd" *)
+    // Connection to the assertions controller
+    Connection_Chain#(ASSERTION_DATA) chain <- mkConnection_Chain(`RINGID_ASSERTS);
 
-  // processLocal
-  
-  // Process a local assertion
-  
-  rule processLocal (localAssert matches tagged Valid .ast);
-  
-    chain.send_to_next(ast);
-    localAssert <= tagged Invalid;
+    // DWires from individual assertions
+    Vector#(`ASSERTIONS_PER_NODE, Wire#(ASSERTION_SEVERITY)) raise <- replicateM(mkDWire(ASSERT_NONE));
 
-  endrule
+    // Queue of assertions to raise.  When an assertion gets raised there are
+    // 2 cycles of accurate assertion groupings.  If the FIFO fills, assertions
+    // are held in a single register until they can be sent out.  Thus 3 firings
+    // of an assertion are guaranteed. Beyond that, multiple firings may be
+    // merged into a single firing.
+    FIFOF#(ASSERTION_NODE_VECTOR) assertQ <- mkSizedFIFOF(2);
+    Reg#(ASSERTION_NODE_VECTOR) pendingAsserts <- mkReg(replicate(ASSERT_NONE));
 
-  // processCmd
-  
-  // Process a message from the controller
-  
-  rule processCmd (True);
-  
-    ASSERTION_DATA ast <- chain.receive_from_prev();
-    chain.send_to_next(ast);
+    // *********** Rules ***********
 
-  endrule
+    function Bool isSet(ASSERTION_SEVERITY a) = (a != ASSERT_NONE);
 
-  // *********** Methods ***********
-  
-  // assert
-  
-  // Check the boolean expression and enqueue a pass/fail.
-  
-  function Action assert_function(Bool b);
-  action
-  
-    // Don't write directly to the ring in the checker so rules with assertions
-    // don't need to schedule around the ring.
+    (* conflict_free = "detectLocal, processLocal" *)
+
     //
-    if (!b && !isValid(localAssert)) // Check the boolean expression
-    begin   // Failed. The system is sad. :(
-      localAssert <= tagged Valid ASSERTION_DATA {assertID: myID, severity: my_severity};
-    end
+    // detectLocal --
+    //     Detect raised assertion(s) for a single cycle.  If possible, queue the
+    //     assertion(s) for delivery to the assertions controller.  If the queue
+    //     is full store the assertion(s) for later delivery.
+    //
+    rule detectLocal (True);
 
-  endaction
-  endfunction
+        //
+        // Merge new assertions this cycle and any pending assertions not yet
+        // queued.
+        //
+        ASSERTION_NODE_VECTOR a = ?;
+        for (Integer e = 0; e < `ASSERTIONS_PER_NODE; e = e + 1)
+        begin
+            a[e] = unpack(pack(raise[e]) | pack(pendingAsserts[e]));
+        end
+        
+        if (any(isSet, a))
+        begin
+            if (assertQ.notFull())
+            begin
+                assertQ.enq(a);
+                pendingAsserts <= replicate(ASSERT_NONE);
+            end
+            else
+            begin
+                pendingAsserts <= a;
+            end
+        end
+        
+    endrule
+
+
+    //
+    // processLocal --
+    //     Send local assertions to the controller.
+    //
+    rule processLocal (assertQ.notEmpty());
+
+        let a = assertQ.first();
+        assertQ.deq();
+
+        let ast = ASSERTION_DATA { assertions: a, baseID: baseID };
+        chain.send_to_next(ast);
+
+    endrule
+
+    //
+    // processCmd --
+    //     Forward assertions from other nodes to the controller.
+    //
+    rule processCmd (! assertQ.notEmpty());
+
+        ASSERTION_DATA ast <- chain.receive_from_prev();
+        chain.send_to_next(ast);
+
+    endrule
+
+
+    // *********** Methods ***********
+
+    method Action raiseAssertion(ASSERTIONS_DICT_TYPE myID, ASSERTION_SEVERITY mySeverity);
+
+        raise[myID - baseID] <= mySeverity;
+
+    endmethod
+
+endmodule
+
+            
+//
+// mkAssertionChecker --
+//    Allocate a checker for a single assertion ID, connected to an assertion node.
+//
+module [HASim_Module] mkAssertionChecker#(ASSERTIONS_DICT_TYPE myID, ASSERTION_SEVERITY mySeverity, ASSERTION_NODE myNode)
+    // interface:
+        (ASSERTION);
+
+    // *********** Methods ***********
   
-  return assert_function;
+    // Check the boolean expression and enqueue a pass/fail.
+  
+    function Action assert_function(Bool b);
+    action
+
+        if (!b) // Check the boolean expression
+        begin   // Failed. The system is sad. :(
+            myNode.raiseAssertion(myID, mySeverity);
+        end
+
+    endaction
+    endfunction
+  
+    return assert_function;
 
 endmodule

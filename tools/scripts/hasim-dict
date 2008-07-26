@@ -97,14 +97,17 @@ sub EmitEnumValues($$$$) {
     my $format = shift;
     my $dict = shift;
 
-    my $shl = $dict->GetUIDNumBits();
-    my $uid = $dict->GetUID();
+    my $idxBits = $dict->GetTotalNumBits() - $dict->GetUIDNumBits();
+    my $uid = $dict->GetUID() << $idxBits;
+
+    printf $of $format, $m, '_BASE', $uid;
+    printf $of "\n";
+
     my $idx = -1;
-    my $lastId = 0;
     foreach my $n ($dict->GetSortedEntries()) {
         $idx += 1;
-        $lastId = ($idx << $shl) + $uid;
-        printf $of $format, $m, $n, $lastId;
+        my $id = $idx + $uid;
+        printf $of $format, $m, $n, $id;
     }
 
     if ($idx == -1) {
@@ -114,13 +117,13 @@ sub EmitEnumValues($$$$) {
         if ($uid == -1) {
             Error("UID was never assigned for dictionary ${m}");
         }
-        if (((($idx << $shl) + $uid) >> $dict->GetTotalNumBits()) != 0) {
-            print "$idx  $shl  $uid  " . $dict->GetTotalNumBits() . "\n";
+        if (($idxBits <= 0) || ($idx >> $idxBits) != 0) {
+            print "$idx  $uid  " . $dict->GetTotalNumBits() . "\n";
             Error("Total bits too small for dictionary ${m}");
         }
     }
 
-    return ($idx, $lastId);
+    return $idx;
 }
 
 
@@ -160,7 +163,7 @@ sub EmitH($$$) {
     print $of "enum ${m}_DICT_ENUM\n";
     print $of "{\n";
 
-    my ($idx, $lastId) = EmitEnumValues($of, $m, "    %s_%s = %d,\n", $dict);
+    my $idx = EmitEnumValues($of, $m, "    %s_%s = %d,\n", $dict);
 
     print $of "};\n\n";
 
@@ -242,19 +245,21 @@ sub EmitH_Names($$$$$) {
     print $of "    static const char * ${kind}(unsigned int i)\n";
     print $of "    {\n";
 
-    my $shl = $dict->GetUIDNumBits();
+    my $uidBits = $dict->GetUIDNumBits();
+    my $idxBits = $dict->GetTotalNumBits() - $uidBits;
+    my $idxMask = (1 << $idxBits) - 1;
     my $uid = $dict->GetUID();
 
-    if (($uid >= 0) && ($shl == 0)) {
+    if (($uid >= 0) && ($uidBits == 0)) {
         # No UIDs (single level dictionary)
         print $of "        return (i <= ${idx} ? ${var}[i] : NULL);\n";
     }
     else {
         # Using UIDs.  Find the right dictionary.
-        print $of "        switch (i & " . ((1 << $shl) - 1) . ") {\n";
+        print $of "        switch (i >> ${idxBits}) {\n";
         if ($uid >= 0) {
             print $of "          case ${uid}:\n";
-            print $of "            i >>= ${shl};\n";
+            print $of "            i &= ${idxMask};\n";
             print $of "            return (i <= ${idx} ? ${var}[i] : NULL);\n";
         }
 
@@ -320,7 +325,7 @@ sub EmitBSH($$$) {
     }
     print $of "\n";
 
-    my ($idx, $lastId) = EmitEnumValues($of, $m, "`define %s_%s  %d\n", $dict);
+    my $idx = EmitEnumValues($of, $m, "`define %s_%s  %d\n", $dict);
     print $of "\n";
 
     my $nBitsStr = $baseDict->GetName() . "_DICT_BITS";

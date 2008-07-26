@@ -23,7 +23,7 @@
 #include <sys/select.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <string.h>
+#include <string>
 #include <iostream>
 
 #include "asim/rrr/service_ids.h"
@@ -174,7 +174,7 @@ STATS_CONTROLLER_CLASS::EmitFile()
 
         if ((i != STATS_NULL) && (statName != NULL))
         {
-            statsFile << statName << "," << statStr << "," << statValues[i] << endl;
+            statsFile << "\"" << statStr << "\"," << statName << "," << statValues[i] << endl;
         }
     }
 

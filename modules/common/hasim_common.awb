@@ -26,3 +26,5 @@
 
 %param TOKEN_EVENTS_ENABLED True "Statically enable/disable Event logging (True/False)."
 %param TOKEN_EVENTS_LOGFILE "hasim_events.out" "Name of Event logfile."
+
+%param ASSERTIONS_PER_NODE 16 "Max number of assertions connected to an assertion node (ring stop)."

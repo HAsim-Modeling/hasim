@@ -186,8 +186,9 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
     // ***** Assertion Checkers *****
 
-    Assertion assertLegalSize    <- mkAssertionChecker(`ASSERTIONS_FUNCP_MEMSTATE_CACHE_ILLEGAL_SIZE, ASSERT_ERROR);
-    Assertion assertValidRequest <- mkAssertionChecker(`ASSERTIONS_FUNCP_MEMSTATE_CACHE_INVALID_REQUEST, ASSERT_ERROR);
+    ASSERTION_NODE assertNode    <- mkAssertionNode(`ASSERTIONS_FUNCP_MEMSTATE_CACHE__BASE);
+    ASSERTION assertLegalSize    <- mkAssertionChecker(`ASSERTIONS_FUNCP_MEMSTATE_CACHE_ILLEGAL_SIZE, ASSERT_ERROR, assertNode);
+    ASSERTION assertValidRequest <- mkAssertionChecker(`ASSERTIONS_FUNCP_MEMSTATE_CACHE_INVALID_REQUEST, ASSERT_ERROR, assertNode);
 
 
     // ******* Debuging State *******

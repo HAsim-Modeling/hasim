@@ -1,7 +1,25 @@
+//
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+
 import FIFO::*;
 
-import hasim_common::*;
-import soft_connections::*;
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/soft_connections.bsh"
 
 `include "asim/provides/rrr.bsh"
 
@@ -10,107 +28,62 @@ import soft_connections::*;
 `include "asim/dict/RINGID.bsh"
 
 // AssertionsController
-
+//
 // Abstracts communication from the main controller to the assertion checkers
-// which are distributed throughout the hardware model.
-
-// When an assertion does occur the the main controller can use the getAssertion() method
-// to retreive an assertion for reporting. No further assertions are reported because presumably
-// the system is in a bad state. 
-
-// Note: this means that the root cause of the problem could occaisionally be occluded.
-// This would occur if one failure caused more to happen, but we saw one of the others
-// first. 
-
+// which are distributed throughout the hardware model.  Because assertions
+// are delivered on a ring there is no guarantee that all assertions will arrive
+// in order.
+//
 
 interface ASSERTIONS_CONTROLLER;
 
-  method Action doCommand(ASSERTIONS_COMMAND com);
-
 endinterface
-
-// AssertsCommand
-
-// The datatype of commands that the Asserts Controller responds to.
-
-typedef enum
-{
-      ASSERTS_MinSeverity_Message,
-      ASSERTS_MinSeverity_Warning,
-      ASSERTS_MinSeverity_Error
-}
-  ASSERTIONS_COMMAND
-                 deriving (Eq, Bits);
-
 
 // mkAssertionsController
 
 // A module which serially passes Assertion failures back to the software.
 
 module [Connected_Module] mkAssertionsController
-    //interface:
-                (ASSERTIONS_CONTROLLER);
+    // interface:
+        (ASSERTIONS_CONTROLLER);
 
-  //***** State Elements *****
+    //***** State Elements *****
   
-  // Communication link to the rest of the Assertion checkers
-  Connection_Chain#(ASSERTION_DATA) chain <- mkConnection_Chain(`RINGID_ASSERTS);
+    // Communication link to the rest of the Assertion checkers
+    Connection_Chain#(ASSERTION_DATA) chain <- mkConnection_Chain(`RINGID_ASSERTS);
   
-  // Communication link to our RRR Service
-  Connection_Send#(RRR_Request) link_rrr <- mkConnection_Send("rrr_client_assertions");
+    // Communication link to our RRR Service
+    Connection_Send#(RRR_Request) link_rrr <- mkConnection_Send("rrr_client_assertions");
   
-  // The minimum severity of assertions we should pass along
-  Reg#(ASSERTION_SEVERITY) min_severity <- mkReg(ASSERT_MESSAGE);
+    Reg#(Bit#(32)) fpgaCC <- mkReg(0);
   
-  Reg#(Bit#(32)) fpgaCC <- mkReg(0);
+    // ***** Rules *****
   
-  // ***** Rules *****
+    // countCC
   
-  // countCC
-  
-  rule countCC (True);
-  
-    fpgaCC <= fpgaCC + 1;
-  
-  endrule
-  
-  // processResp
-  
-  // Process the next response from an individual assertion checker.
-  // If it failed it gets passed along to the main controller. 
-  // If it passed we just discard it.
-  
-  rule processResp (True);
-  
-    let ast <- chain.receive_from_prev();
-    
-    if (ast.severity >= min_severity)
-    begin
-      link_rrr.send(RRR_Request { serviceID:    `ASSERTIONS_SERVICE_ID,
-                                  param0:       0, //unused for now. Reserved for methodID.
-                                  param1:       zeroExtend(pack(ast.assertID)),
-                                  param2:       fpgaCC,
-                                  param3:       zeroExtend(pack(ast.severity)),
-                                  needResponse: False });
-    end
+    rule countCC (True);
 
-  endrule
-  
-  // ***** Methods *****
-  
-  // doCommand
-  
-  // The primary way that the outside world tells us what to do.
-  
-  method Action doCommand(ASSERTIONS_COMMAND com);
-    
-    case (com)
-      ASSERTS_MinSeverity_Message: min_severity <= ASSERT_MESSAGE;
-      ASSERTS_MinSeverity_Warning: min_severity <= ASSERT_WARNING;
-      ASSERTS_MinSeverity_Error:   min_severity <= ASSERT_ERROR;
-    endcase
-    
-  endmethod
+        fpgaCC <= fpgaCC + 1;
 
+    endrule
+  
+
+    // processResp
+
+    // Process the next response from an individual assertion checker.
+    // Pass assertions on to software.  Here we let the software deal with
+    // the relatively complicated base ID and assertions vector.
+
+    rule processResp (True);
+
+        let ast <- chain.receive_from_prev();
+        link_rrr.send(RRR_Request {serviceID:    `ASSERTIONS_SERVICE_ID,
+                                   param0:       0, //unused for now. Reserved for methodID.
+                                   param1:       zeroExtend(pack(ast.baseID)),
+                                   param2:       fpgaCC,
+                                   param3:       zeroExtend(pack(ast.assertions)),
+                                   needResponse: False });
+
+    endrule
 
 endmodule

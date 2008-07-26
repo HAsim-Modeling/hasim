@@ -14195,3 +14195,40 @@ Directory config/pm/hasim/submodels/common
  hasim_common.apm          Locally Modified          484 
 
 Uses a Bit#(5) for epoch , as the timing model can handle 32 outstanding mispredicts
+
+----------
+mcadler     Date: Fri Jul 25 21:05:18 EDT 2008  CSN: CSN-hasim-486
+                  Sat Jul 26 01:05:18 UTC 2008
+
+
+Directory tools/scripts
+ hasim-dict                Locally Modified          485 
+
+Directory modules/hasim/controller/central_controllers/assertions
+ assertions-controller-hybrid.bsv Locally Modified          485 
+ assertions-controller-hybrid.cpp Locally Modified          485 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          485 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          485 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          485 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          485 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          485 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          485 
+ Assertions.bsv            Locally Modified          485 
+ hasim_common.dic          Locally Modified          485 
+
+- Dictionary builder now puts module ID in high bits and entry ID in low bits
+  so entries that are nearby lexically are also nearby numerically.
+- Modify assertions so each module has a single node on the assertions ring,
+  with the goal of simplifying the routing.

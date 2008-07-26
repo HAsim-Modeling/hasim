@@ -129,31 +129,33 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     // ***** Assertion Checkers ***** //
 
+    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_SCOREBOARD__BASE);
+
     // Do we have enough tokens to do everything the timing model wants us to?
-    Assertion assert_enough_tokens <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_OUT_OF_TOKENS, ASSERT_ERROR);
+    ASSERTION assert_enough_tokens <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_OUT_OF_TOKENS, ASSERT_ERROR, assertNode);
 
     // Don't allocate a token which is already allocated.
-    Assertion assert_token_is_not_allocated <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_REALLOCATE, ASSERT_ERROR);
+    ASSERTION assert_token_is_not_allocated <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_REALLOCATE, ASSERT_ERROR, assertNode);
 
     // Don't de-allocate a token which isn't allocated.
-    // Assertion assert_token_is_allocated <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_DEALLOCATE, ASSERT_ERROR);
+    // Assertion assert_token_is_allocated <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_DEALLOCATE, ASSERT_ERROR, assertNode);
 
     // Are we completing tokens in order?
-    // Assertion assert_completing_tokens_in_order <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_COMPLETION, ASSERT_WARNING);
+    // Assertion assert_completing_tokens_in_order <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_COMPLETION, ASSERT_WARNING, assertNode);
 
     // The following assertions make sure things happen at the right time.
-    Assertion assert_token_can_finish_fet   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_FETCH_FINISH, ASSERT_ERROR);
-    Assertion assert_token_can_start_dec    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_DECODE_START, ASSERT_ERROR);
-    Assertion assert_token_can_finish_dec   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_DECODE_FINISH, ASSERT_ERROR);
-    Assertion assert_token_can_start_exe    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_EXECUTE_START, ASSERT_ERROR);
-    Assertion assert_token_can_finish_exe   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_EXECUTE_FINISH, ASSERT_ERROR);
-    Assertion assert_token_can_start_load   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_LOAD_START, ASSERT_ERROR);
-    Assertion assert_token_can_finish_load  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_LOAD_FINISH, ASSERT_ERROR);
-    Assertion assert_token_can_start_store  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_STORE_START, ASSERT_ERROR);
-    Assertion assert_token_can_finish_store <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_STORE_FINISH, ASSERT_ERROR);
-    Assertion assert_token_can_start_commit <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_COMMIT_START, ASSERT_ERROR);
-    Assertion assert_token_has_done_loads   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_COMMIT_WITHOUT_LOAD, ASSERT_ERROR);
-    Assertion assert_token_has_done_stores  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_COMMIT_WITHOUT_STORE, ASSERT_ERROR);
+    ASSERTION assert_token_can_finish_fet   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_FETCH_FINISH, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_can_start_dec    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_DECODE_START, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_can_finish_dec   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_DECODE_FINISH, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_can_start_exe    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_EXECUTE_START, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_can_finish_exe   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_EXECUTE_FINISH, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_can_start_load   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_LOAD_START, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_can_finish_load  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_LOAD_FINISH, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_can_start_store  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_STORE_START, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_can_finish_store <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_STORE_FINISH, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_can_start_commit <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_COMMIT_START, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_has_done_loads   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_COMMIT_WITHOUT_LOAD, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_has_done_stores  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_COMMIT_WITHOUT_STORE, ASSERT_ERROR, assertNode);
 
     // ***** Helper Functions ***** //
 

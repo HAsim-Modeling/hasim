@@ -86,8 +86,9 @@ module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
 
     // ***** Assertion Checkers *****/
 
-    Assertion assertEnoughPRegs <- mkAssertionChecker(`ASSERTIONS_FREELIST_OUT_OF_PREGS, ASSERT_ERROR);
-    Assertion assertAtLeastOneAllocatedRegister <- mkAssertionChecker(`ASSERTIONS_FREELIST_ILLEGAL_BACKUP, ASSERT_ERROR);
+    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_FREELIST__BASE);
+    ASSERTION assertEnoughPRegs <- mkAssertionChecker(`ASSERTIONS_FREELIST_OUT_OF_PREGS, ASSERT_ERROR, assertNode);
+    ASSERTION assertAtLeastOneAllocatedRegister <- mkAssertionChecker(`ASSERTIONS_FREELIST_ILLEGAL_BACKUP, ASSERT_ERROR, assertNode);
 
     // initialize
 

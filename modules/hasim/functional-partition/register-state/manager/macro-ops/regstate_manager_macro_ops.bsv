@@ -350,17 +350,18 @@ module [HASim_Module] mkFUNCP_RegStateManager
     
     // ***** Assertion Checkers ***** //
 
-    Assertion assertInstructionIsActuallyALoad    <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_LOAD_ON_NONLOAD, ASSERT_WARNING);
-    Assertion assertLoadDestRegIsReady            <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_MALFORMED_LOAD_WRITEBACK, ASSERT_ERROR);
-    Assertion assertInstructionIsActuallyAStore   <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_STORE_ON_NONSTORE, ASSERT_WARNING);
-    Assertion assertCommitedStoreIsActuallyAStore <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_COMMIT_STORE_ON_NONSTORE, ASSERT_WARNING);
-    Assertion assertRegUpdateAtExpectedTime       <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_REG_UPDATE, ASSERT_WARNING);
-    Assertion assertEmulationFinishedAtExpectedTime <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_EMULATION_FINISHED, ASSERT_WARNING);
-    Assertion assertEmulatedInstrNoDsts           <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_EMULATED_INSTR_HAS_DST, ASSERT_ERROR);
-    Assertion assertInvalidNumDsts                <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_INVALID_NUM_DSTS, ASSERT_ERROR);
-    Assertion assertHaveSnapshotOfEmulatedInstruction <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_NO_EMULATION_SNAPSHOT, ASSERT_ERROR);
-    Assertion assertNoPhysicalTranslation         <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_NO_PHYSICAL_TRANSLATION, ASSERT_ERROR);
-    Assertion assertNoEpochChange                 <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_EPOCH_CHANGE, ASSERT_ERROR);
+    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGMANAGER__BASE);
+    ASSERTION assertInstructionIsActuallyALoad    <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_LOAD_ON_NONLOAD, ASSERT_WARNING, assertNode);
+    ASSERTION assertLoadDestRegIsReady            <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_MALFORMED_LOAD_WRITEBACK, ASSERT_ERROR, assertNode);
+    ASSERTION assertInstructionIsActuallyAStore   <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_STORE_ON_NONSTORE, ASSERT_WARNING, assertNode);
+    ASSERTION assertCommitedStoreIsActuallyAStore <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_COMMIT_STORE_ON_NONSTORE, ASSERT_WARNING, assertNode);
+    ASSERTION assertRegUpdateAtExpectedTime       <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_REG_UPDATE, ASSERT_WARNING, assertNode);
+    ASSERTION assertEmulationFinishedAtExpectedTime <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_EMULATION_FINISHED, ASSERT_WARNING, assertNode);
+    ASSERTION assertEmulatedInstrNoDsts           <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_EMULATED_INSTR_HAS_DST, ASSERT_ERROR, assertNode);
+    ASSERTION assertInvalidNumDsts                <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_INVALID_NUM_DSTS, ASSERT_ERROR, assertNode);
+    ASSERTION assertHaveSnapshotOfEmulatedInstruction <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_NO_EMULATION_SNAPSHOT, ASSERT_ERROR, assertNode);
+    ASSERTION assertNoPhysicalTranslation         <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_NO_PHYSICAL_TRANSLATION, ASSERT_ERROR, assertNode);
+    ASSERTION assertNoEpochChange                 <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_EPOCH_CHANGE, ASSERT_ERROR, assertNode);
 
     // ***** Statistics ***** //
 

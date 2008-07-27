@@ -462,6 +462,9 @@ module [HASim_Module] mkFUNCP_RegStateManager
         // Zero out our scratchpad.
         let inf = TOKEN_FUNCP_INFO {epoch: 0, scratchpad: 0};
 
+        // Invalidate old snapshots
+        snapshots.invalSnapshot(idx);
+
         // The timing partition scratchpad must be filled in by up.
         let newtok = TOKEN {index: idx, timep_info: ?, funcp_info: inf};
 

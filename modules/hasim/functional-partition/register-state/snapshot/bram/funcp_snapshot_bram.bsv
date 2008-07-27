@@ -7,6 +7,7 @@ import Vector::*;
 interface Snapshot#(numeric type rname_SZ);
 
     method Action makeSnapshot(TOKEN_INDEX tokIndex, Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX) newMap);
+    method Action invalSnapshot(TOKEN_INDEX tokIndex);
     method Action requestSnapshot(FUNCP_SNAPSHOT_INDEX tokIndex);
     method Maybe#(FUNCP_SNAPSHOT_INDEX) hasSnapshot(TOKEN_INDEX tokIndex);
     method ActionValue#(Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX)) returnSnapshot();
@@ -41,6 +42,10 @@ module mkSnapshot
         snapIDs[snapNext] <= tokIndex;
         snaps.write(snapNext, newMap);
         snapNext <= snapNext + 1;
+    endmethod
+
+    method Action invalSnapshot(TOKEN_INDEX tokIndex);
+        snapValids[tokIndex] <= False;
     endmethod
 
     method Maybe#(FUNCP_SNAPSHOT_INDEX) hasSnapshot(TOKEN_INDEX tokIndex);

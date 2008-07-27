@@ -126,7 +126,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     Reg#(Bool)      invalidating_all <- mkReg(True); // at reset, invalidate the blockrams.
     Reg#(CACHE_IDX) invalidate_iter  <- mkReg(0);
 
-    Param#(1) enableCacheParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEM_CACHE_ENABLE);
+    PARAMETER_NODE paramNode <- mkDynamicParameterNode();
+    Param#(1) enableCacheParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEM_CACHE_ENABLE, paramNode);
     function Bool enableCache() = (enableCacheParam == 1);
 
     Reg#(MEM_ADDRESS) invalidate_addr    <- mkRegU();

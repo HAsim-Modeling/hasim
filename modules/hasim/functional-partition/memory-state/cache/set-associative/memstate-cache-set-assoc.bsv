@@ -147,10 +147,13 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     Reg#(CACHE_WAY)        flushWay <- mkReg(0);
     Reg#(MEM_CACHELINE)    flushLineData <- mkRegU();
 
-    Param#(1) enableCacheParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEM_CACHE_ENABLE);
+    
+    PARAMETER_NODE paramNode <- mkDynamicParameterNode();
+
+    Param#(1) enableCacheParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEM_CACHE_ENABLE, paramNode);
     function Bool enableCache() = (enableCacheParam == 1);
 
-    Param#(1) writeBackParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEM_CACHE_WRITE_BACK);
+    Param#(1) writeBackParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEM_CACHE_WRITE_BACK, paramNode);
     function Bool writeBackCache() = (writeBackParam == 1);
 
     Reg#(Bool)        invalidate_just_flush <- mkRegU();

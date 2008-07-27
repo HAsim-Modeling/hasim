@@ -14232,3 +14232,28 @@ Directory modules/common
   so entries that are nearby lexically are also nearby numerically.
 - Modify assertions so each module has a single node on the assertions ring,
   with the goal of simplifying the routing.
+
+----------
+mcadler     Date: Sun Jul 27 10:10:05 EDT 2008  CSN: CSN-hasim-487
+                  Sun Jul 27 14:10:05 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/snapshot/bram
+ funcp_snapshot_bram.bsv   Locally Modified          486 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          486 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          486 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.bsv Locally Modified          486 
+
+Directory modules/common/modellib
+ Params.bsv                Locally Modified          486 
+
+- Snapshot token valid bit was never cleared, resulting in some probability
+  of triggering fast rewind from stale data instead of slow rewind.
+- Change dynamic parameter ring to use fewer stops using the same method
+  as for assertions.  Each module now allocates one node on the ring.

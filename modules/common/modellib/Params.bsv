@@ -23,6 +23,27 @@
 `include "asim/dict/RINGID.bsh"
 `include "asim/dict/PARAMS.bsh"
 
+//
+// PARAMETER_NODE
+//
+// Interface to mkDynamicParameterNode.  Individual parameters constantly
+// snoop to see whether their value has arrived on the ring.  They must
+// look every cycle since the ring stop guarantees to export a value for only
+// a cycle before a new ID might arrive.
+//
+interface PARAMETER_NODE;
+    
+    method Maybe#(Bit#(64)) checkForNewValue(PARAMS_DICT_TYPE myID);
+
+endinterface
+
+
+//
+// Param
+//
+// Interface to a single parameter.  The read method blocks until the parameter
+// is initialized by the controller.
+//
 interface Param#(numeric type bits);
 
     method Bit#(bits) _read();
@@ -44,13 +65,26 @@ typedef union tagged
            deriving (Eq, Bits);
 
 
-module [Connected_Module] mkDynamicParameter#(PARAMS_DICT_TYPE myID)
-  //interface:
-              (Param#(bits)) provisos (Add#(a__, bits, 64));
+//
+// mkDynamicParameterNode --
+//
+// Every module with dynamic parameters must allocate at least one node to
+// receive values.  The node is just a temporary holding point as values
+// pass through.  Each individual parameter (see mkDynamicParameter below)
+// connects to a ring stop and snoops for incoming updates.
+//
+module [Connected_Module] mkDynamicParameterNode
+    //interface:
+        (PARAMETER_NODE);
 
+    // Ring connections
     Connection_Chain#(PARAM_DATA) chain <- mkConnection_Chain(`RINGID_PARAMS);
     Reg#(Bool) receiving <- mkReg(False);
-    Reg#(Bit#(bits)) value <- mkReg(0);
+
+    // Most recent param that came in on the ring
+    Reg#(Bool) validParam <- mkReg(False);
+    Reg#(PARAMS_DICT_TYPE) id <- mkReg(?);
+    Reg#(Bit#(64)) value <- mkReg(?);
  
     // shift
     //
@@ -62,9 +96,12 @@ module [Connected_Module] mkDynamicParameter#(PARAMS_DICT_TYPE myID)
         PARAM_DATA param <- chain.receive_from_prev();
         chain.send_to_next(param);
 
-        if (param matches tagged PARAM_ID .id &&& id == myID)
+        if (param matches tagged PARAM_ID .new_id)
         begin
             receiving <= True;
+            id <= new_id;
+            // validParam will be set true after the param value arrives
+            validParam <= False;
         end
 
     endrule
@@ -85,24 +122,60 @@ module [Connected_Module] mkDynamicParameter#(PARAMS_DICT_TYPE myID)
         case (param) matches
             tagged PARAM_High32 .high32:
             begin
-                // High part comes first.  Clear low part at the same time.
-                let val = {high32, 32'b0};
-                value <= truncate(val);
+                // High part comes first.
+                value[63:32] <= high32;
             end
 
             tagged PARAM_Low32 .low32:
             begin
-                // Preserve high part.  Low part is guaranteed to be 0, so or
-                // is safe.
-                Bit#(64) val = {32'b0, low32};
-                val = val | zeroExtend(value);
-                value <= truncate(val);
+                // Low part comes last.  Param is now valid.
+                value[31:0] <= low32;
+                validParam <= True;
                 receiving <= False;
             end
         endcase
 
     endrule
 
-    method Bit#(bits) _read() = value;
+    // checkForNewValue
+    //
+    // Individual parameters invoke this method every cycle to receive param
+    // values.
+    //
+    method Maybe#(Bit#(64)) checkForNewValue(PARAMS_DICT_TYPE myID);
+        if (validParam && id == myID)
+            return tagged Valid value;
+        else
+            return tagged Invalid;
+    endmethod
+
+endmodule
+
+
+//
+// mkDynamicParameter --
+//
+// Object for an individual parameter.
+//
+module [Connected_Module] mkDynamicParameter#(PARAMS_DICT_TYPE myID, PARAMETER_NODE paramNode)
+    //interface:
+        (Param#(bits)) provisos (Add#(a__, bits, 64));
+
+    Reg#(Bit#(bits)) value <- mkReg(0);
+ 
+    // setValue
+    //
+    // Monitor the parameter node and update the parameter when it comes through.
+    //
+    rule setValue(True);
+        if (paramNode.checkForNewValue(myID) matches tagged Valid .v)
+        begin
+            value <= truncate(v);
+        end
+    endrule
+
+    method Bit#(bits) _read();
+        return value;
+    endmethod
 
 endmodule

@@ -14257,3 +14257,64 @@ Directory modules/common/modellib
   of triggering fast rewind from stale data instead of slow rewind.
 - Change dynamic parameter ring to use fewer stops using the same method
   as for assertions.  Each module now allocates one node on the ring.
+
+----------
+aparasha    Date: Sun Jul 27 14:27:36 EDT 2008  CSN: CSN-hasim-488
+                  Sun Jul 27 18:27:36 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ BSV.pm                    Locally Modified          487 
+ Base.pm                   Locally Added               0 
+ CPP.pm                    Locally Modified          487 
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Server.pm                 Locally Removed           487 
+ Arglist/                  Locally Added               0 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Arglist
+ BSV.pm                    Locally Added               0 
+ Base.pm                   Locally Added               0 
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Collection.pm             Locally Modified          487 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Server
+ BSV.pm                    Locally Modified          487 
+ Base.pm                   Locally Added               0 
+ CPP.pm                    Locally Modified          487 
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Client.pm                 Locally Removed           487 
+ Method.pm                 Locally Removed           487 
+ Service.pm                Locally Modified          487 
+ Type.pm                   Locally Modified          487 
+ Argument.pm               Locally Modified          487 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Client
+ BSV.pm                    Locally Modified          487 
+ Base.pm                   Locally Added               0 
+ CPP.pm                    Locally Modified          487 
+
+Directory modules/hasim/controller/central_controllers/params
+ params-controller-hybrid.rrr Locally Modified          487 
+ params-controller-hybrid.bsv Locally Modified          487 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller.rrr      Locally Modified          487 
+ stats-controller-hybrid.bsv Locally Modified          487 
+
+- added support for multiple-argument RRR calls. The type system remains
+  unchanged, so all types in a multi-arg call must be known by the module
+  that instantiates the stubs.
+
+  makeRequest() and sendResponse() methods take a list of arguments, as in
+      makeRequest_STATS(statID, value);
+
+  acceptRequest() and getResponse() methods return a struct, from which the
+  individual args can be extracted, as in
+      let req <- acceptRequest_FOO();
+      // req.uid, req.value are the call's arguments
+
+- updated PARAMS controller and STATS controller to take advantage of multiple
+  arguments. Several RRR services still do not exploit this.

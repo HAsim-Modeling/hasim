@@ -29,12 +29,12 @@ use warnings;
 use strict;
 use re 'eval';
 
-use HAsim::RRR::Server;
-use HAsim::RRR::Method;
+use HAsim::RRR::Server::Base;
+use HAsim::RRR::Method::Base;
 use HAsim::RRR::Method::BSV;
 
 # inherit from Server
-our @ISA = qw(HAsim::RRR::Server);
+our @ISA = qw(HAsim::RRR::Server::Base);
 
 ##
 ## constructor
@@ -83,9 +83,10 @@ sub _addmethods
     }
 }
 
-#
-# print stub into a given file in bsv
-#
+##
+## print stub into a given file in bsv
+## this method prints direct and proxy stubs
+##
 sub print_stub
 {
     # capture params
@@ -104,33 +105,35 @@ sub print_stub
         return;
     }
 
-    # should we pack types?
-    my $pack = 0;
-    if ($self->{ifc} eq "connection")
-    {
-        $pack = 1;
-    }
-
     # compute max request and response bitwidths
     my $maxinsize = 0;
     my $maxoutsize = 0;
     my @list = @{ $self->{methodlist} };
     foreach my $method (@list)
     {
-        if ($method->insize() > $maxinsize)
+        if ($method->inargs()->size() > $maxinsize)
         {
-            $maxinsize = $method->insize();
+            $maxinsize = $method->inargs()->size();
         }
         
-        if ($method->outsize() > $maxoutsize)
+        if ($method->outargs()->size() > $maxoutsize)
         {
-            $maxoutsize = $method->outsize();
+            $maxoutsize = $method->outargs()->size();
         }
     }
 
     # helper definition for service ID
     print $file "`define SERVICE_ID `" . $self->{name} ."_SERVICE_ID\n";
     print $file "\n";
+
+    # types for each method: only print for direct stubs
+    if ($self->{ifc} eq "method")
+    {
+        foreach my $method (@{ $self->{methodlist} })
+        {
+            $method->print_types($file);
+        }
+    }
 
     # interface ...
     print $file "interface ServerStub_" . $self->{name} . ";\n";
@@ -141,8 +144,16 @@ sub print_stub
     # interface entry for each method
     foreach my $method (@{ $self->{methodlist} })
     {
-        $method->print_accept_request_declaration($file, $indent, $pack);
-        $method->print_send_response_declaration($file, $indent, $pack);
+        if ($self->{ifc} eq "connection")
+        {
+            $method->print_proxy_accept_request_declaration($file, $indent);
+            $method->print_proxy_send_response_declaration($file, $indent);
+        }
+        else
+        {
+            $method->print_direct_accept_request_declaration($file, $indent);
+            $method->print_direct_send_response_declaration($file, $indent);
+        }
     }
     
     # endinterface
@@ -176,8 +187,16 @@ sub print_stub
     # method definitions
     foreach my $method (@{ $self->{methodlist} })
     {
-        $method->print_accept_request_definition($file, $indent, $pack);
-        $method->print_send_response_definition($file, $indent, $pack);
+        if ($self->{ifc} eq "connection")
+        {
+            $method->print_proxy_accept_request_definition($file, $indent);
+            $method->print_proxy_send_response_definition($file, $indent);
+        }
+        else
+        {
+            $method->print_direct_accept_request_definition($file, $indent);
+            $method->print_direct_send_response_definition($file, $indent);
+        }
     }
     
     # endmodule
@@ -257,10 +276,10 @@ sub print_connections
     if ($self->{ifc} eq "connection")
     {
         # first instantiate server stub module
-        print $file $indent                       .
-                    "let stub_server_" . $self->{name}   .
-                    " <- mkServerStub_"          .
-                    $self->{name} . "(server);\n" .
+        print $file $indent                            .
+                    "let stub_server_" . $self->{name} .
+                    " <- mkServerStub_"                .
+                    $self->{name} . "(server);\n"      .
                     "\n";
 
         # for each method
@@ -335,14 +354,14 @@ sub print_remote_stub
     my @list = @{ $self->{methodlist} };
     foreach my $method (@list)
     {
-        if ($method->insize() > $maxinsize)
+        if ($method->inargs()->size() > $maxinsize)
         {
-            $maxinsize = $method->insize();
+            $maxinsize = $method->inargs()->size();
         }
         
-        if ($method->outsize() > $maxoutsize)
+        if ($method->outargs()->size() > $maxoutsize)
         {
-            $maxoutsize = $method->outsize();
+            $maxoutsize = $method->outargs()->size();
         }
     }
 
@@ -350,21 +369,24 @@ sub print_remote_stub
     print $file "`define SERVICE_ID `" . $self->{name} ."_SERVICE_ID\n";
     print $file "\n";
 
+    # types for each method
+    foreach my $method (@{ $self->{methodlist} })
+    {
+        $method->print_types($file);
+    }
+
     # interface ...
     print $file "interface ServerStub_" . $self->{name} . ";\n";
 
     # indent
     my $indent = "    ";
 
-    # force pack to 0
-    my $pack = 0;
-
     # interface entry for each method
     foreach my $method (@{ $self->{methodlist} })
     {
         # use same methods as non-remote declarations
-        $method->print_accept_request_declaration($file, $indent, $pack);
-        $method->print_send_response_declaration($file, $indent, $pack);
+        $method->print_remote_accept_request_declaration($file, $indent);
+        $method->print_remote_send_response_declaration($file, $indent);
     }
     
     # endinterface

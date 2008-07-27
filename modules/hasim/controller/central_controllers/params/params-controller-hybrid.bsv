@@ -83,11 +83,11 @@ module [Connected_Module] mkParamsController
     // Wait for parameter update request
     
     rule waitForParam (state == PCS_Idle);
-    
-        let r <- server_stub.acceptRequest_sendParam();
+
+        let req <- server_stub.acceptRequest_sendParam();        
         DYN_PARAM p;
-        p.paramID = truncate(pack(r[95:64]));
-        p.value = r[63:0];
+        p.paramID = truncate(pack(req.paramID));
+        p.value = req.value;
 
         //
         // The first message on the chain is the parameter ID

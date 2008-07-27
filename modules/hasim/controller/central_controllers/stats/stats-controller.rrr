@@ -2,7 +2,7 @@ service STATS
 {
     server sw (cpp, method) <- hw (bsv, connection)
     {
-        method Send(in STAT_INFO[64] si);
+        method Send(in UINT32[32] statID, in UINT32[32] value);
         method Done(in UINT8[8] syn, out UINT8[8] ack);
     };
 };

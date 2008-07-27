@@ -115,6 +115,28 @@ sub name
     return $self->{name};
 }
 
+# return string form of an argument in BSV format
+sub string_bsv
+{
+    my $self = shift;
+    my $file = shift;
+
+    my $string = "";
+
+    if (defined($self->{type}) && defined($self->{name}))
+    {
+        $string = $string . $self->{type}->string_bsv();
+        $string = $string . " ";
+        $string = $string . $self->{name}->string();
+    }
+    else
+    {
+        die ref($self) . ": invalid, cannot print.";
+    }
+
+    return $string;
+}
+
 # print an argument in BSV format
 sub print_bsv
 {

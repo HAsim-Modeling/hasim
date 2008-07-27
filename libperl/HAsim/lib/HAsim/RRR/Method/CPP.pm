@@ -29,10 +29,10 @@ use warnings;
 use strict;
 use re 'eval';
 
-use HAsim::RRR::Method;
+use HAsim::RRR::Method::Base;
 
 # inherit from Method
-our @ISA = qw(HAsim::RRR::Method);
+our @ISA = qw(HAsim::RRR::Method::Base);
 
 ##
 ## constructor
@@ -73,6 +73,51 @@ sub _semi_deep_copy
     $target{outarg} = $source->{outarg};
 
     return \%target;
+}
+
+#######################################
+##             CLIENT                ##
+#######################################
+
+##
+## print client method definition
+##
+sub print_client_definition
+{
+#    my $self   = shift;
+#    my $file   = shift;
+#    my $indent = shift;
+
+#    do we have a return type?
+#    if (defined($self->outarg()))
+#    {
+#        # request + response
+#        print $file $indent . $self->outarg()->type()->string_cpp() .
+#                              $self->name()                         .
+#                              "("                                   .
+#                              $self->inarg()->type()->string_cpp()  .
+#                              " "                                   .
+#                              $self->inarg()->name()->string()      .
+#                              ")\n";
+#        print $file $indent . "{\n";
+#        print $file $indent . "    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();\n";
+#        print $file $indent . "    msg->SetLength(sizeof(UINT64));\n";
+#        print $file $indent . "    msg->SetServiceID(SERVICE_ID);\n";
+#        print $file $indent . "    msg->SetMethodID(METHOD_ID_F2HOneWayTest);\n";
+#        print $file $indent . "    msg->AppendUINT64(length);\n";
+#        print $file $indent . "    \n";    
+#        print $file $indent . "    UMF_MESSAGE resp = RRRClient->MakeRequest(msg);\n";
+#        print $file $indent . "    \n";
+#        print $file $indent . "    UINT64 retval = resp->ExtractUINT64();\n";
+#        print $file $indent . "    resp->Delete();\n";
+#        print $file $indent . "    return retval;\n";
+#        print $file $indent . "}\n";
+#        print $file $indent . "\n";
+#    }
+#    else
+#    {
+#        # request only
+#    }
 }
 
 1;

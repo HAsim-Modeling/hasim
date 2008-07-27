@@ -1,5 +1,5 @@
 # *****************************************************************************
-# * Method.pm
+# * Base.pm
 # *
 # * Copyright (C) 2008 Intel Corporation
 # *
@@ -23,13 +23,13 @@
 # Author:  Angshuman Parashar
 #
 
-package HAsim::RRR::Method;
+package HAsim::RRR::Method::Base;
 
 use warnings;
 use strict;
 use re 'eval';
 
-use HAsim::RRR::Argument;
+use HAsim::RRR::Arglist::Base;
 
 # regex
 my $REGEX = qr/
@@ -91,32 +91,11 @@ sub _parse
         my $method;
 
         # assign name to hash
-        $method->{name}   = $1;
-        $method->{inarg}  = undef;
-        $method->{outarg} = undef;
+        $method->{name} = $1;
 
-        # split args string using comma as a delimiter
-        my @raw_arglist = split(/,/, $2);
-
-        # process each split as a type
-        foreach my $raw_arg (@raw_arglist)
-        {
-            my $arg = HAsim::RRR::Argument->new($raw_arg);
-
-            # push into in or out list
-            if ($arg->direction() eq "in")
-            {
-                # multiple args not supported, so overwrite
-                $method->{inarg} = $arg;
-                # push(@{ $method->{inarglist} }, $arg);
-            }
-            else
-            {
-                # multiple args not supported, so overwrite
-                $method->{outarg} = $arg;
-                # push(@{ $method->{outarglist} }, $arg);
-            }
-        }
+        # construct input and output arg lists from raw arg string
+        $method->{inargs}  = HAsim::RRR::Arglist::Base->new("in", $2);
+        $method->{outargs} = HAsim::RRR::Arglist::Base->new("out", $2);
 
         # add to list
         push(@methodlist, $method);
@@ -137,102 +116,43 @@ sub name
 }
 
 ##
-## get the input arg
+## get the input arglist
 ##
-sub inarg
+sub inargs
 {
     my $self = shift;
 
-    return $self->{inarg};
+    return $self->{inargs};
 }
 
 ##
-## get the output arg
+## get the output arglist
 ##
-sub outarg
+sub outargs
 {
     my $self = shift;
 
-    return $self->{outarg};
+    return $self->{outargs};
 }
 
 ##
-## get the input arg size
+## generate a name for the input arg type
 ##
-sub insize
+sub _intype_name
 {
     my $self = shift;
 
-    return $self->{inarg}->type()->size();
+    return "IN_TYPE_" . $self->{name};
 }
 
 ##
-## get the output arg size
+## generate a name for the output arg type
 ##
-sub outsize
+sub _outtype_name
 {
     my $self = shift;
 
-    if (defined($self->{outarg}))
-    {
-        return $self->{outarg}->type()->size();
-    }
-    else
-    {
-        return 0;
-    }
+    return "OUT_TYPE_" . $self->{name};
 }
-
-#
-# get the input arglist
-#
-# sub inarglist
-# {
-#     my $self = shift;
-# 
-#     return $self->{inarglist};
-# }
-
-#
-# get the output arglist
-#
-# sub outarglist
-# {
-#     my $self = shift;
-# 
-#     return $self->{outarglist};
-# }
-
-#
-# return the total size of input args
-#
-# sub insize
-# {
-#     my $self = shift;
-# 
-#     my $size = 0;
-#     foreach my $arg (@{ $self->{inargs} })
-#     {
-#         $size = $size + $arg->type()->size();
-#     }
-# 
-#     return $size;
-# }
-
-#
-# return the total size of output args
-#
-# sub outsize
-# {
-#     my $self = shift;
-# 
-#     my $size = 0;
-#     foreach my $arg (@{ $self->{outargs} })
-#     {
-#         $size = $size + $arg->type()->size();
-#     }
-# 
-#     return $size;
-# }
 
 1;

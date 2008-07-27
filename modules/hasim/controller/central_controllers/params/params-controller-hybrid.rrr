@@ -9,6 +9,6 @@ service PARAMS
     ##
     server hw (bsv, connection) <- sw (cpp, method)
     {
-        method sendParam(in UMF_UINT96[96] pname_and_pval, out UINT8[8] ack);
+        method sendParam(in UINT32[32] paramID, in UINT64[64] value, out UINT8[8] ack);
     };
 };

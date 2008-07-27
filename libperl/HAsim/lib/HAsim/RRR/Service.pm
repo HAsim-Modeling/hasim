@@ -32,8 +32,8 @@ use re 'eval';
 use Text::Balanced;
 
 use HAsim::RRR::Collection;
-use HAsim::RRR::Server;
-use HAsim::RRR::Client;
+use HAsim::RRR::Server::Base;
+use HAsim::RRR::Client::Base;
 
 # regex
 my $REGEX = qr/
@@ -104,8 +104,8 @@ sub _parse
         my @collectionlist = HAsim::RRR::Collection->new($body);
 
         # re-arrange collections into a lists of clients and servers
-        my @serverlist = HAsim::RRR::Server->new($service->{name}, @collectionlist);
-        my @clientlist = HAsim::RRR::Client->new($service->{name}, @collectionlist);
+        my @serverlist = HAsim::RRR::Server::Base->new($service->{name}, @collectionlist);
+        my @clientlist = HAsim::RRR::Client::Base->new($service->{name}, @collectionlist);
 
         # add client and server lists to service
         push (@{ $service->{serverlist} }, @serverlist);

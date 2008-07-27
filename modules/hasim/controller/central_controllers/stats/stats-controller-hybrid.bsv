@@ -75,15 +75,6 @@ typedef enum
   STATS_CON_STATE
                deriving (Eq, Bits);
 
-// RRR type STAT_INFO
-typedef struct
-{
-  UINT32 statID;
-  UINT32 value;
-}
-  STAT_INFO
-               deriving (Eq, Bits);
-
 // mkStatsController
 
 // Abstracts all communication from the main controller to individual stat counters.
@@ -144,7 +135,7 @@ module [Connected_Module] mkStatsController
       tagged ST_Val .stinfo: //A stat to dump
       begin
           
-        client_stub.makeRequest_Send(STAT_INFO { statID: zeroExtend(stinfo.statID), value: stinfo.value });
+        client_stub.makeRequest_Send(zeroExtend(stinfo.statID), stinfo.value);
           
       end
       tagged ST_Dump:  //We're done dumping

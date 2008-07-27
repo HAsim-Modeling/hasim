@@ -29,12 +29,12 @@ use warnings;
 use strict;
 use re 'eval';
 
-use HAsim::RRR::Server;
-use HAsim::RRR::Method;
+use HAsim::RRR::Server::Base;
+use HAsim::RRR::Method::Base;
 use HAsim::RRR::Method::CPP;
 
 # inherit from Server
-our @ISA = qw(HAsim::RRR::Server);
+our @ISA = qw(HAsim::RRR::Server::Base);
 
 ##
 ## constructor

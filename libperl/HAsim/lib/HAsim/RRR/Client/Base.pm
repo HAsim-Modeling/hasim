@@ -1,5 +1,5 @@
 # *****************************************************************************
-# * Server.pm
+# * Base.pm
 # *
 # * Copyright (C) 2008 Intel Corporation
 # *
@@ -23,22 +23,22 @@
 # Author:  Angshuman Parashar
 #
 
-package HAsim::RRR::Server;
+package HAsim::RRR::Client::Base;
 
 use warnings;
 use strict;
 use re 'eval';
 
 use HAsim::RRR::Collection;
-use HAsim::RRR::Server::BSV;
-use HAsim::RRR::Server::CPP;
+use HAsim::RRR::Client::BSV;
+use HAsim::RRR::Client::CPP;
 
-#
-# constructor: this is an unusual constructor. It returns
-# not a single object of type Server, but a list of objects
-# of type Server. All other member functions operate on a
-# single object.
-#
+##
+## constructor: this is an unusual constructor. It returns
+## not a single object of type Client, but a list of objects
+## of type Client. All other member functions operate on a
+## single object.
+##
 sub new
 {
     # get name of class
@@ -51,7 +51,7 @@ sub new
     my @collectionlist = @_;
 
     # extract methods from each collection and place them
-    # into multiple server modules, each with a unique
+    # into multiple client modules, each with a unique
     # target name
     my @objlist = _extract($servicename, @collectionlist);
 
@@ -62,70 +62,70 @@ sub new
     return @objlist;
 }
 
-#
-# extract methods from each collection and place them
-# into multiple server modules, each with a unique
-# target name
-#
+##
+## extract methods from each collection and place them
+## into multiple client modules, each with a unique
+## target name
+##
 sub _extract
 {
     my $servicename    = shift;
     my @collectionlist = @_;
 
-    # create an empty list of servers
-    my @serverlist = ();
+    # create an empty list of clients
+    my @clientlist = ();
 
     # for each collection in given list
     foreach my $collection (@collectionlist)
     {
-        # create a new server: we are guaranteed to have
-        # one new server target per collection
-        my $server;
+        # create a new client: we are guaranteed to have
+        # one new client target per collection
+        my $client;
 
         # check for target name conflicts in existing
-        # list of servers
-        foreach my $s (@serverlist)
+        # list of clients
+        foreach my $s (@clientlist)
         {
-            if ($s->{target} eq $collection->server_target())
+            if ($s->{target} eq $collection->client_target())
             {
-                die "server target name conflict: " . $s->{target};
+                die "client target name conflict: " . $s->{target};
             }
         }
 
-        # no conflicts, fill in server details
-        $server->{name}   = $servicename;
-        $server->{target} = $collection->server_target();
-        $server->{lang}   = $collection->server_lang();
-        $server->{ifc}    = $collection->server_ifc();
+        # no conflicts, fill in client details
+        $client->{name}   = $servicename;
+        $client->{target} = $collection->client_target();
+        $client->{lang}   = $collection->client_lang();
+        $client->{ifc}    = $collection->client_ifc();
 
-        # now construct a target-language-specific server
-        my $typed_server;
-        if ($server->{lang} eq "bsv")
+        # now construct a target-language-specific client
+        my $typed_client;
+        if ($client->{lang} eq "bsv")
         {
             # pass in the method list
-            $typed_server = HAsim::RRR::Server::BSV->new($server, @{ $collection->methodlist() });
+            $typed_client = HAsim::RRR::Client::BSV->new($client, @{ $collection->methodlist() });
         }
-        elsif ($server->{lang} eq "cpp")
+        elsif ($client->{lang} eq "cpp")
         {
             # pass in the method list
-            $typed_server = HAsim::RRR::Server::CPP->new($server, @{ $collection->methodlist() });
+            $typed_client = HAsim::RRR::Client::CPP->new($client, @{ $collection->methodlist() });
         }
         else
         {
-            die "invalid server language: " . $server->{lang};
+            die "invalid client language: " . $client->{lang};
         }
 
-        # add typed server to list of servers
-        push(@serverlist, $typed_server);
+        # add typed client to list of clients
+        push(@clientlist, $typed_client);
     }
 
     # return list
-    return @serverlist;
+    return @clientlist;
 }
 
-#
-# return the target name
-#
+##
+## return the target name
+##
 sub target
 {
     my $self = shift;
@@ -133,9 +133,9 @@ sub target
     return $self->{target};
 }
 
-#
-# return the language
-#
+##
+## return the language
+##
 sub lang
 {
     my $self = shift;
@@ -143,9 +143,9 @@ sub lang
     return $self->{lang};
 }
 
-#
-# return the interface type
-#
+##
+## return the interface type
+##
 sub interface
 {
     my $self = shift;

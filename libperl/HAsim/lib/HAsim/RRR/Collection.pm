@@ -29,7 +29,7 @@ use warnings;
 use strict;
 use re 'eval';
 
-use HAsim::RRR::Method;
+use HAsim::RRR::Method::Base;
 
 # regex: parsing a collection is relatively easy since
 # it is at the leaf-level of a balanced-braces hierarchy
@@ -106,7 +106,7 @@ sub _parse
         $collection->{client_ifc}  = $6;
 
         # parse body of collection into list of methods
-        push(@{ $collection->{methodlist} }, HAsim::RRR::Method->new($7));
+        push(@{ $collection->{methodlist} }, HAsim::RRR::Method::Base->new($7));
 
         # add collection to list
         push(@collectionlist, $collection);

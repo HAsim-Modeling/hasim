@@ -29,11 +29,11 @@ use warnings;
 use strict;
 use re 'eval';
 
-use HAsim::RRR::Client;
-use HAsim::RRR::Method;
+use HAsim::RRR::Client::Base;
+use HAsim::RRR::Method::Base;
 
 # inherit from Client
-our @ISA = qw(HAsim::RRR::Client);
+our @ISA = qw(HAsim::RRR::Client::Base);
 
 ##
 ## constructor

@@ -29,10 +29,10 @@ use warnings;
 use strict;
 use re 'eval';
 
-use HAsim::RRR::Method;
+use HAsim::RRR::Method::Base;
 
 # inherit from Method
-our @ISA = qw(HAsim::RRR::Method);
+our @ISA = qw(HAsim::RRR::Method::Base);
 
 ##
 ## constructor
@@ -66,13 +66,111 @@ sub _semi_deep_copy
     # copy all fields. Note that in many cases we are merely
     # copying the references to the objects in the original hash,
     # which is exactly what we want.
-    my %target;
+    my $target;
 
-    $target{name}   = $source->{name};
-    $target{inarg}  = $source->{inarg};
-    $target{outarg} = $source->{outarg};
+    $target->{name}  = $source->{name};
 
-    return \%target;
+    # copy over the arg lists, but type case them into BSV
+    $target->{inargs}  = HAsim::RRR::Arglist::BSV->new($source->{inargs});
+    $target->{outargs} = HAsim::RRR::Arglist::BSV->new($source->{outargs});
+
+    return $target;
+}
+
+######################################
+#               TYPES                #
+######################################
+
+##
+## print type definitions
+##
+sub print_types
+{
+    my $self = shift;
+    my $file = shift;
+
+    # input
+    if ($self->inargs()->num() > 1)
+    {
+        # create a struct
+        print $file "typedef "                     .
+                    $self->inargs()->makestruct()  .
+                    $self->_intype_name()          .
+                    "\n    deriving (Bits, Eq);\n";
+    }
+    else
+    {
+        # use type of lone element in arg list
+        print $file "typedef "                 .
+                $self->inargs()->singletype()  .
+                " "                            .
+                $self->_intype_name()          .
+                ";\n";
+    }
+
+    # output
+    if ($self->outargs()->num() > 1)
+    {
+        # create a struct
+        print $file "typedef "                     .
+                    $self->outargs()->makestruct() .
+                    $self->_outtype_name()         .
+                    "\n    deriving (Bits, Eq);\n";
+    }
+    elsif ($self->outargs()->num() == 1)
+    {
+        print $file "typedef "                     .
+                    $self->outargs()->singletype() .
+                    " "                            .
+                    $self->_outtype_name()         .
+                    ";\n";
+    }
+    else
+    {
+        # no output args, don't print anything
+    }
+
+    print $file "\n";
+}
+
+######################################
+#              GENERAL               #
+######################################
+
+##
+## create a "get"-type header
+##
+sub _make_get_header
+{
+    my $self        = shift;
+    my $methodclass = shift;
+    my $typestring  = shift;
+    
+    my $string = "method ActionValue#(" .
+                 $typestring            .
+                 ") "                   .
+                 $methodclass           .
+                 "_"                    .
+                 $self->{name}          .
+                 "()";
+}
+
+##
+## create a "put"-type header
+##
+sub _make_put_header
+{
+    my $self        = shift;
+    my $methodclass = shift;
+    my $argstring   = shift;
+    
+    my $string = "method Action " .
+                 $methodclass     .
+                 "_"              .
+                 $self->{name}    .
+                 "("              .
+                 $argstring       .
+                 ")";
 }
 
 ######################################
@@ -82,47 +180,63 @@ sub _semi_deep_copy
 ##### ACCEPT_REQUEST STUB PRINTING #####
 
 ##
-## print accept_request declaration
+## print direct accept_request declaration
 ##
-sub print_accept_request_declaration
+sub print_direct_accept_request_declaration
 {
-    # get object
-    my $self = shift;
-
-    # get file handle
-    my $file = shift;
-
-    # get indentation
+    my $self   = shift;
+    my $file   = shift;
     my $indent = shift;
 
-    my $pack = shift;
-
-    # print method header after indenting it
-    print $file $indent;
-    _print_accept_request_header($self, $file, $pack);
-    print $file ";\n";
+    print $file $indent                                      .
+                $self->_make_get_header("acceptRequest",
+                                        $self->_intype_name()) .
+                ";\n";
 }
 
 ##
-## print accept_request definition
+## print proxy accept_request declaration
 ##
-sub print_accept_request_definition
+sub print_proxy_accept_request_declaration
 {
-    # get object
-    my $self = shift;
-
-    # get file handle
-    my $file = shift;
-
-    # get indentation
+    my $self   = shift;
+    my $file   = shift;
     my $indent = shift;
 
-    # pack?
-    my $pack = shift;
+    print $file $indent                                      .
+                $self->_make_get_header("acceptRequest",
+                                        $self->inargs()->makebitvector()) .
+                ";\n";
+}
 
-    # print method header after indenting it
-    print $file $indent;
-    _print_accept_request_header($self, $file, $pack);
+##
+## print remote accept_request declaration
+##
+sub print_remote_accept_request_declaration
+{
+    my $self   = shift;
+    my $file   = shift;
+    my $indent = shift;
+
+    print $file $indent                                      .
+                $self->_make_get_header("acceptRequest",
+                                        $self->_intype_name()) .
+                ";\n";
+}
+
+##
+## print direct accept_request definition
+##
+sub print_direct_accept_request_definition
+{
+    my $self   = shift;
+    my $file   = shift;
+    my $indent = shift;
+
+    # header
+    print $file $indent                             .
+                $self->_make_get_header("acceptRequest",
+                                        $self->_intype_name());
 
     # conditions
     print $file " if (mid == fromInteger(mid_";
@@ -133,8 +247,40 @@ sub print_accept_request_definition
     print $file $indent . "    let a <- dem.readAndDelete();\n";
     print $file $indent . "    ";
 
-    # TODO: support multiple params
-    print $file $self->inarg()->type()->string_bsv($pack);
+    # acceptRequest()s always return a struct/bitvector
+    print $file $self->_intype_name();
+    print $file " retval = unpack(truncate(a));\n";
+    print $file $indent . "    return retval;\n";
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
+}
+
+##
+## print proxy accept_request definition
+##
+sub print_proxy_accept_request_definition
+{
+    my $self   = shift;
+    my $file   = shift;
+    my $indent = shift;
+
+    # header
+    print $file $indent                             .
+                $self->_make_get_header("acceptRequest",
+                                        $self->inargs()->makebitvector());
+
+    # conditions
+    print $file " if (mid == fromInteger(mid_";
+    print $file $self->{name};
+    print $file "));\n";
+
+    # body
+    print $file $indent . "    let a <- dem.readAndDelete();\n";
+    print $file $indent . "    ";
+
+    # acceptRequest()s always return a struct/bitvector
+    print $file $self->inargs()->makebitvector();
     print $file " retval = unpack(truncate(a));\n";
     print $file $indent . "    return retval;\n";
 
@@ -148,27 +294,20 @@ sub print_accept_request_definition
 ##
 sub print_remote_accept_request_definition
 {
-    # get object
-    my $self = shift;
-
-    # get file handle
-    my $file = shift;
-
-    # get indentation
+    my $self   = shift;
+    my $file   = shift;
     my $indent = shift;
 
-    # force pack to 0
-    my $pack = 0;
-
-    # print method header after indenting it
-    print $file $indent;
-    _print_accept_request_header($self, $file, $pack);
+    # header
+    print $file $indent                             .
+                $self->_make_get_header("acceptRequest",
+                                        $self->_intype_name());
 
     # no conditions
     print $file ";\n";
 
     # body
-    if (defined($self->outarg()))
+    if ($self->outargs()->num() != 0)
     {
         # server-type connection
         print $file $indent . "    let a = link_" . $self->{name} . ".getReq();\n";
@@ -187,74 +326,145 @@ sub print_remote_accept_request_definition
     print $file $indent . "endmethod\n\n";
 }
 
-##
-## print accept_request header
-##
-sub _print_accept_request_header
-{
-    # get object
-    my $self = shift;
-
-    # get file handle
-    my $file = shift;
-
-    # pack?
-    my $pack = shift;
-
-    # print into file
-    print $file "method ActionValue#(" .
-                $self->inarg()->type()->string_bsv($pack) .
-                ") ";
-
-    # method name
-    print $file "acceptRequest_" .
-                $self->{name}    .
-                "()";
-}
 
 ##### SEND_RESPONSE STUB PRINTING #####
 
 ##
-## print send_response declaration
+## print direct send_response declaration
 ##
-sub print_send_response_declaration
+sub print_direct_send_response_declaration
 {
-    my $self = shift;
-    my $file = shift;
+    my $self   = shift;
+    my $file   = shift;
     my $indent = shift;
-    my $pack = shift;
 
     # return if we don't need a response
-    if (!defined($self->outarg()))
+    if ($self->outargs()->num() == 0)
     {
         return;
     }
 
-    # print method header after indenting it
-    print $file $indent;
-    _print_send_response_header($self, $file, $pack);
+    # header
+    print $file $indent                             .
+                $self->_make_put_header("sendResponse",
+                                        $self->outargs()->makelist());
+
     print $file ";\n";
 }
 
 ##
-## print send_response definition
+## print proxy send_response declaration
 ##
-sub print_send_response_definition
+sub print_proxy_send_response_declaration
 {
-    my $self = shift;
-    my $file = shift;
+    my $self   = shift;
+    my $file   = shift;
     my $indent = shift;
-    my $pack = shift;
 
     # return if we don't need a response
-    if (!defined($self->outarg()))
+    if ($self->outargs()->num() == 0)
     {
         return;
     }
 
-    # print method header after indenting it
-    print $file $indent;
-    _print_send_response_header($self, $file, $pack);
+    # header
+    print $file $indent                             .
+                $self->_make_put_header("sendResponse",
+                                        $self->outargs()->makebitvector() . " resp");
+
+    print $file ";\n";
+}
+
+##
+## print remote send_response declaration
+##
+sub print_remote_send_response_declaration
+{
+    my $self   = shift;
+    my $file   = shift;
+    my $indent = shift;
+
+    # return if we don't need a response
+    if ($self->outargs()->num() == 0)
+    {
+        return;
+    }
+
+    # header
+    print $file $indent                             .
+                $self->_make_put_header("sendResponse",
+                                        $self->outargs()->makelist());
+
+    print $file ";\n";
+}
+
+##
+## print direct send_response definition
+##
+sub print_direct_send_response_definition
+{
+    my $self = shift;
+    my $file = shift;
+    my $indent = shift;
+
+    # return if we don't need a response
+    if ($self->outargs()->num() == 0)
+    {
+        return;
+    }
+
+    # header
+    print $file $indent                             .
+                $self->_make_put_header("sendResponse",
+                                        $self->outargs()->makelist());
+
+    print $file ";\n";
+
+    # pack all elements into a struct
+    print $file $indent . "    let resp = " .
+                $self->outargs()->fillstruct($self->_outtype_name()) . ";\n";
+
+    # body
+    print $file $indent . "    UMF_PACKET header = tagged UMF_PACKET_header\n";
+    print $file $indent . "                        {\n";
+    print $file $indent . "                            channelID: ?,\n";
+    print $file $indent . "                            serviceID: `SERVICE_ID,\n";
+    print $file $indent . "                            methodID : fromInteger(mid_";
+    print $file $self->{name};
+    print $file "),\n";
+    print $file $indent . "                            numChunks: fromInteger(numChunks_";
+    print $file $self->{name};
+    print $file ")\n";
+    print $file $indent . "                        };\n";
+    print $file $indent . "    server.responsePorts[`SERVICE_ID].write(header);\n";
+    print $file $indent . "    mar.enq(zeroExtend(pack(resp)), fromInteger(numChunks_";
+    print $file $self->{name};
+    print $file "));\n";
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
+}
+
+##
+## print proxy send_response definition
+##
+sub print_proxy_send_response_definition
+{
+    my $self = shift;
+    my $file = shift;
+    my $indent = shift;
+
+    # return if we don't need a response
+    if ($self->outargs()->num() == 0)
+    {
+        return;
+    }
+
+    # header
+    print $file $indent                             .
+                $self->_make_put_header("sendResponse",
+                                        $self->outargs()->makebitvector() . " resp");
+
     print $file ";\n";
 
     # body
@@ -288,46 +498,28 @@ sub print_remote_send_response_definition
     my $file = shift;
     my $indent = shift;
 
-    # force pack to 0
-    my $pack = 0;
-
     # return if we don't need a response
-    if (!defined($self->outarg()))
+    if ($self->outargs()->num() == 0)
     {
         return;
     }
 
-    # print method header after indenting it
-    print $file $indent;
-    _print_send_response_header($self, $file, $pack);
+    # header
+    print $file $indent                             .
+                $self->_make_put_header("sendResponse",
+                                        $self->outargs()->makelist());
+
     print $file ";\n";
+
+    # pack all elements into a struct
+    print $file $indent . "    let resp = " .
+                $self->outargs()->fillstruct($self->_outtype_name()) . ";\n";
 
     # body
     print $file $indent . "    link_" . $self->{name} . ".makeResp(pack(resp));\n";
 
     # endmethod
     print $file $indent . "endmethod\n\n";
-}
-
-##
-## print send_response header
-##
-sub _print_send_response_header
-{
-    # get object
-    my $self = shift;
-
-    # get file handle
-    my $file = shift;
-    my $pack = shift;
-
-    # print into file
-    print $file "method Action sendResponse_";
-
-    # method name
-    print $file $self->{name} . "("                   .
-                $self->outarg()->type()->string_bsv($pack) .
-                " resp)"; # std formal param
 }
 
 ##### CONNECTION RULES #####
@@ -342,16 +534,13 @@ sub print_server_connection
     my $indent      = shift;
     my $servicename = shift;
 
-    # force pack to 1
-    my $pack = 1;
-
     # print connection definitions
-    if (!defined($self->outarg()))
+    if ($self->outargs()->num() == 0)
     {
         # no return: create Send-type connection
         print $file $indent . "Connection_Send#("        .
-                    $self->inarg()->type()->string_bsv($pack) .
-                    ") link_server_$servicename" . "_"          .
+                    $self->inargs()->makebitvector()     .
+                    ") link_server_$servicename" . "_"   .
                     $self->{name}                        .
                     " <- mkConnection_Send(\"rrr_server_$servicename\_" .
                     $self->{name} . "\");\n";
@@ -359,12 +548,12 @@ sub print_server_connection
     else
     {
         # need return: create Client-type connection
-        print $file $indent . "Connection_Client#("       .
-                    $self->inarg()->type()->string_bsv($pack)  .
-                    ", "                                  .
-                    $self->outarg()->type()->string_bsv($pack) .
-                    ") link_server_$servicename" . "_"           .
-                    $self->{name}                         .
+        print $file $indent . "Connection_Client#("      .
+                    $self->inargs()->makebitvector()     .
+                    ", "                                 .
+                    $self->outargs()->makebitvector()    .
+                    ") link_server_$servicename" . "_"   .
+                    $self->{name}                        .
                     " <- mkConnection_Client(\"rrr_server_$servicename\_" .
                     $self->{name} . "\");\n";
     }
@@ -380,15 +569,11 @@ sub print_server_link_rules
     my $indent      = shift;
     my $servicename = shift;
 
-    # force pack to 1
-    my $pack = 1;
-
     my $methodname = $self->{name};
-    my $insize     = $self->insize();
-    my $intype     = $self->inarg()->type()->string_bsv($pack);
+    my $intype     = $self->inargs()->makebitvector();
     
     # print rules to transfer request and response to the connection
-    if (!defined($self->outarg()))
+    if ($self->outargs()->num() == 0)
     {
         # no return: create only request rule, use send()
         print $file $indent . "rule server_acceptRequest_$servicename\_$methodname (True);\n";
@@ -399,8 +584,7 @@ sub print_server_link_rules
     }
     else
     {
-        my $outsize = $self->outsize();
-        my $outtype = $self->outarg()->type()->string_bsv($pack);
+        my $outtype = $self->outargs()->makebitvector();
 
         # need return: create request and response rules, use makeReq()
         print $file $indent . "rule server_acceptRequest_$servicename\_$methodname (True);\n";
@@ -428,29 +612,26 @@ sub print_remote_server_connection
     my $indent      = shift;
     my $servicename = shift;
 
-    # force pack to 1
-    my $pack = 1;
-
     # print connection definitions
-    if (!defined($self->outarg()))
+    if ($self->outargs()->num() == 0)
     {
         # no return: create receive-type connection
-        print $file $indent . "Connection_Receive#("          .
-                    $self->inarg()->type()->string_bsv($pack) .
-                    ") link_"                                 .
-                    $self->{name}                             .
+        print $file $indent . "Connection_Receive#("  .
+                    $self->inargs()->makebitvector()  .
+                    ") link_"                         .
+                    $self->{name}                     .
                     " <- mkConnection_Receive(\"rrr_server_$servicename\_" .
                     $self->{name} . "\");\n";
     }
     else
     {
         # need return: create server-type connection
-        print $file $indent . "Connection_Server#("            .
-                    $self->inarg()->type()->string_bsv($pack)  .
-                    ", "                                       .
-                    $self->outarg()->type()->string_bsv($pack) .
-                    ") link_"                                  .
-                    $self->{name}                              .
+        print $file $indent . "Connection_Server#("   .
+                    $self->inargs()->makebitvector()  .
+                    ", "                              .
+                    $self->outargs()->makebitvector() .
+                    ") link_"                         .
+                    $self->{name}                     .
                     " <- mkConnection_Server(\"rrr_server_$servicename\_" .
                     $self->{name} . "\");\n";
     }
@@ -463,48 +644,108 @@ sub print_remote_server_connection
 ##### MAKE_REQUEST STUB PRINTING #####
 
 ##
-## print make_request declaration
+## print direct make_request declaration
 ##
-sub print_make_request_declaration
+sub print_direct_make_request_declaration
 {
-    # get object
     my $self = shift;
-
-    # get file handle
     my $file = shift;
-
-    # get indentation
     my $indent = shift;
 
-    # pack?
-    my $pack = shift;
+    print $file $indent                             .
+                $self->_make_put_header("makeRequest",
+                                        $self->inargs()->makelist());
 
-    # print method header after indenting it
-    print $file $indent;
-    _print_make_request_header($self, $file, $pack);
     print $file ";\n";
 }
 
 ##
-## print make_request definition
+## print proxy make_request declaration
 ##
-sub print_make_request_definition
+sub print_proxy_make_request_declaration
 {
-    # get object
     my $self = shift;
-
-    # get file handle
     my $file = shift;
-
-    # get indentation
     my $indent = shift;
 
-    # pack?
-    my $pack = shift;
+    print $file $indent                             .
+                $self->_make_put_header("makeRequest",
+                                        $self->inargs()->makebitvector() . " req");
 
-    # print method header after indenting it
-    print $file $indent;
-    _print_make_request_header($self, $file, $pack);
+    print $file ";\n";
+}
+
+##
+## print remote make_request declaration
+##
+sub print_remote_make_request_declaration
+{
+    my $self = shift;
+    my $file = shift;
+    my $indent = shift;
+
+    print $file $indent                             .
+                $self->_make_put_header("makeRequest",
+                                        $self->inargs()->makelist());
+
+    print $file ";\n";
+}
+
+##
+## print direct make_request definition
+##
+sub print_direct_make_request_definition
+{
+    my $self = shift;
+    my $file = shift;
+    my $indent = shift;
+
+    # header
+    print $file $indent                             .
+                $self->_make_put_header("makeRequest",
+                                        $self->inargs()->makelist());
+
+    print $file ";\n";
+
+    # pack all elements into a struct
+    print $file $indent . "    let req = " .
+                $self->inargs()->fillstruct($self->_intype_name()) . ";\n";
+
+    # body
+    print $file $indent . "    UMF_PACKET header = tagged UMF_PACKET_header\n";
+    print $file $indent . "                        {\n";
+    print $file $indent . "                            channelID: ?,\n";
+    print $file $indent . "                            serviceID: `SERVICE_ID,\n";
+    print $file $indent . "                            methodID : fromInteger(mid_";
+    print $file $self->{name};
+    print $file "),\n";
+    print $file $indent . "                            numChunks: fromInteger(numChunks_";
+    print $file $self->{name};
+    print $file ")\n";
+    print $file $indent . "                        };\n";
+    print $file $indent . "    client.requestPorts[`SERVICE_ID].write(header);\n";
+    print $file $indent . "    mar.enq(zeroExtend(pack(req)), fromInteger(numChunks_";
+    print $file $self->{name};
+    print $file "));\n";
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
+}
+
+##
+## print proxy make_request definition
+##
+sub print_proxy_make_request_definition
+{
+    my $self = shift;
+    my $file = shift;
+    my $indent = shift;
+
+    # header
+    print $file $indent                             .
+                $self->_make_put_header("makeRequest",
+                                        $self->inargs()->makebitvector() . " req");
+
     print $file ";\n";
 
     # body
@@ -521,7 +762,7 @@ sub print_make_request_definition
     print $file $indent . "                        };\n";
     print $file $indent . "    client.requestPorts[`SERVICE_ID].write(header);\n";
     print $file $indent . "    mar.enq(zeroExtend(pack(req)), fromInteger(numChunks_";
-     print $file $self->{name};
+    print $file $self->{name};
     print $file "));\n";
 
     # endmethod
@@ -543,16 +784,19 @@ sub print_remote_make_request_definition
     # get indentation
     my $indent = shift;
 
-    # force pack to 0 for header printing
-    my $pack = 0;
+    # header
+    print $file $indent                             .
+                $self->_make_put_header("makeRequest",
+                                        $self->inargs()->makelist());
 
-    # print method header after indenting it
-    print $file $indent;
-    _print_make_request_header($self, $file, $pack);
     print $file ";\n";
 
+    # pack all elements into a struct
+    print $file $indent . "    let req = " .
+                $self->inargs()->fillstruct($self->_intype_name()) . ";\n";
+
     # body
-    if (defined($self->outarg()))
+    if ($self->outargs()->num() != 0)
     {
         # client-type connection
         print $file $indent . "    link_" . $self->{name} . ".makeReq(pack(req));\n";
@@ -567,84 +811,90 @@ sub print_remote_make_request_definition
     print $file $indent . "endmethod\n\n";
 }
 
-##
-## print make_request header
-##
-sub _print_make_request_header
-{
-    # get object
-    my $self = shift;
-
-    # get file handle
-    my $file = shift;
-    my $pack = shift;
-
-    # print into file
-    print $file "method Action makeRequest_";
-
-    # method name
-    print $file $self->{name} . "("                  .
-                $self->inarg()->type()->string_bsv($pack) .
-                " req)"; # std formal param
-}
-
 ##### GET_RESPONSE STUB PRINTING #####
 
 ##
-## print get_response declaration
+## print direct get_response declaration
 ##
-sub print_get_response_declaration
+sub print_direct_get_response_declaration
 {
-    # get object
     my $self = shift;
-
-    # get file handle
     my $file = shift;
-
-    # get indentation
     my $indent = shift;
 
-    # pack?
-    my $pack = shift;
-
     # return if we don't need a response
-    if (!defined($self->outarg()))
+    if ($self->outargs()->num() == 0)
     {
         return;
     }
 
-    # print method header after indenting it
-    print $file $indent;
-    _print_get_response_header($self, $file, $pack);
-    print $file ";\n";
+    print $file $indent                                      .
+                $self->_make_get_header("getResponse",
+                                        $self->_outtype_name()) .
+                ";\n";
 }
 
 ##
-## print get_response definition
+## print proxy get_response declaration
 ##
-sub print_get_response_definition
+sub print_proxy_get_response_declaration
 {
-    # get object
     my $self = shift;
-
-    # get file handle
     my $file = shift;
-
-    # get indentation
     my $indent = shift;
 
-    # pack?
-    my $pack = shift;
-
     # return if we don't need a response
-    if (!defined($self->outarg()))
+    if ($self->outargs()->num() == 0)
     {
         return;
     }
 
-    # print method header after indenting it
-    print $file $indent;
-    _print_get_response_header($self, $file, $pack);
+    print $file $indent                                      .
+                $self->_make_get_header("getResponse",
+                                        $self->outargs()->makebitvector()) .
+                ";\n";
+}
+
+##
+## print remote get_response declaration
+##
+sub print_remote_get_response_declaration
+{
+    my $self = shift;
+    my $file = shift;
+    my $indent = shift;
+
+    # return if we don't need a response
+    if ($self->outargs()->num() == 0)
+    {
+        return;
+    }
+
+    print $file $indent                                      .
+                $self->_make_get_header("getResponse",
+                                        $self->_outtype_name()) .
+                ";\n";
+}
+
+##
+## print direct get_response definition
+##
+sub print_direct_get_response_definition
+{
+    my $self = shift;
+    my $file = shift;
+    my $indent = shift;
+
+    # return if we don't need a response
+    if ($self->outargs()->num() == 0)
+    {
+        return;
+    }
+
+    # header
+    print $file $indent                                      .
+                $self->_make_get_header("getResponse",
+                                        $self->_outtype_name());
 
     # conditions
     print $file " if (mid == fromInteger(mid_";
@@ -654,7 +904,43 @@ sub print_get_response_definition
     # body
     print $file $indent . "    let a <- dem.readAndDelete();\n";
     print $file $indent . "    ";
-    print $file $self->outarg()->type()->string_bsv($pack);
+    print $file $self->_outtype_name();
+    print $file " retval = unpack(truncate(a));\n";
+    print $file $indent . "    return retval;\n";
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
+}
+
+##
+## print proxy get_response definition
+##
+sub print_proxy_get_response_definition
+{
+    my $self = shift;
+    my $file = shift;
+    my $indent = shift;
+
+    # return if we don't need a response
+    if ($self->outargs()->num() == 0)
+    {
+        return;
+    }
+
+    # header
+    print $file $indent                                      .
+                $self->_make_get_header("getResponse",
+                                        $self->outargs()->makebitvector());
+
+    # conditions
+    print $file " if (mid == fromInteger(mid_";
+    print $file $self->{name};
+    print $file "));\n";
+
+    # body
+    print $file $indent . "    let a <- dem.readAndDelete();\n";
+    print $file $indent . "    ";
+    print $file $self->outargs()->makebitvector();
     print $file " retval = unpack(truncate(a));\n";
     print $file $indent . "    return retval;\n";
 
@@ -668,27 +954,20 @@ sub print_get_response_definition
 ##
 sub print_remote_get_response_definition
 {
-    # get object
     my $self = shift;
-
-    # get file handle
     my $file = shift;
-
-    # get indentation
     my $indent = shift;
 
-    # force pack to 0 for header printing
-    my $pack = 0;
-
     # return if we don't need a response
-    if (!defined($self->outarg()))
+    if ($self->outargs()->num() == 0)
     {
         return;
     }
 
-    # print method header after indenting it
-    print $file $indent;
-    _print_get_response_header($self, $file, $pack);
+    # header
+    print $file $indent                                      .
+                $self->_make_get_header("getResponse",
+                                        $self->_outtype_name());
 
     # no conditions
     print $file ";\n";
@@ -700,29 +979,6 @@ sub print_remote_get_response_definition
 
     # endmethod
     print $file $indent . "endmethod\n\n";
-}
-
-##
-## print get_response header
-##
-sub _print_get_response_header
-{
-    # get object
-    my $self = shift;
-
-    # get file handle
-    my $file = shift;
-    my $pack = shift;
-
-    # print into file
-    print $file "method ActionValue#("                .
-                $self->outarg()->type()->string_bsv($pack) .
-                ") ";
-
-    # method name
-    print $file "getResponse_" .
-                $self->{name}  .
-                "()";
 }
 
 ##### CONNECTION RULES #####
@@ -737,29 +993,26 @@ sub print_client_connection
     my $indent      = shift;
     my $servicename = shift;
 
-    # force pack to 1
-    my $pack = 1;
-
     # print connection definitions
-    if (!defined($self->outarg()))
+    if ($self->outargs()->num() == 0)
     {
         # no return: create Receive-type connection
-        print $file $indent . "Connection_Receive#("        .
-                    $self->inarg()->type()->string_bsv($pack) .
-                    ") link_client_$servicename" . "_"          .
-                    $self->{name}                        .
+        print $file $indent . "Connection_Receive#("    .
+                    $self->inargs()->makebitvector()    .
+                    ") link_client_$servicename" . "_"  .
+                    $self->{name}                       .
                     " <- mkConnection_Receive(\"rrr_client_$servicename\_" .
                     $self->{name} . "\");\n";
     }
     else
     {
         # need return: create Server-type connection
-        print $file $indent . "Connection_Server#("       .
-                    $self->inarg()->type()->string_bsv($pack)  .
-                    ", "                                  .
-                    $self->outarg()->type()->string_bsv($pack) .
-                    ") link_client_$servicename" . "_"           .
-                    $self->{name}                         .
+        print $file $indent . "Connection_Server#("     .
+                    $self->inargs()->makebitvector()    .
+                    ", "                                .
+                    $self->outargs()->makebitvector()   .
+                    ") link_client_$servicename" . "_"  .
+                    $self->{name}                       .
                     " <- mkConnection_Server(\"rrr_client_$servicename\_" .
                     $self->{name} . "\");\n";
     }
@@ -775,7 +1028,7 @@ sub client_link_rule_names
 
     my $methodname = $self->{name};
     
-    if (!defined($self->outarg()))
+    if ($self->outargs()->num() == 0)
     {
         return ( "client_makeRequest_$servicename\_$methodname" );
     }
@@ -796,15 +1049,11 @@ sub print_client_link_rules
     my $indent      = shift;
     my $servicename = shift;
 
-    # force pack to 1
-    my $pack = 1;
-
     my $methodname = $self->{name};
-    my $insize     = $self->insize();
-    my $intype     = $self->inarg()->type()->string_bsv($pack);
+    my $intype     = $self->inargs()->makebitvector();
     
     # print rules to transfer request and response to the connection
-    if (!defined($self->outarg()))
+    if ($self->outargs()->num() == 0)
     {
         # no return: create only request rule, use receive()
         print $file $indent . "rule client_makeRequest_$servicename\_$methodname (True);\n";
@@ -816,8 +1065,7 @@ sub print_client_link_rules
     }
     else
     {
-        my $outsize = $self->outsize();
-        my $outtype = $self->outarg()->type()->string_bsv($pack);
+        my $outtype = $self->outargs()->makebitvector();
 
         # need return: create request and response rules, use getReq()
         print $file $indent . "rule client_makeRequest_$servicename\_$methodname (True);\n";
@@ -845,15 +1093,12 @@ sub print_remote_client_connection
     my $indent      = shift;
     my $servicename = shift;
 
-    # force pack to 1
-    my $pack = 1;
-
     # print connection definitions
-    if (!defined($self->outarg()))
+    if ($self->outargs()->num() == 0)
     {
         # no return: create send-type connection
         print $file $indent . "Connection_Send#("             .
-                    $self->inarg()->type()->string_bsv($pack) .
+                    $self->inargs()->makebitvector()          .
                     ") link_"                                 .
                     $self->{name}                             .
                     " <- mkConnection_Send(\"rrr_client_$servicename\_" .
@@ -862,12 +1107,12 @@ sub print_remote_client_connection
     else
     {
         # need return: create client-type connection
-        print $file $indent . "Connection_Client#("            .
-                    $self->inarg()->type()->string_bsv($pack)  .
-                    ", "                                       .
-                    $self->outarg()->type()->string_bsv($pack) .
-                    ") link_"                                  .
-                    $self->{name}                              .
+        print $file $indent . "Connection_Client#("           .
+                    $self->inargs()->makebitvector()          .
+                    ", "                                      .
+                    $self->outargs()->makebitvector()         .
+                    ") link_"                                 .
+                    $self->{name}                             .
                     " <- mkConnection_Client(\"rrr_client_$servicename\_" .
                     $self->{name} . "\");\n";
     }
@@ -889,9 +1134,9 @@ sub print_server_state
 
     print $file $indent . "Integer mid_" . $self->{name} . " = $id;\n";
 
-    if ($self->outarg())
+    if ($self->outargs()->num() != 0)
     {
-        my $outsize = $self->outsize();
+        my $outsize = $self->outargs()->size();
 
         print $file $indent . "Integer numChunks_" .
                               $self->{name}        .
@@ -913,7 +1158,7 @@ sub print_client_state
 
     print $file $indent . "Integer mid_" . $self->{name} . " = $id;\n";
 
-    my $insize = $self->insize();
+    my $insize = $self->inargs()->size();
     
     print $file $indent . "Integer numChunks_" .
                 $self->{name}        .

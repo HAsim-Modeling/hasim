@@ -14318,3 +14318,14 @@ Directory modules/hasim/controller/central_controllers/stats
 
 - updated PARAMS controller and STATS controller to take advantage of multiple
   arguments. Several RRR services still do not exploit this.
+
+----------
+mvijayar    Date: Mon Jul 28 17:08:39 EDT 2008  CSN: CSN-hasim-489
+                  Mon Jul 28 21:08:39 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          488 
+
+Fixed the bug in freelist rewind. Again checking in for convenience
+

@@ -14362,3 +14362,14 @@ Directory modules/common
 
 Added a sequential store buffer with 16 entries. regressions pass, but out-of-order fails benchmarks because of store buffer size currently ( there can be other bugs too )
 
+
+----------
+mvijayar    Date: Wed Jul 30 00:26:40 EDT 2008  CSN: CSN-hasim-491
+                  Wed Jul 30 04:26:40 UTC 2008
+
+
+Directory modules/common
+ Unit.bsv                  Locally Added               0 
+
+Defined a unit type of size Bit#(1) which can be used as a substitute for void in HASIM till bluespec fixes void
+

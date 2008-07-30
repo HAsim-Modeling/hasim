@@ -84,8 +84,6 @@ interface StallPort_Receive#(type a);
     interface Port_Control ctrl;
 endinterface
 
-typedef Bit#(1) UNIT; // move this to a global place?
-
 module [HASIM_MODULE] mkStallPort_Send#(String s)
                        (StallPort_Send#(a))
             provisos (Bits#(a, sa),

@@ -90,7 +90,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         linkRegState.deq();
         
         // Place the value in store buffer, but don't actually change the cache.
-        linkStoreBuffer.makeReq(tagged SBUFFER_REQ_INSERT {tok: stInfo.token, addr: stInfo.addr, value: stInfo.val});
+        linkStoreBuffer.makeReq(tagged SBUFFER_REQ_INSERT {tok: stInfo.token, num: 0, addr: stInfo.addr, value: stInfo.val});
 
     endrule
 
@@ -212,7 +212,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // When:   Some time after commit1
     // Effect: Send the store on to update the cache/memory.
 
-    rule commit2 (linkStoreBuffer.getResp() matches tagged SBUFFER_RSP_COMMIT {addr: .a, unused: .*, value: .v, tok: .t});
+    rule commit2 (linkStoreBuffer.getResp() matches tagged SBUFFER_RSP_COMMIT {addr: .a, hasMore: .hasMore, value: .v, tok: .t});
 
       // Pop the response from the store buffer.
       linkStoreBuffer.deq();

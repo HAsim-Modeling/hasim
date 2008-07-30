@@ -1,0 +1,23 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Store Buffer with sequential lookup
+# %desc Store Buffer with sequential lookup
+#
+# %provides funcp_memstate_storebuffer
+# 
+# %attributes hasim funcp memstate
+#
+# %public StoreBufferSequential.bsv
+#
+# %param SBUFFER_IDX_SIZE 4 "Number of bits to index the store buffer."
+#
+# %AWB_END
+# */
+

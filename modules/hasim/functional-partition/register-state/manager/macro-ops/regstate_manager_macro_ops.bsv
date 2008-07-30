@@ -323,6 +323,8 @@ module [HASim_Module] mkFUNCP_RegStateManager
 
     // Connections to Mem State.
 
+    Connection_Client#(TOKEN, UNIT)                            storeBufferAllocate <- mkConnection_Client("storeBufferAllocate");
+
     Connection_Client#(MEMSTATE_REQ, 
                        MEM_VALUE)                              linkToMem <- mkConnection_Client("funcp_memstate");
 
@@ -771,8 +773,11 @@ module [HASim_Module] mkFUNCP_RegStateManager
         end
 
         if (isaIsStore(inst))
+        begin
             tokScoreboard.setStoreType(tok.index, isaStoreType(inst));
-            
+            storeBufferAllocate.makeReq(tok);
+        end
+
         let is_emulated = isaEmulateInstruction(inst);
         tokScoreboard.setEmulation(tok.index, is_emulated);
 

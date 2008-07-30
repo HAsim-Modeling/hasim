@@ -14329,3 +14329,36 @@ Directory modules/hasim/functional-partition/register-state/freelist/bram
 
 Fixed the bug in freelist rewind. Again checking in for convenience
 
+
+----------
+mvijayar    Date: Wed Jul 30 00:19:23 EDT 2008  CSN: CSN-hasim-490
+                  Wed Jul 30 04:19:23 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          489 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          489 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer
+ sequential/               Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/sequential
+ memstate_storebuffer_sequential.awb Locally Added               0 
+ StoreBufferSequential.bsv Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          489 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          489 
+
+Directory modules/common/modellib
+ StallPorts.bsv            Locally Modified          489 
+
+Directory modules/common
+ FpgaDebugFile.bsv         Locally Added               0 
+
+Added a sequential store buffer with 16 entries. regressions pass, but out-of-order fails benchmarks because of store buffer size currently ( there can be other bugs too )
+

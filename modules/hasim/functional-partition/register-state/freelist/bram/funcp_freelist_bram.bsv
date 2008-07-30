@@ -213,7 +213,7 @@ module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
         $fdisplay(debugLog, "[%d]: FREELIST: Going back to PR%0d", fpgaCC, r);
 
         // Check for errors.
-        if(flRead > flWrite && r < (flWrite-1) || flRead < (flWrite-1) && r < (flWrite-1) && r > flRead)
+        if(flRead > (flWrite-1) && r < (flWrite-1) || flRead < (flWrite-1) && r < (flWrite-1) && r > flRead)
         begin
             $fdisplay(debugLog, "ERROR: Backed up the freelist too far! (r = %0d, flRead = %0d, flWrite = %0d)", r, flRead, flWrite);
             $display("ERROR: Backed up the freelist too far! (r = %0d)", r);

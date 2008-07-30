@@ -14373,3 +14373,14 @@ Directory modules/common
 
 Defined a unit type of size Bit#(1) which can be used as a substitute for void in HASIM till bluespec fixes void
 
+
+----------
+mvijayar    Date: Wed Jul 30 10:40:05 EDT 2008  CSN: CSN-hasim-492
+                  Wed Jul 30 14:40:06 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          490 
+
+Took care of the "ERROR freelist backed up too far" problem
+

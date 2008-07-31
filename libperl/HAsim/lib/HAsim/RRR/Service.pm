@@ -157,34 +157,6 @@ sub clientlist
 ######################################
 
 ##
-## do we need to generate a server stub for this service and target?
-##
-sub needs_server_stub
-{
-    # capture params
-    my $self   = shift;
-    my $target = shift;
-
-    # for each entry in my list of servers...
-    foreach my $server (@{ $self->{serverlist} })
-    {
-        # look for the specified target name. It is guaranteed that
-        # each server in this list will have a unique target name.
-        if ($server->target() eq $target)
-        {
-            # return true
-            return 1;
-        }
-
-        # NOTE: we are guaranteed to only print one stub
-        # for a given target
-    }
-
-    # no match found, return false
-    return 0;
-}   
-
-##
 ## print server stub for a given target into a given file
 ##
 sub print_server_stub
@@ -260,7 +232,7 @@ sub print_server_connections
     {
         # look for the specified target name. It is guaranteed that
         # each server in this list will have a unique target name.
-        if ($server->target() eq $target)
+        if ($server->target() eq $target && $server->interface() eq "connection")
         {
             # ask the server to print out a connection instantiation
             $server->print_connections($file, $indent);
@@ -286,7 +258,7 @@ sub print_server_link_rules
     {
         # look for the specified target name. It is guaranteed that
         # each server in this list will have a unique target name.
-        if ($server->target() eq $target)
+        if ($server->target() eq $target && $server->interface() eq "connection")
         {
             # ask the server to print out a wrapper rule
             $server->print_link_rules($file, $indent);
@@ -312,7 +284,7 @@ sub print_remote_server_stub
     {
         # look for the specified target name. It is guaranteed that
         # each server in this list will have a unique target name.
-        if ($server->target() eq $target)
+        if ($server->target() eq $target && $server->interface() eq "connection")
         {
             # ask the server to print out a stub
             $server->print_remote_stub($file);
@@ -326,34 +298,6 @@ sub print_remote_server_stub
 ######################################
 #       CLIENT STUB GENERATION       #
 ######################################
-
-##
-## do we need to generate a client stub for this service and target?
-##
-sub needs_client_stub
-{
-    # capture params
-    my $self   = shift;
-    my $target = shift;
-
-    # for each entry in my list of clients...
-    foreach my $client (@{ $self->{clientlist} })
-    {
-        # look for the specified target name. It is guaranteed that
-        # each client in this list will have a unique target name.
-        if ($client->target() eq $target)
-        {
-            # return true
-            return 1;
-        }
-
-        # NOTE: we are guaranteed to only print one stub
-        # for a given target
-    }
-
-    # no match found, return false
-    return 0;
-}   
 
 ##
 ## print client stub for a given target into a given file
@@ -431,7 +375,7 @@ sub print_client_connections
     {
         # look for the specified target name. It is guaranteed that
         # each client in this list will have a unique target name.
-        if ($client->target() eq $target)
+        if ($client->target() eq $target && $client->interface() eq "connection")
         {
             # ask the client to print out a connection instantiation
             $client->print_connections($file, $indent);
@@ -457,7 +401,7 @@ sub print_client_link_rules
     {
         # look for the specified target name. It is guaranteed that
         # each client in this list will have a unique target name.
-        if ($client->target() eq $target)
+        if ($client->target() eq $target && $client->interface() eq "connection")
         {
             # ask the client to print out a wrapper rule
             $client->print_link_rules($file, $indent);
@@ -483,7 +427,7 @@ sub print_remote_client_stub
     {
         # look for the specified target name. It is guaranteed that
         # each client in this list will have a unique target name.
-        if ($client->target() eq $target)
+        if ($client->target() eq $target && $client->interface() eq "connection")
         {
             # ask the client to print out a stub
             $client->print_remote_stub($file);

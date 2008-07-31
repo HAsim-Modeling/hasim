@@ -97,13 +97,28 @@ sub print_stub
     if ($self->{lang} ne "bsv")
     {
         die "BSV server asked to print non-BSV stub: " . $self->{lang};
-    }    
+    }
 
     # determine if we should write stub at all
     if ($#{ $self->{methodlist} } == -1)
     {
         return;
     }
+
+    # header, defines and includes
+    print $file "//\n";
+    print $file "// Synthesized server stub file\n";
+    print $file "//\n";
+    print $file "\n";
+
+    print $file "`ifndef _" . $self->{name} . "_SERVER_STUB_\n";
+    print $file "`define _" . $self->{name} . "_SERVER_STUB_\n";
+    print $file "\n";
+
+    print $file "`include \"rrr.bsh\"\n";
+    print $file "`include \"channelio.bsh\"\n";
+    print $file "`include \"umf.bsh\"\n";
+    print $file "\n";
 
     # compute max request and response bitwidths
     my $maxinsize = 0;
@@ -201,6 +216,10 @@ sub print_stub
     
     # endmodule
     print $file "endmodule\n";
+    print $file "\n";
+
+    # closing stamements
+    print $file "`endif\n";
     print $file "\n";
 }
 
@@ -348,6 +367,23 @@ sub print_remote_stub
         die "remote stubs are valid only for connection-type interfaces";
     }
 
+    # generate header
+    print $file "//\n";
+    print $file "// Synthesized remote server stub file\n";
+    print $file "//\n";
+    print $file "\n";
+
+    print $file "`ifndef _" . $self->{name} . "_REMOTE_SERVER_STUB_\n";
+    print $file "`define _" . $self->{name} . "_REMOTE_SERVER_STUB_\n";
+    print $file "\n";
+
+    print $file "`include \"hasim_common.bsh\"\n";
+    print $file "`include \"soft_connections.bsh\"\n";
+    print $file "`include \"rrr.bsh\"\n";
+    print $file "`include \"channelio.bsh\"\n";
+    print $file "`include \"umf.bsh\"\n";
+    print $file "\n";
+
     # compute max request and response bitwidths
     my $maxinsize = 0;
     my $maxoutsize = 0;
@@ -415,6 +451,10 @@ sub print_remote_stub
     
     # endmodule
     print $file "endmodule\n";
+    print $file "\n";
+
+    # closing stamements
+    print $file "`endif\n";
     print $file "\n";
 }
 

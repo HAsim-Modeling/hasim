@@ -98,12 +98,22 @@ sub name
     return $self->{name};
 }
 
-# return the size of the type
-sub size
+# return the size of the type in BSV
+sub size_bsv
 {
     my $self = shift;
 
     return $self->{size};
+}
+
+# return the size of the type in CPP
+sub size_cpp
+{
+    my $self = shift;
+
+    # FIXME: handle special cases. For now we assume all types
+    # are divisible by 8
+    return ($self->{size} / 8);
 }
 
 # return a string representing the type in BSV

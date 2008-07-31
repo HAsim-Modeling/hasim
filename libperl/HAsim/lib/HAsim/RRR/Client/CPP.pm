@@ -103,7 +103,68 @@ sub print_stub
         return;
     }
 
-    # not implemented
+    # defines and includes
+    print $file "#ifndef __" . $self->name() . "_CLIENT_STUB__\n";
+    print $file "#define __" . $self->name() . "_CLIENT_STUB__\n";
+    print $file "\n";
+
+    print $file "#include \"asim/provides/low_level_platform_interface.h\"\n";
+    print $file "#include \"asim/provides/rrr.h\"\n";
+    print $file "#include \"asim/rrr/service_ids.h\"\n";
+    print $file "\n";
+    
+    print $file "#define SERVICE_ID " . $self->name() . "_SERVICE_ID\n";
+    print $file "\n";
+
+    # assign method IDs
+    my $methodID = 0;
+    foreach my $method (@{ $self->{methodlist} })
+    {
+        print $file "#define METHOD_ID_" . $method->name() . " $methodID\n";
+    }
+    print $file "\n";
+
+    # other generic stuff
+    print $file "using namespace std;\n";
+    print $file "\n";
+
+    # start creating the client class
+    print $file "typedef class " . $self->name() . "_CLIENT_STUB_CLASS* " . $self->name() . "_CLIENT;\n";
+    print $file "class " . $self->name() . "_CLIENT_STUB_CLASS: public PLATFORMS_MODULE_CLASS\n";
+    print $file "{\n";
+    print $file "\n";
+
+    print $file "  private:\n";
+    print $file "\n";
+
+    print $file "  public:\n";
+    print $file "\n";
+
+    # constructor
+    print $file "    " . $self->name() . "_CLIENT_STUB_CLASS(PLATFORMS_MODULE p) :\n";
+    print $file "            PLATFORMS_MODULE_CLASS(p)\n";
+    print $file "    {\n";
+    print $file "    }\n";
+    print $file "\n";
+
+    # destructor
+    print $file "    ~" . $self->name() . "_CLIENT_STUB_CLASS()\n";
+    print $file "    {\n";
+    print $file "    }\n";
+
+    # client methods
+    foreach my $method (@{ $self->{methodlist} })
+    {
+        print $file "\n";
+        $method->print_client_definition($file, "    ");
+    }
+
+    # close the class
+    print $file "};\n";
+    print $file "\n";
+
+    # end the stub file
+    print $file "#endif\n";
 }
 
 1;

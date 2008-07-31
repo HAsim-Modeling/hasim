@@ -14384,3 +14384,34 @@ Directory modules/hasim/functional-partition/register-state/freelist/bram
 
 Took care of the "ERROR freelist backed up too far" problem
 
+
+----------
+aparasha    Date: Thu Jul 31 12:44:12 EDT 2008  CSN: CSN-hasim-493
+                  Thu Jul 31 16:44:12 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ CPP.pm                    Locally Modified          492 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Arglist
+ BSV.pm                    Locally Modified          492 
+ Base.pm                   Locally Modified          492 
+ CPP.pm                    Locally Added               0 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Server
+ BSV.pm                    Locally Modified          492 
+ Base.pm                   Locally Modified          492 
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Service.pm                Locally Modified          492 
+ Type.pm                   Locally Modified          492 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Client
+ BSV.pm                    Locally Modified          492 
+ Base.pm                   Locally Modified          492 
+ CPP.pm                    Locally Modified          492 
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          492 
+
+Added support for software client stubs.

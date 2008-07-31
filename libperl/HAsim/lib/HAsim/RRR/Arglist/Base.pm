@@ -31,6 +31,7 @@ use re 'eval';
 
 use HAsim::RRR::Argument;
 use HAsim::RRR::Arglist::BSV;
+use HAsim::RRR::Arglist::CPP;
 
 ##
 ## constructor
@@ -117,22 +118,6 @@ sub num
     my $self = shift;
 
     return ($#{ $self->{args} } + 1);
-}
-
-##
-## return the total size of args
-##
-sub size
-{
-    my $self = shift;
-
-    my $size = 0;
-    foreach my $arg (@{ $self->{args} })
-    {
-        $size = $size + $arg->type()->size();
-    }
-
-    return $size;
 }
 
 1;

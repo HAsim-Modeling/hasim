@@ -124,6 +124,16 @@ sub _extract
 }
 
 #
+# return the service name
+#
+sub name
+{
+    my $self = shift;
+
+    return $self->{name};
+}
+
+#
 # return the target name
 #
 sub target

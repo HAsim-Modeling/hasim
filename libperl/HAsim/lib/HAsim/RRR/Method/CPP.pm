@@ -66,13 +66,15 @@ sub _semi_deep_copy
     # copy all fields. Note that in many cases we are merely
     # copying the references to the objects in the original hash,
     # which is exactly what we want.
-    my %target;
+    my $target;
 
-    $target{name}   = $source->{name};
-    $target{inarg}  = $source->{inarg};
-    $target{outarg} = $source->{outarg};
+    $target->{name} = $source->{name};
 
-    return \%target;
+    # copy over the arg lists, but type case them into CPP
+    $target->{inargs}  = HAsim::RRR::Arglist::CPP->new($source->{inargs});
+    $target->{outargs} = HAsim::RRR::Arglist::CPP->new($source->{outargs});
+
+    return $target;
 }
 
 #######################################
@@ -84,40 +86,93 @@ sub _semi_deep_copy
 ##
 sub print_client_definition
 {
-#    my $self   = shift;
-#    my $file   = shift;
-#    my $indent = shift;
+    my $self   = shift;
+    my $file   = shift;
+    my $indent = shift;
 
-#    do we have a return type?
-#    if (defined($self->outarg()))
-#    {
-#        # request + response
-#        print $file $indent . $self->outarg()->type()->string_cpp() .
-#                              $self->name()                         .
-#                              "("                                   .
-#                              $self->inarg()->type()->string_cpp()  .
-#                              " "                                   .
-#                              $self->inarg()->name()->string()      .
-#                              ")\n";
-#        print $file $indent . "{\n";
-#        print $file $indent . "    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();\n";
-#        print $file $indent . "    msg->SetLength(sizeof(UINT64));\n";
-#        print $file $indent . "    msg->SetServiceID(SERVICE_ID);\n";
-#        print $file $indent . "    msg->SetMethodID(METHOD_ID_F2HOneWayTest);\n";
-#        print $file $indent . "    msg->AppendUINT64(length);\n";
-#        print $file $indent . "    \n";    
-#        print $file $indent . "    UMF_MESSAGE resp = RRRClient->MakeRequest(msg);\n";
-#        print $file $indent . "    \n";
-#        print $file $indent . "    UINT64 retval = resp->ExtractUINT64();\n";
-#        print $file $indent . "    resp->Delete();\n";
-#        print $file $indent . "    return retval;\n";
-#        print $file $indent . "}\n";
-#        print $file $indent . "\n";
-#    }
-#    else
-#    {
-#        # request only
-#    }
+    # sizes
+    my $insize  = $self->inargs()->size();
+    my $outsize = $self->outargs()->size();
+    
+    # header
+    if ($self->outargs()->num() > 0)
+    {
+        print $file $indent . $self->_outtype_name();
+    }
+    else
+    {
+        print $file $indent . "void";
+    }
+    print $file " "                               .
+                $self->name()                     .
+                "("                               .
+                $self->inargs()->makelist()       .
+                ")\n";
+
+    # body
+    print $file $indent . "{\n";
+    print $file $indent . "    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();\n";
+    print $file $indent . "    msg->SetLength($insize);\n";
+    print $file $indent . "    msg->SetServiceID(SERVICE_ID);\n";
+    print $file $indent . "    msg->SetMethodID(METHOD_ID_" . $self->{name} . ");\n";
+
+    # marshall args
+    foreach my $arg ( @{ $self->inargs()->args() })
+    {
+        print $file $indent                    .
+                    "    msg->Append"          .
+                    $arg->type()->string_cpp() .
+                    "("                        .
+                    $arg->name()->string()     .
+                    ");\n";
+    }
+    print $file $indent . "    \n";
+
+    # do we need a response?
+    if ($self->outargs()->num() == 0)
+    {
+        # no response
+        print $file $indent . "    RRRClient->MakeRequestNoResponse(msg);\n";
+    }
+    else
+    {
+        # need response
+        print $file $indent . "    UMF_MESSAGE resp = RRRClient->MakeRequest(msg);\n";
+        print $file $indent . "    \n";
+
+        # demarshall return value(s)
+        print $file $indent . "    " . $self->_outtype_name() . " retval;\n";
+
+        if ($self->outargs()->num() == 1)
+        {
+            # only one return value
+            my ($arg, @null) = @{ $self->outargs()->args() };
+            print $file $indent                      .
+                        "    retval = resp->Extract" .
+                        $arg->type()->string_cpp()   .
+                        "();\n";
+        }
+        else
+        {
+            # multiple return values, demarshall into struct
+            foreach my $arg ( @{ $self->outargs()->args() })
+            {
+                print $file $indent                    .
+                            "    retval."              .
+                            $arg->name()->string()     .
+                            " = resp->Extract"         .
+                            $arg->type()->string_cpp() .
+                            "();\n";
+            }
+        }
+
+        # cleanup and return
+        print $file $indent . "    resp->Delete();\n";
+        print $file $indent . "    return retval;\n";
+    }
+
+    # end method
+    print $file $indent . "}\n";
 }
 
 1;

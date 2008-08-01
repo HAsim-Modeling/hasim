@@ -19,6 +19,7 @@ import Counter::*;
 `include "hasim_common.bsh"
 `include "soft_connections.bsh"
 `include "hasim_isa.bsh"
+`include "funcp_memory.bsh"
 
 // RRR includes
 `include "asim/rrr/service_ids.bsh"
@@ -45,17 +46,25 @@ interface FUCNCP_SCOREBOARD;
   method Action deallocate(TOKEN_INDEX t);
   
   // These methods track the internal status of which macro-operation a token is in.
+  method Action iTransStart(TOKEN_INDEX t);
+  method Action iTransFinish(TOKEN_INDEX t);
   method Action fetStart(TOKEN_INDEX t);
   method Action fetFinish(TOKEN_INDEX t);
   method Action decStart(TOKEN_INDEX t);
   method Action decFinish(TOKEN_INDEX t);
   method Action exeStart(TOKEN_INDEX t);
   method Action exeFinish(TOKEN_INDEX t);
+  method Action dTransStart(TOKEN_INDEX t);
+  method Action dTransFinish(TOKEN_INDEX t);
   method Action loadStart(TOKEN_INDEX t);
   method Action loadFinish(TOKEN_INDEX t);
   method Action storeStart(TOKEN_INDEX t);
   method Action storeFinish(TOKEN_INDEX t);
   method Action commitStart(TOKEN_INDEX t);
+  
+  // Set the offsets after we align the address.
+  method Action setFetchOffset(TOKEN_INDEX t, MEM_OFFSET o);
+  method Action setMemOpOffset(TOKEN_INDEX t, MEM_OFFSET o);
   
   // Set the memory type that we use for accessing memory.
   method Action setLoadType(TOKEN_INDEX t,  ISA_MEMOP_TYPE mt);
@@ -72,6 +81,8 @@ interface FUCNCP_SCOREBOARD;
   method Bool isLoad(TOKEN_INDEX t);
   method Bool isStore(TOKEN_INDEX t);
   method Bool emulateInstruction(TOKEN_INDEX t);
+  method MEM_OFFSET getFetchOffset(TOKEN_INDEX t);
+  method MEM_OFFSET getMemOpOffset(TOKEN_INDEX t);
   method ISA_MEMOP_TYPE getLoadType(TOKEN_INDEX t);
   method ISA_MEMOP_TYPE getStoreType(TOKEN_INDEX t);
   method TOKEN_INDEX youngest();
@@ -93,6 +104,8 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     Reg#(Vector#(TExp#(idx_SZ), Bool)) alloc      <- mkReg(replicate(False));
 
     // The actual scoreboards.
+    TOKEN_SCOREBOARD itr_start    <- mkRegFileFull();
+    TOKEN_SCOREBOARD itr_finish   <- mkRegFileFull();
     TOKEN_SCOREBOARD fet_start    <- mkRegFileFull();
     TOKEN_SCOREBOARD fet_finish   <- mkRegFileFull();
     TOKEN_SCOREBOARD dec_start    <- mkRegFileFull();
@@ -101,12 +114,16 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     TOKEN_SCOREBOARD is_store     <- mkRegFileFull();
     TOKEN_SCOREBOARD exe_start    <- mkRegFileFull();
     TOKEN_SCOREBOARD exe_finish   <- mkRegFileFull();
+    TOKEN_SCOREBOARD dtr_start    <- mkRegFileFull();
+    TOKEN_SCOREBOARD dtr_finish   <- mkRegFileFull();
     TOKEN_SCOREBOARD load_start   <- mkRegFileFull();
     TOKEN_SCOREBOARD load_finish  <- mkRegFileFull();
     TOKEN_SCOREBOARD store_start  <- mkRegFileFull();
     TOKEN_SCOREBOARD store_finish <- mkRegFileFull();
     TOKEN_SCOREBOARD commit_start <- mkRegFileFull();
 
+    Reg#(Vector#(TExp#(idx_SZ), MEM_OFFSET))     fetch_offset  <- mkReg(Vector::replicate(0));
+    Reg#(Vector#(TExp#(idx_SZ), MEM_OFFSET))     memop_offset <- mkReg(Vector::replicate(0));
     Reg#(Vector#(TExp#(idx_SZ), ISA_MEMOP_TYPE)) load_type  <- mkReg(?);
     Reg#(Vector#(TExp#(idx_SZ), ISA_MEMOP_TYPE)) store_type <- mkReg(?);
     TOKEN_SCOREBOARD emulation <- mkRegFileFull();
@@ -118,9 +135,11 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     Reg#(TOKEN_INDEX) oldest_tok <- mkReg(0);
     
     // A register tracking how many tokens are active in pipelines.
+    Counter#(idx_SZ) num_in_itr <- mkCounter(0);
     Counter#(idx_SZ) num_in_fet <- mkCounter(0);
     Counter#(idx_SZ) num_in_dec <- mkCounter(0);
     Counter#(idx_SZ) num_in_exe <- mkCounter(0);
+    Counter#(idx_SZ) num_in_dtr <- mkCounter(0);
     Counter#(idx_SZ) num_in_load <- mkCounter(0);
     Counter#(idx_SZ) num_in_store <- mkCounter(0);
     Counter#(idx_SZ) num_in_commit <- mkCounter(0);
@@ -129,33 +148,40 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     // ***** Assertion Checkers ***** //
 
+    // Use multiple assertion nodes because we have so many assertions.
     ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_SCOREBOARD__BASE);
+    ASSERTION_NODE assertNodeStart <- mkAssertionNode(`ASSERTIONS_SCOREBOARD_START__BASE);
+    ASSERTION_NODE assertNodeFinish <- mkAssertionNode(`ASSERTIONS_SCOREBOARD_FINISH__BASE);
 
     // Do we have enough tokens to do everything the timing model wants us to?
     ASSERTION assert_enough_tokens <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_OUT_OF_TOKENS, ASSERT_ERROR, assertNode);
 
     // Don't allocate a token which is already allocated.
-    ASSERTION assert_token_is_not_allocated <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_REALLOCATE, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_is_not_allocated <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_REALLOCATE, ASSERT_ERROR, assertNode);
 
     // Don't de-allocate a token which isn't allocated.
-    // Assertion assert_token_is_allocated <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_DEALLOCATE, ASSERT_ERROR, assertNode);
+    // Assertion assert_token_is_allocated <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_DEALLOCATE, ASSERT_ERROR, assertNode);
 
     // Are we completing tokens in order?
-    // Assertion assert_completing_tokens_in_order <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_COMPLETION, ASSERT_WARNING, assertNode);
+    // Assertion assert_completing_tokens_in_order <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_COMPLETION, ASSERT_WARNING, assertNode);
 
     // The following assertions make sure things happen at the right time.
-    ASSERTION assert_token_can_finish_fet   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_FETCH_FINISH, ASSERT_ERROR, assertNode);
-    ASSERTION assert_token_can_start_dec    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_DECODE_START, ASSERT_ERROR, assertNode);
-    ASSERTION assert_token_can_finish_dec   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_DECODE_FINISH, ASSERT_ERROR, assertNode);
-    ASSERTION assert_token_can_start_exe    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_EXECUTE_START, ASSERT_ERROR, assertNode);
-    ASSERTION assert_token_can_finish_exe   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_EXECUTE_FINISH, ASSERT_ERROR, assertNode);
-    ASSERTION assert_token_can_start_load   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_LOAD_START, ASSERT_ERROR, assertNode);
-    ASSERTION assert_token_can_finish_load  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_LOAD_FINISH, ASSERT_ERROR, assertNode);
-    ASSERTION assert_token_can_start_store  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_STORE_START, ASSERT_ERROR, assertNode);
-    ASSERTION assert_token_can_finish_store <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_STORE_FINISH, ASSERT_ERROR, assertNode);
-    ASSERTION assert_token_can_start_commit <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_COMMIT_START, ASSERT_ERROR, assertNode);
-    ASSERTION assert_token_has_done_loads   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_COMMIT_WITHOUT_LOAD, ASSERT_ERROR, assertNode);
-    ASSERTION assert_token_has_done_stores  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_ILLEGAL_COMMIT_WITHOUT_STORE, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_can_finish_itr   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_ITRANS, ASSERT_ERROR, assertNodeFinish); 
+    ASSERTION assert_token_can_start_fet    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_FETCH, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_can_finish_fet   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_FETCH, ASSERT_ERROR, assertNodeFinish);
+    ASSERTION assert_token_can_start_dec    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_DECODE, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_can_finish_dec   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_DECODE, ASSERT_ERROR, assertNodeFinish);
+    ASSERTION assert_token_can_start_exe    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_EXECUTE, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_can_finish_exe   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_EXECUTE, ASSERT_ERROR, assertNodeFinish);
+    ASSERTION assert_token_can_start_dtr    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_DTRANS, ASSERT_ERROR, assertNodeStart); 
+    ASSERTION assert_token_can_finish_dtr   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_DTRANS, ASSERT_ERROR, assertNodeFinish); 
+    ASSERTION assert_token_can_start_load   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_LOAD, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_can_finish_load  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_LOAD, ASSERT_ERROR, assertNodeFinish);
+    ASSERTION assert_token_can_start_store  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_STORE, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_can_finish_store <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_STORE, ASSERT_ERROR, assertNodeFinish);
+    ASSERTION assert_token_can_start_commit <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_COMMIT, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_has_done_loads   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_COMMIT_WITHOUT_LOAD, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_has_done_stores  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_COMMIT_WITHOUT_STORE, ASSERT_ERROR, assertNodeStart);
 
     // ***** Helper Functions ***** //
 
@@ -176,16 +202,18 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     function Bool isBusy(TOKEN_INDEX t);
 
         // Has this token started a macro operation but not finished it?
+        let itr_busy =       itr_start.sub(t) && !itr_finish.sub(t);
         let fet_busy =       fet_start.sub(t) && !fet_finish.sub(t);
         let dec_busy =       dec_start.sub(t) && !dec_finish.sub(t);
         let exe_busy =       exe_start.sub(t) && !exe_finish.sub(t);
+        let dtr_busy =       dtr_start.sub(t) && !dtr_finish.sub(t);
         let load_busy =     load_start.sub(t) && !load_finish.sub(t);
         let store_busy =   store_start.sub(t) && !store_finish.sub(t);
         // It's not done committing if it's still allocated.  alloc[t] tested later.
         let commit_busy = commit_start.sub(t);
 
         // If it is in any macro operation it is busy.
-        return alloc[t] && (fet_busy || dec_busy || exe_busy || load_busy || store_busy || commit_busy);
+        return alloc[t] && (itr_busy || fet_busy || dec_busy || exe_busy || dtr_busy || load_busy || store_busy || commit_busy);
 
     endfunction
 
@@ -232,6 +260,8 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         alloc <= update(alloc, next_free_tok, True);
 
         // Reset all the scoreboards.
+        itr_start.upd(next_free_tok, False);
+        itr_finish.upd(next_free_tok, False);
         fet_start.upd(next_free_tok, False);
         fet_finish.upd(next_free_tok, False);
         dec_start.upd(next_free_tok, False);
@@ -240,6 +270,8 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         is_store.upd(next_free_tok, False);
         exe_start.upd(next_free_tok, False);
         exe_finish.upd(next_free_tok, False);
+        dtr_start.upd(next_free_tok, False);
+        dtr_finish.upd(next_free_tok, False);
         load_start.upd(next_free_tok, False);
         load_finish.upd(next_free_tok, False);
         store_start.upd(next_free_tok, False);
@@ -255,6 +287,34 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     endmethod
 
+    // iTransStart
+
+    // When:   Any time.
+    // Effect: Update the scoreboard.
+
+    method Action iTransStart(TOKEN_INDEX t);
+
+        // We don't need an assert here, because it's okay to begin working on killed tokens.
+
+        itr_start.upd(t, True);
+        num_in_itr.up();
+
+    endmethod
+
+    // iTransFinish
+
+    // When:   Any time.
+    // Effect: Update the scoreboard.
+
+    method Action iTransFinish(TOKEN_INDEX t);
+
+        assert_token_can_finish_itr(itr_start.sub(t));
+
+        itr_finish.upd(t, True);
+        num_in_itr.down();
+
+    endmethod
+
     // fetStart
 
     // When:   Any time.
@@ -262,7 +322,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method Action fetStart(TOKEN_INDEX t);
 
-        // We don't need an assert here, because it's okay to fetch killed tokens.
+        assert_token_can_start_fet(itr_finish.sub(t));
 
         fet_start.upd(t, True);
         num_in_fet.up();
@@ -339,6 +399,34 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     endmethod
 
+    // dTransStart
+
+    // When:   Any time.
+    // Effect: Update the scoreboard.
+
+    method Action dTransStart(TOKEN_INDEX t);
+
+        assert_token_can_start_dtr(exe_finish.sub(t));
+
+        dtr_start.upd(t, True);
+        num_in_dtr.up();
+
+    endmethod
+
+    // dTransFinish
+
+    // When:   Any time.
+    // Effect: Update the scoreboard.
+
+    method Action dTransFinish(TOKEN_INDEX t);
+
+        assert_token_can_finish_dtr(dtr_start.sub(t));
+
+        dtr_finish.upd(t, True);
+        num_in_dtr.down();
+
+    endmethod
+
     // loadStart
 
     // When:   Any time.
@@ -346,7 +434,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method Action loadStart(TOKEN_INDEX t);
 
-        assert_token_can_start_load(exe_finish.sub(t));
+        assert_token_can_start_load(dtr_finish.sub(t));
 
         load_start.upd(t, True);
         num_in_load.up();
@@ -374,7 +462,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method Action storeStart(TOKEN_INDEX t);
 
-        assert_token_can_start_store(exe_finish.sub(t));
+        assert_token_can_start_store(dtr_finish.sub(t));
 
         store_start.upd(t, True);
         num_in_store.up();
@@ -413,6 +501,28 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
         commit_start.upd(t, True);
         num_in_commit.up();
 
+    endmethod
+
+    // setFetchOffset
+
+    // When:   Any time.
+    // Effect: Record the fetch offset.
+
+    method Action setFetchOffset(TOKEN_INDEX t, MEM_OFFSET offset);
+    
+        fetch_offset[t] <= offset;
+    
+    endmethod
+
+    // setMemOpOffset
+
+    // When:   Any time.
+    // Effect: Record the fetch offset.
+
+    method Action setMemOpOffset(TOKEN_INDEX t, MEM_OFFSET offset);
+    
+        memop_offset[t] <= offset;
+    
     endmethod
 
     // setLoadType
@@ -521,6 +631,28 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     endmethod
 
+    // getFetchOffset
+    
+    // When:   Any time.
+    // Effect: Accessor method.
+
+    method MEM_OFFSET getFetchOffset(TOKEN_INDEX t);
+    
+        return fetch_offset[t];
+    
+    endmethod
+
+    // getMemOpOffset
+    
+    // When:   Any time.
+    // Effect: Accessor method.
+
+    method MEM_OFFSET getMemOpOffset(TOKEN_INDEX t);
+    
+        return memop_offset[t];
+    
+    endmethod
+
     // getLoadType
     
     // When:   Any time.
@@ -572,7 +704,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method Bool canEmulate();
 
-        return num_in_fet.value() == 0 && num_in_dec.value() == 0 && num_in_load.value() == 0 && num_in_store.value() == 0 && num_in_commit.value() == 0;
+        return num_in_itr.value() == 0 && num_in_fet.value() == 0 && num_in_dec.value() == 0 && num_in_dtr.value() == 0 && num_in_load.value() == 0 && num_in_store.value() == 0 && num_in_commit.value() == 0;
 
     endmethod
 
@@ -583,7 +715,8 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method Bool canRewind();
 
-        return num_in_fet.value() == 0 && num_in_dec.value() == 0 && num_in_exe.value() == 0 && num_in_load.value() == 0 && num_in_store.value() == 0 && num_in_commit.value() == 0;
+        return num_in_itr.value() == 0 && num_in_fet.value() == 0 && num_in_dec.value() == 0 && num_in_exe.value() == 0 && num_in_dtr.value() == 0 && num_in_load.value() == 0 && num_in_store.value() == 0 && num_in_commit.value() == 0;
 
     endmethod
+
 endmodule

@@ -29,29 +29,239 @@
 // Do not include anything but functional partition data definitions.
 //
 `include "asim/provides/funcp_base_types.bsh"
+`include "asim/provides/funcp_memory.bsh"
 
 // ISA includes
 
 `include "asim/provides/hasim_isa.bsh"
-// `include "asim/provides/hasim_isa_datapath.bsh"
+
+// FUNCP_REQ_NEW_IN_FLIGHT
+
+typedef struct
+{
+    Bit#(1) dummy;
+    // Just a dummy for now.
+}
+    FUNCP_REQ_NEW_IN_FLIGHT
+        deriving (Eq, Bits);
 
 
-//----------------------------------------------------------------------------
-//
-// funcp_getResults -- execute stage
-//
-//     Input:   TOKEN
-//
-//     Output:  FUNCP_GET_RESULTS_MSG
-//
-//----------------------------------------------------------------------------
+// FUNCP_RSP_NEW_IN_FLIGHT
+
+typedef struct
+{
+    TOKEN newToken;
+}
+    FUNCP_RSP_NEW_IN_FLIGHT
+        deriving (Eq, Bits);
+
+
+// FUNCP_REQ_DO_ITRANSLATE
+
+typedef struct
+{
+    TOKEN       token; 
+    ISA_ADDRESS address;  // Address to associate with the instruction.
+}
+    FUNCP_REQ_DO_ITRANSLATE
+        deriving (Eq, Bits);
+
+
+// FUNCP_RSP_DO_ITRANSLATE
+
+typedef struct
+{
+    TOKEN       token; 
+    MEM_ADDRESS physicalAddress;  // Result of translation.
+    Bool        hasMore;          // More translations coming? (IE the fetch spans two memory addresses.)
+}
+    FUNCP_RSP_DO_ITRANSLATE
+        deriving (Eq, Bits);
+
+
+// FUNCP_REQ_GET_INSTRUCTION
+
+typedef struct
+{
+    TOKEN           token;
+}
+    FUNCP_REQ_GET_INSTRUCTION
+        deriving (Eq, Bits);
+
+
+// FUNCP_RSP_GET_INSTRUCTION
+
+typedef struct
+{
+    TOKEN           token;
+    ISA_INSTRUCTION instruction;
+}
+    FUNCP_RSP_GET_INSTRUCTION
+        deriving (Eq, Bits);
+
+
+// FUNCP_REQ_GET_DEPENDENCIES
+
+typedef struct
+{
+    TOKEN               token;
+}
+    FUNCP_REQ_GET_DEPENDENCIES
+        deriving (Eq, Bits);
+
+
+// FUNCP_RSP_GET_DEPENDENCIES
+
+typedef struct
+{
+    TOKEN               token;
+    ISA_SRC_MAPPING     srcMap;     // The mapping from architectural sources to physical sources.
+    ISA_DST_MAPPING     dstMap;     // The mapping from architectural dests to physical dests.
+}
+    FUNCP_RSP_GET_DEPENDENCIES
+        deriving (Eq, Bits);
+
+
+// FUCNP_REQ_GET_RESULTS
 
 typedef struct
 {
     TOKEN token;
-    ISA_ADDRESS instrAddr;             // Address of the executed instruction
-    Bit#(4) instrSize;                 // Size of the executed instruction
-    ISA_EXECUTION_RESULT result;       // Result from ALU
 }
-    FUNCP_GET_RESULTS_MSG
+    FUNCP_REQ_GET_RESULTS
+        deriving (Eq, Bits);
+
+
+// FUCNP_RSP_GET_RESULTS
+
+typedef struct
+{
+    TOKEN                token;
+    ISA_ADDRESS          instructionAddress;     // Address of the executed instruction
+    Bit#(4)              instructionSize;        // Size of the executed instruction
+    ISA_EXECUTION_RESULT result;                 // Result from ALU
+}
+    FUNCP_RSP_GET_RESULTS
+        deriving (Eq, Bits);
+
+
+// FUNCP_REQ_DO_DTRANSLATE
+
+typedef struct
+{
+    TOKEN       token; 
+}
+    FUNCP_REQ_DO_DTRANSLATE
+        deriving (Eq, Bits);
+
+
+// FUNCP_RSP_DO_DTRANSLATE
+
+typedef struct
+{
+    TOKEN       token; 
+    MEM_ADDRESS physicalAddress;  // Result of translation.
+    Bool        hasMore;          // More translations coming? (IE the request spans two memory addresses.)
+}
+    FUNCP_RSP_DO_DTRANSLATE
+        deriving (Eq, Bits);
+
+
+// FUNCP_REQ_DO_LOADS
+
+typedef struct
+{
+    TOKEN token;
+}
+    FUNCP_REQ_DO_LOADS
+        deriving (Eq, Bits);
+
+
+// FUNCP_RSP_DO_LOADS
+
+typedef struct
+{
+    TOKEN token;
+}
+    FUNCP_RSP_DO_LOADS
+        deriving (Eq, Bits);
+
+
+// FUNCP_REQ_DO_STORES
+
+typedef struct
+{
+    TOKEN token;
+}
+    FUNCP_REQ_DO_STORES
+        deriving (Eq, Bits);
+
+
+// FUNCP_RSP_DO_STORES
+
+typedef struct
+{
+    TOKEN token;
+}
+    FUNCP_RSP_DO_STORES
+        deriving (Eq, Bits);
+
+
+// FUNCP_REQ_COMMIT_RESULTS
+
+typedef struct
+{
+    TOKEN token;
+}
+    FUNCP_REQ_COMMIT_RESULTS
+        deriving (Eq, Bits);
+
+
+// FUNCP_RSP_COMMIT_RESULTS
+
+typedef struct
+{
+    TOKEN token;
+}
+    FUNCP_RSP_COMMIT_RESULTS
+        deriving (Eq, Bits);
+
+
+// FUNCP_REQ_COMMIT_STORES
+
+typedef struct
+{
+    TOKEN token;
+}
+    FUNCP_REQ_COMMIT_STORES
+        deriving (Eq, Bits);
+
+
+// FUNCP_RSP_COMMIT_STORES
+
+typedef struct
+{
+    TOKEN token;
+}
+    FUNCP_RSP_COMMIT_STORES
+        deriving (Eq, Bits);
+
+
+// FUNCP_REQ_REWIND_TO_TOKEN
+
+typedef struct
+{
+    TOKEN token;
+}
+    FUNCP_REQ_REWIND_TO_TOKEN
+        deriving (Eq, Bits);
+
+
+// FUNCP_RSP_REWIND_TO_TOKEN
+
+typedef struct
+{
+    TOKEN token;
+}
+    FUNCP_RSP_REWIND_TO_TOKEN
         deriving (Eq, Bits);

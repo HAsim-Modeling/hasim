@@ -14445,3 +14445,37 @@ Directory modules/hasim/controller/central_controllers/params
 - updated starter to use auto-generated client software stubs
 - updated params controller to use auto-generated client
   software stubs
+
+----------
+mpellaue    Date: Fri Aug  1 19:49:10 EDT 2008  CSN: CSN-hasim-495
+                  Fri Aug  1 23:49:10 UTC 2008
+
+
+Directory modules/hasim/functional-partition/interface
+ funcp-req-constructors.bsv Locally Added               0 
+ funcp-interface.awb       Locally Modified          494 
+ funcp-timing-interface.bsv Locally Modified          494 
+ funcp-rsp-constructors.bsv Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ scoreboard.dic            Locally Modified          494 
+ regstate_scoreboard_onehot.bsv Locally Modified          494 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_datatypes.bsv Locally Added               0 
+ regstate_manager_macro_ops.awb Locally Modified          494 
+ regstate_manager_macro_ops.bsv Locally Modified          494 
+ manager.dic               Locally Modified          494 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory-datatypes.bsv Locally Modified          494 
+
+Directory modules/hasim/functional-partition/memory-state
+ memstate_default.bsv      Locally Modified          494 
+
+
+* Regstate manager now supports unaligned accesses.
+* The TLB is exposed to the timing model as doITranslate/doDTranslate.
+* Req/Rsp to functional partition now all use structs and constructors.
+
+Michael P.

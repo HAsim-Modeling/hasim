@@ -24,6 +24,13 @@ typedef FUNCP_PADDR MEM_ADDRESS;
 
 typedef FUNCP_INT_REG MEM_VALUE;
 
+// MEM_OFFSET
+
+// The part that's left over after you align an address. 
+// TODO: Should be derived from MEM_VALUE size rather than hardcoded.
+
+typedef Bit#(3) MEM_OFFSET;
+
 // MEM_CACHELINE
 
 // This is defined here because size of the cache-line must be known outside of

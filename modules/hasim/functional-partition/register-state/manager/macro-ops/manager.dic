@@ -7,7 +7,10 @@ def ASSERTIONS.REGMANAGER.UNEXPECTED_EMULATION_FINISHED "FUNCP: Regstate: Got an
 def ASSERTIONS.REGMANAGER.EMULATED_INSTR_HAS_DST   "FUNCP: Regstate: Emulated instructions may not have destination registers!";
 def ASSERTIONS.REGMANAGER.INVALID_NUM_DSTS         "FUNCP: Regstate: Instruction has more destinations than ISA definition claims!";
 def ASSERTIONS.REGMANAGER.NO_EMULATION_SNAPSHOT    "FUNCP: Regstate: Tried to emulate an instruction that did not have a snapshot!";
-def ASSERTIONS.REGMANAGER.NO_PHYSICAL_TRANSLATION  "FUNCP: Regstate: Virtual to physical translation failed!";
+def ASSERTIONS.REGMANAGER.NO_PHYSICAL_TRANSLATION_FOR_FETCH  "FUNCP: Regstate: Virtual to physical translation for fetch failed!";
+def ASSERTIONS.REGMANAGER.NO_PHYSICAL_TRANSLATION_FOR_MEMOP  "FUNCP: Regstate: Virtual to physical translation for memop failed!";
 def ASSERTIONS.REGMANAGER.UNEXPECTED_EPOCH_CHANGE  "FUNCP: Regstate: Epoch changed in the middle of getDependences!";
+def ASSERTIONS.REGMANAGER.DTRANSLATE_ON_MEMOP      "FUNCP: Regstate: Tried to do a DTranslate on a non-memory operation.";
+
 
 def STATS.REGMANAGER.EMULATED_INSTRS    "FUNCP: Emulated Instructions";

@@ -18,7 +18,7 @@
 #
 # %attributes hasim funcp regstate
 #
-# %public regstate_manager_macro_ops.bsv
+# %public regstate_manager_datatypes.bsv regstate_manager_macro_ops.bsv
 # %sources -T DICT -v PUBLIC manager.dic
 #
 # %param REGSTATE_LOGFILE_NAME "hasim_funcp_regstate.out" "Name of logfile for register state."

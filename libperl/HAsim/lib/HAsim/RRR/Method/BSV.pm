@@ -45,8 +45,11 @@ sub new
     # get pointer to untyped method
     my $method = shift;
 
+    # service name
+    my $servicename = shift;
+
     # create a new typed method
-    my $typed_method = _semi_deep_copy($method);
+    my $typed_method = _semi_deep_copy($method, $servicename);
 
     # typecast the object
     bless ($typed_method, $class);
@@ -62,13 +65,15 @@ sub new
 sub _semi_deep_copy
 {
     my $source = shift;
+    my $servicename = shift;
 
     # copy all fields. Note that in many cases we are merely
     # copying the references to the objects in the original hash,
     # which is exactly what we want.
     my $target;
 
-    $target->{name}  = $source->{name};
+    $target->{name}        = $source->{name};
+    $target->{servicename} = $servicename;
 
     # copy over the arg lists, but type case them into BSV
     $target->{inargs}  = HAsim::RRR::Arglist::BSV->new($source->{inargs});

@@ -26,6 +26,7 @@
 
 #include "platforms-module.h"
 #include "asim/provides/rrr.h"
+#include "asim/rrr/client_stub_PARAMS.h"
 
 typedef class PARAMS_CONTROLLER_CLASS* PARAMS_CONTROLLER;
 
@@ -35,6 +36,9 @@ class PARAMS_CONTROLLER_CLASS: public RRR_SERVICE_CLASS,
   private:
     // self-instantiation
     static PARAMS_CONTROLLER_CLASS instance;
+
+    // instantiate stubs
+    PARAMS_CLIENT_STUB_CLASS clientStub;
 
   public:
     PARAMS_CONTROLLER_CLASS();

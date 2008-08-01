@@ -39,9 +39,6 @@
 
 #define SERVICE_ID       PARAMS_SERVICE_ID
 
-// temporary
-#define METHOD_ID_SEND_PARAM 0
-
 //
 // This code builds parallel arrays for mapping dynamic parameter values to
 // dictionary entries.  Two arrays are built instead of using a struct to save
@@ -92,7 +89,8 @@ PARAMS_CONTROLLER_CLASS PARAMS_CONTROLLER_CLASS::instance;
 // ===== methods =====
 
 // constructor
-PARAMS_CONTROLLER_CLASS::PARAMS_CONTROLLER_CLASS()
+PARAMS_CONTROLLER_CLASS::PARAMS_CONTROLLER_CLASS() :
+        clientStub(this)
 {
     // register with server's map table
     RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
@@ -136,15 +134,7 @@ PARAMS_CONTROLLER_CLASS::SendAllParams()
     UINT32 i = 0;
     while (paramValues[i])
     {
-        msg = UMF_MESSAGE_CLASS::New();
-        msg->SetLength(sizeof(UINT32) + sizeof(UINT64));
-        msg->SetServiceID(SERVICE_ID);
-        msg->SetMethodID(METHOD_ID_SEND_PARAM);
-        msg->AppendUINT64(*paramValues[i]);
-        msg->AppendUINT32(paramDictIDs[i]);
-
-        RRRClient->MakeRequestNoResponse(msg);
-
+        UINT8 ack = clientStub.sendParam(paramDictIDs[i], *paramValues[i]);
         i += 1;
     }
 
@@ -152,13 +142,5 @@ PARAMS_CONTROLLER_CLASS::SendAllParams()
     // Send NULL parameter as the last token.  Hardware responds with an ACK
     // to this one so we know everything is done.
     //
-    msg = UMF_MESSAGE_CLASS::New();
-    msg->SetLength(sizeof(UINT32) + sizeof(UINT64));
-    msg->SetServiceID(SERVICE_ID);
-    msg->SetMethodID(METHOD_ID_SEND_PARAM);
-    msg->AppendUINT64(0);
-    msg->AppendUINT32(PARAMS_NULL);
-
-    UMF_MESSAGE resp = RRRClient->MakeRequest(msg);
-    resp->Delete();
+    // UINT8 ack = clientStub.sendParam(PARAMS_NULL, 0);
 }

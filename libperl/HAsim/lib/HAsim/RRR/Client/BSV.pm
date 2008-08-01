@@ -75,7 +75,7 @@ sub _addmethods
     foreach my $method (@methodlist)
     {
         # create a new BSV-type method
-        my $bsv_method = HAsim::RRR::Method::BSV->new($method);
+        my $bsv_method = HAsim::RRR::Method::BSV->new($method, $client->{name});
 
         # add the typed method to the client's list
         push(@{ $client->{methodlist} }, $bsv_method);

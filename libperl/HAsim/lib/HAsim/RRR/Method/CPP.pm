@@ -45,8 +45,11 @@ sub new
     # get pointer to untyped method
     my $method = shift;
 
+    # get service name
+    my $servicename = shift;
+
     # create a new typed method
-    my $typed_method = _semi_deep_copy($method);
+    my $typed_method = _semi_deep_copy($method, $servicename);
 
     # typecast the object
     bless ($typed_method, $class);
@@ -62,19 +65,75 @@ sub new
 sub _semi_deep_copy
 {
     my $source = shift;
+    my $servicename = shift;
 
     # copy all fields. Note that in many cases we are merely
     # copying the references to the objects in the original hash,
     # which is exactly what we want.
     my $target;
 
-    $target->{name} = $source->{name};
+    $target->{name}        = $source->{name};
+    $target->{servicename} = $servicename;
 
     # copy over the arg lists, but type case them into CPP
     $target->{inargs}  = HAsim::RRR::Arglist::CPP->new($source->{inargs});
     $target->{outargs} = HAsim::RRR::Arglist::CPP->new($source->{outargs});
 
     return $target;
+}
+
+######################################
+#               TYPES                #
+######################################
+
+##
+## print type definitions
+##
+sub print_types
+{
+    my $self = shift;
+    my $file = shift;
+
+    # input
+    if ($self->inargs()->num() > 1)
+    {
+        # create a struct
+        print $file "typedef "                     .
+                    $self->inargs()->makestruct()  .
+                    $self->_intype_name()          .
+                    ";\n";
+    }
+    else
+    {
+        # use type of lone element in arg list
+        print $file "typedef "                 .
+                $self->inargs()->singletype()  .
+                " "                            .
+                $self->_intype_name()          .
+                ";\n";
+    }
+
+    # output
+    if ($self->outargs()->num() > 1)
+    {
+        # create a struct
+        print $file "typedef "                     .
+                    $self->outargs()->makestruct() .
+                    $self->_outtype_name()         .
+                    ";\n";
+    }
+    elsif ($self->outargs()->num() == 1)
+    {
+        print $file "typedef "                     .
+                    $self->outargs()->singletype() .
+                    " "                            .
+                    $self->_outtype_name()         .
+                    ";\n";
+    }
+    else
+    {
+        # no output args, don't print anything
+    }
 }
 
 #######################################
@@ -113,11 +172,12 @@ sub print_client_definition
     print $file $indent . "{\n";
     print $file $indent . "    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();\n";
     print $file $indent . "    msg->SetLength($insize);\n";
-    print $file $indent . "    msg->SetServiceID(SERVICE_ID);\n";
+    print $file $indent . "    msg->SetServiceID(" . $self->{servicename} . "_SERVICE_ID);\n";
     print $file $indent . "    msg->SetMethodID(METHOD_ID_" . $self->{name} . ");\n";
 
-    # marshall args
-    foreach my $arg ( @{ $self->inargs()->args() })
+    # marshall args, BUT use reverse order!
+    my @reverseinlist = reverse(@{ $self->inargs()->args() });
+    foreach my $arg (@reverseinlist)
     {
         print $file $indent                    .
                     "    msg->Append"          .
@@ -154,8 +214,9 @@ sub print_client_definition
         }
         else
         {
-            # multiple return values, demarshall into struct
-            foreach my $arg ( @{ $self->outargs()->args() })
+            # multiple return values, demarshall into struct BUT use reversed list
+            my @reverseoutlist = reverse(@{ $self->outargs()->args() });
+            foreach my $arg (@reverseoutlist)
             {
                 print $file $indent                    .
                             "    retval."              .

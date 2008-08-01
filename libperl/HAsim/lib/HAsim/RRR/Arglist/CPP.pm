@@ -78,6 +78,54 @@ sub _semi_deep_copy
 }
 
 ##
+## return a type string for the lone element in the arg list
+## (only applicable to arg lists with 1 entry)
+##
+sub singletype
+{
+    my $self = shift;
+
+    # 1 arg in list
+    if ($#{ $self->{args} } == 0)
+    {
+        # return raw arg without packing it into a struct
+        my ($arg, @rest) = @{ $self->{args} };
+        return $arg->type()->string_bsv();
+    }
+    else
+    {
+        die "singletype called on arglist with != 1 argument";
+    }
+}
+
+##
+## create a struct out of the elements in the arglist
+##
+sub makestruct
+{
+    my $self = shift;
+
+    # 0 args in list
+    if ($#{ $self->{args} } < 1)
+    {
+        die "makestruct called on arglist with < 2 arguments";
+    }
+
+    # pack into a struct
+    my $string = "struct\n" .
+                 "{\n";
+    
+    foreach my $arg (@{ $self->{args} })
+    {
+        $string = $string . "    " . $arg->string_bsv() . ";\n";
+    }
+
+    $string = $string . "}\n";
+
+    return $string;
+}
+
+##
 ## create a string with the list of args
 ##
 sub makelist

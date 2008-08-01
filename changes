@@ -14415,3 +14415,33 @@ Directory tools/scripts
  hasim-rrr-stubgen         Locally Modified          492 
 
 Added support for software client stubs.
+
+----------
+aparasha    Date: Fri Aug  1 13:38:58 EDT 2008  CSN: CSN-hasim-494
+                  Fri Aug  1 17:38:58 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ BSV.pm                    Locally Modified          493 
+ CPP.pm                    Locally Modified          493 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Arglist
+ CPP.pm                    Locally Modified          493 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Client
+ BSV.pm                    Locally Modified          493 
+ CPP.pm                    Locally Modified          493 
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          493 
+ hybrid-basic-starter.h    Locally Modified          493 
+
+Directory modules/hasim/controller/central_controllers/params
+ params-controller-hybrid.cpp Locally Modified          493 
+ params-controller-hybrid.h Locally Modified          493 
+ params-controller-hybrid.bsv Locally Modified          493 
+
+- fixed a couple of bugs in client software stubs
+- updated starter to use auto-generated client software stubs
+- updated params controller to use auto-generated client
+  software stubs

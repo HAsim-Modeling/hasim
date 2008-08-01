@@ -14,12 +14,7 @@
 
 #define SERVICE_ID  STARTER_SERVICE_ID
 
-// TEMPORARY: cheat and assign client method IDs
-#define METHOD_ID_RUN       0
-#define METHOD_ID_PAUSE     1
-#define METHOD_ID_SYNC      2
-#define METHOD_ID_DUMPSTATS 3
-
+// TEMPORARY: cheat and assign server method IDs
 #define METHOD_ID_ENDSIM    0
 #define METHOD_ID_HEARTBEAT 1
 
@@ -36,7 +31,8 @@ STARTER_CLASS::STARTER_CLASS() :
     latest_fmr(-1),
     instr_commits(0),
     model_cycles(0),
-    next_progress_msg_cycle(0)
+    next_progress_msg_cycle(0),
+    clientStub(this)
 {
     // register with server's map table
     RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
@@ -241,61 +237,30 @@ STARTER_CLASS::ProgressStats()
 void
 STARTER_CLASS::Run()
 {
-    // create message for RRR client
-    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
-    msg->SetLength(4);
-    msg->SetServiceID(SERVICE_ID);
-    msg->SetMethodID(METHOD_ID_RUN);
-    msg->AppendUINT32(0);   // value doesn't matter
-
     // log start time
     gettimeofday(&startTime, NULL);
 
-    RRRClient->MakeRequestNoResponse(msg);
+    // call client stub
+    clientStub.Run(0);
 }
 
 // client: pause
 void
 STARTER_CLASS::Pause()
 {
-    // create message for RRR client
-    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
-    msg->SetLength(4);
-    msg->SetServiceID(SERVICE_ID);
-    msg->SetMethodID(METHOD_ID_PAUSE);
-    msg->AppendUINT32(0);   // value doesn't matter
-
-    RRRClient->MakeRequestNoResponse(msg);
+    clientStub.Pause(0);
 }
 
 // client: sync
 void
 STARTER_CLASS::Sync()
 {
-    // create message for RRR client
-    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
-    msg->SetLength(4);
-    msg->SetServiceID(SERVICE_ID);
-    msg->SetMethodID(METHOD_ID_SYNC);
-    msg->AppendUINT32(0);   // value doesn't matter
-
-    RRRClient->MakeRequestNoResponse(msg);
+    clientStub.Sync(0);
 }
 
 // client: dump stats
 void
 STARTER_CLASS::DumpStats()
 {
-    // create message for RRR client
-    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
-    msg->SetLength(4);
-    msg->SetServiceID(SERVICE_ID);
-    msg->SetMethodID(METHOD_ID_DUMPSTATS);
-    msg->AppendUINT32(0);   // value doesn't matter
-
-    // make blocking RRR call
-    UMF_MESSAGE resp = RRRClient->MakeRequest(msg);
-
-    // response simply means stats dump is over
-    resp->Delete();
+    UINT32 ack = clientStub.DumpStats(0);
 }

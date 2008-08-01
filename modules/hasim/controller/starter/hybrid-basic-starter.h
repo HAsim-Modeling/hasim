@@ -7,6 +7,7 @@
 #include "asim/provides/low_level_platform_interface.h"
 #include "asim/provides/rrr.h"
 #include "asim/provides/starter.h"
+#include "asim/rrr/client_stub_STARTER.h"
 
 // this module provides both client and service functionalities
 
@@ -17,6 +18,9 @@ class STARTER_CLASS: public RRR_SERVICE_CLASS,
   private:
     // self-instantiation
     static STARTER_CLASS instance;
+
+    // instantiate stubs
+    STARTER_CLIENT_STUB_CLASS clientStub;
 
     // wall-clock time tracking
     struct timeval startTime;

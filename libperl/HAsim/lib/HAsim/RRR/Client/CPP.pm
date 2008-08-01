@@ -75,7 +75,7 @@ sub _addmethods
     foreach my $method (@methodlist)
     {
         # create a new CPP-type method
-        my $cpp_method = HAsim::RRR::Method::CPP->new($method);
+        my $cpp_method = HAsim::RRR::Method::CPP->new($method, $client->{name});
 
         # add the typed method to the client's list
         push(@{ $client->{methodlist} }, $cpp_method);
@@ -113,19 +113,24 @@ sub print_stub
     print $file "#include \"asim/rrr/service_ids.h\"\n";
     print $file "\n";
     
-    print $file "#define SERVICE_ID " . $self->name() . "_SERVICE_ID\n";
-    print $file "\n";
-
     # assign method IDs
     my $methodID = 0;
     foreach my $method (@{ $self->{methodlist} })
     {
         print $file "#define METHOD_ID_" . $method->name() . " $methodID\n";
+        $methodID = $methodID + 1;
     }
     print $file "\n";
 
     # other generic stuff
     print $file "using namespace std;\n";
+    print $file "\n";
+
+    # print types
+    foreach my $method (@{ $self->{methodlist} })
+    {
+        $method->print_types($file);
+    }
     print $file "\n";
 
     # start creating the client class

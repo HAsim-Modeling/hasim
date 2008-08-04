@@ -1071,12 +1071,14 @@ module [HASim_Module] mkFUNCP_RegStateManager
             // 1 Dest or less, so don't stall.
             depsQ.deq();
 
+            // If it was killed then don't tell the timing partition about the allocated register.
+            let final_map_dsts = tok_killed ? Vector::replicate(tagged Invalid) : map_dsts;
  
             // Update the scoreboard.
             tokScoreboard.decFinish(tok.index);
 
             // Return everything to the timing partition. End of macro-operation (path 1).
-            linkGetDeps.makeResp(initFuncpRspGetDependencies(tok, map_srcs, map_dsts));
+            linkGetDeps.makeResp(initFuncpRspGetDependencies(tok, map_srcs, final_map_dsts));
             funcpDebug($fwrite(debugLog, "TOKEN %0d: GetDeps: End (path 1).", tok.index));
 
         end

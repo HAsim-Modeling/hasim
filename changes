@@ -14479,3 +14479,16 @@ Directory modules/hasim/functional-partition/memory-state
 * Req/Rsp to functional partition now all use structs and constructors.
 
 Michael P.
+
+----------
+mpellaue    Date: Mon Aug  4 11:46:38 EDT 2008  CSN: CSN-hasim-496
+                  Mon Aug  4 15:46:38 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          495 
+
+
+Don't return a destination for instructions of the wrong epoch in the getDeps stage.
+
+Michael P.

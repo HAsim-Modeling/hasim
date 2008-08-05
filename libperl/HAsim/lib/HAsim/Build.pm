@@ -204,17 +204,15 @@ sub get_model_name {
 #                 names, if any
 sub get_bdpi_names {
     my $module = shift;
-
+    my @names = ();
     foreach my $param_r ($module->parameters()) {
         my %param = %{$param_r};
-        if ($param{'name'} eq "BDPI_NAMES") {
+        if ($param{'name'} =~ "^BDPI_NAMES") {
             my @quotesstripped = split("\"", $param{'default'});
-            my @names = split(" ", $quotesstripped[1]);
-            return @names;
+            push @names, split(" ", $quotesstripped[1]);
         }
     }
-
-    return ();
+    return @names;
 }
 
 sub make_wrapper_name {

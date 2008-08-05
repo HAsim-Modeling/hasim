@@ -14492,3 +14492,13 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 Don't return a destination for instructions of the wrong epoch in the getDeps stage.
 
 Michael P.
+
+----------
+napatil     Date: Tue Aug  5 16:18:03 EDT 2008  CSN: CSN-hasim-497
+                  Tue Aug  5 20:18:03 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim
+ Build.pm                  Locally Modified          496 
+
+Modified the hasim build scripts to allow multiple AWB files to declare BDPI imported functions. The original technique was to use %param  BDPI_NAMES as a magic parameter that would cause the correct list of .ba files to be known to the SConscript. Now, we can use any identifier that _begins_ with the string BDPI_NAMES, and the values get appended.

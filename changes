@@ -14502,3 +14502,24 @@ Directory libperl/HAsim/lib/HAsim
  Build.pm                  Locally Modified          496 
 
 Modified the hasim build scripts to allow multiple AWB files to declare BDPI imported functions. The original technique was to use %param  BDPI_NAMES as a magic parameter that would cause the correct list of .ba files to be known to the SConscript. Now, we can use any identifier that _begins_ with the string BDPI_NAMES, and the values get appended.
+
+----------
+mvijayar    Date: Wed Aug  6 21:50:24 EDT 2008  CSN: CSN-hasim-498
+                  Thu Aug  7 01:50:24 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer
+ sequential/               Locally Removed           497 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/sequential
+ memstate_storebuffer_sequential.awb Locally Removed           497 
+ StoreBufferSequential.bsv Locally Removed           497 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer
+ bucket-hash/              Locally Removed           497 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-hash
+ memstate_storebuffer_bucket_hash.awb Locally Removed           497 
+ memstate_storebuffer_bucket_hash.bsv Locally Removed           497 
+
+Removed all the old store buffer stuff

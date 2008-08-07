@@ -14533,3 +14533,18 @@ Directory modules/hasim/functional-partition/register-state/snapshot/bram
  funcp_snapshot_bram.awb   Locally Modified          497 
 
 Increasing the default snapshot size from 8 to 32
+
+----------
+nikhil      Date: Thu Aug  7 17:27:05 CDT 2008  CSN: CSN-hasim-501
+                  Thu Aug  7 22:27:05 UTC 2008
+
+
+Directory modules/model
+ hasim_model.awb           Locally Modified          500 
+ hasim_model.bsv           Locally Modified          500 
+
+Top level mkModel now instantiates a clock generator to feed the full hasim
+system. %param MODEL_CLOCK_FREQ is used to set the frequency at which the
+model would run. Only certain frequencies are legal, and if you use one that
+is not, then the bluespec compilation will bail out. (This functionality is
+brought to you by fpga-components.)

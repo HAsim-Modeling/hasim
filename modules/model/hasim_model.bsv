@@ -20,8 +20,17 @@ import Clocks::*;
 `include "asim/provides/hasim_system.bsh"
 `include "asim/provides/platform_interface.bsh"
 `include "asim/provides/physical_platform.bsh"
+`include "asim/provides/fpga_components.bsh"
 
-module [HASim_Module] mkModel (TOP_LEVEL_WIRES);
+module [HASIM_MODULE] mkModel (TOP_LEVEL_WIRES);
+
+    let userClock <- mkUserClockFromCrystal(`MODEL_CLOCK_FREQ);
+
+    let _x <- mkModelWithUserClock(clocked_by userClock.clk, reset_by userClock.rst);
+    return _x;
+endmodule
+
+module [HASIM_MODULE] mkModelWithUserClock (TOP_LEVEL_WIRES);
 
     // expose current clock and reset
     Clock clock      <- exposeCurrentClock();

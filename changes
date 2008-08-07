@@ -14523,3 +14523,13 @@ Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-ha
  memstate_storebuffer_bucket_hash.bsv Locally Removed           497 
 
 Removed all the old store buffer stuff
+
+----------
+mvijayar    Date: Wed Aug  6 22:01:52 EDT 2008  CSN: CSN-hasim-500
+                  Thu Aug  7 02:01:53 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/snapshot/bram
+ funcp_snapshot_bram.awb   Locally Modified          497 
+
+Increasing the default snapshot size from 8 to 32

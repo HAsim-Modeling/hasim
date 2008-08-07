@@ -16,7 +16,7 @@
 #
 # %public funcp_snapshot_bram.bsv
 #
-# %param REGSTATE_NUM_SNAPSHOTS 8 "Number of snapshots. Should be a power of 2."
+# %param REGSTATE_NUM_SNAPSHOTS 32 "Number of snapshots. Should be a power of 2."
 #
 # %AWB_END
 # */

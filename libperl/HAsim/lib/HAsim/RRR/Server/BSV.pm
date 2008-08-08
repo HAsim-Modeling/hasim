@@ -430,7 +430,7 @@ sub print_remote_stub
     print $file "\n";
     
     # module mk...
-    print $file "module [HASim_Module] mkServerStub_" . $self->{name};
+    print $file "module [HASIM_MODULE] mkServerStub_" . $self->{name};
     print $file " (ServerStub_" . $self->{name} . ");\n";
     print $file "\n";
     

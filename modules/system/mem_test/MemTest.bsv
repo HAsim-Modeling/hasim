@@ -18,7 +18,7 @@ typedef enum
 STATE
     deriving (Bits, Eq);
 
-module [HASim_Module] mkSystem ();
+module [HASIM_MODULE] mkSystem ();
 
     Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory <- mkConnection_Client("vdev_memory");
     Connection_Receive#(SCRATCHPAD_MEM_ADDRESS)              link_memory_inval <- mkConnection_Receive("vdev_memory_invalidate");

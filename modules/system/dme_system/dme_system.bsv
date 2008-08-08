@@ -1,7 +1,7 @@
 import hasim_common::*;
 import dme_alg::*;
 
-module [HASim_Module] mkSystem ();
+module [HASIM_MODULE] mkSystem ();
    
   let alg <- mkDME_Alg();
   

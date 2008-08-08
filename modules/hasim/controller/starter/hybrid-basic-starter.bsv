@@ -35,7 +35,7 @@ interface Starter;
 endinterface
 
 // mkStarter
-module [HASim_Module] mkStarter(Starter);
+module [HASIM_MODULE] mkStarter(Starter);
 
     // ----------- stubs -----------
     ClientStub_STARTER client_stub <- mkClientStub_STARTER();

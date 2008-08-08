@@ -32,7 +32,7 @@ typedef enum
 }
   LCState deriving (Eq, Bits);
 
-module [HASim_Module] mkLocalController#(Vector#(n, Port_Control) inports, Vector#(m, Port_Control) outports) (LocalController);
+module [HASIM_MODULE] mkLocalController#(Vector#(n, Port_Control) inports, Vector#(m, Port_Control) outports) (LocalController);
 
   Reg#(LCState) state <- mkReg(LC_Idle);
   

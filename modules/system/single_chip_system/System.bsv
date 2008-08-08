@@ -14,7 +14,7 @@ import hasim_chip::*;
 //The simplest system is a Chip and a Functional Partition
 
 
-module [HASim_Module] mkSystem
+module [HASIM_MODULE] mkSystem
     //interface:
                 ();
     

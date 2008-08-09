@@ -24,7 +24,7 @@ interface PortSend#(type msgT);
     interface Port_Control ctrl;
 endinterface
 
-module [HASIM_MODULE] mkPortTimeSharedReceive#(String portName)(PortReceive#(msgT, latency, bandwidth))
+module [HASim_Module] mkPortTimeSharedReceive#(String portName)(PortReceive#(msgT, latency, bandwidth))
     provisos (Bits#(msgT, msgSz),
               Transmittable#(Maybe#(msgT)),
               Add#(latency, 1, l1),
@@ -66,7 +66,7 @@ module [HASIM_MODULE] mkPortTimeSharedReceive#(String portName)(PortReceive#(msg
     endinterface
 endmodule
 
-module [HASIM_MODULE] mkPortTimeSharedSend#(String portName)(PortSend#(msgT))
+module [HASim_Module] mkPortTimeSharedSend#(String portName)(PortSend#(msgT))
     provisos (Bits#(msgT, msgSz),
               Transmittable#(Maybe#(msgT)));
 
@@ -100,7 +100,7 @@ interface Port_Receive#(type msg_T);
 endinterface
 
 
-module [HASIM_MODULE] mkPort_Send#(String portname)
+module [HASim_Module] mkPort_Send#(String portname)
   //interface:
               (Port_Send#(msg_T))
   provisos
@@ -129,7 +129,7 @@ module [HASIM_MODULE] mkPort_Send#(String portname)
 
 endmodule
 
-module [HASIM_MODULE] mkPort_Send_Bypassed#(String portname)
+module [HASim_Module] mkPort_Send_Bypassed#(String portname)
   //interface:
               (Port_Send#(msg_T))
   provisos
@@ -158,7 +158,7 @@ module [HASIM_MODULE] mkPort_Send_Bypassed#(String portname)
 
 endmodule
 
-module [HASIM_MODULE] mkPort_Receive#(String portname, Integer latency)
+module [HASim_Module] mkPort_Receive#(String portname, Integer latency)
   //interface:
               (Port_Receive#(msg_T))
       provisos
@@ -175,7 +175,7 @@ module [HASIM_MODULE] mkPort_Receive#(String portname, Integer latency)
 
 endmodule
 
-module [HASIM_MODULE] mkPort_Receive_Buffered#(String portname, Integer latency, Integer extra_buffering)
+module [HASim_Module] mkPort_Receive_Buffered#(String portname, Integer latency, Integer extra_buffering)
     //interface:
                 (Port_Receive#(msg_T))
       provisos
@@ -237,7 +237,7 @@ module [HASIM_MODULE] mkPort_Receive_Buffered#(String portname, Integer latency,
 
 endmodule
 
-module [HASIM_MODULE] mkPort_Receive_Waterlevel#(String portname, Integer latency)
+module [HASim_Module] mkPort_Receive_Waterlevel#(String portname, Integer latency)
     //interface:
                 (Port_Receive#(msg_T))
       provisos
@@ -311,7 +311,7 @@ endmodule
 
 //Port optimized for latency 0
 
-module [HASIM_MODULE] mkPort_Receive_L0#(String portname)
+module [HASim_Module] mkPort_Receive_L0#(String portname)
     //interface:
                 (Port_Receive#(msg_T))
       provisos
@@ -342,7 +342,7 @@ endmodule
 
 //Port optimized for latency 1
 
-module [HASIM_MODULE] mkPort_Receive_L1#(String portname)
+module [HASim_Module] mkPort_Receive_L1#(String portname)
     //interface:
                 (Port_Receive#(msg_T))
       provisos

@@ -193,7 +193,7 @@ endmodule
 // mkAssertionChecker --
 //    Allocate a checker for a single assertion ID, connected to an assertion node.
 //
-module [HASIM_MODULE] mkAssertionChecker#(ASSERTIONS_DICT_TYPE myID, ASSERTION_SEVERITY mySeverity, ASSERTION_NODE myNode)
+module [HASim_Module] mkAssertionChecker#(ASSERTIONS_DICT_TYPE myID, ASSERTION_SEVERITY mySeverity, ASSERTION_NODE myNode)
     // interface:
         (ASSERTION);
 

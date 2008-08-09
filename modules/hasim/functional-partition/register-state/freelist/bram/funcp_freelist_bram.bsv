@@ -43,7 +43,7 @@ endinterface
 
 // An implementation of the freelist which uses block RAM to store everything.
 
-module [HASIM_MODULE] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
+module [HASim_Module] mkFUNCP_Freelist#(File debugLog, Bit#(32) fpgaCC)
     //interface:
                 (FUNCP_FREELIST)
     provisos

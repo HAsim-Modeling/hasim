@@ -16,7 +16,7 @@ typedef enum {
    GreenE, AmberE, RedAfterE,
    GreenW, AmberW, RedAfterW} TLstates deriving (Eq, Bits);
 
-module [HASIM_MODULE] mk_traffic_light();
+module [HASim_Module] mk_traffic_light();
    Reg#(TLstates) state <- mkReg(RedAfterW);
    
    Connection_Send#(FRONTP_MASKED_LEDS) link_leds <- mkConnection_Send("fpga_leds");

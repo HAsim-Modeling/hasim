@@ -46,7 +46,7 @@ interface MODULE_CONTROLLER;
 endinterface
 
 // mkModuleController
-module [HASIM_MODULE] mkModuleController#(Connection_Send#(STREAMS_REQUEST) link_streams)
+module [HASim_Module] mkModuleController#(Connection_Send#(STREAMS_REQUEST) link_streams)
     // interface:
                 (MODULE_CONTROLLER);
 

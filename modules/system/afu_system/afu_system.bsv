@@ -1,7 +1,7 @@
 import hasim_common::*;
 import afu_alg::*;
 
-module [HASIM_MODULE] mkSystem ();
+module [HASim_Module] mkSystem ();
    
   let alg <- mkAFU_Alg();
   

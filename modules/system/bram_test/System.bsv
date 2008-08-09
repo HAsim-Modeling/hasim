@@ -2,7 +2,7 @@
 import hasim_common::*;
 import fpga_components::*;
 
-module [HASIM_MODULE] mkSystem ();
+module [HASim_Module] mkSystem ();
 
    BRAM#(Bit#(8), Bit#(32)) br <- mkBRAM_Full();
    Reg#(Bool) started <- mkReg(False);

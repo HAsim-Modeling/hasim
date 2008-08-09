@@ -2,7 +2,7 @@ import hasim_common::*;
 import soft_connections::*;
 import platform_interface::*;
 
-module [HASIM_MODULE] mkSystem ();
+module [HASim_Module] mkSystem ();
    
   Connection_Receive#(Bit#(4)) link_switches <- mkConnection_Receive("fpga_switches");
   Connection_Receive#(ButtonInfo) link_buttons  <- mkConnection_Receive("fpga_buttons");

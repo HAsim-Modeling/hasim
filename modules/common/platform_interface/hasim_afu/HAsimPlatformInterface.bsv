@@ -2,7 +2,7 @@ import hasim_common::*;
 import front_panel::*;
 import physical_platform::*;
 
-module [HASIM_MODULE] mkPlatformInterface(TOP_LEVEL_WIRES);
+module [HASim_Module] mkPlatformInterface(TOP_LEVEL_WIRES);
 
     // instantiate connections
     Connection_Client#(Bit#(256), Bit#(256))    link_afu       <- mkConnection_Client("dme_to_afu");

@@ -443,7 +443,7 @@ sub print_remote_stub
     print $file "\n";
     
     # module mk...
-    print $file "module [HASIM_MODULE] mkClientStub_" . $self->{name};
+    print $file "module [HASim_Module] mkClientStub_" . $self->{name};
     print $file " (ClientStub_" . $self->{name} . ");\n";
     print $file "\n";
     

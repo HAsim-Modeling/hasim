@@ -4,7 +4,7 @@ import rrr::*;
 
 `include "streams.bsh"
 
-module [HASIM_MODULE] mkConnectionTerminus();
+module [HASim_Module] mkConnectionTerminus();
 
     if (`TERM_FPGA_SWITCHES == 1)
         Connection_Receive#(FRONTP_SWITCHES) link_switches <- mkConnection_Receive("fpga_switches");

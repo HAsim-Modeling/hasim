@@ -48,7 +48,7 @@ import RegFile::*;
 
 // The manager of the register state, and the bulk of the work of the functional partition.
 
-module [HASIM_MODULE] mkFUNCP_RegStateManager
+module [HASim_Module] mkFUNCP_RegStateManager
     //interface:
                 ()
     provisos
@@ -314,7 +314,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     // Connections to Mem State.
 
-    Connection_Client#(TOKEN, Void)                            storeBufferAllocate <- mkConnection_Client("storeBufferAllocate");
+    Connection_Client#(TOKEN, UNIT)                            storeBufferAllocate <- mkConnection_Client("storeBufferAllocate");
 
     Connection_Client#(MEMSTATE_REQ, 
                        MEM_VALUE)                              linkToMem <- mkConnection_Client("funcp_memstate");

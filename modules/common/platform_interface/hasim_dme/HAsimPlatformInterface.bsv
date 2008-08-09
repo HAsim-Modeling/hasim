@@ -2,7 +2,7 @@ import hasim_common::*;
 import front_panel::*;
 import physical_platform::*;
 
-module [HASIM_MODULE] mkPlatformInterface(TOP_LEVEL_WIRES);
+module [HASim_Module] mkPlatformInterface(TOP_LEVEL_WIRES);
 
     // instantiate connections
     Connection_Send#(Tuple3#(Bit#(256), Bool, Bool))     link_to_dme_data      <- mkConnection_Send("fsb_to_dme_data");

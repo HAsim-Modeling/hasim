@@ -1,6 +1,6 @@
 `include "hasim_common.bsh"
 
 //=============== Null Controller ===============
-module [HASIM_MODULE] mkController();
+module [HASim_Module] mkController();
 endmodule
 

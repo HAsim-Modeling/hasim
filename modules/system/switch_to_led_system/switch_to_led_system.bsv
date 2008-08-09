@@ -5,7 +5,7 @@
 
 import calculation4x4::*;
 
-module [HASIM_MODULE] mkSystem ();
+module [HASim_Module] mkSystem ();
    
     Connection_Send#(FRONTP_MASKED_LEDS) link_leds     <- mkConnection_Send("fpga_leds");
     Connection_Receive#(FRONTP_SWITCHES) link_switches <- mkConnection_Receive("fpga_switches");

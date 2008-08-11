@@ -14548,3 +14548,21 @@ system. %param MODEL_CLOCK_FREQ is used to set the frequency at which the
 model would run. Only certain frequencies are legal, and if you use one that
 is not, then the bluespec compilation will bail out. (This functionality is
 brought to you by fpga-components.)
+
+----------
+jsemer      Date: Mon Aug 11 14:16:47 EDT 2008  CSN: CSN-hasim-504
+                  Mon Aug 11 18:16:47 UTC 2008
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          503 
+
+Directory experiments/hasim/quick
+ quick.benchmarks          Locally Modified          503 
+ quick.models              Locally Modified          503 
+
+In hasim-configure allow --buildopt and --runopt to have null
+arguments. And added better checks for missing files so the
+script just reports the problem.
+
+Changed quick regression to run the 'hello' benchmark.

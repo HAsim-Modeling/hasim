@@ -14566,3 +14566,24 @@ arguments. And added better checks for missing files so the
 script just reports the problem.
 
 Changed quick regression to run the 'hello' benchmark.
+
+----------
+mpellaue    Date: Tue Aug 12 13:52:33 EDT 2008  CSN: CSN-hasim-505
+                  Tue Aug 12 17:52:33 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/snapshot/bram
+ funcp_snapshot_bram.bsv   Locally Modified          504 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          504 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ HashedStoreBuffer.bsv     Locally Modified          504 
+
+
+* Remove combinational CAM from snapshots.
+* Use RegFileInitialized in scoreboard.
+* Remove spurious (* synthesize *) from store buffer.
+
+Michael P.

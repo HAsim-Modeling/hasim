@@ -375,8 +375,3 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
     endmethod
 endmodule
 
-(* synthesize *)
-module mkHashedStoreBufferTest(HashedStoreBuffer#(8, 32, 64, 8, 1));
-    let sbuffer <- mkHashedStoreBuffer();
-    return sbuffer;
-endmodule

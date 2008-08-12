@@ -1,1 +1,1 @@
-hello                    config/pm/bluespec/demos/hello/hello_hybrid_exe.apm
+traffic_light            config/pm/hasim/demos/traffic_light/traffic_light_exe_nosynth.apm      -c 1000

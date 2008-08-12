@@ -20,7 +20,7 @@
 
 // Instantiate the submodules
 
-module [HASIM_MODULE] mkFUNCP
+module [HASIM_MODULE] mkFuncp
     //interface:
          ();
     

@@ -3,7 +3,6 @@
 `include "fpga_components.bsh"
 
 import Vector::*;
-import RegFile::*;
 
 interface Snapshot#(numeric type rname_SZ);
 
@@ -26,34 +25,21 @@ module mkSnapshot
          Bits#(FUNCP_SNAPSHOT_INDEX, snapshotptr_SZ));
 
     // The valid bits tell us which location contains a valid snapshot.
-    Reg#(Vector#(TExp#(idx_SZ), Bool))          snapValids <- mkReg(replicate(False));
+    Reg#(Vector#(TExp#(idx_SZ), Bool))             snapValids <- mkReg(replicate(False));
 
     // The IDs tell us which snapshot is in a given location.
-    RegFile#(FUNCP_SNAPSHOT_INDEX, Maybe#(TOKEN_INDEX)) snapIDs <- mkRegFileFullInitialized(tagged Invalid);
-
-    // The token table tells us the most recent snapshot associated with each token.
-    RegFile#(TOKEN_INDEX, FUNCP_SNAPSHOT_INDEX) tokSnaps <- mkRegFileFullInitialized(0);
-
+    Reg#(Vector#(TExp#(snapshotptr_SZ), TOKEN_INDEX)) snapIDs <- mkRegU();
+    
     // The next pointer points to the next location where we should write a snapshot.
-    // (Possibly overwriting an old snapshot, which is okay, since we pull down snapValid for that token.)
+    // (Possibly overwriting an old snapshot, which is okay.)
     Reg#(FUNCP_SNAPSHOT_INDEX)                       snapNext <- mkReg(0);
 
     // The actual snapshots of the entire maptable.
     BRAM#(snapshotptr_SZ, Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX)) snaps <- mkBramInitialized(?);
 
     method Action makeSnapshot(TOKEN_INDEX tokIndex, Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX) newMap);
-
-        let new_valids = snapValids;
-
-        if (snapIDs.sub(snapNext) matches tagged Valid .old_tok)
-        begin
-           new_valids[old_tok] = False;
-        end
-
-        new_valids[tokIndex] = True;
-        snapValids <= new_valids;
-        tokSnaps.upd(tokIndex, snapNext);
-        snapIDs.upd(snapNext, tagged Valid tokIndex);
+        snapValids[tokIndex] <= True;
+        snapIDs[snapNext] <= tokIndex;
         snaps.write(snapNext, newMap);
         snapNext <= snapNext + 1;
     endmethod
@@ -64,8 +50,26 @@ module mkSnapshot
 
     method Maybe#(FUNCP_SNAPSHOT_INDEX) hasSnapshot(TOKEN_INDEX tokIndex);
 
-        return (snapValids[tokIndex]) ? tagged Valid tokSnaps.sub(tokIndex) : tagged Invalid;
-        
+        Bool found = False;
+        FUNCP_SNAPSHOT_INDEX idx = snapNext;
+
+        if (snapValids[tokIndex]) // There's a chance we have a snapshot
+        begin
+
+            for (Integer x = 0; x < valueof(TExp#(snapshotptr_SZ)); x = x + 1)
+            begin
+                // We look the list at an offset from the oldest entry.
+                let cur = snapNext + fromInteger(x);
+
+                // If the entry we examine is of the appropriate token, we've found a candidate!
+                match {.new_idx, .new_found} = (snapIDs[cur] == tokIndex) ? tuple2(cur, True) : tuple2(idx, found);
+                found = new_found;
+                idx = new_idx;
+            end
+        end
+
+        return found ? tagged Valid idx : tagged Invalid;
+
     endmethod
     
     method Action requestSnapshot(FUNCP_SNAPSHOT_INDEX idx);

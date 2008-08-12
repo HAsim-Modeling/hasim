@@ -1,12 +1,14 @@
-
-
 %name Hasim - Hardware (fpga) based system
 %desc Hasim - Hardware (fpga) based system
-%attributes hasim
+
+%attributes hasim system
 
 %provides hasim_system
 
-%requires hasim_chip hasim_funcp hasim_isa 
+%requires hasim_chip
+%requires hasim_funcp
+%requires hasim_isa
+%requires hasim_memory
 
 %public System.bsv
 

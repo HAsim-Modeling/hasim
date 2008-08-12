@@ -14550,54 +14550,161 @@ is not, then the bluespec compilation will bail out. (This functionality is
 brought to you by fpga-components.)
 
 ----------
-jsemer      Date: Mon Aug 11 14:16:47 EDT 2008  CSN: CSN-hasim-504
-                  Mon Aug 11 18:16:47 UTC 2008
+mvijayar    Date: Tue Aug 12 18:28:30 EDT 2008  CSN: CSN-hasim-507
+                  Tue Aug 12 22:28:30 UTC 2008
 
+
+Directory admin
+ mytags                    Locally Modified          506 
+
+Directory admin/packages
+ hasim                     Locally Modified          506 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Server
+ BSV.pm                    Locally Modified          506 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Client
+ BSV.pm                    Locally Modified          506 
 
 Directory tools/scripts
- hasim-configure           Locally Modified          503 
+ hasim-configure           Locally Modified          506 
+ hasim-rrr-stubgen         Locally Modified          506 
 
 Directory experiments/hasim/quick
- quick.benchmarks          Locally Modified          503 
- quick.models              Locally Modified          503 
+ quick.benchmarks          Locally Modified          506 
+ quick.models              Locally Modified          506 
 
-In hasim-configure allow --buildopt and --runopt to have null
-arguments. And added better checks for missing files so the
-script just reports the problem.
+Directory .
+ changes                   Locally Modified          506 
 
-Changed quick regression to run the 'hello' benchmark.
+Directory modules/hasim/controller/local_controllers/module
+ local-controller-module-standard.bsv Locally Modified          506 
 
-----------
-mpellaue    Date: Tue Aug 12 13:52:33 EDT 2008  CSN: CSN-hasim-505
-                  Tue Aug 12 17:52:33 UTC 2008
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.bsv  Locally Modified          506 
 
+Directory modules/hasim/controller
+ controller-null.bsv       Locally Modified          506 
+ controller-standard.bsv   Locally Modified          506 
+
+Directory modules/hasim/controller/central_controllers
+ central-controllers-standard.bsv Locally Modified          506 
+
+Directory modules/hasim/controller/central_controllers/module
+ module-controller-standard.bsv Locally Modified          506 
+
+Directory modules/hasim/functional-partition/interface
+ funcp-timing-interface.bsv Locally Modified          506 
 
 Directory modules/hasim/functional-partition/register-state/snapshot/bram
- funcp_snapshot_bram.bsv   Locally Modified          504 
+ funcp_snapshot_bram.bsv   Locally Modified          506 
 
 Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
- regstate_scoreboard_onehot.bsv Locally Modified          504 
+ regstate_scoreboard_onehot.bsv Locally Modified          506 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          506 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          506 
 
 Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
- HashedStoreBuffer.bsv     Locally Modified          504 
-
-
-* Remove combinational CAM from snapshots.
-* Use RegFileInitialized in scoreboard.
-* Remove spurious (* synthesize *) from store buffer.
-
-Michael P.
-
-----------
-mpellaue    Date: Tue Aug 12 16:00:33 EDT 2008  CSN: CSN-hasim-506
-                  Tue Aug 12 20:00:33 UTC 2008
-
+ StoreBufferFastHashed.bsv Locally Modified          506 
+ HashedStoreBuffer.bsv     Locally Modified          506 
 
 Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
- memstate_manager_macro_ops.bsv Locally Modified          504 
+ memstate_manager_macro_ops.bsv Locally Modified          506 
 
+Directory modules/hasim/functional-partition
+ functional_partition_default.awb Locally Modified          506 
+ functional_partition_default.bsv Locally Modified          506 
 
+Directory modules/system/afu_system/pass-through
+ afu_pass_through_alg.bsv  Locally Modified          506 
 
-Consult the functional store buffer and cache in parallel to save FPGA cycles.
+Directory modules/system/afu_system
+ afu_system.bsv            Locally Modified          506 
 
-Michael P.
+Directory modules/system/afu_system/add1
+ afu_add1_alg.bsv          Locally Modified          506 
+
+Directory modules/system/bram_test
+ System.bsv                Locally Modified          506 
+
+Directory modules/system
+ single_chip_system/       Locally Removed           506 
+
+Directory modules/system/single_chip_system
+ System.bsv                Locally Removed           506 
+ hasim_system.awb          Locally Removed           506 
+
+Directory modules/system/dme_system
+ dme_system.bsv            Locally Modified          506 
+
+Directory modules/system/dme_system/no-afu
+ dme_no_afu.bsv            Locally Modified          506 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          506 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Modified          506 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.bsv     Locally Modified          506 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.bsv  Locally Modified          506 
+
+Directory modules/system/switch_to_led_system/calculation4x4/adder
+ adder4x4.bsv              Locally Modified          506 
+
+Directory modules/system/switch_to_led_system/calculation4x4/square
+ square4x4.bsv             Locally Modified          506 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ multiplier4x4.bsv         Locally Modified          506 
+
+Directory modules/system/switch_to_led_system/calculation4x4/echo
+ echo4x4.bsv               Locally Modified          506 
+
+Directory modules/system
+ cpu_system/               Locally Added               0 
+
+Directory modules/system/cpu_system
+ System.bsv                Locally Added               0 
+ hasim_system.awb          Locally Added               0 
+
+Directory modules/system/mem_test
+ MemTest.bsv               Locally Modified          506 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          506 
+ Assertions.bsv            Locally Modified          506 
+
+Directory modules/common/modellib
+ Ports.bsv                 Locally Modified          506 
+ StallPorts.bsv            Locally Modified          506 
+
+Directory modules/common
+ Utils.bsv                 Locally Added               0 
+ regfile_initialized.bsv   Locally Modified          506 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          506 
+ HAsimPlatformInterface.bsv Locally Modified          506 
+
+Directory modules/common/platform_interface/hasim_dme
+ HAsimPlatformInterface.bsv Locally Modified          506 
+
+Directory modules/common/platform_interface/hasim_afu
+ HAsimPlatformInterface.bsv Locally Modified          506 
+
+Directory modules/common
+ Unit.bsv                  Locally Removed           506 
+ backwards_compatability.bsv Locally Removed           506 
+ FpgaDebugFile.bsv         Locally Removed           506 
+
+Created a Utils.bsv file which contains several utilities for timing model and functional model
+Got rid of backwards compatibility file
+Added a cpu_system instead of a single_chip_system

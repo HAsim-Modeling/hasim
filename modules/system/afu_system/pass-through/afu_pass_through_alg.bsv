@@ -1,6 +1,6 @@
 import hasim_common::*;
 
-module [HASim_Module] mkAFU_Alg ();
+module [HASIM_MODULE] mkAFU_Alg ();
    
   Connection_Server#(Bit#(256), Bit#(256)) link_dme <- mkConnection_Server("dme_to_afu");
   

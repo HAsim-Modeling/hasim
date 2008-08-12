@@ -10,8 +10,7 @@
 
 %attributes hasim
 
-%public HASim.bsv Token.bsv BypassFIFO.bsv FPGAFIFOs.bsv Debug.bsv Assertions.bsv Hash.bsv backwards_compatability.bsv FpgaDebugFile.bsv Unit.bsv
-%public regfile_initialized.bsv
+%public HASim.bsv Token.bsv BypassFIFO.bsv FPGAFIFOs.bsv Debug.bsv Assertions.bsv Hash.bsv Utils.bsv regfile_initialized.bsv
 
 %sources -t DICT -v PUBLIC hasim_common.dic
 %private bluespec_common.prj

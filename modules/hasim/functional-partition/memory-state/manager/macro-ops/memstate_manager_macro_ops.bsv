@@ -36,10 +36,10 @@ typedef union tagged
 
 // LOAD_PATH
 
-typedef enum
+typedef union tagged
 {
-  PATH_TAKE,
-  PATH_DROP
+  MEM_VALUE PATH_SB;
+  void PATH_CACHE;
 }
   LOAD_PATH
     deriving (Eq, Bits);
@@ -70,10 +70,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // Link to the Cache
     Connection_Client#(MEM_REQUEST, MEM_VALUE)  linkCache     <- mkConnection_Client("mem_cache");
 
-    FIFO#(TOKEN)     loadQ  <- mkSizedFIFO(16);
-    FIFO#(LOAD_PATH) cacheQ <- mkSizedFIFO(16);
-
-
+    FIFO#(LOAD_PATH) loadQ <- mkSizedFIFO(16);
 
     // ***** Rules ***** //
 
@@ -116,12 +113,9 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         // Pop the request from the register state.
         linkRegState.deq();
 
-        // Send it on to the store buffer and cache in parallel.
+        // Send it on to the store buffer.
         linkStoreBuffer.makeReq(tagged SBUFFER_REQ_LOOKUP {tok: ldInfo.token, addr: ldInfo.addr});
-        linkCache.makeReq(tagged MEM_LOAD ldInfo.addr);
-
-        loadQ.enq(ldInfo.token);
-
+        
     endrule
 
     // memLoad2
@@ -136,37 +130,47 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         linkStoreBuffer.deq();
 
         case (mnew_val) matches
-            tagged Invalid:
-            begin
-                // Store buffer doesn't have it. Take it from the cache instead.
-                cacheQ.enq(PATH_TAKE);
-            end
-            tagged Valid .val:
-            begin
-                // Drop the cache response when it comes.
-                cacheQ.enq(PATH_DROP);
-                loadQ.deq();
-                // Respond to regstate. End of macro-operation (path 1).
-                linkRegState.makeResp(val);
-            end
+          tagged Invalid: // A miss in the store buffer.
+          begin
+
+              // Send it on to the cache.
+              linkCache.makeReq(tagged MEM_LOAD addr);
+              
+              // Record that the answer is coming from the cache.
+              loadQ.enq(tagged PATH_CACHE);
+              
+          end
+          tagged Valid .val: // A hit in the store buffer.
+          begin
+              
+              // Send it on to the next stage so things don't get out-of-order.
+              loadQ.enq(tagged PATH_SB val);
+
+          end
         endcase
 
     endrule
+     
+    // memLoad3SB
+    
+    // When:   Some time after memLoad2 gets a hit in the store buffer.
+    // Effect: Returns the hit to the register state, but ensures that it doesn't pass any other loads.
+    
+    rule memLoad3SB (loadQ.first() matches tagged PATH_SB .val);
 
-    rule memLoadCacheTake (cacheQ.first() == PATH_TAKE);
- 
-        let val = linkCache.getResp();
-        linkCache.deq();
-
-        cacheQ.deq();
         loadQ.deq();
 
-        // Respond to regstate. End of macro-operation (path 2).
+        // Respond to regstate. End of macro-operation (path 1).
         linkRegState.makeResp(val);
 
-     endrule
-
-    rule memLoadCacheDrop (cacheQ.first() == PATH_DROP);
+    endrule
+    
+    // memLoad3Cache
+    
+    // When:   Some time after memLoad2 makes a request to the cache.
+    // Effect: Get the result from the cache and return it to the register state.
+    
+    rule memLoad3Cache (loadQ.first() matches tagged PATH_CACHE);
 
         loadQ.deq();
 

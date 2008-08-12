@@ -31,9 +31,7 @@ typedef struct {
 typedef enum {SBUFFER_STATE_READY, SBUFFER_STATE_LOOKUP, SBUFFER_STATE_COMMIT} SBUFFER_STATE deriving (Bits, Eq);
 
 module [HASIM_MODULE] mkFUNCP_StoreBuffer();
-    FpgaDebugFile                                                                                                          debug <- mkFpgaDebugFile("StoreBuffer.out");
-
-    Connection_Server#(TOKEN, UNIT)                                                                                     allocate <- mkConnection_Server("storeBufferAllocate");
+    Connection_Server#(TOKEN, Void)                                                                                     allocate <- mkConnection_Server("storeBufferAllocate");
     Connection_Server#(MEMSTATE_SBUFFER_REQ, MEMSTATE_SBUFFER_RSP)                                                  linkMemState <- mkConnection_Server("mem_storebuf");
 
     HashedStoreBuffer#(TSub#(SizeOf#(TOKEN_INDEX), 1), SizeOf#(MEM_ADDRESS), SizeOf#(MEM_VALUE), `SBUFFER_HASH_WIDTH, 2) sbuffer <- mkHashedStoreBuffer();

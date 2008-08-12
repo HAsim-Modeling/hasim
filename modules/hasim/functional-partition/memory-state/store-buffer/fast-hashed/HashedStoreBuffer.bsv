@@ -35,7 +35,7 @@ endinstance
 function CommitResp#(tokenWidth, addrWidth, dataWidth) makeCommitResp(Bit#(TAdd#(tokenWidth, 1)) token, Bit#(addrWidth) addr, Bit#(dataWidth) value, Bool hasMore) =
          CommitResp{token: token, addr: addr, value: value, hasMore: hasMore};
 
-typedef enum {Ready, Allocate, Insert, Commit, Lookup1, Lookup2, Lookup3, Lookup4} State deriving (Bits, Eq);
+typedef enum {Ready, Allocate, Insert, Commit, Lookup1, Lookup2, Lookup3} State deriving (Bits, Eq);
 
 interface HashedStoreBuffer#(type tokenWidth, type addrWidth, type dataWidth, numeric type hashWidth, type numStores);
     method Bool isReady();
@@ -93,9 +93,9 @@ endinterface
 //     if(valid[y.token])
 //         if(isBetter(y.token, addrY))
 //             best = y.token
+//         z = y
 //     else
 //         remove(y.index, y.token, addrY, z, w)
-//     z = y
 //     y = w
 //     
 //     if(w != nil)
@@ -123,6 +123,7 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
 
     Reg#(Bit#(tokenWidth))                                                       xReg <- mkRegU;
     Reg#(May#(Pointer#(tokenWidth, numStores)))                                  yReg <- mkRegU;
+    Reg#(May#(Pointer#(tokenWidth, numStores)))                                  zReg <- mkRegU;
     Reg#(Bit#(TLog#(numStores)))                                                 iReg <- mkRegU;
 
     Reg#(State)                                                                 state <- mkReg(Ready);
@@ -222,9 +223,9 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
 
     rule lookup1Rule(state == Lookup1);
         let y <- head.readResp();
+        zReg <= makeInvalid;
         if(y.valid)
         begin
-            prev[y.value.index].readReq(y.value.token);
             next[y.value.index].readReq(y.value.token);
             addr[y.value.index].readReq(y.value.token);
             data[y.value.index].readReq(y.value.token);
@@ -233,13 +234,12 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
             state <= Lookup2;
         end
         else
-            state <= Lookup4;
+            state <= Lookup3;
     endrule
 
     rule lookup2Rule(state == Lookup2);
         let addrY <- addr[yReg.value.index].readResp();
         let value <- data[yReg.value.index].readResp();
-        let t <- prev[yReg.value.index].readResp();
         let w <- next[yReg.value.index].readResp();
 
         if(tokenValid[yReg.value.token])
@@ -249,25 +249,23 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
                 best <= makeValid(yReg.value.token);
                 valueReg <= value;
             end
+            zReg <= yReg;
         end
         else
-            remove(yReg.value.index, yReg.value.token, addrY, t, w);
+            remove(yReg.value.index, yReg.value.token, addrY, zReg, w);
 
         yReg <= w;
 
         if(w.valid)
-            state <= Lookup3;
+        begin
+            next[w.value.index].readReq(w.value.token);
+            addr[w.value.index].readReq(w.value.token);
+            data[w.value.index].readReq(w.value.token);
+            debug <= $format("lookup2Rule: ") + fshow(w);
+            state <= Lookup2;
+        end
         else
-            state <= Lookup4;
-    endrule
-
-    rule lookup3Rule(state == Lookup3);
-        prev[yReg.value.index].readReq(yReg.value.token);
-        next[yReg.value.index].readReq(yReg.value.token);
-        addr[yReg.value.index].readReq(yReg.value.token);
-        data[yReg.value.index].readReq(yReg.value.token);
-        debug <= $format("lookup3Rule: ") + fshow(yReg);
-        state <= Lookup2;
+            state <= Lookup3;
     endrule
 
     method Bool isReady();
@@ -312,7 +310,7 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
         state <= Lookup1;
     endmethod
 
-    method ActionValue#(LookupResp#(tokenWidth, addrWidth, dataWidth)) lookupResp() if(state == Lookup4);
+    method ActionValue#(LookupResp#(tokenWidth, addrWidth, dataWidth)) lookupResp() if(state == Lookup3);
         state <= Ready;
         return makeLookupResp(tokenReg, addressReg, best.valid, valueReg);
     endmethod
@@ -375,3 +373,8 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
     endmethod
 endmodule
 
+(* synthesize *)
+module mkHashedStoreBufferTest(HashedStoreBuffer#(8, 32, 64, 8, 1));
+    let sbuffer <- mkHashedStoreBuffer();
+    return sbuffer;
+endmodule

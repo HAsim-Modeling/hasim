@@ -121,13 +121,13 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     TOKEN_SCOREBOARD store_start  <- mkRegFileFull();
     TOKEN_SCOREBOARD store_finish <- mkRegFileFull();
     TOKEN_SCOREBOARD commit_start <- mkRegFileFull();
+
+    Reg#(Vector#(TExp#(idx_SZ), MEM_OFFSET))     fetch_offset  <- mkReg(Vector::replicate(0));
+    Reg#(Vector#(TExp#(idx_SZ), MEM_OFFSET))     memop_offset <- mkReg(Vector::replicate(0));
+    Reg#(Vector#(TExp#(idx_SZ), ISA_MEMOP_TYPE)) load_type  <- mkReg(?);
+    Reg#(Vector#(TExp#(idx_SZ), ISA_MEMOP_TYPE)) store_type <- mkReg(?);
     TOKEN_SCOREBOARD emulation <- mkRegFileFull();
 
-    RegFile#(TOKEN_INDEX, MEM_OFFSET)     fetch_offset  <- mkRegFileFullInitialized(0);
-    RegFile#(TOKEN_INDEX, MEM_OFFSET)     memop_offset  <- mkRegFileFullInitialized(0);
-    RegFile#(TOKEN_INDEX, ISA_MEMOP_TYPE) load_type  <- mkRegFileFullInitialized(unpack(0));
-    RegFile#(TOKEN_INDEX, ISA_MEMOP_TYPE) store_type <- mkRegFileFullInitialized(unpack(0));
- 
     // A pointer to the next token to be allocated.
     Reg#(TOKEN_INDEX) next_free_tok <- mkReg(0);
 
@@ -510,7 +510,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method Action setFetchOffset(TOKEN_INDEX t, MEM_OFFSET offset);
     
-        fetch_offset.upd(t, offset);
+        fetch_offset[t] <= offset;
     
     endmethod
 
@@ -521,7 +521,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method Action setMemOpOffset(TOKEN_INDEX t, MEM_OFFSET offset);
     
-        memop_offset.upd(t, offset);
+        memop_offset[t] <= offset;
     
     endmethod
 
@@ -534,7 +534,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     
         is_load.upd(t, True);
         
-        load_type.upd(t, mtype);
+        load_type[t] <= mtype;
     
     endmethod
 
@@ -547,7 +547,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     
         is_store.upd(t, True);
         
-        store_type.upd(t, mtype);
+        store_type[t] <= mtype;
     
     endmethod
 
@@ -638,7 +638,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method MEM_OFFSET getFetchOffset(TOKEN_INDEX t);
     
-        return fetch_offset.sub(t);
+        return fetch_offset[t];
     
     endmethod
 
@@ -649,7 +649,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method MEM_OFFSET getMemOpOffset(TOKEN_INDEX t);
     
-        return memop_offset.sub(t);
+        return memop_offset[t];
     
     endmethod
 
@@ -660,7 +660,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method ISA_MEMOP_TYPE getLoadType(TOKEN_INDEX t);
     
-        return load_type.sub(t);
+        return load_type[t];
     
     endmethod
 
@@ -671,7 +671,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method ISA_MEMOP_TYPE getStoreType(TOKEN_INDEX t);
     
-        return store_type.sub(t);
+        return store_type[t];
     
     endmethod
 

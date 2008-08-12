@@ -20,6 +20,8 @@
 // Initialized versions of mkRegFile and mkRegFileFull
 //
 
+import RegFile::*;
+
 module mkRegFileInitialized#(index_t lo_index,
                              index_t hi_index,
                              data_t init)

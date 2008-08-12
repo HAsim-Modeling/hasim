@@ -20,7 +20,7 @@ typedef struct
 }
   ButtonInfo deriving (Eq, Bits);
 
-module [HASim_Module] mkPlatformInterface (TOP_LEVEL_WIRES);
+module [HASIM_MODULE] mkPlatformInterface (TOP_LEVEL_WIRES);
 
     // instantiate connections
     Connection_Receive#(FRONTP_MASKED_LEDS) link_leds <- mkConnection_Receive("fpga_leds");

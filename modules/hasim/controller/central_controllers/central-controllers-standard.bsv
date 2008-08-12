@@ -31,7 +31,7 @@ endinterface
 
 // ================ Standard Controller ===============
 
-module [HASim_Module] mkCentralControllers
+module [HASIM_MODULE] mkCentralControllers
     // interface:
         (CENTRAL_CONTROLLERS);
 

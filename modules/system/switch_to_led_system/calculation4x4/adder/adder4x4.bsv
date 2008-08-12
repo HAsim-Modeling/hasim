@@ -5,7 +5,7 @@ interface Calculation4x4;
    method Bit#(4) getResult();
 endinterface: Calculation4x4
 
-module [HASim_Module] mkCalculation4x4(Calculation4x4);
+module [HASIM_MODULE] mkCalculation4x4(Calculation4x4);
    
   Reg#(Bit#(2))  d            <- mkReg(0);
   Reg#(Bit#(2))  r            <- mkReg(0);   

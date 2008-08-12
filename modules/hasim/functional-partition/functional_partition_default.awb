@@ -13,4 +13,4 @@
 
 %public functional_partition_default.bsv
 
-%param SYNTH_BOUNDARY mkFUNCP "Name of synthesis boundary"
+%param SYNTH_BOUNDARY mkFuncp "Name of synthesis boundary"

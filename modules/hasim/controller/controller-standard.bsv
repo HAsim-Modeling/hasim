@@ -31,7 +31,7 @@ typedef Bit#(TAdd#(`HEARTBEAT_TRIGGER_BIT, 1)) HEARTBEAT_MODEL_CYCLES;
 
 // ================ Standard Controller ===============
 
-module [HASim_Module] mkController ();
+module [HASIM_MODULE] mkController ();
 
     // instantiate all the sub-controllers
     CENTRAL_CONTROLLERS centralControllers <- mkCentralControllers();

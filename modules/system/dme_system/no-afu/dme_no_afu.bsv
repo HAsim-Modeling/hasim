@@ -89,7 +89,7 @@ function Bit#(75) fsb_cmd_store(Bit#(36) addr, Bit#(3) len);
 
 endfunction
 
-module [HASim_Module] mkDME_Alg ();
+module [HASIM_MODULE] mkDME_Alg ();
    
   //Connection_Client#(Bit#(256), Bit#(256)) link_dme <- mkConnection_Server("dme_to_afu");
   Connection_Send#(Tuple3#(Bit#(256), Bool, Bool))     link_to_fsb_data      <- mkConnection_Send("dme_to_fsb_data");

@@ -14587,3 +14587,17 @@ Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hash
 * Remove spurious (* synthesize *) from store buffer.
 
 Michael P.
+
+----------
+mpellaue    Date: Tue Aug 12 16:00:33 EDT 2008  CSN: CSN-hasim-506
+                  Tue Aug 12 20:00:33 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          504 
+
+
+
+Consult the functional store buffer and cache in parallel to save FPGA cycles.
+
+Michael P.

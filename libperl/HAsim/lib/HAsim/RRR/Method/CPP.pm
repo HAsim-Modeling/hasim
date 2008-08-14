@@ -236,4 +236,98 @@ sub print_client_definition
     print $file $indent . "}\n";
 }
 
+#######################################
+##             SERVER                ##
+#######################################
+
+##
+## print server case block
+##
+sub print_server_case_block
+{
+    my $self   = shift;
+    my $file   = shift;
+    my $indent = shift;
+
+    # sizes
+    my $insize  = $self->inargs()->size();
+    my $outsize = $self->outargs()->size();
+    
+    # start printing case statement
+    print $file $indent . "case METHOD_ID_" . $self->name() . ":\n";
+
+    # some versions of GCC aren't very happy if the first statement
+    # after a case label is a variable declaration, so we add an
+    # empty statement here
+    print $file $indent . "    ;\n";
+
+    # demarshall in args from UMF msg, BUT use reversed list
+    my @reverseinlist = reverse(@{ $self->inargs()->args() });
+    foreach my $arg (@reverseinlist)
+    {
+        print $file $indent            .
+            "    "                     .
+            $arg->string_cpp()         .
+            " = req->Extract"          .
+            $arg->type()->string_cpp() .
+            "();\n";
+    }
+
+    # call server
+    if ($self->outargs()->num() == 0)
+    {
+        # void
+        print $file $indent . "    server->" . $self->name() . "(" .
+                              $self->inargs()->makecalllist() . ");\n";
+
+        # de-allocate request message
+        print $file $indent . "    req->Delete();\n";
+    }
+    else
+    {
+        # has return
+        print $file $indent . "    " . $self->_outtype_name() .
+            " retval = server->" . $self->name() . "(" .
+            $self->inargs()->makecalllist() . ");\n";
+
+        # de-allocate request message
+        print $file $indent . "    req->Delete();\n";
+        print $file "\n";
+
+        # create response message
+        print $file $indent . "    resp = UMF_MESSAGE_CLASS::New();\n";
+        print $file $indent . "    resp->SetLength($outsize);\n";
+        print $file $indent . "    resp->SetServiceID(" . $self->{servicename} . "_SERVICE_ID);\n";
+        print $file $indent . "    resp->SetMethodID(methodID);\n";
+        print $file "\n";
+
+        # we have to treat single and multiple args differently
+        if ($self->outargs()->num() == 1)
+        {
+            my ($arg, @null) = @{ $self->outargs()->args() };
+            print $file $indent            .
+                "    resp->Append"         .
+                $arg->type()->string_cpp() .
+                "(retval);\n";
+        }
+        else
+        {
+            # marshall return values, in REVERSE!
+            my @reverseoutlist = reverse(@{ $self->outargs()->args() });
+            foreach my $arg (@reverseoutlist)
+            {
+                print $file $indent            .
+                    "    resp->Append"         .
+                    $arg->type()->string_cpp() .
+                    "(retval."                 .
+                    $arg->name()->string()     .
+                    ");\n";
+            }
+        }
+    }
+
+    # end of case block
+    print $file $indent . "    break;\n";
+}
+
 1;

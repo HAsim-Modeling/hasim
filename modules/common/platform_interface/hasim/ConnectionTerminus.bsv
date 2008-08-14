@@ -24,19 +24,4 @@ module [HASIM_MODULE] mkConnectionTerminus();
     if (`TERM_VDEV_STREAMS == 1)
         Connection_Send#(STREAMS_REQUEST) link_streams <- mkConnection_Send("vdev_streams");
 
-    // direct RRR links (TEMPORARY, these will be automatically generated in future)
-    if (`TERM_RRR_CLIENT_EVENTS == 1)
-        Connection_Send#(RRR_Request) link_rrr_events <- mkConnection_Send("rrr_client_events");
-        
-    if (`TERM_RRR_CLIENT_STATS == 1) 
-        Connection_Send#(RRR_Request) link_rrr_stats <- mkConnection_Send("rrr_client_stats");
-        
-    if (`TERM_RRR_CLIENT_ASSERTIONS == 1)
-        Connection_Send#(RRR_Request) link_rrr_assertions <- mkConnection_Send("rrr_client_assertions");
-    
-    if (`TERM_RRR_CLIENT_SYNC == 1)
-        Connection_Send#(RRR_Request) link_rrr_sync <- mkConnection_Send("rrr_client_sync");
-                                                                                            
-    if (`TERM_RRR_CLIENT_EMULATE == 1)
-        Connection_Send#(RRR_Request) link_rrr_emulate <- mkConnection_Send("rrr_client_emulate");
 endmodule

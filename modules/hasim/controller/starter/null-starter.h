@@ -6,7 +6,7 @@
 // this module provides both client and service functionalities
 
 typedef class STARTER_CLASS* STARTER;
-class STARTER_CLASS: public RRR_SERVICE_CLASS,
+class STARTER_CLASS: public RRR_SERVER_CLASS,
                      public PLATFORMS_MODULE_CLASS
 {
   private:

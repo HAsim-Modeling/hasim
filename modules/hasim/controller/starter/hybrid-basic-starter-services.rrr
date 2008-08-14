@@ -10,10 +10,7 @@ service STARTER
 
     server sw (cpp, method) <- hw (bsv, connection)
     {
-        method EndSim (in Bool[1] success);
-
-        // Two 64 bit quantities:
-        //  <high bit> fpga_cycles | model_cycles <low bit>
-        method Heartbeat (in UMF_UINT128[128] cycles);
+        method EndSim    (in UINT8[8] success);
+        method Heartbeat (in UINT64[64] fpga_cycles, in UINT32[32] model_cycles, in UINT32[32] instr_commits);
     };
 };

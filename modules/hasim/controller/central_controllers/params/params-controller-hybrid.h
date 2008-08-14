@@ -28,24 +28,27 @@
 #include "asim/provides/rrr.h"
 #include "asim/rrr/client_stub_PARAMS.h"
 
-typedef class PARAMS_CONTROLLER_CLASS* PARAMS_CONTROLLER;
+// PARAMS_CONTROLLER has no RRR server functionalities. Why then is the code
+// structured like an RRR server (with self-instantiation etc.)? FIXME
 
-class PARAMS_CONTROLLER_CLASS: public RRR_SERVICE_CLASS,
-                               public PLATFORMS_MODULE_CLASS
+typedef class PARAMS_SERVER_CLASS* PARAMS_SERVER;
+
+class PARAMS_SERVER_CLASS: public RRR_SERVER_CLASS,
+                           public PLATFORMS_MODULE_CLASS
 {
   private:
     // self-instantiation
-    static PARAMS_CONTROLLER_CLASS instance;
+    static PARAMS_SERVER_CLASS instance;
 
-    // instantiate stubs
-    PARAMS_CLIENT_STUB_CLASS clientStub;
+    // stubs
+    PARAMS_CLIENT_STUB clientStub;
 
   public:
-    PARAMS_CONTROLLER_CLASS();
-    ~PARAMS_CONTROLLER_CLASS();
+    PARAMS_SERVER_CLASS();
+    ~PARAMS_SERVER_CLASS();
 
     // static methods
-    static PARAMS_CONTROLLER GetInstance() { return &instance; }
+    static PARAMS_SERVER GetInstance() { return &instance; }
 
     // Send dynamic parameters to hardware
     void SendAllParams();
@@ -53,7 +56,11 @@ class PARAMS_CONTROLLER_CLASS: public RRR_SERVICE_CLASS,
     // required RRR service methods
     void Init(PLATFORMS_MODULE);
     void Uninit();
-    UMF_MESSAGE Request(UMF_MESSAGE);
+    void Cleanup();
+    void Poll()     {}
 };
+
+// PARAMS_CONTROLLER functionalities are completely implemented by the PARAMS_SERVER class
+typedef PARAMS_SERVER_CLASS PARAMS_CONTROLLER_CLASS;
 
 #endif

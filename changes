@@ -14708,3 +14708,81 @@ Directory modules/common
 Created a Utils.bsv file which contains several utilities for timing model and functional model
 Got rid of backwards compatibility file
 Added a cpu_system instead of a single_chip_system
+
+----------
+aparasha    Date: Thu Aug 14 15:36:53 EDT 2008  CSN: CSN-hasim-508
+                  Thu Aug 14 19:36:53 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ CPP.pm                    Locally Modified          507 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Arglist
+ CPP.pm                    Locally Modified          507 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Server
+ CPP.pm                    Locally Modified          507 
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Type.pm                   Locally Modified          507 
+ Argument.pm               Locally Modified          507 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Client
+ CPP.pm                    Locally Modified          507 
+
+Directory modules/hasim/controller/starter
+ null-starter.h            Locally Modified          507 
+ hybrid-basic-starter.cpp  Locally Modified          507 
+ hybrid-basic-starter-services.rrr Locally Modified          507 
+ hybrid-basic-starter.h    Locally Modified          507 
+ hybrid-basic-starter.bsv  Locally Modified          507 
+
+Directory modules/hasim/controller/central_controllers/params
+ params-controller-hybrid.cpp Locally Modified          507 
+ params-controller-hybrid.rrr Locally Modified          507 
+ params-controller-hybrid.h Locally Modified          507 
+ params-controller-hybrid.bsv Locally Modified          507 
+
+Directory modules/hasim/controller/central_controllers/events
+ events-controller-hybrid.cpp Locally Modified          507 
+ events-controller.rrr     Locally Modified          507 
+ events-controller-hybrid.h Locally Modified          507 
+ events-controller-hybrid.bsv Locally Modified          507 
+
+Directory modules/hasim/controller/central_controllers/assertions
+ assertions-controller.rrr Locally Modified          507 
+ assertions-controller-hybrid.h Locally Modified          507 
+ assertions-controller-hybrid.bsv Locally Modified          507 
+ assertions-controller-hybrid.cpp Locally Modified          507 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          507 
+ stats-controller-hybrid.h Locally Modified          507 
+ stats-controller-hybrid.bsv Locally Modified          507 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          507 
+ isa-emulator.h            Locally Modified          507 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          507 
+ hybrid-funcp-memory.h     Locally Modified          507 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Modified          507 
+ HAsimPlatformInterface.bsv Locally Modified          507 
+ hasim-platform-interface.awb Locally Modified          507 
+
+- added support for generating C++ server stubs.
+
+- updated all services to use auto-generated stubs. Please see these examples
+  if you want to write new software servers.
+
+  The ISA emulator and FUNCP_memory use fancy types, and therefore use a
+  backdoor to directly talk to the RRR server monitor (instead of using its
+  stub). Look at their C++ code to figure out how to exploit the backdoor.
+
+- removed all hand-generated RRR links, rules, optional connection endpoints,
+  and params from HAsimPlatformInterface.bsv and ConnectionTerminus.bsv. All
+  RRR links are now automatically generated. Only translations for virtual
+  devices remain in Platform Interface (as they should).

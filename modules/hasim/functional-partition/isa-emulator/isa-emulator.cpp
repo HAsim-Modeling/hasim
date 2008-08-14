@@ -31,18 +31,18 @@
 using namespace std;
 
 // ===== service instantiation =====
-ISA_EMULATOR_CLASS ISA_EMULATOR_CLASS::instance;
+ISA_EMULATOR_SERVER_CLASS ISA_EMULATOR_SERVER_CLASS::instance;
 
 // constructor
-ISA_EMULATOR_CLASS::ISA_EMULATOR_CLASS() : emulator(NULL)
+ISA_EMULATOR_SERVER_CLASS::ISA_EMULATOR_SERVER_CLASS() : emulator(NULL)
 {
     SetTraceableName("isa_emulator");
 
     VERIFYX(sizeof(ISA_ADDRESS) == sizeof(FUNCP_VADDR));
     VERIFYX(sizeof(ISA_VALUE) == sizeof(FUNCP_INT_REG));
 
-    // register with server's map table
-    RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
+    // instantiate stubs
+    serverStub = new ISA_EMULATOR_SERVER_STUB_CLASS(this);
 
     char fmt[16];
     sprintf(fmt, "0%dx", sizeof(ISA_VALUE) * 2);
@@ -52,14 +52,14 @@ ISA_EMULATOR_CLASS::ISA_EMULATOR_CLASS() : emulator(NULL)
 }
 
 // destructor
-ISA_EMULATOR_CLASS::~ISA_EMULATOR_CLASS()
+ISA_EMULATOR_SERVER_CLASS::~ISA_EMULATOR_SERVER_CLASS()
 {
-    delete emulator;
+    Cleanup();
 }
 
 // init
 void
-ISA_EMULATOR_CLASS::Init(
+ISA_EMULATOR_SERVER_CLASS::Init(
     PLATFORMS_MODULE p)
 {
     parent = p;
@@ -67,9 +67,30 @@ ISA_EMULATOR_CLASS::Init(
     emulator = new ISA_EMULATOR_IMPL_CLASS(this);
 }
 
+// uninit: override
+void
+ISA_EMULATOR_SERVER_CLASS::Uninit()
+{
+    // cleanup
+    Cleanup();
+    
+    // chain
+    PLATFORMS_MODULE_CLASS::Uninit();
+}
+
+// cleanup
+void
+ISA_EMULATOR_SERVER_CLASS::Cleanup()
+{
+    delete emulator;
+
+    // deallocate stubs
+    delete serverStub;
+}
+
 // poll
 void
-ISA_EMULATOR_CLASS::Poll()
+ISA_EMULATOR_SERVER_CLASS::Poll()
 {
 }
 
@@ -77,7 +98,7 @@ typedef UINT32 ISA_INSTRUCTION;
 
 // handle service request
 UMF_MESSAGE
-ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
+ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
 {
     FUNCP_INT_REG rVal;
     FUNCP_VADDR pc;
@@ -175,7 +196,7 @@ ISA_EMULATOR_CLASS::Request(UMF_MESSAGE req)
 
 // client: update register
 void
-ISA_EMULATOR_CLASS::UpdateRegister(ISA_REG_INDEX_CLASS rName, FUNCP_INT_REG rVal)
+ISA_EMULATOR_SERVER_CLASS::UpdateRegister(ISA_REG_INDEX_CLASS rName, FUNCP_INT_REG rVal)
 {
     if (TRACING(1))
     {

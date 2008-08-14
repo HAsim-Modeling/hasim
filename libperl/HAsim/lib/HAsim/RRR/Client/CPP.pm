@@ -134,7 +134,7 @@ sub print_stub
     print $file "\n";
 
     # start creating the client class
-    print $file "typedef class " . $self->name() . "_CLIENT_STUB_CLASS* " . $self->name() . "_CLIENT;\n";
+    print $file "typedef class " . $self->name() . "_CLIENT_STUB_CLASS* " . $self->name() . "_CLIENT_STUB;\n";
     print $file "class " . $self->name() . "_CLIENT_STUB_CLASS: public PLATFORMS_MODULE_CLASS\n";
     print $file "{\n";
     print $file "\n";

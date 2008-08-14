@@ -137,7 +137,7 @@ module [Connected_Module] mkParamsController
   
         PARAM_DATA msg <- chain.receive_from_prev();
 
-        if (msg matches tagged PARAM_ID .id) // &&& id == `PARAMS_NULL)
+        if (msg matches tagged PARAM_ID .id)
         begin
             server_stub.sendResponse_sendParam(0);
         end

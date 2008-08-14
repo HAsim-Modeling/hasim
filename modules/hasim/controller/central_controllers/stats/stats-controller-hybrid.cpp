@@ -31,39 +31,33 @@
 
 #include "asim/provides/stats_controller.h"
 
-
-#define SERVICE_ID       STATS_SERVICE_ID
-
-// temporary
-#define METHOD_ID_SEND 0
-#define METHOD_ID_DONE 1
-
 using namespace std;
 
 // ===== service instantiation =====
-STATS_CONTROLLER_CLASS STATS_CONTROLLER_CLASS::instance;
+STATS_SERVER_CLASS STATS_SERVER_CLASS::instance;
 
 // ===== methods =====
 
 // constructor
-STATS_CONTROLLER_CLASS::STATS_CONTROLLER_CLASS()
+STATS_SERVER_CLASS::STATS_SERVER_CLASS()
 {
-    // register with server's map table
-    RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
+    // instantiate stubs
+    serverStub = new STATS_SERVER_STUB_CLASS(this);
 
     bzero(statValues, sizeof(statValues));
 }
 
 
 // destructor
-STATS_CONTROLLER_CLASS::~STATS_CONTROLLER_CLASS()
+STATS_SERVER_CLASS::~STATS_SERVER_CLASS()
 {
+    Cleanup();
 }
 
 
 // init
 void
-STATS_CONTROLLER_CLASS::Init(
+STATS_SERVER_CLASS::Init(
     PLATFORMS_MODULE     p)
 {
     // set parent pointer
@@ -73,78 +67,59 @@ STATS_CONTROLLER_CLASS::Init(
 
 // uninit: we have to write this explicitly
 void
-STATS_CONTROLLER_CLASS::Uninit()
+STATS_SERVER_CLASS::Uninit()
 {
-    // simply chain
+    Cleanup();
+
+    // chain
     PLATFORMS_MODULE_CLASS::Uninit();
 }
 
-
-// request
-UMF_MESSAGE
-STATS_CONTROLLER_CLASS::Request(
-    UMF_MESSAGE request)
+// cleanup
+void
+STATS_SERVER_CLASS::Cleanup()
 {
+    // kill stubs
+    delete serverStub;
+}
 
-    // extract event ID, data, and modelCC
-    UINT32 methodID  = request->GetMethodID();
+//
+// RRR request methods
+//
 
-    // decode
-    if (methodID == METHOD_ID_SEND)
-    {
-        UINT32 stat_data = request->ExtractUINT32();
-        UINT32 stat_id   = request->ExtractUINT32();
+// Send
+void
+STATS_SERVER_CLASS::Send(
+    UINT32 statID,
+    UINT32 value)
+{
+    //
+    // Add new value to running total
+    //
+    
+    VERIFY(statID < STATS_DICT_ENTRIES, "stats-controller:  Invalid stat id");
+    
+    VERIFY(! sawStat.test(statID), "stats-controller: stat " << STATS_DICT::Name(statID) << " appears more than once in the HW");
+    sawStat.set(statID);
+    
+    statValues[statID] += value;        
+}
 
-        //
-        // Add new value to running total
-        //
+// Done
+UINT8
+STATS_SERVER_CLASS::Done(
+    UINT8 syn)
+{
+    sawStat.reset();
 
-        VERIFY(stat_id < STATS_DICT_ENTRIES, "stats-controller:  Invalid stat id");
-
-        VERIFY(! sawStat.test(stat_id), "stats-controller: stat " << STATS_DICT::Name(stat_id) << " appears more than once in the HW");
-        sawStat.set(stat_id);
-
-        statValues[stat_id] += stat_data;
-        
-        // free
-        request->Delete();
-
-        // no RRR response
-        return NULL;
-    }
-    else if (methodID == METHOD_ID_DONE)
-    {
-        // free request
-        request->Delete();
-
-        // prepare response
-        UMF_MESSAGE response = UMF_MESSAGE_CLASS::New();
-        response->SetLength(4);
-        response->SetMethodID(METHOD_ID_DONE);
-        response->AppendUINT32(0);
-
-        sawStat.reset();
-
-        // send response
-        return response;
-    }
-    else
-    {
-        // error
-        cerr << "stats: invalid methodID\n" << flush;
-
-        // free
-        request->Delete();
-
-        // exit
-        CallbackExit(1);
-    }
+    // send ack
+    return 0;
 }
 
 
 // poll
 void
-STATS_CONTROLLER_CLASS::Poll()
+STATS_SERVER_CLASS::Poll()
 {
 }
 
@@ -154,7 +129,7 @@ STATS_CONTROLLER_CLASS::Poll()
 //    Dump the in-memory statistics to a file.
 //
 void
-STATS_CONTROLLER_CLASS::EmitFile()
+STATS_SERVER_CLASS::EmitFile()
 {
     // Open the output file
     string statsFileName = string(globalArgs->Workload()) + ".stats";
@@ -185,5 +160,5 @@ STATS_CONTROLLER_CLASS::EmitFile()
 void
 StatsEmitFile()
 {
-    STATS_CONTROLLER_CLASS::GetInstance()->EmitFile();
+    STATS_SERVER_CLASS::GetInstance()->EmitFile();
 }

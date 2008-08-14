@@ -72,17 +72,12 @@ module [HASIM_MODULE] mkStarter(Starter);
 
     // signal end of simulation
     method Action makeRequest_EndSim(Bool success);
-        client_stub.makeRequest_EndSim(success);
+        client_stub.makeRequest_EndSim(zeroExtend(pack(success)));
     endmethod
 
     // Heartbeat
     method Action makeRequest_Heartbeat(Bit#(64) fpga_cycles, Bit#(32) model_cycles, Bit#(32) instr_commits);
-        Bit#(128) info;
-        info[31:0] = instr_commits;
-        info[63:32] = model_cycles;
-        info[127:64] = fpga_cycles;
-        client_stub.makeRequest_Heartbeat(info);
+        client_stub.makeRequest_Heartbeat(fpga_cycles, model_cycles, instr_commits);
     endmethod
 
 endmodule
-

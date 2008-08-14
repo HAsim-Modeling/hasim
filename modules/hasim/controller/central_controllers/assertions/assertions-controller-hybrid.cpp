@@ -32,8 +32,6 @@
 
 #include "asim/dict/ASSERTIONS.h"
 
-#define SERVICE_ID       ASSERTIONS_SERVICE_ID
-
 using namespace std;
 
 enum ASSERTION_SEVERITY
@@ -46,25 +44,26 @@ enum ASSERTION_SEVERITY
 
 
 // ===== service instantiation =====
-ASSERTIONS_CONTROLLER_CLASS ASSERTIONS_CONTROLLER_CLASS::instance;
+ASSERTIONS_SERVER_CLASS ASSERTIONS_SERVER_CLASS::instance;
 
 // ===== methods =====
 
 // constructor
-ASSERTIONS_CONTROLLER_CLASS::ASSERTIONS_CONTROLLER_CLASS()
+ASSERTIONS_SERVER_CLASS::ASSERTIONS_SERVER_CLASS()
 {
-    // register with server's map table
-    RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
+    // instantiate stubs
+    serverStub = new ASSERTIONS_SERVER_STUB_CLASS(this);
 }
 
 // destructor
-ASSERTIONS_CONTROLLER_CLASS::~ASSERTIONS_CONTROLLER_CLASS()
+ASSERTIONS_SERVER_CLASS::~ASSERTIONS_SERVER_CLASS()
 {
+    Cleanup();
 }
 
 // init
 void
-ASSERTIONS_CONTROLLER_CLASS::Init(
+ASSERTIONS_SERVER_CLASS::Init(
     PLATFORMS_MODULE     p)
 {
     // set parent pointer
@@ -76,29 +75,35 @@ ASSERTIONS_CONTROLLER_CLASS::Init(
 
 // uninit: we have to write this explicitly
 void
-ASSERTIONS_CONTROLLER_CLASS::Uninit()
+ASSERTIONS_SERVER_CLASS::Uninit()
 {
     fclose(assertionsFile);
 
-    // simply chain
+    Cleanup();
+
+    // chain
     PLATFORMS_MODULE_CLASS::Uninit();
 }
 
-// request
-bool
-ASSERTIONS_CONTROLLER_CLASS::Request(
-    UINT32 arg0,
-    UINT32 arg1,
-    UINT32 arg2,
-    UINT32 arg3,
-    UINT32 *result)
+// cleanup
+void
+ASSERTIONS_SERVER_CLASS::Cleanup()
 {
-    // extract event ID, data, and modelCC
-    UINT32 unused = arg0; // Reserved to be methodID later if needed.
-    UINT32 assert_base = arg1;
-    UINT32 fpga_cc = arg2;
-    UINT32 assertions = arg3;
+    // kill stubs
+    delete serverStub;
+}
 
+//
+// RRR request methods
+//
+
+// Assert
+void
+ASSERTIONS_SERVER_CLASS::Assert(
+    UINT32 assert_base,
+    UINT32 fpga_cc,
+    UINT32 assertions)
+{
     //
     // Assertions come from hardware in groups as a bit vector.  Each element
     // of the vector is a 2-bit value, equivalent to an ASSERTION_SEVERITY.
@@ -135,14 +140,11 @@ ASSERTIONS_CONTROLLER_CLASS::Request(
             }
         }
     }
-
-    // no RRR response
-    return false;
 }
 
 // poll
 void
-ASSERTIONS_CONTROLLER_CLASS::Poll()
+ASSERTIONS_SERVER_CLASS::Poll()
 {
 }
 

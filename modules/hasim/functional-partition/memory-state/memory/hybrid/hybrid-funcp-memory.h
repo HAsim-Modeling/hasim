@@ -31,14 +31,18 @@ typedef struct {
     char _x[FUNCP_CACHELINE_BITS/8];
 } MEM_CACHELINE;
 
+typedef class FUNCP_MEMORY_SERVER_CLASS* FUNCP_MEMORY_SERVER;
 
-class FUNCP_MEMORY_CLASS: public RRR_SERVICE_CLASS,
-                          public PLATFORMS_MODULE_CLASS,
-                          public TRACEABLE_CLASS
+class FUNCP_MEMORY_SERVER_CLASS: public RRR_SERVER_CLASS,
+                                 public PLATFORMS_MODULE_CLASS,
+                                 public TRACEABLE_CLASS
 {
   private:
     // self-instantiation
-    static FUNCP_MEMORY_CLASS instance;
+    static FUNCP_MEMORY_SERVER_CLASS instance;
+
+    // stubs
+    RRR_SERVER_STUB serverStub;
 
     FUNCP_SIMULATED_MEMORY memory;
 
@@ -46,14 +50,18 @@ class FUNCP_MEMORY_CLASS: public RRR_SERVICE_CLASS,
     Format fmt_data;
 
   public:
-    FUNCP_MEMORY_CLASS();
-    ~FUNCP_MEMORY_CLASS();
+    FUNCP_MEMORY_SERVER_CLASS();
+    ~FUNCP_MEMORY_SERVER_CLASS();
 
     void    Init(PLATFORMS_MODULE);
     void    Uninit();
     void    Cleanup();
-    UMF_MESSAGE Request(UMF_MESSAGE);
     void    Poll();
+
+    //
+    // RRR Service Methods
+    //
+    UMF_MESSAGE Request(UMF_MESSAGE);
 
     //
     // Incoming messages from the software side (e.g. instruction emulation)
@@ -66,5 +74,13 @@ class FUNCP_MEMORY_CLASS: public RRR_SERVICE_CLASS,
     void SystemMemoryRef(MEM_ADDRESS addr, UINT64 size, bool isWrite);
     void InvalidateAllCaches();
 };
+
+// server stub
+#define BYPASS_SERVER_STUB
+#include "asim/rrr/server_stub_FUNCP_MEMORY.h"
+#undef  BYPASS_SERVER_STUB
+
+// hack: required because m5 ISA_EMULATOR uses the name FUNCP_MEMORY_CLASS: FIXME
+typedef FUNCP_MEMORY_SERVER_CLASS FUNCP_MEMORY_CLASS;
 
 #endif

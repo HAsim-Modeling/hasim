@@ -29,13 +29,16 @@
 // this module handles gathering statistics. 
 // Eventually this will interact with standard tools.
 
-typedef class STATS_CONTROLLER_CLASS* STATS_CONTROLLER;
-class STATS_CONTROLLER_CLASS: public RRR_SERVICE_CLASS,
+typedef class STATS_SERVER_CLASS* STATS_SERVER;
+class STATS_SERVER_CLASS: public RRR_SERVER_CLASS,
                               public PLATFORMS_MODULE_CLASS
 {
   private:
     // self-instantiation
-    static STATS_CONTROLLER_CLASS instance;
+    static STATS_SERVER_CLASS instance;
+
+    // stubs
+    RRR_SERVER_STUB serverStub;
 
     // Running total of statistics as they are dumped incrementally
     UINT64 statValues[STATS_DICT_ENTRIES];
@@ -44,21 +47,31 @@ class STATS_CONTROLLER_CLASS: public RRR_SERVICE_CLASS,
     bitset<STATS_DICT_ENTRIES> sawStat;
 
   public:
-    STATS_CONTROLLER_CLASS();
-    ~STATS_CONTROLLER_CLASS();
+    STATS_SERVER_CLASS();
+    ~STATS_SERVER_CLASS();
 
     void EmitFile();
 
     // static methods
-    static STATS_CONTROLLER GetInstance() { return &instance; }
+    static STATS_SERVER GetInstance() { return &instance; }
 
-    // required RRR service methods
+    // required RRR methods
     void Init(PLATFORMS_MODULE);
     void Uninit();
-    UMF_MESSAGE Request(UMF_MESSAGE);
+    void Cleanup();
     void Poll();
+
+    // RRR service methods
+    void  Send(UINT32 statID, UINT32 value);
+    UINT8 Done(UINT8 syn);
 };
 
+// server stub
+#include "asim/rrr/server_stub_STATS.h"
+
+// all functionalities of the stats controller are completely implemented
+// by the STATS_SERVER class
+typedef STATS_SERVER_CLASS STATS_CONTROLLER_CLASS;
 
 void StatsEmitFile();
 

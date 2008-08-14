@@ -74,6 +74,12 @@ sub _parse
     if ($string =~ /$REGEX/)
     {
         my $direction = $1;
+
+        if ($direction ne "in" && $direction ne "out")
+        {
+            die "invalid direction: " . $direction;
+        }
+
         my $type      = HAsim::RRR::Type->new($2);
         my $name      = HAsim::RRR::Identifier->new($3);
 
@@ -126,6 +132,28 @@ sub string_bsv
     if (defined($self->{type}) && defined($self->{name}))
     {
         $string = $string . $self->{type}->string_bsv();
+        $string = $string . " ";
+        $string = $string . $self->{name}->string();
+    }
+    else
+    {
+        die ref($self) . ": invalid, cannot print.";
+    }
+
+    return $string;
+}
+
+# return string form of an argument in CPP format
+sub string_cpp
+{
+    my $self = shift;
+    my $file = shift;
+
+    my $string = "";
+
+    if (defined($self->{type}) && defined($self->{name}))
+    {
+        $string = $string . $self->{type}->string_cpp();
         $string = $string . " ";
         $string = $string . $self->{name}->string();
     }

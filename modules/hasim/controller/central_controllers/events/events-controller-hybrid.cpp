@@ -1,3 +1,21 @@
+//
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -16,31 +34,30 @@
 
 #include "asim/dict/EVENTS.h"
 
-#define SERVICE_ID       EVENTS_SERVICE_ID
-
 using namespace std;
 
 // ===== service instantiation =====
-EVENTS_CONTROLLER_CLASS EVENTS_CONTROLLER_CLASS::instance;
+EVENTS_SERVER_CLASS EVENTS_SERVER_CLASS::instance;
 
 // ===== methods =====
 
 // constructor
-EVENTS_CONTROLLER_CLASS::EVENTS_CONTROLLER_CLASS()
+EVENTS_SERVER_CLASS::EVENTS_SERVER_CLASS()
 {
-    // register with server's map table
-    RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
+    // instantiate stubs
+    serverStub = new EVENTS_SERVER_STUB_CLASS(this);
 }
 
 // destructor
-EVENTS_CONTROLLER_CLASS::~EVENTS_CONTROLLER_CLASS()
+EVENTS_SERVER_CLASS::~EVENTS_SERVER_CLASS()
 {
+    Cleanup();
 }
 
 // init
 void
-EVENTS_CONTROLLER_CLASS::Init(
-    PLATFORMS_MODULE     p)
+EVENTS_SERVER_CLASS::Init(
+    PLATFORMS_MODULE p)
 {
     // set parent pointer
     parent = p;
@@ -55,32 +72,42 @@ EVENTS_CONTROLLER_CLASS::Init(
 
 // uninit: we have to write this explicitly
 void
-EVENTS_CONTROLLER_CLASS::Uninit()
+EVENTS_SERVER_CLASS::Uninit()
+{
+    Cleanup();
+
+    // chain
+    PLATFORMS_MODULE_CLASS::Uninit();
+}
+
+// cleanup
+void
+EVENTS_SERVER_CLASS::Cleanup()
 {
     if (eventFile != NULL)
     {
         fclose(eventFile);
     }
 
-    // simply chain
-    PLATFORMS_MODULE_CLASS::Uninit();
+    // kill stubs
+    delete serverStub;
 }
 
-// request
-bool
-EVENTS_CONTROLLER_CLASS::Request(
-    UINT32 arg0,
-    UINT32 arg1,
-    UINT32 arg2,
-    UINT32 arg3,
-    UINT32 *result)
+// poll
+void
+EVENTS_SERVER_CLASS::Poll()
 {
-    // extract event ID, data, and modelCC
-    UINT32 unused = arg0; // Reserved to be methodID later if needed.
-    UINT32 event_id = arg1;
-    UINT32 event_data = arg2;
-    UINT32 model_cc = arg3;
+}
 
+//
+// RRR request methods
+//
+void
+EVENTS_SERVER_CLASS::LogEvent(
+    UINT32 event_id,
+    UINT32 event_data,
+    UINT32 model_cc)
+{
     // lookup event name from dictionary
     const char *event_name = EVENTS_DICT::Str(event_id);
     if (event_name == NULL)
@@ -97,14 +124,4 @@ EVENTS_CONTROLLER_CLASS::Request(
     // write to file
     // eventually this will be replaced with calls to DRAL.
     fprintf(eventFile, "[%010u]: %s: %u\n", model_cc, event_name, event_data);
-
-    // no RRR response
-    return false;
 }
-
-// poll
-void
-EVENTS_CONTROLLER_CLASS::Poll()
-{
-}
-

@@ -23,6 +23,7 @@ import FIFO::*;
 
 `include "asim/provides/rrr.bsh"
 
+`include "asim/rrr/remote_client_stub_ASSERTIONS.bsh"
 `include "asim/rrr/service_ids.bsh"
 `include "asim/dict/ASSERTIONS.bsh"
 `include "asim/dict/RINGID.bsh"
@@ -52,8 +53,8 @@ module [Connected_Module] mkAssertionsController
     // Communication link to the rest of the Assertion checkers
     Connection_Chain#(ASSERTION_DATA) chain <- mkConnection_Chain(`RINGID_ASSERTS);
   
-    // Communication link to our RRR Service
-    Connection_Send#(RRR_Request) link_rrr <- mkConnection_Send("rrr_client_assertions");
+    // Communication to our RRR server
+    ClientStub_ASSERTIONS clientStub <- mkClientStub_ASSERTIONS();
   
     Reg#(Bit#(32)) fpgaCC <- mkReg(0);
   
@@ -77,12 +78,9 @@ module [Connected_Module] mkAssertionsController
     rule processResp (True);
 
         let ast <- chain.receive_from_prev();
-        link_rrr.send(RRR_Request {serviceID:    `ASSERTIONS_SERVICE_ID,
-                                   param0:       0, //unused for now. Reserved for methodID.
-                                   param1:       zeroExtend(pack(ast.baseID)),
-                                   param2:       fpgaCC,
-                                   param3:       zeroExtend(pack(ast.assertions)),
-                                   needResponse: False });
+        clientStub.makeRequest_Assert(zeroExtend(pack(ast.baseID)),
+                                      fpgaCC,
+                                      zeroExtend(pack(ast.assertions)));
 
     endrule
 

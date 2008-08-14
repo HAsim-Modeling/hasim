@@ -2,10 +2,7 @@ service PARAMS
 {
     ##
     ## Send one dynamic parameter ID and value to the hardware.  An ACK
-    ## with no value is returned iff the parameter ID is PARAMS_NULL.
-    ## This allows for sending an efficient stream of parameters with
-    ## synchronization at the end to guarnatee all parameters have been
-    ## received.
+    ## with no value is returned on each call.
     ##
     server hw (bsv, connection) <- sw (cpp, method)
     {

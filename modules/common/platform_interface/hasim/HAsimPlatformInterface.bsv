@@ -37,13 +37,6 @@ module [HASIM_MODULE] mkPlatformInterface (TOP_LEVEL_WIRES);
     // other virtual devices
     Connection_Receive#(STREAMS_REQUEST) link_streams <- mkConnection_Receive("vdev_streams");
 
-    // direct RRR links (TEMPORARY, these will be automatically generated in future)
-    Connection_Receive#(RRR_Request) link_rrr_events  <- mkConnection_Receive("rrr_client_events");
-    Connection_Receive#(RRR_Request) link_rrr_stats   <- mkConnection_Receive("rrr_client_stats");
-    Connection_Receive#(RRR_Request) link_rrr_assertions <- mkConnection_Receive("rrr_client_assertions");
-    Connection_Receive#(RRR_Request) link_rrr_sync <- mkConnection_Receive("rrr_client_sync");
-    Connection_Receive#(RRR_Request) link_rrr_emulate <- mkConnection_Receive("rrr_client_emulate");
-
     // instantiate low-level platform interface
     LowLevelPlatformInterface       llpint          <- mkLowLevelPlatformInterface();
 
@@ -135,53 +128,6 @@ module [HASIM_MODULE] mkPlatformInterface (TOP_LEVEL_WIRES);
                             sreq.payload0,
                             sreq.payload1);
 
-    endrule
-
-    // direct RRR links (TEMPORARY, these will be automatically generated in future)
-    // NOTE: When this is automatically generated we will need some kind of
-    // dynamic fairness. For now we can use our high-level knowledge to give
-    // a static urgency. Otherwise Events will starve everyone else.
-
-    (* descending_urgency= "translate_rrr_assertions_req, translate_rrr_stats_req, translate_rrr_sync_req, translate_rrr_emulate_req, translate_rrr_events_req" *)
-
-    rule translate_rrr_events_req (True);
-
-        let req = link_rrr_events.receive();
-        link_rrr_events.deq();
-        llpint.oldrrrClient.makeRequest(req);
-
-    endrule
-
-    rule translate_rrr_stats_req (True);
-    
-        let req = link_rrr_stats.receive();
-        link_rrr_stats.deq();
-        llpint.oldrrrClient.makeRequest(req);
-    
-    endrule
-    
-    rule translate_rrr_assertions_req (True);
-    
-        let req = link_rrr_assertions.receive();
-        link_rrr_assertions.deq();
-        llpint.oldrrrClient.makeRequest(req);
-    
-    endrule
-
-    rule translate_rrr_sync_req (True);
-    
-        let req = link_rrr_sync.receive();
-        link_rrr_sync.deq();
-        llpint.oldrrrClient.makeRequest(req);
-    
-    endrule
-
-    rule translate_rrr_emulate_req (True);
-    
-        let req = link_rrr_emulate.receive();
-        link_rrr_emulate.deq();
-        llpint.oldrrrClient.makeRequest(req);
-    
     endrule
 
     // return interface to top-level wires

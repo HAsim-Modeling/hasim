@@ -44,15 +44,20 @@ ISA_EMULATOR_RESULT;
 // Early declaration since of the circular dependence
 typedef class ISA_EMULATOR_IMPL_CLASS* ISA_EMULATOR_IMPL;
 
-typedef class ISA_EMULATOR_CLASS* ISA_EMULATOR;
+typedef class ISA_EMULATOR_SERVER_CLASS* ISA_EMULATOR_SERVER;
+typedef class ISA_EMULATOR_SERVER_CLASS* ISA_EMULATOR;
 
-class ISA_EMULATOR_CLASS: public RRR_SERVICE_CLASS,
-                          public PLATFORMS_MODULE_CLASS,
-                          public TRACEABLE_CLASS
+class ISA_EMULATOR_SERVER_CLASS: public RRR_SERVER_CLASS,
+                                 public PLATFORMS_MODULE_CLASS,
+                                 public TRACEABLE_CLASS
 {
   private:
     // self-instantiation
-    static ISA_EMULATOR_CLASS instance;
+    static ISA_EMULATOR_SERVER_CLASS instance;
+
+    // stubs
+    RRR_SERVER_STUB serverStub;
+
     ISA_EMULATOR_IMPL emulator;
 
     Format fmt_regnum;
@@ -60,25 +65,35 @@ class ISA_EMULATOR_CLASS: public RRR_SERVICE_CLASS,
     Format fmt_inst;
 
   public:
-    ISA_EMULATOR_CLASS();
-    ~ISA_EMULATOR_CLASS();
+    ISA_EMULATOR_SERVER_CLASS();
+    ~ISA_EMULATOR_SERVER_CLASS();
 
     // static methods
     static ISA_EMULATOR GetInstance() { return &instance; }
 
-    // required RRR service methods
+    // required RRR methods
     void Init(PLATFORMS_MODULE);
-    UMF_MESSAGE Request(UMF_MESSAGE req);
+    void Uninit();
+    void Cleanup();
     void Poll();
+
+    //
+    // RRR Service Methods
+    //
+    UMF_MESSAGE Request(UMF_MESSAGE req);    
 
     // client methods
     void UpdateRegister(ISA_REG_INDEX_CLASS rName, FUNCP_INT_REG rVal);
 };
 
+// server stub
+#define BYPASS_SERVER_STUB
+#include "asim/rrr/server_stub_ISA_EMULATOR.h"
+#undef  BYPASS_SERVER_STUB
 
 //
 // Include of the implementation must be delayed to here so that
-// ISA_EMULATOR_RESULT and a pointer to ISA_EMULATOR_CLASS are defined.
+// ISA_EMULATOR_RESULT and a pointer to ISA_EMULATOR_SERVER_CLASS are defined.
 //
 #include "asim/provides/isa_emulator_impl.h"
 

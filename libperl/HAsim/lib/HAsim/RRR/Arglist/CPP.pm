@@ -90,7 +90,7 @@ sub singletype
     {
         # return raw arg without packing it into a struct
         my ($arg, @rest) = @{ $self->{args} };
-        return $arg->type()->string_bsv();
+        return $arg->type()->string_cpp();
     }
     else
     {
@@ -117,7 +117,7 @@ sub makestruct
     
     foreach my $arg (@{ $self->{args} })
     {
-        $string = $string . "    " . $arg->string_bsv() . ";\n";
+        $string = $string . "    " . $arg->string_cpp() . ";\n";
     }
 
     $string = $string . "}\n";
@@ -139,12 +139,38 @@ sub makelist
         # first argument
         my ($first, @rest) = @{ $self->{args} };
         
-        $string = $first->string_bsv();
+        $string = $first->string_cpp();
 
         # remainder
         foreach my $arg (@rest)
         {
-            $string = $string . ", " . $arg->string_bsv();
+            $string = $string . ", " . $arg->string_cpp();
+        }
+    }
+
+    return $string;
+}
+
+##
+## create a string with the list of args without types
+##
+sub makecalllist
+{
+    my $self = shift;
+
+    my $string = "";
+
+    if ($#{ $self->{args} } >= 0)
+    {
+        # first argument
+        my ($first, @rest) = @{ $self->{args} };
+        
+        $string = $first->name()->string();
+
+        # remainder
+        foreach my $arg (@rest)
+        {
+            $string = $string . ", " . $arg->name()->string();
         }
     }
 

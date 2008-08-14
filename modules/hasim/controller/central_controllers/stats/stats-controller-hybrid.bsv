@@ -90,7 +90,6 @@ module [Connected_Module] mkStatsController
  
   // Communication to our RRR server
   ClientStub_STATS client_stub <- mkClientStub_STATS();
-  // Connection_Send#(RRR_Request) link_rrr <- mkConnection_Send("rrr_client_stats");
   
   // Track if we are done dumping
   Reg#(Bool) done_requested <- mkReg(False);

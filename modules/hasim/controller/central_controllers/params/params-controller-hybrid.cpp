@@ -37,8 +37,6 @@
 
 #include "asim/dict/PARAMS.h"
 
-#define SERVICE_ID       PARAMS_SERVICE_ID
-
 //
 // This code builds parallel arrays for mapping dynamic parameter values to
 // dictionary entries.  Two arrays are built instead of using a struct to save
@@ -84,26 +82,26 @@ NULL
 using namespace std;
 
 // ===== service instantiation =====
-PARAMS_CONTROLLER_CLASS PARAMS_CONTROLLER_CLASS::instance;
+PARAMS_SERVER_CLASS PARAMS_SERVER_CLASS::instance;
 
 // ===== methods =====
 
 // constructor
-PARAMS_CONTROLLER_CLASS::PARAMS_CONTROLLER_CLASS() :
-        clientStub(this)
+PARAMS_SERVER_CLASS::PARAMS_SERVER_CLASS()
 {
-    // register with server's map table
-    RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
+    // instantiate stubs
+    clientStub = new PARAMS_CLIENT_STUB_CLASS(this);
 }
 
 // destructor
-PARAMS_CONTROLLER_CLASS::~PARAMS_CONTROLLER_CLASS()
+PARAMS_SERVER_CLASS::~PARAMS_SERVER_CLASS()
 {
+    Cleanup();
 }
 
 // init
 void
-PARAMS_CONTROLLER_CLASS::Init(
+PARAMS_SERVER_CLASS::Init(
     PLATFORMS_MODULE     p)
 {
     // set parent pointer
@@ -112,35 +110,32 @@ PARAMS_CONTROLLER_CLASS::Init(
 
 // uninit: we have to write this explicitly
 void
-PARAMS_CONTROLLER_CLASS::Uninit()
+PARAMS_SERVER_CLASS::Uninit()
 {
-    // simply chain
+    Cleanup();
+
+    // chain
     PLATFORMS_MODULE_CLASS::Uninit();
 }
 
-// request
-UMF_MESSAGE
-PARAMS_CONTROLLER_CLASS::Request(
-    UMF_MESSAGE request)
+// cleanup
+void
+PARAMS_SERVER_CLASS::Cleanup()
 {
-    ASIMERROR("PARAMS software side provides no services");
+    // delete stubs
+    delete clientStub;
 }
 
+// client method
 void
-PARAMS_CONTROLLER_CLASS::SendAllParams()
+PARAMS_SERVER_CLASS::SendAllParams()
 {
     UMF_MESSAGE msg;
 
     UINT32 i = 0;
     while (paramValues[i])
     {
-        UINT8 ack = clientStub.sendParam(paramDictIDs[i], *paramValues[i]);
+        UINT8 ack = clientStub->sendParam(paramDictIDs[i], *paramValues[i]);
         i += 1;
     }
-
-    //
-    // Send NULL parameter as the last token.  Hardware responds with an ACK
-    // to this one so we know everything is done.
-    //
-    // UINT8 ack = clientStub.sendParam(PARAMS_NULL, 0);
 }

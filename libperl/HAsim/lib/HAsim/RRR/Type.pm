@@ -83,6 +83,7 @@ sub _parse
     }
     else
     {
+        die "parse failed: " . $string;
         return { name => undef,
                  size => undef };
     }

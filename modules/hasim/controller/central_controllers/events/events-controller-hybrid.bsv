@@ -11,6 +11,7 @@ import soft_connections::*;
 `include "streams.bsh"
 `include "rrr.bsh"
 `include "asim/rrr/service_ids.bsh"
+`include "asim/rrr/remote_client_stub_EVENTS.bsh"
 
 // EVENTS_CONTROLLER
 
@@ -63,68 +64,65 @@ module [Connected_Module] mkEventsController#(Connection_Send#(STREAMS_REQUEST) 
                 (EVENTS_CONTROLLER);
 
 
-  //***** State Elements *****  
-  
-  // Communication link to the rest of the Events
-  Connection_Chain#(EventData) chain <- mkConnection_Chain(`RINGID_EVENTS);
+    //***** State Elements *****  
     
-  // Communication link to the Events RRR service
-  Connection_Send#(RRR_Request) link_events <- mkConnection_Send("rrr_client_events");
+    // Communication link to the rest of the Events
+    Connection_Chain#(EventData) chain <- mkConnection_Chain(`RINGID_EVENTS);
+    
+    // instantiate stubs
+    ClientStub_EVENTS clientStub <- mkClientStub_EVENTS();
+    
+    // The current Event ID we are expecting
+    Reg#(Bit#(8))       cur <- mkReg(0);
+    
+    // Track our internal state
+    Reg#(EVC_STATE)   state <- mkReg(EVC_Enabled);
+  
+    // Internal tick counts
+    Vector#(TExp#(`EVENTS_DICT_BITS), Counter#(32)) ticks <- replicateM(mkCounter(0));
 
-  // The current Event ID we are expecting
-  Reg#(Bit#(8))       cur <- mkReg(0);
-  
-  // Track our internal state
-  Reg#(EVC_STATE)   state <- mkReg(EVC_Enabled);
-  
-  // Internal tick counts
-  Vector#(TExp#(`EVENTS_DICT_BITS), Counter#(32)) ticks <- replicateM(mkCounter(0));
-
-  // ***** Rules *****
-  
-  // processResp
-  
-  // Process the next response from an individual Event.
-  // Most of these will just get placed into the output FIFO.
-  
-  rule processResp (state != EVC_Initialize);
-  
-    let et <- chain.receive_from_prev();
+    // ***** Rules *****
     
-    case (et) matches
-      tagged EVT_Event .evt:  //Event Data to pass along
-      begin
-        link_events.send(RRR_Request { serviceID   : `EVENTS_SERVICE_ID,
-                                       param0      : 0, //unused for now.
-                                       param1      : zeroExtend(pack(evt.event_id)),
-                                       param2      : zeroExtend(pack(evt.event_data)),
-                                       param3      : ticks[pack(evt.event_id)].value(),
-                                       needResponse: False });
-
-        ticks[pack(evt.event_id)].up();
-      end
-      tagged EVT_NoEvent .event_id:  //No event, just tick.
-      begin
-        ticks[pack(event_id)].up();
-      end
-      default: noAction;
-    endcase
-     
-  endrule
-  
-  // ***** Methods *****
-  
-  // doCommand
-  
-  // The primary way that the outside world tells us what to do.
-  
-  method Action doCommand(EVENTS_CONTROLLER_COMMAND com) if (!(state == EVC_Enabling) || (state == EVC_Disabling));
+    // processResp
     
-    case (com)
-      EVENTS_Enable:  chain.send_to_next(EVT_Enable);  //XXX More must be done to get all event recorders onto the same model CC.
-      EVENTS_Disable: chain.send_to_next(EVT_Disable);
-    endcase
+    // Process the next response from an individual Event.
+    // Most of these will just get placed into the output FIFO.
     
-  endmethod
+    rule processResp (state != EVC_Initialize);
+        
+        let et <- chain.receive_from_prev();
+    
+        case (et) matches
+            tagged EVT_Event .evt:  //Event Data to pass along
+                begin
+                    clientStub.makeRequest_LogEvent(zeroExtend(pack(evt.event_id)),
+                                                    zeroExtend(pack(evt.event_data)),
+                                                    ticks[pack(evt.event_id)].value());
+                    
+                    ticks[pack(evt.event_id)].up();
+                end
+            tagged EVT_NoEvent .event_id:  //No event, just tick.
+                begin
+                    ticks[pack(event_id)].up();
+                end
+            default: noAction;
+        endcase
+        
+    endrule
+    
+    // ***** Methods *****
+    
+    // doCommand
+  
+    // The primary way that the outside world tells us what to do.
+    
+    method Action doCommand(EVENTS_CONTROLLER_COMMAND com) if (!(state == EVC_Enabling) || (state == EVC_Disabling));
+        
+        case (com)
+            EVENTS_Enable:  chain.send_to_next(EVT_Enable);  //XXX More must be done to get all event recorders onto the same model CC.
+            EVENTS_Disable: chain.send_to_next(EVT_Disable);
+        endcase
+        
+    endmethod
 
 endmodule

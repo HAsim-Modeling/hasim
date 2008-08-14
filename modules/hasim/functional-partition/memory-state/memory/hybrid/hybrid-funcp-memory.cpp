@@ -38,14 +38,11 @@
 #define METHOD_ID_INVALIDATE     0
 #define METHOD_ID_INVALIDATE_ALL 1
 
-// DEBUG: temporary link to RRR client
-extern RRR_CLIENT globalRRRClient;
-
 // service instantiation
-FUNCP_MEMORY_CLASS FUNCP_MEMORY_CLASS::instance;
+FUNCP_MEMORY_SERVER_CLASS FUNCP_MEMORY_SERVER_CLASS::instance;
 
 // constructor
-FUNCP_MEMORY_CLASS::FUNCP_MEMORY_CLASS() :
+FUNCP_MEMORY_SERVER_CLASS::FUNCP_MEMORY_SERVER_CLASS() :
     memory(NULL)
 {
     SetTraceableName("funcp_memory");
@@ -56,8 +53,8 @@ FUNCP_MEMORY_CLASS::FUNCP_MEMORY_CLASS() :
     ASSERT(MEMORY_STORE_CACHELINE_INFO_SIZE == 64 + FUNCP_CACHELINE_BITS,
            "Awb parameters are inconsistent: MEMORY_STORE_CACHELINE_INFO_SIZE != 64 + FUNCP_ISA_INT_REG_SIZE");
 
-    // register with server's map table
-    RRR_SERVER_CLASS::RegisterService(SERVICE_ID, &instance);
+    // instantiate stubs
+    serverStub = new FUNCP_MEMORY_SERVER_STUB_CLASS(this);
 
     char fmt[16];
 
@@ -69,14 +66,14 @@ FUNCP_MEMORY_CLASS::FUNCP_MEMORY_CLASS() :
 }
 
 // destructor
-FUNCP_MEMORY_CLASS::~FUNCP_MEMORY_CLASS()
+FUNCP_MEMORY_SERVER_CLASS::~FUNCP_MEMORY_SERVER_CLASS()
 {
     Cleanup();
 }
 
 // init
 void
-FUNCP_MEMORY_CLASS::Init(
+FUNCP_MEMORY_SERVER_CLASS::Init(
     PLATFORMS_MODULE     p)
 {
     // set parent pointer
@@ -87,7 +84,7 @@ FUNCP_MEMORY_CLASS::Init(
 
 // uninit: override
 void
-FUNCP_MEMORY_CLASS::Uninit()
+FUNCP_MEMORY_SERVER_CLASS::Uninit()
 {
     // cleanup
     Cleanup();
@@ -98,21 +95,24 @@ FUNCP_MEMORY_CLASS::Uninit()
 
 // cleanup
 void
-FUNCP_MEMORY_CLASS::Cleanup()
+FUNCP_MEMORY_SERVER_CLASS::Cleanup()
 {
     delete memory;
+
+    // deallocate stubs
+    delete serverStub;
 }
 
 // poll
 void
-FUNCP_MEMORY_CLASS::Poll()
+FUNCP_MEMORY_SERVER_CLASS::Poll()
 {
     // do nothing
 }
 
 // request
 UMF_MESSAGE
-FUNCP_MEMORY_CLASS::Request(
+FUNCP_MEMORY_SERVER_CLASS::Request(
     UMF_MESSAGE req)
 {
     bool need_response;
@@ -269,13 +269,13 @@ FUNCP_MEMORY_CLASS::Request(
 //***********************************************************************
 
 void
-FUNCP_MEMORY_CLASS::NoteSystemMemoryWriteUnknownAddr()
+FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryWriteUnknownAddr()
 {
     instance.InvalidateAllCaches();
 }
 
 void
-FUNCP_MEMORY_CLASS::InvalidateAllCaches()
+FUNCP_MEMORY_SERVER_CLASS::InvalidateAllCaches()
 {
     T1("\tfuncp_memory: INVAL ALL");
 
@@ -294,20 +294,20 @@ FUNCP_MEMORY_CLASS::InvalidateAllCaches()
 
 
 void
-FUNCP_MEMORY_CLASS::NoteSystemMemoryRead(MEM_ADDRESS addr, MEM_ADDRESS size)
+FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryRead(MEM_ADDRESS addr, MEM_ADDRESS size)
 {
     instance.SystemMemoryRef(addr, size, false);
 }
 
 void
-FUNCP_MEMORY_CLASS::NoteSystemMemoryWrite(MEM_ADDRESS addr, MEM_ADDRESS size)
+FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryWrite(MEM_ADDRESS addr, MEM_ADDRESS size)
 {
 //    NoteSystemMemoryWriteUnknownAddr();
     instance.SystemMemoryRef(addr, size, true);
 }
 
 void
-FUNCP_MEMORY_CLASS::SystemMemoryRef(MEM_ADDRESS addr, UINT64 size, bool isWrite)
+FUNCP_MEMORY_SERVER_CLASS::SystemMemoryRef(MEM_ADDRESS addr, UINT64 size, bool isWrite)
 {
     T1("\tfuncp_memory: Note system memory " << (isWrite ? "WRITE" : "READ") << " (Addr=" << fmt_addr(addr) << " bytes=" << fmt_addr(size) << ")");
 

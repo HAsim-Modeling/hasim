@@ -14836,3 +14836,13 @@ to:
 
 $^W = 1;
 
+
+----------
+jsemer      Date: Fri Aug 15 14:01:37 EDT 2008  CSN: CSN-hasim-511
+                  Fri Aug 15 18:01:37 UTC 2008
+
+
+Directory tools/scripts
+ hasim-dict                Locally Modified          510 
+
+Fixed typo in incantation to invoke perl.

@@ -14786,3 +14786,13 @@ Directory modules/common/platform_interface/hasim
   and params from HAsimPlatformInterface.bsv and ConnectionTerminus.bsv. All
   RRR links are now automatically generated. Only translations for virtual
   devices remain in Platform Interface (as they should).
+
+----------
+aparasha    Date: Fri Aug 15 00:26:20 EDT 2008  CSN: CSN-hasim-509
+                  Fri Aug 15 04:26:20 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ CPP.pm                    Locally Modified          508 
+
+added braces to case blocks to appease some annoying versions of gcc.

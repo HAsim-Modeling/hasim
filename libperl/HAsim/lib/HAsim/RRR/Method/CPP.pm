@@ -255,11 +255,12 @@ sub print_server_case_block
     
     # start printing case statement
     print $file $indent . "case METHOD_ID_" . $self->name() . ":\n";
+    print $file $indent . "{\n";
 
     # some versions of GCC aren't very happy if the first statement
     # after a case label is a variable declaration, so we add an
     # empty statement here
-    print $file $indent . "    ;\n";
+    # print $file $indent . "    ;\n";
 
     # demarshall in args from UMF msg, BUT use reversed list
     my @reverseinlist = reverse(@{ $self->inargs()->args() });
@@ -328,6 +329,7 @@ sub print_server_case_block
 
     # end of case block
     print $file $indent . "    break;\n";
+    print $file $indent . "}\n";
 }
 
 1;

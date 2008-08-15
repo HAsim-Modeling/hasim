@@ -14796,3 +14796,43 @@ Directory libperl/HAsim/lib/HAsim/RRR/Method
  CPP.pm                    Locally Modified          508 
 
 added braces to case blocks to appease some annoying versions of gcc.
+
+----------
+joel        Date: Fri Aug 15 09:59:29 EDT 2008  CSN: CSN-hasim-510
+                  Fri Aug 15 13:59:29 UTC 2008
+
+
+Directory tools/hasim/hasim-front-panel
+ hasim_front_panel_header.pl Locally Modified          509 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          509 
+
+Directory tools/scripts/bluespec
+ run.pl                    Locally Modified          509 
+
+Directory tools/scripts
+ hasim-dict                Locally Modified          509 
+ hasim-connect             Locally Modified          509 
+ hasim-rrr-stubgen         Locally Modified          509 
+ hasim-bsc-mkdepend        Locally Modified          509 
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          509 
+ setup-bmark               Locally Modified          509 
+
+Updated all scripts to support running with dash as /bin/sh, 
+which is the default on Ubuntu. The change involves substituting 
+the incantation for invoking perl from:
+
+:
+eval 'exec perl -w "$0" ${1+"$@"}'
+       if 0;
+
+to:
+
+#!/usr/bin/env perl
+# -*- perl -*-
+
+$^W = 1;
+

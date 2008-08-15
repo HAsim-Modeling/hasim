@@ -1,6 +1,5 @@
-: # -*-Perl-*-
-eval 'exec perl -w "$0" ${1+"$@"}'
-    if 0;
+#!/usr/bin/env perl
+# -*- perl -*-
 
 # *****************************************************************
 # *                                                               *
@@ -22,6 +21,10 @@ use Data::Dumper;
 
 use HAsim::RRR;
 
+#
+# Turn on warnings
+#
+$^W = 1;
 $| = 1;
 
 # parse command line

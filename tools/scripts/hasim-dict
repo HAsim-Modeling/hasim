@@ -1,6 +1,5 @@
-: # -*-Perl-*-
-eval 'exec perl -w "$0" ${1+"$@"}'
-    if 0;
+#!/usr/bin/env
+# -*- perl -*-
 
 #
 # Copyright (C) 2008 Intel Corporation
@@ -32,6 +31,11 @@ use POSIX qw(ceil floor);
 
 use HAsim::DictBuilder;
 # use Data::Dumper;
+
+#
+# Turn on warnings
+#
+$^W = 1;
 
 my $root;
 

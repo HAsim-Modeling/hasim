@@ -1,6 +1,5 @@
-: # -*-Perl-*-
-eval 'exec perl -w "$0" ${1+"$@"}'
-    if 0;
+#!/usr/bin/env perl
+# -*- perl -*-
 
 use strict;
 use File::Basename;
@@ -8,6 +7,11 @@ use File::Temp qw/ tempfile /;
 use Getopt::Long;
 
 my $debug = 0;
+
+#
+# Turn on warnings
+#
+$^W = 1;
 
 # Search path in Bluespec compiler
 my $bscPathArg;

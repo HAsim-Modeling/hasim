@@ -1,11 +1,15 @@
-: # -*-Perl-*-
-eval 'exec perl -w "$0" ${1+"$@"}'
-    if 0;
+#!/usr/bin/env perl
+# -*- perl -*-
 
 use strict;
 use warnings;
 use Getopt::Long qw(:config no_auto_abbrev no_ignore_case pass_through);
 use IO::Pty;
+
+#
+# Turn on warnings
+#
+$^W = 1;
 
 ##
 ## Benchmark run script

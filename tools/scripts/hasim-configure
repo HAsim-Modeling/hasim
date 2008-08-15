@@ -1,6 +1,5 @@
-: # -*-Perl-*-
-eval 'exec perl -w "$0" ${1+"$@"}'
-    if 0;
+#!/usr/bin/env perl
+# -*- perl -*-
 
 # *****************************************************************
 # *                                                               *
@@ -27,6 +26,10 @@ use Data::Dumper;
 use warnings;
 use strict;
 
+#
+# Turn on warnings
+#
+$^W = 1;
 
 ##
 ## Dynamic param arrays are initialized by make_bsvfiles() and used later

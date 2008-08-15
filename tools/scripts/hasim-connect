@@ -1,6 +1,5 @@
-: # -*-Perl-*-
-eval 'exec perl -w "$0" ${1+"$@"}'
-    if 0;
+#!/usr/bin/env perl
+# -*- perl -*-
 
 # *****************************************************************
 # *                                                               *
@@ -20,6 +19,13 @@ use Asim;
 use AsimShell;
 
 use HAsim;
+
+#
+# Turn on warnings
+#
+$^W = 1;
+
+
 
 ############################################################
 # handle command line

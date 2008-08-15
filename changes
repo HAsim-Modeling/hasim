@@ -14846,3 +14846,14 @@ Directory tools/scripts
  hasim-dict                Locally Modified          510 
 
 Fixed typo in incantation to invoke perl.
+
+----------
+jsemer      Date: Fri Aug 15 16:41:52 EDT 2008  CSN: CSN-hasim-512
+                  Fri Aug 15 20:41:52 UTC 2008
+
+
+Directory .
+ configure                 Locally Modified          510 
+ configure.in              Locally Modified          510 
+
+Check for existence of scons during configure.

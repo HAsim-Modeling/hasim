@@ -42,6 +42,13 @@ AC_PROG_CC
 AC_PROG_LN_S
 AC_PROG_INSTALL
 
+dnl Check for scons
+AC_CHECK_PROG(scons,scons,yes)
+if test "X$scons" == "X"; then
+   echo "Scons is needed to build hasim programs"
+   exit 1
+fi
+
 # libperl
 AC_CONFIG_FILES(libperl/Makefile)
 dnl AC_CONFIG_FILES(libperl/Asim/lib/Asim.pm)

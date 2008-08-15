@@ -14857,3 +14857,14 @@ Directory .
  configure.in              Locally Modified          510 
 
 Check for existence of scons during configure.
+
+----------
+jsemer      Date: Fri Aug 15 17:04:22 EDT 2008  CSN: CSN-hasim-513
+                  Fri Aug 15 21:04:22 UTC 2008
+
+
+Directory .
+ configure                 Locally Modified          512 
+ configure.in              Locally Modified          512 
+
+Make check for autoconf conform to autoconf conventions better.

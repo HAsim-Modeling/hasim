@@ -14868,3 +14868,13 @@ Directory .
  configure.in              Locally Modified          512 
 
 Make check for autoconf conform to autoconf conventions better.
+
+----------
+joel        Date: Sat Aug 16 15:27:59 EDT 2008  CSN: CSN-hasim-514
+                  Sat Aug 16 19:27:59 UTC 2008
+
+
+Directory experiments/hasim/quick
+ quick.models              Locally Modified          513 
+
+Added cycle limit to 'quick' regressions.

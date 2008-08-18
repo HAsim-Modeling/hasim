@@ -64,10 +64,7 @@ endinterface
 
 module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType, String serverConn)
     // Interface:
-        (FUNCP_TLB)
-    provisos
-        (Bits#(ISA_ADDRESS, isa_address_SZ),
-         Bits#(MEM_ADDRESS, mem_address_SZ));
+        (FUNCP_TLB);
    
     // ***** Local State *****
     

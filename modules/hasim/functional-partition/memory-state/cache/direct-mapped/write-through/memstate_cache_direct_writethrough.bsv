@@ -107,8 +107,7 @@ function MEM_ADDRESS getLineAddr (MEM_ADDRESS addr);
 
 endfunction
 
-module [HASIM_MODULE] mkFUNCP_Cache ()
-    provisos(Bits#(CACHE_IDX, cache_SZ));
+module [HASIM_MODULE] mkFUNCP_Cache ();
 
     // ***** Soft Connections ***** //
 
@@ -117,8 +116,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     Connection_Server#(MEM_INVAL_CACHELINE_INFO, Bool) link_funcp_memory_inval <- mkConnection_Server("funcp_memory_cache_invalidate");
     Connection_Server#(Bool, Bool)               link_funcp_memory_inval_all <- mkConnection_Server("funcp_memory_cache_invalidate_all");
 
-    BRAM#(cache_SZ, Maybe#(CACHE_TAG))                   cache_tags <- mkBramInitialized(tagged Invalid);
-    Vector#(CACHELINE_WORDS, BRAM#(cache_SZ, MEM_VALUE)) cache_data <- replicateM(mkBramInitialized(?));
+    BRAM#(CACHE_IDX, Maybe#(CACHE_TAG))                   cache_tags <- mkBRAMInitialized(tagged Invalid);
+    Vector#(CACHELINE_WORDS, BRAM#(CACHE_IDX, MEM_VALUE)) cache_data <- replicateM(mkBRAM());
 
     FIFO#(CACHE_ACCESS) pendingQ <- mkFIFO1; // size=1 -> blocking. we'll need a searchable fifo for size >=2.
     Reg#(Bool)          waiting  <- mkReg(False);
@@ -165,8 +164,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     //     Invalidate a single line if it matches the tag.
     //
     rule handleInval (pendingQ.first.req matches tagged MEM_INVALIDATE_CACHELINE .addr);
-        let mtag <- cache_tags.readResp();
-        let val  <- cache_data[cacheLineOffset(addr)].readResp();
+        let mtag <- cache_tags.readRsp();
+        let val  <- cache_data[cacheLineOffset(addr)].readRsp();
         let idx = pendingQ.first.idx;
 
         if (mtag matches tagged Valid .tag &&& tag == cacheTag(addr))
@@ -184,8 +183,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     //     the line from memory.
     //
     rule handleLoad (!waiting &&& pendingQ.first.req matches tagged MEM_LOAD .addr);
-        let mtag <- cache_tags.readResp();
-        let val  <- cache_data[cacheLineOffset(addr)].readResp();
+        let mtag <- cache_tags.readRsp();
+        let val  <- cache_data[cacheLineOffset(addr)].readRsp();
 
         if (enableCache &&& mtag matches tagged Valid .tag &&& tag == cacheTag(addr)) begin
             link_memstate.makeResp(val);
@@ -204,8 +203,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     rule handleStore (!waiting &&& pendingQ.first.req matches tagged MEM_STORE .st_info);
         let addr = st_info.addr;
         let idx = pendingQ.first.idx;
-        let mtag <- cache_tags.readResp();
-        let val  <- cache_data[cacheLineOffset(addr)].readResp();
+        let mtag <- cache_tags.readRsp();
+        let val  <- cache_data[cacheLineOffset(addr)].readRsp();
 
         if (enableCache &&& mtag matches tagged Valid .tag &&& tag == cacheTag(addr)) begin
             cache_data[cacheLineOffset(addr)].write(idx, st_info.val);

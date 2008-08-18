@@ -1,0 +1,23 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Bucket Hash Store Buffer
+# %desc Bucket Hash Store Buffer
+#
+# %provides funcp_memstate_storebuffer
+# 
+# %attributes hasim funcp memstate
+#
+# %private memstate_storebuffer_bucket_hash.bsv
+#
+# %param SBUFFER_HASH_BITS 4 "Number of hash bits for the store buffer"
+#
+# %AWB_END
+# */
+

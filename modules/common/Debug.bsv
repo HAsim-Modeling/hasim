@@ -1,101 +1,125 @@
 //Debugging facilities for software simulation.
-//Needs to be expanded to include some way to debug in hardware, using
-//Controller.
-//Debug
-//Level 0: No messages except when absolutely necessary
-//Level 1: High-Level execution trace
-//Level 2: Detailed execution trace
-//Level 3+: Every rule and method traced, with conditionals
 
-`ifndef DEBUG_LEVEL
-`define DEBUG_LEVEL 2
-`endif
+import Counter::*;
 
-`ifndef PARTITION_NAME
-`define PARTITION_NAME "Unknown"
-`endif
+// DEBUG_FILE
 
-`ifndef MODULE_NAME
-`define MODULE_NAME "Unknown"
-`endif
+// A wrapper for a simulation debugging file.
 
-function Action debug (Integer level, Action a);
-action
+interface DEBUG_FILE;
 
-  if (`DEBUG_LEVEL >= level)
-   a;
+    method Action record(Fmt fmt);
 
-endaction
-endfunction
-
-function Action debug_enter (String thing, String name);
-action
+endinterface
 
 
-  debug(3, $display("Entering %s: %s", thing, name));
+// mkDebugFile
 
-endaction
-endfunction
+// Standard simulation debugging file.
 
-function Action debug_enter_val (String thing, String name, String val);
-action
+module mkDebugFile#(String fname)
+    // interface:
+        (DEBUG_FILE);
+
+    Counter#(32)  fpga_cycle <- mkCounter(0);
+
+    Reg#(File) debugLog <- mkReg(InvalidFile);
+    Reg#(Bool) initialized <- mkReg(False);
+
+    rule open (initialized == False);
+
+        if (debugLog == InvalidFile)
+        begin
+            let fd <- $fopen(fname, "w");
+
+            if (fd == InvalidFile)
+            begin
+                $display("Error opening debugging logfile " + fname);
+                $finish(1);
+            end
+
+            debugLog <= fd;
+        end
+        
+        initialized <= True;
+
+    endrule
+
+    rule inc (True);
+
+        fpga_cycle.up();
+
+    endrule
+
+    method Action record(Fmt fmt) if (initialized);
+
+        $fdisplay(debugLog, $format("[%d]: ", fpga_cycle.value()) + fmt);
+
+    endmethod
+
+endmodule
 
 
-  debug(3, $display("Entering %s: %s == %s", thing, name, val));
 
-endaction
-endfunction
+// TIMEP_DEBUG_FILE
 
-function Action debug_rule (String rname);
-action
+// A debug file which has an idea of model cycle versus FPGA.
 
-  
-  debug_enter("rule", rname);
+interface TIMEP_DEBUG_FILE;
 
-endaction
-endfunction
+    method Action record(Fmt fmt);
+    method Action nextModelCycle();
 
-function Action debug_method (String mname);
-action
+endinterface
 
-  
-  debug_enter("method", mname);
 
-endaction
-endfunction
+// mkTIMEPDebugFile
 
-function Action debug_case (String sw, String val);
-action
+// Standard simulation debugging file for the timing partition.
 
-  
-  debug_enter_val("case branch", sw, val);
+module mkTIMEPDebugFile#(String fname)
+    // interface:
+        (TIMEP_DEBUG_FILE);
 
-endaction
-endfunction
+    Counter#(32)  fpga_cycle  <- mkCounter(0);
+    Counter#(32)  model_cycle <- mkCounter(0);
 
-function Action debug_case_default (String sw);
-action
+    Reg#(File) debugLog <- mkReg(InvalidFile);
+    Reg#(Bool) initialized <- mkReg(False);
 
-  
-  debug_enter("case default branch for", sw);
+    rule open (initialized == False);
 
-endaction
-endfunction
+        if (debugLog == InvalidFile)
+        begin
+            let fd <- $fopen(fname, "w");
 
-function Action debug_then (String cond);
-action
+            if (fd == InvalidFile)
+            begin
+                $display("Error opening debugging logfile " + fname);
+                $finish(1);
+            end
 
-  
-  debug_enter_val("then branch", cond, "True");
+            debugLog <= fd;
+        end
+        
+        initialized <= True;
 
-endaction
-endfunction
+    endrule
 
-function Action debug_else (String cond);
-action
+    rule inc (True);
 
-  
-  debug_enter_val("else branch", cond, "False");
+        fpga_cycle.up();
 
-endaction
-endfunction
+    endrule
+
+    method Action record(Fmt fmt) if (initialized);
+
+        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpga_cycle.value(), model_cycle.value()) + fmt);
+
+    endmethod
+
+    method Action nextModelCycle() if (initialized);
+        model_cycle.up();
+    endmethod
+
+endmodule

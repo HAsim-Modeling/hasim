@@ -123,8 +123,8 @@ module [HASIM_MODULE] mkStallPort_Receive#(String s)
 
     Connection_Send#(Bool)         conCred <- mkConnection_Send(s + ":cred");
 
-    Port_Receive#(Void) portDataDeqReceive <- mkPort_Receive(s + ":portDataDeq", 1);
-    Port_Send#(Void)       portDataDeqSend <- mkPort_Send(s + ":portDataDeq");
+    Port_Receive#(VOID) portDataDeqReceive <- mkPort_Receive(s + ":portDataDeq", 1);
+    Port_Send#(VOID)       portDataDeqSend <- mkPort_Send(s + ":portDataDeq");
 
     Port_Receive#(a) portDataEnqReceive <- mkPort_Receive(s + ":portDataEnq", 1);
 

@@ -58,11 +58,13 @@ import Vector::*;
 
 
 typedef Bit#(TLog#(TDiv#(`FUNCP_ISA_INT_REG_SIZE,8)))  WORD_OFFSET;
-typedef Bit#(TLog#(CACHELINE_WORDS))                   CACHELINE_OFFSET;
+typedef TLog#(CACHELINE_WORDS)                         CACHELINE_OFFSET_SIZE;
+typedef Bit#(CACHELINE_OFFSET_SIZE)                    CACHELINE_OFFSET;
 typedef Bit#(TSub#(`FUNCP_ISA_P_ADDR_SIZE,TLog#(TDiv#(`FUNCP_CACHELINE_BITS,8)))) CACHE_TAG;
 
 typedef Bit#(`FUNCP_CACHE_IDX_BITS) CACHE_SET;
-typedef UInt#(TLog#(`FUNCP_CACHE_WAYS)) CACHE_WAY;
+typedef TLog#(`FUNCP_CACHE_WAYS) CACHE_WAY_SIZE;
+typedef UInt#(CACHE_WAY_SIZE) CACHE_WAY;
 
 typedef Vector#(`FUNCP_CACHE_WAYS, CACHE_WAY) CACHE_LRU_LIST;
 
@@ -109,11 +111,7 @@ typedef struct
     deriving(Eq, Bits);
 
 
-module [HASIM_MODULE] mkFUNCP_Cache ()
-    provisos(Bits#(CACHE_SET, cache_set_SZ),
-             Bits#(CACHE_WAY, cache_way_SZ),
-             Bits#(CACHELINE_OFFSET, cacheline_offset_SZ),
-             Bits#(CACHE_DATA_IDX, cache_data_idx_SZ));
+module [HASIM_MODULE] mkFUNCP_Cache ();
 
     // ***** Soft Connections *****
 
@@ -126,11 +124,11 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     // ***** Cache data *****
 
     // Tags & dirty bits
-    BRAM#(cache_set_SZ, CACHE_METADATA_VECTOR) cacheMeta <- mkBramInitialized(Vector::replicate(tagged Invalid));
+    BRAM#(CACHE_SET, CACHE_METADATA_VECTOR) cacheMeta <- mkBRAMInitialized(Vector::replicate(tagged Invalid));
     // Values
-    BRAM#(cache_data_idx_SZ, MEM_VALUE) cacheData <- mkBram();
+    BRAM#(CACHE_DATA_IDX, MEM_VALUE) cacheData <- mkBRAM();
     // LRU hint
-    BRAM#(cache_set_SZ, CACHE_LRU_LIST) cacheLRU <- mkBramInitialized(Vector::genWith(fromInteger));
+    BRAM#(CACHE_SET, CACHE_LRU_LIST) cacheLRU <- mkBRAMInitialized(Vector::genWith(fromInteger));
 
     // ***** Internal state *****
 
@@ -197,8 +195,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     // ******* Debuging State *******
 
     // Fake register to hold our debugging file descriptor.
-    let debugLog         <- mkReg(InvalidFile);
-    Reg#(Bool) debugInit <- mkReg(False);
+    DEBUG_FILE debugLog         <- mkDebugFile(`FUNCP_CACHE_LOGFILE_NAME);
 
     // The current FPGA clock cycle
     Reg#(Bit#(32)) fpgaCC <- mkReg(0);
@@ -209,28 +206,11 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
 
     endrule
 
-        //Open the debug logs. (First time only. Afterwards it is not InvalidFile.)
-    rule debugDoInit (! debugInit);
-
-        debugInit <= True;
-
-        let fd <- $fopen(`FUNCP_CACHE_LOGFILE_NAME, "w");
-        if (fd == InvalidFile)
-        begin
-            $display(strConcat("Error opening FUNCP memory cache logfile ", `FUNCP_CACHE_LOGFILE_NAME));
-            $finish(1);
-        end
-
-        debugLog <= fd;
-
-    endrule
-
-
     // ***** Indexing functions *****
 
-    function Bit#(cache_data_idx_SZ) getDataIdx (CACHE_SET set, CACHE_WAY way, CACHELINE_OFFSET offset);
+    function CACHE_DATA_IDX getDataIdx (CACHE_SET set, CACHE_WAY way, CACHELINE_OFFSET offset);
 
-        return pack(CACHE_DATA_IDX { set: set, way: way, offset: offset });
+        return CACHE_DATA_IDX { set: set, way: way, offset: offset };
 
     endfunction
 
@@ -378,29 +358,21 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     endfunction
 
 
-    //
-    // Convenience functions for debugging
-    //
-
-    function Action cacheDebug(Action a);
-    action
-
-        $fwrite(debugLog, "[%d]: ", fpgaCC);
-        a;
-        $fwrite(debugLog, "\n");
-
-    endaction
-    endfunction
 
     function Action cacheDebugLRUUpdate(String access_type,
-                                 CACHE_WAY way,
-                                 CACHE_LRU_LIST cur_lru,
-                                 CACHE_LRU_LIST new_lru);
+                                        CACHE_WAY way,
+                                        CACHE_LRU_LIST cur_lru,
+                                        CACHE_LRU_LIST new_lru);
     action
+
         if ((getMRU(cur_lru) != way) || (cur_lru != new_lru))
-            cacheDebug($fwrite(debugLog, "  Update LRU (way=0x%x) for %s: %b -> %b", way, access_type, cur_lru, new_lru));
+        begin
+            debugLog.record($format("  Update LRU (way=0x%x) for %s: %b -> %b", way, access_type, cur_lru, new_lru));
+        end
         if (getMRU(new_lru) != way)
-            cacheDebug($fwrite(debugLog, "  ***ERROR*** expected MRU to be 0x%x but it is 0x%x", way, getMRU(new_lru)));
+        begin
+            debugLog.record($format("  ***ERROR*** expected MRU to be 0x%x but it is 0x%x", way, getMRU(new_lru)));
+        end
 
     endaction
     endfunction
@@ -442,7 +414,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
                            tagged MEM_INVALIDATE_CACHELINE .a: "INVAL";
                            tagged MEM_FLUSH_CACHELINE .a: "INVAL";
                        endcase;
-        cacheDebug($fwrite(debugLog, "New request: %s addr=0x%x, set=0x%x", req_kind, addr, set));
+        debugLog.record($format("New request: %s addr=0x%x, set=0x%x", req_kind, addr, set));
 
         if (enableCache)
         begin
@@ -476,7 +448,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     rule handleBypass (!enableCache &&& link_funcp_memory.getResp() matches tagged MEM_REPLY_LOAD .v);
         link_funcp_memory.deq();
         link_memstate.makeResp(v);
-        cacheDebug($fwrite(debugLog, "Memory response (cache off): 0x%x", v));
+        debugLog.record($format("Memory response (cache off): 0x%x", v));
     endrule
 
 
@@ -486,8 +458,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     //
     rule handleInval (pendingQ.first.req matches tagged MEM_INVALIDATE_CACHELINE .addr);
         let set = pendingQ.first.set;
-        let cur_lru <- cacheLRU.readResp();
-        let meta <- cacheMeta.readResp();
+        let cur_lru <- cacheLRU.readRsp();
+        let meta <- cacheMeta.readRsp();
         Bool done = True;
 
         if (findWayMatch(addr, meta) matches tagged Valid .inval_way)
@@ -514,8 +486,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     //
     rule handleFlush (pendingQ.first.req matches tagged MEM_FLUSH_CACHELINE .addr);
         let set = pendingQ.first.set;
-        let cur_lru <- cacheLRU.readResp();
-        let meta <- cacheMeta.readResp();
+        let cur_lru <- cacheLRU.readRsp();
+        let meta <- cacheMeta.readRsp();
         Bool done = True;
 
         if (findWayMatch(addr, meta) matches tagged Valid .inval_way)
@@ -599,8 +571,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     //
     rule handleLoad (!waiting &&& pendingQ.first.req matches tagged MEM_LOAD .addr);
         let set = pendingQ.first.set;
-        let cur_lru <- cacheLRU.readResp();
-        let meta <- cacheMeta.readResp();
+        let cur_lru <- cacheLRU.readRsp();
+        let meta <- cacheMeta.readRsp();
 
         if (findWayMatch(addr, meta) matches tagged Valid .way)
         begin
@@ -618,12 +590,12 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
             pendingQ.deq();
 
             statLoadHit.incr();
-            cacheDebug($fwrite(debugLog, "Load HIT: addr=0x%x, set=0x%x, way=0x%x", addr, set, way));
+            debugLog.record($format("Load HIT: addr=0x%x, set=0x%x, way=0x%x", addr, set, way));
             cacheDebugLRUUpdate("LOAD", way, cur_lru, new_lru);
         end
         else
         begin
-            cacheDebug($fwrite(debugLog, "Load MISS: addr=0x%x, set=0x%x", addr, set));
+            debugLog.record($format("Load MISS: addr=0x%x, set=0x%x", addr, set));
 
             match { .fill_way, .fill_invalid }
                 <- prepareFillVictim(addr, meta, set, cur_lru, False);
@@ -643,10 +615,10 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         match {.way, .offset} = loadFromCache.first();
         loadFromCache.deq();
 
-        let v <- cacheData.readResp();
+        let v <- cacheData.readRsp();
         link_memstate.makeResp(v);
 
-        cacheDebug($fwrite(debugLog, "  Load data=0x%x", v));
+        debugLog.record($format("  Load data=0x%x", v));
     endrule
 
 
@@ -656,8 +628,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     rule handleStore (!waiting &&& pendingQ.first.req matches tagged MEM_STORE .st_info);
         let addr = st_info.addr;
         let set = pendingQ.first.set;
-        let cur_lru <- cacheLRU.readResp();
-        let meta <- cacheMeta.readResp();
+        let cur_lru <- cacheLRU.readRsp();
+        let meta <- cacheMeta.readRsp();
 
         if (findWayMatch(addr, meta) matches tagged Valid .way)
         begin
@@ -686,12 +658,12 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
             pendingQ.deq();
 
             statStoreHit.incr();
-            cacheDebug($fwrite(debugLog, "Store HIT: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", addr, set, way, st_info.val));
+            debugLog.record($format("Store HIT: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", addr, set, way, st_info.val));
             cacheDebugLRUUpdate("STORE", way, cur_lru, new_lru);
         end
         else
         begin
-            cacheDebug($fwrite(debugLog, "Store MISS: addr=0x%x, set=0x%x, data=0x%x", addr, set, st_info.val));
+            debugLog.record($format("Store MISS: addr=0x%x, set=0x%x, data=0x%x", addr, set, st_info.val));
 
             match { .fill_way, .fill_invalid }
                 <- prepareFillVictim(addr, meta, set, cur_lru, writeBackCache());
@@ -709,7 +681,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         
         if (meta[flushWay] matches tagged Valid .m &&& m.dirty)
         begin
-            cacheDebug($fwrite(debugLog, "handleFlushDirtySet: addr=0x%x, set=0x%x, way=0x%x", cacheAddr(m.tag, 0), set, flushWay));
+            debugLog.record($format("handleFlushDirtySet: addr=0x%x, set=0x%x, way=0x%x", cacheAddr(m.tag, 0), set, flushWay));
             flushDirtyLine.enq(tuple4(m.tag, set, flushWay, False));
             cacheData.readReq(getDataIdx(set, flushWay, 0));
         end
@@ -729,7 +701,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     rule handleFlushDirtyLine (inflightSyncFlushes != maxBound);
         
         match {.tag, .set, .way, .reqFill} = flushDirtyLine.first();
-        let v <- cacheData.readResp();
+        let v <- cacheData.readRsp();
 
         // Done with the line?
         if (flushLineOffset == maxBound)
@@ -760,7 +732,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
             end
             
             statDirtyLineFlush.incr();
-            cacheDebug($fwrite(debugLog, "Write back DIRTY: addr=0x%x, set=0x%x, data=0x%x", addr, set, flushData));
+            debugLog.record($format("Write back DIRTY: addr=0x%x, set=0x%x, data=0x%x", addr, set, flushData));
         end
         else
         begin
@@ -807,7 +779,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
                 begin
                     link_memstate.makeResp(v[cacheLineOffset(addr)]);
 
-                    cacheDebug($fwrite(debugLog, "Load FILL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", addr, set, way, v));
+                    debugLog.record($format("Load FILL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", addr, set, way, v));
                 end
             end
 
@@ -824,8 +796,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
                     if (! writeBackCache())
                         link_funcp_memory.makeReq(tagged MEM_STORE st_info);
 
-                    cacheDebug($fwrite(debugLog, "Store FILL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", addr, set, way, v));
-                    cacheDebug($fwrite(debugLog, "Store WRITE: data=0x%x", st_info.val));
+                    debugLog.record($format("Store FILL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", addr, set, way, v));
+                    debugLog.record($format("Store WRITE: data=0x%x", st_info.val));
                 end
             end
         endcase
@@ -845,7 +817,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         invalidate_addr <= info.addr;
         invalidate_n_lines <= info.nLines;
         
-        cacheDebug($fwrite(debugLog, "New request: INVAL addr=0x%x, nLines=%d, onlyflush=%d", info.addr, info.nLines, info.onlyFlush));
+        debugLog.record($format("New request: INVAL addr=0x%x, nLines=%d, onlyflush=%d", info.addr, info.nLines, info.onlyFlush));
 
         if (info.nLines == 0)
             link_funcp_memory_inval.makeResp(?);
@@ -860,12 +832,12 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         if (invalidate_just_flush)
         begin
             access.req = tagged MEM_FLUSH_CACHELINE invalidate_addr;
-            cacheDebug($fwrite(debugLog, "New request: FLUSH addr=0x%x, set=0x%x", invalidate_addr, set));
+            debugLog.record($format("New request: FLUSH addr=0x%x, set=0x%x", invalidate_addr, set));
         end
         else
         begin
             access.req = tagged MEM_INVALIDATE_CACHELINE invalidate_addr;
-            cacheDebug($fwrite(debugLog, "New request: INVAL addr=0x%x, set=0x%x", invalidate_addr, set));
+            debugLog.record($format("New request: INVAL addr=0x%x, set=0x%x", invalidate_addr, set));
         end
 
         pendingQ.enq(access);
@@ -886,7 +858,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
                          (inflightSyncFlushes == 0) &&
                          ! pendingQ.notEmpty());
 
-        cacheDebug($fwrite(debugLog, "FLUSH or INVAL done"));
+        debugLog.record($format("FLUSH or INVAL done"));
         link_funcp_memory_inval.makeResp(?);
         invalidate_need_ack <= False;
 
@@ -904,7 +876,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     //     doesn't know which lines may need to be flushed.
     //
     rule invalidate_all_req (!invalidatingAll && !waiting);
-        cacheDebug($fwrite(debugLog, "New request: INVAL ALL"));
+        debugLog.record($format("New request: INVAL ALL"));
         link_funcp_memory_inval_all.deq();
 
         if (cacheIsEmpty)
@@ -923,7 +895,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
     rule invalidate_all (invalidatingAll);
         
         // Flush dirty lines
-        let meta <- cacheMeta.readResp();
+        let meta <- cacheMeta.readRsp();
         flushDirtySet.enq(tuple2(invalidateAllSet, meta));
 
         cacheLRU.write(invalidateAllSet, Vector::genWith(fromInteger));
@@ -933,7 +905,7 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         begin
             invalidatingAll <= False;
             link_funcp_memory_inval_all.makeResp(?);
-            cacheDebug($fwrite(debugLog, "Request done: INVAL ALL"));
+            debugLog.record($format("Request done: INVAL ALL"));
         end
         else
             cacheMeta.readReq(invalidateAllSet + 1);
@@ -952,8 +924,8 @@ module [HASIM_MODULE] mkFUNCP_Cache ()
         // CACHELINE_WORDS and FUNCP_CACHE_WAYS must be powers of 2
         //
         Bit#(32) one = 1;
-        Bool cacheline_words_ok = (fromInteger(valueOf(CACHELINE_WORDS)) == (one << valueOf(cacheline_offset_SZ)));
-        Bool cache_ways_ok = (`FUNCP_CACHE_WAYS == (one << valueOf(cache_way_SZ)));
+        Bool cacheline_words_ok = (fromInteger(valueOf(CACHELINE_WORDS)) == (one << valueOf(CACHELINE_OFFSET_SIZE)));
+        Bool cache_ways_ok = (`FUNCP_CACHE_WAYS == (one << valueOf(CACHE_WAY_SIZE)));
         assertValidRequest(cacheline_words_ok && cache_ways_ok);
     endrule
 

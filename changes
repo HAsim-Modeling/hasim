@@ -14878,3 +14878,110 @@ Directory experiments/hasim/quick
  quick.models              Locally Modified          513 
 
 Added cycle limit to 'quick' regressions.
+
+----------
+mpellaue    Date: Mon Aug 18 19:34:26 EDT 2008  CSN: CSN-hasim-515
+                  Mon Aug 18 23:34:26 UTC 2008
+
+
+Directory .
+ Makefile.in               Locally Modified          514 
+
+Directory libperl
+ Makefile.in               Locally Modified          514 
+
+Directory tools/hasim
+ Makefile.in               Locally Modified          514 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Modified          514 
+
+Directory tools
+ Makefile.in               Locally Modified          514 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          514 
+
+Directory modules/hasim/functional-partition/interface
+ funcp-timing-interface.bsv Locally Modified          514 
+
+Directory modules/hasim/functional-partition/register-state/snapshot/bram
+ funcp_snapshot_bram.bsv   Locally Modified          514 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          514 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          514 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          514 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/null
+ funcp-tlb-null.bsv        Locally Modified          514 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          514 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          514 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.bsv Locally Modified          514 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ Utils.bsv                 Locally Removed           514 
+ StoreBufferFastHashed.bsv Locally Modified          514 
+ HashedStoreBuffer.bsv     Locally Modified          514 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer
+ sequential/               Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/sequential
+ memstate_storebuffer_sequential.awb Locally Added               0 
+ StoreBufferSequential.bsv Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer
+ bucket-hash/              Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-hash
+ memstate_storebuffer_bucket_hash.awb Locally Added               0 
+ memstate_storebuffer_bucket_hash.bsv Locally Added               0 
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.bsv      Locally Modified          514 
+
+Directory modules/system/bram_test
+ System.bsv                Locally Modified          514 
+
+Directory modules/common
+ Debug.bsv                 Locally Modified          514 
+
+Directory modules/common/modellib
+ StallPorts.bsv            Locally Modified          514 
+
+Directory modules/common
+ Utils.bsv                 Locally Modified          514 
+ FPGAFIFOs.bsv             Locally Modified          514 
+ Token.bsv                 Locally Modified          514 
+
+
+General Code Cleanup:
+
+* Updated DebugFile to HAsim coding conventions
+* RegState/MemState now use DebugFile
+
+* Updated functional partition to use new BRAM interface.
+
+* Removed spurious provisos, replaced with typedefs. IE TOKEN_INDEX_SIZE, ISA_NUM_REGS
+
+* Replaced ad-hoc Wires with Counters.
+
+Store Buffer:
+
+* Since the new store buffer is buggy, restored the old store buffers.
+* The models still use the new store buffer until further notice.
+* Removed unused Utils file in store buffer.
+* Switched non-standard May# type to equivalent existing type Maybe#
+
+Michael P.

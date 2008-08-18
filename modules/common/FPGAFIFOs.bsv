@@ -64,13 +64,12 @@ module mkSizedFIFO_BRAM#(Integer depth)
               (FIFO#(data_T))
   provisos
           (Literal#(data_T),
-           Bits#(data_T, data_SZ),
-           Bits#(FIFO_IDX, fifo_idx_SZ));
+           Bits#(data_T, data_SZ));
 
   if (depth > 1024)
     error("BRAM FIFO buffering depth cannot currently exceed 1024.");
   
-  BRAM#(fifo_idx_SZ, data_T) bram <- mkBramInitialized(0);
+  BRAM#(FIFO_IDX, data_T) bram <- mkBRAM();
     
   Reg#(FIFO_IDX) head <- mkReg(0);
   Reg#(FIFO_IDX) tail <- mkReg(0);
@@ -110,7 +109,7 @@ module mkSizedFIFO_BRAM#(Integer depth)
   
   rule prebuf_resp (True);
   
-    let p <- bram.readResp();
+    let p <- bram.readRsp();
     bufW <= p;
 
   endrule

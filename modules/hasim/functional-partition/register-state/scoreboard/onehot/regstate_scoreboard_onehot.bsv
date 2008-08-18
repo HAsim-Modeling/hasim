@@ -94,14 +94,14 @@ endinterface
 
 // mkFUNCP_Scoreboard
 
-module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
-    provisos 
-            (Bits#(TOKEN_INDEX, idx_SZ)); // The size of the token index.
+module [Connected_Module] mkFUNCP_Scoreboard 
+    // interface:
+        (FUCNCP_SCOREBOARD);
 
     // ***** Local State ***** //
 
     // We keep the status bits in a register for fast pull-downs.
-    Reg#(Vector#(TExp#(idx_SZ), Bool)) alloc      <- mkReg(replicate(False));
+    Reg#(Vector#(NUM_TOKENS, Bool)) alloc      <- mkReg(replicate(False));
 
     // The actual scoreboards.
     TOKEN_SCOREBOARD itr_start    <- mkRegFileFull();
@@ -121,12 +121,12 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     TOKEN_SCOREBOARD store_start  <- mkRegFileFull();
     TOKEN_SCOREBOARD store_finish <- mkRegFileFull();
     TOKEN_SCOREBOARD commit_start <- mkRegFileFull();
+    TOKEN_SCOREBOARD emulation    <- mkRegFileFull();
 
-    Reg#(Vector#(TExp#(idx_SZ), MEM_OFFSET))     fetch_offset  <- mkReg(Vector::replicate(0));
-    Reg#(Vector#(TExp#(idx_SZ), MEM_OFFSET))     memop_offset <- mkReg(Vector::replicate(0));
-    Reg#(Vector#(TExp#(idx_SZ), ISA_MEMOP_TYPE)) load_type  <- mkReg(?);
-    Reg#(Vector#(TExp#(idx_SZ), ISA_MEMOP_TYPE)) store_type <- mkReg(?);
-    TOKEN_SCOREBOARD emulation <- mkRegFileFull();
+    RegFile#(TOKEN_INDEX, MEM_OFFSET)     fetch_offset  <- mkRegFileFullInitialized(0);
+    RegFile#(TOKEN_INDEX, MEM_OFFSET)     memop_offset  <- mkRegFileFullInitialized(0);
+    RegFile#(TOKEN_INDEX, ISA_MEMOP_TYPE) load_type  <- mkRegFileFull();
+    RegFile#(TOKEN_INDEX, ISA_MEMOP_TYPE) store_type <- mkRegFileFull();
 
     // A pointer to the next token to be allocated.
     Reg#(TOKEN_INDEX) next_free_tok <- mkReg(0);
@@ -135,14 +135,14 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     Reg#(TOKEN_INDEX) oldest_tok <- mkReg(0);
     
     // A register tracking how many tokens are active in pipelines.
-    Counter#(idx_SZ) num_in_itr <- mkCounter(0);
-    Counter#(idx_SZ) num_in_fet <- mkCounter(0);
-    Counter#(idx_SZ) num_in_dec <- mkCounter(0);
-    Counter#(idx_SZ) num_in_exe <- mkCounter(0);
-    Counter#(idx_SZ) num_in_dtr <- mkCounter(0);
-    Counter#(idx_SZ) num_in_load <- mkCounter(0);
-    Counter#(idx_SZ) num_in_store <- mkCounter(0);
-    Counter#(idx_SZ) num_in_commit <- mkCounter(0);
+    Counter#(TOKEN_INDEX_SIZE) num_in_itr <- mkCounter(0);
+    Counter#(TOKEN_INDEX_SIZE) num_in_fet <- mkCounter(0);
+    Counter#(TOKEN_INDEX_SIZE) num_in_dec <- mkCounter(0);
+    Counter#(TOKEN_INDEX_SIZE) num_in_exe <- mkCounter(0);
+    Counter#(TOKEN_INDEX_SIZE) num_in_dtr <- mkCounter(0);
+    Counter#(TOKEN_INDEX_SIZE) num_in_load <- mkCounter(0);
+    Counter#(TOKEN_INDEX_SIZE) num_in_store <- mkCounter(0);
+    Counter#(TOKEN_INDEX_SIZE) num_in_commit <- mkCounter(0);
     
     
 
@@ -193,7 +193,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     // Note: we allocate only half the tokens at once. See above.
     // We can allocate only if the MSB is zero.
-    Bool can_allocate = num_in_flight[valueOf(idx_SZ) - 1] == 0;
+    Bool can_allocate = num_in_flight[valueOf(TOKEN_INDEX_SIZE) - 1] == 0;
 
     // isBusy
 
@@ -510,7 +510,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method Action setFetchOffset(TOKEN_INDEX t, MEM_OFFSET offset);
     
-        fetch_offset[t] <= offset;
+        fetch_offset.upd(t, offset);
     
     endmethod
 
@@ -521,7 +521,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method Action setMemOpOffset(TOKEN_INDEX t, MEM_OFFSET offset);
     
-        memop_offset[t] <= offset;
+        memop_offset.upd(t, offset);
     
     endmethod
 
@@ -534,7 +534,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     
         is_load.upd(t, True);
         
-        load_type[t] <= mtype;
+        load_type.upd(t, mtype);
     
     endmethod
 
@@ -547,7 +547,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     
         is_store.upd(t, True);
         
-        store_type[t] <= mtype;
+        store_type.upd(t, mtype);
     
     endmethod
 
@@ -570,9 +570,9 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
     method Action rewindTo(TOKEN_INDEX t);
 
       // Construct a new vectore of allocation bits.
-      Vector#(TExp#(idx_SZ), Bool) as = newVector();
+      Vector#(NUM_TOKENS, Bool) as = newVector();
 
-      for (Integer x = 0; x < valueof(TExp#(idx_SZ)); x = x + 1)
+      for (Integer x = 0; x < valueof(NUM_TOKENS); x = x + 1)
       begin
         TOKEN_INDEX cur = fromInteger(x);
         as[x] = (youngest_tok > t) ?
@@ -638,7 +638,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method MEM_OFFSET getFetchOffset(TOKEN_INDEX t);
     
-        return fetch_offset[t];
+        return fetch_offset.sub(t);
     
     endmethod
 
@@ -649,7 +649,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method MEM_OFFSET getMemOpOffset(TOKEN_INDEX t);
     
-        return memop_offset[t];
+        return memop_offset.sub(t);
     
     endmethod
 
@@ -660,7 +660,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method ISA_MEMOP_TYPE getLoadType(TOKEN_INDEX t);
     
-        return load_type[t];
+        return load_type.sub(t);
     
     endmethod
 
@@ -671,7 +671,7 @@ module [Connected_Module] mkFUNCP_Scoreboard (FUCNCP_SCOREBOARD)
 
     method ISA_MEMOP_TYPE getStoreType(TOKEN_INDEX t);
     
-        return store_type[t];
+        return store_type.sub(t);
     
     endmethod
 

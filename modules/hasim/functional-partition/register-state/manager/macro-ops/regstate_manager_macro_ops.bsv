@@ -50,33 +50,12 @@ import RegFile::*;
 
 module [HASIM_MODULE] mkFUNCP_RegStateManager
     //interface:
-                ()
-    provisos
-            (Bits#(TOKEN_INDEX, idx_SZ),      // The number of tokens.
-             Bits#(ISA_REG_INDEX, rname_SZ),  // The number of architectural registers.
-             Bits#(FUNCP_PHYSICAL_REG_INDEX, pname_SZ),
-             Bits#(ISA_VALUE, isa_val_SZ), // The width of arch regs.
-             Bits#(FUNCP_SNAPSHOT_INDEX, snapshotptr_SZ)); // The number of snapshots.
+                ();
 
     // ******* Debuging State *******
 
-    // Fake register to hold our debugging file descriptor.
-    let debugLog     <- mkReg(InvalidFile);
-
-    // The current FPGA clock cycle
-    Reg#(Bit#(32)) fpgaCC <- mkReg(0);
-
-    // A convenience function for debugging.
-
-    function Action funcpDebug(Action a);
-    action
-
-      $fwrite(debugLog, "[%d]: ", fpgaCC);
-      a;
-      $fwrite(debugLog, "\n");
-
-    endaction
-    endfunction
+    // Our debug file for messages during simulation.
+    DEBUG_FILE  debugLog  <- mkDebugFile(`REGSTATE_LOGFILE_NAME);
 
     // ******* Submodules *******
 
@@ -84,52 +63,55 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     let tokScoreboard <- mkFUNCP_Scoreboard();
 
     // The Freelist tracks which physical registers are available.
-    let freelist <- mkFUNCP_Freelist(debugLog, fpgaCC);
+    let freelist <- mkFUNCP_Freelist(debugLog);
+
+    // The Snapshots allow for fast rewinds.
+    FUNCP_SNAPSHOT snapshots <- mkFUNCP_Snapshot();
 
     // ******* Local State *******
 
     // Tables to track info about in-flight instructions.
 
     // The address we got the instruction from (told to us by the timing model).
-    BRAM#(idx_SZ, ISA_ADDRESS) tokAddr <- mkBramInitialized(0);
+    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr <- mkBRAMInitialized(0);
 
     // The physical address(es) for the instruction.
-    BRAM#(idx_SZ, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs <- mkBramInitialized(tagged ONE 0);
+    BRAM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs <- mkBRAMInitialized(tagged ONE 0);
 
     // The instruction that was at that address (from mem_state).
-    BRAM_MULTI_READ#(2, idx_SZ, ISA_INSTRUCTION) tokInst <- mkMultiReadBramInitialized(0);
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst <- mkBRAMMultiReadInitialized(0);
 
     // The destinations of the instruction (a convenience which saves us from reading the instruction/maptable).
-    BRAM_MULTI_READ#(3, idx_SZ, ISA_INST_DSTS) tokDsts <- mkMultiReadBramInitialized(Vector::replicate(tagged Invalid));
+    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts <- mkBRAMMultiReadInitialized(Vector::replicate(tagged Invalid));
 
     // If an instruction has sources in other inflight instructions it will be noted here.
-    BRAM#(idx_SZ, ISA_INST_SRCS)   tokWriters <- mkBramInitialized(Vector::replicate(tagged Invalid));
+    BRAM#(TOKEN_INDEX, ISA_INST_SRCS)   tokWriters <- mkBRAMInitialized(Vector::replicate(tagged Invalid));
 
     // The memaddress is used by Loads/Stores so we don't have to repeat the calculation.
-    BRAM_MULTI_READ#(2, idx_SZ, ISA_ADDRESS) tokMemAddr <- mkMultiReadBramInitialized(0);
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_ADDRESS) tokMemAddr <- mkBRAMMultiReadInitialized(0);
 
     // The value a store will write to memory
-    BRAM#(idx_SZ, ISA_VALUE) tokStoreValue <- mkBramInitialized(0);
+    BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue <- mkBRAMInitialized(0);
 
     // The physical memaddress(es) for the instruction.
-    BRAM_MULTI_READ#(2, idx_SZ, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs <- mkMultiReadBramInitialized(tagged ONE 0);
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs <- mkBRAMMultiReadInitialized(tagged ONE 0);
 
     // Position of freelist for token's physical regs.  Used by rewind.
-    BRAM#(idx_SZ, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokFreeListPos <- mkBramInitialized(tagged Invalid);
+    BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokFreeListPos <- mkBRAMInitialized(tagged Invalid);
 
     // The physical registers to free when the token is committed/killed.
-    BRAM#(idx_SZ, ISA_INST_DSTS) tokRegsToFree <- mkBramInitialized(Vector::replicate(tagged Invalid));
+    BRAM#(TOKEN_INDEX, ISA_INST_DSTS) tokRegsToFree <- mkBRAMInitialized(Vector::replicate(tagged Invalid));
 
     // The Physical Register File
 
-    BRAM_MULTI_READ#(3, pname_SZ, ISA_VALUE) prf <- mkMultiReadBram();
+    BRAM_MULTI_READ#(3, FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE) prf <- mkBRAMMultiReadInitialized(0);
     
     // Valid bits for PRF
-    Vector#(FUNCP_PHYSICAL_REGS, Reg#(Bool)) prfValids = newVector();
+    Vector#(FUNCP_NUM_PHYSICAL_REGS, Reg#(Bool)) prfValids = newVector();
     
-    for (Integer x = 0; x < valueOf(FUNCP_PHYSICAL_REGS); x = x + 1)
+    for (Integer x = 0; x < valueOf(FUNCP_NUM_PHYSICAL_REGS); x = x + 1)
     begin
-      prfValids[x] <- mkReg(False);
+      prfValids[x] <- mkReg(True);
     end
 
     // The Map Table
@@ -138,27 +120,22 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // Also this lets us snapshot/reload the entire maptable in a single cyle.
 
     // The highest register in the ISA (the last one which is initially valid).
-    Bit#(rname_SZ)            highestReg = maxBound;
+    ISA_REG_INDEX         highestReg = maxBound;
     FUNCP_PHYSICAL_REG_INDEX maxInit = zeroExtend(pack(highestReg));
 
     // The initial map is that all architectural registers are mapped 1-to-1 to
     // physical registers and are all valid.
 
-    Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX) initMap = newVector();
+    Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) initMap = newVector();
     
     // Note: this loop ends at _architectural_ register size.
     
-    for (Integer x  = 0; x < valueof(TExp#(rname_SZ)); x = x + 1)
+    for (Integer x  = 0; x < valueof(ISA_NUM_REGS); x = x + 1)
     begin
       initMap[x] = fromInteger(x);
     end
 
-    Reg#(Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX)) maptable   <- mkReg(initMap);
-
-    // Snapshots 
-    // Allow for fast rewinds.
-
-    Snapshot#(rname_SZ) snapshots <- mkSnapshot();
+    Reg#(Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX)) maptable   <- mkReg(initMap);
 
     // ******* High-Level FSM State *******
 
@@ -226,7 +203,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // PC of emulating token
     Reg#(ISA_ADDRESS) emulatingPC <- mkRegU();
     // Which register are we currently synchronizing?
-    Reg#(Bit#(rname_SZ)) synchronizingCurReg <- mkReg(minBound);
+    Reg#(ISA_REG_INDEX) synchronizingCurReg <- mkReg(minBound);
 
     // CommitResults state
 
@@ -257,7 +234,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     FIFO#(TOKEN) res1Q  <- mkFIFO();
     FIFO#(TOKEN) res2Q <- mkFIFO();
     FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) res3Q   <- mkFIFO();
-    FIFO#(Tuple2#(Bit#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX)) syncQ <- mkFIFO();
+    FIFO#(Tuple2#(ISA_REG_INDEX, FUNCP_PHYSICAL_REG_INDEX)) syncQ <- mkFIFO();
     FIFO#(Tuple2#(TOKEN, ISA_MEMOP_TYPE)) dTrans1Q <- mkFIFO();
     FIFO#(DTRANS_INFO) dTrans2Q <- mkFIFO();
     FIFO#(TOKEN) loads1Q  <- mkFIFO();
@@ -314,7 +291,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     // Connections to Mem State.
 
-    Connection_Client#(TOKEN, Void)                            storeBufferAllocate <- mkConnection_Client("storeBufferAllocate");
+    Connection_Client#(TOKEN, VOID)                            storeBufferAllocate <- mkConnection_Client("storeBufferAllocate");
 
     Connection_Client#(MEMSTATE_REQ, 
                        MEM_VALUE)                              linkToMem <- mkConnection_Client("funcp_memstate");
@@ -370,21 +347,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     rule initialize (state == RSM_Initializing);
 
-        //Open the debug logs. (First time only. Afterwards it is not InvalidFile.)
-
-        if (debugLog == InvalidFile)
-        begin
-            let fd <- $fopen(`REGSTATE_LOGFILE_NAME, "w");
-
-            if (fd == InvalidFile)
-            begin
-                $display(strConcat("Error opening FUNCP RegState logfile ", `REGSTATE_LOGFILE_NAME));
-                $finish(1);
-            end
-
-            debugLog <= fd;
-        end
-
         // For safety we start all physical registers at zero. In the future this might change.
         prf.write(initCur, 0);
         prfValids[initCur] <= True;
@@ -398,15 +360,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     endrule
   
-    // currentCC
-    // When:   Always
-    // Effect: Just record the current FPGA cycle for debugging purposes.
-
-    rule currentCC (True);
-
-        fpgaCC <= fpgaCC + 1;
-
-    endrule
 
     // ******* newInFlight ******* //
 
@@ -428,7 +381,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         
         // Log it.
         
-        funcpDebug($fwrite(debugLog, "NewInFlight: Allocating TOKEN %0d", idx));
+        debugLog.record($format("NewInFlight: Allocating TOKEN %0d", idx));
         
         // Reset the free list pointer so rewind knows whether this token has
         // registers allocated.
@@ -469,7 +422,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let req = linkDoITranslate.getReq();
         let tok = req.token;
         let vaddr = req.address;
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoITranslate: Begin.", tok.index));
+        debugLog.record($format("TOKEN %0d: DoITranslate: Begin.", tok.index));
         
         // Update scoreboard.
         tokScoreboard.iTransStart(tok.index);
@@ -493,7 +446,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             link_itlb.makeReq(tuple2(tok, aligned_addr));
             
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: DoITranslate1: ITLB Req (VA: 0x%h, AA: 0x%h)", tok.index, vaddr, aligned_addr));
+            debugLog.record($format("TOKEN %0d: DoITranslate1: ITLB Req (VA: 0x%h, AA: 0x%h)", tok.index, vaddr, aligned_addr));
   
             // Pass to the next stage.
             iTransQ.enq(tagged ITRANS_NORMAL tok);
@@ -503,7 +456,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         begin
 
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: DoITranslate1: Spanning ITLB Req 1 (VA: 0x%h, AA1: 0x%h)", tok.index, vaddr, aligned_addr));
+            debugLog.record($format("TOKEN %0d: DoITranslate1: Spanning ITLB Req 1 (VA: 0x%h, AA1: 0x%h)", tok.index, vaddr, aligned_addr));
   
             // A spanning ITranslate. Make the first request to the TLB.
             link_itlb.makeReq(tuple2(tok, aligned_addr));
@@ -533,7 +486,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         link_itlb.makeReq(tuple2(tok, aligned_addr2));
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoITranslate1: Second ITLB Req 2 (AA2: 0x%h)", tok.index, aligned_addr2));
+        debugLog.record($format("TOKEN %0d: DoITranslate1: Second ITLB Req 2 (AA2: 0x%h)", tok.index, aligned_addr2));
   
         // Unstall this stage.
         linkDoITranslate.deq();  
@@ -568,7 +521,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 iTransQ.deq();
 
                 // Log it.
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: DoITranslate2: ITLB Rsp (PA: 0x%h)", tok.index, mem_addr));
+                debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB Rsp (PA: 0x%h)", tok.index, mem_addr));
 
                 // Record the physical addr.
                 tokPhysicalAddrs.write(tok.index, tagged ONE mem_addr);
@@ -578,7 +531,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
                 // Return it to the timing partition. End of macro-operation (path 1)
                 linkDoITranslate.makeResp(initFuncpRspDoITranslate(tok, mem_addr));
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: DoITranslate: End (path 1).", tok.index));
+                debugLog.record($format("TOKEN %0d: DoITranslate: End (path 1).", tok.index));
 
             end
             tagged ITRANS_SPAN .tok:
@@ -587,7 +540,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 // A spanning access.
 
                 // Log it.
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: DoITranslate2: ITLB Spanning Rsp 1 (PA1: 0x%h)", tok.index, mem_addr));
+                debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB Spanning Rsp 1 (PA1: 0x%h)", tok.index, mem_addr));
 
                 // Return the first part to the timing partition.
                 linkDoITranslate.makeResp(initFuncpRspDoITranslate_part1(tok, mem_addr));
@@ -619,7 +572,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         MEM_ADDRESS mem_addr2 = fromMaybe(0, translated_addr);
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoITranslate2: ITLB Spanning Rsp 2 (PA2: 0x%h)", tok.index, mem_addr2));
+        debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB Spanning Rsp 2 (PA2: 0x%h)", tok.index, mem_addr2));
 
         // Record the physical addr.
         tokPhysicalAddrs.write(tok.index, tagged TWO tuple2(mem_addr1, mem_addr2));
@@ -633,7 +586,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
         // Return the rest to the timing partition. End of macro-operation (path 2).
         linkDoITranslate.makeResp(initFuncpRspDoITranslate_part2(tok, mem_addr2));
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoITranslate: End (path 2).", tok.index));
+        debugLog.record($format("TOKEN %0d: DoITranslate: End (path 2).", tok.index));
     
     endrule
 
@@ -658,7 +611,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let req = linkGetInst.getReq();
         let tok = req.token;
         linkGetInst.deq();
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: GetInstruction: Begin.", tok.index));
+        debugLog.record($format("TOKEN %0d: GetInstruction: Begin.", tok.index));
 
         // Update scoreboard.
         tokScoreboard.fetStart(tok.index);
@@ -683,7 +636,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let tok = inst1Q.first();
         
         // Get the physical address(es).
-        let p_addrs <- tokPhysicalAddrs.readResp();
+        let p_addrs <- tokPhysicalAddrs.readRsp();
         
         case (p_addrs) matches
             tagged ONE .p_addr:
@@ -693,7 +646,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 inst1Q.deq();
                 
                 // Log it.
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: GetInstruction2: Load Req (PA: 0x%h)", tok.index, p_addr));
+                debugLog.record($format("TOKEN %0d: GetInstruction2: Load Req (PA: 0x%h)", tok.index, p_addr));
 
                 // Kick to Mem State.
                 linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: p_addr});
@@ -709,7 +662,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             begin
 
                 // Log it.
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: GetInstruction2: Spanning Load Req 1 (PA1: 0x%h, PA2: 0x%h)", tok.index, p_addr1, p_addr2));
+                debugLog.record($format("TOKEN %0d: GetInstruction2: Spanning Load Req 1 (PA1: 0x%h, PA2: 0x%h)", tok.index, p_addr1, p_addr2));
 
                 // Kick the first request to the MemState.
                 linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: p_addr1});
@@ -742,7 +695,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: p_addr2});
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: GetInstruction2: Spanning Load Req 2 (PA2: 0x%h)", tok.index, p_addr2));
+        debugLog.record($format("TOKEN %0d: GetInstruction2: Spanning Load Req 2 (PA2: 0x%h)", tok.index, p_addr2));
 
         // Record that the result should come to us.
         memPathQ.enq(PATH_INST);
@@ -786,7 +739,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 ISA_INSTRUCTION inst = isaInstructionFromMemValue(v, offset);
 
                 // Log it.
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: GetInstruction3: Load Rsp (V: 0x%h, I: 0x%h)", fetch_info.token.index, v, inst));
+                debugLog.record($format("TOKEN %0d: GetInstruction3: Load Rsp (V: 0x%h, I: 0x%h)", fetch_info.token.index, v, inst));
 
                 // Record the instruction.
                 tokInst.write(fetch_info.token.index, inst);
@@ -796,7 +749,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
                 // Send response to timing partition. End of macro-operation (path 1).
                 linkGetInst.makeResp(initFuncpRspGetInstruction(fetch_info.token, inst));
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: GetInstruction: End (path 1).", fetch_info.token.index));
+                debugLog.record($format("TOKEN %0d: GetInstruction: End (path 1).", fetch_info.token.index));
 
 
             end
@@ -804,7 +757,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             begin
 
                 // Log it.
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: getInstruction: Spanning Load Rsp 1 (V1: 0x%h)", fetch_info.token.index, v));
+                debugLog.record($format("TOKEN %0d: getInstruction3: Spanning Load Rsp 1 (V1: 0x%h)", fetch_info.token.index, v));
 
                 // We need two fetches for this guy. Stall for the second response.
                 stateInst3 <= tagged INST3_SPAN_RSP v;
@@ -837,7 +790,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         ISA_INSTRUCTION inst = isaInstructionFromSpanningMemValues(v1, v2, offset);
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: GetInstruction3: Spanning Load Rsp 2 (V2: 0x%h, I: 0x%h)", fetch_info.token.index, v2, inst));
+        debugLog.record($format("TOKEN %0d: GetInstruction3: Spanning Load Rsp 2 (V2: 0x%h, I: 0x%h)", fetch_info.token.index, v2, inst));
 
         // Record the instruction.
         tokInst.write(fetch_info.token.index, inst);
@@ -851,7 +804,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         
         // Send response to timing partition. End of macro-operation (path 2).
         linkGetInst.makeResp(initFuncpRspGetInstruction(fetch_info.token, inst));
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: GetInstruction: End (path 2).", fetch_info.token.index));
+        debugLog.record($format("TOKEN %0d: GetInstruction: End (path 2).", fetch_info.token.index));
         
     endrule
 
@@ -879,13 +832,13 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let req = linkGetDeps.getReq();
         linkGetDeps.deq();
         let tok = req.token;
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: GetDeps: Begin.", tok.index));
+        debugLog.record($format("TOKEN %0d: GetDeps: Begin.", tok.index));
         
         // Update the status.
         tokScoreboard.decStart(tok.index);
         
         // Retrieve the instruction.
-        tokInst.req[0].read(tok.index);
+        tokInst.readPorts[0].readReq(tok.index);
 
         // Everyone gets a Physical Register, even if they don't have a destination.
         // Otherwise we would need another stage here.
@@ -908,7 +861,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let tok = depsQ.first();
 
         //Get the info the previous stage requested.
-        let inst     <- tokInst.resp[0].read();
+        let inst     <- tokInst.readPorts[0].readRsp();
         let new_preg <- freelist.forwardResp();
 
         // Decode the instruction using ISA-provided functions.
@@ -974,7 +927,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
         // If we have a dest, update the maptable with the correct physical register.
 
-        Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX) new_map = case (arc_dsts[0]) matches
+        Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) new_map = case (arc_dsts[0]) matches
             tagged Invalid:  return maptable;
             tagged Valid .d: return update(maptable, pack(d), new_preg);
           endcase;
@@ -995,7 +948,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             freelist.back();
 
             //Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: GetDeps2: JUNK TOKEN (NO UPDATE)", tok.index));
+            debugLog.record($format("TOKEN %0d: GetDeps2: JUNK TOKEN (NO UPDATE)", tok.index));
 
         end
 
@@ -1033,12 +986,12 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // Note that there is an implicit assumption here that no branch or emulated instruction has more than one destination.
         if (isaIsBranch(inst))
         begin
-             funcpDebug($fwrite(debugLog, "TOKEN %0d: GetDeps2: Making Snapshot of Branch.", tok.index));
+             debugLog.record($format("TOKEN %0d: GetDeps2: Making Snapshot of Branch.", tok.index));
              snapshots.makeSnapshot(tok.index, new_map);
         end
         else if (is_emulated)
         begin
-             funcpDebug($fwrite(debugLog, "TOKEN %0d: GetDeps2: Making Snapshot of Emulated Instruction.", tok.index));
+             debugLog.record($format("TOKEN %0d: GetDeps2: Making Snapshot of Emulated Instruction.", tok.index));
              snapshots.makeSnapshot(tok.index, new_map);
         end
              
@@ -1054,15 +1007,15 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
         begin
           case (map_srcs[x]) matches
-              tagged Invalid: funcpDebug($fwrite(debugLog, "TOKEN %0d: GetDeps2: No Source %0d.", tok.index, fromInteger(x)));
-              tagged Valid {.ar, .pr}: funcpDebug($fwrite(debugLog, "TOKEN %0d: GetDeps2: Source %0d Mapped (%0d/%0d).", tok.index, fromInteger(x), ar, pr));
+              tagged Invalid: debugLog.record($format("TOKEN %0d: GetDeps2: No Source %0d.", tok.index, fromInteger(x)));
+              tagged Valid {.ar, .pr}: debugLog.record($format("TOKEN %0d: GetDeps2: Source %0d Mapped (%0d/%0d).", tok.index, fromInteger(x), ar, pr));
           endcase
         end
 
         // Log the dest mapping
         case (map_dsts[0]) matches
-            tagged Invalid: funcpDebug($fwrite(debugLog, "TOKEN %0d: GetDeps2: No Destination.", tok.index));
-            tagged Valid {.ar, .pr}: funcpDebug($fwrite(debugLog, "TOKEN %0d: GetDeps2: Destination 0 Mapped (%0d/%0d).", tok.index, ar, pr));
+            tagged Invalid: debugLog.record($format("TOKEN %0d: GetDeps2: No Destination.", tok.index));
+            tagged Valid {.ar, .pr}: debugLog.record($format("TOKEN %0d: GetDeps2: Destination 0 Mapped (%0d/%0d).", tok.index, ar, pr));
         endcase
             
         if (num_dsts <= 1 || tok_killed)
@@ -1079,14 +1032,14 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
             // Return everything to the timing partition. End of macro-operation (path 1).
             linkGetDeps.makeResp(initFuncpRspGetDependencies(tok, map_srcs, final_map_dsts));
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: GetDeps: End (path 1).", tok.index));
+            debugLog.record($format("TOKEN %0d: GetDeps: End (path 1).", tok.index));
 
         end
         else
         begin 
 
             // More dests to allocate. Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: GetDeps2: Need to allocate %0d more destinations.", tok.index, num_dsts-1));
+            debugLog.record($format("TOKEN %0d: GetDeps2: Need to allocate %0d more destinations.", tok.index, num_dsts-1));
 
             // Request another phys reg
             freelist.forwardReq();
@@ -1143,7 +1096,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             prfValids[phy_dst] <= False;
 
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: GetDeps2: Destination %0d Mapped (%0d/%0d)", tok.index, num, arc_dst, phy_dst));
+            debugLog.record($format("TOKEN %0d: GetDeps2: Destination %0d Mapped (%0d/%0d)", tok.index, num, arc_dst, phy_dst));
 
         end
 
@@ -1191,7 +1144,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
             // Return everything to the timing partition. End of macro-operation (path 2).
             linkGetDeps.makeResp(initFuncpRspGetDependencies(tok, dep_info.mapSrcs, new_map_dsts));
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: GetDeps: End (path 2).", tok.index));
+            debugLog.record($format("TOKEN %0d: GetDeps: End (path 2).", tok.index));
 
         end
             
@@ -1217,7 +1170,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let req = linkGetResults.getReq();
         linkGetResults.deq();
         let tok = req.token;
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: GetResults: Begin.", tok.index));
+        debugLog.record($format("TOKEN %0d: GetResults: Begin.", tok.index));
 
         // Update the scoreboard.
         tokScoreboard.exeStart(tok.index);
@@ -1244,7 +1197,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             snapshots.requestSnapshot(validValue(msnap));
 
              // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: GetResults1: Beginning Instruction Emulation.", tok.index));
+            debugLog.record($format("TOKEN %0d: GetResults1: Beginning Instruction Emulation.", tok.index));
 
         end
         else
@@ -1273,7 +1226,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         res1Q.deq();
 
         // Response from previous stage.
-        let ws <- tokWriters.readResp();
+        let ws <- tokWriters.readRsp();
         
         // We let junk proceed
         if (!tokScoreboard.isAllocated(tok.index))
@@ -1287,7 +1240,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 execStallValuesNeeded[x] <= False;
                 execStallReqsMade[x] <= True;
             end
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: GetResults2: Letting Junk Proceed!", tok.index));
+            debugLog.record($format("TOKEN %0d: GetResults2: Letting Junk Proceed!", tok.index));
         end
         else
         begin
@@ -1302,7 +1255,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             end
             
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: GetResults2: Need to request the srcs in this mask: %b", tok.index, pack(values_needed)));
+            debugLog.record($format("TOKEN %0d: GetResults2: Need to request the srcs in this mask: %b", tok.index, pack(values_needed)));
             
             // Now we use a separate mask to record which requests have been made.
             // To speed things up we try to make the first 2 requests now.
@@ -1315,10 +1268,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 begin
                     if (prfValids[r]) // The source is ready so we can make the request.
                     begin
-                        prf.req[0].read(r);
+                        prf.readPorts[0].readReq(r);
                         reqs_made[0] = True;
                         resEvenQ.enq(0);
-                        funcpDebug($fwrite(debugLog, "TOKEN %0d: GetResults2: Requesting src 0.", tok.index));
+                        debugLog.record($format("TOKEN %0d: GetResults2: Requesting src 0.", tok.index));
                     end
                 end
             endcase
@@ -1331,10 +1284,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                     begin
                         if (prfValids[r]) // The source is ready so we can make the request.
                         begin
-                            prf.req[1].read(r);
+                            prf.readPorts[1].readReq(r);
                             reqs_made[1] = True;
                             resOddQ.enq(1);
-                            funcpDebug($fwrite(debugLog, "TOKEN %0d: GetResults2: Requesting src 1.", tok.index));
+                            debugLog.record($format("TOKEN %0d: GetResults2: Requesting src 1.", tok.index));
                         end
                     end
                 endcase
@@ -1369,10 +1322,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                                       prfValids[r] &&& // The register is ready...
                                       !execStallReqsMade[x]); //We haven't made the request yet.
             
-            prf.req[0].read(r);
+            prf.readPorts[0].readReq(r);
             execStallReqsMade[x] <= True;
             resEvenQ.enq(fromInteger(x));
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: getResults: Requesting src %0d.", execStallTok.index, fromInteger(x)));
+            debugLog.record($format("TOKEN %0d: GetResults2S: Requesting src %0d.", execStallTok.index, fromInteger(x)));
 
         endrule
     
@@ -1381,11 +1334,11 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                                       execStallReqsMade[x] &&&  //We made the request already.
                                       resEvenQ.first() == fromInteger(x)); // Our response is next in line.
             
-            let v <- prf.resp[0].read();
+            let v <- prf.readPorts[0].readRsp();
             execStallValues[x] <= v;
             execStallValuesNeeded[x] <= False;
             resEvenQ.deq();
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: getResults: Receiving src %0d.", execStallTok.index, fromInteger(x)));
+            debugLog.record($format("TOKEN %0d: GetResults2S: Receiving src %0d.", execStallTok.index, fromInteger(x)));
 
         endrule
         
@@ -1397,10 +1350,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                                           prfValids[r] &&& // The register is ready...
                                           !execStallReqsMade[x+1]); //We haven't made the request yet.
 
-                prf.req[1].read(r);
+                prf.readPorts[1].readReq(r);
                 execStallReqsMade[x+1] <= True;
                 resOddQ.enq(fromInteger(x+1));
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: getResults: Requesting src %0d.", execStallTok.index, fromInteger(x+1)));
+                debugLog.record($format("TOKEN %0d: GetResults2S: Requesting src %0d.", execStallTok.index, fromInteger(x+1)));
 
             endrule
 
@@ -1409,11 +1362,11 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                                          execStallReqsMade[x+1] &&&  //We made the request already.
                                          resOddQ.first() == fromInteger(x+1)); // Our response is next in line.
 
-                let v <- prf.resp[1].read();
+                let v <- prf.readPorts[1].readRsp();
                 execStallValues[x+1] <= v;
                 execStallValuesNeeded[x+1] <= False;
                 resOddQ.deq();
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: getResults: Receiving src %0d.", execStallTok.index, fromInteger(x+1)));
+                debugLog.record($format("TOKEN %0d: GetResults2S: Receiving src %0d.", execStallTok.index, fromInteger(x+1)));
 
             endrule
         end
@@ -1437,8 +1390,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         res2Q.enq(execStallTok);
 
         tokAddr.readReq(execStallTok.index);
-        tokInst.req[1].read(execStallTok.index);
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: getResults: All sources ready. Proceeding...", execStallTok.index));
+        tokInst.readPorts[1].readReq(execStallTok.index);
+        debugLog.record($format("TOKEN %0d: GetResults2: All sources ready. Proceeding...", execStallTok.index));
 
     endrule
 
@@ -1453,8 +1406,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         res2Q.deq();
 
         // Get all the data the previous stage kicked off.
-        let addr <- tokAddr.readResp();
-        let inst <- tokInst.resp[1].read();
+        let addr <- tokAddr.readRsp();
+        let inst <- tokInst.readPorts[1].readRsp();
 
         // Combine the data we just go with any possible data from stalling.
         Vector#(ISA_MAX_SRCS, ISA_VALUE) values = newVector();
@@ -1463,13 +1416,13 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
            values[x] = execStallValues[x];
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: getResults: Sending to Datapath.", tok.index));
+        debugLog.record($format("TOKEN %0d: GetResults3: Sending to Datapath.", tok.index));
 
         // Send it to the datapath.
         linkToDatapath.makeReq(initISADatapathReq(inst, addr, values));
 
         // Look up the destinations for the writeback.
-        tokDsts.req[0].read(tok.index);
+        tokDsts.readPorts[0].readReq(tok.index);
 
         // Pass it to the next stage.
         res3Q.enq(tuple2(tok, addr));
@@ -1496,7 +1449,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         tokMemAddr.write(tok.index, rsp.memAddress);
 
         // Get the destination response
-        let dsts <- tokDsts.resp[0].read();
+        let dsts <- tokDsts.readPorts[0].readRsp();
         
         // The first dest should always be valid (it may not be architecturally visible)
         let dst = validValue(dsts[0]);
@@ -1519,7 +1472,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             
                     prf.write(dst, v);
                     prfValids[dst] <= True;
-                    funcpDebug($fwrite(debugLog, "TOKEN %0d: GetResults4: Writing (PR%0d <= 0x%x)", tok.index, dst, v));
+                    debugLog.record($format("TOKEN %0d: GetResults4: Writing (PR%0d <= 0x%x)", tok.index, dst, v));
                 
                 end
 
@@ -1546,14 +1499,14 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
             // Return timing model. End of macro-operation (path 1).
             linkGetResults.makeResp(initFuncpRspGetResults(tok, addr, rsp.timepResult));
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: GetResults: End (path 1).", tok.index));
+            debugLog.record($format("TOKEN %0d: GetResults: End (path 1).", tok.index));
 
         end
         else // We've got to write back more.
         begin
             
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: GetResults4: Writing back additional values.", tok.index));
+            debugLog.record($format("TOKEN %0d: GetResults4: Writing back additional values.", tok.index));
 
             // Marshall up the values for writeback.
 
@@ -1599,7 +1552,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 tagged Invalid:
                 begin
                     // Hopefully this doesn't happen too much.
-                    funcpDebug($fwrite(debugLog, "TOKEN %0d: GetResults4: Skipping Dest %0d", tok.index, wb_info.current + 1));
+                    debugLog.record($format("TOKEN %0d: GetResults4: Skipping Dest %0d", tok.index, wb_info.current + 1));
 
                 end
                 tagged Valid {.dst, .val}:
@@ -1608,7 +1561,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                     // An actual writeback.
                     prf.write(dst, val);
                     prfValids[dst] <= True;
-                    funcpDebug($fwrite(debugLog, "TOKEN %0d: GetResults4: Writing Dest %0d (PR%0d <= 0x%x)", tok.index, wb_info.current + 1, dst, val));
+                    debugLog.record($format("TOKEN %0d: GetResults4: Writing Dest %0d (PR%0d <= 0x%x)", tok.index, wb_info.current + 1, dst, val));
 
                 end
             endcase
@@ -1626,7 +1579,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
           
                 // Return to timing model. End of macro-operation (path 2).
                 linkGetResults.makeResp(initFuncpRspGetResults(tok, addr, wb_info.result));
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: GetResults: End (path 2).", tok.index));
+                debugLog.record($format("TOKEN %0d: GetResults: End (path 2).", tok.index));
 
             end
             else
@@ -1689,37 +1642,30 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     
     rule emulateInstruction2_Req (state == RSM_SyncingRegisters);
     
-        // Some ISA's have a sparse packing of register names.  Don't sync
-        // a register if the current index doesn't map to a real register index.
-        ISA_REG_INDEX isa_reg = unpack(synchronizingCurReg);
-        if (pack(isa_reg) == synchronizingCurReg)
-        begin
+        // Some ISA's have a sparse packing of register names.  They should define Arith so we 
+        // don't transmit them spuriously.
 
-            // Get the maptable at the time of the emulated instruction.
-            let emulation_map <- snapshots.returnSnapshot();
+        // Get the maptable at the time of the emulated instruction.
+        let emulation_map <- snapshots.returnSnapshot();
 
-            // Lookup which register to send next.
-            FUNCP_PHYSICAL_REG_INDEX current_pr = emulation_map[synchronizingCurReg];
-        
-            // Make the request to the regfile.
-            prf.req[0].read(current_pr);
-        
-            // Pre-load the snapshot for next time.
-            snapshots.requestSnapshot(emulatingSnap);
-        
-            // Pass it on to the next stage.
-            syncQ.enq(tuple2(synchronizingCurReg, current_pr));
-        end
-        
-        // Move on to the next register.
-        Bit#(rname_SZ) next_r = synchronizingCurReg + 1;
+        // Lookup which register to send next.
+        FUNCP_PHYSICAL_REG_INDEX current_pr = emulation_map[pack(synchronizingCurReg)];
+
+        // Make the request to the regfile.
+        prf.readPorts[0].readReq(current_pr);
+
+        // Pre-load the snapshot for next time.
+        snapshots.requestSnapshot(emulatingSnap);
+
+        // Pass it on to the next stage.
+        syncQ.enq(tuple2(synchronizingCurReg, current_pr));
         
         // Was this our last request?
-        if (next_r == 0)
+        if (synchronizingCurReg == maxBound)
         begin
         
             // Request the inst and current PC
-            tokInst.req[0].read(emulatingToken.index);
+            tokInst.readPorts[0].readReq(emulatingToken.index);
             tokAddr.readReq(emulatingToken.index);
 
             // End the loop.
@@ -1728,7 +1674,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         end
         
         // Increment, and possibly repeat.
-        synchronizingCurReg <= next_r;
+        synchronizingCurReg <= synchronizingCurReg + 1;
         
     
     endrule
@@ -1745,13 +1691,13 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         syncQ.deq();
         
         // Get the register value from the regfile.
-        ISA_VALUE reg_val <- prf.resp[0].read();
+        ISA_VALUE reg_val <- prf.readPorts[0].readRsp();
         
         // Send the regsiter on to software via RRR
-        client_stub.makeRequest_sync(tuple2(unpack(arch_reg), reg_val));
+        client_stub.makeRequest_sync(tuple2(arch_reg, reg_val));
 
         //Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: emulateInstruction: Transmitting Register R%0d (PR%0d) = 0x%h.", emulatingToken.index, unpack(arch_reg), phys_reg, reg_val));
+        debugLog.record($format("TOKEN %0d: EmulateInstruction2: Transmitting Register R%0d (PR%0d) = 0x%h.", emulatingToken.index, arch_reg, phys_reg, reg_val));
     
     endrule
     
@@ -1763,8 +1709,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     rule emulateInstruction3 (state == RSM_RequestingEmulation);
         
         // Get the instruction and current pc
-        ISA_INSTRUCTION inst <- tokInst.resp[0].read();
-        ISA_ADDRESS       pc <- tokAddr.readResp();
+        ISA_INSTRUCTION inst <- tokInst.readPorts[0].readRsp();
+        ISA_ADDRESS       pc <- tokAddr.readRsp();
         
         emulatingPC <= pc;
 
@@ -1772,7 +1718,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         client_stub.makeRequest_emulate(tuple2(inst, pc));
         
         //Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: emulateInstruction: Requesting Emulation of inst 0x%h from address 0x%h", emulatingToken.index, inst, pc));
+        debugLog.record($format("TOKEN %0d: EmulateInstruction3: Requesting Emulation of inst 0x%h from address 0x%h", emulatingToken.index, inst, pc));
         stat_isa_emul.incr();
 
         //Go to receiving updates.
@@ -1809,7 +1755,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         snapshots.requestSnapshot(emulatingSnap);
         
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: emulateInstruction: Writing (PR%0d <= 0x%h)", emulatingToken.index, pr, v));
+        debugLog.record($format("TOKEN %0d: EmulateInstruction3: Writing (PR%0d <= 0x%h)", emulatingToken.index, pr, v));
     
     endrule
 
@@ -1851,13 +1797,13 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                    endcase;
 
         //Log it
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: emulateInstruction: Emulation finished.", emulatingToken.index));
+        debugLog.record($format("TOKEN %0d: EmulateInstruction3: Emulation finished.", emulatingToken.index));
   
         // Send the response to the timing model.
         // End of macro-operation.
         linkGetResults.makeResp(initFuncpRspGetResults(emulatingToken, emulatingPC, resp));
 
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: GetResults: End (path 3).", emulatingToken.index));
+        debugLog.record($format("TOKEN %0d: GetResults: End (path 3).", emulatingToken.index));
 
     endrule
 
@@ -1882,7 +1828,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let req = linkDoDTranslate.getReq();
         linkDoDTranslate.deq();
         let tok = req.token;
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoDTranslate: Start.", tok.index));
+        debugLog.record($format("TOKEN %0d: DoDTranslate: Start.", tok.index));
 
         // Update scoreboard.
         tokScoreboard.dTransStart(tok.index);
@@ -1896,7 +1842,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let op_type = is_load ? tokScoreboard.getLoadType(tok.index) : tokScoreboard.getStoreType(tok.index);
 
         // Retrieve the mem address.
-        tokMemAddr.req[0].read(tok.index);
+        tokMemAddr.readPorts[0].readReq(tok.index);
 
         // Pass to the next stage.
         dTrans1Q.enq(tuple2(tok, op_type));
@@ -1914,7 +1860,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         match {.tok, .op_type} = dTrans1Q.first();
         
         // Get the response from memory.        
-        let vaddr <- tokMemAddr.resp[0].read();
+        let vaddr <- tokMemAddr.readPorts[0].readRsp();
 
         // Align the address.
         match {.aligned_addr, .offset_addr} = isaAlignAddress(vaddr);
@@ -1932,7 +1878,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             link_dtlb.makeReq(tuple2(tok, aligned_addr));
 
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: DoDTranslate: DTLB Req (VA: 0x%h AA: 0x%h)", tok.index, vaddr, aligned_addr));
+            debugLog.record($format("TOKEN %0d: DoDTranslate2: DTLB Req (VA: 0x%h AA: 0x%h)", tok.index, vaddr, aligned_addr));
   
             // Pass to the next stage.
             dTrans2Q.enq(tagged DTRANS_NORMAL tok);
@@ -1942,7 +1888,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         begin
 
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: DoDTranslate: DTLB Req Spanning 1 (VA: 0x%h, AA1: 0x%h)", tok.index, vaddr, aligned_addr));
+            debugLog.record($format("TOKEN %0d: DoDTranslate2: DTLB Req Spanning 1 (VA: 0x%h, AA1: 0x%h)", tok.index, vaddr, aligned_addr));
   
             // A spanning DTranslate. Make the first request to the TLB.
             link_dtlb.makeReq(tuple2(tok, aligned_addr));
@@ -1971,7 +1917,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         link_dtlb.makeReq(tuple2(tok, aligned_addr2));
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoDTranslate: DTLB Req Spanning 2 (AA2: 0x%h)", tok.index, aligned_addr2));
+        debugLog.record($format("TOKEN %0d: DoDTranslate2: DTLB Req Spanning 2 (AA2: 0x%h)", tok.index, aligned_addr2));
   
         // Unstall this stage.
         dTrans1Q.deq();  
@@ -2005,7 +1951,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 dTrans2Q.deq();
 
                 // Log it.
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: doDTranslate3: DTLB Rsp (PA: 0x%h)", tok.index, mem_addr));
+                debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB Rsp (PA: 0x%h)", tok.index, mem_addr));
 
                 // Record the physical addr.
                 tokPhysicalMemAddrs.write(tok.index, tagged ONE mem_addr);
@@ -2015,7 +1961,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
                 // Return it to the timing partition. End of macro-operation (path 1)
                 linkDoDTranslate.makeResp(initFuncpRspDoDTranslate(tok, mem_addr));
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: doDTranslate: End (path 1).", tok.index));
+                debugLog.record($format("TOKEN %0d: doDTranslate: End (path 1).", tok.index));
                 
 
             end
@@ -2025,7 +1971,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 // A spanning access.
 
                 // Log it.
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: doDTranslate3: DTLB Span Rsp 1 (PA1: 0x%h)", tok.index, mem_addr));
+                debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB Span Rsp 1 (PA1: 0x%h)", tok.index, mem_addr));
 
                 // Return the first part to the timing partition.
                 linkDoDTranslate.makeResp(initFuncpRspDoDTranslate_part1(tok, mem_addr));
@@ -2052,7 +1998,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         MEM_ADDRESS mem_addr2 = fromMaybe(0, translated_addr);
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: doDTranslate3: DTLB Span Rsp 2 (PA2: 0x%h)", tok.index, mem_addr2));
+        debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB Span Rsp 2 (PA2: 0x%h)", tok.index, mem_addr2));
 
         // Record the physical addresses.
         tokPhysicalMemAddrs.write(tok.index, tagged TWO tuple2(mem_addr1, mem_addr2));
@@ -2066,7 +2012,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
         // Return the rest to the timing partition. End of macro-operation (path 2).
         linkDoDTranslate.makeResp(initFuncpRspDoDTranslate_part2(tok, mem_addr2));
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: doDTranslate: End (path 2).", tok.index));
+        debugLog.record($format("TOKEN %0d: DoDTranslate: End (path 2).", tok.index));
     
     endrule
 
@@ -2100,7 +2046,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         begin
 
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads1: Ignoring emulated instruction.", tok.index));
+            debugLog.record($format("TOKEN %0d: DoLoads1: Ignoring emulated instruction.", tok.index));
 
             // Respond to the timing model. End of macro-operation.
             linkDoLoads.makeResp(initFuncpRspDoLoads(tok));
@@ -2110,13 +2056,13 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         begin
 
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads: Begin.", tok.index)); 
+            debugLog.record($format("TOKEN %0d: DoLoads: Begin.", tok.index)); 
 
             // Update the scoreboard.
             tokScoreboard.loadStart(tok.index);
 
             // Read the effective address.
-            tokPhysicalMemAddrs.req[0].read(tok.index);
+            tokPhysicalMemAddrs.readPorts[0].readReq(tok.index);
 
             // Pass to the next stage.
             loads1Q.enq(tok);
@@ -2136,7 +2082,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let tok = loads1Q.first();
 
         // Get the address(es).
-        let p_addrs <- tokPhysicalMemAddrs.resp[0].read();
+        let p_addrs <- tokPhysicalMemAddrs.readPorts[0].readRsp();
         
         // Get the offset.
         let offset = tokScoreboard.getMemOpOffset(tok.index);
@@ -2152,7 +2098,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 loads1Q.deq();
 
                 // Log it.
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads2: Requesting Load (PA: 0x%h)", tok.index, p_addr));
+                debugLog.record($format("TOKEN %0d: DoLoads2: Requesting Load (PA: 0x%h)", tok.index, p_addr));
 
                 // Make the request to the DMem.
                 linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: p_addr});
@@ -2161,7 +2107,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 memPathQ.enq(PATH_LOAD);
 
                 // Read the destination so we can writeback the correct register.
-                tokDsts.req[1].read(tok.index);
+                tokDsts.readPorts[1].readReq(tok.index);
 
                 // Pass it on to the final stage.
                 let load_info = LOADS_INFO {token: tok, memAddrs: p_addrs, offset: offset, opType: l_type};
@@ -2172,7 +2118,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             begin
 
                 // Log it.
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads2: Starting Spanning Load (PA1: 0x%h)", tok.index, p_addr1));
+                debugLog.record($format("TOKEN %0d: DoLoads2: Starting Spanning Load (PA1: 0x%h)", tok.index, p_addr1));
 
                 // Make the request to the DMem.
                 linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: p_addr1});
@@ -2199,10 +2145,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         memPathQ.enq(PATH_LOAD);
         
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads2: Finishing Spanning Load (PA2: 0x%h)", load_info.token.index, p_addr2));
+        debugLog.record($format("TOKEN %0d: DoLoads2: Finishing Spanning Load (PA2: 0x%h)", load_info.token.index, p_addr2));
 
         // Read the destination so we can writeback the correct register.
-        tokDsts.req[1].read(load_info.token.index);
+        tokDsts.readPorts[1].readReq(load_info.token.index);
 
         // Unstall this stage.
         loads1Q.deq();
@@ -2241,16 +2187,16 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
                 // Convert the value using the ISA-provided conversion function.
                 ISA_VALUE val = isaLoadValueFromMemValue(v, load_info.opType, load_info.offset);
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads3: ISA Load (V: 0x%h, T: %0d, O: %b) = 0x%h", tok.index, v, pack(load_info.opType), load_info.offset, val)); 
+                debugLog.record($format("TOKEN %0d: DoLoads3: ISA Load (V: 0x%h, T: %0d, O: %b) = 0x%h", tok.index, v, pack(load_info.opType), load_info.offset, val)); 
 
                 // Get the destination for the purposes of writeback.
-                let dsts <- tokDsts.resp[1].read();
+                let dsts <- tokDsts.readPorts[1].readRsp();
 
                 // We assume that the destination for the load is destination 1.
                 let dst = validValue(dsts[0]);
 
                 // Log it.
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads3: Load Response Writing (PR%0d <= 0x%h)", tok.index, dst, val));
+                debugLog.record($format("TOKEN %0d: DoLoads3: Load Response Writing (PR%0d <= 0x%h)", tok.index, dst, val));
 
                 // Update the physical register file.
                 prf.write(dst, val);
@@ -2272,7 +2218,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             begin
 
                 // Log it.
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads3: First Span Response (V1: 0x%h)", load_info.token.index, v));
+                debugLog.record($format("TOKEN %0d: DoLoads3: First Span Response (V1: 0x%h)", load_info.token.index, v));
 
                 // We needed two loads for this guy. Stall for the second response.
                 stateLoads3 <= tagged LOADS3_SPAN_RSP v;
@@ -2302,20 +2248,20 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         memPathQ.deq();
         
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads3: Second Span Response (V2: 0x%h)", tok.index, v2));
+        debugLog.record($format("TOKEN %0d: DoLoads3: Second Span Response (V2: 0x%h)", tok.index, v2));
 
         // Convert the value using the ISA-provided conversion function.
         ISA_VALUE val = isaLoadValueFromSpanningMemValues(v1, v2, load_info.offset, load_info.opType);
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads3: ISA SpanLoad (V1: 0x%h, V2: 0x%hm, T: %0d, O: %b) = 0x%h", tok.index, v1, v2, pack(load_info.opType), load_info.offset, val)); 
+        debugLog.record($format("TOKEN %0d: DoLoads3: ISA SpanLoad (V1: 0x%h, V2: 0x%hm, T: %0d, O: %b) = 0x%h", tok.index, v1, v2, pack(load_info.opType), load_info.offset, val)); 
 
         // Get the destination for the purposes of writeback.
-        let dsts <- tokDsts.resp[1].read();
+        let dsts <- tokDsts.readPorts[1].readRsp();
 
         // We assume that the destination for the load is destination 1.
         let dst = validValue(dsts[0]);
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: doLoads3: Load Response Writing (PR%0d <= 0x%h)", tok.index, dst, val));
+        debugLog.record($format("TOKEN %0d: DoLoads3: Load Response Writing (PR%0d <= 0x%h)", tok.index, dst, val));
 
         // Update the physical register file.
         prf.write(dst, val);
@@ -2369,7 +2315,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         begin
 
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores: Ignoring emulated instruction.", tok.index));
+            debugLog.record($format("TOKEN %0d: DoStores: Ignoring emulated instruction.", tok.index));
 
             // Respond to the timing model. End of macro-operation.
             linkDoStores.makeResp(initFuncpRspDoStores(tok));
@@ -2379,7 +2325,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         begin
 
             // Log it.
-            funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores: Begin.", tok.index)); 
+            debugLog.record($format("TOKEN %0d: DoStores: Begin.", tok.index)); 
 
             // Update the scoreboard.
             tokScoreboard.storeStart(tok.index);
@@ -2388,7 +2334,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             tokStoreValue.readReq(tok.index);
 
             // Read the effective address(es).
-            tokPhysicalMemAddrs.req[1].read(tok.index);
+            tokPhysicalMemAddrs.readPorts[1].readReq(tok.index);
 
             // Pass to the next stage.
             stores1Q.enq(tok);
@@ -2414,10 +2360,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let offset = tokScoreboard.getMemOpOffset(tok.index);
 
         // Get the store value.
-        let store_val <- tokStoreValue.readResp();
+        let store_val <- tokStoreValue.readRsp();
 
         // Get the physical address(es).
-        let p_addrs <- tokPhysicalMemAddrs.resp[1].read();
+        let p_addrs <- tokPhysicalMemAddrs.readPorts[1].readRsp();
         
         case (p_addrs) matches
             tagged ONE .p_addr:
@@ -2435,7 +2381,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                     memPathQ.enq(PATH_STORE);
 
                     // Log it.
-                    funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores2: Load Req for Read-Modify-Write. (PA: 0x%h).", tok.index, p_addr)); 
+                    debugLog.record($format("TOKEN %0d: DoStores2: Load Req for Read-Modify-Write. (PA: 0x%h).", tok.index, p_addr)); 
 
                     // Stall this stage.
                     let store_info = STORES_INFO
@@ -2457,20 +2403,20 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
                     // Convert the store.
                     let mem_store_value = isaStoreValueToMemValue(store_val, st_type);
-                    funcpDebug($fwrite(debugLog, "TOKEN %0d: doStores2: ISA Store (V: 0x%h, T: %0d, O: %b) = 0x%h", tok.index, store_val,  pack(st_type), offset, mem_store_value)); 
+                    debugLog.record($format("TOKEN %0d: DoStores2: ISA Store (V: 0x%h, T: %0d, O: %b) = 0x%h", tok.index, store_val,  pack(st_type), offset, mem_store_value)); 
 
                     // Make the request to the memory state.
                     linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, addr: p_addr, val: mem_store_value});
 
                     // Log it.
-                    funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores2: Sending Store to Memory (PA: 0x%h, V: 0x%h).", tok.index, p_addr, mem_store_value)); 
+                    debugLog.record($format("TOKEN %0d: DoStores2: Sending Store to Memory (PA: 0x%h, V: 0x%h).", tok.index, p_addr, mem_store_value)); 
 
                     // Update the scoreboard.
                     tokScoreboard.storeFinish(tok.index);
 
                     // Return to the timing partition. End of macro-operation (path 1).
                     linkDoStores.makeResp(initFuncpRspDoStores(tok));
-                    funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores: End (path 1).", tok.index));
+                    debugLog.record($format("TOKEN %0d: DoStores: End (path 1).", tok.index));
 
 
                 end
@@ -2487,7 +2433,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 memPathQ.enq(PATH_STORE);
 
                 // Log it.
-                funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores2: Spanning Store Load Req 1 (PA1: 0x%h, PA2: 0x%h).", tok.index, p_addr1, p_addr2)); 
+                debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Load Req 1 (PA1: 0x%h, PA2: 0x%h).", tok.index, p_addr1, p_addr2)); 
 
                 // Stall this stage.
                 let store_info = STORES_INFO
@@ -2524,18 +2470,18 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         memPathQ.deq();
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores2: Got RMW Load Rsp (V: 0x%h).", tok.index, existing_val)); 
+        debugLog.record($format("TOKEN %0d: DoStores2: Got RMW Load Rsp (V: 0x%h).", tok.index, existing_val)); 
 
         // Merge the values.
         let new_mem_val = isaStoreValueToMemValueRMW(existing_val, store_info.storeValue, store_info.offset, store_info.opType);
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: doStores2: ISA StoreRMW (EV: 0x%h, V: 0x%h, T: %0d, O: %b) = 0x%h", tok.index, existing_val, store_info.storeValue,  pack(store_info.opType), store_info.offset, new_mem_val)); 
+        debugLog.record($format("TOKEN %0d: doStores2: ISA StoreRMW (EV: 0x%h, V: 0x%h, T: %0d, O: %b) = 0x%h", tok.index, existing_val, store_info.storeValue,  pack(store_info.opType), store_info.offset, new_mem_val)); 
 
         // Write the store to memory.
         let mem_addr = getFirst(store_info.memAddrs);
         linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, addr: mem_addr, val: new_mem_val});
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores2: Sending RMW Store to Memory (PA: 0x%h, V: 0x%h).", tok.index, mem_addr, new_mem_val)); 
+        debugLog.record($format("TOKEN %0d: DoStores2: Sending RMW Store to Memory (PA: 0x%h, V: 0x%h).", tok.index, mem_addr, new_mem_val)); 
 
         // Unstall this stage.
         stateStores2 <= tagged STORES2_NORMAL;
@@ -2546,7 +2492,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         
         // Return to the timing partition. End of macro-operation (path 2).
         linkDoStores.makeResp(initFuncpRspDoStores(tok));
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores: End (path 2).", tok.index));
+        debugLog.record($format("TOKEN %0d: DoStores: End (path 2).", tok.index));
         
     
     endrule
@@ -2569,7 +2515,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         memPathQ.enq(PATH_STORE);
         
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores2: Spanning Store Load Req 2 (PA2: 0x%h).", p_addr2)); 
+        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Load Req 2 (PA2: 0x%h).", p_addr2)); 
 
         // Wait for the first response.
         stateStores2 <= tagged STORES2_SPAN_RSP1 store_info;
@@ -2593,7 +2539,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         memPathQ.deq();
         
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores2: Spanning Store Load Rsp 1 (V: 0x%h).", tok.index, existing_val1));         
+        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Load Rsp 1 (V: 0x%h).", tok.index, existing_val1));         
         
         // Wait for the second response.
         stateStores2 <= tagged STORES2_SPAN_RSP2 tuple2(store_info, existing_val1);
@@ -2617,18 +2563,18 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         memPathQ.deq();
         
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores2: Spanning Store Load Rsp 2 (V: 0x%h).", tok.index, existing_val2));
+        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Load Rsp 2 (V: 0x%h).", tok.index, existing_val2));
         
         // Use the ISA-provided conversion function.
         match {.new_val1, .new_val2} = isaStoreValueToSpanningMemValues(existing_val1, existing_val2, store_info.offset, store_info.storeValue, store_info.opType);
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: doStores2: ISA StoreSpan (EV1: 0x%h, EV2, 0x%h, V: 0x%h, T: %0d, O: %b) = 0x%h, 0x%h", tok.index, existing_val1, existing_val2, store_info.storeValue,  pack(store_info.opType), store_info.offset, new_val1, new_val2)); 
+        debugLog.record($format("TOKEN %0d: DoStores2: ISA StoreSpan (EV1: 0x%h, EV2, 0x%h, V: 0x%h, T: %0d, O: %b) = 0x%h, 0x%h", tok.index, existing_val1, existing_val2, store_info.storeValue,  pack(store_info.opType), store_info.offset, new_val1, new_val2)); 
 
         // Make the first store request.
         MEM_ADDRESS p_addr1 = getFirst(store_info.memAddrs);
         linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, addr: p_addr1, val: new_val1});
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores2: Spanning Store Req 1 (PA1: V1: 0x%h).", tok.index, p_addr1, new_val1));
+        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Req 1 (PA1: V1: 0x%h).", tok.index, p_addr1, new_val1));
 
         // Stall to make the second request.
         stateStores2 <= tagged STORES2_SPAN_END tuple2(store_info, new_val2);
@@ -2649,7 +2595,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, addr: p_addr2, val: new_val2});
         
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores2: Spanning Store Req 2 (PA2: V2: 0x%h).", tok.index, p_addr2, new_val2));
+        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Req 2 (PA2: V2: 0x%h).", tok.index, p_addr2, new_val2));
         
         // Unstall this stage.
         stores1Q.deq();
@@ -2660,7 +2606,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         
         // Return to the timing partition. End of macro-operation (path 3).
         linkDoStores.makeResp(initFuncpRspDoStores(tok));
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: DoStores: End (path 3).", tok.index));
+        debugLog.record($format("TOKEN %0d: DoStores: End (path 3).", tok.index));
 
     endrule
 
@@ -2689,7 +2635,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let tok = req.token;
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: commitResults: Begin.", tok.index)); 
+        debugLog.record($format("TOKEN %0d: CommitResults: Begin.", tok.index)); 
         
         // Update the scoreboard.
         tokScoreboard.commitStart(tok.index);
@@ -2721,7 +2667,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         commQ.deq();
 
         // Retrieve the registers to be freed.
-        let regsToFree  <- tokRegsToFree.readResp();
+        let regsToFree  <- tokRegsToFree.readRsp();
 
         // Go ahead and free the first register, if present.
         case (regsToFree[0]) matches
@@ -2737,7 +2683,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
         // Respond to the timing model. End of macro-operation (except any more registers below).
         linkCommitResults.makeResp(initFuncpRspCommitResults(tok));
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: commitResults: End.", tok.index)); 
+        debugLog.record($format("TOKEN %0d: CommitResults: End.", tok.index)); 
 
     endrule
 
@@ -2752,7 +2698,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     begin
         rule commitResultsAdditional (additionalRegsToFree[x] matches tagged Valid .r);
 
-            funcpDebug($fwrite(debugLog, "Committing Additional PR: %0d", r)); 
+            debugLog.record($format("Committing Additional PR: %0d", r)); 
             freelist.free(r);
             additionalRegsToFree[x] <= tagged Invalid;
 
@@ -2780,7 +2726,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         assertCommitedStoreIsActuallyAStore(isStore);
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "TOKEN %0d: commitStores: Committing.", tok.index)); 
+        debugLog.record($format("TOKEN %0d: CommitStores: Committing.", tok.index)); 
 
         linkMemCommit.send(tok);
 
@@ -2811,7 +2757,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let tok = req.token;
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "Rewind: Starting Rewind to TOKEN %0d (Youngest: %0d)", tok.index, tokScoreboard.youngest())); 
+        debugLog.record($format("Rewind: Starting Rewind to TOKEN %0d (Youngest: %0d)", tok.index, tokScoreboard.youngest())); 
 
         // Tell the memory to drop non-committed stores.
         linkMemRewind.send(tuple2(tok.index, tokScoreboard.youngest()));
@@ -2828,7 +2774,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             begin 
 
                 // Log our success!
-                funcpDebug($fwrite(debugLog, "Rewind: Fast Rewind confirmed with Snapshot %0d", idx));
+                debugLog.record($format("Rewind: Fast Rewind confirmed with Snapshot %0d", idx));
 
                 // Rewind the scoreboard.
                 tokScoreboard.rewindTo(tok.index);
@@ -2844,7 +2790,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             begin
 
                 // Log our failure.
-                funcpDebug($fwrite(debugLog, "Rewind: Initiating slow rewind (Oldest: %0d)", tokScoreboard.oldest()));
+                debugLog.record($format("Rewind: Initiating slow rewind (Oldest: %0d)", tokScoreboard.oldest()));
                 
                 fastRewind <= False;
 
@@ -2862,7 +2808,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     rule rewindToToken2 (state == RSM_DrainingForRewind && tokScoreboard.canRewind());
     
         // Log it.
-        funcpDebug($fwrite(debugLog, "Rewind: Draining finished.", tokScoreboard.oldest()));
+        debugLog.record($format("Rewind: Draining finished.", tokScoreboard.oldest()));
 
         // Start at the youngest and go backward.
         rewindCur <= tokScoreboard.youngest();
@@ -2881,7 +2827,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
         // Get the snapshots.
         let snp_map <- snapshots.returnSnapshot();
-        let snp_fl <- tokFreeListPos.readResp();
+        let snp_fl <- tokFreeListPos.readRsp();
 
         // Update the maptable.
         maptable <= snp_map;
@@ -2891,7 +2837,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         freelist.backTo(validValue(snp_fl));
 
         // Log it.
-        funcpDebug($fwrite(debugLog, "Fast Rewind finished."));  
+        debugLog.record($format("Fast Rewind finished."));  
 
         // We're done. End of macro-operation (path 1).
         state <= RSM_Running;
@@ -2907,8 +2853,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // Look up the token properties
         tokRegsToFree.readReq(rewindCur);
         tokFreeListPos.readReq(rewindCur);
-        tokInst.req[1].read(rewindCur);
-        tokDsts.req[1].read(rewindCur);
+        tokInst.readPorts[1].readReq(rewindCur);
+        tokDsts.readPorts[1].readReq(rewindCur);
 
         // Pass it to the next stage who will free it.
         let done = (rewindCur == rewindTok.index);
@@ -2945,7 +2891,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     
     // Do not change the following lines unless you understand all this and have a good reason.
 
-    (* descending_urgency= "initialize, currentCC, rewindToToken4, rewindToToken3Slow, rewindToToken3Fast, rewindToToken2, rewindToToken1, emulateInstruction4, emulateInstruction3_UpdateReg, emulateInstruction3, emulateInstruction2_Rsp, emulateInstruction2_Req, emulateInstruction1, commitStores, commitResults2, commitResults1, doStores2SpanEnd, doStores2SpanRsp2, doStores2SpanRsp1, doStores2SpanReq, doStores2RMW, doStores2, doStores1, doLoads3Span, doLoads3, doLoads2Span, doLoads2, doLoads1, doDTranslate3Span, doDTranslate3, doDTranslate2Span, doDTranslate2, doDTranslate1, getResults4AdditionalWriteback, getResults4, getResults3, getResults2StallEnd, getResults2, getResults1, getDependencies2AdditionalMappings, getDependencies2, getDependencies1, getInstruction3Span, getInstruction3, getInstruction2Span, getInstruction2, getInstruction1, doITranslate2Span, doITranslate2, doITranslate1Span, doITranslate1, newInFlight" *)
+    (* descending_urgency= "initialize, rewindToToken4, rewindToToken3Slow, rewindToToken3Fast, rewindToToken2, rewindToToken1, emulateInstruction4, emulateInstruction3_UpdateReg, emulateInstruction3, emulateInstruction2_Rsp, emulateInstruction2_Req, emulateInstruction1, commitStores, commitResults2, commitResults1, doStores2SpanEnd, doStores2SpanRsp2, doStores2SpanRsp1, doStores2SpanReq, doStores2RMW, doStores2, doStores1, doLoads3Span, doLoads3, doLoads2Span, doLoads2, doLoads1, doDTranslate3Span, doDTranslate3, doDTranslate2Span, doDTranslate2, doDTranslate1, getResults4AdditionalWriteback, getResults4, getResults3, getResults2StallEnd, getResults2, getResults1, getDependencies2AdditionalMappings, getDependencies2, getDependencies1, getInstruction3Span, getInstruction3, getInstruction2Span, getInstruction2, getInstruction1, doITranslate2Span, doITranslate2, doITranslate1Span, doITranslate1, newInFlight" *)
 
     // The execution_order pragma doesn't affect the schedule but does get rid of
     // compiler warnings caused by the appearance of multiple writers to the
@@ -2962,10 +2908,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         match { .tok_idx, .done } = rewindQ.first();
         rewindQ.deq();
 
-        let regs_to_remap <- tokRegsToFree.readResp();
-        let freelist_pos <- tokFreeListPos.readResp();
-        let inst <- tokInst.resp[1].read();
-        let dsts <- tokDsts.resp[1].read();
+        let regs_to_remap <- tokRegsToFree.readRsp();
+        let freelist_pos <- tokFreeListPos.readRsp();
+        let inst <- tokInst.readPorts[1].readRsp();
+        let dsts <- tokDsts.readPorts[1].readRsp();
 
         //
         // Unwind register mappings if token has been through getDeps and
@@ -2978,9 +2924,9 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             //
             if (!done && tokScoreboard.isAllocated(tok_idx))
             begin
-                funcpDebug($fwrite(debugLog, "Slow Rewind: Lookup TOKEN %0d", tok_idx));  
+                debugLog.record($format("Slow Rewind: Lookup TOKEN %0d", tok_idx));  
 
-                Vector#(TExp#(rname_SZ), FUNCP_PHYSICAL_REG_INDEX) new_maptable = maptable;
+                Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) new_maptable = maptable;
 
                 for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
                 begin
@@ -2988,7 +2934,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                         regs_to_remap[x] matches tagged Valid .r)
                     begin
                         // Set the mapping back
-                        funcpDebug($fwrite(debugLog, "Slow Rewind: TOKEN %0d: Remapping (%0d/%0d)", tok_idx, arc_r, r));
+                        debugLog.record($format("Slow Rewind: TOKEN %0d: Remapping (%0d/%0d)", tok_idx, arc_r, r));
                         new_maptable = update(new_maptable, pack(arc_r), r);
                     end
                 end
@@ -2997,7 +2943,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             end
             
             if (done)
-                funcpDebug($fwrite(debugLog, "Slow Rewind: Lookup last TOKEN %0d", tok_idx));  
+                debugLog.record($format("Slow Rewind: Lookup last TOKEN %0d", tok_idx));  
 
             freelist.backTo(fr_pos);
         end
@@ -3005,7 +2951,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // Done with slow rewind?
         if (done)
         begin
-            funcpDebug($fwrite(debugLog, "Slow Rewind: Done."));  
+            debugLog.record($format("Slow Rewind: Done."));  
             linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok));
             tokScoreboard.rewindTo(rewindTok.index);
             state <= RSM_Running;

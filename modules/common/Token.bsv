@@ -8,7 +8,9 @@
 //                                                                           //
 ///////////////////////////////////////////////////////////////////////////////
 
-typedef Bit#(`TOKEN_INDEX_BITS) TOKEN_INDEX;
+typedef `TOKEN_INDEX_BITS TOKEN_INDEX_SIZE;
+typedef TExp#(TOKEN_INDEX_SIZE) NUM_TOKENS;
+typedef Bit#(TOKEN_INDEX_SIZE) TOKEN_INDEX;
 
 typedef Bit#(`TOKEN_TIMEP_EPOCH_BITS)      TOKEN_TIMEP_EPOCH;
 typedef Bit#(`TOKEN_TIMEP_SCRATCHPAD_BITS) TOKEN_TIMEP_SCRATCHPAD;

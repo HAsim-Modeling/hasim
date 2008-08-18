@@ -1,0 +1,23 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Sequential Store Buffer
+# %desc Sequential Store Buffer
+#
+# %provides funcp_memstate_storebuffer
+# 
+# %attributes hasim funcp memstate
+#
+# %private StoreBufferSequential.bsv
+#
+# %param SBUFFER_IDX_SIZE 8 "Index size of store buffer."
+#
+# %AWB_END
+# */
+

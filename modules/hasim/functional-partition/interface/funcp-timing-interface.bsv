@@ -39,7 +39,7 @@
 
 typedef struct
 {
-    Void dummy;
+    VOID dummy;
     // Just a dummy for now.
 }
     FUNCP_REQ_NEW_IN_FLIGHT

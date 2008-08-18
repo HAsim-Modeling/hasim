@@ -119,6 +119,7 @@ codedir = @codedir@
 configdir = @configdir@
 datadir = @datadir@
 exec_prefix = @exec_prefix@
+have_scons = @have_scons@
 host_alias = @host_alias@
 includedir = @includedir@
 infodir = @infodir@

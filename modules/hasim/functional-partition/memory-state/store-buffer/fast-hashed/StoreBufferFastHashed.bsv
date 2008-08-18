@@ -31,7 +31,7 @@ typedef struct {
 typedef enum {SBUFFER_STATE_READY, SBUFFER_STATE_LOOKUP, SBUFFER_STATE_COMMIT} SBUFFER_STATE deriving (Bits, Eq);
 
 module [HASIM_MODULE] mkFUNCP_StoreBuffer();
-    Connection_Server#(TOKEN, Void)                                                                                     allocate <- mkConnection_Server("storeBufferAllocate");
+    Connection_Server#(TOKEN, VOID)                                                                                     allocate <- mkConnection_Server("storeBufferAllocate");
     Connection_Server#(MEMSTATE_SBUFFER_REQ, MEMSTATE_SBUFFER_RSP)                                                  linkMemState <- mkConnection_Server("mem_storebuf");
 
     HashedStoreBuffer#(TSub#(SizeOf#(TOKEN_INDEX), 1), SizeOf#(MEM_ADDRESS), SizeOf#(MEM_VALUE), `SBUFFER_HASH_WIDTH, 2) sbuffer <- mkHashedStoreBuffer();
@@ -61,7 +61,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer();
     rule lookup1(state == SBUFFER_STATE_LOOKUP);
         state <= SBUFFER_STATE_READY;
         let resp <- sbuffer.lookupResp();
-        linkMemState.makeResp(tagged SBUFFER_RSP_LOOKUP {tok: token, addr: resp.addr, mresult: resp.value.valid? tagged Valid resp.value.value: tagged Invalid });
+        linkMemState.makeResp(tagged SBUFFER_RSP_LOOKUP {tok: token, addr: resp.addr, mresult: resp.value });
     endrule
 
     rule commit0(linkMemState.getReq matches tagged SBUFFER_REQ_COMMIT .req &&& state == SBUFFER_STATE_READY);

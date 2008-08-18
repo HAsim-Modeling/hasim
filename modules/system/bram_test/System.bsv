@@ -4,7 +4,7 @@ import fpga_components::*;
 
 module [HASIM_MODULE] mkSystem ();
 
-   BRAM#(Bit#(8), Bit#(32)) br <- mkBRAM_Full();
+   BRAM#(Bit#(8), Bit#(32)) br <- mkBRAM();
    Reg#(Bool) started <- mkReg(False);
    Reg#(Bool) finishing <- mkReg(False);
    Reg#(Bit#(8)) counter <- mkReg(0);

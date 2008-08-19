@@ -14,7 +14,7 @@
 # 
 # %attributes hasim funcp memstate
 #
-# %private HashedStoreBuffer.bsv Utils.bsv
+# %private HashedStoreBuffer.bsv
 # %public StoreBufferFastHashed.bsv
 #
 # %param SBUFFER_HASH_WIDTH 9 "Number of hash bits for the store buffer"

@@ -14985,3 +14985,17 @@ Store Buffer:
 * Switched non-standard May# type to equivalent existing type Maybe#
 
 Michael P.
+
+----------
+pellauer    Date: Tue Aug 19 11:20:31 EDT 2008  CSN: CSN-hasim-516
+                  Tue Aug 19 15:20:31 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate_storebuffer_fast_hashed.awb Locally Modified          515 
+
+
+* Bugfix: Updating the store buffer to remove Utils file. It now correctly uses the Utils in hasim_common.
+
+Michael P.
+

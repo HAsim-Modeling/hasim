@@ -69,7 +69,7 @@ import soft_connections::*;
 // their model cycle in any order, but prevents them from going ahead for more
 // than 1 model cycle.
 
-interface StallPort_Send#(type a);
+interface StallPortSend#(type a);
     method Action send(Maybe#(a) x);
     method Action pass();
     method Bool   canSend();
@@ -77,15 +77,15 @@ interface StallPort_Send#(type a);
 
 endinterface
 
-interface StallPort_Receive#(type a);
+interface StallPortReceive#(type a);
     method ActionValue#(Maybe#(a)) receive();
     method Maybe#(a)               peek();
     method Action                  pass();
     interface Port_Control ctrl;
 endinterface
 
-module [HASIM_MODULE] mkStallPort_Send#(String s)
-                       (StallPort_Send#(a))
+module [HASIM_MODULE] mkStallPortSend#(String s)
+                       (StallPortSend#(a))
             provisos (Bits#(a, sa),
                       Transmittable#(Maybe#(a)));
 
@@ -116,8 +116,8 @@ module [HASIM_MODULE] mkStallPort_Send#(String s)
     endinterface
 endmodule
 
-module [HASIM_MODULE] mkStallPort_Receive#(String s)
-        (StallPort_Receive#(a))
+module [HASIM_MODULE] mkStallPortReceive#(String s)
+        (StallPortReceive#(a))
             provisos (Bits#(a, sa),
                       Transmittable#(Maybe#(a)));
 

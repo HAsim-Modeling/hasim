@@ -112,30 +112,30 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
              Add#(positive0, 1, numStores),
              Add#(positive1, hashWidth, addrWidth));
 
-    Vector#(numStores, BRAM#(Bit#(tokenWidth), Bit#(dataWidth)))                       data <- replicateM(mkBRAM);
-    Reg#(Vector#(TExp#(tokenWidth), Bool))                                 tokenValid <- mkReg(replicate(False));
+    Vector#(numStores, BRAM#(Bit#(tokenWidth), Bit#(dataWidth)))                         data <- replicateM(mkBRAM);
+    Reg#(Vector#(TExp#(tokenWidth), Bool))                                         tokenValid <- mkReg(replicate(False));
 
-    Reg#(Bit#(tokenWidth1))                                                    deqNum <- mkReg(0);
+    Reg#(Bit#(tokenWidth1))                                                            deqNum <- mkReg(0);
 
     BRAM#(Bit#(hashWidth), Maybe#(Pointer#(tokenWidth, numStores)))                      head <- mkBRAMInitialized(Invalid);
     Vector#(numStores, BRAM#(Bit#(tokenWidth), Maybe#(Pointer#(tokenWidth, numStores)))) prev <- replicateM(mkBRAMInitialized(Invalid));
     Vector#(numStores, BRAM#(Bit#(tokenWidth), Maybe#(Pointer#(tokenWidth, numStores)))) next <- replicateM(mkBRAMInitialized(Invalid));
     Vector#(numStores, BRAM#(Bit#(tokenWidth), Maybe#(Bit#(addrWidth))))                 addr <- replicateM(mkBRAMInitialized(Invalid));
 
-    Reg#(Bit#(tokenWidth))                                                       xReg <- mkRegU;
-    Reg#(Maybe#(Pointer#(tokenWidth, numStores)))                                  yReg <- mkRegU;
-    Reg#(Maybe#(Pointer#(tokenWidth, numStores)))                                  zReg <- mkRegU;
-    Reg#(Bit#(TLog#(numStores)))                                                 iReg <- mkRegU;
+    Reg#(Bit#(tokenWidth))                                                               xReg <- mkRegU;
+    Reg#(Maybe#(Pointer#(tokenWidth, numStores)))                                        yReg <- mkRegU;
+    Reg#(Maybe#(Pointer#(tokenWidth, numStores)))                                        zReg <- mkRegU;
+    Reg#(Bit#(TLog#(numStores)))                                                         iReg <- mkRegU;
 
-    Reg#(State)                                                                 state <- mkReg(Ready);
+    Reg#(State)                                                                         state <- mkReg(Ready);
 
-    Reg#(Bit#(TAdd#(tokenWidth, 1)))                                         tokenReg <- mkRegU;
-    Reg#(Bit#(addrWidth))                                                  addressReg <- mkRegU;
-    Reg#(Bit#(dataWidth))                                                    valueReg <- mkRegU;
+    Reg#(Bit#(TAdd#(tokenWidth, 1)))                                                 tokenReg <- mkRegU;
+    Reg#(Bit#(addrWidth))                                                          addressReg <- mkRegU;
+    Reg#(Bit#(dataWidth))                                                            valueReg <- mkRegU;
 
-    Reg#(Maybe#(Bit#(tokenWidth)))                                                 best <- mkRegU;
+    Reg#(Maybe#(Bit#(tokenWidth)))                                                       best <- mkRegU;
 
-    DEBUG_FILE                                                                   debugLog <- mkDebugFile("hasim_funcp_store_buffer.out");
+    DEBUG_FILE                                                                       debugLog <- mkDebugFile("hasim_funcp_store_buffer.out");
 
     function Bit#(hashWidth) hash(Bit#(addrWidth) address) = truncate(address >> valueOf(shift));
 

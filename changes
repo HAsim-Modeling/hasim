@@ -14999,3 +14999,22 @@ Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hash
 
 Michael P.
 
+
+----------
+mpellaue    Date: Thu Aug 21 13:05:35 EDT 2008  CSN: CSN-hasim-521
+                  Thu Aug 21 17:05:35 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          520 
+
+
+* Reclaim functional partition tokens more aggressively after a rewind. This
+stops the ooo from running out of tokens for now. However we don't expect it to
+pass the benchmarks because it's still getting exceptions from bad-path
+instructions.
+
+TODO: Spec and implement a real exception interface from the functional
+partition.
+
+Michael P.

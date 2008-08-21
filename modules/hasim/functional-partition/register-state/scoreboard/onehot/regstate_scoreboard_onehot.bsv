@@ -582,6 +582,18 @@ module [Connected_Module] mkFUNCP_Scoreboard
                    ((cur > t) || (cur <= youngest_tok) ? False : alloc[x]);
       end
 
+      // next_free_tok does not change because we don't want to reissue those tokens
+      // until the next time we wrap around.
+      
+      // However we can update oldest_tok here. Specifically, if the token you rewound
+      // to was already committed, then if it was a legal rewind (checked elsewhere) then
+      // after the rewind there will be no tokens in flight. In the case we can jump 
+      // oldest_tok up to next_free_tok (so num_in_flight will be zero). Thus we can
+      // reclaim tokens slightly more aggressively.
+    
+      if (!alloc[t])
+          oldest_tok <= next_free_tok;
+
       // Update the vector.
       alloc <= as;
 

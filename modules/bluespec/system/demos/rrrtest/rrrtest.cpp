@@ -1,16 +1,22 @@
-//
-// INTEL CONFIDENTIAL
-// Copyright (c) 2008 Intel Corp.  Recipient is granted a non-sublicensable 
-// copyright license under Intel copyrights to copy and distribute this code 
-// internally only. This code is provided "AS IS" with no support and with no 
-// warranties of any kind, including warranties of MERCHANTABILITY,
-// FITNESS FOR ANY PARTICULAR PURPOSE or INTELLECTUAL PROPERTY INFRINGEMENT. 
-// By making any use of this code, Recipient agrees that no other licenses 
-// to any Intel patents, trade secrets, copyrights or other intellectual 
-// property rights are granted herein, and no other licenses shall arise by 
-// estoppel, implication or by operation of law. Recipient accepts all risks 
-// of use.
-//
+/*****************************************************************************
+ * rrrtest.cpp
+ *
+ * Copyright (C) 2008 Intel Corporation
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
 
 //
 // @file rrrtest.cpp
@@ -33,14 +39,16 @@ using namespace std;
 
 // constructor
 BLUESPEC_SYSTEM_CLASS::BLUESPEC_SYSTEM_CLASS() :
-        PLATFORMS_MODULE_CLASS(NULL),
-        client(this)
+        PLATFORMS_MODULE_CLASS(NULL)
 {
+    // instantiate client stub
+    clientStub = new RRRTEST_CLIENT_STUB_CLASS(this);
 }
 
 // destructor
 BLUESPEC_SYSTEM_CLASS::~BLUESPEC_SYSTEM_CLASS()
 {
+    delete clientStub;
 }
 
 // main
@@ -68,7 +76,7 @@ BLUESPEC_SYSTEM_CLASS::Main()
     //
     // perform one-way test
     //
-    cycles = client.F2HOneWayTest(test_length);
+    cycles = clientStub->F2HOneWayTest(test_length);
 
     // compute results
     latency_c = double(cycles) / test_length;
@@ -87,7 +95,7 @@ BLUESPEC_SYSTEM_CLASS::Main()
     //
     // perform two-way test
     //
-    cycles = client.F2HTwoWayTest(test_length);
+    cycles = clientStub->F2HTwoWayTest(test_length);
 
     // compute results
     latency_c = double(cycles) / test_length;
@@ -106,7 +114,7 @@ BLUESPEC_SYSTEM_CLASS::Main()
     //
     // perform two-way pipelined test
     //
-    cycles = client.F2HTwoWayPipeTest(test_length);
+    cycles = clientStub->F2HTwoWayPipeTest(test_length);
 
     // compute results
     latency_c = double(cycles) / test_length;

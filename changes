@@ -15018,3 +15018,19 @@ TODO: Spec and implement a real exception interface from the functional
 partition.
 
 Michael P.
+
+----------
+aparasha    Date: Fri Aug 22 16:56:57 EDT 2008  CSN: CSN-hasim-522
+                  Fri Aug 22 20:56:57 UTC 2008
+
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest-server.h          Locally Modified          521 
+ rrrtest-client.cpp        Locally Removed           521 
+ rrrtest.cpp               Locally Modified          521 
+ rrrtest-client.h          Locally Removed           521 
+ rrrtest-server.cpp        Locally Modified          521 
+ rrrtest.h                 Locally Modified          521 
+ rrrtest.awb               Locally Modified          521 
+
+Updated RRRTest system to use auto-generated stubs.

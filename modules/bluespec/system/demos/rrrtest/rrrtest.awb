@@ -12,8 +12,8 @@
 %attributes bluespec
 
 %sources -t BSV  -v PUBLIC  rrrtest.bsv
-%sources -t H    -v PUBLIC  rrrtest.h   rrrtest-client.h   rrrtest-server.h
-%sources -t CPP  -v PRIVATE rrrtest.cpp rrrtest-client.cpp rrrtest-server.cpp
+%sources -t H    -v PUBLIC  rrrtest.h   rrrtest-server.h
+%sources -t CPP  -v PRIVATE rrrtest.cpp rrrtest-server.cpp
 %sources -t RRR  -v PUBLIC  rrrtest.rrr
 
 %AWB_END

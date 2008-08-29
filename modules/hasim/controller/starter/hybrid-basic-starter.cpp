@@ -12,12 +12,6 @@
 
 #include "asim/ioformat.h"
 
-#define SERVICE_ID  STARTER_SERVICE_ID
-
-// TEMPORARY: cheat and assign server method IDs
-#define METHOD_ID_ENDSIM    0
-#define METHOD_ID_HEARTBEAT 1
-
 using namespace std;
 
 // ===== service instantiation =====

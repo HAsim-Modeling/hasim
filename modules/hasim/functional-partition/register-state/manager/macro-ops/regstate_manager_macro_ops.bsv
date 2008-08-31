@@ -7,7 +7,6 @@
 
 import FIFO::*;
 import Vector::*;
-import RegFile::*;
 
 // Project foundation includes.
 
@@ -239,7 +238,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     FIFO#(DTRANS_INFO) dTrans2Q <- mkFIFO();
     FIFO#(TOKEN) loads1Q  <- mkFIFO();
     FIFO#(LOADS_INFO) loads2Q  <- mkFIFO();
-    FIFO#(TOKEN) stores1Q <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN, ISA_MEMOP_TYPE)) stores1Q <- mkFIFO();
     FIFO#(STORES_INFO) stores2Q <- mkFIFO();
     FIFO#(TOKEN) commQ   <- mkFIFO();
     FIFO#(Tuple2#(TOKEN_INDEX, Bool)) rewindQ <- mkFIFO();
@@ -2336,8 +2335,11 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             // Read the effective address(es).
             tokPhysicalMemAddrs.readPorts[1].readReq(tok.index);
 
+            // Get the store type.
+            let st_type = tokScoreboard.getStoreType(tok.index);
+
             // Pass to the next stage.
-            stores1Q.enq(tok);
+            stores1Q.enq(tuple2(tok, st_type));
 
         end
 
@@ -2351,10 +2353,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     rule doStores2 (readyToContinue &&& stateStores2 matches tagged STORES2_NORMAL);
 
         // Read the parameters from the previous stage.
-        let tok = stores1Q.first();
-
-        // Get the store type.
-        let st_type = tokScoreboard.getStoreType(tok.index);
+        match {.tok, .st_type} = stores1Q.first();
 
         // Get the offset.
         let offset = tokScoreboard.getMemOpOffset(tok.index);
@@ -2462,7 +2461,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                                        &&& memPathQ.first() == PATH_STORE);
     
         // Get the info from the previous stage.
-        let tok = stores1Q.first();
+        match {.tok, .st_type} = stores1Q.first();
         
         // Get the load from memory.
         MEM_VALUE existing_val = linkToMem.getResp();
@@ -2505,7 +2504,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     rule doStores2SpanReq (readyToContinue &&& stateStores2 matches tagged STORES2_SPAN_REQ .store_info);
     
         // Get the data from the previous stage.
-        let tok = stores1Q.first();
+        match {.tok, .st_type} = stores1Q.first();
     
         // Make the second load request.
         let p_addr2 = getSecondOfTwo(store_info.memAddrs);
@@ -2531,7 +2530,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                                             &&& memPathQ.first() == PATH_STORE);
     
         // Get the value from the previous stage.
-        let tok = stores1Q.first();
+        match {.tok, .st_type} = stores1Q.first();
     
         // Get the first value from memory.
         MEM_VALUE existing_val1 = linkToMem.getResp();
@@ -2555,7 +2554,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                                             &&& memPathQ.first() == PATH_STORE);
     
         // Get the value from the previous stage.
-        let tok = stores1Q.first();
+        match {.tok, .st_type} = stores1Q.first();
 
         // Get the second value from memory.
         MEM_VALUE existing_val2 = linkToMem.getResp();

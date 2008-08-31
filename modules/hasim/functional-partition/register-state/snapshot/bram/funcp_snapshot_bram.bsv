@@ -3,7 +3,6 @@
 `include "fpga_components.bsh"
 
 import Vector::*;
-import RegFile::*;
 
 interface FUNCP_SNAPSHOT;
 
@@ -24,10 +23,10 @@ module mkFUNCP_Snapshot
     Reg#(Vector#(NUM_TOKENS, Bool))             snapValids <- mkReg(replicate(False));
 
     // The IDs tell us which snapshot is in a given location.
-    RegFile#(FUNCP_SNAPSHOT_INDEX, Maybe#(TOKEN_INDEX)) snapIDs <- mkRegFileFullInitialized(tagged Invalid);
+    LUTRAM#(FUNCP_SNAPSHOT_INDEX, Maybe#(TOKEN_INDEX)) snapIDs <- mkLUTRAM(tagged Invalid);
 
     // The token table tells us the most recent snapshot associated with each token.
-    RegFile#(TOKEN_INDEX, FUNCP_SNAPSHOT_INDEX) tokSnaps <- mkRegFileFullInitialized(0);
+    LUTRAM#(TOKEN_INDEX, FUNCP_SNAPSHOT_INDEX) tokSnaps <- mkLUTRAM(0);
     
     // The next pointer points to the next location where we should write a snapshot.
     // (Possibly overwriting an old snapshot, which is okay, since we pull down snapValid for that token.)

@@ -1,8 +1,8 @@
-import RegFile::*;
-import FIFOF::*;
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/soft_connections.bsh"
+`include "asim/provides/fpga_components.bsh"
 
-import hasim_common::*;
-import soft_connections::*;
+import FIFOF::*;
 
 interface Port_Control;
 
@@ -246,7 +246,7 @@ module [HASIM_MODULE] mkPort_Receive_Waterlevel#(String portname, Integer latenc
 
   Connection_Receive#(Maybe#(msg_T)) con <- mkConnection_Receive(portname);
    
-  RegFile#(Bit#(10), Maybe#(msg_T)) rs <- mkRegFileFull();
+  LUTRAM#(Bit#(10), Maybe#(msg_T)) rs <- mkLUTRAMU();
   Integer rMax = 1024;
 
   Reg#(Bool) initializing <- mkReg(True);

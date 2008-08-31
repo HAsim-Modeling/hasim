@@ -5,7 +5,6 @@
 
 // Library imports
 
-import RegFile::*;
 import FIFO::*;
 import Vector::*;
 

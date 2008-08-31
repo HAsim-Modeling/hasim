@@ -1,6 +1,5 @@
 import GetPut::*;
 import ClientServer::*;
-import RegFile::*;
 import Vector::*;
 import List::*;
 import FIFO::*;

@@ -10,7 +10,6 @@
 
 import Vector::*;
 import FIFO::*;
-import RegFile::*;
 
 // Project foundation imports
 
@@ -101,10 +100,10 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer
     BRAM#(TOKEN_INDEX, Tuple2#(MEM_ADDRESS, MEM_VALUE)) firstStores   <- mkBRAMInitialized(0);
     BRAM#(TOKEN_INDEX, Tuple2#(MEM_ADDRESS, MEM_VALUE)) secondstores  <- mkBRAMInitialized(0);
 
-    // The bucket hash divides things into N lists. This RegFile stores the heads of
+    // The bucket hash divides things into N lists. This memory stores the heads of
     // these lists. Invalid indicates empty list.
 
-    RegFile#(MEM_ADDRESS_HASH, Maybe#(NODE_IDX)) heads <- mkRegFileFull();
+    LUTRAM#(MEM_ADDRESS_HASH, Maybe#(NODE_IDX)) heads <- mkLUTRAMU();
 
     // Intermediate state for list operations.
 

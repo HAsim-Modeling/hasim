@@ -1,6 +1,5 @@
 import Vector::*;
 import FIFOF::*;
-import RegFile::*;
 
 `include "fpga_components.bsh"
 `include "hasim_common.bsh"
@@ -61,7 +60,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer();
     Reg#(SBUFFER_PTR)                                                    enqNum <- mkReg(0);
     Reg#(SBUFFER_PTR)                                                    deqNum <- mkReg(0);
 
-    RegFile#(INDEX_SIZE, SBUFFER_PTR)                                tokenEntryMap <- mkRegFileFullInitialized(0);
+    LUTRAM#(INDEX_SIZE, SBUFFER_PTR)                              tokenEntryMap <- mkLUTRAM(0);
     Reg#(Vector#(INDEX_NUM, Bool))                                   tokenValid <- mkReg(replicate(False));
     Reg#(TOKEN_INDEX)                                                lastCommit <- mkReg(0);
 

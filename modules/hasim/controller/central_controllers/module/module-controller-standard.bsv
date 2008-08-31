@@ -1,7 +1,6 @@
 
 //BSV library imports
 import PrimArray::*;
-import RegFile::*;
 import Connectable::*;
 import FIFO::*;
 

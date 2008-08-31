@@ -11,15 +11,15 @@
 // Library imports
 
 import Vector::*;
-import RegFile::*;
 import Counter::*;
 
 // Project imports
 
-`include "hasim_common.bsh"
-`include "soft_connections.bsh"
-`include "hasim_isa.bsh"
-`include "funcp_memory.bsh"
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/soft_connections.bsh"
+`include "asim/provides/hasim_isa.bsh"
+`include "asim/provides/funcp_memory.bsh"
+`include "asim/provides/fpga_components.bsh"
 
 // RRR includes
 `include "asim/rrr/service_ids.bsh"
@@ -32,7 +32,7 @@ import Counter::*;
 // Because the whole system is made of reg files of Bools, we use
 // this typdef as a convenience.
 
-typedef RegFile#(TOKEN_INDEX, Bool) TOKEN_SCOREBOARD;
+typedef LUTRAM#(TOKEN_INDEX, Bool) TOKEN_SCOREBOARD;
 
 // FUCNCP_SCOREBOARD
 
@@ -104,29 +104,29 @@ module [Connected_Module] mkFUNCP_Scoreboard
     Reg#(Vector#(NUM_TOKENS, Bool)) alloc      <- mkReg(replicate(False));
 
     // The actual scoreboards.
-    TOKEN_SCOREBOARD itr_start    <- mkRegFileFull();
-    TOKEN_SCOREBOARD itr_finish   <- mkRegFileFull();
-    TOKEN_SCOREBOARD fet_start    <- mkRegFileFull();
-    TOKEN_SCOREBOARD fet_finish   <- mkRegFileFull();
-    TOKEN_SCOREBOARD dec_start    <- mkRegFileFull();
-    TOKEN_SCOREBOARD dec_finish   <- mkRegFileFull();
-    TOKEN_SCOREBOARD is_load      <- mkRegFileFull();
-    TOKEN_SCOREBOARD is_store     <- mkRegFileFull();
-    TOKEN_SCOREBOARD exe_start    <- mkRegFileFull();
-    TOKEN_SCOREBOARD exe_finish   <- mkRegFileFull();
-    TOKEN_SCOREBOARD dtr_start    <- mkRegFileFull();
-    TOKEN_SCOREBOARD dtr_finish   <- mkRegFileFull();
-    TOKEN_SCOREBOARD load_start   <- mkRegFileFull();
-    TOKEN_SCOREBOARD load_finish  <- mkRegFileFull();
-    TOKEN_SCOREBOARD store_start  <- mkRegFileFull();
-    TOKEN_SCOREBOARD store_finish <- mkRegFileFull();
-    TOKEN_SCOREBOARD commit_start <- mkRegFileFull();
-    TOKEN_SCOREBOARD emulation    <- mkRegFileFull();
+    TOKEN_SCOREBOARD itr_start    <- mkLUTRAMU();
+    TOKEN_SCOREBOARD itr_finish   <- mkLUTRAMU();
+    TOKEN_SCOREBOARD fet_start    <- mkLUTRAMU();
+    TOKEN_SCOREBOARD fet_finish   <- mkLUTRAMU();
+    TOKEN_SCOREBOARD dec_start    <- mkLUTRAMU();
+    TOKEN_SCOREBOARD dec_finish   <- mkLUTRAMU();
+    TOKEN_SCOREBOARD is_load      <- mkLUTRAMU();
+    TOKEN_SCOREBOARD is_store     <- mkLUTRAMU();
+    TOKEN_SCOREBOARD exe_start    <- mkLUTRAMU();
+    TOKEN_SCOREBOARD exe_finish   <- mkLUTRAMU();
+    TOKEN_SCOREBOARD dtr_start    <- mkLUTRAMU();
+    TOKEN_SCOREBOARD dtr_finish   <- mkLUTRAMU();
+    TOKEN_SCOREBOARD load_start   <- mkLUTRAMU();
+    TOKEN_SCOREBOARD load_finish  <- mkLUTRAMU();
+    TOKEN_SCOREBOARD store_start  <- mkLUTRAMU();
+    TOKEN_SCOREBOARD store_finish <- mkLUTRAMU();
+    TOKEN_SCOREBOARD commit_start <- mkLUTRAMU();
+    TOKEN_SCOREBOARD emulation    <- mkLUTRAMU();
 
-    RegFile#(TOKEN_INDEX, MEM_OFFSET)     fetch_offset  <- mkRegFileFullInitialized(0);
-    RegFile#(TOKEN_INDEX, MEM_OFFSET)     memop_offset  <- mkRegFileFullInitialized(0);
-    RegFile#(TOKEN_INDEX, ISA_MEMOP_TYPE) load_type  <- mkRegFileFull();
-    RegFile#(TOKEN_INDEX, ISA_MEMOP_TYPE) store_type <- mkRegFileFull();
+    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)     fetch_offset  <- mkLUTRAM(0);
+    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)     memop_offset  <- mkLUTRAM(0);
+    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE) load_type  <- mkLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE) store_type <- mkLUTRAMU();
 
     // A pointer to the next token to be allocated.
     Reg#(TOKEN_INDEX) next_free_tok <- mkReg(0);

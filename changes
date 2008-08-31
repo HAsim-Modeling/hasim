@@ -15044,3 +15044,45 @@ Directory modules/hasim/controller/starter
  hybrid-basic-starter.cpp  Locally Modified          522 
 
 removed some lines of stale code.
+
+----------
+mcadler     Date: Sun Aug 31 09:39:53 EDT 2008  CSN: CSN-hasim-524
+                  Sun Aug 31 13:39:53 UTC 2008
+
+
+Directory modules/hasim/controller/central_controllers/module
+ module-controller-standard.bsv Locally Modified          523 
+
+Directory modules/hasim/functional-partition/register-state/snapshot/bram
+ funcp_snapshot_bram.bsv   Locally Modified          523 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          523 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          523 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/sequential
+ StoreBufferSequential.bsv Locally Modified          523 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-hash
+ memstate_storebuffer_bucket_hash.bsv Locally Modified          523 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          523 
+
+Directory modules/bluespec/common/soft_connections/alg/typed
+ ConnectionAlg.bsv         Locally Modified          523 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          523 
+
+Directory modules/common/modellib
+ Ports.bsv                 Locally Modified          523 
+
+Directory modules/common
+ regfile_initialized.bsv   Locally Removed           523 
+
+- Switch from RegFile to LUTRAM.  See platforms check-in.
+- Remove regfile_initialized since we no longer use RegFile.  LUTRAM has two
+  flavors:  uninitialized LUTRAMU() and initialized LUTRAM().

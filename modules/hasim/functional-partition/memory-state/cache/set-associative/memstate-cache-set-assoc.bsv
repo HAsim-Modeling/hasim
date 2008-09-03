@@ -497,6 +497,12 @@ module [HASIM_MODULE] mkFUNCP_Cache ();
                 flushDirtyLine.enq(tuple4(m.tag, set, inval_way, False));
                 cacheData.readReq(getDataIdx(set, inval_way, 0));
                 done = False;
+
+                // Line no longer dirty.  Update meta data.
+                let new_meta = m;
+                new_meta.dirty = False;
+                meta[inval_way] = tagged Valid new_meta;
+                cacheMeta.write(set, meta);
             end
         end
         

@@ -15086,3 +15086,18 @@ Directory modules/common
 - Switch from RegFile to LUTRAM.  See platforms check-in.
 - Remove regfile_initialized since we no longer use RegFile.  LUTRAM has two
   flavors:  uninitialized LUTRAMU() and initialized LUTRAM().
+
+----------
+mcadler     Date: Wed Sep  3 15:51:00 EDT 2008  CSN: CSN-hasim-525
+                  Wed Sep  3 19:51:00 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          524 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          524 
+
+- Clear dirty bit in lines as they are flushed to the host during instruction
+  emulation.
+- Make number of tokens a global parameter.

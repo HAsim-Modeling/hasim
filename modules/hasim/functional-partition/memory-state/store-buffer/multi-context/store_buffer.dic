@@ -1,0 +1,4 @@
+def ASSERTIONS.STOREBUFFER.NOT_FULL "FUNCP: Store Buffer: Ran out of room in backing store.";
+def ASSERTIONS.STOREBUFFER.LEGAL_COMMIT "FUNCP: Store Buffer: Tried to commit a token with no stores.";
+def ASSERTIONS.STOREBUFFER.COMMIT_NOT_EMPTY "FUNCP: Store Buffer: Commit on a token in an empty list.";
+def ASSERTIONS.STOREBUFFER.SECOND_STORE_FOUND "FUNCP: Store Buffer: Could not find second store for committed token.";

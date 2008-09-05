@@ -1,0 +1,26 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Multi-Context Store Buffer
+# %desc Multi-Context Store Buffer
+#
+# %provides funcp_memstate_storebuffer
+# 
+# %attributes hasim funcp memstate
+#
+# %public memstate_storebuffer_multi_context.bsv
+# %sources -T DICT -v PUBLIC store_buffer.dic
+#
+# %param SBUFFER_HASH_BITS 4 "Number of hash bits for the store buffer."
+# %param SBUFFER_NUM_SECONDARY_SLOTS 8 "Number of slots in the backing storage."
+# %param SBUFFER_LOGFILE_NAME "funcp_store_buffer.out" "Name of logfile."
+#
+# %AWB_END
+# */
+

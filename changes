@@ -15101,3 +15101,24 @@ Directory modules/common
 - Clear dirty bit in lines as they are flushed to the host during instruction
   emulation.
 - Make number of tokens a global parameter.
+
+----------
+pellauer    Date: Fri Sep  5 16:29:27 EDT 2008  CSN: CSN-hasim-526
+                  Fri Sep  5 20:29:27 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer
+ multi-context/            Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/multi-context
+ store_buffer.dic          Locally Added               0 
+ memstate_storebuffer_multi_context.awb Locally Added               0 
+ memstate_storebuffer_multi_context.bsv Locally Added               0 
+
+
+Added extremely preliminary multi-context store buffer. Doesn't compile yet, 
+but I want to get a backup of my progress so far.
+
+Features a small backing store to save area.
+
+Michael P.

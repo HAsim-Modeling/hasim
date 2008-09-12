@@ -295,11 +295,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     Connection_Client#(MEMSTATE_REQ, 
                        MEM_VALUE)                              linkToMem <- mkConnection_Client("funcp_memstate");
 
-    Connection_Send#(TOKEN)                                    linkMemCommit <- mkConnection_Send("funcp_mem_commit");
-
-    Connection_Send#(Tuple2#(TOKEN_INDEX, 
-                             TOKEN_INDEX))                     linkMemRewind <- mkConnection_Send("funcp_mem_rewind");
-
     // Connection to TLB
 
     Connection_Client#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS))       link_itlb <- mkConnection_Client("funcp_itlb");
@@ -2727,7 +2722,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // Log it.
         debugLog.record($format("TOKEN %0d: CommitStores: Committing.", tok.index)); 
 
-        linkMemCommit.send(tok);
+        linkToMem.makeReq(tagged MEMSTATE_REQ_COMMIT tok);
 
         // Respond to timing model. End of macro-operation.
         linkCommitStores.makeResp(initFuncpRspCommitStores(tok));
@@ -2759,7 +2754,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         debugLog.record($format("Rewind: Starting Rewind to TOKEN %0d (Youngest: %0d)", tok.index, tokScoreboard.youngest())); 
 
         // Tell the memory to drop non-committed stores.
-        linkMemRewind.send(tuple2(tok.index, tokScoreboard.youngest()));
+        linkToMem.makeReq(MEMSTATE_REQ_REWIND {rewind_tok: tok.index, youngest: tokScoreboard.youngest()});
 
         // Update the epoch so we can discard appropriate updates.
         epoch <= epoch + 1;

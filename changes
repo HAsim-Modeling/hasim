@@ -15122,3 +15122,25 @@ but I want to get a backup of my progress so far.
 Features a small backing store to save area.
 
 Michael P.
+
+----------
+mcadler     Date: Fri Sep 12 13:00:14 EDT 2008  CSN: CSN-hasim-527
+                  Fri Sep 12 17:00:14 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          526 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ HashedStoreBuffer.bsv     Locally Modified          526 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          526 
+
+- Unify the soft connections between the register state manager and the
+  memory state manager.  Separate channels for load, store and commit allowed
+  reordering of store and commit requests passed to the store before.
+  This was the cause of the 0x2aaaa... addresses sent to m5.  0x2aaa... is
+  the Bluespec uninitialized value.
+
+- Improve debug messages in the store buffer.

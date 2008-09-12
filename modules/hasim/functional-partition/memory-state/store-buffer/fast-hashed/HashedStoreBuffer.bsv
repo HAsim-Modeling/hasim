@@ -29,7 +29,7 @@ function Pointer#(tokenWidth, numStores) makePointer(Bit#(tokenWidth) token, Bit
 
 instance FShow#(Pointer#(tokenWidth, numStores));
     function Fmt fshow(Pointer#(tokenWidth, numStores) ptr);
-        return $format("index: %d token: %d", ptr.index, ptr.token);
+        return $format("index: %d sbtoken: %d", ptr.index, ptr.token);
     endfunction
 endinstance
 
@@ -148,17 +148,17 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
             if (nextX matches tagged Valid .ptr)
             begin
                 prev[ptr.index].write(ptr.token, prevX);
-                debugLog.record($format("remove: prev: hash: %x curr: ", hash(a)) + fshow(curr) + $format(" next: ") + fshow(nextX) + $format(" prev: ") + fshow(prevX));
+                debugLog.record($format("remove: prev: hash: 0x%x curr: ", hash(a)) + fshow(curr) + $format(" next: ") + fshow(nextX) + $format(" prev: ") + fshow(prevX));
             end
             if (prevX matches tagged Valid .ptr)
             begin
                 next[ptr.index].write(ptr.token, nextX);
-                debugLog.record($format("remove: next: hash: %x curr: ", hash(a)) + fshow(curr) + $format(" prev: ") + fshow(nextX) + $format(" next: ") + fshow(nextX));
+                debugLog.record($format("remove: next: hash: 0x%x curr: ", hash(a)) + fshow(curr) + $format(" prev: ") + fshow(nextX) + $format(" next: ") + fshow(nextX));
             end
             else
             begin
                 head.write(hash(a), nextX);
-                debugLog.record($format("remove: head: hash: %x curr: ", hash(a)) + fshow(curr) + $format(" next: ") + fshow(nextX));
+                debugLog.record($format("remove: head: hash: 0x%x curr: ", hash(a)) + fshow(curr) + $format(" next: ") + fshow(nextX));
             end
         end
     endaction
@@ -211,13 +211,13 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
         let y <- head.readRsp();
         let curr = makePointer(xReg, iReg);
         next[iReg].write(xReg, y);
-        debugLog.record($format("insertRule: next: hash: %x curr: ", hash(addressReg)) + fshow(curr) + $format(" next: ") + fshow(y));
+        debugLog.record($format("insertRule: next: addr: 0x%x hash: 0x%x curr: ", addressReg, hash(addressReg)) + fshow(curr) + $format(" next: ") + fshow(y));
         head.write(hash(addressReg), Valid(makePointer(xReg, iReg)));
-        debugLog.record($format("insertRule: head: hash: %x curr: ", hash(addressReg)) + fshow(curr));
+        debugLog.record($format("insertRule: head: addr: 0x%x hash: 0x%x curr: ", addressReg, hash(addressReg)) + fshow(curr));
         if (y matches tagged Valid .ptr)
         begin
             prev[ptr.index].write(ptr.token, Valid(makePointer(xReg, iReg)));
-            debugLog.record($format("insertRule: prev: hash: %x curr: ", hash(addressReg)) + fshow(curr) + $format(" next: ") + fshow(y));
+            debugLog.record($format("insertRule: prev: addr: 0x%x hash: 0x%x curr: ", addressReg, hash(addressReg)) + fshow(curr) + $format(" next: ") + fshow(y));
         end
         state <= Ready;
     endrule
@@ -294,11 +294,15 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
             data[i].write(x, value);
             addr[i].write(x, Valid(address));
             prev[i].write(x, tagged Invalid);
-            debugLog.record($format("insert: invalid: token: %d", x));
+            debugLog.record($format("insert: token: %d sbtoken: %d addr: 0x%x data: 0x%x", token, x, address, value));
             xReg <= x;
             iReg <= i;
             addressReg <= address;
             state <= Insert;
+        end
+        else
+        begin
+            debugLog.record($format("insert: ignored invalid: token: %d sbtoken: %d addr: 0x%x data: 0x%x", token, x, address, value));
         end
     endmethod
 
@@ -313,6 +317,12 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
 
     method ActionValue#(LookupResp#(tokenWidth, addrWidth, dataWidth)) lookupResp() if(state == Lookup3);
         state <= Ready;
+
+        if (isValid(best))
+            debugLog.record($format("lookupResp: token: %d addr: 0x%x value: 0x%x", tokenReg, addressReg, valueReg));
+        else
+            debugLog.record($format("lookupResp: invalid: token: %d addr: 0x%x", tokenReg, addressReg));
+
         return makeLookupResp(tokenReg, addressReg, isValid(best), valueReg);
     endmethod
 
@@ -325,7 +335,7 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
         prev[0].readReq(x);
         next[0].readReq(x);
         Bit#(TLog#(numStores)) zero = 0;
-        debugLog.record($format("commitReq: ") + fshow(makePointer(x, zero)));
+        debugLog.record($format("commitReq: token: %d ", token) + fshow(makePointer(x, zero)));
         if(0 != fromInteger(valueOf(numStores) - 1))
             addr[1].readReq(x);
         iReg <= zero;
@@ -355,7 +365,7 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
             prev[iReg + 1].readReq(xReg);
             next[iReg + 1].readReq(xReg);
 
-            debugLog.record($format("commitResp: ") + fshow(makePointer(xReg, iReg)));
+            debugLog.record($format("commitResp: next: ") + fshow(makePointer(xReg, iReg)));
 
             if(valueOf(numStores) > 2)
                 if(iReg != fromInteger(valueOf(numStores) - 2))
@@ -365,6 +375,8 @@ module mkHashedStoreBuffer(HashedStoreBuffer#(tokenWidth, addrWidth, dataWidth, 
             state <= Ready;
 
         iReg <= iReg + 1;
+
+        debugLog.record($format("commitResp: token: %d addr: 0x%x value: 0x%x more:", tokenReg, validValue(addrX), dataX, (isValid(addrNext) ? "Y" : "N")));
         return makeCommitResp(tokenReg, validValue(addrX), dataX, isValid(addrNext));
     endmethod
 

@@ -28,6 +28,8 @@ typedef union tagged
 {
     struct {TOKEN token; MEM_ADDRESS addr;               } MEMSTATE_REQ_LOAD;
     struct {TOKEN token; MEM_ADDRESS addr; MEM_VALUE val;} MEMSTATE_REQ_STORE;
+    TOKEN                                                  MEMSTATE_REQ_COMMIT;
+    struct {TOKEN_INDEX rewind_tok; TOKEN_INDEX youngest;} MEMSTATE_REQ_REWIND;
 }
     MEMSTATE_REQ 
           deriving
@@ -61,8 +63,6 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
     // Links to the functional partition register state.
     Connection_Server#(MEMSTATE_REQ, MEM_VALUE)              linkRegState      <- mkConnection_Server("funcp_memstate");
-    Connection_Receive#(TOKEN)                               linkCommit        <- mkConnection_Receive("funcp_mem_commit");
-    Connection_Receive#(Tuple2#(TOKEN_INDEX, TOKEN_INDEX))   linkRewindToToken <- mkConnection_Receive("funcp_mem_rewind");
 
     // Link to the Store Buffer
     Connection_Client#(MEMSTATE_SBUFFER_REQ, MEMSTATE_SBUFFER_RSP) linkStoreBuffer <- mkConnection_Client("mem_storebuf");
@@ -195,11 +195,10 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // When:   When the register state requests a committed store.
     // Effect: Retrieve the value from the store buffer.
 
-    rule commit1 (True);
+    rule commit1 (linkRegState.getReq() matches tagged MEMSTATE_REQ_COMMIT .tok);
 
         // Get the input from the register state. Begin macro-operation.
-        TOKEN tok = linkCommit.receive();
-        linkCommit.deq();
+        linkRegState.deq();
 
         // Send the request on to the store buffer.
         linkStoreBuffer.makeReq(tagged SBUFFER_REQ_COMMIT tok);
@@ -230,14 +229,12 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // Parameters: TOKEN, TOKEN
     // Returns:    N/A
 
-    rule rewind (True);
+    rule rewind (linkRegState.getReq() matches tagged MEMSTATE_REQ_REWIND .rew);
       
-      // Get the input from the register state.
-      match {.rewind_tok, .youngest} = linkRewindToToken.receive();
-      linkRewindToToken.deq();
+      linkRegState.deq();
 
       // Pass the request on to the store buffer.
-      linkStoreBuffer.makeReq(tagged SBUFFER_REQ_REWIND {rewind: rewind_tok, youngest: youngest});
+      linkStoreBuffer.makeReq(tagged SBUFFER_REQ_REWIND {rewind: rew.rewind_tok, youngest: rew.youngest});
 
     endrule
 

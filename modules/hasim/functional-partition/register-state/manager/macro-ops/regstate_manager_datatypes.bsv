@@ -139,6 +139,7 @@ typedef union tagged
     struct 
     { 
         Bit#(4)          numToAlloc;
+        Bit#(4)          current;
         ISA_SRC_MAPPING  mapSrcs;
         ISA_DST_MAPPING  mapDstsSoFar;
         ISA_INST_DSTS    regsToFreeSoFar;

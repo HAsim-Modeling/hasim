@@ -1041,7 +1041,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             // Stall this stage.
             stateDeps2 <= tagged DEPS2_ALLOC_MORE 
                                  {
-                                     numToAlloc: fromInteger(num_dsts - 1), 
+                                     numToAlloc: fromInteger(num_dsts - 1),
+                                     current: 1, 
                                      mapSrcs: map_srcs, 
                                      mapDstsSoFar: map_dsts, 
                                      regsToFreeSoFar: phy_regs_to_free
@@ -1059,19 +1060,19 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
         // Get the data from the previous stage.
         let tok = depsQ.first();
-        let num = dep_info.numToAlloc;
+        let cur = dep_info.current;
         let map_dsts = dep_info.mapDstsSoFar;
       
         // Get the new phys reg.
         let phy_dst <- freelist.forwardResp();
 
         // The new mapping.
-        match {.arc_dst, .dummy} = validValue(map_dsts[num]); // Perhaps we should assert that this is valid?
-        let new_map_dsts = update(map_dsts, num, tagged Valid tuple2(arc_dst, phy_dst));
+        match {.arc_dst, .dummy} = validValue(map_dsts[cur]); // Perhaps we should assert that this is valid?
+        let new_map_dsts = update(map_dsts, cur, tagged Valid tuple2(arc_dst, phy_dst));
 
         // The reg to free is the old writer of this destination.
-        let actual_phy_reg_to_free = isValid(map_dsts[num])? tagged Valid select(maptable, pack(arc_dst)): tagged Valid phy_dst;
-        let new_phy_regs_to_free = update(dep_info.regsToFreeSoFar, num, actual_phy_reg_to_free);
+        let actual_phy_reg_to_free = isValid(map_dsts[cur])? tagged Valid select(maptable, pack(arc_dst)): tagged Valid phy_dst;
+        let new_phy_regs_to_free = update(dep_info.regsToFreeSoFar, cur, actual_phy_reg_to_free);
 
         // Check that epoch didn't advance in the middle of getDependences.
         // Epoch is changed by rewind and rewind can only begin when the no
@@ -1080,7 +1081,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // junk tokens.
         assertNoEpochChange(tok.timep_info.epoch == epoch);
 
-        if (isValid(map_dsts[num]))
+        if (isValid(map_dsts[cur]))
         begin
 
             // Update the maptable.
@@ -1090,11 +1091,11 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             prfValids[phy_dst] <= False;
 
             // Log it.
-            debugLog.record($format("TOKEN %0d: GetDeps2: Destination %0d Mapped (%0d/%0d)", tok.index, num, arc_dst, phy_dst));
+            debugLog.record($format("TOKEN %0d: GetDeps2: Destination %0d Mapped (%0d/%0d)", tok.index, cur, arc_dst, phy_dst));
 
         end
 
-        if (num > 0) // We're not done yet;
+        if (cur < dep_info.numToAlloc) // We're not done yet;
         begin
 
             // Get a new physical reg for the next time around.
@@ -1103,7 +1104,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             // Update the state for the next time around.
             stateDeps2 <= tagged DEPS2_ALLOC_MORE 
                                  {
-                                     numToAlloc: num - 1, 
+                                     numToAlloc: dep_info.numToAlloc,
+                                     current: cur + 1,
                                      mapSrcs: dep_info.mapSrcs, 
                                      mapDstsSoFar: new_map_dsts, 
                                      regsToFreeSoFar: new_phy_regs_to_free

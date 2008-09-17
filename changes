@@ -15144,3 +15144,17 @@ Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
   the Bluespec uninitialized value.
 
 - Improve debug messages in the store buffer.
+
+----------
+pellauer    Date: Wed Sep 17 12:47:13 EDT 2008  CSN: CSN-hasim-528
+                  Wed Sep 17 16:47:13 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_datatypes.bsv Locally Modified          527 
+ regstate_manager_macro_ops.bsv Locally Modified          527 
+
+
+Fixed a minor bug in instructions with more than one destination.
+
+Michael P.

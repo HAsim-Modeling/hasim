@@ -44,10 +44,12 @@ smart_synth_boundaries=Smart Synthesis Boundaries
 platform_interface=Hasim Platform Interface
 soft_connections=Soft Connections
 hasim_modellib=Hasim Modeling Library
+hasim_cache=HAsim FPGA-side generic cache
 
 [Soft Connections/Params]
 CON_CWIDTH=400
 
-[New Hasim Common Library/Params]
-TOKEN_TIMEP_EPOCH_BITS=5
-TOKEN_FUNCP_EPOCH_BITS=5
+
+[HAsim FPGA-side generic cache]
+File=modules/common/cache/hasim-cache.awb
+Packagehint=hasim

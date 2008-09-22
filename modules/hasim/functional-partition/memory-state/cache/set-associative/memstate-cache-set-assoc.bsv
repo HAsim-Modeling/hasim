@@ -37,7 +37,6 @@
 // Library imports.
 
 import FIFO::*;
-import FIFOF::*;
 import Vector::*;
 
 // Project foundation imports.
@@ -46,6 +45,7 @@ import Vector::*;
 `include "asim/provides/hasim_modellib.bsh"
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/fpga_components.bsh"
+`include "asim/provides/hasim_cache.bsh"
 
 // The memory virtual device
 
@@ -57,882 +57,432 @@ import Vector::*;
 `include "asim/dict/STATS_FUNCP_MEMSTATE_CACHE.bsh"
 
 
-typedef Bit#(TLog#(TDiv#(`FUNCP_ISA_INT_REG_SIZE,8)))  WORD_OFFSET;
-typedef TLog#(CACHELINE_WORDS)                         CACHELINE_OFFSET_SIZE;
-typedef Bit#(CACHELINE_OFFSET_SIZE)                    CACHELINE_OFFSET;
-typedef Bit#(TSub#(`FUNCP_ISA_P_ADDR_SIZE,TLog#(TDiv#(`FUNCP_CACHELINE_BITS,8)))) CACHE_TAG;
+// Low address bits indexing base ISA data size
+typedef TLog#(TDiv#(`FUNCP_ISA_INT_REG_SIZE,8)) FUNCP_MEM_ISA_WORD_OFFSET_BITS;
+typedef Bit#(FUNCP_MEM_ISA_WORD_OFFSET_BITS)    FUNCP_MEM_ISA_WORD_OFFSET;
 
-typedef Bit#(`FUNCP_CACHE_IDX_BITS) CACHE_SET;
-typedef TLog#(`FUNCP_CACHE_WAYS) CACHE_WAY_SIZE;
-typedef UInt#(CACHE_WAY_SIZE) CACHE_WAY;
+// Address bits indexing ISA data sized objects in a cache line
+typedef TLog#(CACHELINE_WORDS)                  FUNCP_MEM_CACHELINE_OFFSET_BITS;
+typedef Bit#(FUNCP_MEM_CACHELINE_OFFSET_BITS)   FUNCP_MEM_CACHELINE_OFFSET;
 
-typedef Vector#(`FUNCP_CACHE_WAYS, CACHE_WAY) CACHE_LRU_LIST;
+// All non-cache tag bits
+typedef TAdd#(FUNCP_MEM_ISA_WORD_OFFSET_BITS, FUNCP_MEM_CACHELINE_OFFSET_BITS) FUNCP_MEM_ADDR_NONTAG_BITS;
+
+// Address bits for cache tag (excludes ISA_WORD_OFFSET and CACHELINE_OFFSET)
+typedef Bit#(TSub#(`FUNCP_ISA_P_ADDR_SIZE,TLog#(TDiv#(`FUNCP_CACHELINE_BITS,8)))) FUNCP_MEM_CACHE_TAG;
+
+// Cache line data size
+typedef Bit#(`FUNCP_CACHELINE_BITS) FUNCP_MEM_CACHELINE;
+
+// Equivalent to cache line size but as a vector of ISA-sized objects
+typedef Vector#(CACHELINE_WORDS, MEM_VALUE) FUNCP_MEM_CACHELINE_VEC;
 
 
+// ===================================================================
 //
-// Cache metadata (tag and a dirty bit)
+// FUNCP_MEM_INTERFACE
 //
-typedef struct
-{
-    CACHE_TAG tag;
-    Bool dirty;
-}
-  CACHE_METADATA
-    deriving(Eq, Bits);
-
-typedef Vector#(`FUNCP_CACHE_WAYS, Maybe#(CACHE_METADATA)) CACHE_METADATA_VECTOR;
-
+//    Interface for talking to main memory.  In addition to the
+//    HASIM_CACHE_SORUCE_DATA subinterface, FUNCP_MEM_INTERFACE has bypass
+//    methods for reading and writing word-sized data from/to main memory.
+//    The bypass methods are used when the cache is disabled.
 //
-// Request structure passed along the cache.  Index computation uses a hash and
-// is expensive, so it is done once and passed along.
-//
-typedef struct
-{
-    MEM_REQUEST req;
-    CACHE_SET   set;
-}
-  CACHE_ACCESS
-    deriving(Eq, Bits);
+// ===================================================================
 
-//
-// The cache data is indexed by three things:  the set, the way within the set
-// and the offset in the line.  Declaring the cache data as multiply indexed
-// vectors results in a large amount of extra LUT usage to control the
-// BRAMs.  Instead, we allocate a single large cache data BRAM and index it
-// with a packed version of this structure:
-//
-typedef struct
-{
-    CACHE_SET set;
-    CACHE_WAY way;
-    CACHELINE_OFFSET offset;
-}
-  CACHE_DATA_IDX
-    deriving(Eq, Bits);
+interface FUNCP_MEM_INTERFACE;
+    interface HASIM_CACHE_SOURCE_DATA#(FUNCP_MEM_CACHE_TAG, FUNCP_MEM_CACHELINE) cacheIfc;
+
+    method Action readWordReq(MEM_ADDRESS addr);
+    method ActionValue#(MEM_VALUE) readWordResp();
+
+    method Action writeWord(MEM_ADDRESS addr, MEM_VALUE val);
+
+endinterface: FUNCP_MEM_INTERFACE
 
 
-module [HASIM_MODULE] mkFUNCP_Cache ();
+module [HASIM_MODULE] mkFuncpMemInterface
+    // interface:
+        (FUNCP_MEM_INTERFACE);
 
-    // ***** Soft Connections *****
+    // Connection to main memory
+    Connection_Client#(MEM_REQUEST, MEM_REPLY) link_funcp_memory <- mkConnection_Client("funcp_memory");
 
-    Connection_Server#(MEM_REQUEST, MEM_VALUE) link_memstate               <- mkConnection_Server("mem_cache");
+    function MEM_ADDRESS memAddrFromCacheTag(FUNCP_MEM_CACHE_TAG tag);
+        FUNCP_MEM_CACHELINE_OFFSET cloff = 0;
+        FUNCP_MEM_ISA_WORD_OFFSET woff = 0;
+        return { tag, cloff, woff };
+    endfunction
 
-    Connection_Client#(MEM_REQUEST, MEM_REPLY) link_funcp_memory           <- mkConnection_Client("funcp_memory");
-    Connection_Server#(MEM_INVAL_CACHELINE_INFO, Bool) link_funcp_memory_inval <- mkConnection_Server("funcp_memory_cache_invalidate");
-    Connection_Server#(Bool, Bool)                 link_funcp_memory_inval_all <- mkConnection_Server("funcp_memory_cache_invalidate_all");
+    //
+    // This is the standard interface passed to the cache.  All the methods
+    // operate on cache-line sized data.  They also translate cache addresses
+    // that lack the low bits for addressing within a line to system addresses
+    // that include the low bits.
+    //
+    interface HASIM_CACHE_SOURCE_DATA cacheIfc;
 
-    // ***** Cache data *****
+        method Action readReq(FUNCP_MEM_CACHE_TAG addr);
+            link_funcp_memory.makeReq(tagged MEM_LOAD_CACHELINE memAddrFromCacheTag(addr));
+        endmethod
 
-    // Tags & dirty bits
-    BRAM#(CACHE_SET, CACHE_METADATA_VECTOR) cacheMeta <- mkBRAMInitialized(Vector::replicate(tagged Invalid));
-    // Values
-    BRAM#(CACHE_DATA_IDX, MEM_VALUE) cacheData <- mkBRAM();
-    // LRU hint
-    BRAM#(CACHE_SET, CACHE_LRU_LIST) cacheLRU <- mkBRAMInitialized(Vector::genWith(fromInteger));
-
-    // ***** Internal state *****
-
-    Reg#(Bool) cacheIsEmpty <- mkReg(True);
-
-    FIFOF#(CACHE_ACCESS) pendingQ <- mkFIFOF1; // size=1 -> blocking. we'll need a searchable fifo for size >=2.
-    Reg#(Bool)           waiting  <- mkReg(False);
-
-    Reg#(Bool)      invalidatingAll  <- mkReg(False);
-    Reg#(CACHE_SET) invalidateAllSet <- mkReg(0);
-
-    Reg#(CACHELINE_OFFSET) fillLineOffset <- mkReg(0);
-    Reg#(CACHELINE_OFFSET) flushLineOffset <- mkReg(0);
-    Reg#(CACHE_WAY)        flushWay <- mkReg(0);
-    Reg#(MEM_CACHELINE)    flushLineData <- mkRegU();
-
+        method ActionValue#(FUNCP_MEM_CACHELINE) readResp() if (link_funcp_memory.getResp() matches tagged MEM_REPLY_LOAD_CACHELINE .v);
+            link_funcp_memory.deq();
+            return pack(v);
+        endmethod
     
-    PARAMETER_NODE paramNode <- mkDynamicParameterNode();
+        // Asynchronous write (no response)
+        method Action write(FUNCP_MEM_CACHE_TAG addr, FUNCP_MEM_CACHELINE val);
+            link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE MEM_STORE_CACHELINE_INFO { addr: memAddrFromCacheTag(addr), val: unpack(val) });
+        endmethod
+    
+        // Synchronous write.  writeSyncWait() blocks until the response arrives.
+        method Action writeSyncReq(FUNCP_MEM_CACHE_TAG addr, FUNCP_MEM_CACHELINE val);
+            link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE_SYNC MEM_STORE_CACHELINE_INFO { addr: memAddrFromCacheTag(addr), val: unpack(val) });
+        endmethod
 
-    Param#(1) enableCacheParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEM_CACHE_ENABLE, paramNode);
-    function Bool enableCache() = (enableCacheParam == 1);
+        method Action writeSyncWait() if (link_funcp_memory.getResp() matches tagged MEM_REPLY_STORE_CACHELINE_ACK .v);
+            link_funcp_memory.deq();
+        endmethod
 
-    Param#(1) writeBackParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEM_CACHE_WRITE_BACK, paramNode);
-    function Bool writeBackCache() = (writeBackParam == 1);
+    endinterface: cacheIfc
 
-    Reg#(Bool)        invalidate_just_flush <- mkRegU();
-    Reg#(MEM_ADDRESS) invalidate_addr    <- mkRegU();
-    Reg#(UInt#(8))    invalidate_n_lines <- mkReg(0);
-    Reg#(Bool)        invalidate_need_ack <- mkReg(False);
+    //
+    // This is the private interface used when bypassing the cache
+    //
+    method Action readWordReq(MEM_ADDRESS addr);
+        link_funcp_memory.makeReq(tagged MEM_LOAD addr);
+    endmethod
 
-    Reg#(UInt#(4))    inflightSyncFlushes <- mkReg(0);
+    method ActionValue#(MEM_VALUE) readWordResp() if (link_funcp_memory.getResp() matches tagged MEM_REPLY_LOAD .v);
+        link_funcp_memory.deq();
+        return v;
+    endmethod
 
-    // ***** Queues between internal pipeline stages *****
+    method Action writeWord(MEM_ADDRESS addr, MEM_VALUE val);
+        link_funcp_memory.makeReq(tagged MEM_STORE MEM_STORE_INFO { addr: addr, val: val });
+    endmethod
 
-    FIFO#(Tuple2#(CACHE_WAY, CACHELINE_OFFSET)) loadFromCache <- mkFIFO();
-    FIFO#(Tuple2#(CACHE_SET, CACHE_METADATA_VECTOR)) flushDirtySet <- mkFIFO();
-    FIFO#(Tuple2#(CACHE_SET, CACHE_WAY)) fillVictim <- mkFIFO();
+endmodule
 
-    // flushDirtyLine must be a blocking FIFO1 since the writers must also request
-    // a cache line and the consumer iterates, reading more lines.
-    FIFO#(Tuple4#(CACHE_TAG, CACHE_SET, CACHE_WAY, Bool)) flushDirtyLine <- mkFIFO1();
 
-    // ***** Statistics *****
+// ===================================================================
+//
+// STATISTICS INTERFACE
+//
+// mkFuncpMemoryCacheStats --
+//     Statistics callbacks from main cache class.
+//
+// ===================================================================
 
+module [HASIM_MODULE] mkFuncpMemoryCacheStats
+    // interface:
+        (HASIM_CACHE_STATS);
+    
     Stat statLoadHit   <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_LOAD_HIT);
     Stat statLoadMiss  <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_LOAD_MISS);
-    Stat statLoadMissValidVictim
-                       <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_LOAD_MISS_VALID_VICTIM);
 
     Stat statStoreHit  <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_STORE_HIT);
     Stat statStoreMiss <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_STORE_MISS);
-    Stat statStoreMissValidVictim
-                       <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_STORE_MISS_VALID_VICTIM);
+
+    Stat statInvalLine
+                       <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_INVAL_LINE);
     Stat statDirtyLineFlush
                        <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_DIRTY_LINE_FLUSH);
+    Stat statForceInvalLine
+                       <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_FORCE_INVAL_LINE);
+
+    method Action readHit();
+        statLoadHit.incr();
+    endmethod
+
+    method Action readMiss();
+        statLoadMiss.incr();
+    endmethod
+
+    method Action writeHit();
+        statStoreHit.incr();
+    endmethod
+
+    method Action writeMiss();
+        statStoreMiss.incr();
+    endmethod
+
+    method Action invalLine();
+        statInvalLine.incr();
+    endmethod
+
+    method Action dirtyLineFlush();
+        statDirtyLineFlush.incr();
+    endmethod
+
+    method Action forceInvalLine();
+        statForceInvalLine.incr();
+    endmethod
+
+endmodule
+
+
+
+// ===================================================================
+//
+// MAIN CACHE MODULE with soft connections to other functional
+// components.
+//
+// ===================================================================
+
+module [HASIM_MODULE] mkFUNCP_Cache
+    // interface:
+        ();
+
+    DEBUG_FILE debugLog <- mkDebugFile(`FUNCP_MEMCACHE_LOGFILE_NAME);
+
+    // ***** Dynamic parameters *****
+    PARAMETER_NODE paramNode <- mkDynamicParameterNode();
+
+    Param#(1) enableCacheParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEMCACHE_ENABLE, paramNode);
+    function Bool enableCache() = (enableCacheParam == 1);
+
+    Param#(1) writeBackParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEMCACHE_WRITE_BACK, paramNode);
+    function Bool writeBackCache() = (writeBackParam == 1);
+
+
+    // ***** Soft Connections *****
+    Connection_Server#(MEM_REQUEST, MEM_VALUE) link_memstate <- mkConnection_Server("mem_cache");
+
+    Connection_Server#(MEM_INVAL_CACHELINE_INFO, Bool) link_funcp_memory_inval <- mkConnection_Server("funcp_memory_cache_invalidate");
+    Connection_Server#(Bool, Bool)                 link_funcp_memory_inval_all <- mkConnection_Server("funcp_memory_cache_invalidate_all");
+
+
+    // Interfaces required by the base cache module
+    FUNCP_MEM_INTERFACE funcpMemIfc <- mkFuncpMemInterface();
+    HASIM_CACHE_STATS statIfc <- mkFuncpMemoryCacheStats();
+
+    // The cache
+    HASIM_CACHE#(FUNCP_MEM_CACHE_TAG,
+                 FUNCP_MEM_CACHELINE,
+                 `FUNCP_MEMCACHE_SETS,
+                 `FUNCP_MEMCACHE_WAYS,
+                 FUNCP_MEM_ADDR_NONTAG_BITS) cache <- mkCacheSetAssoc(funcpMemIfc.cacheIfc, statIfc, debugLog);
+
+    FIFO#(FUNCP_MEM_CACHELINE_OFFSET) loadFromCache <- mkFIFO();
+
+    // Loop state for invalidating multiple lines with one message from the host
+    Reg#(UInt#(8)) invalLoopNLines <- mkReg(0);
+    Reg#(FUNCP_MEM_CACHE_TAG) invalLoopCacheTag <- mkRegU();
+    Reg#(Bool) invalLoopOnlyFlush <- mkRegU();
 
     // ***** Assertion Checkers *****
 
     ASSERTION_NODE assertNode    <- mkAssertionNode(`ASSERTIONS_FUNCP_MEMSTATE_CACHE__BASE);
-    ASSERTION assertLegalSize    <- mkAssertionChecker(`ASSERTIONS_FUNCP_MEMSTATE_CACHE_ILLEGAL_SIZE, ASSERT_ERROR, assertNode);
     ASSERTION assertValidRequest <- mkAssertionChecker(`ASSERTIONS_FUNCP_MEMSTATE_CACHE_INVALID_REQUEST, ASSERT_ERROR, assertNode);
 
 
-    // ******* Debuging State *******
+    function FUNCP_MEM_CACHE_TAG cacheTagFromAddr(MEM_ADDRESS addr);
 
-    // Fake register to hold our debugging file descriptor.
-    DEBUG_FILE debugLog         <- mkDebugFile(`FUNCP_CACHE_LOGFILE_NAME);
-
-    // The current FPGA clock cycle
-    Reg#(Bit#(32)) fpgaCC <- mkReg(0);
-
-    rule currentCC (True);
-
-        fpgaCC <= fpgaCC + 1;
-
-    endrule
-
-    // ***** Indexing functions *****
-
-    function CACHE_DATA_IDX getDataIdx (CACHE_SET set, CACHE_WAY way, CACHELINE_OFFSET offset);
-
-        return CACHE_DATA_IDX { set: set, way: way, offset: offset };
-
-    endfunction
-
-
-    function MEM_ADDRESS cacheAddr(CACHE_TAG tag, CACHELINE_OFFSET cloff);
-
-        WORD_OFFSET woff = 0;
-        return { tag, cloff, woff};
-
-    endfunction
-
-
-    function CACHE_TAG cacheTag(MEM_ADDRESS addr);
-
-        Tuple3#(CACHE_TAG,CACHELINE_OFFSET,WORD_OFFSET) tup = unpack(addr);
+        Tuple3#(FUNCP_MEM_CACHE_TAG, FUNCP_MEM_CACHELINE_OFFSET, FUNCP_MEM_ISA_WORD_OFFSET) tup = unpack(addr);
         match { .tag, .cloff, .woff } = tup;
         return tag;
 
     endfunction
 
 
-    function CACHE_SET cacheSet(MEM_ADDRESS addr);
-    
-        let tag = cacheTag(addr);
-        return truncate(hashTo32(tag));
+    function FUNCP_MEM_CACHELINE_OFFSET cacheLineOffsetFromAddr(MEM_ADDRESS addr);
 
-    endfunction
-
-
-    function CACHELINE_OFFSET cacheLineOffset(MEM_ADDRESS addr);
-
-        Tuple3#(CACHE_TAG,CACHELINE_OFFSET,WORD_OFFSET) tup = unpack(addr);
+        Tuple3#(FUNCP_MEM_CACHE_TAG, FUNCP_MEM_CACHELINE_OFFSET, FUNCP_MEM_ISA_WORD_OFFSET) tup = unpack(addr);
         match { .tag, .cloff, .woff } = tup;
         return cloff;
 
     endfunction
 
 
-    function WORD_OFFSET cacheWordOffset(MEM_ADDRESS addr);
-
-        Tuple3#(CACHE_TAG,CACHELINE_OFFSET,WORD_OFFSET) tup = unpack(addr);
-        match { .tag, .cloff, .woff } = tup;
-        return woff;
-
-    endfunction
-
-
-    function MEM_ADDRESS getLineAddr (MEM_ADDRESS addr);
-
-        CACHELINE_OFFSET cloff_0 = 0;
-        WORD_OFFSET      woff_0  = 0;
-        return pack(tuple3(cacheTag(addr),cloff_0,woff_0));
-
-    endfunction
-
-
-    // ***** Meta data searches *****
-
-    function Maybe#(CACHE_WAY) findWayMatch(MEM_ADDRESS addr, CACHE_METADATA_VECTOR meta);
-    
-        Maybe#(CACHE_WAY) wayMatch = tagged Invalid;
-
-        for (Integer w = 0; w < `FUNCP_CACHE_WAYS; w = w + 1)
-        begin
-            if (meta[w] matches tagged Valid .m &&& m.tag == cacheTag(addr))
-            begin
-                wayMatch = tagged Valid fromInteger(w);
-            end
-        end
-    
-        return wayMatch;
-
-    endfunction
-
-
-    function Maybe#(CACHE_WAY) findFirstInvalid(CACHE_METADATA_VECTOR meta);
-    
-        Maybe#(CACHE_WAY) wayMatch = tagged Invalid;
-
-        for (Integer w = 0; w < `FUNCP_CACHE_WAYS; w = w + 1)
-        begin
-            if (meta[w] matches tagged Invalid)
-            begin
-                wayMatch = tagged Valid fromInteger(w);
-            end
-        end
-    
-        return wayMatch;
-
-    endfunction
-
-
-    // ***** LRU Management ***** //
-
-    //
-    // getLRU --
-    //   Least recently used way in a set.
-    //
-    function CACHE_WAY getLRU(CACHE_LRU_LIST list);
-
-        return list[`FUNCP_CACHE_WAYS - 1];
-
-    endfunction
-
-
-    //
-    // getMRU --
-    //   Most recently used way in a set.
-    //
-
-    function CACHE_WAY getMRU(CACHE_LRU_LIST list);
-
-        return list[0];
-
-    endfunction
-
-
-    //
-    // pushMRU --
-    //   Update MRU list, moving a way to the head of the list.
-    //
-    function CACHE_LRU_LIST pushMRU(CACHE_LRU_LIST curLRU, CACHE_WAY mru);
-
-        CACHE_LRU_LIST new_list = curLRU;
-    
-        //
-        // Find the new MRU value in the current list
-        //
-        if (findElem(mru, curLRU) matches tagged Valid .mru_pos)
-        begin
-            //
-            // Shift older references out of the MRU slot
-            //
-            for (CACHE_WAY w = 0; w < mru_pos; w = w + 1)
-            begin
-                new_list[w + 1] = curLRU[w];
-            end
-
-            // MRU is slot 0
-            new_list[0] = mru;
-        end
-
-        return new_list;
-
-    endfunction
-
-
-
-    function Action cacheDebugLRUUpdate(String access_type,
-                                        CACHE_WAY way,
-                                        CACHE_LRU_LIST cur_lru,
-                                        CACHE_LRU_LIST new_lru);
-    action
-
-        if ((getMRU(cur_lru) != way) || (cur_lru != new_lru))
-        begin
-            debugLog.record($format("  Update LRU (way=0x%x) for %s: %b -> %b", way, access_type, cur_lru, new_lru));
-        end
-        if (getMRU(new_lru) != way)
-        begin
-            debugLog.record($format("  ***ERROR*** expected MRU to be 0x%x but it is 0x%x", way, getMRU(new_lru)));
-        end
-
-    endaction
-    endfunction
-
-
-    // ***** Rules ***** //
+    // ***** Cache client-side rules ***** //
 
     //
     // handleReq --
-    //     Main entry point for load/store requests.
+    //    Incoming client request
     //
-    rule handleReq (!invalidatingAll);
-        let req = link_memstate.getReq();
+    rule handleReq (enableCache);
+        let mem_req = link_memstate.getReq();
         link_memstate.deq();
+        
+        // The value of writeBackCache must be stable for an entire run since
+        // setting write-back to false does not flush existing dirty lines.
+        cache.setModeWriteBack(writeBackCache);
 
-        //
-        // Valid request?
-        //
-        case (req) matches
-            tagged MEM_LOAD  .a: noAction;
-            tagged MEM_STORE .s: noAction;
-            tagged MEM_INVALIDATE_CACHELINE .a: noAction;
-            tagged MEM_FLUSH_CACHELINE .a: noAction;
+        case (mem_req) matches
+            tagged MEM_LOAD .a:
+            begin
+                debugLog.record($format("LOAD: addr=0x%x", a));
+                cache.readReq(cacheTagFromAddr(a));
+                loadFromCache.enq(cacheLineOffsetFromAddr(a));
+            end
+
+            tagged MEM_STORE .s:
+            begin
+                debugLog.record($format("STORE: addr=0x%x, data=0x%x", s.addr, s.val));
+
+                //
+                // Build a mask so only the target word is updated within
+                // the line.
+                //
+                MEM_VALUE ones = signExtend(1'b1);
+
+                FUNCP_MEM_CACHELINE_VEC mask = unpack(0);
+                FUNCP_MEM_CACHELINE_VEC val = unpack(0);
+                
+                let word = cacheLineOffsetFromAddr(s.addr);
+                mask[word] = -1;
+                val[word] = s.val;
+
+                cache.writeMaskedReq(cacheTagFromAddr(s.addr), pack(val), pack(mask));
+                
+                // Write-through now?
+                if (! writeBackCache)
+                    funcpMemIfc.writeWord(s.addr, s.val);
+            end
+
+            tagged MEM_INVALIDATE_CACHELINE .a:
+            begin
+                debugLog.record($format("INVAL: addr=0x%x", a));
+                cache.invalReq(cacheTagFromAddr(a), False);
+            end
+
+            tagged MEM_FLUSH_CACHELINE .a:
+            begin
+                debugLog.record($format("FLUSH: addr=0x%x", a));
+                cache.flushReq(cacheTagFromAddr(a), False);
+            end
+
             default: assertValidRequest(False);
         endcase
-
-        let addr = case (req) matches
-                      tagged MEM_LOAD  .a: a;
-                      tagged MEM_STORE .s: s.addr;
-                      tagged MEM_INVALIDATE_CACHELINE .a: a;
-                      tagged MEM_FLUSH_CACHELINE .a: a;
-                   endcase;
-
-        let set = cacheSet(addr);
-
-        let req_kind = case (req) matches
-                           tagged MEM_LOAD  .a: "LOAD";
-                           tagged MEM_STORE .s: "STORE";
-                           tagged MEM_INVALIDATE_CACHELINE .a: "INVAL";
-                           tagged MEM_FLUSH_CACHELINE .a: "INVAL";
-                       endcase;
-        debugLog.record($format("New request: %s addr=0x%x, set=0x%x", req_kind, addr, set));
-
-        if (enableCache)
-        begin
-            CACHE_ACCESS access;
-            access.req = req;
-            access.set = set;
-
-            pendingQ.enq(access);
-
-            // Read meta data and LRU hints
-            cacheMeta.readReq(set);
-            cacheLRU.readReq(set);
-        end
-        else
-        begin
-            //
-            // Bypass cache
-            //
-            if (req matches tagged MEM_INVALIDATE_CACHELINE .a)
-                noAction;
-            else
-                link_funcp_memory.makeReq(req);
-        end
     endrule
 
 
     //
-    // handleBypass --
-    //     Only enabled when cache is OFF.  Route load results back to requester.
+    // handleResp --
+    //     Response from read request initiated by handleReq
     //
-    rule handleBypass (!enableCache &&& link_funcp_memory.getResp() matches tagged MEM_REPLY_LOAD .v);
-        link_funcp_memory.deq();
-        link_memstate.makeResp(v);
-        debugLog.record($format("Memory response (cache off): 0x%x", v));
-    endrule
-
-
-    //
-    // handleInval --
-    //     Invalidate a single line if it matches the tag.
-    //
-    rule handleInval (pendingQ.first.req matches tagged MEM_INVALIDATE_CACHELINE .addr);
-        let set = pendingQ.first.set;
-        let cur_lru <- cacheLRU.readRsp();
-        let meta <- cacheMeta.readRsp();
-        Bool done = True;
-
-        if (findWayMatch(addr, meta) matches tagged Valid .inval_way)
-        begin
-            if (meta[inval_way] matches tagged Valid .m &&& m.dirty)
-            begin
-                flushDirtyLine.enq(tuple4(m.tag, set, inval_way, False));
-                cacheData.readReq(getDataIdx(set, inval_way, 0));
-                done = False;
-            end
-
-            meta[inval_way] = tagged Invalid;
-            cacheMeta.write(set, meta);
-        end
-        
-        if (done)
-            pendingQ.deq();
-    endrule
-
-
-    //
-    // handleFlush --
-    //     Flush a single line if it matches the tag.
-    //
-    rule handleFlush (pendingQ.first.req matches tagged MEM_FLUSH_CACHELINE .addr);
-        let set = pendingQ.first.set;
-        let cur_lru <- cacheLRU.readRsp();
-        let meta <- cacheMeta.readRsp();
-        Bool done = True;
-
-        if (findWayMatch(addr, meta) matches tagged Valid .inval_way)
-        begin
-            if (meta[inval_way] matches tagged Valid .m &&& m.dirty)
-            begin
-                flushDirtyLine.enq(tuple4(m.tag, set, inval_way, False));
-                cacheData.readReq(getDataIdx(set, inval_way, 0));
-                done = False;
-
-                // Line no longer dirty.  Update meta data.
-                let new_meta = m;
-                new_meta.dirty = False;
-                meta[inval_way] = tagged Valid new_meta;
-                cacheMeta.write(set, meta);
-            end
-        end
-        
-        if (done)
-            pendingQ.deq();
-    endrule
-
-
-    //
-    // prepareFillVictim --
-    //     Common code for loads and stores on a miss.  Pick a victim, flush
-    //     existing data and request the fill from memory.  Returns the way
-    //     to fill and whether the victim was currently invalid.
-    //
-    function ActionValue#(Tuple2#(CACHE_WAY, Bool)) prepareFillVictim(
-                                                      MEM_ADDRESS addr,
-                                                      CACHE_METADATA_VECTOR meta,
-                                                      CACHE_SET set,
-                                                      CACHE_LRU_LIST cur_lru,
-                                                      Bool fill_dirty);
-    actionvalue
-
-        //
-        // Miss.  First pick a victim.
-        //
-        CACHE_WAY fill_way = getLRU(cur_lru);
-        Bool fill_invalid = False;
-        if (findFirstInvalid(meta) matches tagged Valid .inval_way)
-        begin
-            fill_way = inval_way;
-            fill_invalid = True;
-        end
-
-        // Request the new value from memory
-        link_funcp_memory.makeReq(tagged MEM_LOAD_CACHELINE getLineAddr(addr));
-        cacheIsEmpty <= False;
-
-        // Update LRU
-        let new_lru = pushMRU(cur_lru, fill_way);
-        cacheLRU.write(set, new_lru);
-
-        if (meta[fill_way] matches tagged Valid .m &&& m.dirty)
-        begin
-            flushDirtyLine.enq(tuple4(m.tag, set, fill_way, True));
-            cacheData.readReq(getDataIdx(set, fill_way, 0));
-        end
-        else
-            fillVictim.enq(tuple2(set, fill_way));
-
-        //
-        // Update tag here for the filled line.  We don't wait until the
-        // memory returns so we can stop passing around the meta data.
-        //
-        meta[fill_way] = tagged Valid CACHE_METADATA { tag : cacheTag(addr), dirty : fill_dirty };
-        cacheMeta.write(set, meta);
-
-        waiting <= True;
-
-        cacheDebugLRUUpdate(fill_invalid ? "FILL Invalid" : "FILL LRU",
-                            fill_way, cur_lru, new_lru);
-
-        return tuple2(fill_way, fill_invalid);
-
-    endactionvalue
-    endfunction
-
-
-    //
-    // handleLoad --
-    //     Load request.  Either return valid data from the cache or request
-    //     the line from memory.
-    //
-    rule handleLoad (!waiting &&& pendingQ.first.req matches tagged MEM_LOAD .addr);
-        let set = pendingQ.first.set;
-        let cur_lru <- cacheLRU.readRsp();
-        let meta <- cacheMeta.readRsp();
-
-        if (findWayMatch(addr, meta) matches tagged Valid .way)
-        begin
-            //
-            // Hit!  Now load the value from the cache.
-            //
-            let line_offset = cacheLineOffset(addr);
-            cacheData.readReq(getDataIdx(set, way, line_offset));
-            loadFromCache.enq(tuple2(way, line_offset));
-
-            // Update LRU
-            let new_lru = pushMRU(cur_lru, way);
-            cacheLRU.write(set, new_lru);
-
-            pendingQ.deq();
-
-            statLoadHit.incr();
-            debugLog.record($format("Load HIT: addr=0x%x, set=0x%x, way=0x%x", addr, set, way));
-            cacheDebugLRUUpdate("LOAD", way, cur_lru, new_lru);
-        end
-        else
-        begin
-            debugLog.record($format("Load MISS: addr=0x%x, set=0x%x", addr, set));
-
-            match { .fill_way, .fill_invalid }
-                <- prepareFillVictim(addr, meta, set, cur_lru, False);
-
-            statLoadMiss.incr();
-            if (! fill_invalid)
-                statLoadMissValidVictim.incr();
-        end
-    endrule
-
-
-    //
-    // loadCacheHit --
-    //   Forward data coming from cache BRAM from handleLoad to back to the requester.
-    //
-    rule loadCacheHit (True);
-        match {.way, .offset} = loadFromCache.first();
+    rule handleResp (enableCache);
+        let r <- cache.readResp();
+        let addr = loadFromCache.first();
         loadFromCache.deq();
 
-        let v <- cacheData.readRsp();
-        link_memstate.makeResp(v);
+        FUNCP_MEM_CACHELINE_VEC v = unpack(r);
+        link_memstate.makeResp(v[addr]);
 
-        debugLog.record($format("  Load data=0x%x", v));
+        debugLog.record($format("  LOAD done: idx=%d, data=0x%x", addr, v[addr]));
     endrule
-
+    
 
     //
-    // handleStore --
+    // handleBypassReq --
+    //     Handle incoming requests when the cache is bypassed
     //
-    rule handleStore (!waiting &&& pendingQ.first.req matches tagged MEM_STORE .st_info);
-        let addr = st_info.addr;
-        let set = pendingQ.first.set;
-        let cur_lru <- cacheLRU.readRsp();
-        let meta <- cacheMeta.readRsp();
-
-        if (findWayMatch(addr, meta) matches tagged Valid .way)
-        begin
-            //
-            // Hit!
-            //
-            cacheData.write(getDataIdx(set, way, cacheLineOffset(addr)), st_info.val);
-            if (writeBackCache())
-            begin
-                // Mark the line dirty
-                let meta_way = fromMaybe(CACHE_METADATA{ tag: 0, dirty: False }, meta[way]);
-                meta_way.dirty = True;
-                meta[way] = tagged Valid meta_way;
-                cacheMeta.write(set, meta);
-            end
-            else
-            begin
-                // Write through
-                link_funcp_memory.makeReq(tagged MEM_STORE st_info);
-            end
-
-            // Update LRU
-            let new_lru = pushMRU(cur_lru, way);
-            cacheLRU.write(set, new_lru);
-
-            pendingQ.deq();
-
-            statStoreHit.incr();
-            debugLog.record($format("Store HIT: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", addr, set, way, st_info.val));
-            cacheDebugLRUUpdate("STORE", way, cur_lru, new_lru);
-        end
-        else
-        begin
-            debugLog.record($format("Store MISS: addr=0x%x, set=0x%x, data=0x%x", addr, set, st_info.val));
-
-            match { .fill_way, .fill_invalid }
-                <- prepareFillVictim(addr, meta, set, cur_lru, writeBackCache());
-
-            statStoreMiss.incr();
-            if (! fill_invalid)
-                statStoreMissValidVictim.incr();
-        end
-    endrule
-
-
-    rule handleFlushDirtySet (True);
+    rule handleBypassReq (! enableCache);
+        let mem_req = link_memstate.getReq();
+        link_memstate.deq();
         
-        match {.set, .meta} = flushDirtySet.first();
-        
-        if (meta[flushWay] matches tagged Valid .m &&& m.dirty)
-        begin
-            debugLog.record($format("handleFlushDirtySet: addr=0x%x, set=0x%x, way=0x%x", cacheAddr(m.tag, 0), set, flushWay));
-            flushDirtyLine.enq(tuple4(m.tag, set, flushWay, False));
-            cacheData.readReq(getDataIdx(set, flushWay, 0));
-        end
-
-        // Done with the set?
-        if (flushWay == maxBound)
-        begin
-            // Done.  Pass the request on to the fill stage, if appropriate.
-            flushDirtySet.deq();
-        end
-
-        flushWay <= flushWay + 1;
-
-    endrule
-
-
-    rule handleFlushDirtyLine (inflightSyncFlushes != maxBound);
-        
-        match {.tag, .set, .way, .reqFill} = flushDirtyLine.first();
-        let v <- cacheData.readRsp();
-
-        // Done with the line?
-        if (flushLineOffset == maxBound)
-        begin
-            // Done
-            flushDirtyLine.deq();
-
-            // Write to memory
-            let flushData = flushLineData;
-            flushData[flushLineOffset] = v;
-            let addr = cacheAddr(tag, 0);
-
-            if (reqFill || invalidatingAll)
+        case (mem_req) matches
+            tagged MEM_LOAD .a:
             begin
-                // Normal flush before a fill
-                link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE MEM_STORE_CACHELINE_INFO { addr: addr, val: flushData});
-
-                // Pass the request on to the fill stage
-                if (! invalidatingAll)
-                    fillVictim.enq(tuple2(set, way));
-            end
-            else
-            begin
-                // Flush for invalidate request.  Use sync method to know the data arrived.
-                link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE_SYNC MEM_STORE_CACHELINE_INFO { addr: addr, val: flushData});
-                inflightSyncFlushes <= inflightSyncFlushes + 1;
-                pendingQ.deq();
-            end
-            
-            statDirtyLineFlush.incr();
-            debugLog.record($format("Write back DIRTY: addr=0x%x, set=0x%x, data=0x%x", addr, set, flushData));
-        end
-        else
-        begin
-            // Not done.  Request the next part of the line.
-            cacheData.readReq(getDataIdx(set, way, flushLineOffset + 1));
-        end
-
-        flushLineData[flushLineOffset] <= v;
-
-        flushLineOffset <= flushLineOffset + 1;
-        
-    endrule
-
-
-    //
-    // handleFill --
-    //    Update the cache with requested data coming back from memory.  This
-    //    rule iterates through the individual register sized values within a
-    //    single cache line.
-    //
-    rule handleFill (waiting &&& link_funcp_memory.getResp() matches tagged MEM_REPLY_LOAD_CACHELINE .v);
-
-        match {.set, .way} = fillVictim.first();
-
-        fillLineOffset <= fillLineOffset + 1;
-
-        // Done with the line?
-        if (fillLineOffset == maxBound)
-        begin
-            link_funcp_memory.deq();
-            fillVictim.deq();
-            waiting <= False;
-            pendingQ.deq();
-        end
-
-        case (pendingQ.first.req) matches
-            tagged MEM_LOAD .addr:
-            begin
-                // Cache the value
-                cacheData.write(getDataIdx(set, way, fillLineOffset), v[fillLineOffset]);
-
-                // Is this the portion the caller wanted?
-                if (fillLineOffset == cacheLineOffset(addr))
-                begin
-                    link_memstate.makeResp(v[cacheLineOffset(addr)]);
-
-                    debugLog.record($format("Load FILL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", addr, set, way, v));
-                end
+                debugLog.record($format("LOAD: addr=0x%x", a));
+                funcpMemIfc.readWordReq(a);
             end
 
-            tagged MEM_STORE .st_info:
+            tagged MEM_STORE .s:
             begin
-                let addr = st_info.addr;
-                if (fillLineOffset != cacheLineOffset(addr))
-                    cacheData.write(getDataIdx(set, way, fillLineOffset), v[fillLineOffset]);
-                else
-                begin
-                    // Updated portion
-                    cacheData.write(getDataIdx(set, way, fillLineOffset), st_info.val);
-
-                    if (! writeBackCache())
-                        link_funcp_memory.makeReq(tagged MEM_STORE st_info);
-
-                    debugLog.record($format("Store FILL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", addr, set, way, v));
-                    debugLog.record($format("Store WRITE: data=0x%x", st_info.val));
-                end
+                debugLog.record($format("STORE: addr=0x%x, data=0x%x", s.addr, s.val));
+                funcpMemIfc.writeWord(s.addr, s.val);
             end
+
+            tagged MEM_INVALIDATE_CACHELINE .a:
+            begin
+                noAction;
+            end
+
+            tagged MEM_FLUSH_CACHELINE .a:
+            begin
+                noAction;
+            end
+
+            default: assertValidRequest(False);
         endcase
     endrule
 
 
     //
-    // invalidate / flush --
-    //     Handle requests from hybrid memory (software-side) to flush and
-    //     possibly invalidate a specific address.
-    //    
-    rule invalidate_req (!invalidatingAll && invalidate_n_lines == 0);
-        MEM_INVAL_CACHELINE_INFO info = link_funcp_memory_inval.getReq();
+    // handleBypassResp --
+    //     Response from request initiated by handleBypassReq
+    //
+    rule handleBypassResp (! enableCache);
+        let v <- funcpMemIfc.readWordResp();
+        link_memstate.makeResp(v);
+        debugLog.record($format("  LOAD done: data=0x%x", v));
+    endrule
+
+
+    // ***** Cache system-side rules ***** //
+
+    //
+    // handleInvalReq --
+    //    Incoming invalidate line request
+    //
+    rule handleInvalReq (invalLoopNLines == 0);
+        let line_info = link_funcp_memory_inval.getReq();
         link_funcp_memory_inval.deq();
 
-        invalidate_just_flush <= info.onlyFlush;
-        invalidate_addr <= info.addr;
-        invalidate_n_lines <= info.nLines;
-        
-        debugLog.record($format("New request: INVAL addr=0x%x, nLines=%d, onlyflush=%d", info.addr, info.nLines, info.onlyFlush));
+        invalLoopNLines <= line_info.nLines;
+        invalLoopCacheTag <= cacheTagFromAddr(line_info.addr);
+        invalLoopOnlyFlush <= line_info.onlyFlush;
 
-        if (info.nLines == 0)
-            link_funcp_memory_inval.makeResp(?);
+        debugLog.record($format("%s: addr=0x%x, nLines=%d", (line_info.onlyFlush ? "FLUSH" : "INVAL"), line_info.addr, line_info.nLines));
     endrule
 
+    rule doInvals (invalLoopNLines != 0);
+        //
+        // Invalidate request specifies address, number of lines and whether
+        // to invalidate or just flush dirty lines.  Loop here over the
+        // number of requested lines.
+        //
 
-    rule invalidate_or_flush_lines (!invalidatingAll && invalidate_n_lines != 0);
-        let set = cacheSet(invalidate_addr);
-
-        CACHE_ACCESS access;
-        access.set = set;
-        if (invalidate_just_flush)
-        begin
-            access.req = tagged MEM_FLUSH_CACHELINE invalidate_addr;
-            debugLog.record($format("New request: FLUSH addr=0x%x, set=0x%x", invalidate_addr, set));
-        end
+        if (invalLoopOnlyFlush)
+            cache.flushReq(invalLoopCacheTag, invalLoopNLines == 1);
         else
-        begin
-            access.req = tagged MEM_INVALIDATE_CACHELINE invalidate_addr;
-            debugLog.record($format("New request: INVAL addr=0x%x, set=0x%x", invalidate_addr, set));
-        end
+            cache.invalReq(invalLoopCacheTag, invalLoopNLines == 1);
 
-        pendingQ.enq(access);
-
-        cacheLRU.readReq(set);
-        cacheMeta.readReq(set);
-
-        // Done?
-        if (invalidate_n_lines == 1)
-            invalidate_need_ack <= True;
-
-        invalidate_addr <= invalidate_addr + (`FUNCP_CACHELINE_BITS / 8);
-        invalidate_n_lines <= invalidate_n_lines - 1;
+        invalLoopCacheTag <= invalLoopCacheTag + 1;
+        invalLoopNLines <= invalLoopNLines - 1;
     endrule
 
-
-    rule invalidate_ack (invalidate_need_ack &&
-                         (inflightSyncFlushes == 0) &&
-                         ! pendingQ.notEmpty());
-
-        debugLog.record($format("FLUSH or INVAL done"));
+    //
+    // handleInvalResp --
+    //     Send a message back when inval is done
+    //
+    rule handleInvalResp(True);
+        cache.invalOrFlushWait();
         link_funcp_memory_inval.makeResp(?);
-        invalidate_need_ack <= False;
-
+        debugLog.record($format("  FLUSH/INVAL done"));
     endrule
 
 
-    rule handle_flush_ack (link_funcp_memory.getResp() matches tagged MEM_REPLY_STORE_CACHELINE_ACK .v);
-        link_funcp_memory.deq();
-        inflightSyncFlushes <= inflightSyncFlushes - 1;
-    endrule
-
     //
-    // invalidate_all_req --
-    //     Memory system may request invalidation of the entire cache if it
-    //     doesn't know which lines may need to be flushed.
+    // handleInvalAllReq --
+    //    Incoming invalidate line request
     //
-    rule invalidate_all_req (!invalidatingAll && !waiting);
-        debugLog.record($format("New request: INVAL ALL"));
+    rule handleInvalAllReq(True);
         link_funcp_memory_inval_all.deq();
-
-        if (cacheIsEmpty)
-        begin
-            link_funcp_memory_inval_all.makeResp(?);
-        end
-        else
-        begin
-            cacheMeta.readReq(0);
-            invalidatingAll <= True;
-            cacheIsEmpty <= True;
-        end
+        cache.invalAllReq();
+        debugLog.record($format("INVAL all"));
     endrule
-
-
-    rule invalidate_all (invalidatingAll);
-        
-        // Flush dirty lines
-        let meta <- cacheMeta.readRsp();
-        flushDirtySet.enq(tuple2(invalidateAllSet, meta));
-
-        cacheLRU.write(invalidateAllSet, Vector::genWith(fromInteger));
-        cacheMeta.write(invalidateAllSet, Vector::replicate(tagged Invalid));
-
-        if (invalidateAllSet == maxBound)
-        begin
-            invalidatingAll <= False;
-            link_funcp_memory_inval_all.makeResp(?);
-            debugLog.record($format("Request done: INVAL ALL"));
-        end
-        else
-            cacheMeta.readReq(invalidateAllSet + 1);
-
-        invalidateAllSet <= invalidateAllSet + 1;
-
-    endrule
-
-    (* descending_urgency= "handleBypass, handleFlushDirtyLine, handleFlushDirtySet, handleInval, handleFlush, handleLoad, handleStore, loadCacheHit, invalidate_all" *)
 
     //
-    // Check configured parameters
+    // handleInvalAllResp --
+    //     Send a message back when inval is done
     //
-    rule check_param_sizes (True);
-        //
-        // CACHELINE_WORDS and FUNCP_CACHE_WAYS must be powers of 2
-        //
-        Bit#(32) one = 1;
-        Bool cacheline_words_ok = (fromInteger(valueOf(CACHELINE_WORDS)) == (one << valueOf(CACHELINE_OFFSET_SIZE)));
-        Bool cache_ways_ok = (`FUNCP_CACHE_WAYS == (one << valueOf(CACHE_WAY_SIZE)));
-        assertValidRequest(cacheline_words_ok && cache_ways_ok);
+    rule handleInvalAllResp(True);
+        cache.invalAllWait();
+        link_funcp_memory_inval_all.makeResp(?);
+        debugLog.record($format("  INVAL all done"));
     endrule
 
-endmodule
+endmodule: mkFUNCP_Cache

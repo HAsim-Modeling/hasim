@@ -15158,3 +15158,33 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 Fixed a minor bug in instructions with more than one destination.
 
 Michael P.
+
+----------
+mcadler     Date: Mon Sep 22 17:15:39 EDT 2008  CSN: CSN-hasim-529
+                  Mon Sep 22 21:15:39 UTC 2008
+
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Modified          528 
+
+Directory modules/hasim/controller
+ controller-standard.bsv   Locally Modified          528 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.awb Locally Modified          528 
+ memstate-cache-set-assoc.bsv Locally Modified          528 
+ memstate-cache-set-assoc.dic Locally Modified          528 
+
+Directory modules/common
+ hasim_common.awb          Locally Modified          528 
+ cache/                    Locally Added               0 
+
+Directory modules/common/cache
+ hasim-cache.awb           Locally Added               0 
+ hasim-cache.bsv           Locally Added               0 
+
+- Add a generalized set-associate cache module to hasim_common.
+- Reimplement functional memory cache using the core primitive.
+- 5-bit epoch counters were lost a while ago when we merged "new" common
+  and "old" common.  Made 5-bit epoch counters the default in the awb file.
+- Fix typo in controller.

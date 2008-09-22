@@ -109,7 +109,7 @@ module [HASIM_MODULE] mkController ();
         dumpingStats <= False;
     endrule
 
-    (* descending_urgency = "model_cycles, model_tick" *)
+    (* descending_urgency = "model_commits, model_tick" *)
 
     // Count the model cycle and send heartbeat updates
     rule model_tick (True);
@@ -128,7 +128,7 @@ module [HASIM_MODULE] mkController ();
         end
     endrule
 
-    rule model_cycles (True);
+    rule model_commits (True);
         Bit#(32) commits = zeroExtend(link_model_commit.receive());
         link_model_commit.deq();
 

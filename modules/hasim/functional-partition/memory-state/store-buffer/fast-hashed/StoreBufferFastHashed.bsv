@@ -3,7 +3,6 @@
 `include "funcp_memory.bsh"
 `include "soft_connections.bsh"
 
-import Utils::*;
 import HashedStoreBuffer::*;
 
 typedef union tagged

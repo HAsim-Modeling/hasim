@@ -15188,3 +15188,156 @@ Directory modules/common/cache
 - 5-bit epoch counters were lost a while ago when we merged "new" common
   and "old" common.  Made 5-bit epoch counters the default in the awb file.
 - Fix typo in controller.
+
+----------
+pellauer    Date: Wed Sep 24 14:28:37 EDT 2008  CSN: CSN-hasim-530
+                  Wed Sep 24 18:28:37 UTC 2008
+
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Modified          529 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ StoreBufferFastHashed.bsv Locally Modified          529 
+
+Directory modules/hasim
+ util/                     Locally Added               0 
+
+Directory modules/hasim/util
+ platform-interface/       Locally Added               0 
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.awb    Locally Added               0 
+ platform-interface.bsv    Locally Added               0 
+ connection-terminus.bsv   Locally Added               0 
+
+Directory modules/hasim/util
+ smart-synthesis-boundaries/ Locally Added               0 
+
+Directory modules/hasim/util/smart-synthesis-boundaries
+ with-connections.bsv      Locally Added               0 
+ bury-connections.bsv      Locally Added               0 
+ smart-synth-boundaries.awb Locally Added               0 
+ expose-connections.bsv    Locally Added               0 
+
+Directory modules/hasim/util
+ modellib/                 Locally Added               0 
+
+Directory modules/hasim/util/modellib
+ hasim-modellib.dic        Locally Added               0 
+ stat-fifo.bsv             Locally Added               0 
+ stats.bsv                 Locally Added               0 
+ commands.bsv              Locally Added               0 
+ events.bsv                Locally Added               0 
+ stall-ports.bsv           Locally Added               0 
+ dynamic-parameters.bsv    Locally Added               0 
+ hasim-modellib.awb        Locally Added               0 
+ a-ports.bsv               Locally Added               0 
+
+Directory modules/hasim/util
+ common/                   Locally Added               0 
+
+Directory modules/hasim/util/common
+ hasim-common.awb          Locally Added               0 
+ assertion-checker.bsv     Locally Added               0 
+ bluespec-common.prj       Locally Added               0 
+ hasim-common.dic          Locally Added               0 
+ utils.bsv                 Locally Added               0 
+ token.bsv                 Locally Added               0 
+ fpga-fifos.bsv            Locally Added               0 
+ bypass-fifo.bsv           Locally Added               0 
+ debug-file.bsv            Locally Added               0 
+ hash-to-32.bsv            Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections
+ Connections.bsv           Locally Modified          529 
+
+Directory modules
+ common/                   Locally Removed           529 
+
+Directory modules/common
+ Debug.bsv                 Locally Removed           529 
+ hasim_common.awb          Locally Removed           529 
+ fpgaenv-fast/             Locally Removed           529 
+
+Directory modules/common/fpgaenv-fast
+ hasim-fast-fpga-environment.awb Locally Removed           529 
+
+Directory modules/common
+ Assertions.bsv            Locally Removed           529 
+ modellib/                 Locally Removed           529 
+
+Directory modules/common/modellib
+ Ports.bsv                 Locally Removed           529 
+ StallPorts.bsv            Locally Removed           529 
+ hasim_modellib.awb        Locally Removed           529 
+ modellib.dic              Locally Removed           529 
+ Stats.bsv                 Locally Removed           529 
+ StatFIFO.bsv              Locally Removed           529 
+ Commands.bsv              Locally Removed           529 
+ Params.bsv                Locally Removed           529 
+ Events.bsv                Locally Removed           529 
+
+Directory modules/common
+ Utils.bsv                 Locally Removed           529 
+ HASim.bsv                 Locally Removed           529 
+ FPGAFIFOs.bsv             Locally Removed           529 
+ BypassFIFO.bsv            Locally Removed           529 
+ cache/                    Locally Removed           529 
+
+Directory modules/common/cache
+ hasim-cache.awb           Locally Removed           529 
+ hasim-cache.bsv           Locally Removed           529 
+
+Directory modules/common
+ bluespec_common.prj       Locally Removed           529 
+ platform_interface/       Locally Removed           529 
+
+Directory modules/common/platform_interface
+ hasim/                    Locally Removed           529 
+
+Directory modules/common/platform_interface/hasim
+ ConnectionTerminus.bsv    Locally Removed           529 
+ HAsimPlatformInterface.bsv Locally Removed           529 
+ hasim-platform-interface.awb Locally Removed           529 
+
+Directory modules/common/platform_interface
+ hasim_dme/                Locally Removed           529 
+
+Directory modules/common/platform_interface/hasim_dme
+ HAsimPlatformInterface.bsv Locally Removed           529 
+ hasim-fsb-dme-platform-interface.awb Locally Removed           529 
+
+Directory modules/common/platform_interface
+ hasim_afu/                Locally Removed           529 
+
+Directory modules/common/platform_interface/hasim_afu
+ HAsimPlatformInterface.bsv Locally Removed           529 
+ hasim-fsb-afu-platform-interface.awb Locally Removed           529 
+
+Directory modules/common
+ hasim_common.dic          Locally Removed           529 
+ Token.bsv                 Locally Removed           529 
+ smart_synthesis_boundaries/ Locally Removed           529 
+
+Directory modules/common/smart_synthesis_boundaries
+ ExposeConnections.bsv     Locally Removed           529 
+ WithConnections.bsv       Locally Removed           529 
+ BuryConnections.bsv       Locally Removed           529 
+ smart_synth_boundaries.awb Locally Removed           529 
+
+Directory modules/common
+ Hash.bsv                  Locally Removed           529 
+
+
+Beginning of code cleanup.
+  * Move hasim_common and friends into modules/hasim/util
+  * Add copyright notices to a bunch of files.
+  * Change filenames to new coding convention.
+  * Fixed a bogus dependency in store buffer.
+  * No more bypassed soft connections, which were unused, but imposed a requirement.
+  * Removed some deprecated modules.
+
+To do: merge modellib and hasim_common, since we use stats and stuff everywhere now.
+
+Michael P.

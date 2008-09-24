@@ -1,14 +1,35 @@
-import hasim_common::*;
-import soft_connections::*;
-import front_panel::*;
-import physical_platform::*;
-import low_level_platform_interface::*;
-import rrr::*;
+//
+// Copyright (C) 2008 Massachusetts Institute of Technology
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+// Tokens are the main way for HAsim to track data across simulator      
+// partitions. The token type includes an index for token tables, epochs,
+// and scratchpads which partitions can use as they see fit.             
 
-`include "scratchpad_memory.bsh"
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/soft_connections.bsh"
+`include "asim/provides/front_panel.bsh"
+`include "asim/provides/physical_platform.bsh"
+`include "asim/provides/low_level_platform_interface.bsh"
+`include "asim/provides/rrr.bsh"
+`include "asim/provides/scratchpad_memory.bsh"
+`include "asim/provides/streams.bsh"
+
 `include "asim/rrr/server_connections.bsh"
 `include "asim/rrr/client_connections.bsh"
-`include "streams.bsh"
 
 typedef struct
 {

@@ -14,8 +14,8 @@
 #
 # %attributes hasim
 #
-# %sources -t BSV -v PUBLIC HAsimPlatformInterface.bsv
-# %sources -t BSV -v PUBLIC ConnectionTerminus.bsv
+# %sources -t BSV -v PUBLIC platform-interface.bsv
+# %sources -t BSV -v PUBLIC connection-terminus.bsv
 #
 # %param --global TERM_FPGA_SWITCHES            1   "termimate fpga_switches?"
 # %param --global TERM_FPGA_BUTTONS             1   "termimate fpga_buttons?"

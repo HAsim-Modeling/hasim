@@ -1,5 +1,4 @@
 import FIFO::*;
-import BypassFIFO::*;
 
 //------------------------- Connections --------------------------//
 //                                                                //
@@ -109,7 +108,7 @@ module [Connected_Module] mkConnection_Send#(String portname)
   endmethod
 
 endmodule
-
+/*
 module [Connected_Module] mkConnection_Send_Bypassed#(String portname)
     //interface:
                 (Connection_Send#(msg_T))
@@ -144,6 +143,7 @@ module [Connected_Module] mkConnection_Send_Bypassed#(String portname)
   endmethod
 
 endmodule
+*/
 
 module [Connected_Module] mkConnection_Receive#(String portname)
     //interface:

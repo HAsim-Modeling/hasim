@@ -7,14 +7,13 @@
 #/*
 # %AWB_START
 #
-# %name Hasim FSB DME Platform Interface
-# %desc Hasim FSB DME Platform Interface: translates Connections to Platform Commands
-#
-# %provides platform_interface
+# %name Smart Synthesis Boundaries
+# %desc Smart Synthesis Boundaries
+# %provides smart_synth_boundaries
 #
 # %attributes hasim
 #
-# %public HAsimPlatformInterface.bsv
+# %public with-connections.bsv expose-connections.bsv bury-connections.bsv
 #
 # %AWB_END
 # */

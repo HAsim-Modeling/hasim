@@ -926,7 +926,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             tagged Valid .d: return update(maptable, pack(d), new_preg);
           endcase;
 
-        let tok_killed = (tok.timep_info.epoch != epoch);
+        let tok_killed = !tokScoreboard.isAllocated(tok.index);
 
         if (!tok_killed)
         begin

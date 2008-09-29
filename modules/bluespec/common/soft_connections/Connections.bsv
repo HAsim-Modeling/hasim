@@ -19,7 +19,6 @@ import FIFO::*;
 interface Connection_Send#(type msg_T);
   
   method Action send(msg_T data);
-  
 endinterface
 
 
@@ -27,6 +26,7 @@ endinterface
 
 interface Connection_Receive#(type msg_T);
   
+  method Bool notEmpty(); 
   method Action deq();
   method msg_T  receive();
 
@@ -178,6 +178,10 @@ module [Connected_Module] mkConnection_Receive#(String portname)
   
   method msg_T receive() if (data_w.wget() matches tagged Valid .val);
     return val;
+  endmethod
+
+  method Bool notEmpty();
+    return isValid(data_w.wget());
   endmethod
 
   method Action deq() if (data_w.wget() matches tagged Valid .val);

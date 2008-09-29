@@ -4,3 +4,4 @@
 %attributes hasim
 
 %public hasim-cache.bsv
+%public hasim-tiny-cache.bsv

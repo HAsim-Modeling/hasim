@@ -14,14 +14,6 @@ import FIFO::*;
 typedef MEM_VALUE ISA_ADDRESS;
 
 
-typedef enum
-{
-  ITLB_REQ,
-  DTLB_REQ
-}
-  TLB_REQ_TYPE
-      deriving (Eq, Bits);
-
 // ***** Modules *****
 
 // mkFuncpMemory
@@ -38,13 +30,10 @@ module [HASIM_MODULE] mkFUNCP_Memory
     
     // Links that we expose to the outside world
     Connection_Server#(MEM_REQUEST, MEM_REPLY)   link_memory <- mkConnection_Server("funcp_memory");
-    Connection_Server#(ISA_ADDRESS, MEM_ADDRESS) link_itlb   <- mkConnection_Server("funcp_memory_VtoP_I");
-    Connection_Server#(ISA_ADDRESS, MEM_ADDRESS) link_dtlb   <- mkConnection_Server("funcp_memory_VtoP_D");
+    Connection_Server#(ISA_ADDRESS, MEM_ADDRESS) link_tlb    <- mkConnection_Server("funcp_memory_VtoP");
 
     Connection_Client#(MEM_INVAL_CACHELINE_INFO, Bool)  link_memory_inval <- mkConnection_Client("funcp_memory_cache_invalidate");
     Connection_Client#(Bool, Bool)                  link_memory_inval_all <- mkConnection_Client("funcp_memory_cache_invalidate_all");
-
-    FIFO#(TLB_REQ_TYPE) pendingTLBQ <- mkSizedFIFO(6);
 
 
     // ***** Rules ******
@@ -147,37 +136,19 @@ module [HASIM_MODULE] mkFUNCP_Memory
     // Virtual to physical translation
     //
 
-    rule translate_VtoP_I_request (True);
+    rule translate_VtoP_request (True);
 
-        ISA_ADDRESS va = link_itlb.getReq();
-        link_itlb.deq();
+        ISA_ADDRESS va = link_tlb.getReq();
+        link_tlb.deq();
 
-        pendingTLBQ.enq(ITLB_REQ);
-        client_stub.makeRequest_VtoP(va);
-
-    endrule
-
-    rule translate_VtoP_D_request (True);
-
-        ISA_ADDRESS va = link_dtlb.getReq();
-        link_dtlb.deq();
-
-        pendingTLBQ.enq(DTLB_REQ);
         client_stub.makeRequest_VtoP(va);
 
     endrule
 
     rule translate_VtoP_response (True);
 
-        let t = pendingTLBQ.first();
-        pendingTLBQ.deq();
-
         let pa <- client_stub.getResponse_VtoP();
-        
-        if (t == ITLB_REQ)
-            link_itlb.makeResp(truncate(pa));
-        else
-            link_dtlb.makeResp(truncate(pa));
+        link_tlb.makeResp(truncate(pa));
 
     endrule
 

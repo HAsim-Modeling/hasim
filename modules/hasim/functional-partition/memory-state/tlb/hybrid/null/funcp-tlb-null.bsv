@@ -33,77 +33,35 @@
 
 
 //
-// TLB type (instruction or data)
-//
-typedef enum
-{
-  FUNCP_ITLB,
-  FUNCP_DTLB
-}
-  FUNCP_TLB_TYPE
-      deriving (Eq, Bits);
-
-
-//
 // Query passed to TLB server
 //
 typedef Tuple2#(TOKEN, ISA_ADDRESS) FUNCP_TLB_QUERY;
 
 
-interface FUNCP_TLB;
+module [HASIM_MODULE] mkFUNCP_CPU_TLBS
+    // interface:
+        ();
+
+    // Connections to functional register state manager
+    Connection_Server#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS)) link_funcp_itlb <- mkConnection_Server("funcp_itlb");
+    Connection_Server#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS)) link_funcp_dtlb <- mkConnection_Server("funcp_dtlb");
+
+    // Connection to memory translation service.  This won't be called since
+    // VA == PA.
+    Connection_Client#(ISA_ADDRESS, MEM_ADDRESS) link_memory <- mkConnection_Client("funcp_memory_VtoP");
+
+    // ***** Rules for communcation with functional register state manager *****
     
-    //
-    // quickTranslateVA may return a translation within the same cycle if it
-    // finds a hit in a small set of LUTs.  If the method returns false then
-    // the caller should resort to making a request to the "funcp_tlb" server.
-    //
-    method Maybe#(MEM_ADDRESS) quickTranslateVA(FUNCP_TLB_QUERY query);
-    
-endinterface
-
-
-module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType, String serverConn)
-    // Interface:
-        (FUNCP_TLB);
-   
-    // ***** Local State *****
-    
-    Connection_Server#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS)) link_regstate <- mkConnection_Server(serverConn);
-
-    // Connection to memory translation service
-    let memory_link_name = (tlbType == FUNCP_ITLB) ? "funcp_memory_VtoP_I" : "funcp_memory_VtoP_D";
-    Connection_Client#(ISA_ADDRESS, MEM_ADDRESS) link_memory <- mkConnection_Client(memory_link_name);
-
-
-    // ***** Internal functions *****
-    
-    function Maybe#(MEM_ADDRESS) doQuickTranslateVA(ISA_ADDRESS va);
-    
-        return tagged Valid truncate(va);
-
-    endfunction
-
-
-    // ***** Rules *****
-
-    rule translate_VtoP_request (True);
-
-        // pop a request from the link
-        match { .tok, .va } = link_regstate.getReq();
-        link_regstate.deq();
-
-        link_regstate.makeResp(doQuickTranslateVA(va));
-
+    rule itlb_req (True);
+        match { .tok, .va } = link_funcp_itlb.getReq();
+        link_funcp_itlb.deq();
+        link_funcp_itlb.makeResp(tagged Valid truncate(va));
     endrule
 
-
-    // ***** Methods *****
-
-    method Maybe#(MEM_ADDRESS) quickTranslateVA(FUNCP_TLB_QUERY query);
-    
-        match { .tok, .va } = query;
-        return doQuickTranslateVA(va);
-
-    endmethod
+    rule dtlb_req (True);
+        match { .tok, .va } = link_funcp_dtlb.getReq();
+        link_funcp_dtlb.deq();
+        link_funcp_dtlb.makeResp(tagged Valid truncate(va));
+    endrule
 
 endmodule

@@ -33,7 +33,9 @@ typedef Bit#(`FUNCP_ISA_V_ADDR_SIZE) FUNCP_VADDR;
 typedef Bit#(`FUNCP_ISA_P_ADDR_SIZE) FUNCP_PADDR;
 
 //
-// Page of memory
+// Page of memory (FUNCP_PAGE) and offset in a page.
 //
-typedef Bit#(`FUNCP_ISA_PAGE_SHIFT) FUNCP_PAGE;
+typedef Bit#(TSub#(`FUNCP_ISA_V_ADDR_SIZE, `FUNCP_ISA_PAGE_SHIFT)) FUNCP_V_PAGE;
+typedef Bit#(TSub#(`FUNCP_ISA_P_ADDR_SIZE, `FUNCP_ISA_PAGE_SHIFT)) FUNCP_P_PAGE;
+typedef Bit#(`FUNCP_ISA_PAGE_SHIFT) FUNCP_PAGE_OFFSET;
 

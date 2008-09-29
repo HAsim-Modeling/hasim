@@ -15341,3 +15341,47 @@ Beginning of code cleanup.
 To do: merge modellib and hasim_common, since we use stats and stuff everywhere now.
 
 Michael P.
+
+----------
+mcadler     Date: Mon Sep 29 09:02:20 EDT 2008  CSN: CSN-hasim-532
+                  Mon Sep 29 13:02:20 UTC 2008
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/null
+ funcp-tlb-null.bsv        Locally Modified          531 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.dic         Locally Modified          531 
+ funcp-tlb-std.awb         Locally Modified          531 
+ funcp-tlb-std.bsv         Locally Modified          531 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.awb Locally Modified          531 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          531 
+
+Directory modules/hasim/functional-partition/memory-state
+ memstate_default.bsv      Locally Modified          531 
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.bsv      Locally Modified          531 
+
+Directory modules/hasim/util/cache
+ hasim-cache.awb           Locally Modified          531 
+ hasim-cache.bsv           Locally Modified          531 
+ hasim-tiny-cache.bsv      Locally Added               0 
+
+- Add a new cache module to hasim_common:  HASIM_TINY_CACHE.  Tiny cache takes a
+  parameter for the number of entries (power of 2).  On lookup all entries
+  are checked and the result is returned in the same cycle.  Updates are to
+  the LRU entry.
+- Functional TLB now uses a two level cache.  Level one is a private
+  HASIM_TINY_CACHE.  The ITLB and DTLB for a single core share an L2 built
+  from a HASIM_CACHE.  Sizes were picked by running the test input of SPEC2k
+  gcc and the first four billion instructions of a SPEC2k Perl reference run.
+  Since there will be separate functional TLBs for each core we want to keep
+  them as small as possible.  Sizes were chosen at a point where simulation
+  speed was no longer affected by TLB size.  Currently they are 2 entry L1 ITLB,
+  4 entry L1 DTLB and 64 entry shared L2 (16 sets x 4 way set associative).
+- Double the size of the functional memory cache to 64KB.

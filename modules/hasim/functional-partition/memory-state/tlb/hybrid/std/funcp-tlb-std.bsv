@@ -30,7 +30,8 @@ import Vector::*;
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/hasim_modellib.bsh"
 `include "asim/provides/soft_connections.bsh"
-`include "asim/provides/funcp_memory.bsh"
+`include "asim/provides/fpga_components.bsh"
+`include "asim/provides/hasim_cache.bsh"
 
 `include "asim/provides/hasim_isa.bsh"
 `include "asim/provides/funcp_base_types.bsh"
@@ -38,18 +39,11 @@ import Vector::*;
 
 `include "asim/dict/STATS_FUNCP_TLB.bsh"
 
-
+// ===================================================================
 //
-// TLB type (instruction or data)
+// PUBLIC DATA STRUCTURES
 //
-typedef enum
-{
-  FUNCP_ITLB,
-  FUNCP_DTLB
-}
-  FUNCP_TLB_TYPE
-      deriving (Eq, Bits);
-
+// ===================================================================
 
 //
 // Query passed to TLB server
@@ -57,261 +51,391 @@ typedef enum
 typedef Tuple2#(TOKEN, ISA_ADDRESS) FUNCP_TLB_QUERY;
 
 
-interface FUNCP_TLB;
-    
-    //
-    // quickTranslateVA may return a translation within the same cycle if it
-    // finds a hit in a small set of LUTs.  If the method returns false then
-    // the caller should resort to making a request to the "funcp_tlb" server.
-    //
-    method Maybe#(MEM_ADDRESS) quickTranslateVA(FUNCP_TLB_QUERY query);
-    
-endinterface
+// ===================================================================
+//
+// PRIVATE DATA STRUCTURES
+//
+// ===================================================================
+
+//
+// FUNCP_TLB --
+//     Interface to a single TLB (instruction or data).
+//
+interface FUNCP_TLB#(numeric type n_CACHE_ENTRIES);
+    method Action lookupReq(TOKEN tok, ISA_ADDRESS va);
+    method ActionValue#(Maybe#(MEM_ADDRESS)) lookupResp();
+endinterface: FUNCP_TLB
 
 
-`define QUICK_CACHE_ENTRIES 8
-
-
-typedef union tagged
+//
+// TLB type (instruction or data)
+//
+typedef enum
 {
-  MEM_ADDRESS SB_Hit;
-  void SB_Miss;
+    FUNCP_ITLB,
+    FUNCP_DTLB
 }
-  RESP_PATH
-        deriving (Eq, Bits);    
+FUNCP_TLB_TYPE
+    deriving (Eq, Bits);
+
+typedef enum
+{
+    FUNCP_TLB_IDLE,
+    FUNCP_TLB_BUSY
+}
+FUNCP_TLB_STATE
+    deriving (Eq, Bits);
 
 
-module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType, String serverConn)
+//
+// Request/response FIFOs from individual TLBs to the containing module.
+// The containing module has a unified I/D TLB cache and manages misses
+// to hybrid memory translations.
+//
+typedef FIFO#(FUNCP_V_PAGE) VTOP_REQ_FIFO;
+typedef FIFO#(Maybe#(FUNCP_P_PAGE)) VTOP_RESP_FIFO;
+
+
+//
+// Conversion functions between addresses and page addresses.  Page
+// addresses just drop the low bits to save space in caches.
+//
+
+function ISA_ADDRESS vaFromPage(FUNCP_V_PAGE page, FUNCP_PAGE_OFFSET offset);
+    return { page, offset };
+endfunction
+
+function MEM_ADDRESS paFromPage(FUNCP_P_PAGE page, FUNCP_PAGE_OFFSET offset);
+    return { page, offset };
+endfunction
+
+function FUNCP_V_PAGE pageFromVA(ISA_ADDRESS va);
+    Tuple2#(FUNCP_V_PAGE, FUNCP_PAGE_OFFSET) tup = unpack(va);
+    match { .page, .offset } = tup;
+    return page;
+endfunction
+
+function FUNCP_P_PAGE pageFromPA(MEM_ADDRESS pa);
+    Tuple2#(FUNCP_P_PAGE, FUNCP_PAGE_OFFSET) tup = unpack(pa);
+    match { .page, .offset } = tup;
+    return page;
+endfunction
+
+function FUNCP_PAGE_OFFSET pageOffsetFromVA(ISA_ADDRESS va);
+    Tuple2#(FUNCP_V_PAGE, FUNCP_PAGE_OFFSET) tup = unpack(va);
+    match { .page, .offset } = tup;
+    return offset;
+endfunction
+
+
+//
+// mkFUNCP_TLB --
+//   This module provides a single data or instruction TLB interface.  It has
+//   a tiny cache of the most recent translations.  On a miss in that cache
+//   it queries the parent class for a translation through the provided request/
+//   response FIFOs.
+//
+module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
+                                   VTOP_REQ_FIFO reqVtoP,
+                                   VTOP_RESP_FIFO respVtoP,
+                                   DEBUG_FILE debugLog)
     // Interface:
-        (FUNCP_TLB);
+        (FUNCP_TLB#(n_CACHE_ENTRIES))
+    provisos(Log#(n_CACHE_ENTRIES, TLog#(n_CACHE_ENTRIES)));
    
-    // ***** Local State *****
-    
-    Connection_Server#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS)) link_regstate <- mkConnection_Server(serverConn);
-
-    // Connection to memory translation service
-    let i_or_d = (tlbType == FUNCP_ITLB) ? "I" : "D";
-    let memory_link_name = strConcat("funcp_memory_VtoP_", i_or_d);
-    Connection_Client#(ISA_ADDRESS, MEM_ADDRESS) link_memory <- mkConnection_Client(memory_link_name);
-
-    FIFO#(ISA_ADDRESS) translateQ <- mkFIFO();
-    FIFO#(RESP_PATH)   pathQ <- mkSizedFIFO(8);
-
-    Vector#(`QUICK_CACHE_ENTRIES, Reg#(Maybe#(ISA_ADDRESS))) lastVA <- replicateM(mkReg(tagged Invalid));
-    Vector#(`QUICK_CACHE_ENTRIES, Reg#(MEM_ADDRESS)) lastPA <- replicateM(mkRegU());
-    Reg#(Bit#(TLog#(`QUICK_CACHE_ENTRIES))) nextQuickEntry <- mkReg(0);
-
-    Reg#(Maybe#(ISA_ADDRESS)) victimVA <- mkReg(tagged Invalid);
-    Reg#(MEM_ADDRESS) victimPA <- mkRegU();
-
+    String i_or_d = (tlbType == FUNCP_ITLB ? "I" : "D");
 
     // ***** Statistics *****
 
-    let miss_stat_id = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_I_MISS : `STATS_FUNCP_TLB_D_MISS;
+    let hit_stat_id  = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_L1_ITLB_HIT : `STATS_FUNCP_TLB_L1_DTLB_HIT;
+    Stat statTLBHit <- mkStatCounter(hit_stat_id);
+
+    let miss_stat_id = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_L1_ITLB_MISS : `STATS_FUNCP_TLB_L1_DTLB_MISS;
     Stat statTLBMiss <- mkStatCounter(miss_stat_id);
 
-
-    // ******* Debuging State *******
-
-    // Fake register to hold our debugging file descriptor.
-    let debugLog         <- mkReg(InvalidFile);
-    Reg#(Bool) debugInit <- mkReg(False);
-
-    // The current FPGA clock cycle
-    Reg#(Bit#(32)) fpgaCC <- mkReg(0);
-
-    rule currentCC (True);
-
-        fpgaCC <= fpgaCC + 1;
-
-    endrule
-
-        //Open the debug logs. (First time only. Afterwards it is not InvalidFile.)
-    rule debugDoInit (! debugInit);
-
-        debugInit <= True;
-
-        let fd <- $fopen(`FUNCP_TLB_LOGFILE_NAME, "w");
-        if (fd == InvalidFile)
-        begin
-            $display(strConcat("Error opening FUNCP TLB logfile ", `FUNCP_TLB_LOGFILE_NAME));
-            $finish(1);
-        end
-
-        debugLog <= fd;
-
-    endrule
-
-    function Action printDebug(Action a);
-    action
-
-        $fwrite(debugLog, "[%d]: ", fpgaCC);
-        a;
-        $fwrite(debugLog, "\n");
-
-    endaction
-    endfunction
-
-    // ***** Internal functions *****
+    // ***** Local State *****
     
-    function ISA_ADDRESS pageMask();
-    
-        FUNCP_PAGE page = maxBound;
-        ISA_ADDRESS mask = zeroExtend(page);
-        return ~mask;
+    // State for an active request
+    Reg#(ISA_ADDRESS) reqVA <- mkRegU();
+    Reg#(FUNCP_TLB_STATE) state <- mkReg(FUNCP_TLB_IDLE);
 
-    endfunction
+    // Lookup response FIFO
+    FIFO#(Maybe#(MEM_ADDRESS)) response <- mkFIFO();
 
-    function MEM_ADDRESS pageOffset(ISA_ADDRESS va);
-    
-        return truncate(va & ~pageMask());
-    
-    endfunction
-
-
-    function ISA_ADDRESS pageAlign(ISA_ADDRESS va);
-    
-        return va & pageMask();
-
-    endfunction
-
-
-    function Maybe#(MEM_ADDRESS) doQuickTranslateVA(ISA_ADDRESS va);
-    
-        Bool hit = False;
-        MEM_ADDRESS hitPA = 0;
-
-        // Hit in the recent translation cache?
-        ISA_ADDRESS alignedVA = pageAlign(va);
-
-        for (Integer i = 0; i < `QUICK_CACHE_ENTRIES; i = i + 1)
-        begin
-            if (lastVA[i] matches tagged Valid .last_va &&& alignedVA == last_va)
-            begin
-                hit = True;
-                hitPA = lastPA[i];
-            end
-        end
-
-        if (hit)
-        begin
-            MEM_ADDRESS pa = hitPA | pageOffset(va);
-            return tagged Valid pa;
-        end
-        else
-        begin
-            return tagged Invalid;
-        end
-
-    endfunction
-
+    // Small local cache of recent translations
+    HASIM_TINY_CACHE#(FUNCP_V_PAGE, FUNCP_P_PAGE, n_CACHE_ENTRIES) tinyCache <- mkTinyCache();
 
     // ***** Rules *****
 
-    (* descending_urgency= "translate_VtoP_request, translate_VtoP_response" *)
-
-    rule translate_VtoP_request (True);
+    //
+    // translate_VtoP_response --
+    //   Wait for response from TLB cache or hybrid memory.
+    //
+    rule translate_VtoP_response (state == FUNCP_TLB_BUSY);
 
         // pop a request from the link
-        match { .tok, .va } = link_regstate.getReq();
-        link_regstate.deq();
+        let resp = respVtoP.first();
+        respVtoP.deq();
 
-        if (doQuickTranslateVA(va) matches tagged Valid .pa)
+        state <= FUNCP_TLB_IDLE;
+
+        if (resp matches tagged Valid .pp)
+        begin
+            // Valid translation
+            let pa = paFromPage(pp, pageOffsetFromVA(reqVA));
+            response.enq(tagged Valid pa);
+
+            debugLog.record($format("  %s VtoP response: VA 0x%x -> PA 0x%x", i_or_d, reqVA, pa));
+
+            // Store the translation in the small cache
+            tinyCache.write(pageFromVA(reqVA), pp);
+        end
+        else
+        begin
+            debugLog.record($format("  %s translation failed: VA 0x%x", i_or_d, reqVA));
+
+            response.enq(tagged Invalid);
+        end
+
+    endrule
+
+
+    // ***** Methods *****
+
+    method Action lookupReq(TOKEN tok, ISA_ADDRESS va) if (state == FUNCP_TLB_IDLE);
+
+        debugLog.record($format("%s req: VA 0x%x", i_or_d, va));
+
+        FUNCP_V_PAGE vp = pageFromVA(va);
+
+        let tc <- tinyCache.read(vp);
+        if (tc matches tagged Valid .pp)
         begin
             //
             // Quick path hit.  Simply return the translation now.
             //
-            printDebug($fwrite(debugLog, "Quick hit: VA 0x%x -> PA 0x%x", va, pa));
+            MEM_ADDRESS pa = paFromPage(pp, pageOffsetFromVA(va));
+            response.enq(tagged Valid pa);
 
-            pathQ.enq(tagged SB_Hit pa);
-        end
-        else if (victimVA matches tagged Valid .last_va &&& pageAlign(va) == last_va)
-        begin
-            //
-            // Hit in the victim cache.  Put victim back in cache and return it.
-            //
-            victimVA <= lastVA[nextQuickEntry];
-            victimPA <= lastPA[nextQuickEntry];
-
-            lastVA[nextQuickEntry] <= victimVA;
-            lastPA[nextQuickEntry] <= victimPA;
-            nextQuickEntry <= nextQuickEntry + 1;
-
-            MEM_ADDRESS pa = victimPA | pageOffset(va);
-
-            printDebug($fwrite(debugLog, "Victim hit: VA 0x%x -> PA 0x%x", va, pa));
-
-            pathQ.enq(tagged SB_Hit pa);
+            debugLog.record($format("  %s quick hit: VA 0x%x -> PA 0x%x", i_or_d, va, pa));
+            statTLBHit.incr();
         end
         else
         begin
             //
             // Ask the memory service for a translation.
             //
-            ISA_ADDRESS alignedVA = pageAlign(va);
-            link_memory.makeReq(alignedVA);
-            translateQ.enq(va);
-            pathQ.enq(tagged SB_Miss);
+            reqVtoP.enq(vp);
+
+            reqVA <= va;
+            state <= FUNCP_TLB_BUSY;
+            statTLBMiss.incr();
         end
 
-    endrule
+    endmethod
 
-    rule translate_VtoP_response (pathQ.first() matches tagged SB_Miss);
+    method ActionValue#(Maybe#(MEM_ADDRESS)) lookupResp();
+        let r = response.first();
+        response.deq();
+        return r;
+    endmethod
 
-        let va = translateQ.first();
-        translateQ.deq();
-        pathQ.deq();
+endmodule
 
-        // pop a request from the link
+
+//
+// mkVtoPInterface --
+//   The interface between the main shared translation cache and the hybrid
+//   memory service.
+//
+module [HASIM_MODULE] mkVtoPInterface
+    // interface:
+        (HASIM_CACHE_SOURCE_DATA#(FUNCP_V_PAGE, Maybe#(FUNCP_P_PAGE)));
+
+    // Connection to memory translation service
+    Connection_Client#(ISA_ADDRESS, MEM_ADDRESS) link_memory <- mkConnection_Client("funcp_memory_VtoP");
+
+    method Action readReq(FUNCP_V_PAGE vp);
+        link_memory.makeReq(vaFromPage(vp, 0));
+    endmethod
+
+    method ActionValue#(Maybe#(FUNCP_P_PAGE)) readResp();
         MEM_ADDRESS pa = link_memory.getResp();
         link_memory.deq();
 
-        statTLBMiss.incr();
-
         // Sending a bit over RRR is difficult.  Instead, use the low bit
         // to signal whether the translation is valid.
+        Maybe#(FUNCP_P_PAGE) resp;
         if (pa[0] == 0)
-        begin
-            // Valid translation
-            
-            // Keep a one entry victim cache since the replacement is round robin
-            victimVA <= lastVA[nextQuickEntry];
-            victimPA <= lastPA[nextQuickEntry];
-
-            // Store the translation in the small cache
-            lastVA[nextQuickEntry] <= tagged Valid pageAlign(va);
-            lastPA[nextQuickEntry] <= pa;
-            nextQuickEntry <= nextQuickEntry + 1;
-
-            pa = pa | pageOffset(va);
-
-            printDebug($fwrite(debugLog, "VtoP response: VA 0x%x -> PA 0x%x", va, pa));
-
-            link_regstate.makeResp(tagged Valid pa);
-        end
+            resp = tagged Valid pageFromPA(pa);
         else
-        begin
-            printDebug($fwrite(debugLog, "Translation failed: VA 0x%x", va));
+            resp = tagged Invalid;
 
-            link_regstate.makeResp(tagged Invalid);
-        end
-
-    endrule
-
-    rule give_hit_response (pathQ.first() matches tagged SB_Hit .pa);
-
-        pathQ.deq();
-
-        link_regstate.makeResp(tagged Valid pa);
-
-    endrule
-    // ***** Methods *****
-
-    method Maybe#(MEM_ADDRESS) quickTranslateVA(FUNCP_TLB_QUERY query);
-    
-        match { .tok, .va } = query;
-        return doQuickTranslateVA(va);
-
+        return resp;
     endmethod
+
+    // No writes can happen
+    method Action write(FUNCP_V_PAGE vp, Maybe#(FUNCP_P_PAGE) pp);
+        noAction;
+    endmethod
+
+    method Action writeSyncReq(FUNCP_V_PAGE vp, Maybe#(FUNCP_P_PAGE) pp);
+        noAction;
+    endmethod
+
+    method Action writeSyncWait();
+        noAction;
+    endmethod
+
+endmodule
+
+
+//
+// mkTLBCacheStats --
+//   Statistics for the main, shared, translation cache.
+//
+module [HASIM_MODULE] mkTLBCacheStats
+    // interface:
+        (HASIM_CACHE_STATS);
+    
+    // ***** Statistics *****
+
+    Stat statTLBMiss <- mkStatCounter(`STATS_FUNCP_TLB_L2_MISS);
+
+    method Action readHit();
+    endmethod
+
+    method Action readMiss();
+        statTLBMiss.incr();
+    endmethod
+
+    method Action writeHit();
+    endmethod
+
+    method Action writeMiss();
+    endmethod
+
+    method Action invalLine();
+    endmethod
+
+    method Action dirtyLineFlush();
+    endmethod
+
+    method Action forceInvalLine();
+    endmethod
+
+endmodule
+
+
+//
+// mkFUNCP_CPU_TLBS --
+//   Allocates a pair of TLB interfaces:  one instruction and one data.
+//   The module allocates soft connections for ITLB and DTLB connections
+//   with the functional register state manager.
+//
+//   Requests are routed through a unified large cache here.  On a miss in the
+//   translation cache, requests are automatically routed by the cache through
+//   the mkVtoPInterface module above to the hybrid memory service.
+//
+module [HASIM_MODULE] mkFUNCP_CPU_TLBS
+    // interface:
+        ();
+
+    DEBUG_FILE debugLog <- mkDebugFile(`FUNCP_TLB_LOGFILE_NAME);
+
+    // Connections to functional register state manager
+    Connection_Server#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS)) link_funcp_itlb <- mkConnection_Server("funcp_itlb");
+    Connection_Server#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS)) link_funcp_dtlb <- mkConnection_Server("funcp_dtlb");
+
+    // ITLB
+    VTOP_REQ_FIFO  itlb_vtop_req <- mkFIFO();
+    VTOP_RESP_FIFO itlb_vtop_resp <- mkFIFO();
+    FUNCP_TLB#(2) itlb <- mkFUNCP_TLB(FUNCP_ITLB, itlb_vtop_req, itlb_vtop_resp, debugLog);
+
+    // DTLB
+    VTOP_REQ_FIFO  dtlb_vtop_req <- mkFIFO();
+    VTOP_RESP_FIFO dtlb_vtop_resp <- mkFIFO();
+    FUNCP_TLB#(4) dtlb <- mkFUNCP_TLB(FUNCP_DTLB, dtlb_vtop_req, dtlb_vtop_resp, debugLog);
+
+    HASIM_CACHE_SOURCE_DATA#(FUNCP_V_PAGE, Maybe#(FUNCP_P_PAGE)) vtopIfc <- mkVtoPInterface();
+    HASIM_CACHE_STATS statIfc <- mkTLBCacheStats();
+
+    // Translation cache
+    HASIM_CACHE#(FUNCP_V_PAGE,
+                 Maybe#(FUNCP_P_PAGE),
+                 `FUNCP_TLB_CACHE_SETS,
+                 `FUNCP_TLB_CACHE_WAYS,
+                 `FUNCP_ISA_PAGE_SHIFT) cache <- mkCacheSetAssoc(vtopIfc, statIfc, debugLog);
+
+    FIFO#(FUNCP_TLB_TYPE) pendingTLBQ <- mkFIFO();
+
+
+    // ***** Rules for communcation with functional register state manager *****
+    
+    rule itlb_req (True);
+        // pop a request from the link
+        match { .tok, .va } = link_funcp_itlb.getReq();
+        link_funcp_itlb.deq();
+
+        itlb.lookupReq(tok, va);
+    endrule
+
+    rule itlb_resp (True);
+        let resp <- itlb.lookupResp();
+        link_funcp_itlb.makeResp(resp);
+    endrule
+
+    rule dtlb_req (True);
+        // pop a request from the link
+        match { .tok, .va } = link_funcp_dtlb.getReq();
+        link_funcp_dtlb.deq();
+
+        dtlb.lookupReq(tok, va);
+    endrule
+
+    rule dtlb_resp (True);
+        let resp <- dtlb.lookupResp();
+        link_funcp_dtlb.makeResp(resp);
+    endrule
+
+
+
+    // ***** Managing translation requests from the child ITLB and DTLB *****
+    
+    rule translate_VtoP_I_request (True);
+        FUNCP_V_PAGE vp = itlb_vtop_req.first();
+        itlb_vtop_req.deq();
+
+        debugLog.record($format("  I hybrid req: VA 0x%x", vaFromPage(vp, 0)));
+
+        pendingTLBQ.enq(FUNCP_ITLB);
+        cache.readReq(vp);
+    endrule
+
+    rule translate_VtoP_D_request (True);
+        FUNCP_V_PAGE vp = dtlb_vtop_req.first();
+        dtlb_vtop_req.deq();
+
+        debugLog.record($format("  D hybrid req: VA 0x%x", vaFromPage(vp, 0)));
+
+        pendingTLBQ.enq(FUNCP_DTLB);
+        cache.readReq(vp);
+    endrule
+
+    (* descending_urgency= "translate_VtoP_D_request, translate_VtoP_I_request" *)
+
+    rule translate_VtoP_response (True);
+
+        let resp <- cache.readResp();
+
+        let t = pendingTLBQ.first();
+        pendingTLBQ.deq();
+
+        if (t == FUNCP_ITLB)
+            itlb_vtop_resp.enq(resp);
+        else
+            dtlb_vtop_resp.enq(resp);
+
+    endrule
 
 endmodule

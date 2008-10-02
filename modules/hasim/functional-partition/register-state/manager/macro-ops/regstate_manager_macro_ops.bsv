@@ -302,7 +302,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     // Connection to Datapath.
 
-    Connection_Client#(ISA_DATAPATH_REQ, ISA_DATAPATH_RSP) linkToDatapath <- mkConnection_Client("isa_datapath");
+    Connection_Client#(FUNCP_ISA_DATAPATH_REQ, FUNCP_ISA_DATAPATH_RSP) linkToDatapath <- mkConnection_Client("isa_datapath");
     
     // RRR Stubs.
     ClientStub_ISA_EMULATOR client_stub <- mkClientStub_ISA_EMULATOR();
@@ -1440,6 +1440,13 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let rsp = linkToDatapath.getResp();
         let wbvals = rsp.writebacks;
         linkToDatapath.deq();
+
+        // Tag illegal instruction.  An error will be raised on attempts to commit.
+        if (rsp.except != FUNCP_ISA_EXCEPT_NONE)
+        begin
+            debugLog.record($format("TOKEN %0d: GetResults: Illegal instruction", tok.index));
+            tokScoreboard.setPoison(tok.index);
+        end
 
         // Update the memaddress (only useful for loads/stores)
         tokMemAddr.write(tok.index, rsp.memAddress);

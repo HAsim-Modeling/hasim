@@ -65,6 +65,9 @@ my $funcpSuffix = "";
 my $noshowfp = 0;
 my $printCycle = undef;
 my $showfp = undef;
+my $bluesimCmd = undef;
+my $vcdStart = undef;
+my $vcdCycles = 20000;
 my $m5run = 0;
 
 my $status = GetOptions("help!" => \$help,
@@ -78,29 +81,11 @@ my $status = GetOptions("help!" => \$help,
                         "nocompare!" => \$noCompare,
                         "pc=s" => \$printCycle,
                         "showfp:s" => \$showfp,
+                        "bluesim=s" => \$bluesimCmd,
+                        "vcdstart=i" => \$vcdStart,
+                        "vcdcycles=i" => \$vcdCycles,
                         "m5!" => \$m5run,
                        );
-
-if ($help || ! $status) {
-    print STDERR "\nArguments:\n";
-    print STDERR "   [--gdb]                 Invokes the software side in gdb\n";
-    print STDERR "   [--noprogram]           Skips the FPGA load and reservation steps\n";
-    print STDERR "   [--noreserve]           Skips the FPGA reservation steps\n";
-    print STDERR "   [--funcp-prefix=\"<prefix>\"]\n";
-    print STDERR "                           Prepend prefix to HAsim's --funcp argument\n";
-    print STDERR "   [--funcp-suffix=\"<suffix>\"]\n";
-    print STDERR "                           Append suffix to HAsim's --funcp argument\n";
-    print STDERR "   [--onlycompare]         Only compare output files (without running)\n";
-    print STDERR "   [--nocompare]           Skip comparison of output files\n";
-    print STDERR "   [--m5]                  Run workload in m5 without HAsim\n";
-
-    if ($config{isHybridModel}) {
-        my $cmd = "$config{modelDir}/$config{model} --help-run-append";
-        system($cmd);
-    }
-
-    exit(1);
-}
 
 # Put quotation marks back on arguments that have spaces since they will be
 # passed through a shell once more.
@@ -128,6 +113,32 @@ elsif (-f "$config{modelDir}/$config{model}_hw.vexe") {
 }
 else {
     die("Can't determine model type");
+}
+
+if ($help || ! $status) {
+    print STDERR "\nArguments:\n";
+    print STDERR "   [--gdb]                 Invokes the software side in gdb\n";
+    print STDERR "   [--noprogram]           Skips the FPGA load and reservation steps\n";
+    print STDERR "   [--noreserve]           Skips the FPGA reservation steps\n";
+    print STDERR "   [--funcp-prefix=\"<prefix>\"]\n";
+    print STDERR "                           Prepend prefix to HAsim's --funcp argument\n";
+    print STDERR "   [--funcp-suffix=\"<suffix>\"]\n";
+    print STDERR "                           Append suffix to HAsim's --funcp argument\n";
+    print STDERR "   [--onlycompare]         Only compare output files (without running)\n";
+    print STDERR "   [--nocompare]           Skip comparison of output files\n";
+    print STDERR "   [--m5]                  Run workload in m5 without HAsim\n";
+
+    if ($mType == $MODEL_BLUESIM) {
+        print STDERR "   [--vcdstart=<cycle>]    Generate VCD dump for wave viewer (e.g. gtkwave)\n";
+        print STDERR "   [--vcdcycles=<cycles>]  VCD dump length (default = 20000)\n";
+    }
+
+    if ($config{isHybridModel}) {
+        my $cmd = "$config{modelDir}/$config{model} --help-run-append";
+        system($cmd);
+    }
+
+    exit(1);
 }
 
 #############################################################################
@@ -202,6 +213,26 @@ else {
     $cmd =~ s/\\"/"/g;
 
     $noProgram = 1;
+}
+
+#
+# Bluesim arguments
+#
+
+# Generate dump.vcd for wave viewer (e.g. gtkwave)?
+if (defined($vcdStart)) {
+    my $vcdCmd = "sim step $vcdStart; sim vcd on; sim step $vcdCycles; sim stop";
+    if (defined($bluesimCmd)) {
+        $bluesimCmd .= " ";
+    }
+    else {
+        $bluesimCmd = "";
+    }
+    $bluesimCmd .= "-c \"$vcdCmd\"";
+}
+
+if (defined($bluesimCmd)) {
+    $cmd .= " --bluesim=\'$bluesimCmd\'";
 }
 
 # Adjust the arguments for Bluesim if it is being invoked directly

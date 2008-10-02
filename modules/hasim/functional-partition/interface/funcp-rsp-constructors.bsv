@@ -77,7 +77,7 @@ endfunction
 
 // initFuncpRspGetResults
 
-function FUNCP_RSP_GET_RESULTS initFuncpRspGetResults(TOKEN tok, ISA_ADDRESS pc, ISA_EXECUTION_RESULT res);
+function FUNCP_RSP_GET_RESULTS initFuncpRspGetResults(TOKEN tok, ISA_ADDRESS pc, FUNCP_ISA_EXECUTION_RESULT res);
 
     return FUNCP_RSP_GET_RESULTS
             {

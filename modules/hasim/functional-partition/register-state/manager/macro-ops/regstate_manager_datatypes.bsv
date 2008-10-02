@@ -158,7 +158,7 @@ typedef union tagged
     struct
     {
         Vector#(TSub#(ISA_MAX_DSTS, 1), Maybe#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE))) remainingValues;
-        ISA_EXECUTION_RESULT result;
+        FUNCP_ISA_EXECUTION_RESULT result;
         Bit#(4)    current; 
     }
         RES4_ADDITIONAL_WB;

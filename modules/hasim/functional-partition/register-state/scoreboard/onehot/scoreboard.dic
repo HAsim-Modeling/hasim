@@ -2,6 +2,7 @@ def ASSERTIONS.SCOREBOARD.OUT_OF_TOKENS "FUNCP: Ran out of Tokens!";
 def ASSERTIONS.SCOREBOARD.REALLOCATE "FUNCP: Allocating an already-allocated Token!";
 def ASSERTIONS.SCOREBOARD.DEALLOCATE "FUNCP: De-allocating an un-allocated Token!";
 def ASSERTIONS.SCOREBOARD.COMPLETION "FUNCP: Completing Tokens out of order!";
+def ASSERTIONS.SCOREBOARD.COMMIT_POISON_INSTR "FUNCP: Attempt to commit poisoned instruction!";
 
 def ASSERTIONS.SCOREBOARD.FINISH.ITRANS        "FUNCP: Finishing ITranslate on token that hasn't started.";
 def ASSERTIONS.SCOREBOARD.START.FETCH          "FUNCP: Starting Fetch on token at improper time.";

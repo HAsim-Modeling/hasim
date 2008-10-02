@@ -15385,3 +15385,33 @@ Directory modules/hasim/util/cache
   speed was no longer affected by TLB size.  Currently they are 2 entry L1 ITLB,
   4 entry L1 DTLB and 64 entry shared L2 (16 sets x 4 way set associative).
 - Double the size of the functional memory cache to 64KB.
+
+----------
+mcadler     Date: Thu Oct  2 17:13:00 EDT 2008  CSN: CSN-hasim-534
+                  Thu Oct  2 21:13:00 UTC 2008
+
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          533 
+
+Directory modules/hasim/functional-partition/interface
+ funcp-interface.awb       Locally Modified          533 
+ funcp-isa-datapath-types.bsv Locally Added               0 
+ funcp-timing-interface.bsv Locally Modified          533 
+ funcp-rsp-constructors.bsv Locally Modified          533 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ scoreboard.dic            Locally Modified          533 
+ regstate_scoreboard_onehot.bsv Locally Modified          533 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_datatypes.bsv Locally Modified          533 
+ regstate_manager_macro_ops.bsv Locally Modified          533 
+
+- Add poison bit to scoreboard.  Raise an assertion causing the simulator to
+  abort on attempts to execute a poisoned instruction.
+- Set poison bit for illegal instructions.
+- Move interface data structure declarations for talking to the ALU here
+  so they aren't replicated in each ISA definition.
+- Add new options to run script for dumping to a VCD file for use in a
+  waveform viewer.  (--vcdstart and --vcdcycles)

@@ -34,11 +34,11 @@ import Counter::*;
 
 typedef LUTRAM#(TOKEN_INDEX, Bool) TOKEN_SCOREBOARD;
 
-// FUCNCP_SCOREBOARD
+// FUNCP_SCOREBOARD
 
 // The interface to our scoreboard.
 
-interface FUCNCP_SCOREBOARD;
+interface FUNCP_SCOREBOARD;
 
   // Allocate the next available token.
   method ActionValue#(TOKEN_INDEX) allocate();
@@ -73,6 +73,9 @@ interface FUCNCP_SCOREBOARD;
   // Set whether or not the instruction should be emulated in software.
   method Action setEmulation(TOKEN_INDEX t, Bool em);
   
+  // Set when the instruction is tagged poison by the ALU
+  method Action setPoison(TOKEN_INDEX t);
+  
   // Rollback the allocations younger than t.
   method Action rewindTo(TOKEN_INDEX t);
   
@@ -81,6 +84,7 @@ interface FUCNCP_SCOREBOARD;
   method Bool isLoad(TOKEN_INDEX t);
   method Bool isStore(TOKEN_INDEX t);
   method Bool emulateInstruction(TOKEN_INDEX t);
+  method Bool isPoisoned(TOKEN_INDEX t);
   method MEM_OFFSET getFetchOffset(TOKEN_INDEX t);
   method MEM_OFFSET getMemOpOffset(TOKEN_INDEX t);
   method ISA_MEMOP_TYPE getLoadType(TOKEN_INDEX t);
@@ -96,7 +100,7 @@ endinterface
 
 module [Connected_Module] mkFUNCP_Scoreboard 
     // interface:
-        (FUCNCP_SCOREBOARD);
+        (FUNCP_SCOREBOARD);
 
     // ***** Local State ***** //
 
@@ -122,6 +126,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
     TOKEN_SCOREBOARD store_finish <- mkLUTRAMU();
     TOKEN_SCOREBOARD commit_start <- mkLUTRAMU();
     TOKEN_SCOREBOARD emulation    <- mkLUTRAMU();
+    TOKEN_SCOREBOARD poison       <- mkLUTRAMU();
 
     LUTRAM#(TOKEN_INDEX, MEM_OFFSET)     fetch_offset  <- mkLUTRAM(0);
     LUTRAM#(TOKEN_INDEX, MEM_OFFSET)     memop_offset  <- mkLUTRAM(0);
@@ -164,6 +169,9 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     // Are we completing tokens in order?
     // Assertion assert_completing_tokens_in_order <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_COMPLETION, ASSERT_WARNING, assertNode);
+
+    // Poisoned instruction
+    ASSERTION assert_poison_instr           <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_COMMIT_POISON_INSTR, ASSERT_ERROR, assertNode);
 
     // The following assertions make sure things happen at the right time.
     ASSERTION assert_token_can_finish_itr   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_ITRANS, ASSERT_ERROR, assertNodeFinish); 
@@ -279,6 +287,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
         commit_start.upd(next_free_tok, False);
 
         emulation.upd(next_free_tok, False);
+
+        poison.upd(next_free_tok, False);
 
         // Update the free pointer.
         next_free_tok <= next_free_tok + 1;
@@ -496,6 +506,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
         if (is_store.sub(t))
             assert_token_has_done_stores(store_finish.sub(t));
 
+        assert_poison_instr( ! poison.sub(t) );
+
         assert_token_can_start_commit(exe_finish.sub(t));
 
         commit_start.upd(t, True);
@@ -559,6 +571,17 @@ module [Connected_Module] mkFUNCP_Scoreboard
     method Action setEmulation(TOKEN_INDEX t, Bool em);
     
         emulation.upd(t, em);
+            
+    endmethod
+
+    // setPoison
+
+    // When:   Any time -- typically during execution
+    // Effect: Flag an instruction poisoned
+
+    method Action setPoison(TOKEN_INDEX t);
+    
+        poison.upd(t, True);
             
     endmethod
 
@@ -640,6 +663,17 @@ module [Connected_Module] mkFUNCP_Scoreboard
     method Bool emulateInstruction(TOKEN_INDEX t);
 
         return emulation.sub(t);
+
+    endmethod
+
+    // isPoison
+    
+    // When:   Any time.
+    // Effect: Accessor method.
+
+    method Bool isPoisoned(TOKEN_INDEX t);
+
+        return poison.sub(t);
 
     endmethod
 

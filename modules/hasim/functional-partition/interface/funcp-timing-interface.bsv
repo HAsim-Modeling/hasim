@@ -139,7 +139,7 @@ typedef struct
     TOKEN                token;
     ISA_ADDRESS          instructionAddress;     // Address of the executed instruction
     Bit#(4)              instructionSize;        // Size of the executed instruction
-    ISA_EXECUTION_RESULT result;                 // Result from ALU
+    FUNCP_ISA_EXECUTION_RESULT result;           // Result from ALU
 }
     FUNCP_RSP_GET_RESULTS
         deriving (Eq, Bits);

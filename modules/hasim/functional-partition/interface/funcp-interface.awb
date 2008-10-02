@@ -4,5 +4,7 @@
 %provides funcp_interface
 %attributes hasim funcp
 
-%public funcp-timing-interface.bsv funcp-req-constructors.bsv funcp-rsp-constructors.bsv
-
+%public funcp-isa-datapath-types.bsv
+%public funcp-timing-interface.bsv
+%public funcp-req-constructors.bsv
+%public funcp-rsp-constructors.bsv

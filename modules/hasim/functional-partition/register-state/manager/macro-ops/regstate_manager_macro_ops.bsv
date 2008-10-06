@@ -2045,19 +2045,18 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let isLoad = tokScoreboard.isLoad(tok.index);
         assertInstructionIsActuallyALoad(isLoad);
 
-        if (tokScoreboard.emulateInstruction(tok.index)) // Emulated loads were taken care of previously.
+        // Emulated loads were taken care of previously.  Also ignore killed tokens.
+        if (tokScoreboard.emulateInstruction(tok.index) ||
+            ! tokScoreboard.isAllocated(tok.index))
         begin
-
             // Log it.
-            debugLog.record($format("TOKEN %0d: DoLoads1: Ignoring emulated instruction.", tok.index));
+            debugLog.record($format("TOKEN %0d: DoLoads1: Ignoring junk token or emulated instruction.", tok.index));
 
             // Respond to the timing model. End of macro-operation.
             linkDoLoads.makeResp(initFuncpRspDoLoads(tok));
-
         end
         else // Everything's okay.
         begin
-
             // Log it.
             debugLog.record($format("TOKEN %0d: DoLoads: Begin.", tok.index)); 
 
@@ -2069,7 +2068,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
             // Pass to the next stage.
             loads1Q.enq(tok);
-
         end
 
     endrule
@@ -2409,7 +2407,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                     debugLog.record($format("TOKEN %0d: DoStores2: ISA Store (V: 0x%h, T: %0d, O: %b) = 0x%h", tok.index, store_val,  pack(st_type), offset, mem_store_value)); 
 
                     // Make the request to the memory state.
-                    linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, addr: p_addr, val: mem_store_value});
+                    linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, num: 0, addr: p_addr, val: mem_store_value});
 
                     // Log it.
                     debugLog.record($format("TOKEN %0d: DoStores2: Sending Store to Memory (PA: 0x%h, V: 0x%h).", tok.index, p_addr, mem_store_value)); 
@@ -2481,7 +2479,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
         // Write the store to memory.
         let mem_addr = getFirst(store_info.memAddrs);
-        linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, addr: mem_addr, val: new_mem_val});
+        linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, num: 0, addr: mem_addr, val: new_mem_val});
 
         // Log it.
         debugLog.record($format("TOKEN %0d: DoStores2: Sending RMW Store to Memory (PA: 0x%h, V: 0x%h).", tok.index, mem_addr, new_mem_val)); 
@@ -2518,7 +2516,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         memPathQ.enq(PATH_STORE);
         
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Load Req 2 (PA2: 0x%h).", p_addr2)); 
+        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Load Req 2 (PA2: 0x%h).", tok.index, p_addr2));
 
         // Wait for the first response.
         stateStores2 <= tagged STORES2_SPAN_RSP1 store_info;
@@ -2542,7 +2540,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         memPathQ.deq();
         
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Load Rsp 1 (V: 0x%h).", tok.index, existing_val1));         
+        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Load Rsp 1 (V: 0x%h).", tok.index, existing_val1));
         
         // Wait for the second response.
         stateStores2 <= tagged STORES2_SPAN_RSP2 tuple2(store_info, existing_val1);
@@ -2570,11 +2568,11 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         
         // Use the ISA-provided conversion function.
         match {.new_val1, .new_val2} = isaStoreValueToSpanningMemValues(existing_val1, existing_val2, store_info.offset, store_info.storeValue, store_info.opType);
-        debugLog.record($format("TOKEN %0d: DoStores2: ISA StoreSpan (EV1: 0x%h, EV2, 0x%h, V: 0x%h, T: %0d, O: %b) = 0x%h, 0x%h", tok.index, existing_val1, existing_val2, store_info.storeValue,  pack(store_info.opType), store_info.offset, new_val1, new_val2)); 
+        debugLog.record($format("TOKEN %0d: DoStores2: ISA StoreSpan (EV1: 0x%h, EV2, 0x%h, V: 0x%h, T: %0d, O: %b) = 0x%h, 0x%h", tok.index, existing_val1, existing_val2, store_info.storeValue,  pack(store_info.opType), store_info.offset, new_val1, new_val2));
 
         // Make the first store request.
         MEM_ADDRESS p_addr1 = getFirst(store_info.memAddrs);
-        linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, addr: p_addr1, val: new_val1});
+        linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, num: 0, addr: p_addr1, val: new_val1});
 
         // Log it.
         debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Req 1 (PA1: V1: 0x%h).", tok.index, p_addr1, new_val1));
@@ -2595,7 +2593,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     
         // Make the second store.
         let p_addr2 = getSecondOfTwo(store_info.memAddrs);
-        linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, addr: p_addr2, val: new_val2});
+        linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, num: 1, addr: p_addr2, val: new_val2});
         
         // Log it.
         debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Req 2 (PA2: V2: 0x%h).", tok.index, p_addr2, new_val2));

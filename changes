@@ -15415,3 +15415,18 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
   so they aren't replicated in each ISA definition.
 - Add new options to run script for dumping to a VCD file for use in a
   waveform viewer.  (--vcdstart and --vcdcycles)
+
+----------
+mcadler     Date: Mon Oct  6 18:35:04 EDT 2008  CSN: CSN-hasim-536
+                  Mon Oct  6 22:35:04 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          535 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          535 
+
+- Detect killed (junk) token in functional load path.
+- Murali's changes to handle multiple stores in the store buffer for a single
+  token.  This happens for unaligned stores.

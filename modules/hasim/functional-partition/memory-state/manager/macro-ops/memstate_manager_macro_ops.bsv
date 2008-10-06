@@ -26,10 +26,15 @@ import Vector::*;
 
 typedef union tagged 
 {
-    struct {TOKEN token; MEM_ADDRESS addr;               } MEMSTATE_REQ_LOAD;
-    struct {TOKEN token; MEM_ADDRESS addr; MEM_VALUE val;} MEMSTATE_REQ_STORE;
-    TOKEN                                                  MEMSTATE_REQ_COMMIT;
-    struct {TOKEN_INDEX rewind_tok; TOKEN_INDEX youngest;} MEMSTATE_REQ_REWIND;
+    struct {TOKEN token; MEM_ADDRESS addr;                            } MEMSTATE_REQ_LOAD;
+
+    // "num" uniquely identifies the store number for a given token.  References
+    // to unaligned addresses generate two stores, each getting unique store
+    // numbers.
+    struct {TOKEN token; Bit#(1) num; MEM_ADDRESS addr; MEM_VALUE val;} MEMSTATE_REQ_STORE;
+
+    TOKEN                                                               MEMSTATE_REQ_COMMIT;
+    struct {TOKEN_INDEX rewind_tok; TOKEN_INDEX youngest;             } MEMSTATE_REQ_REWIND;
 }
     MEMSTATE_REQ 
           deriving
@@ -89,7 +94,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         linkRegState.deq();
         
         // Place the value in store buffer, but don't actually change the cache.
-        linkStoreBuffer.makeReq(tagged SBUFFER_REQ_INSERT {tok: stInfo.token, num: 0, addr: stInfo.addr, value: stInfo.val});
+        linkStoreBuffer.makeReq(tagged SBUFFER_REQ_INSERT {tok: stInfo.token, num: stInfo.num, addr: stInfo.addr, value: stInfo.val});
 
     endrule
 

@@ -22,9 +22,6 @@ module mkFUNCP_Snapshot
 
     Reg#(Vector#(NUM_TOKENS, Bool))             snapValids <- mkReg(replicate(False));
 
-    // The IDs tell us which snapshot is in a given location.
-    LUTRAM#(FUNCP_SNAPSHOT_INDEX, Maybe#(TOKEN_INDEX)) snapIDs <- mkLUTRAM(tagged Invalid);
-
     // The token table tells us the most recent snapshot associated with each token.
     LUTRAM#(TOKEN_INDEX, FUNCP_SNAPSHOT_INDEX) tokSnaps <- mkLUTRAM(0);
     
@@ -39,15 +36,9 @@ module mkFUNCP_Snapshot
 
         let new_valids = snapValids;
 
-        if (snapIDs.sub(snapNext) matches tagged Valid .old_tok)
-        begin
-           new_valids[old_tok] = False;
-        end
-
         new_valids[tokIndex] = True;
         snapValids <= new_valids;
         tokSnaps.upd(tokIndex, snapNext);
-        snapIDs.upd(snapNext, tagged Valid tokIndex);
         snaps.write(snapNext, newMap);
         snapNext <= snapNext + 1;
 

@@ -20,10 +20,48 @@
 // and scratchpads which partitions can use as they see fit.             
 
 
-typedef `TOKEN_INDEX_BITS TOKEN_INDEX_SIZE;
-typedef TExp#(TOKEN_INDEX_SIZE) NUM_TOKENS;
-typedef Bit#(TOKEN_INDEX_SIZE) TOKEN_INDEX;
+//
+// In spite of being finite, HAsim requires that tokens be ordered in time.
+// There must be a way to figure out which of a pair of tokens is older.
+// We accomplish this by making the token index space twice the size of the
+// number of tokens that may be in flight.  Since in-flight (live) tokens
+// can differ by no more than the maximum token index / 2 it is possible to
+// compare the relative ages of live tokens.
+//
+// We call the full index space TOKEN_INDEX.  We call the live space with
+// the high TOKEN_INDEX bit dropped LIVE_TOKEN_INDEX.
+//
 
+typedef `TOKEN_INDEX_BITS       TOKEN_INDEX_SIZE;
+typedef TExp#(TOKEN_INDEX_SIZE) NUM_TOKENS;
+typedef Bit#(TOKEN_INDEX_SIZE)  TOKEN_INDEX;
+
+typedef TSub#(TOKEN_INDEX_SIZE, 1)   LIVE_TOKEN_INDEX_SIZE;
+typedef TExp#(LIVE_TOKEN_INDEX_SIZE) NUM_LIVE_TOKENS;
+typedef Bit#(LIVE_TOKEN_INDEX_SIZE)  LIVE_TOKEN_INDEX;
+
+
+function LIVE_TOKEN_INDEX liveTokenIdx(TOKEN_INDEX idx);
+    return truncate(idx);
+endfunction
+
+
+//
+// Order relationships between tokens.  When comparing the age of two tokens
+// we depend on half the token index space being unused.  We thus know that
+// the tokens may differ no more than NUM_LIVE_TOKENS.
+//
+// tokenIsOlder returns true iff token "older" really is older than "younger".
+//
+function Bool tokenIsOlder(TOKEN_INDEX younger, TOKEN_INDEX older);
+        return (older - younger)[valueOf(TOKEN_INDEX_SIZE) - 1] == 0;
+endfunction
+
+
+//
+// Scratchpad space is temporary storage available for private use in
+// timing models and the functional model.
+//
 typedef Bit#(`TOKEN_TIMEP_EPOCH_BITS)      TOKEN_TIMEP_EPOCH;
 typedef Bit#(`TOKEN_TIMEP_SCRATCHPAD_BITS) TOKEN_TIMEP_SCRATCHPAD;
 
@@ -47,6 +85,9 @@ typedef struct
     TOKEN_FUNCP_INFO 
         deriving (Eq, Bits);
 
+//
+// Token passed around the simulator
+//
 typedef struct
 {
     TOKEN_INDEX       index;
@@ -56,10 +97,92 @@ typedef struct
     TOKEN 
         deriving (Eq, Bits);
 
-//isOlder: predicated on the idea that only half the tokens are in flight at once.
 
-function Bool isOlder(TOKEN_INDEX t1, TOKEN_INDEX t2);
+//
+// Convenience modules for wrapping LIVE_TOKEN sized storage that is indexed
+// by a TOKEN_INDEX.  These provide automatic conversion on the access methods
+// from TOKEN_INDEX to LIVE_TOKEN_INDEX.
+//
 
-  return (t1 - t2) > (t2 - t1);
+module mkLiveTokenBRAM
+    // interface:
+        (BRAM#(TOKEN_INDEX, data_T))
+    provisos
+        (Bits#(data_T, data_SZ));
+    
+    BRAM#(LIVE_TOKEN_INDEX, data_T) mem <- mkBRAM();
 
-endfunction
+    method Action readReq(TOKEN_INDEX a);
+        mem.readReq(liveTokenIdx(a));
+    endmethod
+
+    method ActionValue#(data_T) readRsp();
+        data_T rsp <- mem.readRsp();
+        return rsp;
+    endmethod
+
+    method Action write(TOKEN_INDEX a, data_T d);
+        mem.write(liveTokenIdx(a), d);
+    endmethod
+
+endmodule
+
+
+module mkLiveTokenBRAMInitialized#(data_T initval)
+    // interface:
+        (BRAM#(TOKEN_INDEX, data_T))
+    provisos
+        (Bits#(data_T, data_SZ));
+    
+    BRAM#(LIVE_TOKEN_INDEX, data_T) mem <- mkBRAMInitialized(initval);
+
+    method Action readReq(TOKEN_INDEX a);
+        mem.readReq(liveTokenIdx(a));
+    endmethod
+
+    method ActionValue#(data_T) readRsp();
+        data_T rsp <- mem.readRsp();
+        return rsp;
+    endmethod
+
+    method Action write(TOKEN_INDEX a, data_T d);
+        mem.write(liveTokenIdx(a), d);
+    endmethod
+
+endmodule
+
+
+module mkLiveTokenLUTRAM#(data_t init)
+    // interface:
+        (LUTRAM#(TOKEN_INDEX, data_t))
+    provisos(Bits#(data_t, data_SZ));
+
+    LUTRAM#(LIVE_TOKEN_INDEX, data_t) mem <- mkLUTRAM(init);
+
+    method Action upd(TOKEN_INDEX addr, data_t d);
+        mem.upd(liveTokenIdx(addr), d);
+    endmethod
+
+    method data_t sub(TOKEN_INDEX addr);
+        return mem.sub(liveTokenIdx(addr));
+    endmethod
+
+endmodule
+
+
+module mkLiveTokenLUTRAMU
+    // interface:
+        (LUTRAM#(TOKEN_INDEX, data_t))
+    provisos(Bits#(data_t, data_SZ));
+
+    LUTRAM#(LIVE_TOKEN_INDEX, data_t) mem <- mkLUTRAMU();
+
+    method Action upd(TOKEN_INDEX addr, data_t d);
+        mem.upd(liveTokenIdx(addr), d);
+    endmethod
+
+    method data_t sub(TOKEN_INDEX addr);
+        return mem.sub(liveTokenIdx(addr));
+    endmethod
+
+endmodule

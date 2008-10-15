@@ -15430,3 +15430,90 @@ Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
 - Detect killed (junk) token in functional load path.
 - Murali's changes to handle multiple stores in the store buffer for a single
   token.  This happens for unaligned stores.
+
+----------
+mcadler     Date: Wed Oct 15 19:29:56 EDT 2008  CSN: CSN-hasim-537
+                  Wed Oct 15 23:29:56 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/snapshot/bram
+ funcp_snapshot_bram.bsv   Locally Modified          536 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          536 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.awb Locally Added               0 
+ memstate-hashed-store-buffer.bsv Locally Added               0 
+ memstate_storebuffer_fast_hashed.awb Locally Removed           536 
+ memstate-hashed-store-buffer.dic Locally Added               0 
+ StoreBufferFastHashed.bsv Locally Removed           536 
+ HashedStoreBuffer.bsv     Locally Removed           536 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer
+ sequential/               Locally Removed           536 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/sequential
+ memstate_storebuffer_sequential.awb Locally Removed           536 
+ StoreBufferSequential.bsv Locally Removed           536 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer
+ multi-context/            Locally Removed           536 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/multi-context
+ store_buffer.dic          Locally Removed           536 
+ memstate_storebuffer_multi_context.awb Locally Removed           536 
+ memstate_storebuffer_multi_context.bsv Locally Removed           536 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer
+ bucket-hash/              Locally Removed           536 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/bucket-hash
+ memstate_storebuffer_bucket_hash.awb Locally Removed           536 
+ memstate_storebuffer_bucket_hash.bsv Locally Removed           536 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.awb Locally Modified          536 
+ memstate_manager_macro_ops.bsv Locally Modified          536 
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          536 
+ hash-to-32.bsv            Locally Modified          536 
+
+- Token:
+  - Add LIVE_TOKEN_INDEX, which is 1 bit smaller than TOKEN_INDEX.  The token
+    index space is 2x the number of tokens that may be live at any time so we
+    can compute whether one token is older than another.
+  - Add a function, liveTokenIdx(), for converting from TOKEN_INDEX to LIVE_TOKEN_INDEX.
+  - Add wrapper methods for allocated BRAM and LUTRAM arrays that have
+    NUM_LIVE_TOKENS elements but are indexed by a TOKEN_INDEX.  This avoids
+    having to call the conversion function explicitly on every access.
+  - Clean up age cmmparison function with names making it obvious which argument
+    is which.
+
+- Drop snapIDs from snapshot.  Maybe it served a purpose some time in the past.
+  All it does now is force unpredictable errors.
+
+- New store buffer (all old ones removed):
+  - Manages one pool of entries and is willing to accept a compile-time specified
+    number of stores per token (automatically -- no explicit store numbering).
+  - Store buffer is invoked as method calls, not soft connections.  Lookups with
+    empty hash chains (the majority) waste no time waiting for the store buffer
+    and head straight for the cache.
+  - Store buffer has two modes, controlled by param MEMSTATE_SBUFFER_OOO_MEM.  In
+    the current default mode (0), the store buffer hits in the first address match
+    without considering token age.  This is appropriate for in-order models.
+    The OOO mode (1) finds the token with the best age match among more than one
+    address match.  Allowing for mode 0 keeps the store buffer from hiding bugs
+    in an in-order timing model.
+  - Memory state manager defines named structs for communication with register
+    state manager.
+  - debugLog output of memory state manager and store buffer are combined into a
+    single file.
+
+- Protect a few more connections in the register state manager in case a timing
+  model passes in a dead token.
+
+- Add a hashTo8() function for times when 8 or fewer hash bits are needed.  The
+  Bluespec optimizer doesn't drop unused high bits quickly enough during optimization
+  and can be dramatically slower using hashTo32().

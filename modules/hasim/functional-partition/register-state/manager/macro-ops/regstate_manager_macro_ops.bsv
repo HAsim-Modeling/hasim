@@ -290,10 +290,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     // Connections to Mem State.
 
-    Connection_Client#(TOKEN, VOID)                            storeBufferAllocate <- mkConnection_Client("storeBufferAllocate");
+    Connection_Send#(TOKEN_INDEX)                  storeBufferAllocate <- mkConnection_Send("storeBufferAllocate");
 
     Connection_Client#(MEMSTATE_REQ, 
-                       MEM_VALUE)                              linkToMem <- mkConnection_Client("funcp_memstate");
+                       MEM_VALUE)                            linkToMem <- mkConnection_Client("funcp_memstate");
 
     // Connection to TLB
 
@@ -643,7 +643,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 debugLog.record($format("TOKEN %0d: GetInstruction2: Load Req (PA: 0x%h)", tok.index, p_addr));
 
                 // Kick to Mem State.
-                linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: p_addr});
+                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr};
+                linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Record that the result should come to us.
                 memPathQ.enq(PATH_INST);
@@ -659,7 +660,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 debugLog.record($format("TOKEN %0d: GetInstruction2: Spanning Load Req 1 (PA1: 0x%h, PA2: 0x%h)", tok.index, p_addr1, p_addr2));
 
                 // Kick the first request to the MemState.
-                linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: p_addr1});
+                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1};
+                linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Record that the result should come to us.
                 memPathQ.enq(PATH_INST);
@@ -686,7 +688,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         
         // Kick the second request to MemState.
         let p_addr2 = getSecondOfTwo(fetch_info.memAddrs);
-        linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: p_addr2});
+        let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr2};
+        linkToMem.makeReq(tagged REQ_LOAD m_req);
 
         // Log it.
         debugLog.record($format("TOKEN %0d: GetInstruction2: Spanning Load Req 2 (PA2: 0x%h)", tok.index, p_addr2));
@@ -970,7 +973,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         if (isaIsStore(inst))
         begin
             tokScoreboard.setStoreType(tok.index, isaStoreType(inst));
-            storeBufferAllocate.makeReq(tok);
+            storeBufferAllocate.send(tok.index);
         end
 
         let is_emulated = isaEmulateInstruction(inst);
@@ -1171,7 +1174,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // Update the scoreboard.
         tokScoreboard.exeStart(tok.index);
         
-        if (tokScoreboard.emulateInstruction(tok.index))
+        if (tokScoreboard.emulateInstruction(tok.index) && tokScoreboard.isAllocated(tok.index))
         begin
 
             // Record that we're emulating an instruction.
@@ -2102,7 +2105,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 debugLog.record($format("TOKEN %0d: DoLoads2: Requesting Load (PA: 0x%h)", tok.index, p_addr));
 
                 // Make the request to the DMem.
-                linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: p_addr});
+                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr};
+                linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Record that the load response should go to us.
                 memPathQ.enq(PATH_LOAD);
@@ -2122,7 +2126,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 debugLog.record($format("TOKEN %0d: DoLoads2: Starting Spanning Load (PA1: 0x%h)", tok.index, p_addr1));
 
                 // Make the request to the DMem.
-                linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: p_addr1});
+                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1};
+                linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Record that the load response should go to us.
                 memPathQ.enq(PATH_LOAD);
@@ -2140,7 +2145,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
         // Kick the second request to MemState.
         let p_addr2 = getSecondOfTwo(load_info.memAddrs);
-        linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: load_info.token, addr: p_addr2});
+        let m_req = MEMSTATE_REQ_LOAD {tok: load_info.token, addr: p_addr2};
+        linkToMem.makeReq(tagged REQ_LOAD m_req);
 
         // Record that the load response should go to us.
         memPathQ.enq(PATH_LOAD);
@@ -2187,7 +2193,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 loads2Q.deq();
 
                 // Convert the value using the ISA-provided conversion function.
-                ISA_VALUE val = isaLoadValueFromMemValue(v, load_info.opType, load_info.offset);
+                ISA_VALUE val = isaLoadValueFromMemValue(v, load_info.offset, load_info.opType);
                 debugLog.record($format("TOKEN %0d: DoLoads3: ISA Load (V: 0x%h, T: %0d, O: %b) = 0x%h", tok.index, v, pack(load_info.opType), load_info.offset, val)); 
 
                 // Get the destination for the purposes of writeback.
@@ -2312,19 +2318,17 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let isStore = tokScoreboard.isStore(tok.index);
         assertInstructionIsActuallyAStore(isStore);
 
-        if (tokScoreboard.emulateInstruction(tok.index)) // Emulated stores were taken care of previously.
+        if (tokScoreboard.emulateInstruction(tok.index) ||
+            ! tokScoreboard.isAllocated(tok.index))
         begin
-
             // Log it.
-            debugLog.record($format("TOKEN %0d: DoStores: Ignoring emulated instruction.", tok.index));
+            debugLog.record($format("TOKEN %0d: DoStores: Ignoring junk token or emulated instruction.", tok.index));
 
             // Respond to the timing model. End of macro-operation.
             linkDoStores.makeResp(initFuncpRspDoStores(tok));
-
         end
         else // Everything's fine.
         begin
-
             // Log it.
             debugLog.record($format("TOKEN %0d: DoStores: Begin.", tok.index)); 
 
@@ -2342,7 +2346,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
             // Pass to the next stage.
             stores1Q.enq(tuple2(tok, st_type));
-
         end
 
     endrule
@@ -2376,7 +2379,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 begin
 
                     // We're doing read-modify-write. Request a load.
-                    linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: p_addr});
+                    let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr};
+                    linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                     // Record that the load response should go to us.
                     memPathQ.enq(PATH_STORE);
@@ -2407,7 +2411,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                     debugLog.record($format("TOKEN %0d: DoStores2: ISA Store (V: 0x%h, T: %0d, O: %b) = 0x%h", tok.index, store_val,  pack(st_type), offset, mem_store_value)); 
 
                     // Make the request to the memory state.
-                    linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, num: 0, addr: p_addr, val: mem_store_value});
+                    let m_req = MEMSTATE_REQ_STORE {tok: tok, addr: p_addr, value: mem_store_value};
+                    linkToMem.makeReq(tagged REQ_STORE m_req);
 
                     // Log it.
                     debugLog.record($format("TOKEN %0d: DoStores2: Sending Store to Memory (PA: 0x%h, V: 0x%h).", tok.index, p_addr, mem_store_value)); 
@@ -2428,7 +2433,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
                 // Two addresses means load two values, then modify them, then write them back.
                 // Make the first load now.
-                linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: p_addr1});
+                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1};
+                linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Record that the load response should go to us.
                 memPathQ.enq(PATH_STORE);
@@ -2479,7 +2485,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
         // Write the store to memory.
         let mem_addr = getFirst(store_info.memAddrs);
-        linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, num: 0, addr: mem_addr, val: new_mem_val});
+        let m_req = MEMSTATE_REQ_STORE {tok: tok, addr: mem_addr, value: new_mem_val};
+        linkToMem.makeReq(tagged REQ_STORE m_req);
 
         // Log it.
         debugLog.record($format("TOKEN %0d: DoStores2: Sending RMW Store to Memory (PA: 0x%h, V: 0x%h).", tok.index, mem_addr, new_mem_val)); 
@@ -2510,7 +2517,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     
         // Make the second load request.
         let p_addr2 = getSecondOfTwo(store_info.memAddrs);
-        linkToMem.makeReq(MEMSTATE_REQ_LOAD {token: tok, addr: p_addr2});
+        let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr2};
+        linkToMem.makeReq(tagged REQ_LOAD m_req);
         
         // Record that the load response should go to us.
         memPathQ.enq(PATH_STORE);
@@ -2567,12 +2575,13 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Load Rsp 2 (V: 0x%h).", tok.index, existing_val2));
         
         // Use the ISA-provided conversion function.
-        match {.new_val1, .new_val2} = isaStoreValueToSpanningMemValues(existing_val1, existing_val2, store_info.offset, store_info.storeValue, store_info.opType);
+        match {.new_val1, .new_val2} = isaStoreValueToSpanningMemValues(existing_val1, existing_val2, store_info.storeValue, store_info.offset, store_info.opType);
         debugLog.record($format("TOKEN %0d: DoStores2: ISA StoreSpan (EV1: 0x%h, EV2, 0x%h, V: 0x%h, T: %0d, O: %b) = 0x%h, 0x%h", tok.index, existing_val1, existing_val2, store_info.storeValue,  pack(store_info.opType), store_info.offset, new_val1, new_val2));
 
         // Make the first store request.
         MEM_ADDRESS p_addr1 = getFirst(store_info.memAddrs);
-        linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, num: 0, addr: p_addr1, val: new_val1});
+        let m_req = MEMSTATE_REQ_STORE {tok: tok, addr: p_addr1, value: new_val1};
+        linkToMem.makeReq(tagged REQ_STORE m_req);
 
         // Log it.
         debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Req 1 (PA1: V1: 0x%h).", tok.index, p_addr1, new_val1));
@@ -2593,7 +2602,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     
         // Make the second store.
         let p_addr2 = getSecondOfTwo(store_info.memAddrs);
-        linkToMem.makeReq(MEMSTATE_REQ_STORE {token: tok, num: 1, addr: p_addr2, val: new_val2});
+        let m_req = MEMSTATE_REQ_STORE {tok: tok, addr: p_addr2, value: new_val2};
+        linkToMem.makeReq(tagged REQ_STORE m_req);
         
         // Log it.
         debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Req 2 (PA2: V2: 0x%h).", tok.index, p_addr2, new_val2));
@@ -2729,7 +2739,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // Log it.
         debugLog.record($format("TOKEN %0d: CommitStores: Committing.", tok.index)); 
 
-        linkToMem.makeReq(tagged MEMSTATE_REQ_COMMIT tok);
+        linkToMem.makeReq(tagged REQ_COMMIT MEMSTATE_REQ_COMMIT {tok: tok});
 
         // Respond to timing model. End of macro-operation.
         linkCommitStores.makeResp(initFuncpRspCommitStores(tok));
@@ -2761,7 +2771,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         debugLog.record($format("Rewind: Starting Rewind to TOKEN %0d (Youngest: %0d)", tok.index, tokScoreboard.youngest())); 
 
         // Tell the memory to drop non-committed stores.
-        linkToMem.makeReq(MEMSTATE_REQ_REWIND {rewind_tok: tok.index, youngest: tokScoreboard.youngest()});
+        let m_req = MEMSTATE_REQ_REWIND {rewind_to: tok.index, rewind_from: tokScoreboard.youngest()};
+        linkToMem.makeReq(tagged REQ_REWIND m_req);
 
         // Update the epoch so we can discard appropriate updates.
         epoch <= epoch + 1;
@@ -2809,7 +2820,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     rule rewindToToken2 (state == RSM_DrainingForRewind && tokScoreboard.canRewind());
     
         // Log it.
-        debugLog.record($format("Rewind: Draining finished.", tokScoreboard.oldest()));
+        debugLog.record($format("Rewind: Draining finished (Oldest: %0d)", tokScoreboard.oldest()));
 
         // Start at the youngest and go backward.
         rewindCur <= tokScoreboard.youngest();

@@ -120,3 +120,49 @@ function Bit#(32) hashTo32(Bit#(n) x)
     return set;
 
 endfunction
+
+
+//
+// hashTo8 uses exactly the same hash algorithm as the low 8 bits of hashTo32.
+// It puts less pressure on the Bluespec optimizer to drop unused bits when the
+// hash is going to be truncated to 8 bits or fewer.
+//
+function Bit#(8) hashTo8(Bit#(n) x)
+    // A very silly pair of provisos required by the compiler: a__+32 == n+32
+    provisos(Add#(32, n, TAdd#(a__, 32)),
+             Add#(a__, 32, TAdd#(32, n)));
+
+    //
+    // Hash function really wants a 32 bit input.  Construct one.
+    //
+    Bit#(32) d = truncate({ 32'b0, x });
+    for (Integer i = 32; i < valueOf(n); i = i + 1)
+    begin
+        d[i % 32] = d[i % 32] ^ x[i];
+    end
+
+    Bit#(8) set;
+    set[0] = d[31] ^ d[30] ^ d[29] ^ d[28] ^ d[26] ^ d[25] ^ d[24] ^ 
+             d[16] ^ d[12] ^ d[10] ^ d[9] ^ d[6] ^ d[0];
+    set[1] = d[28] ^ d[27] ^ d[24] ^ d[17] ^ d[16] ^ d[13] ^ d[12] ^ 
+             d[11] ^ d[9] ^ d[7] ^ d[6] ^ d[1] ^ d[0];
+    set[2] = d[31] ^ d[30] ^ d[26] ^ d[24] ^ d[18] ^ d[17] ^ d[16] ^ 
+             d[14] ^ d[13] ^ d[9] ^ d[8] ^ d[7] ^ d[6] ^ d[2] ^ 
+             d[1] ^ d[0];
+    set[3] = d[31] ^ d[27] ^ d[25] ^ d[19] ^ d[18] ^ d[17] ^ d[15] ^ 
+             d[14] ^ d[10] ^ d[9] ^ d[8] ^ d[7] ^ d[3] ^ d[2] ^ 
+             d[1];
+    set[4] = d[31] ^ d[30] ^ d[29] ^ d[25] ^ d[24] ^ d[20] ^ d[19] ^ 
+             d[18] ^ d[15] ^ d[12] ^ d[11] ^ d[8] ^ d[6] ^ d[4] ^ 
+             d[3] ^ d[2] ^ d[0];
+    set[5] = d[29] ^ d[28] ^ d[24] ^ d[21] ^ d[20] ^ d[19] ^ d[13] ^ 
+             d[10] ^ d[7] ^ d[6] ^ d[5] ^ d[4] ^ d[3] ^ d[1] ^ d[0];
+    set[6] = d[30] ^ d[29] ^ d[25] ^ d[22] ^ d[21] ^ d[20] ^ d[14] ^ 
+             d[11] ^ d[8] ^ d[7] ^ d[6] ^ d[5] ^ d[4] ^ d[2] ^ d[1];
+    set[7] = d[29] ^ d[28] ^ d[25] ^ d[24] ^ d[23] ^ d[22] ^ d[21] ^ 
+             d[16] ^ d[15] ^ d[10] ^ d[8] ^ d[7] ^ d[5] ^ d[3] ^ 
+             d[2] ^ d[0];
+
+    return set;
+
+endfunction

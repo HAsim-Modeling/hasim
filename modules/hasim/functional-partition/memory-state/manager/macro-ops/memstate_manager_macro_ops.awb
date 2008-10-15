@@ -1,24 +1,13 @@
-#/********************************************************************
-# *
-# * Awb module specification
-# *
-# *******************************************************************/
+%name Manager using Macro Ops for Mem State
+%desc Manager using Macro Ops for Mem State
 
-#/*
-# %AWB_START
-#
-# %name Manager using Macro Ops for Mem State
-# %desc Manager using Macro Ops for Mem State
-#
-# %provides funcp_memstate_manager
-# 
-# %requires funcp_memstate_storebuffer
-# %requires funcp_memstate_cache
-#
-# %attributes hasim funcp memstate
-#
-# %public memstate_manager_macro_ops.bsv
-#
-# %AWB_END
-# */
+%provides funcp_memstate_manager
 
+%requires funcp_memstate_storebuffer
+%requires funcp_memstate_cache
+
+%attributes hasim funcp memstate
+
+%public memstate_manager_macro_ops.bsv
+
+%param FUNCP_MEMSTATE_LOGFILE_NAME "hasim_funcp_memstate.out" "Name of logfile for functional memory state manager"

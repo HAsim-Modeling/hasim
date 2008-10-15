@@ -1,3 +1,21 @@
+//
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+
 // memstate_manager_macro_ops
 
 // Tracks memory state with a cache and a store buffer,
@@ -20,25 +38,58 @@ import Vector::*;
 `include "funcp_memstate_storebuffer.bsh"
 `include "funcp_memstate_cache.bsh"
 
+
 // MEMSTATE_REQ
 
-// Request to memstate data memory.
+//
+// Request from functional partition to memstate manager and store buffer.
+//
 
-typedef union tagged 
+typedef struct
 {
-    struct {TOKEN token; MEM_ADDRESS addr;                            } MEMSTATE_REQ_LOAD;
-
-    // "num" uniquely identifies the store number for a given token.  References
-    // to unaligned addresses generate two stores, each getting unique store
-    // numbers.
-    struct {TOKEN token; Bit#(1) num; MEM_ADDRESS addr; MEM_VALUE val;} MEMSTATE_REQ_STORE;
-
-    TOKEN                                                               MEMSTATE_REQ_COMMIT;
-    struct {TOKEN_INDEX rewind_tok; TOKEN_INDEX youngest;             } MEMSTATE_REQ_REWIND;
+    TOKEN tok;
+    MEM_ADDRESS addr;
+    MEM_VALUE value;
 }
-    MEMSTATE_REQ 
-          deriving
-                   (Eq, Bits);
+MEMSTATE_REQ_STORE
+    deriving (Eq, Bits);
+
+
+typedef struct
+{
+    TOKEN tok;
+    MEM_ADDRESS addr;
+}
+MEMSTATE_REQ_LOAD
+    deriving (Eq, Bits);
+
+
+typedef struct
+{
+    TOKEN tok;
+}
+MEMSTATE_REQ_COMMIT
+    deriving (Eq, Bits);
+
+
+typedef struct
+{
+    TOKEN_INDEX rewind_to;
+    TOKEN_INDEX rewind_from;
+}
+MEMSTATE_REQ_REWIND
+    deriving (Eq, Bits);
+
+typedef union tagged
+{
+    MEMSTATE_REQ_LOAD    REQ_LOAD;
+    MEMSTATE_REQ_STORE   REQ_STORE;
+    MEMSTATE_REQ_COMMIT  REQ_COMMIT;
+    MEMSTATE_REQ_REWIND  REQ_REWIND;
+}
+MEMSTATE_REQ
+    deriving (Eq, Bits);
+
 
 // LOAD_PATH
 
@@ -50,6 +101,7 @@ typedef union tagged
   LOAD_PATH
     deriving (Eq, Bits);
 
+
 // mkFUNCP_MemStateManager
 
 // The module which encapsulates Loads and Stores,
@@ -57,22 +109,23 @@ typedef union tagged
 
 module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
+    DEBUG_FILE debugLog <- mkDebugFile(`FUNCP_MEMSTATE_LOGFILE_NAME);
+
     // ***** Submodules ***** //
 
     // Instantiate the Store Buffer
-    let stBuffer <- mkFUNCP_StoreBuffer();
+    MEMSTATE_SBUFFER stBuffer <- mkFUNCP_StoreBuffer(debugLog);
+
     // Instantiate the Cache
     let cache     <- mkFUNCP_Cache();
 
     // ***** Soft Connections ***** //
 
     // Links to the functional partition register state.
-    Connection_Server#(MEMSTATE_REQ, MEM_VALUE)              linkRegState      <- mkConnection_Server("funcp_memstate");
+    Connection_Server#(MEMSTATE_REQ, MEM_VALUE) linkRegState <- mkConnection_Server("funcp_memstate");
 
-    // Link to the Store Buffer
-    Connection_Client#(MEMSTATE_SBUFFER_REQ, MEMSTATE_SBUFFER_RSP) linkStoreBuffer <- mkConnection_Client("mem_storebuf");
     // Link to the Cache
-    Connection_Client#(MEM_REQUEST, MEM_VALUE)  linkCache     <- mkConnection_Client("mem_cache");
+    Connection_Client#(MEM_REQUEST, MEM_VALUE)  linkCache    <- mkConnection_Client("mem_cache");
 
     FIFO#(LOAD_PATH) loadQ <- mkSizedFIFO(16);
 
@@ -88,13 +141,15 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // Returns:    None.
     
 
-    rule memStore (linkRegState.getReq() matches tagged MEMSTATE_REQ_STORE .stInfo);
+    rule memStore (linkRegState.getReq() matches tagged REQ_STORE .stInfo);
 
         // Pop the request from the register state.
         linkRegState.deq();
         
+        debugLog.record($format("STORE: tok=%d, addr=0x%x, value=0x%x", stInfo.tok.index, stInfo.addr, stInfo.value));
+
         // Place the value in store buffer, but don't actually change the cache.
-        linkStoreBuffer.makeReq(tagged SBUFFER_REQ_INSERT {tok: stInfo.token, num: stInfo.num, addr: stInfo.addr, value: stInfo.val});
+        stBuffer.insertReq(stInfo.tok.index, stInfo.addr, stInfo.value);
 
     endrule
 
@@ -112,14 +167,16 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // When:   Any time we get a Load request from the register state.
     // Effect: Convert the address and send it to the store buffer.
 
-    rule memLoad1 (linkRegState.getReq() matches tagged MEMSTATE_REQ_LOAD .ldInfo);
+    rule memLoad1 (linkRegState.getReq() matches tagged REQ_LOAD .ldInfo);
 
         // Pop the request from the register state.
         linkRegState.deq();
 
+        debugLog.record($format("LOAD: tok=%d, addr=0x%x", ldInfo.tok.index, ldInfo.addr));
+
         // Send it on to the store buffer.
-        linkStoreBuffer.makeReq(tagged SBUFFER_REQ_LOOKUP {tok: ldInfo.token, addr: ldInfo.addr});
-        
+        stBuffer.lookupReq(ldInfo.tok.index, ldInfo.addr);
+
     endrule
 
     // memLoad2
@@ -128,17 +185,19 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // Effect: If the store buffer was a hit then buffer it for response.
     //         Otherwise pass it to the cache.
 
-    rule memLoad2 (linkStoreBuffer.getResp() matches tagged SBUFFER_RSP_LOOKUP {tok: .tok, addr: .addr, mresult: .mnew_val});
+    rule memLoad2 (True);
 
-        // Pop the response from the store buffer.  
-        linkStoreBuffer.deq();
+        // Get the response from the store buffer.  
+        let rsp <- stBuffer.lookupResp();
 
-        case (mnew_val) matches
+        case (rsp.mvalue) matches
           tagged Invalid: // A miss in the store buffer.
           begin
 
+              debugLog.record($format("  LOAD SB Miss, cache req addr=0x%x", rsp.addr));
+
               // Send it on to the cache.
-              linkCache.makeReq(tagged MEM_LOAD addr);
+              linkCache.makeReq(tagged MEM_LOAD rsp.addr);
               
               // Record that the answer is coming from the cache.
               loadQ.enq(tagged PATH_CACHE);
@@ -164,6 +223,8 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
         loadQ.deq();
 
+        debugLog.record($format("  LOAD SB Hit: value=0x%x", val));
+
         // Respond to regstate. End of macro-operation (path 1).
         linkRegState.makeResp(val);
 
@@ -181,6 +242,8 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         // Get the response from the cache.
         let val = linkCache.getResp();
         linkCache.deq();
+
+        debugLog.record($format("  LOAD from mem: value=0x%x", val));
 
         // Put in completion buffer. End of macro-operation (path 2).
         linkRegState.makeResp(val);
@@ -200,13 +263,15 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // When:   When the register state requests a committed store.
     // Effect: Retrieve the value from the store buffer.
 
-    rule commit1 (linkRegState.getReq() matches tagged MEMSTATE_REQ_COMMIT .tok);
+    rule commit1 (linkRegState.getReq() matches tagged REQ_COMMIT .req);
 
         // Get the input from the register state. Begin macro-operation.
         linkRegState.deq();
 
+        debugLog.record($format("COMMIT: tok=%d", req.tok.index));
+
         // Send the request on to the store buffer.
-        linkStoreBuffer.makeReq(tagged SBUFFER_REQ_COMMIT tok);
+        stBuffer.commitReq(req.tok.index);
 
     endrule
     
@@ -215,13 +280,15 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // When:   Some time after commit1
     // Effect: Send the store on to update the cache/memory.
 
-    rule commit2 (linkStoreBuffer.getResp() matches tagged SBUFFER_RSP_COMMIT {addr: .a, hasMore: .hasMore, value: .v, tok: .t});
+    rule commit2 (True);
 
-      // Pop the response from the store buffer.
-      linkStoreBuffer.deq();
+        // Get the response from the store buffer.
+        let rsp <- stBuffer.commitResp();
 
-      // Send the actual store to the cache.
-      linkCache.makeReq(tagged MEM_STORE MEM_STORE_INFO {addr:a, val: v});
+        debugLog.record($format("  COMMIT resp: addr=0x%x, value=0x%x, more=%d", rsp.addr, rsp.value, rsp.hasMore));
+
+        // Send the actual store to the cache.
+        linkCache.makeReq(tagged MEM_STORE MEM_STORE_INFO {addr: rsp.addr, val: rsp.value});
 
     endrule
 
@@ -234,12 +301,14 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // Parameters: TOKEN, TOKEN
     // Returns:    N/A
 
-    rule rewind (linkRegState.getReq() matches tagged MEMSTATE_REQ_REWIND .rew);
+    rule rewind (linkRegState.getReq() matches tagged REQ_REWIND .rew);
       
-      linkRegState.deq();
+        linkRegState.deq();
 
-      // Pass the request on to the store buffer.
-      linkStoreBuffer.makeReq(tagged SBUFFER_REQ_REWIND {rewind: rew.rewind_tok, youngest: rew.youngest});
+        debugLog.record($format("REWIND: rewind_to=%d, rewind_from=%d", rew.rewind_to, rew.rewind_from));
+
+        // Pass the request on to the store buffer.
+        stBuffer.rewindReq(rew.rewind_to, rew.rewind_from);
 
     endrule
 

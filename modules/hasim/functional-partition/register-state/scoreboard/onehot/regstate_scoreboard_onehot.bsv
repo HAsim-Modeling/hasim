@@ -105,33 +105,34 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // ***** Local State ***** //
 
     // We keep the status bits in a register for fast pull-downs.
+    // NOTE:  This vector is over all tokens, not just live tokens
     Reg#(Vector#(NUM_TOKENS, Bool)) alloc      <- mkReg(replicate(False));
 
     // The actual scoreboards.
-    TOKEN_SCOREBOARD itr_start    <- mkLUTRAMU();
-    TOKEN_SCOREBOARD itr_finish   <- mkLUTRAMU();
-    TOKEN_SCOREBOARD fet_start    <- mkLUTRAMU();
-    TOKEN_SCOREBOARD fet_finish   <- mkLUTRAMU();
-    TOKEN_SCOREBOARD dec_start    <- mkLUTRAMU();
-    TOKEN_SCOREBOARD dec_finish   <- mkLUTRAMU();
-    TOKEN_SCOREBOARD is_load      <- mkLUTRAMU();
-    TOKEN_SCOREBOARD is_store     <- mkLUTRAMU();
-    TOKEN_SCOREBOARD exe_start    <- mkLUTRAMU();
-    TOKEN_SCOREBOARD exe_finish   <- mkLUTRAMU();
-    TOKEN_SCOREBOARD dtr_start    <- mkLUTRAMU();
-    TOKEN_SCOREBOARD dtr_finish   <- mkLUTRAMU();
-    TOKEN_SCOREBOARD load_start   <- mkLUTRAMU();
-    TOKEN_SCOREBOARD load_finish  <- mkLUTRAMU();
-    TOKEN_SCOREBOARD store_start  <- mkLUTRAMU();
-    TOKEN_SCOREBOARD store_finish <- mkLUTRAMU();
-    TOKEN_SCOREBOARD commit_start <- mkLUTRAMU();
-    TOKEN_SCOREBOARD emulation    <- mkLUTRAMU();
-    TOKEN_SCOREBOARD poison       <- mkLUTRAMU();
+    TOKEN_SCOREBOARD itr_start    <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD itr_finish   <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD fet_start    <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD fet_finish   <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD dec_start    <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD dec_finish   <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD is_load      <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD is_store     <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD exe_start    <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD exe_finish   <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD dtr_start    <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD dtr_finish   <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD load_start   <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD load_finish  <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD store_start  <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD store_finish <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD commit_start <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD emulation    <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD poison       <- mkLiveTokenLUTRAMU();
 
-    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)     fetch_offset  <- mkLUTRAM(0);
-    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)     memop_offset  <- mkLUTRAM(0);
-    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE) load_type  <- mkLUTRAMU();
-    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE) store_type <- mkLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)     fetch_offset  <- mkLiveTokenLUTRAM(0);
+    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)     memop_offset  <- mkLiveTokenLUTRAM(0);
+    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE) load_type  <- mkLiveTokenLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE) store_type <- mkLiveTokenLUTRAMU();
 
     // A pointer to the next token to be allocated.
     Reg#(TOKEN_INDEX) next_free_tok <- mkReg(0);
@@ -597,12 +598,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
       for (Integer x = 0; x < valueof(NUM_TOKENS); x = x + 1)
       begin
-        TOKEN_INDEX cur = fromInteger(x);
-        as[x] = (youngest_tok > t) ?
-                   // No overflow case.
-                   ((cur > t) && (cur <= youngest_tok) ? False : alloc[x]) :
-                   // Overflow case.
-                   ((cur > t) || (cur <= youngest_tok) ? False : alloc[x]);
+          as[x] = tokenIsOlderOrEq(fromInteger(x), t) ? alloc[x] : False;
       end
 
       // next_free_tok does not change because we don't want to reissue those tokens

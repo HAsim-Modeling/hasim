@@ -16,10 +16,12 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
-def STATS.FUNCP_TLB.L1_ITLB_HIT       "FUNCP TLB L1_I: Hits";
-def STATS.FUNCP_TLB.L1_ITLB_MISS      "FUNCP TLB L1_I: Misses";
+def STATS.FUNCP_TLB.L1_ITLB_HIT         "FUNCP TLB L1_I: Hits";
+def STATS.FUNCP_TLB.L1_ITLB_MISS        "FUNCP TLB L1_I: Misses";
+def STATS.FUNCP_TLB.L1_ITLB_UNCACHEABLE "FUNCP TLB L1_I: Uncacheable references";
 
-def STATS.FUNCP_TLB.L1_DTLB_HIT       "FUNCP TLB L1_D: Hits";
-def STATS.FUNCP_TLB.L1_DTLB_MISS      "FUNCP TLB L1_D: Misses";
+def STATS.FUNCP_TLB.L1_DTLB_HIT         "FUNCP TLB L1_D: Hits";
+def STATS.FUNCP_TLB.L1_DTLB_MISS        "FUNCP TLB L1_D: Misses";
+def STATS.FUNCP_TLB.L1_DTLB_UNCACHEABLE "FUNCP TLB L1_D: Uncacheable references";
 
 def STATS.FUNCP_TLB.L2_MISS        "FUNCP TLB L2: Misses";

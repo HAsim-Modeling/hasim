@@ -341,8 +341,8 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
                 // Use this hit as current best match if the store is before
                 // the load and either this is the first address match or this
                 // store was executed later than the previous match.
-                if (tokenIsOlder(node.tokIdx, reqToken) &&
-                    (tokenIsOlder(respClosestReqToken, node.tokIdx) || ! isValid(respValue)))
+                if (tokenIsOlderOrEq(node.tokIdx, reqToken) &&
+                    (tokenIsOlderOrEq(respClosestReqToken, node.tokIdx) || ! isValid(respValue)))
                 begin
                     debugLog.record($format("      SB Current Best: tok=%d, node_token=%d", reqToken, node.tokIdx));
 

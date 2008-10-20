@@ -180,8 +180,8 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
         data = MEM_VALUE(req->ExtractUINT(sizeof(MEM_VALUE)));
         addr = MEM_ADDRESS(req->ExtractUINT64());
 
-        memory->Write(addr, sizeof(MEM_VALUE), &data);
         T1("\tfuncp_memory: ST (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] <- " << fmt_data(data));
+        memory->Write(addr, sizeof(MEM_VALUE), &data);
 
         // free
         req->Delete();

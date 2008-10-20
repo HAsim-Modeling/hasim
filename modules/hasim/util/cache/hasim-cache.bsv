@@ -1049,7 +1049,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     // setModeWriteBack -- Write back or write through cache config.
     //
     method Action setModeWriteBack(Bool isWriteBack);
-        debugLog.record($format("  Cache mode: WRITE %s", (isWriteBack ? "BACK" : "THROUGH")));
+        debugLog.record($format("Cache mode: WRITE %s", (isWriteBack ? "BACK" : "THROUGH")));
         writeBackCache <= isWriteBack;
     endmethod
 

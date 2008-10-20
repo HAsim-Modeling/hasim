@@ -51,10 +51,11 @@ endfunction
 // we depend on half the token index space being unused.  We thus know that
 // the tokens may differ no more than NUM_LIVE_TOKENS.
 //
-// tokenIsOlder returns true iff token "older" really is older than "younger".
+// tokenIsOlderOrEQ returns true iff token "older" really is older than or equal
+// to "younger".
 //
-function Bool tokenIsOlder(TOKEN_INDEX younger, TOKEN_INDEX older);
-        return (older - younger)[valueOf(TOKEN_INDEX_SIZE) - 1] == 0;
+function Bool tokenIsOlderOrEq(TOKEN_INDEX older, TOKEN_INDEX younger);
+    return (younger - older)[valueOf(TOKEN_INDEX_SIZE) - 1] == 0;
 endfunction
 
 
@@ -144,6 +145,76 @@ module mkLiveTokenBRAMInitialized#(data_T initval)
         data_T rsp <- mem.readRsp();
         return rsp;
     endmethod
+
+    method Action write(TOKEN_INDEX a, data_T d);
+        mem.write(liveTokenIdx(a), d);
+    endmethod
+
+endmodule
+
+
+module mkLiveTokenBRAMMultiRead
+    // interface:
+        (BRAM_MULTI_READ#(n, TOKEN_INDEX, data_T))
+    provisos
+        (Bits#(data_T, data_SZ));
+    
+    BRAM_MULTI_READ#(n, LIVE_TOKEN_INDEX, data_T) mem <- mkBRAMMultiRead();
+
+    // readPorts
+
+    Vector#(n, BROM#(TOKEN_INDEX, data_T)) portsLocal = newVector();
+
+    for(Integer i = 0; i < valueOf(n); i = i + 1)
+    begin
+        portsLocal[i] = (interface BROM#(TOKEN_INDEX, data_T);
+                             method Action readReq(TOKEN_INDEX a);
+                                 mem.readPorts[i].readReq(liveTokenIdx(a));
+                             endmethod
+
+                             method ActionValue#(data_T) readRsp();
+                                 data_T rsp <- mem.readPorts[i].readRsp();
+                                 return rsp;
+                             endmethod
+                         endinterface);
+    end
+
+    interface readPorts = portsLocal;
+
+    method Action write(TOKEN_INDEX a, data_T d);
+        mem.write(liveTokenIdx(a), d);
+    endmethod
+
+endmodule
+
+
+module mkLiveTokenBRAMMultiReadInitialized#(data_T initval)
+    // interface:
+        (BRAM_MULTI_READ#(n, TOKEN_INDEX, data_T))
+    provisos
+        (Bits#(data_T, data_SZ));
+    
+    BRAM_MULTI_READ#(n, LIVE_TOKEN_INDEX, data_T) mem <- mkBRAMMultiReadInitialized(initval);
+
+    // readPorts
+
+    Vector#(n, BROM#(TOKEN_INDEX, data_T)) portsLocal = newVector();
+
+    for(Integer i = 0; i < valueOf(n); i = i + 1)
+    begin
+        portsLocal[i] = (interface BROM#(TOKEN_INDEX, data_T);
+                             method Action readReq(TOKEN_INDEX a);
+                                 mem.readPorts[i].readReq(liveTokenIdx(a));
+                             endmethod
+
+                             method ActionValue#(data_T) readRsp();
+                                 data_T rsp <- mem.readPorts[i].readRsp();
+                                 return rsp;
+                             endmethod
+                         endinterface);
+    end
+
+    interface readPorts = portsLocal;
 
     method Action write(TOKEN_INDEX a, data_T d);
         mem.write(liveTokenIdx(a), d);

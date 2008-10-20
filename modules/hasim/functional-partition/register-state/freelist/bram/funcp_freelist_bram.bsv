@@ -123,7 +123,7 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(DEBUG_FILE debugLog)
         let rsp <- fl.readRsp();
 
         // Log it.
-        debugLog.record($format("FREELIST: Allocating PR%0d from position %0d", rsp, flRead.value()));
+        debugLog.record($format("FREELIST: Allocating PR%0d from position %0d", rsp, flRead.value() - 1));
 
         // Return the response to the requestor.
         return rsp;
@@ -144,7 +144,7 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(DEBUG_FILE debugLog)
         flWrite.up();
 
         // Log it.
-        debugLog.record($format("FREELIST: Freeing PR%0d onto position", r, flWrite.value()));
+        debugLog.record($format("FREELIST: Freeing PR%0d onto position ", r, flWrite.value()));
 
     endmethod
 
@@ -171,7 +171,7 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(DEBUG_FILE debugLog)
     method Action backTo(FUNCP_PHYSICAL_REG_INDEX r);
 
         // Log it.
-        debugLog.record($format("FREELIST: Going back to PR%0d (Current read: %0d, Current write: %0d)", r, flRead.value(), flWrite.value()));
+        debugLog.record($format("FREELIST: Going back to position %0d (Current read: %0d, Current write: %0d)", r, flRead.value(), flWrite.value()));
 
         let rd = flRead.value();
         let wr = flWrite.value() - 1;

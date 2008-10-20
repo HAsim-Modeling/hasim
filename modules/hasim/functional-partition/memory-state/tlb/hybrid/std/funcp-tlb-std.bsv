@@ -86,6 +86,15 @@ typedef enum
 FUNCP_TLB_STATE
     deriving (Eq, Bits);
 
+//
+// Details about a translation
+//
+typedef struct
+{
+    Bool cacheable;
+    FUNCP_P_PAGE page;
+} FUNCP_P_TRANSLATION
+    deriving (Eq, Bits);
 
 //
 // Request/response FIFOs from individual TLBs to the containing module.
@@ -93,7 +102,7 @@ FUNCP_TLB_STATE
 // to hybrid memory translations.
 //
 typedef FIFO#(FUNCP_V_PAGE) VTOP_REQ_FIFO;
-typedef FIFO#(Maybe#(FUNCP_P_PAGE)) VTOP_RESP_FIFO;
+typedef FIFO#(Maybe#(FUNCP_P_TRANSLATION)) VTOP_RESP_FIFO;
 
 
 //
@@ -153,6 +162,9 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
     let miss_stat_id = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_L1_ITLB_MISS : `STATS_FUNCP_TLB_L1_DTLB_MISS;
     Stat statTLBMiss <- mkStatCounter(miss_stat_id);
 
+    let uncacheable_stat_id = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_L1_ITLB_UNCACHEABLE : `STATS_FUNCP_TLB_L1_DTLB_UNCACHEABLE;
+    Stat statTLBUncacheable <- mkStatCounter(uncacheable_stat_id);
+
     // ***** Local State *****
     
     // State for an active request
@@ -182,13 +194,16 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
         if (resp matches tagged Valid .pp)
         begin
             // Valid translation
-            let pa = paFromPage(pp, pageOffsetFromVA(reqVA));
+            let pa = paFromPage(pp.page, pageOffsetFromVA(reqVA));
             response.enq(tagged Valid pa);
 
             debugLog.record($format("  %s VtoP response: VA 0x%x -> PA 0x%x", i_or_d, reqVA, pa));
 
             // Store the translation in the small cache
-            tinyCache.write(pageFromVA(reqVA), pp);
+            if (pp.cacheable)
+                tinyCache.write(pageFromVA(reqVA), pp.page);
+            else
+                statTLBUncacheable.incr();
         end
         else
         begin
@@ -250,7 +265,7 @@ endmodule
 //
 module [HASIM_MODULE] mkVtoPInterface
     // interface:
-        (HASIM_CACHE_SOURCE_DATA#(FUNCP_V_PAGE, Maybe#(FUNCP_P_PAGE)));
+        (HASIM_CACHE_SOURCE_DATA#(FUNCP_V_PAGE, Maybe#(FUNCP_P_TRANSLATION)));
 
     // Connection to memory translation service
     Connection_Client#(ISA_ADDRESS, MEM_ADDRESS) link_memory <- mkConnection_Client("funcp_memory_VtoP");
@@ -259,27 +274,33 @@ module [HASIM_MODULE] mkVtoPInterface
         link_memory.makeReq(vaFromPage(vp, 0));
     endmethod
 
-    method ActionValue#(Maybe#(FUNCP_P_PAGE)) readResp();
+    method ActionValue#(Maybe#(FUNCP_P_TRANSLATION)) readResp();
         MEM_ADDRESS pa = link_memory.getResp();
         link_memory.deq();
 
         // Sending a bit over RRR is difficult.  Instead, use the low bit
         // to signal whether the translation is valid.
-        Maybe#(FUNCP_P_PAGE) resp;
+        Maybe#(FUNCP_P_TRANSLATION) resp;
         if (pa[0] == 0)
-            resp = tagged Valid pageFromPA(pa);
+        begin
+            // Bit 1 signals whether the translation is not cacheable.  0 means
+            // cacheable, 1 means not.
+            resp = tagged Valid FUNCP_P_TRANSLATION { cacheable: (pa[1] == 0), page: pageFromPA(pa) };
+        end
         else
+        begin
             resp = tagged Invalid;
+        end
 
         return resp;
     endmethod
 
     // No writes can happen
-    method Action write(FUNCP_V_PAGE vp, Maybe#(FUNCP_P_PAGE) pp);
+    method Action write(FUNCP_V_PAGE vp, Maybe#(FUNCP_P_TRANSLATION) pp);
         noAction;
     endmethod
 
-    method Action writeSyncReq(FUNCP_V_PAGE vp, Maybe#(FUNCP_P_PAGE) pp);
+    method Action writeSyncReq(FUNCP_V_PAGE vp, Maybe#(FUNCP_P_TRANSLATION) pp);
         noAction;
     endmethod
 
@@ -357,17 +378,17 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     VTOP_RESP_FIFO dtlb_vtop_resp <- mkFIFO();
     FUNCP_TLB#(4) dtlb <- mkFUNCP_TLB(FUNCP_DTLB, dtlb_vtop_req, dtlb_vtop_resp, debugLog);
 
-    HASIM_CACHE_SOURCE_DATA#(FUNCP_V_PAGE, Maybe#(FUNCP_P_PAGE)) vtopIfc <- mkVtoPInterface();
+    HASIM_CACHE_SOURCE_DATA#(FUNCP_V_PAGE, Maybe#(FUNCP_P_TRANSLATION)) vtopIfc <- mkVtoPInterface();
     HASIM_CACHE_STATS statIfc <- mkTLBCacheStats();
 
     // Translation cache
     HASIM_CACHE#(FUNCP_V_PAGE,
-                 Maybe#(FUNCP_P_PAGE),
+                 Maybe#(FUNCP_P_TRANSLATION),
                  `FUNCP_TLB_CACHE_SETS,
                  `FUNCP_TLB_CACHE_WAYS,
                  `FUNCP_ISA_PAGE_SHIFT) cache <- mkCacheSetAssoc(vtopIfc, statIfc, debugLog);
 
-    FIFO#(FUNCP_TLB_TYPE) pendingTLBQ <- mkFIFO();
+    FIFO#(Tuple2#(FUNCP_V_PAGE, FUNCP_TLB_TYPE)) pendingTLBQ <- mkFIFO();
 
 
     // ***** Rules for communcation with functional register state manager *****
@@ -408,7 +429,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
 
         debugLog.record($format("  I hybrid req: VA 0x%x", vaFromPage(vp, 0)));
 
-        pendingTLBQ.enq(FUNCP_ITLB);
+        pendingTLBQ.enq(tuple2(vp, FUNCP_ITLB));
         cache.readReq(vp);
     endrule
 
@@ -418,7 +439,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
 
         debugLog.record($format("  D hybrid req: VA 0x%x", vaFromPage(vp, 0)));
 
-        pendingTLBQ.enq(FUNCP_DTLB);
+        pendingTLBQ.enq(tuple2(vp, FUNCP_DTLB));
         cache.readReq(vp);
     endrule
 
@@ -428,10 +449,17 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
 
         let resp <- cache.readResp();
 
-        let t = pendingTLBQ.first();
+        match { .vp, .which_tlb } = pendingTLBQ.first();
         pendingTLBQ.deq();
 
-        if (t == FUNCP_ITLB)
+        // Don't cache invalid or uncacheable translations.
+        if (! isValid(resp) || ! validValue(resp).cacheable)
+        begin
+            debugLog.record($format("    Uncacheable: VA 0x%x -> PA 0x%x", vaFromPage(vp, 0), paFromPage(validValue(resp).page, 0)));
+            cache.invalReq(vp, False);
+        end
+
+        if (which_tlb == FUNCP_ITLB)
             itlb_vtop_resp.enq(resp);
         else
             dtlb_vtop_resp.enq(resp);

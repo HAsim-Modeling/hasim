@@ -6,7 +6,7 @@ import Vector::*;
 
 interface FUNCP_SNAPSHOT;
 
-    method Action makeSnapshot(TOKEN_INDEX tokIndex, Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) newMap);
+    method ActionValue#(FUNCP_SNAPSHOT_INDEX) makeSnapshot(TOKEN_INDEX tokIndex, Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) newMap);
     method Action invalSnapshot(TOKEN_INDEX tokIndex);
     method Action requestSnapshot(FUNCP_SNAPSHOT_INDEX tokIndex);
     method Maybe#(FUNCP_SNAPSHOT_INDEX) hasSnapshot(TOKEN_INDEX tokIndex);
@@ -20,37 +20,61 @@ module mkFUNCP_Snapshot
     //interface:
         (FUNCP_SNAPSHOT);
 
-    Reg#(Vector#(NUM_TOKENS, Bool))             snapValids <- mkReg(replicate(False));
-
     // The token table tells us the most recent snapshot associated with each token.
-    LUTRAM#(TOKEN_INDEX, FUNCP_SNAPSHOT_INDEX) tokSnaps <- mkLUTRAM(0);
+    LUTRAM#(TOKEN_INDEX, Maybe#(FUNCP_SNAPSHOT_INDEX)) tokSnaps <- mkLiveTokenLUTRAM(tagged Invalid);
     
+    // The snapshot table tells us the most recent token associated with a snapshot.
+    // It is the opposite of tokSnaps above.  In order to be valid snapToks must
+    // point to the token and tokSnaps must point back to the snapshot.  This
+    // lets us deal with running out of snapshot entries gracefully (resorting
+    // to slow rewind) while not having to invalidate other snapshots during rewind.
+    LUTRAM#(FUNCP_SNAPSHOT_INDEX, Maybe#(TOKEN_INDEX)) snapToks <- mkLUTRAM(tagged Invalid);
+
     // The next pointer points to the next location where we should write a snapshot.
-    // (Possibly overwriting an old snapshot, which is okay, since we pull down snapValid for that token.)
     Reg#(FUNCP_SNAPSHOT_INDEX)                       snapNext <- mkReg(0);
 
     // The actual snapshots of the entire maptable.
     BRAM#(FUNCP_SNAPSHOT_INDEX, Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX)) snaps <- mkBRAM();
 
-    method Action makeSnapshot(TOKEN_INDEX tokIndex, Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) newMap);
+    //
+    // makeSnapshot --
+    //     Allocates a new snapshot.  If all snapshot slots are full it will
+    //     overwrite and invalidate an old one.  The register state manager
+    //     will then resort to slow rewind if necessary.
+    //
+    method ActionValue#(FUNCP_SNAPSHOT_INDEX) makeSnapshot(TOKEN_INDEX tokIndex, Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) newMap);
 
-        let new_valids = snapValids;
+        let snap_idx = snapNext;
 
-        new_valids[tokIndex] = True;
-        snapValids <= new_valids;
-        tokSnaps.upd(tokIndex, snapNext);
-        snaps.write(snapNext, newMap);
+        snapToks.upd(snap_idx, tagged Valid tokIndex);
+        tokSnaps.upd(tokIndex, tagged Valid snap_idx);
+        snaps.write(snap_idx, newMap);
         snapNext <= snapNext + 1;
+    
+        return snap_idx;
 
     endmethod
 
     method Action invalSnapshot(TOKEN_INDEX tokIndex);
-        snapValids[tokIndex] <= False;
+        tokSnaps.upd(tokIndex, tagged Invalid);
     endmethod
 
     method Maybe#(FUNCP_SNAPSHOT_INDEX) hasSnapshot(TOKEN_INDEX tokIndex);
 
-        return (snapValids[tokIndex]) ? tagged Valid tokSnaps.sub(tokIndex) : tagged Invalid;
+        //
+        // For a snapshot to be valid the tokSnaps and snapToks pointers must
+        // point to each other.
+        //
+        if (tokSnaps.sub(tokIndex) matches tagged Valid .tok_snap &&&
+            snapToks.sub(tok_snap) matches tagged Valid .snap_tok &&&
+            snap_tok == tokIndex)
+        begin
+            return tagged Valid tok_snap;
+        end
+        else
+        begin
+            return tagged Invalid;
+        end
 
     endmethod
     

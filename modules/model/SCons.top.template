@@ -385,7 +385,7 @@ Clean(xilinx_map, TMP_XILINX_DIR + '/xilinx_device_details.xml')
 xilinx_par = env.Command(
     XILINX_APM_NAME + '_par.ncd',
     xilinx_map,
-    'par -w -ol std -t 1 ' + XILINX_APM_NAME + '_map.ncd $TARGET ' + XILINX_APM_NAME + '.pcf');
+    'par -w -ol high -t 1 ' + XILINX_APM_NAME + '_map.ncd $TARGET ' + XILINX_APM_NAME + '.pcf');
 
 
 # Generate the FPGA image

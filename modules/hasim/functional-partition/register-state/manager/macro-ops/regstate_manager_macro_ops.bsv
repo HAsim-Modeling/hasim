@@ -72,34 +72,34 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // Tables to track info about in-flight instructions.
 
     // The address we got the instruction from (told to us by the timing model).
-    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr <- mkBRAMInitialized(0);
+    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr <- mkLiveTokenBRAMInitialized(0);
 
     // The physical address(es) for the instruction.
-    BRAM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs <- mkBRAMInitialized(tagged ONE 0);
+    BRAM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs <- mkLiveTokenBRAMInitialized(tagged ONE 0);
 
     // The instruction that was at that address (from mem_state).
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst <- mkBRAMMultiReadInitialized(0);
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst <- mkLiveTokenBRAMMultiReadInitialized(0);
 
     // The destinations of the instruction (a convenience which saves us from reading the instruction/maptable).
-    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts <- mkBRAMMultiReadInitialized(Vector::replicate(tagged Invalid));
+    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts <- mkLiveTokenBRAMMultiReadInitialized(Vector::replicate(tagged Invalid));
 
     // If an instruction has sources in other inflight instructions it will be noted here.
-    BRAM#(TOKEN_INDEX, ISA_INST_SRCS)   tokWriters <- mkBRAMInitialized(Vector::replicate(tagged Invalid));
+    BRAM#(TOKEN_INDEX, ISA_INST_SRCS)   tokWriters <- mkLiveTokenBRAMInitialized(Vector::replicate(tagged Invalid));
 
     // The memaddress is used by Loads/Stores so we don't have to repeat the calculation.
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_ADDRESS) tokMemAddr <- mkBRAMMultiReadInitialized(0);
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_ADDRESS) tokMemAddr <- mkLiveTokenBRAMMultiReadInitialized(0);
 
     // The value a store will write to memory
-    BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue <- mkBRAMInitialized(0);
+    BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue <- mkLiveTokenBRAMInitialized(0);
 
     // The physical memaddress(es) for the instruction.
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs <- mkBRAMMultiReadInitialized(tagged ONE 0);
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs <- mkLiveTokenBRAMMultiReadInitialized(tagged ONE 0);
 
     // Position of freelist for token's physical regs.  Used by rewind.
-    BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokFreeListPos <- mkBRAMInitialized(tagged Invalid);
+    BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokFreeListPos <- mkLiveTokenBRAMInitialized(tagged Invalid);
 
     // The physical registers to free when the token is committed/killed.
-    BRAM#(TOKEN_INDEX, ISA_INST_DSTS) tokRegsToFree <- mkBRAMInitialized(Vector::replicate(tagged Invalid));
+    BRAM#(TOKEN_INDEX, ISA_INST_DSTS) tokRegsToFree <- mkLiveTokenBRAMInitialized(Vector::replicate(tagged Invalid));
 
     // The Physical Register File
 
@@ -958,6 +958,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                                  tagged Valid .d: tagged Valid select(maptable, pack(d)); // Free the actual old writer.
                               endcase;
 
+        debugLog.record($format("TOKEN %0d: GetDeps2: Free 0 on Commit (%0d)", tok.index, validValue(phy_regs_to_free[0])));
+
         // Update the token tables with all this information.
          tokRegsToFree.write(tok.index, phy_regs_to_free);
             tokWriters.write(tok.index, phy_srcs);
@@ -983,13 +985,13 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // Note that there is an implicit assumption here that no branch or emulated instruction has more than one destination.
         if (isaIsBranch(inst))
         begin
-             debugLog.record($format("TOKEN %0d: GetDeps2: Making Snapshot of Branch.", tok.index));
-             snapshots.makeSnapshot(tok.index, new_map);
+            let sidx <- snapshots.makeSnapshot(tok.index, new_map);
+            debugLog.record($format("TOKEN %0d: GetDeps2: Making Snapshot %d of Branch.", tok.index, sidx));
         end
         else if (is_emulated)
         begin
-             debugLog.record($format("TOKEN %0d: GetDeps2: Making Snapshot of Emulated Instruction.", tok.index));
-             snapshots.makeSnapshot(tok.index, new_map);
+            let sidx <- snapshots.makeSnapshot(tok.index, new_map);
+            debugLog.record($format("TOKEN %0d: GetDeps2: Making Snapshot %d of Emulated Instruction.", tok.index, sidx));
         end
              
 
@@ -1076,6 +1078,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // The reg to free is the old writer of this destination.
         let actual_phy_reg_to_free = isValid(map_dsts[cur])? tagged Valid select(maptable, pack(arc_dst)): tagged Valid phy_dst;
         let new_phy_regs_to_free = update(dep_info.regsToFreeSoFar, cur, actual_phy_reg_to_free);
+
+        debugLog.record($format("TOKEN %0d: GetDeps2: Free %0d on Commit (%0d)", tok.index, cur, validValue(actual_phy_reg_to_free)));
 
         // Check that epoch didn't advance in the middle of getDependences.
         // Epoch is changed by rewind and rewind can only begin when the no
@@ -2647,10 +2651,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
         // Log it.
         debugLog.record($format("TOKEN %0d: CommitResults: Begin.", tok.index)); 
-        
+
         // Update the scoreboard.
         tokScoreboard.commitStart(tok.index);
-        
+
         // Request the registers to be freed.
         tokRegsToFree.readReq(tok.index);
 

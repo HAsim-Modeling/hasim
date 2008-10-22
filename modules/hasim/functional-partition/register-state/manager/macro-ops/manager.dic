@@ -11,6 +11,6 @@ def ASSERTIONS.REGMANAGER.NO_PHYSICAL_TRANSLATION_FOR_FETCH  "FUNCP: Regstate: V
 def ASSERTIONS.REGMANAGER.NO_PHYSICAL_TRANSLATION_FOR_MEMOP  "FUNCP: Regstate: Virtual to physical translation for memop failed!";
 def ASSERTIONS.REGMANAGER.UNEXPECTED_EPOCH_CHANGE  "FUNCP: Regstate: Epoch changed in the middle of getDependences!";
 def ASSERTIONS.REGMANAGER.DTRANSLATE_ON_MEMOP      "FUNCP: Regstate: Tried to do a DTranslate on a non-memory operation.";
-
+def ASSERTIONS.REGMANAGER.TOK_NOT_OLDEST           "FUNCP: Regstate: Attempt to execute drainBefore token that is not oldest!";
 
 def STATS.REGMANAGER.EMULATED_INSTRS    "FUNCP: Emulated Instructions";

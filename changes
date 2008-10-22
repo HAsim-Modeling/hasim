@@ -15568,3 +15568,27 @@ Directory modules/hasim/util/common
   Replaced it with a simpler scheme for determining whether a snapshot is still
   valid that updates a single TOKEN_INDEX instead of an entire NUM_TOKENS sized
   bit vector.
+
+----------
+mcadler     Date: Wed Oct 22 18:46:27 EDT 2008  CSN: CSN-hasim-539
+                  Wed Oct 22 22:46:27 UTC 2008
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          538 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          538 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_macro_ops.bsv Locally Modified          538 
+ manager.dic               Locally Modified          537 
+
+- Add assertion to confirm that all instructions were drained properly before
+  instruction emulation begins.  Required a small change to the oldest token
+  logic in the scoreboard.  Before this check-in the oldest token logic was
+  sometimes inaccurate for the instruction immediately following a rewind.
+
+- Remove SCons directive requesting M5 signatures for determining what to build.
+  The syntax changed for later SCons versions and M5 signatures are the default
+  anyway.

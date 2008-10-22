@@ -131,8 +131,9 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     LUTRAM#(TOKEN_INDEX, MEM_OFFSET)     fetch_offset  <- mkLiveTokenLUTRAM(0);
     LUTRAM#(TOKEN_INDEX, MEM_OFFSET)     memop_offset  <- mkLiveTokenLUTRAM(0);
-    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE) load_type  <- mkLiveTokenLUTRAMU();
-    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE) store_type <- mkLiveTokenLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE) load_type     <- mkLiveTokenLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE) store_type    <- mkLiveTokenLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, TOKEN_INDEX)    next_tok      <- mkLiveTokenLUTRAMU();
 
     // A pointer to the next token to be allocated.
     Reg#(TOKEN_INDEX) next_free_tok <- mkReg(0);
@@ -240,7 +241,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         //assert_completing_tokens_in_order(t == oldest_tok);
 
         // Update the oldest token.
-        oldest_tok <= t + 1;
+        oldest_tok <= next_tok.sub(t);
 
         // Update the allocation table.
         alloc <=  update(alloc, t, False);
@@ -292,7 +293,9 @@ module [Connected_Module] mkFUNCP_Scoreboard
         poison.upd(next_free_tok, False);
 
         // Update the free pointer.
-        next_free_tok <= next_free_tok + 1;
+        let next_token_idx = next_free_tok + 1;
+        next_tok.upd(next_free_tok, next_token_idx);
+        next_free_tok <= next_token_idx;
 
         return next_free_tok;
 
@@ -612,6 +615,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
     
       if (!alloc[t])
           oldest_tok <= next_free_tok;
+      else
+          next_tok.upd(t, next_free_tok);
 
       // Update the vector.
       alloc <= as;

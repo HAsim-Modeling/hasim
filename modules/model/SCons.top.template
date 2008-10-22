@@ -164,7 +164,6 @@ except AttributeError:
 ############################################################################
 ############################################################################
 
-SourceSignatures('MD5')
 # Bluespec compains about signature mismatches if we use this to avoid
 # recompiling across synthesis boundaries.
 #TargetSignatures('content')

@@ -324,6 +324,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     ASSERTION assertNoPhysicalTranslationForMemOp <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_NO_PHYSICAL_TRANSLATION_FOR_MEMOP, ASSERT_ERROR, assertNode);
     ASSERTION assertNoEpochChange                 <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_EPOCH_CHANGE, ASSERT_ERROR, assertNode);
     ASSERTION assertDTranslateOnMemOp             <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_DTRANSLATE_ON_MEMOP, ASSERT_ERROR, assertNode);
+    ASSERTION assertDrainBeforeOldest             <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_TOK_NOT_OLDEST, ASSERT_ERROR, assertNode);
 
 
     // ***** Statistics ***** //
@@ -1635,11 +1636,16 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     
     rule emulateInstruction1 (state == RSM_DrainingForEmulate && tokScoreboard.canEmulate());
 
-       // Reset the counter for syncing registers.
-       synchronizingCurReg <= minBound;
+        // Did the timing model do drain before correctly?
+        assertDrainBeforeOldest(emulatingToken.index == tokScoreboard.oldest());
+        if (emulatingToken.index != tokScoreboard.oldest())
+            debugLog.record($format("TOKEN %0d: emulateInstruction1:  Token is not oldest! (Oldest: %0d)", emulatingToken.index, tokScoreboard.oldest()));
 
-       // Start syncing registers.
-       state <= RSM_SyncingRegisters;
+        // Reset the counter for syncing registers.
+        synchronizingCurReg <= minBound;
+
+        // Start syncing registers.
+        state <= RSM_SyncingRegisters;
                
     endrule
 

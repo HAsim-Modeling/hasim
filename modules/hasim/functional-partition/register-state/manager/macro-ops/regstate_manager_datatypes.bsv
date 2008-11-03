@@ -70,6 +70,8 @@ typedef enum
 {
   RSM_Initializing,
   RSM_Running,
+  RSM_HandleFault,
+  RSM_HandleFaultRewindDone,
   RSM_DrainingForRewind,
   RSM_Rewinding,
   RSM_RewindingWaitForSlowRemap,
@@ -104,7 +106,12 @@ typedef union tagged
 typedef union tagged
 {
     void        ITRANS2_NORMAL;
-    MEM_ADDRESS ITRANS2_SPAN_RSP;
+    struct
+    {
+        MEM_ADDRESS firstPA;
+        Bool firstRefFaulted;
+    }
+        ITRANS2_SPAN_RSP;
 }
     STATE_ITRANS2
         deriving (Eq, Bits);
@@ -183,7 +190,12 @@ typedef union tagged
 typedef union tagged
 {
     void        DTRANS3_NORMAL;
-    MEM_ADDRESS DTRANS3_SPAN_RSP;
+    struct
+    {
+        MEM_ADDRESS firstPA;
+        Bool firstRefFaulted;
+    }
+        DTRANS3_SPAN_RSP;
 }
     STATE_DTRANS3
         deriving (Eq, Bits);

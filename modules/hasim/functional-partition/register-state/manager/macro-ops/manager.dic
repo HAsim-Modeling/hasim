@@ -1,16 +1,17 @@
 def ASSERTIONS.REGMANAGER.LOAD_ON_NONLOAD          "FUNCP: Regstate: Told to do loads on a non-load instruction!";
 def ASSERTIONS.REGMANAGER.MALFORMED_LOAD_WRITEBACK "FUNCP: Regstate: Told to do a load when the destination register had already been written!";
 def ASSERTIONS.REGMANAGER.STORE_ON_NONSTORE        "FUNCP: Regstate: Told to do stores for an instruction that is not a store!";
+def ASSERTIONS.REGMANAGER.EXPECTED_OLDEST_TOK      "FUNCP: Regstate: Expected oldest token!";
 def ASSERTIONS.REGMANAGER.COMMIT_STORE_ON_NONSTORE "FUNCP: Regstate: Told to commit a store which was not a store!";
 def ASSERTIONS.REGMANAGER.UNEXPECTED_REG_UPDATE    "FUNCP: Regstate: Got a register update from software at an unexpected time!";
 def ASSERTIONS.REGMANAGER.UNEXPECTED_EMULATION_FINISHED "FUNCP: Regstate: Got an emmulation finished message from software at an unexpected time!";
 def ASSERTIONS.REGMANAGER.EMULATED_INSTR_HAS_DST   "FUNCP: Regstate: Emulated instructions may not have destination registers!";
 def ASSERTIONS.REGMANAGER.INVALID_NUM_DSTS         "FUNCP: Regstate: Instruction has more destinations than ISA definition claims!";
 def ASSERTIONS.REGMANAGER.NO_EMULATION_SNAPSHOT    "FUNCP: Regstate: Tried to emulate an instruction that did not have a snapshot!";
-def ASSERTIONS.REGMANAGER.NO_PHYSICAL_TRANSLATION_FOR_FETCH  "FUNCP: Regstate: Virtual to physical translation for fetch failed!";
-def ASSERTIONS.REGMANAGER.NO_PHYSICAL_TRANSLATION_FOR_MEMOP  "FUNCP: Regstate: Virtual to physical translation for memop failed!";
 def ASSERTIONS.REGMANAGER.UNEXPECTED_EPOCH_CHANGE  "FUNCP: Regstate: Epoch changed in the middle of getDependences!";
 def ASSERTIONS.REGMANAGER.DTRANSLATE_ON_MEMOP      "FUNCP: Regstate: Tried to do a DTranslate on a non-memory operation.";
-def ASSERTIONS.REGMANAGER.TOK_NOT_OLDEST           "FUNCP: Regstate: Attempt to execute drainBefore token that is not oldest!";
+def ASSERTIONS.REGMANAGER.ILLEGAL_INSTRUCTION      "FUNCP: Regstate: Illegal instruction!";
+def ASSERTIONS.REGMANAGER.COMMIT_FAULTING_INSTR    "FUNCP: Regstate: Attempt to commmit faulting instruction!";
+def ASSERTIONS.REGMANAGER.BAD_POISON_BIT           "FUNCP: Regstate: Timing model did not propagate token poison bit!";
 
 def STATS.REGMANAGER.EMULATED_INSTRS    "FUNCP: Emulated Instructions";

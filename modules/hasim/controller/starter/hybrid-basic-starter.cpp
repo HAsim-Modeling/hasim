@@ -154,6 +154,15 @@ STARTER_SERVER_CLASS::Heartbeat(
     }
     
     //
+    // Is model broken?
+    //
+    if (instr_commits == 0)
+    {
+        ASIMERROR("No instructions committed for entire heartbeat interval (" <<
+                  model_cycles << " cycles)");
+    }
+
+    //
     // HW statistics counters are smaller than full counters to save
     // space.  Time to scan out intermediate statistics values before
     // they wrap around?

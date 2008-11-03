@@ -46,10 +46,48 @@ import Vector::*;
 // ===================================================================
 
 //
-// Query passed to TLB server
+// Query passed to TLB service.  When alloc_on_fault is set the host will
+// attempt to allocate a new page when no page is currently mapped for the VA.
+// Typically this bit will be set only by exception handlers in response to
+// a normal failed translation.
 //
-typedef Tuple2#(TOKEN, ISA_ADDRESS) FUNCP_TLB_QUERY;
+typedef struct
+{
+    ISA_ADDRESS va;
+    TOKEN tok;
+    Bool alloc_on_fault;
+}
+FUNCP_TLB_QUERY
+    deriving (Eq, Bits);
 
+//
+// Helper functions for constructing FUNCP_TLB_QUERY
+//
+function FUNCP_TLB_QUERY normalTLBQuery(TOKEN tok, ISA_ADDRESS va);
+    return FUNCP_TLB_QUERY { va: va, tok: tok, alloc_on_fault: False };
+endfunction
+
+function FUNCP_TLB_QUERY handleTLBPageFault(TOKEN tok, ISA_ADDRESS va);
+    return FUNCP_TLB_QUERY { va: va, tok: tok, alloc_on_fault: True };
+endfunction
+
+
+//
+// Response from TLB service.  When page_fault is clear, pa holds the valid
+// translation.  When page_fault is set the translation failed.  The functional
+// model should service page faults on attempts to commit the token.
+//
+// Note:  even when page_fault is set, the pa may still be used for references.
+//        In this case, pa is set to the guard page.  This allows simple timing
+//        models to proceed with minimal knowledge of exception handling.
+//
+typedef struct
+{
+    Bool page_fault;
+    MEM_ADDRESS pa;
+}
+FUNCP_TLB_RESP
+    deriving (Eq, Bits);
 
 // ===================================================================
 //
@@ -62,8 +100,8 @@ typedef Tuple2#(TOKEN, ISA_ADDRESS) FUNCP_TLB_QUERY;
 //     Interface to a single TLB (instruction or data).
 //
 interface FUNCP_TLB#(numeric type n_CACHE_ENTRIES);
-    method Action lookupReq(TOKEN tok, ISA_ADDRESS va);
-    method ActionValue#(Maybe#(MEM_ADDRESS)) lookupResp();
+    method Action lookupReq(TOKEN tok, ISA_ADDRESS va, Bool alloc_on_fault);
+    method ActionValue#(FUNCP_TLB_RESP) lookupResp();
 endinterface: FUNCP_TLB
 
 
@@ -86,14 +124,27 @@ typedef enum
 FUNCP_TLB_STATE
     deriving (Eq, Bits);
 
+
+//
+// Translation request
+//
+typedef struct
+{
+    Bool alloc_on_fault;
+    FUNCP_V_PAGE vp;
+}
+FUNCP_TRANSLATION_REQ
+    deriving (Eq, Bits);
+
 //
 // Details about a translation
 //
 typedef struct
 {
-    Bool cacheable;
+    Bool page_fault;       // Translation failed.  Raised a page fault.
     FUNCP_P_PAGE page;
-} FUNCP_P_TRANSLATION
+}
+FUNCP_TRANSLATION_RESP
     deriving (Eq, Bits);
 
 //
@@ -101,8 +152,8 @@ typedef struct
 // The containing module has a unified I/D TLB cache and manages misses
 // to hybrid memory translations.
 //
-typedef FIFO#(FUNCP_V_PAGE) VTOP_REQ_FIFO;
-typedef FIFO#(Maybe#(FUNCP_P_TRANSLATION)) VTOP_RESP_FIFO;
+typedef FIFO#(FUNCP_TRANSLATION_REQ) VTOP_REQ_FIFO;
+typedef FIFO#(FUNCP_TRANSLATION_RESP) VTOP_RESP_FIFO;
 
 
 //
@@ -162,8 +213,11 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
     let miss_stat_id = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_L1_ITLB_MISS : `STATS_FUNCP_TLB_L1_DTLB_MISS;
     Stat statTLBMiss <- mkStatCounter(miss_stat_id);
 
-    let uncacheable_stat_id = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_L1_ITLB_UNCACHEABLE : `STATS_FUNCP_TLB_L1_DTLB_UNCACHEABLE;
-    Stat statTLBUncacheable <- mkStatCounter(uncacheable_stat_id);
+    let no_translation_stat_id = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_ITLB_NOT_MAPPED : `STATS_FUNCP_TLB_DTLB_NOT_MAPPED;
+    Stat statTLBNoTranslation <- mkStatCounter(no_translation_stat_id);
+
+    let page_fault_stat_id = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_ITLB_PAGE_FAULT : `STATS_FUNCP_TLB_DTLB_PAGE_FAULT;
+    Stat statTLBPageFault <- mkStatCounter(page_fault_stat_id);
 
     // ***** Local State *****
     
@@ -172,10 +226,21 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
     Reg#(FUNCP_TLB_STATE) state <- mkReg(FUNCP_TLB_IDLE);
 
     // Lookup response FIFO
-    FIFO#(Maybe#(MEM_ADDRESS)) response <- mkFIFO();
+    FIFO#(FUNCP_TLB_RESP) response <- mkFIFO();
 
     // Small local cache of recent translations
     HASIM_TINY_CACHE#(FUNCP_V_PAGE, FUNCP_P_PAGE, n_CACHE_ENTRIES) tinyCache <- mkTinyCache();
+
+    // Constructors
+    
+    function FUNCP_TLB_RESP validTranslation(MEM_ADDRESS pa);
+        return FUNCP_TLB_RESP { page_fault: False, pa: pa };
+    endfunction
+    
+    function FUNCP_TLB_RESP invalidTranslation(MEM_ADDRESS pa);
+        return FUNCP_TLB_RESP { page_fault: True, pa: pa };
+    endfunction
+
 
     // ***** Rules *****
 
@@ -191,25 +256,22 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
 
         state <= FUNCP_TLB_IDLE;
 
-        if (resp matches tagged Valid .pp)
-        begin
-            // Valid translation
-            let pa = paFromPage(pp.page, pageOffsetFromVA(reqVA));
-            response.enq(tagged Valid pa);
+        let pa = paFromPage(resp.page, pageOffsetFromVA(reqVA));
 
+        if (! resp.page_fault)
+        begin
             debugLog.record($format("  %s VtoP response: VA 0x%x -> PA 0x%x", i_or_d, reqVA, pa));
+            response.enq(validTranslation(pa));
 
             // Store the translation in the small cache
-            if (pp.cacheable)
-                tinyCache.write(pageFromVA(reqVA), pp.page);
-            else
-                statTLBUncacheable.incr();
+            tinyCache.write(pageFromVA(reqVA), resp.page);
         end
         else
         begin
-            debugLog.record($format("  %s translation failed: VA 0x%x", i_or_d, reqVA));
+            debugLog.record($format("  %s VtoP response: VA 0x%x -> PA 0x%x [PAGE FAULT]", i_or_d, reqVA, pa));
+            response.enq(invalidTranslation(pa));
 
-            response.enq(tagged Invalid);
+            statTLBNoTranslation.incr();
         end
 
     endrule
@@ -217,11 +279,17 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
 
     // ***** Methods *****
 
-    method Action lookupReq(TOKEN tok, ISA_ADDRESS va) if (state == FUNCP_TLB_IDLE);
+    method Action lookupReq(TOKEN tok, ISA_ADDRESS va, Bool alloc_on_fault) if (state == FUNCP_TLB_IDLE);
 
         debugLog.record($format("%s req: VA 0x%x", i_or_d, va));
 
         FUNCP_V_PAGE vp = pageFromVA(va);
+
+        if (alloc_on_fault)
+        begin
+            // Page fault handler is allocating a new page.
+            statTLBPageFault.incr();
+        end
 
         let tc <- tinyCache.read(vp);
         if (tc matches tagged Valid .pp)
@@ -230,7 +298,7 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
             // Quick path hit.  Simply return the translation now.
             //
             MEM_ADDRESS pa = paFromPage(pp, pageOffsetFromVA(va));
-            response.enq(tagged Valid pa);
+            response.enq(validTranslation(pa));
 
             debugLog.record($format("  %s quick hit: VA 0x%x -> PA 0x%x", i_or_d, va, pa));
             statTLBHit.incr();
@@ -240,7 +308,7 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
             //
             // Ask the memory service for a translation.
             //
-            reqVtoP.enq(vp);
+            reqVtoP.enq(FUNCP_TRANSLATION_REQ { alloc_on_fault: alloc_on_fault, vp: vp });
 
             reqVA <= va;
             state <= FUNCP_TLB_BUSY;
@@ -249,7 +317,7 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
 
     endmethod
 
-    method ActionValue#(Maybe#(MEM_ADDRESS)) lookupResp();
+    method ActionValue#(FUNCP_TLB_RESP) lookupResp();
         let r = response.first();
         response.deq();
         return r;
@@ -258,6 +326,20 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
 endmodule
 
 
+// ===================================================================
+//
+// System interface (connection between L2 cache and host)
+//
+// ===================================================================
+
+interface FUNCP_TLB_CACHE_INTERFACE;
+
+    interface HASIM_CACHE_SOURCE_DATA#(FUNCP_V_PAGE, FUNCP_TRANSLATION_RESP) cacheIfc;
+
+    method Action refMetaData(Bool alloc_on_fault);
+
+endinterface: FUNCP_TLB_CACHE_INTERFACE
+
 //
 // mkVtoPInterface --
 //   The interface between the main shared translation cache and the hybrid
@@ -265,47 +347,49 @@ endmodule
 //
 module [HASIM_MODULE] mkVtoPInterface
     // interface:
-        (HASIM_CACHE_SOURCE_DATA#(FUNCP_V_PAGE, Maybe#(FUNCP_P_TRANSLATION)));
+        (FUNCP_TLB_CACHE_INTERFACE);
 
     // Connection to memory translation service
     Connection_Client#(ISA_ADDRESS, MEM_ADDRESS) link_memory <- mkConnection_Client("funcp_memory_VtoP");
 
-    method Action readReq(FUNCP_V_PAGE vp);
-        link_memory.makeReq(vaFromPage(vp, 0));
-    endmethod
+    // Is the cache in allocate on fault mode?  This works as a register
+    // because the cache can process only one request at a time.
+    Reg#(Bool) allocOnFault <- mkRegU();
 
-    method ActionValue#(Maybe#(FUNCP_P_TRANSLATION)) readResp();
-        MEM_ADDRESS pa = link_memory.getResp();
-        link_memory.deq();
+    // This is the standard interface passed to the cache...
+    interface HASIM_CACHE_SOURCE_DATA cacheIfc;
 
-        // Sending a bit over RRR is difficult.  Instead, use the low bit
-        // to signal whether the translation is valid.
-        Maybe#(FUNCP_P_TRANSLATION) resp;
-        if (pa[0] == 0)
-        begin
-            // Bit 1 signals whether the translation is not cacheable.  0 means
-            // cacheable, 1 means not.
-            resp = tagged Valid FUNCP_P_TRANSLATION { cacheable: (pa[1] == 0), page: pageFromPA(pa) };
-        end
-        else
-        begin
-            resp = tagged Invalid;
-        end
+        method Action readReq(FUNCP_V_PAGE vp);
+            // Sending a bit over RRR is difficult.  Instead, use the low bit
+            // to signal whether allocate on fault is set.
+            link_memory.makeReq(vaFromPage(vp, zeroExtend(pack(allocOnFault))));
+        endmethod
 
-        return resp;
-    endmethod
+        method ActionValue#(FUNCP_TRANSLATION_RESP) readResp();
+            MEM_ADDRESS pa = link_memory.getResp();
+            link_memory.deq();
 
-    // No writes can happen
-    method Action write(FUNCP_V_PAGE vp, Maybe#(FUNCP_P_TRANSLATION) pp);
-        noAction;
-    endmethod
+            // The low bit signals whether the translation is valid.
+            return FUNCP_TRANSLATION_RESP { page_fault: pa[0] == 1, page: pageFromPA(pa) };
+        endmethod
 
-    method Action writeSyncReq(FUNCP_V_PAGE vp, Maybe#(FUNCP_P_TRANSLATION) pp);
-        noAction;
-    endmethod
+        // No writes can happen
+        method Action write(FUNCP_V_PAGE vp, FUNCP_TRANSLATION_RESP pp);
+            noAction;
+        endmethod
 
-    method Action writeSyncWait();
-        noAction;
+        method Action writeSyncReq(FUNCP_V_PAGE vp, FUNCP_TRANSLATION_RESP pp);
+            noAction;
+        endmethod
+
+        method Action writeSyncWait();
+            noAction;
+        endmethod
+    
+    endinterface: cacheIfc
+
+    method Action refMetaData(Bool alloc_on_fault);
+        allocOnFault <= alloc_on_fault;
     endmethod
 
 endmodule
@@ -348,6 +432,12 @@ module [HASIM_MODULE] mkTLBCacheStats
 endmodule
 
 
+// ===================================================================
+//
+// Main module.  Connection to register state manager and TLB.
+//
+// ===================================================================
+
 //
 // mkFUNCP_CPU_TLBS --
 //   Allocates a pair of TLB interfaces:  one instruction and one data.
@@ -365,8 +455,8 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     DEBUG_FILE debugLog <- mkDebugFile(`FUNCP_TLB_LOGFILE_NAME);
 
     // Connections to functional register state manager
-    Connection_Server#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS)) link_funcp_itlb <- mkConnection_Server("funcp_itlb");
-    Connection_Server#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS)) link_funcp_dtlb <- mkConnection_Server("funcp_dtlb");
+    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_itlb <- mkConnection_Server("funcp_itlb");
+    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_dtlb <- mkConnection_Server("funcp_dtlb");
 
     // ITLB
     VTOP_REQ_FIFO  itlb_vtop_req <- mkFIFO();
@@ -378,45 +468,61 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     VTOP_RESP_FIFO dtlb_vtop_resp <- mkFIFO();
     FUNCP_TLB#(4) dtlb <- mkFUNCP_TLB(FUNCP_DTLB, dtlb_vtop_req, dtlb_vtop_resp, debugLog);
 
-    HASIM_CACHE_SOURCE_DATA#(FUNCP_V_PAGE, Maybe#(FUNCP_P_TRANSLATION)) vtopIfc <- mkVtoPInterface();
+    FUNCP_TLB_CACHE_INTERFACE vtopIfc <- mkVtoPInterface();
     HASIM_CACHE_STATS statIfc <- mkTLBCacheStats();
 
     // Translation cache
     HASIM_CACHE#(FUNCP_V_PAGE,
-                 Maybe#(FUNCP_P_TRANSLATION),
+                 FUNCP_TRANSLATION_RESP,
                  `FUNCP_TLB_CACHE_SETS,
                  `FUNCP_TLB_CACHE_WAYS,
-                 `FUNCP_ISA_PAGE_SHIFT) cache <- mkCacheSetAssoc(vtopIfc, statIfc, debugLog);
+                 `FUNCP_ISA_PAGE_SHIFT) cache <- mkCacheSetAssoc(vtopIfc.cacheIfc, statIfc, debugLog);
 
-    FIFO#(Tuple2#(FUNCP_V_PAGE, FUNCP_TLB_TYPE)) pendingTLBQ <- mkFIFO();
+    FIFO#(Tuple2#(FUNCP_V_PAGE, FUNCP_TLB_TYPE)) pendingTLBQ <- mkFIFO1();
+    FIFO#(Bool) itlbQ <- mkFIFO();
+    FIFO#(Bool) dtlbQ <- mkFIFO();
 
 
     // ***** Rules for communcation with functional register state manager *****
     
     rule itlb_req (True);
         // pop a request from the link
-        match { .tok, .va } = link_funcp_itlb.getReq();
+        let r = link_funcp_itlb.getReq();
         link_funcp_itlb.deq();
 
-        itlb.lookupReq(tok, va);
+        itlb.lookupReq(r.tok, r.va, r.alloc_on_fault);
+        itlbQ.enq(r.alloc_on_fault);
     endrule
 
     rule itlb_resp (True);
         let resp <- itlb.lookupResp();
-        link_funcp_itlb.makeResp(resp);
+
+        let alloc_on_fault = itlbQ.first();
+        itlbQ.deq();
+
+        // Respond only for normal lookup.  Allocate fault gets no response.
+        if (! alloc_on_fault)
+            link_funcp_itlb.makeResp(resp);
     endrule
 
     rule dtlb_req (True);
         // pop a request from the link
-        match { .tok, .va } = link_funcp_dtlb.getReq();
+        let r = link_funcp_dtlb.getReq();
         link_funcp_dtlb.deq();
 
-        dtlb.lookupReq(tok, va);
+        dtlb.lookupReq(r.tok, r.va, r.alloc_on_fault);
+        dtlbQ.enq(r.alloc_on_fault);
     endrule
 
     rule dtlb_resp (True);
         let resp <- dtlb.lookupResp();
-        link_funcp_dtlb.makeResp(resp);
+
+        let alloc_on_fault = dtlbQ.first();
+        dtlbQ.deq();
+
+        // Respond only for normal lookup.  Allocate fault gets no response.
+        if (! alloc_on_fault)
+            link_funcp_dtlb.makeResp(resp);
     endrule
 
 
@@ -424,23 +530,25 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     // ***** Managing translation requests from the child ITLB and DTLB *****
     
     rule translate_VtoP_I_request (True);
-        FUNCP_V_PAGE vp = itlb_vtop_req.first();
+        let req = itlb_vtop_req.first();
         itlb_vtop_req.deq();
 
-        debugLog.record($format("  I hybrid req: VA 0x%x", vaFromPage(vp, 0)));
+        debugLog.record($format("  I hybrid req: VA 0x%x", vaFromPage(req.vp, 0)));
 
-        pendingTLBQ.enq(tuple2(vp, FUNCP_ITLB));
-        cache.readReq(vp);
+        vtopIfc.refMetaData(req.alloc_on_fault);
+        pendingTLBQ.enq(tuple2(req.vp, FUNCP_ITLB));
+        cache.readReq(req.vp);
     endrule
 
     rule translate_VtoP_D_request (True);
-        FUNCP_V_PAGE vp = dtlb_vtop_req.first();
+        let req = dtlb_vtop_req.first();
         dtlb_vtop_req.deq();
 
-        debugLog.record($format("  D hybrid req: VA 0x%x", vaFromPage(vp, 0)));
+        debugLog.record($format("  D hybrid req: VA 0x%x", vaFromPage(req.vp, 0)));
 
-        pendingTLBQ.enq(tuple2(vp, FUNCP_DTLB));
-        cache.readReq(vp);
+        vtopIfc.refMetaData(req.alloc_on_fault);
+        pendingTLBQ.enq(tuple2(req.vp, FUNCP_DTLB));
+        cache.readReq(req.vp);
     endrule
 
     (* descending_urgency= "translate_VtoP_D_request, translate_VtoP_I_request" *)
@@ -453,9 +561,9 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         pendingTLBQ.deq();
 
         // Don't cache invalid or uncacheable translations.
-        if (! isValid(resp) || ! validValue(resp).cacheable)
+        if (resp.page_fault)
         begin
-            debugLog.record($format("    Uncacheable: VA 0x%x -> PA 0x%x", vaFromPage(vp, 0), paFromPage(validValue(resp).page, 0)));
+            debugLog.record($format("    Uncacheable: VA 0x%x -> PA 0x%x", vaFromPage(vp, 0), paFromPage(resp.page, 0)));
             cache.invalReq(vp, False);
         end
 

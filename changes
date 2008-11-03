@@ -15592,3 +15592,69 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 - Remove SCons directive requesting M5 signatures for determining what to build.
   The syntax changed for later SCons versions and M5 signatures are the default
   anyway.
+
+----------
+mcadler     Date: Mon Nov  3 08:43:51 EST 2008  CSN: CSN-hasim-540
+                  Mon Nov  3 13:43:51 UTC 2008
+
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          539 
+
+Directory modules/hasim/functional-partition/interface
+ funcp-req-constructors.bsv Locally Modified          539 
+ funcp-timing-interface.bsv Locally Modified          539 
+ funcp-rsp-constructors.bsv Locally Modified          539 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          539 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_datatypes.bsv Locally Modified          539 
+ regstate_manager_macro_ops.bsv Locally Modified          539 
+ manager.dic               Locally Modified          539 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/null
+ funcp-tlb-null.bsv        Locally Modified          539 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.dic         Locally Modified          539 
+ funcp-tlb-std.bsv         Locally Modified          539 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          539 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
+ vmh-memory.h              Locally Modified          539 
+
+Directory modules/hasim/util/common
+ hasim-common.awb          Locally Modified          539 
+ token.bsv                 Locally Modified          539 
+
+Directory modules/bluespec/common/soft_connections
+ Connections.bsv           Locally Modified          539 
+
+- Restructure token:
+  - Add a poison bit that indicates the need to handle a fault instead of committing.
+  - Add a fault epoch bit to support separate fault and branch epoch fields.
+  - Move both epoch fields to their own top-level struct.
+  - Add accessor functions for individual epoch fields.
+  - Remove unused functional scratchpad struct.
+  - *** Epoch values now set by functional model.  No need to set or track
+        epoch in timing model front end. ***
+
+- Add fault interface to functional model for poison bit handling.  Current
+  faults are:  illegal instruction (abort) and page not mapped.  Page not mapped
+  fault maps a new page, rewinds to just before the faulting instruction and
+  returns a restart PC.
+
+- Restructured functional TLB interface to return fault on page not mapped.
+  Previous behavior was always to map a new page, even for speculative instructions
+  that turned out to be bad path.  This caused m5 to run out of memory.
+
+- Added helper functions to return low level connection names in Connections.bsv
+  in an effort to promote cross module send/receive in functional/timing message
+  passing.
+
+- Heartbeat on SW side now triggers an error and exits if no instructions commit
+  during a heartbeat interval.

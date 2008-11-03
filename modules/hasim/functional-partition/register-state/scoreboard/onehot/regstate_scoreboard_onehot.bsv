@@ -27,6 +27,22 @@ import Counter::*;
 // Dictionary includes
 `include "asim/dict/ASSERTIONS_SCOREBOARD.bsh"
 
+//
+// FUNCP_FAULTS
+//    Trap codes for faults raised during execution.
+//
+typedef enum
+{
+    FAULT_ILLEGAL_INSTR,          // Illegal instruction
+    FAULT_ITRANS,                 // ITranslate fault
+    FAULT_ITRANS2,                // ITranslate fault in 2nd half of unaligned ref.
+    FAULT_DTRANS,                 // DTranslate fault
+    FAULT_DTRANS2                 // DTranslate fault in 2nd half of unaligned ref.
+}
+FUNCP_FAULT
+    deriving (Eq, Bits);
+
+
 // TOKEN_SCOREBOARD
 
 // Because the whole system is made of reg files of Bools, we use
@@ -73,8 +89,8 @@ interface FUNCP_SCOREBOARD;
   // Set whether or not the instruction should be emulated in software.
   method Action setEmulation(TOKEN_INDEX t, Bool em);
   
-  // Set when the instruction is tagged poison by the ALU
-  method Action setPoison(TOKEN_INDEX t);
+  // Faults
+  method Action setFault(TOKEN_INDEX t, FUNCP_FAULT fault_code);
   
   // Rollback the allocations younger than t.
   method Action rewindTo(TOKEN_INDEX t);
@@ -84,7 +100,7 @@ interface FUNCP_SCOREBOARD;
   method Bool isLoad(TOKEN_INDEX t);
   method Bool isStore(TOKEN_INDEX t);
   method Bool emulateInstruction(TOKEN_INDEX t);
-  method Bool isPoisoned(TOKEN_INDEX t);
+  method Maybe#(FUNCP_FAULT) getFault(TOKEN_INDEX t);
   method MEM_OFFSET getFetchOffset(TOKEN_INDEX t);
   method MEM_OFFSET getMemOpOffset(TOKEN_INDEX t);
   method ISA_MEMOP_TYPE getLoadType(TOKEN_INDEX t);
@@ -127,13 +143,13 @@ module [Connected_Module] mkFUNCP_Scoreboard
     TOKEN_SCOREBOARD store_finish <- mkLiveTokenLUTRAMU();
     TOKEN_SCOREBOARD commit_start <- mkLiveTokenLUTRAMU();
     TOKEN_SCOREBOARD emulation    <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD poison       <- mkLiveTokenLUTRAMU();
 
-    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)     fetch_offset  <- mkLiveTokenLUTRAM(0);
-    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)     memop_offset  <- mkLiveTokenLUTRAM(0);
-    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE) load_type     <- mkLiveTokenLUTRAMU();
-    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE) store_type    <- mkLiveTokenLUTRAMU();
-    LUTRAM#(TOKEN_INDEX, TOKEN_INDEX)    next_tok      <- mkLiveTokenLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)          fetch_offset <- mkLiveTokenLUTRAM(0);
+    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)          memop_offset <- mkLiveTokenLUTRAM(0);
+    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE)      load_type    <- mkLiveTokenLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE)      store_type   <- mkLiveTokenLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, TOKEN_INDEX)         next_tok     <- mkLiveTokenLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, Maybe#(FUNCP_FAULT)) fault_type   <- mkLiveTokenLUTRAMU();
 
     // A pointer to the next token to be allocated.
     Reg#(TOKEN_INDEX) next_free_tok <- mkReg(0);
@@ -201,9 +217,25 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // The number of in-flight tokens.
     TOKEN_INDEX num_in_flight =  next_free_tok - oldest_tok;
 
-    // Note: we allocate only half the tokens at once. See above.
-    // We can allocate only if the MSB is zero.
-    Bool can_allocate = num_in_flight[valueOf(TOKEN_INDEX_SIZE) - 1] == 0;
+    function Bool can_allocate();
+
+        //
+        // We allocate only half the tokens at once in order to enable relative
+        // age comparison of tokens.  To allocate, we check two things:
+        //
+        //   1.  The alias for the next token (the token with the same number
+        //       except for the high bit) is not in use.
+        //   2.  The high bit of the number of in flight tokens is 0.
+        //        
+        let high_bit_num = valueOf(TOKEN_INDEX_SIZE) - 1;
+
+        let next_tok_alias = next_free_tok;
+        next_tok_alias[high_bit_num] = next_tok_alias[high_bit_num] ^ 1;
+
+        return (num_in_flight[high_bit_num] == 0 && ! alloc[next_tok_alias]);
+
+    endfunction
+
 
     // isBusy
 
@@ -234,17 +266,11 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Action deallocate(TOKEN_INDEX t);
 
-        // Assert that the token is actually allocated.
-        //assert_token_is_allocated(alloc[t]);
-
-        // Assert that the token is the next to be freed.
-        //assert_completing_tokens_in_order(t == oldest_tok);
-
         // Update the oldest token.
         oldest_tok <= next_tok.sub(t);
 
         // Update the allocation table.
-        alloc <=  update(alloc, t, False);
+        alloc <= update(alloc, t, False);
         
         // Record that the token has finished commit.
         num_in_commit.down();
@@ -290,7 +316,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
         emulation.upd(next_free_tok, False);
 
-        poison.upd(next_free_tok, False);
+        fault_type.upd(next_free_tok, tagged Invalid);
 
         // Update the free pointer.
         let next_token_idx = next_free_tok + 1;
@@ -510,7 +536,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         if (is_store.sub(t))
             assert_token_has_done_stores(store_finish.sub(t));
 
-        assert_poison_instr( ! poison.sub(t) );
+        assert_poison_instr( ! isValid(fault_type.sub(t)) );
 
         assert_token_can_start_commit(exe_finish.sub(t));
 
@@ -578,14 +604,16 @@ module [Connected_Module] mkFUNCP_Scoreboard
             
     endmethod
 
-    // setPoison
+    // setFault
 
     // When:   Any time -- typically during execution
     // Effect: Flag an instruction poisoned
 
-    method Action setPoison(TOKEN_INDEX t);
+    method Action setFault(TOKEN_INDEX t, FUNCP_FAULT fault_code);
     
-        poison.upd(t, True);
+        // Only set fault if one hasn't been raised already
+        if (! isValid(fault_type.sub(t)))
+            fault_type.upd(t, tagged Valid fault_code);
             
     endmethod
 
@@ -667,14 +695,14 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     endmethod
 
-    // isPoison
+    // getFault
     
     // When:   Any time.
     // Effect: Accessor method.
 
-    method Bool isPoisoned(TOKEN_INDEX t);
+    method Maybe#(FUNCP_FAULT) getFault(TOKEN_INDEX t);
 
-        return poison.sub(t);
+        return fault_type.sub(t);
 
     endmethod
 

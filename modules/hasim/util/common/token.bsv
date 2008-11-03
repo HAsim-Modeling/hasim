@@ -60,44 +60,81 @@ endfunction
 
 
 //
-// Scratchpad space is temporary storage available for private use in
-// timing models and the functional model.
+// Epoch is maintained by functional model and is available to timing models
+// for read.  See struct TOKEN declaration below.
 //
-typedef Bit#(`TOKEN_TIMEP_EPOCH_BITS)      TOKEN_TIMEP_EPOCH;
+typedef Bit#(`TOKEN_BRANCH_EPOCH_BITS) TOKEN_BRANCH_EPOCH;
+typedef Bit#(1) TOKEN_FAULT_EPOCH;
+
+typedef struct 
+{
+    // Epoch changes tag the new stream of instructions following a branch
+    // misprediction.  Epoch is set in the functional partition during
+    // funcp_newInFlight and will not change.  The epoch counter that
+    // is used to set epoch is updated as a side effect of funcp_rewindToToken.
+    TOKEN_BRANCH_EPOCH branch;
+
+    // Fault epoch lets a stage late in the timing pipeline detect a new stream of
+    // instructions following a fault.  The fault handler is invoked only once
+    // an instruction is ready and able to commit, so only one new stream can
+    // be in flight at a time and a single bit is enough.  faultEpoch is set
+    // during funcp_newInflight and will not change.  The fault epoch counter
+    // used to set the value is updated as a side effect of funcp_handleFault.
+    TOKEN_FAULT_EPOCH fault;
+}
+TOKEN_EPOCH
+    deriving (Eq, Bits);
+
+
+//
+// Scratchpad space is temporary storage available for private use in
+// timing models.
+//
 typedef Bit#(`TOKEN_TIMEP_SCRATCHPAD_BITS) TOKEN_TIMEP_SCRATCHPAD;
 
-typedef Bit#(`TOKEN_FUNCP_EPOCH_BITS)     TOKEN_FUNCP_EPOCH;
-typedef Bit#(`TOKEN_FUNCP_SCRATCHPAD_BITS)TOKEN_FUNCP_SCRATCHPAD;
-
 typedef struct
 {
-    TOKEN_TIMEP_EPOCH      epoch;
-    TOKEN_TIMEP_SCRATCHPAD scratchpad;
-}
-    TOKEN_TIMEP_INFO 
-        deriving 
-            (Eq, Bits);
 
-typedef struct
-{
-    TOKEN_FUNCP_EPOCH      epoch;
-    TOKEN_FUNCP_SCRATCHPAD scratchpad;
+    TOKEN_TIMEP_SCRATCHPAD  scratchpad;
 }
-    TOKEN_FUNCP_INFO 
-        deriving (Eq, Bits);
+TOKEN_TIMEP_INFO 
+    deriving (Eq, Bits);
+
 
 //
-// Token passed around the simulator
+// Token passed around the simulator.  Accessor functions are provided for most
+// fields and should be used instead of using a token directly.  This will let
+// us move fields around.
 //
 typedef struct
 {
     TOKEN_INDEX       index;
-    TOKEN_TIMEP_INFO  timep_info;
-    TOKEN_FUNCP_INFO  funcp_info;
-}
-    TOKEN 
-        deriving (Eq, Bits);
 
+    // Set by functional partition for instructions that would fault on commit.
+    // Will not change during or after funcp_commitResults.
+    Bool poison;
+
+    // Initialized by the functional partition when a token is allocated.
+    // Will not change after that.
+    TOKEN_EPOCH epoch;
+
+    // Initialized by the functional partition when a token is created.
+    // Values set by the timing partition pass through the functional partition
+    // unmodified.
+    TOKEN_TIMEP_INFO timep_info;
+}
+TOKEN 
+    deriving (Eq, Bits);
+
+
+function Bool tokIsPoisoned(TOKEN tok) = tok.poison;
+
+function TOKEN_BRANCH_EPOCH tokBranchEpoch(TOKEN tok) = tok.epoch.branch;
+function TOKEN_FAULT_EPOCH tokFaultEpoch(TOKEN tok) = tok.epoch.fault;
+function TOKEN_EPOCH tokEpoch(TOKEN tok) = tok.epoch;
+    
+function TOKEN_EPOCH initEpoch(TOKEN_BRANCH_EPOCH b, TOKEN_FAULT_EPOCH f) =
+    TOKEN_EPOCH { branch: b, fault: f };
 
 //
 // Convenience modules for wrapping LIVE_TOKEN sized storage that is indexed

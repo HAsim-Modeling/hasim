@@ -119,6 +119,18 @@ function FUNCP_REQ_COMMIT_STORES initFuncpReqCommitStores(TOKEN tok);
 
 endfunction
 
+
+// initFuncpReqHandleFault
+
+function FUNCP_REQ_HANDLE_FAULT initFuncpReqHandleFault(TOKEN tok);
+
+    return FUNCP_REQ_HANDLE_FAULT
+            {
+                token: tok
+            };
+
+endfunction
+
 // initFuncpReqRewindToToken
 
 function FUNCP_REQ_REWIND_TO_TOKEN initFuncpReqRewindToToken(TOKEN tok);

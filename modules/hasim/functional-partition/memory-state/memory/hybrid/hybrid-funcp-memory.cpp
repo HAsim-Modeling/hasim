@@ -237,15 +237,35 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
         va = MEM_VALUE(req->ExtractUINT(sizeof(MEM_VALUE)));
         req->Delete();
 
-        MEM_ADDRESS pa = memory->VtoP(va);
+        //
+        // The allocate on fault bit is stored in the low bit of the request
+        // to save space.
+        //
+        bool alloc_on_fault = false;
+        if (va & 1)
+        {
+            alloc_on_fault = true;
+            va ^= 1;    // Clear low bit
+            T1("\tfuncp_memory: VtoP VA " << fmt_data(va) << " -- allocate on fault");
+        }
 
-        T1("\tfuncp_memory: VtoP VA " << fmt_data(va) << " -> PA " << fmt_addr(pa));
+        FUNCP_MEM_VTOP_RESP vtop = memory->VtoP(va, alloc_on_fault);
+
+        if (vtop.page_fault)
+        {
+            T1("\tfuncp_memory: VtoP VA " << fmt_data(va) << " -> PA " << fmt_addr(vtop.pa) << " [PAGE FAULT]");
+        }
+        else
+        {
+            T1("\tfuncp_memory: VtoP VA " << fmt_data(va) << " -> PA " << fmt_addr(vtop.pa));
+        }
 
         // create response message
         resp = UMF_MESSAGE_CLASS::New();
         resp->SetLength(8);
         resp->SetMethodID(CMD_VTOP);
-        resp->AppendUINT64(pa);
+        // Pass the page_fault bit in the low bit of the PA to save space
+        resp->AppendUINT64(vtop.pa | (vtop.page_fault ? 1 : 0));
 
         // return response
         return resp;

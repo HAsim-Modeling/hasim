@@ -73,6 +73,10 @@ typedef struct
 {
     TOKEN       token; 
     MEM_ADDRESS physicalAddress;  // Result of translation.
+    Bool        fault;            // Translation failure:  fault will be raised on
+                                  //   attempts to commit this token.  physicalAddress
+                                  //   is on the guard page, so it can still be used
+                                  //   in order to simplify timing model logic.
     Bool        hasMore;          // More translations coming? (IE the fetch spans two memory addresses.)
 }
     FUNCP_RSP_DO_ITRANSLATE
@@ -161,6 +165,10 @@ typedef struct
 {
     TOKEN       token; 
     MEM_ADDRESS physicalAddress;  // Result of translation.
+    Bool        fault;            // Translation failure:  fault will be raised on
+                                  //   attempts to commit this token.  physicalAddress
+                                  //   is on the guard page, so it can still be used
+                                  //   in order to simplify timing model logic.
     Bool        hasMore;          // More translations coming? (IE the request spans two memory addresses.)
 }
     FUNCP_RSP_DO_DTRANSLATE
@@ -247,6 +255,28 @@ typedef struct
         deriving (Eq, Bits);
 
 
+// FUNCP_REQ_HANDLE_FAULT
+
+typedef struct
+{
+    TOKEN token;
+}
+    FUNCP_REQ_HANDLE_FAULT
+        deriving (Eq, Bits);
+
+
+// FUNCP_RSP_HANDLE_FAULT
+
+typedef struct
+{
+    TOKEN token;
+    ISA_ADDRESS nextInstructionAddress;  // Resume pipeline here
+    TOKEN_EPOCH epoch;                   // New epoch
+}
+    FUNCP_RSP_HANDLE_FAULT
+        deriving (Eq, Bits);
+
+
 // FUNCP_REQ_REWIND_TO_TOKEN
 
 typedef struct
@@ -262,6 +292,7 @@ typedef struct
 typedef struct
 {
     TOKEN token;
+    TOKEN_EPOCH epoch;                   // New epoch
 }
     FUNCP_RSP_REWIND_TO_TOKEN
         deriving (Eq, Bits);

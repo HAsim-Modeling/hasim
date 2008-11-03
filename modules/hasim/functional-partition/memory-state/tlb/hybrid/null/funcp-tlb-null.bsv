@@ -32,10 +32,54 @@
 `include "asim/provides/funcp_memory.bsh"
 
 
+// ===================================================================
 //
-// Query passed to TLB server
+// PUBLIC DATA STRUCTURES
 //
-typedef Tuple2#(TOKEN, ISA_ADDRESS) FUNCP_TLB_QUERY;
+// ===================================================================
+
+//
+// Query passed to TLB service.  When alloc_on_fault is set the host will
+// attempt to allocate a new page when no page is currently mapped for the VA.
+// Typically this bit will be set only by exception handlers in response to
+// a normal failed translation.
+//
+typedef struct
+{
+    ISA_ADDRESS va;
+    TOKEN tok;
+}
+FUNCP_TLB_QUERY
+    deriving (Eq, Bits);
+
+//
+// Helper functions for constructing FUNCP_TLB_QUERY
+//
+function FUNCP_TLB_QUERY normalTLBQuery(TOKEN tok, ISA_ADDRESS va);
+    return FUNCP_TLB_QUERY { va: va, tok: tok };
+endfunction
+
+function FUNCP_TLB_QUERY handleTLBPageFault(TOKEN tok, ISA_ADDRESS va);
+    return FUNCP_TLB_QUERY { va: va, tok: tok };
+endfunction
+
+
+//
+// Response from TLB service.  When page_fault is clear, pa holds the valid
+// translation.  When page_fault is set the translation failed.  The functional
+// model should service page faults on attempts to commit the token.
+//
+// Note:  even when page_fault is set, the pa may still be used for references.
+//        In this case, pa is set to the guard page.  This allows simple timing
+//        models to proceed with minimal knowledge of exception handling.
+//
+typedef struct
+{
+    Bool page_fault;
+    MEM_ADDRESS pa;
+}
+FUNCP_TLB_RESP
+    deriving (Eq, Bits);
 
 
 module [HASIM_MODULE] mkFUNCP_CPU_TLBS
@@ -43,8 +87,8 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         ();
 
     // Connections to functional register state manager
-    Connection_Server#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS)) link_funcp_itlb <- mkConnection_Server("funcp_itlb");
-    Connection_Server#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS)) link_funcp_dtlb <- mkConnection_Server("funcp_dtlb");
+    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_itlb <- mkConnection_Server("funcp_itlb");
+    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_dtlb <- mkConnection_Server("funcp_dtlb");
 
     // Connection to memory translation service.  This won't be called since
     // VA == PA.
@@ -53,15 +97,15 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     // ***** Rules for communcation with functional register state manager *****
     
     rule itlb_req (True);
-        match { .tok, .va } = link_funcp_itlb.getReq();
+        let req = link_funcp_itlb.getReq();
         link_funcp_itlb.deq();
-        link_funcp_itlb.makeResp(tagged Valid truncate(va));
+        link_funcp_itlb.makeResp(FUNCP_TLB_RESP { pa : truncate(req.va), page_fault: False });
     endrule
 
     rule dtlb_req (True);
-        match { .tok, .va } = link_funcp_dtlb.getReq();
+        let req = link_funcp_dtlb.getReq();
         link_funcp_dtlb.deq();
-        link_funcp_dtlb.makeResp(tagged Valid truncate(va));
+        link_funcp_dtlb.makeResp(FUNCP_TLB_RESP { pa : truncate(req.va), page_fault: False });
     endrule
 
 endmodule

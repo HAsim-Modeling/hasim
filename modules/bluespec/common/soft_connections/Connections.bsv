@@ -190,7 +190,25 @@ module [Connected_Module] mkConnection_Receive#(String portname)
 
 endmodule
 
-//A convenience which bundles up sending and receiving
+// ========================================================================
+//
+// mkConnection_Client & mkConnection_Server --
+//     A convenience which bundles up sending and receiving.
+//
+// ========================================================================
+
+//
+// First define functions for generating connection names for clients wishing
+// to use separate mkConnection_Send and Receive to talk to a mkConnection_Server.
+//
+    
+function String genConnectionClientSendName(String portname);
+    return strConcat(portname, "_req");
+endfunction
+
+function String genConnectionClientReceiveName(String portname);
+    return strConcat(portname, "_resp");
+endfunction
 
 module [Connected_Module] mkConnection_Client#(String portname)
     //interface:
@@ -201,8 +219,8 @@ module [Connected_Module] mkConnection_Client#(String portname)
 	     Transmittable#(req_T),
 	     Transmittable#(resp_T));
 
-  let sendname = strConcat(portname, "_req");
-  let recvname = strConcat(portname, "_resp");
+  let sendname = genConnectionClientSendName(portname);
+  let recvname = genConnectionClientReceiveName(portname);
   
   Connection_Send#(req_T) reqconn <- mkConnection_Send(sendname);
   Connection_Receive#(resp_T) respconn <- mkConnection_Receive(recvname);
@@ -221,7 +239,6 @@ module [Connected_Module] mkConnection_Client#(String portname)
 
 endmodule
 
-//A convenience which bundles up sending and receiving
 
 module [Connected_Module] mkConnection_Server#(String portname)
     //interface:
@@ -232,8 +249,8 @@ module [Connected_Module] mkConnection_Server#(String portname)
 	     Transmittable#(req_T),
 	     Transmittable#(resp_T));
 
-  let sendname = strConcat(portname, "_resp");
-  let recvname = strConcat(portname, "_req");
+  let sendname = genConnectionClientReceiveName(portname);
+  let recvname = genConnectionClientSendName(portname);
   
   Connection_Receive#(req_T) reqconn <- mkConnection_Receive(recvname);
   Connection_Send#(resp_T) respconn <- mkConnection_Send(sendname);
@@ -252,7 +269,13 @@ module [Connected_Module] mkConnection_Server#(String portname)
 
 endmodule
 
-//A Connection in a Chain
+
+// ========================================================================
+//
+// mkConnection_Chain --
+//     A Connection in a Chain
+//
+// ========================================================================
 
 module [Connected_Module] mkConnection_Chain#(Integer chain_num)
     //interface:

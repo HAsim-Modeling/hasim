@@ -87,7 +87,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     BRAM#(TOKEN_INDEX, ISA_INST_SRCS)   tokWriters <- mkLiveTokenBRAMInitialized(Vector::replicate(tagged Invalid));
 
     // The memaddress is used by Loads/Stores so we don't have to repeat the calculation.
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_ADDRESS) tokMemAddr <- mkLiveTokenBRAMMultiReadInitialized(0);
+    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr <- mkLiveTokenBRAMInitialized(0);
 
     // The value a store will write to memory
     BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue <- mkLiveTokenBRAMInitialized(0);
@@ -138,8 +138,13 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     // ******* High-Level FSM State *******
 
-    // The Epoch tells us when to discard junk tokens that were in flight when the timing partition killed them.
-    Reg#(TOKEN_TIMEP_EPOCH) epoch <- mkReg(0);
+    // The epoch tells us when to discard junk tokens that were in flight when
+    // the timing partition killed them.
+    Reg#(TOKEN_BRANCH_EPOCH) branchEpoch <- mkReg(0);
+
+    // The fault epoch tells us when to discard junk tokens that were in flight
+    // killed by the timing partition's fault handler.
+    Reg#(TOKEN_FAULT_EPOCH) faultEpoch <- mkReg(0);
      
     // A state variable to indicate what we're doing on a high-level.
     Reg#(REGMANAGER_STATE) state <- mkReg(RSM_Initializing);
@@ -220,6 +225,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // These support "slow rewinds"
     Reg#(TOKEN) rewindTok <- mkRegU();
     Reg#(TOKEN_INDEX) rewindCur <- mkRegU();
+    Reg#(Bool) rewindForFault <- mkRegU();
 
     
     // ******* Pipeline Queues *******
@@ -241,6 +247,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     FIFO#(Tuple2#(TOKEN, ISA_MEMOP_TYPE)) stores1Q <- mkFIFO();
     FIFO#(STORES_INFO) stores2Q <- mkFIFO();
     FIFO#(TOKEN) commQ   <- mkFIFO();
+    FIFO#(TOKEN) faultQ <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) faultResumeQ <- mkFIFO();
     FIFO#(Tuple2#(TOKEN_INDEX, Bool)) rewindQ <- mkFIFO();
     FIFO#(TOKEN) nextSeqInstAddrQ <- mkFIFO();
 
@@ -255,34 +263,37 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // Connections to the timing partition.
 
     Connection_Server#(FUNCP_REQ_NEW_IN_FLIGHT, 
-                       FUNCP_RSP_NEW_IN_FLIGHT)      linkNewInFlight <- mkConnection_Server("funcp_newInFlight");
+                       FUNCP_RSP_NEW_IN_FLIGHT)        linkNewInFlight <- mkConnection_Server("funcp_newInFlight");
 
     Connection_Server#(FUNCP_REQ_DO_ITRANSLATE,
-                       FUNCP_RSP_DO_ITRANSLATE)      linkDoITranslate <- mkConnection_Server("funcp_doITranslate");
+                       FUNCP_RSP_DO_ITRANSLATE)       linkDoITranslate <- mkConnection_Server("funcp_doITranslate");
 
     Connection_Server#(FUNCP_REQ_GET_INSTRUCTION,
-                       FUNCP_RSP_GET_INSTRUCTION)    linkGetInst   <- mkConnection_Server("funcp_getInstruction");
+                       FUNCP_RSP_GET_INSTRUCTION)        linkGetInst   <- mkConnection_Server("funcp_getInstruction");
 
     Connection_Server#(FUNCP_REQ_GET_DEPENDENCIES, 
-                       FUNCP_RSP_GET_DEPENDENCIES)   linkGetDeps   <- mkConnection_Server("funcp_getDependencies");
+                       FUNCP_RSP_GET_DEPENDENCIES)       linkGetDeps   <- mkConnection_Server("funcp_getDependencies");
 
     Connection_Server#(FUNCP_REQ_GET_RESULTS, 
-                       FUNCP_RSP_GET_RESULTS)        linkGetResults <- mkConnection_Server("funcp_getResults");
+                       FUNCP_RSP_GET_RESULTS)           linkGetResults <- mkConnection_Server("funcp_getResults");
 
     Connection_Server#(FUNCP_REQ_DO_DTRANSLATE,
-                       FUNCP_RSP_DO_DTRANSLATE)      linkDoDTranslate <- mkConnection_Server("funcp_doDTranslate");
+                       FUNCP_RSP_DO_DTRANSLATE)       linkDoDTranslate <- mkConnection_Server("funcp_doDTranslate");
 
     Connection_Server#(FUNCP_REQ_DO_LOADS, 
-                       FUNCP_RSP_DO_LOADS)           linkDoLoads   <- mkConnection_Server("funcp_doLoads");
+                       FUNCP_RSP_DO_LOADS)               linkDoLoads   <- mkConnection_Server("funcp_doLoads");
 
     Connection_Server#(FUNCP_REQ_DO_STORES, 
-                       FUNCP_RSP_DO_STORES)          linkDoStores  <- mkConnection_Server("funcp_doSpeculativeStores");
+                       FUNCP_RSP_DO_STORES)              linkDoStores  <- mkConnection_Server("funcp_doSpeculativeStores");
 
     Connection_Server#(FUNCP_REQ_COMMIT_RESULTS,
                        FUNCP_RSP_COMMIT_RESULTS)     linkCommitResults <- mkConnection_Server("funcp_commitResults");
 
     Connection_Server#(FUNCP_REQ_COMMIT_STORES,
                        FUNCP_RSP_COMMIT_STORES)      linkCommitStores  <- mkConnection_Server("funcp_commitStores");  
+
+    Connection_Server#(FUNCP_REQ_HANDLE_FAULT,
+                       FUNCP_RSP_HANDLE_FAULT)       linkHandleFault   <- mkConnection_Server("funcp_handleFault");
 
     Connection_Server#(FUNCP_REQ_REWIND_TO_TOKEN,
                        FUNCP_RSP_REWIND_TO_TOKEN)    linkRewindToToken <- mkConnection_Server("funcp_rewindToToken");
@@ -297,8 +308,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     // Connection to TLB
 
-    Connection_Client#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS))       link_itlb <- mkConnection_Client("funcp_itlb");
-    Connection_Client#(FUNCP_TLB_QUERY, Maybe#(MEM_ADDRESS))       link_dtlb <- mkConnection_Client("funcp_dtlb");
+    Connection_Client#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP)      link_itlb <- mkConnection_Client("funcp_itlb");
+    Connection_Client#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP)      link_dtlb <- mkConnection_Client("funcp_dtlb");
 
     // Connection to Datapath.
 
@@ -314,17 +325,18 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     ASSERTION assertInstructionIsActuallyALoad    <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_LOAD_ON_NONLOAD, ASSERT_WARNING, assertNode);
     ASSERTION assertLoadDestRegIsReady            <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_MALFORMED_LOAD_WRITEBACK, ASSERT_ERROR, assertNode);
     ASSERTION assertInstructionIsActuallyAStore   <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_STORE_ON_NONSTORE, ASSERT_WARNING, assertNode);
+    ASSERTION assertExpectedOldestTok             <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_EXPECTED_OLDEST_TOK, ASSERT_ERROR, assertNode);
     ASSERTION assertCommitedStoreIsActuallyAStore <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_COMMIT_STORE_ON_NONSTORE, ASSERT_WARNING, assertNode);
     ASSERTION assertRegUpdateAtExpectedTime       <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_REG_UPDATE, ASSERT_WARNING, assertNode);
     ASSERTION assertEmulationFinishedAtExpectedTime <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_EMULATION_FINISHED, ASSERT_WARNING, assertNode);
     ASSERTION assertEmulatedInstrNoDsts           <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_EMULATED_INSTR_HAS_DST, ASSERT_ERROR, assertNode);
     ASSERTION assertInvalidNumDsts                <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_INVALID_NUM_DSTS, ASSERT_ERROR, assertNode);
     ASSERTION assertHaveSnapshotOfEmulatedInstruction <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_NO_EMULATION_SNAPSHOT, ASSERT_ERROR, assertNode);
-    ASSERTION assertNoPhysicalTranslationForFetch <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_NO_PHYSICAL_TRANSLATION_FOR_FETCH, ASSERT_ERROR, assertNode);
-    ASSERTION assertNoPhysicalTranslationForMemOp <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_NO_PHYSICAL_TRANSLATION_FOR_MEMOP, ASSERT_ERROR, assertNode);
     ASSERTION assertNoEpochChange                 <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_UNEXPECTED_EPOCH_CHANGE, ASSERT_ERROR, assertNode);
     ASSERTION assertDTranslateOnMemOp             <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_DTRANSLATE_ON_MEMOP, ASSERT_ERROR, assertNode);
-    ASSERTION assertDrainBeforeOldest             <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_TOK_NOT_OLDEST, ASSERT_ERROR, assertNode);
+    ASSERTION assertIllegalInstruction            <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_ILLEGAL_INSTRUCTION, ASSERT_ERROR, assertNode);
+    ASSERTION assertCommitFaultingInstr           <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_COMMIT_FAULTING_INSTR, ASSERT_ERROR, assertNode);
+    ASSERTION assertPoisonBit                     <- mkAssertionChecker(`ASSERTIONS_REGMANAGER_BAD_POISON_BIT, ASSERT_ERROR, assertNode);
 
 
     // ***** Statistics ***** //
@@ -382,14 +394,14 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // registers allocated.
         tokFreeListPos.write(idx, tagged Invalid);
 
-        // Zero out our scratchpad.
-        let inf = TOKEN_FUNCP_INFO {epoch: 0, scratchpad: 0};
-
         // Invalidate old snapshots
         snapshots.invalSnapshot(idx);
 
         // The timing partition scratchpad must be filled in by up.
-        let newtok = TOKEN {index: idx, timep_info: ?, funcp_info: inf};
+        let newtok = TOKEN { index: idx,
+                             poison: False,
+                             epoch: TOKEN_EPOCH { branch: branchEpoch, fault: faultEpoch },
+                             timep_info: TOKEN_TIMEP_INFO { scratchpad: 0 } };
 
         // Respond to the timing partition. End of macro operation.
         linkNewInFlight.makeResp(initFuncpRspNewInFlight(newtok));
@@ -438,7 +450,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             linkDoITranslate.deq();
 
             // Get the translation from the TLB.
-            link_itlb.makeReq(tuple2(tok, aligned_addr));
+            link_itlb.makeReq(normalTLBQuery(tok, aligned_addr));
             
             // Log it.
             debugLog.record($format("TOKEN %0d: DoITranslate1: ITLB Req (VA: 0x%h, AA: 0x%h)", tok.index, vaddr, aligned_addr));
@@ -454,7 +466,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             debugLog.record($format("TOKEN %0d: DoITranslate1: Spanning ITLB Req 1 (VA: 0x%h, AA1: 0x%h)", tok.index, vaddr, aligned_addr));
   
             // A spanning ITranslate. Make the first request to the TLB.
-            link_itlb.makeReq(tuple2(tok, aligned_addr));
+            link_itlb.makeReq(normalTLBQuery(tok, aligned_addr));
   
             // Stall to make the second request.
             stateITrans1 <= tagged ITRANS1_SPAN_REQ aligned_addr;
@@ -475,10 +487,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let tok = req.token;
     
         // Calculate the second virtual address.
-        let aligned_addr2 = aligned_addr1 + zeroExtend(4'b1000);
+        let aligned_addr2 = aligned_addr1 + fromInteger(valueOf(SizeOf#(MEM_VALUE)) / 8);
     
         // Make the second request to the tlb.
-        link_itlb.makeReq(tuple2(tok, aligned_addr2));
+        link_itlb.makeReq(normalTLBQuery(tok, aligned_addr2));
 
         // Log it.
         debugLog.record($format("TOKEN %0d: DoITranslate1: Second ITLB Req 2 (AA2: 0x%h)", tok.index, aligned_addr2));
@@ -500,12 +512,12 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     rule doITranslate2 (readyToContinue &&& stateITrans2 matches tagged ITRANS2_NORMAL);
     
         // Get the response from the TLB.
-        Maybe#(MEM_ADDRESS) translated_addr = link_itlb.getResp();
+        let translated_addr = link_itlb.getResp();
         link_itlb.deq();
 
         // If the TLB couldn't translate it we're in big trouble.
-        assertNoPhysicalTranslationForFetch(isValid(translated_addr));
-        MEM_ADDRESS mem_addr = fromMaybe(0, translated_addr);
+        MEM_ADDRESS mem_addr = translated_addr.pa;
+        Bool page_fault = translated_addr.page_fault;
 
         // Get the data from the previous stage.
         case (iTransQ.first()) matches
@@ -518,6 +530,12 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 // Log it.
                 debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB Rsp (PA: 0x%h)", tok.index, mem_addr));
 
+                if (page_fault)
+                begin
+                    debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB PAGE FAULT", tok.index));
+                    tokScoreboard.setFault(tok.index, FAULT_ITRANS);
+                end
+
                 // Record the physical addr.
                 tokPhysicalAddrs.write(tok.index, tagged ONE mem_addr);
 
@@ -525,7 +543,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 tokScoreboard.iTransFinish(tok.index);
 
                 // Return it to the timing partition. End of macro-operation (path 1)
-                linkDoITranslate.makeResp(initFuncpRspDoITranslate(tok, mem_addr));
+                linkDoITranslate.makeResp(initFuncpRspDoITranslate(tok, mem_addr, page_fault));
                 debugLog.record($format("TOKEN %0d: DoITranslate: End (path 1).", tok.index));
 
             end
@@ -537,11 +555,21 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 // Log it.
                 debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB Spanning Rsp 1 (PA1: 0x%h)", tok.index, mem_addr));
 
+                if (page_fault)
+                begin
+                    debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB PAGE FAULT", tok.index));
+                    tokScoreboard.setFault(tok.index, FAULT_ITRANS);
+                end
+
                 // Return the first part to the timing partition.
-                linkDoITranslate.makeResp(initFuncpRspDoITranslate_part1(tok, mem_addr));
+                linkDoITranslate.makeResp(initFuncpRspDoITranslate_part1(tok, mem_addr, page_fault));
 
                 // Stall this stage to get the second response.
-                stateITrans2 <= tagged ITRANS2_SPAN_RSP mem_addr;
+                stateITrans2 <= tagged ITRANS2_SPAN_RSP
+                                       {
+                                           firstPA: mem_addr,
+                                           firstRefFaulted: page_fault
+                                       };
 
             end
         endcase
@@ -553,24 +581,33 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // When:   After doITranslate1 stalls for a lookup which spans two locations.
     // Effect: Get the second response, record it, and return it.
 
-    rule doITranslate2Span (readyToContinue &&& stateITrans2 matches tagged ITRANS2_SPAN_RSP .mem_addr1);
+    rule doITranslate2Span (readyToContinue &&& stateITrans2 matches tagged ITRANS2_SPAN_RSP .trans1);
     
         // Get the data from the previous stage.
         let tok = getITransToken(iTransQ.first());
     
+        // Propagate poison bit from first translation
+        tok.poison = tok.poison || trans1.firstRefFaulted;
+
         // Get the response from the TLB.
-        Maybe#(MEM_ADDRESS) translated_addr = link_itlb.getResp();
+        let translated_addr = link_itlb.getResp();
         link_itlb.deq();
 
         // If the TLB couldn't translate it we're in big trouble.
-        assertNoPhysicalTranslationForFetch(isValid(translated_addr));
-        MEM_ADDRESS mem_addr2 = fromMaybe(0, translated_addr);
+        MEM_ADDRESS mem_addr2 = translated_addr.pa;
+        Bool page_fault = translated_addr.page_fault;
+
+        if (page_fault)
+        begin
+            debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB Spanning 2 PAGE FAULT", tok.index));
+            tokScoreboard.setFault(tok.index, FAULT_ITRANS2);
+        end
 
         // Log it.
         debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB Spanning Rsp 2 (PA2: 0x%h)", tok.index, mem_addr2));
 
         // Record the physical addr.
-        tokPhysicalAddrs.write(tok.index, tagged TWO tuple2(mem_addr1, mem_addr2));
+        tokPhysicalAddrs.write(tok.index, tagged TWO tuple2(trans1.firstPA, mem_addr2));
 
         // Unstall the pipeline.
         stateITrans2 <= ITRANS2_NORMAL;
@@ -580,7 +617,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         tokScoreboard.iTransFinish(tok.index);
 
         // Return the rest to the timing partition. End of macro-operation (path 2).
-        linkDoITranslate.makeResp(initFuncpRspDoITranslate_part2(tok, mem_addr2));
+        linkDoITranslate.makeResp(initFuncpRspDoITranslate_part2(tok, mem_addr2, page_fault));
         debugLog.record($format("TOKEN %0d: DoITranslate: End (path 2).", tok.index));
     
     endrule
@@ -1087,7 +1124,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // instruction is in the middle of physical register mappings.
         // getDependencies2 is supposed to ensure we never get this far with
         // junk tokens.
-        assertNoEpochChange(tok.timep_info.epoch == epoch);
+        assertNoEpochChange(tokBranchEpoch(tok) == branchEpoch);
 
         if (isValid(map_dsts[cur]))
         begin
@@ -1453,7 +1490,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         if (rsp.except != FUNCP_ISA_EXCEPT_NONE)
         begin
             debugLog.record($format("TOKEN %0d: GetResults: Illegal instruction", tok.index));
-            tokScoreboard.setPoison(tok.index);
+            tokScoreboard.setFault(tok.index, FAULT_ILLEGAL_INSTR);
         end
 
         // Update the memaddress (only useful for loads/stores)
@@ -1637,7 +1674,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     rule emulateInstruction1 (state == RSM_DrainingForEmulate && tokScoreboard.canEmulate());
 
         // Did the timing model do drain before correctly?
-        assertDrainBeforeOldest(emulatingToken.index == tokScoreboard.oldest());
+        assertExpectedOldestTok(emulatingToken.index == tokScoreboard.oldest());
         if (emulatingToken.index != tokScoreboard.oldest())
             debugLog.record($format("TOKEN %0d: emulateInstruction1:  Token is not oldest! (Oldest: %0d)", emulatingToken.index, tokScoreboard.oldest()));
 
@@ -1858,7 +1895,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let op_type = is_load ? tokScoreboard.getLoadType(tok.index) : tokScoreboard.getStoreType(tok.index);
 
         // Retrieve the mem address.
-        tokMemAddr.readPorts[0].readReq(tok.index);
+        tokMemAddr.readReq(tok.index);
 
         // Pass to the next stage.
         dTrans1Q.enq(tuple2(tok, op_type));
@@ -1876,7 +1913,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         match {.tok, .op_type} = dTrans1Q.first();
         
         // Get the response from memory.        
-        let vaddr <- tokMemAddr.readPorts[0].readRsp();
+        let vaddr <- tokMemAddr.readRsp();
 
         // Align the address.
         match {.aligned_addr, .offset_addr} = isaAlignAddress(vaddr);
@@ -1891,7 +1928,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             dTrans1Q.deq();
 
             // Get the translation from the TLB.
-            link_dtlb.makeReq(tuple2(tok, aligned_addr));
+            link_dtlb.makeReq(normalTLBQuery(tok, aligned_addr));
 
             // Log it.
             debugLog.record($format("TOKEN %0d: DoDTranslate2: DTLB Req (VA: 0x%h AA: 0x%h)", tok.index, vaddr, aligned_addr));
@@ -1907,7 +1944,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             debugLog.record($format("TOKEN %0d: DoDTranslate2: DTLB Req Spanning 1 (VA: 0x%h, AA1: 0x%h)", tok.index, vaddr, aligned_addr));
   
             // A spanning DTranslate. Make the first request to the TLB.
-            link_dtlb.makeReq(tuple2(tok, aligned_addr));
+            link_dtlb.makeReq(normalTLBQuery(tok, aligned_addr));
             
             // Stall to make the second request.
             stateDTrans2 <= tagged DTRANS2_SPAN_REQ aligned_addr;
@@ -1927,10 +1964,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         match {.tok, .op_type} = dTrans1Q.first();
         
         // Calculate the second virtual address.
-        let aligned_addr2 = aligned_addr1 + zeroExtend(4'b1000);
+        let aligned_addr2 = aligned_addr1 + fromInteger(valueOf(SizeOf#(MEM_VALUE)) / 8);
         
         // Make the second request to the tlb.
-        link_dtlb.makeReq(tuple2(tok, aligned_addr2));
+        link_dtlb.makeReq(normalTLBQuery(tok, aligned_addr2));
 
         // Log it.
         debugLog.record($format("TOKEN %0d: DoDTranslate2: DTLB Req Spanning 2 (AA2: 0x%h)", tok.index, aligned_addr2));
@@ -1952,12 +1989,12 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     rule doDTranslate3 (readyToContinue &&& stateDTrans3 matches tagged DTRANS3_NORMAL);
         
         // Get the response from the TLB.
-        Maybe#(MEM_ADDRESS) translated_addr = link_dtlb.getResp();
+        let translated_addr = link_dtlb.getResp();
         link_dtlb.deq();
 
         // If the TLB couldn't translate it we're in big trouble.
-        assertNoPhysicalTranslationForMemOp(isValid(translated_addr));
-        MEM_ADDRESS mem_addr = fromMaybe(0, translated_addr);
+        MEM_ADDRESS mem_addr = translated_addr.pa;
+        Bool page_fault = translated_addr.page_fault;
 
         case (dTrans2Q.first()) matches
             tagged DTRANS_NORMAL .tok:
@@ -1969,6 +2006,12 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 // Log it.
                 debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB Rsp (PA: 0x%h)", tok.index, mem_addr));
 
+                if (page_fault)
+                begin
+                    debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB PAGE FAULT", tok.index));
+                    tokScoreboard.setFault(tok.index, FAULT_DTRANS);
+                end
+
                 // Record the physical addr.
                 tokPhysicalMemAddrs.write(tok.index, tagged ONE mem_addr);
 
@@ -1976,7 +2019,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 tokScoreboard.dTransFinish(tok.index);
 
                 // Return it to the timing partition. End of macro-operation (path 1)
-                linkDoDTranslate.makeResp(initFuncpRspDoDTranslate(tok, mem_addr));
+                linkDoDTranslate.makeResp(initFuncpRspDoDTranslate(tok, mem_addr, page_fault));
                 debugLog.record($format("TOKEN %0d: doDTranslate: End (path 1).", tok.index));
                 
 
@@ -1989,35 +2032,54 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                 // Log it.
                 debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB Span Rsp 1 (PA1: 0x%h)", tok.index, mem_addr));
 
+                if (page_fault)
+                begin
+                    debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB PAGE FAULT", tok.index));
+                    tokScoreboard.setFault(tok.index, FAULT_DTRANS);
+                end
+
                 // Return the first part to the timing partition.
-                linkDoDTranslate.makeResp(initFuncpRspDoDTranslate_part1(tok, mem_addr));
+                linkDoDTranslate.makeResp(initFuncpRspDoDTranslate_part1(tok, mem_addr, page_fault));
 
                 // Stall this stage to get the second response.
-                stateDTrans3 <= tagged DTRANS3_SPAN_RSP mem_addr;
+                stateDTrans3 <= tagged DTRANS3_SPAN_RSP
+                                       {
+                                           firstPA: mem_addr,
+                                           firstRefFaulted: page_fault
+                                       };
 
             end
         endcase
     
     endrule
     
-    rule doDTranslate3Span (readyToContinue &&& stateDTrans3 matches tagged DTRANS3_SPAN_RSP .mem_addr1);
+    rule doDTranslate3Span (readyToContinue &&& stateDTrans3 matches tagged DTRANS3_SPAN_RSP .trans1);
     
         // Get the value from the previous stage.
         let tok = getDTransToken(dTrans2Q.first());
 
+        // Propagate poison bit from first translation
+        tok.poison = tok.poison || trans1.firstRefFaulted;
+
         // Get the response from the TLB.
-        Maybe#(MEM_ADDRESS) translated_addr = link_dtlb.getResp();
+        let translated_addr = link_dtlb.getResp();
         link_dtlb.deq();
 
         // If the TLB couldn't translate it we're in big trouble.
-        assertNoPhysicalTranslationForMemOp(isValid(translated_addr));
-        MEM_ADDRESS mem_addr2 = fromMaybe(0, translated_addr);
+        MEM_ADDRESS mem_addr2 = translated_addr.pa;
+        Bool page_fault = translated_addr.page_fault;
+
+        if (page_fault)
+        begin
+            debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB Spanning 2 PAGE FAULT", tok.index));
+            tokScoreboard.setFault(tok.index, FAULT_DTRANS2);
+        end
 
         // Log it.
         debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB Span Rsp 2 (PA2: 0x%h)", tok.index, mem_addr2));
 
         // Record the physical addresses.
-        tokPhysicalMemAddrs.write(tok.index, tagged TWO tuple2(mem_addr1, mem_addr2));
+        tokPhysicalMemAddrs.write(tok.index, tagged TWO tuple2(trans1.firstPA, mem_addr2));
 
         // Unstall the pipeline.
         dTrans2Q.deq();
@@ -2027,7 +2089,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         tokScoreboard.dTransFinish(tok.index);
 
         // Return the rest to the timing partition. End of macro-operation (path 2).
-        linkDoDTranslate.makeResp(initFuncpRspDoDTranslate_part2(tok, mem_addr2));
+        linkDoDTranslate.makeResp(initFuncpRspDoDTranslate_part2(tok, mem_addr2, page_fault));
         debugLog.record($format("TOKEN %0d: DoDTranslate: End (path 2).", tok.index));
     
     endrule
@@ -2053,6 +2115,9 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let req = linkDoLoads.getReq();
         linkDoLoads.deq();
         let tok = req.token;
+
+        // Confirm timing model propagated poison bit correctly
+        assertPoisonBit(tokIsPoisoned(tok) == isValid(tokScoreboard.getFault(tok.index)));
 
         // If it's not actually a load, it's an exception.
         let isLoad = tokScoreboard.isLoad(tok.index);
@@ -2323,6 +2388,9 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let req = linkDoStores.getReq();
         linkDoStores.deq();
         let tok = req.token;
+
+        // Confirm timing model propagated poison bit correctly
+        assertPoisonBit(tokIsPoisoned(tok) == isValid(tokScoreboard.getFault(tok.index)));
 
         // If it's not actually a store, it's an exception.
         let isStore = tokScoreboard.isStore(tok.index);
@@ -2658,6 +2726,16 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // Log it.
         debugLog.record($format("TOKEN %0d: CommitResults: Begin.", tok.index)); 
 
+        // Confirm timing model propagated poison bit correctly
+        assertPoisonBit(tokIsPoisoned(tok) == isValid(tokScoreboard.getFault(tok.index)));
+
+        if (tokScoreboard.getFault(tok.index) matches tagged Valid .fault)
+        begin
+            // Timing model tried to commit an instruction with an exception.
+            assertCommitFaultingInstr(False);
+            debugLog.record($format("TOKEN %0d: CommitResults: FAULTING instruction!  Aborting.", tok.index)); 
+        end
+
         // Update the scoreboard.
         tokScoreboard.commitStart(tok.index);
 
@@ -2686,6 +2764,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // Get the input from the previous stage.
         let tok = commQ.first();
         commQ.deq();
+
+        assertExpectedOldestTok(tok.index == tokScoreboard.oldest());
+        if (tok.index != tokScoreboard.oldest())
+            debugLog.record($format("TOKEN %0d: commitResults1:  Token is not oldest! (Oldest: %0d)", tok.index, tokScoreboard.oldest()));
 
         // Retrieve the registers to be freed.
         let regsToFree  <- tokRegsToFree.readRsp();
@@ -2726,6 +2808,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         endrule
     end
 
+
     // ******* commitStores ******* //
 
     // 1-stage macro operation which commits global stores.
@@ -2744,7 +2827,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
         // If the token was not actually a store, it's an exception.
         let isStore = tokScoreboard.isStore(tok.index);
-        assertCommitedStoreIsActuallyAStore(isStore);
+        let fault = isValid(tokScoreboard.getFault(tok.index));
+        assertCommitedStoreIsActuallyAStore(isStore && !fault);
 
         // Log it.
         debugLog.record($format("TOKEN %0d: CommitStores: Committing.", tok.index)); 
@@ -2755,6 +2839,152 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         linkCommitStores.makeResp(initFuncpRspCommitStores(tok));
 
     endrule
+
+    // ******* handleFault ******* //
+
+    // Handle a fault raised in an earlier stage.  Returns the address from
+    // which fetch should resume.
+
+    // When:   When the timing model requests it.
+    // Effect: Do fault action & rewind
+    // Soft Inputs:  Token
+    // Soft Returns: Token & next fetch address
+    
+    rule handleFault1 (readyToBegin && tokScoreboard.canRewind());
+
+        // Get the input from the timing model.
+        let req = linkHandleFault.getReq();
+        linkHandleFault.deq();
+        let tok = req.token;
+        
+        // Log it.
+        debugLog.record($format("TOKEN %0d: handleFault", tok.index)); 
+
+        // Read all possibly interesting addresses
+        tokAddr.readReq(tok.index);           // PC
+        tokMemAddr.readReq(tok.index);
+        
+        state <= RSM_HandleFault;
+        faultQ.enq(tok);
+
+    endrule
+
+
+    rule handleFault2 (state == RSM_HandleFault);
+
+        // Instruction & data addresses
+        let iAddr <- tokAddr.readRsp();
+        let dAddr <- tokMemAddr.readRsp();
+
+        match { .iAddr_aligned, .iAddr_offset } = isaAlignAddress(iAddr);
+        match { .dAddr_aligned, .dAddr_offset } = isaAlignAddress(dAddr);
+
+        let tok = faultQ.first();
+        faultQ.deq();
+
+        if (tokScoreboard.getFault(tok.index) matches tagged Valid .fault)
+        begin
+            let mem_ref_bytes = fromInteger(valueOf(SizeOf#(MEM_VALUE)) / 8);
+
+            //
+            // handleTLBPageFault mode for TLBs returns no response.  Just triggering
+            // the request is enough to allocate the page.
+            //
+
+            case (fault)
+            FAULT_ITRANS:
+            begin
+                let addr = iAddr_aligned;
+                debugLog.record($format("TOKEN %0d: handleFault2: ITRANS (VA: 0x%h)", tok.index, addr)); 
+                link_itlb.makeReq(handleTLBPageFault(tok, addr));
+            end
+
+            FAULT_ITRANS2:
+            begin
+                let addr = iAddr_aligned + mem_ref_bytes;
+                debugLog.record($format("TOKEN %0d: handleFault2: ITRANS2 (VA: 0x%h)", tok.index, addr)); 
+                link_itlb.makeReq(handleTLBPageFault(tok, addr));
+            end
+
+            FAULT_DTRANS:
+            begin
+                let addr = dAddr_aligned;
+                debugLog.record($format("TOKEN %0d: handleFault2: DTRANS (VA: 0x%h)", tok.index, addr)); 
+                link_dtlb.makeReq(handleTLBPageFault(tok, addr));
+            end
+
+            FAULT_DTRANS2:
+            begin
+                let addr = dAddr_aligned + mem_ref_bytes;
+                debugLog.record($format("TOKEN %0d: handleFault2: DTRANS2 (VA: 0x%h)", tok.index, addr)); 
+                link_dtlb.makeReq(handleTLBPageFault(tok, addr));
+            end
+
+            default:
+            begin
+                assertIllegalInstruction(False);
+                debugLog.record($format("TOKEN %0d: handleFault2: No handler for fault %d", tok.index, fault)); 
+            end
+            endcase
+        end
+        else
+        begin
+            assertIllegalInstruction(False);
+            debugLog.record($format("TOKEN %0d: handleFault2: Instruction did not fault", tok.index));
+        end
+
+        //
+        // Start a slow rewind, killing all younger than the faulting token and
+        // the faulting token.  Fast rewind won't work because the faulting token
+        // is being killed.
+        //
+        // Make a dummy token since rewind really needs tok.index - 1
+        //
+        let rewind_to = TOKEN {index: (tok.index - 1),
+                               poison: False,
+                               epoch: ?,
+                               timep_info: ?};
+
+        rewindTok <= rewind_to;
+        fastRewind <= False;
+        rewindForFault <= True;
+        
+        // Tell the memory to drop non-committed stores.
+        let m_req = MEMSTATE_REQ_REWIND {rewind_to: rewind_to.index, rewind_from: tokScoreboard.youngest()};
+        linkToMem.makeReq(tagged REQ_REWIND m_req);
+
+        debugLog.record($format("Rewind: Initiating slow rewind to token %0d", rewind_to.index));
+                
+        // After rewind, fetch should resume at this token's address
+        faultResumeQ.enq(tuple2(tok, iAddr));
+
+        // Disable everything else.
+        state <= RSM_DrainingForRewind;
+
+    endrule
+
+    //
+    // handleFault3 -- Control returns here following rewind.
+    //
+    rule handleFault3 (state == RSM_HandleFaultRewindDone);
+
+        match { .tok, .resumeInstrAddr } = faultResumeQ.first();
+        faultResumeQ.deq();
+
+        // Log it.
+        debugLog.record($format("TOKEN %0d: handleFault3: Restart at 0x%h", tok.index, resumeInstrAddr)); 
+
+        // Update the fault epoch so we can discard appropriate updates.
+        let new_fault_epoch = faultEpoch + 1;
+        faultEpoch <= new_fault_epoch;
+
+        // Send response to timing model
+        linkHandleFault.makeResp(initFuncpRspHandleFault(tok, resumeInstrAddr, initEpoch(branchEpoch, new_fault_epoch)));
+
+        state <= RSM_Running;
+
+    endrule
+
 
     // ******* rewindToToken ******* //
 
@@ -2785,7 +3015,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         linkToMem.makeReq(tagged REQ_REWIND m_req);
 
         // Update the epoch so we can discard appropriate updates.
-        epoch <= epoch + 1;
+        branchEpoch <= branchEpoch + 1;
 
         // Check to see if we have a snapshot.
         Maybe#(FUNCP_SNAPSHOT_INDEX) midx = snapshots.hasSnapshot(tok.index);
@@ -2825,6 +3055,9 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // Stop when we get to the token.
         rewindTok <= tok;
 
+        // Normal rewind
+        rewindForFault <= False;
+
     endrule
 
     rule rewindToToken2 (state == RSM_DrainingForRewind && tokScoreboard.canRewind());
@@ -2863,7 +3096,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
         // We're done. End of macro-operation (path 1).
         state <= RSM_Running;
-        linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok));
+        linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok, initEpoch(branchEpoch, faultEpoch )));
 
     endrule
 
@@ -2974,9 +3207,18 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         if (done)
         begin
             debugLog.record($format("Slow Rewind: Done."));  
-            linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok));
             tokScoreboard.rewindTo(rewindTok.index);
-            state <= RSM_Running;
+            if (! rewindForFault)
+            begin
+                // Normal rewind -- return response
+                linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok, initEpoch(branchEpoch, faultEpoch )));
+                state <= RSM_Running;
+            end
+            else
+            begin
+                // Rewind for fault handler -- resume fault handler path
+                state <= RSM_HandleFaultRewindDone;
+            end
         end
 
     endrule

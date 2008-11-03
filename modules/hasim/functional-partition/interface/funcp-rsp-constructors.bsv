@@ -12,12 +12,16 @@ endfunction
 
 // initFuncpRspDoITranslate
 
-function FUNCP_RSP_DO_ITRANSLATE initFuncpRspDoITranslate(TOKEN tok, MEM_ADDRESS addr);
+function FUNCP_RSP_DO_ITRANSLATE initFuncpRspDoITranslate(TOKEN tok, MEM_ADDRESS addr, Bool fault);
+
+    // Update poison bit
+    tok.poison = tok.poison || fault;
 
     return FUNCP_RSP_DO_ITRANSLATE 
             {
                 token: tok, 
                 physicalAddress: addr, 
+                fault: fault,
                 hasMore: False
             };
 
@@ -25,12 +29,16 @@ endfunction
 
 // initFuncpRspDoITranslate_part1
 
-function FUNCP_RSP_DO_ITRANSLATE initFuncpRspDoITranslate_part1(TOKEN tok, MEM_ADDRESS addr);
+function FUNCP_RSP_DO_ITRANSLATE initFuncpRspDoITranslate_part1(TOKEN tok, MEM_ADDRESS addr, Bool fault);
 
-   return FUNCP_RSP_DO_ITRANSLATE 
+    // Update poison bit
+    tok.poison = tok.poison || fault;
+
+    return FUNCP_RSP_DO_ITRANSLATE 
             {
                 token: tok,
                 physicalAddress: addr, 
+                fault: fault,
                 hasMore: True
             };
 
@@ -38,12 +46,16 @@ endfunction
 
 // initFuncpRspDoITranslate_part2
 
-function FUNCP_RSP_DO_ITRANSLATE initFuncpRspDoITranslate_part2(TOKEN tok, MEM_ADDRESS addr);
+function FUNCP_RSP_DO_ITRANSLATE initFuncpRspDoITranslate_part2(TOKEN tok, MEM_ADDRESS addr, Bool fault);
+
+    // Update poison bit
+    tok.poison = tok.poison || fault;
 
     return FUNCP_RSP_DO_ITRANSLATE 
             {
                 token: tok, 
                 physicalAddress: addr, 
+                fault: fault,
                 hasMore: False
             };
 
@@ -91,12 +103,16 @@ endfunction
 
 // initFuncpRspDoDTranslate
 
-function FUNCP_RSP_DO_DTRANSLATE initFuncpRspDoDTranslate(TOKEN tok, MEM_ADDRESS addr);
+function FUNCP_RSP_DO_DTRANSLATE initFuncpRspDoDTranslate(TOKEN tok, MEM_ADDRESS addr, Bool fault);
+
+    // Update poison bit
+    tok.poison = tok.poison || fault;
 
     return FUNCP_RSP_DO_DTRANSLATE 
             {
                 token: tok, 
                 physicalAddress: addr, 
+                fault: fault,
                 hasMore: False
             };
 
@@ -104,12 +120,16 @@ endfunction
 
 // initFuncpRspDoDTranslate_part1
 
-function FUNCP_RSP_DO_DTRANSLATE initFuncpRspDoDTranslate_part1(TOKEN tok, MEM_ADDRESS addr);
+function FUNCP_RSP_DO_DTRANSLATE initFuncpRspDoDTranslate_part1(TOKEN tok, MEM_ADDRESS addr, Bool fault);
+
+    // Update poison bit
+    tok.poison = tok.poison || fault;
 
    return FUNCP_RSP_DO_DTRANSLATE 
             {
                 token: tok,
                 physicalAddress: addr, 
+                fault: fault,
                 hasMore: True
             };
 
@@ -117,12 +137,16 @@ endfunction
 
 // initFuncpRspDoDTranslate_part2
 
-function FUNCP_RSP_DO_DTRANSLATE initFuncpRspDoDTranslate_part2(TOKEN tok, MEM_ADDRESS addr);
+function FUNCP_RSP_DO_DTRANSLATE initFuncpRspDoDTranslate_part2(TOKEN tok, MEM_ADDRESS addr, Bool fault);
+
+    // Update poison bit
+    tok.poison = tok.poison || fault;
 
     return FUNCP_RSP_DO_DTRANSLATE 
             {
                 token: tok, 
                 physicalAddress: addr, 
+                fault: fault,
                 hasMore: False
             };
 
@@ -173,13 +197,27 @@ function FUNCP_RSP_COMMIT_STORES initFuncpRspCommitStores(TOKEN tok);
 
 endfunction
 
+// initFuncpRspHandleFault
+
+function FUNCP_RSP_HANDLE_FAULT initFuncpRspHandleFault(TOKEN tok, ISA_ADDRESS nextInstrAddr, TOKEN_EPOCH epoch);
+
+    return FUNCP_RSP_HANDLE_FAULT
+            {
+                token: tok,
+                nextInstructionAddress: nextInstrAddr,
+                epoch: epoch
+            };
+
+endfunction
+
 // initFuncpRspRewindToToken
 
-function FUNCP_RSP_REWIND_TO_TOKEN initFuncpRspRewindToToken(TOKEN tok);
+function FUNCP_RSP_REWIND_TO_TOKEN initFuncpRspRewindToToken(TOKEN tok, TOKEN_EPOCH epoch);
 
     return FUNCP_RSP_REWIND_TO_TOKEN
             {
-                token: tok
+                token: tok,
+                epoch: epoch
             };
 
 endfunction

@@ -15672,3 +15672,85 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
 
 Added #include <> updates from Guo Rui to support gcc 4.3.2.
 Mostly these are inclusions of string.h and strings.h.
+
+----------
+mcadler     Date: Wed Nov  5 11:28:12 EST 2008  CSN: CSN-hasim-542
+                  Wed Nov  5 16:28:12 UTC 2008
+
+
+Directory experiments/hasim/regression
+ regression.benchmarks     Locally Modified          541 
+
+Directory experiments/hasim/quick
+ quick.benchmarks          Locally Modified          541 
+
+Directory experiments/hasim/nightly
+ nightly.benchmarks        Locally Modified          541 
+
+Directory config/pm/hasim/demos
+ test/                     Locally Added               0 
+
+Directory config/pm/hasim/demos/test
+ alu_test/                 Locally Added               0 
+
+Directory config/pm/hasim/demos/test/alu_test
+ alu_test_hybrid_htg.apm   Locally Added               0 
+ alu_test_hybrid_exe.apm   Locally Added               0 
+
+Directory config/pm/hasim/demos
+ mem_test/                 Locally Removed           541 
+
+Directory config/pm/hasim/demos/mem_test
+ mem_test_hybrid.apm       Locally Removed           541 
+ mem_test_hybrid_htg.apm   Locally Removed           541 
+
+Directory config/bm
+ hasim/                    Locally Added               0 
+
+Directory config/bm/hasim
+ demos.cfx                 Locally Added               0 
+
+Directory config/bm/bluespec
+ demo.cfx                  Locally Removed           541 
+ demos.cfx                 Locally Added               - 
+
+Directory modules/hasim/util/cache
+ hasim-cache.bsv           Locally Modified          541 
+
+Directory modules/hasim/util/common
+ hasim-common.awb          Locally Modified          541 
+ alias_def.bsv             Locally Added               0 
+
+Directory modules/system
+ test/                     Locally Added               0 
+
+Directory modules/system/test
+ alu_test/                 Locally Added               0 
+
+Directory modules/system/test/alu_test
+ alu-test-streamid.dic     Locally Added               0 
+ alu-test.awb              Locally Added               0 
+ alu-test.bsv              Locally Added               0 
+ alu-test-streams.dic      Locally Added               0 
+
+Directory modules/system
+ mem_test/                 Locally Removed           541 
+
+Directory modules/system/mem_test
+ memtest-streamid.dic      Locally Removed           541 
+ mem_test.awb              Locally Removed           541 
+ MemTest.bsv               Locally Removed           541 
+ memtest-streams.dic       Locally Removed           541 
+
+Looks more complicated than it is:
+
+- Move Alias#() to HAsim common so it can be used by other modules.
+
+- Add an ALU test harness.  Just a simple test that reads in a data stream,
+  invokes some function, and writes data back.  Function could be plug-and-play
+  but this is just a test and the user is likely to just replace a rule or
+  two and not check in.
+
+- Restructure directories with a tests tree.
+
+- Add a random data workload to drive the test.

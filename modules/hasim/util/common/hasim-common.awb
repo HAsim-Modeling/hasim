@@ -11,7 +11,14 @@
 
 %attributes hasim
 
-%public token.bsv bypass-fifo.bsv fpga-fifos.bsv debug-file.bsv assertion-checker.bsv hash-to-32.bsv utils.bsv
+%public alias_def.bsv
+%public token.bsv
+%public bypass-fifo.bsv
+%public fpga-fifos.bsv
+%public debug-file.bsv
+%public assertion-checker.bsv
+%public hash-to-32.bsv
+%public utils.bsv
 
 %sources -t DICT -v PUBLIC hasim-common.dic
 %private bluespec-common.prj

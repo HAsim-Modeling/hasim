@@ -227,17 +227,6 @@ HASIM_CACHE_DATA_IDX#(numeric type nWays, type t_CACHE_SET_IDX)
 
 
 //
-// Hacks for defining type aliases within a module to work around lack of
-// "typedef" inside module scope.
-//
-typeclass Alias#(type a, type b);
-endtypeclass
-
-instance Alias#(a,a);
-endinstance
-
-
-//
 // Set associative cache
 //
 

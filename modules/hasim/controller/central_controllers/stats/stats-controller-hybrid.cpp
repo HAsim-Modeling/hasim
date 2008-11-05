@@ -23,6 +23,7 @@
 #include <sys/select.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <strings.h>
 #include <string>
 #include <iostream>
 

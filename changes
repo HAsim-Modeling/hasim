@@ -15658,3 +15658,17 @@ Directory modules/bluespec/common/soft_connections
 
 - Heartbeat on SW side now triggers an error and exits if no instructions commit
   during a heartbeat interval.
+
+----------
+jsemer      Date: Wed Nov  5 10:57:41 EST 2008  CSN: CSN-hasim-541
+                  Wed Nov  5 15:57:41 UTC 2008
+
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          540 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
+ vmh-memory.cpp            Locally Modified          540 
+
+Added #include <> updates from Guo Rui to support gcc 4.3.2.
+Mostly these are inclusions of string.h and strings.h.

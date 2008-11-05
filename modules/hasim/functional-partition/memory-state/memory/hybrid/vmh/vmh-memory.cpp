@@ -17,6 +17,8 @@
  * @author Michael Adler
  */
 
+#include <strings.h>
+#include <string.h>
 #include "asim/syntax.h"
 #include "asim/mesg.h"
 

@@ -15754,3 +15754,23 @@ Looks more complicated than it is:
 - Restructure directories with a tests tree.
 
 - Add a random data workload to drive the test.
+
+----------
+aparasha    Date: Thu Nov  6 13:08:13 EST 2008  CSN: CSN-hasim-543
+                  Thu Nov  6 18:08:13 UTC 2008
+
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_htg.apm           Locally Modified          542 
+
+Directory modules/model
+ pure_bluespec_model.bsv   Locally Modified          542 
+ hasim_model.bsv           Locally Modified          542 
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.bsv    Locally Modified          542 
+
+- updated echo4x4 to use 100MHz model clock
+- modified toplevel models to pass original crystal clock down
+  to the platform so that device synchronizers have access to
+  the crystal clock. This is required for clock multiplication.

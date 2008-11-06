@@ -41,7 +41,9 @@ typedef struct
 }
   ButtonInfo deriving (Eq, Bits);
 
-module [HASIM_MODULE] mkPlatformInterface (TOP_LEVEL_WIRES);
+module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelReset)
+    // interface
+        (TOP_LEVEL_WIRES);
 
     // instantiate connections
     Connection_Receive#(FRONTP_MASKED_LEDS) link_leds <- mkConnection_Receive("fpga_leds");
@@ -59,7 +61,7 @@ module [HASIM_MODULE] mkPlatformInterface (TOP_LEVEL_WIRES);
     Connection_Receive#(STREAMS_REQUEST) link_streams <- mkConnection_Receive("vdev_streams");
 
     // instantiate low-level platform interface
-    LowLevelPlatformInterface       llpint          <- mkLowLevelPlatformInterface();
+    LowLevelPlatformInterface llpint <- mkLowLevelPlatformInterface(topLevelClock, topLevelReset);
 
     // instantiate virtual devices
     FrontPanel   frontPanel <- mkFrontPanel(llpint);

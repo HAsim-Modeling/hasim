@@ -9,6 +9,10 @@ module mkModel(TOP_LEVEL_WIRES);
     // expose current clock and reset
     Clock clock      <- exposeCurrentClock();
     Reset hard_reset <- exposeCurrentReset();
+    
+    // top-level clock and reset need to be passed down to the platform
+    Clock topLevelClock = clock;
+    Reset topLevelReset = hard_reset;
 
     // 0 is number of stages
     // False = do not start in reset
@@ -20,7 +24,7 @@ module mkModel(TOP_LEVEL_WIRES);
     // instantiate LLPI and system with new reset
 
     // name must be pi_llpint --- explain!!!
-    let pi_llpint <- mkLowLevelPlatformInterface(reset_by new_reset);
+    let pi_llpint <- mkLowLevelPlatformInterface(topLevelClock, topLevelReset, reset_by new_reset);
     let system    <- mkSystem(pi_llpint, reset_by new_reset);
 
     // create a rule to assert our generated reset

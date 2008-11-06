@@ -23,14 +23,23 @@ import Clocks::*;
 `include "asim/provides/fpga_components.bsh"
 
 module [HASIM_MODULE] mkModel (TOP_LEVEL_WIRES);
-
+    
     let userClock <- mkUserClockFromCrystal(`MODEL_CLOCK_FREQ);
 
-    let _x <- mkModelWithUserClock(clocked_by userClock.clk, reset_by userClock.rst);
+    Clock topLevelClock <- exposeCurrentClock();
+    Reset topLevelReset <- exposeCurrentReset();
+    
+    let _x <- mkModelWithUserClock(topLevelClock,
+                                   topLevelReset,
+                                   clocked_by userClock.clk,
+                                   reset_by userClock.rst);
     return _x;
+
 endmodule
 
-module [HASIM_MODULE] mkModelWithUserClock (TOP_LEVEL_WIRES);
+module [HASIM_MODULE] mkModelWithUserClock#(Clock topLevelClock, Reset topLevelReset)
+    // interface
+        (TOP_LEVEL_WIRES);
 
     // expose current clock and reset
     Clock clock      <- exposeCurrentClock();
@@ -46,7 +55,7 @@ module [HASIM_MODULE] mkModelWithUserClock (TOP_LEVEL_WIRES);
     // instantiate system, controller and PI with new reset
     let system     <- mkSystem           (reset_by new_reset);
     let controller <- mkController       (reset_by new_reset);
-    let pi         <- mkPlatformInterface(reset_by new_reset);
+    let pi         <- mkPlatformInterface(topLevelClock, topLevelReset, reset_by new_reset);
     
     // create a connection to receive reset requests
     Connection_Receive#(Bool) link_reset <- mkConnection_Receive("soft_reset", reset_by new_reset);

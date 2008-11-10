@@ -66,7 +66,7 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Port_Control) inports, Vecto
     
   endfunction
 
-  function Bool canStart();
+  function Bool portsReady();
   
     Bool canRead  = True;
     Bool canWrite = True;
@@ -149,7 +149,7 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Port_Control) inports, Vecto
   
   endrule
 
-  method Action startModelCC() if (canStart());
+  method Action startModelCC() if ((state != LC_Idle) && portsReady());
   
     case (state)
       LC_Idle:          noAction;

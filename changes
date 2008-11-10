@@ -15774,3 +15774,13 @@ Directory modules/hasim/util/platform-interface
 - modified toplevel models to pass original crystal clock down
   to the platform so that device synchronizers have access to
   the crystal clock. This is required for clock multiplication.
+
+----------
+mcadler     Date: Mon Nov 10 12:50:06 EST 2008  CSN: CSN-hasim-544
+                  Mon Nov 10 17:50:06 UTC 2008
+
+
+Directory modules/hasim/controller/local_controllers/module
+ local-controller-module-standard.bsv Locally Modified          543 
+
+Local controller allowed timing modules to run even when state was idle!

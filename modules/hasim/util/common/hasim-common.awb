@@ -18,6 +18,7 @@
 %public debug-file.bsv
 %public assertion-checker.bsv
 %public hash-to-32.bsv
+%public counters.bsv
 %public utils.bsv
 
 %sources -t DICT -v PUBLIC hasim-common.dic

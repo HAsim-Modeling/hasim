@@ -11,7 +11,6 @@
 // Library imports
 
 import Vector::*;
-import Counter::*;
 
 // Project imports
 
@@ -149,7 +148,15 @@ module [Connected_Module] mkFUNCP_Scoreboard
     LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE)      load_type    <- mkLiveTokenLUTRAMU();
     LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE)      store_type   <- mkLiveTokenLUTRAMU();
     LUTRAM#(TOKEN_INDEX, TOKEN_INDEX)         next_tok     <- mkLiveTokenLUTRAMU();
-    LUTRAM#(TOKEN_INDEX, Maybe#(FUNCP_FAULT)) fault_type   <- mkLiveTokenLUTRAMU();
+    
+    // Fault is stored as separate arrays for each fault type to avoid
+    // causing cross-dependence between functional partition rules that
+    // raise faults.
+    TOKEN_SCOREBOARD fault_illegal_instr <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD fault_itrans        <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD fault_itrans2       <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD fault_dtrans        <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD fault_dtrans2       <- mkLiveTokenLUTRAMU();
 
     // A pointer to the next token to be allocated.
     Reg#(TOKEN_INDEX) next_free_tok <- mkReg(0);
@@ -158,14 +165,14 @@ module [Connected_Module] mkFUNCP_Scoreboard
     Reg#(TOKEN_INDEX) oldest_tok <- mkReg(0);
     
     // A register tracking how many tokens are active in pipelines.
-    Counter#(TOKEN_INDEX_SIZE) num_in_itr <- mkCounter(0);
-    Counter#(TOKEN_INDEX_SIZE) num_in_fet <- mkCounter(0);
-    Counter#(TOKEN_INDEX_SIZE) num_in_dec <- mkCounter(0);
-    Counter#(TOKEN_INDEX_SIZE) num_in_exe <- mkCounter(0);
-    Counter#(TOKEN_INDEX_SIZE) num_in_dtr <- mkCounter(0);
-    Counter#(TOKEN_INDEX_SIZE) num_in_load <- mkCounter(0);
-    Counter#(TOKEN_INDEX_SIZE) num_in_store <- mkCounter(0);
-    Counter#(TOKEN_INDEX_SIZE) num_in_commit <- mkCounter(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_itr <- mkCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_fet <- mkCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_dec <- mkCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_exe <- mkCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_dtr <- mkCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_load <- mkCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_store <- mkCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_commit <- mkCounter_Z(0);
     
     
 
@@ -259,6 +266,27 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     endfunction
 
+    //
+    // checkFaults --
+    //     Check all fault bits for a token.
+    //
+    function Maybe#(FUNCP_FAULT) checkFaults(TOKEN_INDEX t);
+    
+        if (fault_illegal_instr.sub(t))
+            return tagged Valid FAULT_ILLEGAL_INSTR;
+        else if (fault_itrans.sub(t))
+            return tagged Valid FAULT_ITRANS;
+        else if (fault_itrans2.sub(t))
+            return tagged Valid FAULT_ITRANS2;
+        else if (fault_dtrans.sub(t))
+            return tagged Valid FAULT_DTRANS;
+        else if (fault_dtrans2.sub(t))
+            return tagged Valid FAULT_DTRANS2;
+        else
+            return tagged Invalid;
+
+    endfunction
+
     // deallocate
 
     // When:   Any time.
@@ -316,7 +344,11 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
         emulation.upd(next_free_tok, False);
 
-        fault_type.upd(next_free_tok, tagged Invalid);
+        fault_illegal_instr.upd(next_free_tok, False);
+        fault_itrans.upd(next_free_tok, False);
+        fault_itrans2.upd(next_free_tok, False);
+        fault_dtrans.upd(next_free_tok, False);
+        fault_dtrans2.upd(next_free_tok, False);
 
         // Update the free pointer.
         let next_token_idx = next_free_tok + 1;
@@ -536,7 +568,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         if (is_store.sub(t))
             assert_token_has_done_stores(store_finish.sub(t));
 
-        assert_poison_instr( ! isValid(fault_type.sub(t)) );
+        assert_poison_instr( ! isValid(checkFaults(t)) );
 
         assert_token_can_start_commit(exe_finish.sub(t));
 
@@ -612,8 +644,18 @@ module [Connected_Module] mkFUNCP_Scoreboard
     method Action setFault(TOKEN_INDEX t, FUNCP_FAULT fault_code);
     
         // Only set fault if one hasn't been raised already
-        if (! isValid(fault_type.sub(t)))
-            fault_type.upd(t, tagged Valid fault_code);
+        case (fault_code)
+            FAULT_ILLEGAL_INSTR:
+                fault_illegal_instr.upd(t, True);
+            FAULT_ITRANS:
+                fault_itrans.upd(t, True);
+            FAULT_ITRANS2:
+                fault_itrans2.upd(t, True);
+            FAULT_DTRANS:
+                fault_dtrans.upd(t, True);
+            FAULT_DTRANS2:
+                fault_dtrans2.upd(t, True);
+        endcase
             
     endmethod
 
@@ -702,7 +744,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Maybe#(FUNCP_FAULT) getFault(TOKEN_INDEX t);
 
-        return fault_type.sub(t);
+        return checkFaults(t);
 
     endmethod
 
@@ -779,7 +821,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Bool canEmulate();
 
-        return num_in_itr.value() == 0 && num_in_fet.value() == 0 && num_in_dec.value() == 0 && num_in_dtr.value() == 0 && num_in_load.value() == 0 && num_in_store.value() == 0 && num_in_commit.value() == 0;
+        return num_in_itr.isZero() && num_in_fet.isZero() && num_in_dec.isZero() && num_in_dtr.isZero() && num_in_load.isZero() && num_in_store.isZero() && num_in_commit.isZero();
 
     endmethod
 
@@ -790,7 +832,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Bool canRewind();
 
-        return num_in_itr.value() == 0 && num_in_fet.value() == 0 && num_in_dec.value() == 0 && num_in_exe.value() == 0 && num_in_dtr.value() == 0 && num_in_load.value() == 0 && num_in_store.value() == 0 && num_in_commit.value() == 0;
+        return num_in_itr.isZero() && num_in_fet.isZero() && num_in_dec.isZero() && num_in_exe.isZero() && num_in_dtr.isZero() && num_in_load.isZero() && num_in_store.isZero() && num_in_commit.isZero();
 
     endmethod
 

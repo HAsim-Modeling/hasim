@@ -376,7 +376,7 @@ Clean(xilinx_ngd, TMP_XILINX_DIR + '/netlist.lst')
 xilinx_map = env.Command(
     [ XILINX_APM_NAME + '_map.ncd', XILINX_APM_NAME + '.pcf' ],
     xilinx_ngd,
-    'map -cm area -pr b -u -k 4 -c 100 -tx off -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf')
+    'map -cm balanced -timing -global_opt on -logic_opt on -lc auto -ol high -register_duplication -retiming on -pr b -c 100 -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf')
 
 Clean(xilinx_map, TMP_XILINX_DIR + '/xilinx_device_details.xml')
 
@@ -385,6 +385,14 @@ xilinx_par = env.Command(
     XILINX_APM_NAME + '_par.ncd',
     xilinx_map,
     'par -w -ol high -t 1 ' + XILINX_APM_NAME + '_map.ncd $TARGET ' + XILINX_APM_NAME + '.pcf');
+
+
+# Generate the FPGA timing report -- this report isn't built by default.  Use
+# the "timing" target to generate it
+xilinx_trce = env.Command(
+    XILINX_APM_NAME + '_par.twr',
+    [ xilinx_par, XILINX_APM_NAME + '.pcf' ],
+    'trce -e 100 $SOURCES -o $TARGET')
 
 
 # Generate the FPGA image
@@ -408,17 +416,16 @@ signature = env.Command(
 #
 loader = env.Command(
     APM_NAME + '_hw.download',
-    signature + SW_EXE,
+    signature + SW_EXE + xilinx_trce,
     [ '@ln -fs config/' + APM_NAME + '.download $TARGET',
       '@ln -fs ' + SW_EXE_OR_TARGET + ' ' + APM_NAME,
       Delete(APM_NAME + '_hw.exe'),
       Delete(APM_NAME + '_hw.vexe'),
-      '@echo "++++++++++++ Post-Synthesis ++++++++++++"',
-      '@grep "out of" ' + XILINX_APM_NAME + '.srp',
-      '@grep "Maximum Frequency" ' + XILINX_APM_NAME + '.srp',
       '@echo "++++++++++++ Post-Place & Route ++++++++"',
-      '@grep -i "slice" ' + XILINX_APM_NAME + '_par.par',
-      '@grep -B 1 -A 3 "Max Delay" ' + XILINX_APM_NAME + '_par.par' ])
+      '@' + awb_resolver('tools/scripts/hasim-xilinx-summary') + ' ' +
+          XILINX_APM_NAME + '_map.map ' +
+          XILINX_APM_NAME + '_par.par ' +
+          APM_NAME + '_hw.errinfo' ])
       
 env.Alias('bit', loader)
 

@@ -1,0 +1,158 @@
+#!/usr/bin/env perl
+# -*- perl -*-
+
+##
+## Summarize Xilinx place & route results.  Invoked at end of standard SCons
+## script.
+##
+## Also validates that timing is met and writes any timing errors to the
+## error file (3rd argument).  Benchmark run scripts may read the error file
+## and refuse to load the bitfile.
+##
+
+use warnings;
+use strict;
+
+if ($#ARGV != 2)
+{
+    print STDERR "Usage: hasim-xilinx-summary <map summary file> <par summary file> <error output file>\n";
+    exit(1);
+}
+
+open(MAP, $ARGV[0]) or die("Failed to open MAP file $ARGV[0]");
+open(PAR, $ARGV[1]) or die("Failed to open PAR file $ARGV[1]");
+open(ERR, "> $ARGV[2]") or die("Failed to open error output file $ARGV[2]");
+
+my $emit_map = 0;
+while (<MAP>)
+{
+    chomp;
+
+    last if (/^Peak Memory Usage:/);
+    $emit_map = 1 if (/^Slice Logic Utilization:/);
+
+    if ($emit_map)
+    {
+        if (/^ .*:/ &&
+            ! (/ O[56] / ||
+               /^$/)
+           )
+        {
+            print "$_\n";
+        }
+    }
+}
+close(MAP);
+
+my $clk_err = 0;
+my $got_clk = 0;
+while (<PAR>)
+{
+    chomp;
+
+    ## TS_CLK with a best case achievable value other than N/A means design
+    ## is running at board clock speed
+    if (/^  TS_CLK = PERIOD TIMEGRP/)
+    {
+        my $s = $_;
+
+        # Isolate speed from TS_CLK = PERIOD TIMEGRP "CLK" xx MHz HIGH
+        $s =~ s/^[^0-9]*([0-9]+)[^|]*|/$1/;
+        # Drop spaces
+        $s =~ s/ //g;
+        # Drop "ns"
+        $s =~ s/ns//g;
+        my @clk = split('\|', $s);
+
+        my $clk_req = 1000.0 / $clk[0];
+        my $clk_limit = $clk[3];
+
+        if ($clk_limit ne 'N/A')
+        {
+            print "\n";
+            printf "FPGA Clock:  Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
+            printf " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
+
+            if ($clk_limit > $clk_req)
+            {
+                $clk_err = 1;
+                printf ERR "FPGA Clock:  Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
+                printf ERR " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
+            }
+
+            last;
+        }
+    }
+
+    ## User clock follows FPGA board clock on the next line
+    if ($got_clk)
+    {
+        ## Line following TS_CLK is the derived clock
+        ## Extract period requirement and actual periods
+
+        my $s = $_;
+        # Drop spaces
+        $s =~ s/ //g;
+        # Drop "ns"
+        $s =~ s/ns//g;
+        my @clk = split('\|', $s);
+
+        my $clk_req = $clk[2];
+        my $clk_limit = $clk[3];
+
+        printf "Logic Clock: Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
+        printf " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
+
+        if (($clk_limit > $clk_req) || $clk_err)
+        {
+            $clk_err = 1;
+            printf ERR "Logic Clock: Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
+            printf ERR " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
+        }
+
+        last;
+    }
+
+    ## |TS_CLK line is FPGA board clock for designs with user clocks
+    if (/\|TS_CLK /)
+    {
+        $got_clk = 1;
+
+        ## Extract period requirement and actual periods
+
+        my $s = $_;
+        # Drop spaces
+        $s =~ s/ //g;
+        # Drop "ns"
+        $s =~ s/ns//g;
+        my @clk = split('\|', $s);
+
+        my $clk_req = $clk[2];
+        my $clk_limit = $clk[4];
+
+        print "\n";
+        printf "FPGA Clock:  Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
+        printf " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
+
+        if ($clk_limit > $clk_req)
+        {
+            $clk_err = 1;
+            printf ERR "FPGA Clock:  Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
+            printf ERR " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
+        }
+    }
+}
+
+if ($clk_err)
+{
+    print "\n";
+    print "        ******** Design does NOT meet timing! ********\n";
+    print "\n";
+}
+else
+{
+    print "\nDesign meets timing.\n";
+}
+
+close(PAR);
+close(ERR);

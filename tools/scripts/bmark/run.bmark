@@ -57,6 +57,7 @@ my $mType = $MODEL_NONE;
 my $help = 0;
 my $onlyCompare = 0;
 my $noCompare = 0;
+my $forceLoad = 0;
 my $gdb = 0;
 my $noProgram = 0;
 my $noReserve = 0;
@@ -74,6 +75,7 @@ my $status = GetOptions("help!" => \$help,
                         "gdb!" => \$gdb,
                         "noprogram!" => \$noProgram,
                         "noreserve!" => \$noReserve,
+                        "force-load!" => \$forceLoad,
                         "funcp-prefix=s" => \$funcpPrefix,
                         "funcp-suffix=s" => \$funcpSuffix,
                         "noshowfp!" => \$noshowfp,
@@ -127,6 +129,10 @@ if ($help || ! $status) {
     print STDERR "   [--onlycompare]         Only compare output files (without running)\n";
     print STDERR "   [--nocompare]           Skip comparison of output files\n";
     print STDERR "   [--m5]                  Run workload in m5 without HAsim\n";
+
+    if ($mType == $MODEL_FPGA) {
+        print STDERR "   [--force-load]          Load a bitfile to the FPGA even if it has errors\n";
+    }
 
     if ($mType == $MODEL_BLUESIM) {
         print STDERR "   [--vcdstart=<cycle>]    Generate VCD dump for wave viewer (e.g. gtkwave)\n";
@@ -269,6 +275,13 @@ if ($mType == $MODEL_FPGA) {
 
     # Load FPGA
     if (! $noProgram) {
+        if (! $forceLoad && -s "$config{modelDir}/$config{model}_hw.errinfo") {
+            print STDERR "FPGA bit file has errors:\n\n";
+            system("cat $config{modelDir}/$config{model}_hw.errinfo > /dev/stderr");
+            print STDERR "\nUse --force-load to ignore the error.\n";
+            exit(1);
+        }
+
         if (! $noReserve) {
             Exec("hasim-fpga-ctrl --reserve", "Failed to reserve FPGA");
         }

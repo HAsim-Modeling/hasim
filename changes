@@ -15784,3 +15784,65 @@ Directory modules/hasim/controller/local_controllers/module
  local-controller-module-standard.bsv Locally Modified          543 
 
 Local controller allowed timing modules to run even when state was idle!
+
+----------
+mcadler     Date: Fri Nov 14 00:21:31 EST 2008  CSN: CSN-hasim-545
+                  Fri Nov 14 05:21:31 UTC 2008
+
+
+Directory tools/scripts
+ hasim-xilinx-summary      Locally Added               0 
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          544 
+
+Directory config/pm/hasim/demos/test/alu_test
+ alu_test_hybrid_htg.apm   Locally Modified          544 
+
+Directory modules/model
+ hasim_model.awb           Locally Modified          544 
+ SCons.top.template        Locally Modified          544 
+ hasim_model.bsv           Locally Modified          544 
+
+Directory modules/hasim/functional-partition/register-state/snapshot/bram
+ funcp_snapshot_bram.bsv   Locally Modified          544 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          544 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_datatypes.bsv Locally Modified          544 
+ regstate_manager_macro_ops.awb Locally Modified          544 
+ regstate_manager_macro_ops.bsv Locally Modified          544 
+ regstate-manager-state.bsv Locally Added               0 
+
+Directory modules/hasim/util/common
+ hasim-common.awb          Locally Modified          544 
+ assertion-checker.bsv     Locally Modified          544 
+ counters.bsv              Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections
+ Connections.bsv           Locally Modified          544 
+
+- Add switches to Xilinx map and par command lines to work harder to reach
+  timing goals.  Now map runs longer but par is faster.
+- New script hasim-xilinx-summary is invoked at the end of a build.  In addition
+  to the summary it also writes timing error status to a control file.  The
+  run script now checks the file and refuses to load bit files with timing
+  violations.  (--force-load overrides the error.)
+- Change assertions code to reduce the work done in the cycle an assertion
+  is raised.
+- Add respNotEmpty() / reqNotEmpty() methods to Connection_Client/Server
+  interfaces.
+- Some changes to the register state manager to improve timing:
+  - Stop using initialized BRAM, since each reference reads a predicate.
+  - Break scoreboard fault state into multiple single bits to avoid write
+    contention between rules.
+  - Add new COUNTER_Z interface and mkCounter_Z.  A COUNTER_Z is the same as
+    a normal counter but has an isZero method.  isZero is set when a counter
+    is updated, so predicates based on the counter just test a single bit.
+  - Move regstate manager "state" object into a module.  Interface exports
+    "readyToBegin" and "readyToContinue" methods.  These methods resolve to
+    single bits that are computed when the state is updated.  Like COUNTER_Z
+    the goal is to reduce predicate latency.
+  - Slight refactoring of rewind pipeline.

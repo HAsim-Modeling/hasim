@@ -12,7 +12,6 @@ Class=Asim::Model
 DefaultAttributes=hasim hybrid
 model=HAsim Hybrid Model Foundation
 
-
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
 Packagehint=platforms
@@ -29,11 +28,12 @@ Packagehint=hasim
 
 [HAsim Hybrid Model Foundation/Params]
 MAKE_ALL_TARGET=bit
+MODEL_CLOCK_MULTIPLIER=5
+MODEL_CLOCK_DIVIDER=2
 
 [HAsim Hybrid Model Foundation]
 File=modules/model/hasim_model.awb
 Packagehint=hasim
-
 
 [Hasim - ALU Test System]
 File=modules/system/test/alu_test/alu-test.awb

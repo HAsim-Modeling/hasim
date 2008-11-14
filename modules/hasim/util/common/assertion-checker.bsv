@@ -103,8 +103,9 @@ module [Connected_Module] mkAssertionNode#(ASSERTIONS_DICT_TYPE baseID)
     // Connection to the assertions controller
     Connection_Chain#(ASSERTION_DATA) chain <- mkConnection_Chain(`RINGID_ASSERTS);
 
-    // DWires from individual assertions
-    Vector#(`ASSERTIONS_PER_NODE, Wire#(ASSERTION_SEVERITY)) raise <- replicateM(mkDWire(ASSERT_NONE));
+    // Wires & registers for individual assertions
+    Vector#(`ASSERTIONS_PER_NODE, Wire#(ASSERTION_SEVERITY)) raiseWire <- replicateM(mkDWire(ASSERT_NONE));
+    Vector#(`ASSERTIONS_PER_NODE, Reg#(ASSERTION_SEVERITY))  raiseReg  <- replicateM(mkReg(ASSERT_NONE));
 
     // Queue of assertions to raise.  When an assertion gets raised there are
     // 2 cycles of accurate assertion groupings.  If the FIFO fills, assertions
@@ -118,15 +119,32 @@ module [Connected_Module] mkAssertionNode#(ASSERTIONS_DICT_TYPE baseID)
 
     function Bool isSet(ASSERTION_SEVERITY a) = (a != ASSERT_NONE);
 
-    (* conflict_free = "detectLocal, processLocal" *)
-
     //
     // detectLocal --
-    //     Detect raised assertion(s) for a single cycle.  If possible, queue the
-    //     assertion(s) for delivery to the assertions controller.  If the queue
-    //     is full store the assertion(s) for later delivery.
+    //     For each local assertion record whether assertion was raised this
+    //     cycle and store it in a register.  The incoming registers used to
+    //     feed directly into the raiseLocal rule, but that became a timing
+    //     critical path.
     //
-    rule detectLocal (True);
+    for (Integer e = 0; e < `ASSERTIONS_PER_NODE; e = e + 1)
+    begin
+
+        rule detectLocal (True);
+            raiseReg[e] <= raiseWire[e];
+        endrule
+
+    end
+
+    (* conflict_free = "raiseLocal, processLocal" *)
+
+    //
+    // raiseLocal --
+    //     Detect assertions raised last cycle (stored in raiseReg vector
+    //     by detectLocal rule).  If possible, queue the assertion(s) for delivery
+    //     to the assertions controller.  If the queue is full store the
+    //     assertion(s) for later delivery.
+    //
+    rule raiseLocal (True);
 
         //
         // Merge new assertions this cycle and any pending assertions not yet
@@ -135,7 +153,7 @@ module [Connected_Module] mkAssertionNode#(ASSERTIONS_DICT_TYPE baseID)
         ASSERTION_NODE_VECTOR a = ?;
         for (Integer e = 0; e < `ASSERTIONS_PER_NODE; e = e + 1)
         begin
-            a[e] = unpack(pack(raise[e]) | pack(pendingAsserts[e]));
+            a[e] = unpack(pack(raiseReg[e]) | pack(pendingAsserts[e]));
         end
         
         if (any(isSet, a))
@@ -184,7 +202,7 @@ module [Connected_Module] mkAssertionNode#(ASSERTIONS_DICT_TYPE baseID)
 
     method Action raiseAssertion(ASSERTIONS_DICT_TYPE myID, ASSERTION_SEVERITY mySeverity);
 
-        raise[myID - baseID] <= mySeverity;
+        raiseWire[myID - baseID] <= mySeverity;
 
     endmethod
 

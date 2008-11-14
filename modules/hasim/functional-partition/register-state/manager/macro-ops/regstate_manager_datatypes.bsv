@@ -62,28 +62,6 @@ typedef enum
       deriving (Eq, Bits);
 
 
-// REGMANAGER_STATE
-
-// A type to indicating what we're doing on a high level.
-
-typedef enum
-{
-  RSM_Initializing,
-  RSM_Running,
-  RSM_HandleFault,
-  RSM_HandleFaultRewindDone,
-  RSM_DrainingForRewind,
-  RSM_Rewinding,
-  RSM_RewindingWaitForSlowRemap,
-  RSM_DrainingForEmulate,
-  RSM_SyncingRegisters,
-  RSM_RequestingEmulation,
-  RSM_UpdatingRegisters
-}
-  REGMANAGER_STATE
-      deriving (Eq, Bits);
-
-
 // ******* PIPELINE STAGE STATE ******* //
 
 // The following datatypes are internal states of pipeline stages that can stall.

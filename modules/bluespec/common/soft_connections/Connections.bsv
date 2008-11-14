@@ -39,6 +39,7 @@ endinterface
 interface Connection_Client#(type req_T, type resp_T);
 
   method Action makeReq(req_T data);
+  method Bool   respNotEmpty(); 
   method resp_T getResp();
   method Action deq();
   
@@ -51,6 +52,7 @@ endinterface
 
 interface Connection_Server#(type req_T, type resp_T);
 
+  method Bool   reqNotEmpty(); 
   method req_T  getReq();
   method Action deq();
   method Action makeResp(resp_T data);
@@ -229,6 +231,10 @@ module [Connected_Module] mkConnection_Client#(String portname)
     reqconn.send(data);
   endmethod
   
+  method Bool respNotEmpty();
+    return respconn.notEmpty();
+  endmethod
+  
   method resp_T getResp();
     return respconn.receive();
   endmethod
@@ -257,6 +263,10 @@ module [Connected_Module] mkConnection_Server#(String portname)
 
   method Action makeResp(resp_T data);
     respconn.send(data);
+  endmethod
+  
+  method Bool reqNotEmpty();
+    return reqconn.notEmpty();
   endmethod
   
   method req_T getReq();

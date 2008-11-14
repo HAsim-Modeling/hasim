@@ -24,7 +24,8 @@ import Clocks::*;
 
 module [HASIM_MODULE] mkModel (TOP_LEVEL_WIRES);
     
-    let userClock <- mkUserClockFromCrystal(`MODEL_CLOCK_FREQ);
+    let userClock <- mkUserClockFromCrystal(`MODEL_CLOCK_MULTIPLIER,
+                                            `MODEL_CLOCK_DIVIDER);
 
     Clock topLevelClock <- exposeCurrentClock();
     Reset topLevelReset <- exposeCurrentReset();

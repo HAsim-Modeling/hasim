@@ -72,38 +72,38 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // Tables to track info about in-flight instructions.
 
     // The address we got the instruction from (told to us by the timing model).
-    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr <- mkLiveTokenBRAMInitialized(0);
+    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr <- mkLiveTokenBRAM();
 
     // The physical address(es) for the instruction.
-    BRAM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs <- mkLiveTokenBRAMInitialized(tagged ONE 0);
+    BRAM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs <- mkLiveTokenBRAM();
 
     // The instruction that was at that address (from mem_state).
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst <- mkLiveTokenBRAMMultiReadInitialized(0);
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst <- mkLiveTokenBRAMMultiRead();
 
     // The destinations of the instruction (a convenience which saves us from reading the instruction/maptable).
-    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts <- mkLiveTokenBRAMMultiReadInitialized(Vector::replicate(tagged Invalid));
+    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts <- mkLiveTokenBRAMMultiRead();
 
     // If an instruction has sources in other inflight instructions it will be noted here.
-    BRAM#(TOKEN_INDEX, ISA_INST_SRCS)   tokWriters <- mkLiveTokenBRAMInitialized(Vector::replicate(tagged Invalid));
+    BRAM#(TOKEN_INDEX, ISA_INST_SRCS) tokWriters <- mkLiveTokenBRAM();
 
     // The memaddress is used by Loads/Stores so we don't have to repeat the calculation.
-    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr <- mkLiveTokenBRAMInitialized(0);
+    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr <- mkLiveTokenBRAM();
 
     // The value a store will write to memory
-    BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue <- mkLiveTokenBRAMInitialized(0);
+    BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue <- mkLiveTokenBRAM();
 
     // The physical memaddress(es) for the instruction.
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs <- mkLiveTokenBRAMMultiReadInitialized(tagged ONE 0);
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs <- mkLiveTokenBRAMMultiRead();
 
     // Position of freelist for token's physical regs.  Used by rewind.
-    BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokFreeListPos <- mkLiveTokenBRAMInitialized(tagged Invalid);
+    BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokFreeListPos <- mkLiveTokenBRAM();
 
     // The physical registers to free when the token is committed/killed.
-    BRAM#(TOKEN_INDEX, ISA_INST_DSTS) tokRegsToFree <- mkLiveTokenBRAMInitialized(Vector::replicate(tagged Invalid));
+    BRAM#(TOKEN_INDEX, ISA_INST_DSTS) tokRegsToFree <- mkLiveTokenBRAM();
 
     // The Physical Register File
 
-    BRAM_MULTI_READ#(3, FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE) prf <- mkBRAMMultiReadInitialized(0);
+    BRAM_MULTI_READ#(3, FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE) prf <- mkBRAMMultiRead();
     
     // Valid bits for PRF
     Vector#(FUNCP_NUM_PHYSICAL_REGS, Reg#(Bool)) prfValids = newVector();
@@ -147,12 +147,12 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     Reg#(TOKEN_FAULT_EPOCH) faultEpoch <- mkReg(0);
      
     // A state variable to indicate what we're doing on a high-level.
-    Reg#(REGMANAGER_STATE) state <- mkReg(RSM_Initializing);
+    REGMANAGER_STATE state <- mkRegmanagerState(RSM_Initializing);
     
     // We are only ready to put a new operation into a pipeline if we are neither rewinding, initializing, nor emulating
-    let readyToBegin = state == RSM_Running;
+    let readyToBegin = state.readyToBegin();
     // We allow operations in pipelines to proceed under a looser set of circumstances.
-    let readyToContinue = state == RSM_Running || state == RSM_DrainingForRewind || state == RSM_DrainingForEmulate;
+    let readyToContinue = state.readyToContinue();
     
     // ******* Pipeline Stage State *******
     
@@ -216,11 +216,11 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     
     // Rewind state
 
-    // Is it a fast rewind or a slow one?
-    Reg#(Bool)     fastRewind <- mkReg(False);
+    Reg#(FUNCP_REQ_REWIND_TO_TOKEN) rewindReq <- mkRegU();
+    Reg#(Maybe#(FUNCP_SNAPSHOT_INDEX)) rewindSnapIdx <- mkRegU();
 
-    // This register stores the current Phys Reg we are initializing.
-    Reg#(FUNCP_PHYSICAL_REG_INDEX)   initCur <- mkReg(0);
+    // Is it a fast rewind or a slow one?
+    Reg#(Bool) fastRewind <- mkReg(False);
 
     // These support "slow rewinds"
     Reg#(TOKEN) rewindTok <- mkRegU();
@@ -346,24 +346,61 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     // ******* Rules *******
 
-    // initialize
+    // Initialization
 
     // When:    Only at the beginning of time (after a reset).
     // Effects: Makes sure all RAMS are in the right state before we begin computing.
-    //          Additionally the first time it runs it will open the debug logfiles.
+    //
 
-    rule initialize (state == RSM_Initializing);
+    Reg#(Bit#(1)) initPhase <- mkReg(0);
 
-        // For safety we start all physical registers at zero. In the future this might change.
-        prf.write(initCur, 0);
-        prfValids[initCur] <= True;
+    // This register stores the current Phys Reg we are initializing.
+    Reg#(FUNCP_PHYSICAL_REG_INDEX) initPrfIdx <- mkReg(0);
+
+    rule initialize_prf (state.getState() == RSM_Initializing && initPhase == 0);
+
+        // For safety we start all physical registers at zero.
+        // In the future this might change.
+        prf.write(initPrfIdx, 0);
         
         // We're done if we've initialized the last register.
-        if (initCur >= maxInit)
+        if (initPrfIdx >= maxInit)
         begin
-            state <= RSM_Running;
+            initPhase <= 1;
         end
-        initCur <= initCur + 1;
+
+        initPrfIdx <= initPrfIdx + 1;
+
+    endrule
+  
+    //
+    // Initialize all token indexed objects.  Doing initialization here instead
+    // of using the initialized constructors for RAM saves testing the init
+    // predicate on each access to the storage.
+    //
+
+    Reg#(TOKEN_INDEX) initTokIdx <- mkReg(0);
+
+    rule initialize_tok_idx (state.getState() == RSM_Initializing && initPhase == 1);
+
+        tokAddr.write(initTokIdx, 0);
+        tokPhysicalAddrs.write(initTokIdx, tagged ONE 0);
+        tokInst.write(initTokIdx, 0);
+        tokDsts.write(initTokIdx, Vector::replicate(tagged Invalid));
+        tokWriters.write(initTokIdx, Vector::replicate(tagged Invalid));
+        tokMemAddr.write(initTokIdx, 0);
+        tokStoreValue.write(initTokIdx, 0);
+        tokPhysicalMemAddrs.write(initTokIdx, tagged ONE 0);
+        tokFreeListPos.write(initTokIdx, tagged Invalid);
+        tokRegsToFree.write(initTokIdx, Vector::replicate(tagged Invalid));
+
+        // Done?
+        if (initTokIdx == maxBound)
+        begin
+            state.setState(RSM_Running);
+        end
+
+        initTokIdx <= initTokIdx + 1;
 
     endrule
   
@@ -1220,7 +1257,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         begin
 
             // Record that we're emulating an instruction.
-            state <= RSM_DrainingForEmulate;
+            state.setState(RSM_DrainingForEmulate);
 
             // Record which token is being emulated.
             emulatingToken <= tok;
@@ -1671,7 +1708,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // When:   After getResults operation puts us in the emulation state.
     // Effect: Stall until all younger operations have completed. Then we can proceed.
     
-    rule emulateInstruction1 (state == RSM_DrainingForEmulate && tokScoreboard.canEmulate());
+    rule emulateInstruction1 (state.getState() == RSM_DrainingForEmulate && tokScoreboard.canEmulate());
 
         // Did the timing model do drain before correctly?
         assertExpectedOldestTok(emulatingToken.index == tokScoreboard.oldest());
@@ -1682,7 +1719,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         synchronizingCurReg <= minBound;
 
         // Start syncing registers.
-        state <= RSM_SyncingRegisters;
+        state.setState(RSM_SyncingRegisters);
                
     endrule
 
@@ -1693,7 +1730,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // Effect: Look up the current physical register in the maptable and request it from the regfile.
     
     
-    rule emulateInstruction2_Req (state == RSM_SyncingRegisters);
+    rule emulateInstruction2_Req (state.getState() == RSM_SyncingRegisters);
     
         // Some ISA's have a sparse packing of register names.  They should define Arith so we 
         // don't transmit them spuriously.
@@ -1722,7 +1759,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             tokAddr.readReq(emulatingToken.index);
 
             // End the loop.
-            state <= RSM_RequestingEmulation;
+            state.setState(RSM_RequestingEmulation);
         
         end
         
@@ -1759,7 +1796,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // When:   After emulateInstruction1 has transmitted every architectural register.
     // Effect: Send the instruction emulation request to software via RRR.
 
-    rule emulateInstruction3 (state == RSM_RequestingEmulation);
+    rule emulateInstruction3 (state.getState() == RSM_RequestingEmulation);
         
         // Get the instruction and current pc
         ISA_INSTRUCTION inst <- tokInst.readPorts[0].readRsp();
@@ -1775,7 +1812,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         stat_isa_emul.incr();
 
         //Go to receiving updates.
-        state <= RSM_UpdatingRegisters;
+        state.setState(RSM_UpdatingRegisters);
 
     endrule
 
@@ -1796,7 +1833,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let emulation_map <- snapshots.returnSnapshot();
 
         // Assert that we're in the state we expected to be in.
-        assertRegUpdateAtExpectedTime(state == RSM_UpdatingRegisters);
+        assertRegUpdateAtExpectedTime(state.getState() == RSM_UpdatingRegisters);
         
         // Lookup the current physical register in the snapshot maptable.
         FUNCP_PHYSICAL_REG_INDEX pr = emulation_map[pack(r)];
@@ -1824,14 +1861,14 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         let newPc <- client_stub.getResponse_emulate();
         
         // Assert that we're in the state we expected to be in.
-        assertEmulationFinishedAtExpectedTime(state == RSM_UpdatingRegisters);
+        assertEmulationFinishedAtExpectedTime(state.getState() == RSM_UpdatingRegisters);
         
         // Dequeue the final snapshot response.
         let junk <- snapshots.returnSnapshot();
 
         // We are no longer emulating an instruction.
         // Resume normal operations.
-        state <= RSM_Running;
+        state.setState(RSM_Running);
 
         // Update scoreboard.
         tokScoreboard.exeFinish(emulatingToken.index);
@@ -2849,28 +2886,41 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // Effect: Do fault action & rewind
     // Soft Inputs:  Token
     // Soft Returns: Token & next fetch address
-    
-    rule handleFault1 (readyToBegin && tokScoreboard.canRewind());
+
+    rule handleFaultS (readyToBegin && linkHandleFault.reqNotEmpty());
+
+        // Timing model requested fault handling?
+        let req = linkHandleFault.getReq();
+
+        // Log it.
+        debugLog.record($format("TOKEN %0d: Preparing to handle fault", req.token.index)); 
+
+        state.setState(RSM_DrainingForFault);
+
+    endrule
+
+    // Wait for all activity to stop and start the fault handler
+
+    rule handleFault1 (state.getState() == RSM_DrainingForFault && tokScoreboard.canRewind());
 
         // Get the input from the timing model.
         let req = linkHandleFault.getReq();
         linkHandleFault.deq();
         let tok = req.token;
         
-        // Log it.
-        debugLog.record($format("TOKEN %0d: handleFault", tok.index)); 
+        debugLog.record($format("TOKEN %0d: Ready to handle fault", req.token.index)); 
 
         // Read all possibly interesting addresses
         tokAddr.readReq(tok.index);           // PC
         tokMemAddr.readReq(tok.index);
         
-        state <= RSM_HandleFault;
+        state.setState(RSM_HandleFault);
         faultQ.enq(tok);
 
     endrule
 
 
-    rule handleFault2 (state == RSM_HandleFault);
+    rule handleFault2 (state.getState() == RSM_HandleFault);
 
         // Instruction & data addresses
         let iAddr <- tokAddr.readRsp();
@@ -2948,6 +2998,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         rewindTok <= rewind_to;
         fastRewind <= False;
         rewindForFault <= True;
+        rewindCur <= tokScoreboard.youngest();
         
         // Tell the memory to drop non-committed stores.
         let m_req = MEMSTATE_REQ_REWIND {rewind_to: rewind_to.index, rewind_from: tokScoreboard.youngest()};
@@ -2958,15 +3009,17 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // After rewind, fetch should resume at this token's address
         faultResumeQ.enq(tuple2(tok, iAddr));
 
-        // Disable everything else.
-        state <= RSM_DrainingForRewind;
+        // Start at the youngest and go backward.
+
+        // Proceed with rewind.
+        state.setState(RSM_Rewinding);
 
     endrule
 
     //
     // handleFault3 -- Control returns here following rewind.
     //
-    rule handleFault3 (state == RSM_HandleFaultRewindDone);
+    rule handleFault3 (state.getState() == RSM_HandleFaultRewindDone);
 
         match { .tok, .resumeInstrAddr } = faultResumeQ.first();
         faultResumeQ.deq();
@@ -2981,7 +3034,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         // Send response to timing model
         linkHandleFault.makeResp(initFuncpRspHandleFault(tok, resumeInstrAddr, initEpoch(branchEpoch, new_fault_epoch)));
 
-        state <= RSM_Running;
+        state.setState(RSM_Running);
 
     endrule
 
@@ -2995,20 +3048,57 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // Soft Inputs:  Token
     // Soft Returns: None
 
-    // rewindToToken1
+    // rewindToTokenS
 
     // When:   When the timing model starts a rewindToToken()
-    // Effect: Lookup the destinations of this token, and the registers to free.
+    // Effect: Prepare to rewind, making it impossible for other functional
+    //         rules to start processing new requests.
 
-    rule rewindToToken1 (readyToBegin && tokScoreboard.canRewind());
-      
-        // Get the input from the timing model.
+    rule rewindToTokenS (readyToBegin && linkRewindToToken.reqNotEmpty());
+
+        // Message arriving from timing model?
         let req = linkRewindToToken.getReq();
         linkRewindToToken.deq();
-        let tok = req.token;
+        rewindReq <= req;
 
         // Log it.
-        debugLog.record($format("Rewind: Starting Rewind to TOKEN %0d (Youngest: %0d)", tok.index, tokScoreboard.youngest())); 
+        debugLog.record($format("Rewind: Preparing rewind to TOKEN %0d (youngest: %0d)", req.token.index, tokScoreboard.youngest())); 
+
+        state.setState(RSM_DrainingForRewind);
+
+    endrule
+
+    // rewindToToken1
+
+    // When:   Follows rewindToTokenS
+    // Effect: Wait for other functional activity to stop.  The state change
+    //         to rewinding and the snapshot.hasSnapshot() method are both on
+    //         timing critical paths, so the rule doesn't anything else.
+
+    rule rewindToToken1 (state.getState() == RSM_DrainingForRewind && tokScoreboard.canRewind());
+
+        let req = rewindReq;
+        debugLog.record($format("Rewind: Ready to rewind to TOKEN %0d (youngest: %0d)", req.token.index, tokScoreboard.youngest())); 
+        state.setState(RSM_ReadyToRewind);
+
+        // Check to see if we have a snapshot.
+        let snap = snapshots.hasSnapshot(req.token.index);
+        rewindSnapIdx <= snap;
+
+    endrule
+
+    // rewindToToken2
+
+    // When:   Follows rewindToToken1
+    // Effect: Lookup the destinations of this token, and the registers to free.
+
+    rule rewindToToken2 (state.getState() == RSM_ReadyToRewind);
+      
+        let req = rewindReq;
+        let tok = req.token;
+
+        // Get Maybe#(snapshot idx) from previous stage
+        let midx = rewindSnapIdx;
 
         // Tell the memory to drop non-committed stores.
         let m_req = MEMSTATE_REQ_REWIND {rewind_to: tok.index, rewind_from: tokScoreboard.youngest()};
@@ -3016,9 +3106,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
         // Update the epoch so we can discard appropriate updates.
         branchEpoch <= branchEpoch + 1;
-
-        // Check to see if we have a snapshot.
-        Maybe#(FUNCP_SNAPSHOT_INDEX) midx = snapshots.hasSnapshot(tok.index);
 
         // Alright did we find anything?
         case (midx) matches
@@ -3049,27 +3136,17 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             end
         endcase
         
-        // Disable everything else.
-        state <= RSM_DrainingForRewind;
-
         // Stop when we get to the token.
         rewindTok <= tok;
 
         // Normal rewind
         rewindForFault <= False;
 
-    endrule
-
-    rule rewindToToken2 (state == RSM_DrainingForRewind && tokScoreboard.canRewind());
-    
-        // Log it.
-        debugLog.record($format("Rewind: Draining finished (Oldest: %0d)", tokScoreboard.oldest()));
-
         // Start at the youngest and go backward.
         rewindCur <= tokScoreboard.youngest();
 
         // Proceed with rewind.
-        state <= RSM_Rewinding;
+        state.setState(RSM_Rewinding);
     
     endrule
 
@@ -3078,7 +3155,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // When:   After rewindToToken1 AND we have a snapshot.
     // Effect: Use the snapshot to overwrite existing values. Reply to the timing partition.
 
-    rule rewindToToken3Fast (state == RSM_Rewinding && fastRewind);
+    rule rewindToToken3Fast (state.getState() == RSM_Rewinding && fastRewind);
 
         // Get the snapshots.
         let snp_map <- snapshots.returnSnapshot();
@@ -3095,7 +3172,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         debugLog.record($format("Fast Rewind finished."));  
 
         // We're done. End of macro-operation (path 1).
-        state <= RSM_Running;
+        state.setState(RSM_Running);
         linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok, initEpoch(branchEpoch, faultEpoch )));
 
     endrule
@@ -3103,7 +3180,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     //Slow rewind. Walk the tokens in age order
     //and reconstruct the maptable
 
-    rule rewindToToken3Slow (state == RSM_Rewinding && !fastRewind);
+    rule rewindToToken3Slow (state.getState() == RSM_Rewinding && !fastRewind);
     
         // Look up the token properties
         tokRegsToFree.readReq(rewindCur);
@@ -3120,7 +3197,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         if (done)
         begin
             // No more tokens.  Wait for remapping to finish.
-            state <= RSM_RewindingWaitForSlowRemap;
+            state.setState(RSM_RewindingWaitForSlowRemap);
         end
     endrule
 
@@ -3146,7 +3223,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     
     // Do not change the following lines unless you understand all this and have a good reason.
 
-    (* descending_urgency= "initialize, rewindToToken4, rewindToToken3Slow, rewindToToken3Fast, rewindToToken2, rewindToToken1, emulateInstruction4, emulateInstruction3_UpdateReg, emulateInstruction3, emulateInstruction2_Rsp, emulateInstruction2_Req, emulateInstruction1, commitStores, commitResults2, commitResults1, doStores2SpanEnd, doStores2SpanRsp2, doStores2SpanRsp1, doStores2SpanReq, doStores2RMW, doStores2, doStores1, doLoads3Span, doLoads3, doLoads2Span, doLoads2, doLoads1, doDTranslate3Span, doDTranslate3, doDTranslate2Span, doDTranslate2, doDTranslate1, getResults4AdditionalWriteback, getResults4, getResults3, getResults2StallEnd, getResults2, getResults1, getDependencies2AdditionalMappings, getDependencies2, getDependencies1, getInstruction3Span, getInstruction3, getInstruction2Span, getInstruction2, getInstruction1, doITranslate2Span, doITranslate2, doITranslate1Span, doITranslate1, newInFlight" *)
+    (* descending_urgency= "initialize_prf, initialize_tok_idx, rewindToToken4, rewindToToken3Slow, rewindToToken3Fast, rewindToToken2, rewindToToken1, emulateInstruction4, emulateInstruction3_UpdateReg, emulateInstruction3, emulateInstruction2_Rsp, emulateInstruction2_Req, emulateInstruction1, commitStores, commitResults2, commitResults1, doStores2SpanEnd, doStores2SpanRsp2, doStores2SpanRsp1, doStores2SpanReq, doStores2RMW, doStores2, doStores1, doLoads3Span, doLoads3, doLoads2Span, doLoads2, doLoads1, doDTranslate3Span, doDTranslate3, doDTranslate2Span, doDTranslate2, doDTranslate1, getResults4AdditionalWriteback, getResults4, getResults3, getResults2StallEnd, getResults2, getResults1, getDependencies2AdditionalMappings, getDependencies2, getDependencies1, getInstruction3Span, getInstruction3, getInstruction2Span, getInstruction2, getInstruction1, doITranslate2Span, doITranslate2, doITranslate1Span, doITranslate1, newInFlight" *)
 
     // The execution_order pragma doesn't affect the schedule but does get rid of
     // compiler warnings caused by the appearance of multiple writers to the
@@ -3212,12 +3289,12 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
             begin
                 // Normal rewind -- return response
                 linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok, initEpoch(branchEpoch, faultEpoch )));
-                state <= RSM_Running;
+                state.setState(RSM_Running);
             end
             else
             begin
                 // Rewind for fault handler -- resume fault handler path
-                state <= RSM_HandleFaultRewindDone;
+                state.setState(RSM_HandleFaultRewindDone);
             end
         end
 

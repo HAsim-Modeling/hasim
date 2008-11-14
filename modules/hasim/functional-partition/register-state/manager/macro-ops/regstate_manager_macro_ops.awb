@@ -1,29 +1,17 @@
-#/********************************************************************
-# *
-# * Awb module specification
-# *
-# *******************************************************************/
+%name Register State Manager using Macro Ops
+%desc Register State Manager using Macro Ops
 
-#/*
-# %AWB_START
-#
-# %name Register State Manager using Macro Ops
-# %desc Register State Manager using Macro Ops
-#
-# %provides funcp_regstate_manager
-# 
-# %requires funcp_regstate_scoreboard
-# %requires funcp_regstate_freelist
-# %requires funcp_regstate_snapshot
-#
-# %attributes hasim funcp regstate
-#
-# %public regstate_manager_datatypes.bsv regstate_manager_macro_ops.bsv
-# %sources -T DICT -v PUBLIC manager.dic
-#
-# %param REGSTATE_LOGFILE_NAME "hasim_funcp_regstate.out" "Name of logfile for register state."
-#
-#
-# %AWB_END
-# */
+%provides funcp_regstate_manager
 
+%requires funcp_regstate_scoreboard
+%requires funcp_regstate_freelist
+%requires funcp_regstate_snapshot
+
+%attributes hasim funcp regstate
+
+%public regstate_manager_datatypes.bsv
+%public regstate-manager-state.bsv
+%public regstate_manager_macro_ops.bsv
+%sources -T DICT -v PUBLIC manager.dic
+
+%param REGSTATE_LOGFILE_NAME "hasim_funcp_regstate.out" "Name of logfile for register state."

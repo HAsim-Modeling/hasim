@@ -20,15 +20,22 @@ module mkFUNCP_Snapshot
     //interface:
         (FUNCP_SNAPSHOT);
 
+    //
+    // NOTE: uninitialized LUTRAMs are safe here because invalSnapshot()
+    //       is called when a token is allocated.  Using uninitialized storage
+    //       saves a pair of predicate tests in the scheduler every time
+    //       a snapshot is referenced.
+    //
+
     // The token table tells us the most recent snapshot associated with each token.
-    LUTRAM#(TOKEN_INDEX, Maybe#(FUNCP_SNAPSHOT_INDEX)) tokSnaps <- mkLiveTokenLUTRAM(tagged Invalid);
+    LUTRAM#(TOKEN_INDEX, Maybe#(FUNCP_SNAPSHOT_INDEX)) tokSnaps <- mkLiveTokenLUTRAMU();
     
     // The snapshot table tells us the most recent token associated with a snapshot.
     // It is the opposite of tokSnaps above.  In order to be valid snapToks must
     // point to the token and tokSnaps must point back to the snapshot.  This
     // lets us deal with running out of snapshot entries gracefully (resorting
     // to slow rewind) while not having to invalidate other snapshots during rewind.
-    LUTRAM#(FUNCP_SNAPSHOT_INDEX, Maybe#(TOKEN_INDEX)) snapToks <- mkLUTRAM(tagged Invalid);
+    LUTRAM#(FUNCP_SNAPSHOT_INDEX, Maybe#(TOKEN_INDEX)) snapToks <- mkLUTRAMU();
 
     // The next pointer points to the next location where we should write a snapshot.
     Reg#(FUNCP_SNAPSHOT_INDEX)                       snapNext <- mkReg(0);

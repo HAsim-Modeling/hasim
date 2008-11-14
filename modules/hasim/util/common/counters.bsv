@@ -1,0 +1,79 @@
+//
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+
+
+//
+// COUNTER_Z interface is the same as a standard Counter but has a testable
+// zero bit in order to avoid having to read the whole counter to check for 0.
+//
+interface COUNTER_Z#(numeric type nBits);
+
+    method Bool isZero();
+    method UInt#(nBits) value();
+
+    method Action up();
+    method Action down();
+
+endinterface: COUNTER_Z
+
+
+module mkCounter_Z#(UInt#(nBits) initial_value)
+    // interface:
+        (COUNTER_Z#(nBits));
+
+    // Counter value
+    Reg#(UInt#(nBits)) ctr <- mkReg(initial_value);
+
+    // Is counter 0?
+    Reg#(Bool) zero <- mkReg(initial_value == 0);
+
+    PulseWire up_called   <- mkPulseWire();
+    PulseWire down_called <- mkPulseWire();
+
+    (* fire_when_enabled, no_implicit_conditions *)
+    rule update_counter;
+        let new_value = ctr;
+
+        if (up_called == down_called)
+            noAction;
+        else if (up_called)
+            new_value = new_value + 1;
+        else
+            new_value = new_value - 1;
+
+        zero <= (new_value == 0);
+        ctr <= new_value;
+    endrule
+
+    method Bool isZero();
+        return zero;
+    endmethod
+
+    method UInt#(nBits) value();
+        return ctr;
+    endmethod
+
+    method Action up();
+        up_called.send();
+    endmethod
+
+    method Action down();
+        down_called.send();
+    endmethod
+
+endmodule: mkCounter_Z

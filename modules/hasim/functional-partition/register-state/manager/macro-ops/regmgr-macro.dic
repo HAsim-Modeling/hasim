@@ -1,0 +1,35 @@
+//
+// Assertions
+//
+
+def ASSERTIONS.REGMGR.GETDEPENDENCIES.INVALID_NUM_DSTS         "FUNCP: Regstate: Instruction has more destinations than ISA definition claims!";
+def ASSERTIONS.REGMGR.GETDEPENDENCIES.EMULATED_INSTR_HAS_DST   "FUNCP: Regstate: Emulated instructions may not have destination registers!";
+
+def ASSERTIONS.REGMGR.GETRESULTS.NO_EMULATION_SNAPSHOT         "FUNCP: Regstate: Tried to emulate an instruction that did not have a snapshot!";
+def ASSERTIONS.REGMGR.GETRESULTS.EXPECTED_OLDEST_TOK           "FUNCP: Regstate: Expected oldest token!";
+def ASSERTIONS.REGMGR.GETRESULTS.UNEXPECTED_REG_UPDATE         "FUNCP: Regstate: Got a register update from software at an unexpected time!";
+def ASSERTIONS.REGMGR.GETRESULTS.UNEXPECTED_EMULATION_FINISHED "FUNCP: Regstate: Got an emmulation finished message from software at an unexpected time!";
+
+def ASSERTIONS.REGMGR.DTRANSLATE.DTRANSLATE_ON_MEMOP           "FUNCP: Regstate: Tried to do a DTranslate on a non-memory operation.";
+
+def ASSERTIONS.REGMGR.EXCEPTION.ILLEGAL_INSTRUCTION            "FUNCP: Regstate: Illegal instruction!";
+
+def ASSERTIONS.REGMGR.DOLOADS.LOAD_ON_NONLOAD                  "FUNCP: Regstate: Told to do loads on a non-load instruction!";
+def ASSERTIONS.REGMGR.DOLOADS.MALFORMED_LOAD_WRITEBACK         "FUNCP: Regstate: Told to do a load when the destination register had already been written!";
+def ASSERTIONS.REGMGR.DOLOADS.BAD_POISON_BIT                   "FUNCP: Regstate: Timing model did not propagate token poison bit!";
+
+def ASSERTIONS.REGMGR.DOSTORES.STORE_ON_NONSTORE               "FUNCP: Regstate: Told to do stores for an instruction that is not a store!";
+def ASSERTIONS.REGMGR.DOSTORES.BAD_POISON_BIT                  "FUNCP: Regstate: Timing model did not propagate token poison bit!";
+
+def ASSERTIONS.REGMGR.COMMITRESULTS.COMMIT_FAULTING_INSTR      "FUNCP: Regstate: Attempt to commmit faulting instruction!";
+def ASSERTIONS.REGMGR.COMMITRESULTS.BAD_POISON_BIT             "FUNCP: Regstate: Timing model did not propagate token poison bit!";
+def ASSERTIONS.REGMGR.COMMITRESULTS.EXPECTED_OLDEST_TOK        "FUNCP: Regstate: Expected oldest token!";
+
+def ASSERTIONS.REGMGR.COMMITSTORES.COMMIT_STORE_ON_NONSTORE    "FUNCP: Regstate: Told to commit a store which was not a store!";
+
+
+//
+// Statistics
+//
+
+def STATS.REGMGR.GETRESULTS.EMULATED_INSTRS                    "FUNCP: Emulated Instructions";

@@ -1,0 +1,28 @@
+%name Register State Manager using Macro Ops
+%desc Register State Manager using Macro Ops
+
+%provides funcp_regstate_manager
+
+%requires funcp_regstate_scoreboard
+%requires funcp_regstate_freelist
+%requires funcp_regstate_snapshot
+
+%attributes hasim funcp regstate
+
+%public regmgr-macro-datatypes.bsv
+%public regmgr-macro-state.bsv
+%public regmgr-macro.bsv
+%public regmgr-macro-pipe-newInFlight.bsv
+%public regmgr-macro-pipe-doITranslate.bsv
+%public regmgr-macro-pipe-getInstruction.bsv
+%public regmgr-macro-pipe-getDependencies.bsv
+%public regmgr-macro-pipe-getResults.bsv
+%public regmgr-macro-pipe-doDTranslate.bsv
+%public regmgr-macro-pipe-doLoads.bsv
+%public regmgr-macro-pipe-doStores.bsv
+%public regmgr-macro-pipe-commitResults.bsv
+%public regmgr-macro-pipe-commitStores.bsv
+%public regmgr-macro-pipe-exception.bsv
+%public regmgr-macro.dic
+
+%param REGSTATE_LOGFILE_PREFIX "hasim_funcp_regstate" "Prefix of logfile names for register state."

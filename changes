@@ -15846,3 +15846,45 @@ Directory modules/bluespec/common/soft_connections
     single bits that are computed when the state is updated.  Like COUNTER_Z
     the goal is to reduce predicate latency.
   - Slight refactoring of rewind pipeline.
+
+----------
+mcadler     Date: Mon Nov 17 12:22:41 EST 2008  CSN: CSN-hasim-546
+                  Mon Nov 17 17:22:41 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          544 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regstate_manager_datatypes.bsv Locally Removed           545 
+ regmgr-macro.dic          Locally Added               - 
+ regmgr-macro-pipe-newInFlight.bsv Locally Added               0 
+ regstate_manager_macro_ops.awb Locally Removed           545 
+ regmgr-macro-pipe-getInstruction.bsv Locally Added               0 
+ regmgr-macro-pipe-doDTranslate.bsv Locally Added               0 
+ regmgr-macro-pipe-doLoads.bsv Locally Added               0 
+ regmgr-macro-state.bsv    Locally Added               - 
+ regmgr-macro.awb          Locally Added               - 
+ regmgr-macro-pipe-getDependencies.bsv Locally Added               0 
+ regmgr-macro-pipe-commitStores.bsv Locally Added               0 
+ regmgr-macro-pipe-doITranslate.bsv Locally Added               0 
+ regstate-manager-state.bsv Locally Removed           545 
+ regmgr-macro-pipe-exception.bsv Locally Added               0 
+ regstate_manager_macro_ops.bsv Locally Removed           545 
+ regmgr-macro-pipe-getResults.bsv Locally Added               0 
+ regmgr-macro-pipe-doStores.bsv Locally Added               0 
+ regmgr-macro-datatypes.bsv Locally Added               - 
+ manager.dic               Locally Removed           545 
+ regmgr-macro.bsv          Locally Added               0 
+ regmgr-macro-pipe-commitResults.bsv Locally Added               0 
+
+Split the register state manager, which had grown to 3500 lines, into separate
+files.  Individual functional/timing interface pipelines are in files named
+regmgr-macro-pipe-<interface>.  This first commit generates equivalent Verilog
+to the previous version.  All global state that used to be at the top of the
+large file is now declared in regmgr-macro.bsv and passed in to the constructor
+for each pipeline.
+
+The next step will be to reduce the global state and relax inter-pipeline
+scheduling constraints.  Simplifying the schedule will, hopefully,
+allow for higher FPGA frequencies.

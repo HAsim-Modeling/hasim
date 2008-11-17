@@ -1,0 +1,397 @@
+//
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+
+// Project foundation includes.
+
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/soft_connections.bsh"
+`include "asim/provides/fpga_components.bsh"
+`include "asim/provides/hasim_modellib.bsh"
+ 
+// Functional Partition includes.
+
+`include "asim/provides/funcp_interface.bsh"
+  
+// Dictionary includes
+`include "asim/dict/ASSERTIONS_REGMGR_DOLOADS.bsh"
+
+
+// ========================================================================
+//
+//   Internal data structures
+//
+// ========================================================================
+
+// LOADS_INFO
+typedef struct
+{
+    TOKEN token;
+    UP_TO_TWO#(MEM_ADDRESS) memAddrs;
+    ISA_MEMOP_TYPE opType;
+    MEM_OFFSET offset;
+}
+LOADS_INFO
+    deriving (Eq, Bits);
+
+// STATE_LOADS2
+typedef union tagged
+{
+    void       LOADS2_NORMAL;
+    LOADS_INFO LOADS2_SPAN_REQ;
+}
+STATE_LOADS2
+   deriving (Eq, Bits);
+
+// STATE_LOADS3
+typedef union tagged
+{
+    void       LOADS3_NORMAL;
+    MEM_VALUE  LOADS3_SPAN_RSP;
+    
+}
+STATE_LOADS3
+    deriving (Eq, Bits);
+
+
+module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
+    REGMANAGER_STATE state,
+    FUNCP_SCOREBOARD tokScoreboard,
+    Vector#(FUNCP_NUM_PHYSICAL_REGS, Reg#(Bool)) prfValids,
+    BRAM_MULTI_READ#(3, FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE) prf,
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs,
+    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts,
+    Connection_Client#(MEMSTATE_REQ, MEM_VALUE) linkToMem,
+    FIFO#(MEM_PATH) memPathQ)
+    //interface:
+                ();
+
+    // ====================================================================
+    //
+    //   Debugging state
+    //
+    // ====================================================================
+
+    DEBUG_FILE debugLog <- mkDebugFile(`REGSTATE_LOGFILE_PREFIX + "_pipe_doLoads.out");
+
+
+    // ====================================================================
+    //
+    //   Soft connections
+    //
+    // ====================================================================
+
+    Connection_Server#(FUNCP_REQ_DO_LOADS, 
+                       FUNCP_RSP_DO_LOADS) linkDoLoads <- mkConnection_Server("funcp_doLoads");
+
+    // ====================================================================
+    //
+    //   Local state
+    //
+    // ====================================================================
+
+    FIFO#(TOKEN) loads1Q  <- mkFIFO();
+    FIFO#(LOADS_INFO) loads2Q  <- mkFIFO();
+
+    Reg#(STATE_LOADS2) stateLoads2 <- mkReg(LOADS2_NORMAL);
+    Reg#(STATE_LOADS3) stateLoads3 <- mkReg(LOADS3_NORMAL);
+
+
+    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGMGR_DOLOADS__BASE);
+    ASSERTION assertInstructionIsActuallyALoad    <- mkAssertionChecker(`ASSERTIONS_REGMGR_DOLOADS_LOAD_ON_NONLOAD, ASSERT_WARNING, assertNode);
+    ASSERTION assertLoadDestRegIsReady            <- mkAssertionChecker(`ASSERTIONS_REGMGR_DOLOADS_MALFORMED_LOAD_WRITEBACK, ASSERT_ERROR, assertNode);
+    ASSERTION assertPoisonBit                     <- mkAssertionChecker(`ASSERTIONS_REGMGR_DOLOADS_BAD_POISON_BIT, ASSERT_ERROR, assertNode);
+
+    // ====================================================================
+    //
+    //   Rules
+    //
+    // ====================================================================
+
+
+    // ******* doLoads ******* //
+
+    // 3 or 4-stage macro operation which makes Loads read memory.
+
+    // When:   When the timing model requests it.
+    // Effect: Read the effective address, do a load from the memory state, and write it back.
+    // Soft Inputs:  Token
+    // Soft Returns: Token
+    
+    // doLoads1
+
+    // When:   When the timing model starts a doLoads().
+    // Effect: Lookup the effective address(es) of this token.
+
+    rule doLoads1 (state.readyToBegin());
+
+        // Get the input from the timing model. Begin macro-operation.
+        let req = linkDoLoads.getReq();
+        linkDoLoads.deq();
+        let tok = req.token;
+
+        // Confirm timing model propagated poison bit correctly
+        assertPoisonBit(tokIsPoisoned(tok) == isValid(tokScoreboard.getFault(tok.index)));
+
+        // If it's not actually a load, it's an exception.
+        let isLoad = tokScoreboard.isLoad(tok.index);
+        assertInstructionIsActuallyALoad(isLoad);
+
+        // Emulated loads were taken care of previously.  Also ignore killed tokens.
+        if (tokScoreboard.emulateInstruction(tok.index) ||
+            ! tokScoreboard.isAllocated(tok.index))
+        begin
+            // Log it.
+            debugLog.record($format("TOKEN %0d: DoLoads1: Ignoring junk token or emulated instruction.", tok.index));
+
+            // Respond to the timing model. End of macro-operation.
+            linkDoLoads.makeResp(initFuncpRspDoLoads(tok));
+        end
+        else // Everything's okay.
+        begin
+            // Log it.
+            debugLog.record($format("TOKEN %0d: DoLoads: Begin.", tok.index)); 
+
+            // Update the scoreboard.
+            tokScoreboard.loadStart(tok.index);
+
+            // Read the effective address.
+            tokPhysicalMemAddrs.readPorts[0].readReq(tok.index);
+
+            // Pass to the next stage.
+            loads1Q.enq(tok);
+        end
+
+    endrule
+
+    // doLoads2
+
+    // When:   After doLoads1 occurs
+    // Effect: Make the request to the memory state.
+
+    rule doLoads2 (state.readyToContinue() &&& stateLoads2 matches tagged LOADS2_NORMAL);
+
+        // Read the parameters from the previous stage.
+        let tok = loads1Q.first();
+
+        // Get the address(es).
+        let p_addrs <- tokPhysicalMemAddrs.readPorts[0].readRsp();
+        
+        // Get the offset.
+        let offset = tokScoreboard.getMemOpOffset(tok.index);
+        
+        // Get the optype.
+        let l_type = tokScoreboard.getLoadType(tok.index);
+        
+        case (p_addrs) matches
+            tagged ONE .p_addr:
+            begin
+
+                // Normal Load. We're not stalled.
+                loads1Q.deq();
+
+                // Log it.
+                debugLog.record($format("TOKEN %0d: DoLoads2: Requesting Load (PA: 0x%h)", tok.index, p_addr));
+
+                // Make the request to the DMem.
+                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr};
+                linkToMem.makeReq(tagged REQ_LOAD m_req);
+
+                // Record that the load response should go to us.
+                memPathQ.enq(PATH_LOAD);
+
+                // Read the destination so we can writeback the correct register.
+                tokDsts.readPorts[1].readReq(tok.index);
+
+                // Pass it on to the final stage.
+                let load_info = LOADS_INFO {token: tok, memAddrs: p_addrs, offset: offset, opType: l_type};
+                loads2Q.enq(load_info);
+
+            end
+            tagged TWO {.p_addr1, .p_addr2}:
+            begin
+
+                // Log it.
+                debugLog.record($format("TOKEN %0d: DoLoads2: Starting Spanning Load (PA1: 0x%h)", tok.index, p_addr1));
+
+                // Make the request to the DMem.
+                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1};
+                linkToMem.makeReq(tagged REQ_LOAD m_req);
+
+                // Record that the load response should go to us.
+                memPathQ.enq(PATH_LOAD);
+
+                // Stall this stage for the second req.
+                let load_info = LOADS_INFO {token: tok, memAddrs: p_addrs, offset: offset, opType: l_type};
+                stateLoads2 <= tagged LOADS2_SPAN_REQ load_info;
+
+            end
+        endcase
+
+    endrule
+
+    rule doLoads2Span (state.readyToContinue() &&& stateLoads2 matches tagged LOADS2_SPAN_REQ .load_info);
+
+        // Kick the second request to MemState.
+        let p_addr2 = getSecondOfTwo(load_info.memAddrs);
+        let m_req = MEMSTATE_REQ_LOAD {tok: load_info.token, addr: p_addr2};
+        linkToMem.makeReq(tagged REQ_LOAD m_req);
+
+        // Record that the load response should go to us.
+        memPathQ.enq(PATH_LOAD);
+        
+        // Log it.
+        debugLog.record($format("TOKEN %0d: DoLoads2: Finishing Spanning Load (PA2: 0x%h)", load_info.token.index, p_addr2));
+
+        // Read the destination so we can writeback the correct register.
+        tokDsts.readPorts[1].readReq(load_info.token.index);
+
+        // Unstall this stage.
+        loads1Q.deq();
+        stateLoads2 <= tagged LOADS2_NORMAL;
+
+        // Pass it on to the final stage.
+        loads2Q.enq(load_info);
+
+    endrule
+
+
+    // doLoads3
+
+    // When:   Load response is available after doLoads2.
+    // Effect: If there was just one request, record the resut, kick back to timing model.
+    //         Otherwise stall to get the second response.
+
+    rule doLoads3 (state.readyToContinue() &&& stateLoads3 matches tagged LOADS3_NORMAL
+                                   &&& memPathQ.first() matches tagged PATH_LOAD);
+
+        // Get the data from the previous stage.
+        let load_info = loads2Q.first();
+        let tok = load_info.token;
+
+        // Get resp from the Mem State.
+        MEM_VALUE v = linkToMem.getResp();
+        linkToMem.deq();
+        memPathQ.deq();
+     
+        case (load_info.memAddrs) matches
+            tagged ONE .p_addr:
+            begin
+
+                // Normal load. We are not stalled.
+                loads2Q.deq();
+
+                // Convert the value using the ISA-provided conversion function.
+                ISA_VALUE val = isaLoadValueFromMemValue(v, load_info.offset, load_info.opType);
+                debugLog.record($format("TOKEN %0d: DoLoads3: ISA Load (V: 0x%h, T: %0d, O: %b) = 0x%h", tok.index, v, pack(load_info.opType), load_info.offset, val)); 
+
+                // Get the destination for the purposes of writeback.
+                let dsts <- tokDsts.readPorts[1].readRsp();
+
+                // We assume that the destination for the load is destination 1.
+                let dst = validValue(dsts[0]);
+
+                // Log it.
+                debugLog.record($format("TOKEN %0d: DoLoads3: Load Response Writing (PR%0d <= 0x%h)", tok.index, dst, val));
+
+                // Update the physical register file.
+                prf.write(dst, val);
+
+                // Assert that the register was ready (not valid).
+                assertLoadDestRegIsReady(!prfValids[dst]);
+
+                // The register is now valid.
+                prfValids[dst] <= True;
+
+                // Update the scoreboard.
+                tokScoreboard.loadFinish(tok.index);
+
+                // Respond to the timing model. End of macro-operation (path 1).
+                linkDoLoads.makeResp(initFuncpRspDoLoads(tok));
+
+            end
+            tagged TWO {.p_addr1, .p_addr2}:
+            begin
+
+                // Log it.
+                debugLog.record($format("TOKEN %0d: DoLoads3: First Span Response (V1: 0x%h)", load_info.token.index, v));
+
+                // We needed two loads for this guy. Stall for the second response.
+                stateLoads3 <= tagged LOADS3_SPAN_RSP v;
+
+            end
+
+        endcase
+    
+
+    endrule
+
+    // doLoads3Span
+
+    // When:   After doLoads3 has stalled waiting for a second response.
+    // Effect: Use both responses to create the value. Write it back and return to the timing model.
+
+    rule doLoads3Span (state.readyToContinue() &&& stateLoads3 matches tagged LOADS3_SPAN_RSP .v1
+                              &&& memPathQ.first() matches tagged PATH_LOAD);
+    
+        // Get the data from the previous stage.
+        LOADS_INFO load_info = loads2Q.first();
+        let tok = load_info.token;
+        
+        // Get resp from the Mem State.
+        MEM_VALUE v2 = linkToMem.getResp();
+        linkToMem.deq();
+        memPathQ.deq();
+        
+        // Log it.
+        debugLog.record($format("TOKEN %0d: DoLoads3: Second Span Response (V2: 0x%h)", tok.index, v2));
+
+        // Convert the value using the ISA-provided conversion function.
+        ISA_VALUE val = isaLoadValueFromSpanningMemValues(v1, v2, load_info.offset, load_info.opType);
+        debugLog.record($format("TOKEN %0d: DoLoads3: ISA SpanLoad (V1: 0x%h, V2: 0x%hm, T: %0d, O: %b) = 0x%h", tok.index, v1, v2, pack(load_info.opType), load_info.offset, val)); 
+
+        // Get the destination for the purposes of writeback.
+        let dsts <- tokDsts.readPorts[1].readRsp();
+
+        // We assume that the destination for the load is destination 1.
+        let dst = validValue(dsts[0]);
+
+        // Log it.
+        debugLog.record($format("TOKEN %0d: DoLoads3: Load Response Writing (PR%0d <= 0x%h)", tok.index, dst, val));
+
+        // Update the physical register file.
+        prf.write(dst, val);
+
+        // Assert that the register was ready (not valid).
+        assertLoadDestRegIsReady(!prfValids[dst]);
+
+        // The register is now valid.
+        prfValids[dst] <= True;
+
+        // Unstall this stage.
+        loads2Q.deq();
+        stateLoads3 <= tagged LOADS3_NORMAL;
+
+        // Update the scoreboard.
+        tokScoreboard.loadFinish(tok.index);
+
+        // Respond to the timing model. End of macro-operation (path 2).
+        linkDoLoads.makeResp(initFuncpRspDoLoads(tok));
+        
+    endrule
+    
+endmodule

@@ -10,10 +10,10 @@ import RWire::*;
 
 // Project foundation imports
 
-`include "hasim_common.bsh"
-`include "fpga_components.bsh"
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/fpga_components.bsh"
 
-`include "hasim_isa.bsh"
+`include "asim/provides/hasim_isa.bsh"
 
 // Dictionary includes
 `include "asim/dict/ASSERTIONS_FREELIST.bsh"
@@ -43,9 +43,13 @@ endinterface
 
 // An implementation of the freelist which uses block RAM to store everything.
 
-module [HASIM_MODULE] mkFUNCP_Freelist#(DEBUG_FILE debugLog)
+module [HASIM_MODULE] mkFUNCP_Freelist#(String debugLogPrefix)
     //interface:
                 (FUNCP_FREELIST);
+
+    // ******* Debuging State *******
+
+    DEBUG_FILE debugLog <- mkDebugFile(debugLogPrefix + "_freelist.out");
 
     // ***** Local Functions ***** //
     

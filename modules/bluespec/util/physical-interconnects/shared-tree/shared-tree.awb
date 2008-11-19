@@ -1,0 +1,21 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Shared Tree Physical Interconnect
+# %desc Shared Tree Physical Interconnect
+# %provides physical_interconnect
+#
+# %attributes hasim
+#
+# %public tree-interface.bsv tree-helper.bsv tree-routing-table.bsv tree-station.bsv
+
+#
+# %AWB_END
+# */
+

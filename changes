@@ -15888,3 +15888,48 @@ for each pipeline.
 The next step will be to reduce the global state and relax inter-pipeline
 scheduling constraints.  Simplifying the schedule will, hopefully,
 allow for higher FPGA frequencies.
+
+----------
+pellauer    Date: Wed Nov 19 17:05:09 EST 2008  CSN: CSN-hasim-547
+                  Wed Nov 19 22:05:09 UTC 2008
+
+
+Directory modules/bluespec
+ util/                     Locally Added               0 
+
+Directory modules/bluespec/util
+ physical-interconnects/   Locally Added               0 
+
+Directory modules/bluespec/util/physical-interconnects
+ shared-tree/              Locally Added               0 
+
+Directory modules/bluespec/util/physical-interconnects/shared-tree
+ tree-routing-table.bsv    Locally Added               0 
+ tree-helper.bsv           Locally Added               0 
+ tree-interface.bsv        Locally Added               0 
+ tree-station.bsv          Locally Added               0 
+ shared-tree.awb           Locally Added               0 
+
+
+Initial check-in of the Shared Tree physical interconnect.
+
+Current progress:
+* Stations with unlimited local sends/recvs.
+* Functions for automatically generating routing tables for the stations.
+* Verified complex topology including 31 sends/recvs in bluesim.
+  (tests will be checked in after integrating with Streams for on-FPGA testing.)
+* Logical one-to-many is working.
+
+Limitations:
+* Not yet integrated with soft connections/module collect.
+  User will have to manually instantiate station and give it list of connected sends/recvs.
+* Logical many-to-one not yet implemented.
+* No model uses these yet (waiting on many-to-one, more verification.)
+
+Next steps:.
+* Create test case using virtual platforms so we can run a long test on FPGA 
+  to convince ourselves the network is deadlock-free.
+* Replace assertion stations, which are currently manually instantiated anyway.
+
+Michael P.
+

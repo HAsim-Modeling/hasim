@@ -26,9 +26,6 @@
 // Functional Partition includes.
 
 `include "asim/provides/funcp_interface.bsh"
-  
-// Dictionary includes
-`include "asim/dict/ASSERTIONS_REGMGR_COMMITRESULTS.bsh"
 
 
 // ========================================================================
@@ -39,8 +36,7 @@
 
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
-    REGMANAGER_STATE state,
-    FUNCP_SCOREBOARD tokScoreboard,
+    REGMGR_GLOBAL_DATA glob,
     FUNCP_FREELIST freelist,
     BRAM#(TOKEN_INDEX, ISA_INST_DSTS) tokRegsToFree)
     //interface:
@@ -64,6 +60,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     Connection_Server#(FUNCP_REQ_COMMIT_RESULTS,
                        FUNCP_RSP_COMMIT_RESULTS) linkCommitResults <- mkConnection_Server("funcp_commitResults");
 
+
+    // ====================================================================
+    //
+    //   Local names for global data 
+    //
+    // ====================================================================
+
+    let state = glob.state;
+    let assertion = glob.assertion;
+    let tokScoreboard = glob.tokScoreboard;
+
+
     // ====================================================================
     //
     //   Local state
@@ -75,10 +83,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     // Does the commit stage have to free more registers?
     Reg#(Vector#(TSub#(ISA_MAX_DSTS, 1), Maybe#(FUNCP_PHYSICAL_REG_INDEX))) additionalRegsToFree <- mkReg(Vector::replicate(tagged Invalid));
 
-    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGMGR_COMMITRESULTS__BASE);
-    ASSERTION assertCommitFaultingInstr <- mkAssertionChecker(`ASSERTIONS_REGMGR_COMMITRESULTS_COMMIT_FAULTING_INSTR, ASSERT_ERROR, assertNode);
-    ASSERTION assertPoisonBit           <- mkAssertionChecker(`ASSERTIONS_REGMGR_COMMITRESULTS_BAD_POISON_BIT, ASSERT_ERROR, assertNode);
-    ASSERTION assertExpectedOldestTok   <- mkAssertionChecker(`ASSERTIONS_REGMGR_COMMITRESULTS_EXPECTED_OLDEST_TOK, ASSERT_ERROR, assertNode);
 
     // ====================================================================
     //
@@ -114,12 +118,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         debugLog.record($format("TOKEN %0d: CommitResults: Begin.", tok.index)); 
 
         // Confirm timing model propagated poison bit correctly
-        assertPoisonBit(tokIsPoisoned(tok) == isValid(tokScoreboard.getFault(tok.index)));
+        assertion.poisonBit(tokIsPoisoned(tok) == isValid(tokScoreboard.getFault(tok.index)));
 
         if (tokScoreboard.getFault(tok.index) matches tagged Valid .fault)
         begin
             // Timing model tried to commit an instruction with an exception.
-            assertCommitFaultingInstr(False);
+            assertion.commitFaultingInstr(False);
             debugLog.record($format("TOKEN %0d: CommitResults: FAULTING instruction!  Aborting.", tok.index)); 
         end
 
@@ -152,7 +156,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         let tok = commQ.first();
         commQ.deq();
 
-        assertExpectedOldestTok(tok.index == tokScoreboard.oldest());
+        assertion.expectedOldestTok(tok.index == tokScoreboard.oldest());
         if (tok.index != tokScoreboard.oldest())
             debugLog.record($format("TOKEN %0d: commitResults1:  Token is not oldest! (Oldest: %0d)", tok.index, tokScoreboard.oldest()));
 

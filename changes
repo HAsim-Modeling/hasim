@@ -15933,3 +15933,71 @@ Next steps:.
 
 Michael P.
 
+
+----------
+mcadler     Date: Thu Nov 20 15:35:41 EST 2008  CSN: CSN-hasim-548
+                  Thu Nov 20 20:35:41 UTC 2008
+
+
+Directory tools/scripts
+ hasim-xilinx-summary      Locally Modified          547 
+
+Directory modules/hasim/functional-partition/register-state
+ connections/              Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/connections
+ regstate-connect-memory.bsv Locally Added               0 
+ regstate-connect-tlb.bsv  Locally Added               0 
+ regstate-connect.awb      Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state
+ data/                     Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-physical-regs.bsv Locally Added               0 
+ regstate-data.awb         Locally Added               0 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.dic          Locally Modified          547 
+ regmgr-macro-global-data.bsv Locally Added               0 
+ regmgr-macro-pipe-newInFlight.bsv Locally Modified          547 
+ regmgr-macro-pipe-getInstruction.bsv Locally Modified          547 
+ regmgr-macro-pipe-doDTranslate.bsv Locally Modified          547 
+ regmgr-macro-state.bsv    Locally Modified          547 
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          547 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          547 
+ regmgr-macro.awb          Locally Modified          547 
+ regmgr-macro-pipe-commitStores.bsv Locally Modified          547 
+ regmgr-macro-pipe-doITranslate.bsv Locally Modified          547 
+ regmgr-macro-pipe-exception.bsv Locally Modified          547 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          547 
+ regmgr-macro-pipe-doStores.bsv Locally Modified          547 
+ regmgr-macro-datatypes.bsv Locally Modified          547 
+ regmgr-macro.bsv          Locally Modified          547 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          547 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/null
+ funcp-tlb-null.bsv        Locally Modified          547 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          547 
+
+Start to define interfaces for shared structures in the register state manager.
+Each of these modules offers independent interfaces to each pipeline stage.
+The modules then prioritize and handle requests from all pipeline stages.
+
+Three added with this check-in:
+  - TLB connection
+  - Memory connection
+  - Physical register file.  The valid bits are now encapsulated within the
+    PRF module.  The most complicated interface is getResults.  For getResults
+    the PRF request interface takes a vector of all inputs to an instruction
+    and returns a vector of the corresponding values.  The current implementation
+    uses a dual ported BRAM to satisfy the request faster, but that decision
+    is now completely contained inside the PRF module.  The getResults pipeline
+    is also much simpler as a result.
+
+Added a new global state module for regstate.  It currently holds the scoreboard,
+global FSM state and register state assertions.  I tried having separate assertion
+nodes for each regstate pipeline, but that caused designs that used to build
+correctly for our Xilinx FPGAs to start failing.

@@ -27,9 +27,6 @@
 
 `include "asim/provides/funcp_interface.bsh"
   
-// Dictionary includes
-`include "asim/dict/ASSERTIONS_REGMGR_EXCEPTION.bsh"
-
 
 // ========================================================================
 //
@@ -39,8 +36,10 @@
 
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
-    REGMANAGER_STATE state,
-    FUNCP_SCOREBOARD tokScoreboard,
+    REGMGR_GLOBAL_DATA glob,
+    REGSTATE_TLB_FAULT link_itlb_fault,
+    REGSTATE_TLB_FAULT link_dtlb_fault,
+    REGSTATE_MEMORY_QUEUE linkToMem,
     BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr,
     BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst,
     FUNCP_SNAPSHOT snapshots,
@@ -50,9 +49,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     Reg#(Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX)) maptable,
     BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts,
     BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr,
-    Connection_Client#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_itlb,
-    Connection_Client#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_dtlb,
-    Connection_Client#(MEMSTATE_REQ, MEM_VALUE) linkToMem,
     Reg#(TOKEN_BRANCH_EPOCH) branchEpoch,
     Reg#(TOKEN_FAULT_EPOCH) faultEpoch)
     //interface:
@@ -81,6 +77,17 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
 
     // ====================================================================
     //
+    //   Local names for global data 
+    //
+    // ====================================================================
+
+    let state = glob.state;
+    let assertion = glob.assertion;
+    let tokScoreboard = glob.tokScoreboard;
+
+
+    // ====================================================================
+    //
     //   Local state
     //
     // ====================================================================
@@ -101,9 +108,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     Reg#(TOKEN_INDEX) rewindCur <- mkRegU();
     Reg#(Bool) rewindForFault <- mkRegU();
 
-
-    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGMGR_EXCEPTION__BASE);
-    ASSERTION assertIllegalInstruction <- mkAssertionChecker(`ASSERTIONS_REGMGR_EXCEPTION_ILLEGAL_INSTRUCTION, ASSERT_ERROR, assertNode);
 
     // ====================================================================
     //
@@ -181,40 +185,40 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
             begin
                 let addr = iAddr_aligned;
                 debugLog.record($format("TOKEN %0d: handleFault2: ITRANS (VA: 0x%h)", tok.index, addr)); 
-                link_itlb.makeReq(handleTLBPageFault(tok, addr));
+                link_itlb_fault.pageFault(handleTLBPageFault(tok, addr));
             end
 
             FAULT_ITRANS2:
             begin
                 let addr = iAddr_aligned + mem_ref_bytes;
                 debugLog.record($format("TOKEN %0d: handleFault2: ITRANS2 (VA: 0x%h)", tok.index, addr)); 
-                link_itlb.makeReq(handleTLBPageFault(tok, addr));
+                link_itlb_fault.pageFault(handleTLBPageFault(tok, addr));
             end
 
             FAULT_DTRANS:
             begin
                 let addr = dAddr_aligned;
                 debugLog.record($format("TOKEN %0d: handleFault2: DTRANS (VA: 0x%h)", tok.index, addr)); 
-                link_dtlb.makeReq(handleTLBPageFault(tok, addr));
+                link_dtlb_fault.pageFault(handleTLBPageFault(tok, addr));
             end
 
             FAULT_DTRANS2:
             begin
                 let addr = dAddr_aligned + mem_ref_bytes;
                 debugLog.record($format("TOKEN %0d: handleFault2: DTRANS2 (VA: 0x%h)", tok.index, addr)); 
-                link_dtlb.makeReq(handleTLBPageFault(tok, addr));
+                link_dtlb_fault.pageFault(handleTLBPageFault(tok, addr));
             end
 
             default:
             begin
-                assertIllegalInstruction(False);
+                assertion.illegalInstruction(False);
                 debugLog.record($format("TOKEN %0d: handleFault2: No handler for fault %d", tok.index, fault)); 
             end
             endcase
         end
         else
         begin
-            assertIllegalInstruction(False);
+            assertion.illegalInstruction(False);
             debugLog.record($format("TOKEN %0d: handleFault2: Instruction did not fault", tok.index));
         end
 
@@ -392,6 +396,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
 
     rule rewindToToken3Fast (state.getState() == RSM_Rewinding && fastRewind);
 
+        // Confirm memory rewind reached memory subsystem
+        linkToMem.deq();
+
         // Get the snapshots.
         let snp_map <- snapshots.returnSnapshot();
         let snp_fl <- tokFreeListPos.readRsp();
@@ -431,6 +438,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
 
         if (done)
         begin
+            // Confirm memory rewind reached memory subsystem
+            linkToMem.deq();
+
             // No more tokens.  Wait for remapping to finish.
             state.setState(RSM_RewindingWaitForSlowRemap);
         end

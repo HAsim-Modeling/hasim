@@ -28,7 +28,6 @@
 `include "asim/provides/funcp_interface.bsh"
   
 // Dictionary includes
-`include "asim/dict/ASSERTIONS_REGMGR_GETRESULTS.bsh"
 `include "asim/dict/STATS_REGMGR_GETRESULTS.bsh"
 
 // RRR includes
@@ -63,12 +62,10 @@ STATE_RES4
 
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
-    REGMANAGER_STATE state,
-    FUNCP_SCOREBOARD tokScoreboard,
+    REGMGR_GLOBAL_DATA glob,
+    REGSTATE_PHYSICAL_REGS_RW_REGS prf,
     BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr,
     FUNCP_SNAPSHOT snapshots,
-    Vector#(FUNCP_NUM_PHYSICAL_REGS, Reg#(Bool)) prfValids,
-    BRAM_MULTI_READ#(3, FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE) prf,
     BRAM#(TOKEN_INDEX, ISA_INST_SRCS) tokWriters,
     BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts,
     BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst,
@@ -102,6 +99,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     ClientStub_ISA_EMULATOR client_stub <- mkClientStub_ISA_EMULATOR();
     ServerStub_ISA_EMULATOR server_stub <- mkServerStub_ISA_EMULATOR();
 
+
+    // ====================================================================
+    //
+    //   Local names for global data 
+    //
+    // ====================================================================
+
+    let state = glob.state;
+    let assertion = glob.assertion;
+    let tokScoreboard = glob.tokScoreboard;
+
+
     // ====================================================================
     //
     //   Local state
@@ -116,31 +125,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
     Reg#(STATE_RES4) stateRes4 <- mkReg(RES4_NORMAL);
 
-    // Is the getResult stage stalling?
-    Reg#(Bool)     execStalling <- mkReg(False);
-    // The token we're stalling on.
-    Reg#(TOKEN)    execStallTok <- mkRegU();
-    // Record the writers for the token.
-    Reg#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) execStallWriters <- mkReg(Vector::replicate(tagged Invalid));
-    // Record the writers we need to request.
-    Vector#(ISA_MAX_SRCS, Reg#(Bool)) execStallValuesNeeded = newVector();    
-    // Record if the request is in flight.
-    Vector#(ISA_MAX_SRCS, Reg#(Bool)) execStallReqsMade = newVector();
-    // Record the values that have come back while stalling.
-    Vector#(ISA_MAX_SRCS, Reg#(ISA_VALUE)) execStallValues = newVector();
-    // Initialize the registers.
-    for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
-    begin
-        
-        execStallReqsMade[x] <- mkRegU();
-        execStallValuesNeeded[x] <- mkRegU();
-        execStallValues[x] <- mkRegU();
-    
-    end
-    // Queues to guide the stall responses.
-    FIFO#(Bit#(4)) resEvenQ <- mkFIFO();
-    FIFO#(Bit#(4)) resOddQ  <- mkFIFO();
- 
     // Which snapshot should we refer to for emulation?
     Reg#(FUNCP_SNAPSHOT_INDEX) emulatingSnap <- mkRegU();
     // Which token's instruction are we emulating?
@@ -150,12 +134,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // Which register are we currently synchronizing?
     Reg#(ISA_REG_INDEX) synchronizingCurReg <- mkReg(minBound);
 
-
-    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGMGR_GETRESULTS__BASE);
-    ASSERTION assertHaveSnapshotOfEmulatedInstruction <- mkAssertionChecker(`ASSERTIONS_REGMGR_GETRESULTS_NO_EMULATION_SNAPSHOT, ASSERT_ERROR, assertNode);
-    ASSERTION assertExpectedOldestTok                 <- mkAssertionChecker(`ASSERTIONS_REGMGR_GETRESULTS_EXPECTED_OLDEST_TOK, ASSERT_ERROR, assertNode);
-    ASSERTION assertRegUpdateAtExpectedTime           <- mkAssertionChecker(`ASSERTIONS_REGMGR_GETRESULTS_UNEXPECTED_REG_UPDATE, ASSERT_WARNING, assertNode);
-    ASSERTION assertEmulationFinishedAtExpectedTime   <- mkAssertionChecker(`ASSERTIONS_REGMGR_GETRESULTS_UNEXPECTED_EMULATION_FINISHED, ASSERT_WARNING, assertNode);
 
     Stat stat_isa_emul <- mkStatCounter(`STATS_REGMGR_GETRESULTS_EMULATED_INSTRS);
 
@@ -203,7 +181,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             let msnap = snapshots.hasSnapshot(tok.index);
 
             // If there's no snapshot, something is really wrong.
-            assertHaveSnapshotOfEmulatedInstruction(isValid(msnap));
+            assertion.haveSnapshotOfEmulatedInstruction(isValid(msnap));
 
             // Record which snap we should use.
             emulatingSnap <= validValue(msnap);
@@ -234,7 +212,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     //         Also retreive the instruction itself and the PC.
     //         If the writers are not all ready then a stall can occur.
 
-    rule getResults2 (state.readyToContinue() && !execStalling);
+    rule getResults2 (state.readyToContinue());
 
         // Get input from getResults1.
         let tok = res1Q.first();
@@ -247,169 +225,24 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         if (!tokScoreboard.isAllocated(tok.index))
         begin
             // No values are needed for junk
-            execStalling          <= True;
-            execStallTok          <= tok;
-            execStallWriters      <= ws;
-            for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
-            begin
-                execStallValuesNeeded[x] <= False;
-                execStallReqsMade[x] <= True;
-            end
             debugLog.record($format("TOKEN %0d: GetResults2: Letting Junk Proceed!", tok.index));
+
+            prf.readRegVecReq(Vector::replicate(tagged Invalid));
         end
         else
         begin
+            debugLog.record($format("TOKEN %0d: GetResults2: Requesting srcs", tok.index));
 
-            // We use a mask to determine which values are needed.
-            Vector#(ISA_MAX_SRCS, Bool) values_needed = newVector();
-            
-            // We only need a value if there's a writer for it.
-            for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
-            begin
-                values_needed[x] = isValid(ws[x]);
-            end
-            
-            // Log it.
-            debugLog.record($format("TOKEN %0d: GetResults2: Need to request the srcs in this mask: %b", tok.index, pack(values_needed)));
-            
-            // Now we use a separate mask to record which requests have been made.
-            // To speed things up we try to make the first 2 requests now.
-            Vector#(ISA_MAX_SRCS, Bool) reqs_made = Vector::replicate(False);
-
-            // Request src 0 if it is ready.
-            case (ws[0]) matches
-                tagged Invalid: noAction; // No src0 to request.
-                tagged Valid .r: 
-                begin
-                    if (prfValids[r]) // The source is ready so we can make the request.
-                    begin
-                        prf.readPorts[0].readReq(r);
-                        reqs_made[0] = True;
-                        resEvenQ.enq(0);
-                        debugLog.record($format("TOKEN %0d: GetResults2: Requesting src 0.", tok.index));
-                    end
-                end
-            endcase
-
-            // If there's a source 1, try to request that too.
-            if (valueof(ISA_MAX_SRCS) > 1)
-                case (ws[1]) matches
-                    tagged Invalid: noAction; // No src1 to request.
-                    tagged Valid .r: 
-                    begin
-                        if (prfValids[r]) // The source is ready so we can make the request.
-                        begin
-                            prf.readPorts[1].readReq(r);
-                            reqs_made[1] = True;
-                            resOddQ.enq(1);
-                            debugLog.record($format("TOKEN %0d: GetResults2: Requesting src 1.", tok.index));
-                        end
-                    end
-                endcase
-            
-            // Scoreboard stuff for the next rules.
-            execStalling          <= True;
-            execStallTok          <= tok;
-            execStallWriters      <= ws;
-            for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
-            begin
-                execStallValuesNeeded[x] <= values_needed[x];
-                execStallReqsMade[x] <= reqs_made[x];
-            end
+            prf.readRegVecReq(ws);
         end
+
+        tokAddr.readReq(tok.index);
+        tokInst.readPorts[1].readReq(tok.index);
+        res2Q.enq(tok);
 
     endrule
 
-    // getResults2Stall (Req/Rsp) and (Odd/Even)
     
-    // Elaborated Rule: N copies, one for each possible instruction source.
-    
-    // When:    After getResults2 and not all sources were available.
-    // Effect:  Once a source becomes available the Req rules read the PRF.
-    //          The Rsp rules get the response and record it.
-    //          There are odd/even copies soley for performance: to use 2 ports of the PRF.
-
-    for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 2)
-    begin
-    
-        rule getResults2StallReqEven (state.readyToContinue() && execStalling &&&
-                                      execStallWriters[x] matches tagged Valid .r &&& // We need this register...
-                                      prfValids[r] &&& // The register is ready...
-                                      !execStallReqsMade[x]); //We haven't made the request yet.
-            
-            prf.readPorts[0].readReq(r);
-            execStallReqsMade[x] <= True;
-            resEvenQ.enq(fromInteger(x));
-            debugLog.record($format("TOKEN %0d: GetResults2S: Requesting src %0d.", execStallTok.index, fromInteger(x)));
-
-        endrule
-    
-        rule getResults2StallRspEven (state.readyToContinue() && execStalling &&&
-                                      execStallValuesNeeded[x] &&& // We need this register.
-                                      execStallReqsMade[x] &&&  //We made the request already.
-                                      resEvenQ.first() == fromInteger(x)); // Our response is next in line.
-            
-            let v <- prf.readPorts[0].readRsp();
-            execStallValues[x] <= v;
-            execStallValuesNeeded[x] <= False;
-            resEvenQ.deq();
-            debugLog.record($format("TOKEN %0d: GetResults2S: Receiving src %0d.", execStallTok.index, fromInteger(x)));
-
-        endrule
-        
-        // Repeat the above two rules using the second PRF port. (Should be exact copies except for index.)
-        if (x+1 < valueof(ISA_MAX_SRCS))
-        begin
-            rule getResults2StallReqOdd (state.readyToContinue() && execStalling &&&
-                                          execStallWriters[x+1] matches tagged Valid .r &&& // We need this register...
-                                          prfValids[r] &&& // The register is ready...
-                                          !execStallReqsMade[x+1]); //We haven't made the request yet.
-
-                prf.readPorts[1].readReq(r);
-                execStallReqsMade[x+1] <= True;
-                resOddQ.enq(fromInteger(x+1));
-                debugLog.record($format("TOKEN %0d: GetResults2S: Requesting src %0d.", execStallTok.index, fromInteger(x+1)));
-
-            endrule
-
-            rule getResults2StallRspOdd (state.readyToContinue() && execStalling &&&
-                                         execStallValuesNeeded[x+1] &&& // We need this register
-                                         execStallReqsMade[x+1] &&&  //We made the request already.
-                                         resOddQ.first() == fromInteger(x+1)); // Our response is next in line.
-
-                let v <- prf.readPorts[1].readRsp();
-                execStallValues[x+1] <= v;
-                execStallValuesNeeded[x+1] <= False;
-                resOddQ.deq();
-                debugLog.record($format("TOKEN %0d: GetResults2S: Receiving src %0d.", execStallTok.index, fromInteger(x+1)));
-
-            endrule
-        end
-        
-    end
-
-    // getResults2StallEnd
-    // When:    After getResults2 or the getResults2Stall rules have succesfully retrieved their data.
-    // Effect:  Unstall and lookup the address and inst.
-
-    Bool noMoreStalls = True;
-    
-    for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
-    begin
-        noMoreStalls = noMoreStalls && !execStallValuesNeeded[x];
-    end
-    
-    rule getResults2StallEnd (state.readyToContinue() && execStalling && noMoreStalls);
-
-        execStalling <= False;
-        res2Q.enq(execStallTok);
-
-        tokAddr.readReq(execStallTok.index);
-        tokInst.readPorts[1].readReq(execStallTok.index);
-        debugLog.record($format("TOKEN %0d: GetResults2: All sources ready. Proceeding...", execStallTok.index));
-
-    endrule
-
     // getResults3
     // When:    After getResults2 or alternatively getResults2StallEnd
     // Effect:  Send all the data to the datapath.
@@ -423,12 +256,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         // Get all the data the previous stage kicked off.
         let addr <- tokAddr.readRsp();
         let inst <- tokInst.readPorts[1].readRsp();
-
-        // Combine the data we just go with any possible data from stalling.
-        Vector#(ISA_MAX_SRCS, ISA_VALUE) values = newVector();
-
-        for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
-           values[x] = execStallValues[x];
+        let values <- prf.readRegVecRsp();
 
         // Log it.
         debugLog.record($format("TOKEN %0d: GetResults3: Sending to Datapath.", tok.index));
@@ -493,7 +321,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
                 begin
             
                     prf.write(dst, v);
-                    prfValids[dst] <= True;
                     debugLog.record($format("TOKEN %0d: GetResults4: Writing (PR%0d <= 0x%x)", tok.index, dst, v));
                 
                 end
@@ -582,7 +409,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
                     // An actual writeback.
                     prf.write(dst, val);
-                    prfValids[dst] <= True;
                     debugLog.record($format("TOKEN %0d: GetResults4: Writing Dest %0d (PR%0d <= 0x%x)", tok.index, wb_info.current + 1, dst, val));
 
                 end
@@ -648,7 +474,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     rule emulateInstruction1 (state.getState() == RSM_DrainingForEmulate && tokScoreboard.canEmulate());
 
         // Did the timing model do drain before correctly?
-        assertExpectedOldestTok(emulatingToken.index == tokScoreboard.oldest());
+        assertion.expectedOldestTok(emulatingToken.index == tokScoreboard.oldest());
         if (emulatingToken.index != tokScoreboard.oldest())
             debugLog.record($format("TOKEN %0d: emulateInstruction1:  Token is not oldest! (Oldest: %0d)", emulatingToken.index, tokScoreboard.oldest()));
 
@@ -679,7 +505,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         FUNCP_PHYSICAL_REG_INDEX current_pr = emulation_map[pack(synchronizingCurReg)];
 
         // Make the request to the regfile.
-        prf.readPorts[0].readReq(current_pr);
+        prf.readReq(current_pr);
 
         // Pre-load the snapshot for next time.
         snapshots.requestSnapshot(emulatingSnap);
@@ -718,7 +544,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         syncQ.deq();
         
         // Get the register value from the regfile.
-        ISA_VALUE reg_val <- prf.readPorts[0].readRsp();
+        let reg_val <- prf.readRsp();
         
         // Send the regsiter on to software via RRR
         client_stub.makeRequest_sync(tuple2(arch_reg, reg_val));
@@ -770,14 +596,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         let emulation_map <- snapshots.returnSnapshot();
 
         // Assert that we're in the state we expected to be in.
-        assertRegUpdateAtExpectedTime(state.getState() == RSM_UpdatingRegisters);
+        assertion.regUpdateAtExpectedTime(state.getState() == RSM_UpdatingRegisters);
         
         // Lookup the current physical register in the snapshot maptable.
         FUNCP_PHYSICAL_REG_INDEX pr = emulation_map[pack(r)];
         
         // Update the regfile.
         prf.write(pr, v);
-        prfValids[pr] <= True;
+
         // Get the snapshot for the next time.
         snapshots.requestSnapshot(emulatingSnap);
         
@@ -798,7 +624,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         let newPc <- client_stub.getResponse_emulate();
         
         // Assert that we're in the state we expected to be in.
-        assertEmulationFinishedAtExpectedTime(state.getState() == RSM_UpdatingRegisters);
+        assertion.emulationFinishedAtExpectedTime(state.getState() == RSM_UpdatingRegisters);
         
         // Dequeue the final snapshot response.
         let junk <- snapshots.returnSnapshot();

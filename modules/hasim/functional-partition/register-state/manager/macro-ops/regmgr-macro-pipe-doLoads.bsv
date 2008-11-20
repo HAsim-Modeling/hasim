@@ -27,9 +27,6 @@
 
 `include "asim/provides/funcp_interface.bsh"
   
-// Dictionary includes
-`include "asim/dict/ASSERTIONS_REGMGR_DOLOADS.bsh"
-
 
 // ========================================================================
 //
@@ -69,14 +66,11 @@ STATE_LOADS3
 
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
-    REGMANAGER_STATE state,
-    FUNCP_SCOREBOARD tokScoreboard,
-    Vector#(FUNCP_NUM_PHYSICAL_REGS, Reg#(Bool)) prfValids,
-    BRAM_MULTI_READ#(3, FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE) prf,
+    REGMGR_GLOBAL_DATA glob,
+    REGSTATE_MEMORY_QUEUE linkToMem,
+    REGSTATE_PHYSICAL_REGS_WRITE_REG prf,
     BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs,
-    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts,
-    Connection_Client#(MEMSTATE_REQ, MEM_VALUE) linkToMem,
-    FIFO#(MEM_PATH) memPathQ)
+    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts)
     //interface:
                 ();
 
@@ -98,6 +92,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     Connection_Server#(FUNCP_REQ_DO_LOADS, 
                        FUNCP_RSP_DO_LOADS) linkDoLoads <- mkConnection_Server("funcp_doLoads");
 
+
+    // ====================================================================
+    //
+    //   Local names for global data 
+    //
+    // ====================================================================
+
+    let state = glob.state;
+    let assertion = glob.assertion;
+    let tokScoreboard = glob.tokScoreboard;
+
+
     // ====================================================================
     //
     //   Local state
@@ -110,11 +116,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     Reg#(STATE_LOADS2) stateLoads2 <- mkReg(LOADS2_NORMAL);
     Reg#(STATE_LOADS3) stateLoads3 <- mkReg(LOADS3_NORMAL);
 
-
-    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGMGR_DOLOADS__BASE);
-    ASSERTION assertInstructionIsActuallyALoad    <- mkAssertionChecker(`ASSERTIONS_REGMGR_DOLOADS_LOAD_ON_NONLOAD, ASSERT_WARNING, assertNode);
-    ASSERTION assertLoadDestRegIsReady            <- mkAssertionChecker(`ASSERTIONS_REGMGR_DOLOADS_MALFORMED_LOAD_WRITEBACK, ASSERT_ERROR, assertNode);
-    ASSERTION assertPoisonBit                     <- mkAssertionChecker(`ASSERTIONS_REGMGR_DOLOADS_BAD_POISON_BIT, ASSERT_ERROR, assertNode);
 
     // ====================================================================
     //
@@ -145,11 +146,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         let tok = req.token;
 
         // Confirm timing model propagated poison bit correctly
-        assertPoisonBit(tokIsPoisoned(tok) == isValid(tokScoreboard.getFault(tok.index)));
+        assertion.poisonBit(tokIsPoisoned(tok) == isValid(tokScoreboard.getFault(tok.index)));
 
         // If it's not actually a load, it's an exception.
         let isLoad = tokScoreboard.isLoad(tok.index);
-        assertInstructionIsActuallyALoad(isLoad);
+        assertion.instructionIsActuallyALoad(isLoad);
 
         // Emulated loads were taken care of previously.  Also ignore killed tokens.
         if (tokScoreboard.emulateInstruction(tok.index) ||
@@ -211,9 +212,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
                 let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr};
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
-                // Record that the load response should go to us.
-                memPathQ.enq(PATH_LOAD);
-
                 // Read the destination so we can writeback the correct register.
                 tokDsts.readPorts[1].readReq(tok.index);
 
@@ -232,9 +230,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
                 let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1};
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
-                // Record that the load response should go to us.
-                memPathQ.enq(PATH_LOAD);
-
                 // Stall this stage for the second req.
                 let load_info = LOADS_INFO {token: tok, memAddrs: p_addrs, offset: offset, opType: l_type};
                 stateLoads2 <= tagged LOADS2_SPAN_REQ load_info;
@@ -251,9 +246,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         let m_req = MEMSTATE_REQ_LOAD {tok: load_info.token, addr: p_addr2};
         linkToMem.makeReq(tagged REQ_LOAD m_req);
 
-        // Record that the load response should go to us.
-        memPathQ.enq(PATH_LOAD);
-        
         // Log it.
         debugLog.record($format("TOKEN %0d: DoLoads2: Finishing Spanning Load (PA2: 0x%h)", load_info.token.index, p_addr2));
 
@@ -276,8 +268,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     // Effect: If there was just one request, record the resut, kick back to timing model.
     //         Otherwise stall to get the second response.
 
-    rule doLoads3 (state.readyToContinue() &&& stateLoads3 matches tagged LOADS3_NORMAL
-                                   &&& memPathQ.first() matches tagged PATH_LOAD);
+    rule doLoads3 (state.readyToContinue() &&& stateLoads3 matches tagged LOADS3_NORMAL);
 
         // Get the data from the previous stage.
         let load_info = loads2Q.first();
@@ -286,7 +277,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         // Get resp from the Mem State.
         MEM_VALUE v = linkToMem.getResp();
         linkToMem.deq();
-        memPathQ.deq();
      
         case (load_info.memAddrs) matches
             tagged ONE .p_addr:
@@ -310,12 +300,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
 
                 // Update the physical register file.
                 prf.write(dst, val);
-
-                // Assert that the register was ready (not valid).
-                assertLoadDestRegIsReady(!prfValids[dst]);
-
-                // The register is now valid.
-                prfValids[dst] <= True;
 
                 // Update the scoreboard.
                 tokScoreboard.loadFinish(tok.index);
@@ -345,8 +329,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     // When:   After doLoads3 has stalled waiting for a second response.
     // Effect: Use both responses to create the value. Write it back and return to the timing model.
 
-    rule doLoads3Span (state.readyToContinue() &&& stateLoads3 matches tagged LOADS3_SPAN_RSP .v1
-                              &&& memPathQ.first() matches tagged PATH_LOAD);
+    rule doLoads3Span (state.readyToContinue() &&& stateLoads3 matches tagged LOADS3_SPAN_RSP .v1);
     
         // Get the data from the previous stage.
         LOADS_INFO load_info = loads2Q.first();
@@ -355,7 +338,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         // Get resp from the Mem State.
         MEM_VALUE v2 = linkToMem.getResp();
         linkToMem.deq();
-        memPathQ.deq();
         
         // Log it.
         debugLog.record($format("TOKEN %0d: DoLoads3: Second Span Response (V2: 0x%h)", tok.index, v2));
@@ -375,12 +357,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
 
         // Update the physical register file.
         prf.write(dst, val);
-
-        // Assert that the register was ready (not valid).
-        assertLoadDestRegIsReady(!prfValids[dst]);
-
-        // The register is now valid.
-        prfValids[dst] <= True;
 
         // Unstall this stage.
         loads2Q.deq();

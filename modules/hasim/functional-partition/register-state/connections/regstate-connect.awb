@@ -1,0 +1,11 @@
+%name Connections from register state to other functional components
+%desc Connections from register state to other functional components
+
+%provides funcp_regstate_connections
+
+%attributes hasim funcp
+
+%public regstate-connect-tlb.bsv
+%public regstate-connect-memory.bsv
+
+%param REGSTATE_CONN_LOGFILE_PREFIX "hasim_funcp_regstate_conn" "Prefix of logfile names for register state connections."

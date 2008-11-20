@@ -64,12 +64,10 @@ STATE_INST3
 
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
-    REGMANAGER_STATE state,
-    FUNCP_SCOREBOARD tokScoreboard,
+    REGMGR_GLOBAL_DATA glob,
+    REGSTATE_MEMORY_QUEUE linkToMem,
     BRAM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs,
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst,
-    Connection_Client#(MEMSTATE_REQ, MEM_VALUE) linkToMem,
-    FIFO#(MEM_PATH) memPathQ)
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst)
     //interface:
                 ();
 
@@ -90,6 +88,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
 
     Connection_Server#(FUNCP_REQ_GET_INSTRUCTION,
                        FUNCP_RSP_GET_INSTRUCTION) linkGetInst <- mkConnection_Server("funcp_getInstruction");
+
+
+    // ====================================================================
+    //
+    //   Local names for global data 
+    //
+    // ====================================================================
+
+    let state = glob.state;
+    let tokScoreboard = glob.tokScoreboard;
 
 
     // ====================================================================
@@ -169,9 +177,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
                 let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr};
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
-                // Record that the result should come to us.
-                memPathQ.enq(PATH_INST);
-                
                 // Pass it to the next stage.
                 inst2Q.enq(INST_INFO {token: tok, memAddrs: p_addrs});
 
@@ -186,9 +191,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
                 let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1};
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
-                // Record that the result should come to us.
-                memPathQ.enq(PATH_INST);
-                
                 // Stall to make the second request.
                 stateInst2 <= tagged INST2_SPAN_REQ (INST_INFO {token: tok, memAddrs: p_addrs});
 
@@ -217,9 +219,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
         // Log it.
         debugLog.record($format("TOKEN %0d: GetInstruction2: Spanning Load Req 2 (PA2: 0x%h)", tok.index, p_addr2));
 
-        // Record that the result should come to us.
-        memPathQ.enq(PATH_INST);
-
         // Unstall this stage.
         inst1Q.deq();
         stateInst2 <= tagged INST2_NORMAL;
@@ -235,8 +234,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
     // Effect: If there was just one request, record the instruction, kick back to timing model.
     //         Otherwise stall to get the second response.
 
-    rule getInstruction3 (state.readyToContinue() &&& stateInst3 matches tagged INST3_NORMAL
-                          &&& memPathQ.first() matches tagged PATH_INST);
+    rule getInstruction3 (state.readyToContinue() &&& stateInst3 matches tagged INST3_NORMAL);
 
         // Get the data from the previous stage.
         let fetch_info = inst2Q.first();
@@ -244,7 +242,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
         // Get resp from the Mem State.
         MEM_VALUE v = linkToMem.getResp();
         linkToMem.deq();
-        memPathQ.deq();
      
         case (fetch_info.memAddrs) matches
             tagged ONE .p_addr:
@@ -292,8 +289,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
     // When:   After getInstruction3 has stalled waiting for a second response.
     // Effect: Use both responses to create the instruction. Record it and return it to the timing model.
 
-    rule getInstruction3Span (state.readyToContinue() &&& stateInst3 matches tagged INST3_SPAN_RSP .v1
-                              &&& memPathQ.first() matches tagged PATH_INST);
+    rule getInstruction3Span (state.readyToContinue() &&& stateInst3 matches tagged INST3_SPAN_RSP .v1);
     
         // Get the data from the previous stage.
         INST_INFO fetch_info = inst2Q.first();
@@ -301,7 +297,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
         // Get resp from the Mem State.
         MEM_VALUE v2 = linkToMem.getResp();
         linkToMem.deq();
-        memPathQ.deq();
         
         // Get the offset from ITranslate.
         let offset = tokScoreboard.getFetchOffset(fetch_info.token.index);

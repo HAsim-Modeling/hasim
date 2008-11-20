@@ -39,10 +39,9 @@
 // ===================================================================
 
 //
-// Query passed to TLB service.  When alloc_on_fault is set the host will
-// attempt to allocate a new page when no page is currently mapped for the VA.
-// Typically this bit will be set only by exception handlers in response to
-// a normal failed translation.
+// Query passed to TLB service.  Normal queries and faults have the same
+// payload, but different semantics.  Normal queries may fail is the page
+// is not mapped.  Fault requests allocate the page and return no response.
 //
 typedef struct
 {
@@ -52,6 +51,8 @@ typedef struct
 FUNCP_TLB_QUERY
     deriving (Eq, Bits);
 
+typedef FUNCP_TLB_QUERY FUNCP_TLB_FAULT;
+
 //
 // Helper functions for constructing FUNCP_TLB_QUERY
 //
@@ -59,8 +60,8 @@ function FUNCP_TLB_QUERY normalTLBQuery(TOKEN tok, ISA_ADDRESS va);
     return FUNCP_TLB_QUERY { va: va, tok: tok };
 endfunction
 
-function FUNCP_TLB_QUERY handleTLBPageFault(TOKEN tok, ISA_ADDRESS va);
-    return FUNCP_TLB_QUERY { va: va, tok: tok };
+function FUNCP_TLB_FAULT handleTLBPageFault(TOKEN tok, ISA_ADDRESS va);
+    return FUNCP_TLB_FAULT { va: va, tok: tok };
 endfunction
 
 
@@ -82,13 +83,28 @@ FUNCP_TLB_RESP
     deriving (Eq, Bits);
 
 
+//
+// TLB type (instruction or data)
+//
+typedef enum
+{
+    FUNCP_ITLB,
+    FUNCP_DTLB
+}
+FUNCP_TLB_TYPE
+    deriving (Eq, Bits);
+
+
 module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     // interface:
         ();
 
     // Connections to functional register state manager
-    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_itlb <- mkConnection_Server("funcp_itlb");
-    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_dtlb <- mkConnection_Server("funcp_dtlb");
+    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_itlb <- mkConnection_Server("funcp_itlb_translate");
+    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_dtlb <- mkConnection_Server("funcp_dtlb_translate");
+
+    Connection_Receive#(FUNCP_TLB_FAULT) link_funcp_itlb_fault <- mkConnection_Receive("funcp_itlb_pagefault");
+    Connection_Receive#(FUNCP_TLB_FAULT) link_funcp_dtlb_fault <- mkConnection_Receive("funcp_dtlb_pagefault");
 
     // Connection to memory translation service.  This won't be called since
     // VA == PA.
@@ -106,6 +122,15 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         let req = link_funcp_dtlb.getReq();
         link_funcp_dtlb.deq();
         link_funcp_dtlb.makeResp(FUNCP_TLB_RESP { pa : truncate(req.va), page_fault: False });
+    endrule
+
+    // ***** No page faults needed
+    rule itlb_fault (True);
+        link_funcp_itlb_fault.deq();
+    endrule
+    
+    rule dtlb_fault (True);
+        link_funcp_dtlb_fault.deq();
     endrule
 
 endmodule

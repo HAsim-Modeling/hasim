@@ -1,0 +1,10 @@
+%name Register State Data
+%desc Register State Data
+
+%provides funcp_regstate_data
+
+%attributes hasim funcp
+
+%public regstate-data-physical-regs.bsv
+
+%param REGSTATE_DATA_LOGFILE_PREFIX "hasim_funcp_regstate_data" "Prefix of logfile names for register state data."

@@ -29,8 +29,7 @@
   
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_NewInFlight#(
-    REGMANAGER_STATE state,
-    FUNCP_SCOREBOARD tokScoreboard,
+    REGMGR_GLOBAL_DATA glob,
     FUNCP_SNAPSHOT snapshots,
     BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokFreeListPos,
     TOKEN_BRANCH_EPOCH branchEpoch,
@@ -55,6 +54,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_NewInFlight#(
 
     Connection_Server#(FUNCP_REQ_NEW_IN_FLIGHT, 
                        FUNCP_RSP_NEW_IN_FLIGHT) linkNewInFlight <- mkConnection_Server("funcp_newInFlight");
+
+
+    // ====================================================================
+    //
+    //   Local names for global data 
+    //
+    // ====================================================================
+
+    let state = glob.state;
+    let tokScoreboard = glob.tokScoreboard;
 
 
     // ====================================================================

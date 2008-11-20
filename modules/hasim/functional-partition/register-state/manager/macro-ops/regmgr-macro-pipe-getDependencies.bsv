@@ -27,9 +27,6 @@
 
 `include "asim/provides/funcp_interface.bsh"
   
-// Dictionary includes
-`include "asim/dict/ASSERTIONS_REGMGR_GETDEPENDENCIES.bsh"
-
 
 // ========================================================================
 //
@@ -56,12 +53,11 @@ STATE_DEPS2
 
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
-    REGMANAGER_STATE state,
-    FUNCP_SCOREBOARD tokScoreboard,
+    REGMGR_GLOBAL_DATA glob,
+    REGSTATE_PHYSICAL_REGS_INVAL_REG prf,
     FUNCP_SNAPSHOT snapshots,
     FUNCP_FREELIST freelist,
     BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokFreeListPos,
-    Vector#(FUNCP_NUM_PHYSICAL_REGS, Reg#(Bool)) prfValids,
     Reg#(Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX)) maptable,
     BRAM#(TOKEN_INDEX, ISA_INST_DSTS) tokRegsToFree,
     BRAM#(TOKEN_INDEX, ISA_INST_SRCS) tokWriters,
@@ -93,16 +89,23 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
 
     // ====================================================================
     //
+    //   Local names for global data 
+    //
+    // ====================================================================
+
+    let state = glob.state;
+    let assertion = glob.assertion;
+    let tokScoreboard = glob.tokScoreboard;
+
+
+    // ====================================================================
+    //
     //   Local state
     //
     // ====================================================================
 
     FIFO#(TOKEN) depsQ <- mkFIFO();
     Reg#(STATE_DEPS2) stateDeps2 <- mkReg(DEPS2_NORMAL);
-
-    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGMGR_GETDEPENDENCIES__BASE);
-    ASSERTION assertInvalidNumDsts      <- mkAssertionChecker(`ASSERTIONS_REGMGR_GETDEPENDENCIES_INVALID_NUM_DSTS, ASSERT_ERROR, assertNode);
-    ASSERTION assertEmulatedInstrNoDsts <- mkAssertionChecker(`ASSERTIONS_REGMGR_GETDEPENDENCIES_EMULATED_INSTR_HAS_DST, ASSERT_ERROR, assertNode);
 
 
     // ====================================================================
@@ -241,7 +244,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         begin
              maptable <= new_map;
             // Also we must reset the physical register dest to Invalid.
-            prfValids[new_preg] <= False;
+            prf.inval(new_preg);
         end
         else
         begin
@@ -305,8 +308,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
 
         let num_dsts = isaGetNumDsts(inst);
         
-        assertInvalidNumDsts(num_dsts >= true_n_dsts);
-        assertEmulatedInstrNoDsts((num_dsts == 0) || !is_emulated);
+        assertion.invalidNumDsts(num_dsts >= true_n_dsts);
+        assertion.emulatedInstrNoDsts((num_dsts == 0) || !is_emulated);
 
         // Log all source mappings.
         for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
@@ -394,7 +397,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
             maptable <= update(maptable, pack(arc_dst), phy_dst);
 
             // Reset the reg to unready.
-            prfValids[phy_dst] <= False;
+            prf.inval(phy_dst);
 
             // Log it.
             debugLog.record($format("TOKEN %0d: GetDeps2: Destination %0d Mapped (%0d/%0d)", tok.index, cur, arc_dst, phy_dst));

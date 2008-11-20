@@ -46,29 +46,29 @@ import Vector::*;
 // ===================================================================
 
 //
-// Query passed to TLB service.  When alloc_on_fault is set the host will
-// attempt to allocate a new page when no page is currently mapped for the VA.
-// Typically this bit will be set only by exception handlers in response to
-// a normal failed translation.
+// Query passed to TLB service.  Normal queries and faults have the same
+// payload, but different semantics.  Normal queries may fail is the page
+// is not mapped.  Fault requests allocate the page and return no response.
 //
 typedef struct
 {
     ISA_ADDRESS va;
     TOKEN tok;
-    Bool alloc_on_fault;
 }
 FUNCP_TLB_QUERY
     deriving (Eq, Bits);
+
+typedef FUNCP_TLB_QUERY FUNCP_TLB_FAULT;
 
 //
 // Helper functions for constructing FUNCP_TLB_QUERY
 //
 function FUNCP_TLB_QUERY normalTLBQuery(TOKEN tok, ISA_ADDRESS va);
-    return FUNCP_TLB_QUERY { va: va, tok: tok, alloc_on_fault: False };
+    return FUNCP_TLB_QUERY { va: va, tok: tok };
 endfunction
 
-function FUNCP_TLB_QUERY handleTLBPageFault(TOKEN tok, ISA_ADDRESS va);
-    return FUNCP_TLB_QUERY { va: va, tok: tok, alloc_on_fault: True };
+function FUNCP_TLB_FAULT handleTLBPageFault(TOKEN tok, ISA_ADDRESS va);
+    return FUNCP_TLB_FAULT { va: va, tok: tok };
 endfunction
 
 
@@ -89,6 +89,19 @@ typedef struct
 FUNCP_TLB_RESP
     deriving (Eq, Bits);
 
+
+//
+// TLB type (instruction or data)
+//
+typedef enum
+{
+    FUNCP_ITLB,
+    FUNCP_DTLB
+}
+FUNCP_TLB_TYPE
+    deriving (Eq, Bits);
+
+
 // ===================================================================
 //
 // PRIVATE DATA STRUCTURES
@@ -104,17 +117,6 @@ interface FUNCP_TLB#(numeric type n_CACHE_ENTRIES);
     method ActionValue#(FUNCP_TLB_RESP) lookupResp();
 endinterface: FUNCP_TLB
 
-
-//
-// TLB type (instruction or data)
-//
-typedef enum
-{
-    FUNCP_ITLB,
-    FUNCP_DTLB
-}
-FUNCP_TLB_TYPE
-    deriving (Eq, Bits);
 
 typedef enum
 {
@@ -454,9 +456,13 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
 
     DEBUG_FILE debugLog <- mkDebugFile(`FUNCP_TLB_LOGFILE_NAME);
 
-    // Connections to functional register state manager
-    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_itlb <- mkConnection_Server("funcp_itlb");
-    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_dtlb <- mkConnection_Server("funcp_dtlb");
+    // Connections to functional register state manager translation pipelines
+    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_itlb_trans <- mkConnection_Server("funcp_itlb_translate");
+    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_dtlb_trans <- mkConnection_Server("funcp_dtlb_translate");
+
+    // Connections to functional fault handler
+    Connection_Receive#(FUNCP_TLB_FAULT) link_funcp_itlb_fault <- mkConnection_Receive("funcp_itlb_pagefault");
+    Connection_Receive#(FUNCP_TLB_FAULT) link_funcp_dtlb_fault <- mkConnection_Receive("funcp_dtlb_pagefault");
 
     // ITLB
     VTOP_REQ_FIFO  itlb_vtop_req <- mkFIFO();
@@ -486,43 +492,71 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     // ***** Rules for communcation with functional register state manager *****
     
     rule itlb_req (True);
-        // pop a request from the link
-        let r = link_funcp_itlb.getReq();
-        link_funcp_itlb.deq();
+        //
+        // Get either a fault request or a normal translation request.  Give
+        // priority to page faults.
+        //
+        if (link_funcp_itlb_fault.notEmpty())
+        begin
+            let r = link_funcp_itlb_fault.receive();
+            link_funcp_itlb_fault.deq();
 
-        itlb.lookupReq(r.tok, r.va, r.alloc_on_fault);
-        itlbQ.enq(r.alloc_on_fault);
+            itlb.lookupReq(r.tok, r.va, True);
+            itlbQ.enq(True);
+        end
+        else
+        begin
+            let r = link_funcp_itlb_trans.getReq();
+            link_funcp_itlb_trans.deq();
+
+            itlb.lookupReq(r.tok, r.va, False);
+            itlbQ.enq(False);
+        end
     endrule
 
     rule itlb_resp (True);
         let resp <- itlb.lookupResp();
 
-        let alloc_on_fault = itlbQ.first();
+        let page_fault = itlbQ.first();
         itlbQ.deq();
 
-        // Respond only for normal lookup.  Allocate fault gets no response.
-        if (! alloc_on_fault)
-            link_funcp_itlb.makeResp(resp);
+        // Respond only for normal lookup.  Page fault gets no response.
+        if (! page_fault)
+            link_funcp_itlb_trans.makeResp(resp);
     endrule
 
     rule dtlb_req (True);
-        // pop a request from the link
-        let r = link_funcp_dtlb.getReq();
-        link_funcp_dtlb.deq();
+        //
+        // Get either a fault request or a normal translation request.  Give
+        // priority to page faults.
+        //
+        if (link_funcp_dtlb_fault.notEmpty())
+        begin
+            let r = link_funcp_dtlb_fault.receive();
+            link_funcp_dtlb_fault.deq();
 
-        dtlb.lookupReq(r.tok, r.va, r.alloc_on_fault);
-        dtlbQ.enq(r.alloc_on_fault);
+            dtlb.lookupReq(r.tok, r.va, True);
+            dtlbQ.enq(True);
+        end
+        else
+        begin
+            let r = link_funcp_dtlb_trans.getReq();
+            link_funcp_dtlb_trans.deq();
+
+            dtlb.lookupReq(r.tok, r.va, False);
+            dtlbQ.enq(False);
+        end
     endrule
 
     rule dtlb_resp (True);
         let resp <- dtlb.lookupResp();
 
-        let alloc_on_fault = dtlbQ.first();
+        let page_fault = dtlbQ.first();
         dtlbQ.deq();
 
-        // Respond only for normal lookup.  Allocate fault gets no response.
-        if (! alloc_on_fault)
-            link_funcp_dtlb.makeResp(resp);
+        // Respond only for normal lookup.  Page fault gets no response.
+        if (! page_fault)
+            link_funcp_dtlb_trans.makeResp(resp);
     endrule
 
 

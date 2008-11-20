@@ -46,17 +46,3 @@ function a getSecondOfTwo(UP_TO_TWO#(a) d);
     endcase
 
 endfunction
-
-
-// MEM_PATH
-
-// A type to distinguish where load responses should be sent.
-
-typedef enum
-{
-  PATH_INST,
-  PATH_LOAD,
-  PATH_STORE
-}
-  MEM_PATH
-      deriving (Eq, Bits);

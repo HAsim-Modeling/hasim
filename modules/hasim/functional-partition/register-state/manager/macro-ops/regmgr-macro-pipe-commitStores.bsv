@@ -27,9 +27,6 @@
 
 `include "asim/provides/funcp_interface.bsh"
   
-// Dictionary includes
-`include "asim/dict/ASSERTIONS_REGMGR_COMMITSTORES.bsh"
-
 
 // ========================================================================
 //
@@ -39,9 +36,8 @@
 
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitStores#(
-    REGMANAGER_STATE state,
-    FUNCP_SCOREBOARD tokScoreboard,
-    Connection_Client#(MEMSTATE_REQ, MEM_VALUE) linkToMem)
+    REGMGR_GLOBAL_DATA glob,
+    REGSTATE_MEMORY_QUEUE linkToMem)
     //interface:
                 ();
 
@@ -63,14 +59,26 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitStores#(
     Connection_Server#(FUNCP_REQ_COMMIT_STORES,
                        FUNCP_RSP_COMMIT_STORES) linkCommitStores <- mkConnection_Server("funcp_commitStores");  
 
+
+    // ====================================================================
+    //
+    //   Local names for global data 
+    //
+    // ====================================================================
+
+    let state = glob.state;
+    let assertion = glob.assertion;
+    let tokScoreboard = glob.tokScoreboard;
+
+
     // ====================================================================
     //
     //   Local state
     //
     // ====================================================================
 
-    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGMGR_COMMITSTORES__BASE);
-    ASSERTION assertCommitedStoreIsActuallyAStore <- mkAssertionChecker(`ASSERTIONS_REGMGR_COMMITSTORES_COMMIT_STORE_ON_NONSTORE, ASSERT_WARNING, assertNode);
+    FIFO#(TOKEN) commitQ <- mkFIFO();
+
 
     // ====================================================================
     //
@@ -81,14 +89,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitStores#(
 
     // ******* commitStores ******* //
 
-    // 1-stage macro operation which commits global stores.
+    // 2-stage macro operation which commits global stores.
 
     // When:   When the timing model requests it.
     // Effect: Tell the memory state to make a store globally visible.
     // Soft Inputs:  Token
     // Soft Returns: Token
     
-    rule commitStores (state.readyToBegin());
+    rule commitStores1 (state.readyToBegin());
 
         // Get the input from the timing model. Begin macro-operation.
         let req = linkCommitStores.getReq();
@@ -98,12 +106,24 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitStores#(
         // If the token was not actually a store, it's an exception.
         let isStore = tokScoreboard.isStore(tok.index);
         let fault = isValid(tokScoreboard.getFault(tok.index));
-        assertCommitedStoreIsActuallyAStore(isStore && !fault);
+        assertion.commitedStoreIsActuallyAStore(isStore && !fault);
 
         // Log it.
         debugLog.record($format("TOKEN %0d: CommitStores: Committing.", tok.index)); 
 
         linkToMem.makeReq(tagged REQ_COMMIT MEMSTATE_REQ_COMMIT {tok: tok});
+        commitQ.enq(tok);
+
+    endrule
+
+
+    rule commitStores2 (state.readyToContinue());
+
+        let tok = commitQ.first();
+        commitQ.deq();
+
+        // Get the confirmation that the memory request was forwarded to memory
+        linkToMem.deq();
 
         // Respond to timing model. End of macro-operation.
         linkCommitStores.makeResp(initFuncpRspCommitStores(tok));

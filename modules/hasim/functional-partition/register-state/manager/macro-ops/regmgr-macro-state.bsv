@@ -18,7 +18,7 @@
 
 //
 // Maintain "state" in regstate manager, governing locks between rules.
-// At its core the state is a single variable of type REGMANAGER_STATE_ENUM.
+// At its core the state is a single variable of type REGMGR_STATE_ENUM.
 // However, some rules are allowed to fire under multiple states.  The
 // result is the predicate for rules may be relatively long latency
 // combinational tests.  The regstate manager state interface here sets
@@ -27,7 +27,7 @@
 // in the parallel part of a rule body, instead of the predicate.
 //
 
-// REGMANAGER_STATE
+// REGMGR_STATE
 
 // A type to indicating what we're doing on a high level.
 
@@ -50,14 +50,14 @@ typedef enum
     RSM_RequestingEmulation,
     RSM_UpdatingRegisters
 }
-REGMANAGER_STATE_ENUM
+REGMGR_STATE_ENUM
     deriving (Eq, Bits);
 
 
-interface REGMANAGER_STATE;
+interface REGMGR_STATE;
 
-    method REGMANAGER_STATE_ENUM getState();
-    method Action setState(REGMANAGER_STATE_ENUM newState);
+    method REGMGR_STATE_ENUM getState();
+    method Action setState(REGMGR_STATE_ENUM newState);
 
     // Ready to start a new operation?
     method Bool readyToBegin();
@@ -65,33 +65,33 @@ interface REGMANAGER_STATE;
     // Ok to continue an operation already in progress?
     method Bool readyToContinue();
 
-endinterface: REGMANAGER_STATE
+endinterface: REGMGR_STATE
 
 
-module mkRegmanagerState#(REGMANAGER_STATE_ENUM init)
+module mkRegmanagerState#(REGMGR_STATE_ENUM init)
     // interface:
-        (REGMANAGER_STATE);
+        (REGMGR_STATE);
 
-    function Bool readyToBeginFromState(REGMANAGER_STATE_ENUM s);
+    function Bool readyToBeginFromState(REGMGR_STATE_ENUM s);
         return s == RSM_Running;
     endfunction
 
-    function Bool readyToContinueFromState(REGMANAGER_STATE_ENUM s);
+    function Bool readyToContinueFromState(REGMGR_STATE_ENUM s);
         return s == RSM_Running ||
                s == RSM_DrainingForRewind ||
                s == RSM_DrainingForFault ||
                s == RSM_DrainingForEmulate;
     endfunction
 
-    Reg#(REGMANAGER_STATE_ENUM) state <- mkReg(init);
+    Reg#(REGMGR_STATE_ENUM) state <- mkReg(init);
     Reg#(Bool) okBegin    <- mkReg(readyToBeginFromState(init));
     Reg#(Bool) okContinue <- mkReg(readyToContinueFromState(init));
 
-    method REGMANAGER_STATE_ENUM getState();
+    method REGMGR_STATE_ENUM getState();
         return state;
     endmethod
 
-    method Action setState(REGMANAGER_STATE_ENUM newState);
+    method Action setState(REGMGR_STATE_ENUM newState);
         state      <= newState;
         okBegin    <= readyToBeginFromState(newState);
         okContinue <= readyToContinueFromState(newState);

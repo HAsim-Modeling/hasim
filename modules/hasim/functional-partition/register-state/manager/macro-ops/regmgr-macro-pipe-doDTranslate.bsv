@@ -27,9 +27,6 @@
 
 `include "asim/provides/funcp_interface.bsh"
   
-// Dictionary includes
-`include "asim/dict/ASSERTIONS_REGMGR_DTRANSLATE.bsh"
-
 
 // ========================================================================
 //
@@ -82,11 +79,10 @@ endfunction
 
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
-    REGMANAGER_STATE state,
-    FUNCP_SCOREBOARD tokScoreboard,
+    REGMGR_GLOBAL_DATA glob,
+    REGSTATE_TLB_TRANSLATE link_dtlb_trans,
     BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr,
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs,
-    Connection_Client#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_dtlb)
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs)
     //interface:
                 ();
 
@@ -108,6 +104,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
     Connection_Server#(FUNCP_REQ_DO_DTRANSLATE,
                        FUNCP_RSP_DO_DTRANSLATE) linkDoDTranslate <- mkConnection_Server("funcp_doDTranslate");
 
+
+    // ====================================================================
+    //
+    //   Local names for global data 
+    //
+    // ====================================================================
+
+    let state = glob.state;
+    let assertion = glob.assertion;
+    let tokScoreboard = glob.tokScoreboard;
+
+
     // ====================================================================
     //
     //   Local state
@@ -120,8 +128,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
     Reg#(STATE_DTRANS2) stateDTrans2 <- mkReg(DTRANS2_NORMAL);
     Reg#(STATE_DTRANS3) stateDTrans3 <- mkReg(DTRANS3_NORMAL);
 
-    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGMGR_DTRANSLATE__BASE);
-    ASSERTION assertDTranslateOnMemOp <- mkAssertionChecker(`ASSERTIONS_REGMGR_DTRANSLATE_DTRANSLATE_ON_MEMOP, ASSERT_ERROR, assertNode);
 
     // ====================================================================
     //
@@ -159,7 +165,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
         // This operation on non-Load/Stores is a problem.
         let is_load = tokScoreboard.isLoad(tok.index);
         let is_store = tokScoreboard.isStore(tok.index);
-        assertDTranslateOnMemOp(is_load || is_store);
+        assertion.dTranslateOnMemOp(is_load || is_store);
 
         // Get the optype since we're using the port now.
         let op_type = is_load ? tokScoreboard.getLoadType(tok.index) : tokScoreboard.getStoreType(tok.index);
@@ -198,7 +204,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
             dTrans1Q.deq();
 
             // Get the translation from the TLB.
-            link_dtlb.makeReq(normalTLBQuery(tok, aligned_addr));
+            link_dtlb_trans.makeReq(normalTLBQuery(tok, aligned_addr));
 
             // Log it.
             debugLog.record($format("TOKEN %0d: DoDTranslate2: DTLB Req (VA: 0x%h AA: 0x%h)", tok.index, vaddr, aligned_addr));
@@ -214,7 +220,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
             debugLog.record($format("TOKEN %0d: DoDTranslate2: DTLB Req Spanning 1 (VA: 0x%h, AA1: 0x%h)", tok.index, vaddr, aligned_addr));
   
             // A spanning DTranslate. Make the first request to the TLB.
-            link_dtlb.makeReq(normalTLBQuery(tok, aligned_addr));
+            link_dtlb_trans.makeReq(normalTLBQuery(tok, aligned_addr));
             
             // Stall to make the second request.
             stateDTrans2 <= tagged DTRANS2_SPAN_REQ aligned_addr;
@@ -237,7 +243,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
         let aligned_addr2 = aligned_addr1 + fromInteger(valueOf(SizeOf#(MEM_VALUE)) / 8);
         
         // Make the second request to the tlb.
-        link_dtlb.makeReq(normalTLBQuery(tok, aligned_addr2));
+        link_dtlb_trans.makeReq(normalTLBQuery(tok, aligned_addr2));
 
         // Log it.
         debugLog.record($format("TOKEN %0d: DoDTranslate2: DTLB Req Spanning 2 (AA2: 0x%h)", tok.index, aligned_addr2));
@@ -259,8 +265,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
     rule doDTranslate3 (state.readyToContinue() &&& stateDTrans3 matches tagged DTRANS3_NORMAL);
         
         // Get the response from the TLB.
-        let translated_addr = link_dtlb.getResp();
-        link_dtlb.deq();
+        let translated_addr = link_dtlb_trans.getResp();
+        link_dtlb_trans.deq();
 
         // If the TLB couldn't translate it we're in big trouble.
         MEM_ADDRESS mem_addr = translated_addr.pa;
@@ -332,8 +338,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
         tok.poison = tok.poison || trans1.firstRefFaulted;
 
         // Get the response from the TLB.
-        let translated_addr = link_dtlb.getResp();
-        link_dtlb.deq();
+        let translated_addr = link_dtlb_trans.getResp();
+        link_dtlb_trans.deq();
 
         // If the TLB couldn't translate it we're in big trouble.
         MEM_ADDRESS mem_addr2 = translated_addr.pa;

@@ -52,7 +52,7 @@ while (<PAR>)
 
     ## TS_CLK with a best case achievable value other than N/A means design
     ## is running at board clock speed
-    if (/^  TS_CLK = PERIOD TIMEGRP/)
+    if (/^[\* ] TS_CLK = PERIOD TIMEGRP/)
     {
         my $s = $_;
 

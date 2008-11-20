@@ -82,11 +82,10 @@ endfunction
 
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
-    REGMANAGER_STATE state,
-    FUNCP_SCOREBOARD tokScoreboard,
+    REGMGR_GLOBAL_DATA glob,
+    REGSTATE_TLB_TRANSLATE link_itlb_trans,
     BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr,
-    BRAM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs,
-    Connection_Client#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_itlb)
+    BRAM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs)
     //interface:
                 ();
 
@@ -107,6 +106,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
 
     Connection_Server#(FUNCP_REQ_DO_ITRANSLATE,
                        FUNCP_RSP_DO_ITRANSLATE) linkDoITranslate <- mkConnection_Server("funcp_doITranslate");
+
+
+    // ====================================================================
+    //
+    //   Local names for global data 
+    //
+    // ====================================================================
+
+    let state = glob.state;
+    let tokScoreboard = glob.tokScoreboard;
 
 
     // ====================================================================
@@ -168,7 +177,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
             linkDoITranslate.deq();
 
             // Get the translation from the TLB.
-            link_itlb.makeReq(normalTLBQuery(tok, aligned_addr));
+            link_itlb_trans.makeReq(normalTLBQuery(tok, aligned_addr));
             
             // Log it.
             debugLog.record($format("TOKEN %0d: DoITranslate1: ITLB Req (VA: 0x%h, AA: 0x%h)", tok.index, vaddr, aligned_addr));
@@ -184,7 +193,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
             debugLog.record($format("TOKEN %0d: DoITranslate1: Spanning ITLB Req 1 (VA: 0x%h, AA1: 0x%h)", tok.index, vaddr, aligned_addr));
   
             // A spanning ITranslate. Make the first request to the TLB.
-            link_itlb.makeReq(normalTLBQuery(tok, aligned_addr));
+            link_itlb_trans.makeReq(normalTLBQuery(tok, aligned_addr));
   
             // Stall to make the second request.
             stateITrans1 <= tagged ITRANS1_SPAN_REQ aligned_addr;
@@ -208,7 +217,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
         let aligned_addr2 = aligned_addr1 + fromInteger(valueOf(SizeOf#(MEM_VALUE)) / 8);
     
         // Make the second request to the tlb.
-        link_itlb.makeReq(normalTLBQuery(tok, aligned_addr2));
+        link_itlb_trans.makeReq(normalTLBQuery(tok, aligned_addr2));
 
         // Log it.
         debugLog.record($format("TOKEN %0d: DoITranslate1: Second ITLB Req 2 (AA2: 0x%h)", tok.index, aligned_addr2));
@@ -230,8 +239,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     rule doITranslate2 (state.readyToContinue() &&& stateITrans2 matches tagged ITRANS2_NORMAL);
     
         // Get the response from the TLB.
-        let translated_addr = link_itlb.getResp();
-        link_itlb.deq();
+        let translated_addr = link_itlb_trans.getResp();
+        link_itlb_trans.deq();
 
         // If the TLB couldn't translate it we're in big trouble.
         MEM_ADDRESS mem_addr = translated_addr.pa;
@@ -308,8 +317,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
         tok.poison = tok.poison || trans1.firstRefFaulted;
 
         // Get the response from the TLB.
-        let translated_addr = link_itlb.getResp();
-        link_itlb.deq();
+        let translated_addr = link_itlb_trans.getResp();
+        link_itlb_trans.deq();
 
         // If the TLB couldn't translate it we're in big trouble.
         MEM_ADDRESS mem_addr2 = translated_addr.pa;

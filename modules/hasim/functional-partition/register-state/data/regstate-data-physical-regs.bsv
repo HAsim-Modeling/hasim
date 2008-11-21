@@ -37,9 +37,14 @@ import Vector::*;
 `include "asim/provides/fpga_components.bsh"
 `include "asim/provides/hasim_modellib.bsh"
  
+// Functional Partition includes.
+
+`include "asim/provides/funcp_interface.bsh"
+
 // ISA includes
 
 `include "asim/provides/hasim_isa.bsh"
+`include "asim/provides/hasim_isa_datapath.bsh"
  
 
 //
@@ -63,9 +68,11 @@ endinterface
 //   Interfaces with multiple read ports and one write port.
 //
 interface REGSTATE_PHYSICAL_REGS_RW_REGS;
-    // Vector read interface to read all inputs for an instruction
+    // Vector read interface to read all inputs for an instruction.  There
+    // is no corresponding response to this request because the register
+    // values are forwarded directly to the ISA data path through the
+    // "isa_datapath_srcvals" soft connection.
     method Action readRegVecReq(ISA_INST_SRCS rVec);
-    method ActionValue#(ISA_SOURCE_VALUES) readRegVecRsp();
 
     // Single register read interface (used by emulation)
     method Action readReq(FUNCP_PHYSICAL_REG_INDEX r);
@@ -113,6 +120,15 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     // ====================================================================
 
     DEBUG_FILE debugLog <- mkDebugFile(`REGSTATE_DATA_LOGFILE_PREFIX + "_prf.out");
+
+
+    // ====================================================================
+    //
+    //   Soft connections
+    //
+    // ====================================================================
+
+    Connection_Send#(FUNCP_ISA_DATAPATH_SRCVALS) linkToDatapathSrcVals <- mkConnection_Send("isa_datapath_srcvals");
 
 
     // ====================================================================
@@ -183,7 +199,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     ISA_REG_INDEX         highestReg = maxBound;
     FUNCP_PHYSICAL_REG_INDEX maxInit = zeroExtend(pack(highestReg));
 
-    rule initialize_prf (! initialized);
+    rule initializePrf (! initialized);
         // For safety we start all physical registers valid and at zero.
         // In the future this might change.
         prfValids.upd(initPrfIdx, True);
@@ -206,10 +222,10 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     // ====================================================================
 
     //
-    // update_prf --
+    // updatePrf --
     //     Handle all possible writes to the register file.
     //
-    rule update_prf (initialized);
+    rule updatePrf (initialized);
         //
         // Only one write allowed per cycle.  Give INVAL highest priority,
         // followed by priority in reverse pipeline order.
@@ -248,11 +264,11 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
 
 
     //
-    // start_read_prf --
+    // startReadPprf --
     //     All register reads begin here.  There are two possible flavors:
     //     read a single register and read all registers for an instruction.
     //
-    rule start_read_prf (initialized && readState == REGSTATE_PRF_READ_READY);
+    rule startReadPrf (initialized && readState == REGSTATE_PRF_READ_READY);
         if (rqGetResRead.notEmpty())
         begin
             //
@@ -339,10 +355,10 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     begin
 
         //
-        // read_req_vector --
+        // readReqVector --
         //     Wait for each input register to become ready and then read it.
         //
-        rule read_req_vector (readState == REGSTATE_PRF_READ_GETRESULTS_VEC && vecNumReqs[port] != 0);
+        rule readReqVector (readState == REGSTATE_PRF_READ_GETRESULTS_VEC && vecNumReqs[port] != 0);
             let reqIdx = vecReqIdx[port];
 
             if (vecRegReq[reqIdx] matches tagged Valid .r)
@@ -366,11 +382,11 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
         endrule
 
         //
-        // read_resp_vector --
+        // readRespVector --
         //     Receive responses to register file read requests.  Store the result
         //     in the srcVals vector.
         //
-        rule read_resp_vector (readState == REGSTATE_PRF_READ_GETRESULTS_VEC);
+        rule readRespVector (readState == REGSTATE_PRF_READ_GETRESULTS_VEC);
             let rIdx = vecQ[port].first();
             vecQ[port].deq();
 
@@ -384,10 +400,25 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
 
     end
 
-    // The expression to decide when all registers have been read:
-    let vecReadReady = (readState == REGSTATE_PRF_READ_GETRESULTS_VEC) &&
-                       (vecNumResps[0] == 0) &&
-                       (vecNumResps[1] == 0);
+    //
+    // forwardSrcvals --
+    //     Send values to ISA data path after all registers have been read.
+    //
+    rule forwardSrcvals ((readState == REGSTATE_PRF_READ_GETRESULTS_VEC) &&
+                          (vecNumResps[0] == 0) && (vecNumResps[1] == 0));
+        debugLog.record($format("PRF: Forward register values to ISA datapath"));
+
+        ISA_SOURCE_VALUES regVals = ?;
+        for (Integer x = 0; x < valueOf(ISA_MAX_SRCS); x = x + 1)
+        begin
+            regVals[x] = srcVals[x];
+        end
+
+        readState <= REGSTATE_PRF_READ_READY;
+
+        linkToDatapathSrcVals.send(initISADatapathSrcVals(regVals));
+    endrule
+
 
     // ====================================================================
     //
@@ -428,20 +459,6 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
         method Action readRegVecReq(ISA_INST_SRCS rVec);
             rqGetResReadVec.enq(rVec);
             debugLog.record($format("PRF: Vector Read Req"));
-        endmethod
-
-        method ActionValue#(ISA_SOURCE_VALUES) readRegVecRsp() if (vecReadReady);
-            debugLog.record($format("PRF: Vector Read Resp"));
-
-            ISA_SOURCE_VALUES regVals = ?;
-            for (Integer x = 0; x < valueOf(ISA_MAX_SRCS); x = x + 1)
-            begin
-                regVals[x] = srcVals[x];
-            end
-
-            readState <= REGSTATE_PRF_READ_READY;
-
-            return regVals;
         endmethod
 
 

@@ -177,18 +177,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             // Record which token is being emulated.
             emulatingToken <= tok;
 
-            // Lookup the snapshot we should be working with.
-            let msnap = snapshots.hasSnapshot(tok.index);
-
-            // If there's no snapshot, something is really wrong.
-            assertion.haveSnapshotOfEmulatedInstruction(isValid(msnap));
-
-            // Record which snap we should use.
-            emulatingSnap <= validValue(msnap);
-
-            // Pre-request the first snapshot.
-            snapshots.requestSnapshot(validValue(msnap));
-
              // Log it.
             debugLog.record($format("TOKEN %0d: GetResults1: Beginning Instruction Emulation.", tok.index));
 
@@ -256,13 +244,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         // Get all the data the previous stage kicked off.
         let addr <- tokAddr.readRsp();
         let inst <- tokInst.readPorts[1].readRsp();
-        let values <- prf.readRegVecRsp();
 
         // Log it.
         debugLog.record($format("TOKEN %0d: GetResults3: Sending to Datapath.", tok.index));
 
         // Send it to the datapath.
-        linkToDatapath.makeReq(initISADatapathReq(inst, addr, values));
+        linkToDatapath.makeReq(initISADatapathReq(inst, addr));
 
         // Look up the destinations for the writeback.
         tokDsts.readPorts[0].readReq(tok.index);
@@ -480,6 +467,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         // Reset the counter for syncing registers.
         synchronizingCurReg <= minBound;
+
+        // Lookup the snapshot we should be working with.
+        let msnap = snapshots.hasSnapshot(emulatingToken.index);
+
+        // If there's no snapshot, something is really wrong.
+        assertion.haveSnapshotOfEmulatedInstruction(isValid(msnap));
+
+        // Record which snap we should use.
+        emulatingSnap <= validValue(msnap);
+
+        // Pre-request the first snapshot.
+        snapshots.requestSnapshot(validValue(msnap));
 
         // Start syncing registers.
         state.setState(RSM_SyncingRegisters);

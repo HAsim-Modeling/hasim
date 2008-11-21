@@ -35,20 +35,31 @@
 // ========================================================================
 
 // STATE_DEPS2
+typedef struct
+{
+    TOKEN token;
+    ISA_SRC_MAPPING mapSrcs;
+    ISA_INSTRUCTION instr;
+}
+STATE_DEPS2
+    deriving (Eq, Bits);
+
+
+// STATE_DEPS3
 typedef union tagged
 {
-    void DEPS2_NORMAL;
+    void DEPS3_NORMAL;
     struct 
     { 
-        Bit#(4)          numToAlloc;
-        Bit#(4)          current;
+        ISA_DST_INDEX    numToAlloc;
+        ISA_DST_INDEX    current;
         ISA_SRC_MAPPING  mapSrcs;
         ISA_DST_MAPPING  mapDstsSoFar;
         ISA_INST_DSTS    regsToFreeSoFar;
     }
-    DEPS2_ALLOC_MORE;
+    DEPS3_ALLOC_MORE;
 }
-STATE_DEPS2
+STATE_DEPS3
     deriving (Eq, Bits);
 
 
@@ -104,8 +115,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     //
     // ====================================================================
 
-    FIFO#(TOKEN) depsQ <- mkFIFO();
-    Reg#(STATE_DEPS2) stateDeps2 <- mkReg(DEPS2_NORMAL);
+    FIFO#(TOKEN) deps1Q <- mkFIFO();
+    FIFO#(STATE_DEPS2) deps2Q <- mkFIFO();
+    Reg#(STATE_DEPS3) stateDeps3 <- mkReg(DEPS3_NORMAL);
 
 
     // ====================================================================
@@ -116,7 +128,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
 
 
     // ******* getDependencies *******
-    // 2-stage macro-operation. Stage 2 can stall.
+    // 3-stage macro-operation. Stage 3 can stall.
     
     // The final stage continues to stall until all destinations have been allocated.
     
@@ -146,29 +158,23 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         // Retrieve the instruction.
         tokInst.readPorts[0].readReq(tok.index);
 
-        // Everyone gets a Physical Register, even if they don't have a destination.
-        // Otherwise we would need another stage here.
-        freelist.forwardReq();
-
         // Pass on to stage 2.
-        depsQ.enq(tok);
+        deps1Q.enq(tok);
 
     endrule
 
     // getDependencies2
     // When:   After getDependencies1 has occured. Note that we allow this to proceed with "junk" tokens.
-    // Effect: Use the maptable to lookup sources, then update it to include one of our dests.
-    //         If an instruction has more than one dest then the third stage will occur,
-    //         otherwise this rule itself will return the result to the timing model.
-
-    rule getDependencies2 (state.readyToContinue() &&& stateDeps2 matches tagged DEPS2_NORMAL);
+    // Effect: Use the maptable to lookup sources.
+    //
+    rule getDependencies2 (state.readyToContinue());
 
         // Get the info from the previous stage.
-        let tok = depsQ.first();
+        let tok = deps1Q.first();
+        deps1Q.deq();
 
         //Get the info the previous stage requested.
         let inst     <- tokInst.readPorts[0].readRsp();
-        let new_preg <- freelist.forwardResp();
 
         // Decode the instruction using ISA-provided functions.
 
@@ -198,6 +204,56 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
                           endcase;
 
         end
+
+
+        // Update the token tables with all this information.
+        tokWriters.write(tok.index, phy_srcs);
+
+        // Use the scoreboard to record other relevant info.
+        if (isaIsLoad(inst))
+        begin
+            tokScoreboard.setLoadType(tok.index, isaLoadType(inst));
+        end
+
+        if (isaIsStore(inst))
+        begin
+            tokScoreboard.setStoreType(tok.index, isaStoreType(inst));
+            storeBufferAllocate.send(tok.index);
+        end
+
+        // Log all source mappings.
+        for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
+        begin
+          case (map_srcs[x]) matches
+              tagged Invalid: debugLog.record($format("TOKEN %0d: GetDeps2: No Source %0d.", tok.index, fromInteger(x)));
+              tagged Valid {.ar, .pr}: debugLog.record($format("TOKEN %0d: GetDeps2: Source %0d Mapped (%0d/%0d).", tok.index, fromInteger(x), ar, pr));
+          endcase
+        end
+
+        // Everyone gets a Physical Register, even if they don't have a destination.
+        // Otherwise we would need another stage here.
+        freelist.forwardReq();
+
+        deps2Q.enq(STATE_DEPS2 { token: tok, mapSrcs: map_srcs, instr: inst });
+
+    endrule
+
+
+    // getDependencies3
+    // When:   After getDependencies3 has occured. Note that we allow this to proceed with "junk" tokens.
+    // Effect: Update maptable with one of our dests.
+    //         If an instruction has more than one dest then the additional stage will occur,
+    //         otherwise this rule itself will return the result to the timing model.
+
+    rule getDependencies3 (state.readyToContinue() &&& stateDeps3 matches tagged DEPS3_NORMAL);
+
+        // Get the info from the previous stage.
+        let deps2_state = deps2Q.first();
+        let tok = deps2_state.token;
+        let inst = deps2_state.instr;
+
+        //Get the info the previous stage requested.
+        let new_preg <- freelist.forwardResp();
 
         // Create vectors with info on the destinations.
         Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX))            arc_dsts = newVector();
@@ -254,37 +310,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
             freelist.back();
 
             //Log it.
-            debugLog.record($format("TOKEN %0d: GetDeps2: JUNK TOKEN (NO UPDATE)", tok.index));
+            debugLog.record($format("TOKEN %0d: GetDeps3: JUNK TOKEN (NO UPDATE)", tok.index));
 
-        end
-
-        // The phyRegToFree is the physical register which gets freed when we are committed/killed.
-        // If we have a dest, this register is the old writer of the register.
-        // Otherwise the dest we requested in stage 1 is a dummy.
-
-        phy_regs_to_free[0] = case (arc_dsts[0]) matches
-                                 tagged Invalid:  tagged Valid new_preg; // Free the dummy when you free this token.
-                                 tagged Valid .d: tagged Valid select(maptable, pack(d)); // Free the actual old writer.
-                              endcase;
-
-        debugLog.record($format("TOKEN %0d: GetDeps2: Free 0 on Commit (%0d)", tok.index, validValue(phy_regs_to_free[0])));
-
-        // Update the token tables with all this information.
-         tokRegsToFree.write(tok.index, phy_regs_to_free);
-            tokWriters.write(tok.index, phy_srcs);
-               tokDsts.write(tok.index, phy_dsts);
-        tokFreeListPos.write(tok.index, tagged Valid freelist.current());
-
-        // Use the scoreboard to record other relevant info.
-        if (isaIsLoad(inst))
-        begin
-            tokScoreboard.setLoadType(tok.index, isaLoadType(inst));
-        end
-
-        if (isaIsStore(inst))
-        begin
-            tokScoreboard.setStoreType(tok.index, isaStoreType(inst));
-            storeBufferAllocate.send(tok.index);
         end
 
         let is_emulated = isaEmulateInstruction(inst);
@@ -295,14 +322,28 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         if (isaIsBranch(inst))
         begin
             let sidx <- snapshots.makeSnapshot(tok.index, new_map);
-            debugLog.record($format("TOKEN %0d: GetDeps2: Making Snapshot %d of Branch.", tok.index, sidx));
+            debugLog.record($format("TOKEN %0d: GetDeps3: Making Snapshot %d of Branch.", tok.index, sidx));
         end
         else if (is_emulated)
         begin
             let sidx <- snapshots.makeSnapshot(tok.index, new_map);
-            debugLog.record($format("TOKEN %0d: GetDeps2: Making Snapshot %d of Emulated Instruction.", tok.index, sidx));
+            debugLog.record($format("TOKEN %0d: GetDeps3: Making Snapshot %d of Emulated Instruction.", tok.index, sidx));
         end
              
+        // The phyRegToFree is the physical register which gets freed when we are committed/killed.
+        // If we have a dest, this register is the old writer of the register.
+        // Otherwise the dest we requested in stage 1 is a dummy.
+
+        phy_regs_to_free[0] = case (arc_dsts[0]) matches
+                                 tagged Invalid:  tagged Valid new_preg; // Free the dummy when you free this token.
+                                 tagged Valid .d: tagged Valid select(maptable, pack(d)); // Free the actual old writer.
+                              endcase;
+
+        debugLog.record($format("TOKEN %0d: GetDeps3: Free 0 on Commit (%0d)", tok.index, validValue(phy_regs_to_free[0])));
+
+         tokRegsToFree.write(tok.index, phy_regs_to_free);
+               tokDsts.write(tok.index, phy_dsts);
+        tokFreeListPos.write(tok.index, tagged Valid freelist.current());
 
         // If there was one dest or less, we are done.
 
@@ -311,26 +352,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         assertion.invalidNumDsts(num_dsts >= true_n_dsts);
         assertion.emulatedInstrNoDsts((num_dsts == 0) || !is_emulated);
 
-        // Log all source mappings.
-        for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
-        begin
-          case (map_srcs[x]) matches
-              tagged Invalid: debugLog.record($format("TOKEN %0d: GetDeps2: No Source %0d.", tok.index, fromInteger(x)));
-              tagged Valid {.ar, .pr}: debugLog.record($format("TOKEN %0d: GetDeps2: Source %0d Mapped (%0d/%0d).", tok.index, fromInteger(x), ar, pr));
-          endcase
-        end
 
         // Log the dest mapping
         case (map_dsts[0]) matches
-            tagged Invalid: debugLog.record($format("TOKEN %0d: GetDeps2: No Destination.", tok.index));
-            tagged Valid {.ar, .pr}: debugLog.record($format("TOKEN %0d: GetDeps2: Destination 0 Mapped (%0d/%0d).", tok.index, ar, pr));
+            tagged Invalid: debugLog.record($format("TOKEN %0d: GetDeps3: No Destination.", tok.index));
+            tagged Valid {.ar, .pr}: debugLog.record($format("TOKEN %0d: GetDeps3: Destination 0 Mapped (%0d/%0d).", tok.index, ar, pr));
         endcase
             
         if (num_dsts <= 1 || tok_killed)
         begin
 
             // 1 Dest or less, so don't stall.
-            depsQ.deq();
+            deps2Q.deq();
 
             // If it was killed then don't tell the timing partition about the allocated register.
             let final_map_dsts = tok_killed ? Vector::replicate(tagged Invalid) : map_dsts;
@@ -339,7 +372,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
             tokScoreboard.decFinish(tok.index);
 
             // Return everything to the timing partition. End of macro-operation (path 1).
-            linkGetDeps.makeResp(initFuncpRspGetDependencies(tok, map_srcs, final_map_dsts));
+            linkGetDeps.makeResp(initFuncpRspGetDependencies(tok, deps2_state.mapSrcs, final_map_dsts));
             debugLog.record($format("TOKEN %0d: GetDeps: End (path 1).", tok.index));
 
         end
@@ -347,33 +380,36 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         begin 
 
             // More dests to allocate. Log it.
-            debugLog.record($format("TOKEN %0d: GetDeps2: Need to allocate %0d more destinations.", tok.index, num_dsts-1));
+            debugLog.record($format("TOKEN %0d: GetDeps3: Need to allocate %0d more destinations.", tok.index, num_dsts-1));
 
             // Request another phys reg
             freelist.forwardReq();
 
             // Stall this stage.
-            stateDeps2 <= tagged DEPS2_ALLOC_MORE 
+            stateDeps3 <= tagged DEPS3_ALLOC_MORE 
                                  {
                                      numToAlloc: fromInteger(num_dsts - 1),
                                      current: 1, 
-                                     mapSrcs: map_srcs, 
+                                     mapSrcs: deps2_state.mapSrcs,
                                      mapDstsSoFar: map_dsts, 
                                      regsToFreeSoFar: phy_regs_to_free
                                  };
 
         end
-
+        
     endrule
 
-    // getDependencies2AdditionalMappings
-    // When:   When an instruction in getDeps2 had more than one destination.
+
+    // getDependencies3AdditionalMappings
+    // When:   When an instruction in getDeps3 had more than one destination.
     // Effect: Keep allocating destinations until you've got them all.
     
-     rule getDependencies2AdditionalMappings (state.readyToContinue() &&& stateDeps2 matches tagged DEPS2_ALLOC_MORE .dep_info);
+     rule getDependencies3AdditionalMappings (state.readyToContinue() &&& stateDeps3 matches tagged DEPS3_ALLOC_MORE .dep_info);
 
         // Get the data from the previous stage.
-        let tok = depsQ.first();
+        let deps2_state = deps2Q.first();
+        let tok = deps2_state.token;
+
         let cur = dep_info.current;
         let map_dsts = dep_info.mapDstsSoFar;
       
@@ -388,7 +424,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         let actual_phy_reg_to_free = isValid(map_dsts[cur])? tagged Valid select(maptable, pack(arc_dst)): tagged Valid phy_dst;
         let new_phy_regs_to_free = update(dep_info.regsToFreeSoFar, cur, actual_phy_reg_to_free);
 
-        debugLog.record($format("TOKEN %0d: GetDeps2: Free %0d on Commit (%0d)", tok.index, cur, validValue(actual_phy_reg_to_free)));
+        debugLog.record($format("TOKEN %0d: GetDeps3: Free %0d on Commit (%0d)", tok.index, cur, validValue(actual_phy_reg_to_free)));
 
         if (isValid(map_dsts[cur]))
         begin
@@ -400,7 +436,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
             prf.inval(phy_dst);
 
             // Log it.
-            debugLog.record($format("TOKEN %0d: GetDeps2: Destination %0d Mapped (%0d/%0d)", tok.index, cur, arc_dst, phy_dst));
+            debugLog.record($format("TOKEN %0d: GetDeps3: Destination %0d Mapped (%0d/%0d)", tok.index, cur, arc_dst, phy_dst));
 
         end
 
@@ -411,7 +447,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
             freelist.forwardReq();
 
             // Update the state for the next time around.
-            stateDeps2 <= tagged DEPS2_ALLOC_MORE 
+            stateDeps3 <= tagged DEPS3_ALLOC_MORE 
                                  {
                                      numToAlloc: dep_info.numToAlloc,
                                      current: cur + 1,
@@ -441,8 +477,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
             tokFreeListPos.write(tok.index, tagged Valid freelist.current()); // XXX Is this right or should it be the first?
 
             // Unstall the pipeline.
-            stateDeps2 <= tagged DEPS2_NORMAL;
-            depsQ.deq();
+            stateDeps3 <= tagged DEPS3_NORMAL;
+            deps2Q.deq();
 
             // Update the scoreboard.
             tokScoreboard.decFinish(tok.index);

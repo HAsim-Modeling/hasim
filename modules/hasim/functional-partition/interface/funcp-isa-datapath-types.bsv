@@ -42,21 +42,39 @@ typedef struct
 {
     ISA_INSTRUCTION   instruction;
     ISA_ADDRESS       instAddress;
-    ISA_SOURCE_VALUES srcValues;
 }
     FUNCP_ISA_DATAPATH_REQ
         deriving (Eq, Bits);
 
-function FUNCP_ISA_DATAPATH_REQ initISADatapathReq(ISA_INSTRUCTION i, ISA_ADDRESS pc, ISA_SOURCE_VALUES sr);
+function FUNCP_ISA_DATAPATH_REQ initISADatapathReq(ISA_INSTRUCTION i, ISA_ADDRESS pc);
 
     return FUNCP_ISA_DATAPATH_REQ
             {
                 instruction: i,
-                instAddress: pc,
+                instAddress: pc
+            };
+
+endfunction
+
+
+// FUNCP_ISA_DATAPATH_SRCVALS
+
+typedef struct
+{
+    ISA_SOURCE_VALUES srcValues;
+}
+    FUNCP_ISA_DATAPATH_SRCVALS
+        deriving (Eq, Bits);
+
+function FUNCP_ISA_DATAPATH_SRCVALS initISADatapathSrcVals(ISA_SOURCE_VALUES sr);
+
+    return FUNCP_ISA_DATAPATH_SRCVALS
+            {
                 srcValues:   sr
             };
 
 endfunction
+
 
 // FUNCP_ISA_DATAPATH_RSP
 

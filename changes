@@ -16001,3 +16001,27 @@ Added a new global state module for regstate.  It currently holds the scoreboard
 global FSM state and register state assertions.  I tried having separate assertion
 nodes for each regstate pipeline, but that caused designs that used to build
 correctly for our Xilinx FPGAs to start failing.
+
+----------
+mcadler     Date: Fri Nov 21 15:19:55 EST 2008  CSN: CSN-hasim-549
+                  Fri Nov 21 20:19:55 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getResults.bsv Locally Modified          548 
+ regmgr-macro.bsv          Locally Modified          548 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          548 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-physical-regs.bsv Locally Modified          548 
+
+Directory modules/hasim/functional-partition/interface
+ funcp-isa-datapath-types.bsv Locally Modified          547 
+
+- Route source register input values directly from the register file to the
+  ISA datapath instead of routing back through the getResults pipeline.  This
+  saves a cycle and reduces the logic.
+- Balance a few pipelines for timing:
+  - Moved work in emulation pipeline in getResults -- no cycle change
+  - Add a cycle to getDependencies.  The pipeline is relatively short, so
+    shouldn't affect run-time.

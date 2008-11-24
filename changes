@@ -16025,3 +16025,19 @@ Directory modules/hasim/functional-partition/interface
   - Moved work in emulation pipeline in getResults -- no cycle change
   - Add a cycle to getDependencies.  The pipeline is relatively short, so
     shouldn't affect run-time.
+
+----------
+mcadler     Date: Mon Nov 24 16:02:22 EST 2008  CSN: CSN-hasim-550
+                  Mon Nov 24 21:02:22 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-physical-regs.bsv Locally Modified          549 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.bsv          Locally Modified          549 
+
+- Make number of PRF read ports a parameter of the interface.
+- Add a quick path one cycle faster (and fully pipelined) for the special
+  case that all register sources are ready and can be read in the first cycle
+  of reading a vector.

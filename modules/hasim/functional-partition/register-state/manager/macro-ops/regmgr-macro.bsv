@@ -140,7 +140,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     REGSTATE_MEMORY_CONNECTION linkToMem <- mkFUNCP_Regstate_Connect_Memory();
 
     // Physical register file
-    REGSTATE_PHYSICAL_REGS prf <- mkFUNCP_Regstate_Physical_Regs();
+    REGSTATE_PHYSICAL_REGS#(2) prf <- mkFUNCP_Regstate_Physical_Regs();
 
     // The Freelist tracks which physical registers are available.
     FUNCP_FREELIST freelist <- mkFUNCP_Freelist(`REGSTATE_LOGFILE_PREFIX);

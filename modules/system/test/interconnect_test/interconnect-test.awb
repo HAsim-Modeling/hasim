@@ -1,0 +1,11 @@
+%name Hasim - Interconnect Test System
+%desc Hasim - Interconnect Test System
+%provides hasim_system
+
+%attributes hasim
+
+%requires physical_interconnect
+
+%sources -t BSV  -v PUBLIC interconnect-test.bsv
+%sources -t DICT -v PUBLIC interconnect-test-streams.dic
+%sources -t DICT -v PUBLIC interconnect-test-streamid.dic

@@ -16041,3 +16041,39 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 - Add a quick path one cycle faster (and fully pipelined) for the special
   case that all register sources are ready and can be read in the first cycle
   of reading a vector.
+
+----------
+pellauer    Date: Tue Nov 25 17:13:45 EST 2008  CSN: CSN-hasim-551
+                  Tue Nov 25 22:13:45 UTC 2008
+
+
+Directory config/pm/hasim/demos/test
+ interconnect_test/        Locally Added               0 
+
+Directory config/pm/hasim/demos/test/interconnect_test
+ interconnect_test_hybrid_exe.apm Locally Added               0 
+
+Directory modules/bluespec/util/physical-interconnects/shared-tree
+ tree-station.bsv          Locally Modified          550 
+ shared-tree.awb           Locally Modified          550 
+
+Directory modules/system/test
+ interconnect_test/        Locally Added               0 
+
+Directory modules/system/test/interconnect_test
+ interconnect-test.awb     Locally Added               0 
+ interconnect-test.bsv     Locally Added               0 
+ interconnect-test-streams.dic Locally Added               0 
+ interconnect-test-streamid.dic Locally Added               0 
+
+
+* Added a streams-based test case for the physical interconnect. 
+
+* This will eventually allows us to run on the FPGA for a long time and convince
+ourselves that the network does not deadlock.
+
+* Currently the testcase has exposed a deadlock. The physical station needs to be changed to resolve this.
+
+* Misc bugfixes in physical station.
+
+Michael P.

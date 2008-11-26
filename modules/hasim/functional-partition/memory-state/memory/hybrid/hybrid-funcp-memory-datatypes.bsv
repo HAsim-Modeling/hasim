@@ -46,6 +46,15 @@ typedef Vector#(CACHELINE_WORDS, MEM_VALUE) MEM_CACHELINE;
 typedef struct
 {
     MEM_ADDRESS addr;
+    Bool        iStream;        // True iff load is fetching an instruction
+}
+MEM_LOAD_INFO
+    deriving
+        (Eq, Bits);
+
+typedef struct
+{
+    MEM_ADDRESS addr;
     MEM_VALUE   val;
 }
 MEM_STORE_INFO
@@ -76,7 +85,7 @@ MEM_INVAL_CACHELINE_INFO
 
 typedef union tagged 
 {
-    MEM_ADDRESS MEM_LOAD;
+    MEM_LOAD_INFO  MEM_LOAD;
     MEM_STORE_INFO MEM_STORE;
 
     MEM_ADDRESS MEM_LOAD_CACHELINE;
@@ -89,6 +98,15 @@ typedef union tagged
 MEM_REQUEST
     deriving
         (Eq, Bits);
+
+
+function MEM_REQUEST funcpMemLoadReq(MEM_ADDRESS addr, Bool iStream);
+    return tagged MEM_LOAD MEM_LOAD_INFO { addr: addr, iStream: iStream };
+endfunction
+
+function MEM_REQUEST funcpMemStoreReq(MEM_ADDRESS addr, MEM_VALUE value);
+    return tagged MEM_STORE MEM_STORE_INFO { addr: addr, val: value };
+endfunction
 
 
 typedef union tagged 

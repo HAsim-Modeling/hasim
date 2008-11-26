@@ -59,6 +59,7 @@ typedef struct
 {
     TOKEN tok;
     MEM_ADDRESS addr;
+    Bool iStream;        // True iff load is fetching an instruction
 }
 MEMSTATE_REQ_LOAD
     deriving (Eq, Bits);
@@ -127,8 +128,6 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // Link to the Cache
     Connection_Client#(MEM_REQUEST, MEM_VALUE)  linkCache    <- mkConnection_Client("mem_cache");
 
-    FIFO#(LOAD_PATH) loadQ <- mkSizedFIFO(16);
-
     // ***** Rules ***** //
 
     // memStore
@@ -158,7 +157,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // 2- or 3-stage macro-operation. (Depending on if store buffer hits.)
  
     // When:   Any time we get a Load request from the register state.
-    // Effect: We check the store buffer, then the cache (if needed), and return the response.
+    // Effect: We check the store buffer and the cache and return the response.
     // Parameters: MEMSTATE_REQ (MEMSTATE_REQ_LOAD)
     // Returns:    MEMSTATE_RSP (MEMSTATE_RSP_LOAD)
 
@@ -174,8 +173,11 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
         debugLog.record($format("LOAD: tok=%d, addr=0x%x", ldInfo.tok.index, ldInfo.addr));
 
-        // Send it on to the store buffer.
+        // Send it on to the store buffer and the cache in parallel.
+        // Since most loads miss in the store buffer there isn't much point
+        // in waiting for the response.
         stBuffer.lookupReq(ldInfo.tok.index, ldInfo.addr);
+        linkCache.makeReq(funcpMemLoadReq(ldInfo.addr, ldInfo.iStream));
 
     endrule
 
@@ -187,68 +189,30 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
     rule memLoad2 (True);
 
-        // Get the response from the store buffer.  
-        let rsp <- stBuffer.lookupResp();
+        // Get the responses from the store buffer and the cache.
+        let sb_rsp <- stBuffer.lookupResp();
 
-        case (rsp.mvalue) matches
-          tagged Invalid: // A miss in the store buffer.
+        let cache_val = linkCache.getResp();
+        linkCache.deq();
+
+        case (sb_rsp.mvalue) matches
+          tagged Invalid:
           begin
-
-              debugLog.record($format("  LOAD SB Miss, cache req addr=0x%x", rsp.addr));
-
-              // Send it on to the cache.
-              linkCache.makeReq(tagged MEM_LOAD rsp.addr);
-              
-              // Record that the answer is coming from the cache.
-              loadQ.enq(tagged PATH_CACHE);
-              
+              // A miss in the store buffer.  Return memory value.
+              debugLog.record($format("  LOAD from mem: value=0x%x", cache_val));
+              linkRegState.makeResp(cache_val);
           end
-          tagged Valid .val: // A hit in the store buffer.
+          tagged Valid .sb_val:
           begin
-              
+              // A hit in the store buffer.              
               // Send it on to the next stage so things don't get out-of-order.
-              loadQ.enq(tagged PATH_SB val);
-
+              debugLog.record($format("  LOAD SB Hit: value=0x%x", sb_val));
+              linkRegState.makeResp(sb_val);
           end
         endcase
 
     endrule
-     
-    // memLoad3SB
-    
-    // When:   Some time after memLoad2 gets a hit in the store buffer.
-    // Effect: Returns the hit to the register state, but ensures that it doesn't pass any other loads.
-    
-    rule memLoad3SB (loadQ.first() matches tagged PATH_SB .val);
 
-        loadQ.deq();
-
-        debugLog.record($format("  LOAD SB Hit: value=0x%x", val));
-
-        // Respond to regstate. End of macro-operation (path 1).
-        linkRegState.makeResp(val);
-
-    endrule
-    
-    // memLoad3Cache
-    
-    // When:   Some time after memLoad2 makes a request to the cache.
-    // Effect: Get the result from the cache and return it to the register state.
-    
-    rule memLoad3Cache (loadQ.first() matches tagged PATH_CACHE);
-
-        loadQ.deq();
-
-        // Get the response from the cache.
-        let val = linkCache.getResp();
-        linkCache.deq();
-
-        debugLog.record($format("  LOAD from mem: value=0x%x", val));
-
-        // Put in completion buffer. End of macro-operation (path 2).
-        linkRegState.makeResp(val);
-
-    endrule
   
     // commit
     
@@ -288,7 +252,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         debugLog.record($format("  COMMIT resp: addr=0x%x, value=0x%x, more=%d", rsp.addr, rsp.value, rsp.hasMore));
 
         // Send the actual store to the cache.
-        linkCache.makeReq(tagged MEM_STORE MEM_STORE_INFO {addr: rsp.addr, val: rsp.value});
+        linkCache.makeReq(funcpMemStoreReq(rsp.addr, rsp.value));
 
     endrule
 

@@ -48,9 +48,9 @@ module [HASIM_MODULE] mkFUNCP_Memory
         
         // process request
         case (req) matches
-            tagged MEM_LOAD .addr:
+            tagged MEM_LOAD .ldinfo:
             begin
-                client_stub.makeRequest_Load(zeroExtend(addr));
+                client_stub.makeRequest_Load(zeroExtend(ldinfo.addr));
             end
             
             tagged MEM_LOAD_CACHELINE .addr:

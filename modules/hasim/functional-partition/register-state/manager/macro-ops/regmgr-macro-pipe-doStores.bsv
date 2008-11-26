@@ -222,7 +222,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                 begin
 
                     // We're doing read-modify-write. Request a load.
-                    let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr};
+                    let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr, iStream: False};
                     linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                     // Log it.
@@ -267,7 +267,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
                 // Two addresses means load two values, then modify them, then write them back.
                 // Make the first load now.
-                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1};
+                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1, iStream: False};
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Log it.
@@ -341,7 +341,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     
         // Make the second load request.
         let p_addr2 = getSecondOfTwo(store_info.memAddrs);
-        let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr2};
+        let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr2, iStream: False};
         linkToMem.makeReq(tagged REQ_LOAD m_req);
         
         // Log it.

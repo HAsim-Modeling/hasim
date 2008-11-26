@@ -209,7 +209,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
                 debugLog.record($format("TOKEN %0d: DoLoads2: Requesting Load (PA: 0x%h)", tok.index, p_addr));
 
                 // Make the request to the DMem.
-                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr};
+                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr, iStream: False };
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Read the destination so we can writeback the correct register.
@@ -227,7 +227,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
                 debugLog.record($format("TOKEN %0d: DoLoads2: Starting Spanning Load (PA1: 0x%h)", tok.index, p_addr1));
 
                 // Make the request to the DMem.
-                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1};
+                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1, iStream: False };
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Stall this stage for the second req.
@@ -243,7 +243,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
 
         // Kick the second request to MemState.
         let p_addr2 = getSecondOfTwo(load_info.memAddrs);
-        let m_req = MEMSTATE_REQ_LOAD {tok: load_info.token, addr: p_addr2};
+        let m_req = MEMSTATE_REQ_LOAD {tok: load_info.token, addr: p_addr2, iStream: False };
         linkToMem.makeReq(tagged REQ_LOAD m_req);
 
         // Log it.

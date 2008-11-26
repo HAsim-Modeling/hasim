@@ -14,11 +14,14 @@
  
 def ASSERTIONS.FUNCP_MEMSTATE_CACHE.INVALID_REQUEST     "FUNCP Cache: Invalid incoming request!";
 
-def STATS.FUNCP_MEMSTATE_CACHE.LOAD_HIT     "FUNCP Cache: Load hits";
-def STATS.FUNCP_MEMSTATE_CACHE.LOAD_MISS    "FUNCP Cache: Load misses";
+def STATS.FUNCP_MEMSTATE_CACHE.LOAD_HIT_D_L1    "FUNCP Cache: L1 Data load hits";
+def STATS.FUNCP_MEMSTATE_CACHE.LOAD_HIT_I_L1    "FUNCP Cache: L1 Instruction load hits";
 
-def STATS.FUNCP_MEMSTATE_CACHE.STORE_HIT    "FUNCP Cache: Store hits";
-def STATS.FUNCP_MEMSTATE_CACHE.STORE_MISS   "FUNCP Cache: Store misses";
+def STATS.FUNCP_MEMSTATE_CACHE.LOAD_HIT         "FUNCP Cache: Load hits";
+def STATS.FUNCP_MEMSTATE_CACHE.LOAD_MISS        "FUNCP Cache: Load misses";
+
+def STATS.FUNCP_MEMSTATE_CACHE.STORE_HIT        "FUNCP Cache: Store hits";
+def STATS.FUNCP_MEMSTATE_CACHE.STORE_MISS       "FUNCP Cache: Store misses";
 
 def STATS.FUNCP_MEMSTATE_CACHE.INVAL_LINE       "FUNCP Cache: Lines invalidated due to capacity";
 def STATS.FUNCP_MEMSTATE_CACHE.DIRTY_LINE_FLUSH "FUNCP Cache: Dirty lines flushed to memory";

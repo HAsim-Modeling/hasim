@@ -100,6 +100,24 @@ interface FUNCP_MEM_INTERFACE;
 endinterface: FUNCP_MEM_INTERFACE
 
 
+//
+// FUNCP_MEM_CACHE_LOAD_INFO --
+//     Queue describing load path for cache read request or L1 cache hit.
+//     If l1Value is valid then load is serviced by an L1 hit and the main
+//     cache is bypassed.  If the main cache services the request then return
+//     the portion of the line indexed by offset.
+//
+typedef struct
+{
+    Maybe#(MEM_VALUE) l1Value;
+    Bool iStream;
+    FUNCP_MEM_CACHE_TAG tag;
+    FUNCP_MEM_CACHELINE_OFFSET offset;
+}
+FUNCP_MEM_CACHE_LOAD_INFO
+    deriving (Eq, Bits);
+
+
 module [HASIM_MODULE] mkFuncpMemInterface
     // interface:
         (FUNCP_MEM_INTERFACE);
@@ -150,7 +168,7 @@ module [HASIM_MODULE] mkFuncpMemInterface
     // This is the private interface used when bypassing the cache
     //
     method Action readWordReq(MEM_ADDRESS addr);
-        link_funcp_memory.makeReq(tagged MEM_LOAD addr);
+        link_funcp_memory.makeReq(funcpMemLoadReq(addr, False));
     endmethod
 
     method ActionValue#(MEM_VALUE) readWordResp() if (link_funcp_memory.getResp() matches tagged MEM_REPLY_LOAD .v);
@@ -159,7 +177,7 @@ module [HASIM_MODULE] mkFuncpMemInterface
     endmethod
 
     method Action writeWord(MEM_ADDRESS addr, MEM_VALUE val);
-        link_funcp_memory.makeReq(tagged MEM_STORE MEM_STORE_INFO { addr: addr, val: val });
+        link_funcp_memory.makeReq(funcpMemStoreReq(addr, val));
     endmethod
 
 endmodule
@@ -253,6 +271,10 @@ module [HASIM_MODULE] mkFUNCP_Cache
     Connection_Server#(Bool, Bool)                 link_funcp_memory_inval_all <- mkConnection_Server("funcp_memory_cache_invalidate_all");
 
 
+    // ***** Statistics *****
+    Stat statLoadL1DHit <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_LOAD_HIT_D_L1);
+    Stat statLoadL1IHit <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_LOAD_HIT_I_L1);
+
     // Interfaces required by the base cache module
     FUNCP_MEM_INTERFACE funcpMemIfc <- mkFuncpMemInterface();
     HASIM_CACHE_STATS statIfc <- mkFuncpMemoryCacheStats();
@@ -264,7 +286,12 @@ module [HASIM_MODULE] mkFUNCP_Cache
                  `FUNCP_MEMCACHE_WAYS,
                  FUNCP_MEM_ADDR_NONTAG_BITS) cache <- mkCacheSetAssoc(funcpMemIfc.cacheIfc, statIfc, debugLog);
 
-    FIFO#(FUNCP_MEM_CACHELINE_OFFSET) loadFromCache <- mkFIFO();
+    // Single entry L1 caches
+    HASIM_TINY_CACHE#(FUNCP_MEM_CACHE_TAG, FUNCP_MEM_CACHELINE, 1) cacheL1D <- mkTinyCache1();
+    HASIM_TINY_CACHE#(FUNCP_MEM_CACHE_TAG, FUNCP_MEM_CACHELINE, 1) cacheL1I <- mkTinyCache1();
+
+
+    FIFO#(FUNCP_MEM_CACHE_LOAD_INFO) loadFromCacheQ <- mkFIFO();
 
     // Loop state for invalidating multiple lines with one message from the host
     Reg#(UInt#(8)) invalLoopNLines <- mkReg(0);
@@ -295,6 +322,16 @@ module [HASIM_MODULE] mkFUNCP_Cache
     endfunction
 
 
+    function FUNCP_MEM_CACHE_LOAD_INFO funcpMemCacheLoadInfo(Maybe#(MEM_VALUE) mv, Bool iStream, MEM_ADDRESS addr);
+
+        return FUNCP_MEM_CACHE_LOAD_INFO { l1Value: mv,
+                                           iStream: iStream,
+                                           tag: cacheTagFromAddr(addr),
+                                           offset: cacheLineOffsetFromAddr(addr) };
+
+    endfunction
+
+
     // ***** Cache client-side rules ***** //
 
     //
@@ -310,11 +347,38 @@ module [HASIM_MODULE] mkFUNCP_Cache
         cache.setModeWriteBack(writeBackCache);
 
         case (mem_req) matches
-            tagged MEM_LOAD .a:
+            tagged MEM_LOAD .ld:
             begin
-                debugLog.record($format("LOAD: addr=0x%x", a));
-                cache.readReq(cacheTagFromAddr(a));
-                loadFromCache.enq(cacheLineOffsetFromAddr(a));
+                let tag = cacheTagFromAddr(ld.addr);
+
+                let l1_d <- cacheL1D.read(tag);
+                let l1_i <- cacheL1I.read(tag);
+
+                if (l1_d matches tagged Valid .v)
+                begin
+                    // L1 D cache hit
+                    debugLog.record($format("LOAD: addr=0x%x, L1 D Hit", ld.addr));
+                    statLoadL1DHit.incr();
+
+                    FUNCP_MEM_CACHELINE_VEC val_vec = unpack(v);
+                    loadFromCacheQ.enq(funcpMemCacheLoadInfo(tagged Valid val_vec[cacheLineOffsetFromAddr(ld.addr)], ld.iStream, ld.addr));
+                end
+                else if (l1_i matches tagged Valid .v)
+                begin
+                    // L1 I cache hit
+                    debugLog.record($format("LOAD: addr=0x%x, L1 I Hit", ld.addr));
+                    statLoadL1IHit.incr();
+
+                    FUNCP_MEM_CACHELINE_VEC val_vec = unpack(v);
+                    loadFromCacheQ.enq(funcpMemCacheLoadInfo(tagged Valid val_vec[cacheLineOffsetFromAddr(ld.addr)], ld.iStream, ld.addr));
+                end
+                else
+                begin
+                    // Look in main cache
+                    debugLog.record($format("LOAD: addr=0x%x", ld.addr));
+                    cache.readReq(tag);
+                    loadFromCacheQ.enq(funcpMemCacheLoadInfo(tagged Invalid, ld.iStream, ld.addr));
+                end
             end
 
             tagged MEM_STORE .s:
@@ -334,8 +398,13 @@ module [HASIM_MODULE] mkFUNCP_Cache
                 mask[word] = -1;
                 val[word] = s.val;
 
-                cache.writeMaskedReq(cacheTagFromAddr(s.addr), pack(val), pack(mask));
+                let tag = cacheTagFromAddr(s.addr);
+                cache.writeMaskedReq(tag, pack(val), pack(mask));
                 
+                // Invalidate address in L1 caches
+                cacheL1D.inval(tag);
+                cacheL1I.inval(tag);
+
                 // Write-through now?
                 if (! writeBackCache)
                     funcpMemIfc.writeWord(s.addr, s.val);
@@ -344,7 +413,12 @@ module [HASIM_MODULE] mkFUNCP_Cache
             tagged MEM_INVALIDATE_CACHELINE .a:
             begin
                 debugLog.record($format("INVAL: addr=0x%x", a));
-                cache.invalReq(cacheTagFromAddr(a), False);
+                let tag = cacheTagFromAddr(a);
+                cache.invalReq(tag, False);
+
+                // Invalidate address in L1 caches
+                cacheL1D.inval(tag);
+                cacheL1I.inval(tag);
             end
 
             tagged MEM_FLUSH_CACHELINE .a:
@@ -359,18 +433,38 @@ module [HASIM_MODULE] mkFUNCP_Cache
 
 
     //
-    // handleResp --
-    //     Response from read request initiated by handleReq
+    // handleRespL1 --
+    //     Response from read request initiated by handleReq that hit in L1 cache
     //
-    rule handleResp (enableCache);
+    rule handleRespL1 (enableCache &&& loadFromCacheQ.first().l1Value matches tagged Valid .val);
+        let load_info = loadFromCacheQ.first();
+        loadFromCacheQ.deq();
+
+        link_memstate.makeResp(val);
+
+        debugLog.record($format("  LOAD L1 done: idx=%d, data=0x%x", load_info.offset, val));
+    endrule
+    
+
+    //
+    // handleResp --
+    //     Response from read request initiated by handleReq from main cache
+    //
+    rule handleResp (enableCache &&& loadFromCacheQ.first().l1Value matches tagged Invalid);
         let r <- cache.readResp();
-        let addr = loadFromCache.first();
-        loadFromCache.deq();
+        let load_info = loadFromCacheQ.first();
+        loadFromCacheQ.deq();
 
         FUNCP_MEM_CACHELINE_VEC v = unpack(r);
-        link_memstate.makeResp(v[addr]);
+        link_memstate.makeResp(v[load_info.offset]);
 
-        debugLog.record($format("  LOAD done: idx=%d, data=0x%x", addr, v[addr]));
+        // Store load in L1 cache
+        if (load_info.iStream)
+            cacheL1I.write(load_info.tag, r);
+        else
+            cacheL1D.write(load_info.tag, r);
+
+        debugLog.record($format("  LOAD done: idx=%d, data=0x%x", load_info.offset, v[load_info.offset]));
     endrule
     
 
@@ -383,10 +477,10 @@ module [HASIM_MODULE] mkFUNCP_Cache
         link_memstate.deq();
         
         case (mem_req) matches
-            tagged MEM_LOAD .a:
+            tagged MEM_LOAD .ld:
             begin
-                debugLog.record($format("LOAD: addr=0x%x", a));
-                funcpMemIfc.readWordReq(a);
+                debugLog.record($format("LOAD: addr=0x%x", ld.addr));
+                funcpMemIfc.readWordReq(ld.addr);
             end
 
             tagged MEM_STORE .s:
@@ -438,6 +532,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
         debugLog.record($format("%s: addr=0x%x, nLines=%d", (line_info.onlyFlush ? "FLUSH" : "INVAL"), line_info.addr, line_info.nLines));
     endrule
 
+    (* descending_urgency = "doInvals, handleResp" *)
     rule doInvals (invalLoopNLines != 0);
         //
         // Invalidate request specifies address, number of lines and whether
@@ -446,9 +541,17 @@ module [HASIM_MODULE] mkFUNCP_Cache
         //
 
         if (invalLoopOnlyFlush)
+        begin
             cache.flushReq(invalLoopCacheTag, invalLoopNLines == 1);
+        end
         else
+        begin
             cache.invalReq(invalLoopCacheTag, invalLoopNLines == 1);
+
+            // Invalidate address in L1 caches
+            cacheL1D.inval(invalLoopCacheTag);
+            cacheL1I.inval(invalLoopCacheTag);
+        end
 
         invalLoopCacheTag <= invalLoopCacheTag + 1;
         invalLoopNLines <= invalLoopNLines - 1;
@@ -464,14 +567,19 @@ module [HASIM_MODULE] mkFUNCP_Cache
         debugLog.record($format("  FLUSH/INVAL done"));
     endrule
 
-
     //
     // handleInvalAllReq --
     //    Incoming invalidate line request
     //
+    (* descending_urgency = "handleInvalAllReq, handleReq" *)
     rule handleInvalAllReq(True);
         link_funcp_memory_inval_all.deq();
         cache.invalAllReq();
+
+        // Invalidate address in L1 caches
+        cacheL1D.invalAll();
+        cacheL1I.invalAll();
+
         debugLog.record($format("INVAL all"));
     endrule
 

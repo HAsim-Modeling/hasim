@@ -16077,3 +16077,37 @@ ourselves that the network does not deadlock.
 * Misc bugfixes in physical station.
 
 Michael P.
+
+----------
+mcadler     Date: Wed Nov 26 15:34:55 EST 2008  CSN: CSN-hasim-552
+                  Wed Nov 26 20:34:55 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getInstruction.bsv Locally Modified          551 
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          551 
+ regmgr-macro-pipe-doStores.bsv Locally Modified          551 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          551 
+ memstate-cache-set-assoc.dic Locally Modified          551 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory-datatypes.bsv Locally Modified          551 
+ hybrid-funcp-memory.bsv   Locally Modified          551 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          551 
+
+Directory modules/hasim/util/cache
+ hasim-tiny-cache.bsv      Locally Modified          551 
+
+- Pass whether load is instruction or data down to functional cache.
+- Add single line functional L1 instruction and data caches.  A hit in the L1
+  cache saves 4 FPGA cycles.  L1 caches are coherent.
+- Functional memory manager now checks store buffer and cache in parallel.  Since
+  most loads miss in the store buffer this generally saves an FPGA cycle and
+  simplifies the pipeline.
+- Add special case module for single entry tiny cache.  Uses same interface as
+  the general one.  Needed special case since LRU doesn't have to be maintained.
+- Add inval() method to tiny caches.

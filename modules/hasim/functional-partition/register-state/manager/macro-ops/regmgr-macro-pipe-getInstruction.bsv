@@ -174,7 +174,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
                 debugLog.record($format("TOKEN %0d: GetInstruction2: Load Req (PA: 0x%h)", tok.index, p_addr));
 
                 // Kick to Mem State.
-                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr};
+                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr, iStream: True };
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Pass it to the next stage.
@@ -188,7 +188,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
                 debugLog.record($format("TOKEN %0d: GetInstruction2: Spanning Load Req 1 (PA1: 0x%h, PA2: 0x%h)", tok.index, p_addr1, p_addr2));
 
                 // Kick the first request to the MemState.
-                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1};
+                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1, iStream: True };
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Stall to make the second request.
@@ -213,7 +213,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
         
         // Kick the second request to MemState.
         let p_addr2 = getSecondOfTwo(fetch_info.memAddrs);
-        let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr2};
+        let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr2, iStream: True };
         linkToMem.makeReq(tagged REQ_LOAD m_req);
 
         // Log it.

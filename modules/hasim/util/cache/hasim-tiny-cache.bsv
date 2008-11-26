@@ -55,6 +55,9 @@ interface HASIM_TINY_CACHE#(type t_CACHE_ADDR,
     // Write
     method Action write(t_CACHE_ADDR addr, t_CACHE_DATA data);
 
+    // Invalidate
+    method Action inval(t_CACHE_ADDR addr);
+
     // Invalidate entire cache
     method Action invalAll();
 
@@ -78,26 +81,16 @@ module [HASIM_MODULE] mkTinyCache
         (HASIM_TINY_CACHE#(t_CACHE_ADDR, t_CACHE_DATA, nEntries))
     provisos (Eq#(t_CACHE_ADDR),
               Bits#(t_CACHE_DATA, t_CACHE_DATA_SZ),
-              Bits#(Maybe#(t_CACHE_ADDR), t_CACHE_ADDR_SZ),
+              Bits#(t_CACHE_ADDR, t_CACHE_ADDR_SZ),
               Log#(nEntries, TLog#(nEntries)),
 
               Alias#(HASIM_TINY_CACHE_IDX#(nEntries), t_IDX),
               Alias#(HASIM_TINY_CACHE_LRU#(nEntries), t_LRU));
 
-    Reg#(Vector#(nEntries, Maybe#(t_CACHE_ADDR))) cacheTag <- mkReg(Vector::replicate(tagged Invalid));
+    Reg#(Vector#(nEntries, Bool)) cacheValid <- mkReg(Vector::replicate(False));
+    Reg#(Vector#(nEntries, t_CACHE_ADDR)) cacheTag <- mkRegU();
     Reg#(Vector#(nEntries, t_CACHE_DATA)) cacheData <- mkRegU();
     Reg#(t_LRU) cacheLRU <- mkReg(Vector::genWith(fromInteger));
-
-    // Used during invalAll() processing
-    Reg#(t_IDX) invalIdx <- mkReg(0);
-
-    //
-    // inval_all
-    //
-    rule inval_all (invalIdx != 0);
-        cacheTag[invalIdx] <= tagged Invalid;
-        invalIdx <= invalIdx + 1;
-    endrule
 
 
     // ***** LRU Management *****
@@ -107,9 +100,7 @@ module [HASIM_MODULE] mkTinyCache
     //   Least recently used entry in the cache.
     //
     function t_IDX getLRU(t_LRU list);
-
         return list[valueOf(nEntries) - 1];
-
     endfunction
 
 
@@ -122,7 +113,6 @@ module [HASIM_MODULE] mkTinyCache
     //   here would be less general.
     //
     function t_LRU pushMRU(t_LRU curLRU, t_IDX mru);
-
         t_LRU new_list = curLRU;
     
         //
@@ -143,20 +133,18 @@ module [HASIM_MODULE] mkTinyCache
         end
 
         return new_list;
-
     endfunction
 
 
     // Read a line, returns invalid if not found.
-    method ActionValue#(Maybe#(t_CACHE_DATA)) read(t_CACHE_ADDR addr) if (invalIdx == 0);
-
+    method ActionValue#(Maybe#(t_CACHE_DATA)) read(t_CACHE_ADDR addr);
         Bool hit = False;
         t_IDX hit_idx = 0;
         Maybe#(t_CACHE_DATA) result = tagged Invalid;
 
         for (Integer i = 0; i < valueOf(nEntries); i = i + 1)
         begin
-            if (cacheTag[i] matches tagged Valid .tag &&& addr == tag)
+            if (cacheValid[i] && (cacheTag[i] == addr))
             begin
                 hit = True;
                 hit_idx = fromInteger(i);
@@ -170,29 +158,87 @@ module [HASIM_MODULE] mkTinyCache
         end
 
         return result;
-
     endmethod
     
-    // Write
-    method Action write(t_CACHE_ADDR addr, t_CACHE_DATA data) if (invalIdx == 0);
 
+    // Write
+    method Action write(t_CACHE_ADDR addr, t_CACHE_DATA data);
         let i = getLRU(cacheLRU);
 
-        cacheTag[i] <= tagged Valid addr;
+        cacheValid[i] <= True;
+        cacheTag[i] <= addr;
         cacheData[i] <= data;
 
         cacheLRU <= pushMRU(cacheLRU, i);
-
     endmethod
 
+
+    // Invalidate address if in cache
+    method Action inval(t_CACHE_ADDR addr);
+        Vector#(nEntries, Bool) valid = cacheValid;
+
+        for (Integer i = 0; i < valueOf(nEntries); i = i + 1)
+        begin
+            if (cacheTag[i] == addr)
+            begin
+                valid[i] = False;
+            end
+        end
+
+        cacheValid <= valid;
+    endmethod
+
+
     // Invalidate entire cache
-    method Action invalAll() if (invalIdx == 0);
+    method Action invalAll();
+        cacheValid <= Vector::replicate(False);
+    endmethod
 
-        cacheTag[0] <= tagged Invalid;
+endmodule
 
-        if (valueOf(nEntries) > 1)
-            invalIdx <= 1;
 
+//
+// mkTinyCache1 --
+//     Special case for single entry cache.
+//
+module [HASIM_MODULE] mkTinyCache1
+    // interface:
+        (HASIM_TINY_CACHE#(t_CACHE_ADDR, t_CACHE_DATA, 1))
+    provisos (Eq#(t_CACHE_ADDR),
+              Bits#(t_CACHE_DATA, t_CACHE_DATA_SZ),
+              Bits#(t_CACHE_ADDR, t_CACHE_ADDR_SZ));
+
+    Reg#(Bool) cacheValid <- mkReg(False);
+    Reg#(t_CACHE_ADDR) cacheTag <- mkRegU();
+    Reg#(t_CACHE_DATA) cacheData <- mkRegU();
+
+    // Read a line, returns invalid if not found.
+    method ActionValue#(Maybe#(t_CACHE_DATA)) read(t_CACHE_ADDR addr);
+        if (cacheValid && (cacheTag == addr))
+            return tagged Valid cacheData;
+        else
+            return tagged Invalid;
+    endmethod
+    
+
+    // Write
+    method Action write(t_CACHE_ADDR addr, t_CACHE_DATA data);
+        cacheValid <= True;
+        cacheTag <= addr;
+        cacheData <= data;
+    endmethod
+
+
+    // Invalidate address if in cache
+    method Action inval(t_CACHE_ADDR addr);
+        if (cacheTag == addr)
+            cacheValid <= False;
+    endmethod
+
+
+    // Invalidate entire cache
+    method Action invalAll();
+        cacheValid <= False;
     endmethod
 
 endmodule

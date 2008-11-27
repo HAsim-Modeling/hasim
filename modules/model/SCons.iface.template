@@ -43,6 +43,24 @@ else:
 
 tgt = []
 
+
+#
+# What is the Bluespec compiler version?
+#
+bsc_version = 0
+bsc_ostream = os.popen('bsc -verbose')
+ver_regexp = re.compile('^Bluespec Compiler, version.*\(build ([0-9]+),')
+for ln in bsc_ostream.readlines():
+    m = ver_regexp.match(ln)
+    if (m):
+        bsc_version = int(m.group(1))
+bsc_ostream.close()
+
+if bsc_version == 0:
+    print "Failed to get Bluespec compiler version"
+    sys.exit(1)
+
+
 # Compile dictionary
 #  NOTE: this must run even if there are no dictionary files.  It always
 #  builds an init.h, even if it is empty.  That way any model can safely
@@ -119,8 +137,14 @@ def emitter_bo(target, source, env):
 
 def compile_bo(source, target, env, for_signature):
     bdir = os.path.dirname(str(target[0]))
+
+    # Older compilers don't put -bdir on the search path
+    maybe_bdir_tgt = ''
+    if (bsc_version < 15480):
+        maybe_bdir_tgt = ':' + bdir
+
     cmd = BSC + ' ' + BSC_FLAGS + \
-          ' -p +:' + inc_tgt + ':' + hw_tgt + ':' + bdir + \
+          ' -p +:' + inc_tgt + ':' + hw_tgt + maybe_bdir_tgt + \
           ' -bdir ' + bdir + ' -vdir ' + bdir + ' -simdir ' + bdir + ' ' + \
           str(source[0])
     return cmd

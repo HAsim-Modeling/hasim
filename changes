@@ -16111,3 +16111,17 @@ Directory modules/hasim/util/cache
 - Add special case module for single entry tiny cache.  Uses same interface as
   the general one.  Needed special case since LRU doesn't have to be maintained.
 - Add inval() method to tiny caches.
+
+----------
+mcadler     Date: Wed Nov 26 19:53:36 EST 2008  CSN: CSN-hasim-553
+                  Thu Nov 27 00:53:36 UTC 2008
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          551 
+ SCons.iface.template      Locally Modified          551 
+ SCons.hw.template         Locally Modified          551 
+
+Latest BSC compiler adds output directory to path search list and complains if
+output directory was already on the path.  SCons script now deals with the
+annoying compiler difference (checking version number).

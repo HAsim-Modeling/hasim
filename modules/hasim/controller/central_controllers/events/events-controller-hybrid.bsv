@@ -79,7 +79,7 @@ module [Connected_Module] mkEventsController#(Connection_Send#(STREAMS_REQUEST) 
     Reg#(EVC_STATE)   state <- mkReg(EVC_Enabled);
   
     // Internal tick counts
-    Vector#(TExp#(`EVENTS_DICT_BITS), Counter#(32)) ticks <- replicateM(mkCounter(0));
+    Vector#(TExp#(`EVENTS_DICT_BITS), COUNTER#(32)) ticks <- replicateM(mkLCounter(0));
 
     // ***** Rules *****
     

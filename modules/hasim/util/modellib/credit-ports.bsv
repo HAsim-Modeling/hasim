@@ -213,7 +213,7 @@ module [HASIM_MODULE] mkPortFifoReceive#(String str, Bool bufferedCredit, Intege
     PORT_CREDIT_RECEIVE#(dataT, bandwidth, logCredit) conn <- mkPortCreditReceive(str);
 
     FIFOF#(dataT)                             fifo <- mkSizedFIFOF(credit);
-    Counter#(logCredit)                    credits <- mkCounter(fromInteger(credit));
+    COUNTER#(logCredit)                    credits <- mkLCounter(fromInteger(credit));
     Reg#(Bit#(logBandwidth))             dataCount <- mkReg(0);
     PulseWire                               doneEn <- mkPulseWire;
     PulseWire                                deqEn <- mkPulseWire;

@@ -165,14 +165,14 @@ module [Connected_Module] mkFUNCP_Scoreboard
     Reg#(TOKEN_INDEX) oldest_tok <- mkReg(0);
     
     // A register tracking how many tokens are active in pipelines.
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_itr <- mkCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_fet <- mkCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_dec <- mkCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_exe <- mkCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_dtr <- mkCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_load <- mkCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_store <- mkCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_commit <- mkCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_itr <- mkLCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_fet <- mkLCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_dec <- mkLCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_exe <- mkLCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_dtr <- mkLCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_load <- mkLCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_store <- mkLCounter_Z(0);
+    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_commit <- mkLCounter_Z(0);
     
     
 

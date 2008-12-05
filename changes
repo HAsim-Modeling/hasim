@@ -16125,3 +16125,82 @@ Directory modules/model
 Latest BSC compiler adds output directory to path search list and complains if
 output directory was already on the path.  SCons script now deals with the
 annoying compiler difference (checking version number).
+
+----------
+mcadler     Date: Fri Dec  5 07:46:56 EST 2008  CSN: CSN-hasim-554
+                  Fri Dec  5 12:46:56 UTC 2008
+
+
+Directory libperl/HAsim/lib/HAsim
+ Util.pm                   Locally Modified          553 
+
+Directory config/pm/hasim/demos/test
+ bram_test/                Locally Added               0 
+
+Directory config/pm/hasim/demos/test/bram_test
+ bram_test_hybrid_htg.apm  Locally Added               0 
+ bram_test_hybrid_exe.apm  Locally Added               0 
+
+Directory modules/hasim/controller/central_controllers/events
+ events-controller-hybrid.bsv Locally Modified          553 
+
+Directory modules/hasim/functional-partition/interface
+ funcp-isa-datapath-types.bsv Locally Modified          553 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          553 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getResults.bsv Locally Modified          553 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          553 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          553 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          553 
+
+Directory modules/hasim/util/modellib
+ stats.bsv                 Locally Modified          553 
+ credit-ports.bsv          Locally Modified          553 
+
+Directory modules/hasim/util/common
+ bluespec-common.prj       Locally Modified          553 
+ counters.bsv              Locally Modified          553 
+ debug-file.bsv            Locally Modified          553 
+
+Directory modules/system/test/alu_test
+ alu-test.bsv              Locally Modified          553 
+
+Directory modules/system/test
+ bram_test/                Locally Added               0 
+
+Directory modules/system/test/bram_test
+ bram-test.awb             Locally Added               0 
+ bram-test.bsv             Locally Added               0 
+ bram-test.dic             Locally Added               0 
+
+Directory modules/system
+ bram_test/                Locally Removed           553 
+
+Directory modules/system/bram_test
+ bram_test_system.awb      Locally Removed           553 
+ System.bsv                Locally Removed           553 
+
+- Reduce Bluespec license warning time to 7 days.
+- Replace BRAM test module with much more extensive tests.  Tests latency and
+  throughput for varying sizes.  Also checks for lost read requests due to
+  multiple read requests with delays for corresponding retrieval of the results.
+  Validates loaded values, too.  BRAM test can also drive Bluespec's BRAM
+  implementation.
+- Remove memAddress and isStore from the ISA datapath response.  They can be
+  computed from other sources.
+- Add new COUNTER interface and mkLCounter module that supports calling
+  up and down methods in the same cycle.  Bluespec's mkCounter does not!
+  Replaced all users of counters.
+- Fixed a race in the store buffer rewind code that could cause a deadlock.
+- Fixed a race in the memory state manager that could cause loads to see
+  the wrong value when run in parallel with a store being committed.  Never
+  actually saw it happen.

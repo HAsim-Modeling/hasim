@@ -78,11 +78,11 @@ module [HASIM_MODULE] mkSystem ();
     //
     // ====================================================================
 
-    HASIM_COMPACT_MUL#(64) sMul <- mkCompactUnsignedMul();
+    HASIM_COMPACT_MUL#(64) uMul <- mkCompactUnsignedMul();
 
     rule calc_start(state == STATE_calc_start);
         
-        sMul.req(truncate(arg0), truncate(arg1));
+        uMul.req(truncate(arg0), truncate(arg1));
         state <= STATE_calc_end;
 
     endrule
@@ -91,7 +91,7 @@ module [HASIM_MODULE] mkSystem ();
 
     rule calc_end(state == STATE_calc_end);
         
-        let c <- sMul.resp();
+        let c <- uMul.resp();
 
         link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_ALUTEST,
                                             stringID: `STREAMS_ALUTEST_NUM64_SP,

@@ -212,7 +212,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
     // Remove store pipeline
     //             next state    store buffer idx of ref
-    FIFO#(Tuple2#(SBUFFER_STATE, MEMSTATE_SBUFFER_INDEX)) removeStore <- mkFIFO();
+    FIFO#(Tuple2#(SBUFFER_STATE, MEMSTATE_SBUFFER_INDEX)) removeStore <- mkFIFO1();
 
     // Hash chain update pipeline during token removal
     FIFO#(Tuple3#(SBUFFER_STATE, MEMSTATE_SBUFFER_INDEX, Maybe#(MEMSTATE_SBUFFER_INDEX))) removeUpdateHashChain <- mkFIFO();

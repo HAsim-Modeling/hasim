@@ -1,0 +1,40 @@
+
+[Global]
+SaveParameters=0
+Description=Hybrid BRAM Test Model
+File=bram_test_hybrid_exe
+Version=2.1
+Name=Hybrid BRAM Test Model
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hasim hybrid simulation
+model=HAsim Hybrid Model Foundation
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
+Packagehint=platforms
+
+[HAsim Hybrid Model Foundation/Requires]
+hasim_common=Hasim Common Library
+hasim_system=Hasim - BRAM Test System
+hasim_controller=Hybrid Null Controller
+fpgaenv=FPGA Environment
+
+[Hybrid Null Controller]
+File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
+Packagehint=hasim
+
+[HAsim Hybrid Model Foundation]
+File=modules/model/hasim_model.awb
+Packagehint=hasim
+
+[Hasim Common Library]
+File=config/pm/hasim/submodels/common/hasim_common.apm
+Packagehint=hasim
+
+
+[Hasim - BRAM Test System]
+File=modules/system/test/bram_test/bram-test.awb
+Packagehint=hasim

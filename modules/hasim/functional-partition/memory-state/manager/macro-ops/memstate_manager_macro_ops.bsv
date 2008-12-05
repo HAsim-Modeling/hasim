@@ -23,7 +23,7 @@
 
 // Library imports
 
-import FIFO::*;
+import FIFOF::*;
 import Vector::*;
 
 // Project Foundation Imports
@@ -128,6 +128,11 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // Link to the Cache
     Connection_Client#(MEM_REQUEST, MEM_VALUE)  linkCache    <- mkConnection_Client("mem_cache");
 
+    // ***** Local data ***** //
+
+    FIFOF#(Bool) commitQ <- mkFIFOF();
+
+
     // ***** Rules ***** //
 
     // memStore
@@ -164,9 +169,14 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // memLoad1
 
     // When:   Any time we get a Load request from the register state.
+    //         Loads may not be processed while commit is in progress because
+    //         values are removed from the store buffer before being written
+    //         to the cache.  There is a window in which earlier stores
+    //         may be invisible.
     // Effect: Convert the address and send it to the store buffer.
 
-    rule memLoad1 (linkRegState.getReq() matches tagged REQ_LOAD .ldInfo);
+    rule memLoad1 (linkRegState.getReq() matches tagged REQ_LOAD .ldInfo &&&
+                   ! commitQ.notEmpty());
 
         // Pop the request from the register state.
         linkRegState.deq();
@@ -237,6 +247,10 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         // Send the request on to the store buffer.
         stBuffer.commitReq(req.tok.index);
 
+        // Commit queue is used just to lock out loads while the location
+        // of stored data is unpredictable.
+        commitQ.enq(?);
+
     endrule
     
     // commit2
@@ -248,6 +262,9 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
         // Get the response from the store buffer.
         let rsp <- stBuffer.commitResp();
+
+        if (!rsp.hasMore)
+            commitQ.deq();
 
         debugLog.record($format("  COMMIT resp: addr=0x%x, value=0x%x, more=%d", rsp.addr, rsp.value, rsp.hasMore));
 

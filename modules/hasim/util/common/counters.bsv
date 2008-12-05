@@ -18,36 +18,104 @@
 
 
 //
+// The standard Bluespec "mkCounter" does not support simultaneous up/down
+// calls.  This code, taken mostly from the Bluespec documentation does.
+//
+
+interface COUNTER#(numeric type nBits);
+
+    method Bit#(nBits) value();
+
+    method Action up();
+    method Action down();
+    method Action setC(Bit#(nBits) newVal);
+
+endinterface: COUNTER
+
+
+module mkLCounter#(Bit#(nBits) initial_value)
+    // interface:
+        (COUNTER#(nBits));
+
+    // Counter value
+    Reg#(Bit#(nBits)) ctr <- mkReg(initial_value);
+
+    PulseWire up_called   <- mkPulseWire();
+    PulseWire down_called <- mkPulseWire();
+    RWire#(Bit#(nBits)) setc_called <- mkRWire();
+
+    (* fire_when_enabled, no_implicit_conditions *)
+    rule update_counter;
+        let new_value = ctr;
+
+        if (setc_called.wget() matches tagged Valid .v)
+            new_value = v;
+
+        if (up_called == down_called)
+            noAction;
+        else if (up_called)
+            new_value = new_value + 1;
+        else
+            new_value = new_value - 1;
+
+        ctr <= new_value;
+    endrule
+
+    method Bit#(nBits) value();
+        return ctr;
+    endmethod
+
+    method Action up();
+        up_called.send();
+    endmethod
+
+    method Action down();
+        down_called.send();
+    endmethod
+
+    method Action setC(Bit#(nBits) newVal);
+        setc_called.wset(newVal);
+    endmethod
+
+endmodule: mkLCounter
+
+
+//
 // COUNTER_Z interface is the same as a standard Counter but has a testable
 // zero bit in order to avoid having to read the whole counter to check for 0.
 //
 interface COUNTER_Z#(numeric type nBits);
 
     method Bool isZero();
-    method UInt#(nBits) value();
+    method Bit#(nBits) value();
 
     method Action up();
     method Action down();
+    method Action setC(Bit#(nBits) newVal);
 
 endinterface: COUNTER_Z
 
 
-module mkCounter_Z#(UInt#(nBits) initial_value)
+module mkLCounter_Z#(Bit#(nBits) initial_value)
     // interface:
         (COUNTER_Z#(nBits));
 
     // Counter value
-    Reg#(UInt#(nBits)) ctr <- mkReg(initial_value);
+    Reg#(Bit#(nBits)) ctr <- mkReg(initial_value);
 
     // Is counter 0?
     Reg#(Bool) zero <- mkReg(initial_value == 0);
 
     PulseWire up_called   <- mkPulseWire();
     PulseWire down_called <- mkPulseWire();
+    RWire#(Bit#(nBits)) setc_called <- mkRWire();
 
     (* fire_when_enabled, no_implicit_conditions *)
     rule update_counter;
         let new_value = ctr;
+
+        if (setc_called.wget() matches tagged Valid .v)
+            new_value = v;
 
         if (up_called == down_called)
             noAction;
@@ -64,7 +132,7 @@ module mkCounter_Z#(UInt#(nBits) initial_value)
         return zero;
     endmethod
 
-    method UInt#(nBits) value();
+    method Bit#(nBits) value();
         return ctr;
     endmethod
 
@@ -76,4 +144,8 @@ module mkCounter_Z#(UInt#(nBits) initial_value)
         down_called.send();
     endmethod
 
-endmodule: mkCounter_Z
+    method Action setC(Bit#(nBits) newVal);
+        setc_called.wset(newVal);
+    endmethod
+
+endmodule: mkLCounter_Z

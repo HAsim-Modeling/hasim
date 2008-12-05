@@ -39,7 +39,7 @@ module mkDebugFile#(String fname)
     // interface:
         (DEBUG_FILE);
 
-    Counter#(32)  fpga_cycle <- mkCounter(0);
+    COUNTER#(32)  fpga_cycle <- mkLCounter(0);
 
     Reg#(File) debugLog <- mkReg(InvalidFile);
     Reg#(Bool) initialized <- mkReg(False);
@@ -99,8 +99,8 @@ module mkTIMEPDebugFile#(String fname)
     // interface:
         (TIMEP_DEBUG_FILE);
 
-    Counter#(32)  fpga_cycle  <- mkCounter(0);
-    Counter#(32)  model_cycle <- mkCounter(0);
+    COUNTER#(32)  fpga_cycle  <- mkLCounter(0);
+    COUNTER#(32)  model_cycle <- mkLCounter(0);
 
     Reg#(File) debugLog <- mkReg(InvalidFile);
     Reg#(Bool) initialized <- mkReg(False);

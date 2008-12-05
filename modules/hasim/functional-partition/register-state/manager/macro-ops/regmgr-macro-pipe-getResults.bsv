@@ -249,7 +249,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         debugLog.record($format("TOKEN %0d: GetResults3: Sending to Datapath.", tok.index));
 
         // Send it to the datapath.
-        linkToDatapath.makeReq(initISADatapathReq(inst, addr));
+        linkToDatapath.makeReq(initISADatapathReq(tok, inst, addr));
 
         // Look up the destinations for the writeback.
         tokDsts.readPorts[0].readReq(tok.index);
@@ -283,7 +283,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         end
 
         // Update the memaddress (only useful for loads/stores)
-        tokMemAddr.write(tok.index, rsp.memAddress);
+        if (rsp.timepResult matches tagged REffectiveAddr .ea)
+            tokMemAddr.write(tok.index, ea);
 
         // Get the destination response
         let dsts <- tokDsts.readPorts[0].readRsp();
@@ -297,7 +298,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             tagged Valid .v: 
             begin // Do the first writeback.
                 
-                if (rsp.isStore)
+                if (tokScoreboard.isStore(tok.index))
                 begin
                 
                     // Stores write dest0 insto the token table instead of the PRF.

@@ -24,6 +24,7 @@
 // ISA-specific ALU as a client of the "isa_datapath" soft connection.
 //
 
+import Vector::*;
 
 // FUNCP_ISA_DATAPATH_EXCEPTIONS
 
@@ -40,16 +41,18 @@ typedef enum
 
 typedef struct
 {
+    TOKEN             token;
     ISA_INSTRUCTION   instruction;
     ISA_ADDRESS       instAddress;
 }
     FUNCP_ISA_DATAPATH_REQ
         deriving (Eq, Bits);
 
-function FUNCP_ISA_DATAPATH_REQ initISADatapathReq(ISA_INSTRUCTION i, ISA_ADDRESS pc);
+function FUNCP_ISA_DATAPATH_REQ initISADatapathReq(TOKEN tok, ISA_INSTRUCTION i, ISA_ADDRESS pc);
 
     return FUNCP_ISA_DATAPATH_REQ
             {
+                token: tok,
                 instruction: i,
                 instAddress: pc
             };
@@ -82,8 +85,6 @@ typedef struct
 {
     FUNCP_ISA_DATAPATH_EXCEPTIONS except;       // Exceptions
     FUNCP_ISA_EXECUTION_RESULT    timepResult;  // Result to give to the timing partition.
-    ISA_ADDRESS                   memAddress;   // Address for Loads/Stores
-    Bool                          isStore;      // If it's a store, writebacks[0] should be the store value.
     ISA_RESULT_VALUES             writebacks;   // Values to write back to the registers.
 }
     FUNCP_ISA_DATAPATH_RSP
@@ -91,19 +92,33 @@ typedef struct
 
 function FUNCP_ISA_DATAPATH_RSP initISADatapathRsp(FUNCP_ISA_DATAPATH_EXCEPTIONS except,
                                                    FUNCP_ISA_EXECUTION_RESULT r,
-                                                   ISA_ADDRESS a,
-                                                   Bool isSt,
                                                    ISA_RESULT_VALUES wr);
+    if (except != FUNCP_ISA_EXCEPT_NONE)
+    begin
+        // Claim all valid outputs on exception
+        wr = replicate(tagged Valid 0);
+    end
 
     return FUNCP_ISA_DATAPATH_RSP
             {
                 except: except,
                 timepResult: r,
-                memAddress:  a,
-                isStore:     isSt,
                 writebacks:  wr
             };
 
+endfunction
+
+function FUNCP_ISA_DATAPATH_RSP initISADatapathRspOp(FUNCP_ISA_EXECUTION_RESULT r,
+                                                     ISA_RESULT_VALUES wr);
+    return initISADatapathRsp(FUNCP_ISA_EXCEPT_NONE, r, wr);
+endfunction
+
+function FUNCP_ISA_DATAPATH_RSP initISADatapathRspException(FUNCP_ISA_DATAPATH_EXCEPTIONS except);
+    return initISADatapathRsp(except, tagged RNop, replicate(tagged Valid 0));
+endfunction
+
+function FUNCP_ISA_DATAPATH_RSP initISADatapathRspNop();
+    return initISADatapathRsp(FUNCP_ISA_EXCEPT_NONE, tagged RNop, replicate(tagged Invalid));
 endfunction
 
 

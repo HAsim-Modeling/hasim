@@ -1,0 +1,13 @@
+def STREAMID.BRAMTEST "bram-test";
+
+def STREAMS.BRAMTEST.START          "BRAM-test: Start\n";
+def STREAMS.BRAMTEST.DONE           "BRAM-test: Done\n";
+def STREAMS.BRAMTEST.ERR_VAL        "BRAM-test: ERROR: unexpected read val (0x%08lx%08lx)\n";
+
+def STREAMS.BRAMTEST.WRITE_PIPE     "Write %d bits: 16 take %d cycles\n";
+def STREAMS.BRAMTEST.WRITE_1        "Write %d bits: 1 takes %d cycles\n";
+def STREAMS.BRAMTEST.READ_PIPE      "Read %d bits: 16 take %d cycles\n";
+def STREAMS.BRAMTEST.READ_1         "Read %d bits: 1 takes %d cycles\n";
+def STREAMS.BRAMTEST.READDELAY_PIPE "Read %d bits with delays: 16 take %d cycles\n";
+def STREAMS.BRAMTEST.READWRITE_PIPE "Read & write %d bits: 16 take %d cycles\n";
+def STREAMS.BRAMTEST.READWRITE_1    "Read & write %d bits: 1 takes %d cycles\n";

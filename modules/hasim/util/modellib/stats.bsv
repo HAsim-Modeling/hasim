@@ -70,7 +70,7 @@ module [Connected_Module] mkStatCounter_Enabled#(STATS_DICT_TYPE myID)
               (Stat);
 
   Connection_Chain#(STAT_DATA) chain <- mkConnection_Chain(`RINGID_STATS);
-  Counter#(`HASIM_STATS_SIZE) stat  <- mkCounter(0);
+  COUNTER#(`HASIM_STATS_SIZE) stat  <- mkLCounter(0);
   Reg#(STAT_STATE)            state <- mkReg(Recording);
   Reg#(Bool)                  enabled <- mkReg(True);
  

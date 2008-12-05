@@ -1,0 +1,8 @@
+%name Hasim - BRAM Test System
+%desc Hasim - BRAM Test System
+%provides hasim_system
+
+%attributes hasim
+
+%public bram-test.bsv
+%public bram-test.dic

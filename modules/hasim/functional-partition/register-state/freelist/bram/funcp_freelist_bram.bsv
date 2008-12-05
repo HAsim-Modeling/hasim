@@ -78,10 +78,10 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(String debugLogPrefix)
     BRAM#(FUNCP_PHYSICAL_REG_INDEX, FUNCP_PHYSICAL_REG_INDEX) fl <- mkBRAMInitializedWith(initialMapping);
 
     // The read pointer is the next register to allocate.
-    Counter#(FUNCP_PHYSICAL_REG_INDEX_SIZE) flRead   <- mkCounter(pack(initFL));
+    COUNTER#(FUNCP_PHYSICAL_REG_INDEX_SIZE) flRead   <- mkLCounter(pack(initFL));
 
     // The write pointer is the next register to overwrite.
-    Counter#(FUNCP_PHYSICAL_REG_INDEX_SIZE) flWrite  <- mkCounter(0); 
+    COUNTER#(FUNCP_PHYSICAL_REG_INDEX_SIZE) flWrite  <- mkLCounter(0); 
 
     // We are empty if the write equals the read.
     Bool empty = flRead.value() == flWrite.value();

@@ -16204,3 +16204,23 @@ Directory modules/system/bram_test
 - Fixed a race in the memory state manager that could cause loads to see
   the wrong value when run in parallel with a store being committed.  Never
   actually saw it happen.
+
+----------
+mcadler     Date: Fri Dec  5 17:15:39 EST 2008  CSN: CSN-hasim-555
+                  Fri Dec  5 22:15:39 UTC 2008
+
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Modified          553 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          554 
+
+- Reduce connection width from 400 to 320 bits, the size of the largest
+  connection.  (Functional cache to RRR memory service.)
+
+- Dramatic reduction in store buffer rewind latency.  Most often the store
+  buffer is empty and no work needs to be done.  Other times, the youngest store
+  is nowhere near the youngest token.  One counter and a hint register can
+  eliminate the majority of slogging through tokens looking for stores to
+  remove.

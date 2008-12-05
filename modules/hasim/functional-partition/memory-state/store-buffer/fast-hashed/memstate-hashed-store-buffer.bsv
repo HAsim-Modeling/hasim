@@ -198,11 +198,24 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     // Store insert pipeline
     FIFO#(Tuple2#(MEMSTATE_SBUFFER_INDEX, MEMSTATE_SBUFFER_INDEX)) insertPrev <- mkFIFO();
 
+    // Number of stores in the store buffer.  There can be at most two stores
+    // for every token.  Since the number of tokens in flight can be at most
+    // half the number of token indices available, a counter with the same number
+    // of bits as the token index is large enough for all possible stores in
+    // flight.
+    COUNTER#(TOKEN_INDEX_SIZE) nStoresInBuffer <- mkLCounter(0);
 
     //
     // ***** Remove token state *****
     //
     
+    // Youngest store hint is used to help rewind find a starting point for
+    // looping through all tokens.  Often the youngest tokens are not stores and
+    // can be skipped.  If the hint is valid then it correctly points to the
+    // youngest store.  If the hint is invalid there may still be a store in
+    // the buffer and a full token search is required.
+    Reg#(Maybe#(TOKEN_INDEX)) youngestStoreHint <- mkReg(tagged Invalid);
+
     // Index of store within a token.  Use in remove_token_stores rule.
     Reg#(MEMSTATE_SBUFFER_TOK_STORE_CNT) removeTokenStoreIdx <- mkRegU();
 
@@ -397,8 +410,25 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
         let old_addr_hash_head = addrHash.sub(reqAddrHash);
 
+        // Update youngest store hint.  The hint may not be set if there were
+        // already stores in the buffer and the current hint is invalid.  In
+        // that case we have no way of knowing the age of the new store relative
+        // to others in the buffer.
+        if (nStoresInBuffer.value() == 0)
+        begin
+            youngestStoreHint <= tagged Valid reqToken;
+            debugLog.record($format("    SB Store tok=%d is youngest", reqToken));
+        end
+        else if (youngestStoreHint matches tagged Valid .cur_youngest &&&
+                 tokenIsOlderOrEq(cur_youngest, reqToken))
+        begin
+            youngestStoreHint <= tagged Valid reqToken;
+            debugLog.record($format("    SB Store tok=%d is youngest (replaces %d)", reqToken, cur_youngest));
+        end
+
         // New node is taken from head of free list
         let node_idx = freeListHead;
+        nStoresInBuffer.up();
         
         //
         // Update node with new store details
@@ -522,6 +552,14 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             
             // Pass control details to remove_one_store rule.
             removeStore.enq(tuple2(next_state, node_idx));
+
+            // Update global state
+            nStoresInBuffer.down();
+            if (youngestStoreHint matches tagged Valid .cur_youngest &&&
+                cur_youngest == reqToken)
+            begin
+                youngestStoreHint <= tagged Invalid;
+            end
         end
         else
         begin
@@ -782,10 +820,33 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     // REWIND
     //
     method Action rewindReq(TOKEN_INDEX rewind_to, TOKEN_INDEX rewind_from) if (state == SBUFFER_STATE_READY);
-        rewindTo  <= rewind_to;
-        rewindCur <= rewind_from;
-    
-        state <= SBUFFER_STATE_REWIND_TOKENS;
+        if (nStoresInBuffer.value() == 0)
+        begin
+            debugLog.record($format("  SB Rewind: Store buffer is already empty"));
+        end
+        else if (youngestStoreHint matches tagged Valid .cur_youngest &&&
+                 tokenIsOlderOrEq(cur_youngest, rewind_to))
+        begin
+            // Youngest token in store buffer is older than rewind target.
+            debugLog.record($format("  SB Rewind: Nothing to do (rewind to %d, current youngest is %d)", rewind_to, cur_youngest));
+        end
+        else
+        begin
+            state <= SBUFFER_STATE_REWIND_TOKENS;
+            rewindTo  <= rewind_to;
+
+            // Pick the first token in the rewind range that has a store.
+            if (youngestStoreHint matches tagged Valid .cur_youngest &&&
+                tokenIsOlderOrEq(cur_youngest, rewind_from))
+            begin
+                rewindCur <= cur_youngest;
+                debugLog.record($format("  SB Rewind: Starting rewind at current youngest (%d)", cur_youngest));
+            end
+            else
+            begin
+                rewindCur <= rewind_from;
+            end
+        end
     endmethod: rewindReq
 
 endmodule

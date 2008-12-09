@@ -144,14 +144,18 @@ typedef enum
 {
     HCST_IDLE,
 
-    // Initial processing of new request
-    HCST_START_REQ,
+    // Initial processing of new request.  Two stages
+    HCST_START1_REQ,
+    HCST_START2_REQ,
 
     // Waiting for read from cache BRAM to service a READ request
     HCST_CACHE_READ_PENDING,
 
     // Waiting for read for partial line write
     HCST_CACHE_RMW_PENDING,
+
+    // Read or write missed
+    HCST_MISS,
 
     // Waiting for read from cache BRAM.  Line will be flushed to backing store.
     HCST_FLUSH_DIRTY,
@@ -277,6 +281,9 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     Reg#(t_CACHE_WRITE_INFO)    reqInfo_wInfo <- mkRegU();  // Valid only for writes
     Reg#(Bool)                  reqInfo_ack <- mkRegU();    // Inval request sends response?
 
+    // Meta data becomes part of the state at the start of read and invalidate processing.
+    Reg#(t_METADATA_VECTOR)     reqInfo_metaData <- mkRegU();
+
     // The way becomes part of the state for the request, computed either
     // as the way for a hit or a victim.
     Reg#(t_CACHE_WAY_IDX)       reqInfo_way <- mkRegU();
@@ -298,12 +305,12 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     // ***** Queues between internal pipeline stages *****
 
     // Response to client, returned 
-    FIFO#(t_CACHE_DATA) respToClient <- mkFIFO();
-    FIFO#(Bool) invalReqDone <- mkFIFO1();
-    FIFO#(Bool) invalAllReqDone <- mkFIFO1();
+    FIFO#(t_CACHE_DATA) respToClientQ <- mkFIFO();
+    FIFO#(Bool) invalReqDoneQ <- mkFIFO1();
+    FIFO#(Bool) invalAllReqDoneQ <- mkFIFO1();
 
-    FIFO#(Tuple2#(t_CACHE_SET_IDX, t_METADATA_VECTOR)) flushDirtySet <- mkFIFO();
-
+    FIFO#(Tuple2#(t_CACHE_SET_IDX, t_METADATA_VECTOR)) flushDirtySetQ <- mkFIFO();
+    FIFO#(Tuple2#(t_LRU_LIST, t_METADATA_VECTOR)) missQ <- mkFIFO();
 
     // ***** Indexing functions *****
 
@@ -470,17 +477,32 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     // ***** Rules ***** //
 
     //
+    // receiveMeta --
+    //     Access requests start by receiving meta data for a line.  The meta
+    //     data is large enough and the search for a way within the cache can
+    //     be expensive with four ways.  Rules consuming the meta data wind
+    //     up on the critical path.  Just receive the meta data in the
+    //     first cycle.
+    rule receiveMeta (curState == HCST_START1_REQ);
+        let meta <- cacheMeta.readRsp();
+
+        reqInfo_metaData <= meta;
+        curState <= HCST_START2_REQ;
+    endrule
+
+
+    //
     // handleInvalOrFlush --
     //     Invalidate and flush requests have similar handling.  Both write
     //     back a dirty matching line.  Flush preserves the now clean line
     //     in the cache.
     //
-    rule handleInvalOrFlush (curState == HCST_START_REQ &&&
+    rule handleInvalOrFlush (curState == HCST_START2_REQ &&&
                              (reqInfo_oper == HCOP_INVAL) || (reqInfo_oper == HCOP_FLUSH_DIRTY));
 
         let cur_lru <- cacheLRU.readRsp();
-        let meta <- cacheMeta.readRsp();
 
+        let meta = reqInfo_metaData;
         let addr = reqInfo_addr;
         let set = reqInfo_set;
 
@@ -522,7 +544,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         begin
             curState <= HCST_IDLE;
             if (reqInfo_ack)
-                invalReqDone.enq(?);
+                invalReqDoneQ.enq(?);
         end
     endrule
 
@@ -531,12 +553,12 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     // handleReadOrWrite --
     //     Cache read or write request.
     //
-    rule handleReadOrWrite (curState == HCST_START_REQ &&&
+    rule handleReadOrWrite (curState == HCST_START2_REQ &&&
                             (reqInfo_oper == HCOP_READ) || (reqInfo_oper == HCOP_WRITE));
 
         let cur_lru <- cacheLRU.readRsp();
-        let meta <- cacheMeta.readRsp();
 
+        let meta = reqInfo_metaData;
         let addr = reqInfo_addr;
         let set = reqInfo_set;
 
@@ -589,96 +611,10 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         end
         else
         begin
-            //
-            // Miss.  First pick a victim.
-            //
-            debugLog.record($format("  %s MISS: addr=0x%x, set=0x%x", (reqInfo_oper == HCOP_READ ? "READ" : "WRITE"), debugAddr(addr), set));
-
-            Bool is_read = (reqInfo_oper == HCOP_READ);
-
-            //
-            // Pick a fill victim:  either the first invalid or the LRU entry.
-            // 
-            t_CACHE_WAY_IDX fill_way = getLRU(cur_lru);
-            if (findFirstInvalid(meta) matches tagged Valid .inval_way)
-            begin
-                fill_way = inval_way;
-            end
-
-            reqInfo_way <= fill_way;
-
-            // Update LRU
-            let new_lru = pushMRU(cur_lru, fill_way);
-            cacheLRU.write(set, new_lru);
-            cacheDebugLRUUpdate(set, fill_way, cur_lru, new_lru);
-
-            // Update tag here for the filled line since we have the details
-            let meta_upd = meta;
-            meta_upd[fill_way] = tagged Valid metaData(addr, writeBackCache && ! is_read);
-            cacheMeta.write(set, meta_upd);
-
-            //
-            // Now must figure out the next state...
-            //
-            
-            let idx = getDataIdx(set, fill_way);
-
-            // Dirty victim?  Flush.
-            Bool flushed_dirty = False;
-            if (meta[fill_way] matches tagged Valid .m)
-            begin
-                stats.invalLine();
-                if (m.dirty)
-                begin
-                    flushed_dirty = True;
-                    reqInfo_flushAddr <= m.addr;
-                    cacheData.readReq(idx);
-                end
-            end
-
-            // Request the filled value from backing store unless this is a
-            // write to the whole line.
-            Bool need_backing_data = (is_read || reqInfo_wInfo.isMasked);
-            if (need_backing_data)
-            begin
-                sourceData.readReq(addr);
-            end
-
-            if (is_read)
-                stats.readMiss();
-            else
-                stats.writeMiss();
-
-            if (flushed_dirty)
-            begin
-                //
-                // Flushing an old line.  The HCST_FLUSH_DIRTY state handles
-                // both read and write requests.
-                //
-                curState <= HCST_FLUSH_DIRTY;
-            end
-            else if (need_backing_data)
-            begin
-                if (is_read)
-                begin
-                    curState <= HCST_FILL_FOR_READ_PENDING;
-                end
-                else
-                begin
-                    curState <= HCST_FILL_FOR_RMW_PENDING;
-                end
-            end
-            else
-            begin
-                // Writing the full line and no flush of an old line.  We're
-                // ready now.
-                debugLog.record($format("  Write to INVAL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, fill_way, reqInfo_wInfo.val));
-                cacheData.write(idx, reqInfo_wInfo.val);
-                curState <= HCST_IDLE;
-            end
-
+            // Miss.
+            missQ.enq(tuple2(cur_lru, meta));
+            curState <= HCST_MISS;
         end
-
     endrule
 
 
@@ -693,7 +629,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         let set = reqInfo_set;
         let way = reqInfo_way;
 
-        respToClient.enq(v);
+        respToClientQ.enq(v);
         curState <= HCST_IDLE;
 
         debugLog.record($format("  Read HIT: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, v));
@@ -720,6 +656,107 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         curState <= HCST_IDLE;
 
         debugLog.record($format("  WRITE masked: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, v));
+    endrule
+
+
+    //
+    // handleMiss --
+    //     Miss handler for read and write requests.
+    //
+    rule handleMiss (curState == HCST_MISS);
+        match {.cur_lru, .meta} = missQ.first();
+        missQ.deq();
+
+        let addr = reqInfo_addr;
+        let set = reqInfo_set;
+
+        //
+        // Miss.  First pick a victim.
+        //
+        debugLog.record($format("  %s MISS: addr=0x%x, set=0x%x", (reqInfo_oper == HCOP_READ ? "READ" : "WRITE"), debugAddr(addr), set));
+
+        Bool is_read = (reqInfo_oper == HCOP_READ);
+
+        //
+        // Pick a fill victim:  either the first invalid or the LRU entry.
+        // 
+        t_CACHE_WAY_IDX fill_way = getLRU(cur_lru);
+        if (findFirstInvalid(meta) matches tagged Valid .inval_way)
+        begin
+            fill_way = inval_way;
+        end
+
+        reqInfo_way <= fill_way;
+
+        // Update LRU
+        let new_lru = pushMRU(cur_lru, fill_way);
+        cacheLRU.write(set, new_lru);
+        cacheDebugLRUUpdate(set, fill_way, cur_lru, new_lru);
+
+        // Update tag here for the filled line since we have the details
+        let meta_upd = meta;
+        meta_upd[fill_way] = tagged Valid metaData(addr, writeBackCache && ! is_read);
+        cacheMeta.write(set, meta_upd);
+
+        //
+        // Now must figure out the next state...
+        //
+
+        let idx = getDataIdx(set, fill_way);
+
+        // Dirty victim?  Flush.
+        Bool flushed_dirty = False;
+        if (meta[fill_way] matches tagged Valid .m)
+        begin
+            stats.invalLine();
+            if (m.dirty)
+            begin
+                flushed_dirty = True;
+                reqInfo_flushAddr <= m.addr;
+                cacheData.readReq(idx);
+            end
+        end
+
+        // Request the filled value from backing store unless this is a
+        // write to the whole line.
+        Bool need_backing_data = (is_read || reqInfo_wInfo.isMasked);
+        if (need_backing_data)
+        begin
+            sourceData.readReq(addr);
+        end
+
+        if (is_read)
+            stats.readMiss();
+        else
+            stats.writeMiss();
+
+        if (flushed_dirty)
+        begin
+            //
+            // Flushing an old line.  The HCST_FLUSH_DIRTY state handles
+            // both read and write requests.
+            //
+            curState <= HCST_FLUSH_DIRTY;
+        end
+        else if (need_backing_data)
+        begin
+            if (is_read)
+            begin
+                curState <= HCST_FILL_FOR_READ_PENDING;
+            end
+            else
+            begin
+                curState <= HCST_FILL_FOR_RMW_PENDING;
+            end
+        end
+        else
+        begin
+            // Writing the full line and no flush of an old line.  We're
+            // ready now.
+            debugLog.record($format("  Write to INVAL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, fill_way, reqInfo_wInfo.val));
+            cacheData.write(idx, reqInfo_wInfo.val);
+            curState <= HCST_IDLE;
+        end
     endrule
 
 
@@ -780,7 +817,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         // Cache the value
         cacheData.write(getDataIdx(set, way), v);
 
-        respToClient.enq(v);
+        respToClientQ.enq(v);
         debugLog.record($format("  Read FILL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, v));
         curState <= HCST_IDLE;
 
@@ -824,7 +861,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         curState <= HCST_IDLE;
 
         if (reqInfo_ack)
-            invalReqDone.enq(?);
+            invalReqDoneQ.enq(?);
 
         debugLog.record($format("  FLUSH or INVAL done"));
 
@@ -843,7 +880,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
 
         // Flush dirty lines
         let meta <- cacheMeta.readRsp();
-        flushDirtySet.enq(tuple2(invalidateAllSet, meta));
+        flushDirtySetQ.enq(tuple2(invalidateAllSet, meta));
 
         if (invalidateAllSet == maxBound)
         begin
@@ -869,7 +906,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     //
     rule handleInvalSet (invalidatingAll && curState == HCST_IDLE);
         
-        match {.set, .meta} = flushDirtySet.first();
+        match {.set, .meta} = flushDirtySetQ.first();
         
         if (meta[invalidateFlushWay] matches tagged Valid .m &&& m.dirty)
         begin
@@ -885,14 +922,14 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         if (invalidateFlushWay == maxBound)
         begin
             // Done.  Pass the request on to the fill stage, if appropriate.
-            flushDirtySet.deq();
+            flushDirtySetQ.deq();
             
             // Done with invalidateingAll?
             if (invalidatingAllDone)
             begin
                 invalidatingAll <= False;
                 invalidatingAllDone <= False;
-                invalAllReqDone.enq(?);
+                invalAllReqDoneQ.enq(?);
                 debugLog.record($format("  Request done: INVAL ALL"));
             end
         end
@@ -911,7 +948,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     function ActionValue#(t_CACHE_SET_IDX) genRequest(HASIM_CACHE_OPERATION oper, t_CACHE_ADDR addr);
     actionvalue
 
-        curState <= HCST_START_REQ;
+        curState <= HCST_START1_REQ;
 
         let set = cacheSet(addr);
 
@@ -945,8 +982,8 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     endmethod
 
     method ActionValue#(t_CACHE_DATA) readResp();
-        let v = respToClient.first();
-        respToClient.deq();
+        let v = respToClientQ.first();
+        respToClientQ.deq();
         return v;
     endmethod
     
@@ -1008,7 +1045,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     // invalOrFlushWait -- Block until an inval or flush request completes.
     //
     method Action invalOrFlushWait();
-        invalReqDone.deq();
+        invalReqDoneQ.deq();
     endmethod
 
 
@@ -1020,7 +1057,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
 
         if (cacheIsEmpty)
         begin
-            invalAllReqDone.enq(?);
+            invalAllReqDoneQ.enq(?);
         end
         else
         begin
@@ -1031,7 +1068,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     endmethod
 
     method Action invalAllWait();
-        invalAllReqDone.deq();
+        invalAllReqDoneQ.deq();
     endmethod
 
     //

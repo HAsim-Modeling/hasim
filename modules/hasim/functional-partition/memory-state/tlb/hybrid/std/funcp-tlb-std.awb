@@ -10,5 +10,5 @@
 
 %param FUNCP_TLB_LOGFILE_NAME "hasim_funcp_tlb.out" "Name of logfile for functional TLB cache"
 
-%param FUNCP_TLB_CACHE_SETS     16     "Number of sets in the translation cache"
+%param FUNCP_TLB_CACHE_SETS     32     "Number of sets in the translation cache"
 %param FUNCP_TLB_CACHE_WAYS     4      "Ways in each translation cache set"

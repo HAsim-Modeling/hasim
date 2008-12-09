@@ -488,11 +488,25 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
 
                 maptable <= new_maptable;
             end
-            
+
+            //
+            // Update the free list position if the token is still allocated or
+            // this is the last token.  If the last token is not allocated it
+            // is due to commit, not rewind.  Hence the need to rewind to it.
+            // The free list position is the point after allocation for the token.
+            //
+            if (done || tokScoreboard.isAllocated(tok_idx))
+            begin
+                debugLog.record($format("Slow Rewind: TOKEN %0d: Free list back to %0d", tok_idx, fr_pos));
+                freelist.backTo(fr_pos);
+            end
+            else
+            begin
+                debugLog.record($format("Slow Rewind: TOKEN %0d: Already deallocated", tok_idx));
+            end
+
             if (done)
                 debugLog.record($format("Slow Rewind: Lookup last TOKEN %0d", tok_idx));  
-
-            freelist.backTo(fr_pos);
         end
 
         // Done with slow rewind?

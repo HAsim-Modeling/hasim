@@ -16224,3 +16224,25 @@ Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hash
   is nowhere near the youngest token.  One counter and a hint register can
   eliminate the majority of slogging through tokens looking for stores to
   remove.
+
+----------
+mcadler     Date: Mon Dec  8 19:59:43 EST 2008  CSN: CSN-hasim-556
+                  Tue Dec  9 00:59:43 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-exception.bsv Locally Modified          555 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.awb         Locally Modified          555 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.awb Locally Modified          555 
+
+Directory modules/hasim/util/cache
+ hasim-cache.bsv           Locally Modified          555 
+
+- Ignore unallocated tokens while managing free list in slow rewind.
+- Increase functional TLB by 2x and functional cache by 4x since we currently
+  have space.
+- Split a pipeline stage in the cache module.  It was the longest path.

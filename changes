@@ -16246,3 +16246,17 @@ Directory modules/hasim/util/cache
 - Increase functional TLB by 2x and functional cache by 4x since we currently
   have space.
 - Split a pipeline stage in the cache module.  It was the longest path.
+
+----------
+mcadler     Date: Thu Dec 18 15:37:25 EST 2008  CSN: CSN-hasim-557
+                  Thu Dec 18 20:37:25 UTC 2008
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          556 
+
+Drop LUT combining (-lc auto) argument from Xilinx map.  The default is "off"
+and, it appears, we should use the default.  LUT combining tries to use LUTs
+densely by packing unrelated logic into a LUT.  While this does reduce hardware
+usage, it appears that the result is also increased pressure on routing and
+more complicated fan-out.  This can sometimes cause par to fail completely.

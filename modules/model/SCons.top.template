@@ -395,7 +395,7 @@ Clean(xilinx_ngd, TMP_XILINX_DIR + '/netlist.lst')
 xilinx_map = env.Command(
     [ XILINX_APM_NAME + '_map.ncd', XILINX_APM_NAME + '.pcf' ],
     xilinx_ngd,
-    'map -cm balanced -timing -global_opt on -logic_opt on -lc auto -ol high -register_duplication -retiming on -pr b -c 100 -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf')
+    'map -cm balanced -timing -global_opt on -logic_opt on -ol high -register_duplication -retiming on -pr b -c 100 -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf')
 
 Clean(xilinx_map, TMP_XILINX_DIR + '/xilinx_device_details.xml')
 

@@ -4,7 +4,6 @@
 
 def ASSERTIONS.REGMGR.INVALID_NUM_DSTS         "FUNCP: Regstate: Instruction has more destinations than ISA definition claims!";
 def ASSERTIONS.REGMGR.EMULATED_INSTR_HAS_DST   "FUNCP: Regstate: Emulated instructions may not have destination registers!";
-def ASSERTIONS.REGMGR.NO_EMULATION_SNAPSHOT    "FUNCP: Regstate: Tried to emulate an instruction that did not have a snapshot!";
 def ASSERTIONS.REGMGR.EXPECTED_OLDEST_TOK      "FUNCP: Regstate: Expected oldest token!";
 def ASSERTIONS.REGMGR.UNEXPECTED_REG_UPDATE    "FUNCP: Regstate: Got a register update from software at an unexpected time!";
 def ASSERTIONS.REGMGR.UNEXPECTED_EMULATION_FINISHED "FUNCP: Regstate: Got an emmulation finished message from software at an unexpected time!";

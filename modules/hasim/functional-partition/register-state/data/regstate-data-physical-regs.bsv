@@ -48,11 +48,16 @@ import Vector::*;
  
 
 //
-// REGSTATE_PHYSICAL_REGS_INVAL_REG --
+// REGSTATE_PHYSICAL_REGS_INVAL_REGS --
 //   Interface that allows invalidation of one register per cycle.
 //
-interface REGSTATE_PHYSICAL_REGS_INVAL_REG;
-    method Action inval(FUNCP_PHYSICAL_REG_INDEX r);
+interface REGSTATE_PHYSICAL_REGS_INVAL_REGS;
+    //
+    // Invalidate uses a request/response interface so the caller can know when
+    // the physical register has been marked invalid.
+    //
+    method Action invalReq(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) regs);
+    method Action invalRsp();
 endinterface
 
 //
@@ -83,9 +88,9 @@ interface REGSTATE_PHYSICAL_REGS_RW_REGS;
 endinterface
 
 interface REGSTATE_PHYSICAL_REGS#(numeric type numPrfReadPorts);
-    interface REGSTATE_PHYSICAL_REGS_INVAL_REG getDependencies;
-    interface REGSTATE_PHYSICAL_REGS_RW_REGS   getResults;
-    interface REGSTATE_PHYSICAL_REGS_WRITE_REG doLoads;
+    interface REGSTATE_PHYSICAL_REGS_INVAL_REGS getDependencies;
+    interface REGSTATE_PHYSICAL_REGS_RW_REGS    getResults;
+    interface REGSTATE_PHYSICAL_REGS_WRITE_REG  doLoads;
 endinterface
 
 
@@ -179,12 +184,16 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
         srcVals[x] <- mkRegU();
     end
 
+    // Vector of work remaining from an invalidate vector
+    Reg#(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) invalVec <- mkReg(replicate(tagged Invalid));
+
     // A valid entry at the head of the queue indicates a quick PRF, pipelined,
     // read path with no buffering required.
     FIFO#(Maybe#(Vector#(numPrfReadPorts, Bool))) quickReadPrfQ <- mkFIFO();
 
     // Individual incoming queues for each pipeline
-    FIFOF#(FUNCP_PHYSICAL_REG_INDEX)                     rqGetDepInval   <- mkFIFOF();
+    FIFOF#(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) rqGetDepInval <- mkFIFOF();
+    FIFO#(Bool) rqGetDepInvalDone <- mkFIFO();
 
     FIFOF#(FUNCP_PHYSICAL_REG_INDEX)                     rqGetResRead    <- mkFIFOF();
     FIFOF#(ISA_INST_SRCS)                                rqGetResReadVec <- mkFIFOF();
@@ -229,6 +238,22 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     // ====================================================================
 
     //
+    // sendInvalResponseWhenDone --
+    //   Function to check pending vector of invalidations for a single request.
+    //   Send a message when all invalidations are complete.
+    //
+    function Action sendInvalResponseWhenDone(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) rVec);
+    action
+        if (! any(isValid, rVec))
+        begin
+            rqGetDepInvalDone.enq(?);
+            debugLog.record($format("PRF: Update: Invalidate done"));
+        end
+    endaction
+    endfunction
+
+
+    //
     // updatePrf --
     //     Handle all possible writes to the register file.
     //
@@ -238,16 +263,52 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
         // followed by priority in reverse pipeline order.
         //
 
-        if (rqGetDepInval.notEmpty())
+        if (findIndex(isValid, invalVec) matches tagged Valid .idx)
         begin
-            let r = rqGetDepInval.first();
+            //
+            // Still working on a previous invalidation vector...
+            //
+            let r = validValue(invalVec[idx]);
+            prfValids.upd(r, False);
+            debugLog.record($format("PRF: Update: Invalidate slot #%d, reg %0d", idx, r));
+
+            //
+            // Remove this entry from the work list.
+            //
+            let rVec = invalVec;
+            rVec[idx] = tagged Invalid;
+            invalVec <= rVec;
+            
+            // Done?
+            sendInvalResponseWhenDone(rVec);
+        end
+        else if (rqGetDepInval.notEmpty())
+        begin
+            //
+            // New invalidate request vector...
+            //
+            let rVec = rqGetDepInval.first();
             rqGetDepInval.deq();
 
-            prfValids.upd(r, False);
-            debugLog.record($format("PRF: Update: Invalidate reg %0d", r));
+            // Handle the first entry.
+            if (rVec[0] matches tagged Valid .r)
+            begin
+                prfValids.upd(r, False);
+                debugLog.record($format("PRF: Update: Invalidate slot #0, reg %0d", r));
+            end
+
+            // Put any remaining entries on the work list.
+            rVec[0] = tagged Invalid;
+            invalVec <= rVec;
+
+            // Done?
+            sendInvalResponseWhenDone(rVec);
         end
         else if (rqDoLoadsWrite.notEmpty() || rqGetResWrite.notEmpty())
         begin
+            //
+            // No invalidates pending.  Handle register writes...
+            //
             Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE) rq;
 
             if (rqDoLoadsWrite.notEmpty())
@@ -451,6 +512,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
         //     in the srcVals vector.
         //
         rule readRespVector (readState == REGSTATE_PRF_READ_GETRESULTS_VEC &&&
+                             vecNumResps[port] != 0 &&&
                              quickReadPrfQ.first() matches tagged Invalid);
             let rIdx = vecQ[port].first();
             vecQ[port].deq();
@@ -465,13 +527,29 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
 
     end
 
+
+    //
+    // allValuesReady --
+    //     Predicate for forwardSrcvals below.  True iff all registers have been
+    //     read.
+    //
+    function Bool allValuesReady();
+        Bool ready = True;
+        for (Integer x = 0; x < valueOf(numPrfReadPorts); x = x + 1)
+        begin
+            ready = ready && (vecNumResps[x] == 0);
+        end
+        return ready;
+    endfunction
+
+
     //
     // forwardSrcvals --
     //     End of the slow path.  Send values to ISA data path after all
     //     registers have been read.
     //
     rule forwardSrcvals ((readState == REGSTATE_PRF_READ_GETRESULTS_VEC) &&&
-                         (vecNumResps[0] == 0) && (vecNumResps[1] == 0) &&&
+                         allValuesReady() &&&
                          quickReadPrfQ.first() matches tagged Invalid);
         debugLog.record($format("PRF: Forward register values to ISA datapath"));
 
@@ -496,10 +574,14 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     //
     // ====================================================================
 
-    interface REGSTATE_PHYSICAL_REGS_INVAL_REG getDependencies;
+    interface REGSTATE_PHYSICAL_REGS_INVAL_REGS getDependencies;
 
-        method Action inval(FUNCP_PHYSICAL_REG_INDEX r);
-            rqGetDepInval.enq(r);
+        method Action invalReq(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) regs);
+            rqGetDepInval.enq(regs);
+        endmethod
+
+        method Action invalRsp();
+            rqGetDepInvalDone.deq();
         endmethod
 
     endinterface

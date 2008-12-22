@@ -43,7 +43,6 @@
 //
 interface REGMGR_ASSERTIONS;
 
-    interface ASSERTION haveSnapshotOfEmulatedInstruction;
     interface ASSERTION expectedOldestTok;
     interface ASSERTION regUpdateAtExpectedTime;
     interface ASSERTION emulationFinishedAtExpectedTime;
@@ -93,7 +92,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager_GlobalData
 
     // Testable assertions
     ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGMGR__BASE);
-    ASSERTION assertHaveSnapshotOfEmulatedInstruction <- mkAssertionChecker(`ASSERTIONS_REGMGR_NO_EMULATION_SNAPSHOT, ASSERT_ERROR, assertNode);
     ASSERTION assertExpectedOldestTok                 <- mkAssertionChecker(`ASSERTIONS_REGMGR_EXPECTED_OLDEST_TOK, ASSERT_ERROR, assertNode);
     ASSERTION assertRegUpdateAtExpectedTime           <- mkAssertionChecker(`ASSERTIONS_REGMGR_UNEXPECTED_REG_UPDATE, ASSERT_WARNING, assertNode);
     ASSERTION assertEmulationFinishedAtExpectedTime   <- mkAssertionChecker(`ASSERTIONS_REGMGR_UNEXPECTED_EMULATION_FINISHED, ASSERT_WARNING, assertNode);
@@ -119,7 +117,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager_GlobalData
     interface FUNCP_SCOREBOARD tokScoreboard = scoreboard;
 
     interface REGMGR_ASSERTIONS assertion;
-        interface ASSERTION haveSnapshotOfEmulatedInstruction = assertHaveSnapshotOfEmulatedInstruction;
         interface ASSERTION expectedOldestTok = assertExpectedOldestTok;
         interface ASSERTION regUpdateAtExpectedTime = assertRegUpdateAtExpectedTime;
         interface ASSERTION emulationFinishedAtExpectedTime = assertEmulationFinishedAtExpectedTime;

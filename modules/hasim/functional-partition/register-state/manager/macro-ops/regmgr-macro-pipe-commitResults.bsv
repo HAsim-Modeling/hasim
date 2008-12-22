@@ -37,8 +37,8 @@
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     REGMGR_GLOBAL_DATA glob,
-    FUNCP_FREELIST freelist,
-    BRAM#(TOKEN_INDEX, ISA_INST_DSTS) tokRegsToFree)
+    REGSTATE_REG_MAPPING_COMMITRESULTS regMapping,
+    FUNCP_FREELIST freelist)
     //interface:
                 ();
 
@@ -81,7 +81,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     FIFO#(TOKEN) commQ   <- mkFIFO();
 
     // Does the commit stage have to free more registers?
-    Reg#(Vector#(TSub#(ISA_MAX_DSTS, 1), Maybe#(FUNCP_PHYSICAL_REG_INDEX))) additionalRegsToFree <- mkReg(Vector::replicate(tagged Invalid));
+    Reg#(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) additionalRegsToFree <- mkReg(Vector::replicate(tagged Invalid));
 
 
     // ====================================================================
@@ -131,7 +131,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         tokScoreboard.commitStart(tok.index);
 
         // Request the registers to be freed.
-        tokRegsToFree.readReq(tok.index);
+        regMapping.readRewindReq(tok);
 
         // Pass to the next stage.
         commQ.enq(tok);
@@ -161,16 +161,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
             debugLog.record($format("TOKEN %0d: commitResults1:  Token is not oldest! (Oldest: %0d)", tok.index, tokScoreboard.oldest()));
 
         // Retrieve the registers to be freed.
-        let regsToFree  <- tokRegsToFree.readRsp();
+        let rewind_info <- regMapping.readRewindRsp();
+        let regs_to_free = validValue(rewind_info).regsToFree;
 
         // Go ahead and free the first register, if present.
-        case (regsToFree[0]) matches
+        case (regs_to_free[0]) matches
             tagged Invalid:  noAction;
             tagged Valid .r: freelist.free(r);
         endcase
 
         // Store all the remaining register names for a later stage to handle.
-        additionalRegsToFree <= tail(regsToFree);
+        regs_to_free[0] = tagged Invalid;
+        additionalRegsToFree <= regs_to_free;
 
         // Update the scoreboard so the token can be reused.
         tokScoreboard.deallocate(tok.index);
@@ -186,17 +188,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     // When:   After a commitResults2 AND there are more physical registers to free.
     // Effect: Free the appropriate physical register.
  
-    // Elaborated Rule: N copies, where N is the maximum number of dests minus 1 (which was handled already).
-    
-    for (Integer x = 0; x < valueof(ISA_MAX_DSTS) - 1; x = x + 1)
-    begin
-        rule commitResultsAdditional (additionalRegsToFree[x] matches tagged Valid .r);
+    rule commitResultsAdditional (findIndex(isValid, additionalRegsToFree) matches tagged Valid .idx);
 
-            debugLog.record($format("Committing Additional PR: %0d", r)); 
-            freelist.free(r);
-            additionalRegsToFree[x] <= tagged Invalid;
+        let r = validValue(additionalRegsToFree[idx]);
+        debugLog.record($format("Committing Additional PR: %0d", r)); 
+        freelist.free(r);
+        additionalRegsToFree[idx] <= tagged Invalid;
 
-        endrule
-    end
+    endrule
     
 endmodule

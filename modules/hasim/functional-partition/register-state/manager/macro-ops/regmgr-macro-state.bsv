@@ -46,6 +46,7 @@ typedef enum
     RSM_ReadyToRewind,
     RSM_Rewinding,
     RSM_RewindingWaitForSlowRemap,
+    RSM_EmulateGenRegMap,
     RSM_SyncingRegisters,
     RSM_RequestingEmulation,
     RSM_UpdatingRegisters
@@ -86,6 +87,7 @@ module mkRegmanagerState#(REGMGR_STATE_ENUM init)
     Reg#(REGMGR_STATE_ENUM) state <- mkReg(init);
     Reg#(Bool) okBegin    <- mkReg(readyToBeginFromState(init));
     Reg#(Bool) okContinue <- mkReg(readyToContinueFromState(init));
+    Reg#(Bit#(1)) bscSchedHint <- mkReg(0);
 
     method REGMGR_STATE_ENUM getState();
         return state;
@@ -95,6 +97,11 @@ module mkRegmanagerState#(REGMGR_STATE_ENUM init)
         state      <= newState;
         okBegin    <= readyToBeginFromState(newState);
         okContinue <= readyToContinueFromState(newState);
+    
+        // Hint to the Bluespec scheduler that exactly one rule with setState
+        // may fire in a single cycle.  Operators above just write so they
+        // don't force mutual exclusion.
+        bscSchedHint <= ~bscSchedHint;
     endmethod
 
     method Bool readyToBegin();

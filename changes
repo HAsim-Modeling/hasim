@@ -16260,3 +16260,61 @@ and, it appears, we should use the default.  LUT combining tries to use LUTs
 densely by packing unrelated logic into a LUT.  While this does reduce hardware
 usage, it appears that the result is also increased pressure on routing and
 more complicated fan-out.  This can sometimes cause par to fail completely.
+
+----------
+mcadler     Date: Mon Dec 22 14:36:25 EST 2008  CSN: CSN-hasim-558
+                  Mon Dec 22 19:36:25 UTC 2008
+
+
+Directory modules/model
+ hasim_model.awb           Locally Modified          557 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ regstate_scoreboard_onehot.bsv Locally Modified          557 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-physical-regs.bsv Locally Modified          557 
+ regstate-data-reg-map-table.bsv Locally Added               0 
+ regstate-data.awb         Locally Modified          557 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.dic          Locally Modified          557 
+ regmgr-macro-global-data.bsv Locally Modified          557 
+ regmgr-macro-pipe-newInFlight.bsv Locally Modified          557 
+ regmgr-macro-state.bsv    Locally Modified          557 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          557 
+ regmgr-macro-pipe-exception.bsv Locally Modified          557 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          557 
+ regmgr-macro-datatypes.bsv Locally Modified          557 
+ regmgr-macro.bsv          Locally Modified          557 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          557 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.bsv   Locally Modified          557 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          557 
+
+- Eliminate most of the compiler warning messages from the register state manager.
+
+- Change default FPGA speed to 75MHz.
+
+- Major change:  eliminate register snapshots for rewind.  After some
+  experimenting it became clear that snapshots require a lot of FPGA area but
+  don't provide that much of a performance boost during rewind.  Memory for snapshots
+  would have to grow with the number of contexts simulated, so they become less
+  and less attractive.
+
+  - Simplify the getDependence pipeline.  Eliminate rules in the main pipeline
+    to handle multiple destinations by moving the extra work out to support
+    modules.  E.g. Physical register free list now returns the right number
+    of registers for the token all at once instead of one register at a time.
+  - Move architectural to physical register map to a module.  The same module
+    also records rewind information for each token.  The module arbitrates
+    access to the register map for all pipeline stages, eliminating some
+    rule scheduling spaghetti.
+  - Instruction emulation must now recover the register mapping appropriate
+    for an emulated instruction using rewind data.
+  - Add youngestDecoded() to the scoreboard.  Rewind now begins at this token
+    instead at the youngest token, since only decoded tokens affect the
+    architectural to physical register map.

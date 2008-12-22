@@ -40,14 +40,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     REGSTATE_TLB_FAULT link_itlb_fault,
     REGSTATE_TLB_FAULT link_dtlb_fault,
     REGSTATE_MEMORY_QUEUE linkToMem,
+    REGSTATE_REG_MAPPING_EXCEPTION regMapping,
     BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr,
     BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst,
-    FUNCP_SNAPSHOT snapshots,
     FUNCP_FREELIST freelist,
-    BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokFreeListPos,
-    BRAM#(TOKEN_INDEX, ISA_INST_DSTS) tokRegsToFree,
-    Reg#(Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX)) maptable,
-    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts,
     BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr,
     Reg#(TOKEN_BRANCH_EPOCH) branchEpoch,
     Reg#(TOKEN_FAULT_EPOCH) faultEpoch)
@@ -94,16 +90,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
 
     FIFO#(TOKEN) faultQ <- mkFIFO();
     FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) faultResumeQ <- mkFIFO();
-    FIFO#(Tuple2#(TOKEN_INDEX, Bool)) rewindQ <- mkFIFO();
+    FIFO#(Tuple3#(TOKEN_INDEX, Bool, Bool)) rewindQ <- mkFIFO();
 
     // Rewind state
     Reg#(FUNCP_REQ_REWIND_TO_TOKEN) rewindReq <- mkRegU();
-    Reg#(Maybe#(FUNCP_SNAPSHOT_INDEX)) rewindSnapIdx <- mkRegU();
 
-    // Is it a fast rewind or a slow one?
-    Reg#(Bool) fastRewind <- mkReg(False);
-
-    // These support "slow rewinds"
     Reg#(TOKEN) rewindTok <- mkRegU();
     Reg#(TOKEN_INDEX) rewindCur <- mkRegU();
     Reg#(Bool) rewindForFault <- mkRegU();
@@ -223,7 +214,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         end
 
         //
-        // Start a slow rewind, killing all younger than the faulting token and
+        // Start a rewind, killing all younger than the faulting token and
         // the faulting token.  Fast rewind won't work because the faulting token
         // is being killed.
         //
@@ -235,15 +226,15 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
                                timep_info: ?};
 
         rewindTok <= rewind_to;
-        fastRewind <= False;
         rewindForFault <= True;
-        rewindCur <= tokScoreboard.youngest();
+        let rewind_from = tokScoreboard.youngestDecoded_Safe(rewind_to.index);
+        rewindCur <= rewind_from;
         
         // Tell the memory to drop non-committed stores.
-        let m_req = MEMSTATE_REQ_REWIND {rewind_to: rewind_to.index, rewind_from: tokScoreboard.youngest()};
+        let m_req = MEMSTATE_REQ_REWIND {rewind_to: rewind_to.index, rewind_from: rewind_from};
         linkToMem.makeReq(tagged REQ_REWIND m_req);
 
-        debugLog.record($format("Rewind: Initiating slow rewind to token %0d", rewind_to.index));
+        debugLog.record($format("Rewind: Initiating rewind to token %0d", rewind_to.index));
                 
         // After rewind, fetch should resume at this token's address
         faultResumeQ.enq(tuple2(tok, iAddr));
@@ -283,7 +274,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     // 2-stage macro operation which undoes the effects of tokens by backing up the maptable.
 
     // When:   When the timing model requests it.
-    // Effect: If we have a snapshot we can quickly back up to that snapshot. Otherwise we XXX
+    // Effect: Walk back through token history and undo register mappings
     // Soft Inputs:  Token
     // Soft Returns: None
 
@@ -301,7 +292,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         rewindReq <= req;
 
         // Log it.
-        debugLog.record($format("Rewind: Preparing rewind to TOKEN %0d (youngest: %0d)", req.token.index, tokScoreboard.youngest())); 
+        debugLog.record($format("Rewind: Preparing rewind to TOKEN %0d", req.token.index));
 
         state.setState(RSM_DrainingForRewind);
 
@@ -311,18 +302,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
 
     // When:   Follows rewindToTokenS
     // Effect: Wait for other functional activity to stop.  The state change
-    //         to rewinding and the snapshot.hasSnapshot() method are both on
-    //         timing critical paths, so the rule doesn't anything else.
+    //         to rewinding is on a timing critical path, so the rule doesn't
+    //         do anything else.
 
     rule rewindToToken1 (state.getState() == RSM_DrainingForRewind && tokScoreboard.canRewind());
 
         let req = rewindReq;
-        debugLog.record($format("Rewind: Ready to rewind to TOKEN %0d (youngest: %0d)", req.token.index, tokScoreboard.youngest())); 
+        debugLog.record($format("Rewind: Ready to rewind to TOKEN %0d (youngest: %0d / youngest decoded: %0d)", req.token.index, tokScoreboard.youngest(), tokScoreboard.youngestDecoded())); 
         state.setState(RSM_ReadyToRewind);
-
-        // Check to see if we have a snapshot.
-        let snap = snapshots.hasSnapshot(req.token.index);
-        rewindSnapIdx <= snap;
 
     endrule
 
@@ -336,44 +323,15 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         let req = rewindReq;
         let tok = req.token;
 
-        // Get Maybe#(snapshot idx) from previous stage
-        let midx = rewindSnapIdx;
-
         // Tell the memory to drop non-committed stores.
-        let m_req = MEMSTATE_REQ_REWIND {rewind_to: tok.index, rewind_from: tokScoreboard.youngest()};
+        let m_req = MEMSTATE_REQ_REWIND {rewind_to: tok.index, rewind_from: tokScoreboard.youngestDecoded_Safe(tok.index)};
         linkToMem.makeReq(tagged REQ_REWIND m_req);
 
         // Update the epoch so we can discard appropriate updates.
         branchEpoch <= branchEpoch + 1;
 
-        // Alright did we find anything?
-        case (midx) matches
-            tagged Valid .idx:
-            begin 
-
-                // Log our success!
-                debugLog.record($format("Rewind: Fast Rewind confirmed with Snapshot %0d", idx));
-
-                // Rewind the scoreboard.
-                tokScoreboard.rewindTo(tok.index);
-
-                // Retrieve the snapshots.
-                snapshots.requestSnapshot(idx);
-                tokFreeListPos.readReq(tok.index);
-                
-                fastRewind <= True;
-
-            end
-            tagged Invalid:
-            begin
-
-                // Log our failure.
-                debugLog.record($format("Rewind: Initiating slow rewind (Oldest: %0d)", tokScoreboard.oldest()));
-                
-                fastRewind <= False;
-
-            end
-        endcase
+        // Log our failure.
+        debugLog.record($format("Rewind: Initiating rewind (Oldest: %0d)", tokScoreboard.oldest()));
         
         // Stop when we get to the token.
         rewindTok <= tok;
@@ -382,57 +340,28 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         rewindForFault <= False;
 
         // Start at the youngest and go backward.
-        rewindCur <= tokScoreboard.youngest();
+        rewindCur <= tokScoreboard.youngestDecoded_Safe(tok.index);
 
         // Proceed with rewind.
         state.setState(RSM_Rewinding);
     
     endrule
 
-    // rewindToToken2
 
-    // When:   After rewindToToken1 AND we have a snapshot.
-    // Effect: Use the snapshot to overwrite existing values. Reply to the timing partition.
-
-    rule rewindToToken3Fast (state.getState() == RSM_Rewinding && fastRewind);
-
-        // Confirm memory rewind reached memory subsystem
-        linkToMem.deq();
-
-        // Get the snapshots.
-        let snp_map <- snapshots.returnSnapshot();
-        let snp_fl <- tokFreeListPos.readRsp();
-
-        // Update the maptable.
-        maptable <= snp_map;
-        
-        // Update the freelist.  Must be valid since snapshot and freelist position
-        // are both set in same phase of getDependencies.
-        freelist.backTo(validValue(snp_fl));
-
-        // Log it.
-        debugLog.record($format("Fast Rewind finished."));  
-
-        // We're done. End of macro-operation (path 1).
-        state.setState(RSM_Running);
-        linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok, initEpoch(branchEpoch, faultEpoch )));
-
-    endrule
-
-    //Slow rewind. Walk the tokens in age order
-    //and reconstruct the maptable
-
-    rule rewindToToken3Slow (state.getState() == RSM_Rewinding && !fastRewind);
+    //
+    // rewindToToken3 --
+    //   Walk the tokens in age order and reconstruct the maptable
+    //
+    rule rewindToToken3 (state.getState() == RSM_Rewinding);
     
         // Look up the token properties
-        tokRegsToFree.readReq(rewindCur);
-        tokFreeListPos.readReq(rewindCur);
+        regMapping.readRewindReq(rewindCur);
         tokInst.readPorts[1].readReq(rewindCur);
-        tokDsts.readPorts[1].readReq(rewindCur);
 
         // Pass it to the next stage who will free it.
         let done = (rewindCur == rewindTok.index);
-        rewindQ.enq(tuple2(rewindCur, done));
+        let tok_active = tokScoreboard.isAllocated(rewindCur);
+        rewindQ.enq(tuple3(rewindCur, tok_active, done));
 
         rewindCur <= rewindCur - 1;
 
@@ -448,45 +377,49 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
 
 
     //
-    // Free registers for tokens coming from rewindToTokenSlow1
+    // Free registers for tokens coming from rewindToToken3.
     //
-    rule rewindToToken4 (True);
+    // The predicate on the rule could be simply "True" but the more complicated
+    // predicate makes it clearer to the Bluespec scheduler when the rule fires
+    // and whether it may conflict with the standard pipeline.
+    //
+    rule rewindToToken4 (! state.readyToBegin() && ! state.readyToContinue());
 
-        match { .tok_idx, .done } = rewindQ.first();
+        match { .tok_idx, .tok_active, .done } = rewindQ.first();
         rewindQ.deq();
 
-        let regs_to_remap <- tokRegsToFree.readRsp();
-        let freelist_pos <- tokFreeListPos.readRsp();
+        let rewind_info <- regMapping.readRewindRsp();
         let inst <- tokInst.readPorts[1].readRsp();
-        let dsts <- tokDsts.readPorts[1].readRsp();
 
         //
         // Unwind register mappings if token has been through getDeps and
         // thus has physical registers allocated.
         //
-        if (freelist_pos matches tagged Valid .fr_pos)
+        if (rewind_info matches tagged Valid .rw)
         begin
             //
             // Rewind register mappings if not at the target state
             //
-            if (!done && tokScoreboard.isAllocated(tok_idx))
+            if (!done && tok_active)
             begin
-                debugLog.record($format("Slow Rewind: Lookup TOKEN %0d", tok_idx));  
-
-                Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) new_maptable = maptable;
+                Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_MAPPING)) new_map = ?;
 
                 for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
                 begin
                     if (isaGetDst(inst, x) matches tagged Valid .arc_r &&&
-                        regs_to_remap[x] matches tagged Valid .r)
+                        rw.regsToFree[x] matches tagged Valid .r)
                     begin
                         // Set the mapping back
-                        debugLog.record($format("Slow Rewind: TOKEN %0d: Remapping (%0d/%0d)", tok_idx, arc_r, r));
-                        new_maptable = update(new_maptable, pack(arc_r), r);
+                        new_map[x] = tagged Valid tuple2(arc_r, r);
+                        debugLog.record($format("Rewind: TOKEN %0d: Remapping (%0d/%0d)", tok_idx, arc_r, r));
+                    end
+                    else
+                    begin
+                        new_map[x] = tagged Invalid;
                     end
                 end
 
-                maptable <= new_maptable;
+                regMapping.updateMap(new_map);
             end
 
             //
@@ -495,24 +428,24 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
             // is due to commit, not rewind.  Hence the need to rewind to it.
             // The free list position is the point after allocation for the token.
             //
-            if (done || tokScoreboard.isAllocated(tok_idx))
+            if (done || tok_active)
             begin
-                debugLog.record($format("Slow Rewind: TOKEN %0d: Free list back to %0d", tok_idx, fr_pos));
-                freelist.backTo(fr_pos);
+                debugLog.record($format("Rewind: TOKEN %0d: Free list back to %0d", tok_idx, rw.freeListPos));
+                freelist.backTo(rw.freeListPos);
             end
             else
             begin
-                debugLog.record($format("Slow Rewind: TOKEN %0d: Already deallocated", tok_idx));
+                debugLog.record($format("Rewind: TOKEN %0d: Already deallocated", tok_idx));
             end
 
             if (done)
-                debugLog.record($format("Slow Rewind: Lookup last TOKEN %0d", tok_idx));  
+                debugLog.record($format("Rewind: Lookup last TOKEN %0d", tok_idx));  
         end
 
-        // Done with slow rewind?
+        // Done with rewind?
         if (done)
         begin
-            debugLog.record($format("Slow Rewind: Done."));  
+            debugLog.record($format("Rewind: Done."));  
             tokScoreboard.rewindTo(rewindTok.index);
             if (! rewindForFault)
             begin

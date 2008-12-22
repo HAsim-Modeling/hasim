@@ -30,8 +30,7 @@
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_NewInFlight#(
     REGMGR_GLOBAL_DATA glob,
-    FUNCP_SNAPSHOT snapshots,
-    BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokFreeListPos,
+    REGSTATE_REG_MAPPING_NEWINFLIGHT regMapping,
     TOKEN_BRANCH_EPOCH branchEpoch,
     TOKEN_FAULT_EPOCH faultEpoch)
     //interface:
@@ -91,19 +90,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_NewInFlight#(
         // Log it.
         
         debugLog.record($format("NewInFlight: Allocating TOKEN %0d", idx));
-        
-        // Reset the free list pointer so rewind knows whether this token has
-        // registers allocated.
-        tokFreeListPos.write(idx, tagged Invalid);
-
-        // Invalidate old snapshots
-        snapshots.invalSnapshot(idx);
 
         // The timing partition scratchpad must be filled in by up.
         let newtok = TOKEN { index: idx,
                              poison: False,
                              epoch: TOKEN_EPOCH { branch: branchEpoch, fault: faultEpoch },
                              timep_info: TOKEN_TIMEP_INFO { scratchpad: 0 } };
+        
+        // Reset the free list pointer so rewind knows whether this token has
+        // registers allocated.
+        regMapping.initToken(newtok);
 
         // Respond to the timing partition. End of macro operation.
         linkNewInFlight.makeResp(initFuncpRspNewInFlight(newtok));

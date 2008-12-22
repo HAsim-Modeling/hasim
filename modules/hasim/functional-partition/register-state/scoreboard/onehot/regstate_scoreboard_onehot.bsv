@@ -106,6 +106,15 @@ interface FUNCP_SCOREBOARD;
   method ISA_MEMOP_TYPE getStoreType(TOKEN_INDEX t);
   method TOKEN_INDEX youngest();
   method TOKEN_INDEX oldest();
+
+  // youngestDecoded can be useful when rewinding.  There are times when it
+  // may point to a token that hasn't yet been decoded, but it will never
+  // point to a token older than the youngest decoded.
+  method TOKEN_INDEX youngestDecoded();
+  // Safe is the same as youngestDecoded() but the response must be no older
+  // than the input argument.
+  method TOKEN_INDEX youngestDecoded_Safe(TOKEN_INDEX t);
+
   method Bool canEmulate();
   method Bool canRewind();
   
@@ -163,6 +172,9 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     // A pointer to the oldest active token.
     Reg#(TOKEN_INDEX) oldest_tok <- mkReg(0);
+    
+    // A pointer to the youngest decoded token.
+    Reg#(TOKEN_INDEX) youngestDecodedTok <- mkReg(0);
     
     // A register tracking how many tokens are active in pipelines.
     COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_itr <- mkLCounter_Z(0);
@@ -297,6 +309,10 @@ module [Connected_Module] mkFUNCP_Scoreboard
         // Update the oldest token.
         oldest_tok <= next_tok.sub(t);
 
+        if (youngestDecodedTok == oldest_tok)
+            youngestDecodedTok <= next_tok.sub(t);
+
+
         // Update the allocation table.
         alloc <= update(alloc, t, False);
         
@@ -426,6 +442,11 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
         dec_start.upd(t, True);
         num_in_dec.up();
+
+        if (tokenIsOlderOrEq(youngestDecodedTok, t) && alloc[t])
+        begin
+            youngestDecodedTok <= t;
+        end
 
     endmethod
 
@@ -684,9 +705,15 @@ module [Connected_Module] mkFUNCP_Scoreboard
       // reclaim tokens slightly more aggressively.
     
       if (!alloc[t])
+      begin
           oldest_tok <= next_free_tok;
+          youngestDecodedTok <= next_free_tok;
+      end
       else
+      begin
           next_tok.upd(t, next_free_tok);
+          youngestDecodedTok <= t;
+      end
 
       // Update the vector.
       alloc <= as;
@@ -811,6 +838,28 @@ module [Connected_Module] mkFUNCP_Scoreboard
     method TOKEN_INDEX oldest();
 
         return oldest_tok;
+
+    endmethod
+
+    // youngestDecoded
+
+    // When:   Any time.
+    // Effect: Accessor method.
+
+    method TOKEN_INDEX youngestDecoded();
+
+        return youngestDecodedTok;
+
+    endmethod
+
+    // youngestDecoded_Safe
+
+    // When:   Any time.
+    // Effect: Similar to youngestDecoded but returned value may be no older than t.
+
+    method TOKEN_INDEX youngestDecoded_Safe(TOKEN_INDEX t);
+
+        return tokenIsOlderOrEq(t, youngestDecodedTok) ? youngestDecodedTok : t;
 
     endmethod
 

@@ -16,6 +16,12 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
+// Library includes.
+
+import FIFO::*;
+import FIFOF::*;
+import Vector::*;
+
 // Project foundation includes.
 
 `include "asim/provides/hasim_common.bsh"
@@ -61,11 +67,124 @@ STATE_RES4
 
 
 
+// ========================================================================
+//
+//   Internal method for managing a local architectural to physical
+//   register map.  This map is used by the emulation code to recover
+//   the register mappings for an emulated instruction.
+//
+// ========================================================================
+
+interface FUNCP_EMULATION_REG_MAP;
+    method Action updateMap(Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_MAPPING)) update);
+    method Action mapReq(ISA_REG_INDEX ar);
+    method ActionValue#(Maybe#(FUNCP_PHYSICAL_REG_INDEX)) mapResp(ISA_REG_INDEX ar);
+    method Action reset();
+endinterface
+
+module mkEmulationRegMap
+    // interface:
+    (FUNCP_EMULATION_REG_MAP);
+    
+    // Separate valid bits so they can be cleared in a single operation
+    Reg#(Vector#(ISA_NUM_REGS, Bool)) emulMapValid <- mkRegU();
+    
+    // Main architectural to physical register map table
+    BRAM#(Bit#(TLog#(ISA_NUM_REGS)), FUNCP_PHYSICAL_REG_INDEX) emulMapTable <- mkBRAM();
+    
+    // Update queue state for writing new mappings to the table
+    FIFOF#(Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_MAPPING))) updateQ <- mkFIFOF();
+    Reg#(Bit#(TLog#(ISA_MAX_DSTS))) updIdx <- mkReg(0);
+
+
+    //
+    // doUpdate --
+    //     Loop over all destination mappings for an instruction, writing them
+    //     to the map table one per cycle.
+    //
+    rule doUpdate (True);
+        let upd = updateQ.first();
+
+        // Update map table for current index in instruction's mapping vector
+        if (upd[updIdx] matches tagged Valid {.ar, .pr})
+        begin
+            emulMapValid[pack(ar)] <= True;
+            emulMapTable.write(pack(ar), pr);
+        end
+        
+        // Is this the last mapping for the vector?
+        Integer last_idx = 0;
+        for (Integer x = 1; x < valueof(ISA_MAX_DSTS); x = x + 1)
+        begin
+            if (isValid(upd[x]))
+                last_idx = x;
+        end
+        
+        if (fromInteger(last_idx) > updIdx)
+        begin
+            // More work on this update request
+            updIdx <= updIdx + 1;
+        end
+        else
+        begin
+            // Done with this request
+            updateQ.deq();
+            updIdx <= 0;
+        end
+    endrule
+
+
+    //
+    // updateMap --
+    //     Write a new vector of mappings for an instruction to the table.
+    //
+    method Action updateMap(Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_MAPPING)) update);
+        updateQ.enq(update);
+    endmethod
+
+
+    //
+    // mapReq/Resp --
+    //     Return physical register mapping for a single architectural register.
+    //
+    method Action mapReq(ISA_REG_INDEX ar) if (! updateQ.notEmpty());
+        emulMapTable.readReq(pack(ar));
+    endmethod
+
+
+    method ActionValue#(Maybe#(FUNCP_PHYSICAL_REG_INDEX)) mapResp(ISA_REG_INDEX ar);
+        let r <- emulMapTable.readRsp();
+
+        if (emulMapValid[pack(ar)])
+            return tagged Valid r;
+        else
+            return tagged Invalid;
+    endmethod
+
+
+    //
+    // reset --
+    //     Invalidate all mappings.
+    //
+    method Action reset() if (! updateQ.notEmpty());
+        emulMapValid <= replicate(False);
+    endmethod
+
+endmodule: mkEmulationRegMap
+
+
+
+// ========================================================================
+//
+//   Primary execute stage pipeline.
+//
+// ========================================================================
+
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     REGMGR_GLOBAL_DATA glob,
+    REGSTATE_REG_MAPPING_GETRESULTS regMapping,
     REGSTATE_PHYSICAL_REGS_RW_REGS prf,
     BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr,
-    FUNCP_SNAPSHOT snapshots,
     BRAM#(TOKEN_INDEX, ISA_INST_SRCS) tokWriters,
     BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts,
     BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst,
@@ -118,15 +237,15 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // ====================================================================
 
     // Intermediate state between pipeline stages
-    FIFO#(TOKEN) res1Q <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN, Bool)) res1Q <- mkFIFO();
     FIFO#(TOKEN) res2Q <- mkFIFO();
     FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) res3Q   <- mkFIFO();
-    FIFO#(Tuple2#(ISA_REG_INDEX, FUNCP_PHYSICAL_REG_INDEX)) syncQ <- mkFIFO();
+    FIFO#(ISA_REG_INDEX) syncPRFReqQ <- mkFIFO();
+    FIFO#(Tuple2#(Bool, ISA_REG_INDEX)) syncQ <- mkFIFO();
+    FIFO#(Tuple2#(ISA_REG_INDEX, ISA_VALUE)) updateRegQ <- mkFIFO();
 
     Reg#(STATE_RES4) stateRes4 <- mkReg(RES4_NORMAL);
 
-    // Which snapshot should we refer to for emulation?
-    Reg#(FUNCP_SNAPSHOT_INDEX) emulatingSnap <- mkRegU();
     // Which token's instruction are we emulating?
     Reg#(TOKEN) emulatingToken <- mkRegU();
     // PC of emulating token
@@ -168,7 +287,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         // Update the scoreboard.
         tokScoreboard.exeStart(tok.index);
         
-        if (tokScoreboard.emulateInstruction(tok.index) && tokScoreboard.isAllocated(tok.index))
+        // Token active or was it killed?
+        let tok_active = tokScoreboard.isAllocated(tok.index);
+
+        if (tokScoreboard.emulateInstruction(tok.index) && tok_active)
         begin
 
             // Record that we're emulating an instruction.
@@ -188,7 +310,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             tokWriters.readReq(tok.index);
 
             // Pass it along to the next stage.
-            res1Q.enq(tok);
+            res1Q.enq(tuple2(tok, tok_active));
         
         end
 
@@ -203,14 +325,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     rule getResults2 (state.readyToContinue());
 
         // Get input from getResults1.
-        let tok = res1Q.first();
+        match { .tok, .tok_active } = res1Q.first();
         res1Q.deq();
 
         // Response from previous stage.
         let ws <- tokWriters.readRsp();
         
         // We let junk proceed
-        if (!tokScoreboard.isAllocated(tok.index))
+        if (! tok_active)
         begin
             // No values are needed for junk
             debugLog.record($format("TOKEN %0d: GetResults2: Letting Junk Proceed!", tok.index));
@@ -445,46 +567,132 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     
     // ******* emulateInstruction ******* //
 
-    // 4-stage macro-operation that interacts with software via RRR.
-    // This is completely unpipelined and always stalls the whole system.
-    
+    //    
     // When:   After the getResults operation detects an instruction which must be emulated.
     // Effect: First this sends every archtectural register value to software.
     //         Then it makes a call to emulate the instruction.
     //         Then it accepts any number of register updates from software.
     //         Finally it gets an ACK and returns the result of getResults to the timing model.
 
-    // emulateInstruction1
+    // Multi-stage macro-operation that interacts with software via RRR.
+    // This is completely unpipelined and always stalls the whole system.
     
+    // Message while discovering instruction's register mappings
+    FIFO#(Tuple3#(TOKEN_INDEX, Bool, Bool)) emulateRegMapQ <- mkFIFO();
+
+    // Current token for register mapping discovery
+    Reg#(TOKEN_INDEX) emulateMapCurTok <- mkRegU();
+
+    // Done finding all register mappings?
+    Reg#(Bool) emulateMapReqDone <- mkRegU();
+
+    // Map table that reverses all register mappings from tokens younger than
+    // emulated token.
+    FUNCP_EMULATION_REG_MAP emulateRegMap <- mkEmulationRegMap();
+
+    // Done writing registers to host?
+    Reg#(Bool) doneSyncingRegs <- mkRegU();
+
+
+    // emulateInstruction1
+    //
     // When:   After getResults operation puts us in the emulation state.
     // Effect: Stall until all younger operations have completed. Then we can proceed.
-    
-    rule emulateInstruction1 (state.getState() == RSM_DrainingForEmulate && tokScoreboard.canEmulate());
 
+    rule emulateInstruction1 (state.getState() == RSM_DrainingForEmulate && tokScoreboard.canEmulate());
         // Did the timing model do drain before correctly?
         assertion.expectedOldestTok(emulatingToken.index == tokScoreboard.oldest());
         if (emulatingToken.index != tokScoreboard.oldest())
             debugLog.record($format("TOKEN %0d: emulateInstruction1:  Token is not oldest! (Oldest: %0d)", emulatingToken.index, tokScoreboard.oldest()));
-
-        // Reset the counter for syncing registers.
-        synchronizingCurReg <= minBound;
-
-        // Lookup the snapshot we should be working with.
-        let msnap = snapshots.hasSnapshot(emulatingToken.index);
-
-        // If there's no snapshot, something is really wrong.
-        assertion.haveSnapshotOfEmulatedInstruction(isValid(msnap));
-
-        // Record which snap we should use.
-        emulatingSnap <= validValue(msnap);
-
-        // Pre-request the first snapshot.
-        snapshots.requestSnapshot(validValue(msnap));
-
-        // Start syncing registers.
-        state.setState(RSM_SyncingRegisters);
                
+        emulateMapCurTok <= tokScoreboard.youngestDecoded();
+        emulateMapReqDone <= False;
+        emulateRegMap.reset();
+
+        state.setState(RSM_EmulateGenRegMap);
+
+        debugLog.record($format("TOKEN %0d: emulateInstruction1:  Youngest decoded token is %0d (youngest is %0d)", emulatingToken.index, tokScoreboard.youngestDecoded(), tokScoreboard.youngest()));
     endrule
+
+
+    //
+    // emulateInstruction1_GenRegMapReq --
+    //     Loop from youngest token to the token being emulated and request
+    //     details of registers written by each token.  Details will be
+    //     consumed by the next rule.
+    //
+    rule emulateInstruction1_GenRegMapReq (state.getState() == RSM_EmulateGenRegMap && ! emulateMapReqDone);
+        // Look up the token properties
+        regMapping.readRewindReq(emulateMapCurTok);
+        tokInst.readPorts[1].readReq(emulateMapCurTok);
+
+        // Pass it to the next stage that will generate the map table
+        let done = (emulateMapCurTok == emulatingToken.index);
+        let tok_active = tokScoreboard.isAllocated(emulateMapCurTok);
+        emulateRegMapQ.enq(tuple3(emulateMapCurTok, tok_active, done));
+
+        emulateMapCurTok <= emulateMapCurTok - 1;
+        emulateMapReqDone <= done;
+    endrule
+
+
+    //
+    // emulateInstruction1_GenRegMapResp --
+    //     Receives information about register map changes tokens, starting with
+    //     the youngest token and working back to the emulated token.  Build
+    //     a map of registers from the perspective of the emulated token.
+    //
+    rule emulateInstruction1_GenRegMapResp (state.getState() == RSM_EmulateGenRegMap);
+
+        match { .tok_idx, .tok_active, .done } = emulateRegMapQ.first();
+        emulateRegMapQ.deq();
+
+        let rewind_info <- regMapping.readRewindRsp();
+        let inst <- tokInst.readPorts[1].readRsp();
+
+        //
+        // Note old register mappings.  We must check the freelist position for
+        // its valid bit, since it is the only structure reset when the token
+        // is allocated.  An invalid free list position is a clue that the
+        // token has not been through decode.
+        //
+        if (!done && tok_active &&& rewind_info matches tagged Valid .rw)
+        begin
+            Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_MAPPING)) new_map = ?;
+
+            for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
+            begin
+                if (isaGetDst(inst, x) matches tagged Valid .arc_r &&&
+                    rw.regsToFree[x] matches tagged Valid .r)
+                begin
+                    // Set the mapping back
+                    new_map[x] = tagged Valid tuple2(arc_r, r);
+                    debugLog.record($format("TOKEN %0d: EmulateInstruction1: Note mapping from token %0d (%0d/%0d)", emulatingToken.index, tok_idx, arc_r, r));
+                end
+                else
+                begin
+                    new_map[x] = tagged Invalid;
+                end
+            end
+
+            emulateRegMap.updateMap(new_map);
+        end
+
+        // Done with map table discovery?
+        if (done)
+        begin
+            debugLog.record($format("TOKEN %0d: EmulateInstruction1: Map discovery done", emulatingToken.index));  
+
+            // Reset the counter for syncing registers.
+            synchronizingCurReg <= minBound;
+            doneSyncingRegs <= False;
+
+            // Start syncing registers.
+            state.setState(RSM_SyncingRegisters);
+        end
+
+    endrule
+
 
     // emulateInstruction2_Req
     
@@ -492,55 +700,78 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     //         rule happens once for each architectural register.
     // Effect: Look up the current physical register in the maptable and request it from the regfile.
     
-    
-    rule emulateInstruction2_Req (state.getState() == RSM_SyncingRegisters);
+    rule emulateInstruction2_Req (state.getState() == RSM_SyncingRegisters && ! doneSyncingRegs);
     
         // Some ISA's have a sparse packing of register names.  They should define Arith so we 
         // don't transmit them spuriously.
 
-        // Get the maptable at the time of the emulated instruction.
-        let emulation_map <- snapshots.returnSnapshot();
+        // Request architectural to physical register mapping
+        emulateRegMap.mapReq(synchronizingCurReg);
+        regMapping.readMapReq(synchronizingCurReg);
 
-        // Lookup which register to send next.
-        FUNCP_PHYSICAL_REG_INDEX current_pr = emulation_map[pack(synchronizingCurReg)];
+        Bool done = False;
 
-        // Make the request to the regfile.
-        prf.readReq(current_pr);
-
-        // Pre-load the snapshot for next time.
-        snapshots.requestSnapshot(emulatingSnap);
-
-        // Pass it on to the next stage.
-        syncQ.enq(tuple2(synchronizingCurReg, current_pr));
-        
         // Was this our last request?
         if (synchronizingCurReg == maxBound)
         begin
-        
             // Request the inst and current PC
             tokInst.readPorts[0].readReq(emulatingToken.index);
             tokAddr.readReq(emulatingToken.index);
 
-            // End the loop.
-            state.setState(RSM_RequestingEmulation);
-        
+            done = True;
         end
+        
+        // Pass messages to prf request and value forwarding rules
+        syncPRFReqQ.enq(synchronizingCurReg);
+        syncQ.enq(tuple2(done, synchronizingCurReg));
         
         // Increment, and possibly repeat.
         synchronizingCurReg <= synchronizingCurReg + 1;
-        
-    
+        doneSyncingRegs <= done;
+
     endrule
+
+
+    // emulateInstruction2_PRFReq
+    //
+    // When:   After each occurance of emulateInstruction2_Req
+    // Effect: Complete map from architectural register to physical register.  Request
+    //         the physical register's value.
+    //
+    rule emulateInstruction2_PRFReq (True);
+    
+        let ar = syncPRFReqQ.first();
+        syncPRFReqQ.deq();
+
+        let emulate_map_pr <- emulateRegMap.mapResp(ar);
+        let map_pr <- regMapping.readMapRsp();
+
+        FUNCP_PHYSICAL_REG_INDEX pr = ?;
+        if (emulate_map_pr matches tagged Valid .emul_pr)
+            // Found a changed mapping during the token walk
+            pr = emul_pr;
+        else
+            // Mapping hasn't changed since emulated instruction was decoded
+            pr = map_pr;
+    
+        // Make the request to the regfile.
+        prf.readReq(pr);
+
+        //Log it.
+        debugLog.record($format("TOKEN %0d: EmulateInstruction2: Reading Register R%0d (PR%0d).", emulatingToken.index, ar, pr));
+
+    endrule
+
 
     // emulateInstruction2_Rsp
     
-    // When:   After each occurance of emulateInstruction1_Req
+    // When:   After each occurance of emulateInstruction2_Req
     // Effect: Get the register value response and send it on to software via RRR.
 
     rule emulateInstruction2_Rsp (True);
     
         // Get the register from the previous stage.
-        match {.arch_reg, .phys_reg} = syncQ.first();
+        match {.done, .arch_reg} = syncQ.first();
         syncQ.deq();
         
         // Get the register value from the regfile.
@@ -549,8 +780,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         // Send the regsiter on to software via RRR
         client_stub.makeRequest_sync(tuple2(arch_reg, reg_val));
 
+        if (done)
+        begin
+            // End the loop.
+            state.setState(RSM_RequestingEmulation);
+        end
+        
         //Log it.
-        debugLog.record($format("TOKEN %0d: EmulateInstruction2: Transmitting Register R%0d (PR%0d) = 0x%h.", emulatingToken.index, arch_reg, phys_reg, reg_val));
+        debugLog.record($format("TOKEN %0d: EmulateInstruction2: Transmitting Register R%0d = 0x%h.", emulatingToken.index, arch_reg, reg_val));
     
     endrule
     
@@ -580,35 +817,55 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     endrule
 
     // emulateInstruction3_UpdateReg
-    
+    //
     // When:   Whenever the software decides that it should update a register in hardware.
     //         These updates should really only occur when we're emulating an instruction.
     //         If they come during any other time then this is a fatal error.
-    // Effect: Update the register to the new value.
-
-
+    // Effect: Request physical register mapping and forward details to
+    //         emualteInstruction3_UpdateRegWrite.
+    //
     rule emulateInstruction3_UpdateReg (True);
         
         // Get an update request from software.
-        match {.r, .v} <- server_stub.acceptRequest_updateRegister();
+        match {.ar, .v} <- server_stub.acceptRequest_updateRegister();
         
-        // Get the maptable at the time of the emulated instruction.
-        let emulation_map <- snapshots.returnSnapshot();
-
         // Assert that we're in the state we expected to be in.
         assertion.regUpdateAtExpectedTime(state.getState() == RSM_UpdatingRegisters);
+
+        // Request architectural to physical register mapping
+        emulateRegMap.mapReq(ar);
+        regMapping.readMapReq(ar);
+
+        updateRegQ.enq(tuple2(ar, v));
+
+    endrule
+
+    //
+    // emulateInstruction3_UpdateRegWrite --
+    //     Receive register mapping and values from previous rules.  Write value
+    //     to physical register.
+    //
+    rule emulateInstruction3_UpdateRegWrite (True);
         
-        // Lookup the current physical register in the snapshot maptable.
-        FUNCP_PHYSICAL_REG_INDEX pr = emulation_map[pack(r)];
-        
+        match {.ar, .v} = updateRegQ.first();
+        updateRegQ.deq();
+
+        let emulate_map_pr <- emulateRegMap.mapResp(ar);
+        let map_pr <- regMapping.readMapRsp();
+
+        FUNCP_PHYSICAL_REG_INDEX pr = ?;
+        if (emulate_map_pr matches tagged Valid .emul_pr)
+            // Found a changed mapping during the token walk
+            pr = emul_pr;
+        else
+            // Mapping hasn't changed since emulated instruction was decoded
+            pr = map_pr;
+
         // Update the regfile.
         prf.write(pr, v);
 
-        // Get the snapshot for the next time.
-        snapshots.requestSnapshot(emulatingSnap);
-        
         // Log it.
-        debugLog.record($format("TOKEN %0d: EmulateInstruction3: Writing (PR%0d <= 0x%h)", emulatingToken.index, pr, v));
+        debugLog.record($format("TOKEN %0d: EmulateInstruction3: Writing ((%0d/PR%0d) <= 0x%h)", emulatingToken.index, ar, pr, v));
     
     endrule
 
@@ -626,9 +883,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         // Assert that we're in the state we expected to be in.
         assertion.emulationFinishedAtExpectedTime(state.getState() == RSM_UpdatingRegisters);
         
-        // Dequeue the final snapshot response.
-        let junk <- snapshots.returnSnapshot();
-
         // We are no longer emulating an instruction.
         // Resume normal operations.
         state.setState(RSM_Running);

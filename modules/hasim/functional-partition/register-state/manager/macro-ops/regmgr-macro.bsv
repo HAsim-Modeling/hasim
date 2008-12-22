@@ -41,7 +41,6 @@ import Vector::*;
 `include "asim/provides/funcp_regstate_data.bsh"
 `include "asim/provides/funcp_regstate_scoreboard.bsh"
 `include "asim/provides/funcp_regstate_freelist.bsh"
-`include "asim/provides/funcp_regstate_snapshot.bsh"
 `include "asim/provides/funcp_memstate_manager.bsh"
 `include "asim/provides/funcp_memory.bsh"
 
@@ -91,30 +90,9 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // The physical memaddress(es) for the instruction.
     BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs <- mkLiveTokenBRAMMultiRead();
 
-    // Position of freelist for token's physical regs.  Used by rewind.
-    BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokFreeListPos <- mkLiveTokenBRAM();
-
-    // The physical registers to free when the token is committed/killed.
-    BRAM#(TOKEN_INDEX, ISA_INST_DSTS) tokRegsToFree <- mkLiveTokenBRAM();
-
     // The Map Table
+    REGSTATE_REG_MAPPING regMapping <- mkFUNCP_Regstate_RegMapping();
 
-    // This gets pounded nearly every FPGA cycle, so it's NOT in RAM.
-    // Also this lets us snapshot/reload the entire maptable in a single cyle.
-
-    // The initial map is that all architectural registers are mapped 1-to-1 to
-    // physical registers and are all valid.
-
-    Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) initMap = newVector();
-    
-    // Note: this loop ends at _architectural_ register size.
-    
-    for (Integer x  = 0; x < valueof(ISA_NUM_REGS); x = x + 1)
-    begin
-      initMap[x] = fromInteger(x);
-    end
-
-    Reg#(Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX)) maptable   <- mkReg(initMap);
 
     // ******* High-Level FSM State *******
 
@@ -145,9 +123,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // The Freelist tracks which physical registers are available.
     FUNCP_FREELIST freelist <- mkFUNCP_Freelist(`REGSTATE_LOGFILE_PREFIX);
 
-    // The Snapshots allow for fast rewinds.
-    FUNCP_SNAPSHOT snapshots <- mkFUNCP_Snapshot();
-
     // Global data.  A catch-all class for state used everywhere.
     REGMGR_GLOBAL_DATA globData <- mkFUNCP_RegStateManager_GlobalData();
 
@@ -160,8 +135,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     let newInFlight <- mkFUNCP_RegMgrMacro_Pipe_NewInFlight(
                             globData,
-                            snapshots,
-                            tokFreeListPos,
+                            regMapping.newInFlight,
                             branchEpoch,
                             faultEpoch);
 
@@ -179,21 +153,18 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     
     let getDependencies <- mkFUNCP_RegMgrMacro_Pipe_GetDependencies(
                             globData,
+                            regMapping.getDependencies,
                             prf.getDependencies,
-                            snapshots,
                             freelist,
-                            tokFreeListPos,
-                            maptable,
-                            tokRegsToFree,
                             tokWriters,
                             tokDsts,
                             tokInst);
 
     let getResults <- mkFUNCP_RegMgrMacro_Pipe_GetResults(
                             globData,
+                            regMapping.getResults,
                             prf.getResults,
                             tokAddr,
-                            snapshots,
                             tokWriters,
                             tokDsts,
                             tokInst,
@@ -221,8 +192,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     let commitResults <- mkFUNCP_RegMgrMacro_Pipe_CommitResults(
                             globData,
-                            freelist,
-                            tokRegsToFree);
+                            regMapping.commitResults,
+                            freelist);
 
     let commitStores <- mkFUNCP_RegMgrMacro_Pipe_CommitStores(
                             globData,
@@ -233,14 +204,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                             linkITLB.fault,
                             linkDTLB.fault,
                             linkToMem.exceptionQueue,
+                            regMapping.exceptionQueue,
                             tokAddr,
                             tokInst,
-                            snapshots,
                             freelist,
-                            tokFreeListPos,
-                            tokRegsToFree,
-                            maptable,
-                            tokDsts,
                             tokMemAddr,
                             branchEpoch,
                             faultEpoch);
@@ -289,7 +256,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // a good reason.
     //
     (* descending_urgency=
-        "exception.rewindToToken4, exception.rewindToToken3Slow, exception.rewindToToken3Fast, exception.rewindToToken2, exception.rewindToToken1, exception.rewindToTokenS, exception.handleFault3, exception.handleFault2, exception.handleFault1, exception.handleFaultS, commitStores.commitStores1, commitResults.commitResults2, commitResults.commitResults1, doStores.doStores2SpanEnd, doStores.doStores2SpanRsp2, doStores.doStores2SpanRsp1, doStores.doStores2SpanReq, doStores.doStores2RMW, doStores.doStores2, doStores.doStores1, doLoads.doLoads3Span, doLoads.doLoads3, doLoads.doLoads2Span, doLoads.doLoads2, doLoads.doLoads1, doDTranslate.doDTranslate3Span, doDTranslate.doDTranslate3, doDTranslate.doDTranslate2Span, doDTranslate.doDTranslate2, doDTranslate.doDTranslate1, getResults.emulateInstruction4, getResults.emulateInstruction3_UpdateReg, getResults.emulateInstruction3, getResults.emulateInstruction2_Rsp, getResults.emulateInstruction2_Req, getResults.emulateInstruction1, getResults.getResults4AdditionalWriteback, getResults.getResults4, getResults.getResults3, getResults.getResults2, getResults.getResults1, getDependencies.getDependencies3AdditionalMappings, getDependencies.getDependencies3, getDependencies.getDependencies2, getDependencies.getDependencies1, getInstruction.getInstruction3Span, getInstruction.getInstruction3, getInstruction.getInstruction2Span, getInstruction.getInstruction2, getInstruction.getInstruction1, doITranslate.doITranslate2Span, doITranslate.doITranslate2, doITranslate.doITranslate1Span, doITranslate.doITranslate1, newInFlight.newInFlight, initialize_regmgr" *)
+        "exception.rewindToToken4, exception.rewindToToken3, exception.rewindToToken2, exception.rewindToToken1, exception.rewindToTokenS, exception.handleFault3, exception.handleFault2, exception.handleFault1, exception.handleFaultS, commitStores.commitStores1, commitResults.commitResults2, commitResults.commitResults1, doStores.doStores3, doStores.doStores2SpanEnd, doStores.doStores2SpanRsp2, doStores.doStores2SpanRsp1, doStores.doStores2SpanReq, doStores.doStores2RMW, doStores.doStores2, doStores.doStores1, doStores.doStoresS, doLoads.doLoads3Span, doLoads.doLoads3, doLoads.doLoads2Span, doLoads.doLoads2, doLoads.doLoads1, doDTranslate.doDTranslate3Span, doDTranslate.doDTranslate3, doDTranslate.doDTranslate2Span, doDTranslate.doDTranslate2, doDTranslate.doDTranslate1, getResults.emulateInstruction4, getResults.emulateInstruction3_UpdateRegWrite, getResults.emulateInstruction3_UpdateReg, getResults.emulateInstruction3, getResults.emulateInstruction2_Rsp, getResults.emulateInstruction2_Req, getResults.emulateInstruction2_PRFReq, getResults.emulateInstruction1_GenRegMapResp, getResults.emulateInstruction1_GenRegMapReq, getResults.emulateInstruction1, getResults.getResults4AdditionalWriteback, getResults.getResults4, getResults.getResults3, getResults.getResults2, getResults.getResults1, getDependencies.getDependencies4, getDependencies.getDependencies3, getDependencies.getDependencies2, getDependencies.getDependencies1, getInstruction.getInstruction3Span, getInstruction.getInstruction3, getInstruction.getInstruction2Span, getInstruction.getInstruction2, getInstruction.getInstruction1, doITranslate.doITranslate2Span, doITranslate.doITranslate2, doITranslate.doITranslate1Span, doITranslate.doITranslate1, newInFlight.newInFlight, initialize_regmgr" *)
 
     rule initialize_regmgr (globData.state.getState() == RSM_Initializing);
 
@@ -301,8 +268,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         tokMemAddr.write(initTokIdx, 0);
         tokStoreValue.write(initTokIdx, 0);
         tokPhysicalMemAddrs.write(initTokIdx, tagged ONE 0);
-        tokFreeListPos.write(initTokIdx, tagged Invalid);
-        tokRegsToFree.write(initTokIdx, Vector::replicate(tagged Invalid));
 
         // Done?
         if (initTokIdx == maxBound)

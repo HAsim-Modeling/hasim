@@ -1,0 +1,25 @@
+def ASSERTIONS.REGSTATE.FREELIST.OUT_OF_PREGS "FREELIST: Ran out of Physical Registers!";
+def ASSERTIONS.REGSTATE.FREELIST.ILLEGAL_BACKUP "FREELIST: Backed up too far!";
+
+def ASSERTIONS.REGSTATE.SCOREBOARD.OUT_OF_TOKENS "FUNCP: Ran out of Tokens!";
+def ASSERTIONS.REGSTATE.SCOREBOARD.REALLOCATE "FUNCP: Allocating an already-allocated Token!";
+def ASSERTIONS.REGSTATE.SCOREBOARD.DEALLOCATE "FUNCP: De-allocating an un-allocated Token!";
+def ASSERTIONS.REGSTATE.SCOREBOARD.COMPLETION "FUNCP: Completing Tokens out of order!";
+def ASSERTIONS.REGSTATE.SCOREBOARD.COMMIT_POISON_INSTR "FUNCP: Attempt to commit poisoned instruction!";
+
+def ASSERTIONS.REGSTATE.SCOREBOARD.FINISH.ITRANS        "FUNCP: Finishing ITranslate on token that hasn't started.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.START.FETCH          "FUNCP: Starting Fetch on token at improper time.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.FINISH.FETCH         "FUNCP: Finish Fetch on token that hasn't started.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.START.DECODE         "FUNCP: Starting Decode on token at improper time.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.FINISH.DECODE        "FUNCP: Finish Decode on token that hasn't started.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.START.EXECUTE        "FUNCP: Starting Execute on token at improper time.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.FINISH.EXECUTE       "FUNCP: Finish Execute on token that hasn't started.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.START.DTRANS         "FUNCP: Starting DTranslate on token at improper time.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.FINISH.DTRANS        "FUNCP: Finish DTranslate on token that hasn't started.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.START.LOAD           "FUNCP: Starting Loads on token at improper time.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.FINISH.LOAD          "FUNCP: Finish Loads on token that hasn't started.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.START.STORE          "FUNCP: Starting Stores on token at improper time.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.FINISH.STORE         "FUNCP: Finish Stores on token that hasn't started.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.START.COMMIT         "FUNCP: Starting Commit on token at improper time.";
+def ASSERTIONS.REGSTATE.SCOREBOARD.START.COMMIT_WITHOUT_LOAD  "FUNCP: Starting Commit on Load without doing loads!";
+def ASSERTIONS.REGSTATE.SCOREBOARD.START.COMMIT_WITHOUT_STORE "FUNCP: Starting Commit on Store without doing stores!";

@@ -43,17 +43,23 @@ import Vector::*;
 // ===================================================================
 
 //
-// HAsim tiny cache interface.
+// HAsim tiny cache interface.  nTagExtraLowBits is used just for debugging.
+// This specified number of low bits are prepanded to cache tags so
+// addresses match those seen in other modules.
 //
 interface HASIM_TINY_CACHE#(type t_CACHE_ADDR,
                             type t_CACHE_DATA,
-                            numeric type nEntries);
+                            numeric type nEntries,
+                            numeric type nTagExtraLowBits);
 
     // Read a line, returns invalid if not found.
     method ActionValue#(Maybe#(t_CACHE_DATA)) read(t_CACHE_ADDR addr);
     
     // Write
     method Action write(t_CACHE_ADDR addr, t_CACHE_DATA data);
+
+    // Update -- only write if addr already present in cache
+    method Action update(t_CACHE_ADDR addr, t_CACHE_DATA data);
 
     // Invalidate
     method Action inval(t_CACHE_ADDR addr);
@@ -76,14 +82,15 @@ typedef UInt#(TLog#(nEntries))
 typedef Vector#(nEntries, HASIM_TINY_CACHE_IDX#(nEntries))
     HASIM_TINY_CACHE_LRU#(numeric type nEntries);
 
-module [HASIM_MODULE] mkTinyCache
+module [HASIM_MODULE] mkTinyCache#(DEBUG_FILE debugLog)
     // interface:
-        (HASIM_TINY_CACHE#(t_CACHE_ADDR, t_CACHE_DATA, nEntries))
-    provisos (Eq#(t_CACHE_ADDR),
-              Bits#(t_CACHE_DATA, t_CACHE_DATA_SZ),
-              Bits#(t_CACHE_ADDR, t_CACHE_ADDR_SZ),
+        (HASIM_TINY_CACHE#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_DATA, nEntries, nTagExtraLowBits))
+    provisos (Bits#(t_CACHE_DATA, t_CACHE_DATA_SZ),
               Log#(nEntries, TLog#(nEntries)),
+              // Silly, but required by compiler...
+              Add#(t_CACHE_ADDR_SZ, nTagExtraLowBits, TAdd#(t_CACHE_ADDR_SZ, nTagExtraLowBits)),
 
+              Alias#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_ADDR),
               Alias#(HASIM_TINY_CACHE_IDX#(nEntries), t_IDX),
               Alias#(HASIM_TINY_CACHE_LRU#(nEntries), t_LRU));
 
@@ -91,6 +98,19 @@ module [HASIM_MODULE] mkTinyCache
     Reg#(Vector#(nEntries, t_CACHE_ADDR)) cacheTag <- mkRegU();
     Reg#(Vector#(nEntries, t_CACHE_DATA)) cacheData <- mkRegU();
     Reg#(t_LRU) cacheLRU <- mkReg(Vector::genWith(fromInteger));
+
+    //
+    // debugAddr --
+    //     Pretty printer for converting cache addresses to system addresses.
+    //     Adds trailing 0's that were dropped from cache addresses because they
+    //     are inside a cache line.
+    //
+    function Bit#(TAdd#(t_CACHE_ADDR_SZ, nTagExtraLowBits)) debugAddr(t_CACHE_ADDR addr);
+        
+        Bit#(nTagExtraLowBits) zero = 0;
+        return { addr, zero };
+
+    endfunction
 
 
     // ***** LRU Management *****
@@ -136,25 +156,27 @@ module [HASIM_MODULE] mkTinyCache
     endfunction
 
 
+    function Maybe#(UInt#(TLog#(nEntries))) lookupAddr(t_CACHE_ADDR addr);
+        Vector#(nEntries, Bool) way_match = replicate(False);
+
+        for (Integer w = 0; w < valueOf(nEntries); w = w + 1)
+        begin
+            way_match[w] = (cacheValid[w] && (cacheTag[w] == addr));
+        end
+
+        return findElem(True, way_match);
+    endfunction
+
+
     // Read a line, returns invalid if not found.
     method ActionValue#(Maybe#(t_CACHE_DATA)) read(t_CACHE_ADDR addr);
-        Bool hit = False;
-        t_IDX hit_idx = 0;
         Maybe#(t_CACHE_DATA) result = tagged Invalid;
 
-        for (Integer i = 0; i < valueOf(nEntries); i = i + 1)
-        begin
-            if (cacheValid[i] && (cacheTag[i] == addr))
-            begin
-                hit = True;
-                hit_idx = fromInteger(i);
-            end
-        end
-    
-        if (hit)
+        if (lookupAddr(addr) matches tagged Valid .hit_idx)
         begin
             result = tagged Valid cacheData[hit_idx];
             cacheLRU <= pushMRU(cacheLRU, hit_idx);
+            debugLog.record($format("  TinyCache READ HIT, way=%0d, addr=0x%x", hit_idx, debugAddr(addr)));
         end
 
         return result;
@@ -170,6 +192,24 @@ module [HASIM_MODULE] mkTinyCache
         cacheData[i] <= data;
 
         cacheLRU <= pushMRU(cacheLRU, i);
+
+        debugLog.record($format("  TinyCache WRITE, way=%0d, addr=0x%x", i, debugAddr(addr)));
+    endmethod
+
+
+    // Update
+    method Action update(t_CACHE_ADDR addr, t_CACHE_DATA data);
+        // Update an entry if the address is already in the cache
+        if (lookupAddr(addr) matches tagged Valid .i)
+        begin
+            cacheData[i] <= data;
+            cacheLRU <= pushMRU(cacheLRU, i);
+            debugLog.record($format("  TinyCache UPDATE, way=%0d, addr=0x%x", i, debugAddr(addr)));
+        end
+        else
+        begin
+            debugLog.record($format("  TinyCache UPDATE skipped (addr=0x%x)", debugAddr(addr)));
+        end
     endmethod
 
 
@@ -182,6 +222,7 @@ module [HASIM_MODULE] mkTinyCache
             if (cacheTag[i] == addr)
             begin
                 valid[i] = False;
+                debugLog.record($format("  TinyCache INVAL, way=%0d, addr=0x%x", i, debugAddr(addr)));
             end
         end
 
@@ -192,6 +233,7 @@ module [HASIM_MODULE] mkTinyCache
     // Invalidate entire cache
     method Action invalAll();
         cacheValid <= Vector::replicate(False);
+        debugLog.record($format("  TinyCache INVAL ALL"));
     endmethod
 
 endmodule
@@ -201,23 +243,45 @@ endmodule
 // mkTinyCache1 --
 //     Special case for single entry cache.
 //
-module [HASIM_MODULE] mkTinyCache1
+module [HASIM_MODULE] mkTinyCache1#(DEBUG_FILE debugLog)
     // interface:
-        (HASIM_TINY_CACHE#(t_CACHE_ADDR, t_CACHE_DATA, 1))
-    provisos (Eq#(t_CACHE_ADDR),
-              Bits#(t_CACHE_DATA, t_CACHE_DATA_SZ),
-              Bits#(t_CACHE_ADDR, t_CACHE_ADDR_SZ));
+        (HASIM_TINY_CACHE#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_DATA, 1, nTagExtraLowBits))
+    provisos (Bits#(t_CACHE_DATA, t_CACHE_DATA_SZ),
+              // Silly, but required by compiler...
+              Add#(t_CACHE_ADDR_SZ, nTagExtraLowBits, TAdd#(t_CACHE_ADDR_SZ, nTagExtraLowBits)),
+
+              Alias#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_ADDR));
 
     Reg#(Bool) cacheValid <- mkReg(False);
     Reg#(t_CACHE_ADDR) cacheTag <- mkRegU();
     Reg#(t_CACHE_DATA) cacheData <- mkRegU();
 
+
+    //
+    // debugAddr --
+    //     Pretty printer for converting cache addresses to system addresses.
+    //     Adds trailing 0's that were dropped from cache addresses because they
+    //     are inside a cache line.
+    //
+    function Bit#(TAdd#(t_CACHE_ADDR_SZ, nTagExtraLowBits)) debugAddr(t_CACHE_ADDR addr);
+        
+        Bit#(nTagExtraLowBits) zero = 0;
+        return { addr, zero };
+
+    endfunction
+
+
     // Read a line, returns invalid if not found.
     method ActionValue#(Maybe#(t_CACHE_DATA)) read(t_CACHE_ADDR addr);
         if (cacheValid && (cacheTag == addr))
+        begin
+            debugLog.record($format("  TinyCache1 READ HIT, addr=0x%x", debugAddr(addr)));
             return tagged Valid cacheData;
+        end
         else
+        begin
             return tagged Invalid;
+        end
     endmethod
     
 
@@ -226,19 +290,39 @@ module [HASIM_MODULE] mkTinyCache1
         cacheValid <= True;
         cacheTag <= addr;
         cacheData <= data;
+
+        debugLog.record($format("  TinyCache1 WRITE, addr=0x%x", debugAddr(addr)));
+    endmethod
+
+
+    // Update
+    method Action update(t_CACHE_ADDR addr, t_CACHE_DATA data);
+        if (cacheValid && (cacheTag == addr))
+        begin
+            cacheData <= data;
+            debugLog.record($format("  TinyCache1 UPDATE, addr=0x%x", debugAddr(addr)));
+        end
+        else
+        begin
+            debugLog.record($format("  TinyCache1 UPDATE skipped (addr=0x%x)", debugAddr(addr)));
+        end
     endmethod
 
 
     // Invalidate address if in cache
     method Action inval(t_CACHE_ADDR addr);
         if (cacheTag == addr)
+        begin
             cacheValid <= False;
+            debugLog.record($format("  TinyCache1 INVAL, addr=0x%x", debugAddr(addr)));
+        end
     endmethod
 
 
     // Invalidate entire cache
     method Action invalAll();
         cacheValid <= False;
+        debugLog.record($format("  TinyCache1 INVAL ALL"));
     endmethod
 
 endmodule

@@ -1,2 +1,0 @@
-def ASSERTIONS.FREELIST.OUT_OF_PREGS "FREELIST: Ran out of Physical Registers!";
-def ASSERTIONS.FREELIST.ILLEGAL_BACKUP "FREELIST: Backed up too far!";

@@ -490,7 +490,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     //     Final step of adding a store:  set the prev pointer in the address
     //     hash chain from the old head of the chain to the node just added.
     //
-    rule insert_store_prev (True);
+    rule insert_store_prev (state == SBUFFER_STATE_INSERT);
         // Receive the old node and address hash head values
         let next_node <- sBuffer.readRsp();
         match {.new_node_idx, .next_node_idx} = insertPrev.first();

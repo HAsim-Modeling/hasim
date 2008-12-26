@@ -5,7 +5,10 @@
 
 %attributes hasim funcp
 
+%public regstate-data-free-physical-regs.bsv
 %public regstate-data-reg-map-table.bsv
 %public regstate-data-physical-regs.bsv
+%public regstate-data-scoreboard.bsv
+%public regstate-data.dic
 
 %param REGSTATE_DATA_LOGFILE_PREFIX "hasim_funcp_regstate_data" "Prefix of logfile names for register state data."

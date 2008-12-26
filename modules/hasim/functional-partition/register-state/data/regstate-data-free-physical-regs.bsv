@@ -1,7 +1,25 @@
-// funcp_freelist_bram
+//
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
 
+//
 // The freelist of registers, which can stay allocated indefinitely.
 // The list itself is stored in a block ram.
+//
 
 // Library imports
 
@@ -18,7 +36,7 @@ import Vector::*;
 `include "asim/provides/hasim_isa.bsh"
 
 // Dictionary includes
-`include "asim/dict/ASSERTIONS_FREELIST.bsh"
+`include "asim/dict/ASSERTIONS_REGSTATE_FREELIST.bsh"
 
 // FUNCP_FREELIST
 
@@ -126,9 +144,9 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(String debugLogPrefix)
 
     // ***** Assertion Checkers *****/
 
-    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_FREELIST__BASE);
-    ASSERTION assertEnoughPRegs <- mkAssertionChecker(`ASSERTIONS_FREELIST_OUT_OF_PREGS, ASSERT_ERROR, assertNode);
-    ASSERTION assertAtLeastOneAllocatedRegister <- mkAssertionChecker(`ASSERTIONS_FREELIST_ILLEGAL_BACKUP, ASSERT_ERROR, assertNode);
+    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGSTATE_FREELIST__BASE);
+    ASSERTION assertEnoughPRegs <- mkAssertionChecker(`ASSERTIONS_REGSTATE_FREELIST_OUT_OF_PREGS, ASSERT_ERROR, assertNode);
+    ASSERTION assertAtLeastOneAllocatedRegister <- mkAssertionChecker(`ASSERTIONS_REGSTATE_FREELIST_ILLEGAL_BACKUP, ASSERT_ERROR, assertNode);
 
 
     // ***** Rules *****/

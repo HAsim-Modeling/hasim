@@ -39,8 +39,6 @@ import Vector::*;
 `include "asim/provides/funcp_interface.bsh"
 `include "asim/provides/funcp_regstate_connections.bsh"
 `include "asim/provides/funcp_regstate_data.bsh"
-`include "asim/provides/funcp_regstate_scoreboard.bsh"
-`include "asim/provides/funcp_regstate_freelist.bsh"
 `include "asim/provides/funcp_memstate_manager.bsh"
 `include "asim/provides/funcp_memory.bsh"
 

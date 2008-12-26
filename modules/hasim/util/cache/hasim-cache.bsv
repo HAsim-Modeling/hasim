@@ -34,6 +34,7 @@
 // Library imports.
 
 import FIFO::*;
+import FIFOF::*;
 import Vector::*;
 
 // Project foundation imports.
@@ -53,7 +54,7 @@ import Vector::*;
 // HAsim cache interface.  nTagExtraLowBits is used just for debugging.
 // This specified number of low bits are prepanded to cache tags so
 // addresses match those seen in other modules.
-
+//
 interface HASIM_CACHE#(type t_CACHE_ADDR,
                        type t_CACHE_DATA,
                        numeric type nSets,
@@ -63,6 +64,8 @@ interface HASIM_CACHE#(type t_CACHE_ADDR,
     // Read a full line.  Read from backing store if not already cached.
     method Action readReq(t_CACHE_ADDR addr);
     method ActionValue#(t_CACHE_DATA) readResp();
+    // Predicate to test whether a read response is ready this cycle.
+    method Bool readRespReady();
     
     // Write a full line.  No response.
     method Action writeReq(t_CACHE_ADDR addr, t_CACHE_DATA val);
@@ -305,7 +308,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     // ***** Queues between internal pipeline stages *****
 
     // Response to client, returned 
-    FIFO#(t_CACHE_DATA) respToClientQ <- mkFIFO();
+    FIFOF#(t_CACHE_DATA) respToClientQ <- mkFIFOF();
     FIFO#(Bool) invalReqDoneQ <- mkFIFO1();
     FIFO#(Bool) invalAllReqDoneQ <- mkFIFO1();
 
@@ -367,34 +370,24 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
 
     function Maybe#(t_CACHE_WAY_IDX) findWayMatch(t_CACHE_ADDR addr, t_METADATA_VECTOR meta);
 
-        Maybe#(t_CACHE_WAY_IDX) wayMatch = tagged Invalid;
+        Vector#(nWays, Bool) way_match = replicate(False);
 
         for (Integer w = 0; w < valueOf(nWays); w = w + 1)
         begin
-            if (meta[w] matches tagged Valid .m &&& m.addr == addr)
-            begin
-                wayMatch = tagged Valid fromInteger(w);
-            end
+            way_match[w] = case (meta[w]) matches
+                               tagged Valid .m: (m.addr == addr);
+                               default: False;
+                           endcase;
         end
-    
-        return wayMatch;
+
+        return findElem(True, way_match);
 
     endfunction
 
 
     function Maybe#(t_CACHE_WAY_IDX) findFirstInvalid(t_METADATA_VECTOR meta);
-    
-        Maybe#(t_CACHE_WAY_IDX) wayMatch = tagged Invalid;
 
-        for (Integer w = 0; w < valueOf(nWays); w = w + 1)
-        begin
-            if (meta[w] matches tagged Invalid)
-            begin
-                wayMatch = tagged Valid fromInteger(w);
-            end
-        end
-    
-        return wayMatch;
+        return findIndex(isValid, meta);
 
     endfunction
 
@@ -987,6 +980,10 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         return v;
     endmethod
     
+    method Bool readRespReady();
+        return respToClientQ.notEmpty();
+    endmethod
+    
     //
     // writeReq -- Write a full line.
     //
@@ -1075,7 +1072,9 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     // setModeWriteBack -- Write back or write through cache config.
     //
     method Action setModeWriteBack(Bool isWriteBack);
-        debugLog.record($format("Cache mode: WRITE %s", (isWriteBack ? "BACK" : "THROUGH")));
+        if (writeBackCache != isWriteBack)
+            debugLog.record($format("Cache mode: WRITE %s", (isWriteBack ? "BACK" : "THROUGH")));
+
         writeBackCache <= isWriteBack;
     endmethod
 

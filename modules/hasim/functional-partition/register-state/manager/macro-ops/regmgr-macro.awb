@@ -5,9 +5,6 @@
 
 %requires funcp_regstate_connections
 %requires funcp_regstate_data
-%requires funcp_regstate_scoreboard
-%requires funcp_regstate_freelist
-%requires funcp_regstate_snapshot
 
 %attributes hasim funcp regstate
 

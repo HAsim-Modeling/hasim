@@ -16318,3 +16318,79 @@ Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hash
   - Add youngestDecoded() to the scoreboard.  Rewind now begins at this token
     instead at the youngest token, since only decoded tokens affect the
     architectural to physical register map.
+
+----------
+mcadler     Date: Fri Dec 26 11:17:56 EST 2008  CSN: CSN-hasim-559
+                  Fri Dec 26 16:17:56 UTC 2008
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          558 
+
+Directory modules/hasim/functional-partition/register-state
+ snapshot/                 Locally Removed           558 
+
+Directory modules/hasim/functional-partition/register-state/snapshot
+ bram/                     Locally Removed           558 
+
+Directory modules/hasim/functional-partition/register-state/snapshot/bram
+ funcp_snapshot_bram.awb   Locally Removed           558 
+ funcp_snapshot_bram.bsv   Locally Removed           558 
+
+Directory modules/hasim/functional-partition/register-state
+ scoreboard/               Locally Removed           558 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard
+ onehot/                   Locally Removed           558 
+
+Directory modules/hasim/functional-partition/register-state/scoreboard/onehot
+ scoreboard.dic            Locally Removed           558 
+ regstate_scoreboard_onehot.awb Locally Removed           558 
+ regstate_scoreboard_onehot.bsv Locally Removed           558 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Added               - 
+ regstate-data.dic         Locally Added               0 
+ regstate-data-free-physical-regs.bsv Locally Added               - 
+ regstate-data.awb         Locally Modified          558 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.awb          Locally Modified          558 
+ regmgr-macro.bsv          Locally Modified          558 
+
+Directory modules/hasim/functional-partition/register-state
+ freelist/                 Locally Removed           558 
+
+Directory modules/hasim/functional-partition/register-state/freelist
+ bram/                     Locally Removed           558 
+
+Directory modules/hasim/functional-partition/register-state/freelist/bram
+ funcp_freelist_bram.awb   Locally Removed           558 
+ funcp_freelist_bram.bsv   Locally Removed           558 
+ freelist.dic              Locally Removed           558 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          558 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          558 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          558 
+
+Directory modules/hasim/util/cache
+ hasim-cache.bsv           Locally Modified          558 
+ hasim-tiny-cache.bsv      Locally Modified          558 
+
+- Delete no longer used snapshot module.
+- Move scoreboard and physical register free list modules to register-data/data
+  library.
+- Fixed some of the compiler warnings in functional cache.  In the process
+  noticed and fixed some race conditions that we haven't seen in testing.
+  Most egregious was the possibility of a sequence:
+     (1) LOAD [a]
+     (2) STORE [a] <- x
+  possibly winding up with the value loaded in (1) in the L1 cache even after
+  store (2) due to differences in load vs. store pipelines.  Changed the
+  protocol to reserve the L1 value as the load enters the pipeline and only
+  update with the true value if the L1 still holds the reservation.

@@ -1,5 +1,20 @@
-
-// regstate_scoreboard_onehot
+//
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
 
 // A scoreboard to track information of the status of in-flight instructions.
 
@@ -24,7 +39,7 @@ import Vector::*;
 `include "asim/rrr/service_ids.bsh"
 
 // Dictionary includes
-`include "asim/dict/ASSERTIONS_SCOREBOARD.bsh"
+`include "asim/dict/ASSERTIONS_REGSTATE_SCOREBOARD.bsh"
 
 //
 // FUNCP_FAULTS
@@ -191,42 +206,42 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // ***** Assertion Checkers ***** //
 
     // Use multiple assertion nodes because we have so many assertions.
-    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_SCOREBOARD__BASE);
-    ASSERTION_NODE assertNodeStart <- mkAssertionNode(`ASSERTIONS_SCOREBOARD_START__BASE);
-    ASSERTION_NODE assertNodeFinish <- mkAssertionNode(`ASSERTIONS_SCOREBOARD_FINISH__BASE);
+    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGSTATE_SCOREBOARD__BASE);
+    ASSERTION_NODE assertNodeStart <- mkAssertionNode(`ASSERTIONS_REGSTATE_SCOREBOARD_START__BASE);
+    ASSERTION_NODE assertNodeFinish <- mkAssertionNode(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH__BASE);
 
     // Do we have enough tokens to do everything the timing model wants us to?
-    ASSERTION assert_enough_tokens <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_OUT_OF_TOKENS, ASSERT_ERROR, assertNode);
+    ASSERTION assert_enough_tokens <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_OUT_OF_TOKENS, ASSERT_ERROR, assertNode);
 
     // Don't allocate a token which is already allocated.
-    ASSERTION assert_token_is_not_allocated <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_REALLOCATE, ASSERT_ERROR, assertNode);
+    ASSERTION assert_token_is_not_allocated <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_REALLOCATE, ASSERT_ERROR, assertNode);
 
     // Don't de-allocate a token which isn't allocated.
-    // Assertion assert_token_is_allocated <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_DEALLOCATE, ASSERT_ERROR, assertNode);
+    // Assertion assert_token_is_allocated <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_DEALLOCATE, ASSERT_ERROR, assertNode);
 
     // Are we completing tokens in order?
-    // Assertion assert_completing_tokens_in_order <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_COMPLETION, ASSERT_WARNING, assertNode);
+    // Assertion assert_completing_tokens_in_order <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_COMPLETION, ASSERT_WARNING, assertNode);
 
     // Poisoned instruction
-    ASSERTION assert_poison_instr           <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_COMMIT_POISON_INSTR, ASSERT_ERROR, assertNode);
+    ASSERTION assert_poison_instr           <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_COMMIT_POISON_INSTR, ASSERT_ERROR, assertNode);
 
     // The following assertions make sure things happen at the right time.
-    ASSERTION assert_token_can_finish_itr   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_ITRANS, ASSERT_ERROR, assertNodeFinish); 
-    ASSERTION assert_token_can_start_fet    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_FETCH, ASSERT_ERROR, assertNodeStart);
-    ASSERTION assert_token_can_finish_fet   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_FETCH, ASSERT_ERROR, assertNodeFinish);
-    ASSERTION assert_token_can_start_dec    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_DECODE, ASSERT_ERROR, assertNodeStart);
-    ASSERTION assert_token_can_finish_dec   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_DECODE, ASSERT_ERROR, assertNodeFinish);
-    ASSERTION assert_token_can_start_exe    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_EXECUTE, ASSERT_ERROR, assertNodeStart);
-    ASSERTION assert_token_can_finish_exe   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_EXECUTE, ASSERT_ERROR, assertNodeFinish);
-    ASSERTION assert_token_can_start_dtr    <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_DTRANS, ASSERT_ERROR, assertNodeStart); 
-    ASSERTION assert_token_can_finish_dtr   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_DTRANS, ASSERT_ERROR, assertNodeFinish); 
-    ASSERTION assert_token_can_start_load   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_LOAD, ASSERT_ERROR, assertNodeStart);
-    ASSERTION assert_token_can_finish_load  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_LOAD, ASSERT_ERROR, assertNodeFinish);
-    ASSERTION assert_token_can_start_store  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_STORE, ASSERT_ERROR, assertNodeStart);
-    ASSERTION assert_token_can_finish_store <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_FINISH_STORE, ASSERT_ERROR, assertNodeFinish);
-    ASSERTION assert_token_can_start_commit <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_COMMIT, ASSERT_ERROR, assertNodeStart);
-    ASSERTION assert_token_has_done_loads   <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_COMMIT_WITHOUT_LOAD, ASSERT_ERROR, assertNodeStart);
-    ASSERTION assert_token_has_done_stores  <- mkAssertionChecker(`ASSERTIONS_SCOREBOARD_START_COMMIT_WITHOUT_STORE, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_can_finish_itr   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_ITRANS, ASSERT_ERROR, assertNodeFinish); 
+    ASSERTION assert_token_can_start_fet    <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_FETCH, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_can_finish_fet   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_FETCH, ASSERT_ERROR, assertNodeFinish);
+    ASSERTION assert_token_can_start_dec    <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_DECODE, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_can_finish_dec   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_DECODE, ASSERT_ERROR, assertNodeFinish);
+    ASSERTION assert_token_can_start_exe    <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_EXECUTE, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_can_finish_exe   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_EXECUTE, ASSERT_ERROR, assertNodeFinish);
+    ASSERTION assert_token_can_start_dtr    <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_DTRANS, ASSERT_ERROR, assertNodeStart); 
+    ASSERTION assert_token_can_finish_dtr   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_DTRANS, ASSERT_ERROR, assertNodeFinish); 
+    ASSERTION assert_token_can_start_load   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_LOAD, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_can_finish_load  <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_LOAD, ASSERT_ERROR, assertNodeFinish);
+    ASSERTION assert_token_can_start_store  <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_STORE, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_can_finish_store <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_STORE, ASSERT_ERROR, assertNodeFinish);
+    ASSERTION assert_token_can_start_commit <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_COMMIT, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_has_done_loads   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_COMMIT_WITHOUT_LOAD, ASSERT_ERROR, assertNodeStart);
+    ASSERTION assert_token_has_done_stores  <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_COMMIT_WITHOUT_STORE, ASSERT_ERROR, assertNodeStart);
 
     // ***** Helper Functions ***** //
 

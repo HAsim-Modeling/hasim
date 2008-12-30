@@ -268,12 +268,13 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         tokPhysicalMemAddrs.write(initTokIdx, tagged ONE 0);
 
         // Done?
-        if (initTokIdx == maxBound)
+        Bit#(TOKEN_INDEX_SIZE) idx_as_bit = pack(initTokIdx);
+        if (idx_as_bit == maxBound)
         begin
             globData.state.setState(RSM_Running);
         end
 
-        initTokIdx <= initTokIdx + 1;
+        initTokIdx <= unpack(idx_as_bit + 1);
 
     endrule
 

@@ -21,6 +21,104 @@
 
 
 //
+// TOKEN_INDEX is a combination of two ID's:  the context ID and the token ID
+// within a context.
+//
+
+typedef `CONTEXT_ID_BITS        CONTEXT_ID_SIZE;
+typedef TExp#(CONTEXT_ID_SIZE)  NUM_CONTEXTS;
+typedef Bit#(CONTEXT_ID_SIZE)   CONTEXT_ID;
+
+typedef `TOKEN_ID_BITS          TOKEN_ID_SIZE;
+typedef TExp#(TOKEN_ID_SIZE)    NUM_TOKENS_PER_CONTEXT;
+typedef Bit#(TOKEN_ID_SIZE)     TOKEN_ID;
+
+typedef struct
+{
+    //
+    // The order of fields is important here, mainly so that the implementation
+    // of Literal#(TOKEN_INDEX) makes sense.  The token ID must be in the low
+    // bits so that expressions such as TOKEN_INDEX + 1 affect the token ID
+    // and not the context ID.
+    //
+    CONTEXT_ID context_id;
+    TOKEN_ID   token_id;
+}
+TOKEN_INDEX
+    deriving (Eq, Bits);
+
+typedef SizeOf#(TOKEN_INDEX)    TOKEN_INDEX_SIZE;
+typedef TExp#(TOKEN_INDEX_SIZE) NUM_TOKENS;
+
+
+//
+// Standard constructor
+//
+function TOKEN_INDEX tokenIndexFromIds(CONTEXT_ID c_id, TOKEN_ID t_id);
+    return TOKEN_INDEX { context_id: c_id, token_id: t_id };
+endfunction
+
+
+//
+// Literal for TOKEN_INDEX converts an integer to an entire index, mapping the
+// integer across both the token_id (low bits) and the context_id (high bits).
+// This may be useful during an initialization loop.
+//
+instance Literal#(TOKEN_INDEX);
+
+    function TOKEN_INDEX fromInteger(Integer x);
+        Bit#(TOKEN_INDEX_SIZE) t = fromInteger(x);
+        return unpack(t);
+    endfunction
+    
+    function Bool inLiteralRange(TOKEN_INDEX x, Integer y);
+        return (y < valueOf(NUM_TOKENS));
+    endfunction
+
+endinstance
+
+
+//
+// Arithmetic operations on TOKEN_INDEX assume the context IDs of the two
+// arguments are identical.  The operations apply only to the token ID.
+//
+instance Arith#(TOKEN_INDEX);
+
+    function TOKEN_INDEX \+ (TOKEN_INDEX a, TOKEN_INDEX b);
+        return TOKEN_INDEX { context_id: a.context_id, token_id: a.token_id + b.token_id };
+    endfunction
+
+    function TOKEN_INDEX \- (TOKEN_INDEX a, TOKEN_INDEX b);
+        return TOKEN_INDEX { context_id: a.context_id, token_id: a.token_id - b.token_id };
+    endfunction
+
+    //
+    // Arithmetic operators below this point don't make much sense, but the
+    // compiler wants them defined...
+    //
+
+    function TOKEN_INDEX \* (TOKEN_INDEX a, TOKEN_INDEX b);
+        return TOKEN_INDEX { context_id: a.context_id, token_id: a.token_id * b.token_id };
+    endfunction
+
+    function TOKEN_INDEX \/ (TOKEN_INDEX a, TOKEN_INDEX b);
+        return TOKEN_INDEX { context_id: a.context_id, token_id: a.token_id / b.token_id };
+    endfunction
+
+    function TOKEN_INDEX \% (TOKEN_INDEX a, TOKEN_INDEX b);
+        return TOKEN_INDEX { context_id: a.context_id, token_id: a.token_id % b.token_id };
+    endfunction
+
+    function TOKEN_INDEX negate (TOKEN_INDEX a);
+        return TOKEN_INDEX { context_id: a.context_id, token_id: -a.token_id };
+    endfunction
+
+endinstance
+
+
+
+
+//
 // In spite of being finite, HAsim requires that tokens be ordered in time.
 // There must be a way to figure out which of a pair of tokens is older.
 // We accomplish this by making the token index space twice the size of the
@@ -32,17 +130,13 @@
 // the high TOKEN_INDEX bit dropped LIVE_TOKEN_INDEX.
 //
 
-typedef `TOKEN_INDEX_BITS       TOKEN_INDEX_SIZE;
-typedef TExp#(TOKEN_INDEX_SIZE) NUM_TOKENS;
-typedef Bit#(TOKEN_INDEX_SIZE)  TOKEN_INDEX;
-
 typedef TSub#(TOKEN_INDEX_SIZE, 1)   LIVE_TOKEN_INDEX_SIZE;
 typedef TExp#(LIVE_TOKEN_INDEX_SIZE) NUM_LIVE_TOKENS;
 typedef Bit#(LIVE_TOKEN_INDEX_SIZE)  LIVE_TOKEN_INDEX;
 
 
 function LIVE_TOKEN_INDEX liveTokenIdx(TOKEN_INDEX idx);
-    return truncate(idx);
+    return { idx.context_id, idx.token_id[valueOf(TOKEN_ID_SIZE) - 2 : 0] };
 endfunction
 
 
@@ -55,7 +149,7 @@ endfunction
 // to "younger".
 //
 function Bool tokenIsOlderOrEq(TOKEN_INDEX older, TOKEN_INDEX younger);
-    return (younger - older)[valueOf(TOKEN_INDEX_SIZE) - 1] == 0;
+    return (younger.token_id - older.token_id)[valueOf(TOKEN_ID_SIZE) - 1] == 0;
 endfunction
 
 

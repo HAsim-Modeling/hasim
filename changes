@@ -16414,3 +16414,29 @@ Directory config/pm/hasim/demos/test/alu_test
   - Add "xst" target alias, mostly useful for writing scripts that share a
     common build through xst and then try multiple cost tables in parallel for
     map and par.
+
+----------
+mcadler     Date: Tue Dec 30 17:34:31 EST 2008  CSN: CSN-hasim-561
+                  Tue Dec 30 22:34:31 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          559 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.bsv          Locally Modified          559 
+
+Directory modules/hasim/util/common
+ hasim-common.awb          Locally Modified          559 
+ token.bsv                 Locally Modified          559 
+
+Add context ID to the token.  TOKEN_INDEX is now a struct with two fields:
+context ID and token ID.  Very little code had to change because most indexing
+with TOKEN_INDEX is done through the mkLiveToken... storage classes.
+
+Significant changes are still required in the register state scoreboard.
+Most of the data structures now support multiple contexts.  However, the
+interfaces to key routines (e.g. token allocation) don't talk about context
+ID.  Only context 0 may be active, for now.
+
+Virtual to physical register mapping is not yet aware of the context ID.

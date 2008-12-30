@@ -145,7 +145,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     // We keep the status bits in a register for fast pull-downs.
     // NOTE:  This vector is over all tokens, not just live tokens
-    Reg#(Vector#(NUM_TOKENS, Bool)) alloc      <- mkReg(replicate(False));
+    Reg#(Vector#(NUM_TOKENS, Bool)) alloc <- mkReg(replicate(False));
 
     // The actual scoreboards.
     TOKEN_SCOREBOARD itr_start    <- mkLiveTokenLUTRAMU();
@@ -171,7 +171,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
     LUTRAM#(TOKEN_INDEX, MEM_OFFSET)          memop_offset <- mkLiveTokenLUTRAM(0);
     LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE)      load_type    <- mkLiveTokenLUTRAMU();
     LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE)      store_type   <- mkLiveTokenLUTRAMU();
-    LUTRAM#(TOKEN_INDEX, TOKEN_INDEX)         next_tok     <- mkLiveTokenLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, TOKEN_ID)            next_tok     <- mkLiveTokenLUTRAMU();
     
     // Fault is stored as separate arrays for each fault type to avoid
     // causing cross-dependence between functional partition rules that
@@ -183,13 +183,13 @@ module [Connected_Module] mkFUNCP_Scoreboard
     TOKEN_SCOREBOARD fault_dtrans2       <- mkLiveTokenLUTRAMU();
 
     // A pointer to the next token to be allocated.
-    Reg#(TOKEN_INDEX) next_free_tok <- mkReg(0);
+    Reg#(Vector#(NUM_CONTEXTS, TOKEN_ID)) next_free_tok <- mkReg(replicate(0));
 
     // A pointer to the oldest active token.
-    Reg#(TOKEN_INDEX) oldest_tok <- mkReg(0);
+    Reg#(Vector#(NUM_CONTEXTS, TOKEN_ID)) oldest_tok <- mkReg(replicate(0));
     
     // A pointer to the youngest decoded token.
-    Reg#(TOKEN_INDEX) youngestDecodedTok <- mkReg(0);
+    Reg#(Vector#(NUM_CONTEXTS, TOKEN_ID)) youngestDecodedTok <- mkReg(replicate(0));
     
     // A register tracking how many tokens are active in pipelines.
     COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_itr <- mkLCounter_Z(0);
@@ -245,13 +245,13 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     // ***** Helper Functions ***** //
 
-    // The youngest token is the last one allocated.
-    TOKEN_INDEX youngest_tok = next_free_tok - 1;
+    function Bool tokIsAllocated(CONTEXT_ID ctx_id, TOKEN_ID tok_id);
+        TOKEN_INDEX idx = tokenIndexFromIds(ctx_id, tok_id);
+        return alloc[pack(idx)];
+    endfunction
 
-    // The number of in-flight tokens.
-    TOKEN_INDEX num_in_flight =  next_free_tok - oldest_tok;
 
-    function Bool can_allocate();
+    function Bool canAllocate(CONTEXT_ID ctx_id);
 
         //
         // We allocate only half the tokens at once in order to enable relative
@@ -261,12 +261,14 @@ module [Connected_Module] mkFUNCP_Scoreboard
         //       except for the high bit) is not in use.
         //   2.  The high bit of the number of in flight tokens is 0.
         //        
-        let high_bit_num = valueOf(TOKEN_INDEX_SIZE) - 1;
+        let high_bit_num = valueOf(TOKEN_ID_SIZE) - 1;
 
-        let next_tok_alias = next_free_tok;
+        let next_tok_alias = next_free_tok[ctx_id];
         next_tok_alias[high_bit_num] = next_tok_alias[high_bit_num] ^ 1;
 
-        return (num_in_flight[high_bit_num] == 0 && ! alloc[next_tok_alias]);
+        let num_in_flight = next_free_tok[ctx_id] - oldest_tok[ctx_id];
+
+        return (num_in_flight[high_bit_num] == 0 && ! tokIsAllocated(ctx_id, next_tok_alias));
 
     endfunction
 
@@ -289,7 +291,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         let commit_busy = commit_start.sub(t);
 
         // If it is in any macro operation it is busy.
-        return alloc[t] && (itr_busy || fet_busy || dec_busy || exe_busy || dtr_busy || load_busy || store_busy || commit_busy);
+        return alloc[pack(t)] && (itr_busy || fet_busy || dec_busy || exe_busy || dtr_busy || load_busy || store_busy || commit_busy);
 
     endfunction
 
@@ -321,15 +323,17 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Action deallocate(TOKEN_INDEX t);
 
-        // Update the oldest token.
-        oldest_tok <= next_tok.sub(t);
+        let ctx_id = t.context_id;
 
-        if (youngestDecodedTok == oldest_tok)
-            youngestDecodedTok <= next_tok.sub(t);
+        // Update the oldest token.
+        oldest_tok[ctx_id] <= next_tok.sub(t);
+
+        if (youngestDecodedTok[ctx_id] == oldest_tok[ctx_id])
+            youngestDecodedTok[ctx_id] <= next_tok.sub(t);
 
 
         // Update the allocation table.
-        alloc <= update(alloc, t, False);
+        alloc <= update(alloc, pack(t), False);
         
         // Record that the token has finished commit.
         num_in_commit.down();
@@ -343,50 +347,52 @@ module [Connected_Module] mkFUNCP_Scoreboard
     //         As long as every macro-operation eventually completes forward progress will be made.
     // Effect: Allocate a token and reset the entire set of scoreboard states.
 
-    method ActionValue#(TOKEN_INDEX) allocate() if (!isBusy(next_free_tok));
+        // FIXME:  Assumes context 0
+    method ActionValue#(TOKEN_INDEX) allocate() if (!isBusy(tokenIndexFromIds(0, next_free_tok[0])));
 
         // Assert the the token wasn't already allocated.
-        assert_token_is_not_allocated(!alloc[next_free_tok]);
+        assert_token_is_not_allocated(! tokIsAllocated(0, next_free_tok[0]));
 
         // Assert that we haven't ran out of tokens.
-        assert_enough_tokens(can_allocate);
+        assert_enough_tokens(canAllocate(0));
 
         // Update the allocation status.    
-        alloc <= update(alloc, next_free_tok, True);
+        let new_tok = tokenIndexFromIds(0, next_free_tok[0]);
+        alloc <= update(alloc, pack(new_tok), True);
 
         // Reset all the scoreboards.
-        itr_start.upd(next_free_tok, False);
-        itr_finish.upd(next_free_tok, False);
-        fet_start.upd(next_free_tok, False);
-        fet_finish.upd(next_free_tok, False);
-        dec_start.upd(next_free_tok, False);
-        dec_finish.upd(next_free_tok, False);
-        is_load.upd(next_free_tok, False);
-        is_store.upd(next_free_tok, False);
-        exe_start.upd(next_free_tok, False);
-        exe_finish.upd(next_free_tok, False);
-        dtr_start.upd(next_free_tok, False);
-        dtr_finish.upd(next_free_tok, False);
-        load_start.upd(next_free_tok, False);
-        load_finish.upd(next_free_tok, False);
-        store_start.upd(next_free_tok, False);
-        store_finish.upd(next_free_tok, False);
-        commit_start.upd(next_free_tok, False);
+        itr_start.upd(new_tok, False);
+        itr_finish.upd(new_tok, False);
+        fet_start.upd(new_tok, False);
+        fet_finish.upd(new_tok, False);
+        dec_start.upd(new_tok, False);
+        dec_finish.upd(new_tok, False);
+        is_load.upd(new_tok, False);
+        is_store.upd(new_tok, False);
+        exe_start.upd(new_tok, False);
+        exe_finish.upd(new_tok, False);
+        dtr_start.upd(new_tok, False);
+        dtr_finish.upd(new_tok, False);
+        load_start.upd(new_tok, False);
+        load_finish.upd(new_tok, False);
+        store_start.upd(new_tok, False);
+        store_finish.upd(new_tok, False);
+        commit_start.upd(new_tok, False);
 
-        emulation.upd(next_free_tok, False);
+        emulation.upd(new_tok, False);
 
-        fault_illegal_instr.upd(next_free_tok, False);
-        fault_itrans.upd(next_free_tok, False);
-        fault_itrans2.upd(next_free_tok, False);
-        fault_dtrans.upd(next_free_tok, False);
-        fault_dtrans2.upd(next_free_tok, False);
+        fault_illegal_instr.upd(new_tok, False);
+        fault_itrans.upd(new_tok, False);
+        fault_itrans2.upd(new_tok, False);
+        fault_dtrans.upd(new_tok, False);
+        fault_dtrans2.upd(new_tok, False);
 
         // Update the free pointer.
-        let next_token_idx = next_free_tok + 1;
-        next_tok.upd(next_free_tok, next_token_idx);
-        next_free_tok <= next_token_idx;
+        let next_token_idx = new_tok + 1;
+        next_tok.upd(new_tok, next_token_idx.token_id);
+        next_free_tok[0] <= next_token_idx.token_id;
 
-        return next_free_tok;
+        return new_tok;
 
     endmethod
 
@@ -453,14 +459,17 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Action decStart(TOKEN_INDEX t);
 
+        let ctx_id = t.context_id;
+
         assert_token_can_start_dec(fet_finish.sub(t));
 
         dec_start.upd(t, True);
         num_in_dec.up();
 
-        if (tokenIsOlderOrEq(youngestDecodedTok, t) && alloc[t])
+        let youngest_idx = tokenIndexFromIds(ctx_id, youngestDecodedTok[ctx_id]);
+        if (tokenIsOlderOrEq(youngest_idx, t) && alloc[pack(t)])
         begin
-            youngestDecodedTok <= t;
+            youngestDecodedTok[ctx_id] <= t.token_id;
         end
 
     endmethod
@@ -702,36 +711,37 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Action rewindTo(TOKEN_INDEX t);
 
-      // Construct a new vectore of allocation bits.
-      Vector#(NUM_TOKENS, Bool) as = newVector();
+        // Construct a new vectore of allocation bits.
+        Vector#(NUM_TOKENS, Bool) as = newVector();
 
-      for (Integer x = 0; x < valueof(NUM_TOKENS); x = x + 1)
-      begin
-          as[x] = tokenIsOlderOrEq(fromInteger(x), t) ? alloc[x] : False;
-      end
+        for (Integer x = 0; x < valueof(NUM_TOKENS); x = x + 1)
+        begin
+            as[x] = tokenIsOlderOrEq(fromInteger(x), t) ? alloc[x] : False;
+        end
 
-      // next_free_tok does not change because we don't want to reissue those tokens
-      // until the next time we wrap around.
+        // next_free_tok does not change because we don't want to reissue those tokens
+        // until the next time we wrap around.
       
-      // However we can update oldest_tok here. Specifically, if the token you rewound
-      // to was already committed, then if it was a legal rewind (checked elsewhere) then
-      // after the rewind there will be no tokens in flight. In the case we can jump 
-      // oldest_tok up to next_free_tok (so num_in_flight will be zero). Thus we can
-      // reclaim tokens slightly more aggressively.
+        // However we can update oldest_tok here. Specifically, if the token you rewound
+        // to was already committed, then if it was a legal rewind (checked elsewhere) then
+        // after the rewind there will be no tokens in flight. In the case we can jump 
+        // oldest_tok up to next_free_tok (so num_in_flight will be zero). Thus we can
+        // reclaim tokens slightly more aggressively.
     
-      if (!alloc[t])
-      begin
-          oldest_tok <= next_free_tok;
-          youngestDecodedTok <= next_free_tok;
-      end
-      else
-      begin
-          next_tok.upd(t, next_free_tok);
-          youngestDecodedTok <= t;
-      end
+        let ctx_id = t.context_id;
+        if (!alloc[pack(t)])
+        begin
+            oldest_tok[ctx_id] <= next_free_tok[ctx_id];
+            youngestDecodedTok[ctx_id] <= next_free_tok[ctx_id];
+        end
+        else
+        begin
+            next_tok.upd(t, next_free_tok[ctx_id]);
+            youngestDecodedTok[ctx_id] <= t.token_id;
+        end
 
-      // Update the vector.
-      alloc <= as;
+        // Update the vector.
+        alloc <= as;
 
     endmethod
 
@@ -742,7 +752,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Bool isAllocated(TOKEN_INDEX t);
 
-      return alloc[t];
+      return alloc[pack(t)];
 
     endmethod
 
@@ -841,7 +851,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method TOKEN_INDEX youngest();
 
-        return youngest_tok;
+        // FIXME:  Assumes context 0
+        return tokenIndexFromIds(0, next_free_tok[0] - 1);
 
     endmethod
 
@@ -852,7 +863,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method TOKEN_INDEX oldest();
 
-        return oldest_tok;
+        // FIXME:  Assumes context 0
+        return tokenIndexFromIds(0, oldest_tok[0]);
 
     endmethod
 
@@ -863,7 +875,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method TOKEN_INDEX youngestDecoded();
 
-        return youngestDecodedTok;
+        // FIXME:  Assumes context 0
+        return tokenIndexFromIds(0, youngestDecodedTok[0]);
 
     endmethod
 
@@ -874,7 +887,9 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method TOKEN_INDEX youngestDecoded_Safe(TOKEN_INDEX t);
 
-        return tokenIsOlderOrEq(t, youngestDecodedTok) ? youngestDecodedTok : t;
+        let ctx_id = t.context_id;
+        let youngest_idx = tokenIndexFromIds(ctx_id, youngestDecodedTok[ctx_id]);
+        return tokenIsOlderOrEq(t, youngest_idx) ? youngest_idx : t;
 
     endmethod
 

@@ -16394,3 +16394,23 @@ Directory modules/hasim/util/cache
   store (2) due to differences in load vs. store pipelines.  Changed the
   protocol to reserve the L1 value as the load enters the pipeline and only
   update with the true value if the L1 still holds the reservation.
+
+----------
+mcadler     Date: Tue Dec 30 09:59:06 EST 2008  CSN: CSN-hasim-560
+                  Tue Dec 30 14:59:06 UTC 2008
+
+
+Directory modules/model
+ hasim_model.awb           Locally Modified          558 
+ SCons.top.template        Locally Modified          559 
+
+Directory config/pm/hasim/demos/test/alu_test
+ alu_test_hybrid_htg.apm   Locally Modified          558 
+
+- Moved FPGA clock frequency specification to platforms.
+- SCons script changes:
+  - Add Xilinx cost table support.  The cost table set in the model configuration
+    can be overridden on the scons command line (COST_TABLE=<x>).
+  - Add "xst" target alias, mostly useful for writing scripts that share a
+    common build through xst and then try multiple cost tables in parallel for
+    map and par.

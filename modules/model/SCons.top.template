@@ -17,6 +17,7 @@ defs = {
     'BSC_FLAGS'          : '@BSC_FLAGS@',
     'BUILD_DIR'          : '@BUILD_DIR@',
     'CONNECTION_SCRIPT'  : 'hasim-connect',
+    'COST_TABLE'         : '@COST_TABLE@',
     'FPGA_PART'          : '@FPGA_PART@',
     'GIVEN_CS'           : '@GIVEN_CS@',
     'GIVEN_VS'           : '@GIVEN_VS@',
@@ -213,6 +214,11 @@ if (DEBUG):
     TRACE = 1
 
 ##
+## Override Xilinx COST_TABLE with command line
+##
+env['DEFS']['COST_TABLE'] = ARGUMENTS.get('COST_TABLE', env['DEFS']['COST_TABLE'])
+
+##
 ## Build events into model?
 ##
 enable_events = int(ARGUMENTS.get('EVENTS', -1))
@@ -394,6 +400,8 @@ xilinx_ngd = env.Command(
 
 Clean(xilinx_ngd, TMP_XILINX_DIR + '/netlist.lst')
 
+# Alias for everything up to map...
+env.Alias('xst', xilinx_ngd)
 
 # Map
 xilinx_map = env.Command(
@@ -404,7 +412,7 @@ xilinx_map = env.Command(
       Delete(XILINX_APM_NAME + '_map.ncd'),
       Delete(XILINX_APM_NAME + '_map.ngm'),
       Delete(XILINX_APM_NAME + '_map.psr'),
-      'map -cm balanced -timing -t 62 -global_opt on -logic_opt on -ol high -register_duplication -retiming on -pr b -c 100 -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf' ])
+      'map -cm balanced -timing -t ' + env['DEFS']['COST_TABLE'] + ' -global_opt on -logic_opt on -ol high -register_duplication -retiming on -pr b -c 100 -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf' ])
 
 Clean(xilinx_map, TMP_XILINX_DIR + '/xilinx_device_details.xml')
 
@@ -419,7 +427,7 @@ xilinx_par = env.Command(
       Delete(XILINX_APM_NAME + '_par.xpi'),
       Delete(XILINX_APM_NAME + '_par_pad.csv'),
       Delete(XILINX_APM_NAME + '_par_pad.txt'),
-      'par -w -ol high ' + XILINX_APM_NAME + '_map.ncd $TARGET ' + XILINX_APM_NAME + '.pcf' ])
+      'par -w -ol high -t ' + env['DEFS']['COST_TABLE'] + ' ' + XILINX_APM_NAME + '_map.ncd $TARGET ' + XILINX_APM_NAME + '.pcf' ])
 
 
 # Generate the FPGA timing report -- this report isn't built by default.  Use

@@ -25,9 +25,6 @@
 %public main.h
 %private main.cpp
 
-%param MODEL_CLOCK_MULTIPLIER 3   "Clock multiplier (integer).  Model clock freq = crystal freq * (multiplier / divider)."
-%param MODEL_CLOCK_DIVIDER    2   "Clock divider (integer).  Model clock freq = crystal freq * (multiplier / divider)."
-
 %param SYNTH_BOUNDARY  mkModel "name of synthesis boundary"
 %param MAKE_ALL_TARGET exe     "Target of 'make all'.  Most likely bit, exe or vexe."
 

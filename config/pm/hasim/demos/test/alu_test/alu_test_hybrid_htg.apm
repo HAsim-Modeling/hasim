@@ -28,8 +28,6 @@ Packagehint=hasim
 
 [HAsim Hybrid Model Foundation/Params]
 MAKE_ALL_TARGET=bit
-MODEL_CLOCK_MULTIPLIER=5
-MODEL_CLOCK_DIVIDER=2
 
 [HAsim Hybrid Model Foundation]
 File=modules/model/hasim_model.awb
@@ -42,3 +40,6 @@ Packagehint=hasim
 [Hasim Common Library]
 File=config/pm/hasim/submodels/common/hasim_common.apm
 Packagehint=hasim
+
+[FPGA Environment/Params]
+MODEL_CLOCK_MULTIPLIER=5

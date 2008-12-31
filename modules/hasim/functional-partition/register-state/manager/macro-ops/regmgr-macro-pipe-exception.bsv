@@ -308,7 +308,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     rule rewindToToken1 (state.getState() == RSM_DrainingForRewind && tokScoreboard.canRewind());
 
         let req = rewindReq;
-        debugLog.record($format("Rewind: Ready to rewind to TOKEN %0d (youngest: %0d / youngest decoded: %0d)", req.token.index, tokScoreboard.youngest(), tokScoreboard.youngestDecoded())); 
+
+        let tok = req.token;
+        let ctx_id = tokContextId(tok);
+
+        debugLog.record($format("Rewind: Ready to rewind to TOKEN %0d (youngest: %0d / youngest decoded: %0d)", tok.index, tokScoreboard.youngest(ctx_id), tokScoreboard.youngestDecoded(ctx_id))); 
         state.setState(RSM_ReadyToRewind);
 
     endrule
@@ -331,7 +335,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         branchEpoch <= branchEpoch + 1;
 
         // Log our failure.
-        debugLog.record($format("Rewind: Initiating rewind (Oldest: %0d)", tokScoreboard.oldest()));
+        debugLog.record($format("Rewind: Initiating rewind (Oldest: %0d)", tokScoreboard.oldest(tokContextId(tok))));
         
         // Stop when we get to the token.
         rewindTok <= tok;

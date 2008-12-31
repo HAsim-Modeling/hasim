@@ -1,11 +1,11 @@
 
 // initFuncpReqNewInFlight
 
-function FUNCP_REQ_NEW_IN_FLIGHT initFuncpReqNewInFlight();
+function FUNCP_REQ_NEW_IN_FLIGHT initFuncpReqNewInFlight(CONTEXT_ID ctx_id);
 
     return FUNCP_REQ_NEW_IN_FLIGHT 
             {
-                dummy: ?
+                context_id: ctx_id
             };
 
 endfunction

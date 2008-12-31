@@ -6,6 +6,9 @@ service STARTER
         method Pause     (in UINT32[32] payload);
         method Sync      (in UINT32[32] payload);
         method DumpStats (in UINT32[32] payload, out UINT32[32] retval);
+
+        method EnableContext(in UINT32[32] ctx_id);
+        method DisableContext(in UINT32[32] ctx_id);
     };
 
     server sw (cpp, method) <- hw (bsv, connection)

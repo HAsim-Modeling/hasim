@@ -71,7 +71,7 @@ typedef LUTRAM#(TOKEN_INDEX, Bool) TOKEN_SCOREBOARD;
 interface FUNCP_SCOREBOARD;
 
   // Allocate the next available token.
-  method ActionValue#(TOKEN_INDEX) allocate();
+  method ActionValue#(TOKEN_INDEX) allocate(CONTEXT_ID ctx_id);
   // Finish a token and free it for reuse.
   method Action deallocate(TOKEN_INDEX t);
   
@@ -119,13 +119,13 @@ interface FUNCP_SCOREBOARD;
   method MEM_OFFSET getMemOpOffset(TOKEN_INDEX t);
   method ISA_MEMOP_TYPE getLoadType(TOKEN_INDEX t);
   method ISA_MEMOP_TYPE getStoreType(TOKEN_INDEX t);
-  method TOKEN_INDEX youngest();
-  method TOKEN_INDEX oldest();
+  method TOKEN_INDEX youngest(CONTEXT_ID ctx_id);
+  method TOKEN_INDEX oldest(CONTEXT_ID ctx_id);
 
   // youngestDecoded can be useful when rewinding.  There are times when it
   // may point to a token that hasn't yet been decoded, but it will never
   // point to a token older than the youngest decoded.
-  method TOKEN_INDEX youngestDecoded();
+  method TOKEN_INDEX youngestDecoded(CONTEXT_ID ctx_id);
   // Safe is the same as youngestDecoded() but the response must be no older
   // than the input argument.
   method TOKEN_INDEX youngestDecoded_Safe(TOKEN_INDEX t);
@@ -347,17 +347,16 @@ module [Connected_Module] mkFUNCP_Scoreboard
     //         As long as every macro-operation eventually completes forward progress will be made.
     // Effect: Allocate a token and reset the entire set of scoreboard states.
 
-        // FIXME:  Assumes context 0
-    method ActionValue#(TOKEN_INDEX) allocate() if (!isBusy(tokenIndexFromIds(0, next_free_tok[0])));
+    method ActionValue#(TOKEN_INDEX) allocate(CONTEXT_ID ctx_id);
 
         // Assert the the token wasn't already allocated.
-        assert_token_is_not_allocated(! tokIsAllocated(0, next_free_tok[0]));
+        assert_token_is_not_allocated(! tokIsAllocated(ctx_id, next_free_tok[ctx_id]));
 
-        // Assert that we haven't ran out of tokens.
-        assert_enough_tokens(canAllocate(0));
+        // Assert that we haven't run out of tokens.
+        assert_enough_tokens(canAllocate(ctx_id));
 
         // Update the allocation status.    
-        let new_tok = tokenIndexFromIds(0, next_free_tok[0]);
+        let new_tok = tokenIndexFromIds(ctx_id, next_free_tok[ctx_id]);
         alloc <= update(alloc, pack(new_tok), True);
 
         // Reset all the scoreboards.
@@ -390,7 +389,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         // Update the free pointer.
         let next_token_idx = new_tok + 1;
         next_tok.upd(new_tok, next_token_idx.token_id);
-        next_free_tok[0] <= next_token_idx.token_id;
+        next_free_tok[ctx_id] <= next_token_idx.token_id;
 
         return new_tok;
 
@@ -849,10 +848,9 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // When:   Any time.
     // Effect: Accessor method.
 
-    method TOKEN_INDEX youngest();
+    method TOKEN_INDEX youngest(CONTEXT_ID ctx_id);
 
-        // FIXME:  Assumes context 0
-        return tokenIndexFromIds(0, next_free_tok[0] - 1);
+        return tokenIndexFromIds(ctx_id, next_free_tok[ctx_id] - 1);
 
     endmethod
 
@@ -861,10 +859,9 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // When:   Any time.
     // Effect: Accessor method.
 
-    method TOKEN_INDEX oldest();
+    method TOKEN_INDEX oldest(CONTEXT_ID ctx_id);
 
-        // FIXME:  Assumes context 0
-        return tokenIndexFromIds(0, oldest_tok[0]);
+        return tokenIndexFromIds(ctx_id, oldest_tok[ctx_id]);
 
     endmethod
 
@@ -873,10 +870,9 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // When:   Any time.
     // Effect: Accessor method.
 
-    method TOKEN_INDEX youngestDecoded();
+    method TOKEN_INDEX youngestDecoded(CONTEXT_ID ctx_id);
 
-        // FIXME:  Assumes context 0
-        return tokenIndexFromIds(0, youngestDecodedTok[0]);
+        return tokenIndexFromIds(ctx_id, youngestDecodedTok[ctx_id]);
 
     endmethod
 

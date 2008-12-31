@@ -1,6 +1,24 @@
-import hasim_common::*;
-import rrr::*;
-import soft_connections::*;
+//
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/rrr.bsh"
+`include "asim/provides/soft_connections.bsh"
 
 `include "asim/rrr/remote_client_stub_STARTER.bsh"
 `include "asim/rrr/remote_server_stub_STARTER.bsh"
@@ -13,6 +31,9 @@ interface Starter;
     method Action acceptRequest_Pause();
     method Action acceptRequest_Sync();
     method Action acceptRequest_DumpStats();
+
+    method ActionValue#(CONTEXT_ID) acceptRequest_EnableContext();
+    method ActionValue#(CONTEXT_ID) acceptRequest_DisableContext();
 
     // service methods: responses
     method Action sendResponse_DumpStats();
@@ -66,6 +87,18 @@ module [HASIM_MODULE] mkStarter(Starter);
     // send response to DumpStats
     method Action sendResponse_DumpStats();
         server_stub.sendResponse_DumpStats(0);
+    endmethod
+
+    // SW side says enable a context
+    method ActionValue#(CONTEXT_ID) acceptRequest_EnableContext();
+        let r <- server_stub.acceptRequest_EnableContext();
+        return truncate(r);
+    endmethod
+
+    // SW side says disable a context
+    method ActionValue#(CONTEXT_ID) acceptRequest_DisableContext();
+        let r <- server_stub.acceptRequest_DisableContext();
+        return truncate(r);
     endmethod
 
     // ------------ client methods ------------

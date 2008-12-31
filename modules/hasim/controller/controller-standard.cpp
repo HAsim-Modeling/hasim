@@ -73,6 +73,9 @@ CONTROLLER_CLASS::Main()
     // send all dynamic parameters to the hardware
     PARAMS_CONTROLLER_CLASS::GetInstance()->SendAllParams();
 
+    // Tell model which contexts are enabled.  Clearly this will need to change.
+    STARTER_CLASS::GetInstance()->EnableContext(0);
+
     // send "start" signal to the hardware partition.
     STARTER_CLASS::GetInstance()->Run();
 

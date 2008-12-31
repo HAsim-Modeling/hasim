@@ -39,8 +39,7 @@
 
 typedef struct
 {
-    VOID dummy;
-    // Just a dummy for now.
+    CONTEXT_ID context_id;
 }
     FUNCP_REQ_NEW_IN_FLIGHT
         deriving (Eq, Bits);

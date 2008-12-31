@@ -16440,3 +16440,61 @@ interfaces to key routines (e.g. token allocation) don't talk about context
 ID.  Only context 0 may be active, for now.
 
 Virtual to physical register mapping is not yet aware of the context ID.
+
+----------
+mcadler     Date: Wed Dec 31 14:25:39 EST 2008  CSN: CSN-hasim-562
+                  Wed Dec 31 19:25:39 UTC 2008
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          561 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getResults.bsv Locally Modified          560 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          560 
+ regmgr-macro-pipe-newInFlight.bsv Locally Modified          560 
+ regmgr-macro-pipe-exception.bsv Locally Modified          560 
+
+Directory modules/hasim/functional-partition/interface
+ funcp-req-constructors.bsv Locally Modified          560 
+ funcp-timing-interface.bsv Locally Modified          560 
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          561 
+ debug-file.bsv            Locally Modified          560 
+
+Directory modules/hasim/util/modellib
+ commands.bsv              Locally Modified          560 
+
+Directory modules/hasim/controller/local_controllers/module
+ local-controller-module-standard.bsv Locally Modified          560 
+
+Directory modules/hasim/controller
+ controller-standard.cpp   Locally Modified          560 
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          560 
+ hybrid-basic-starter-services.rrr Locally Modified          560 
+ hybrid-basic-starter.h    Locally Modified          560 
+ hybrid-basic-starter.bsv  Locally Modified          560 
+
+Directory modules/hasim/controller
+ controller-standard.bsv   Locally Modified          560 
+
+Directory modules/hasim/controller/central_controllers/module
+ module-controller-standard.bsv Locally Modified          560 
+
+Directory modules/hasim/controller/central_controllers/assertions
+ assertions-controller-hybrid.cpp Locally Modified          560 
+
+Directory tools/scripts/bmark
+ setup-bmark               Locally Modified          560 
+
+- Starter enables contexts.  The message is passed along a chain and ultimately
+  ends at local controllers.  Timing models may ask local controllers whether
+  a context is active.
+- To do: end multiple context run gracefully.  Right now the simulation will
+  stop when the first context says it is done.
+- Functional interface for requesting a new token is now aware of contexts.
+- Register state scoreboard is now aware of contexts.
+- Move debug log files to hasim_debug subdirectory in each benchmark.

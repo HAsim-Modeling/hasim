@@ -54,6 +54,8 @@ class STARTER_SERVER_CLASS: public RRR_SERVER_CLASS,
     void Pause();
     void Sync();
     void DumpStats();
+    void EnableContext(UINT32 ctx_id);
+    void DisableContext(UINT32 ctx_id);
 
   private:
     // These let us compute FMR starting after the first heartbeat is received.

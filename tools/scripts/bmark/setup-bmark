@@ -76,6 +76,7 @@ if ($feeder ne "none") {
     my $src_prog;
 
     mkdir('program') or ErrorExit("Failed to make 'program' directory");
+    mkdir('hasim_debug') or ErrorExit("Failed to make 'hasim_debug' directory");
 
     if (defined($binary)) {
         $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${binary}";

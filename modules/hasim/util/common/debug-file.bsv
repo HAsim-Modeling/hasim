@@ -31,6 +31,10 @@ interface DEBUG_FILE;
 endinterface
 
 
+// All debug output files go in a subdirectory
+function String debugPath(String fname) = "hasim_debug/" + fname;
+
+
 // mkDebugFile
 
 // Standard simulation debugging file.
@@ -48,11 +52,11 @@ module mkDebugFile#(String fname)
 
         if (debugLog == InvalidFile)
         begin
-            let fd <- $fopen(fname, "w");
+            let fd <- $fopen(debugPath(fname), "w");
 
             if (fd == InvalidFile)
             begin
-                $display("Error opening debugging logfile " + fname);
+                $display("Error opening debugging logfile " + debugPath(fname));
                 $finish(1);
             end
 
@@ -109,11 +113,11 @@ module mkTIMEPDebugFile#(String fname)
 
         if (debugLog == InvalidFile)
         begin
-            let fd <- $fopen(fname, "w");
+            let fd <- $fopen(debugPath(fname), "w");
 
             if (fd == InvalidFile)
             begin
-                $display("Error opening debugging logfile " + fname);
+                $display("Error opening debugging logfile " + debugPath(fname));
                 $finish(1);
             end
 

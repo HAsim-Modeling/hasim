@@ -277,3 +277,17 @@ STARTER_SERVER_CLASS::DumpStats()
 {
     UINT32 ack = clientStub->DumpStats(0);
 }
+
+// client: enable context
+void
+STARTER_SERVER_CLASS::EnableContext(UINT32 ctx_id)
+{
+    clientStub->EnableContext(ctx_id);
+}
+
+// client: disable context
+void
+STARTER_SERVER_CLASS::DisableContext(UINT32 ctx_id)
+{
+    clientStub->DisableContext(ctx_id);
+}

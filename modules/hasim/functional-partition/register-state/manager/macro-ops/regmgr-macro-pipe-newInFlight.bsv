@@ -84,12 +84,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_NewInFlight#(
         let req = linkNewInFlight.getReq();
         linkNewInFlight.deq();
         
+        let ctx_id = req.context_id;
+
         // Get the next token from the scoreboard.
-        let idx <- tokScoreboard.allocate();
+        let idx <- tokScoreboard.allocate(ctx_id);
         
         // Log it.
         
-        debugLog.record($format("NewInFlight: Allocating TOKEN %0d", idx));
+        debugLog.record($format("NewInFlight: Allocating CONTEXT %0d, TOKEN %0d", ctx_id, idx));
 
         // The timing partition scratchpad must be filled in by up.
         let newtok = TOKEN { index: idx,

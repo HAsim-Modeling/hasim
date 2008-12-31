@@ -70,7 +70,7 @@ ASSERTIONS_SERVER_CLASS::Init(
     parent = p;
     
     // Open the output file
-    assertionsFile = fopen("hasim_assertions.out", "w+");
+    assertionsFile = fopen("hasim_debug/hasim_assertions.out", "w+");
 }
 
 // uninit: we have to write this explicitly

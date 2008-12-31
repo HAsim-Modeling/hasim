@@ -221,6 +221,9 @@ TOKEN
     deriving (Eq, Bits);
 
 
+function CONTEXT_ID tokContextId(TOKEN tok) = tok.index.context_id;
+function TOKEN_ID tokTokenId(TOKEN tok) = tok.index.token_id;
+
 function Bool tokIsPoisoned(TOKEN tok) = tok.poison;
 
 function TOKEN_BRANCH_EPOCH tokBranchEpoch(TOKEN tok) = tok.epoch.branch;

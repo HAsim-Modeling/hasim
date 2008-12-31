@@ -1,3 +1,21 @@
+//
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
 
@@ -33,6 +51,8 @@ typedef Bit#(TAdd#(`HEARTBEAT_TRIGGER_BIT, 1)) HEARTBEAT_MODEL_CYCLES;
 
 module [HASIM_MODULE] mkController ();
 
+    TIMEP_DEBUG_FILE debugLog <- mkTIMEPDebugFile("controller.out");
+
     // instantiate all the sub-controllers
     CENTRAL_CONTROLLERS centralControllers <- mkCentralControllers();
 
@@ -49,7 +69,7 @@ module [HASIM_MODULE] mkController ();
     Reg#(CONTROL_STATE) state <- mkReg(CONTROL_STATE_idle);
 
     // The current FPGA clock cycle
-    Reg#(Bit#(64)) fpga_cycle <- mkReg(minBound);
+    Reg#(Bit#(64)) fpgaCycle <- mkReg(minBound);
   
     // Model cycles since last heartbeat message sent to software
     Reg#(HEARTBEAT_MODEL_CYCLES) curModelCycle <- mkReg(0);
@@ -65,7 +85,7 @@ module [HASIM_MODULE] mkController ();
 
     // Count the current FPGA cycle
     rule tick (True);
-        fpga_cycle <= fpga_cycle + 1;
+        fpgaCycle <= fpgaCycle + 1;
     endrule
   
     // accept Run request from starter
@@ -73,6 +93,7 @@ module [HASIM_MODULE] mkController ();
         starter.acceptRequest_Run();
         centralControllers.moduleController.run();
         state <= CONTROL_STATE_running;
+        debugLog.record($format("RUN"));
     endrule
 
     // accept Pause request from starter
@@ -80,6 +101,7 @@ module [HASIM_MODULE] mkController ();
         starter.acceptRequest_Pause();
         centralControllers.moduleController.pause();
         state <= CONTROL_STATE_paused;
+        debugLog.record($format("PAUSE"));
     endrule
 
     // accept Sync request from starter
@@ -87,6 +109,7 @@ module [HASIM_MODULE] mkController ();
         starter.acceptRequest_Sync();
         centralControllers.moduleController.sync();
         state <= CONTROL_STATE_idle;
+        debugLog.record($format("IDLE"));
     endrule
 
     // monitor module controller
@@ -101,6 +124,7 @@ module [HASIM_MODULE] mkController ();
         starter.acceptRequest_DumpStats();
         centralControllers.statsController.doCommand(STATS_Dump);
         dumpingStats <= True;
+        debugLog.record($format("STATS_DUMP Start"));
     endrule
 
     // monitor stats controller
@@ -109,16 +133,33 @@ module [HASIM_MODULE] mkController ();
         dumpingStats <= False;
     endrule
 
+    // monitor requests to enable contexts
+    rule accept_request_EnableContext (True);
+        let ctx_id <- starter.acceptRequest_EnableContext();
+        centralControllers.moduleController.enableContext(ctx_id);
+
+        debugLog.record($format("ENABLE Context %0d", ctx_id));
+    endrule
+
+    // monitor requests to disable contexts
+    rule accept_request_DisableContext (True);
+        let ctx_id <- starter.acceptRequest_DisableContext();
+        centralControllers.moduleController.disableContext(ctx_id);
+
+        debugLog.record($format("DISABLE Context %0d", ctx_id));
+    endrule
+
     (* descending_urgency = "model_commits, model_tick" *)
 
     // Count the model cycle and send heartbeat updates
     rule model_tick (True);
         link_model_cycle.deq();
+        debugLog.nextModelCycle();
 
         let trigger = curModelCycle[`HEARTBEAT_TRIGGER_BIT];
         if (trigger == 1)
         begin
-            starter.makeRequest_Heartbeat(fpga_cycle, zeroExtend(curModelCycle), instrCommits);
+            starter.makeRequest_Heartbeat(fpgaCycle, zeroExtend(curModelCycle), instrCommits);
             curModelCycle <= 1;
             instrCommits <= 0;
         end
@@ -133,6 +174,8 @@ module [HASIM_MODULE] mkController ();
         link_model_commit.deq();
 
         instrCommits <= instrCommits + commits;
+
+        debugLog.record($format("COMMIT %0d", commits));
     endrule
 
 endmodule

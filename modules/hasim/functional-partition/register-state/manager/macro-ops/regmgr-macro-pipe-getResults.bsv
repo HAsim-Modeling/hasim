@@ -601,17 +601,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
     rule emulateInstruction1 (state.getState() == RSM_DrainingForEmulate && tokScoreboard.canEmulate());
         // Did the timing model do drain before correctly?
-        assertion.expectedOldestTok(emulatingToken.index == tokScoreboard.oldest());
-        if (emulatingToken.index != tokScoreboard.oldest())
-            debugLog.record($format("TOKEN %0d: emulateInstruction1:  Token is not oldest! (Oldest: %0d)", emulatingToken.index, tokScoreboard.oldest()));
+        let ctx_id = tokContextId(emulatingToken);
+        assertion.expectedOldestTok(emulatingToken.index == tokScoreboard.oldest(ctx_id));
+        if (emulatingToken.index != tokScoreboard.oldest(ctx_id))
+            debugLog.record($format("TOKEN %0d: emulateInstruction1:  Token is not oldest! (Oldest: %0d)", emulatingToken.index, tokScoreboard.oldest(ctx_id)));
                
-        emulateMapCurTok <= tokScoreboard.youngestDecoded();
+        emulateMapCurTok <= tokScoreboard.youngestDecoded(ctx_id);
         emulateMapReqDone <= False;
         emulateRegMap.reset();
 
         state.setState(RSM_EmulateGenRegMap);
 
-        debugLog.record($format("TOKEN %0d: emulateInstruction1:  Youngest decoded token is %0d (youngest is %0d)", emulatingToken.index, tokScoreboard.youngestDecoded(), tokScoreboard.youngest()));
+        debugLog.record($format("TOKEN %0d: emulateInstruction1:  Youngest decoded token is %0d (youngest is %0d)", emulatingToken.index, tokScoreboard.youngestDecoded(ctx_id), tokScoreboard.youngest(ctx_id)));
     endrule
 
 

@@ -156,9 +156,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         let tok = commQ.first();
         commQ.deq();
 
-        assertion.expectedOldestTok(tok.index == tokScoreboard.oldest());
-        if (tok.index != tokScoreboard.oldest())
-            debugLog.record($format("TOKEN %0d: commitResults1:  Token is not oldest! (Oldest: %0d)", tok.index, tokScoreboard.oldest()));
+        let ctx_id = tokContextId(tok);
+        assertion.expectedOldestTok(tok.index == tokScoreboard.oldest(ctx_id));
+        if (tok.index != tokScoreboard.oldest(ctx_id))
+            debugLog.record($format("TOKEN %0d: commitResults1:  Token is not oldest! (Oldest: %0d)", tok.index, tokScoreboard.oldest(ctx_id)));
 
         // Retrieve the registers to be freed.
         let rewind_info <- regMapping.readRewindRsp();

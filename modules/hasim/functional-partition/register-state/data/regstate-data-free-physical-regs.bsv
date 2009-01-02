@@ -91,7 +91,7 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(String debugLogPrefix)
 
     // ******* Debuging State *******
 
-    DEBUG_FILE debugLog <- mkDebugFile(debugLogPrefix + "_freelist.out");
+    DEBUG_FILE debugLog <- mkDebugFile(`REGSTATE_DATA_LOGFILE_PREFIX + "_freelist.out");
 
     // ***** Local Functions ***** //
     

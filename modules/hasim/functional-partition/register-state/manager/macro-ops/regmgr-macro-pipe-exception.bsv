@@ -406,7 +406,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
             //
             if (!done && tok_active)
             begin
-                Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_MAPPING)) new_map = ?;
+                REGSTATE_NEW_MAPPINGS new_map = ?;
+                new_map.context_id = tok_idx.context_id;
 
                 for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
                 begin
@@ -414,12 +415,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
                         rw.regsToFree[x] matches tagged Valid .r)
                     begin
                         // Set the mapping back
-                        new_map[x] = tagged Valid tuple2(arc_r, r);
+                        new_map.mappings[x] = tagged Valid tuple2(arc_r, r);
                         debugLog.record($format("Rewind: TOKEN %0d: Remapping (%0d/%0d)", tok_idx, arc_r, r));
                     end
                     else
                     begin
-                        new_map[x] = tagged Invalid;
+                        new_map.mappings[x] = tagged Invalid;
                     end
                 end
 

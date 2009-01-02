@@ -708,7 +708,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         // Request architectural to physical register mapping
         emulateRegMap.mapReq(synchronizingCurReg);
-        regMapping.readMapReq(synchronizingCurReg);
+        regMapping.readMapReq(tokContextId(emulatingToken), synchronizingCurReg);
 
         Bool done = False;
 
@@ -835,7 +835,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         // Request architectural to physical register mapping
         emulateRegMap.mapReq(ar);
-        regMapping.readMapReq(ar);
+        regMapping.readMapReq(tokContextId(emulatingToken), ar);
 
         updateRegQ.enq(tuple2(ar, v));
 

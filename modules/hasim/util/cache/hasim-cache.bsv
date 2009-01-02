@@ -384,10 +384,11 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
 
     endfunction
 
+    function Bool isInvalid(Maybe#(t) m) = ! isValid(m);
 
     function Maybe#(t_CACHE_WAY_IDX) findFirstInvalid(t_METADATA_VECTOR meta);
 
-        return findIndex(isValid, meta);
+        return findIndex(isInvalid, meta);
 
     endfunction
 

@@ -16498,3 +16498,33 @@ Directory tools/scripts/bmark
 - Functional interface for requesting a new token is now aware of contexts.
 - Register state scoreboard is now aware of contexts.
 - Move debug log files to hasim_debug subdirectory in each benchmark.
+
+----------
+mcadler     Date: Fri Jan  2 11:12:06 EST 2009  CSN: CSN-hasim-563
+                  Fri Jan  2 16:12:06 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-reg-map-table.bsv Locally Modified          561 
+ regstate-data-free-physical-regs.bsv Locally Modified          561 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getResults.bsv Locally Modified          562 
+ regmgr-macro-pipe-exception.bsv Locally Modified          562 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          561 
+
+Directory modules/hasim/util/cache
+ hasim-cache.bsv           Locally Modified          561 
+
+- Map table now supports multiple contexts and is stored in BRAM.  The table
+  is indexed by context, so the entire map table for a given context is
+  available in a single cycle.
+- The start-up interaction between the physical register free list and the map
+  table is not yet worked out.  For now all contexts begin mapped to the same
+  physical registers.  Clearly this won't work.
+- Store buffer now supports multiple contexts.  To be a hit, context ID must
+  match in addition to the address.
+- Bug in hasim-cache caused ways with data to be favored as victims over ways
+  with no data.  Cache was thus typically 75% empty.

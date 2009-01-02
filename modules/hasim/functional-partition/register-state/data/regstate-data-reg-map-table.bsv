@@ -26,6 +26,7 @@
 // Library includes.
 
 import FIFO::*;
+import SpecialFIFOs::*;
 import FIFOF::*;
 import Vector::*;
 
@@ -52,7 +53,16 @@ import Vector::*;
 //
 // ========================================================================
 
-typedef Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_MAPPING)) REGSTATE_NEW_MAPPINGS;
+//
+// Description of new register mappings requested during rewind.
+//
+typedef struct
+{
+    CONTEXT_ID context_id;
+    Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_MAPPING)) mappings;
+}
+REGSTATE_NEW_MAPPINGS
+    deriving (Eq, Bits);
 
 //
 // Rewind info describes how to roll back side effects of a token.
@@ -102,7 +112,7 @@ endinterface
 //   Get results pipeline interface.  Methods only read state.
 //
 interface REGSTATE_REG_MAPPING_GETRESULTS;
-    method Action readMapReq(ISA_REG_INDEX ar);
+    method Action readMapReq(CONTEXT_ID ctx_id, ISA_REG_INDEX ar);
     method ActionValue#(FUNCP_PHYSICAL_REG_INDEX) readMapRsp();
     
     method Action readRewindReq(TOKEN_INDEX tokIdx);
@@ -146,6 +156,19 @@ endinterface
 // ========================================================================
 
 // 
+// MAPTABLE_CONSUMER manages responses for multiple consumers of map table
+// BRAM.
+//
+typedef enum
+{
+    REGSTATE_MAPT_DECODE,
+    REGSTATE_MAPT_EXCEPTION,
+    REGSTATE_MAPT_READMAP
+}
+MAPTABLE_CONSUMER
+    deriving (Eq, Bits);
+
+// 
 // REGSTATE_REWIND_READER manages responses for multiple readers of rewind
 // BRAM.
 //
@@ -158,10 +181,6 @@ typedef enum
 REGSTATE_REWIND_READER
     deriving (Eq, Bits);
 
-//
-// Map table index
-//
-//typedef Bit#(TLog#(ISA_NUM_REGS)) REGSTATE_REG_MAP_IDX;
 
 //
 // Physical register file container.  The number of read ports is configurable,
@@ -190,12 +209,29 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     // Architectural to physical register map
     //
     Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) initMap = newVector();
-    for (Integer x  = 0; x < valueof(ISA_NUM_REGS); x = x + 1)
+    for (Integer x  = 0; x < valueOf(ISA_NUM_REGS); x = x + 1)
     begin
-      initMap[x] = fromInteger(x);
+        initMap[x] = fromInteger(x);
     end
 
-    Reg#(Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX)) mapTable <- mkReg(initMap);
+    // The true map table
+    BRAM#(CONTEXT_ID, Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX)) mapTable <- mkBRAMInitialized(initMap);
+    
+    // Queue to track proper consumer of read data coming from map table BRAM
+    FIFO#(MAPTABLE_CONSUMER) mapTableConsumerQ <- mkFIFO();
+    
+    // Queue to rate limit requests coming in to the map table.  No new read
+    // requests may be queued if a request is already in flight for the same
+    // context.  Read requests for different contexts may be in flight at the
+    // same time.  The bypass FIFO saves a pipeline stage.
+    FIFO#(Tuple2#(CONTEXT_ID, MAPTABLE_CONSUMER)) newMapTableReqQ <- mkBypassFIFO();
+
+    // mapTableBusy tracks which context are in flight.
+    Vector#(NUM_CONTEXTS, Reg#(Bool)) mapTableBusy = newVector();
+    for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+    begin
+        mapTableBusy[x] <- mkReg(False);
+    end
 
     //
     // Rewind information
@@ -210,7 +246,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
                   Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)),
                   FUNCP_PHYSICAL_REG_INDEX)) decodeStage2InQ <- mkFIFO();
 
-    FIFO#(ISA_REG_INDEX) getResultsReqInQ <- mkFIFO();
+    FIFO#(Tuple2#(CONTEXT_ID, ISA_REG_INDEX)) getResultsReqInQ <- mkFIFO();
     FIFO#(REGSTATE_NEW_MAPPINGS) exceptInQ <- mkFIFO();
 
     // Incoming token rewind info requests
@@ -225,31 +261,29 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
     // ====================================================================
     //
-    //   Initialization
-    //
-    // ====================================================================
-
-//    Reg#(Bool) initialized <- mkReg(False);
-//    Reg#(ISA_REG_INDEX) initRegIdx <- mkReg(0);
-//
-//    rule initializeMapTable (! initialized);
-//        mapTable.write(initRegIdx, zeroExtend(pack(initRegIdx)));
-//
-//        // We're done if we've initialized the last register.
-//        if (initRegIdx == maxBound)
-//        begin
-//            initialized <= True;
-//        end
-//
-//        initRegIdx <= initRegIdx + 1;
-//    endrule
-
-
-    // ====================================================================
-    //
     //   Map table logic
     //
     // ====================================================================
+
+    //
+    // newMapTableReq --
+    //   Consume all possible read requests for the map table.  New requests
+    //   may start BRAM reads only if no other operations for the context
+    //   are in flight.
+    //
+    rule newMapTableReq (True);
+        match { .ctx_id, .consumer } = newMapTableReqQ.first();
+        if (! mapTableBusy[ctx_id])
+        begin
+            newMapTableReqQ.deq();
+
+            mapTableBusy[ctx_id] <= True;
+            mapTable.readReq(ctx_id);
+            mapTableConsumerQ.enq(consumer);
+
+            debugLog.record($format("MAP: Table read context %0d, consumer %0d", ctx_id, consumer));
+        end
+    endrule
 
 
     //
@@ -267,12 +301,16 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     //     3.  Returns a vector of physical registers corresponding to the
     //         architectural source registers.
     //
-    rule doMapDecode (True);
+    rule doMapDecode (mapTableConsumerQ.first() == REGSTATE_MAPT_DECODE);
         match {.ar_srcs, .ar_dsts} = decodeStage1InQ.first();
         decodeStage1InQ.deq();
 
         match {.tok, .phy_dsts, .freeListPos} = decodeStage2InQ.first();
         decodeStage2InQ.deq();
+
+        let map <- mapTable.readRsp();
+        mapTableConsumerQ.deq();
+        mapTableBusy[tokContextId(tok)] <= False;
 
         //
         // Compute physical registers that are freed when this token commits.
@@ -283,7 +321,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
         for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
         begin
             old_phy_dsts[x] = case (ar_dsts[x]) matches
-                                  tagged Valid .ar: tagged Valid mapTable[pack(ar)];
+                                  tagged Valid .ar: tagged Valid map[pack(ar)];
                                   tagged Invalid: tagged Invalid;
                               endcase;
 
@@ -309,7 +347,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
         //
         // Update mappings for destinations.
         //
-        Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) updated_map = mapTable;
+        Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) updated_map = map;
         for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
         begin
             if (ar_dsts[x] matches tagged Valid .ar &&&
@@ -328,7 +366,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
         for (Integer x = 0; x < valueOf(ISA_MAX_SRCS); x = x + 1)
         begin
             phy_srcs[x] = case (ar_srcs[x]) matches
-                                  tagged Valid .ar: tagged Valid mapTable[pack(ar)];
+                                  tagged Valid .ar: tagged Valid map[pack(ar)];
                                   tagged Invalid: tagged Invalid;
                           endcase;
 
@@ -337,7 +375,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
         end
         
 
-        mapTable <= updated_map;
+        mapTable.write(tokContextId(tok), updated_map);
         mapDecodeOutQ.enq(phy_srcs);
     endrule
 
@@ -347,22 +385,26 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     //   Update map table during exception rewind.
     //
     (* descending_urgency = "doExceptionUpdates, doMapDecode" *)
-    rule doExceptionUpdates (True);
+    rule doExceptionUpdates (mapTableConsumerQ.first() == REGSTATE_MAPT_EXCEPTION);
         let new_maps = exceptInQ.first();
         exceptInQ.deq();
 
-        Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) updated_map = mapTable;
+        let map <- mapTable.readRsp();
+        mapTableConsumerQ.deq();
+        mapTableBusy[new_maps.context_id] <= False;
+
+        Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) updated_map = map;
 
         for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
         begin
-            if (new_maps[x] matches tagged Valid { .ar, .pr })
+            if (new_maps.mappings[x] matches tagged Valid { .ar, .pr })
             begin
                 updated_map[pack(ar)] = pr;
-                debugLog.record($format("MAP: Update: AR %0d -> PR %0d", ar, pr));
+                debugLog.record($format("MAP: Update: context %0d, AR %0d -> PR %0d", new_maps.context_id, ar, pr));
             end
         end
         
-        mapTable <= updated_map;
+        mapTable.write(new_maps.context_id, updated_map);
     endrule
 
 
@@ -465,19 +507,19 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
         method Action decodeStage1(TOKEN tok,
                                    Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)) ar_srcs,
                                    Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)) ar_dsts);
-            //
-            // XXX When the map table is stored in BRAM this is where
-            //     we would request the table associated with the token's context.
-            // XXX
-    
+
             decodeStage1InQ.enq(tuple2(ar_srcs, ar_dsts));
-            debugLog.record($format("MAP: Token %0d: decodeStage1", tok.index));
+            debugLog.record($format("MAP: Token %0d: context %0d, decodeStage1", tok.index, tokContextId(tok)));
         endmethod
 
         method Action decodeStage2(TOKEN tok,
                                    Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_dsts,
                                    FUNCP_PHYSICAL_REG_INDEX freeListPos);
+
+            newMapTableReqQ.enq(tuple2(tokContextId(tok), REGSTATE_MAPT_DECODE));
+
             decodeStage2InQ.enq(tuple3(tok, phy_dsts, freeListPos));
+            debugLog.record($format("MAP: Token %0d: context %0d, decodeStage2", tok.index, tokContextId(tok)));
             debugLog.record($format("MAP: Token %0d: decodeStage2", tok.index));
         endmethod
 
@@ -492,17 +534,23 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
     interface REGSTATE_REG_MAPPING_GETRESULTS getResults;
 
-        method Action readMapReq(ISA_REG_INDEX ar);
-            getResultsReqInQ.enq(ar);
-            debugLog.record($format("MAP: Request AR %0d for RSLT", ar));
+        method Action readMapReq(CONTEXT_ID ctx_id, ISA_REG_INDEX ar);
+            getResultsReqInQ.enq(tuple2(ctx_id, ar));
+            newMapTableReqQ.enq(tuple2(ctx_id, REGSTATE_MAPT_READMAP));
+
+            debugLog.record($format("MAP: Request context %0d, AR %0d for RSLT", ctx_id, ar));
         endmethod
 
-        method ActionValue#(FUNCP_PHYSICAL_REG_INDEX) readMapRsp();
-            let req_ar = getResultsReqInQ.first();
+        method ActionValue#(FUNCP_PHYSICAL_REG_INDEX) readMapRsp() if (mapTableConsumerQ.first() == REGSTATE_MAPT_READMAP);
+            match { .ctx_id, .req_ar } = getResultsReqInQ.first();
             getResultsReqInQ.deq();
 
-            let pr = mapTable[pack(req_ar)];
-            debugLog.record($format("MAP: Resp: AR %0d is PR %0d", req_ar, pr));
+            let map <- mapTable.readRsp();
+            mapTableConsumerQ.deq();
+            mapTableBusy[ctx_id] <= False;
+
+            let pr = map[pack(req_ar)];
+            debugLog.record($format("MAP: Resp: context %0d, AR %0d is PR %0d", ctx_id, req_ar, pr));
 
             return pr;
         endmethod
@@ -549,6 +597,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
         method Action updateMap(REGSTATE_NEW_MAPPINGS map_dsts);
             exceptInQ.enq(map_dsts);
+            newMapTableReqQ.enq(tuple2(map_dsts.context_id, REGSTATE_MAPT_EXCEPTION));
         endmethod
 
     endinterface

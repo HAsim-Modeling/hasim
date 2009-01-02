@@ -214,7 +214,11 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     // can be skipped.  If the hint is valid then it correctly points to the
     // youngest store.  If the hint is invalid there may still be a store in
     // the buffer and a full token search is required.
-    Reg#(Maybe#(TOKEN_INDEX)) youngestStoreHint <- mkReg(tagged Invalid);
+    Vector#(NUM_CONTEXTS, Reg#(Maybe#(TOKEN_INDEX))) youngestStoreHint = newVector();
+    for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
+    begin
+        youngestStoreHint[c] <- mkReg(tagged Invalid);
+    end
 
     // Index of store within a token.  Use in remove_token_stores rule.
     Reg#(MEMSTATE_SBUFFER_TOK_STORE_CNT) removeTokenStoreIdx <- mkRegU();
@@ -321,7 +325,8 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     rule lookup_search_node (state == SBUFFER_STATE_LOOKUP_SEARCH);
         let node <- sBuffer.readRsp();
         
-        if (node.addr == reqAddr)
+        if ((node.addr == reqAddr) &&
+            (node.tokIdx.context_id == reqToken.context_id))
         begin
             //
             // Two search modes are implemented here.  When MEMSTATE_SBUFFER_OOO_MEM
@@ -414,15 +419,16 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         // already stores in the buffer and the current hint is invalid.  In
         // that case we have no way of knowing the age of the new store relative
         // to others in the buffer.
+        let ctx_id = reqToken.context_id;
         if (nStoresInBuffer.value() == 0)
         begin
-            youngestStoreHint <= tagged Valid reqToken;
+            youngestStoreHint[ctx_id] <= tagged Valid reqToken;
             debugLog.record($format("    SB Store tok=%0d is youngest", reqToken));
         end
-        else if (youngestStoreHint matches tagged Valid .cur_youngest &&&
+        else if (youngestStoreHint[ctx_id] matches tagged Valid .cur_youngest &&&
                  tokenIsOlderOrEq(cur_youngest, reqToken))
         begin
-            youngestStoreHint <= tagged Valid reqToken;
+            youngestStoreHint[ctx_id] <= tagged Valid reqToken;
             debugLog.record($format("    SB Store tok=%0d is youngest (replaces %0d)", reqToken, cur_youngest));
         end
 
@@ -555,10 +561,11 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
             // Update global state
             nStoresInBuffer.down();
-            if (youngestStoreHint matches tagged Valid .cur_youngest &&&
+            let ctx_id = reqToken.context_id;
+            if (youngestStoreHint[ctx_id] matches tagged Valid .cur_youngest &&&
                 cur_youngest == reqToken)
             begin
-                youngestStoreHint <= tagged Invalid;
+                youngestStoreHint[ctx_id] <= tagged Invalid;
             end
         end
         else
@@ -820,11 +827,13 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     // REWIND
     //
     method Action rewindReq(TOKEN_INDEX rewind_to, TOKEN_INDEX rewind_from) if (state == SBUFFER_STATE_READY);
+        let ctx_id = rewind_to.context_id;
+
         if (nStoresInBuffer.value() == 0)
         begin
             debugLog.record($format("  SB Rewind: Store buffer is already empty"));
         end
-        else if (youngestStoreHint matches tagged Valid .cur_youngest &&&
+        else if (youngestStoreHint[ctx_id] matches tagged Valid .cur_youngest &&&
                  tokenIsOlderOrEq(cur_youngest, rewind_to))
         begin
             // Youngest token in store buffer is older than rewind target.
@@ -836,7 +845,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             rewindTo  <= rewind_to;
 
             // Pick the first token in the rewind range that has a store.
-            if (youngestStoreHint matches tagged Valid .cur_youngest &&&
+            if (youngestStoreHint[ctx_id] matches tagged Valid .cur_youngest &&&
                 tokenIsOlderOrEq(cur_youngest, rewind_from))
             begin
                 rewindCur <= cur_youngest;

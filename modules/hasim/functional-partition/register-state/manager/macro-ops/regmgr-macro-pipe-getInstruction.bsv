@@ -136,7 +136,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
         let req = linkGetInst.getReq();
         let tok = req.token;
         linkGetInst.deq();
-        debugLog.record($format("TOKEN %0d: GetInstruction: Begin.", tok.index));
+        debugLog.record(fshow(tok.index) + $format(": GetInstruction: Begin."));
 
         // Update scoreboard.
         tokScoreboard.fetStart(tok.index);
@@ -171,7 +171,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
                 inst1Q.deq();
                 
                 // Log it.
-                debugLog.record($format("TOKEN %0d: GetInstruction2: Load Req (PA: 0x%h)", tok.index, p_addr));
+                debugLog.record(fshow(tok.index) + $format(": GetInstruction2: Load Req (PA: 0x%h)", p_addr));
 
                 // Kick to Mem State.
                 let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr, iStream: True };
@@ -185,7 +185,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
             begin
 
                 // Log it.
-                debugLog.record($format("TOKEN %0d: GetInstruction2: Spanning Load Req 1 (PA1: 0x%h, PA2: 0x%h)", tok.index, p_addr1, p_addr2));
+                debugLog.record(fshow(tok.index) + $format(": GetInstruction2: Spanning Load Req 1 (PA1: 0x%h, PA2: 0x%h)", p_addr1, p_addr2));
 
                 // Kick the first request to the MemState.
                 let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1, iStream: True };
@@ -217,7 +217,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
         linkToMem.makeReq(tagged REQ_LOAD m_req);
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: GetInstruction2: Spanning Load Req 2 (PA2: 0x%h)", tok.index, p_addr2));
+        debugLog.record(fshow(tok.index) + $format(": GetInstruction2: Spanning Load Req 2 (PA2: 0x%h)", p_addr2));
 
         // Unstall this stage.
         inst1Q.deq();
@@ -256,7 +256,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
                 ISA_INSTRUCTION inst = isaInstructionFromMemValue(v, offset);
 
                 // Log it.
-                debugLog.record($format("TOKEN %0d: GetInstruction3: Load Rsp (V: 0x%h, I: 0x%h)", fetch_info.token.index, v, inst));
+                debugLog.record(fshow(fetch_info.token.index) + $format(": GetInstruction3: Load Rsp (V: 0x%h, I: 0x%h)", v, inst));
 
                 // Record the instruction.
                 tokInst.write(fetch_info.token.index, inst);
@@ -266,7 +266,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
 
                 // Send response to timing partition. End of macro-operation (path 1).
                 linkGetInst.makeResp(initFuncpRspGetInstruction(fetch_info.token, inst));
-                debugLog.record($format("TOKEN %0d: GetInstruction: End (path 1).", fetch_info.token.index));
+                debugLog.record(fshow(fetch_info.token.index) + $format(": GetInstruction: End (path 1)."));
 
 
             end
@@ -274,7 +274,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
             begin
 
                 // Log it.
-                debugLog.record($format("TOKEN %0d: getInstruction3: Spanning Load Rsp 1 (V1: 0x%h)", fetch_info.token.index, v));
+                debugLog.record(fshow(fetch_info.token.index) + $format(": getInstruction3: Spanning Load Rsp 1 (V1: 0x%h)", v));
 
                 // We need two fetches for this guy. Stall for the second response.
                 stateInst3 <= tagged INST3_SPAN_RSP v;
@@ -305,7 +305,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
         ISA_INSTRUCTION inst = isaInstructionFromSpanningMemValues(v1, v2, offset);
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: GetInstruction3: Spanning Load Rsp 2 (V2: 0x%h, I: 0x%h)", fetch_info.token.index, v2, inst));
+        debugLog.record(fshow(fetch_info.token.index) + $format(": GetInstruction3: Spanning Load Rsp 2 (V2: 0x%h, I: 0x%h)", v2, inst));
 
         // Record the instruction.
         tokInst.write(fetch_info.token.index, inst);
@@ -319,7 +319,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
         
         // Send response to timing partition. End of macro-operation (path 2).
         linkGetInst.makeResp(initFuncpRspGetInstruction(fetch_info.token, inst));
-        debugLog.record($format("TOKEN %0d: GetInstruction: End (path 2).", fetch_info.token.index));
+        debugLog.record(fshow(fetch_info.token.index) + $format(": GetInstruction: End (path 2)."));
         
     endrule
 

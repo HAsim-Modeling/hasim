@@ -123,7 +123,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         let req = linkHandleFault.getReq();
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: Preparing to handle fault", req.token.index)); 
+        debugLog.record(fshow(req.token.index) + $format(": Preparing to handle fault")); 
 
         state.setState(RSM_DrainingForFault);
 
@@ -138,7 +138,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         linkHandleFault.deq();
         let tok = req.token;
         
-        debugLog.record($format("TOKEN %0d: Ready to handle fault", req.token.index)); 
+        debugLog.record(fshow(req.token.index) + $format(": Ready to handle fault")); 
 
         // Read all possibly interesting addresses
         tokAddr.readReq(tok.index);           // PC
@@ -175,42 +175,42 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
             FAULT_ITRANS:
             begin
                 let addr = iAddr_aligned;
-                debugLog.record($format("TOKEN %0d: handleFault2: ITRANS (VA: 0x%h)", tok.index, addr)); 
+                debugLog.record(fshow(tok.index) + $format(": handleFault2: ITRANS (VA: 0x%h)", addr)); 
                 link_itlb_fault.pageFault(handleTLBPageFault(tok, addr));
             end
 
             FAULT_ITRANS2:
             begin
                 let addr = iAddr_aligned + mem_ref_bytes;
-                debugLog.record($format("TOKEN %0d: handleFault2: ITRANS2 (VA: 0x%h)", tok.index, addr)); 
+                debugLog.record(fshow(tok.index) + $format(": handleFault2: ITRANS2 (VA: 0x%h)", addr)); 
                 link_itlb_fault.pageFault(handleTLBPageFault(tok, addr));
             end
 
             FAULT_DTRANS:
             begin
                 let addr = dAddr_aligned;
-                debugLog.record($format("TOKEN %0d: handleFault2: DTRANS (VA: 0x%h)", tok.index, addr)); 
+                debugLog.record(fshow(tok.index) + $format(": handleFault2: DTRANS (VA: 0x%h)", addr)); 
                 link_dtlb_fault.pageFault(handleTLBPageFault(tok, addr));
             end
 
             FAULT_DTRANS2:
             begin
                 let addr = dAddr_aligned + mem_ref_bytes;
-                debugLog.record($format("TOKEN %0d: handleFault2: DTRANS2 (VA: 0x%h)", tok.index, addr)); 
+                debugLog.record(fshow(tok.index) + $format(": handleFault2: DTRANS2 (VA: 0x%h)", addr)); 
                 link_dtlb_fault.pageFault(handleTLBPageFault(tok, addr));
             end
 
             default:
             begin
                 assertion.illegalInstruction(False);
-                debugLog.record($format("TOKEN %0d: handleFault2: No handler for fault %d", tok.index, fault)); 
+                debugLog.record(fshow(tok.index) + $format(": handleFault2: No handler for fault %d", fault)); 
             end
             endcase
         end
         else
         begin
             assertion.illegalInstruction(False);
-            debugLog.record($format("TOKEN %0d: handleFault2: Instruction did not fault", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": handleFault2: Instruction did not fault"));
         end
 
         //
@@ -234,7 +234,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         let m_req = MEMSTATE_REQ_REWIND {rewind_to: rewind_to.index, rewind_from: rewind_from};
         linkToMem.makeReq(tagged REQ_REWIND m_req);
 
-        debugLog.record($format("Rewind: Initiating rewind to token %0d", rewind_to.index));
+        debugLog.record($format("Rewind: Initiating rewind to ") + fshow(rewind_to.index));
                 
         // After rewind, fetch should resume at this token's address
         faultResumeQ.enq(tuple2(tok, iAddr));
@@ -255,7 +255,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         faultResumeQ.deq();
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: handleFault3: Restart at 0x%h", tok.index, resumeInstrAddr)); 
+        debugLog.record(fshow(tok.index) + $format(": handleFault3: Restart at 0x%h", resumeInstrAddr)); 
 
         // Update the fault epoch so we can discard appropriate updates.
         let new_fault_epoch = faultEpoch + 1;
@@ -292,7 +292,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         rewindReq <= req;
 
         // Log it.
-        debugLog.record($format("Rewind: Preparing rewind to TOKEN %0d", req.token.index));
+        debugLog.record($format("Rewind: Preparing rewind to ") + fshow(req.token.index));
 
         state.setState(RSM_DrainingForRewind);
 
@@ -312,7 +312,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         let tok = req.token;
         let ctx_id = tokContextId(tok);
 
-        debugLog.record($format("Rewind: Ready to rewind to TOKEN %0d (youngest: %0d / youngest decoded: %0d)", tok.index, tokScoreboard.youngest(ctx_id), tokScoreboard.youngestDecoded(ctx_id))); 
+        debugLog.record($format("Rewind: Ready to rewind to ") + fshow(tok.index) + $format(" (youngest: ") + fshow(tokScoreboard.youngest(ctx_id)) + $format(" / youngest decoded: ") + fshow(tokScoreboard.youngestDecoded(ctx_id)));
         state.setState(RSM_ReadyToRewind);
 
     endrule
@@ -335,7 +335,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         branchEpoch <= branchEpoch + 1;
 
         // Log our failure.
-        debugLog.record($format("Rewind: Initiating rewind (Oldest: %0d)", tokScoreboard.oldest(tokContextId(tok))));
+        debugLog.record($format("Rewind: Initiating rewind (Oldest: ") + fshow(tokScoreboard.oldest(tokContextId(tok))));
         
         // Stop when we get to the token.
         rewindTok <= tok;
@@ -416,7 +416,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
                     begin
                         // Set the mapping back
                         new_map.mappings[x] = tagged Valid tuple2(arc_r, r);
-                        debugLog.record($format("Rewind: TOKEN %0d: Remapping (%0d/%0d)", tok_idx, arc_r, r));
+                        debugLog.record($format("Rewind: ") + fshow(tok_idx) + $format(": Remapping (%0d/%0d)", arc_r, r));
                     end
                     else
                     begin
@@ -435,16 +435,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
             //
             if (done || tok_active)
             begin
-                debugLog.record($format("Rewind: TOKEN %0d: Free list back to %0d", tok_idx, rw.freeListPos));
+                debugLog.record($format("Rewind: ") + fshow(tok_idx) + $format(": Free list back to %0d", rw.freeListPos));
                 freelist.backTo(rw.freeListPos);
             end
             else
             begin
-                debugLog.record($format("Rewind: TOKEN %0d: Already deallocated", tok_idx));
+                debugLog.record($format("Rewind: ") + fshow(tok_idx) + $format(": Already deallocated"));
             end
 
             if (done)
-                debugLog.record($format("Rewind: Lookup last TOKEN %0d", tok_idx));  
+                debugLog.record($format("Rewind: Lookup last ") + fshow(tok_idx));
         end
 
         // Done with rewind?

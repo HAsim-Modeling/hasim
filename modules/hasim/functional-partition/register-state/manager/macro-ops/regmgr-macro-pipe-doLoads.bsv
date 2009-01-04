@@ -157,7 +157,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
             ! tokScoreboard.isAllocated(tok.index))
         begin
             // Log it.
-            debugLog.record($format("TOKEN %0d: DoLoads1: Ignoring junk token or emulated instruction.", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": DoLoads1: Ignoring junk token or emulated instruction."));
 
             // Respond to the timing model. End of macro-operation.
             linkDoLoads.makeResp(initFuncpRspDoLoads(tok));
@@ -165,7 +165,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         else // Everything's okay.
         begin
             // Log it.
-            debugLog.record($format("TOKEN %0d: DoLoads: Begin.", tok.index)); 
+            debugLog.record(fshow(tok.index) + $format(": DoLoads: Begin.")); 
 
             // Update the scoreboard.
             tokScoreboard.loadStart(tok.index);
@@ -206,7 +206,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
                 loads1Q.deq();
 
                 // Log it.
-                debugLog.record($format("TOKEN %0d: DoLoads2: Requesting Load (PA: 0x%h)", tok.index, p_addr));
+                debugLog.record(fshow(tok.index) + $format(": DoLoads2: Requesting Load (PA: 0x%h)", p_addr));
 
                 // Make the request to the DMem.
                 let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr, iStream: False };
@@ -224,7 +224,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
             begin
 
                 // Log it.
-                debugLog.record($format("TOKEN %0d: DoLoads2: Starting Spanning Load (PA1: 0x%h)", tok.index, p_addr1));
+                debugLog.record(fshow(tok.index) + $format(": DoLoads2: Starting Spanning Load (PA1: 0x%h)", p_addr1));
 
                 // Make the request to the DMem.
                 let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1, iStream: False };
@@ -247,7 +247,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         linkToMem.makeReq(tagged REQ_LOAD m_req);
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoLoads2: Finishing Spanning Load (PA2: 0x%h)", load_info.token.index, p_addr2));
+        debugLog.record(fshow(load_info.token.index) + $format(": DoLoads2: Finishing Spanning Load (PA2: 0x%h)", p_addr2));
 
         // Read the destination so we can writeback the correct register.
         tokDsts.readPorts[1].readReq(load_info.token.index);
@@ -287,7 +287,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
 
                 // Convert the value using the ISA-provided conversion function.
                 ISA_VALUE val = isaLoadValueFromMemValue(v, load_info.offset, load_info.opType);
-                debugLog.record($format("TOKEN %0d: DoLoads3: ISA Load (V: 0x%h, T: %0d, O: %b) = 0x%h", tok.index, v, pack(load_info.opType), load_info.offset, val)); 
+                debugLog.record(fshow(tok.index) + $format(": DoLoads3: ISA Load (V: 0x%h, T: %0d, O: %b) = 0x%h", v, pack(load_info.opType), load_info.offset, val)); 
 
                 // Get the destination for the purposes of writeback.
                 let dsts <- tokDsts.readPorts[1].readRsp();
@@ -296,7 +296,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
                 let dst = validValue(dsts[0]);
 
                 // Log it.
-                debugLog.record($format("TOKEN %0d: DoLoads3: Load Response Writing (PR%0d <= 0x%h)", tok.index, dst, val));
+                debugLog.record(fshow(tok.index) + $format(": DoLoads3: Load Response Writing (PR%0d <= 0x%h)", dst, val));
 
                 // Update the physical register file.
                 prf.write(dst, val);
@@ -312,7 +312,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
             begin
 
                 // Log it.
-                debugLog.record($format("TOKEN %0d: DoLoads3: First Span Response (V1: 0x%h)", load_info.token.index, v));
+                debugLog.record(fshow(load_info.token.index) + $format(": DoLoads3: First Span Response (V1: 0x%h)", v));
 
                 // We needed two loads for this guy. Stall for the second response.
                 stateLoads3 <= tagged LOADS3_SPAN_RSP v;
@@ -340,11 +340,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         linkToMem.deq();
         
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoLoads3: Second Span Response (V2: 0x%h)", tok.index, v2));
+        debugLog.record(fshow(tok.index) + $format(": DoLoads3: Second Span Response (V2: 0x%h)", v2));
 
         // Convert the value using the ISA-provided conversion function.
         ISA_VALUE val = isaLoadValueFromSpanningMemValues(v1, v2, load_info.offset, load_info.opType);
-        debugLog.record($format("TOKEN %0d: DoLoads3: ISA SpanLoad (V1: 0x%h, V2: 0x%hm, T: %0d, O: %b) = 0x%h", tok.index, v1, v2, pack(load_info.opType), load_info.offset, val)); 
+        debugLog.record(fshow(tok.index) + $format(": DoLoads3: ISA SpanLoad (V1: 0x%h, V2: 0x%hm, T: %0d, O: %b) = 0x%h", v1, v2, pack(load_info.opType), load_info.offset, val)); 
 
         // Get the destination for the purposes of writeback.
         let dsts <- tokDsts.readPorts[1].readRsp();
@@ -353,7 +353,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         let dst = validValue(dsts[0]);
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoLoads3: Load Response Writing (PR%0d <= 0x%h)", tok.index, dst, val));
+        debugLog.record(fshow(tok.index) + $format(": DoLoads3: Load Response Writing (PR%0d <= 0x%h)", dst, val));
 
         // Update the physical register file.
         prf.write(dst, val);

@@ -157,7 +157,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
         let req = linkDoDTranslate.getReq();
         linkDoDTranslate.deq();
         let tok = req.token;
-        debugLog.record($format("TOKEN %0d: DoDTranslate: Start.", tok.index));
+        debugLog.record(fshow(tok.index) + $format(": DoDTranslate: Start."));
 
         // Update scoreboard.
         tokScoreboard.dTransStart(tok.index);
@@ -207,7 +207,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
             link_dtlb_trans.makeReq(normalTLBQuery(tok, aligned_addr));
 
             // Log it.
-            debugLog.record($format("TOKEN %0d: DoDTranslate2: DTLB Req (VA: 0x%h AA: 0x%h)", tok.index, vaddr, aligned_addr));
+            debugLog.record(fshow(tok.index) + $format(": DoDTranslate2: DTLB Req (VA: 0x%h AA: 0x%h)", vaddr, aligned_addr));
   
             // Pass to the next stage.
             dTrans2Q.enq(tagged DTRANS_NORMAL tok);
@@ -217,7 +217,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
         begin
 
             // Log it.
-            debugLog.record($format("TOKEN %0d: DoDTranslate2: DTLB Req Spanning 1 (VA: 0x%h, AA1: 0x%h)", tok.index, vaddr, aligned_addr));
+            debugLog.record(fshow(tok.index) + $format(": DoDTranslate2: DTLB Req Spanning 1 (VA: 0x%h, AA1: 0x%h)", vaddr, aligned_addr));
   
             // A spanning DTranslate. Make the first request to the TLB.
             link_dtlb_trans.makeReq(normalTLBQuery(tok, aligned_addr));
@@ -246,7 +246,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
         link_dtlb_trans.makeReq(normalTLBQuery(tok, aligned_addr2));
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoDTranslate2: DTLB Req Spanning 2 (AA2: 0x%h)", tok.index, aligned_addr2));
+        debugLog.record(fshow(tok.index) + $format(": DoDTranslate2: DTLB Req Spanning 2 (AA2: 0x%h)", aligned_addr2));
   
         // Unstall this stage.
         dTrans1Q.deq();  
@@ -280,11 +280,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
                 dTrans2Q.deq();
 
                 // Log it.
-                debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB Rsp (PA: 0x%h)", tok.index, mem_addr));
+                debugLog.record(fshow(tok.index) + $format(": DoDTranslate3: DTLB Rsp (PA: 0x%h)", mem_addr));
 
                 if (page_fault)
                 begin
-                    debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB PAGE FAULT", tok.index));
+                    debugLog.record(fshow(tok.index) + $format(": DoDTranslate3: DTLB PAGE FAULT"));
                     tokScoreboard.setFault(tok.index, FAULT_DTRANS);
                 end
 
@@ -296,7 +296,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
 
                 // Return it to the timing partition. End of macro-operation (path 1)
                 linkDoDTranslate.makeResp(initFuncpRspDoDTranslate(tok, mem_addr, page_fault));
-                debugLog.record($format("TOKEN %0d: doDTranslate: End (path 1).", tok.index));
+                debugLog.record(fshow(tok.index) + $format(": doDTranslate: End (path 1)."));
                 
 
             end
@@ -306,11 +306,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
                 // A spanning access.
 
                 // Log it.
-                debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB Span Rsp 1 (PA1: 0x%h)", tok.index, mem_addr));
+                debugLog.record(fshow(tok.index) + $format(": DoDTranslate3: DTLB Span Rsp 1 (PA1: 0x%h)", mem_addr));
 
                 if (page_fault)
                 begin
-                    debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB PAGE FAULT", tok.index));
+                    debugLog.record(fshow(tok.index) + $format(": DoDTranslate3: DTLB PAGE FAULT"));
                     tokScoreboard.setFault(tok.index, FAULT_DTRANS);
                 end
 
@@ -347,12 +347,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
 
         if (page_fault)
         begin
-            debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB Spanning 2 PAGE FAULT", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": DoDTranslate3: DTLB Spanning 2 PAGE FAULT"));
             tokScoreboard.setFault(tok.index, FAULT_DTRANS2);
         end
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoDTranslate3: DTLB Span Rsp 2 (PA2: 0x%h)", tok.index, mem_addr2));
+        debugLog.record(fshow(tok.index) + $format(": DoDTranslate3: DTLB Span Rsp 2 (PA2: 0x%h)", mem_addr2));
 
         // Record the physical addresses.
         tokPhysicalMemAddrs.write(tok.index, tagged TWO tuple2(trans1.firstPA, mem_addr2));
@@ -366,7 +366,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
 
         // Return the rest to the timing partition. End of macro-operation (path 2).
         linkDoDTranslate.makeResp(initFuncpRspDoDTranslate_part2(tok, mem_addr2, page_fault));
-        debugLog.record($format("TOKEN %0d: DoDTranslate: End (path 2).", tok.index));
+        debugLog.record(fshow(tok.index) + $format(": DoDTranslate: End (path 2)."));
     
     endrule
 

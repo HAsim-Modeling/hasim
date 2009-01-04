@@ -114,7 +114,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         let req = linkGetDeps.getReq();
         linkGetDeps.deq();
         let tok = req.token;
-        debugLog.record($format("TOKEN %0d: GetDeps: Begin", tok.index));
+        debugLog.record(fshow(tok.index) + $format(": GetDeps: Begin"));
         
         // Update the status.
         tokScoreboard.decStart(tok.index);
@@ -163,7 +163,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         tokScoreboard.setEmulation(tok.index, is_emulated);
         if (is_emulated)
         begin
-            debugLog.record($format("TOKEN %0d: GetDeps2: Instruction is emulated", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": GetDeps2: Instruction is emulated"));
         end
 
 
@@ -184,7 +184,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
                          endcase;
 
             if (ar_srcs[x] matches tagged Valid .ar)
-                debugLog.record($format("TOKEN %0d: GetDeps2: Slot #%0d reads AR %0d", tok.index, x, ar));
+                debugLog.record(fshow(tok.index) + $format(": GetDeps2: Slot #%0d reads AR %0d", x, ar));
         end
 
 
@@ -205,7 +205,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
                 ar_dsts[x] = tagged Valid ar;
                 dst_reg_reqs[x] = tok_active;  // Only request reg if token is alive
                 true_n_dsts = true_n_dsts + 1;
-                debugLog.record($format("TOKEN %0d: GetDeps2: Slot #%0d writes AR %0d", tok.index, x, ar));
+                debugLog.record(fshow(tok.index) + $format(": GetDeps2: Slot #%0d writes AR %0d", x, ar));
             end
             else
             begin
@@ -237,7 +237,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
 
         // Request registers from the free list
         freelist.forwardReqMask(dst_reg_reqs);
-        debugLog.record($format("TOKEN %0d: GetDeps2: Freelist request mask is %0b", tok.index, pack(dst_reg_reqs)));
+        debugLog.record(fshow(tok.index) + $format(": GetDeps2: Freelist request mask is %0b", pack(dst_reg_reqs)));
 
         deps2Q.enq(tuple4(tok, tok_active, ar_srcs, ar_dsts));
 
@@ -268,13 +268,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
             for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
             begin
                 if (phy_dsts[x] matches tagged Valid .pr)
-                    debugLog.record($format("TOKEN %0d: GetDeps3: Inval slot #%0d PR %0d", tok.index, x, pr));
+                    debugLog.record(fshow(tok.index) + $format(": GetDeps3: Inval slot #%0d PR %0d", x, pr));
             end
         end
         else
         begin
             // Don't update the maptable if this token is getting killed
-            debugLog.record($format("TOKEN %0d: GetDeps4: JUNK TOKEN (NO UPDATE)", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": GetDeps4: JUNK TOKEN (NO UPDATE)"));
         end
 
         // Save destination physical registers
@@ -305,9 +305,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
             if (phy_dsts[x] matches tagged Valid .pr)
             begin
                 if (ar_dsts[x] matches tagged Valid .ar)
-                    debugLog.record($format("TOKEN %0d: GetDeps3: Destination #%0d Mapped (%0d/%0d)", tok.index, x, ar, pr));
+                    debugLog.record(fshow(tok.index) + $format(": GetDeps3: Destination #%0d Mapped (%0d/%0d)", x, ar, pr));
                 else
-                    debugLog.record($format("TOKEN %0d: GetDeps3: Destination #%0d writes unmapped PR%0d", tok.index, x, pr));
+                    debugLog.record(fshow(tok.index) + $format(": GetDeps3: Destination #%0d writes unmapped PR%0d", x, pr));
             end
         end
 
@@ -345,14 +345,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
         begin
             if (map_srcs[x] matches tagged Valid {.ar, .pr})
-                debugLog.record($format("TOKEN %0d: GetDeps3: Source #%0d Mapped (%0d/%0d)", tok.index, x, ar, pr));
+                debugLog.record(fshow(tok.index) + $format(": GetDeps3: Source #%0d Mapped (%0d/%0d)", x, ar, pr));
         end
 
         // Wait for confirmation that new registers have been marked invalid
         if (tok_active)
         begin
             prf.invalRsp();
-            debugLog.record($format("TOKEN %0d: New PRs confirmed invalid", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": New PRs confirmed invalid"));
         end
 
         // If it was killed then don't tell the timing partition about the allocated register.
@@ -363,7 +363,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
 
         // Return everything to the timing partition. End of macro-operation (path 1).
         linkGetDeps.makeResp(initFuncpRspGetDependencies(tok, map_srcs, final_map_dsts));
-        debugLog.record($format("TOKEN %0d: GetDeps: End", tok.index));
+        debugLog.record(fshow(tok.index) + $format(": GetDeps: End"));
         
     endrule
     

@@ -29,6 +29,7 @@ import FIFO::*;
 import SpecialFIFOs::*;
 import FIFOF::*;
 import Vector::*;
+import FShow::*;
 
 // Project foundation includes.
 
@@ -326,7 +327,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
                               endcase;
 
             if (old_phy_dsts[x] matches tagged Valid .pr)
-                debugLog.record($format("MAP: Token %0d: Slot #%0d AR %0d will free PR %0d", tok.index, x, validValue(ar_dsts[x]), pr));
+                debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Slot #%0d AR %0d will free PR %0d", x, validValue(ar_dsts[x]), pr));
         end
         
         // For instruction with no true destination free the dummy physical reg.
@@ -335,7 +336,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
             old_phy_dsts[0] = phy_dsts[0];
 
             if (old_phy_dsts[0] matches tagged Valid .pr)
-                debugLog.record($format("MAP: Token %0d: Slot #0 (hidden) will free PR %0d", tok.index, pr));
+                debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Slot #0 (hidden) will free PR %0d", pr));
         end
             
         // Store rewind info
@@ -354,7 +355,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
                 phy_dsts[x] matches tagged Valid .pr)
             begin
                 updated_map[pack(ar)] = pr;
-                debugLog.record($format("MAP: Token %0d: Slot #%0d dest AR %0d -> PR %0d", tok.index, x, ar, pr));
+                debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Slot #%0d dest AR %0d -> PR %0d", x, ar, pr));
             end
         end
 
@@ -371,7 +372,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
                           endcase;
 
             if (phy_srcs[x] matches tagged Valid .pr)
-                debugLog.record($format("MAP: Token %0d: Slot #%0d source AR %0d is PR %0d", tok.index, x, validValue(ar_srcs[x]), pr));
+                debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Slot #%0d source AR %0d is PR %0d", x, validValue(ar_srcs[x]), pr));
         end
         
 
@@ -425,7 +426,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
         rewInitInQ.deq();
 
         rewindInfo.write(tok.index, tagged Invalid);
-        debugLog.record($format("MAP: Token %0d: Init REWIND", tok.index));
+        debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Init REWIND"));
     endrule
 
 
@@ -458,7 +459,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
             rewindReaderQ.enq(REGSTATE_REWR_GETRESULTS);
             rewindInfo.readReq(tok_idx);
 
-            debugLog.record($format("MAP: Token %0d: Request REWIND info for GETRESULTS", tok_idx));
+            debugLog.record($format("MAP: ") + fshow(tok_idx) + $format(": Request REWIND info for GETRESULTS"));
         end
         else if (rewCommitReadInQ.notEmpty())
         begin
@@ -471,7 +472,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
             rewindReaderQ.enq(REGSTATE_REWR_COMMITRESULTS);
             rewindInfo.readReq(tok.index);
 
-            debugLog.record($format("MAP: Token %0d: Request REWIND info for COMMIT", tok.index));
+            debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Request REWIND info for COMMIT"));
         end
         else if (rewExceptionReadInQ.notEmpty())
         begin
@@ -481,7 +482,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
             rewindReaderQ.enq(REGSTATE_REWR_EXCEPTION);
             rewindInfo.readReq(tok_idx);
 
-            debugLog.record($format("MAP: Token %0d: Request REWIND info for EXCEPT", tok_idx));
+            debugLog.record($format("MAP: ") + fshow(tok_idx) + $format(": Request REWIND info for EXCEPT"));
         end
     endrule
 
@@ -509,7 +510,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
                                    Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)) ar_dsts);
 
             decodeStage1InQ.enq(tuple2(ar_srcs, ar_dsts));
-            debugLog.record($format("MAP: Token %0d: context %0d, decodeStage1", tok.index, tokContextId(tok)));
+            debugLog.record($format("MAP: ") + fshow(tok.index) + $format(":decodeStage1"));
         endmethod
 
         method Action decodeStage2(TOKEN tok,
@@ -519,8 +520,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
             newMapTableReqQ.enq(tuple2(tokContextId(tok), REGSTATE_MAPT_DECODE));
 
             decodeStage2InQ.enq(tuple3(tok, phy_dsts, freeListPos));
-            debugLog.record($format("MAP: Token %0d: context %0d, decodeStage2", tok.index, tokContextId(tok)));
-            debugLog.record($format("MAP: Token %0d: decodeStage2", tok.index));
+            debugLog.record($format("MAP: ") + fshow(tok.index) + $format(":decodeStage2"));
         endmethod
 
         method ActionValue#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) decodeRsp();

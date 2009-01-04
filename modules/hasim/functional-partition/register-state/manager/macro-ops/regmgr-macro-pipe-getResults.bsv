@@ -282,7 +282,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         let req = linkGetResults.getReq();
         linkGetResults.deq();
         let tok = req.token;
-        debugLog.record($format("TOKEN %0d: GetResults: Begin.", tok.index));
+        debugLog.record(fshow(tok.index) + $format(": GetResults: Begin."));
 
         // Update the scoreboard.
         tokScoreboard.exeStart(tok.index);
@@ -300,7 +300,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             emulatingToken <= tok;
 
              // Log it.
-            debugLog.record($format("TOKEN %0d: GetResults1: Beginning Instruction Emulation.", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": GetResults1: Beginning Instruction Emulation."));
 
         end
         else
@@ -335,13 +335,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         if (! tok_active)
         begin
             // No values are needed for junk
-            debugLog.record($format("TOKEN %0d: GetResults2: Letting Junk Proceed!", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": GetResults2: Letting Junk Proceed!"));
 
             prf.readRegVecReq(Vector::replicate(tagged Invalid));
         end
         else
         begin
-            debugLog.record($format("TOKEN %0d: GetResults2: Requesting srcs", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": GetResults2: Requesting srcs"));
 
             prf.readRegVecReq(ws);
         end
@@ -368,7 +368,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         let inst <- tokInst.readPorts[1].readRsp();
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: GetResults3: Sending to Datapath.", tok.index));
+        debugLog.record(fshow(tok.index) + $format(": GetResults3: Sending to Datapath."));
 
         // Send it to the datapath.
         linkToDatapath.makeReq(initISADatapathReq(tok, inst, addr));
@@ -400,7 +400,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         // Tag illegal instruction.  An error will be raised on attempts to commit.
         if (rsp.except != FUNCP_ISA_EXCEPT_NONE)
         begin
-            debugLog.record($format("TOKEN %0d: GetResults: Illegal instruction", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": GetResults: Illegal instruction"));
             tokScoreboard.setFault(tok.index, FAULT_ILLEGAL_INSTR);
         end
 
@@ -431,7 +431,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
                 begin
             
                     prf.write(dst, v);
-                    debugLog.record($format("TOKEN %0d: GetResults4: Writing (PR%0d <= 0x%x)", tok.index, dst, v));
+                    debugLog.record(fshow(tok.index) + $format(": GetResults4: Writing (PR%0d <= 0x%x)", dst, v));
                 
                 end
 
@@ -458,14 +458,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
             // Return timing model. End of macro-operation (path 1).
             linkGetResults.makeResp(initFuncpRspGetResults(tok, addr, rsp.timepResult));
-            debugLog.record($format("TOKEN %0d: GetResults: End (path 1).", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": GetResults: End (path 1)."));
 
         end
         else // We've got to write back more.
         begin
             
             // Log it.
-            debugLog.record($format("TOKEN %0d: GetResults4: Writing back additional values.", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": GetResults4: Writing back additional values."));
 
             // Marshall up the values for writeback.
 
@@ -511,7 +511,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
                 tagged Invalid:
                 begin
                     // Hopefully this doesn't happen too much.
-                    debugLog.record($format("TOKEN %0d: GetResults4: Skipping Dest %0d", tok.index, wb_info.current + 1));
+                    debugLog.record(fshow(tok.index) + $format(": GetResults4: Skipping Dest %0d", wb_info.current + 1));
 
                 end
                 tagged Valid {.dst, .val}:
@@ -519,7 +519,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
                     // An actual writeback.
                     prf.write(dst, val);
-                    debugLog.record($format("TOKEN %0d: GetResults4: Writing Dest %0d (PR%0d <= 0x%x)", tok.index, wb_info.current + 1, dst, val));
+                    debugLog.record(fshow(tok.index) + $format(": GetResults4: Writing Dest %0d (PR%0d <= 0x%x)", wb_info.current + 1, dst, val));
 
                 end
             endcase
@@ -537,7 +537,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
           
                 // Return to timing model. End of macro-operation (path 2).
                 linkGetResults.makeResp(initFuncpRspGetResults(tok, addr, wb_info.result));
-                debugLog.record($format("TOKEN %0d: GetResults: End (path 2).", tok.index));
+                debugLog.record(fshow(tok.index) + $format(": GetResults: End (path 2)."));
 
             end
             else
@@ -604,7 +604,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         let ctx_id = tokContextId(emulatingToken);
         assertion.expectedOldestTok(emulatingToken.index == tokScoreboard.oldest(ctx_id));
         if (emulatingToken.index != tokScoreboard.oldest(ctx_id))
-            debugLog.record($format("TOKEN %0d: emulateInstruction1:  Token is not oldest! (Oldest: %0d)", emulatingToken.index, tokScoreboard.oldest(ctx_id)));
+            debugLog.record(fshow(emulatingToken.index) + $format(": emulateInstruction1:  Token is not oldest! (Oldest: %0d)", tokScoreboard.oldest(ctx_id)));
                
         emulateMapCurTok <= tokScoreboard.youngestDecoded(ctx_id);
         emulateMapReqDone <= False;
@@ -612,7 +612,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         state.setState(RSM_EmulateGenRegMap);
 
-        debugLog.record($format("TOKEN %0d: emulateInstruction1:  Youngest decoded token is %0d (youngest is %0d)", emulatingToken.index, tokScoreboard.youngestDecoded(ctx_id), tokScoreboard.youngest(ctx_id)));
+        debugLog.record(fshow(emulatingToken.index) + $format(": emulateInstruction1:  Youngest decoded token is %0d (youngest is %0d)", tokScoreboard.youngestDecoded(ctx_id), tokScoreboard.youngest(ctx_id)));
     endrule
 
 
@@ -668,7 +668,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
                 begin
                     // Set the mapping back
                     new_map[x] = tagged Valid tuple2(arc_r, r);
-                    debugLog.record($format("TOKEN %0d: EmulateInstruction1: Note mapping from token %0d (%0d/%0d)", emulatingToken.index, tok_idx, arc_r, r));
+                    debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction1: Note mapping from token %0d (%0d/%0d)", tok_idx, arc_r, r));
                 end
                 else
                 begin
@@ -682,7 +682,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         // Done with map table discovery?
         if (done)
         begin
-            debugLog.record($format("TOKEN %0d: EmulateInstruction1: Map discovery done", emulatingToken.index));  
+            debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction1: Map discovery done"));  
 
             // Reset the counter for syncing registers.
             synchronizingCurReg <= minBound;
@@ -759,7 +759,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         prf.readReq(pr);
 
         //Log it.
-        debugLog.record($format("TOKEN %0d: EmulateInstruction2: Reading Register R%0d (PR%0d).", emulatingToken.index, ar, pr));
+        debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction2: Reading Register R%0d (PR%0d).", ar, pr));
 
     endrule
 
@@ -788,7 +788,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         end
         
         //Log it.
-        debugLog.record($format("TOKEN %0d: EmulateInstruction2: Transmitting Register R%0d = 0x%h.", emulatingToken.index, arch_reg, reg_val));
+        debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction2: Transmitting Register R%0d = 0x%h.", arch_reg, reg_val));
     
     endrule
     
@@ -809,7 +809,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         client_stub.makeRequest_emulate(tuple2(inst, pc));
         
         //Log it.
-        debugLog.record($format("TOKEN %0d: EmulateInstruction3: Requesting Emulation of inst 0x%h from address 0x%h", emulatingToken.index, inst, pc));
+        debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction3: Requesting Emulation of inst 0x%h from address 0x%h", inst, pc));
         stat_isa_emul.incr();
 
         //Go to receiving updates.
@@ -866,7 +866,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         prf.write(pr, v);
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: EmulateInstruction3: Writing ((%0d/PR%0d) <= 0x%h)", emulatingToken.index, ar, pr, v));
+        debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction3: Writing ((%0d/PR%0d) <= 0x%h)", ar, pr, v));
     
     endrule
 
@@ -905,13 +905,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
                    endcase;
 
         //Log it
-        debugLog.record($format("TOKEN %0d: EmulateInstruction3: Emulation finished.", emulatingToken.index));
+        debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction3: Emulation finished."));
   
         // Send the response to the timing model.
         // End of macro-operation.
         linkGetResults.makeResp(initFuncpRspGetResults(emulatingToken, emulatingPC, resp));
 
-        debugLog.record($format("TOKEN %0d: GetResults: End (path 3).", emulatingToken.index));
+        debugLog.record(fshow(emulatingToken.index) + $format(": GetResults: End (path 3)."));
 
     endrule
 

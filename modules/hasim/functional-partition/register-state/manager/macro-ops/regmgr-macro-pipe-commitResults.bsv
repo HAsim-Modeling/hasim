@@ -115,7 +115,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         let tok = req.token;
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: CommitResults: Begin.", tok.index)); 
+        debugLog.record(fshow(tok.index) + $format(": CommitResults: Begin.")); 
 
         // Confirm timing model propagated poison bit correctly
         assertion.poisonBit(tokIsPoisoned(tok) == isValid(tokScoreboard.getFault(tok.index)));
@@ -124,7 +124,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         begin
             // Timing model tried to commit an instruction with an exception.
             assertion.commitFaultingInstr(False);
-            debugLog.record($format("TOKEN %0d: CommitResults: FAULTING instruction!  Aborting.", tok.index)); 
+            debugLog.record(fshow(tok.index) + $format(": CommitResults: FAULTING instruction!  Aborting.")); 
         end
 
         // Update the scoreboard.
@@ -159,7 +159,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         let ctx_id = tokContextId(tok);
         assertion.expectedOldestTok(tok.index == tokScoreboard.oldest(ctx_id));
         if (tok.index != tokScoreboard.oldest(ctx_id))
-            debugLog.record($format("TOKEN %0d: commitResults1:  Token is not oldest! (Oldest: %0d)", tok.index, tokScoreboard.oldest(ctx_id)));
+            debugLog.record(fshow(tok.index) + $format(": commitResults1:  Token is not oldest!  Oldest: ") + fshow(tokScoreboard.oldest(ctx_id)));
 
         // Retrieve the registers to be freed.
         let rewind_info <- regMapping.readRewindRsp();
@@ -180,7 +180,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
 
         // Respond to the timing model. End of macro-operation (except any more registers below).
         linkCommitResults.makeResp(initFuncpRspCommitResults(tok));
-        debugLog.record($format("TOKEN %0d: CommitResults: End.", tok.index)); 
+        debugLog.record(fshow(tok.index) + $format(": CommitResults: End.")); 
 
     endrule
 

@@ -109,7 +109,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitStores#(
         assertion.commitedStoreIsActuallyAStore(isStore && !fault);
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: CommitStores: Committing.", tok.index)); 
+        debugLog.record(fshow(tok.index) + $format(": CommitStores: Committing.")); 
 
         linkToMem.makeReq(tagged REQ_COMMIT MEMSTATE_REQ_COMMIT {tok: tok});
         commitQ.enq(tok);

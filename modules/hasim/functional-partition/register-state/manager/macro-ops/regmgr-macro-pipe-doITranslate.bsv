@@ -156,7 +156,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
         let req = linkDoITranslate.getReq();
         let tok = req.token;
         let vaddr = req.address;
-        debugLog.record($format("TOKEN %0d: DoITranslate: Begin.", tok.index));
+        debugLog.record(fshow(tok.index) + $format(": DoITranslate: Begin."));
         
         // Update scoreboard.
         tokScoreboard.iTransStart(tok.index);
@@ -180,7 +180,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
             link_itlb_trans.makeReq(normalTLBQuery(tok, aligned_addr));
             
             // Log it.
-            debugLog.record($format("TOKEN %0d: DoITranslate1: ITLB Req (VA: 0x%h, AA: 0x%h)", tok.index, vaddr, aligned_addr));
+            debugLog.record(fshow(tok.index) + $format(": DoITranslate1: ITLB Req (VA: 0x%h, AA: 0x%h)", vaddr, aligned_addr));
   
             // Pass to the next stage.
             iTransQ.enq(tagged ITRANS_NORMAL tok);
@@ -190,7 +190,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
         begin
 
             // Log it.
-            debugLog.record($format("TOKEN %0d: DoITranslate1: Spanning ITLB Req 1 (VA: 0x%h, AA1: 0x%h)", tok.index, vaddr, aligned_addr));
+            debugLog.record(fshow(tok.index) + $format(": DoITranslate1: Spanning ITLB Req 1 (VA: 0x%h, AA1: 0x%h)", vaddr, aligned_addr));
   
             // A spanning ITranslate. Make the first request to the TLB.
             link_itlb_trans.makeReq(normalTLBQuery(tok, aligned_addr));
@@ -220,7 +220,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
         link_itlb_trans.makeReq(normalTLBQuery(tok, aligned_addr2));
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoITranslate1: Second ITLB Req 2 (AA2: 0x%h)", tok.index, aligned_addr2));
+        debugLog.record(fshow(tok.index) + $format(": DoITranslate1: Second ITLB Req 2 (AA2: 0x%h)", aligned_addr2));
   
         // Unstall this stage.
         linkDoITranslate.deq();  
@@ -255,11 +255,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
                 iTransQ.deq();
 
                 // Log it.
-                debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB Rsp (PA: 0x%h)", tok.index, mem_addr));
+                debugLog.record(fshow(tok.index) + $format(": DoITranslate2: ITLB Rsp (PA: 0x%h)", mem_addr));
 
                 if (page_fault)
                 begin
-                    debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB PAGE FAULT", tok.index));
+                    debugLog.record(fshow(tok.index) + $format(": DoITranslate2: ITLB PAGE FAULT"));
                     tokScoreboard.setFault(tok.index, FAULT_ITRANS);
                 end
 
@@ -271,7 +271,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
 
                 // Return it to the timing partition. End of macro-operation (path 1)
                 linkDoITranslate.makeResp(initFuncpRspDoITranslate(tok, mem_addr, page_fault));
-                debugLog.record($format("TOKEN %0d: DoITranslate: End (path 1).", tok.index));
+                debugLog.record(fshow(tok.index) + $format(": DoITranslate: End (path 1)."));
 
             end
             tagged ITRANS_SPAN .tok:
@@ -280,11 +280,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
                 // A spanning access.
 
                 // Log it.
-                debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB Spanning Rsp 1 (PA1: 0x%h)", tok.index, mem_addr));
+                debugLog.record(fshow(tok.index) + $format(": DoITranslate2: ITLB Spanning Rsp 1 (PA1: 0x%h)", mem_addr));
 
                 if (page_fault)
                 begin
-                    debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB PAGE FAULT", tok.index));
+                    debugLog.record(fshow(tok.index) + $format(": DoITranslate2: ITLB PAGE FAULT"));
                     tokScoreboard.setFault(tok.index, FAULT_ITRANS);
                 end
 
@@ -326,12 +326,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
 
         if (page_fault)
         begin
-            debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB Spanning 2 PAGE FAULT", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": DoITranslate2: ITLB Spanning 2 PAGE FAULT"));
             tokScoreboard.setFault(tok.index, FAULT_ITRANS2);
         end
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoITranslate2: ITLB Spanning Rsp 2 (PA2: 0x%h)", tok.index, mem_addr2));
+        debugLog.record(fshow(tok.index) + $format(": DoITranslate2: ITLB Spanning Rsp 2 (PA2: 0x%h)", mem_addr2));
 
         // Record the physical addr.
         tokPhysicalAddrs.write(tok.index, tagged TWO tuple2(trans1.firstPA, mem_addr2));
@@ -345,7 +345,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
 
         // Return the rest to the timing partition. End of macro-operation (path 2).
         linkDoITranslate.makeResp(initFuncpRspDoITranslate_part2(tok, mem_addr2, page_fault));
-        debugLog.record($format("TOKEN %0d: DoITranslate: End (path 2).", tok.index));
+        debugLog.record(fshow(tok.index) + $format(": DoITranslate: End (path 2)."));
     
     endrule
 

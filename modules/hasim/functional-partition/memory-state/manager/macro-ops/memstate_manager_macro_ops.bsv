@@ -25,6 +25,7 @@
 
 import FIFOF::*;
 import Vector::*;
+import FShow::*;
 
 // Project Foundation Imports
 
@@ -150,7 +151,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         // Pop the request from the register state.
         linkRegState.deq();
         
-        debugLog.record($format("STORE: tok=%d, addr=0x%x, value=0x%x", stInfo.tok.index, stInfo.addr, stInfo.value));
+        debugLog.record($format("STORE: ") + fshow(stInfo.tok.index) + $format(", addr=0x%x, value=0x%x", stInfo.addr, stInfo.value));
 
         // Place the value in store buffer, but don't actually change the cache.
         stBuffer.insertReq(stInfo.tok.index, stInfo.addr, stInfo.value);
@@ -181,7 +182,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         // Pop the request from the register state.
         linkRegState.deq();
 
-        debugLog.record($format("LOAD: tok=%d, addr=0x%x", ldInfo.tok.index, ldInfo.addr));
+        debugLog.record($format("LOAD: ") + fshow(ldInfo.tok.index) + $format(", addr=0x%x", ldInfo.addr));
 
         // Send it on to the store buffer and the cache in parallel.
         // Since most loads miss in the store buffer there isn't much point
@@ -242,7 +243,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         // Get the input from the register state. Begin macro-operation.
         linkRegState.deq();
 
-        debugLog.record($format("COMMIT: tok=%d", req.tok.index));
+        debugLog.record($format("COMMIT: ") + fshow(req.tok.index));
 
         // Send the request on to the store buffer.
         stBuffer.commitReq(req.tok.index);
@@ -286,7 +287,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
       
         linkRegState.deq();
 
-        debugLog.record($format("REWIND: rewind_to=%d, rewind_from=%d", rew.rewind_to, rew.rewind_from));
+        debugLog.record($format("REWIND: rewind_to ") + fshow(rew.rewind_to) + $format(", rewind_from ") + fshow(rew.rewind_from));
 
         // Pass the request on to the store buffer.
         stBuffer.rewindReq(rew.rewind_to, rew.rewind_from);

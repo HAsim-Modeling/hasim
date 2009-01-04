@@ -19,6 +19,7 @@
 // partitions. The token type includes an index for token tables, epochs,
 // and scratchpads which partitions can use as they see fit.             
 
+import FShow::*;
 
 //
 // TOKEN_INDEX is a combination of two ID's:  the context ID and the token ID
@@ -233,11 +234,41 @@ function TOKEN_EPOCH tokEpoch(TOKEN tok) = tok.epoch;
 function TOKEN_EPOCH initEpoch(TOKEN_BRANCH_EPOCH b, TOKEN_FAULT_EPOCH f) =
     TOKEN_EPOCH { branch: b, fault: f };
 
+
+// ========================================================================
+//
+// Useful debugging functions.
+//
+// ========================================================================
+
+instance FShow#(TOKEN_INDEX);
+    function Fmt fshow(TOKEN_INDEX tokIdx);
+        return $format("TOKEN (%0d, %0d)", tokIdx.context_id, tokIdx.token_id);
+    endfunction
+endinstance
+
+instance FShow#(TOKEN);
+    function Fmt fshow(TOKEN tok);
+        Fmt s = fshow(tok.index);
+        if (tokIsPoisoned(tok))
+            s = s + fshow(" POISON");
+
+        // For some reason the following line keeps "POISON" from appearing
+        // improperly when the token is the last object printed.
+        s = s + fshow("");
+
+        return s;
+    endfunction
+endinstance
+
+
+// ========================================================================
 //
 // Convenience modules for wrapping LIVE_TOKEN sized storage that is indexed
 // by a TOKEN_INDEX.  These provide automatic conversion on the access methods
 // from TOKEN_INDEX to LIVE_TOKEN_INDEX.
 //
+// ========================================================================
 
 module mkLiveTokenBRAM
     // interface:

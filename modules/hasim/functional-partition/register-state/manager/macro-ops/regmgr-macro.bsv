@@ -26,6 +26,7 @@
 
 import FIFO::*;
 import Vector::*;
+import FShow::*;
 
 // Project foundation includes.
 

@@ -16528,3 +16528,38 @@ Directory modules/hasim/util/cache
   match in addition to the address.
 - Bug in hasim-cache caused ways with data to be favored as victims over ways
   with no data.  Cache was thus typically 75% empty.
+
+----------
+mcadler     Date: Sun Jan  4 16:43:51 EST 2009  CSN: CSN-hasim-564
+                  Sun Jan  4 21:43:51 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-reg-map-table.bsv Locally Modified          563 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getInstruction.bsv Locally Modified          562 
+ regmgr-macro-pipe-doDTranslate.bsv Locally Modified          562 
+ regmgr-macro-pipe-commitStores.bsv Locally Modified          562 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          563 
+ regmgr-macro.bsv          Locally Modified          562 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          562 
+ regmgr-macro-pipe-newInFlight.bsv Locally Modified          562 
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          562 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          562 
+ regmgr-macro-pipe-doITranslate.bsv Locally Modified          562 
+ regmgr-macro-pipe-exception.bsv Locally Modified          563 
+ regmgr-macro-pipe-doStores.bsv Locally Modified          562 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          563 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          562 
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          562 
+
+- Define standard fshow message formats for TOKEN and TOKEN_INDEX in token.bsv.
+  The method separates the context and token IDs, e.g. TOKEN (2, 27).
+- Debugging output now uses the method.  I probably missed some.

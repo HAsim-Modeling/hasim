@@ -165,7 +165,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
             ! tokScoreboard.isAllocated(tok.index))
         begin
             // Log it.
-            debugLog.record($format("TOKEN %0d: DoStores: Ignoring junk token or emulated instruction.", tok.index));
+            debugLog.record(fshow(tok.index) + $format(": DoStores: Ignoring junk token or emulated instruction."));
 
             // Respond to the timing model. End of macro-operation.
             linkDoStores.makeResp(initFuncpRspDoStores(tok));
@@ -173,7 +173,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         else // Everything's fine.
         begin
             // Log it.
-            debugLog.record($format("TOKEN %0d: DoStores: Begin.", tok.index)); 
+            debugLog.record(fshow(tok.index) + $format(": DoStores: Begin.")); 
 
             // Update the scoreboard.
             tokScoreboard.storeStart(tok.index);
@@ -226,7 +226,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                     linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                     // Log it.
-                    debugLog.record($format("TOKEN %0d: DoStores2: Load Req for Read-Modify-Write. (PA: 0x%h).", tok.index, p_addr)); 
+                    debugLog.record(fshow(tok.index) + $format(": DoStores2: Load Req for Read-Modify-Write. (PA: 0x%h).", p_addr)); 
 
                     // Stall this stage.
                     let store_info = STORES_INFO
@@ -248,14 +248,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
                     // Convert the store.
                     let mem_store_value = isaStoreValueToMemValue(store_val, st_type);
-                    debugLog.record($format("TOKEN %0d: DoStores2: ISA Store (V: 0x%h, T: %0d, O: %b) = 0x%h", tok.index, store_val,  pack(st_type), offset, mem_store_value)); 
+                    debugLog.record(fshow(tok.index) + $format(": DoStores2: ISA Store (V: 0x%h, T: %0d, O: %b) = 0x%h", store_val,  pack(st_type), offset, mem_store_value)); 
 
                     // Make the request to the memory state.
                     let m_req = MEMSTATE_REQ_STORE {tok: tok, addr: p_addr, value: mem_store_value};
                     linkToMem.makeReq(tagged REQ_STORE m_req);
 
                     // Log it.
-                    debugLog.record($format("TOKEN %0d: DoStores2: Sending Store to Memory (PA: 0x%h, V: 0x%h).", tok.index, p_addr, mem_store_value)); 
+                    debugLog.record(fshow(tok.index) + $format(": DoStores2: Sending Store to Memory (PA: 0x%h, V: 0x%h).", p_addr, mem_store_value)); 
 
                     // Wait for response from memory
                     stores3Q.enq(tok);
@@ -271,7 +271,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Log it.
-                debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Load Req 1 (PA1: 0x%h, PA2: 0x%h).", tok.index, p_addr1, p_addr2)); 
+                debugLog.record(fshow(tok.index) + $format(": DoStores2: Spanning Store Load Req 1 (PA1: 0x%h, PA2: 0x%h).", p_addr1, p_addr2)); 
 
                 // Stall this stage.
                 let store_info = STORES_INFO
@@ -306,11 +306,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         linkToMem.deq();
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoStores2: Got RMW Load Rsp (V: 0x%h).", tok.index, existing_val)); 
+        debugLog.record(fshow(tok.index) + $format(": DoStores2: Got RMW Load Rsp (V: 0x%h).", existing_val)); 
 
         // Merge the values.
         let new_mem_val = isaStoreValueToMemValueRMW(existing_val, store_info.storeValue, store_info.offset, store_info.opType);
-        debugLog.record($format("TOKEN %0d: doStores2: ISA StoreRMW (EV: 0x%h, V: 0x%h, T: %0d, O: %b) = 0x%h", tok.index, existing_val, store_info.storeValue,  pack(store_info.opType), store_info.offset, new_mem_val)); 
+        debugLog.record(fshow(tok.index) + $format(": doStores2: ISA StoreRMW (EV: 0x%h, V: 0x%h, T: %0d, O: %b) = 0x%h", existing_val, store_info.storeValue,  pack(store_info.opType), store_info.offset, new_mem_val)); 
 
         // Write the store to memory.
         let mem_addr = getFirst(store_info.memAddrs);
@@ -318,7 +318,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         linkToMem.makeReq(tagged REQ_STORE m_req);
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoStores2: Sending RMW Store to Memory (PA: 0x%h, V: 0x%h).", tok.index, mem_addr, new_mem_val)); 
+        debugLog.record(fshow(tok.index) + $format(": DoStores2: Sending RMW Store to Memory (PA: 0x%h, V: 0x%h).", mem_addr, new_mem_val)); 
 
         // Unstall this stage.
         stateStores2 <= tagged STORES2_NORMAL;
@@ -345,7 +345,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         linkToMem.makeReq(tagged REQ_LOAD m_req);
         
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Load Req 2 (PA2: 0x%h).", tok.index, p_addr2));
+        debugLog.record(fshow(tok.index) + $format(": DoStores2: Spanning Store Load Req 2 (PA2: 0x%h).", p_addr2));
 
         // Wait for the first response.
         stateStores2 <= tagged STORES2_SPAN_RSP1 store_info;
@@ -367,7 +367,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         linkToMem.deq();
         
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Load Rsp 1 (V: 0x%h).", tok.index, existing_val1));
+        debugLog.record(fshow(tok.index) + $format(": DoStores2: Spanning Store Load Rsp 1 (V: 0x%h).", existing_val1));
         
         // Wait for the second response.
         stateStores2 <= tagged STORES2_SPAN_RSP2 tuple2(store_info, existing_val1);
@@ -389,11 +389,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         linkToMem.deq();
         
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Load Rsp 2 (V: 0x%h).", tok.index, existing_val2));
+        debugLog.record(fshow(tok.index) + $format(": DoStores2: Spanning Store Load Rsp 2 (V: 0x%h).", existing_val2));
         
         // Use the ISA-provided conversion function.
         match {.new_val1, .new_val2} = isaStoreValueToSpanningMemValues(existing_val1, existing_val2, store_info.storeValue, store_info.offset, store_info.opType);
-        debugLog.record($format("TOKEN %0d: DoStores2: ISA StoreSpan (EV1: 0x%h, EV2, 0x%h, V: 0x%h, T: %0d, O: %b) = 0x%h, 0x%h", tok.index, existing_val1, existing_val2, store_info.storeValue,  pack(store_info.opType), store_info.offset, new_val1, new_val2));
+        debugLog.record(fshow(tok.index) + $format(": DoStores2: ISA StoreSpan (EV1: 0x%h, EV2, 0x%h, V: 0x%h, T: %0d, O: %b) = 0x%h, 0x%h", existing_val1, existing_val2, store_info.storeValue,  pack(store_info.opType), store_info.offset, new_val1, new_val2));
 
         // Make the first store request.
         MEM_ADDRESS p_addr1 = getFirst(store_info.memAddrs);
@@ -401,7 +401,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         linkToMem.makeReq(tagged REQ_STORE m_req);
 
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Req 1 (PA1: V1: 0x%h).", tok.index, p_addr1, new_val1));
+        debugLog.record(fshow(tok.index) + $format(": DoStores2: Spanning Store Req 1 (PA1: V1: 0x%h).", p_addr1, new_val1));
 
         // Stall to make the second request.
         stateStores2 <= tagged STORES2_SPAN_END tuple2(store_info, new_val2);
@@ -426,7 +426,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         linkToMem.makeReq(tagged REQ_STORE m_req);
         
         // Log it.
-        debugLog.record($format("TOKEN %0d: DoStores2: Spanning Store Req 2 (PA2: V2: 0x%h).", tok.index, p_addr2, new_val2));
+        debugLog.record(fshow(tok.index) + $format(": DoStores2: Spanning Store Req 2 (PA2: V2: 0x%h).", p_addr2, new_val2));
         
         // Unstall this stage.
         stores1Q.deq();
@@ -455,7 +455,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
         // Return to the timing partition. End of macro-operation (path 1).
         linkDoStores.makeResp(initFuncpRspDoStores(tok));
-        debugLog.record($format("TOKEN %0d: DoStores: End.", tok.index));
+        debugLog.record(fshow(tok.index) + $format(": DoStores: End."));
 
     endrule
 

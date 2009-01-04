@@ -91,7 +91,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_NewInFlight#(
         
         // Log it.
         
-        debugLog.record($format("NewInFlight: Allocating CONTEXT %0d, TOKEN %0d", ctx_id, idx));
+        debugLog.record($format("NewInFlight: Allocating ") + fshow(idx));
 
         // The timing partition scratchpad must be filled in by up.
         let newtok = TOKEN { index: idx,

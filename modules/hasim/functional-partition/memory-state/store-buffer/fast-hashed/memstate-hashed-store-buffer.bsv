@@ -21,7 +21,7 @@
 import FIFO::*;
 import FIFOF::*;
 import Vector::*;
-
+import FShow::*;
 
 `include "asim/provides/fpga_components.bsh"
 `include "asim/provides/hasim_common.bsh"
@@ -295,7 +295,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         let tok_idx = allocate.receive();
         allocate.deq();
 
-        debugLog.record($format("SB ALLOC tok=%0d", tok_idx));
+        debugLog.record($format("SB ALLOC ") + fshow(tok_idx));
 
         // We could do the allocation in a single cycle if we skipped the check
         // that the last instance of the token was cleaned up.  Instead, we
@@ -346,7 +346,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             if (`MEMSTATE_SBUFFER_OOO_MEM == 0)
             begin
                 // Ordered memory mode.  Take first hit, ignore age.
-                debugLog.record($format("    SB Addr Match: tok=%0d, node_token=%0d, node_addr=0x%x, value=0x%x, ending search", reqToken, node.tokIdx, node.addr, node.value));
+                debugLog.record($format("    SB Addr Match: ") + fshow(reqToken) + $format(", node_token=") + fshow(node.tokIdx) + $format(", node_addr=0x%x, value=0x%x, ending search", node.addr, node.value));
 
                 respValue <= tagged Valid node.value;
                 state <= SBUFFER_STATE_LOOKUP;
@@ -354,7 +354,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             else
             begin
                 // Out-of-order mode
-                debugLog.record($format("    SB Addr Match: tok=%0d, node_token=%0d, node_addr=0x%x, value=0x%x", reqToken, node.tokIdx, node.addr, node.value));
+                debugLog.record($format("    SB Addr Match: ") + fshow(reqToken) + $format(", node_token=") + fshow(node.tokIdx) + $format(", node_addr=0x%x, value=0x%x", node.addr, node.value));
 
                 // Use this hit as current best match if the store is before
                 // the load and either this is the first address match or this
@@ -362,7 +362,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
                 if (tokenIsOlderOrEq(node.tokIdx, reqToken) &&
                     (tokenIsOlderOrEq(respClosestReqToken, node.tokIdx) || ! isValid(respValue)))
                 begin
-                    debugLog.record($format("      SB Current Best: tok=%0d, node_token=%0d", reqToken, node.tokIdx));
+                    debugLog.record($format("      SB Current Best: ") + fshow(reqToken) + $format(", node_token=") + fshow(node.tokIdx));
 
                     respValue <= tagged Valid node.value;
                     respClosestReqToken <= node.tokIdx;
@@ -389,14 +389,14 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             if (node.next matches tagged Valid .n_idx)
             begin
                 // Yes -- search next entry
-                debugLog.record($format("    SB mismatch: tok=%0d, node_token=%0d, node_addr=0x%x, node_next=%0d", reqToken, node.tokIdx, node.addr, n_idx));
+                debugLog.record($format("    SB mismatch: ") + fshow(reqToken) + $format(", node_token=") + fshow(node.tokIdx) + $format(", node_addr=0x%x, node_next=%0d", node.addr, n_idx));
 
                 sBuffer.readReq(n_idx);
             end
             else
             begin
                 // No -- give up
-                debugLog.record($format("    SB mismatch: tok=%0d, node_token=%0d, node_addr=0x%x, end of chain", reqToken, node.tokIdx, node.addr));
+                debugLog.record($format("    SB mismatch: ") + fshow(reqToken) + $format(", node_token=") + fshow(node.tokIdx) + $format(", node_addr=0x%x, end of chain", node.addr));
 
                 state <= SBUFFER_STATE_LOOKUP;
             end
@@ -423,13 +423,13 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         if (nStoresInBuffer.value() == 0)
         begin
             youngestStoreHint[ctx_id] <= tagged Valid reqToken;
-            debugLog.record($format("    SB Store tok=%0d is youngest", reqToken));
+            debugLog.record($format("    SB Store ") + fshow(reqToken) + $format(" is youngest"));
         end
         else if (youngestStoreHint[ctx_id] matches tagged Valid .cur_youngest &&&
                  tokenIsOlderOrEq(cur_youngest, reqToken))
         begin
             youngestStoreHint[ctx_id] <= tagged Valid reqToken;
-            debugLog.record($format("    SB Store tok=%0d is youngest (replaces %0d)", reqToken, cur_youngest));
+            debugLog.record($format("    SB Store ") + fshow(reqToken) + $format(" is youngest -- replaces ") + fshow(cur_youngest));
         end
 
         // New node is taken from head of free list
@@ -450,7 +450,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         //
         // Update store info for the token.  Tokens may have more than one store.
         //
-        debugLog.record($format("    SB Store #%0d for tok=%0d, node_idx=%0d", old_tok_data.nStores, reqToken, node_idx));
+        debugLog.record($format("    SB Store #%0d for ") + fshow(reqToken) + $format(", node_idx=%0d", old_tok_data.nStores, node_idx));
         assertTooManyStores(old_tok_data.nStores != `MEMSTATE_SBUFFER_STORES_PER_TOKEN);
         let tok_data = old_tok_data;
         // Pointer to new node
@@ -529,7 +529,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
         if (tok_data.nStores != 0)
         begin
-            debugLog.record($format("  SB remove: tok=%0d, store id=%0d", reqToken, removeTokenStoreIdx));
+            debugLog.record($format("  SB remove: ") + fshow(reqToken) + $format(", store id=%0d", removeTokenStoreIdx));
 
             // Request the data for the store
             let node_idx = tok_data.storeNodePtr[removeTokenStoreIdx];
@@ -573,7 +573,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             //
             // Doing rewind and token has no stores.  Nothing to do.
             //
-            debugLog.record($format("  SB remove: no stores, tok=%0d", reqToken));
+            debugLog.record($format("  SB remove: no stores, ") + fshow(reqToken));
             removeToken.deq();
             state <= next_state;
         end
@@ -738,7 +738,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         let hash = sbAddrHash(addr);
         if (addrHash.sub(hash) matches tagged Valid .node_idx)
         begin
-            debugLog.record($format("  SB Lookup: tok=%0d, addr=0x%x, hash=%0d, head node=%0d", tokIdx, addr, hash, node_idx));
+            debugLog.record($format("  SB Lookup: ") + fshow(tokIdx) + $format(", addr=0x%x, hash=%0d, head node=%0d", addr, hash, node_idx));
 
             // Read the first node in the hash chain
             sBuffer.readReq(node_idx);
@@ -746,7 +746,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         end
         else
         begin
-            debugLog.record($format("  SB Lookup Miss (empty hash head): tok=%0d, addr=0x%x, hash=%0d", tokIdx, addr, hash));
+            debugLog.record($format("  SB Lookup Miss (empty hash head): ") + fshow(tokIdx) + $format(", addr=0x%x, hash=%0d", addr, hash));
             
             // Respond with miss
             state <= SBUFFER_STATE_LOOKUP;
@@ -781,7 +781,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         // Address hash
         let addr_hash = sbAddrHash(addr);
 
-        debugLog.record($format("  SB Insert: tok=%0d, addr=0x%x, hash=%0d, value=0x%x", tokIdx, addr, addr_hash, value));
+        debugLog.record($format("  SB Insert: ") + fshow(tokIdx) + $format(", addr=0x%x, hash=%0d, value=0x%x", addr, addr_hash, value));
 
         // Start by reading the first node on the free list.  We need the node's
         // next pointer to update the free list head.
@@ -837,7 +837,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
                  tokenIsOlderOrEq(cur_youngest, rewind_to))
         begin
             // Youngest token in store buffer is older than rewind target.
-            debugLog.record($format("  SB Rewind: Nothing to do (rewind to %0d, current youngest is %0d)", rewind_to, cur_youngest));
+            debugLog.record($format("  SB Rewind: Nothing to do (rewind to ") + fshow(rewind_to) + $format(", current youngest is ") + fshow(cur_youngest) + $format(")"));
         end
         else
         begin
@@ -849,7 +849,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
                 tokenIsOlderOrEq(cur_youngest, rewind_from))
             begin
                 rewindCur <= cur_youngest;
-                debugLog.record($format("  SB Rewind: Starting rewind at current youngest (%0d)", cur_youngest));
+                debugLog.record($format("  SB Rewind: Starting rewind at current youngest ") + fshow(cur_youngest));
             end
             else
             begin

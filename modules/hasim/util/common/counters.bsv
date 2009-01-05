@@ -16,7 +16,6 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
-
 //
 // The standard Bluespec "mkCounter" does not support simultaneous up/down
 // calls.  This code, taken mostly from the Bluespec documentation does.
@@ -27,7 +26,11 @@ interface COUNTER#(numeric type nBits);
     method Bit#(nBits) value();
 
     method Action up();
+    method Action upBy(Bit#(nBits) c);
+
     method Action down();
+    method Action downBy(Bit#(nBits) c);
+
     method Action setC(Bit#(nBits) newVal);
 
 endinterface: COUNTER
@@ -40,25 +43,16 @@ module mkLCounter#(Bit#(nBits) initial_value)
     // Counter value
     Reg#(Bit#(nBits)) ctr <- mkReg(initial_value);
 
-    PulseWire up_called   <- mkPulseWire();
-    PulseWire down_called <- mkPulseWire();
+    Wire#(Bit#(nBits)) up_by   <- mkDWire(0);
+    Wire#(Bit#(nBits)) down_by <- mkDWire(0);
     RWire#(Bit#(nBits)) setc_called <- mkRWire();
 
     (* fire_when_enabled, no_implicit_conditions *)
     rule update_counter;
-        let new_value = ctr;
-
         if (setc_called.wget() matches tagged Valid .v)
-            new_value = v;
-
-        if (up_called == down_called)
-            noAction;
-        else if (up_called)
-            new_value = new_value + 1;
+            ctr <= v;
         else
-            new_value = new_value - 1;
-
-        ctr <= new_value;
+            ctr <= ctr + up_by - down_by;
     endrule
 
     method Bit#(nBits) value();
@@ -66,11 +60,19 @@ module mkLCounter#(Bit#(nBits) initial_value)
     endmethod
 
     method Action up();
-        up_called.send();
+        up_by <= 1;
+    endmethod
+
+    method Action upBy(Bit#(nBits) c);
+        up_by <= c;
     endmethod
 
     method Action down();
-        down_called.send();
+        down_by <= 1;
+    endmethod
+
+    method Action downBy(Bit#(nBits) c);
+        down_by <= c;
     endmethod
 
     method Action setC(Bit#(nBits) newVal);

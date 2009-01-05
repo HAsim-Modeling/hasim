@@ -16563,3 +16563,21 @@ Directory modules/hasim/util/common
 - Define standard fshow message formats for TOKEN and TOKEN_INDEX in token.bsv.
   The method separates the context and token IDs, e.g. TOKEN (2, 27).
 - Debugging output now uses the method.  I probably missed some.
+
+----------
+mcadler     Date: Mon Jan  5 08:46:00 EST 2009  CSN: CSN-hasim-565
+                  Mon Jan  5 13:46:00 UTC 2009
+
+
+Directory modules/hasim/util/common
+ counters.bsv              Locally Modified          563 
+ debug-file.bsv            Locally Modified          563 
+
+- Add upBy() and downBy() methods to counters to support modifying the value by
+  something other than 1.  Counters support one call to the pair up/upBy and
+  one call to the pair down/downBy per FPGA cycle.
+- Add record_next_cycle method to debug log to support code where the simulated
+  cycle is incremented in a rule and you want debug messages for the same rule
+  to reflect the updated cycle.  Normally the update to the simulated cycle
+  would not be visible until the next FPGA cycle.  Sometimes this method avoids
+  having to burn an FPGA cycle just to get debug information correct.

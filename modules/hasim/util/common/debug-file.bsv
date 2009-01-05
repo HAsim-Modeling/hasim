@@ -89,7 +89,15 @@ endmodule
 
 interface TIMEP_DEBUG_FILE;
 
+    // Normal message
     method Action record(Fmt fmt);
+
+    // Hack for printing message with model cycle number + 1.  This can be useful
+    // when it is most convent to increment the model cycle at the head of a rule
+    // and have debug log messages in the same rule that logically belong with
+    // the next incremented cycle number.
+    method Action record_next_cycle(Fmt fmt);
+
     method Action nextModelCycle();
 
 endinterface
@@ -135,9 +143,11 @@ module mkTIMEPDebugFile#(String fname)
     endrule
 
     method Action record(Fmt fmt) if (initialized);
-
         $fdisplay(debugLog, $format("[%d]: <%d>: ", fpga_cycle.value(), model_cycle.value()) + fmt);
+    endmethod
 
+    method Action record_next_cycle(Fmt fmt) if (initialized);
+        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpga_cycle.value(), model_cycle.value() + 1) + fmt);
     endmethod
 
     method Action nextModelCycle() if (initialized);

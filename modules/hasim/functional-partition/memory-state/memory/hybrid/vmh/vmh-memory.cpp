@@ -56,6 +56,7 @@ FUNCP_SIMULATED_MEMORY_CLASS::~FUNCP_SIMULATED_MEMORY_CLASS()
 
 void
 FUNCP_SIMULATED_MEMORY_CLASS::Read(
+    CONTEXT_ID ctx_id,
     UINT64 addr,
     UINT64 size,
     void *dest)
@@ -90,6 +91,7 @@ FUNCP_SIMULATED_MEMORY_CLASS::Read(
 
 void
 FUNCP_SIMULATED_MEMORY_CLASS::Write(
+    CONTEXT_ID ctx_id,
     UINT64 addr,
     UINT64 size,
     void *src)

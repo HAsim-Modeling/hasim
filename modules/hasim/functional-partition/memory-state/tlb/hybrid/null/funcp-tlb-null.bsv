@@ -76,7 +76,8 @@ endfunction
 //
 typedef struct
 {
-    Bool page_fault;
+    Bool ioSpace;          // Memory mapped I/O.
+    Bool pageFault;        // Translation failed.  Raised a page fault.
     MEM_ADDRESS pa;
 }
 FUNCP_TLB_RESP
@@ -108,20 +109,20 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
 
     // Connection to memory translation service.  This won't be called since
     // VA == PA.
-    Connection_Client#(ISA_ADDRESS, MEM_ADDRESS) link_memory <- mkConnection_Client("funcp_memory_VtoP");
+    Connection_Client#(MEM_VTOP_REQUEST, MEM_VTOP_REPLY) link_memory <- mkConnection_Client("funcp_memory_VtoP");
 
     // ***** Rules for communcation with functional register state manager *****
     
     rule itlb_req (True);
         let req = link_funcp_itlb.getReq();
         link_funcp_itlb.deq();
-        link_funcp_itlb.makeResp(FUNCP_TLB_RESP { pa : truncate(req.va), page_fault: False });
+        link_funcp_itlb.makeResp(FUNCP_TLB_RESP { pa : truncate(req.va), pageFault: False, ioSpace: False });
     endrule
 
     rule dtlb_req (True);
         let req = link_funcp_dtlb.getReq();
         link_funcp_dtlb.deq();
-        link_funcp_dtlb.makeResp(FUNCP_TLB_RESP { pa : truncate(req.va), page_fault: False });
+        link_funcp_dtlb.makeResp(FUNCP_TLB_RESP { pa : truncate(req.va), pageFault: False, ioSpace: False });
     endrule
 
     // ***** No page faults needed

@@ -6,6 +6,7 @@
 
 #include "asim/provides/low_level_platform_interface.h"
 #include "asim/provides/rrr.h"
+#include "asim/provides/funcp_base_types.h"
 #include "asim/provides/starter.h"
 #include "asim/rrr/client_stub_STARTER.h"
 
@@ -54,8 +55,8 @@ class STARTER_SERVER_CLASS: public RRR_SERVER_CLASS,
     void Pause();
     void Sync();
     void DumpStats();
-    void EnableContext(UINT32 ctx_id);
-    void DisableContext(UINT32 ctx_id);
+    void EnableContext(CONTEXT_ID ctx_id);
+    void DisableContext(CONTEXT_ID ctx_id);
 
   private:
     // These let us compute FMR starting after the first heartbeat is received.

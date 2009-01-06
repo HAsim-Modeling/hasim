@@ -270,7 +270,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
 
         // If the TLB couldn't translate it we're in big trouble.
         MEM_ADDRESS mem_addr = translated_addr.pa;
-        Bool page_fault = translated_addr.page_fault;
+        Bool page_fault = translated_addr.pageFault;
 
         case (dTrans2Q.first()) matches
             tagged DTRANS_NORMAL .tok:
@@ -343,7 +343,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
 
         // If the TLB couldn't translate it we're in big trouble.
         MEM_ADDRESS mem_addr2 = translated_addr.pa;
-        Bool page_fault = translated_addr.page_fault;
+        Bool page_fault = translated_addr.pageFault;
 
         if (page_fault)
         begin

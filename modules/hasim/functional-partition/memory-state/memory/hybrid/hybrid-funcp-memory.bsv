@@ -1,3 +1,23 @@
+//
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+
+import FIFO::*;
+
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/rrr.bsh"
@@ -5,9 +25,6 @@
 
 `include "asim/rrr/remote_client_stub_FUNCP_MEMORY.bsh"
 `include "asim/rrr/remote_server_stub_FUNCP_MEMORY.bsh"
-
-
-import FIFO::*;
 
 
 // Can't include hasim_isa.bsh here or it causes a loop
@@ -30,7 +47,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
     
     // Links that we expose to the outside world
     Connection_Server#(MEM_REQUEST, MEM_REPLY)   link_memory <- mkConnection_Server("funcp_memory");
-    Connection_Server#(ISA_ADDRESS, MEM_ADDRESS) link_tlb    <- mkConnection_Server("funcp_memory_VtoP");
+    Connection_Server#(MEM_VTOP_REQUEST, MEM_VTOP_REPLY) link_tlb <- mkConnection_Server("funcp_memory_VtoP");
 
     Connection_Client#(MEM_INVAL_CACHELINE_INFO, Bool)  link_memory_inval <- mkConnection_Client("funcp_memory_cache_invalidate");
     Connection_Client#(Bool, Bool)                  link_memory_inval_all <- mkConnection_Client("funcp_memory_cache_invalidate_all");
@@ -138,17 +155,33 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
     rule translate_VtoP_request (True);
 
-        ISA_ADDRESS va = link_tlb.getReq();
+        let req = link_tlb.getReq();
         link_tlb.deq();
 
-        client_stub.makeRequest_VtoP(va);
+        ISA_ADDRESS va = req.va;
+
+        // RRR doesn't support single bit arguments and we know the low bit of
+        // the VA is 0.  Pass allocOnFault in bit 0.
+        va[0] = pack(req.allocOnFault);
+
+        client_stub.makeRequest_VtoP(contextIdRRR(req.context_id), va);
 
     endrule
 
     rule translate_VtoP_response (True);
 
         let pa <- client_stub.getResponse_VtoP();
-        link_tlb.makeResp(truncate(pa));
+
+        // RRR doesn't support single bit arguments.  We know the low bits of the
+        // PA must be 0.  Use the low two bits for flags.
+
+        MEM_VTOP_REPLY v;
+        v.ioSpace = unpack(pa[1]);
+        v.pageFault = unpack(pa[0]);
+        v.pa = truncate(pa);
+        v.pa[1:0] = 0;
+
+        link_tlb.makeResp(v);
 
     endrule
 

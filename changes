@@ -16581,3 +16581,50 @@ Directory modules/hasim/util/common
   to reflect the updated cycle.  Normally the update to the simulated cycle
   would not be visible until the next FPGA cycle.  Sometimes this method avoids
   having to burn an FPGA cycle just to get debug information correct.
+
+----------
+mcadler     Date: Mon Jan  5 20:13:39 EST 2009  CSN: CSN-hasim-566
+                  Tue Jan  6 01:13:39 UTC 2009
+
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          564 
+ hasim-common.awb          Locally Modified          564 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-doDTranslate.bsv Locally Modified          564 
+ regmgr-macro-pipe-doITranslate.bsv Locally Modified          564 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/null
+ funcp-tlb-null.bsv        Locally Modified          564 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          564 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          564 
+ hybrid-funcp-memory.rrr   Locally Modified          564 
+ hybrid-funcp-memory-datatypes.bsv Locally Modified          564 
+ hybrid-funcp-memory.bsv   Locally Modified          564 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
+ vmh-memory.cpp            Locally Modified          564 
+ vmh-memory.h              Locally Modified          564 
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.h        Locally Modified          564 
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          564 
+ hybrid-basic-starter-services.rrr Locally Modified          564 
+ hybrid-basic-starter.h    Locally Modified          564 
+
+- Functional TLB now supports multiple contexts.  Each context has private
+  L1 data and instruction TLBs.  All contexts share an L2 TLB, though the
+  index includes the context id, so there is no actual sharing.
+- Define CONTEXT_ID RRR types so context ID can be shared with software.
+  This includes a major hack in funcp-base-types.h to use the C preprocessor
+  to define the RRR append methods for sending contexts to hardware.
+  The goal was to limit the hacks to a small set of modules.  Most code
+  sees real type names.  
+- Use Bluespec structs down all the way to the lowest level of the RRR memory.

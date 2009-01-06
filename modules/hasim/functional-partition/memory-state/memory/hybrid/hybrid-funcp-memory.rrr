@@ -1,3 +1,4 @@
+#include "asim/provides/hasim_common.h"
 #include "asim/provides/funcp_base_types.h"
 #include "asim/provides/funcp_memory.h"
 
@@ -19,6 +20,6 @@ service FUNCP_MEMORY
         // Store cache line with ACK
         method StoreCacheLine_Sync(in MEM_STORE_CACHELINE_INFO_RRR[MEMORY_STORE_CACHELINE_INFO_SIZE] info, out UINT32[32] ack);
 
-        method VtoP(in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] va, out MEM_ADDRESS_RRR[64] pa);
+        method VtoP(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctx_id, in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] va, out MEM_ADDRESS_RRR[64] pa);
     };
 };

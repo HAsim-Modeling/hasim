@@ -23,6 +23,8 @@
 
 #include "asim/syntax.h"
 #include "vmh-utils.h"
+#include "asim/provides/funcp_base_types.h"
+
 
 typedef class FUNCP_SIMULATED_MEMORY_CLASS *FUNCP_SIMULATED_MEMORY;
 
@@ -30,7 +32,8 @@ typedef class FUNCP_SIMULATED_MEMORY_CLASS *FUNCP_SIMULATED_MEMORY;
 struct FUNCP_MEM_VTOP_RESP
 {
     UINT64 pa;
-    bool page_fault;    // Translation failed
+    bool pageFault;    // Translation failed
+    bool ioSpace;      // Reference is to uncacheable I/O space
 };
 
 class FUNCP_SIMULATED_MEMORY_CLASS
@@ -43,14 +46,15 @@ class FUNCP_SIMULATED_MEMORY_CLASS
     FUNCP_SIMULATED_MEMORY_CLASS();
     ~FUNCP_SIMULATED_MEMORY_CLASS();
 
-    void Read(UINT64 addr, UINT64 size, void *dest);
-    void Write(UINT64 addr, UINT64 size, void *src);
+    void Read(CONTEXT_ID ctx_id, UINT64 addr, UINT64 size, void *dest);
+    void Write(CONTEXT_ID ctx_id, UINT64 addr, UINT64 size, void *src);
 
-    FUNCP_MEM_VTOP_RESP VtoP(UINT64 va, bool allocOnFault)
+    FUNCP_MEM_VTOP_RESP VtoP(CONTEXT_ID ctx_id, UINT64 va, bool allocOnFault)
     {
         FUNCP_MEM_VTOP_RESP resp;
         resp.pa = va;
-        resp.page_fault = false;
+        resp.pageFault = false;
+        resp.ioSpace = false;
         return resp;
     };
 

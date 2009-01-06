@@ -120,6 +120,7 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
     MEM_VALUE   data;
     MEM_VALUE   va;
     MEM_CACHELINE line;
+    CONTEXT_ID ctx_id;
 
     UMF_MESSAGE resp;
 
@@ -134,7 +135,7 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
         // free
         req->Delete();
 
-        memory->Read(addr, sizeof(MEM_VALUE), &data);
+        memory->Read(0, addr, sizeof(MEM_VALUE), &data);
         T1("\tfuncp_memory: LD (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] -> " << fmt_data(data));
 
         // create response message
@@ -154,7 +155,7 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
         // free
         req->Delete();
 
-        memory->Read(addr, sizeof(MEM_CACHELINE), &line);
+        memory->Read(0, addr, sizeof(MEM_CACHELINE), &line);
         if (TRACING(1))
         {
             T1("\tfuncp_memory: LDline (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
@@ -181,7 +182,7 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
         addr = MEM_ADDRESS(req->ExtractUINT64());
 
         T1("\tfuncp_memory: ST (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] <- " << fmt_data(data));
-        memory->Write(addr, sizeof(MEM_VALUE), &data);
+        memory->Write(0, addr, sizeof(MEM_VALUE), &data);
 
         // free
         req->Delete();
@@ -208,7 +209,7 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
             }
         }
 
-        memory->Write(addr, sizeof(MEM_CACHELINE), &line);
+        memory->Write(0, addr, sizeof(MEM_CACHELINE), &line);
 
         // free
         req->Delete();
@@ -235,6 +236,7 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
       case CMD_VTOP: {
         // extract data.  VA comes in as a register sized MEM_VALUE.
         va = MEM_VALUE(req->ExtractUINT(sizeof(MEM_VALUE)));
+        ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
         req->Delete();
 
         //
@@ -249,23 +251,25 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
             T1("\tfuncp_memory: VtoP VA " << fmt_data(va) << " -- allocate on fault");
         }
 
-        FUNCP_MEM_VTOP_RESP vtop = memory->VtoP(va, alloc_on_fault);
+        FUNCP_MEM_VTOP_RESP vtop = memory->VtoP(ctx_id, va, alloc_on_fault);
 
-        if (vtop.page_fault)
-        {
-            T1("\tfuncp_memory: VtoP VA " << fmt_data(va) << " -> PA " << fmt_addr(vtop.pa) << " [PAGE FAULT]");
-        }
-        else
-        {
-            T1("\tfuncp_memory: VtoP VA " << fmt_data(va) << " -> PA " << fmt_addr(vtop.pa));
-        }
+        T1("\tfuncp_memory: VtoP CTX " << UINT64(ctx_id) << " VA " << fmt_data(va) << " -> PA " << fmt_addr(vtop.pa) <<
+           (vtop.ioSpace ? " [I/O SPACE]" : "") <<
+           (vtop.pageFault ? " [PAGE FAULT]" : ""));
+
+        // Flags will be sent in the low two bits.  They must be 0 in
+        // the translation.
+        ASSERTX((vtop.pa & 3) == 0);
 
         // create response message
         resp = UMF_MESSAGE_CLASS::New();
         resp->SetLength(8);
         resp->SetMethodID(CMD_VTOP);
-        // Pass the page_fault bit in the low bit of the PA to save space
-        resp->AppendUINT64(vtop.pa | (vtop.page_fault ? 1 : 0));
+        // Pass the ioSpace and pageFault bits in the low bits of the PA to
+        // save space.
+        resp->AppendUINT64(vtop.pa |
+                           (vtop.ioSpace   ? 2 : 0) |
+                           (vtop.pageFault ? 1 : 0));
 
         // return response
         return resp;

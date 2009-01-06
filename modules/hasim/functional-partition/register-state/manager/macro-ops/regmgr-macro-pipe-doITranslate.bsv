@@ -244,7 +244,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
 
         // If the TLB couldn't translate it we're in big trouble.
         MEM_ADDRESS mem_addr = translated_addr.pa;
-        Bool page_fault = translated_addr.page_fault;
+        Bool page_fault = translated_addr.pageFault;
 
         // Get the data from the previous stage.
         case (iTransQ.first()) matches
@@ -322,7 +322,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
 
         // If the TLB couldn't translate it we're in big trouble.
         MEM_ADDRESS mem_addr2 = translated_addr.pa;
-        Bool page_fault = translated_addr.page_fault;
+        Bool page_fault = translated_addr.pageFault;
 
         if (page_fault)
         begin

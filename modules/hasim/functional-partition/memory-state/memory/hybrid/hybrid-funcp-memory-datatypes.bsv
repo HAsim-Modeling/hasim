@@ -1,3 +1,21 @@
+//
+// Copyright (C) 2008 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+
 // memory_virtual_device_datatypes
 
 // A template for datatype definitions for the Memory Virtual Device.
@@ -49,8 +67,7 @@ typedef struct
     Bool        iStream;        // True iff load is fetching an instruction
 }
 MEM_LOAD_INFO
-    deriving
-        (Eq, Bits);
+    deriving (Eq, Bits);
 
 typedef struct
 {
@@ -58,8 +75,7 @@ typedef struct
     MEM_VALUE   val;
 }
 MEM_STORE_INFO
-    deriving
-        (Eq, Bits);
+    deriving (Eq, Bits);
 
 
 typedef struct
@@ -68,8 +84,7 @@ typedef struct
     MEM_CACHELINE val;
 }
 MEM_STORE_CACHELINE_INFO
-    deriving
-        (Eq, Bits);
+    deriving (Eq, Bits);
 
 
 typedef struct
@@ -79,8 +94,7 @@ typedef struct
     MEM_ADDRESS addr;
 }
 MEM_INVAL_CACHELINE_INFO
-    deriving
-        (Eq, Bits);
+    deriving (Eq, Bits);
 
 
 typedef union tagged 
@@ -96,8 +110,7 @@ typedef union tagged
     MEM_ADDRESS MEM_FLUSH_CACHELINE;
 }
 MEM_REQUEST
-    deriving
-        (Eq, Bits);
+    deriving (Eq, Bits);
 
 
 function MEM_REQUEST funcpMemLoadReq(MEM_ADDRESS addr, Bool iStream);
@@ -116,9 +129,33 @@ typedef union tagged
     Bool          MEM_REPLY_STORE_CACHELINE_ACK;
 }
 MEM_REPLY
-    deriving
-        (Eq, Bits);
+    deriving (Eq, Bits);
 
+
+//
+// Virtual to physical translation request
+//
+typedef struct
+{
+    CONTEXT_ID context_id;
+    Bool allocOnFault;     // Allocate new page if necessary
+    ISA_ADDRESS va;
+}
+MEM_VTOP_REQUEST
+    deriving (Eq, Bits);
+
+
+//
+// Virtual to physical translation reply
+//
+typedef struct
+{
+    Bool ioSpace;          // Memory mapped I/O.
+    Bool pageFault;        // Translation failed.  Raised a page fault.
+    MEM_ADDRESS pa;
+}
+MEM_VTOP_REPLY
+    deriving (Eq, Bits);
 
 
 // ***** RRR Datatype definitions *****

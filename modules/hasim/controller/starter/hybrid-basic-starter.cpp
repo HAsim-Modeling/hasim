@@ -280,14 +280,14 @@ STARTER_SERVER_CLASS::DumpStats()
 
 // client: enable context
 void
-STARTER_SERVER_CLASS::EnableContext(UINT32 ctx_id)
+STARTER_SERVER_CLASS::EnableContext(CONTEXT_ID ctx_id)
 {
     clientStub->EnableContext(ctx_id);
 }
 
 // client: disable context
 void
-STARTER_SERVER_CLASS::DisableContext(UINT32 ctx_id)
+STARTER_SERVER_CLASS::DisableContext(CONTEXT_ID ctx_id)
 {
     clientStub->DisableContext(ctx_id);
 }

@@ -25,6 +25,8 @@
 %private bluespec-common.prj
 
 %param --global CONTEXT_ID_BITS 1 "Number of bits in context ID (2 = 4 contexts)."
+%param --global CONTEXT_ID_BITS_RRR 8 "RRR-friendly size that holds a context ID."
+
 %param --global TOKEN_ID_BITS   8 "Number of bits in a single context's token ID (8 = 256 in-flight instructions)."
 
 %param --global TOKEN_BRANCH_EPOCH_BITS 2 "Number of bits in epoch (2 = 4 in-flight branches)."

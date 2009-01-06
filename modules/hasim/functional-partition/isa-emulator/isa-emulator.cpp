@@ -104,6 +104,7 @@ ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
     FUNCP_VADDR pc;
     ISA_REG_INDEX_CLASS rName;
     ISA_INSTRUCTION inst;
+    CONTEXT_ID ctx_id;
 
     UMF_MESSAGE resp;
 
@@ -111,26 +112,27 @@ ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
     {
       case CMD_SYNC:
         rVal = req->ExtractUINT(sizeof(rVal));
-        rName = req->ExtractUINT(4);
+        rName = req->ExtractUINT(2);
+        ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
         req->Delete();
 
         if (TRACING(1))
         {
             if (rName.IsArchReg())
             {
-                T1("\tisa_emulator: Sync ArchReg " << fmt_regnum(rName.ArchRegNum()) << ": " << fmt_regval(rVal));
+                T1("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " ArchReg " << fmt_regnum(rName.ArchRegNum()) << ": " << fmt_regval(rVal));
             }
             else if (rName.IsControlReg())
             {
-                T1("\tisa_emulator: Sync ControlReg:  " << fmt_regval(rVal));
+                T1("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " ControlReg:  " << fmt_regval(rVal));
             }
             else if (rName.IsLockReg())
             {
-                T1("\tisa_emulator: Sync LockReg:     " << fmt_regval(rVal));
+                T1("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " LockReg:     " << fmt_regval(rVal));
             }
             else if (rName.IsLockAddrReg())
             {
-                T1("\tisa_emulator: Sync LockAddrReg: " << fmt_regval(rVal));
+                T1("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " LockAddrReg: " << fmt_regval(rVal));
             }
             else
             {
@@ -138,7 +140,7 @@ ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
             }
         }
 
-        emulator->SyncReg(rName, rVal);
+        emulator->SyncReg(ctx_id, rName, rVal);
 
         return NULL;
         break;
@@ -146,12 +148,13 @@ ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
       case CMD_EMULATE:
         pc = req->ExtractUINT(sizeof(pc));
         inst = req->ExtractUINT(4);
+        ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
         req->Delete();
 
-        T1("\tisa_emulator: Emulate PC " << fmt_regval(pc) << ", Inst " << fmt_inst(inst));
+        T1("\tisa_emulator: Emulate CTX " << UINT64(ctx_id) << " PC " << fmt_regval(pc) << ", Inst " << fmt_inst(inst));
         
         FUNCP_VADDR newPC;
-        ISA_EMULATOR_RESULT r = emulator->Emulate(pc, inst, &newPC);
+        ISA_EMULATOR_RESULT r = emulator->Emulate(ctx_id, pc, inst, &newPC);
 
         //
         // Hack.  Result is sent in low 2 bits of the returned PC.  This works
@@ -196,25 +199,28 @@ ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
 
 // client: update register
 void
-ISA_EMULATOR_SERVER_CLASS::UpdateRegister(ISA_REG_INDEX_CLASS rName, FUNCP_INT_REG rVal)
+ISA_EMULATOR_SERVER_CLASS::UpdateRegister(
+    CONTEXT_ID ctxId,
+    ISA_REG_INDEX_CLASS rName,
+    FUNCP_INT_REG rVal)
 {
     if (TRACING(1))
     {
         if (rName.IsArchReg())
         {
-            T1("\tisa_emulator: Updating ArchReg " << fmt_regnum(rName.ArchRegNum()) << ": " << fmt_regval(rVal));
+            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " ArchReg " << fmt_regnum(rName.ArchRegNum()) << ": " << fmt_regval(rVal));
         }
         else if (rName.IsControlReg())
         {
-            T1("\tisa_emulator: Updating ControlReg: " << fmt_regval(rVal));
+            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " ControlReg: " << fmt_regval(rVal));
         }
         else if (rName.IsLockReg())
         {
-            T1("\tisa_emulator: Updating LockReg: " << fmt_regval(rVal));
+            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " LockReg: " << fmt_regval(rVal));
         }
         else if (rName.IsLockAddrReg())
         {
-            T1("\tisa_emulator: Updating LockAddrReg: " << fmt_regval(rVal));
+            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " LockAddrReg: " << fmt_regval(rVal));
         }
         else
         {
@@ -224,11 +230,12 @@ ISA_EMULATOR_SERVER_CLASS::UpdateRegister(ISA_REG_INDEX_CLASS rName, FUNCP_INT_R
 
     // create message for RRR client
     UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
-    msg->SetLength(sizeof(rVal) + 4);
+    msg->SetLength(sizeof(rVal) + 2 + sizeof(CONTEXT_ID_RRR));
     msg->SetServiceID(SERVICE_ID);
     msg->SetMethodID(METHOD_ID_UPDATE_REG);
     msg->AppendUINT(rVal, sizeof(rVal));
-    msg->AppendUINT32(rName);
+    msg->AppendUINT(rName, 2);
+    msg->AppendUINT(CONTEXT_ID_RRR(ctxId), sizeof(CONTEXT_ID_RRR));
 
     RRRClient->MakeRequestNoResponse(msg);
 }

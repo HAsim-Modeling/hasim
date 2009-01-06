@@ -16628,3 +16628,28 @@ Directory modules/hasim/controller/starter
   The goal was to limit the hacks to a small set of modules.  Most code
   sees real type names.  
 - Use Bluespec structs down all the way to the lowest level of the RRR memory.
+
+----------
+mcadler     Date: Tue Jan  6 11:55:00 EST 2009  CSN: CSN-hasim-567
+                  Tue Jan  6 16:55:00 UTC 2009
+
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          566 
+ isa-emulator.rrr          Locally Modified          566 
+ isa-emulator-datatypes.bsv Locally Modified          566 
+ isa-emulator.h            Locally Modified          566 
+
+Directory modules/hasim/functional-partition/isa-emulator/null
+ null-isa-emulator-impl.h  Locally Modified          566 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.awb          Locally Modified          566 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getResults.bsv Locally Modified          566 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.rrr   Locally Modified          566 
+
+Pass context ID to ISA emulator methods.

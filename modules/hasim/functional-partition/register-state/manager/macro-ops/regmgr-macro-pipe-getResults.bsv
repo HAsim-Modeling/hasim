@@ -215,8 +215,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
                        FUNCP_ISA_DATAPATH_RSP) linkToDatapath <- mkConnection_Client("isa_datapath");
 
     // Emulation RRR Stubs
-    ClientStub_ISA_EMULATOR client_stub <- mkClientStub_ISA_EMULATOR();
-    ServerStub_ISA_EMULATOR server_stub <- mkServerStub_ISA_EMULATOR();
+    ClientStub_ISA_EMULATOR emul_client_stub <- mkClientStub_ISA_EMULATOR();
+    ServerStub_ISA_EMULATOR emul_server_stub <- mkServerStub_ISA_EMULATOR();
 
 
     // ====================================================================
@@ -779,7 +779,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         let reg_val <- prf.readRsp();
         
         // Send the regsiter on to software via RRR
-        client_stub.makeRequest_sync(tuple2(arch_reg, reg_val));
+        emul_client_stub.makeRequest_sync(contextIdRRR(tokContextId(emulatingToken)),
+                                          zeroExtend(pack(arch_reg)),
+                                          reg_val);
 
         if (done)
         begin
@@ -806,7 +808,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         emulatingPC <= pc;
 
         // Send the request on to software via RRR
-        client_stub.makeRequest_emulate(tuple2(inst, pc));
+        emul_client_stub.makeRequest_emulate(contextIdRRR(tokContextId(emulatingToken)),
+                                             inst, pc);
         
         //Log it.
         debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction3: Requesting Emulation of inst 0x%h from address 0x%h", inst, pc));
@@ -828,7 +831,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     rule emulateInstruction3_UpdateReg (True);
         
         // Get an update request from software.
-        match {.ar, .v} <- server_stub.acceptRequest_updateRegister();
+        let upd <- emul_server_stub.acceptRequest_updateRegister();
+        CONTEXT_ID ctx_id = truncate(upd.ctxId);
+        ISA_REG_INDEX ar = unpack(truncate(upd.rName));
+        ISA_VALUE v = upd.rValue;
         
         // Assert that we're in the state we expected to be in.
         assertion.regUpdateAtExpectedTime(state.getState() == RSM_UpdatingRegisters);
@@ -879,7 +885,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     rule emulateInstruction4 (True);
         
         // Get the ACK from software that they're complete.
-        let newPc <- client_stub.getResponse_emulate();
+        ISA_ADDRESS newPc <- emul_client_stub.getResponse_emulate();
         
         // Assert that we're in the state we expected to be in.
         assertion.emulationFinishedAtExpectedTime(state.getState() == RSM_UpdatingRegisters);

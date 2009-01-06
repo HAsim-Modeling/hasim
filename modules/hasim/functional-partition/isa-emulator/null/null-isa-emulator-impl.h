@@ -34,9 +34,14 @@ class ISA_EMULATOR_IMPL_CLASS
     ISA_EMULATOR_IMPL_CLASS(ISA_EMULATOR parent) : parent(parent) {};
     ~ISA_EMULATOR_IMPL_CLASS() {};
 
-    void SyncReg(ISA_REG_INDEX_CLASS rName, FUNCP_INT_REG rVal) {};
+    void SyncReg(
+        CONTEXT_ID ctxId,
+        ISA_REG_INDEX_CLASS rName,
+        FUNCP_INT_REG rVal)
+    {};
 
     ISA_EMULATOR_RESULT Emulate(
+        CONTEXT_ID ctxId,
         FUNCP_VADDR pc,
         ISA_INSTRUCTION inst,
         FUNCP_VADDR *newPC)

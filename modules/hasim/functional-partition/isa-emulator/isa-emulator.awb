@@ -1,27 +1,11 @@
-#/********************************************************************
-# *
-# * Awb module specification
-# *
-# *******************************************************************/
+%name Hybrid ISA Emulator
+%desc Hybrid ISA Emulator
+%provides isa_emulator
+%requires isa_emulator_impl
 
-#/*
-# %AWB_START
-#
-# %name Hybrid ISA Emulator
-# %desc Hybrid ISA Emulator
-# %provides isa_emulator
-# %requires isa_emulator_impl
-#
-# %attributes hasim
-#
-# %sources -v PUBLIC  isa-emulator.h
-# %sources -v PRIVATE isa-emulator.cpp
-# %sources -v PUBLIC  isa-emulator.rrr
-# %sources -v PUBLIC  isa-emulator-datatypes.bsv
-#
-# %param RNAME_RVAL_TUPLE_BITS    70 "Bits in RNAME/RVAL tuple"
-# %param INST_ISA_ADDR_TUPLE_BITS 96 "Bits in INST/ISA_ADDRESS tuple"
-#
-# %AWB_END
-# */
+%attributes hasim
 
+%sources -v PUBLIC  isa-emulator.h
+%sources -v PRIVATE isa-emulator.cpp
+%sources -v PUBLIC  isa-emulator.rrr
+%sources -v PUBLIC  isa-emulator-datatypes.bsv

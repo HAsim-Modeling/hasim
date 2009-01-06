@@ -83,7 +83,7 @@ class ISA_EMULATOR_SERVER_CLASS: public RRR_SERVER_CLASS,
     UMF_MESSAGE Request(UMF_MESSAGE req);    
 
     // client methods
-    void UpdateRegister(ISA_REG_INDEX_CLASS rName, FUNCP_INT_REG rVal);
+    void UpdateRegister(CONTEXT_ID ctxId, ISA_REG_INDEX_CLASS rName, FUNCP_INT_REG rVal);
 };
 
 // server stub

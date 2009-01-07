@@ -16672,3 +16672,36 @@ Directory modules/hasim/controller
  controller-standard.bsv   Locally Modified          566 
 
 Send heartbeats for multiple contexts.
+
+----------
+pellauer    Date: Wed Jan  7 00:59:57 EST 2009  CSN: CSN-hasim-569
+                  Wed Jan  7 05:59:57 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data.dic         Locally Modified          568 
+ regstate-data-free-physical-regs.bsv Locally Modified          568 
+ regstate-data-reg-map-table.bsv Locally Modified          568 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          568 
+ regmgr-macro-pipe-exception.bsv Locally Modified          568 
+ regmgr-macro.bsv          Locally Modified          568 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          568 
+
+CSN: CSN-hasim-568
+          
+
+* Maptable now initialized for multiple contexts.
+  AR 0 of context 0 -> PR 0
+  AR N of context 0 -> PR N
+  AR 0 of context 1 -> PR N+1
+  etc
+* Freelist starts in right position to account for these registers being allocated.
+* Freelist now has only one "rollback" method, freeRegs. rewindToToken uses this
+method to free the destinations of a killed token.
+* Simplified commitResults pipeline since multiple commits are handled by freelist internally.
+* Fixed a potential PR leak in getDependencies on junk tokens.
+* Passes regression tests, but have not yet tried on FPGA.
+
+Michael P.

@@ -80,10 +80,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
 
     FIFO#(TOKEN) commQ   <- mkFIFO();
 
-    // Does the commit stage have to free more registers?
-    Reg#(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) additionalRegsToFree <- mkReg(Vector::replicate(tagged Invalid));
-
-
     // ====================================================================
     //
     //   Rules
@@ -146,11 +142,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     //         Note that it is safe to "short path" the response because the committing of more
     //         results has higher priority than starting the commit of a new token.
 
-    // There are more registers to free if any member of the the vector is valid.
-
-    Bool moreRegsToFree = Vector::any(isValid, additionalRegsToFree);
-
-    rule commitResults2 (state.readyToContinue() && !moreRegsToFree);
+    rule commitResults2 (state.readyToContinue());
 
         // Get the input from the previous stage.
         let tok = commQ.first();
@@ -164,16 +156,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         // Retrieve the registers to be freed.
         let rewind_info <- regMapping.readRewindRsp();
         let regs_to_free = validValue(rewind_info).regsToFree;
-
-        // Go ahead and free the first register, if present.
-        case (regs_to_free[0]) matches
-            tagged Invalid:  noAction;
-            tagged Valid .r: freelist.free(r);
-        endcase
-
-        // Store all the remaining register names for a later stage to handle.
-        regs_to_free[0] = tagged Invalid;
-        additionalRegsToFree <= regs_to_free;
+        
+        // Free the registers which used to be mapped to the destination registers.
+        freelist.freeRegs(regs_to_free);
 
         // Update the scoreboard so the token can be reused.
         tokScoreboard.deallocate(tok.index);
@@ -181,20 +166,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         // Respond to the timing model. End of macro-operation (except any more registers below).
         linkCommitResults.makeResp(initFuncpRspCommitResults(tok));
         debugLog.record(fshow(tok.index) + $format(": CommitResults: End.")); 
-
-    endrule
-
-    // commitResultsAdditional
-    
-    // When:   After a commitResults2 AND there are more physical registers to free.
-    // Effect: Free the appropriate physical register.
- 
-    rule commitResultsAdditional (findIndex(isValid, additionalRegsToFree) matches tagged Valid .idx);
-
-        let r = validValue(additionalRegsToFree[idx]);
-        debugLog.record($format("Committing Additional PR: %0d", r)); 
-        freelist.free(r);
-        additionalRegsToFree[idx] <= tagged Invalid;
 
     endrule
     

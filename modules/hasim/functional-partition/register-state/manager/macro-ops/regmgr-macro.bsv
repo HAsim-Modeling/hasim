@@ -206,6 +206,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                             regMapping.exceptionQueue,
                             tokAddr,
                             tokInst,
+                            tokDsts,
                             freelist,
                             tokMemAddr,
                             branchEpoch,

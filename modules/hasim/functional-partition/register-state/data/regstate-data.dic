@@ -1,5 +1,5 @@
 def ASSERTIONS.REGSTATE.FREELIST.OUT_OF_PREGS "FREELIST: Ran out of Physical Registers!";
-def ASSERTIONS.REGSTATE.FREELIST.ILLEGAL_BACKUP "FREELIST: Backed up too far!";
+def ASSERTIONS.REGSTATE.FREELIST.REQUEST_NOT_ACTIVE "FREELIST: Got a null request before current request was filled!";
 
 def ASSERTIONS.REGSTATE.SCOREBOARD.OUT_OF_TOKENS "FUNCP: Ran out of Tokens!";
 def ASSERTIONS.REGSTATE.SCOREBOARD.REALLOCATE "FUNCP: Allocating an already-allocated Token!";

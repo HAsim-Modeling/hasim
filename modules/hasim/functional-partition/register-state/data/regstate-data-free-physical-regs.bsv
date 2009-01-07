@@ -47,17 +47,11 @@ typedef Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) FUNCP_FREELIST_R
 interface FUNCP_FREELIST;
   
     // Request a new register.
-    method Action forwardReqMask(Vector#(ISA_MAX_DSTS, Bool) newReqMask);
+    method Action allocateRegs(Vector#(ISA_MAX_DSTS, Bool) newReqMask);
     // The responses come back in order.
-    method ActionValue#(FUNCP_FREELIST_RESP_VEC) forwardResp();
-    // Undo the last allocation.
-    method Action back();
-    // Go back to a specific point (from a snapshot).
-    method Action backTo(FUNCP_PHYSICAL_REG_INDEX r);
-    // Get the current location (to record it in a snapshot).
-    method FUNCP_PHYSICAL_REG_INDEX current();
+    method ActionValue#(FUNCP_FREELIST_RESP_VEC) allocateRsp();
     // Put a register back onto the freelist.
-    method Action free(FUNCP_PHYSICAL_REG_INDEX r);
+    method Action freeRegs(ISA_INST_DSTS r);
   
 endinterface
 
@@ -70,12 +64,8 @@ endinterface
 
 typedef struct
 {
-    // NULL request (no registers) gets special path
-    Bool nullReq;
-
     Bool done;
     ISA_DST_INDEX idx;
-    FUNCP_PHYSICAL_REG_INDEX freeListPos;
 }
 FUNCP_FREELIST_REQ_Q
     deriving (Eq, Bits);
@@ -107,11 +97,14 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(String debugLogPrefix)
     // ***** Local State ***** //
 
     // The maximum achitectural register.
-    ISA_REG_INDEX maxR = maxBound;
+    ISA_REG_INDEX maxAR = maxBound;
+
+    // The maximum architecural reg times the number of contexts being simulated.
+    FUNCP_PHYSICAL_REG_INDEX maxPR = zeroExtend(pack(maxAR)) * fromInteger(valueof(NUM_CONTEXTS));
 
     // The architectural registers begin allocated, so the freelist pointer starts at
     // one position beyond that.
-    FUNCP_PHYSICAL_REG_INDEX initFL = zeroExtend(pack(maxR)) + 1;
+    FUNCP_PHYSICAL_REG_INDEX initFL = maxPR + 1;
 
     // The maximum number of physical registers.
     FUNCP_PHYSICAL_REG_INDEX maxFL = maxBound;
@@ -132,31 +125,41 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(String debugLogPrefix)
     Bool full = flRead.value() + 1 == flWrite.value();
 
     // Mask of response vector indices still needing a register
-    Reg#(Maybe#(Vector#(ISA_MAX_DSTS, Bool))) reqMask <- mkReg(tagged Invalid);
+    Reg#(Vector#(ISA_MAX_DSTS, Bool)) allocateMask <- mkReg(replicate(False));
+    
+    // We are allocating if any of the allocate mask is true.
+    Bool allocatingRegs = pack(allocateMask) != 0;
     
     // Aggregated response vector
     Reg#(FUNCP_FREELIST_RESP_VEC) reqPhysRegs <- mkReg(replicate(tagged Invalid));
 
+    // Mask of registers to free.
+    Reg#(ISA_INST_DSTS) regsToFree <- mkReg(replicate(tagged Invalid));
+    
+    // We are freeing if any of the registers are Valid.
+    Bool freeingRegs = any(isValid, regsToFree);
+
     // Queues
-    FIFO#(FUNCP_FREELIST_REQ_Q) reqQ <- mkFIFO();
+    FIFO#(Maybe#(FUNCP_FREELIST_REQ_Q)) reqQ <- mkFIFO();
     FIFO#(FUNCP_FREELIST_RESP_VEC) respQ <- mkBypassFIFO();
 
 
-    // ***** Assertion Checkers *****/
+    // ***** Assertion Checkers ***** //
 
     ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGSTATE_FREELIST__BASE);
     ASSERTION assertEnoughPRegs <- mkAssertionChecker(`ASSERTIONS_REGSTATE_FREELIST_OUT_OF_PREGS, ASSERT_ERROR, assertNode);
-    ASSERTION assertAtLeastOneAllocatedRegister <- mkAssertionChecker(`ASSERTIONS_REGSTATE_FREELIST_ILLEGAL_BACKUP, ASSERT_ERROR, assertNode);
+    ASSERTION assertRequestNotActive <- mkAssertionChecker(`ASSERTIONS_REGSTATE_FREELIST_REQUEST_NOT_ACTIVE, ASSERT_ERROR, assertNode);
 
+    // ***** Helper Functions ***** //
 
-    // ***** Rules *****/
-
-    //
-    // handleReqs --
+    // allocateNextReg
+    
     //     Handle the next request for a physical register and load the
     //     next register from BRAM.
-    //
-    rule handleReqs (reqMask matches tagged Valid .req_mask);
+    
+    function Action allocateNextReg(Vector#(ISA_MAX_DSTS, Bool) req_mask);
+    action
+    
         if (findElem(True, req_mask) matches tagged Valid .x)
         begin
             //
@@ -175,47 +178,89 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(String debugLogPrefix)
             fl.readReq(flRead.value());
             flRead.up();
 
-            let done = (pack(new_mask) == 0);
-            reqQ.enq(FUNCP_FREELIST_REQ_Q { nullReq: False,
-                                            done: done,
-                                            idx: idx,
-                                            freeListPos: flRead.value() });
+            let done = pack(new_mask) == 0;
+            reqQ.enq(tagged Valid FUNCP_FREELIST_REQ_Q 
+                {
+                    done: done,
+                    idx: idx
+                });
+            
+            allocateMask <= new_mask;
 
-            if (done)
-                reqMask <= tagged Invalid;
-            else
-                reqMask <= tagged Valid new_mask;
         end
-        else
+
+    endaction
+    endfunction
+
+    // freeNextReg
+    
+    // Put the next register in the request back on the freelist.
+
+    function Action freeNextReg(ISA_INST_DSTS rs);
+    action
+        
+        // Lookup the next reg to free.
+        if (findIndex(isValid, rs) matches tagged Valid .k)
         begin
-            //
-            // NULL request
-            //
-            reqQ.enq(FUNCP_FREELIST_REQ_Q { nullReq: True,
-                                            done: ?,
-                                            idx: ?,
-                                            freeListPos: ? });
+        
+            // Get the reg from the vector. (We know it's valid.)
+            let r = validValue(rs[k]);
+        
+            // Add it back to the freelist.
+            fl.write(flWrite.value(), r);
 
-            reqMask <= tagged Invalid;
+            // Update the write pointer.
+            flWrite.up();
+
+            // Log it.
+            debugLog.record($format("FREELIST: Freeing PR%0d onto position ", r, flWrite.value()));
+            
+            // Record what work is left (if any).
+            regsToFree <= update(rs, k, tagged Invalid);
+
         end
+    endaction
+    endfunction
+
+
+    // ***** Rules *****/
+
+    // allocateReg
+    
+    // When: We have to allocate more registers.
+    // Effect: Request the next data from the block RAM.
+
+    rule allocateReg (allocatingRegs);
+    
+        allocateNextReg(allocateMask);
+
     endrule
 
+    // freeReg
+    
+    // When: We have to free more registers.
+    // Effect: Write the next register back into the block RAM.
+
+
+    rule freeReg (freeingRegs);
+    
+        freeNextReg(regsToFree);
+    
+    endrule
 
     //
     // updateReqVec --
     //     Receive next PR requested by handleReqs and update the response vector.
     //
-    rule updateReqVec (reqQ.first().nullReq == False);
-        let req = reqQ.first();
+    rule updateReqVec (reqQ.first() matches tagged Valid .req);
         let idx = req.idx;
-        let pos = req.freeListPos;
         let done = req.done;
         reqQ.deq();
         
         let pr <- fl.readRsp();
 
         // Log it.
-        debugLog.record($format("FREELIST: Allocating PR%0d from position %0d", pr, pos));
+        debugLog.record($format("FREELIST: Allocating PR%0d.", pr));
 
         let new_reg_vec = reqPhysRegs;
         new_reg_vec[idx] = tagged Valid pr;
@@ -238,10 +283,12 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(String debugLogPrefix)
     // updateReqNull --
     //     Special path for empty requests.
     //
-    rule updateReqNull (reqQ.first().nullReq == True);
+    rule updateReqNull (reqQ.first() matches tagged Invalid);
         reqQ.deq();
 
         debugLog.record($format("FREELIST: Queued NULL response"));
+
+        assertRequestNotActive(!any(isValid, reqPhysRegs));
 
         respQ.enq(replicate(tagged Invalid)); 
     endrule
@@ -249,24 +296,36 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(String debugLogPrefix)
 
     // ***** Methods *****/
 
-    // When:   Any time.
+    // allocateRegs
+
+    // When:   Any time when we're not allocating a multi-register request.
     // Effect: Look up the next physical register in the block ram.
     //         If we are out of physical registers a simulator exception occurs.
 
-    method Action forwardReqMask(Vector#(ISA_MAX_DSTS, Bool) newReqMask) if (! isValid(reqMask));
+    method Action allocateRegs(Vector#(ISA_MAX_DSTS, Bool) newReqMask) if (!allocatingRegs);
 
         debugLog.record($format("FREELIST: Incoming request mask %b", newReqMask));
 
-        reqMask <= tagged Valid newReqMask;
+        if (findElem(True, newReqMask) matches tagged Valid .x)
+        begin
+            allocateNextReg(newReqMask);
+        end
+        else
+        begin
+            //
+            // NULL request
+            //
+            reqQ.enq(tagged Invalid);
 
+        end
     endmethod
 
-    // forwardResp
+    // allocateRsp
 
     // When:   Any time.
     // Effect: Return the result vector to the requestor.
 
-    method ActionValue#(FUNCP_FREELIST_RESP_VEC) forwardResp();
+    method ActionValue#(FUNCP_FREELIST_RESP_VEC) allocateRsp();
 
         let rsp = respQ.first();
         respQ.deq();
@@ -278,72 +337,14 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(String debugLogPrefix)
 
     endmethod
 
-    // free
+    // freeRegs
 
-    // When:   Any time.
-    // Effect: Add register r back to the freelist.
+    // When:   Any time when we're not freeing multiple registers.
+    // Effect: Add the registers back to the freelist.
 
-    method Action free(FUNCP_PHYSICAL_REG_INDEX r);
+    method Action freeRegs(ISA_INST_DSTS rs) if (!freeingRegs);
 
-        // Add it back to the freelist.
-        fl.write(flWrite.value(), r);
-
-        // Update the write pointer.
-        flWrite.up();
-
-        // Log it.
-        debugLog.record($format("FREELIST: Freeing PR%0d onto position ", r, flWrite.value()));
-
-    endmethod
-
-    // back
-
-    // When:   Any time.
-    // Effect: Undo the last allocation.
-
-    method Action back();
-
-        // If the freelist is empty this is an exception.
-        assertAtLeastOneAllocatedRegister(!empty);
-
-        // Update the pointer.
-        flRead.down();
-
-    endmethod
-
-    // backTo
-
-    // When:   When there are no inflight requests.
-    // Effect: Reset the pointer to the given value.
-
-    method Action backTo(FUNCP_PHYSICAL_REG_INDEX r);
-
-        // Log it.
-        debugLog.record($format("FREELIST: Going back to position %0d (Current read: %0d, Current write: %0d)", r, flRead.value(), flWrite.value()));
-
-        let rd = flRead.value();
-        let wr = flWrite.value() - 1;
-
-        // Check for errors.
-        if(rd > wr && r < wr || rd < wr && r < wr && r > rd)
-        begin
-            debugLog.record($format("ERROR: Backed up the freelist too far! (r = %0d, flRead = %0d, flWrite = %0d)", r, flRead.value(), flWrite.value()));
-            $display("ERROR: Backed up the freelist too far! (r = %0d)", r);
-        end
-
-        // Update the pointer.
-        flRead.setC(r);
-
-    endmethod
-  
-    // current
-
-    // When:   Any time.
-    // Get the current pointer value (for snapshots).
-
-    method FUNCP_PHYSICAL_REG_INDEX current();
-
-        return flRead.value();
+         freeNextReg(rs);
 
     endmethod
 

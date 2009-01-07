@@ -236,7 +236,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         regMapping.decodeStage1(tok, ar_srcs, ar_dsts);
 
         // Request registers from the free list
-        freelist.forwardReqMask(dst_reg_reqs);
+        freelist.allocateRegs(dst_reg_reqs);
         debugLog.record(fshow(tok.index) + $format(": GetDeps2: Freelist request mask is %0b", pack(dst_reg_reqs)));
 
         deps2Q.enq(tuple4(tok, tok_active, ar_srcs, ar_dsts));
@@ -257,7 +257,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         deps2Q.deq();
 
         // Get the physical registers requested earlier
-        let phy_dsts <- freelist.forwardResp();
+        let phy_dsts <- freelist.allocateRsp();
 
         if (tok_active)
         begin
@@ -275,6 +275,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         begin
             // Don't update the maptable if this token is getting killed
             debugLog.record(fshow(tok.index) + $format(": GetDeps4: JUNK TOKEN (NO UPDATE)"));
+            // Free the registers since we didn't need them.
+            freelist.freeRegs(phy_dsts);
         end
 
         // Save destination physical registers
@@ -282,7 +284,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
 
         // Register mapper is waiting for new physical registers to go with
         // the request started in the previous stage.
-        regMapping.decodeStage2(tok, phy_dsts, freelist.current());
+        regMapping.decodeStage2(tok, phy_dsts);
 
         //
         // Associate allocated physical registers with architectural regs

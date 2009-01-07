@@ -43,6 +43,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     REGSTATE_REG_MAPPING_EXCEPTION regMapping,
     BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr,
     BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst,
+    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts,
     FUNCP_FREELIST freelist,
     BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr,
     Reg#(TOKEN_BRANCH_EPOCH) branchEpoch,
@@ -361,6 +362,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         // Look up the token properties
         regMapping.readRewindReq(rewindCur);
         tokInst.readPorts[1].readReq(rewindCur);
+        tokDsts.readPorts[2].readReq(rewindCur);
 
         // Pass it to the next stage who will free it.
         let done = (rewindCur == rewindTok.index);
@@ -394,6 +396,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
 
         let rewind_info <- regMapping.readRewindRsp();
         let inst <- tokInst.readPorts[1].readRsp();
+        let phys_dsts <- tokDsts.readPorts[2].readRsp();
 
         //
         // Unwind register mappings if token has been through getDeps and
@@ -408,6 +411,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
             begin
                 REGSTATE_NEW_MAPPINGS new_map = ?;
                 new_map.context_id = tok_idx.context_id;
+                
+                ISA_INST_DSTS dead_pregs = newVector();
 
                 for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
                 begin
@@ -422,25 +427,21 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
                     begin
                         new_map.mappings[x] = tagged Invalid;
                     end
+
+                    if (phys_dsts[x] matches tagged Valid .pr)
+                    begin
+                        // The current destination must be freed.
+                        dead_pregs[x] = tagged Valid pr;
+                        debugLog.record($format("Rewind: ") + fshow(tok_idx) + $format(": Telling Free list to free PR ", pr));
+                    end
+                    else
+                    begin
+                        dead_pregs[x] = tagged Invalid;
+                    end
                 end
 
                 regMapping.updateMap(new_map);
-            end
-
-            //
-            // Update the free list position if the token is still allocated or
-            // this is the last token.  If the last token is not allocated it
-            // is due to commit, not rewind.  Hence the need to rewind to it.
-            // The free list position is the point after allocation for the token.
-            //
-            if (done || tok_active)
-            begin
-                debugLog.record($format("Rewind: ") + fshow(tok_idx) + $format(": Free list back to %0d", rw.freeListPos));
-                freelist.backTo(rw.freeListPos);
-            end
-            else
-            begin
-                debugLog.record($format("Rewind: ") + fshow(tok_idx) + $format(": Already deallocated"));
+                freelist.freeRegs(dead_pregs);
             end
 
             if (done)

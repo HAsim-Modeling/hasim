@@ -70,7 +70,6 @@ REGSTATE_NEW_MAPPINGS
 //
 typedef struct
 {
-    FUNCP_PHYSICAL_REG_INDEX freeListPos;
     ISA_INST_DSTS regsToFree;
 }
 REGSTATE_REWIND_INFO
@@ -102,8 +101,7 @@ interface REGSTATE_REG_MAPPING_GETDEPENDENCIES;
                                Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)) ar_dsts);
 
     method Action decodeStage2(TOKEN tok,
-                               Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_dsts,
-                               FUNCP_PHYSICAL_REG_INDEX freeListPos);
+                               Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_dsts);
 
     method ActionValue#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) decodeRsp();
 endinterface
@@ -207,16 +205,26 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     // ====================================================================
 
     //
-    // Architectural to physical register map
-    //
-    Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) initMap = newVector();
-    for (Integer x  = 0; x < valueOf(ISA_NUM_REGS); x = x + 1)
+    // Initial architectural to physical register map
+    // AR 0 of context 0 -> PR 0
+    // AR N of context 0 -> PR N
+    // AR 0 of context 1 -> PR N+1
+    // etc
+    Vector#(NUM_CONTEXTS, Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX)) initMap = newVector();
+    for (Integer y = 0; y < valueOf(NUM_CONTEXTS); y = y + 1)
     begin
-        initMap[x] = fromInteger(x);
+        for (Integer x  = 0; x < valueOf(ISA_NUM_REGS); x = x + 1)
+        begin
+            initMap[y][x] = fromInteger(x+(y*valueOf(ISA_NUM_REGS)));
+        end
     end
 
+    function Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) initMapFunc(CONTEXT_ID x);
+        return initMap[x];
+    endfunction
+
     // The true map table
-    BRAM#(CONTEXT_ID, Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX)) mapTable <- mkBRAMInitialized(initMap);
+    BRAM#(CONTEXT_ID, Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX)) mapTable <- mkBRAMInitializedWith(initMapFunc);
     
     // Queue to track proper consumer of read data coming from map table BRAM
     FIFO#(MAPTABLE_CONSUMER) mapTableConsumerQ <- mkFIFO();
@@ -243,9 +251,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     // Incoming request queues
     FIFO#(Tuple2#(Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
                   Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)))) decodeStage1InQ <- mkFIFO();
-    FIFO#(Tuple3#(TOKEN,
-                  Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)),
-                  FUNCP_PHYSICAL_REG_INDEX)) decodeStage2InQ <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN,
+                  Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)))) decodeStage2InQ <- mkFIFO();
 
     FIFO#(Tuple2#(CONTEXT_ID, ISA_REG_INDEX)) getResultsReqInQ <- mkFIFO();
     FIFO#(REGSTATE_NEW_MAPPINGS) exceptInQ <- mkFIFO();
@@ -306,7 +313,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
         match {.ar_srcs, .ar_dsts} = decodeStage1InQ.first();
         decodeStage1InQ.deq();
 
-        match {.tok, .phy_dsts, .freeListPos} = decodeStage2InQ.first();
+        match {.tok, .phy_dsts} = decodeStage2InQ.first();
         decodeStage2InQ.deq();
 
         let map <- mapTable.readRsp();
@@ -341,8 +348,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
             
         // Store rewind info
         rewindInfo.write(tok.index,
-                         tagged Valid REGSTATE_REWIND_INFO { freeListPos: freeListPos,
-                                                             regsToFree: old_phy_dsts });
+                         tagged Valid REGSTATE_REWIND_INFO { regsToFree: old_phy_dsts });
 
 
         //
@@ -514,12 +520,11 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
         endmethod
 
         method Action decodeStage2(TOKEN tok,
-                                   Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_dsts,
-                                   FUNCP_PHYSICAL_REG_INDEX freeListPos);
+                                   Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_dsts);
 
             newMapTableReqQ.enq(tuple2(tokContextId(tok), REGSTATE_MAPT_DECODE));
 
-            decodeStage2InQ.enq(tuple3(tok, phy_dsts, freeListPos));
+            decodeStage2InQ.enq(tuple2(tok, phy_dsts));
             debugLog.record($format("MAP: ") + fshow(tok.index) + $format(":decodeStage2"));
         endmethod
 

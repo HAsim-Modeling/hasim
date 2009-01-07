@@ -16705,3 +16705,18 @@ method to free the destinations of a killed token.
 * Passes regression tests, but have not yet tried on FPGA.
 
 Michael P.
+
+----------
+mcadler     Date: Wed Jan  7 10:44:55 EST 2009  CSN: CSN-hasim-570
+                  Wed Jan  7 15:44:55 UTC 2009
+
+
+Directory modules/hasim/controller
+ controller-standard.bsv   Locally Modified          569 
+
+Directory modules/hasim/util/common
+ debug-file.bsv            Locally Modified          569 
+
+Add a context-aware debug log interface for timing models.  The interface supports
+separate model cycles for each context.  There are also some additional methods
+for printing a message for all contexts and printing a message with no context.

@@ -56,7 +56,7 @@ typedef Bit#(TAdd#(`HEARTBEAT_TRIGGER_BIT, 1)) HEARTBEAT_MODEL_CYCLES;
 
 module [HASIM_MODULE] mkController ();
 
-    TIMEP_DEBUG_FILE debugLog <- mkTIMEPDebugFile("controller.out");
+    TIMEP_CONTEXT_DEBUG_FILE debugLog <- mkTIMEPCtxDebugFile("controller.out");
 
     // instantiate all the sub-controllers
     CENTRAL_CONTROLLERS centralControllers <- mkCentralControllers();
@@ -103,7 +103,7 @@ module [HASIM_MODULE] mkController ();
         starter.acceptRequest_Run();
         centralControllers.moduleController.run();
         state <= CONTROL_STATE_running;
-        debugLog.record($format("RUN"));
+        debugLog.record_all($format("RUN"));
     endrule
 
     // accept Pause request from starter
@@ -111,7 +111,7 @@ module [HASIM_MODULE] mkController ();
         starter.acceptRequest_Pause();
         centralControllers.moduleController.pause();
         state <= CONTROL_STATE_paused;
-        debugLog.record($format("PAUSE"));
+        debugLog.record_all($format("PAUSE"));
     endrule
 
     // accept Sync request from starter
@@ -119,7 +119,7 @@ module [HASIM_MODULE] mkController ();
         starter.acceptRequest_Sync();
         centralControllers.moduleController.sync();
         state <= CONTROL_STATE_idle;
-        debugLog.record($format("IDLE"));
+        debugLog.record_all($format("IDLE"));
     endrule
 
     // monitor module controller
@@ -134,7 +134,7 @@ module [HASIM_MODULE] mkController ();
         starter.acceptRequest_DumpStats();
         centralControllers.statsController.doCommand(STATS_Dump);
         dumpingStats <= True;
-        debugLog.record($format("STATS_DUMP Start"));
+        debugLog.record_all($format("STATS_DUMP Start"));
     endrule
 
     // monitor stats controller
@@ -148,7 +148,7 @@ module [HASIM_MODULE] mkController ();
         let ctx_id <- starter.acceptRequest_EnableContext();
         centralControllers.moduleController.enableContext(ctx_id);
 
-        debugLog.record($format("ENABLE Context %0d", ctx_id));
+        debugLog.record(ctx_id, $format("ENABLE Context"));
     endrule
 
     // monitor requests to disable contexts
@@ -156,7 +156,7 @@ module [HASIM_MODULE] mkController ();
         let ctx_id <- starter.acceptRequest_DisableContext();
         centralControllers.moduleController.disableContext(ctx_id);
 
-        debugLog.record($format("DISABLE Context %0d", ctx_id));
+        debugLog.record(ctx_id, $format("DISABLE Context"));
     endrule
 
     (* descending_urgency = "model_commits, model_tick" *)
@@ -166,13 +166,7 @@ module [HASIM_MODULE] mkController ();
         CONTEXT_ID ctx_id = link_model_cycle.receive();
         link_model_cycle.deq();
 
-        debugLog.record($format("CTX %0d new cycle", ctx_id));
-
-        // Not strictly correct, but approximate...
-        if (ctx_id == 0)
-        begin
-            debugLog.nextModelCycle();
-        end
+        debugLog.nextModelCycle(ctx_id);
 
         let trigger = curModelCycle[ctx_id][`HEARTBEAT_TRIGGER_BIT];
         if (trigger == 1)
@@ -193,7 +187,7 @@ module [HASIM_MODULE] mkController ();
 
         instrCommits[ctx_id] <= instrCommits[ctx_id] + zeroExtend(commits);
 
-        debugLog.record($format("COMMIT %0d for CTX %0d, cycle %0d", commits, ctx_id, curModelCycle[ctx_id]));
+        debugLog.record(ctx_id, $format("COMMIT %0d", commits));
     endrule
 
 endmodule

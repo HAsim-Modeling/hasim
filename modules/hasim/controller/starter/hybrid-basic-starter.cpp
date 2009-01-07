@@ -4,6 +4,7 @@
 #include <iomanip>
 
 #include "asim/rrr/service_ids.h"
+#include "asim/provides/hasim_common.h"
 #include "asim/provides/starter.h"
 #include "asim/provides/command_switches.h"
 #include "asim/provides/central_controllers.h"
@@ -18,14 +19,7 @@ using namespace std;
 STARTER_SERVER_CLASS STARTER_SERVER_CLASS::instance;
 
 // constructor
-STARTER_SERVER_CLASS::STARTER_SERVER_CLASS() :
-    fpgaStartCycle(0),
-    modelStartCycle(0),
-    modelStartInstrs(0),
-    latestFMR(-1),
-    instrCommits(0),
-    modelCycles(0),
-    nextProgressMsgCycle(0)
+STARTER_SERVER_CLASS::STARTER_SERVER_CLASS()
 {
     // instantiate stubs
     clientStub = new STARTER_CLIENT_STUB_CLASS(this);
@@ -63,7 +57,10 @@ STARTER_SERVER_CLASS::Init(
     PLATFORMS_MODULE p)
 {
     parent = p;
-    nextProgressMsgCycle = globalArgs->ProgressMsgInterval();
+    for (CONTEXT_ID c = 0; c < NUM_CONTEXTS; c++)
+    {
+        ctxHeartbeat[c].Init();
+    }
 }
 
 // uninit: override
@@ -103,11 +100,11 @@ STARTER_SERVER_CLASS::EndSim(
 {
     if (success == 1)
     {
-        cout << "        starter: completed successfully. ";
+        cout << "        starter: completed successfully. " << endl;
     }
     else
     {
-        cout << "        starter: completed with errors.  ";
+        cout << "        starter: completed with errors.  " << endl;
     }
     
     EndSimulation(success == 0);
@@ -116,67 +113,35 @@ STARTER_SERVER_CLASS::EndSim(
 // Heartbeat
 void
 STARTER_SERVER_CLASS::Heartbeat(
+    CONTEXT_ID ctxId,
     UINT64 fpga_cycles,
     UINT32 model_cycles,
     UINT32 instr_commits)
 {
-    modelCycles  += model_cycles;
-    instrCommits += instr_commits;
-
-    gettimeofday(&heartbeatLastTime, NULL);
-    
-    if (fpgaStartCycle == 0)
-    {
-        //
-        // First heartbeat, which is some distance in to the run.  Record
-        // first values seen so startup timing doesn't affect reported values.
-        //
-        fpgaStartCycle = fpga_cycles;
-        modelStartCycle = modelCycles;
-        modelStartInstrs = instrCommits;
-        heartbeatStartTime = heartbeatLastTime;
-    }
-    else
-    {
-        latestFMR = (double)(fpga_cycles - fpgaStartCycle) /
-            (double)(modelCycles - modelStartCycle);
-    }
-    
-    if (nextProgressMsgCycle && (modelCycles >= nextProgressMsgCycle))
-    {
-        nextProgressMsgCycle += globalArgs->ProgressMsgInterval();
-        
-        cout << "[" << std::dec << std::setw(13) << fpga_cycles
-             << "]: model cycles: "
-             << std::setw(10) << modelCycles;
-        
-        ProgressStats();
-    }
-    
-    //
-    // Is model broken?
-    //
-    if (instr_commits == 0)
-    {
-        ASIMERROR("No instructions committed for entire heartbeat interval (" <<
-                  model_cycles << " cycles)");
-    }
+    ctxHeartbeat[ctxId].Heartbeat(ctxId, fpga_cycles, model_cycles, instr_commits);
 
     //
     // HW statistics counters are smaller than full counters to save
     // space.  Time to scan out intermediate statistics values before
     // they wrap around?
     //
-    if (((modelCycles ^ lastStatsScanCycle) & statsScanMask) != 0)
+    UINT64 total_model_cycles = 0;
+    for (CONTEXT_ID c = 0; c < NUM_CONTEXTS; c++)
     {
-        lastStatsScanCycle = modelCycles;
+        total_model_cycles += ctxHeartbeat[ctxId].GetModelCycles();
+    }
+
+    if (((total_model_cycles ^ lastStatsScanCycle) & statsScanMask) != 0)
+    {
+        lastStatsScanCycle = total_model_cycles;
         DumpStats();
     }
     
     //
     // Done?
     //
-    if (globalArgs->StopCycle() && (modelCycles >= globalArgs->StopCycle()))
+    if (globalArgs->StopCycle() &&
+        (ctxHeartbeat[ctxId].GetModelCycles() >= globalArgs->StopCycle()))
     {
         cout << "starter: simulation reached stop cycle." << endl;
         EndSimulation(0);
@@ -201,10 +166,59 @@ STARTER_SERVER_CLASS::EndSimulation(int exitValue)
     usec = double(end_time.tv_usec) - double(startTime.tv_usec);
     elapsed = sec + usec/1000000;
 
-    if (modelCycles > 0)
+    UINT64 allModelCycles = 0;
+    UINT64 allModelStartCycle = 0;
+    UINT64 allInstrCommits = 0;
+    UINT64 allFPGACycles = 0;
+    double allIPS = 0;
+
+    cout << endl;
+    for (int c = 0; c < NUM_CONTEXTS; c++)
     {
-        ProgressStats();
+        if (ctxHeartbeat[c].GetModelCycles() != 0)
+        {
+            cout << "    ";
+            ctxHeartbeat[c].ProgressStats(c);
+        }
+
+        //
+        // Compute a merged summary of all contexts
+        //
+
+        UINT64 m_cycles = ctxHeartbeat[c].GetModelCycles();
+        if (m_cycles > allModelCycles)
+        {
+            // Pick the context with the most cycles as the number of model cycles
+            allModelCycles = m_cycles;
+            allModelStartCycle = ctxHeartbeat[c].GetModelStartCycle();
+        }
+
+        UINT64 fpga_cycles = ctxHeartbeat[c].GetFPGACycles();
+        if (fpga_cycles > allFPGACycles)
+        {
+            allFPGACycles = fpga_cycles;
+        }
+
+        allInstrCommits += ctxHeartbeat[c].GetInstrCommits();
+        allIPS += ctxHeartbeat[c].GetModelIPS();
     }
+
+    if (allModelCycles > 0)
+    {
+        cout << "    ALL                      ";
+        cout << " (IPC=" << IoFormat::fmt(".2f", (double)allInstrCommits / (double)allModelCycles)
+             << " / IPS="  << IoFormat::fmt(".2f", allIPS);
+
+        if ((allModelCycles - allModelStartCycle) > 0)
+        {
+            double fmr = double(allFPGACycles) /
+                         double(allModelCycles - allModelStartCycle);
+            cout << " / FMR=" << IoFormat::fmt(".1f", fmr);
+        }
+
+        cout << ")" << endl;
+    }
+    cout << endl;
 
     cout << "        syncing... ";
     Sync();
@@ -218,31 +232,6 @@ STARTER_SERVER_CLASS::EndSimulation(int exitValue)
     printf("        elapsed (wall-clock) time = %.4f seconds.\n", elapsed);
 
     CallbackExit(exitValue);
-}
-
-
-void
-STARTER_SERVER_CLASS::ProgressStats()
-{
-    double sec = double(heartbeatLastTime.tv_sec) - double(heartbeatStartTime.tv_sec);
-    double usec = double(heartbeatLastTime.tv_usec) - double(heartbeatStartTime.tv_usec);
-    double heartbeat_run_time = sec + usec/1000000;
-
-    cout << " (IPC=" << IoFormat::fmt(".2f", (double)instrCommits / (double)modelCycles);
-
-    UINT64 commits = instrCommits - modelStartInstrs;
-    if ((heartbeat_run_time > 0) && (commits > 0))
-    {
-        cout << " / IPS="
-             << IoFormat::fmt(".2f", (double)commits / heartbeat_run_time);
-    }
-
-    if (latestFMR >= 0)
-    {
-        cout << " / FMR=" << IoFormat::fmt(".1f", latestFMR);
-    }
-
-    cout << ")" << endl;
 }
 
 
@@ -290,4 +279,120 @@ void
 STARTER_SERVER_CLASS::DisableContext(CONTEXT_ID ctx_id)
 {
     clientStub->DisableContext(ctx_id);
+}
+
+
+// ========================================================================
+//
+// Heartbeat monitor class for a single context.
+//
+// ========================================================================
+
+CONTEXT_HEARTBEAT_CLASS::CONTEXT_HEARTBEAT_CLASS() :
+    fpgaStartCycle(0),
+    fpgaLastCycle(0),
+    modelStartCycle(0),
+    modelStartInstrs(0),
+    latestFMR(-1),
+    instrCommits(0),
+    modelCycles(0),
+    nextProgressMsgCycle(0)
+{}
+
+
+void
+CONTEXT_HEARTBEAT_CLASS::Init()
+{
+    nextProgressMsgCycle = globalArgs->ProgressMsgInterval();
+}
+
+void
+CONTEXT_HEARTBEAT_CLASS::Heartbeat(
+    CONTEXT_ID ctxId,
+    UINT64 fpga_cycles,
+    UINT32 model_cycles,
+    UINT32 instr_commits)
+{
+    modelCycles  += model_cycles;
+    instrCommits += instr_commits;
+
+    gettimeofday(&heartbeatLastTime, NULL);
+    
+    if (fpgaStartCycle == 0)
+    {
+        //
+        // First heartbeat, which is some distance in to the run.  Record
+        // first values seen so startup timing doesn't affect reported values.
+        //
+        fpgaStartCycle = fpga_cycles;
+        modelStartCycle = modelCycles;
+        modelStartInstrs = instrCommits;
+        heartbeatStartTime = heartbeatLastTime;
+    }
+    else
+    {
+        latestFMR = (double)(fpga_cycles - fpgaStartCycle) /
+            (double)(modelCycles - modelStartCycle);
+    }
+    
+    fpgaLastCycle = fpga_cycles;
+
+    if (nextProgressMsgCycle && (modelCycles >= nextProgressMsgCycle))
+    {
+        nextProgressMsgCycle += globalArgs->ProgressMsgInterval();
+        
+        cout << "[" << std::dec << std::setw(13) << fpga_cycles << "] ";
+        ProgressStats(ctxId);
+    }
+    
+    //
+    // Is model broken?
+    //
+    if (instr_commits == 0)
+    {
+        ASIMERROR("No instructions committed for entire heartbeat interval (" <<
+                  model_cycles << " cycles)");
+    }
+}
+
+void
+CONTEXT_HEARTBEAT_CLASS::ProgressStats(CONTEXT_ID ctxId)
+{
+    if (modelCycles == 0) return;
+
+    cout << "CTX " << std::setw(2) << UINT64(ctxId)
+         << ": " << std::setw(10) << modelCycles << " cycles";
+
+    cout << " (IPC=" << IoFormat::fmt(".2f", (double)instrCommits / (double)modelCycles);
+
+    double ips = GetModelIPS();
+    if (ips > 0)
+    {
+        cout << " / IPS="  << IoFormat::fmt(".2f", ips);
+    }
+
+    if (latestFMR >= 0)
+    {
+        cout << " / FMR=" << IoFormat::fmt(".1f", latestFMR);
+    }
+
+    cout << ")" << endl;
+}
+
+double
+CONTEXT_HEARTBEAT_CLASS::GetModelIPS() const
+{
+    double sec = double(heartbeatLastTime.tv_sec) - double(heartbeatStartTime.tv_sec);
+    double usec = double(heartbeatLastTime.tv_usec) - double(heartbeatStartTime.tv_usec);
+    double heartbeat_run_time = sec + usec/1000000;
+
+    UINT64 commits = instrCommits - modelStartInstrs;
+    if ((heartbeat_run_time > 0) && (commits > 0))
+    {
+        return (double)commits / heartbeat_run_time;
+    }
+    else
+    {
+        return 0;
+    }
 }

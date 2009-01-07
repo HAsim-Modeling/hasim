@@ -16653,3 +16653,22 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
  hybrid-funcp-memory.rrr   Locally Modified          566 
 
 Pass context ID to ISA emulator methods.
+
+----------
+mcadler     Date: Tue Jan  6 20:03:29 EST 2009  CSN: CSN-hasim-568
+                  Wed Jan  7 01:03:29 UTC 2009
+
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.h        Locally Modified          566 
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          566 
+ hybrid-basic-starter-services.rrr Locally Modified          566 
+ hybrid-basic-starter.h    Locally Modified          566 
+ hybrid-basic-starter.bsv  Locally Modified          566 
+
+Directory modules/hasim/controller
+ controller-standard.bsv   Locally Modified          566 
+
+Send heartbeats for multiple contexts.

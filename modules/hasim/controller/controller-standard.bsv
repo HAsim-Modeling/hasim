@@ -16,6 +16,8 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
+import Vector::*;
+
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
 
@@ -26,6 +28,9 @@
 `include "asim/provides/params_controller.bsh"
 `include "asim/provides/assertions_controller.bsh"
 `include "asim/provides/starter.bsh"
+
+typedef CONTEXT_ID                             CONTROL_MODEL_CYCLE_MSG;
+typedef Tuple2#(CONTEXT_ID, MODEL_NUM_COMMITS) CONTROL_MODEL_COMMIT_MSG;
 
 // control state
 typedef enum
@@ -61,9 +66,8 @@ module [HASIM_MODULE] mkController ();
 
     // The timing model must tell us the current model cycle.  By convention,
     // it is the token request stage at the head of the pipeline.
-    Connection_Receive#(Bool) link_model_cycle <- mkConnection_Receive("model_cycle");
-
-    Connection_Receive#(MODEL_NUM_COMMITS) link_model_commit <- mkConnection_Receive("model_commits");
+    Connection_Receive#(CONTROL_MODEL_CYCLE_MSG) link_model_cycle <- mkConnection_Receive("model_cycle");
+    Connection_Receive#(CONTROL_MODEL_COMMIT_MSG) link_model_commit <- mkConnection_Receive("model_commits");
 
     // state
     Reg#(CONTROL_STATE) state <- mkReg(CONTROL_STATE_idle);
@@ -72,11 +76,17 @@ module [HASIM_MODULE] mkController ();
     Reg#(Bit#(64)) fpgaCycle <- mkReg(minBound);
   
     // Model cycles since last heartbeat message sent to software
-    Reg#(HEARTBEAT_MODEL_CYCLES) curModelCycle <- mkReg(0);
+    Vector#(NUM_CONTEXTS, Reg#(HEARTBEAT_MODEL_CYCLES)) curModelCycle = newVector();
 
     // Committed instructions since last heartbeat message sent to software.
     // If Bit#(32) isn't big enough the heartbeat isn't being sent often enough.
-    Reg#(Bit#(32)) instrCommits <- mkReg(0);
+    Vector#(NUM_CONTEXTS, Reg#(Bit#(32))) instrCommits = newVector();
+
+    for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
+    begin
+        curModelCycle[c] <- mkReg(0);
+        instrCommits[c] <- mkReg(0);
+    end
 
     // In the middle of dumping statistics?
     Reg#(Bool) dumpingStats <- mkReg(False);
@@ -153,29 +163,37 @@ module [HASIM_MODULE] mkController ();
 
     // Count the model cycle and send heartbeat updates
     rule model_tick (True);
+        CONTEXT_ID ctx_id = link_model_cycle.receive();
         link_model_cycle.deq();
-        debugLog.nextModelCycle();
 
-        let trigger = curModelCycle[`HEARTBEAT_TRIGGER_BIT];
+        debugLog.record($format("CTX %0d new cycle", ctx_id));
+
+        // Not strictly correct, but approximate...
+        if (ctx_id == 0)
+        begin
+            debugLog.nextModelCycle();
+        end
+
+        let trigger = curModelCycle[ctx_id][`HEARTBEAT_TRIGGER_BIT];
         if (trigger == 1)
         begin
-            starter.makeRequest_Heartbeat(fpgaCycle, zeroExtend(curModelCycle), instrCommits);
-            curModelCycle <= 1;
-            instrCommits <= 0;
+            starter.makeRequest_Heartbeat(ctx_id, fpgaCycle, zeroExtend(curModelCycle[ctx_id]), instrCommits[ctx_id]);
+            curModelCycle[ctx_id] <= 1;
+            instrCommits[ctx_id] <= 0;
         end
         else
         begin
-            curModelCycle <= curModelCycle + 1;
+            curModelCycle[ctx_id] <= curModelCycle[ctx_id] + 1;
         end
     endrule
 
     rule model_commits (True);
-        Bit#(32) commits = zeroExtend(link_model_commit.receive());
+        match { .ctx_id, .commits } = link_model_commit.receive();
         link_model_commit.deq();
 
-        instrCommits <= instrCommits + commits;
+        instrCommits[ctx_id] <= instrCommits[ctx_id] + zeroExtend(commits);
 
-        debugLog.record($format("COMMIT %0d", commits));
+        debugLog.record($format("COMMIT %0d for CTX %0d, cycle %0d", commits, ctx_id, curModelCycle[ctx_id]));
     endrule
 
 endmodule

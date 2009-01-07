@@ -12,6 +12,62 @@
 
 // this module provides both client and service functionalities
 
+
+//
+// CONTEXT_HEARTBEAT_CLASS --
+//    Maintain heartbeat information for a single context.
+//
+
+typedef class CONTEXT_HEARTBEAT_CLASS* CONTEXT_HEARTBEAT;
+
+class CONTEXT_HEARTBEAT_CLASS
+{
+  public:
+    CONTEXT_HEARTBEAT_CLASS();
+    ~CONTEXT_HEARTBEAT_CLASS() {};
+
+    void Init();
+
+    void Heartbeat(CONTEXT_ID ctxId,
+                   UINT64 fpga_cycles,
+                   UINT32 model_cycles,
+                   UINT32 instr_commits);
+
+    void ProgressStats(CONTEXT_ID ctxId);
+
+    UINT64 GetInstrCommits() const { return instrCommits; };
+    UINT64 GetModelCycles() const { return modelCycles; };
+    UINT64 GetModelStartCycle() const { return modelStartCycle; };
+    UINT64 GetFPGACycles() const { return fpgaLastCycle - fpgaStartCycle; };
+    double GetModelIPS() const;
+
+  private:
+    // These let us compute FMR starting after the first heartbeat is received.
+    // We can thus eliminate model start-up cycles from FMR.
+    UINT64 fpgaStartCycle;
+    UINT64 fpgaLastCycle;
+    UINT64 modelStartCycle;
+    UINT64 modelStartInstrs;
+
+    double latestFMR;
+    struct timeval heartbeatStartTime;
+    struct timeval heartbeatLastTime;
+
+    // Keep running totals of model cycles and committed instructions since
+    // heartbeat provides total since last beat.
+    UINT64 instrCommits;
+    UINT64 modelCycles;
+
+    UINT64 nextProgressMsgCycle;
+};
+
+
+
+//
+// STARTER_SERVER_CLASS --
+//
+//
+
 typedef class STARTER_SERVER_CLASS* STARTER_SERVER;
 
 class STARTER_SERVER_CLASS: public RRR_SERVER_CLASS,
@@ -29,7 +85,6 @@ class STARTER_SERVER_CLASS: public RRR_SERVER_CLASS,
     struct timeval startTime;
 
     void EndSimulation(int exitValue);
-    void ProgressStats();
 
   public:
     STARTER_SERVER_CLASS();
@@ -48,7 +103,10 @@ class STARTER_SERVER_CLASS: public RRR_SERVER_CLASS,
     // RRR service methods
     //
     void EndSim(UINT8 success);
-    void Heartbeat(UINT64 fpga_cycles, UINT32 model_cycles, UINT32 instr_commits);
+    void Heartbeat(CONTEXT_ID ctxId,
+                   UINT64 fpga_cycles,
+                   UINT32 model_cycles,
+                   UINT32 instr_commits);
 
     // client methods
     void Run();
@@ -59,28 +117,14 @@ class STARTER_SERVER_CLASS: public RRR_SERVER_CLASS,
     void DisableContext(CONTEXT_ID ctx_id);
 
   private:
-    // These let us compute FMR starting after the first heartbeat is received.
-    // We can thus eliminate model start-up cycles from FMR.
-    UINT64 fpgaStartCycle;
-    UINT64 modelStartCycle;
-    UINT64 modelStartInstrs;
-
-    double latestFMR;
-    struct timeval heartbeatStartTime;
-    struct timeval heartbeatLastTime;
-
-    // Keep running totals of model cycles and committed instructions since
-    // heartbeat provides total since last beat.
-    UINT64 instrCommits;
-    UINT64 modelCycles;
-
-    UINT64 nextProgressMsgCycle;
+    CONTEXT_HEARTBEAT_CLASS ctxHeartbeat[NUM_CONTEXTS];
 
     // Cycle when statistics were last scanned
     UINT64 lastStatsScanCycle;
     // Mask of bits to monitor for triggering statistics scan out from HW
     UINT64 statsScanMask;
 };
+
 
 // server stub
 #include "asim/rrr/server_stub_STARTER.h"

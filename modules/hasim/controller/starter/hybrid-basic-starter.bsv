@@ -51,7 +51,7 @@ interface Starter;
     //     model_cycles  -- Model cycles since the last heartbeat.
     //     instr_commits -- Committed instructions since the last heartbeat.
     //
-    method Action makeRequest_Heartbeat(Bit#(64) fpga_cycles, Bit#(32) model_cycles, Bit#(32) instr_commits);
+    method Action makeRequest_Heartbeat(CONTEXT_ID ctxId, Bit#(64) fpga_cycles, Bit#(32) model_cycles, Bit#(32) instr_commits);
 
 endinterface
 
@@ -109,8 +109,8 @@ module [HASIM_MODULE] mkStarter(Starter);
     endmethod
 
     // Heartbeat
-    method Action makeRequest_Heartbeat(Bit#(64) fpga_cycles, Bit#(32) model_cycles, Bit#(32) instr_commits);
-        client_stub.makeRequest_Heartbeat(fpga_cycles, model_cycles, instr_commits);
+    method Action makeRequest_Heartbeat(CONTEXT_ID ctxId, Bit#(64) fpga_cycles, Bit#(32) model_cycles, Bit#(32) instr_commits);
+        client_stub.makeRequest_Heartbeat(contextIdRRR(ctxId), fpga_cycles, model_cycles, instr_commits);
     endmethod
 
 endmodule

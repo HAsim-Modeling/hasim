@@ -99,12 +99,12 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(String debugLogPrefix)
     // The maximum achitectural register.
     ISA_REG_INDEX maxAR = maxBound;
 
-    // The maximum architecural reg times the number of contexts being simulated.
-    FUNCP_PHYSICAL_REG_INDEX maxPR = zeroExtend(pack(maxAR)) * fromInteger(valueof(NUM_CONTEXTS));
+    // Each context gets maxAR physical registers.
+    FUNCP_PHYSICAL_REG_INDEX maxInitPR = (1 + zeroExtend(pack(maxAR))) * fromInteger(valueof(NUM_CONTEXTS)) - 1;
 
     // The architectural registers begin allocated, so the freelist pointer starts at
     // one position beyond that.
-    FUNCP_PHYSICAL_REG_INDEX initFL = maxPR + 1;
+    FUNCP_PHYSICAL_REG_INDEX initFL = maxInitPR + 1;
 
     // The maximum number of physical registers.
     FUNCP_PHYSICAL_REG_INDEX maxFL = maxBound;

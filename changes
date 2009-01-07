@@ -16720,3 +16720,15 @@ Directory modules/hasim/util/common
 Add a context-aware debug log interface for timing models.  The interface supports
 separate model cycles for each context.  There are also some additional methods
 for printing a message for all contexts and printing a message with no context.
+
+----------
+mcadler     Date: Wed Jan  7 12:32:16 EST 2009  CSN: CSN-hasim-571
+                  Wed Jan  7 17:32:16 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-free-physical-regs.bsv Locally Modified          569 
+ regstate-data-physical-regs.bsv Locally Modified          569 
+
+Fix a couple of off by one and initialization bugs.  A single CPU run using
+either context 0 or 1 works again.

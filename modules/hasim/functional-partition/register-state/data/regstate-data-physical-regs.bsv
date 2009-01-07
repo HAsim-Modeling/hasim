@@ -211,18 +211,29 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     Reg#(Bool) initialized <- mkReg(False);
     Reg#(FUNCP_PHYSICAL_REG_INDEX) initPrfIdx <- mkReg(0);
 
-    // The highest register in the ISA (the last one which is initially valid).
-    ISA_REG_INDEX         highestReg = maxBound;
-    FUNCP_PHYSICAL_REG_INDEX maxInit = zeroExtend(pack(highestReg));
+    // The maximum achitectural register.
+    ISA_REG_INDEX maxAR = maxBound;
+
+    // Each context gets maxAR physical registers.
+    FUNCP_PHYSICAL_REG_INDEX maxInitPR = (1 + zeroExtend(pack(maxAR))) * fromInteger(valueof(NUM_CONTEXTS)) - 1;
 
     rule initializePrf (! initialized);
-        // For safety we start all physical registers valid and at zero.
-        // In the future this might change.
-        prfValids.upd(initPrfIdx, True);
         prf.write(initPrfIdx, 0);
+
+        // We start all mapped physical registers valid and at zero.
+        if (initPrfIdx <= maxInitPR)
+        begin
+            prfValids.upd(initPrfIdx, True);
+            debugLog.record($format("PRF: Initializing PR %0d VALID", initPrfIdx));
+        end
+        else
+        begin
+            prfValids.upd(initPrfIdx, False);
+            debugLog.record($format("PRF: Initializing PR %0d INVALID", initPrfIdx));
+        end
         
         // We're done if we've initialized the last register.
-        if (initPrfIdx >= maxInit)
+        if (initPrfIdx == maxBound)
         begin
             initialized <= True;
         end

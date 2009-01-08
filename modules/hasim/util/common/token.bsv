@@ -33,7 +33,8 @@ typedef Bit#(CONTEXT_ID_SIZE)   CONTEXT_ID;
 // Hack for RRR because it needs natural sized data
 typedef `CONTEXT_ID_BITS_RRR      CONTEXT_ID_SIZE_RRR;
 typedef Bit#(CONTEXT_ID_SIZE_RRR) CONTEXT_ID_RRR;
-function CONTEXT_ID_RRR contextIdRRR(CONTEXT_ID ctx_id) = zeroExtend(ctx_id);
+function CONTEXT_ID_RRR contextIdToRRR(CONTEXT_ID ctxId) = zeroExtend(ctxId);
+function CONTEXT_ID contextIdFromRRR(CONTEXT_ID_RRR ctxId) = truncate(ctxId);
 
 typedef `TOKEN_ID_BITS          TOKEN_ID_SIZE;
 typedef TExp#(TOKEN_ID_SIZE)    NUM_TOKENS_PER_CONTEXT;

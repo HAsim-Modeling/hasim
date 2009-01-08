@@ -52,6 +52,7 @@ MEMSTATE_SBUFFER_RSP_LOOKUP
 
 typedef struct
 {
+    TOKEN_INDEX tokIdx;
     Bool hasMore;
     MEM_ADDRESS addr;
     MEM_VALUE value;
@@ -596,7 +597,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
         // Respond with store info for commits
         if (state == SBUFFER_STATE_COMMIT)
-            commitRespPipe.enq(MEMSTATE_SBUFFER_RSP_COMMIT { hasMore: (next_state == SBUFFER_STATE_COMMIT), addr: node.addr, value: node.value });
+            commitRespPipe.enq(MEMSTATE_SBUFFER_RSP_COMMIT { tokIdx: node.tokIdx, hasMore: (next_state == SBUFFER_STATE_COMMIT), addr: node.addr, value: node.value });
         
         //
         // Put the node back on the free list

@@ -49,8 +49,8 @@ module [HASIM_MODULE] mkFUNCP_Memory
     Connection_Server#(MEM_REQUEST, MEM_REPLY)   link_memory <- mkConnection_Server("funcp_memory");
     Connection_Server#(MEM_VTOP_REQUEST, MEM_VTOP_REPLY) link_tlb <- mkConnection_Server("funcp_memory_VtoP");
 
-    Connection_Client#(MEM_INVAL_CACHELINE_INFO, Bool)  link_memory_inval <- mkConnection_Client("funcp_memory_cache_invalidate");
-    Connection_Client#(Bool, Bool)                  link_memory_inval_all <- mkConnection_Client("funcp_memory_cache_invalidate_all");
+    Connection_Client#(MEM_INVAL_FUNCP_CACHE_SERVICE_INFO, Bool) link_memory_inval <- mkConnection_Client("funcp_memory_cache_invalidate");
+    Connection_Client#(CONTEXT_ID, Bool) link_memory_inval_all <- mkConnection_Client("funcp_memory_cache_invalidate_all");
 
 
     // ***** Rules ******
@@ -67,30 +67,27 @@ module [HASIM_MODULE] mkFUNCP_Memory
         case (req) matches
             tagged MEM_LOAD .ldinfo:
             begin
-                client_stub.makeRequest_Load(zeroExtend(ldinfo.addr));
+                client_stub.makeRequest_Load(contextIdToRRR(ldinfo.contextId), zeroExtend(ldinfo.addr));
             end
             
-            tagged MEM_LOAD_CACHELINE .addr:
+            tagged MEM_LOAD_CACHELINE .ldinfo:
             begin
-                client_stub.makeRequest_LoadCacheLine(zeroExtend(addr));
+                client_stub.makeRequest_LoadCacheLine(contextIdToRRR(ldinfo.contextId), zeroExtend(ldinfo.addr));
             end
 
             tagged MEM_STORE .stinfo:
             begin
-                MEM_STORE_INFO_RRR st = MEM_STORE_INFO_RRR {addr: zeroExtend(stinfo.addr), val: stinfo.val};
-                client_stub.makeRequest_Store(st);
+                client_stub.makeRequest_Store(contextIdToRRR(stinfo.contextId), zeroExtend(stinfo.addr), stinfo.val);
             end
 
             tagged MEM_STORE_CACHELINE .stinfo:
             begin
-                MEM_STORE_CACHELINE_INFO_RRR st = MEM_STORE_CACHELINE_INFO_RRR {addr: zeroExtend(stinfo.addr), val: stinfo.val};
-                client_stub.makeRequest_StoreCacheLine(st);
+                client_stub.makeRequest_StoreCacheLine(contextIdToRRR(stinfo.contextId), zeroExtend(stinfo.addr), stinfo.val);
             end
 
             tagged MEM_STORE_CACHELINE_SYNC .stinfo:
             begin
-                MEM_STORE_CACHELINE_INFO_RRR st = MEM_STORE_CACHELINE_INFO_RRR {addr: zeroExtend(stinfo.addr), val: stinfo.val};
-                client_stub.makeRequest_StoreCacheLine_Sync(st);
+                client_stub.makeRequest_StoreCacheLine_Sync(contextIdToRRR(stinfo.contextId), zeroExtend(stinfo.addr), stinfo.val);
             end
         endcase
 
@@ -122,12 +119,13 @@ module [HASIM_MODULE] mkFUNCP_Memory
     rule get_invalidate_request (True);
         // Number of lines comes in as a 32 bit quantity instead of 8 due to
         // data packing in the channel.
-        MEM_INVAL_CACHELINE_INFO_RRR info <- server_stub.acceptRequest_Invalidate();
+        let inval_req <- server_stub.acceptRequest_Invalidate();
 
-        MEM_INVAL_CACHELINE_INFO inval_info;
-        inval_info.onlyFlush = info.onlyFlush;
-        inval_info.nLines = info.nLines;
-        inval_info.addr = truncate(info.addr);
+        MEM_INVAL_FUNCP_CACHE_SERVICE_INFO inval_info;
+        inval_info.contextId = contextIdFromRRR(inval_req.ctxId);
+        inval_info.onlyFlush = unpack(truncate(inval_req.onlyFlush));
+        inval_info.nLines = unpack(pack(inval_req.nLines));
+        inval_info.addr = truncate(inval_req.addr);
 
         link_memory_inval.makeReq(inval_info);
     endrule
@@ -139,8 +137,8 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
 
     rule get_invalidate_all_request (True);
-        let dummy <- server_stub.acceptRequest_InvalidateAll();
-        link_memory_inval_all.makeReq(?);
+        CONTEXT_ID_RRR ctx_id <- server_stub.acceptRequest_InvalidateAll();
+        link_memory_inval_all.makeReq(contextIdFromRRR(ctx_id));
     endrule
 
     rule get_invalidate_all_response (True);
@@ -164,7 +162,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
         // the VA is 0.  Pass allocOnFault in bit 0.
         va[0] = pack(req.allocOnFault);
 
-        client_stub.makeRequest_VtoP(contextIdRRR(req.context_id), va);
+        client_stub.makeRequest_VtoP(contextIdToRRR(req.context_id), va);
 
     endrule
 

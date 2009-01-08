@@ -779,7 +779,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         let reg_val <- prf.readRsp();
         
         // Send the regsiter on to software via RRR
-        emul_client_stub.makeRequest_sync(contextIdRRR(tokContextId(emulatingToken)),
+        emul_client_stub.makeRequest_sync(contextIdToRRR(tokContextId(emulatingToken)),
                                           zeroExtend(pack(arch_reg)),
                                           reg_val);
 
@@ -808,7 +808,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         emulatingPC <= pc;
 
         // Send the request on to software via RRR
-        emul_client_stub.makeRequest_emulate(contextIdRRR(tokContextId(emulatingToken)),
+        emul_client_stub.makeRequest_emulate(contextIdToRRR(tokContextId(emulatingToken)),
                                              inst, pc);
         
         //Log it.

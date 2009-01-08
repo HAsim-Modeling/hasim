@@ -6,20 +6,43 @@ service FUNCP_MEMORY
 {
     server hw (bsv, connection) <- sw (cpp, method)
     {
-        method Invalidate(in MEM_INVAL_CACHELINE_INFO_RRR[96] info, out UINT32[32] ack);
-        method InvalidateAll(in UINT32[32] req, out UINT32[32] ack);
+        method Invalidate(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                          in MEM_ADDRESS_RRR[64] addr,
+                          in UINT8[8] nLines,
+                          in UINT8[8] onlyFlush,
+                          out UINT32[32] ack);
+
+        method InvalidateAll(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                             out UINT32[32] ack);
     };
 
     server sw (cpp, method) <- hw (bsv, connection)
     {
-        method Load (in MEM_ADDRESS_RRR[64] addr, out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
-        method LoadCacheLine (in MEM_ADDRESS_RRR[64] addr, out MEM_CACHELINE[FUNCP_CACHELINE_BITS] data);
+        method Load (in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                     in MEM_ADDRESS_RRR[64] addr,
+                     out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
 
-        method Store(in MEM_STORE_INFO_RRR[MEMORY_STORE_INFO_SIZE] info);
-        method StoreCacheLine(in MEM_STORE_CACHELINE_INFO_RRR[MEMORY_STORE_CACHELINE_INFO_SIZE] info);
+        method LoadCacheLine (in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                              in MEM_ADDRESS_RRR[64] addr,
+                              out MEM_CACHELINE[FUNCP_CACHELINE_BITS] data);
+
+
+        method Store(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                     in MEM_ADDRESS_RRR[64] addr,
+                     in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
+
+        method StoreCacheLine(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                              in MEM_ADDRESS_RRR[64] addr,
+                              in MEM_CACHELINE[FUNCP_CACHELINE_BITS] data);
+
         // Store cache line with ACK
-        method StoreCacheLine_Sync(in MEM_STORE_CACHELINE_INFO_RRR[MEMORY_STORE_CACHELINE_INFO_SIZE] info, out UINT32[32] ack);
+        method StoreCacheLine_Sync(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                                   in MEM_ADDRESS_RRR[64] addr,
+                                   in MEM_CACHELINE[FUNCP_CACHELINE_BITS] data,
+                                   out UINT32[32] ack);
 
-        method VtoP(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId, in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] va, out MEM_ADDRESS_RRR[64] pa);
+        method VtoP(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                    in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] va,
+                    out MEM_ADDRESS_RRR[64] pa);
     };
 };

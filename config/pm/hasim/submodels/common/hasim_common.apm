@@ -54,7 +54,7 @@ platform_interface=Hasim Platform Interface
 hasim_modellib=HAsim Modeling Library
 
 [Soft Connections/Params]
-CON_CWIDTH=320
+CON_CWIDTH=330
 
 [HAsim FPGA-side generic cache]
 File=modules/hasim/util/cache/hasim-cache.awb

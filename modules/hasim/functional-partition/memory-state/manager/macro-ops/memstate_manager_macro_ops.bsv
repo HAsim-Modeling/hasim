@@ -188,7 +188,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         // Since most loads miss in the store buffer there isn't much point
         // in waiting for the response.
         stBuffer.lookupReq(ldInfo.tok.index, ldInfo.addr);
-        linkCache.makeReq(funcpMemLoadReq(ldInfo.addr, ldInfo.iStream));
+        linkCache.makeReq(funcpMemLoadReq(tokContextId(ldInfo.tok), ldInfo.addr, ldInfo.iStream));
 
     endrule
 
@@ -270,7 +270,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         debugLog.record($format("  COMMIT resp: addr=0x%x, value=0x%x, more=%d", rsp.addr, rsp.value, rsp.hasMore));
 
         // Send the actual store to the cache.
-        linkCache.makeReq(funcpMemStoreReq(rsp.addr, rsp.value));
+        linkCache.makeReq(funcpMemStoreReq(rsp.tokIdx.context_id, rsp.addr, rsp.value));
 
     endrule
 

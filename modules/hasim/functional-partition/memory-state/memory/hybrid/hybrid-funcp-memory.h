@@ -67,12 +67,12 @@ class FUNCP_MEMORY_SERVER_CLASS: public RRR_SERVER_CLASS,
     // Incoming messages from the software side (e.g. instruction emulation)
     // that may cause changes in the FPGA-side cache of simulated memory.
     //
-    static void NoteSystemMemoryRead(MEM_ADDRESS addr, MEM_ADDRESS size);
-    static void NoteSystemMemoryWrite(MEM_ADDRESS addr, MEM_ADDRESS size);
-    static void NoteSystemMemoryWriteUnknownAddr();
+    static void NoteSystemMemoryRead(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_ADDRESS size);
+    static void NoteSystemMemoryWrite(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_ADDRESS size);
+    static void NoteSystemMemoryWriteUnknownAddr(CONTEXT_ID ctxId);
 
-    void SystemMemoryRef(MEM_ADDRESS addr, UINT64 size, bool isWrite);
-    void InvalidateAllCaches();
+    void SystemMemoryRef(CONTEXT_ID ctxId, MEM_ADDRESS addr, UINT64 size, bool isWrite);
+    void InvalidateAllCaches(CONTEXT_ID ctxId);
 };
 
 // server stub

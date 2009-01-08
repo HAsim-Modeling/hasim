@@ -55,34 +55,44 @@ import Vector::*;
 // This specified number of low bits are prepanded to cache tags so
 // addresses match those seen in other modules.
 //
+// t_CACHE_REF_INFO is metadata associated with a reference.  Metadata is
+// passed to the backing store for fills.  The metadata is not stored in
+// the cache.
+//
 interface HASIM_CACHE#(type t_CACHE_ADDR,
                        type t_CACHE_DATA,
+                       type t_CACHE_REF_INFO,
                        numeric type nSets,
                        numeric type nWays,
                        numeric type nTagExtraLowBits);
 
     // Read a full line.  Read from backing store if not already cached.
-    method Action readReq(t_CACHE_ADDR addr);
+    method Action readReq(t_CACHE_ADDR addr, t_CACHE_REF_INFO refInfo);
     method ActionValue#(t_CACHE_DATA) readResp();
     // Predicate to test whether a read response is ready this cycle.
     method Bool readRespReady();
     
     // Write a full line.  No response.
-    method Action writeReq(t_CACHE_ADDR addr, t_CACHE_DATA val);
+    method Action writeReq(t_CACHE_ADDR addr,
+                           t_CACHE_DATA val,
+                           t_CACHE_REF_INFO refInfo);
     
     // Write a partial line.  Writes only where mask is 1.  Read line from backing
     // store before write if not already cached.  No response.
-    method Action writeMaskedReq(t_CACHE_ADDR addr, t_CACHE_DATA val, t_CACHE_DATA mask);
+    method Action writeMaskedReq(t_CACHE_ADDR addr,
+                                 t_CACHE_DATA val,
+                                 t_CACHE_DATA mask,
+                                 t_CACHE_REF_INFO refInfo);
 
     // Invalidate & flush requests.  Both write dirty lines back.  Invalidate drops
     // the line from the cache.  Flush keeps the line in the cache.  A response
     // is returned for invalOrFlushWait iff sendAck is true.
-    method Action invalReq(t_CACHE_ADDR addr, Bool sendAck);
-    method Action flushReq(t_CACHE_ADDR addr, Bool sendAck);
+    method Action invalReq(t_CACHE_ADDR addr, Bool sendAck, t_CACHE_REF_INFO refInfo);
+    method Action flushReq(t_CACHE_ADDR addr, Bool sendAck, t_CACHE_REF_INFO refInfo);
     method Action invalOrFlushWait();
 
     // Invalidate entire cache.
-    method Action invalAllReq();
+    method Action invalAllReq(t_CACHE_REF_INFO refInfo);
     method Action invalAllWait();
     
     // Write back or write through cache?  Default is write back.
@@ -100,18 +110,25 @@ endinterface: HASIM_CACHE
 // The caller must provide an instance of the HASIM_CACHE_SOURCE_DATA interface
 // so the cache can read and write data from the next level in the hierarchy.
 //
+// See HASIM_CACHE interface for description of refInfo.
+//
 interface HASIM_CACHE_SOURCE_DATA#(type t_CACHE_ADDR,
-                                   type t_CACHE_DATA);
+                                   type t_CACHE_DATA,
+                                   type t_CACHE_REF_INFO);
 
     // Read request and response with data
-    method Action readReq(t_CACHE_ADDR addr);
+    method Action readReq(t_CACHE_ADDR addr, t_CACHE_REF_INFO refInfo);
     method ActionValue#(t_CACHE_DATA) readResp();
     
     // Asynchronous write (no response)
-    method Action write(t_CACHE_ADDR addr, t_CACHE_DATA val);
+    method Action write(t_CACHE_ADDR addr,
+                        t_CACHE_DATA val,
+                        t_CACHE_REF_INFO refInfo);
     
     // Synchronous write.  writeSyncWait() blocks until the response arrives.
-    method Action writeSyncReq(t_CACHE_ADDR addr, t_CACHE_DATA val);
+    method Action writeSyncReq(t_CACHE_ADDR addr,
+                               t_CACHE_DATA val,
+                               t_CACHE_REF_INFO refInfo);
     method Action writeSyncWait();
 
 endinterface: HASIM_CACHE_SOURCE_DATA
@@ -237,12 +254,13 @@ HASIM_CACHE_DATA_IDX#(numeric type nWays, type t_CACHE_SET_IDX)
 // Set associative cache
 //
 
-module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_DATA) sourceData,
+module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_DATA, t_CACHE_REF_INFO) sourceData,
                                        HASIM_CACHE_STATS stats,
                                        DEBUG_FILE debugLog)
     // interface:
-        (HASIM_CACHE#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_DATA, nSets, nWays, nTagExtraLowBits))
+        (HASIM_CACHE#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_DATA, t_CACHE_REF_INFO, nSets, nWays, nTagExtraLowBits))
     provisos (Bits#(t_CACHE_DATA, t_CACHE_DATA_SZ),
+              Bits#(t_CACHE_REF_INFO, t_CACHE_REF_INFO_SZ),
               Log#(nWays, TLog#(nWays)),
               // Silly, but required by compiler...
               Add#(t_CACHE_ADDR_SZ, nTagExtraLowBits, TAdd#(t_CACHE_ADDR_SZ, nTagExtraLowBits)),
@@ -283,6 +301,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     Reg#(t_CACHE_SET_IDX)       reqInfo_set <- mkRegU();
     Reg#(t_CACHE_WRITE_INFO)    reqInfo_wInfo <- mkRegU();  // Valid only for writes
     Reg#(Bool)                  reqInfo_ack <- mkRegU();    // Inval request sends response?
+    Reg#(t_CACHE_REF_INFO)      reqInfo_refInfo <- mkRegU();
 
     // Meta data becomes part of the state at the start of read and invalidate processing.
     Reg#(t_METADATA_VECTOR)     reqInfo_metaData <- mkRegU();
@@ -716,7 +735,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         Bool need_backing_data = (is_read || reqInfo_wInfo.isMasked);
         if (need_backing_data)
         begin
-            sourceData.readReq(addr);
+            sourceData.readReq(addr, reqInfo_refInfo);
         end
 
         if (is_read)
@@ -772,12 +791,12 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         begin
             // Invalidating whole cache.  Just write out the line without
             // a state change.
-            sourceData.write(addr, flushData);
+            sourceData.write(addr, flushData, reqInfo_refInfo);
         end
         else if (reqInfo_oper == HCOP_READ || reqInfo_oper == HCOP_WRITE)
         begin
             // Normal flush before a fill
-            sourceData.write(addr, flushData);
+            sourceData.write(addr, flushData, reqInfo_refInfo);
 
             // Pass the request on to the fill stage
             if (reqInfo_oper == HCOP_READ)
@@ -789,7 +808,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         begin
             // Flush for invalidate request.  Use sync method to know the
             // data arrived.
-            sourceData.writeSyncReq(addr, flushData);
+            sourceData.writeSyncReq(addr, flushData, reqInfo_refInfo);
             curState <= HCST_FLUSH_SYNC_PENDING;
         end
         
@@ -939,7 +958,9 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     //     the internal data structure for managing a request.  It also starts
     //     the first step:  reading metadata from BRAM.
     //
-    function ActionValue#(t_CACHE_SET_IDX) genRequest(HASIM_CACHE_OPERATION oper, t_CACHE_ADDR addr);
+    function ActionValue#(t_CACHE_SET_IDX) genRequest(HASIM_CACHE_OPERATION oper,
+                                                      t_CACHE_ADDR addr,
+                                                      t_CACHE_REF_INFO refInfo);
     actionvalue
 
         curState <= HCST_START1_REQ;
@@ -949,6 +970,8 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         reqInfo_oper <= oper;
         reqInfo_addr <= addr;
         reqInfo_set <= set;
+
+        reqInfo_refInfo <= refInfo;
 
         // This field is meaningful only for flush/inval requests but it is
         // harmless to set it unconditionally.  Capacity evictions will update
@@ -970,8 +993,8 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     //
     // readReq -- Read a full line.  Fetch from backing store if not in the cache.
     //
-    method Action readReq(t_CACHE_ADDR addr) if (curState == HCST_IDLE && !invalidatingAll);
-        let set <- genRequest(HCOP_READ, addr);
+    method Action readReq(t_CACHE_ADDR addr, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE && !invalidatingAll);
+        let set <- genRequest(HCOP_READ, addr, refInfo);
         debugLog.record($format("  New request: READ addr=0x%x, set=0x%x", debugAddr(addr), set));
     endmethod
 
@@ -988,8 +1011,8 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     //
     // writeReq -- Write a full line.
     //
-    method Action writeReq(t_CACHE_ADDR addr, t_CACHE_DATA val) if (curState == HCST_IDLE && !invalidatingAll);
-        let set <- genRequest(HCOP_WRITE, addr);
+    method Action writeReq(t_CACHE_ADDR addr, t_CACHE_DATA val, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE && !invalidatingAll);
+        let set <- genRequest(HCOP_WRITE, addr, refInfo);
 
         t_CACHE_WRITE_INFO wInfo;
         wInfo.val = val;
@@ -1005,8 +1028,8 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     // writeMaskedReq --
     //     Write a partial line.  Fetch from backing store if not in the cache.
     //
-    method Action writeMaskedReq(t_CACHE_ADDR addr, t_CACHE_DATA val, t_CACHE_DATA mask) if (curState == HCST_IDLE && !invalidatingAll);
-        let set <- genRequest(HCOP_WRITE, addr);
+    method Action writeMaskedReq(t_CACHE_ADDR addr, t_CACHE_DATA val, t_CACHE_DATA mask, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE && !invalidatingAll);
+        let set <- genRequest(HCOP_WRITE, addr, refInfo);
 
         t_CACHE_WRITE_INFO wInfo;
         wInfo.val = val;
@@ -1021,8 +1044,8 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     //
     // invalReq -- Invalidate (remove) a line from the cache
     //
-    method Action invalReq(t_CACHE_ADDR addr, Bool sendAck) if (curState == HCST_IDLE && !invalidatingAll);
-        let set <- genRequest(HCOP_INVAL, addr);
+    method Action invalReq(t_CACHE_ADDR addr, Bool sendAck, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE && !invalidatingAll);
+        let set <- genRequest(HCOP_INVAL, addr, refInfo);
         reqInfo_ack <= sendAck;
         debugLog.record($format("  New request: INVAL addr=0x%x, set=0x%x", debugAddr(addr), set));
     endmethod
@@ -1032,8 +1055,8 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     // flushReq --
     //     Flush (write back) a line from the cache but keep the line cached.
     //
-    method Action flushReq(t_CACHE_ADDR addr, Bool sendAck) if (curState == HCST_IDLE && !invalidatingAll);
-        let set <- genRequest(HCOP_FLUSH_DIRTY, addr);
+    method Action flushReq(t_CACHE_ADDR addr, Bool sendAck, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE && !invalidatingAll);
+        let set <- genRequest(HCOP_FLUSH_DIRTY, addr, refInfo);
         reqInfo_ack <= sendAck;
         debugLog.record($format("  New request: FLUSH addr=0x%x, set=0x%x", debugAddr(addr), set));
     endmethod
@@ -1050,7 +1073,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     //
     // invalAllReq -- Invalidate entire cache.  Write back dirty lines.
     //
-    method Action invalAllReq() if (curState == HCST_IDLE && !invalidatingAll);
+    method Action invalAllReq(t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE && !invalidatingAll);
         debugLog.record($format("  New request: INVAL ALL"));
 
         if (cacheIsEmpty)
@@ -1060,6 +1083,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         else
         begin
             cacheMeta.readReq(0);
+            reqInfo_refInfo <= refInfo;
             invalidatingAll <= True;
             cacheIsEmpty <= True;
         end

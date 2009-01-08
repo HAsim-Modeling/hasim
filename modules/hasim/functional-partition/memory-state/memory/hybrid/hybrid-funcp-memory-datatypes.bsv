@@ -63,6 +63,7 @@ typedef Vector#(CACHELINE_WORDS, MEM_VALUE) MEM_CACHELINE;
 
 typedef struct
 {
+    CONTEXT_ID  contextId;
     MEM_ADDRESS addr;
     Bool        iStream;        // True iff load is fetching an instruction
 }
@@ -71,6 +72,7 @@ MEM_LOAD_INFO
 
 typedef struct
 {
+    CONTEXT_ID  contextId;
     MEM_ADDRESS addr;
     MEM_VALUE   val;
 }
@@ -80,6 +82,7 @@ MEM_STORE_INFO
 
 typedef struct
 {
+    CONTEXT_ID  contextId;
     MEM_ADDRESS addr;
     MEM_CACHELINE val;
 }
@@ -89,11 +92,10 @@ MEM_STORE_CACHELINE_INFO
 
 typedef struct
 {
-    Bool onlyFlush;             // Don't have to invalidate -- just flush stores
-    UInt#(8) nLines;
+    CONTEXT_ID  contextId;
     MEM_ADDRESS addr;
 }
-MEM_INVAL_CACHELINE_INFO
+MEM_INVAL_INFO
     deriving (Eq, Bits);
 
 
@@ -102,23 +104,27 @@ typedef union tagged
     MEM_LOAD_INFO  MEM_LOAD;
     MEM_STORE_INFO MEM_STORE;
 
-    MEM_ADDRESS MEM_LOAD_CACHELINE;
+    MEM_LOAD_INFO MEM_LOAD_CACHELINE;
     MEM_STORE_CACHELINE_INFO MEM_STORE_CACHELINE;      // Store with no ACK from server
     MEM_STORE_CACHELINE_INFO MEM_STORE_CACHELINE_SYNC; // Store with ACK from server
 
-    MEM_ADDRESS MEM_INVALIDATE_CACHELINE;
-    MEM_ADDRESS MEM_FLUSH_CACHELINE;
+    MEM_INVAL_INFO MEM_INVALIDATE_CACHELINE;
+    MEM_INVAL_INFO MEM_FLUSH_CACHELINE;
 }
 MEM_REQUEST
     deriving (Eq, Bits);
 
 
-function MEM_REQUEST funcpMemLoadReq(MEM_ADDRESS addr, Bool iStream);
-    return tagged MEM_LOAD MEM_LOAD_INFO { addr: addr, iStream: iStream };
+function MEM_REQUEST funcpMemLoadReq(CONTEXT_ID ctxId, MEM_ADDRESS addr, Bool iStream);
+    return tagged MEM_LOAD MEM_LOAD_INFO { contextId: ctxId, addr: addr, iStream: iStream };
 endfunction
 
-function MEM_REQUEST funcpMemStoreReq(MEM_ADDRESS addr, MEM_VALUE value);
-    return tagged MEM_STORE MEM_STORE_INFO { addr: addr, val: value };
+function MEM_REQUEST funcpMemLoadCacheLineReq(CONTEXT_ID ctxId, MEM_ADDRESS addr);
+    return tagged MEM_LOAD_CACHELINE MEM_LOAD_INFO { contextId: ctxId, addr: addr, iStream: False };
+endfunction
+
+function MEM_REQUEST funcpMemStoreReq(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_VALUE value);
+    return tagged MEM_STORE MEM_STORE_INFO { contextId: ctxId, addr: addr, val: value };
 endfunction
 
 
@@ -129,6 +135,20 @@ typedef union tagged
     Bool          MEM_REPLY_STORE_CACHELINE_ACK;
 }
 MEM_REPLY
+    deriving (Eq, Bits);
+
+
+//
+// Message coming from software to FPGA-side functional caches.
+//
+typedef struct
+{
+    CONTEXT_ID  contextId;
+    Bool onlyFlush;             // Don't have to invalidate -- just flush stores
+    UInt#(8) nLines;
+    MEM_ADDRESS addr;
+}
+MEM_INVAL_FUNCP_CACHE_SERVICE_INFO
     deriving (Eq, Bits);
 
 
@@ -160,42 +180,4 @@ MEM_VTOP_REPLY
 
 // ***** RRR Datatype definitions *****
 
-//
-// Until RRR can deal with complex types that aren't aligned on 32 bit boundaries
-// we will use these types for passing data between HW and SW.  The types above
-// are compact for use on the FPGA.  The types below are expanded to simplify
-// data transfer.
-//
-
 typedef Bit#(64) MEM_ADDRESS_RRR;
-
-typedef struct
-{
-    MEM_ADDRESS_RRR addr;
-    MEM_VALUE val;
-}
-MEM_STORE_INFO_RRR
-    deriving
-        (Eq, Bits);
-
-
-typedef struct
-{
-    MEM_ADDRESS_RRR addr;
-    MEM_CACHELINE val;
-}
-MEM_STORE_CACHELINE_INFO_RRR
-    deriving
-        (Eq, Bits);
-
-
-typedef struct
-{
-    Bit#(23) unused;
-    Bool onlyFlush;             // Don't have to invalidate -- just flush stores
-    UInt#(8) nLines;
-    MEM_ADDRESS_RRR addr;
-}
-MEM_INVAL_CACHELINE_INFO_RRR
-    deriving
-        (Eq, Bits);

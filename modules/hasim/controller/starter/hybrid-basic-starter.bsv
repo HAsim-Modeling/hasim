@@ -110,7 +110,7 @@ module [HASIM_MODULE] mkStarter(Starter);
 
     // Heartbeat
     method Action makeRequest_Heartbeat(CONTEXT_ID ctxId, Bit#(64) fpga_cycles, Bit#(32) model_cycles, Bit#(32) instr_commits);
-        client_stub.makeRequest_Heartbeat(contextIdRRR(ctxId), fpga_cycles, model_cycles, instr_commits);
+        client_stub.makeRequest_Heartbeat(contextIdToRRR(ctxId), fpga_cycles, model_cycles, instr_commits);
     endmethod
 
 endmodule

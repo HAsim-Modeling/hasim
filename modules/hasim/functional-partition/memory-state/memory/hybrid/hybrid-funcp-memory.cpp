@@ -131,12 +131,13 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
     {
       case CMD_LOAD:
         addr = MEM_ADDRESS(req->ExtractUINT64());
+        ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
 
         // free
         req->Delete();
 
-        memory->Read(0, addr, sizeof(MEM_VALUE), &data);
-        T1("\tfuncp_memory: LD (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] -> " << fmt_data(data));
+        memory->Read(ctx_id, addr, sizeof(MEM_VALUE), &data);
+        T1("\tfuncp_memory: LD CTX " << UINT64(ctx_id) << " (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] -> " << fmt_data(data));
 
         // create response message
         resp = UMF_MESSAGE_CLASS::New();
@@ -151,14 +152,15 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
 
       case CMD_LOAD_CACHELINE:
         addr = MEM_ADDRESS(req->ExtractUINT64());
+        ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
 
         // free
         req->Delete();
 
-        memory->Read(0, addr, sizeof(MEM_CACHELINE), &line);
+        memory->Read(ctx_id, addr, sizeof(MEM_CACHELINE), &line);
         if (TRACING(1))
         {
-            T1("\tfuncp_memory: LDline (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
+            T1("\tfuncp_memory: LDline CTX " << UINT64(ctx_id) << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
             for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
                 MEM_VALUE v = ((MEM_VALUE *)&line) [i];
                 T1("\t\t" << fmt_data(v));
@@ -180,9 +182,10 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
         // extract data
         data = MEM_VALUE(req->ExtractUINT(sizeof(MEM_VALUE)));
         addr = MEM_ADDRESS(req->ExtractUINT64());
+        ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
 
-        T1("\tfuncp_memory: ST (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] <- " << fmt_data(data));
-        memory->Write(0, addr, sizeof(MEM_VALUE), &data);
+        T1("\tfuncp_memory: ST CTX " << UINT64(ctx_id) << " (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] <- " << fmt_data(data));
+        memory->Write(ctx_id, addr, sizeof(MEM_VALUE), &data);
 
         // free
         req->Delete();
@@ -199,17 +202,18 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
         // extract data
         req->ExtractBytes(sizeof(MEM_CACHELINE), (unsigned char *) &line);
         addr = MEM_ADDRESS(req->ExtractUINT64());
+        ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
 
         if (TRACING(1))
         {
-            T1("\tfuncp_memory: STline" << (need_response ? " SYNC " : "") << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
+            T1("\tfuncp_memory: STline CTX " << UINT64(ctx_id) << (need_response ? " SYNC" : "") << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
             for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
                 MEM_VALUE v = ((MEM_VALUE *)&line) [i];
                 T1("\t\t" << fmt_data(v));
             }
         }
 
-        memory->Write(0, addr, sizeof(MEM_CACHELINE), &line);
+        memory->Write(ctx_id, addr, sizeof(MEM_CACHELINE), &line);
 
         // free
         req->Delete();
@@ -293,22 +297,22 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
 //***********************************************************************
 
 void
-FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryWriteUnknownAddr()
+FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryWriteUnknownAddr(CONTEXT_ID ctxId)
 {
-    instance.InvalidateAllCaches();
+    instance.InvalidateAllCaches(ctxId);
 }
 
 void
-FUNCP_MEMORY_SERVER_CLASS::InvalidateAllCaches()
+FUNCP_MEMORY_SERVER_CLASS::InvalidateAllCaches(CONTEXT_ID ctxId)
 {
     T1("\tfuncp_memory: INVAL ALL");
 
     // create message for RRR client
     UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
-    msg->SetLength(4);
+    msg->SetLength(sizeof(CONTEXT_ID_RRR));
     msg->SetServiceID(SERVICE_ID);
     msg->SetMethodID(METHOD_ID_INVALIDATE_ALL);
-    msg->AppendUINT32(0);
+    msg->AppendCONTEXT_ID_RRR(ctxId);
 
     UMF_MESSAGE resp = RRRClient->MakeRequest(msg);
 
@@ -318,20 +322,20 @@ FUNCP_MEMORY_SERVER_CLASS::InvalidateAllCaches()
 
 
 void
-FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryRead(MEM_ADDRESS addr, MEM_ADDRESS size)
+FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryRead(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_ADDRESS size)
 {
-    instance.SystemMemoryRef(addr, size, false);
+    instance.SystemMemoryRef(ctxId, addr, size, false);
 }
 
 void
-FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryWrite(MEM_ADDRESS addr, MEM_ADDRESS size)
+FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryWrite(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_ADDRESS size)
 {
 //    NoteSystemMemoryWriteUnknownAddr();
-    instance.SystemMemoryRef(addr, size, true);
+    instance.SystemMemoryRef(ctxId, addr, size, true);
 }
 
 void
-FUNCP_MEMORY_SERVER_CLASS::SystemMemoryRef(MEM_ADDRESS addr, UINT64 size, bool isWrite)
+FUNCP_MEMORY_SERVER_CLASS::SystemMemoryRef(CONTEXT_ID ctxId, MEM_ADDRESS addr, UINT64 size, bool isWrite)
 {
     T1("\tfuncp_memory: Note system memory " << (isWrite ? "WRITE" : "READ") << " (Addr=" << fmt_addr(addr) << " bytes=" << fmt_addr(size) << ")");
 
@@ -349,19 +353,7 @@ FUNCP_MEMORY_SERVER_CLASS::SystemMemoryRef(MEM_ADDRESS addr, UINT64 size, bool i
     //
     while (nLines > 0)
     {
-        UINT8 tLines = (nLines < 0xffff) ? nLines : 0xffff;
-
-        // create message for RRR client
-        UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
-        msg->SetLength(12);
-        msg->SetServiceID(SERVICE_ID);
-        msg->SetMethodID(METHOD_ID_INVALIDATE);
-        msg->AppendUINT64(addr);
-
-        // Number of lines is encoded as a byte, but passed as 32 bits to keep
-        // RRR happy.  Whether only flushing is required (without invalidating)
-        // is encoded in bit 8.
-        UINT32 lines_and_flush_bit = tLines;
+        UINT8 tLines = (nLines < 0xff) ? nLines : 0xff;
 
         if (isWrite)
         {
@@ -371,12 +363,18 @@ FUNCP_MEMORY_SERVER_CLASS::SystemMemoryRef(MEM_ADDRESS addr, UINT64 size, bool i
         else
         {
             // Just flush pending stores for reads.  No need to invalidate.
-            lines_and_flush_bit |= 0x100;       // Only flush -- no invalidate
             T1("\tfuncp_memory: FLUSH Addr=" << fmt_addr(addr) << " nLines=" << UINT32(tLines));
         }
 
-        // Pass 8 bit tLines as 32 bits to keep channel I/O happy
-        msg->AppendUINT32(lines_and_flush_bit);
+        // create message for RRR client
+        UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
+        msg->SetLength(10 + sizeof(CONTEXT_ID_RRR));
+        msg->SetServiceID(SERVICE_ID);
+        msg->SetMethodID(METHOD_ID_INVALIDATE);
+        msg->AppendUINT8(isWrite ? 0 : 0xff);
+        msg->AppendUINT8(tLines);
+        msg->AppendUINT64(addr);
+        msg->AppendCONTEXT_ID_RRR(ctxId);
 
         UMF_MESSAGE resp = RRRClient->MakeRequest(msg);
 

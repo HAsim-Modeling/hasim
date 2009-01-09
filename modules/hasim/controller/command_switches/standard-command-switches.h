@@ -20,6 +20,7 @@ class GLOBAL_ARGS_CLASS
     bool ShowFrontPanel() const { return showFrontPanel; };
     bool ShowLEDsOnStdOut() const { return showLEDsOnStdOut; };
 
+    UINT32 NumContexts() const { return numContexts; };
     UINT64 StopCycle() const { return stopCycle; };
     UINT64 ProgressMsgInterval() const { return progressMsgInterval; };
 
@@ -40,6 +41,7 @@ class GLOBAL_ARGS_CLASS
     char* workload;             // Name of the workload (affects stats file name)
     UINT64 stopCycle;           // Cycle on which to force simulation to end
     UINT64 progressMsgInterval;
+    UINT32 numContexts;         // Hardware contexts to simulate
     bool showFrontPanel;
     bool showLEDsOnStdOut;
 

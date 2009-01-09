@@ -22,6 +22,7 @@
 GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
     modelDir("."),
     workload(APM_NAME),
+    numContexts(1),
     stopCycle(0),
     progressMsgInterval(1),
     showFrontPanel(false),
@@ -30,6 +31,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
     enum 
     {
         OPT_BLUESIM_ARGS,
+        OPT_CONTEXTS,
         OPT_CYCLES,
         OPT_FUNCP,
         OPT_HELP,
@@ -57,6 +59,7 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
         static struct option long_options[] =
         {
             {"bluesimargs", required_argument, NULL, OPT_BLUESIM_ARGS},
+            {"contexts", required_argument, NULL, OPT_CONTEXTS},
             {"cycles", required_argument, NULL, OPT_CYCLES},
             {"funcp", required_argument, NULL, OPT_FUNCP},
             {"help", no_argument, NULL, OPT_HELP},
@@ -82,6 +85,10 @@ GLOBAL_ARGS_CLASS::GLOBAL_ARGS_CLASS(int argc, char *argv[]) :
         {
           case OPT_BLUESIM_ARGS:
             InitArgcArgvPair(optarg, argv[0], bluesimArgc, bluesimArgv);
+            break;
+
+          case OPT_CONTEXTS:
+            numContexts = atoi_general_unsigned(optarg);
             break;
 
           case OPT_CYCLES:
@@ -357,6 +364,7 @@ GLOBAL_ARGS_CLASS::ShowArgsHelp(bool fromRunScript)
     fprintf(stderr, "   [--bluesim=\"<args>\"]    Arguments to Bluesim\n");
     fprintf(stderr, "   [--listparam]           List dynamic parameters\n");
     fprintf(stderr, "   [--param NAME=VALUE]    Set a dynamic parameter\n");
+    fprintf(stderr, "   [--contexts=<n>]        Number of contexts to simulate (cores or hardware threads)\n");
     fprintf(stderr, "   [--cycles=<n>]          Stop simulation after n cycles\n");
     fprintf(stderr, "   [--pc=<interval>]       Progress message (hearbeat) interval.\n");
     fprintf(stderr, "                           Messages are triggered by heartbeats that arrive\n");

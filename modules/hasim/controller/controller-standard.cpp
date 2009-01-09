@@ -4,6 +4,7 @@
 
 #include "controller-standard.h"
 #include "asim/provides/starter.h"
+#include "asim/provides/command_switches.h"
 
 using namespace std;
 
@@ -74,7 +75,10 @@ CONTROLLER_CLASS::Main()
     PARAMS_CONTROLLER_CLASS::GetInstance()->SendAllParams();
 
     // Tell model which contexts are enabled.  Clearly this will need to change.
-    STARTER_CLASS::GetInstance()->EnableContext(0);
+    for (int c = 0; c < globalArgs->NumContexts(); c++)
+    {
+        STARTER_CLASS::GetInstance()->EnableContext(c);
+    }
 
     // send "start" signal to the hardware partition.
     STARTER_CLASS::GetInstance()->Run();

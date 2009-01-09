@@ -29,8 +29,6 @@ parser.add_option("--output", default="",
                   help="Redirect stdout to a file.")
 parser.add_option("--errout", default="",
                   help="Redirect stdout to a file.")
-parser.add_option("--bench", action="store", type="string", default=None,
-                  help="base names for --take-checkpoint and --checkpoint-restore")
 parser.add_option("-S", "--simpoint", action="store_true", default=False,
                    help="""Use workload simpoints as an instruction offset for
 --checkpoint-restore or --take-checkpoint.""")
@@ -43,29 +41,6 @@ execfile(os.path.join(config_root, "common", "Options.py"))
 if args:
     print "Error: script doesn't take any positional arguments"
     sys.exit(1)
-
-if options.bench:
-    try:
-        if m5.build_env['TARGET_ISA'] != 'alpha':
-            print >>sys.stderr, "Simpoints code only works for Alpha ISA at this time"
-            sys.exit(1)
-        exec("workload = %s('alpha', 'tru64', 'ref')" % options.bench)
-        process = workload.makeLiveProcess()
-    except:
-        print >>sys.stderr, "Unable to find workload for %s" % options.bench
-        sys.exit(1)
-else:
-    process = LiveProcess()
-    process.executable = options.cmd
-    process.cmd = [options.cmd] + options.options.split()
-
-
-if options.input != "":
-    process.input = options.input
-if options.output != "":
-    process.output = options.output
-if options.errout != "":
-    process.errout = options.errout
 
 if options.detailed:
     #check for SMT workload
@@ -111,6 +86,17 @@ system.physmem.port = system.membus.port
 
 for i in xrange(np):
     system.cpu[i].connectMemPorts(system.membus)
+
+    process = LiveProcess()
+    process.executable = options.cmd
+    process.cmd = [options.cmd] + options.options.split()
+    if options.input != "":
+        process.input = options.input
+    if options.output != "":
+        process.output = options.output
+    if options.errout != "":
+        process.errout = options.errout
+
     system.cpu[i].workload = process
 
     if options.fastmem:

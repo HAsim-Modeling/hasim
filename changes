@@ -16782,3 +16782,20 @@ Directory config/pm/hasim/submodels/common
 
 - Clean up the hybrid memory RRR interface, taking advantage of the new
   ability to use multiple parameters.
+
+----------
+mcadler     Date: Thu Jan  8 19:38:54 EST 2009  CSN: CSN-hasim-573
+                  Fri Jan  9 00:38:54 UTC 2009
+
+
+Directory tools/scripts/bmark/m5_configs
+ se.py                     Locally Modified          572 
+
+Directory modules/hasim/controller
+ controller-standard.cpp   Locally Modified          572 
+
+Directory modules/hasim/controller/command_switches
+ standard-command-switches.cpp Locally Modified          572 
+ standard-command-switches.h Locally Modified          572 
+
+Add an option for the number of contexts.

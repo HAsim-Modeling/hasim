@@ -16799,3 +16799,13 @@ Directory modules/hasim/controller/command_switches
  standard-command-switches.h Locally Modified          572 
 
 Add an option for the number of contexts.
+
+----------
+aparasha    Date: Fri Jan  9 19:05:51 EST 2009  CSN: CSN-hasim-574
+                  Sat Jan 10 00:05:51 UTC 2009
+
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_htg.apm           Locally Modified          573 
+
+removed non-existent AWB parameter MODEL_CLOCK from APM.

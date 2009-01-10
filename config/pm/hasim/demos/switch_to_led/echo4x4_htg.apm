@@ -39,7 +39,6 @@ fpgaenv=FPGA Environment
 
 [HAsim Hybrid Model Foundation/Params]
 MAKE_ALL_TARGET=bit
-MODEL_CLOCK_FREQ=100
 
 [HAsim Hybrid Model Foundation]
 File=modules/model/hasim_model.awb

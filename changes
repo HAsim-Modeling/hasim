@@ -16809,3 +16809,44 @@ Directory config/pm/hasim/demos/switch_to_led
  echo4x4_htg.apm           Locally Modified          573 
 
 removed non-existent AWB parameter MODEL_CLOCK from APM.
+
+----------
+mcadler     Date: Mon Jan 12 09:09:44 EST 2009  CSN: CSN-hasim-575
+                  Mon Jan 12 14:09:44 UTC 2009
+
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          574 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          574 
+ regstate-data-free-physical-regs.bsv Locally Modified          574 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.awb         Locally Modified          574 
+ funcp-tlb-std.bsv         Locally Modified          574 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.awb Locally Modified          574 
+ memstate-cache-set-assoc.bsv Locally Modified          574 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          574 
+ hybrid-funcp-memory.awb   Locally Modified          574 
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.awb      Locally Modified          574 
+
+Directory modules/hasim/util/cache
+ hasim-cache.bsv           Locally Modified          574 
+
+- Fixed scoreboard rewind logic to change alloc bits for just the context being
+  rewound.  Reorganized the alloc bits into two vector levels to make it clear
+  to the compiler which bits may change.
+- Number of physical registers is now an AWB parameter (global).
+- Changed functional TLB cache and memory cache size specifiers to a number of
+  bits in the index, since the sizes must be powers of 2.  Also made them global.
+- Change the FMR computation for the all contexts summary.  Made the divisor the
+  total cycles simulated across all contexts.
+- Removed some old AWB size specifications for RRR parameters that are no longer
+  needed.

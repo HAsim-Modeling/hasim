@@ -13,5 +13,5 @@
 %param --dynamic FUNCP_MEMCACHE_ENABLE     1   "Enable the functional partition's memory cache"
 %param --dynamic FUNCP_MEMCACHE_WRITE_BACK 1   "1 for write-back, 0 for write-through"
 
-%param FUNCP_MEMCACHE_SETS     2048    "Number of sets in the functional memory cache"
-%param FUNCP_MEMCACHE_WAYS     4       "Ways in each functional memory cache set"
+%param --global FUNCP_MEMCACHE_SET_INDEX_BITS  11  "Set index bits in the functional memory cache"
+%param          FUNCP_MEMCACHE_WAYS            4   "Ways in each functional memory cache set"

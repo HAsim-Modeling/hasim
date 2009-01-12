@@ -110,6 +110,8 @@ FUNCP_TLB_TYPE
 //
 // ===================================================================
 
+typedef TExp#(`FUNCP_TLB_CACHE_SET_INDEX_BITS) FUNCP_TLB_CACHE_SETS;
+
 //
 // FUNCP_TLB --
 //     Interface to a single TLB (instruction or data).
@@ -533,7 +535,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     HASIM_CACHE#(FUNCP_L2TLB_RAW_IDX,
                  FUNCP_L2TLB_ENTRY,
                  Bool,
-                 `FUNCP_TLB_CACHE_SETS,
+                 FUNCP_TLB_CACHE_SETS,
                  `FUNCP_TLB_CACHE_WAYS,
                  `FUNCP_ISA_PAGE_SHIFT) cache <- mkCacheSetAssoc(vtopIfc, statIfc, debugLog);
 

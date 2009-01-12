@@ -32,7 +32,7 @@ import Vector::*;
 
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/fpga_components.bsh"
-
+`include "asim/provides/funcp_base_types.bsh"
 `include "asim/provides/hasim_isa.bsh"
 
 // Dictionary includes
@@ -113,10 +113,10 @@ module [HASIM_MODULE] mkFUNCP_Freelist#(String debugLogPrefix)
     BRAM#(FUNCP_PHYSICAL_REG_INDEX, FUNCP_PHYSICAL_REG_INDEX) fl <- mkBRAMInitializedWith(initialMapping);
 
     // The read pointer is the next register to allocate.
-    COUNTER#(FUNCP_PHYSICAL_REG_INDEX_SIZE) flRead   <- mkLCounter(pack(initFL));
+    COUNTER#(`FUNCP_PHYSICAL_REG_INDEX_BITS) flRead   <- mkLCounter(pack(initFL));
 
     // The write pointer is the next register to overwrite.
-    COUNTER#(FUNCP_PHYSICAL_REG_INDEX_SIZE) flWrite  <- mkLCounter(0); 
+    COUNTER#(`FUNCP_PHYSICAL_REG_INDEX_BITS) flWrite  <- mkLCounter(0); 
 
     // We are empty if the write equals the read.
     Bool empty = flRead.value() == flWrite.value();

@@ -261,9 +261,16 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
         (HASIM_CACHE#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_DATA, t_CACHE_REF_INFO, nSets, nWays, nTagExtraLowBits))
     provisos (Bits#(t_CACHE_DATA, t_CACHE_DATA_SZ),
               Bits#(t_CACHE_REF_INFO, t_CACHE_REF_INFO_SZ),
-              Log#(nWays, TLog#(nWays)),
+
+              // The interface allows for numbers of sets and ways that aren't
+              // powers of 2, but the implementation currently does not.  Enforce
+              // powers of 2 here.
+              Add#(nSets, 0, TExp#(TLog#(nSets))),
+              Add#(nWays, 0, TExp#(TLog#(nWays))),
+
               // Silly, but required by compiler...
               Add#(t_CACHE_ADDR_SZ, nTagExtraLowBits, TAdd#(t_CACHE_ADDR_SZ, nTagExtraLowBits)),
+              Log#(nWays, TLog#(nWays)),
 
               Alias#(HASIM_CACHE_SET_IDX#(nSets), t_CACHE_SET_IDX),
               Bits#(t_CACHE_SET_IDX, t_CACHE_SET_IDX_SZ),

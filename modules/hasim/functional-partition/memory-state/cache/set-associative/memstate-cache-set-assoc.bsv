@@ -57,6 +57,8 @@ import Vector::*;
 `include "asim/dict/STATS_FUNCP_MEMSTATE_CACHE.bsh"
 
 
+typedef TExp#(`FUNCP_MEMCACHE_SET_INDEX_BITS) FUNCP_MEMCACHE_SETS;
+
 // Low address bits indexing base ISA data size
 typedef TLog#(TDiv#(`FUNCP_ISA_INT_REG_SIZE,8)) FUNCP_MEM_ISA_WORD_OFFSET_BITS;
 typedef Bit#(FUNCP_MEM_ISA_WORD_OFFSET_BITS)    FUNCP_MEM_ISA_WORD_OFFSET;
@@ -319,7 +321,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
     HASIM_CACHE#(FUNCP_MEM_CACHE_TAG,
                  FUNCP_MEM_CACHELINE,
                  CONTEXT_ID,
-                 `FUNCP_MEMCACHE_SETS,
+                 FUNCP_MEMCACHE_SETS,
                  `FUNCP_MEMCACHE_WAYS,
                  FUNCP_MEM_ADDR_NONTAG_BITS) cache <- mkCacheSetAssoc(funcpMemIfc.cacheIfc, statIfc, debugLog);
 

@@ -12,6 +12,3 @@
 %sources -t RRR -v PRIVATE  hybrid-funcp-memory.rrr
 
 %param FUNCP_CACHELINE_BITS 256 "Cache line size in bits"
-
-%param MEMORY_STORE_INFO_SIZE 96 "Must be 64 + FUNCP_ISA_INT_REG_SIZE."
-%param MEMORY_STORE_CACHELINE_INFO_SIZE 320 "Must be 64 + FUNCP_CACHELINE_BITS."

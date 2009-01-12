@@ -1,5 +1,3 @@
-%AWB_START
-
 %name Functional Partition Base Types
 %desc Functional Partition Base Types
 
@@ -15,4 +13,4 @@
 %param FUNCP_ISA_P_ADDR_SIZE  32    "Number of bits to address physical memory"
 %param FUNCP_ISA_PAGE_SHIFT   13    "Low 0 bits in a physical page"
 
-%AWB_END
+%param --global FUNCP_PHYSICAL_REG_INDEX_BITS  7  "Bits indexing functional physical registers"

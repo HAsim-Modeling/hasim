@@ -167,7 +167,6 @@ STARTER_SERVER_CLASS::EndSimulation(int exitValue)
     elapsed = sec + usec/1000000;
 
     UINT64 allModelCycles = 0;
-    UINT64 allModelStartCycle = 0;
     UINT64 allInstrCommits = 0;
     UINT64 allFPGACycles = 0;
     double allIPS = 0;
@@ -185,13 +184,8 @@ STARTER_SERVER_CLASS::EndSimulation(int exitValue)
         // Compute a merged summary of all contexts
         //
 
-        UINT64 m_cycles = ctxHeartbeat[c].GetModelCycles();
-        if (m_cycles > allModelCycles)
-        {
-            // Pick the context with the most cycles as the number of model cycles
-            allModelCycles = m_cycles;
-            allModelStartCycle = ctxHeartbeat[c].GetModelStartCycle();
-        }
+        allModelCycles += (ctxHeartbeat[c].GetModelCycles() -
+                           ctxHeartbeat[c].GetModelStartCycle());
 
         UINT64 fpga_cycles = ctxHeartbeat[c].GetFPGACycles();
         if (fpga_cycles > allFPGACycles)
@@ -209,10 +203,9 @@ STARTER_SERVER_CLASS::EndSimulation(int exitValue)
         cout << " (IPC=" << IoFormat::fmt(".2f", (double)allInstrCommits / (double)allModelCycles)
              << " / IPS="  << IoFormat::fmt(".2f", allIPS);
 
-        if ((allModelCycles - allModelStartCycle) > 0)
+        if (allModelCycles > 0)
         {
-            double fmr = double(allFPGACycles) /
-                         double(allModelCycles - allModelStartCycle);
+            double fmr = double(allFPGACycles) / double(allModelCycles);
             cout << " / FMR=" << IoFormat::fmt(".1f", fmr);
         }
 

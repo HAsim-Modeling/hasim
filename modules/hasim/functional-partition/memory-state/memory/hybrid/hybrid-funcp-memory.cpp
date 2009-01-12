@@ -47,12 +47,6 @@ FUNCP_MEMORY_SERVER_CLASS::FUNCP_MEMORY_SERVER_CLASS() :
 {
     SetTraceableName("funcp_memory");
 
-    ASSERT(MEMORY_STORE_INFO_SIZE == 64 + FUNCP_ISA_INT_REG_SIZE,
-           "Awb parameters are inconsistent: MEMORY_STORE_INFO_SIZE != 64 + FUNCP_ISA_INT_REG_SIZE");
-
-    ASSERT(MEMORY_STORE_CACHELINE_INFO_SIZE == 64 + FUNCP_CACHELINE_BITS,
-           "Awb parameters are inconsistent: MEMORY_STORE_CACHELINE_INFO_SIZE != 64 + FUNCP_ISA_INT_REG_SIZE");
-
     // instantiate stubs
     serverStub = new FUNCP_MEMORY_SERVER_STUB_CLASS(this);
 

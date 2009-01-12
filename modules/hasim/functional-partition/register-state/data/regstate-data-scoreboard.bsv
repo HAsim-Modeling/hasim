@@ -143,9 +143,13 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     // ***** Local State ***** //
 
-    // We keep the status bits in a register for fast pull-downs.
-    // NOTE:  This vector is over all tokens, not just live tokens
-    Reg#(Vector#(NUM_TOKENS, Bool)) alloc <- mkReg(replicate(False));
+    // Rewind operates on sets of bits within a context, so organize the
+    // alloc vector by context ID.
+    Vector#(NUM_CONTEXTS, Reg#(Vector#(NUM_TOKENS_PER_CONTEXT, Bool))) alloc = newVector();
+    for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
+    begin
+        alloc[c] <- mkReg(replicate(False));
+    end
 
     // The actual scoreboards.
     TOKEN_SCOREBOARD itr_start    <- mkLiveTokenLUTRAMU();
@@ -245,9 +249,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     // ***** Helper Functions ***** //
 
-    function Bool tokIsAllocated(CONTEXT_ID ctx_id, TOKEN_ID tok_id);
-        TOKEN_INDEX idx = tokenIndexFromIds(ctx_id, tok_id);
-        return alloc[pack(idx)];
+    function Bool tokIdxIsAllocated(TOKEN_INDEX tokIdx);
+        return alloc[tokIdx.context_id][tokIdx.token_id];
     endfunction
 
 
@@ -268,7 +271,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
         let num_in_flight = next_free_tok[ctx_id] - oldest_tok[ctx_id];
 
-        return (num_in_flight[high_bit_num] == 0 && ! tokIsAllocated(ctx_id, next_tok_alias));
+        let next_tok_idx = tokenIndexFromIds(ctx_id, next_tok_alias);
+        return (num_in_flight[high_bit_num] == 0 && ! tokIdxIsAllocated(next_tok_idx));
 
     endfunction
 
@@ -287,11 +291,11 @@ module [Connected_Module] mkFUNCP_Scoreboard
         let dtr_busy =       dtr_start.sub(t) && !dtr_finish.sub(t);
         let load_busy =     load_start.sub(t) && !load_finish.sub(t);
         let store_busy =   store_start.sub(t) && !store_finish.sub(t);
-        // It's not done committing if it's still allocated.  alloc[t] tested later.
+        // It's not done committing if it's still allocated.  alloc tested later.
         let commit_busy = commit_start.sub(t);
 
         // If it is in any macro operation it is busy.
-        return alloc[pack(t)] && (itr_busy || fet_busy || dec_busy || exe_busy || dtr_busy || load_busy || store_busy || commit_busy);
+        return tokIdxIsAllocated(t) && (itr_busy || fet_busy || dec_busy || exe_busy || dtr_busy || load_busy || store_busy || commit_busy);
 
     endfunction
 
@@ -331,10 +335,9 @@ module [Connected_Module] mkFUNCP_Scoreboard
         if (youngestDecodedTok[ctx_id] == oldest_tok[ctx_id])
             youngestDecodedTok[ctx_id] <= next_tok.sub(t);
 
+        // Update the allocated bit
+        alloc[t.context_id][t.token_id] <= False;
 
-        // Update the allocation table.
-        alloc <= update(alloc, pack(t), False);
-        
         // Record that the token has finished commit.
         num_in_commit.down();
 
@@ -349,15 +352,16 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method ActionValue#(TOKEN_INDEX) allocate(CONTEXT_ID ctx_id);
 
+        let new_tok = tokenIndexFromIds(ctx_id, next_free_tok[ctx_id]);
+
         // Assert the the token wasn't already allocated.
-        assert_token_is_not_allocated(! tokIsAllocated(ctx_id, next_free_tok[ctx_id]));
+        assert_token_is_not_allocated(! tokIdxIsAllocated(new_tok));
 
         // Assert that we haven't run out of tokens.
         assert_enough_tokens(canAllocate(ctx_id));
 
-        // Update the allocation status.    
-        let new_tok = tokenIndexFromIds(ctx_id, next_free_tok[ctx_id]);
-        alloc <= update(alloc, pack(new_tok), True);
+        // Update the allocated bit
+        alloc[new_tok.context_id][new_tok.token_id] <= True;
 
         // Reset all the scoreboards.
         itr_start.upd(new_tok, False);
@@ -466,7 +470,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         num_in_dec.up();
 
         let youngest_idx = tokenIndexFromIds(ctx_id, youngestDecodedTok[ctx_id]);
-        if (tokenIsOlderOrEq(youngest_idx, t) && alloc[pack(t)])
+        if (tokenIsOlderOrEq(youngest_idx, t) && tokIdxIsAllocated(t))
         begin
             youngestDecodedTok[ctx_id] <= t.token_id;
         end
@@ -710,13 +714,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Action rewindTo(TOKEN_INDEX t);
 
-        // Construct a new vectore of allocation bits.
-        Vector#(NUM_TOKENS, Bool) as = newVector();
-
-        for (Integer x = 0; x < valueof(NUM_TOKENS); x = x + 1)
-        begin
-            as[x] = tokenIsOlderOrEq(fromInteger(x), t) ? alloc[x] : False;
-        end
+        let ctx_id = t.context_id;
 
         // next_free_tok does not change because we don't want to reissue those tokens
         // until the next time we wrap around.
@@ -726,9 +724,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         // after the rewind there will be no tokens in flight. In the case we can jump 
         // oldest_tok up to next_free_tok (so num_in_flight will be zero). Thus we can
         // reclaim tokens slightly more aggressively.
-    
-        let ctx_id = t.context_id;
-        if (!alloc[pack(t)])
+        if (! tokIdxIsAllocated(t))
         begin
             oldest_tok[ctx_id] <= next_free_tok[ctx_id];
             youngestDecodedTok[ctx_id] <= next_free_tok[ctx_id];
@@ -739,8 +735,19 @@ module [Connected_Module] mkFUNCP_Scoreboard
             youngestDecodedTok[ctx_id] <= t.token_id;
         end
 
-        // Update the vector.
-        alloc <= as;
+        //
+        // Update the alloc vector.
+        //
+
+        Vector#(NUM_TOKENS_PER_CONTEXT, Bool) as = alloc[ctx_id];
+
+        for (Integer x = 0; x < valueof(NUM_TOKENS_PER_CONTEXT); x = x + 1)
+        begin
+            TOKEN_INDEX x_tok = tokenIndexFromIds(ctx_id, fromInteger(x));
+            as[x] = tokenIsOlderOrEq(x_tok, t) ? as[x] : False;
+        end
+
+        alloc[ctx_id] <= as;
 
     endmethod
 
@@ -751,7 +758,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Bool isAllocated(TOKEN_INDEX t);
 
-      return alloc[pack(t)];
+      return tokIdxIsAllocated(t);
 
     endmethod
 

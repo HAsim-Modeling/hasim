@@ -1,0 +1,8 @@
+%name Functional Partition Memory State Base Types
+%desc Functional Partition Memory State Base Types
+
+%provides funcp_memstate_base_types
+
+%attributes hasim funcp memstate
+
+%public memstate-base-types.bsv

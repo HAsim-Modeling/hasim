@@ -22,32 +22,13 @@
 
 // You probably won't need to change these.
 
-`include "funcp_base_types.bsh"
-`include "funcp_memory.bsh"
+`include "asim/provides/funcp_base_types.bsh"
+`include "asim/provides/funcp_memstate_base_types.bsh"
+`include "asim/provides/funcp_memory.bsh"
 
 import Vector::*;
 
 // ***** Datatype definitions *****
-
-// MEM_ADDRESS
-
-// The address space the memory virtual device uses. A parameter by default.
-
-typedef FUNCP_PADDR MEM_ADDRESS;
-
-
-// MEM_VALUE
-
-// The type of values stored in memory. A parameter by default.
-
-typedef FUNCP_INT_REG MEM_VALUE;
-
-// MEM_OFFSET
-
-// The part that's left over after you align an address. 
-// TODO: Should be derived from MEM_VALUE size rather than hardcoded.
-
-typedef Bit#(3) MEM_OFFSET;
 
 // MEM_CACHELINE
 

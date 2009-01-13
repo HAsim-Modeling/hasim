@@ -51,6 +51,7 @@ import RWire::*;
 // The memory virtual device
 
 `include "asim/provides/funcp_base_types.bsh"
+`include "asim/provides/funcp_memstate_base_types.bsh"
 `include "asim/provides/funcp_memory.bsh"
 
 `include "asim/dict/PARAMS_FUNCP_MEMSTATE_CACHE.bsh"

@@ -34,8 +34,7 @@ import FIFOF::*;
  
 // Functional Partition includes.
 
-`include "asim/provides/funcp_memstate_manager.bsh"
-`include "asim/provides/funcp_memory.bsh"
+`include "asim/provides/funcp_memstate_base_types.bsh"
 
 //
 // Each functional pipeline that accesses memory gets its own copy of the

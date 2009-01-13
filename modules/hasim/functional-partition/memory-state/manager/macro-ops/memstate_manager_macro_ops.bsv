@@ -29,79 +29,15 @@ import FShow::*;
 
 // Project Foundation Imports
 
-`include "hasim_common.bsh"
-`include "fpga_components.bsh"
-`include "soft_connections.bsh"
-`include "funcp_memory.bsh"
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/fpga_components.bsh"
+`include "asim/provides/soft_connections.bsh"
+`include "asim/provides/funcp_memory.bsh"
 
 // Memstate imports
 
-`include "funcp_memstate_storebuffer.bsh"
-`include "funcp_memstate_cache.bsh"
-
-
-// MEMSTATE_REQ
-
-//
-// Request from functional partition to memstate manager and store buffer.
-//
-
-typedef struct
-{
-    TOKEN tok;
-    MEM_ADDRESS addr;
-    MEM_VALUE value;
-}
-MEMSTATE_REQ_STORE
-    deriving (Eq, Bits);
-
-
-typedef struct
-{
-    TOKEN tok;
-    MEM_ADDRESS addr;
-    Bool iStream;        // True iff load is fetching an instruction
-}
-MEMSTATE_REQ_LOAD
-    deriving (Eq, Bits);
-
-
-typedef struct
-{
-    TOKEN tok;
-}
-MEMSTATE_REQ_COMMIT
-    deriving (Eq, Bits);
-
-
-typedef struct
-{
-    TOKEN_INDEX rewind_to;
-    TOKEN_INDEX rewind_from;
-}
-MEMSTATE_REQ_REWIND
-    deriving (Eq, Bits);
-
-typedef union tagged
-{
-    MEMSTATE_REQ_LOAD    REQ_LOAD;
-    MEMSTATE_REQ_STORE   REQ_STORE;
-    MEMSTATE_REQ_COMMIT  REQ_COMMIT;
-    MEMSTATE_REQ_REWIND  REQ_REWIND;
-}
-MEMSTATE_REQ
-    deriving (Eq, Bits);
-
-
-// LOAD_PATH
-
-typedef union tagged
-{
-  MEM_VALUE PATH_SB;
-  void PATH_CACHE;
-}
-  LOAD_PATH
-    deriving (Eq, Bits);
+`include "asim/provides/funcp_memstate_base_types.bsh"
+`include "asim/provides/funcp_memstate_storebuffer.bsh"
 
 
 // mkFUNCP_MemStateManager
@@ -117,9 +53,6 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
     // Instantiate the Store Buffer
     MEMSTATE_SBUFFER stBuffer <- mkFUNCP_StoreBuffer(debugLog);
-
-    // Instantiate the Cache
-    let cache     <- mkFUNCP_Cache();
 
     // ***** Soft Connections ***** //
 

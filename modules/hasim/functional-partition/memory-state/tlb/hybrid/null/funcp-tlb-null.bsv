@@ -29,71 +29,8 @@
 
 `include "asim/provides/hasim_isa.bsh"
 `include "asim/provides/funcp_base_types.bsh"
+`include "asim/provides/funcp_memstate_base_types.bsh"
 `include "asim/provides/funcp_memory.bsh"
-
-
-// ===================================================================
-//
-// PUBLIC DATA STRUCTURES
-//
-// ===================================================================
-
-//
-// Query passed to TLB service.  Normal queries and faults have the same
-// payload, but different semantics.  Normal queries may fail is the page
-// is not mapped.  Fault requests allocate the page and return no response.
-//
-typedef struct
-{
-    ISA_ADDRESS va;
-    TOKEN tok;
-}
-FUNCP_TLB_QUERY
-    deriving (Eq, Bits);
-
-typedef FUNCP_TLB_QUERY FUNCP_TLB_FAULT;
-
-//
-// Helper functions for constructing FUNCP_TLB_QUERY
-//
-function FUNCP_TLB_QUERY normalTLBQuery(TOKEN tok, ISA_ADDRESS va);
-    return FUNCP_TLB_QUERY { va: va, tok: tok };
-endfunction
-
-function FUNCP_TLB_FAULT handleTLBPageFault(TOKEN tok, ISA_ADDRESS va);
-    return FUNCP_TLB_FAULT { va: va, tok: tok };
-endfunction
-
-
-//
-// Response from TLB service.  When page_fault is clear, pa holds the valid
-// translation.  When page_fault is set the translation failed.  The functional
-// model should service page faults on attempts to commit the token.
-//
-// Note:  even when page_fault is set, the pa may still be used for references.
-//        In this case, pa is set to the guard page.  This allows simple timing
-//        models to proceed with minimal knowledge of exception handling.
-//
-typedef struct
-{
-    Bool ioSpace;          // Memory mapped I/O.
-    Bool pageFault;        // Translation failed.  Raised a page fault.
-    MEM_ADDRESS pa;
-}
-FUNCP_TLB_RESP
-    deriving (Eq, Bits);
-
-
-//
-// TLB type (instruction or data)
-//
-typedef enum
-{
-    FUNCP_ITLB,
-    FUNCP_DTLB
-}
-FUNCP_TLB_TYPE
-    deriving (Eq, Bits);
 
 
 module [HASIM_MODULE] mkFUNCP_CPU_TLBS

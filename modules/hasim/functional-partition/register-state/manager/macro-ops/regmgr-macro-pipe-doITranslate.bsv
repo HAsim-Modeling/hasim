@@ -26,7 +26,7 @@
 // Functional Partition includes.
 
 `include "asim/provides/funcp_interface.bsh"
-`include "asim/provides/funcp_memory_tlb.bsh"
+`include "asim/provides/funcp_memstate_base_types.bsh"
   
 
 // ========================================================================

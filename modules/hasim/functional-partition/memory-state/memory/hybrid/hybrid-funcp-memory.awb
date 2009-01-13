@@ -3,7 +3,6 @@
 
 %provides funcp_memory
 %requires funcp_simulated_memory
-%requires funcp_memory_tlb
 
 %sources -t BSV -v PUBLIC   hybrid-funcp-memory-datatypes.bsv
 %sources -t BSV -v PUBLIC   hybrid-funcp-memory.bsv

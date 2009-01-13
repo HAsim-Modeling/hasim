@@ -25,7 +25,7 @@ import FShow::*;
 
 `include "asim/provides/fpga_components.bsh"
 `include "asim/provides/hasim_common.bsh"
-`include "asim/provides/funcp_memory.bsh"
+`include "asim/provides/funcp_memstate_base_types.bsh"
 `include "asim/provides/soft_connections.bsh"
 
 `include "asim/dict/ASSERTIONS_FUNCP_MEMSTATE_SBUFFER.bsh"

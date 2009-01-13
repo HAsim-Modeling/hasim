@@ -9,9 +9,10 @@
 
 // Project includes
 
-`include "funcp_memstate_manager.bsh"
-`include "funcp_memory.bsh"
-`include "asim/provides/funcp_memory_tlb.bsh"
+`include "asim/provides/funcp_memstate_manager.bsh"
+`include "asim/provides/funcp_memstate_tlb.bsh"
+`include "asim/provides/funcp_memstate_cache.bsh"
+`include "asim/provides/funcp_memory.bsh"
 
 
 module [HASIM_MODULE] mkFUNCP_MemState
@@ -21,5 +22,6 @@ module [HASIM_MODULE] mkFUNCP_MemState
     let manager <- mkFUNCP_MemStateManager();
     let memory  <- mkFUNCP_Memory();
     let tlbs    <- mkFUNCP_CPU_TLBS();
+    let cache   <- mkFUNCP_Cache();
 
 endmodule

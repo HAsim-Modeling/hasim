@@ -16885,3 +16885,68 @@ Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped
  write-through/            Locally Removed           576 
 
 Finish deleting direct mapped cache.
+
+----------
+mcadler     Date: Tue Jan 13 16:03:10 EST 2009  CSN: CSN-hasim-578
+                  Tue Jan 13 21:03:10 UTC 2009
+
+
+Directory modules/hasim/functional-partition/interface
+ funcp-timing-interface.bsv Locally Modified          577 
+
+Directory modules/hasim/functional-partition/register-state/connections
+ regstate-connect-memory.bsv Locally Modified          577 
+ regstate-connect-tlb.bsv  Locally Modified          577 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          577 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-doITranslate.bsv Locally Modified          577 
+ regmgr-macro.bsv          Locally Modified          577 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/null
+ funcp-tlb-null.awb        Locally Modified          577 
+ funcp-tlb-null.bsv        Locally Modified          577 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.awb         Locally Modified          577 
+ funcp-tlb-std.bsv         Locally Modified          577 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.awb Locally Modified          577 
+ memstate-cache-set-assoc.bsv Locally Modified          577 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          577 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory-datatypes.bsv Locally Modified          577 
+ hybrid-funcp-memory.awb   Locally Modified          577 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          577 
+
+Directory modules/hasim/functional-partition/memory-state
+ memstate_default.awb      Locally Modified          577 
+ memstate_default.bsv      Locally Modified          577 
+ base-types/               Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/base-types
+ memstate-base-types.awb   Locally Added               0 
+ memstate-base-types.bsv   Locally Added               0 
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.h        Locally Modified          577 
+ funcp-base-types.bsv      Locally Modified          577 
+
+Compiling the memstate synthesis boundary was becoming unacceptably slow.
+Break it up by:
+  - Adding a memstate-base-types module to hold the interface types to the
+    rest of the functional partition.
+  - Add synthesis boundaries around the TLB and functional memory caches.
+    They already had one module each with no methods, so the change was
+    easy except for having to move typedefs to memstate-base-types.
+
+The TLB compilation is still quite slow as the number of context IDs increases,
+though not as bad as before.  Will address that later.

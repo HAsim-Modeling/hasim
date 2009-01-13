@@ -1,7 +1,7 @@
 %name Null TLB
 %desc Null TLB
 
-%provides funcp_memory_tlb
+%provides funcp_memstate_tlb
 
 %attributes hasim funcp memstate
 

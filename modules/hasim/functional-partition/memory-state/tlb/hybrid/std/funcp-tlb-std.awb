@@ -1,7 +1,7 @@
 %name Standard Hybrid TLB
 %desc Standard Hybrid TLB
 
-%provides funcp_memory_tlb
+%provides funcp_memstate_tlb
 
 %attributes hasim funcp memstate
 
@@ -12,3 +12,5 @@
 
 %param --global FUNCP_TLB_CACHE_SET_INDEX_BITS  5  "Set index bits in the L2 translation cache"
 %param          FUNCP_TLB_CACHE_WAYS            4  "Ways in each L2 translation cache set"
+
+%param SYNTH_BOUNDARY mkFUNCP_CPU_TLBS "Name of synthesis boundary"

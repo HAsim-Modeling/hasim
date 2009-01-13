@@ -29,7 +29,7 @@
 // Do not include anything but functional partition data definitions.
 //
 `include "asim/provides/funcp_base_types.bsh"
-`include "asim/provides/funcp_memory.bsh"
+`include "asim/provides/funcp_memstate_base_types.bsh"
 
 // ISA includes
 

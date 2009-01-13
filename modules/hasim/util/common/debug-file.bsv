@@ -155,12 +155,12 @@ endmodule
 //
 // ========================================================================
 
-// TIMEP_CONTEXT_DEBUG_FILE
+// TIMEP_DEBUG_FILE_MULTICTX
 
 // A debug file which has an idea of model cycle versus FPGA and multiple
 // contexts.
 
-interface TIMEP_CONTEXT_DEBUG_FILE;
+interface TIMEP_DEBUG_FILE_MULTICTX;
 
     // Normal message
     method Action record(CONTEXT_ID ctxId, Fmt fmt);
@@ -182,13 +182,13 @@ interface TIMEP_CONTEXT_DEBUG_FILE;
 endinterface
 
 
-// mkTIMEPDebugFile
+// mkTIMEPDebugFile_MultiCtx
 
 // Standard simulation debugging file for the timing partition.
 
-module mkTIMEPCtxDebugFile#(String fname)
+module mkTIMEPDebugFile_MultiCtx#(String fname)
     // interface:
-        (TIMEP_CONTEXT_DEBUG_FILE);
+        (TIMEP_DEBUG_FILE_MULTICTX);
 
     COUNTER#(32) fpga_cycle  <- mkLCounter(0);
 

@@ -16850,3 +16850,25 @@ Directory modules/hasim/util/cache
   total cycles simulated across all contexts.
 - Removed some old AWB size specifications for RRR parameters that are no longer
   needed.
+
+----------
+mcadler     Date: Mon Jan 12 19:40:03 EST 2009  CSN: CSN-hasim-576
+                  Tue Jan 13 00:40:03 UTC 2009
+
+
+Directory modules/hasim/controller
+ controller-standard.bsv   Locally Modified          575 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          575 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped/write-through
+ memstate_cache_direct_writethrough.awb Locally Removed           575 
+ memstate_cache_direct_writethrough.bsv Locally Removed           575 
+
+Directory modules/hasim/util/common
+ debug-file.bsv            Locally Modified          575 
+
+- Make L1 functional memory caches private.
+- Update debug log interface to new coding standard.
+- Direct mapped functional memory cache is old and does not work.

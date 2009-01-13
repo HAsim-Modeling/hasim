@@ -56,7 +56,7 @@ typedef Bit#(TAdd#(`HEARTBEAT_TRIGGER_BIT, 1)) HEARTBEAT_MODEL_CYCLES;
 
 module [HASIM_MODULE] mkController ();
 
-    TIMEP_CONTEXT_DEBUG_FILE debugLog <- mkTIMEPCtxDebugFile("controller.out");
+    TIMEP_DEBUG_FILE_MULTICTX debugLog <- mkTIMEPDebugFile_MultiCtx("controller.out");
 
     // instantiate all the sub-controllers
     CENTRAL_CONTROLLERS centralControllers <- mkCentralControllers();

@@ -38,6 +38,7 @@
 
 import FIFO::*;
 import Vector::*;
+import RWire::*;
 
 // Project foundation imports.
 
@@ -111,6 +112,7 @@ endinterface: FUNCP_MEM_INTERFACE
 //
 typedef struct
 {
+    CONTEXT_ID contextId;
     Maybe#(MEM_VALUE) l1Value;
     Bool iStream;
     FUNCP_MEM_CACHE_TAG tag;
@@ -281,6 +283,84 @@ endmodule
 
 // ===================================================================
 //
+// L1 cache.  One line per context.
+//
+// ===================================================================
+
+interface FUNCP_MEM_L1_MULTICTX;
+    // Two levels of Maybe#() in the read result to support the reserve method.
+    method ActionValue#(Maybe#(Maybe#(FUNCP_MEM_CACHELINE))) read(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag);
+
+    // Hold a line with the tag in preparation for filling it with a read from
+    // the main cache.  If a store comes along later while the read is still in
+    // flight the reservation will be broken to avoid caching stale data.
+    method Action reserve(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag);
+
+    // Update a line if the tag matches.
+    method Action update(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag, FUNCP_MEM_CACHELINE val);
+
+    // Invalidate caches matching tag in all contexts.
+    method Action inval(FUNCP_MEM_CACHE_TAG tag);
+
+    method Action invalAll();
+endinterface: FUNCP_MEM_L1_MULTICTX
+
+
+module [HASIM_MODULE] mkFUNCP_L1Cache_MultiCtx#(DEBUG_FILE debugLog)
+    // interface:
+    (FUNCP_MEM_L1_MULTICTX);
+    
+    //
+    // Allocate a single cache line entry for each context.
+    //
+    Vector#(NUM_CONTEXTS,
+            HASIM_TINY_CACHE#(FUNCP_MEM_CACHE_TAG,
+                              Maybe#(FUNCP_MEM_CACHELINE),
+                              1,
+                              FUNCP_MEM_ADDR_NONTAG_BITS)) l1cache = newVector();
+
+    for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
+    begin
+        l1cache[c] <- mkTinyCache1(debugLog);
+    end
+
+
+    //
+    // Methods
+    //
+
+    method ActionValue#(Maybe#(Maybe#(FUNCP_MEM_CACHELINE))) read(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag);
+        let r <- l1cache[ctxId].read(tag);
+        return r;
+    endmethod
+
+    method Action reserve(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag);
+        l1cache[ctxId].write(tag, tagged Invalid);
+    endmethod
+
+    method Action update(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag, FUNCP_MEM_CACHELINE val);
+        l1cache[ctxId].update(tag, tagged Valid val);
+    endmethod
+
+    method Action inval(FUNCP_MEM_CACHE_TAG tag);
+        for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
+        begin
+            l1cache[c].inval(tag);
+        end
+    endmethod
+
+    method Action invalAll();
+        for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
+        begin
+            l1cache[c].invalAll();
+        end
+    endmethod
+
+endmodule
+
+
+// ===================================================================
+//
 // MAIN CACHE MODULE with soft connections to other functional
 // components.
 //
@@ -326,14 +406,8 @@ module [HASIM_MODULE] mkFUNCP_Cache
                  FUNCP_MEM_ADDR_NONTAG_BITS) cache <- mkCacheSetAssoc(funcpMemIfc.cacheIfc, statIfc, debugLog);
 
     // Single entry L1 caches
-    HASIM_TINY_CACHE#(FUNCP_MEM_CACHE_TAG,
-                      Maybe#(FUNCP_MEM_CACHELINE),
-                      1,
-                      FUNCP_MEM_ADDR_NONTAG_BITS) cacheL1D <- mkTinyCache1(debugLog);
-    HASIM_TINY_CACHE#(FUNCP_MEM_CACHE_TAG,
-                      Maybe#(FUNCP_MEM_CACHELINE),
-                      1,
-                      FUNCP_MEM_ADDR_NONTAG_BITS) cacheL1I <- mkTinyCache1(debugLog);
+    FUNCP_MEM_L1_MULTICTX cacheL1D <- mkFUNCP_L1Cache_MultiCtx(debugLog);
+    FUNCP_MEM_L1_MULTICTX cacheL1I <- mkFUNCP_L1Cache_MultiCtx(debugLog);
 
     FIFO#(FUNCP_MEM_CACHE_REQ) handleReqQ <- mkFIFO();
     FIFO#(FUNCP_MEM_CACHE_LOAD_INFO) loadFromCacheQ <- mkFIFO();
@@ -369,9 +443,10 @@ module [HASIM_MODULE] mkFUNCP_Cache
     endfunction
 
 
-    function FUNCP_MEM_CACHE_LOAD_INFO funcpMemCacheLoadInfo(Maybe#(MEM_VALUE) mv, Bool iStream, MEM_ADDRESS addr);
+    function FUNCP_MEM_CACHE_LOAD_INFO funcpMemCacheLoadInfo(CONTEXT_ID ctxId, Maybe#(MEM_VALUE) mv, Bool iStream, MEM_ADDRESS addr);
 
-        return FUNCP_MEM_CACHE_LOAD_INFO { l1Value: mv,
+        return FUNCP_MEM_CACHE_LOAD_INFO { contextId: ctxId,
+                                           l1Value: mv,
                                            iStream: iStream,
                                            tag: cacheTagFromAddr(addr),
                                            offset: cacheLineOffsetFromAddr(addr) };
@@ -403,8 +478,8 @@ module [HASIM_MODULE] mkFUNCP_Cache
 
                 let tag = cacheTagFromAddr(ld.addr);
 
-                let l1_d <- cacheL1D.read(tag);
-                let l1_i <- cacheL1I.read(tag);
+                let l1_d <- cacheL1D.read(ld.contextId, tag);
+                let l1_i <- cacheL1I.read(ld.contextId, tag);
 
                 if (l1_d matches tagged Valid .l1_d_line &&&
                     l1_d_line matches tagged Valid .v)
@@ -414,7 +489,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
                     statLoadL1DHit.incr();
 
                     FUNCP_MEM_CACHELINE_VEC val_vec = unpack(v);
-                    loadFromCacheQ.enq(funcpMemCacheLoadInfo(tagged Valid val_vec[cacheLineOffsetFromAddr(ld.addr)], ld.iStream, ld.addr));
+                    loadFromCacheQ.enq(funcpMemCacheLoadInfo(ld.contextId, tagged Valid val_vec[cacheLineOffsetFromAddr(ld.addr)], ld.iStream, ld.addr));
                 end
                 else if (l1_i matches tagged Valid .l1_i_line &&&
                          l1_i_line matches tagged Valid .v)
@@ -424,22 +499,23 @@ module [HASIM_MODULE] mkFUNCP_Cache
                     statLoadL1IHit.incr();
 
                     FUNCP_MEM_CACHELINE_VEC val_vec = unpack(v);
-                    loadFromCacheQ.enq(funcpMemCacheLoadInfo(tagged Valid val_vec[cacheLineOffsetFromAddr(ld.addr)], ld.iStream, ld.addr));
+                    loadFromCacheQ.enq(funcpMemCacheLoadInfo(ld.contextId, tagged Valid val_vec[cacheLineOffsetFromAddr(ld.addr)], ld.iStream, ld.addr));
                 end
                 else
                 begin
                     // Look in main cache.
                     handleReqQ.enq(tagged MEM_LOAD FUNCP_MEM_REF { contextId: ld.contextId, tag: tag });
-                    loadFromCacheQ.enq(funcpMemCacheLoadInfo(tagged Invalid, ld.iStream, ld.addr));
+                    loadFromCacheQ.enq(funcpMemCacheLoadInfo(ld.contextId, tagged Invalid, ld.iStream, ld.addr));
 
                     //
                     // Store an entry with the tag for this line in the L1 cache.
                     // If the tag is still there when the load data is available 
                     // then we know it is safe to store the value in the L1 cache.
+                    //
                     if (ld.iStream)
-                        cacheL1I.write(tag, tagged Invalid);
+                        cacheL1I.reserve(ld.contextId, tag);
                     else
-                        cacheL1D.write(tag, tagged Invalid);
+                        cacheL1D.reserve(ld.contextId, tag);
                 end
             end
 
@@ -555,9 +631,9 @@ module [HASIM_MODULE] mkFUNCP_Cache
 
         // Store load in L1 cache
         if (load_info.iStream)
-            cacheL1I.update(load_info.tag, tagged Valid r);
+            cacheL1I.update(load_info.contextId, load_info.tag, r);
         else
-            cacheL1D.update(load_info.tag, tagged Valid r);
+            cacheL1D.update(load_info.contextId, load_info.tag, r);
 
         debugLog.record($format("  LOAD done: idx=%d, data=0x%x", load_info.offset, v[load_info.offset]));
     endrule

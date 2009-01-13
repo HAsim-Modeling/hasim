@@ -16872,3 +16872,16 @@ Directory modules/hasim/util/common
 - Make L1 functional memory caches private.
 - Update debug log interface to new coding standard.
 - Direct mapped functional memory cache is old and does not work.
+
+----------
+mcadler     Date: Mon Jan 12 19:44:35 EST 2009  CSN: CSN-hasim-577
+                  Tue Jan 13 00:44:35 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/cache
+ direct-mapped/            Locally Removed           576 
+
+Directory modules/hasim/functional-partition/memory-state/cache/direct-mapped
+ write-through/            Locally Removed           576 
+
+Finish deleting direct mapped cache.

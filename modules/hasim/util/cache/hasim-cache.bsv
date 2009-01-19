@@ -517,6 +517,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     //     back a dirty matching line.  Flush preserves the now clean line
     //     in the cache.
     //
+    (* conservative_implicit_conditions *)
     rule handleInvalOrFlush (curState == HCST_START2_REQ &&&
                              (reqInfo_oper == HCOP_INVAL) || (reqInfo_oper == HCOP_FLUSH_DIRTY));
 
@@ -573,6 +574,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     // handleReadOrWrite --
     //     Cache read or write request.
     //
+    (* conservative_implicit_conditions *)
     rule handleReadOrWrite (curState == HCST_START2_REQ &&&
                             (reqInfo_oper == HCOP_READ) || (reqInfo_oper == HCOP_WRITE));
 
@@ -683,6 +685,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     // handleMiss --
     //     Miss handler for read and write requests.
     //
+    (* conservative_implicit_conditions *)
     rule handleMiss (curState == HCST_MISS);
         match {.cur_lru, .meta} = missQ.first();
         missQ.deq();
@@ -924,6 +927,7 @@ module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADD
     // handleInvalSet --
     //   Invalidate an entire set (requested by handleInvalidateAll).
     //
+    (* conservative_implicit_conditions *)
     rule handleInvalSet (invalidatingAll && curState == HCST_IDLE);
         
         match {.set, .meta} = flushDirtySetQ.first();

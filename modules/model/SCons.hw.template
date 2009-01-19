@@ -66,7 +66,7 @@ env.ParseDepends('.depends-bsv', must_exist = True)
 ## source files and generating scons dependence rules.
 ##
 if env.GetOption('clean'):
-    os.system('cd ' + TMP_BSC_DIR + '; rm -f *.ba *.c *.h')
+    os.system('cd ' + TMP_BSC_DIR + '; rm -f *.ba *.c *.h *.sched')
 
 
 
@@ -84,7 +84,7 @@ def compile_bo_bsc_base(target):
     return BSC + ' ' + BSC_FLAGS + ' -p +:' + \
            ROOT_DIR_HW_INC + ':' + ROOT_DIR_HW_INC + '/asim/provides:' + \
            lib_dirs + ':' + TMP_BSC_DIR + ' -bdir ' + bdir + \
-           ' -vdir ' + bdir + ' -simdir ' + bdir
+           ' -vdir ' + bdir + ' -simdir ' + bdir + ' -info-dir ' + bdir
 
 def compile_bo(source, target, env, for_signature):
     cmd = compile_bo_bsc_base(target) + ' -D CONNECTION_SIZES_KNOWN ' + str(source[0])

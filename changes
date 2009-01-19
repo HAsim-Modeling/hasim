@@ -16950,3 +16950,39 @@ Break it up by:
 
 The TLB compilation is still quite slow as the number of context IDs increases,
 though not as bad as before.  Will address that later.
+
+----------
+mcadler     Date: Mon Jan 19 13:59:36 EST 2009  CSN: CSN-hasim-579
+                  Mon Jan 19 18:59:36 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          578 
+
+Directory modules/hasim/util/cache
+ hasim-cache.bsv           Locally Modified          577 
+
+Directory modules/model
+ SCons.hw.template         Locally Modified          577 
+
+Directory libperl/HAsim/lib/HAsim
+ Util.pm                   Locally Modified          577 
+
+The Bluespec compiler's scheduler appears to have exponential compile-time
+performance degradation when doing a lookup on a vector of 4-way tiny caches.
+Clearly this can be generalized, and Ravi at Bluespec is working on that.
+In the mean time the computed scheduler predicates can be radically simplified
+for some rules using the conservative_implicit_conditions pragma.  This pragma
+simplifies the predicate by, among other things, requiring that all input and
+output FIFOs be ready even if they are accessed conditionally in the rule.
+
+The specific changes:
+  - Use conservative_implicit_conditions in both the HAsim cache code and in
+    the TLB cache.  Some rules in the TLB had to be split in order to avoid
+    deadlocks.
+  - Change build script to generate Bluespec scheduler dump (.sched files)
+    when building wrappers.
+
+Simplification of predicates for just these 6 rules reduced the LUT usage of
+the unpiplined model by 3% with no changes in timing and reduced compile time
+of the TLB synthesis boundary by about 90%.

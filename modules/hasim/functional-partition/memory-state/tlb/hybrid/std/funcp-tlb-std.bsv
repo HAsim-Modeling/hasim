@@ -248,7 +248,7 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
     // translate_VtoP_response --
     //   Wait for response from TLB cache or hybrid memory.
     //
-    rule translate_VtoP_response (state == FUNCP_TLB_BUSY);
+    rule translateVtoPResponse (state == FUNCP_TLB_BUSY);
 
         // pop a request from the link
         let resp = respVtoP.first();
@@ -484,30 +484,26 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
 
     // ***** Rules for communcation with functional register state manager *****
     
-    rule itlb_req (True);
-        //
-        // Get either a fault request or a normal translation request.  Give
-        // priority to page faults.
-        //
-        if (link_funcp_itlb_fault.notEmpty())
-        begin
-            let r = link_funcp_itlb_fault.receive();
-            link_funcp_itlb_fault.deq();
+    (* conservative_implicit_conditions *)
+    rule itlbFaultReq (True);
+        let r = link_funcp_itlb_fault.receive();
+        link_funcp_itlb_fault.deq();
 
-            itlb.lookupReq(r.tok, r.va, True);
-            itlbQ.enq(True);
-        end
-        else
-        begin
-            let r = link_funcp_itlb_trans.getReq();
-            link_funcp_itlb_trans.deq();
-
-            itlb.lookupReq(r.tok, r.va, False);
-            itlbQ.enq(False);
-        end
+        itlb.lookupReq(r.tok, r.va, True);
+        itlbQ.enq(True);
     endrule
 
-    rule itlb_resp (True);
+    (* descending_urgency = "itlbFaultReq, itlbTransReq" *)
+    (* conservative_implicit_conditions *)
+    rule itlbTransReq (True);
+        let r = link_funcp_itlb_trans.getReq();
+        link_funcp_itlb_trans.deq();
+
+        itlb.lookupReq(r.tok, r.va, False);
+        itlbQ.enq(False);
+    endrule
+
+    rule itlbResp (True);
         let resp <- itlb.lookupResp();
 
         let page_fault = itlbQ.first();
@@ -518,30 +514,26 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
             link_funcp_itlb_trans.makeResp(resp);
     endrule
 
-    rule dtlb_req (True);
-        //
-        // Get either a fault request or a normal translation request.  Give
-        // priority to page faults.
-        //
-        if (link_funcp_dtlb_fault.notEmpty())
-        begin
-            let r = link_funcp_dtlb_fault.receive();
-            link_funcp_dtlb_fault.deq();
+    (* conservative_implicit_conditions *)
+    rule dtlbFaultReq (True);
+        let r = link_funcp_dtlb_fault.receive();
+        link_funcp_dtlb_fault.deq();
 
-            dtlb.lookupReq(r.tok, r.va, True);
-            dtlbQ.enq(True);
-        end
-        else
-        begin
-            let r = link_funcp_dtlb_trans.getReq();
-            link_funcp_dtlb_trans.deq();
-
-            dtlb.lookupReq(r.tok, r.va, False);
-            dtlbQ.enq(False);
-        end
+        dtlb.lookupReq(r.tok, r.va, True);
+        dtlbQ.enq(True);
     endrule
 
-    rule dtlb_resp (True);
+    (* descending_urgency = "dtlbFaultReq, dtlbTransReq" *)
+    (* conservative_implicit_conditions *)
+    rule dtlbTransReq (True);
+        let r = link_funcp_dtlb_trans.getReq();
+        link_funcp_dtlb_trans.deq();
+
+        dtlb.lookupReq(r.tok, r.va, False);
+        dtlbQ.enq(False);
+    endrule
+
+    rule dtlbResp (True);
         let resp <- dtlb.lookupResp();
 
         let page_fault = dtlbQ.first();
@@ -556,7 +548,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
 
     // ***** Managing translation requests from the child ITLB and DTLB *****
     
-    rule translate_VtoP_I_request (True);
+    rule translateVtoP_I_Request (True);
         let req = itlb_vtop_req.first();
         itlb_vtop_req.deq();
 
@@ -568,7 +560,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         cache.readReq(tlbCacheIdx(tok, req.vp), req.allocOnFault);
     endrule
 
-    rule translate_VtoP_D_request (True);
+    rule translateVtoP_D_Request (True);
         let req = dtlb_vtop_req.first();
         dtlb_vtop_req.deq();
 
@@ -580,9 +572,9 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         cache.readReq(tlbCacheIdx(tok, req.vp), req.allocOnFault);
     endrule
 
-    (* descending_urgency= "translate_VtoP_D_request, translate_VtoP_I_request" *)
+    (* descending_urgency= "translateVtoP_D_Request, translateVtoP_I_Request" *)
 
-    rule translate_VtoP_response (True);
+    rule translateVtoPResponse (True);
 
         let tlb_entry <- cache.readResp();
 

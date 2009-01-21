@@ -16986,3 +16986,47 @@ The specific changes:
 Simplification of predicates for just these 6 rules reduced the LUT usage of
 the unpiplined model by 3% with no changes in timing and reduced compile time
 of the TLB synthesis boundary by about 90%.
+
+----------
+mcadler     Date: Tue Jan 20 21:46:26 EST 2009  CSN: CSN-hasim-580
+                  Wed Jan 21 02:46:26 UTC 2009
+
+
+Directory modules/hasim/controller/local_controllers/module
+ local-controller-module-standard.bsv Locally Modified          579 
+
+Directory modules/hasim/controller
+ controller-standard.bsv   Locally Modified          579 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          579 
+ regstate-data-physical-regs.bsv Locally Modified          579 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-doDTranslate.bsv Locally Modified          579 
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          579 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          579 
+ regmgr-macro-pipe-exception.bsv Locally Modified          579 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          579 
+ regmgr-macro-pipe-doStores.bsv Locally Modified          579 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          579 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          579 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          579 
+
+Directory modules/hasim/util/modellib
+ stats.bsv                 Locally Modified          579 
+
+Various changes to improve Bluespec scheduling:
+  - Use LUTRAM when appropriate instead of Vector.
+  - Tag some rules with conservative_implicit_conditions
+  - Break some rules apart.
+
+Changes save another 2% of registers and 1% of LUTs.  Required fan-out to
+meet timing appears to have decreased, too.  The Unpipelined model is down
+to 86% occupied slices from 90%.

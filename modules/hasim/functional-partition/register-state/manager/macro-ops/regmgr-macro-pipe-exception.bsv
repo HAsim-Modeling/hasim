@@ -151,6 +151,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     endrule
 
 
+    (* conservative_implicit_conditions *)
     rule handleFault2 (state.getState() == RSM_HandleFault);
 
         // Instruction & data addresses
@@ -357,6 +358,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     // rewindToToken3 --
     //   Walk the tokens in age order and reconstruct the maptable
     //
+    (* conservative_implicit_conditions *)
     rule rewindToToken3 (state.getState() == RSM_Rewinding);
     
         // Look up the token properties
@@ -389,6 +391,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     // predicate makes it clearer to the Bluespec scheduler when the rule fires
     // and whether it may conflict with the standard pipeline.
     //
+    (* conservative_implicit_conditions *)
     rule rewindToToken4 (! state.readyToBegin() && ! state.readyToContinue());
 
         match { .tok_idx, .tok_active, .done } = rewindQ.first();

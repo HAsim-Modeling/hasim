@@ -135,6 +135,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     //   will be needed.  Also, send the set of architectural registers accessed
     //   to the register mapper.
     //
+    (* conservative_implicit_conditions *)
     rule getDependencies2 (state.readyToContinue());
 
         // Get the info from the previous stage.
@@ -251,6 +252,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     //   mapper, which will be waiting for them.  The new registers will
     //   rendezvous with the mapping request from stage 2.
     //
+    (* conservative_implicit_conditions *)
     rule getDependencies3 (state.readyToContinue());
 
         match {.tok, .tok_active, .ar_srcs, .ar_dsts} = deps2Q.first();

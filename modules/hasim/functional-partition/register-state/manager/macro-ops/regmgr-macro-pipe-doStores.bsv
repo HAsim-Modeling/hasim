@@ -155,6 +155,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // Effect: Lookup the destination of this token.  The predicate remains
     //         readyToBegin() because the scoreboard isn't yet updated.
 
+    (* conservative_implicit_conditions *)
     rule doStores1 (state.readyToBegin());
 
         let req = storesSQ.first();

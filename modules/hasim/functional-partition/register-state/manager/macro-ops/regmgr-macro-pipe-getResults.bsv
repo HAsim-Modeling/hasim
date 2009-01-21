@@ -276,6 +276,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // When:   When the timing model starts a getResults().
     // Effect: Lookup the locations of this token's sources.
 
+    (* conservative_implicit_conditions *)
     rule getResults1 (state.readyToBegin());
 
         // Get parameter from the timing model. Begin macro-operation.
@@ -643,6 +644,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     //     the youngest token and working back to the emulated token.  Build
     //     a map of registers from the perspective of the emulated token.
     //
+    (* conservative_implicit_conditions *)
     rule emulateInstruction1_GenRegMapResp (state.getState() == RSM_EmulateGenRegMap);
 
         match { .tok_idx, .tok_active, .done } = emulateRegMapQ.first();

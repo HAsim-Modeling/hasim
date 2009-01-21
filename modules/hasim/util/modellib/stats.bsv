@@ -81,6 +81,7 @@ module [Connected_Module] mkStatCounter_Enabled#(STATS_DICT_TYPE myID)
 
   endrule
 
+  (* conservative_implicit_conditions *)
   rule shift (state == Recording);
   
     STAT_DATA st <- chain.receive_from_prev();

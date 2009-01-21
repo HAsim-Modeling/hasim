@@ -323,6 +323,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     //     the request.  On match return the value.  On mismatch loop by
     //     requesting the next node in the hash chain.
     //
+    (* conservative_implicit_conditions *)
     rule lookup_search_node (state == SBUFFER_STATE_LOOKUP_SEARCH);
         let node <- sBuffer.readRsp();
         
@@ -409,6 +410,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     // insert_store --
     //     Add a store to the store buffer.
     //
+    (* conservative_implicit_conditions *)
     rule insert_store (state == SBUFFER_STATE_INSERT);
         // Receive the old node and address hash head values
         let old_node <- sBuffer.readRsp();
@@ -518,6 +520,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     //     Removal is due either to commit or rewind.  The rule keeps
     //     processing the token until all stores are handled.
     //
+    (* conservative_implicit_conditions *)
     rule remove_token_stores ((state == SBUFFER_STATE_COMMIT) || (state == SBUFFER_STATE_REWIND));
         let tok_data <- tokData.readRsp();
         let next_state = removeToken.first();
@@ -588,6 +591,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     //     commit response method.  The commit logic can then start writing
     //     the value to memory while code here mucks with linked lists.
     //
+    (* conservative_implicit_conditions *)
     rule remove_one_store ((state == SBUFFER_STATE_COMMIT) || (state == SBUFFER_STATE_REWIND));
         let node <- sBuffer.readRsp();
         match { .next_state, .node_idx } = removeStore.first();

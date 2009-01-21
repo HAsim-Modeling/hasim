@@ -183,6 +183,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
     // When:   After the response come back from the RAM.
     // Effect: Make the request to the DTLB.
     
+    (* conservative_implicit_conditions *)
     rule doDTranslate2 (state.readyToContinue() &&& stateDTrans2 matches tagged DTRANS2_NORMAL);
     
         // Get the value from the previous stage.

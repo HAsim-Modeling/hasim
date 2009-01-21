@@ -20,6 +20,7 @@ import Vector::*;
 
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
+`include "asim/provides/fpga_components.bsh"
 
 `include "asim/provides/central_controllers.bsh"
 `include "asim/provides/module_controller.bsh"
@@ -76,17 +77,11 @@ module [HASIM_MODULE] mkController ();
     Reg#(Bit#(64)) fpgaCycle <- mkReg(minBound);
   
     // Model cycles since last heartbeat message sent to software
-    Vector#(NUM_CONTEXTS, Reg#(HEARTBEAT_MODEL_CYCLES)) curModelCycle = newVector();
+    LUTRAM#(CONTEXT_ID, HEARTBEAT_MODEL_CYCLES) curModelCycle <- mkLUTRAM(0);
 
     // Committed instructions since last heartbeat message sent to software.
     // If Bit#(32) isn't big enough the heartbeat isn't being sent often enough.
-    Vector#(NUM_CONTEXTS, Reg#(Bit#(32))) instrCommits = newVector();
-
-    for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
-    begin
-        curModelCycle[c] <- mkReg(0);
-        instrCommits[c] <- mkReg(0);
-    end
+    LUTRAM#(CONTEXT_ID, Bit#(32)) instrCommits <- mkLUTRAM(0);
 
     // In the middle of dumping statistics?
     Reg#(Bool) dumpingStats <- mkReg(False);
@@ -168,16 +163,18 @@ module [HASIM_MODULE] mkController ();
 
         debugLog.nextModelCycle(ctx_id);
 
-        let trigger = curModelCycle[ctx_id][`HEARTBEAT_TRIGGER_BIT];
+        let cur_cycle = curModelCycle.sub(ctx_id);
+
+        let trigger = cur_cycle[`HEARTBEAT_TRIGGER_BIT];
         if (trigger == 1)
         begin
-            starter.makeRequest_Heartbeat(ctx_id, fpgaCycle, zeroExtend(curModelCycle[ctx_id]), instrCommits[ctx_id]);
-            curModelCycle[ctx_id] <= 1;
-            instrCommits[ctx_id] <= 0;
+            starter.makeRequest_Heartbeat(ctx_id, fpgaCycle, zeroExtend(cur_cycle), instrCommits.sub(ctx_id));
+            curModelCycle.upd(ctx_id, 1);
+            instrCommits.upd(ctx_id, 0);
         end
         else
         begin
-            curModelCycle[ctx_id] <= curModelCycle[ctx_id] + 1;
+            curModelCycle.upd(ctx_id, cur_cycle + 1);
         end
     endrule
 
@@ -185,7 +182,8 @@ module [HASIM_MODULE] mkController ();
         match { .ctx_id, .commits } = link_model_commit.receive();
         link_model_commit.deq();
 
-        instrCommits[ctx_id] <= instrCommits[ctx_id] + zeroExtend(commits);
+        let cur_commits = instrCommits.sub(ctx_id);
+        instrCommits.upd(ctx_id, cur_commits + zeroExtend(commits));
 
         debugLog.record(ctx_id, $format("COMMIT %0d", commits));
     endrule

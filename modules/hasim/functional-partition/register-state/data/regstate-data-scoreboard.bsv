@@ -171,8 +171,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
     TOKEN_SCOREBOARD commit_start <- mkLiveTokenLUTRAMU();
     TOKEN_SCOREBOARD emulation    <- mkLiveTokenLUTRAMU();
 
-    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)          fetch_offset <- mkLiveTokenLUTRAM(0);
-    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)          memop_offset <- mkLiveTokenLUTRAM(0);
+    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)          fetch_offset <- mkLiveTokenLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)          memop_offset <- mkLiveTokenLUTRAMU();
     LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE)      load_type    <- mkLiveTokenLUTRAMU();
     LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE)      store_type   <- mkLiveTokenLUTRAMU();
     LUTRAM#(TOKEN_INDEX, TOKEN_ID)            next_tok     <- mkLiveTokenLUTRAMU();

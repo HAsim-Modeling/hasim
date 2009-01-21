@@ -32,6 +32,7 @@ import FIFO::*;
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/hasim_modellib.bsh"
 `include "asim/provides/soft_connections.bsh"
+`include "asim/provides/fpga_components.bsh"
 
 `include "asim/dict/RINGID.bsh"
 
@@ -64,7 +65,7 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Port_Control) inports, Vecto
     Reg#(Bool) checkBalanced <- mkReg(False);
   
     // Vector of active contexts
-    Reg#(Vector#(NUM_CONTEXTS, Bool)) contextActive <- mkReg(replicate(False));
+    LUTRAM#(CONTEXT_ID, Bool) contextActive <- mkLUTRAM(False);
 
     Connection_Chain#(CONTROLLER_COMMAND)  cmds  <- mkConnection_Chain(`RINGID_MODULE_COMMANDS);
     Connection_Chain#(CONTROLLER_RESPONSE) resps <- mkConnection_Chain(`RINGID_MODULE_RESPONSES);
@@ -151,12 +152,12 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Port_Control) inports, Vecto
 
             tagged COM_EnableContext .ctx_id:
             begin
-                contextActive[ctx_id] <= True;
+                contextActive.upd(ctx_id, True);
             end
 
             tagged COM_DisableContext .ctx_id:
             begin
-                contextActive[ctx_id] <= False;
+                contextActive.upd(ctx_id, False);
             end
         endcase
 
@@ -196,7 +197,7 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Port_Control) inports, Vecto
     endmethod
 
     method Bool contextIsActive(CONTEXT_ID ctx_id);
-        return contextActive[ctx_id];
+        return contextActive.sub(ctx_id);
     endmethod
 
     method Action endProgram(Bool passfail);

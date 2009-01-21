@@ -462,6 +462,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
     //    Incoming client request.  Only start a new request if no invalidate
     //    is in pending.
     //
+    (* conservative_implicit_conditions *)
     rule handleReq (enableCache && (invalLoopNLines == 0) &&
                     ! link_funcp_memory_inval_all.reqNotEmpty());
 
@@ -565,6 +566,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
     //     This stage is here for timing since L1 lookup and starting the L2
     //     cache request can't fit in a cycle.
     //
+    (* conservative_implicit_conditions *)
     rule handleReqCache (enableCache);
         let req = handleReqQ.first();
         handleReqQ.deq();

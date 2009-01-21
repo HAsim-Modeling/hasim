@@ -109,6 +109,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     //         may be invisible.
     // Effect: Convert the address and send it to the store buffer.
 
+    (* conservative_implicit_conditions *)
     rule memLoad1 (linkRegState.getReq() matches tagged REQ_LOAD .ldInfo &&&
                    ! commitQ.notEmpty());
 

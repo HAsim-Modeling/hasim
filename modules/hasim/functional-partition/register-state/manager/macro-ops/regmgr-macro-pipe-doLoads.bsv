@@ -138,6 +138,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     // When:   When the timing model starts a doLoads().
     // Effect: Lookup the effective address(es) of this token.
 
+    (* conservative_implicit_conditions *)
     rule doLoads1 (state.readyToBegin());
 
         // Get the input from the timing model. Begin macro-operation.

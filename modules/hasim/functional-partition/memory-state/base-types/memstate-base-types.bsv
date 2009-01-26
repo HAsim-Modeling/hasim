@@ -18,6 +18,7 @@
 
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/funcp_base_types.bsh"
+`include "asim/provides/funcp_regstate_base_types.bsh"
 
 //
 // Base types for memory state in the functional partition
@@ -66,15 +67,25 @@ typedef struct
 MEMSTATE_REQ_STORE
     deriving (Eq, Bits);
 
+function MEMSTATE_REQ_STORE memStateReqStore(TOKEN tok, MEM_ADDRESS addr, MEM_VALUE value);
+    return MEMSTATE_REQ_STORE { tok: tok, addr: addr, value: value };
+endfunction
+
 
 typedef struct
 {
     TOKEN tok;
     MEM_ADDRESS addr;
     Bool iStream;        // True iff load is fetching an instruction
+    FUNCP_MEMREF_TOKEN memRefToken;
 }
 MEMSTATE_REQ_LOAD
     deriving (Eq, Bits);
+
+function MEMSTATE_REQ_LOAD memStateReqLoad(TOKEN tok, MEM_ADDRESS addr, Bool iStream);
+    // The memory reference token is typically set late, so it is left undefined here.
+    return MEMSTATE_REQ_LOAD { tok: tok, addr: addr, iStream: iStream, memRefToken: ? };
+endfunction
 
 
 typedef struct
@@ -103,6 +114,27 @@ typedef union tagged
 MEMSTATE_REQ
     deriving (Eq, Bits);
 
+
+
+// ===================================================================
+//
+//   MEMSTATE_RESP -- Responses from memory operations in the
+//                    functional partition.
+//
+// ===================================================================
+
+typedef struct
+{
+     FUNCP_MEMREF_TOKEN memRefToken;
+     MEM_VALUE value;
+}
+MEMSTATE_RESP
+    deriving (Eq, Bits);
+
+
+function MEMSTATE_RESP memStateResp(FUNCP_MEMREF_TOKEN memRefTok, MEM_VALUE value);
+    return MEMSTATE_RESP { memRefToken: memRefTok, value: value };
+endfunction
 
 
 // ===================================================================

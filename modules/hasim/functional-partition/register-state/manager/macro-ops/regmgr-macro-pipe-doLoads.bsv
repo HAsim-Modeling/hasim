@@ -110,8 +110,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     //
     // ====================================================================
 
-    FIFO#(TOKEN) loads1Q  <- mkFIFO();
-    FIFO#(LOADS_INFO) loads2Q  <- mkFIFO();
+    FIFO#(TOKEN) loads1Q  <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
+    FIFO#(LOADS_INFO) loads2Q  <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
 
     Reg#(STATE_LOADS2) stateLoads2 <- mkReg(LOADS2_NORMAL);
     Reg#(STATE_LOADS3) stateLoads3 <- mkReg(LOADS3_NORMAL);
@@ -210,7 +210,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
                 debugLog.record(fshow(tok.index) + $format(": DoLoads2: Requesting Load (PA: 0x%h)", p_addr));
 
                 // Make the request to the DMem.
-                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr, iStream: False };
+                let m_req = memStateReqLoad(tok, p_addr, False);
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Read the destination so we can writeback the correct register.
@@ -228,7 +228,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
                 debugLog.record(fshow(tok.index) + $format(": DoLoads2: Starting Spanning Load (PA1: 0x%h)", p_addr1));
 
                 // Make the request to the DMem.
-                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1, iStream: False };
+                let m_req = memStateReqLoad(tok, p_addr1, False);
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Stall this stage for the second req.
@@ -244,7 +244,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
 
         // Kick the second request to MemState.
         let p_addr2 = getSecondOfTwo(load_info.memAddrs);
-        let m_req = MEMSTATE_REQ_LOAD {tok: load_info.token, addr: p_addr2, iStream: False };
+        let m_req = memStateReqLoad(load_info.token, p_addr2, False);
         linkToMem.makeReq(tagged REQ_LOAD m_req);
 
         // Log it.

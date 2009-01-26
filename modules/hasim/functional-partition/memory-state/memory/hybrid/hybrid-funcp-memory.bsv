@@ -52,6 +52,8 @@ module [HASIM_MODULE] mkFUNCP_Memory
     Connection_Client#(MEM_INVAL_FUNCP_CACHE_SERVICE_INFO, Bool) link_memory_inval <- mkConnection_Client("funcp_memory_cache_invalidate");
     Connection_Client#(CONTEXT_ID, Bool) link_memory_inval_all <- mkConnection_Client("funcp_memory_cache_invalidate_all");
 
+    FIFO#(FUNCP_MEMREF_TOKEN) loadQ <- mkFIFO();
+
 
     // ***** Rules ******
 
@@ -68,6 +70,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
             tagged MEM_LOAD .ldinfo:
             begin
                 client_stub.makeRequest_Load(contextIdToRRR(ldinfo.contextId), zeroExtend(ldinfo.addr));
+                loadQ.enq(ldinfo.memRefToken);
             end
             
             tagged MEM_LOAD_CACHELINE .ldinfo:
@@ -96,8 +99,11 @@ module [HASIM_MODULE] mkFUNCP_Memory
     // Get a response from the stub and pass it back to the user.
 
     rule get_mem_response (True);
+        let mem_ref_tok = loadQ.first();
+        loadQ.deq();
+
         MEM_VALUE v <- client_stub.getResponse_Load();
-        link_memory.makeResp(tagged MEM_REPLY_LOAD v);
+        link_memory.makeResp(tagged MEM_REPLY_LOAD memStateResp(mem_ref_tok, v));
     endrule
 
     rule get_mem_response_ldline (True);

@@ -38,6 +38,7 @@ import FShow::*;
 // Functional Partition includes.
 
 `include "asim/provides/funcp_interface.bsh"
+`include "asim/provides/funcp_regstate_base_types.bsh"
 `include "asim/provides/funcp_regstate_connections.bsh"
 `include "asim/provides/funcp_regstate_data.bsh"
 `include "asim/provides/funcp_memstate_manager.bsh"

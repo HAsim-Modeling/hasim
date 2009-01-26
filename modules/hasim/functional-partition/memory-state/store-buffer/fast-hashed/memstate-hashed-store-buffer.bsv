@@ -64,9 +64,14 @@ MEMSTATE_SBUFFER_RSP_COMMIT
 interface MEMSTATE_SBUFFER;
 
     //
-    // LOAD:  Look up and return a value from the store buffer.
+    // LOAD:  Look up and return a value from the store buffer.  lookupReq
+    //        returns False if there is no chance the address is in the
+    //        store buffer.  In that case, do not wait for lookupResp.
+    //        If lookupReq returns True then the caller was wait for
+    //        lookupResp, though the result may still be that the address
+    //        is not in the buffer.
     //
-    method Action lookupReq(TOKEN_INDEX tokIdx, MEM_ADDRESS addr);
+    method ActionValue#(Bool) lookupReq(TOKEN_INDEX tokIdx, MEM_ADDRESS addr);
     method ActionValue#(MEMSTATE_SBUFFER_RSP_LOOKUP) lookupResp();
     
     //
@@ -738,7 +743,9 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     //     pipe is empty.  This avoids having to manage an explicit
     //     lock for loads vs. commits in the memory state manager.
     //
-    method Action lookupReq(TOKEN_INDEX tokIdx, MEM_ADDRESS addr) if ((state == SBUFFER_STATE_READY) && ! commitRespPipe.notEmpty());
+    method ActionValue#(Bool) lookupReq(TOKEN_INDEX tokIdx, MEM_ADDRESS addr) if ((state == SBUFFER_STATE_READY) && ! commitRespPipe.notEmpty());
+        Bool resp;
+
         // Read the head of the address hash chain and start walking it
         let hash = sbAddrHash(addr);
         if (addrHash.sub(hash) matches tagged Valid .node_idx)
@@ -748,13 +755,14 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             // Read the first node in the hash chain
             sBuffer.readReq(node_idx);
             state <= SBUFFER_STATE_LOOKUP_SEARCH;
+            resp = True;
         end
         else
         begin
             debugLog.record($format("  SB Lookup Miss (empty hash head): ") + fshow(tokIdx) + $format(", addr=0x%x, hash=%0d", addr, hash));
             
-            // Respond with miss
-            state <= SBUFFER_STATE_LOOKUP;
+            // Respond with "quick" miss.  No need to wait for lookupResp.
+            resp = False;
         end
 
         // Initialize global request state
@@ -764,6 +772,8 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     
         // Initialize response
         respValue <= tagged Invalid;
+
+        return resp;
     endmethod: lookupReq
 
     method ActionValue#(MEMSTATE_SBUFFER_RSP_LOOKUP) lookupResp() if (state == SBUFFER_STATE_LOOKUP);

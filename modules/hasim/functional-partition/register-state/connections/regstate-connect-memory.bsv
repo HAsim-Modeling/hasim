@@ -34,6 +34,7 @@ import FIFOF::*;
  
 // Functional Partition includes.
 
+`include "asim/provides/funcp_regstate_base_types.bsh"
 `include "asim/provides/funcp_memstate_base_types.bsh"
 
 //
@@ -58,23 +59,6 @@ interface REGSTATE_MEMORY_CONNECTION;
 endinterface
 
 
-//
-// REGSTATE_MEMORY_PATH --
-//     Internal enumeration to tag requests so responses get routed back
-//     to the right place.
-//
-typedef enum
-{
-    REGSTATE_MEMORY_PATH_GETINST,
-    REGSTATE_MEMORY_PATH_DOLOADS,
-    // DoStores pipeline may request a load if doing a read-modify-write
-    REGSTATE_MEMORY_PATH_DOSTORES_LOAD,
-    REGSTATE_MEMORY_PATH_DOSTORES_STORE
-}
-REGSTATE_MEMORY_PATH
-    deriving (Eq, Bits);
-
-
 module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
     // interface:
     (REGSTATE_MEMORY_CONNECTION);
@@ -94,7 +78,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
     //
     // ====================================================================
 
-    Connection_Client#(MEMSTATE_REQ, MEM_VALUE) linkToMem <- mkConnection_Client("funcp_memstate");
+    Connection_Client#(MEMSTATE_REQ, MEMSTATE_RESP) linkToMem <- mkConnection_Client("funcp_memstate");
 
 
     // ====================================================================
@@ -103,83 +87,157 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
     //
     // ====================================================================
 
-    // This global queue records where load responses should be sent.
-    FIFO#(REGSTATE_MEMORY_PATH) memPathQ <- mkSizedFIFO(16);
-
     // Individual incoming queues for each pipeline
-    FIFOF#(MEMSTATE_REQ) mqInstruction <- mkFIFOF();
-    FIFOF#(MEMSTATE_REQ) mqDoLoads <- mkFIFOF();
-    FIFOF#(MEMSTATE_REQ) mqDoStores <- mkFIFOF();
-    FIFOF#(MEMSTATE_REQ) mqCommit <- mkFIFOF();
-    FIFOF#(MEMSTATE_REQ) mqException <- mkFIFOF();
+    FIFO#(MEMSTATE_REQ) mqInstruction <- mkFIFO();
+    FIFO#(MEMSTATE_REQ) mqDoLoads <- mkFIFO();
+    FIFO#(MEMSTATE_REQ) mqDoStores <- mkFIFO();
+    FIFO#(MEMSTATE_REQ) mqCommit <- mkFIFO();
+    FIFO#(MEMSTATE_REQ) mqException <- mkFIFO();
 
     // Response queues for commit and exceptions
     FIFOF#(Bool) respCommit <- mkFIFOF();
     FIFOF#(Bool) respException <- mkFIFOF();
 
+    FIFO#(FUNCP_MEMRESP_SCOREBOARD_ID) releaseStoresQ <- mkFIFO();
+
+    // Response queues with values
+    SCOREBOARD_FIFO#(MAX_FUNCP_INFLIGHT_MEMREFS, MEM_VALUE) respInstruction <- mkScoreboardFIFO();
+    SCOREBOARD_FIFO#(MAX_FUNCP_INFLIGHT_MEMREFS, MEM_VALUE) respDoLoads <- mkScoreboardFIFO();
+    SCOREBOARD_FIFO#(MAX_FUNCP_INFLIGHT_MEMREFS, MEM_VALUE) respDoStores <- mkScoreboardFIFO();
+
     
+    function Action decorateAndQueueLoad(MEMSTATE_REQ req,
+                                         FUNCP_REGSTATE_MEMPATH path,
+                                         FUNCP_MEMRESP_SCOREBOARD_ID id);
+    action
+        if (req matches tagged REQ_LOAD .ld)
+        begin
+            let tagged_ld = ld;
+            tagged_ld.memRefToken = memRefToken(path, id);
+            linkToMem.makeReq(tagged REQ_LOAD tagged_ld);
+        end
+    endaction
+    endfunction
+
+
     //
     // Process incoming requests, giving priority to later stages of the pipe.
     //
-    rule pick_request (True);
-        //
-        // The first two incoming queues checked are for exceptions and
-        // store commits.  The memory subsystem makes no response for these
-        // requests.  The code here generates a response when the request
-        // is processed to indicate the request now being ordered in the memory
-        // subsystem.  This guarantees cross-cycle order is maintained.
-        //
-        if (mqException.notEmpty())
+    
+    //
+    // The memory subsystem makes no response for exception and commit
+    // requests.  The code here generates a response when the request
+    // is processed to indicate the request now being ordered in the memory
+    // subsystem.  This guarantees cross-cycle order is maintained.
+    //
+
+    rule handleReqException (True);
+        linkToMem.makeReq(mqException.first());
+        mqException.deq();
+        respException.enq(?);
+        debugLog.record($format("Exception REQ"));
+    endrule
+
+    rule handleReqCommit (True);
+        linkToMem.makeReq(mqCommit.first());
+        mqCommit.deq();
+        respCommit.enq(?);
+        debugLog.record($format("Commit Store REQ"));
+    endrule
+    
+
+    //
+    // The remaining requests get responses from the memory subsystem.
+    // The memRefToken passed to the memory subsystem will be returned
+    // along with the result and will be used to route the response to
+    // the proper pipeline.
+    //
+
+    rule handleReqStore (True);
+        let req = mqDoStores.first();
+        mqDoStores.deq();
+
+        // DoStores may request either a load or a store
+        if (req matches tagged REQ_LOAD .ld)
         begin
-            linkToMem.makeReq(mqException.first());
-            mqException.deq();
-            respException.enq(?);
-            debugLog.record($format("Exception REQ"));
+            // Allocate a slot in the store response FIFO and decorate the
+            // request with the details.
+            let resp_id <- respDoStores.enq();
+            decorateAndQueueLoad(req, FUNCP_REGSTATE_MEMPATH_DOSTORES_LOAD, resp_id);
+            debugLog.record($format("Do Stores LOAD REQ, id=%0d", resp_id));
         end
-        else if (mqCommit.notEmpty())
+        else
         begin
-            linkToMem.makeReq(mqCommit.first());
-            mqCommit.deq();
-            respCommit.enq(?);
-            debugLog.record($format("Commit Store REQ"));
-        end
-        
-        //
-        // The remaining requests get responses from the memory subsystem.
-        // The memPathQ FIFO will be used to route the reponses to the
-        // corresponding request interface.
-        //
-        else if (mqDoStores.notEmpty())
-        begin
-            let req = mqDoStores.first();
+            // Store has no response from memory subsystem.  That it was queued
+            // is sufficient to respond to the store pipeline.
             linkToMem.makeReq(req);
-            mqDoStores.deq();
-            // DoStores may request either a load or a store
-            if (req matches tagged REQ_STORE .s)
-            begin
-                memPathQ.enq(REGSTATE_MEMORY_PATH_DOSTORES_STORE);
-                debugLog.record($format("Do Stores STORE REQ"));
-            end
-            else
-            begin
-                memPathQ.enq(REGSTATE_MEMORY_PATH_DOSTORES_LOAD);
-                debugLog.record($format("Do Stores LOAD REQ"));
-            end
+
+            let resp_id <- respDoStores.enq();
+            debugLog.record($format("Do Stores STORE REQ, id=%0d", resp_id));
+
+            // Can't update the output store FIFO this cycle.  Queue request.
+            releaseStoresQ.enq(resp_id);
         end
-        else if (mqDoLoads.notEmpty())
-        begin
-            linkToMem.makeReq(mqDoLoads.first());
-            mqDoLoads.deq();
-            memPathQ.enq(REGSTATE_MEMORY_PATH_DOLOADS);
-            debugLog.record($format("Do Loads REQ"));
-        end
-        else if (mqInstruction.notEmpty())
-        begin
-            linkToMem.makeReq(mqInstruction.first());
-            mqInstruction.deq();
-            memPathQ.enq(REGSTATE_MEMORY_PATH_GETINST);
-            debugLog.record($format("Instruction REQ"));
-        end
+    endrule
+
+    rule handleReqLoad (True);
+        let req = mqDoLoads.first();
+        mqDoLoads.deq();
+
+        let resp_id <- respDoLoads.enq();
+        decorateAndQueueLoad(req, FUNCP_REGSTATE_MEMPATH_DOLOADS, resp_id);
+
+        debugLog.record($format("Do Loads REQ, id=%0d", resp_id));
+    endrule
+
+    (* descending_urgency = "handleReqException, handleReqCommit, handleReqStore, handleReqLoad, handleReqInstruction" *)
+    rule handleReqInstruction (True);
+        let req = mqInstruction.first();
+        mqInstruction.deq();
+
+        let resp_id <- respInstruction.enq();
+        decorateAndQueueLoad(req, FUNCP_REGSTATE_MEMPATH_GETINST, resp_id);
+
+        debugLog.record($format("Instruction REQ, id=%0d", resp_id));
+    endrule
+    
+
+    //
+    // Process outgoing responses, routing them to the right FIFOs.  Writing
+    // the values automatically enables the preallocated FIFO entries.
+    //
+
+    rule handleRespInstruction (linkToMem.getResp().memRefToken.memPath == FUNCP_REGSTATE_MEMPATH_GETINST);
+        let v = linkToMem.getResp();
+        linkToMem.deq();
+
+        respInstruction.setValue(v.memRefToken.entryId, v.value);
+        debugLog.record($format("Instruction RESP, id=%0d", v.memRefToken.entryId));
+    endrule
+
+    rule handleRespDoLoads (linkToMem.getResp().memRefToken.memPath == FUNCP_REGSTATE_MEMPATH_DOLOADS);
+        let v = linkToMem.getResp();
+        linkToMem.deq();
+
+        respDoLoads.setValue(v.memRefToken.entryId, v.value);
+        debugLog.record($format("Do Loads RESP, id=%0d", v.memRefToken.entryId));
+    endrule
+
+    rule handleRespDoStores_Load (linkToMem.getResp().memRefToken.memPath == FUNCP_REGSTATE_MEMPATH_DOSTORES_LOAD);
+        let v = linkToMem.getResp();
+        linkToMem.deq();
+
+        respDoStores.setValue(v.memRefToken.entryId, v.value);
+        debugLog.record($format("Do Stores LOAD RESP, id=%0d", v.memRefToken.entryId));
+    endrule
+
+    (* descending_urgency = "handleRespDoStores_Load, handleReleaseStores" *)
+    rule handleReleaseStores (True);
+        let id = releaseStoresQ.first();
+        releaseStoresQ.deq();
+
+        respDoStores.setValue(id, ?);
+        debugLog.record($format("Do Stores STORE RESP, id=%0d", id));
     endrule
 
     
@@ -193,14 +251,13 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
             mqInstruction.enq(req);
         endmethod
 
-        method MEM_VALUE getResp() if (memPathQ.first() == REGSTATE_MEMORY_PATH_GETINST);
-            return linkToMem.getResp();
+        method MEM_VALUE getResp();
+            return respInstruction.first();
         endmethod
 
-        method Action deq() if (memPathQ.first() == REGSTATE_MEMORY_PATH_GETINST);
-            linkToMem.deq();
-            memPathQ.deq();
-            debugLog.record($format("Instruction DEQ"));
+        method Action deq();
+            respInstruction.deq();
+            debugLog.record($format("Instruction DEQ, id=%0d", respInstruction.deqEntryId()));
         endmethod
     endinterface
 
@@ -209,14 +266,13 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
             mqDoLoads.enq(req);
         endmethod
 
-        method MEM_VALUE getResp() if (memPathQ.first() == REGSTATE_MEMORY_PATH_DOLOADS);
-            return linkToMem.getResp();
+        method MEM_VALUE getResp();
+            return respDoLoads.first();
         endmethod
 
-        method Action deq() if (memPathQ.first() == REGSTATE_MEMORY_PATH_DOLOADS);
-            linkToMem.deq();
-            memPathQ.deq();
-            debugLog.record($format("Do Loads DEQ"));
+        method Action deq();
+            respDoLoads.deq();
+            debugLog.record($format("Do Loads DEQ, id=%0d", respDoLoads.deqEntryId()));
         endmethod
     endinterface
 
@@ -230,31 +286,13 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
             mqDoStores.enq(req);
         endmethod
 
-        method MEM_VALUE getResp() if (memPathQ.first() == REGSTATE_MEMORY_PATH_DOSTORES_LOAD ||
-                                       memPathQ.first() == REGSTATE_MEMORY_PATH_DOSTORES_STORE);
-
-            if (memPathQ.first == REGSTATE_MEMORY_PATH_DOSTORES_LOAD)
-                return linkToMem.getResp();
-            else
-                return ?;
-
+        method MEM_VALUE getResp();
+            return respDoStores.first();
         endmethod
 
-        method Action deq() if (memPathQ.first() == REGSTATE_MEMORY_PATH_DOSTORES_LOAD ||
-                                memPathQ.first() == REGSTATE_MEMORY_PATH_DOSTORES_STORE);
-
-            if (memPathQ.first == REGSTATE_MEMORY_PATH_DOSTORES_LOAD)
-            begin
-                linkToMem.deq();
-                debugLog.record($format("Do Stores LOAD DEQ"));
-            end
-            else
-            begin
-                debugLog.record($format("Do Stores STORE DEQ"));
-            end
-
-            memPathQ.deq();
-
+        method Action deq();
+            respDoStores.deq();
+            debugLog.record($format("Do Stores DEQ, id=%0d", respDoStores.deqEntryId()));
         endmethod
     endinterface
 

@@ -254,7 +254,7 @@ HASIM_CACHE_DATA_IDX#(numeric type nWays, type t_CACHE_SET_IDX)
 // Set associative cache
 //
 
-module [HASIM_MODULE] mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_DATA, t_CACHE_REF_INFO) sourceData,
+module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_DATA, t_CACHE_REF_INFO) sourceData,
                                        HASIM_CACHE_STATS stats,
                                        DEBUG_FILE debugLog)
     // interface:
@@ -1125,7 +1125,7 @@ endmodule
 //
 // ===================================================================
 
-module [HASIM_MODULE] mkNullHAsimCacheStats
+module mkNullHAsimCacheStats
     // interface:
         (HASIM_CACHE_STATS);
     

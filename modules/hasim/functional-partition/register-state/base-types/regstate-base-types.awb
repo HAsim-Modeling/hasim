@@ -1,0 +1,8 @@
+%name Functional Partition Register State Base Types
+%desc Functional Partition Register State Base Types
+
+%provides funcp_regstate_base_types
+
+%attributes hasim funcp regstate
+
+%public regstate-base-types.bsv

@@ -23,6 +23,7 @@
 // You probably won't need to change these.
 
 `include "asim/provides/funcp_base_types.bsh"
+`include "asim/provides/funcp_regstate_base_types.bsh"
 `include "asim/provides/funcp_memstate_base_types.bsh"
 `include "asim/provides/funcp_memory.bsh"
 
@@ -47,6 +48,7 @@ typedef struct
     CONTEXT_ID  contextId;
     MEM_ADDRESS addr;
     Bool        iStream;        // True iff load is fetching an instruction
+    FUNCP_MEMREF_TOKEN memRefToken;
 }
 MEM_LOAD_INFO
     deriving (Eq, Bits);
@@ -96,12 +98,12 @@ MEM_REQUEST
     deriving (Eq, Bits);
 
 
-function MEM_REQUEST funcpMemLoadReq(CONTEXT_ID ctxId, MEM_ADDRESS addr, Bool iStream);
-    return tagged MEM_LOAD MEM_LOAD_INFO { contextId: ctxId, addr: addr, iStream: iStream };
+function MEM_REQUEST funcpMemLoadReq(CONTEXT_ID ctxId, MEM_ADDRESS addr, Bool iStream, FUNCP_MEMREF_TOKEN memRefToken);
+    return tagged MEM_LOAD MEM_LOAD_INFO { contextId: ctxId, addr: addr, iStream: iStream, memRefToken: memRefToken };
 endfunction
 
 function MEM_REQUEST funcpMemLoadCacheLineReq(CONTEXT_ID ctxId, MEM_ADDRESS addr);
-    return tagged MEM_LOAD_CACHELINE MEM_LOAD_INFO { contextId: ctxId, addr: addr, iStream: False };
+    return tagged MEM_LOAD_CACHELINE MEM_LOAD_INFO { contextId: ctxId, addr: addr, iStream: False, memRefToken: ? };
 endfunction
 
 function MEM_REQUEST funcpMemStoreReq(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_VALUE value);
@@ -111,7 +113,7 @@ endfunction
 
 typedef union tagged 
 {
-    MEM_VALUE     MEM_REPLY_LOAD;
+    MEMSTATE_RESP MEM_REPLY_LOAD;
     MEM_CACHELINE MEM_REPLY_LOAD_CACHELINE;
     Bool          MEM_REPLY_STORE_CACHELINE_ACK;
 }

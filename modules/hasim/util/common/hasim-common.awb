@@ -13,7 +13,7 @@
 
 %public alias_def.bsv
 %public token.bsv
-%public bypass-fifo.bsv
+%public fifos.bsv
 %public fpga-fifos.bsv
 %public debug-file.bsv
 %public assertion-checker.bsv

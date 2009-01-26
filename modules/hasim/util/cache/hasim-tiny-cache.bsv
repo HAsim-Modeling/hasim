@@ -82,7 +82,7 @@ typedef UInt#(TLog#(nEntries))
 typedef Vector#(nEntries, HASIM_TINY_CACHE_IDX#(nEntries))
     HASIM_TINY_CACHE_LRU#(numeric type nEntries);
 
-module [HASIM_MODULE] mkTinyCache#(DEBUG_FILE debugLog)
+module mkTinyCache#(DEBUG_FILE debugLog)
     // interface:
         (HASIM_TINY_CACHE#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_DATA, nEntries, nTagExtraLowBits))
     provisos (Bits#(t_CACHE_DATA, t_CACHE_DATA_SZ),
@@ -185,7 +185,13 @@ module [HASIM_MODULE] mkTinyCache#(DEBUG_FILE debugLog)
 
     // Write
     method Action write(t_CACHE_ADDR addr, t_CACHE_DATA data);
-        let i = getLRU(cacheLRU);
+        t_IDX i;
+
+        // If address already in cache reuse entry.  Otherwise get a new way.
+        if (lookupAddr(addr) matches tagged Valid .hit_idx)
+            i = hit_idx;
+        else
+            i = getLRU(cacheLRU);
 
         cacheValid[i] <= True;
         cacheTag[i] <= addr;
@@ -243,7 +249,7 @@ endmodule
 // mkTinyCache1 --
 //     Special case for single entry cache.
 //
-module [HASIM_MODULE] mkTinyCache1#(DEBUG_FILE debugLog)
+module mkTinyCache1#(DEBUG_FILE debugLog)
     // interface:
         (HASIM_TINY_CACHE#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_DATA, 1, nTagExtraLowBits))
     provisos (Bits#(t_CACHE_DATA, t_CACHE_DATA_SZ),

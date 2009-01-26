@@ -223,7 +223,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                 begin
 
                     // We're doing read-modify-write. Request a load.
-                    let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr, iStream: False};
+                    let m_req = memStateReqLoad(tok, p_addr, False);
                     linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                     // Log it.
@@ -252,7 +252,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                     debugLog.record(fshow(tok.index) + $format(": DoStores2: ISA Store (V: 0x%h, T: %0d, O: %b) = 0x%h", store_val,  pack(st_type), offset, mem_store_value)); 
 
                     // Make the request to the memory state.
-                    let m_req = MEMSTATE_REQ_STORE {tok: tok, addr: p_addr, value: mem_store_value};
+                    let m_req = memStateReqStore(tok, p_addr, mem_store_value);
                     linkToMem.makeReq(tagged REQ_STORE m_req);
 
                     // Log it.
@@ -268,7 +268,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
                 // Two addresses means load two values, then modify them, then write them back.
                 // Make the first load now.
-                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1, iStream: False};
+                let m_req = memStateReqLoad(tok, p_addr1, False);
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Log it.
@@ -315,7 +315,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
         // Write the store to memory.
         let mem_addr = getFirst(store_info.memAddrs);
-        let m_req = MEMSTATE_REQ_STORE {tok: tok, addr: mem_addr, value: new_mem_val};
+        let m_req = memStateReqStore(tok, mem_addr, new_mem_val);
         linkToMem.makeReq(tagged REQ_STORE m_req);
 
         // Log it.
@@ -342,7 +342,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     
         // Make the second load request.
         let p_addr2 = getSecondOfTwo(store_info.memAddrs);
-        let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr2, iStream: False};
+        let m_req = memStateReqLoad(tok, p_addr2, False);
         linkToMem.makeReq(tagged REQ_LOAD m_req);
         
         // Log it.
@@ -398,7 +398,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
         // Make the first store request.
         MEM_ADDRESS p_addr1 = getFirst(store_info.memAddrs);
-        let m_req = MEMSTATE_REQ_STORE {tok: tok, addr: p_addr1, value: new_val1};
+        let m_req = memStateReqStore(tok, p_addr1, new_val1);
         linkToMem.makeReq(tagged REQ_STORE m_req);
 
         // Log it.
@@ -423,7 +423,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
         // Make the second store.
         let p_addr2 = getSecondOfTwo(store_info.memAddrs);
-        let m_req = MEMSTATE_REQ_STORE {tok: tok, addr: p_addr2, value: new_val2};
+        let m_req = memStateReqStore(tok, p_addr2, new_val2);
         linkToMem.makeReq(tagged REQ_STORE m_req);
         
         // Log it.

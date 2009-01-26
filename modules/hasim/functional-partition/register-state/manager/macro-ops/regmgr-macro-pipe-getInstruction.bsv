@@ -106,8 +106,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
     //
     // ====================================================================
 
-    FIFO#(TOKEN) inst1Q  <- mkFIFO();
-    FIFO#(INST_INFO) inst2Q  <- mkFIFO();
+    FIFO#(TOKEN) inst1Q  <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
+    FIFO#(INST_INFO) inst2Q  <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
     Reg#(STATE_INST2) stateInst2 <- mkReg(INST2_NORMAL);
     Reg#(STATE_INST3) stateInst3 <- mkReg(INST3_NORMAL);
 
@@ -174,7 +174,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
                 debugLog.record(fshow(tok.index) + $format(": GetInstruction2: Load Req (PA: 0x%h)", p_addr));
 
                 // Kick to Mem State.
-                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr, iStream: True };
+                let m_req = memStateReqLoad(tok, p_addr, True);
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Pass it to the next stage.
@@ -188,7 +188,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
                 debugLog.record(fshow(tok.index) + $format(": GetInstruction2: Spanning Load Req 1 (PA1: 0x%h, PA2: 0x%h)", p_addr1, p_addr2));
 
                 // Kick the first request to the MemState.
-                let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr1, iStream: True };
+                let m_req = memStateReqLoad(tok, p_addr1, True);
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Stall to make the second request.
@@ -213,7 +213,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
         
         // Kick the second request to MemState.
         let p_addr2 = getSecondOfTwo(fetch_info.memAddrs);
-        let m_req = MEMSTATE_REQ_LOAD {tok: tok, addr: p_addr2, iStream: True };
+        let m_req = memStateReqLoad(tok, p_addr2, True);
         linkToMem.makeReq(tagged REQ_LOAD m_req);
 
         // Log it.

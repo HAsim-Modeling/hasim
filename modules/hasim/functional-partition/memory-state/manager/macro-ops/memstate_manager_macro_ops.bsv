@@ -23,6 +23,7 @@
 
 // Library imports
 
+import FIFO::*;
 import FIFOF::*;
 import Vector::*;
 import FShow::*;
@@ -57,14 +58,15 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // ***** Soft Connections ***** //
 
     // Links to the functional partition register state.
-    Connection_Server#(MEMSTATE_REQ, MEM_VALUE) linkRegState <- mkConnection_Server("funcp_memstate");
+    Connection_Server#(MEMSTATE_REQ, MEMSTATE_RESP) linkRegState <- mkConnection_Server("funcp_memstate");
 
     // Link to the Cache
-    Connection_Client#(MEM_REQUEST, MEM_VALUE)  linkCache    <- mkConnection_Client("mem_cache");
+    Connection_Client#(MEM_REQUEST, MEMSTATE_RESP) linkCache <- mkConnection_Client("mem_cache");
 
     // ***** Local data ***** //
 
     FIFOF#(Bool) commitQ <- mkFIFOF();
+    FIFO#(MEM_LOAD_INFO) sbLookupQ <- mkFIFO();
 
 
     // ***** Rules ***** //
@@ -110,55 +112,87 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // Effect: Convert the address and send it to the store buffer.
 
     (* conservative_implicit_conditions *)
-    rule memLoad1 (linkRegState.getReq() matches tagged REQ_LOAD .ldInfo &&&
-                   ! commitQ.notEmpty());
+    rule memLoad (linkRegState.getReq() matches tagged REQ_LOAD .ldInfo &&&
+                  ! commitQ.notEmpty());
 
         // Pop the request from the register state.
         linkRegState.deq();
 
-        debugLog.record($format("LOAD: ") + fshow(ldInfo.tok.index) + $format(", addr=0x%x", ldInfo.addr));
+        debugLog.record($format("LOAD: ") + fshow(ldInfo.tok.index) + $format(" / ") + fshow(ldInfo.memRefToken) + $format(", addr=0x%x", ldInfo.addr));
 
         // Send it on to the store buffer and the cache in parallel.
         // Since most loads miss in the store buffer there isn't much point
         // in waiting for the response.
-        stBuffer.lookupReq(ldInfo.tok.index, ldInfo.addr);
-        linkCache.makeReq(funcpMemLoadReq(tokContextId(ldInfo.tok), ldInfo.addr, ldInfo.iStream));
+        let check_sb <- stBuffer.lookupReq(ldInfo.tok.index, ldInfo.addr);
+
+        let load_req = MEM_LOAD_INFO { contextId: tokContextId(ldInfo.tok),
+                                       addr: ldInfo.addr,
+                                       iStream: ldInfo.iStream,
+                                       memRefToken: ldInfo.memRefToken };
+
+        if (check_sb)
+        begin
+            // Value might be in store buffer.  Wait for the SB answer.
+            sbLookupQ.enq(load_req);
+        end
+        else
+        begin
+            // Value is not in store buffer.  Request from cache.
+            linkCache.makeReq(tagged MEM_LOAD load_req);
+            debugLog.record($format("  LOAD SB hash miss"));
+        end
 
     endrule
 
-    // memLoad2
+    //
+    // NOTE ON ORDER -- memLoadSB and memLoadCache may return load results
+    //                  out of order in order to improve performance!  The
+    //                  register state manager is expected to deal with this.
+    //
 
-    // When:   Some time after memLoad1.
-    // Effect: If the store buffer was a hit then buffer it for response.
-    //         Otherwise pass it to the cache.
-
-    rule memLoad2 (True);
-
-        // Get the responses from the store buffer and the cache.
+    //
+    // memLoadSB --
+    //   This path is taken when the address hits in the store buffer hash and
+    //   the store buffer must look to see whether the value is present.
+    //
+    rule memLoadSB (True);
         let sb_rsp <- stBuffer.lookupResp();
-
-        let cache_val = linkCache.getResp();
-        linkCache.deq();
+        
+        let load_req = sbLookupQ.first();
+        sbLookupQ.deq();
 
         case (sb_rsp.mvalue) matches
           tagged Invalid:
           begin
-              // A miss in the store buffer.  Return memory value.
-              debugLog.record($format("  LOAD from mem: value=0x%x", cache_val));
-              linkRegState.makeResp(cache_val);
+              // A miss in the store buffer.  Look in the cache.
+              linkCache.makeReq(tagged MEM_LOAD load_req);
+              debugLog.record($format("  LOAD SB miss"));
           end
           tagged Valid .sb_val:
           begin
-              // A hit in the store buffer.              
-              // Send it on to the next stage so things don't get out-of-order.
-              debugLog.record($format("  LOAD SB Hit: value=0x%x", sb_val));
-              linkRegState.makeResp(sb_val);
+              // A hit in the store buffer.  No need to look in the cache.
+              linkRegState.makeResp(memStateResp(load_req.memRefToken, sb_val));
+              debugLog.record($format("  LOAD SB hit: value=0x%x, ", sb_val) + fshow(load_req.memRefToken));
           end
         endcase
+    endrule
 
+
+    //
+    // memLoadCache --
+    //   Forward load response from cache back to the register state manager.
+    //
+    (* descending_urgency = "memLoadCache, memLoadSB, memLoad" *)
+    rule memLoadCache (True);
+        let cache_resp = linkCache.getResp();
+        linkCache.deq();
+
+        linkRegState.makeResp(cache_resp);
+        debugLog.record($format("  LOAD from mem: value=0x%x, ", cache_resp.value) + fshow(cache_resp.memRefToken));
     endrule
 
   
+
     // commit
     
     // 2-stage macro-operation

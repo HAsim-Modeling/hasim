@@ -130,7 +130,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
     // When:   The timing model makes a new FETCH req.
     // Effect: Retrieve the phsyical address(es).
 
-    rule getInstruction1 (state.readyToBegin());
+    rule getInstruction1 (state.readyToBegin(tokContextId(linkGetInst.getReq().token)));
 
         // Read input. Beginning of macro-operation.
         let req = linkGetInst.getReq();

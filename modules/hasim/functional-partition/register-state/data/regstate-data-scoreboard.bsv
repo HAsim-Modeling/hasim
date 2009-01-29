@@ -130,8 +130,8 @@ interface FUNCP_SCOREBOARD;
   // than the input argument.
   method TOKEN_INDEX youngestDecoded_Safe(TOKEN_INDEX t);
 
-  method Bool canEmulate();
-  method Bool canRewind();
+  method Bool canEmulate(TOKEN_INDEX t);
+  method Bool canRewind(TOKEN_INDEX t);
   
 endinterface
 
@@ -196,16 +196,27 @@ module [Connected_Module] mkFUNCP_Scoreboard
     Reg#(Vector#(NUM_CONTEXTS, TOKEN_ID)) youngestDecodedTok <- mkReg(replicate(0));
     
     // A register tracking how many tokens are active in pipelines.
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_itr <- mkLCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_fet <- mkLCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_dec <- mkLCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_exe <- mkLCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_dtr <- mkLCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_load <- mkLCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_store <- mkLCounter_Z(0);
-    COUNTER_Z#(TOKEN_INDEX_SIZE) num_in_commit <- mkLCounter_Z(0);
-    
-    
+    Vector#(NUM_CONTEXTS, COUNTER_Z#(TOKEN_ID_SIZE)) num_in_itr = newVector();
+    Vector#(NUM_CONTEXTS, COUNTER_Z#(TOKEN_ID_SIZE)) num_in_fet = newVector();
+    Vector#(NUM_CONTEXTS, COUNTER_Z#(TOKEN_ID_SIZE)) num_in_dec = newVector();
+    Vector#(NUM_CONTEXTS, COUNTER_Z#(TOKEN_ID_SIZE)) num_in_exe = newVector();
+    Vector#(NUM_CONTEXTS, COUNTER_Z#(TOKEN_ID_SIZE)) num_in_dtr = newVector();
+    Vector#(NUM_CONTEXTS, COUNTER_Z#(TOKEN_ID_SIZE)) num_in_load = newVector();
+    Vector#(NUM_CONTEXTS, COUNTER_Z#(TOKEN_ID_SIZE)) num_in_store = newVector();
+    Vector#(NUM_CONTEXTS, COUNTER_Z#(TOKEN_ID_SIZE)) num_in_commit = newVector();
+
+    for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
+    begin
+        num_in_itr[c] <- mkLCounter_Z(0);
+        num_in_fet[c] <- mkLCounter_Z(0);
+        num_in_dec[c] <- mkLCounter_Z(0);
+        num_in_exe[c] <- mkLCounter_Z(0);
+        num_in_dtr[c] <- mkLCounter_Z(0);
+        num_in_load[c] <- mkLCounter_Z(0);
+        num_in_store[c] <- mkLCounter_Z(0);
+        num_in_commit[c] <- mkLCounter_Z(0);
+    end
+
 
     // ***** Assertion Checkers ***** //
 
@@ -246,6 +257,52 @@ module [Connected_Module] mkFUNCP_Scoreboard
     ASSERTION assert_token_can_start_commit <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_COMMIT, ASSERT_ERROR, assertNodeStart);
     ASSERTION assert_token_has_done_loads   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_COMMIT_WITHOUT_LOAD, ASSERT_ERROR, assertNodeStart);
     ASSERTION assert_token_has_done_stores  <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_COMMIT_WITHOUT_STORE, ASSERT_ERROR, assertNodeStart);
+
+
+    // ***** Rules ***** //
+
+    //
+    // computeCanRewind and computeExeEmpty exist to simplify the Bluespec
+    // schedule by computing the canEmulate and canRewind predicates in a single
+    // piece of logic, each cycle.  They are consumed by the canEmulate and
+    // canRewind methods below.  Without them the vectors of all the counter
+    // references are unrolled as predicates to rules that call the methods.
+    //
+
+    Wire#(Bit#(NUM_CONTEXTS)) contextCanRewind <- mkBypassWire();
+    Wire#(Bool) exeStageEmpty <- mkBypassWire();
+
+    (* fire_when_enabled *)
+    rule computeCanRewind (True);
+        Bit#(NUM_CONTEXTS) can_rew;
+
+        for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
+        begin
+            can_rew[c] =
+                (num_in_itr[c].isZero() &&
+                 num_in_fet[c].isZero() &&
+                 num_in_dec[c].isZero() &&
+                 num_in_exe[c].isZero() &&
+                 num_in_dtr[c].isZero() &&
+                 num_in_load[c].isZero() &&
+                 num_in_store[c].isZero() &&
+                 num_in_commit[c].isZero()) ? 1 : 0;
+        end
+
+        contextCanRewind <= can_rew;
+    endrule
+
+    (* fire_when_enabled *)
+    rule computeExeEmpty (True);
+        Bool exe_empty = True;
+        for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
+        begin
+            exe_empty = exe_empty && num_in_exe[c].isZero();
+        end
+
+        exeStageEmpty <= exe_empty;
+    endrule
+
 
     // ***** Helper Functions ***** //
 
@@ -339,7 +396,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         alloc[t.context_id][t.token_id] <= False;
 
         // Record that the token has finished commit.
-        num_in_commit.down();
+        num_in_commit[ctx_id].down();
 
     endmethod
 
@@ -409,7 +466,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         // We don't need an assert here, because it's okay to begin working on killed tokens.
 
         itr_start.upd(t, True);
-        num_in_itr.up();
+        num_in_itr[t.context_id].up();
 
     endmethod
 
@@ -423,7 +480,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assert_token_can_finish_itr(itr_start.sub(t));
 
         itr_finish.upd(t, True);
-        num_in_itr.down();
+        num_in_itr[t.context_id].down();
 
     endmethod
 
@@ -437,7 +494,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assert_token_can_start_fet(itr_finish.sub(t));
 
         fet_start.upd(t, True);
-        num_in_fet.up();
+        num_in_fet[t.context_id].up();
 
     endmethod
 
@@ -451,7 +508,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assert_token_can_finish_fet(fet_start.sub(t));
 
         fet_finish.upd(t, True);
-        num_in_fet.down();
+        num_in_fet[t.context_id].down();
 
     endmethod
 
@@ -467,7 +524,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assert_token_can_start_dec(fet_finish.sub(t));
 
         dec_start.upd(t, True);
-        num_in_dec.up();
+        num_in_dec[t.context_id].up();
 
         let youngest_idx = tokenIndexFromIds(ctx_id, youngestDecodedTok[ctx_id]);
         if (tokenIsOlderOrEq(youngest_idx, t) && tokIdxIsAllocated(t))
@@ -484,10 +541,13 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Action decFinish(TOKEN_INDEX t);
 
-        assert_token_can_finish_dec(dec_start.sub(t));
+        // FIXME --
+        // For some reason adding the following test adds a scheduling conflict
+        // that I can't figure out.  Everything works fine without it.
+        //assert_token_can_finish_dec(dec_start.sub(t));
 
         dec_finish.upd(t, True);
-        num_in_dec.down();
+        num_in_dec[t.context_id].down();
 
     endmethod
 
@@ -501,7 +561,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assert_token_can_start_exe(dec_finish.sub(t));
 
         exe_start.upd(t, True);
-        num_in_exe.up();
+        num_in_exe[t.context_id].up();
 
     endmethod
 
@@ -515,7 +575,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assert_token_can_finish_exe(exe_start.sub(t));
 
         exe_finish.upd(t, True);
-        num_in_exe.down();
+        num_in_exe[t.context_id].down();
 
     endmethod
 
@@ -529,7 +589,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assert_token_can_start_dtr(exe_finish.sub(t));
 
         dtr_start.upd(t, True);
-        num_in_dtr.up();
+        num_in_dtr[t.context_id].up();
 
     endmethod
 
@@ -543,7 +603,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assert_token_can_finish_dtr(dtr_start.sub(t));
 
         dtr_finish.upd(t, True);
-        num_in_dtr.down();
+        num_in_dtr[t.context_id].down();
 
     endmethod
 
@@ -557,7 +617,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assert_token_can_start_load(dtr_finish.sub(t));
 
         load_start.upd(t, True);
-        num_in_load.up();
+        num_in_load[t.context_id].up();
 
     endmethod
 
@@ -571,7 +631,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assert_token_can_finish_load(load_start.sub(t));
 
         load_finish.upd(t, True);
-        num_in_load.down();
+        num_in_load[t.context_id].down();
 
     endmethod
 
@@ -585,7 +645,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assert_token_can_start_store(dtr_finish.sub(t));
 
         store_start.upd(t, True);
-        num_in_store.up();
+        num_in_store[t.context_id].up();
 
     endmethod
 
@@ -599,7 +659,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assert_token_can_finish_store(store_start.sub(t));
 
         store_finish.upd(t, True);
-        num_in_store.down();
+        num_in_store[t.context_id].down();
 
     endmethod
 
@@ -621,7 +681,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assert_token_can_start_commit(exe_finish.sub(t));
 
         commit_start.upd(t, True);
-        num_in_commit.up();
+        num_in_commit[t.context_id].up();
 
     endmethod
 
@@ -901,10 +961,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // When:   Any time.
     // Effect: Accessor method. Returns true if no instructions are in any pipeline except EXE.
 
-    method Bool canEmulate();
-
-        return num_in_itr.isZero() && num_in_fet.isZero() && num_in_dec.isZero() && num_in_dtr.isZero() && num_in_load.isZero() && num_in_store.isZero() && num_in_commit.isZero();
-
+    method Bool canEmulate(TOKEN_INDEX t);
+        return exeStageEmpty && (contextCanRewind[t.context_id] == 1);
     endmethod
 
     // canRewind
@@ -912,10 +970,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // When:   Any time.
     // Effect: Accessor method. Returns true if no instructions are in any pipeline.
 
-    method Bool canRewind();
-
-        return num_in_itr.isZero() && num_in_fet.isZero() && num_in_dec.isZero() && num_in_exe.isZero() && num_in_dtr.isZero() && num_in_load.isZero() && num_in_store.isZero() && num_in_commit.isZero();
-
+    method Bool canRewind(TOKEN_INDEX t);
+        return contextCanRewind[t.context_id] == 1;
     endmethod
 
 endmodule

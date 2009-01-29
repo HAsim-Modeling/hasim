@@ -324,13 +324,21 @@ module mkLiveTokenBRAMInitialized#(data_T initval)
 endmodule
 
 
-module mkLiveTokenBRAMMultiRead
+//
+// Allocate multiple real read ports when realPorts is True.  Otherwise allocate
+// pseudo ports that share a single physical read port but route traffic correctly.
+//
+module mkLiveTokenBRAMMultiRead#(Bool realPorts)
     // interface:
         (BRAM_MULTI_READ#(n, TOKEN_INDEX, data_T))
     provisos
         (Bits#(data_T, data_SZ));
     
-    BRAM_MULTI_READ#(n, LIVE_TOKEN_INDEX, data_T) mem <- mkBRAMMultiRead();
+    BRAM_MULTI_READ#(n, LIVE_TOKEN_INDEX, data_T) mem;
+    if (realPorts)
+        mem <- mkBRAMMultiRead();
+    else
+        mem <- mkBRAMPseudoMultiRead();
 
     // readPorts
 
@@ -359,13 +367,21 @@ module mkLiveTokenBRAMMultiRead
 endmodule
 
 
-module mkLiveTokenBRAMMultiReadInitialized#(data_T initval)
+//
+// Allocate multiple real read ports when realPorts is True.  Otherwise allocate
+// pseudo ports that share a single physical read port but route traffic correctly.
+//
+module mkLiveTokenBRAMMultiReadInitialized#(Bool realPorts, data_T initval)
     // interface:
         (BRAM_MULTI_READ#(n, TOKEN_INDEX, data_T))
     provisos
         (Bits#(data_T, data_SZ));
     
-    BRAM_MULTI_READ#(n, LIVE_TOKEN_INDEX, data_T) mem <- mkBRAMMultiReadInitialized(initval);
+    BRAM_MULTI_READ#(n, LIVE_TOKEN_INDEX, data_T) mem;
+    if (realPorts)
+        mem <- mkBRAMMultiReadInitialized(initval);
+    else
+        mem <- mkBRAMPseudoMultiReadInitialized(initval);
 
     // readPorts
 

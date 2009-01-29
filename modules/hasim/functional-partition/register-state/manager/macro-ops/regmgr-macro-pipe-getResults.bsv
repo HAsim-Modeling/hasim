@@ -50,6 +50,22 @@ import Vector::*;
 //
 // ========================================================================
 
+//
+// States for getResults emulation pipeline stages.
+//
+typedef enum
+{
+    RSM_RES_Running,
+    RSM_RES_DrainingForEmulate,
+    RSM_RES_EmulateGenRegMap,
+    RSM_RES_SyncingRegisters,
+    RSM_RES_RequestingEmulation,
+    RSM_RES_UpdatingRegisters
+}
+REGMGR_RES_STATE_ENUM
+    deriving (Eq, Bits);
+
+
 // STATE_RES4
 typedef union tagged
 {
@@ -64,7 +80,6 @@ typedef union tagged
 }
 STATE_RES4
     deriving (Eq, Bits);
-
 
 
 // ========================================================================
@@ -184,11 +199,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     REGMGR_GLOBAL_DATA glob,
     REGSTATE_REG_MAPPING_GETRESULTS regMapping,
     REGSTATE_PHYSICAL_REGS_RW_REGS prf,
-    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr,
+    BROM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr,
     BRAM#(TOKEN_INDEX, ISA_INST_SRCS) tokWriters,
-    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts,
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst,
-    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr,
+    BROM#(TOKEN_INDEX, REGMGR_DST_REGS) tokDsts,
+    BROM#(TOKEN_INDEX, ISA_INSTRUCTION) tokInst,
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_ADDRESS) tokMemAddr,
     BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue)
     //interface:
                 ();
@@ -253,6 +268,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // Which register are we currently synchronizing?
     Reg#(ISA_REG_INDEX) synchronizingCurReg <- mkReg(minBound);
 
+    Reg#(REGMGR_RES_STATE_ENUM) state_res <- mkReg(RSM_RES_Running);
 
     Stat stat_isa_emul <- mkStatCounter(`STATS_REGMGR_GETRESULTS_EMULATED_INSTRS);
 
@@ -277,7 +293,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // Effect: Lookup the locations of this token's sources.
 
     (* conservative_implicit_conditions *)
-    rule getResults1 (state.readyToBegin());
+    rule getResults1 (state.readyToBegin(tokContextId(linkGetResults.getReq().token)) &&
+                      (state_res == RSM_RES_Running));
 
         // Get parameter from the timing model. Begin macro-operation.
         let req = linkGetResults.getReq();
@@ -285,17 +302,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         let tok = req.token;
         debugLog.record(fshow(tok.index) + $format(": GetResults: Begin."));
 
-        // Update the scoreboard.
-        tokScoreboard.exeStart(tok.index);
-        
         // Token active or was it killed?
         let tok_active = tokScoreboard.isAllocated(tok.index);
 
         if (tokScoreboard.emulateInstruction(tok.index) && tok_active)
         begin
 
+            state.setEmulate(tokContextId(tok));
+
             // Record that we're emulating an instruction.
-            state.setState(RSM_DrainingForEmulate);
+            state_res <= RSM_RES_DrainingForEmulate;
 
             // Record which token is being emulated.
             emulatingToken <= tok;
@@ -306,6 +322,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         end
         else
         begin
+        
+            // Update the scoreboard.
+            tokScoreboard.exeStart(tok.index);
         
             // Look up the writers.
             tokWriters.readReq(tok.index);
@@ -348,7 +367,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         end
 
         tokAddr.readReq(tok.index);
-        tokInst.readPorts[1].readReq(tok.index);
+        tokInst.readReq(tok.index);
         res2Q.enq(tok);
 
     endrule
@@ -366,7 +385,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         // Get all the data the previous stage kicked off.
         let addr <- tokAddr.readRsp();
-        let inst <- tokInst.readPorts[1].readRsp();
+        let inst <- tokInst.readRsp();
 
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": GetResults3: Sending to Datapath."));
@@ -375,7 +394,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         linkToDatapath.makeReq(initISADatapathReq(tok, inst, addr));
 
         // Look up the destinations for the writeback.
-        tokDsts.readPorts[0].readReq(tok.index);
+        tokDsts.readReq(tok.index);
 
         // Pass it to the next stage.
         res3Q.enq(tuple2(tok, addr));
@@ -410,10 +429,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             tokMemAddr.write(tok.index, ea);
 
         // Get the destination response
-        let dsts <- tokDsts.readPorts[0].readRsp();
+        let dsts <- tokDsts.readRsp();
         
         // The first dest should always be valid (it may not be architecturally visible)
-        let dst = validValue(dsts[0]);
+        let dst_pr = validValue(dsts.pr[0]);
 
         // Perform the first writeback, if any.
         case (wbvals[0]) matches
@@ -431,8 +450,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
                 else  // A normal PRF writeback
                 begin
             
-                    prf.write(dst, v);
-                    debugLog.record(fshow(tok.index) + $format(": GetResults4: Writing (PR%0d <= 0x%x)", dst, v));
+                    prf.write(dst_pr, v);
+                    debugLog.record(fshow(tok.index) + $format(": GetResults4: Writing (PR%0d <= 0x%x)", dst_pr, v));
                 
                 end
 
@@ -445,7 +464,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         for (Integer x = 1; x < valueof(ISA_MAX_DSTS); x = x + 1)
         begin // There is more to do if both the dest and val are valid.
-          writing_back_more = writing_back_more || (isValid(dsts[x]) && isValid(wbvals[x]));
+          writing_back_more = writing_back_more || (isValid(dsts.pr[x]) && isValid(wbvals[x]));
         end
 
         if (!writing_back_more)
@@ -473,12 +492,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             Vector#(TSub#(ISA_MAX_DSTS, 1), Maybe#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE))) remaining_values = newVector();
             for (Integer x = 1; x < valueof(ISA_MAX_DSTS) ; x = x + 1)
             begin
-                remaining_values[x-1] = case (dsts[x]) matches
+                remaining_values[x-1] = case (dsts.pr[x]) matches
                                          tagged Invalid:  tagged Invalid;
-                                         tagged Valid .d:
+                                         tagged Valid .dst_pr:
                                            case (wbvals[x]) matches 
                                               tagged Invalid:  tagged Invalid; // Not writing it now - presumably it's a load.
-                                              tagged Valid .v: tagged Valid tuple2(d, v);
+                                              tagged Valid .v: tagged Valid tuple2(dst_pr, v);
                                            endcase
                                      endcase;
             end
@@ -600,18 +619,21 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // When:   After getResults operation puts us in the emulation state.
     // Effect: Stall until all younger operations have completed. Then we can proceed.
 
-    rule emulateInstruction1 (state.getState() == RSM_DrainingForEmulate && tokScoreboard.canEmulate());
+    rule emulateInstruction1 ((state_res == RSM_RES_DrainingForEmulate) && tokScoreboard.canEmulate(emulatingToken.index));
         // Did the timing model do drain before correctly?
         let ctx_id = tokContextId(emulatingToken);
         assertion.expectedOldestTok(emulatingToken.index == tokScoreboard.oldest(ctx_id));
         if (emulatingToken.index != tokScoreboard.oldest(ctx_id))
             debugLog.record(fshow(emulatingToken.index) + $format(": emulateInstruction1:  Token is not oldest! (Oldest: %0d)", tokScoreboard.oldest(ctx_id)));
                
+        // Update the scoreboard.
+        tokScoreboard.exeStart(emulatingToken.index);
+        
         emulateMapCurTok <= tokScoreboard.youngestDecoded(ctx_id);
         emulateMapReqDone <= False;
         emulateRegMap.reset();
 
-        state.setState(RSM_EmulateGenRegMap);
+        state_res <= RSM_RES_EmulateGenRegMap;
 
         debugLog.record(fshow(emulatingToken.index) + $format(": emulateInstruction1:  Youngest decoded token is %0d (youngest is %0d)", tokScoreboard.youngestDecoded(ctx_id), tokScoreboard.youngest(ctx_id)));
     endrule
@@ -623,10 +645,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     //     details of registers written by each token.  Details will be
     //     consumed by the next rule.
     //
-    rule emulateInstruction1_GenRegMapReq (state.getState() == RSM_EmulateGenRegMap && ! emulateMapReqDone);
+    rule emulateInstruction1_GenRegMapReq ((state_res == RSM_RES_EmulateGenRegMap) && ! emulateMapReqDone);
         // Look up the token properties
         regMapping.readRewindReq(emulateMapCurTok);
-        tokInst.readPorts[1].readReq(emulateMapCurTok);
+        tokInst.readReq(emulateMapCurTok);
 
         // Pass it to the next stage that will generate the map table
         let done = (emulateMapCurTok == emulatingToken.index);
@@ -645,13 +667,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     //     a map of registers from the perspective of the emulated token.
     //
     (* conservative_implicit_conditions *)
-    rule emulateInstruction1_GenRegMapResp (state.getState() == RSM_EmulateGenRegMap);
+    rule emulateInstruction1_GenRegMapResp (state_res == RSM_RES_EmulateGenRegMap);
 
         match { .tok_idx, .tok_active, .done } = emulateRegMapQ.first();
         emulateRegMapQ.deq();
 
         let rewind_info <- regMapping.readRewindRsp();
-        let inst <- tokInst.readPorts[1].readRsp();
+        let inst <- tokInst.readRsp();
 
         //
         // Note old register mappings.  We must check the freelist position for
@@ -691,7 +713,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             doneSyncingRegs <= False;
 
             // Start syncing registers.
-            state.setState(RSM_SyncingRegisters);
+            state_res <= RSM_RES_SyncingRegisters;
         end
 
     endrule
@@ -703,7 +725,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     //         rule happens once for each architectural register.
     // Effect: Look up the current physical register in the maptable and request it from the regfile.
     
-    rule emulateInstruction2_Req (state.getState() == RSM_SyncingRegisters && ! doneSyncingRegs);
+    rule emulateInstruction2_Req ((state_res == RSM_RES_SyncingRegisters) && ! doneSyncingRegs);
     
         // Some ISA's have a sparse packing of register names.  They should define Arith so we 
         // don't transmit them spuriously.
@@ -718,7 +740,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         if (synchronizingCurReg == maxBound)
         begin
             // Request the inst and current PC
-            tokInst.readPorts[0].readReq(emulatingToken.index);
+            tokInst.readReq(emulatingToken.index);
             tokAddr.readReq(emulatingToken.index);
 
             done = True;
@@ -771,7 +793,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // When:   After each occurance of emulateInstruction2_Req
     // Effect: Get the register value response and send it on to software via RRR.
 
-    rule emulateInstruction2_Rsp (True);
+    rule emulateInstruction2_Rsp (state_res == RSM_RES_SyncingRegisters);
     
         // Get the register from the previous stage.
         match {.done, .arch_reg} = syncQ.first();
@@ -788,7 +810,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         if (done)
         begin
             // End the loop.
-            state.setState(RSM_RequestingEmulation);
+            state_res <= RSM_RES_RequestingEmulation;
         end
         
         //Log it.
@@ -801,10 +823,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // When:   After emulateInstruction1 has transmitted every architectural register.
     // Effect: Send the instruction emulation request to software via RRR.
 
-    rule emulateInstruction3 (state.getState() == RSM_RequestingEmulation);
+    rule emulateInstruction3 (state_res == RSM_RES_RequestingEmulation);
         
         // Get the instruction and current pc
-        ISA_INSTRUCTION inst <- tokInst.readPorts[0].readRsp();
+        ISA_INSTRUCTION inst <- tokInst.readRsp();
         ISA_ADDRESS       pc <- tokAddr.readRsp();
         
         emulatingPC <= pc;
@@ -818,7 +840,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         stat_isa_emul.incr();
 
         //Go to receiving updates.
-        state.setState(RSM_UpdatingRegisters);
+        state_res <= RSM_RES_UpdatingRegisters;
 
     endrule
 
@@ -839,7 +861,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         ISA_VALUE v = upd.rValue;
         
         // Assert that we're in the state we expected to be in.
-        assertion.regUpdateAtExpectedTime(state.getState() == RSM_UpdatingRegisters);
+        assertion.regUpdateAtExpectedTime(state_res == RSM_RES_UpdatingRegisters);
 
         // Request architectural to physical register mapping
         emulateRegMap.mapReq(ar);
@@ -884,17 +906,15 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // Effect: This means the emulation is complete. Resume normal operations.
     //         Return a NOP to the timing model.
 
-    rule emulateInstruction4 (True);
+    rule emulateInstruction4 (state_res == RSM_RES_UpdatingRegisters);
         
         // Get the ACK from software that they're complete.
         ISA_ADDRESS newPc <- emul_client_stub.getResponse_emulate();
         
-        // Assert that we're in the state we expected to be in.
-        assertion.emulationFinishedAtExpectedTime(state.getState() == RSM_UpdatingRegisters);
-        
         // We are no longer emulating an instruction.
         // Resume normal operations.
-        state.setState(RSM_Running);
+        state_res <= RSM_RES_Running;
+        state.clearEmulate();
 
         // Update scoreboard.
         tokScoreboard.exeFinish(emulatingToken.index);

@@ -67,3 +67,18 @@ function a getSecondOfTwo(UP_TO_TWO#(a) d);
     endcase
 
 endfunction
+
+
+//
+// Destination registers.  Architectural and physical registers are kept in
+// separate lists because some slots get a physical register even when no
+// architectural register is allocated.  (E.g. store data.)
+//
+
+typedef struct
+{
+    Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)) ar;
+    ISA_INST_DSTS pr;
+}
+REGMGR_DST_REGS
+    deriving (Bits, Eq);

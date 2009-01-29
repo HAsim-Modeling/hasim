@@ -96,7 +96,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitStores#(
     // Soft Inputs:  Token
     // Soft Returns: Token
     
-    rule commitStores1 (state.readyToBegin());
+    rule commitStores1 (state.readyToBegin(tokContextId(linkCommitStores.getReq().token)));
 
         // Get the input from the timing model. Begin macro-operation.
         let req = linkCommitStores.getReq();

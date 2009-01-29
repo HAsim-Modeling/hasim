@@ -35,19 +35,36 @@
 // ========================================================================
 
 
+//
+// Fault / exception pipeline states.
+//
+typedef enum
+{
+    RSM_EXC_Running,
+    RSM_EXC_DrainingForFault,
+    RSM_EXC_DrainingForRewind,
+    RSM_EXC_HandleFault,
+    RSM_EXC_HandleFaultRewindDone,
+    RSM_EXC_ReadyToRewind,
+    RSM_EXC_Rewinding,
+    RSM_EXC_RewindingWaitForSlowRemap
+}
+REGMGR_EXC_STATE_ENUM
+    deriving (Eq, Bits);
+
+
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     REGMGR_GLOBAL_DATA glob,
     REGSTATE_TLB_FAULT link_itlb_fault,
     REGSTATE_TLB_FAULT link_dtlb_fault,
     REGSTATE_MEMORY_QUEUE linkToMem,
     REGSTATE_REG_MAPPING_EXCEPTION regMapping,
-    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr,
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst,
-    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts,
+    BROM#(TOKEN_INDEX, REGMGR_DST_REGS) tokDsts,
     FUNCP_FREELIST freelist,
-    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr,
-    Reg#(TOKEN_BRANCH_EPOCH) branchEpoch,
-    Reg#(TOKEN_FAULT_EPOCH) faultEpoch)
+    BROM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr,
+    BROM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr,
+    LUTRAM#(CONTEXT_ID, TOKEN_BRANCH_EPOCH) branchEpoch,
+    LUTRAM#(CONTEXT_ID, TOKEN_FAULT_EPOCH) faultEpoch)
     //interface:
                 ();
 
@@ -100,6 +117,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     Reg#(TOKEN_INDEX) rewindCur <- mkRegU();
     Reg#(Bool) rewindForFault <- mkRegU();
 
+    Reg#(REGMGR_EXC_STATE_ENUM) state_exc <- mkReg(RSM_EXC_Running);
+
 
     // ====================================================================
     //
@@ -118,7 +137,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     // Soft Inputs:  Token
     // Soft Returns: Token & next fetch address
 
-    rule handleFaultS (state.readyToBegin() && linkHandleFault.reqNotEmpty());
+    rule handleFaultS (state.readyToBegin(tokContextId(linkHandleFault.getReq().token)) &&
+                       (state_exc == RSM_EXC_Running));
 
         // Timing model requested fault handling?
         let req = linkHandleFault.getReq();
@@ -126,13 +146,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         // Log it.
         debugLog.record(fshow(req.token.index) + $format(": Preparing to handle fault")); 
 
-        state.setState(RSM_DrainingForFault);
+        state.setException(tokContextId(req.token));
+        state_exc <= RSM_EXC_DrainingForFault;
 
     endrule
 
     // Wait for all activity to stop and start the fault handler
 
-    rule handleFault1 (state.getState() == RSM_DrainingForFault && tokScoreboard.canRewind());
+    rule handleFault1 ((state_exc == RSM_EXC_DrainingForFault) && tokScoreboard.canRewind(linkHandleFault.getReq().token.index));
 
         // Get the input from the timing model.
         let req = linkHandleFault.getReq();
@@ -145,14 +166,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         tokAddr.readReq(tok.index);           // PC
         tokMemAddr.readReq(tok.index);
         
-        state.setState(RSM_HandleFault);
+        state_exc <= RSM_EXC_HandleFault;
         faultQ.enq(tok);
 
     endrule
 
 
     (* conservative_implicit_conditions *)
-    rule handleFault2 (state.getState() == RSM_HandleFault);
+    rule handleFault2 (state_exc == RSM_EXC_HandleFault);
 
         // Instruction & data addresses
         let iAddr <- tokAddr.readRsp();
@@ -244,29 +265,32 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         // Start at the youngest and go backward.
 
         // Proceed with rewind.
-        state.setState(RSM_Rewinding);
+        state_exc <= RSM_EXC_Rewinding;
 
     endrule
 
     //
     // handleFault3 -- Control returns here following rewind.
     //
-    rule handleFault3 (state.getState() == RSM_HandleFaultRewindDone);
+    rule handleFault3 (state_exc == RSM_EXC_HandleFaultRewindDone);
 
         match { .tok, .resumeInstrAddr } = faultResumeQ.first();
         faultResumeQ.deq();
+
+        let ctx_id = tokContextId(tok);
 
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": handleFault3: Restart at 0x%h", resumeInstrAddr)); 
 
         // Update the fault epoch so we can discard appropriate updates.
-        let new_fault_epoch = faultEpoch + 1;
-        faultEpoch <= new_fault_epoch;
+        let new_fault_epoch = faultEpoch.sub(ctx_id) + 1;
+        faultEpoch.upd(ctx_id, new_fault_epoch);
 
         // Send response to timing model
-        linkHandleFault.makeResp(initFuncpRspHandleFault(tok, resumeInstrAddr, initEpoch(branchEpoch, new_fault_epoch)));
+        linkHandleFault.makeResp(initFuncpRspHandleFault(tok, resumeInstrAddr, initEpoch(branchEpoch.sub(ctx_id), new_fault_epoch)));
 
-        state.setState(RSM_Running);
+        state.clearException();
+        state_exc <= RSM_EXC_Running;
 
     endrule
 
@@ -285,8 +309,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     // When:   When the timing model starts a rewindToToken()
     // Effect: Prepare to rewind, making it impossible for other functional
     //         rules to start processing new requests.
-
-    rule rewindToTokenS (state.readyToBegin() && linkRewindToToken.reqNotEmpty());
+    //
+    //         Tests linkHandleFault to be sure only one of handleFaultS and
+    //         rewindTotokenS fires.
+    rule rewindToTokenS (state.readyToBegin(tokContextId(linkRewindToToken.getReq().token)) &&
+                         (state_exc == RSM_EXC_Running) &&
+                         ! linkHandleFault.reqNotEmpty());
 
         // Message arriving from timing model?
         let req = linkRewindToToken.getReq();
@@ -296,7 +324,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         // Log it.
         debugLog.record($format("Rewind: Preparing rewind to ") + fshow(req.token.index));
 
-        state.setState(RSM_DrainingForRewind);
+        state.setException(tokContextId(req.token));
+        state_exc <= RSM_EXC_DrainingForRewind;
 
     endrule
 
@@ -307,7 +336,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     //         to rewinding is on a timing critical path, so the rule doesn't
     //         do anything else.
 
-    rule rewindToToken1 (state.getState() == RSM_DrainingForRewind && tokScoreboard.canRewind());
+    rule rewindToToken1 ((state_exc == RSM_EXC_DrainingForRewind) && tokScoreboard.canRewind(rewindReq.token.index));
 
         let req = rewindReq;
 
@@ -315,7 +344,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         let ctx_id = tokContextId(tok);
 
         debugLog.record($format("Rewind: Ready to rewind to ") + fshow(tok.index) + $format(" (youngest: ") + fshow(tokScoreboard.youngest(ctx_id)) + $format(" / youngest decoded: ") + fshow(tokScoreboard.youngestDecoded(ctx_id)));
-        state.setState(RSM_ReadyToRewind);
+        state_exc <= RSM_EXC_ReadyToRewind;
 
     endrule
 
@@ -324,17 +353,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     // When:   Follows rewindToToken1
     // Effect: Lookup the destinations of this token, and the registers to free.
 
-    rule rewindToToken2 (state.getState() == RSM_ReadyToRewind);
+    rule rewindToToken2 (state_exc == RSM_EXC_ReadyToRewind);
       
         let req = rewindReq;
         let tok = req.token;
+        let ctx_id = tokContextId(tok);
 
         // Tell the memory to drop non-committed stores.
         let m_req = MEMSTATE_REQ_REWIND {rewind_to: tok.index, rewind_from: tokScoreboard.youngestDecoded_Safe(tok.index)};
         linkToMem.makeReq(tagged REQ_REWIND m_req);
 
         // Update the epoch so we can discard appropriate updates.
-        branchEpoch <= branchEpoch + 1;
+        branchEpoch.upd(ctx_id, branchEpoch.sub(ctx_id) + 1);
 
         // Log our failure.
         debugLog.record($format("Rewind: Initiating rewind (Oldest: ") + fshow(tokScoreboard.oldest(tokContextId(tok))));
@@ -349,7 +379,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         rewindCur <= tokScoreboard.youngestDecoded_Safe(tok.index);
 
         // Proceed with rewind.
-        state.setState(RSM_Rewinding);
+        state_exc <= RSM_EXC_Rewinding;
     
     endrule
 
@@ -359,12 +389,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     //   Walk the tokens in age order and reconstruct the maptable
     //
     (* conservative_implicit_conditions *)
-    rule rewindToToken3 (state.getState() == RSM_Rewinding);
+    rule rewindToToken3 (state_exc == RSM_EXC_Rewinding);
     
         // Look up the token properties
         regMapping.readRewindReq(rewindCur);
-        tokInst.readPorts[1].readReq(rewindCur);
-        tokDsts.readPorts[2].readReq(rewindCur);
+        tokDsts.readReq(rewindCur);
 
         // Pass it to the next stage who will free it.
         let done = (rewindCur == rewindTok.index);
@@ -379,7 +408,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
             linkToMem.deq();
 
             // No more tokens.  Wait for remapping to finish.
-            state.setState(RSM_RewindingWaitForSlowRemap);
+            state_exc <= RSM_EXC_RewindingWaitForSlowRemap;
         end
     endrule
 
@@ -392,14 +421,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     // and whether it may conflict with the standard pipeline.
     //
     (* conservative_implicit_conditions *)
-    rule rewindToToken4 (! state.readyToBegin() && ! state.readyToContinue());
+    rule rewindToToken4 ((state_exc == RSM_EXC_Rewinding) ||
+                         (state_exc == RSM_EXC_RewindingWaitForSlowRemap));
 
         match { .tok_idx, .tok_active, .done } = rewindQ.first();
         rewindQ.deq();
 
         let rewind_info <- regMapping.readRewindRsp();
-        let inst <- tokInst.readPorts[1].readRsp();
-        let phys_dsts <- tokDsts.readPorts[2].readRsp();
+        let dsts <- tokDsts.readRsp();
+
+        let ctx_id = tok_idx.context_id;
 
         //
         // Unwind register mappings if token has been through getDeps and
@@ -413,25 +444,25 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
             if (!done && tok_active)
             begin
                 REGSTATE_NEW_MAPPINGS new_map = ?;
-                new_map.context_id = tok_idx.context_id;
+                new_map.context_id = ctx_id;
                 
                 ISA_INST_DSTS dead_pregs = newVector();
 
                 for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
                 begin
-                    if (isaGetDst(inst, x) matches tagged Valid .arc_r &&&
-                        rw.regsToFree[x] matches tagged Valid .r)
+                    if (dsts.ar[x] matches tagged Valid .ar &&&
+                        rw.regsToFree[x] matches tagged Valid .pr_free)
                     begin
                         // Set the mapping back
-                        new_map.mappings[x] = tagged Valid tuple2(arc_r, r);
-                        debugLog.record($format("Rewind: ") + fshow(tok_idx) + $format(": Remapping (%0d/%0d)", arc_r, r));
+                        new_map.mappings[x] = tagged Valid tuple2(ar, pr_free);
+                        debugLog.record($format("Rewind: ") + fshow(tok_idx) + $format(": Remapping (%0d/%0d)", ar, pr_free));
                     end
                     else
                     begin
                         new_map.mappings[x] = tagged Invalid;
                     end
 
-                    if (phys_dsts[x] matches tagged Valid .pr)
+                    if (dsts.pr[x] matches tagged Valid .pr)
                     begin
                         // The current destination must be freed.
                         dead_pregs[x] = tagged Valid pr;
@@ -459,13 +490,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
             if (! rewindForFault)
             begin
                 // Normal rewind -- return response
-                linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok, initEpoch(branchEpoch, faultEpoch )));
-                state.setState(RSM_Running);
+                linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok, initEpoch(branchEpoch.sub(ctx_id), faultEpoch.sub(ctx_id) )));
+                state.clearException();
+                state_exc <= RSM_EXC_Running;
             end
             else
             begin
                 // Rewind for fault handler -- resume fault handler path
-                state.setState(RSM_HandleFaultRewindDone);
+                state_exc <= RSM_EXC_HandleFaultRewindDone;
             end
         end
 

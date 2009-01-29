@@ -84,7 +84,7 @@ endfunction
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     REGMGR_GLOBAL_DATA glob,
     REGSTATE_TLB_TRANSLATE link_itlb_trans,
-    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr,
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_ADDRESS) tokAddr,
     BRAM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs)
     //interface:
                 ();
@@ -150,7 +150,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     // When:   The timing model makes a new ITranslate req.
     // Effect: Record the virtual address, make the req to the TLB.
 
-    rule doITranslate1 (state.readyToBegin());
+    rule doITranslate1 (state.readyToBegin(tokContextId(linkDoITranslate.getReq().token)));
 
         // Get the input from the timing model. Begin macro operation.
         let req = linkDoITranslate.getReq();

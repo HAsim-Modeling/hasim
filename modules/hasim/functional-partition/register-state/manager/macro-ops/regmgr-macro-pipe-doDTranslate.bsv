@@ -81,7 +81,7 @@ endfunction
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
     REGMGR_GLOBAL_DATA glob,
     REGSTATE_TLB_TRANSLATE link_dtlb_trans,
-    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr,
+    BROM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr,
     BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs)
     //interface:
                 ();
@@ -151,7 +151,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
     // When:   The timing model makes a new DTranslate req.
     // Effect: Retrieve the effective address.
 
-    rule doDTranslate1 (state.readyToBegin());
+    rule doDTranslate1 (state.readyToBegin(tokContextId(linkDoDTranslate.getReq().token)));
 
         // Get the input from the timing model. Begin macro operation.
         let req = linkDoDTranslate.getReq();
@@ -166,6 +166,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
         let is_load = tokScoreboard.isLoad(tok.index);
         let is_store = tokScoreboard.isStore(tok.index);
         assertion.dTranslateOnMemOp(is_load || is_store);
+        if (! is_load && ! is_store)
+            debugLog.record(fshow(tok.index) + $format(": DoDTranslate: ERROR -- not a memory reference!"));
 
         // Get the optype since we're using the port now.
         let op_type = is_load ? tokScoreboard.getLoadType(tok.index) : tokScoreboard.getStoreType(tok.index);

@@ -17,14 +17,12 @@
 //
 
 //
-// Maintain "state" in regstate manager, governing locks between rules.
-// At its core the state is a single variable of type REGMGR_STATE_ENUM.
-// However, some rules are allowed to fire under multiple states.  The
-// result is the predicate for rules may be relatively long latency
-// combinational tests.  The regstate manager state interface here sets
-// some boolean predicates that are functions of the state each time
-// it is updated.  This puts the work of generating a complicated predicate
-// in the parallel part of a rule body, instead of the predicate.
+// This code used to be much more complicated than it is now because there
+// was a single finite state machine for the entire register state pipeline.
+// Now that there are separate state machines for each pipeline the code
+// here is responsible for global control:  blocking individual contexts
+// from entering the functional pipelines during instruction emulation and
+// exception handling.
 //
 
 // REGMGR_STATE
@@ -33,23 +31,8 @@
 
 typedef enum
 {
-    // RSM_Running and Draining entries are put first to make the readyToContinue
-    // test more efficient.
     RSM_Running,
-    RSM_DrainingForFault,
-    RSM_DrainingForRewind,
-    RSM_DrainingForEmulate,
-
-    RSM_Initializing,
-    RSM_HandleFault,
-    RSM_HandleFaultRewindDone,
-    RSM_ReadyToRewind,
-    RSM_Rewinding,
-    RSM_RewindingWaitForSlowRemap,
-    RSM_EmulateGenRegMap,
-    RSM_SyncingRegisters,
-    RSM_RequestingEmulation,
-    RSM_UpdatingRegisters
+    RSM_Initializing
 }
 REGMGR_STATE_ENUM
     deriving (Eq, Bits);
@@ -60,8 +43,14 @@ interface REGMGR_STATE;
     method REGMGR_STATE_ENUM getState();
     method Action setState(REGMGR_STATE_ENUM newState);
 
+    method Action setEmulate(CONTEXT_ID ctxId);
+    method Action clearEmulate();
+
+    method Action setException(CONTEXT_ID ctxId);
+    method Action clearException();
+
     // Ready to start a new operation?
-    method Bool readyToBegin();
+    method Bool readyToBegin(CONTEXT_ID ctxId);
     
     // Ok to continue an operation already in progress?
     method Bool readyToContinue();
@@ -73,21 +62,12 @@ module mkRegmanagerState#(REGMGR_STATE_ENUM init)
     // interface:
         (REGMGR_STATE);
 
-    function Bool readyToBeginFromState(REGMGR_STATE_ENUM s);
-        return s == RSM_Running;
-    endfunction
-
-    function Bool readyToContinueFromState(REGMGR_STATE_ENUM s);
-        return s == RSM_Running ||
-               s == RSM_DrainingForRewind ||
-               s == RSM_DrainingForFault ||
-               s == RSM_DrainingForEmulate;
-    endfunction
-
     Reg#(REGMGR_STATE_ENUM) state <- mkReg(init);
-    Reg#(Bool) okBegin    <- mkReg(readyToBeginFromState(init));
-    Reg#(Bool) okContinue <- mkReg(readyToContinueFromState(init));
     Reg#(Bit#(1)) bscSchedHint <- mkReg(0);
+
+    Reg#(Maybe#(CONTEXT_ID)) emulateCtxId <- mkReg(tagged Invalid);
+    Reg#(Maybe#(CONTEXT_ID)) exceptionCtxId <- mkReg(tagged Invalid);
+
 
     method REGMGR_STATE_ENUM getState();
         return state;
@@ -95,8 +75,6 @@ module mkRegmanagerState#(REGMGR_STATE_ENUM init)
 
     method Action setState(REGMGR_STATE_ENUM newState);
         state      <= newState;
-        okBegin    <= readyToBeginFromState(newState);
-        okContinue <= readyToContinueFromState(newState);
     
         // Hint to the Bluespec scheduler that exactly one rule with setState
         // may fire in a single cycle.  Operators above just write so they
@@ -104,12 +82,37 @@ module mkRegmanagerState#(REGMGR_STATE_ENUM init)
         bscSchedHint <= ~bscSchedHint;
     endmethod
 
-    method Bool readyToBegin();
-        return okBegin;
+
+    method Action setEmulate(CONTEXT_ID ctxId);
+        emulateCtxId <= tagged Valid ctxId;
+    endmethod
+
+    method Action clearEmulate();
+        emulateCtxId <= tagged Invalid;
+    endmethod
+
+
+    method Action setException(CONTEXT_ID ctxId);
+        exceptionCtxId <= tagged Valid ctxId;
+    endmethod
+
+    method Action clearException();
+        exceptionCtxId <= tagged Invalid;
+    endmethod
+
+
+    method Bool readyToBegin(CONTEXT_ID ctxId);
+        //
+        // Ready to begin if state is RSM_Running and the context is not either
+        // blocked for emulation or an exception.
+        //
+        return (state == RSM_Running) &&
+               (! isValid(emulateCtxId) || (validValue(emulateCtxId) != ctxId)) &&
+               (! isValid(exceptionCtxId) || (validValue(exceptionCtxId) != ctxId));
     endmethod
 
     method Bool readyToContinue();
-        return okContinue;
+        return (state == RSM_Running);
     endmethod
 
 endmodule

@@ -17094,3 +17094,58 @@ Directory modules/hasim/util/common
   For now, the L2 functional cache still handles one reference at a time.
 - All memory requests have an associated FUNCP_MEMREF_TOKEN used to determine
   the proper scoreboard slot.
+
+----------
+mcadler     Date: Wed Jan 28 20:30:57 EST 2009  CSN: CSN-hasim-582
+                  Thu Jan 29 01:30:57 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          581 
+ regstate-data-reg-map-table.bsv Locally Modified          581 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-newInFlight.bsv Locally Modified          581 
+ regmgr-macro-pipe-getInstruction.bsv Locally Modified          581 
+ regmgr-macro-pipe-doDTranslate.bsv Locally Modified          581 
+ regmgr-macro-state.bsv    Locally Modified          581 
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          581 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          581 
+ regmgr-macro-pipe-commitStores.bsv Locally Modified          581 
+ regmgr-macro-pipe-doITranslate.bsv Locally Modified          581 
+ regmgr-macro-pipe-exception.bsv Locally Modified          581 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          581 
+ regmgr-macro-pipe-doStores.bsv Locally Modified          581 
+ regmgr-macro-datatypes.bsv Locally Modified          581 
+ regmgr-macro.bsv          Locally Modified          581 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          581 
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          581 
+ debug-file.bsv            Locally Modified          581 
+
+Stall only the context requesting an exception (fault or branch misprediction)
+instead of stalling all functional pipelines.  Note that because pipelines
+return results in order if the timing model sends a request for the faulting
+context the pipeline will stall.  Not well tested, since the unpipelined
+model has no branch mispredictions.  Faults do appear to work with multiple
+contexts, suggesting that branch misprediction will too.
+
+Changes:
+  - Fix interference for shared register state BRAMs in exception and emulation
+    pipelines.
+  - Stop passing entire multi-read-port BRAMs to pipelines that just read.
+    Pass the interface for a single read port that the pipeline may
+    assume belongs to it.  Now all the pipeline assignments are in the top
+    level regmgr-macro.bsv.
+  - Individual pipelines no longer store their FSM state in global state that
+    controls state.readyToBegin().  FSM state is private to a pipeline.  Global
+    state may block a pipeline from starting for specific contexts during
+    exception and instruction emulation processing.  state.readyToBegin takes
+    a context id.
+  - Branch and fault epochs are now per-context.
+  - Scoreboard pipeline occupancy counters are now per-context instead of global.
+  - Scoreboard canEmulate() and canRewind() methods take a context id.
+  - Clean up the map table pipelines to avoid interference between request
+    enq() and deq().
+  - Add live token versions of the new pseudo multi-read-port BRAM.

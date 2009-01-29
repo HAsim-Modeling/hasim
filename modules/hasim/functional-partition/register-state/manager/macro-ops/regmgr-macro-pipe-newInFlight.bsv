@@ -31,8 +31,8 @@
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_NewInFlight#(
     REGMGR_GLOBAL_DATA glob,
     REGSTATE_REG_MAPPING_NEWINFLIGHT regMapping,
-    TOKEN_BRANCH_EPOCH branchEpoch,
-    TOKEN_FAULT_EPOCH faultEpoch)
+    LUTRAM#(CONTEXT_ID, TOKEN_BRANCH_EPOCH) branchEpoch,
+    LUTRAM#(CONTEXT_ID, TOKEN_FAULT_EPOCH) faultEpoch)
     //interface:
                 ();
 
@@ -78,7 +78,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_NewInFlight#(
     // Soft Inputs:  req from timing model
     // Soft Returns: a TOKEN which the timing model can use to refer to that slot.
 
-    rule newInFlight (state.readyToBegin());
+    rule newInFlight (state.readyToBegin(linkNewInFlight.getReq().context_id));
 
         // Get the input from the timing model. Begin macro operation.
         let req = linkNewInFlight.getReq();
@@ -96,7 +96,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_NewInFlight#(
         // The timing partition scratchpad must be filled in by up.
         let newtok = TOKEN { index: idx,
                              poison: False,
-                             epoch: TOKEN_EPOCH { branch: branchEpoch, fault: faultEpoch },
+                             epoch: TOKEN_EPOCH { branch: branchEpoch.sub(ctx_id), fault: faultEpoch.sub(ctx_id) },
                              timep_info: TOKEN_TIMEP_INFO { scratchpad: 0 } };
         
         // Reset the free list pointer so rewind knows whether this token has

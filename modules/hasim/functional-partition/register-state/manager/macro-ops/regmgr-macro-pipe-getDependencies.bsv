@@ -34,8 +34,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     REGSTATE_PHYSICAL_REGS_INVAL_REGS prf,
     FUNCP_FREELIST freelist,
     BRAM#(TOKEN_INDEX, ISA_INST_SRCS) tokWriters,
-    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts,
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst)
+    BRAM_MULTI_READ#(3, TOKEN_INDEX, REGMGR_DST_REGS) tokDsts,
+    BROM#(TOKEN_INDEX, ISA_INSTRUCTION) tokInst)
     //interface:
                 ();
 
@@ -85,7 +85,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
 
     FIFO#(Tuple4#(TOKEN, Bool,
                   Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
-                  Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_MAPPING)))) deps3Q <- mkFIFO();
+                  ISA_DST_MAPPING)) deps3Q <- mkFIFO();
 
 
     // ====================================================================
@@ -108,7 +108,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     // getDependencies1 --
     //   Read instruction opcode.
     //
-    rule getDependencies1 (state.readyToBegin());
+    rule getDependencies1 (state.readyToBegin(tokContextId(linkGetDeps.getReq().token)));
 
         // Read inputs. Begin macro-operation.
         let req = linkGetDeps.getReq();
@@ -120,7 +120,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         tokScoreboard.decStart(tok.index);
         
         // Retrieve the instruction.
-        tokInst.readPorts[0].readReq(tok.index);
+        tokInst.readReq(tok.index);
 
         // Pass on to stage 2.
         deps1Q.enq(tok);
@@ -143,7 +143,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         deps1Q.deq();
 
         // Get instruction requested by previous stage.
-        let inst <- tokInst.readPorts[0].readRsp();
+        let inst <- tokInst.readRsp();
 
         // Token active or was it killed?
         let tok_active = tokScoreboard.isAllocated(tok.index);
@@ -152,12 +152,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         if (isaIsLoad(inst))
         begin
             tokScoreboard.setLoadType(tok.index, isaLoadType(inst));
+            debugLog.record(fshow(tok.index) + $format(": GetDeps2: Load type %0d", isaLoadType(inst)));
         end
 
         if (isaIsStore(inst))
         begin
             tokScoreboard.setStoreType(tok.index, isaStoreType(inst));
             storeBufferAllocate.send(tok.index);
+            debugLog.record(fshow(tok.index) + $format(": GetDeps2: Store type %0d", isaStoreType(inst)));
         end
 
         let is_emulated = isaEmulateInstruction(inst);
@@ -281,9 +283,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
             freelist.freeRegs(phy_dsts);
         end
 
-        // Save destination physical registers
-        tokDsts.write(tok.index, phy_dsts);
-
         // Register mapper is waiting for new physical registers to go with
         // the request started in the previous stage.
         regMapping.decodeStage2(tok, phy_dsts);
@@ -292,7 +291,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         // Associate allocated physical registers with architectural regs
         // for the timing model.
         //
-        Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_MAPPING)) map_dsts = newVector();
+        ISA_DST_MAPPING map_dsts = newVector();
         for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
         begin
             map_dsts[x] = case (ar_dsts[x]) matches
@@ -300,6 +299,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
                               tagged Invalid: tagged Invalid;
                           endcase;
         end
+
+        // Save destination physical registers
+        let dst_regs = REGMGR_DST_REGS { ar: ar_dsts, pr: phy_dsts };
+        tokDsts.write(tok.index, dst_regs);
 
         //
         // Log mapping details
@@ -349,7 +352,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         for (Integer x = 0; x < valueof(ISA_MAX_SRCS); x = x + 1)
         begin
             if (map_srcs[x] matches tagged Valid {.ar, .pr})
-                debugLog.record(fshow(tok.index) + $format(": GetDeps3: Source #%0d Mapped (%0d/%0d)", x, ar, pr));
+                debugLog.record(fshow(tok.index) + $format(": GetDeps4: Source #%0d Mapped (%0d/%0d)", x, ar, pr));
         end
 
         // Wait for confirmation that new registers have been marked invalid

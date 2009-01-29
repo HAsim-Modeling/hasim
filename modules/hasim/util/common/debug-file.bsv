@@ -72,6 +72,7 @@ module mkDebugFile#(String fname)
 
     method Action record(Fmt fmt) if (initialized);
         $fdisplay(debugLog, $format("[%d]: ", fpga_cycle.value()) + fmt);
+        $fflush(debugLog);
     endmethod
 
 endmodule

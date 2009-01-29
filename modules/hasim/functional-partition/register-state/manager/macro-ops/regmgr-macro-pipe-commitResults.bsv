@@ -103,7 +103,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     // When:   When the timing model starts a commitResults().
     // Effect: Lookup the destinations of this token, and the registers to free.
 
-    rule commitResults1 (state.readyToBegin());
+    rule commitResults1 (state.readyToBegin(tokContextId(linkCommitResults.getReq().token)));
 
         // Get the input from the timing model. Begin macro-operation.
         let req = linkCommitResults.getReq();

@@ -67,42 +67,39 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // Tables to track info about in-flight instructions.
 
     // The address we got the instruction from (told to us by the timing model).
-    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr <- mkLiveTokenBRAM();
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_ADDRESS) tokAddr <- mkLiveTokenBRAMMultiRead(False);
+
+    // The memaddress is used by Loads/Stores so we don't have to repeat the calculation.
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_ADDRESS) tokMemAddr <- mkLiveTokenBRAMMultiRead(False);
+
+    // The instruction that was at that address (from mem_state).
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst <- mkLiveTokenBRAMMultiRead(True);
+
+    // The destinations of the instruction (a convenience which saves us from reading the instruction/maptable).
+    BRAM_MULTI_READ#(3, TOKEN_INDEX, REGMGR_DST_REGS) tokDsts <- mkLiveTokenBRAMMultiRead(True);
 
     // The physical address(es) for the instruction.
     BRAM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs <- mkLiveTokenBRAM();
 
-    // The instruction that was at that address (from mem_state).
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst <- mkLiveTokenBRAMMultiRead();
-
-    // The destinations of the instruction (a convenience which saves us from reading the instruction/maptable).
-    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts <- mkLiveTokenBRAMMultiRead();
-
     // If an instruction has sources in other inflight instructions it will be noted here.
     BRAM#(TOKEN_INDEX, ISA_INST_SRCS) tokWriters <- mkLiveTokenBRAM();
-
-    // The memaddress is used by Loads/Stores so we don't have to repeat the calculation.
-    BRAM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr <- mkLiveTokenBRAM();
 
     // The value a store will write to memory
     BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue <- mkLiveTokenBRAM();
 
     // The physical memaddress(es) for the instruction.
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs <- mkLiveTokenBRAMMultiRead();
-
-    // The Map Table
-    REGSTATE_REG_MAPPING regMapping <- mkFUNCP_Regstate_RegMapping();
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs <- mkLiveTokenBRAMMultiRead(True);
 
 
     // ******* High-Level FSM State *******
 
     // The epoch tells us when to discard junk tokens that were in flight when
     // the timing partition killed them.
-    Reg#(TOKEN_BRANCH_EPOCH) branchEpoch <- mkReg(0);
+    LUTRAM#(CONTEXT_ID, TOKEN_BRANCH_EPOCH) branchEpoch <- mkLUTRAMU();
 
     // The fault epoch tells us when to discard junk tokens that were in flight
     // killed by the timing partition's fault handler.
-    Reg#(TOKEN_FAULT_EPOCH) faultEpoch <- mkReg(0);
+    LUTRAM#(CONTEXT_ID, TOKEN_FAULT_EPOCH) faultEpoch <- mkLUTRAMU();
      
     // ====================================================================
     //
@@ -125,6 +122,9 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     // Global data.  A catch-all class for state used everywhere.
     REGMGR_GLOBAL_DATA globData <- mkFUNCP_RegStateManager_GlobalData();
+
+    // The Map Table
+    REGSTATE_REG_MAPPING regMapping <- mkFUNCP_Regstate_RegMapping();
 
     
     // ====================================================================
@@ -158,36 +158,36 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                             freelist,
                             tokWriters,
                             tokDsts,
-                            tokInst);
+                            tokInst.readPorts[0]);
 
     let getResults <- mkFUNCP_RegMgrMacro_Pipe_GetResults(
                             globData,
                             regMapping.getResults,
                             prf.getResults,
-                            tokAddr,
+                            tokAddr.readPorts[0],
                             tokWriters,
-                            tokDsts,
-                            tokInst,
+                            tokDsts.readPorts[0],
+                            tokInst.readPorts[1],
                             tokMemAddr,
                             tokStoreValue);
 
     let doDTranslate <- mkFUNCP_RegMgrMacro_Pipe_DoDTranslate(
                             globData,
                             linkDTLB.translate,
-                            tokMemAddr,
+                            tokMemAddr.readPorts[0],
                             tokPhysicalMemAddrs);
 
     let doLoads <- mkFUNCP_RegMgrMacro_Pipe_DoLoads(
                             globData,
                             linkToMem.doLoadsQueue,
                             prf.doLoads,
-                            tokPhysicalMemAddrs,
-                            tokDsts);
+                            tokPhysicalMemAddrs.readPorts[0],
+                            tokDsts.readPorts[1]);
 
     let doStores <- mkFUNCP_RegMgrMacro_Pipe_DoStores(
                             globData,
                             linkToMem.doStoresQueue,
-                            tokPhysicalMemAddrs,
+                            tokPhysicalMemAddrs.readPorts[1],
                             tokStoreValue);
 
     let commitResults <- mkFUNCP_RegMgrMacro_Pipe_CommitResults(
@@ -205,11 +205,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                             linkDTLB.fault,
                             linkToMem.exceptionQueue,
                             regMapping.exceptionQueue,
-                            tokAddr,
-                            tokInst,
-                            tokDsts,
+                            tokDsts.readPorts[2],
                             freelist,
-                            tokMemAddr,
+                            tokAddr.readPorts[1],
+                            tokMemAddr.readPorts[1],
                             branchEpoch,
                             faultEpoch);
 
@@ -230,7 +229,9 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // predicate on each access to the storage.
     //
 
+    Reg#(CONTEXT_ID) initCtxIdx <- mkReg(0);
     Reg#(TOKEN_INDEX) initTokIdx <- mkReg(0);
+    Reg#(Bit#(1)) initState <- mkReg(0);
 
     //
     // Urgency
@@ -257,15 +258,16 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // a good reason.
     //
     (* descending_urgency=
-        "exception.rewindToToken4, exception.rewindToToken3, exception.rewindToToken2, exception.rewindToToken1, exception.rewindToTokenS, exception.handleFault3, exception.handleFault2, exception.handleFault1, exception.handleFaultS, commitStores.commitStores1, commitResults.commitResults2, commitResults.commitResults1, doStores.doStores3, doStores.doStores2SpanEnd, doStores.doStores2SpanRsp2, doStores.doStores2SpanRsp1, doStores.doStores2SpanReq, doStores.doStores2RMW, doStores.doStores2, doStores.doStores1, doStores.doStoresS, doLoads.doLoads3Span, doLoads.doLoads3, doLoads.doLoads2Span, doLoads.doLoads2, doLoads.doLoads1, doDTranslate.doDTranslate3Span, doDTranslate.doDTranslate3, doDTranslate.doDTranslate2Span, doDTranslate.doDTranslate2, doDTranslate.doDTranslate1, getResults.emulateInstruction4, getResults.emulateInstruction3_UpdateRegWrite, getResults.emulateInstruction3_UpdateReg, getResults.emulateInstruction3, getResults.emulateInstruction2_Rsp, getResults.emulateInstruction2_Req, getResults.emulateInstruction2_PRFReq, getResults.emulateInstruction1_GenRegMapResp, getResults.emulateInstruction1_GenRegMapReq, getResults.emulateInstruction1, getResults.getResults4AdditionalWriteback, getResults.getResults4, getResults.getResults3, getResults.getResults2, getResults.getResults1, getDependencies.getDependencies4, getDependencies.getDependencies3, getDependencies.getDependencies2, getDependencies.getDependencies1, getInstruction.getInstruction3Span, getInstruction.getInstruction3, getInstruction.getInstruction2Span, getInstruction.getInstruction2, getInstruction.getInstruction1, doITranslate.doITranslate2Span, doITranslate.doITranslate2, doITranslate.doITranslate1Span, doITranslate.doITranslate1, newInFlight.newInFlight, initialize_regmgr" *)
+        "exception.rewindToToken4, exception.rewindToToken3, exception.rewindToToken2, exception.rewindToToken1, exception.rewindToTokenS, exception.handleFault3, exception.handleFault2, exception.handleFault1, exception.handleFaultS, commitStores.commitStores1, commitResults.commitResults2, commitResults.commitResults1, doStores.doStores3, doStores.doStores2SpanEnd, doStores.doStores2SpanRsp2, doStores.doStores2SpanRsp1, doStores.doStores2SpanReq, doStores.doStores2RMW, doStores.doStores2, doStores.doStores1, doStores.doStoresS, doLoads.doLoads3Span, doLoads.doLoads3, doLoads.doLoads2Span, doLoads.doLoads2, doLoads.doLoads1, doDTranslate.doDTranslate3Span, doDTranslate.doDTranslate3, doDTranslate.doDTranslate2Span, doDTranslate.doDTranslate2, doDTranslate.doDTranslate1, getResults.emulateInstruction4, getResults.emulateInstruction3_UpdateRegWrite, getResults.emulateInstruction3_UpdateReg, getResults.emulateInstruction3, getResults.emulateInstruction2_Rsp, getResults.emulateInstruction2_Req, getResults.emulateInstruction2_PRFReq, getResults.emulateInstruction1_GenRegMapResp, getResults.emulateInstruction1_GenRegMapReq, getResults.emulateInstruction1, getResults.getResults4AdditionalWriteback, getResults.getResults4, getResults.getResults3, getResults.getResults2, getResults.getResults1, getDependencies.getDependencies4, getDependencies.getDependencies3, getDependencies.getDependencies2, getDependencies.getDependencies1, getInstruction.getInstruction3Span, getInstruction.getInstruction3, getInstruction.getInstruction2Span, getInstruction.getInstruction2, getInstruction.getInstruction1, doITranslate.doITranslate2Span, doITranslate.doITranslate2, doITranslate.doITranslate1Span, doITranslate.doITranslate1, newInFlight.newInFlight, initializeRegmgrTok, initializeRegmgrCtx" *)
 
-    rule initialize_regmgr (globData.state.getState() == RSM_Initializing);
+    rule initializeRegmgrTok ((initState == 0) &&
+                              (globData.state.getState() == RSM_Initializing));
 
         tokAddr.write(initTokIdx, 0);
         tokPhysicalAddrs.write(initTokIdx, tagged ONE 0);
         tokInst.write(initTokIdx, 0);
-        tokDsts.write(initTokIdx, Vector::replicate(tagged Invalid));
-        tokWriters.write(initTokIdx, Vector::replicate(tagged Invalid));
+        tokDsts.write(initTokIdx, REGMGR_DST_REGS { ar: replicate(tagged Invalid), pr: replicate(tagged Invalid) });
+        tokWriters.write(initTokIdx, replicate(tagged Invalid));
         tokMemAddr.write(initTokIdx, 0);
         tokStoreValue.write(initTokIdx, 0);
         tokPhysicalMemAddrs.write(initTokIdx, tagged ONE 0);
@@ -274,10 +276,26 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         Bit#(TOKEN_INDEX_SIZE) idx_as_bit = pack(initTokIdx);
         if (idx_as_bit == maxBound)
         begin
-            globData.state.setState(RSM_Running);
+            initState <= 1;
         end
 
         initTokIdx <= unpack(idx_as_bit + 1);
+
+    endrule
+
+    rule initializeRegmgrCtx ((initState == 1) &&
+                              (globData.state.getState() == RSM_Initializing));
+
+        branchEpoch.upd(initCtxIdx, 0);
+        faultEpoch.upd(initCtxIdx, 0);
+
+        // Done?
+        if (initCtxIdx == maxBound)
+        begin
+            globData.state.setState(RSM_Running);
+        end
+
+        initCtxIdx <= initCtxIdx + 1;
 
     endrule
 

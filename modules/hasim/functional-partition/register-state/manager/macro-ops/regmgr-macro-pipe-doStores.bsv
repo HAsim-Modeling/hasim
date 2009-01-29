@@ -63,7 +63,7 @@ STATE_STORES2
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     REGMGR_GLOBAL_DATA glob,
     REGSTATE_MEMORY_QUEUE linkToMem,
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs,
+    BROM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs,
     BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue)
     //interface:
                 ();
@@ -131,7 +131,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // When:   When the timing model starts a doStores().
     // Effect: Broke off from doStores1 to meet faster timing.  Prepare to store.
 
-    rule doStoresS (state.readyToBegin());
+    rule doStoresS (state.readyToBegin(tokContextId(linkDoStores.getReq().token)));
 
         // Get the input from the timing model. Begin macro-operation.
         let req = linkDoStores.getReq();
@@ -156,7 +156,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     //         readyToBegin() because the scoreboard isn't yet updated.
 
     (* conservative_implicit_conditions *)
-    rule doStores1 (state.readyToBegin());
+    rule doStores1 (state.readyToBegin(tokContextId(storesSQ.first().token)));
 
         let req = storesSQ.first();
         storesSQ.deq();
@@ -183,7 +183,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
             tokStoreValue.readReq(tok.index);
 
             // Read the effective address(es).
-            tokPhysicalMemAddrs.readPorts[1].readReq(tok.index);
+            tokPhysicalMemAddrs.readReq(tok.index);
 
             // Get the store type.
             let st_type = tokScoreboard.getStoreType(tok.index);
@@ -211,7 +211,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         let store_val <- tokStoreValue.readRsp();
 
         // Get the physical address(es).
-        let p_addrs <- tokPhysicalMemAddrs.readPorts[1].readRsp();
+        let p_addrs <- tokPhysicalMemAddrs.readRsp();
         
         case (p_addrs) matches
             tagged ONE .p_addr:

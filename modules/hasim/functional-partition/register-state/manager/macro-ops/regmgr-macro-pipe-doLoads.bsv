@@ -69,8 +69,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     REGMGR_GLOBAL_DATA glob,
     REGSTATE_MEMORY_QUEUE linkToMem,
     REGSTATE_PHYSICAL_REGS_WRITE_REG prf,
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs,
-    BRAM_MULTI_READ#(3, TOKEN_INDEX, ISA_INST_DSTS) tokDsts)
+    BROM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs,
+    BROM#(TOKEN_INDEX, REGMGR_DST_REGS) tokDsts)
     //interface:
                 ();
 
@@ -139,7 +139,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     // Effect: Lookup the effective address(es) of this token.
 
     (* conservative_implicit_conditions *)
-    rule doLoads1 (state.readyToBegin());
+    rule doLoads1 (state.readyToBegin(tokContextId(linkDoLoads.getReq().token)));
 
         // Get the input from the timing model. Begin macro-operation.
         let req = linkDoLoads.getReq();
@@ -172,7 +172,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
             tokScoreboard.loadStart(tok.index);
 
             // Read the effective address.
-            tokPhysicalMemAddrs.readPorts[0].readReq(tok.index);
+            tokPhysicalMemAddrs.readReq(tok.index);
 
             // Pass to the next stage.
             loads1Q.enq(tok);
@@ -191,7 +191,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         let tok = loads1Q.first();
 
         // Get the address(es).
-        let p_addrs <- tokPhysicalMemAddrs.readPorts[0].readRsp();
+        let p_addrs <- tokPhysicalMemAddrs.readRsp();
         
         // Get the offset.
         let offset = tokScoreboard.getMemOpOffset(tok.index);
@@ -214,7 +214,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Read the destination so we can writeback the correct register.
-                tokDsts.readPorts[1].readReq(tok.index);
+                tokDsts.readReq(tok.index);
 
                 // Pass it on to the final stage.
                 let load_info = LOADS_INFO {token: tok, memAddrs: p_addrs, offset: offset, opType: l_type};
@@ -251,7 +251,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         debugLog.record(fshow(load_info.token.index) + $format(": DoLoads2: Finishing Spanning Load (PA2: 0x%h)", p_addr2));
 
         // Read the destination so we can writeback the correct register.
-        tokDsts.readPorts[1].readReq(load_info.token.index);
+        tokDsts.readReq(load_info.token.index);
 
         // Unstall this stage.
         loads1Q.deq();
@@ -291,16 +291,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
                 debugLog.record(fshow(tok.index) + $format(": DoLoads3: ISA Load (V: 0x%h, T: %0d, O: %b) = 0x%h", v, pack(load_info.opType), load_info.offset, val)); 
 
                 // Get the destination for the purposes of writeback.
-                let dsts <- tokDsts.readPorts[1].readRsp();
+                let dsts <- tokDsts.readRsp();
 
                 // We assume that the destination for the load is destination 1.
-                let dst = validValue(dsts[0]);
+                let dst_pr = validValue(dsts.pr[0]);
 
                 // Log it.
-                debugLog.record(fshow(tok.index) + $format(": DoLoads3: Load Response Writing (PR%0d <= 0x%h)", dst, val));
+                debugLog.record(fshow(tok.index) + $format(": DoLoads3: Load Response Writing (PR%0d <= 0x%h)", dst_pr, val));
 
                 // Update the physical register file.
-                prf.write(dst, val);
+                prf.write(dst_pr, val);
 
                 // Update the scoreboard.
                 tokScoreboard.loadFinish(tok.index);
@@ -348,16 +348,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         debugLog.record(fshow(tok.index) + $format(": DoLoads3: ISA SpanLoad (V1: 0x%h, V2: 0x%hm, T: %0d, O: %b) = 0x%h", v1, v2, pack(load_info.opType), load_info.offset, val)); 
 
         // Get the destination for the purposes of writeback.
-        let dsts <- tokDsts.readPorts[1].readRsp();
+        let dsts <- tokDsts.readRsp();
 
         // We assume that the destination for the load is destination 1.
-        let dst = validValue(dsts[0]);
+        let dst_pr = validValue(dsts.pr[0]);
 
         // Log it.
-        debugLog.record(fshow(tok.index) + $format(": DoLoads3: Load Response Writing (PR%0d <= 0x%h)", dst, val));
+        debugLog.record(fshow(tok.index) + $format(": DoLoads3: Load Response Writing (PR%0d <= 0x%h)", dst_pr, val));
 
         // Update the physical register file.
-        prf.write(dst, val);
+        prf.write(dst_pr, val);
 
         // Unstall this stage.
         loads2Q.deq();

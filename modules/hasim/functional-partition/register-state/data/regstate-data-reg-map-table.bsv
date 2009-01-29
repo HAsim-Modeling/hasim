@@ -26,8 +26,8 @@
 // Library includes.
 
 import FIFO::*;
-import SpecialFIFOs::*;
 import FIFOF::*;
+import RWire::*;
 import Vector::*;
 import FShow::*;
 
@@ -181,6 +181,68 @@ REGSTATE_REWIND_READER
     deriving (Eq, Bits);
 
 
+// ========================================================================
+//
+//   The busy vector tracks active map table read requests.  Only one
+//   access may be in flight for a given context, though multiple contexts
+//   may be in flight.  Only one may be in flight for a context because
+//   exception (rewind) requests must be given priority over other queued
+//   requests.
+//
+// ========================================================================
+
+interface MAP_BUSY_VECTOR;
+    method Bool notBusy(CONTEXT_ID ctxId);
+    method Action set(CONTEXT_ID ctxId);
+    method Action clear(CONTEXT_ID ctxId);
+endinterface
+
+module mkMapBusyVector
+    // interface:
+    (MAP_BUSY_VECTOR);
+    
+    Reg#(Bit#(NUM_CONTEXTS)) busy <- mkReg(0);
+    
+    RWire#(CONTEXT_ID) setW <- mkRWire();
+    RWire#(CONTEXT_ID) clearW <- mkRWire();
+
+    //
+    // One rule manages updates to the busy vector using incoming wires
+    // in order to permit one set and one clear per cycle.
+    //
+    (* fire_when_enabled *)
+    rule updateBusyVec (True);
+        let b = busy;
+        
+        if (setW.wget() matches tagged Valid .s)
+            b[s] = 1;
+
+        if (clearW.wget() matches tagged Valid .c)
+            b[c] = 0;
+        
+        busy <= b;
+    endrule
+
+    method Bool notBusy(CONTEXT_ID ctxId);
+        return busy[ctxId] == 0;
+    endmethod
+
+    method Action set(CONTEXT_ID ctxId);
+        setW.wset(ctxId);
+    endmethod
+
+    method Action clear(CONTEXT_ID ctxId);
+        clearW.wset(ctxId);
+    endmethod
+endmodule
+
+
+// ========================================================================
+//
+//   Map table
+//
+// ========================================================================
+
 //
 // Physical register file container.  The number of read ports is configurable,
 // trading area for simulator performance.
@@ -233,14 +295,12 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     // requests may be queued if a request is already in flight for the same
     // context.  Read requests for different contexts may be in flight at the
     // same time.  The bypass FIFO saves a pipeline stage.
-    FIFO#(Tuple2#(CONTEXT_ID, MAPTABLE_CONSUMER)) newMapTableReqQ <- mkBypassFIFO();
+    FIFO#(CONTEXT_ID) newMapTableReqQ_DEC <- mkBypassFIFO();
+    FIFO#(CONTEXT_ID) newMapTableReqQ_READ <- mkBypassFIFO();
+    FIFO#(CONTEXT_ID) newMapTableReqQ_EXC <- mkBypassFIFO();
 
     // mapTableBusy tracks which context are in flight.
-    Vector#(NUM_CONTEXTS, Reg#(Bool)) mapTableBusy = newVector();
-    for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
-    begin
-        mapTableBusy[x] <- mkReg(False);
-    end
+    MAP_BUSY_VECTOR mapTableBusy <- mkMapBusyVector();
 
     //
     // Rewind information
@@ -279,18 +339,39 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     //   may start BRAM reads only if no other operations for the context
     //   are in flight.
     //
-    rule newMapTableReq (True);
-        match { .ctx_id, .consumer } = newMapTableReqQ.first();
-        if (! mapTableBusy[ctx_id])
-        begin
-            newMapTableReqQ.deq();
 
-            mapTableBusy[ctx_id] <= True;
-            mapTable.readReq(ctx_id);
-            mapTableConsumerQ.enq(consumer);
+    rule newMapTableReq_DEC (mapTableBusy.notBusy(newMapTableReqQ_DEC.first()));
+        let ctx_id = newMapTableReqQ_DEC.first();
+        newMapTableReqQ_DEC.deq();
 
-            debugLog.record($format("MAP: Table read context %0d, consumer %0d", ctx_id, consumer));
-        end
+        mapTableBusy.set(ctx_id);
+        mapTable.readReq(ctx_id);
+        mapTableConsumerQ.enq(REGSTATE_MAPT_DECODE);
+
+        debugLog.record($format("MAP: Table read context %0d, consumer DECODE", ctx_id));
+    endrule
+
+    rule newMapTableReq_READ (mapTableBusy.notBusy(newMapTableReqQ_READ.first()));
+        let ctx_id = newMapTableReqQ_READ.first();
+        newMapTableReqQ_READ.deq();
+
+        mapTableBusy.set(ctx_id);
+        mapTable.readReq(ctx_id);
+        mapTableConsumerQ.enq(REGSTATE_MAPT_READMAP);
+
+        debugLog.record($format("MAP: Table read context %0d, consumer READ", ctx_id));
+    endrule
+
+    (* descending_urgency = "newMapTableReq_EXC, newMapTableReq_READ, newMapTableReq_DEC" *)
+    rule newMapTableReq_EXC (mapTableBusy.notBusy(newMapTableReqQ_EXC.first()));
+        let ctx_id = newMapTableReqQ_EXC.first();
+        newMapTableReqQ_EXC.deq();
+
+        mapTableBusy.set(ctx_id);
+        mapTable.readReq(ctx_id);
+        mapTableConsumerQ.enq(REGSTATE_MAPT_EXCEPTION);
+
+        debugLog.record($format("MAP: Table read context %0d, consumer EXC", ctx_id));
     endrule
 
 
@@ -318,7 +399,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
         let map <- mapTable.readRsp();
         mapTableConsumerQ.deq();
-        mapTableBusy[tokContextId(tok)] <= False;
+        mapTableBusy.clear(tokContextId(tok));
 
         //
         // Compute physical registers that are freed when this token commits.
@@ -398,7 +479,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
         let map <- mapTable.readRsp();
         mapTableConsumerQ.deq();
-        mapTableBusy[new_maps.context_id] <= False;
+        mapTableBusy.clear(new_maps.context_id);
 
         Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) updated_map = map;
 
@@ -522,7 +603,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
         method Action decodeStage2(TOKEN tok,
                                    Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_dsts);
 
-            newMapTableReqQ.enq(tuple2(tokContextId(tok), REGSTATE_MAPT_DECODE));
+            newMapTableReqQ_DEC.enq(tokContextId(tok));
 
             decodeStage2InQ.enq(tuple2(tok, phy_dsts));
             debugLog.record($format("MAP: ") + fshow(tok.index) + $format(":decodeStage2"));
@@ -541,7 +622,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
         method Action readMapReq(CONTEXT_ID ctx_id, ISA_REG_INDEX ar);
             getResultsReqInQ.enq(tuple2(ctx_id, ar));
-            newMapTableReqQ.enq(tuple2(ctx_id, REGSTATE_MAPT_READMAP));
+            newMapTableReqQ_READ.enq(ctx_id);
 
             debugLog.record($format("MAP: Request context %0d, AR %0d for RSLT", ctx_id, ar));
         endmethod
@@ -552,7 +633,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
             let map <- mapTable.readRsp();
             mapTableConsumerQ.deq();
-            mapTableBusy[ctx_id] <= False;
+            mapTableBusy.clear(ctx_id);
 
             let pr = map[pack(req_ar)];
             debugLog.record($format("MAP: Resp: context %0d, AR %0d is PR %0d", ctx_id, req_ar, pr));
@@ -602,7 +683,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
         method Action updateMap(REGSTATE_NEW_MAPPINGS map_dsts);
             exceptInQ.enq(map_dsts);
-            newMapTableReqQ.enq(tuple2(map_dsts.context_id, REGSTATE_MAPT_EXCEPTION));
+            newMapTableReqQ_EXC.enq(map_dsts.context_id);
         endmethod
 
     endinterface

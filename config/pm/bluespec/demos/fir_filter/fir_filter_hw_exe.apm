@@ -26,13 +26,12 @@ bluespec_system=HW only FIR Filter Demo
 fpgaenv=FPGA Environment
 hasim_controller=Hybrid Null Controller
 
-
 [Hybrid Null Controller]
 File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
 Packagehint=hasim
 
 [HW only FIR Filter Demo]
-File=modules/system/demos/fir-filter/hw-only/fir-filter-system.awb
+File=modules/bluespec/system/demos/fir-filter/hw-only/fir-filter-system.awb
 Packagehint=hasim
 
 [Bluespec Common Library with FPGA]

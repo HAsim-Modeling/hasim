@@ -17239,3 +17239,23 @@ Directory modules/hasim/util/common
   references in flight but allowing only one reference per set to simplify
   the cache implementation.  At current sizes the functional TLB cache uses
   a decode filter and the functional memory cache uses a Bloom filter.
+
+----------
+pellauer    Date: Wed Feb  4 13:43:48 EST 2009  CSN: CSN-hasim-585
+                  Wed Feb  4 18:43:48 UTC 2009
+
+
+Directory docs/tutorials/fir-filter
+ tutorial.tex              Locally Modified          584 
+ tutorial.pdf              Locally Added               0 
+
+Directory config/pm/bluespec/demos/fir_filter
+ fir_filter_hw_exe.apm     Locally Modified          584 
+ fir_filter_sw.apm         Locally Modified          584 
+
+
+* Bugfix in the APM files for the fir filter.
+* Update of FIR Filter tutorial.
+* Check in the PDF file for the tutorial, for convenience.
+
+Michael P.

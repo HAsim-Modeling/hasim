@@ -17149,3 +17149,57 @@ Changes:
   - Clean up the map table pipelines to avoid interference between request
     enq() and deq().
   - Add live token versions of the new pseudo multi-read-port BRAM.
+
+----------
+pellauer    Date: Tue Feb  3 23:22:43 EST 2009  CSN: CSN-hasim-583
+                  Wed Feb  4 04:22:43 UTC 2009
+
+
+Directory docs
+ tutorials/                Locally Added               0 
+
+Directory docs/tutorials
+ fir-filter/               Locally Added               0 
+
+Directory docs/tutorials/fir-filter
+ tutorial.tex              Locally Added               0 
+ FIRFilter.pdf             Locally Added               0 
+
+Directory config/pm/bluespec/demos
+ fir_filter/               Locally Added               0 
+
+Directory config/pm/bluespec/demos/fir_filter
+ fir_filter_hw_exe.apm     Locally Added               0 
+ fir_filter_sw.apm         Locally Added               0 
+
+Directory modules/bluespec/system/demos
+ fir-filter/               Locally Added               0 
+
+Directory modules/bluespec/system/demos/fir-filter
+ sw-only/                  Locally Added               0 
+
+Directory modules/bluespec/system/demos/fir-filter/sw-only
+ fixed.h                   Locally Added               0 
+ fir-filter-system.cpp     Locally Added               0 
+ fir-filter-system.h       Locally Added               0 
+ fir-filter-system.awb     Locally Added               0 
+ fir-filter-system.bsv     Locally Added               0 
+
+Directory modules/bluespec/system/demos/fir-filter
+ hw-only/                  Locally Added               0 
+
+Directory modules/bluespec/system/demos/fir-filter/hw-only
+ fir.in                    Locally Added               0 
+ fir-filter-system.cpp     Locally Added               0 
+ fir-filter-system.h       Locally Added               0 
+ fir-filter-system.awb     Locally Added               0 
+ fir-filter-system.bsv     Locally Added               0 
+
+
+* Added a first draft of the FIR filter tutorial under docs/tutorials.
+* Added a SW-only FIR filter and a HW-only FIR filter.
+* The tutorial involves fusing these two into a Hybrid model using RRR.
+
+TODO: Add a benchmark .cfg file so people don't have to setup the benchmark manually.
+
+Michael P.

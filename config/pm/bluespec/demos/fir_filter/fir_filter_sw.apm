@@ -1,0 +1,40 @@
+
+[Global]
+SaveParameters=0
+Description=FIR Filter SW Only
+File=fir_filter_sw
+Version=2.1
+Name=FIR Filter SW Only
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hybrid swonly bluespec
+model=Pure Bluespec Hybrid Model Foundation
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
+Packagehint=platforms
+
+[Pure Bluespec Hybrid Model Foundation]
+File=modules/model/pure_bluespec_hybrid_model.awb
+Packagehint=hasim
+
+[Pure Bluespec Hybrid Model Foundation/Requires]
+bluespec_common=Bluespec Common Library with FPGA
+bluespec_system=SW only FIR Filter Demo
+fpgaenv=FPGA Environment
+hasim_controller=Hybrid Null Controller
+
+
+[Hybrid Null Controller]
+File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
+Packagehint=hasim
+
+[SW only FIR Filter Demo]
+File=modules/system/demos/fir-filter/sw-only/fir-filter-system.awb
+Packagehint=hasim
+
+[Bluespec Common Library with FPGA]
+File=modules/bluespec/common/base/bluespec_base.awb
+Packagehint=hasim

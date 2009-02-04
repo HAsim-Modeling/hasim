@@ -576,7 +576,8 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
 
     rule translateVtoPResponse (True);
 
-        let tlb_entry <- cache.readResp();
+        let cache_resp <- cache.readResp();
+        let tlb_entry = cache_resp.value;
 
         match { .req, .which_tlb } = pendingTLBQ.first();
         pendingTLBQ.deq();

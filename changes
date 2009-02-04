@@ -17259,3 +17259,26 @@ Directory config/pm/bluespec/demos/fir_filter
 * Check in the PDF file for the tutorial, for convenience.
 
 Michael P.
+
+----------
+mcadler     Date: Wed Feb  4 17:52:01 EST 2009  CSN: CSN-hasim-586
+                  Wed Feb  4 22:52:01 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          585 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          585 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          585 
+
+Directory modules/hasim/util/cache
+ hasim-cache.bsv           Locally Modified          585 
+
+Another step toward allowing the HASIM_CACHE implementation to return results
+OOO.  Read responses used to be just the data.  Now read responses include
+the original address and caller-defined metadata associated with the read
+request.  With this there will be no need for a ROB to associate details
+about read requests with the read data coming from the cache.

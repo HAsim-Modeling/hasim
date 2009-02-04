@@ -52,7 +52,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
     Connection_Client#(MEM_INVAL_FUNCP_CACHE_SERVICE_INFO, Bool) link_memory_inval <- mkConnection_Client("funcp_memory_cache_invalidate");
     Connection_Client#(CONTEXT_ID, Bool) link_memory_inval_all <- mkConnection_Client("funcp_memory_cache_invalidate_all");
 
-    FIFO#(FUNCP_MEMREF_TOKEN) loadQ <- mkFIFO();
+    FIFO#(FUNCP_MEMREF_TOKEN) loadQ <- mkSizedFIFO(16);
 
 
     // ***** Rules ******

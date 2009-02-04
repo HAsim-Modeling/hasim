@@ -51,6 +51,19 @@ import Vector::*;
 // ===================================================================
 
 //
+// Load response
+//
+typedef struct
+{
+    t_CACHE_DATA value;
+    t_CACHE_ADDR addr;
+    t_CACHE_REF_INFO refInfo;
+}
+HASIM_CACHE_LOAD_RESP#(type t_CACHE_ADDR, type t_CACHE_DATA, type t_CACHE_REF_INFO)
+    deriving (Eq, Bits);
+
+
+//
 // HAsim cache interface.  nTagExtraLowBits is used just for debugging.
 // This specified number of low bits are prepanded to cache tags so
 // addresses match those seen in other modules.
@@ -68,7 +81,7 @@ interface HASIM_CACHE#(type t_CACHE_ADDR,
 
     // Read a full line.  Read from backing store if not already cached.
     method Action readReq(t_CACHE_ADDR addr, t_CACHE_REF_INFO refInfo);
-    method ActionValue#(t_CACHE_DATA) readResp();
+    method ActionValue#(HASIM_CACHE_LOAD_RESP#(t_CACHE_ADDR, t_CACHE_DATA, t_CACHE_REF_INFO)) readResp();
     // Predicate to test whether a read response is ready this cycle.
     method Bool readRespReady();
     
@@ -292,6 +305,7 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
               Alias#(Vector#(nWays, HASIM_CACHE_WAY_IDX#(nWays)), t_LRU_LIST),
               Alias#(HASIM_CACHE_DATA_IDX#(nWays, t_CACHE_SET_IDX), t_CACHE_DATA_IDX),
               Alias#(HASIM_CACHE_METADATA#(t_CACHE_ADDR), t_METADATA),
+              Alias#(HASIM_CACHE_LOAD_RESP#(t_CACHE_ADDR, t_CACHE_DATA, t_CACHE_REF_INFO), t_CACHE_LOAD_RESP),
               Alias#(Vector#(nWays, Maybe#(HASIM_CACHE_METADATA#(t_CACHE_ADDR))), t_METADATA_VECTOR));
 
 
@@ -348,7 +362,7 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     // ***** Queues between internal pipeline stages *****
 
     // Response to client, returned 
-    FIFOF#(t_CACHE_DATA) respToClientQ <- mkFIFOF();
+    FIFOF#(t_CACHE_LOAD_RESP) respToClientQ <- mkFIFOF();
     FIFO#(Bool) invalReqDoneQ <- mkFIFO1();
     FIFO#(Bool) invalAllReqDoneQ <- mkFIFO1();
 
@@ -665,7 +679,11 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         let set = reqInfo_set;
         let way = reqInfo_way;
 
-        respToClientQ.enq(v);
+        t_CACHE_LOAD_RESP rsp;
+        rsp.value = v;
+        rsp.addr = addr;
+        rsp.refInfo = reqInfo_refInfo;
+        respToClientQ.enq(rsp);
 
         // Done with this read request
         setFilter.remove(set);
@@ -863,7 +881,12 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         // Cache the value
         cacheData.write(getDataIdx(set, way), v);
 
-        respToClientQ.enq(v);
+        t_CACHE_LOAD_RESP rsp;
+        rsp.value = v;
+        rsp.addr = addr;
+        rsp.refInfo = reqInfo_refInfo;
+        respToClientQ.enq(rsp);
+
         debugLog.record($format("  Read FILL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, v));
 
         setFilter.remove(set);
@@ -1041,10 +1064,10 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         debugLog.record($format("  New request: READ addr=0x%x, set=0x%x", debugAddr(addr), set));
     endmethod
 
-    method ActionValue#(t_CACHE_DATA) readResp();
-        let v = respToClientQ.first();
+    method ActionValue#(t_CACHE_LOAD_RESP) readResp();
+        let r = respToClientQ.first();
         respToClientQ.deq();
-        return v;
+        return r;
     endmethod
     
     method Bool readRespReady();

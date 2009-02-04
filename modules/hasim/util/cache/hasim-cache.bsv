@@ -255,8 +255,8 @@ HASIM_CACHE_DATA_IDX#(numeric type nWays, type t_CACHE_SET_IDX)
 //
 
 module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_DATA, t_CACHE_REF_INFO) sourceData,
-                                       HASIM_CACHE_STATS stats,
-                                       DEBUG_FILE debugLog)
+                        HASIM_CACHE_STATS stats,
+                        DEBUG_FILE debugLog)
     // interface:
         (HASIM_CACHE#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_DATA, t_CACHE_REF_INFO, nSets, nWays, nTagExtraLowBits))
     provisos (Bits#(t_CACHE_DATA, t_CACHE_DATA_SZ),
@@ -271,10 +271,20 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
               // Silly, but required by compiler...
               Add#(t_CACHE_ADDR_SZ, nTagExtraLowBits, TAdd#(t_CACHE_ADDR_SZ, nTagExtraLowBits)),
               Log#(nWays, TLog#(nWays)),
+              Add#(TLog#(TExp#(TLog#(nSets))), 0, TLog#(nSets)),
+              Add#(TLog#(TDiv#(TExp#(TLog#(nSets)), 2)), x__, TLog#(nSets)),
+
+              // Cache address size must be no larger than 64 bits
+              Add#(t_CACHE_ADDR_SZ, a__, 64),
 
               Alias#(HASIM_CACHE_SET_IDX#(nSets), t_CACHE_SET_IDX),
               Bits#(t_CACHE_SET_IDX, t_CACHE_SET_IDX_SZ),
+
+              // Set size must be no longer than 32 bits (for set filter)
               Add#(t_CACHE_SET_IDX_SZ, b__, 32),
+
+              // Tag size is anything left over after the set index size
+              Add#(t_CACHE_SET_IDX_SZ, t_CACHE_TAG_SZ, t_CACHE_ADDR_SZ),
 
               Alias#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_ADDR),
               Alias#(HASIM_CACHE_WAY_IDX#(nWays), t_CACHE_WAY_IDX),
@@ -331,6 +341,10 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     Reg#(t_CACHE_SET_IDX)  invalidateAllSet <- mkReg(0);
     Reg#(t_CACHE_WAY_IDX)  invalidateFlushWay <- mkReg(0);
 
+    // Filter for allowing one live operation per cache set.
+    COUNTING_FILTER#(t_CACHE_SET_IDX) setFilter <- mkCountingFilter(debugLog);
+
+
     // ***** Queues between internal pipeline stages *****
 
     // Response to client, returned 
@@ -354,18 +368,7 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
 
 
     function t_CACHE_SET_IDX cacheSet(t_CACHE_ADDR addr);
-    
-        // Silly statement to keep the compiler happy about sizes.  Using
-        // truncate or extend forces an assumption about sizes < or > 32
-        // bits in spite of there already being a proviso that the set
-        // size is <= 32.
-        //
-        // Get up to 32 bits of the address into addr32...
-        Bit#(32) addr32 = 0 | addr[min(32, valueOf(t_CACHE_SET_IDX_SZ)) : 0];
-
-        // Compute the hash...
-        return unpack(truncate(hashTo32(addr32)));
-
+        return unpack(truncate(hashBits(addr)));
     endfunction
 
     //
@@ -503,11 +506,18 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     //     be expensive with four ways.  Rules consuming the meta data wind
     //     up on the critical path.  Just receive the meta data in the
     //     first cycle.
+    (* conservative_implicit_conditions *)
     rule receiveMeta (curState == HCST_START1_REQ);
-        let meta <- cacheMeta.readRsp();
+        let set = reqInfo_set;
+        let success <- setFilter.insert(set);
 
-        reqInfo_metaData <= meta;
-        curState <= HCST_START2_REQ;
+        if (success)
+        begin
+            let meta <- cacheMeta.readRsp();
+
+            reqInfo_metaData <= meta;
+            curState <= HCST_START2_REQ;
+        end
     endrule
 
 
@@ -563,6 +573,8 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
             curState <= HCST_FLUSH_DIRTY;
         else
         begin
+            // Done with this request
+            setFilter.remove(set);
             curState <= HCST_IDLE;
             if (reqInfo_ack)
                 invalReqDoneQ.enq(?);
@@ -627,6 +639,8 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
                     // Full line write.  Now we're done.
                     debugLog.record($format("  Write HIT: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, reqInfo_wInfo.val));
                     cacheData.write(idx, reqInfo_wInfo.val);
+
+                    setFilter.remove(set);
                     curState <= HCST_IDLE;
                 end
             end
@@ -652,6 +666,9 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         let way = reqInfo_way;
 
         respToClientQ.enq(v);
+
+        // Done with this read request
+        setFilter.remove(set);
         curState <= HCST_IDLE;
 
         debugLog.record($format("  Read HIT: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, v));
@@ -675,6 +692,9 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
                    (pack(reqInfo_wInfo.val) & pack(reqInfo_wInfo.mask)));
 
         cacheData.write(getDataIdx(set, way), v);
+
+        // Done with this write request.
+        setFilter.remove(set);
         curState <= HCST_IDLE;
 
         debugLog.record($format("  WRITE masked: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, v));
@@ -778,6 +798,9 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
             // ready now.
             debugLog.record($format("  Write to INVAL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, fill_way, reqInfo_wInfo.val));
             cacheData.write(idx, reqInfo_wInfo.val);
+
+            // Done with this write request.
+            setFilter.remove(set);
             curState <= HCST_IDLE;
         end
     endrule
@@ -842,6 +865,8 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
 
         respToClientQ.enq(v);
         debugLog.record($format("  Read FILL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, v));
+
+        setFilter.remove(set);
         curState <= HCST_IDLE;
 
     endrule
@@ -868,6 +893,8 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         cacheData.write(getDataIdx(set, way), v);
 
         debugLog.record($format("  WRITE masked: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, v));
+
+        setFilter.remove(set);
         curState <= HCST_IDLE;
 
     endrule
@@ -881,6 +908,11 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     rule handleFlushACK (curState == HCST_FLUSH_SYNC_PENDING);
 
         sourceData.writeSyncWait();
+
+        let set = reqInfo_set;
+
+        // Done with this flush request.
+        setFilter.remove(set);
         curState <= HCST_IDLE;
 
         if (reqInfo_ack)

@@ -265,7 +265,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     // Map address to store buffer address hash
     //
     function MEMSTATE_SBUFFER_ADDR_HASH_IDX sbAddrHash(MEM_ADDRESS addr);
-        return truncate(hashTo8(addr));
+        return truncate(hashBits(addr));
     endfunction
 
 

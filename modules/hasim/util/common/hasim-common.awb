@@ -17,7 +17,8 @@
 %public fpga-fifos.bsv
 %public debug-file.bsv
 %public assertion-checker.bsv
-%public hash-to-32.bsv
+%public hash-bits.bsv
+%public counting-filter.bsv
 %public counters.bsv
 %public utils.bsv
 

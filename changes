@@ -17282,3 +17282,33 @@ OOO.  Read responses used to be just the data.  Now read responses include
 the original address and caller-defined metadata associated with the read
 request.  With this there will be no need for a ROB to associate details
 about read requests with the read data coming from the cache.
+
+----------
+mcadler     Date: Mon Feb  9 11:15:37 EST 2009  CSN: CSN-hasim-587
+                  Mon Feb  9 16:15:37 UTC 2009
+
+
+Directory modules/hasim/util/cache
+ hasim-cache.bsv           Locally Modified          586 
+
+Directory modules/hasim/util/common
+ hasim-common.awb          Locally Modified          585 
+ extends.bsv               Locally Added               0 
+ memory-heap.bsv           Locally Added               0 
+
+- New "extends" module from Bluespec can do an extend or truncate with no added
+  provisos.  Use carefully, since error messages about size mismatch are delayed
+  late enough in the compilation that it becomes hard to correlate errors to a
+  source line.
+
+- Added new memory heap package.  Memory heaps manage a single data type and
+  provide malloc, free and data access methods.  There are two memory heap
+  interfaces:  one for single-cycle data (e.g. LUTRAM) and one for multi-cycle
+  data (e.g. BRAM or hybrid memory).  The actual storage is passed as an
+  argument to the heap manager, so it can manage anything.  A few basic storage
+  classes are also defined including LUTRAM and BRAM as well as convenience
+  modules that both allocate storage and instantiate a heap for the storage.
+
+- Use memory heap for pending writes to the cache so the data and mask, which
+  can be quite large, don't have to be replicated in pipelines flowing through
+  the cache.

@@ -13,6 +13,7 @@
 
 %public alias_def.bsv
 %public token.bsv
+%public extends.bsv
 %public fifos.bsv
 %public fpga-fifos.bsv
 %public debug-file.bsv
@@ -20,6 +21,7 @@
 %public hash-bits.bsv
 %public counting-filter.bsv
 %public counters.bsv
+%public memory-heap.bsv
 %public utils.bsv
 
 %sources -t DICT -v PUBLIC hasim-common.dic

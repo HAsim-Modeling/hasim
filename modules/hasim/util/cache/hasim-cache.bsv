@@ -200,7 +200,11 @@ typedef enum
     HCST_FILL_FOR_RMW_PENDING,
 
     // Waiting for backing store response for a flush for an invalidate/flush request.
-    HCST_FLUSH_SYNC_PENDING
+    HCST_FLUSH_SYNC_PENDING,
+ 
+    // Invalidating all sets
+    HCST_INVAL_ALL,
+    HCST_INVAL_ALL_DONE
 }
 HASIM_CACHE_STATE
     deriving (Eq, Bits);
@@ -263,6 +267,9 @@ HASIM_CACHE_DATA_IDX#(numeric type nWays, type t_CACHE_SET_IDX)
     deriving(Bits, Eq);
 
 
+typedef 2 STORE_DATA_HEAP_IDX_SZ;
+
+
 //
 // Set associative cache
 //
@@ -280,12 +287,6 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
               // powers of 2 here.
               Add#(nSets, 0, TExp#(TLog#(nSets))),
               Add#(nWays, 0, TExp#(TLog#(nWays))),
-
-              // Silly, but required by compiler...
-              Add#(t_CACHE_ADDR_SZ, nTagExtraLowBits, TAdd#(t_CACHE_ADDR_SZ, nTagExtraLowBits)),
-              Log#(nWays, TLog#(nWays)),
-              Add#(TLog#(TExp#(TLog#(nSets))), 0, TLog#(nSets)),
-              Add#(TLog#(TDiv#(TExp#(TLog#(nSets)), 2)), x__, TLog#(nSets)),
 
               // Cache address size must be no larger than 64 bits
               Add#(t_CACHE_ADDR_SZ, a__, 64),
@@ -306,7 +307,13 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
               Alias#(HASIM_CACHE_DATA_IDX#(nWays, t_CACHE_SET_IDX), t_CACHE_DATA_IDX),
               Alias#(HASIM_CACHE_METADATA#(t_CACHE_ADDR), t_METADATA),
               Alias#(HASIM_CACHE_LOAD_RESP#(t_CACHE_ADDR, t_CACHE_DATA, t_CACHE_REF_INFO), t_CACHE_LOAD_RESP),
-              Alias#(Vector#(nWays, Maybe#(HASIM_CACHE_METADATA#(t_CACHE_ADDR))), t_METADATA_VECTOR));
+              Alias#(Vector#(nWays, Maybe#(HASIM_CACHE_METADATA#(t_CACHE_ADDR))), t_METADATA_VECTOR),
+       
+              // Unbelievably ugly tautologies required by the compiler:
+              Add#(t_CACHE_ADDR_SZ, nTagExtraLowBits, TAdd#(t_CACHE_ADDR_SZ, nTagExtraLowBits)),
+              Log#(nWays, TLog#(nWays)),
+              Add#(TLog#(TExp#(TLog#(nSets))), 0, TLog#(nSets)),
+              Add#(TLog#(TDiv#(TExp#(TLog#(nSets)), 2)), x__, TLog#(nSets)));
 
 
     // ***** Cache data *****
@@ -324,15 +331,22 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
 
     Reg#(Bool) cacheIsEmpty <- mkReg(True);
 
+    // Store data is kept in a heap to avoid passing it around through FIFOs.
+    // The heap size limits the number of stores in flight.  Store data is large,
+    // so don't allocate too many.
+    MEMORY_HEAP_IMM#(Bit#(STORE_DATA_HEAP_IDX_SZ), t_CACHE_WRITE_INFO) reqInfo_writeData <- mkMemoryHeapUnionLUTRAM();
+
     //
     // These registers hold the state for the current request
     //
     Reg#(HASIM_CACHE_OPERATION) reqInfo_oper <- mkRegU();
     Reg#(t_CACHE_ADDR)          reqInfo_addr <- mkRegU();
     Reg#(t_CACHE_SET_IDX)       reqInfo_set <- mkRegU();
-    Reg#(t_CACHE_WRITE_INFO)    reqInfo_wInfo <- mkRegU();  // Valid only for writes
     Reg#(Bool)                  reqInfo_ack <- mkRegU();    // Inval request sends response?
     Reg#(t_CACHE_REF_INFO)      reqInfo_refInfo <- mkRegU();
+
+    // Pointer to value in store data heap (writes only)
+    Reg#(Bit#(STORE_DATA_HEAP_IDX_SZ)) reqInfo_wInfoPtr <- mkRegU();
 
     // Meta data becomes part of the state at the start of read and invalidate processing.
     Reg#(t_METADATA_VECTOR)     reqInfo_metaData <- mkRegU();
@@ -349,12 +363,6 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     // responsibility of the caller to write values to backing storage.
     Reg#(Bool) writeBackCache <- mkReg(True);
 
-    // State for invalidate all
-    Reg#(Bool)             invalidatingAll  <- mkReg(False);
-    Reg#(Bool)             invalidatingAllDone  <- mkReg(False);
-    Reg#(t_CACHE_SET_IDX)  invalidateAllSet <- mkReg(0);
-    Reg#(t_CACHE_WAY_IDX)  invalidateFlushWay <- mkReg(0);
-
     // Filter for allowing one live operation per cache set.
     COUNTING_FILTER#(t_CACHE_SET_IDX) setFilter <- mkCountingFilter(debugLog);
 
@@ -364,9 +372,7 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     // Response to client, returned 
     FIFOF#(t_CACHE_LOAD_RESP) respToClientQ <- mkFIFOF();
     FIFO#(Bool) invalReqDoneQ <- mkFIFO1();
-    FIFO#(Bool) invalAllReqDoneQ <- mkFIFO1();
 
-    FIFO#(Tuple2#(t_CACHE_SET_IDX, t_METADATA_VECTOR)) flushDirtySetQ <- mkFIFO();
     FIFO#(Tuple2#(t_LRU_LIST, t_METADATA_VECTOR)) missQ <- mkFIFO();
 
     // ***** Indexing functions *****
@@ -642,7 +648,9 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
                 meta_upd[way] = tagged Valid metaData(addr, writeBackCache);
                 cacheMeta.write(set, meta_upd);
 
-                if (reqInfo_wInfo.isMasked)
+                let w_info = reqInfo_writeData.sub(reqInfo_wInfoPtr);
+
+                if (w_info.isMasked)
                 begin
                     // Partial write.  Start by reading current value.
                     cacheData.readReq(idx);
@@ -651,9 +659,10 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
                 else
                 begin
                     // Full line write.  Now we're done.
-                    debugLog.record($format("  Write HIT: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, reqInfo_wInfo.val));
-                    cacheData.write(idx, reqInfo_wInfo.val);
+                    debugLog.record($format("  Write HIT: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, w_info.val));
+                    cacheData.write(idx, w_info.val);
 
+                    reqInfo_writeData.free(reqInfo_wInfoPtr);
                     setFilter.remove(set);
                     curState <= HCST_IDLE;
                 end
@@ -706,12 +715,14 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
 
         debugLog.record($format("  Hit for WRITE: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, v));
 
-        v = unpack((pack(v) & ~pack(reqInfo_wInfo.mask)) |
-                   (pack(reqInfo_wInfo.val) & pack(reqInfo_wInfo.mask)));
+        let w_info = reqInfo_writeData.sub(reqInfo_wInfoPtr);
+        v = unpack((pack(v) & ~pack(w_info.mask)) |
+                   (pack(w_info.val) & pack(w_info.mask)));
 
         cacheData.write(getDataIdx(set, way), v);
 
         // Done with this write request.
+        reqInfo_writeData.free(reqInfo_wInfoPtr);
         setFilter.remove(set);
         curState <= HCST_IDLE;
 
@@ -780,7 +791,8 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
 
         // Request the filled value from backing store unless this is a
         // write to the whole line.
-        Bool need_backing_data = (is_read || reqInfo_wInfo.isMasked);
+        let w_info = reqInfo_writeData.sub(reqInfo_wInfoPtr);
+        Bool need_backing_data = (is_read || w_info.isMasked);
         if (need_backing_data)
         begin
             sourceData.readReq(addr, reqInfo_refInfo);
@@ -814,10 +826,11 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         begin
             // Writing the full line and no flush of an old line.  We're
             // ready now.
-            debugLog.record($format("  Write to INVAL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, fill_way, reqInfo_wInfo.val));
-            cacheData.write(idx, reqInfo_wInfo.val);
+            debugLog.record($format("  Write to INVAL: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, fill_way, w_info.val));
+            cacheData.write(idx, w_info.val);
 
             // Done with this write request.
+            reqInfo_writeData.free(reqInfo_wInfoPtr);
             setFilter.remove(set);
             curState <= HCST_IDLE;
         end
@@ -838,13 +851,7 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         stats.dirtyLineFlush();
         debugLog.record($format("  Write back DIRTY: addr=0x%x, set=0x%x, data=0x%x", debugAddr(addr), set, flushData));
 
-        if (invalidatingAll)
-        begin
-            // Invalidating whole cache.  Just write out the line without
-            // a state change.
-            sourceData.write(addr, flushData, reqInfo_refInfo);
-        end
-        else if (reqInfo_oper == HCOP_READ || reqInfo_oper == HCOP_WRITE)
+        if (reqInfo_oper == HCOP_READ || reqInfo_oper == HCOP_WRITE)
         begin
             // Normal flush before a fill
             sourceData.write(addr, flushData, reqInfo_refInfo);
@@ -911,12 +918,14 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         debugLog.record($format("  Fill for WRITE: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, v));
 
         // Merge with full line and update cache
-        v = unpack((pack(v) & ~pack(reqInfo_wInfo.mask)) |
-                   (pack(reqInfo_wInfo.val) & pack(reqInfo_wInfo.mask)));
+        let w_info = reqInfo_writeData.sub(reqInfo_wInfoPtr);
+        v = unpack((pack(v) & ~pack(w_info.mask)) |
+                   (pack(w_info.val) & pack(w_info.mask)));
         cacheData.write(getDataIdx(set, way), v);
 
         debugLog.record($format("  WRITE masked: addr=0x%x, set=0x%x, way=0x%x, data=0x%x", debugAddr(addr), set, way, v));
 
+        reqInfo_writeData.free(reqInfo_wInfoPtr);
         setFilter.remove(set);
         curState <= HCST_IDLE;
 
@@ -946,23 +955,62 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     endrule
 
 
+    // ====================================================================
+    //
+    //   Invalidate ALL support (clear entire cache).
+    //
+    // ====================================================================
+
+    FIFO#(Tuple3#(t_CACHE_SET_IDX, t_METADATA_VECTOR, Bool)) invalAllFlushSetQ <- mkFIFO();
+    FIFO#(Tuple2#(t_CACHE_ADDR, t_CACHE_SET_IDX)) invalAllFlushLineQ <- mkFIFO();
+
+    // State for invalidate all
+    Reg#(Bool)             invalidateAllReq <- mkReg(False);
+    Reg#(Bool)             invalidatingAllLastSet  <- mkReg(False);
+    Reg#(t_CACHE_SET_IDX)  invalidateAllSet <- mkReg(0);
+    Reg#(t_CACHE_WAY_IDX)  invalidateFlushWay <- mkReg(0);
+
+    Reg#(t_CACHE_REF_INFO) invalidateAll_refInfo <- mkRegU();
+
+    //
+    // invalAllWait --
+    //     Wait for cache to be idle before starting an invalidate all.
+    //
+    rule handleInvalAllReq (invalidateAllReq && curState == HCST_IDLE);
+        debugLog.record($format("  Start INVAL ALL"));
+
+        invalidateAllReq <= False;
+
+        if (cacheIsEmpty)
+        begin
+            curState <= HCST_INVAL_ALL_DONE;
+        end
+        else
+        begin
+            curState <= HCST_INVAL_ALL;
+            cacheMeta.readReq(0);
+            cacheIsEmpty <= True;
+        end
+    endrule
+
+
     //
     // handleInvalidateAll --
     //     Memory system may request invalidation of the entire cache if it
     //     doesn't know which lines may need to be flushed.
     //
-    rule handleInvalidateAll (invalidatingAll && ! invalidatingAllDone);
-
+    rule handleInvalidateAll ((curState == HCST_INVAL_ALL) && ! invalidatingAllLastSet);
         cacheLRU.write(invalidateAllSet, Vector::genWith(fromInteger));
         cacheMeta.write(invalidateAllSet, Vector::replicate(tagged Invalid));
 
         // Flush dirty lines
         let meta <- cacheMeta.readRsp();
-        flushDirtySetQ.enq(tuple2(invalidateAllSet, meta));
+        let done = (invalidateAllSet == maxBound);
+        invalAllFlushSetQ.enq(tuple3(invalidateAllSet, meta, done));
 
-        if (invalidateAllSet == maxBound)
+        if (done)
         begin
-            invalidatingAllDone <= True;
+            invalidatingAllLastSet <= True;
         end
         else
         begin
@@ -970,53 +1018,73 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         end
 
         invalidateAllSet <= invalidateAllSet + 1;
-
     endrule
 
 
     // Not required for correctness: get rid of a couple warning messages...
+    (* descending_urgency= "handleReadCacheHit, flushDirtyLineForInvalAll" *)
+    (* descending_urgency= "handleRmwCacheHit, flushDirtyLineForInvalAll" *)
+    (* descending_urgency= "handleFlushDirtyLine, flushDirtyLineForInvalAll" *)
+
     (* descending_urgency= "handleReadOrWrite, handleInvalidateAll" *)
-    (* descending_urgency= "handleInvalOrFlush, handleInvalidateAll" *)
+    (* descending_urgency= "handleInvalOrFlush, handleInvalidateAll, invalSetForInvalAll" *)
+
 
     //
-    // handleInvalSet --
+    // invalSetForInvalAll --
     //   Invalidate an entire set (requested by handleInvalidateAll).
     //
     (* conservative_implicit_conditions *)
-    rule handleInvalSet (invalidatingAll && curState == HCST_IDLE);
-        
-        match {.set, .meta} = flushDirtySetQ.first();
+    rule invalSetForInvalAll (curState == HCST_INVAL_ALL);
+        match {.set, .meta, .last_set} = invalAllFlushSetQ.first();
         
         if (meta[invalidateFlushWay] matches tagged Valid .m &&& m.dirty)
         begin
-            reqInfo_flushAddr <= m.addr;
-            reqInfo_set <= set;
-            reqInfo_way <= invalidateFlushWay;
-
+            invalAllFlushLineQ.enq(tuple2(m.addr, set));
             cacheData.readReq(getDataIdx(set, invalidateFlushWay));
-            curState <= HCST_FLUSH_DIRTY;
         end
 
         // Done with the set?
         if (invalidateFlushWay == maxBound)
         begin
             // Done.  Pass the request on to the fill stage, if appropriate.
-            flushDirtySetQ.deq();
+            invalAllFlushSetQ.deq();
             
             // Done with invalidateingAll?
-            if (invalidatingAllDone)
+            if (last_set)
             begin
-                invalidatingAll <= False;
-                invalidatingAllDone <= False;
-                invalAllReqDoneQ.enq(?);
+                curState <= HCST_INVAL_ALL_DONE;
+                invalidatingAllLastSet <= False;
                 debugLog.record($format("  Request done: INVAL ALL"));
             end
         end
 
         invalidateFlushWay <= invalidateFlushWay + 1;
-
     endrule
 
+
+    //
+    // flushDirtyLineForInvalAll --
+    //     Flush one dirty line, requested by invalSetForInvalAll.
+    //
+    rule flushDirtyLineForInvalAll (True);
+        match { .addr, .set } = invalAllFlushLineQ.first();
+        invalAllFlushLineQ.deq();
+
+        let flushData <- cacheData.readRsp();
+
+        sourceData.write(addr, flushData, invalidateAll_refInfo);
+
+        stats.dirtyLineFlush();
+        debugLog.record($format("  Write back DIRTY: addr=0x%x, set=0x%x, data=0x%x", debugAddr(addr), set, flushData));
+    endrule
+
+
+    // ====================================================================
+    //
+    //   Incoming cache requests (methods)
+    //
+    // ====================================================================
 
     //
     // genRequest --
@@ -1054,12 +1122,10 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     endfunction
 
 
-    // ***** Methods ***** //
-
     //
     // readReq -- Read a full line.  Fetch from backing store if not in the cache.
     //
-    method Action readReq(t_CACHE_ADDR addr, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE && !invalidatingAll);
+    method Action readReq(t_CACHE_ADDR addr, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE);
         let set <- genRequest(HCOP_READ, addr, refInfo);
         debugLog.record($format("  New request: READ addr=0x%x, set=0x%x", debugAddr(addr), set));
     endmethod
@@ -1069,24 +1135,27 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         respToClientQ.deq();
         return r;
     endmethod
-    
+
     method Bool readRespReady();
         return respToClientQ.notEmpty();
     endmethod
-    
+
     //
     // writeReq -- Write a full line.
     //
-    method Action writeReq(t_CACHE_ADDR addr, t_CACHE_DATA val, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE && !invalidatingAll);
+    method Action writeReq(t_CACHE_ADDR addr, t_CACHE_DATA val, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE);
         let set <- genRequest(HCOP_WRITE, addr, refInfo);
 
         t_CACHE_WRITE_INFO wInfo;
         wInfo.val = val;
         wInfo.mask = ?;
         wInfo.isMasked = False;
-        reqInfo_wInfo <= wInfo;
 
-        debugLog.record($format("  New request: WRITE addr=0x%x, set=0x%x, data=0x%x", debugAddr(addr), set, val));
+        let h <- reqInfo_writeData.malloc();
+        reqInfo_writeData.upd(h, wInfo);
+        reqInfo_wInfoPtr <= h;
+
+        debugLog.record($format("  New request: WRITE addr=0x%x, set=0x%x, data=0x%x, wData heap=%0d", debugAddr(addr), set, val, h));
     endmethod
 
 
@@ -1094,23 +1163,26 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     // writeMaskedReq --
     //     Write a partial line.  Fetch from backing store if not in the cache.
     //
-    method Action writeMaskedReq(t_CACHE_ADDR addr, t_CACHE_DATA val, t_CACHE_DATA mask, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE && !invalidatingAll);
+    method Action writeMaskedReq(t_CACHE_ADDR addr, t_CACHE_DATA val, t_CACHE_DATA mask, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE);
         let set <- genRequest(HCOP_WRITE, addr, refInfo);
 
         t_CACHE_WRITE_INFO wInfo;
         wInfo.val = val;
         wInfo.mask = mask;
         wInfo.isMasked = True;
-        reqInfo_wInfo <= wInfo;
 
-        debugLog.record($format("  New request: WRITE MASKED addr=0x%x, set=0x%x, data=0x%x, mask=0x%x", debugAddr(addr), set, val, mask));
+        let h <- reqInfo_writeData.malloc();
+        reqInfo_writeData.upd(h, wInfo);
+        reqInfo_wInfoPtr <= h;
+
+        debugLog.record($format("  New request: WRITE MASKED addr=0x%x, set=0x%x, data=0x%x, mask=0x%x, wData heap=%0d", debugAddr(addr), set, val, mask, h));
     endmethod
     
 
     //
     // invalReq -- Invalidate (remove) a line from the cache
     //
-    method Action invalReq(t_CACHE_ADDR addr, Bool sendAck, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE && !invalidatingAll);
+    method Action invalReq(t_CACHE_ADDR addr, Bool sendAck, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE);
         let set <- genRequest(HCOP_INVAL, addr, refInfo);
         reqInfo_ack <= sendAck;
         debugLog.record($format("  New request: INVAL addr=0x%x, set=0x%x", debugAddr(addr), set));
@@ -1121,7 +1193,7 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     // flushReq --
     //     Flush (write back) a line from the cache but keep the line cached.
     //
-    method Action flushReq(t_CACHE_ADDR addr, Bool sendAck, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE && !invalidatingAll);
+    method Action flushReq(t_CACHE_ADDR addr, Bool sendAck, t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE);
         let set <- genRequest(HCOP_FLUSH_DIRTY, addr, refInfo);
         reqInfo_ack <= sendAck;
         debugLog.record($format("  New request: FLUSH addr=0x%x, set=0x%x", debugAddr(addr), set));
@@ -1139,24 +1211,14 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     //
     // invalAllReq -- Invalidate entire cache.  Write back dirty lines.
     //
-    method Action invalAllReq(t_CACHE_REF_INFO refInfo) if (curState == HCST_IDLE && !invalidatingAll);
+    method Action invalAllReq(t_CACHE_REF_INFO refInfo) if (! invalidateAllReq);
         debugLog.record($format("  New request: INVAL ALL"));
-
-        if (cacheIsEmpty)
-        begin
-            invalAllReqDoneQ.enq(?);
-        end
-        else
-        begin
-            cacheMeta.readReq(0);
-            reqInfo_refInfo <= refInfo;
-            invalidatingAll <= True;
-            cacheIsEmpty <= True;
-        end
+        invalidateAll_refInfo <= refInfo;
+        invalidateAllReq <= True;
     endmethod
 
-    method Action invalAllWait();
-        invalAllReqDoneQ.deq();
+    method Action invalAllWait() if (curState == HCST_INVAL_ALL_DONE);
+        curState <= HCST_IDLE;
     endmethod
 
     //

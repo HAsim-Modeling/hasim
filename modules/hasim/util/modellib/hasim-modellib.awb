@@ -13,13 +13,10 @@
 #
 # %attributes hasim
 #
-# %public events.bsv stats.bsv commands.bsv stat-fifo.bsv a-ports.bsv stall-ports.bsv dynamic-parameters.bsv credit-ports.bsv
+# %public events.bsv commands.bsv a-ports.bsv stall-ports.bsv credit-ports.bsv
 # %sources -t DICT -v PUBLIC hasim-modellib.dic
 #
 # %param HASIM_EVENTS_SIZE 32 "Number of bits for Event parameter."
-#
-# %param HASIM_STATS_ENABLED True "Statically enable/disable Stats logging (True/False)."
-# %param HASIM_STATS_SIZE 32 "Number of bits per Stat counter."
 #
 #
 # %AWB_END

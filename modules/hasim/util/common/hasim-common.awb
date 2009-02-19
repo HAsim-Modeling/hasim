@@ -23,6 +23,10 @@
 %public counters.bsv
 %public memory-heap.bsv
 %public utils.bsv
+%public multictx.bsv 
+%public stats.bsv
+%public stat-fifo.bsv
+%public dynamic-parameters.bsv 
 
 %sources -t DICT -v PUBLIC hasim-common.dic
 %private bluespec-common.prj
@@ -39,3 +43,7 @@
 %param TOKEN_EVENTS_LOGFILE "hasim_events.out" "Name of Event logfile."
 
 %param ASSERTIONS_PER_NODE 16 "Max number of assertions connected to an assertion node (ring stop)."
+
+%param HASIM_STATS_ENABLED True "Statically enable/disable Stats logging (True/False)."
+%param HASIM_STATS_SIZE 32 "Number of bits per Stat counter."
+

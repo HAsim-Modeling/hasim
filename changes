@@ -17312,3 +17312,102 @@ Directory modules/hasim/util/common
 - Use memory heap for pending writes to the cache so the data and mask, which
   can be quite large, don't have to be replicated in pipelines flowing through
   the cache.
+
+----------
+pellauer    Date: Thu Feb 19 11:09:42 EST 2009  CSN: CSN-hasim-588
+                  Thu Feb 19 16:09:42 UTC 2009
+
+
+Directory modules/hasim/controller/local_controllers/module
+ local-controller-module-standard.bsv Locally Modified          587 
+
+Directory modules/hasim/controller/central_controllers/params
+ params-controller-hybrid.bsv Locally Modified          587 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          587 
+ stats-controller-hybrid.h Locally Modified          587 
+ stats-controller-hybrid.bsv Locally Modified          587 
+
+Directory modules/hasim/functional-partition/register-state/connections
+ regstate-connect-memory.bsv Locally Modified          587 
+ regstate-connect-tlb.bsv  Locally Modified          587 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-physical-regs.bsv Locally Modified          587 
+ regstate-data-reg-map-table.bsv Locally Modified          587 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-global-data.bsv Locally Modified          587 
+ regmgr-macro-pipe-newInFlight.bsv Locally Modified          587 
+ regmgr-macro-pipe-getInstruction.bsv Locally Modified          587 
+ regmgr-macro-pipe-doDTranslate.bsv Locally Modified          587 
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          587 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          587 
+ regmgr-macro-pipe-commitStores.bsv Locally Modified          587 
+ regmgr-macro-pipe-doITranslate.bsv Locally Modified          587 
+ regmgr-macro-pipe-exception.bsv Locally Modified          587 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          587 
+ regmgr-macro-pipe-doStores.bsv Locally Modified          587 
+ regmgr-macro.bsv          Locally Modified          587 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          587 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          587 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          587 
+
+Directory modules/hasim/util/cache
+ hasim-cache.bsv           Locally Modified          587 
+ hasim-tiny-cache.bsv      Locally Modified          587 
+
+Directory modules/hasim/util/modellib
+ hasim-modellib.dic        Locally Modified          587 
+ stat-fifo.bsv             Locally Removed           587 
+ stats.bsv                 Locally Removed           587 
+ events.bsv                Locally Modified          587 
+ stall-ports.bsv           Locally Modified          587 
+ a-ports.bsv               Locally Modified          587 
+ dynamic-parameters.bsv    Locally Removed           587 
+ hasim-modellib.awb        Locally Modified          587 
+
+Directory modules/hasim/util/common
+ stat-fifo.bsv             Locally Added               0 
+ hasim-common.dic          Locally Modified          587 
+ stats.bsv                 Locally Added               0 
+ debug-file.bsv            Locally Modified          587 
+ hasim-common.awb          Locally Modified          587 
+ multictx.bsv              Locally Added               0 
+ token.bsv                 Locally Modified          587 
+ dynamic-parameters.bsv    Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections
+ Connections.bsv           Locally Modified          587 
+
+
+* Changes to support multi-context inorder model.
+
+* The local module controller now returns the next model cycle to simulate. For
+  now it goes in round-robin ordering.
+
+* A-ports now properly report their full/empty status, which the local
+  controller uses to determine if a module can proceed for a certain context.
+  Soft connection Sends have a new notFull() method to support this.
+
+* A-ports and stall ports now take a context ID as a parameter to enq/deq.
+
+* Redid the stall-port interface to canEnq/doEnq/noEnq &
+  canDeq/peek/doDeq/noDeq.
+
+* Events/Stats now have multi-context versions. Stats software controller dumps
+  a stat for each active context. TODO: The event controller should do the same.
+  For now events are disabled.
+
+* Stats/Dynamic params are moved from modellib to hasim_common in order to break
+  the dependence in the functional partition. Modellib is now timing-model only.
+  All changes in the functional partition are related to this - no new
+  functionality was necessary.
+
+
+Michael P.

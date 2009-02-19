@@ -26,13 +26,18 @@
 #include <strings.h>
 #include <string>
 #include <iostream>
+#include <cmath>
 
 #include "asim/rrr/service_ids.h"
+#include "asim/provides/hasim_common.h"
 #include "asim/provides/command_switches.h"
 
 #include "asim/provides/stats_controller.h"
 
 using namespace std;
+
+
+int MAXIMUM_CONTEXTS = pow(2.0, CONTEXT_ID_BITS);
 
 // ===== service instantiation =====
 STATS_SERVER_CLASS STATS_SERVER_CLASS::instance;
@@ -44,8 +49,6 @@ STATS_SERVER_CLASS::STATS_SERVER_CLASS()
 {
     // instantiate stubs
     serverStub = new STATS_SERVER_STUB_CLASS(this);
-
-    bzero(statValues, sizeof(statValues));
 }
 
 
@@ -63,6 +66,15 @@ STATS_SERVER_CLASS::Init(
 {
     // set parent pointer
     parent = p;
+    // Instantiate stats for each context.
+    statValues = new UINT64* [globalArgs->NumContexts()];
+    // statValues = (UINT64**) malloc(sizeof(UINT64*) * globalArgs->NumContexts());
+    sawStat = new bitset<STATS_DICT_ENTRIES>[globalArgs->NumContexts()];
+    for (int x = 0; x < globalArgs->NumContexts(); x++)
+    {
+        statValues[x] = new UINT64[STATS_DICT_ENTRIES];
+        bzero(statValues[x], STATS_DICT_ENTRIES * sizeof(UINT64));
+    }
 }
 
 
@@ -82,6 +94,16 @@ STATS_SERVER_CLASS::Cleanup()
 {
     // kill stubs
     delete serverStub;
+    
+    // Free stats
+    delete sawStat;
+
+    for (int x = 0; x < globalArgs->NumContexts(); x++)
+    {
+        delete statValues[x];
+    }
+
+    delete [] statValues;
 }
 
 //
@@ -94,16 +116,32 @@ STATS_SERVER_CLASS::Send(
     UINT32 statID,
     UINT32 value)
 {
+    // If the counter is greater than the number of active contexts, then the
+    // hardware is sending us the value of a stat from an inactive context.
+    // So we'll just drop it.
+
     //
     // Add new value to running total
     //
     
     VERIFY(statID < STATS_DICT_ENTRIES, "stats-controller:  Invalid stat id");
-    
-    VERIFY(! sawStat.test(statID), "stats-controller: stat " << STATS_DICT::Name(statID) << " appears more than once in the HW");
-    sawStat.set(statID);
-    
-    statValues[statID] += value;        
+    int currentContext = -1;
+    for (int x = 0; x < globalArgs->NumContexts(); x++)
+    {
+        if (!sawStat[x].test(statID) && currentContext == -1)
+        {
+            currentContext = x;
+        }
+    }
+    if (currentContext != -1)
+    {
+
+        WARN(! sawStat[currentContext].test(statID), "stats-controller: stat " << STATS_DICT::Name(statID) << " appears more than once in Context " << currentContext);
+        sawStat[currentContext].set(statID);
+
+        statValues[currentContext][statID] += value;
+    }
+    // Otherwise it's a stat from an inactive context, so drop it.
 }
 
 // Done
@@ -111,8 +149,11 @@ UINT8
 STATS_SERVER_CLASS::Done(
     UINT8 syn)
 {
-    sawStat.reset();
 
+    for (int x = 0; x < globalArgs->NumContexts(); x++)
+    {
+        sawStat[x].reset();
+    }
     // send ack
     return 0;
 }
@@ -150,10 +191,14 @@ STATS_SERVER_CLASS::EmitFile()
 
         if ((i != STATS_NULL) && (statName != NULL))
         {
-            statsFile << "\"" << statStr << "\"," << statName << "," << statValues[i] << endl;
+            statsFile << "\"" << statStr << "\"," << statName;
+            for (int x = 0; x < globalArgs->NumContexts(); x++)
+            {
+                statsFile << "," << statValues[x][i];
+            }
+            statsFile << endl;
         }
     }
-
     statsFile.close();
 }
 

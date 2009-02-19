@@ -69,117 +69,206 @@ import soft_connections::*;
 // their model cycle in any order, but prevents them from going ahead for more
 // than 1 model cycle.
 
-interface StallPort_Send#(type a);
-    method Action send(Maybe#(a) x);
-    method Action pass();
-    method Bool   canSend();
-    interface Port_Control ctrl;
+interface PORT_STALL_SEND#(type a);
+    method Action doEnq(a x);
+    method Action noEnq();
+    method Bool   canEnq();
+    interface PORT_CONTROL ctrl;
 
 endinterface
 
-interface StallPort_Receive#(type a);
-    method ActionValue#(Maybe#(a)) receive();
-    method Maybe#(a)               peek();
-    method Action                  pass();
-    interface Port_Control ctrl;
+interface PORT_STALL_RECV#(type a);
+    method Bool   canDeq();
+    method Action noDeq();
+    method Action doDeq();
+    method a      peek();
+    interface PORT_CONTROL ctrl;
 endinterface
 
-module [HASIM_MODULE] mkStallPort_Send#(String s)
-                       (StallPort_Send#(a))
+
+interface PORT_STALL_SEND_MULTICTX#(type a);
+    method Action doEnq(CONTEXT_ID ctx, a x);
+    method Action noEnq(CONTEXT_ID ctx);
+    method Bool   canEnq(CONTEXT_ID ctx);
+    interface Vector#(NUM_CONTEXTS, PORT_CONTROL) ctrl;
+
+endinterface
+
+interface PORT_STALL_RECV_MULTICTX#(type a);
+    method Bool   canDeq(CONTEXT_ID ctx);
+    method Action noDeq(CONTEXT_ID ctx);
+    method Action doDeq(CONTEXT_ID ctx);
+    method a      peek(CONTEXT_ID ctx);
+    interface Vector#(NUM_CONTEXTS, PORT_CONTROL) ctrl;
+endinterface
+
+
+module [HASIM_MODULE] mkPortStallSend#(String s)
+                       (PORT_STALL_SEND#(a))
             provisos (Bits#(a, sa),
                       Transmittable#(Maybe#(a)));
 
-    Connection_Receive#(Bool) conCred <- mkConnection_Receive(s + ":cred");
+    Connection_Receive#(Bool) creditFromQueue <- mkConnectionRecvUG(s + ":cred");
 
-    Port_Send#(a) portDataEnqSend <- mkPort_Send(s + ":portDataEnq");
+    PORT_SEND#(a) enqToQueue <- mkPortSendUG(s + ":portDataEnq");
 
-    let _canSend = conCred.receive();
+    Reg#(Bool) initCredit <- mkReg(True);
 
-    method Action send (Maybe#(a) x) if (_canSend);
-        conCred.deq();
-        portDataEnqSend.send(x);
+    method Action doEnq (a x);
+        if (!initCredit)
+        begin
+            creditFromQueue.deq();
+        end
+        initCredit <= False;
+        enqToQueue.send(tagged Valid x);
     endmethod
 
-    method Action pass() if (!_canSend);
-        conCred.deq();
-        portDataEnqSend.send(tagged Invalid);
+    method Action noEnq();
+        if (!initCredit)
+        begin
+            creditFromQueue.deq();
+        end
+        initCredit <= False;
+        enqToQueue.send(tagged Invalid);
     endmethod
 
-    method Bool canSend() = _canSend;
+    method Bool canEnq() = initCredit ? True : creditFromQueue.receive();
 
-    interface Port_Control ctrl;
-        method Bool empty() = True;
-        method Bool full() = False;
+    interface PORT_CONTROL ctrl;
+        method Bool empty() = !(creditFromQueue.notEmpty() || initCredit); // This is that we have a credit token.
+        method Bool full() = enqToQueue.ctrl.full(); // This is if the output port is full.
         method Bool balanced() = True;
         method Bool light() = False;
         method Bool heavy() = False;
     endinterface
 endmodule
 
-module [HASIM_MODULE] mkStallPort_Receive#(String s)
-        (StallPort_Receive#(a))
+module [HASIM_MODULE] mkPortStallRecv#(String s)
+        (PORT_STALL_RECV#(a))
             provisos (Bits#(a, sa),
                       Transmittable#(Maybe#(a)));
 
-    Connection_Send#(Bool)         conCred <- mkConnection_Send(s + ":cred");
+    Connection_Send#(Bool) creditToProducer <- mkConnectionSendUG(s + ":cred");
 
-    Port_Receive#(VOID) portDataDeqReceive <- mkPort_Receive(s + ":portDataDeq", 1);
-    Port_Send#(VOID)       portDataDeqSend <- mkPort_Send(s + ":portDataDeq");
-
-    Port_Receive#(a) portDataEnqReceive <- mkPort_Receive(s + ":portDataEnq", 1);
+    PORT_RECV#(a) enqFromProducer <- mkPortRecvUG(s + ":portDataEnq", 0);
 
     FIFOF#(a) fifo <- mkUGSizedFIFOF(2);
 
-    Reg#(Bool) pC <- mkReg(False); // producer model cycle completed
-    Reg#(Bool) cC <- mkReg(True);  // consumer model cycle completed
+    Reg#(Bool) producerCompleted <- mkReg(False); // producer model cycle completed
+    Reg#(Bool) consumerCompleted <- mkReg(False); // consumer model cycle completed
 
-    Reg#(Bool) canReceive <- mkReg(?);
+    rule endModelCycle (producerCompleted && consumerCompleted);
 
-    rule work (pC && cC);
-        let p <- portDataDeqReceive.receive();
-        conCred.send(fifo.notFull());
-        canReceive <= fifo.notEmpty();
-        pC <= False;
-        cC <= False;
+        creditToProducer.send(fifo.notFull());
+        producerCompleted <= False;
+        consumerCompleted <= False;
+        
     endrule
 
-    rule enq (!pC);
-        let mx <- portDataEnqReceive.receive();
-        if (mx matches tagged Valid .x)
-            fifo.enq(x);
-        pC <= True;
-    endrule
+    rule processProducer (!producerCompleted && !enqFromProducer.ctrl.empty() && creditToProducer.notFull());
 
-    method ActionValue#(Maybe#(a)) receive() if (!cC);
-        portDataDeqSend.send(?);
-        Maybe#(a) val = Invalid;
-        if (canReceive)
+        let m_val <- enqFromProducer.receive();
+
+        if (m_val matches tagged Valid .val)
         begin
-            fifo.deq();
-            val = Valid (fifo.first);
+            fifo.enq(val);
         end
-        cC <= True;
-        return val;
+        producerCompleted <= True;
+
+    endrule
+    
+    // NOTE: These depend on higher-level guard checking by local controller
+    //       and the consumer module.
+    //       !ctrl.empty -> canDeq ? 
+    //                          (peek* -> (doDeq | noDeq)) :
+    //                          noDeq
+    method Bool canDeq();
+        return fifo.notEmpty();
     endmethod
 
-    method Maybe#(a) peek() if (!cC);
-        if (canReceive)
-           return Valid (fifo.first);
-        else
-           return Invalid;
+    method Action doDeq();
+        fifo.deq();
+        consumerCompleted <= True;
     endmethod
 
-    method Action pass() if (!cC);
-        portDataDeqSend.send(?);
-        cC <= True;
+    method a peek();
+        return fifo.first(); 
     endmethod
 
-    interface Port_Control ctrl;
-        method Bool empty() = False;
-        method Bool full() = True;
+    method Action noDeq();
+        consumerCompleted <= True;
+    endmethod
+
+    interface PORT_CONTROL ctrl;
+        method Bool empty() = consumerCompleted; // This is that we calculated the next state of the FIFO.
+        method Bool full() = !creditToProducer.notFull(); // This is that the credit port is full.
         method Bool balanced() = True;
         method Bool light() = False;
         method Bool heavy() = False;
     endinterface
 endmodule
 
+
+module [HASIM_MODULE] mkPortStallSend_MultiCtx#(String s)
+                       (PORT_STALL_SEND_MULTICTX#(a))
+            provisos (Bits#(a, sa),
+                      Transmittable#(Maybe#(a)));
+
+    Vector#(NUM_CONTEXTS, PORT_STALL_SEND#(a)) ports = newVector();
+    Vector#(NUM_CONTEXTS, PORT_CONTROL) portCtrls = newVector();
+
+    for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+    begin
+      ports[x] <- mkPortStallSend(s + "_" + integerToString(x));
+      portCtrls[x] = ports[x].ctrl;
+    end
+
+    interface ctrl = portCtrls;
+
+    method Action doEnq(CONTEXT_ID ctx, a x);
+        ports[ctx].doEnq(x);
+    endmethod
+
+    method Action noEnq(CONTEXT_ID ctx);
+        ports[ctx].noEnq();
+    endmethod
+
+    method Bool   canEnq(CONTEXT_ID ctx);
+        return ports[ctx].canEnq();
+    endmethod
+  
+endmodule
+
+module [HASIM_MODULE] mkPortStallRecv_MultiCtx#(String s)
+        (PORT_STALL_RECV_MULTICTX#(a))
+            provisos (Bits#(a, sa),
+                      Transmittable#(Maybe#(a)));
+
+    Vector#(NUM_CONTEXTS, PORT_STALL_RECV#(a)) ports = newVector();
+    Vector#(NUM_CONTEXTS, PORT_CONTROL) portCtrls = newVector();
+
+    for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+    begin
+      ports[x] <- mkPortStallRecv(s + "_" + integerToString(x));
+      portCtrls[x] = ports[x].ctrl;
+    end
+
+    interface ctrl = portCtrls;
+
+    method Bool   canDeq(CONTEXT_ID ctx);
+        return ports[ctx].canDeq();
+    endmethod
+
+    method Action noDeq(CONTEXT_ID ctx);
+        ports[ctx].noDeq();
+    endmethod
+
+    method Action doDeq(CONTEXT_ID ctx);
+        ports[ctx].doDeq();
+    endmethod
+
+    method a      peek(CONTEXT_ID ctx);
+        return ports[ctx].peek();
+    endmethod
+
+endmodule

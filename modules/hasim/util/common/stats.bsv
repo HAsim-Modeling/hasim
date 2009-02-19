@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-//
-// Tokens are the main way for HAsim to track data across simulator      
-// partitions. The token type includes an index for token tables, epochs,
-// and scratchpads which partitions can use as they see fit.             
+
 
 import FIFO::*;
 import Counter::*;
@@ -60,7 +57,7 @@ typedef union tagged
 
 typedef enum
 {
-  Recording, Dumping
+  Recording, Dumping, FinishingDump
 }
   STAT_STATE
             deriving (Eq, Bits);
@@ -161,3 +158,94 @@ module [Connected_Module] mkStatCounter_Disabled#(STATS_DICT_TYPE statname)
 endmodule
 
 
+interface STAT_RECORDER_MULTICTX;
+  
+  method Action incr(CONTEXT_ID ctx);
+  method Action decr(CONTEXT_ID ctx);
+  
+endinterface
+
+module [Connected_Module] mkStatCounter_MultiCtx#(STATS_DICT_TYPE myID)
+  //interface:
+              (STAT_RECORDER_MULTICTX);
+
+  Connection_Chain#(STAT_DATA) chain <- mkConnection_Chain(`RINGID_STATS);
+  MULTICTX#(COUNTER#(`HASIM_STATS_SIZE)) ctx_stat  <- mkMultiCtx(mkLCounter(0));
+
+  Reg#(STAT_STATE)          state <- mkReg(Recording);
+  Reg#(Bool)                enabled <- mkReg(True);
+  COUNTER#(CONTEXT_ID_SIZE) currentCtx <- mkLCounter(0);
+ 
+  rule finishDump (state == FinishingDump);
+    
+    chain.send_to_next(tagged ST_Dump);
+    state <= Recording;
+
+  endrule
+
+  rule dump (state == Dumping);
+    
+    chain.send_to_next(tagged ST_Val {statID: myID, value: ctx_stat[currentCtx.value()].value()});
+    
+    ctx_stat[currentCtx.value()].setC(0);
+    currentCtx.up();
+
+    if (currentCtx.value() == fromInteger(valueOf(NUM_CONTEXTS) - 1)) 
+        state <= FinishingDump;
+
+  endrule
+
+  (* conservative_implicit_conditions *)
+  rule shift (state == Recording);
+  
+    STAT_DATA st <- chain.receive_from_prev();
+
+    case (st) matches 
+      tagged ST_Dump:
+      begin
+        //
+        // Send the current value of the counter along the chain and reset
+        // the counter.  If the run continues the software side will request
+        // more stats dumps and compute the sum.
+        //
+        chain.send_to_next(tagged ST_Val {statID: myID, value: ctx_stat[0].value()});
+        ctx_stat[0].setC(0);
+        currentCtx.setC(1);
+        state <= Dumping;
+      end
+      tagged ST_Reset: 
+      begin
+        chain.send_to_next(st);
+        for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+            ctx_stat[x].setC(0);
+      end
+      tagged ST_Disable: 
+      begin
+        chain.send_to_next(st);
+        enabled <= False;
+      end
+      tagged ST_Enable: 
+      begin
+        chain.send_to_next(st);
+        enabled <= True;
+      end
+      default: chain.send_to_next(st);
+    endcase
+
+  endrule
+  
+  method Action incr(CONTEXT_ID ctx);
+    
+    if (enabled)
+      ctx_stat[ctx].up();
+  
+  endmethod
+
+  method Action decr(CONTEXT_ID ctx);
+    
+    if (enabled)
+      ctx_stat[ctx].down();
+  
+  endmethod
+
+endmodule

@@ -1,4 +1,4 @@
-import FIFO::*;
+import FIFOF::*;
 
 //------------------------- Connections --------------------------//
 //                                                                //
@@ -19,6 +19,7 @@ import FIFO::*;
 interface Connection_Send#(type msg_T);
   
   method Action send(msg_T data);
+  method Bool notFull();
 endinterface
 
 
@@ -72,7 +73,7 @@ endinterface
 //Connection Implementations
 
 //Change Connection FIFO to BypassFIFO if desired:
-function m#(FIFO#(a)) mkCON_FIFO() provisos (Bits#(a, a_SZ), IsModule#(m, m2)) = mkFIFO();
+function m#(FIFOF#(a)) mkCON_FIFOF() provisos (Bits#(a, a_SZ), IsModule#(m, m2)) = mkFIFOF();
 //function m#(FIFO#(a)) mkCON_FIFO() provisos (Bits#(a, a_SZ), IsModule#(m, m2)) = mkBypassFIFO();
 
 
@@ -86,7 +87,7 @@ module [Connected_Module] mkConnection_Send#(String portname)
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-  FIFO#(msg_T) q <- mkCON_FIFO();
+  FIFOF#(msg_T) q <- mkCON_FIFOF();
   
   //Bind the interface to a name for convenience
   let outg = (interface CON_Out;
@@ -108,8 +109,11 @@ module [Connected_Module] mkConnection_Send#(String portname)
   method Action send(msg_T data);
     q.enq(data);
   endmethod
+  
+  method Bool notFull() = q.notFull();
 
 endmodule
+
 /*
 module [Connected_Module] mkConnection_Send_Bypassed#(String portname)
     //interface:
@@ -299,7 +303,7 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
 
   RWire#(msg_T)  data_w  <- mkRWire();
   PulseWire      en_w    <- mkPulseWire();
-  FIFO#(msg_T)   q       <- mkCON_FIFO();
+  FIFOF#(msg_T)  q       <- mkCON_FIFOF();
 
   let inc = (interface CON_In;
   

@@ -141,3 +141,38 @@ module [Connected_Module] mkEventRecorder_Disabled#(EVENTS_DICT_TYPE eventID)
   endmethod
 
 endmodule
+
+interface EVENT_RECORDER_MULTICTX;
+  method Action recordEvent(CONTEXT_ID ctx, Maybe#(EventParam) mdata);
+endinterface
+
+module [Connected_Module] mkEventRecorder_MultiCtx#(EVENTS_DICT_TYPE eventID)
+    //interface:
+                (EVENT_RECORDER_MULTICTX);
+
+  Bit#(8) eventNum = zeroExtend(pack(eventID));
+
+  Connection_Chain#(EventData) chain <- mkConnection_Chain(`RINGID_EVENTS);
+  Reg#(EVENTS_DICT_TYPE)       stall <- mkReg(minBound);
+ 
+  rule insert (stall == eventID);
+  
+    chain.send_to_next(tagged EVT_NoEvent eventID);
+    stall <= unpack(pack(stall) + 1);
+  
+  endrule
+  
+  rule process (stall != eventID);
+  
+    EventData evt <- chain.receive_from_prev();
+    chain.send_to_next(evt);
+
+    stall <= unpack(pack(stall) + 1);
+
+  endrule
+
+  method Action recordEvent(CONTEXT_ID ctx, Maybe#(EventParam) mdata);
+    noAction;
+  endmethod
+
+endmodule

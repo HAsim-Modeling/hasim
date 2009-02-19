@@ -22,6 +22,7 @@
 #include <bitset>
 
 #include "platforms-module.h"
+#include "asim/provides/hasim_common.h"
 #include "asim/provides/rrr.h"
 
 #include "asim/dict/STATS.h"
@@ -40,11 +41,11 @@ class STATS_SERVER_CLASS: public RRR_SERVER_CLASS,
     // stubs
     RRR_SERVER_STUB serverStub;
 
-    // Running total of statistics as they are dumped incrementally
-    UINT64 statValues[STATS_DICT_ENTRIES];
+    // Running total of statistics per context as they are dumped incrementally.
+    UINT64 **statValues;
 
-    // Check that each stat appears at most once
-    bitset<STATS_DICT_ENTRIES> sawStat;
+    // Check that each stat appears at most once per context.
+    bitset<STATS_DICT_ENTRIES> *sawStat;
 
   public:
     STATS_SERVER_CLASS();

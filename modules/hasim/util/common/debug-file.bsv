@@ -113,7 +113,7 @@ module mkTIMEPDebugFile#(String fname)
         (TIMEP_DEBUG_FILE);
 
     COUNTER#(32) fpga_cycle  <- mkLCounter(0);
-    COUNTER#(32) model_cycle <- mkLCounter(0);
+    COUNTER#(32) model_cycle <- mkLCounter(~0);
 
     Reg#(File) debugLog <- mkReg(InvalidFile);
     Reg#(Bool) initialized <- mkReg(False);
@@ -196,7 +196,7 @@ module mkTIMEPDebugFile_MultiCtx#(String fname)
     Vector#(NUM_CONTEXTS, COUNTER#(32)) model_cycle = newVector();
     for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
     begin
-        model_cycle[c] <- mkLCounter(0);
+        model_cycle[c] <- mkLCounter(~0);
     end
 
     Reg#(File) debugLog <- mkReg(InvalidFile);

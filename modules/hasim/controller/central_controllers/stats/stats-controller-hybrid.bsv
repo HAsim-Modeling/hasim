@@ -18,7 +18,6 @@
 
 import FIFO::*;
 
-import hasim_modellib::*;
 import soft_connections::*;
 
 `include "asim/provides/rrr.bsh"

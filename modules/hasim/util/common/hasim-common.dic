@@ -1,2 +1,7 @@
 def RINGID.ASSERTS  "assertions";
+def RINGID.STATS  "stats";
+def RINGID.PARAMS "params";
+
 def ASSERTIONS.NULL "null";
+def STATS.NULL    "null";
+def PARAMS.NULL   "null";

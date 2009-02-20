@@ -17411,3 +17411,18 @@ Directory modules/bluespec/common/soft_connections
 
 
 Michael P.
+
+----------
+pellauer    Date: Fri Feb 20 17:04:14 EST 2009  CSN: CSN-hasim-589
+                  Fri Feb 20 22:04:14 UTC 2009
+
+
+Directory modules/system/cpu_system
+ System.bsv                Locally Modified          587 
+
+
+* Remove reference to non-existent last-level cache. That area of the memory
+  hierarchy will be redone in the upcoming effort to make the cache models
+  multi-context.
+  
+Michael P.

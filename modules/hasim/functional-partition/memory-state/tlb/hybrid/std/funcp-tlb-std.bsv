@@ -469,12 +469,14 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     HASIM_CACHE_STATS statIfc <- mkTLBCacheStats();
 
     // Translation cache
-    HASIM_CACHE#(FUNCP_L2TLB_RAW_IDX,
-                 FUNCP_L2TLB_ENTRY,
-                 Bool,
-                 FUNCP_TLB_CACHE_SETS,
-                 `FUNCP_TLB_CACHE_WAYS,
-                 `FUNCP_ISA_PAGE_SHIFT) cache <- mkCacheSetAssoc(vtopIfc, statIfc, debugLog);
+    HASIM_CACHE#(FUNCP_L2TLB_RAW_IDX,      // Cache address type
+                 FUNCP_L2TLB_ENTRY,        // Data type
+                 FUNCP_L2TLB_ENTRY,        // Cache word (this cache has 1 word per line)
+                 1,                        // Words per cache line
+                 Bool,                     // Reference meta-data (passed to RRR)
+                 FUNCP_TLB_CACHE_SETS,     // Sets in the cache
+                 `FUNCP_TLB_CACHE_WAYS,    // Ways per set
+                 `FUNCP_ISA_PAGE_SHIFT) cache <- mkCacheSetAssoc(vtopIfc, statIfc, False, debugLog);
 
     FIFO#(Tuple2#(FUNCP_TRANSLATION_REQ, FUNCP_TLB_TYPE)) pendingTLBQ <- mkFIFO1();
     FIFO#(Bool) itlbQ <- mkFIFO();

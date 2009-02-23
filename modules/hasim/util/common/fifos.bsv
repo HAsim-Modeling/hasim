@@ -19,131 +19,7 @@
 import RWire::*;
 import FIFO::*;
 import FIFOF::*;
-
-
-// ========================================================================
-//
-// BypassFIFO --
-//
-//   A FIFO with latency zero. The data is buffered if no one is listening.
-//   Then future requests are answered from the buffer.
-//
-// ========================================================================
-
-module mkBypassFIFO
-    // Interface:
-    (FIFO#(a))
-    provisos (Bits#(a,sa));
-
-    RWire#(a) enqw <- mkRWire;
-    RWire#(a) result <- mkRWire;
-    RWire#(PrimUnit) deqw <- mkRWire;
-    FIFOF#(a) the_fifof <- mkUGFIFOF;
-
-    rule doResult;
-        if (the_fifof.notEmpty)
-            result.wset(the_fifof.first());
-        else
-        begin
-            case (enqw.wget()) matches
-            tagged Just .r:
-                result.wset(r);
-            tagged Nothing:
-                noAction;
-            endcase
-        end
-    endrule
-
-    rule doUpdate_enq;
-        case (enqw.wget()) matches
-        tagged Just .r: 
-            if (the_fifof.notEmpty || !isJust(deqw.wget))
-                the_fifof.enq(r); 
-        tagged Nothing:
-            noAction;
-        endcase
-    endrule
-
-    rule doUpdate_deq;
-        if (isJust(deqw.wget) && the_fifof.notEmpty)
-            the_fifof.deq();
-    endrule
-
-    method Action clear();
-        the_fifof.clear();
-    endmethod: clear
-
-    method Action enq(val) if (the_fifof.notFull);
-        enqw.wset(val);
-    endmethod: enq
-
-    method Action deq() if ((the_fifof.notEmpty || isJust (enqw.wget())));
-        deqw.wset(?); // I hate '?'.
-    endmethod: deq
-
-    method first() if (isJust(result.wget));
-        return unJust(result.wget);
-    endmethod: first
-
-endmodule
-
-
-module mkBypassSizedFIFO#(Integer x)
-    // Interface:
-    (FIFO#(a))
-    provisos (Bits#(a,sa));
-
-    RWire#(a) enqw <- mkRWire;
-    RWire#(a) result <- mkRWire;
-    RWire#(PrimUnit) deqw <- mkRWire;
-    FIFOF#(a) the_fifof <- mkUGSizedFIFOF(x);
-
-    rule doResult;
-        if (the_fifof.notEmpty)
-            result.wset(the_fifof.first());
-        else
-        begin
-            case (enqw.wget()) matches
-            tagged Just .r:
-                result.wset(r);
-            tagged Nothing:
-                noAction;
-            endcase
-        end
-    endrule
-
-    rule doUpdate_enq;
-        case (enqw.wget()) matches
-        tagged Just .r: 
-            if (the_fifof.notEmpty || !isJust(deqw.wget))
-                the_fifof.enq(r); 
-        tagged Nothing:
-            noAction;
-        endcase
-    endrule
-
-    rule doUpdate_deq;
-        if (isJust(deqw.wget) && the_fifof.notEmpty)
-            the_fifof.deq();
-    endrule
-
-    method Action clear();
-        the_fifof.clear();
-    endmethod: clear
-
-    method Action enq(val) if (the_fifof.notFull);
-        enqw.wset(val);
-    endmethod: enq
-
-    method Action deq() if ((the_fifof.notEmpty || isJust (enqw.wget())));
-        deqw.wset(?); // I hate '?'.
-    endmethod: deq
-
-    method first() if (isJust(result.wget));
-        return unJust(result.wget);
-    endmethod: first
-
-endmodule
+import SpecialFIFOs::*;
 
 
 // ========================================================================
@@ -173,6 +49,11 @@ interface SCOREBOARD_FIFO#(numeric type t_NUM_ENTRIES, type t_DATA);
     method SCOREBOARD_FIFO_ENTRY_ID#(t_NUM_ENTRIES) deqEntryId();
 endinterface
 
+
+//
+// mkScoreboardFIFO --
+//     A scoreboard FIFO with data stores in LUTs.
+//
 module mkScoreboardFIFO
     // Interface:
     (SCOREBOARD_FIFO#(t_NUM_ENTRIES, t_DATA))
@@ -181,7 +62,7 @@ module mkScoreboardFIFO
         Alias#(SCOREBOARD_FIFO_ENTRY_ID#(t_NUM_ENTRIES), t_SCOREBOARD_FIFO_ENTRY_ID));
     
     COUNTER#(TLog#(TAdd#(t_NUM_ENTRIES, 1))) nEntries <- mkLCounter(0);
-    LUTRAM#(t_SCOREBOARD_FIFO_ENTRY_ID, t_DATA) values <- mkLUTRAMU();
+    Vector#(t_NUM_ENTRIES, Reg#(t_DATA)) values <- replicateM(mkRegU());
 
     // Pointers to next enq and deq slots in the ring buffer
     Reg#(t_SCOREBOARD_FIFO_ENTRY_ID) nextEnq <- mkReg(0);
@@ -193,18 +74,33 @@ module mkScoreboardFIFO
     Reg#(Vector#(t_NUM_ENTRIES, Bool)) reqVec <- mkReg(replicate(False));
     Reg#(Vector#(t_NUM_ENTRIES, Bool)) readyVec <- mkReg(replicate(False));
 
+    // Value flowing out from the FIFO to first() / deq().
+    RWire#(t_DATA) exitVal <- mkRWire();
+    Wire#(Bool) oldestIsReady <- mkDWire(False);
 
     function isNotFull() = (nEntries.value() != fromInteger(valueOf(t_NUM_ENTRIES)));
     function isNotEmpty() = (nEntries.value() != 0);
 
-    function Bool oldestIsReady();
+
+    //
+    // Send the outbound, oldest, value out on a wire instead of reading
+    // the values in the methods below to avoid painfully slow Bluespec
+    // scheduler attempts to see through subscripting.
+    //
+    (* fire_when_enabled, no_implicit_conditions *)
+    rule checkOldest (True);
         //
         // To be ready there must be an entry in the queue and the reqVec bit
         // must match the readyVec bit for the oldest entry.
         //
         Bit#(t_NUM_ENTRIES) r = pack(reqVec) ^ pack(readyVec);
-        return isNotEmpty() && (r[nextDeq] == 0);
-    endfunction
+        oldestIsReady <= isNotEmpty() && (r[nextDeq] == 0);
+    endrule
+
+    (* fire_when_enabled, no_implicit_conditions *)
+    rule readOldest if (oldestIsReady);
+        exitVal.wset(values[nextDeq]);
+    endrule
 
 
     method ActionValue#(t_SCOREBOARD_FIFO_ENTRY_ID) enq() if (isNotFull());
@@ -222,16 +118,16 @@ module mkScoreboardFIFO
 
     method Action setValue(t_SCOREBOARD_FIFO_ENTRY_ID id, t_DATA data);
         // Write value to buffer
-        values.upd(id, data);
+        values[id] <= data;
         // Mark slot data ready
         readyVec[id] <= reqVec[id];
     endmethod
 
-    method t_DATA first() if (oldestIsReady());
-        return values.sub(nextDeq);
+    method t_DATA first() if (exitVal.wget() matches tagged Valid .v);
+        return v;
     endmethod
 
-    method Action deq() if (oldestIsReady());
+    method Action deq() if (exitVal.wget() matches tagged Valid .v);
         // Pop oldest entry from FIFO
         nEntries.down();
         nextDeq <= nextDeq + 1;
@@ -247,5 +143,126 @@ module mkScoreboardFIFO
 
     method SCOREBOARD_FIFO_ENTRY_ID#(t_NUM_ENTRIES) deqEntryId();
         return nextDeq;
+    endmethod
+endmodule
+
+
+//
+// mkBRAMScoreboardFIFO --
+//     A scoreboard FIFO with data stores in BRAM.  The code bypasses the
+//     BRAM when first() and deq() are blocked waiting for incoming data,
+//     so the timing should be similar to mkScoreboardFIFO.
+//
+module mkBRAMScoreboardFIFO
+    // Interface:
+    (SCOREBOARD_FIFO#(t_NUM_ENTRIES, t_DATA))
+    provisos(
+        Bits#(t_DATA, t_DATA_SZ),
+        Alias#(SCOREBOARD_FIFO_ENTRY_ID#(t_NUM_ENTRIES), t_SCOREBOARD_FIFO_ENTRY_ID));
+    
+    COUNTER#(TLog#(TAdd#(t_NUM_ENTRIES, 1))) nEntries <- mkLCounter(0);
+    BRAM#(t_SCOREBOARD_FIFO_ENTRY_ID, t_DATA) values <- mkBRAM();
+
+    // Pointers to next enq and deq slots in the ring buffer
+    Reg#(t_SCOREBOARD_FIFO_ENTRY_ID) nextEnq <- mkReg(0);
+    Reg#(t_SCOREBOARD_FIFO_ENTRY_ID) nextDeq <- mkReg(0);
+
+    // reqVec and readyVec are used to determine whether an entry's data is
+    // ready.  When ready, the bits corresponding to an entry match.  Using
+    // separate vectors for enq() and deq() avoids write contention.
+    Reg#(Vector#(t_NUM_ENTRIES, Bool)) reqVec <- mkReg(replicate(False));
+    Reg#(Vector#(t_NUM_ENTRIES, Bool)) readyVec <- mkReg(replicate(False));
+
+    // Value flowing out from the FIFO to first() / deq().
+    FIFOF#(t_DATA) exitVal <- mkBypassFIFOF();
+    FIFOF#(t_SCOREBOARD_FIFO_ENTRY_ID) exitEntryId <- mkFIFOF();
+
+    Wire#(Bool) oldestIsReady <- mkDWire(False);
+
+    function isNotFull() = (nEntries.value() != fromInteger(valueOf(t_NUM_ENTRIES)));
+    function isNotEmpty() = (nEntries.value() != 0);
+
+
+    //
+    // Compute whether oldest is ready to a wire to simplify scheduling predicates.
+    //
+    (* fire_when_enabled, no_implicit_conditions *)
+    rule checkOldest (True);
+        //
+        // To be ready there must be an entry in the queue and the reqVec bit
+        // must match the readyVec bit for the oldest entry.
+        //
+        Bit#(t_NUM_ENTRIES) r = pack(reqVec) ^ pack(readyVec);
+        oldestIsReady <= isNotEmpty() && (r[nextDeq] == 0);
+    endrule
+
+    //
+    // Request outgoing value from BRAM when it is ready.
+    //
+    rule readReqOldest if (oldestIsReady);
+        values.readReq(nextDeq);
+        exitEntryId.enq(nextDeq);
+        nextDeq <= nextDeq + 1;
+        nEntries.down();
+    endrule
+
+    //
+    // Forward outgoing value from BRAM to the outgoing exitVal FIFO.
+    //
+    rule readRespOldest (exitEntryId.notEmpty());
+        let v <- values.readRsp();
+        exitVal.enq(v);
+    endrule
+
+
+    method ActionValue#(t_SCOREBOARD_FIFO_ENTRY_ID) enq() if (isNotFull());
+        nEntries.up();
+
+        // Mark FIFO slot as waiting for data
+        let slot = nextEnq;
+        reqVec[slot] <= ! reqVec[slot];
+    
+        // Update next slot pointer
+        nextEnq <= slot + 1;
+
+        return slot;
+    endmethod
+
+    method Action setValue(t_SCOREBOARD_FIFO_ENTRY_ID id, t_DATA data);
+        // Write value to buffer
+        values.write(id, data);
+        // Mark slot data ready
+        readyVec[id] <= reqVec[id];
+    
+        // Bypass BRAM if incoming value is the oldest and the outgoing
+        // pipelines are empty.
+        if (! oldestIsReady && ! exitEntryId.notEmpty() && (id == nextDeq))
+        begin
+            exitVal.enq(data);
+            exitEntryId.enq(nextDeq);
+            nextDeq <= nextDeq + 1;
+            nEntries.down();
+        end
+    endmethod
+
+    method t_DATA first();
+        return exitVal.first();
+    endmethod
+
+    method Action deq();
+        exitVal.deq();
+        exitEntryId.deq();
+    endmethod
+
+    method Bool notFull();
+        return isNotFull();
+    endmethod
+
+    method Bool notEmpty();
+        return exitVal.notEmpty();
+    endmethod
+
+    method SCOREBOARD_FIFO_ENTRY_ID#(t_NUM_ENTRIES) deqEntryId();
+        return exitEntryId.first();
     endmethod
 endmodule

@@ -49,7 +49,11 @@ FUNCP_REGSTATE_MEMPATH
 // scoreboard FIFOs.  There is one FIFO per MEMPATH, defined above.
 // Defined here because it affects the FUNCP_MEMREF_TOKEN.
 //
-typedef 8 MAX_FUNCP_INFLIGHT_MEMREFS;
+// The scoreboard is stored in BRAM, so there is no harm in allowing
+// a relatively large number of references to be in flight.  Small
+// values would just waste most of a BRAM chunk.
+//
+typedef 64 MAX_FUNCP_INFLIGHT_MEMREFS;
 typedef SCOREBOARD_FIFO_ENTRY_ID#(MAX_FUNCP_INFLIGHT_MEMREFS) FUNCP_MEMRESP_SCOREBOARD_ID;
 
 

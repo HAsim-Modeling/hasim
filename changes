@@ -17426,3 +17426,55 @@ Directory modules/system/cpu_system
   multi-context.
   
 Michael P.
+
+----------
+mcadler     Date: Mon Feb 23 08:46:27 EST 2009  CSN: CSN-hasim-590
+                  Mon Feb 23 13:46:27 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/connections
+ regstate-connect-memory.bsv Locally Modified          589 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-reg-map-table.bsv Locally Modified          589 
+
+Directory modules/hasim/functional-partition/register-state/base-types
+ regstate-base-types.bsv   Locally Modified          589 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          589 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          589 
+
+Directory modules/hasim/util/cache
+ hasim-cache.bsv           Locally Modified          589 
+
+Directory modules/hasim/util/common
+ fifos.bsv                 Locally Modified          589 
+ counting-filter.bsv       Locally Modified          589 
+ hash-bits.bsv             Locally Modified          589 
+ memory-heap.bsv           Locally Modified          589 
+
+- Add inverse versions of the hash functions and add support for more hash sizes.
+
+- Cache changes:
+  - Pipeline hasim-cache.  Remove the FSM blocking rules except for the state
+    that invalidates the entire cache, which we never use.
+  - Only one operation may be active on a given set, but hits may be serviced
+    while a miss is outstanding to a different set.
+  - Add the concept of cache words in addition to lines.
+  - Cache writes are now word sized instead of line sized.  For functional
+    memory this reduced the data being passed to 64 bits from 512 bits (line
+    plus bit mask).
+  - Reudce tag size by using inverse hash functions to recover address from
+    tag + set id instead of using the full address as a tag.
+
+- Switch to BRAM scoreboard FIFOs in the register state connection to memory
+  and add many more buckets to permit a lot of parallel memory operations.
+
+- Remove mkBypassFIFO from fifos.bsv.  Use the Bluespec library version instead.
+
+- Fix/improve scoreboard FIFOs.
+
+- Fix BRAM version of memory heap.

@@ -30,6 +30,7 @@ import FIFOF::*;
 import RWire::*;
 import Vector::*;
 import FShow::*;
+import SpecialFIFOs::*;
 
 // Project foundation includes.
 

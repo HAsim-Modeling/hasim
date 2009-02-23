@@ -227,7 +227,11 @@ module mkCountingBloomFilter#(DEBUG_FILE debugLog)
     //     Calculate the set of hashes for an entry id.
     //
     function t_HASH_VEC computeHashes(t_ENTRY entryId);
-        // Map however many entry bits there are to 32 bits.
+        //
+        // Map however many entry bits there are to 32 bits.  This hash function
+        // is a compromise for FPGA area.  It works well for current functional
+        // memory set sizes.  We may need to revisit it later.
+        //
         Bit#(32) idx32;
         Bit#(t_ENTRY_SZ) idx_orig = pack(entryId);
         Integer b = 0;

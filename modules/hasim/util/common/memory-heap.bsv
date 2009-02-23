@@ -56,7 +56,7 @@ endinterface
 // ========================================================================
 
 //
-// mkMemoryHeapImm --
+// mkMemoryHeap --
 //     Storage agnostic implementation of a managed pool of data.  The module
 //     takes the memory pool as an argument and thus can manage data stored
 //     anywhere.
@@ -100,9 +100,10 @@ module mkMemoryHeap#(MEMORY_HEAP_DATA#(t_INDEX, t_DATA) heap)
     // Allocation: malloc / free
     //
 
-    FIFOF#(Bool) mallocReqQ <- mkFIFOF1();
-    FIFO#(t_INDEX) mallocQ <- mkFIFO();
     FIFOF#(t_INDEX) freeQ <- mkFIFOF();
+    FIFOF#(Bool) mallocReqQ <- mkFIFOF1();
+    FIFO#(t_INDEX) mallocQ <- mkSizedFIFO(4);
+    COUNTER#(2) mallocQEntries <- mkLCounter(0);
 
     //
     // readFreeList --
@@ -110,11 +111,13 @@ module mkMemoryHeap#(MEMORY_HEAP_DATA#(t_INDEX, t_DATA) heap)
     //     popping the free list.
     //
     rule fillFreeList (initialized &&&
+                       mallocQEntries.value() != maxBound &&&
                        ! freeQ.notEmpty() &&&
                        freeListHead matches tagged Valid .f);
         heap.freeList.readReq(unpack(f));
         // FIFO1 keeps a single request in flight for a given free list head
         mallocReqQ.enq(?);
+        mallocQEntries.up();
     endrule
 
     //
@@ -129,29 +132,7 @@ module mkMemoryHeap#(MEMORY_HEAP_DATA#(t_INDEX, t_DATA) heap)
         // Either push freed storage on the free list or try to pop a free
         // entry to the mallocQ.
         //
-        if (freeQ.notEmpty())
-        begin
-            let addr = freeQ.first();
-            freeQ.deq();
-
-            // Push on free list
-            if (freeListHead matches tagged Valid .f)
-                heap.freeList.write(addr, unpack(f));
-            else
-                // Free list was empty.  Node is end of free list.
-                heap.freeList.write(addr, addr);
-
-            freeListHead <= tagged Valid pack(addr);
-            
-            // Did fillFreeList read from the now stale freeListHead?  Drop
-            // the orphaned read.
-            if (mallocReqQ.notEmpty())
-            begin
-                mallocReqQ.deq();
-                let fl_next <- heap.freeList.readRsp();
-            end
-        end
-        else if (mallocReqQ.notEmpty() &&& freeListHead matches tagged Valid .f)
+        if (mallocReqQ.notEmpty() &&& freeListHead matches tagged Valid .f)
         begin
             mallocReqQ.deq();
 
@@ -165,11 +146,26 @@ module mkMemoryHeap#(MEMORY_HEAP_DATA#(t_INDEX, t_DATA) heap)
 
             mallocQ.enq(unpack(f));
         end
+        else if (freeQ.notEmpty())
+        begin
+            let addr = freeQ.first();
+            freeQ.deq();
+
+            // Push on free list
+            if (freeListHead matches tagged Valid .f)
+                heap.freeList.write(addr, unpack(f));
+            else
+                // Free list was empty.  Node is end of free list.
+                heap.freeList.write(addr, addr);
+
+            freeListHead <= tagged Valid pack(addr);
+        end
     endrule
 
     method ActionValue#(t_INDEX) malloc();
         let f = mallocQ.first();
         mallocQ.deq();
+        mallocQEntries.down();
         return f;
     endmethod
 

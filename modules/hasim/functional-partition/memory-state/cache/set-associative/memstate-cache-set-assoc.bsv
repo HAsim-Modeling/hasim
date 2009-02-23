@@ -380,12 +380,14 @@ module [HASIM_MODULE] mkFUNCP_Cache
     HASIM_CACHE_STATS statIfc <- mkFuncpMemoryCacheStats();
 
     // The cache
-    HASIM_CACHE#(FUNCP_MEM_CACHE_TAG,
-                 FUNCP_MEM_CACHELINE,
-                 FUNCP_MEM_CACHE_REF_INFO,
-                 FUNCP_MEMCACHE_SETS,
-                 `FUNCP_MEMCACHE_WAYS,
-                 FUNCP_MEM_ADDR_NONTAG_BITS) cache <- mkCacheSetAssoc(funcpMemIfc.cacheIfc, statIfc, debugLog);
+    HASIM_CACHE#(FUNCP_MEM_CACHE_TAG,      // Cache address type
+                 FUNCP_MEM_CACHELINE,      // Cache line
+                 MEM_VALUE,                // Cache word
+                 CACHELINE_WORDS,          // Words per cache line
+                 FUNCP_MEM_CACHE_REF_INFO, // Reference meta-data (passed to RRR)
+                 FUNCP_MEMCACHE_SETS,      // Sets in the cache
+                 `FUNCP_MEMCACHE_WAYS,     // Ways per set
+                 FUNCP_MEM_ADDR_NONTAG_BITS) cache <- mkCacheSetAssoc(funcpMemIfc.cacheIfc, statIfc, True, debugLog);
 
     // Single entry L1 caches
     FUNCP_MEM_L1_MULTICTX cacheL1D <- mkFUNCP_L1Cache_MultiCtx(debugLog);
@@ -446,7 +448,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
     //    Incoming client request.  Only start a new request if no invalidate
     //    is in pending.
     //
-
+    (* conservative_implicit_conditions *)
     rule handleReq_LOAD (enableCache && (invalLoopNLines == 0) &&&
                          ! link_funcp_memory_inval_all.reqNotEmpty() &&&
                          link_memstate.getReq() matches tagged MEM_LOAD .ld);
@@ -565,21 +567,11 @@ module [HASIM_MODULE] mkFUNCP_Cache
 
             tagged MEM_STORE .st:
             begin
-                //
-                // Build a mask so only the target word is updated within
-                // the line.
-                //
-                FUNCP_MEM_CACHELINE_VEC mask = unpack(0);
-                FUNCP_MEM_CACHELINE_VEC line = unpack(0);
-                
                 let tag = cacheTagFromAddr(st.addr);
                 let word = cacheLineOffsetFromAddr(st.addr);
 
-                mask[word] = -1;
-                line[word] = st.val;
-
-                cache.writeMaskedReq(tag, pack(line), pack(mask),
-                                     initCacheRefInfo(st.contextId, st.addr, ?, ?));
+                cache.write(tag, st.val, word,
+                            initCacheRefInfo(st.contextId, st.addr, ?, ?));
             end
 
             tagged MEM_INVALIDATE_CACHELINE .inval:

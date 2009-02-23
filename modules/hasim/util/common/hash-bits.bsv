@@ -33,6 +33,14 @@
 // The first function, hashBits, tries to pick the best hash available for
 // input sizes up to 64 bits.  The remaining functions hash specific sizes.
 //
+//
+//
+// For each hash function there is also an inverse function that converts
+// from the hashed value back to the original.  The inverse is computed
+// as the inverse of the matrix formed by the bit masks for the hash
+// functions.  The hash[] vector forms the rows and the bits participating
+// in the hash form the columns.
+//
 
 
 //
@@ -60,30 +68,102 @@ function Bit#(n) hashBits(Bit#(n) x)
         // low bits, while still preserving the property that all inputs have
         // unique outputs.
         if (n_bits > 32)
-            h[31:0] = h[31:0] ^ h[63:32];
+            h[31:0] = h[31:0] ^ reverseBits(h[63:32]);
 
         h[31:0] = hash32(h[31:0]);
     end
     else if (n_bits >= 24)
     begin
         if (n_bits > 24)
-            h[7:0] = h[7:0] ^ h[31:24];
+            h[7:0] = h[7:0] ^ reverseBits(h[31:24]);
 
         h[23:0] = hash24(h[23:0]);
     end
     else if (n_bits >= 16)
     begin
         if (n_bits > 16)
-            h[7:0] = h[7:0] ^ h[23:16];
+            h[7:0] = h[7:0] ^ reverseBits(h[23:16]);
 
         h[15:0] = hash16(h[15:0]);
     end
     else if (n_bits >= 8)
     begin
         if (n_bits > 8)
-            h[7:0] = h[7:0] ^ h[15:8];
+            h[7:0] = h[7:0] ^ reverseBits(h[15:8]);
 
         h[7:0] = hash8(h[7:0]);
+    end
+    else if (n_bits == 7)
+    begin
+        h[6:0] = hash7(h[6:0]);
+    end
+    else if (n_bits == 6)
+    begin
+        h[5:0] = hash6(h[5:0]);
+    end
+    else if (n_bits == 5)
+    begin
+        h[4:0] = hash5(h[4:0]);
+    end
+    else if (n_bits == 4)
+    begin
+        h[3:0] = hash4(h[3:0]);
+    end
+    
+    return truncate(h);
+endfunction
+
+
+// Inverse of hashBits
+function Bit#(n) hashBits_inv(Bit#(n) x)
+    provisos (Add#(n, a__, 64));
+
+    let n_bits = valueOf(n);
+    Bit#(64) h = zeroExtend(x);
+
+    if (n_bits >= 32)
+    begin
+        h[31:0] = hash32_inv(h[31:0]);
+
+        if (n_bits > 32)
+            h[31:0] = h[31:0] ^ reverseBits(h[63:32]);
+    end
+    else if (n_bits >= 24)
+    begin
+        h[23:0] = hash24_inv(h[23:0]);
+
+        if (n_bits > 24)
+            h[7:0] = h[7:0] ^ reverseBits(h[31:24]);
+    end
+    else if (n_bits >= 16)
+    begin
+        h[15:0] = hash16_inv(h[15:0]);
+
+        if (n_bits > 16)
+            h[7:0] = h[7:0] ^ reverseBits(h[23:16]);
+    end
+    else if (n_bits >= 8)
+    begin
+        h[7:0] = hash8_inv(h[7:0]);
+
+        if (n_bits > 8)
+            h[7:0] = h[7:0] ^ reverseBits(h[15:8]);
+    end
+    else if (n_bits == 7)
+    begin
+        h[6:0] = hash7_inv(h[6:0]);
+    end
+    else if (n_bits == 6)
+    begin
+        h[5:0] = hash6_inv(h[5:0]);
+    end
+    else if (n_bits == 5)
+    begin
+        h[4:0] = hash5_inv(h[4:0]);
+    end
+    else if (n_bits == 4)
+    begin
+        h[3:0] = hash4_inv(h[3:0]);
     end
     
     return truncate(h);
@@ -181,6 +261,100 @@ function Bit#(32) hash32(Bit#(32) d);
 endfunction
 
 
+function Bit#(32) hash32_inv(Bit#(32) d);
+    //
+    // Inverse of hash32
+    //
+    Bit#(32) hash;
+    hash[0] = d[31] ^ d[29] ^ d[27] ^ d[25] ^ d[23] ^ d[21] ^ d[20] ^
+              d[16] ^ d[14] ^ d[9] ^ d[5] ^ d[2] ^ d[1];
+    hash[1] = d[31] ^ d[30] ^ d[29] ^ d[28] ^ d[27] ^ d[26] ^ d[25] ^
+              d[24] ^ d[23] ^ d[22] ^ d[20] ^ d[17] ^ d[16] ^ d[15] ^
+              d[14] ^ d[10] ^ d[9] ^ d[6] ^ d[5] ^ d[3] ^ d[1] ^
+              d[0];
+    hash[2] = d[30] ^ d[28] ^ d[26] ^ d[24] ^ d[20] ^ d[18] ^ d[17] ^
+              d[15] ^ d[14] ^ d[11] ^ d[10] ^ d[9] ^ d[7] ^ d[6] ^
+              d[5] ^ d[4];
+    hash[3] = d[31] ^ d[29] ^ d[27] ^ d[25] ^ d[21] ^ d[19] ^ d[18] ^
+              d[16] ^ d[15] ^ d[12] ^ d[11] ^ d[10] ^ d[8] ^ d[7] ^
+              d[6] ^ d[5] ^ d[0];
+    hash[4] = d[31] ^ d[30] ^ d[29] ^ d[28] ^ d[27] ^ d[26] ^ d[25] ^
+              d[23] ^ d[22] ^ d[21] ^ d[19] ^ d[17] ^ d[14] ^ d[13] ^
+              d[12] ^ d[11] ^ d[8] ^ d[7] ^ d[6] ^ d[5] ^ d[2] ^
+              d[0];
+    hash[5] = d[30] ^ d[28] ^ d[26] ^ d[25] ^ d[24] ^ d[22] ^ d[21] ^
+              d[18] ^ d[16] ^ d[15] ^ d[13] ^ d[12] ^ d[8] ^ d[7] ^
+              d[6] ^ d[5] ^ d[3] ^ d[2];
+    hash[6] = d[31] ^ d[29] ^ d[27] ^ d[26] ^ d[25] ^ d[23] ^ d[22] ^
+              d[19] ^ d[17] ^ d[16] ^ d[14] ^ d[13] ^ d[9] ^ d[8] ^
+              d[7] ^ d[6] ^ d[4] ^ d[3] ^ d[0];
+    hash[7] = d[31] ^ d[30] ^ d[29] ^ d[28] ^ d[26] ^ d[25] ^ d[24] ^
+              d[21] ^ d[18] ^ d[17] ^ d[16] ^ d[15] ^ d[10] ^ d[8] ^
+              d[7] ^ d[4] ^ d[2] ^ d[0];
+    hash[8] = d[30] ^ d[26] ^ d[23] ^ d[22] ^ d[21] ^ d[20] ^ d[19] ^
+              d[18] ^ d[17] ^ d[14] ^ d[11] ^ d[8] ^ d[3] ^ d[2];
+    hash[9] = d[31] ^ d[27] ^ d[24] ^ d[23] ^ d[22] ^ d[21] ^ d[20] ^
+              d[19] ^ d[18] ^ d[15] ^ d[12] ^ d[9] ^ d[4] ^ d[3];
+    hash[10] = d[31] ^ d[29] ^ d[28] ^ d[27] ^ d[24] ^ d[22] ^ d[19] ^
+               d[14] ^ d[13] ^ d[10] ^ d[9] ^ d[4] ^ d[2] ^ d[1] ^
+               d[0];
+    hash[11] = d[31] ^ d[30] ^ d[28] ^ d[27] ^ d[21] ^ d[16] ^ d[15] ^
+               d[11] ^ d[10] ^ d[9] ^ d[3] ^ d[0];
+    hash[12] = d[28] ^ d[27] ^ d[25] ^ d[23] ^ d[22] ^ d[21] ^ d[20] ^
+               d[17] ^ d[14] ^ d[12] ^ d[11] ^ d[10] ^ d[9] ^ d[5] ^
+               d[4] ^ d[2];
+    hash[13] = d[29] ^ d[28] ^ d[26] ^ d[24] ^ d[23] ^ d[22] ^ d[21] ^
+               d[18] ^ d[15] ^ d[13] ^ d[12] ^ d[11] ^ d[10] ^ d[6] ^
+               d[5] ^ d[3] ^ d[0];
+    hash[14] = d[30] ^ d[29] ^ d[27] ^ d[25] ^ d[24] ^ d[23] ^ d[22] ^
+               d[19] ^ d[16] ^ d[14] ^ d[13] ^ d[12] ^ d[11] ^ d[7] ^
+               d[6] ^ d[4] ^ d[1];
+    hash[15] = d[31] ^ d[30] ^ d[28] ^ d[26] ^ d[25] ^ d[24] ^ d[23] ^
+               d[20] ^ d[17] ^ d[15] ^ d[14] ^ d[13] ^ d[12] ^ d[8] ^
+               d[7] ^ d[5] ^ d[2] ^ d[0];
+    hash[16] = d[26] ^ d[24] ^ d[23] ^ d[20] ^ d[18] ^ d[15] ^ d[13] ^
+               d[8] ^ d[6] ^ d[5] ^ d[3] ^ d[2] ^ d[0];
+    hash[17] = d[27] ^ d[25] ^ d[24] ^ d[21] ^ d[19] ^ d[16] ^ d[14] ^
+               d[9] ^ d[7] ^ d[6] ^ d[4] ^ d[3] ^ d[1];
+    hash[18] = d[28] ^ d[26] ^ d[25] ^ d[22] ^ d[20] ^ d[17] ^ d[15] ^
+               d[10] ^ d[8] ^ d[7] ^ d[5] ^ d[4] ^ d[2];
+    hash[19] = d[29] ^ d[27] ^ d[26] ^ d[23] ^ d[21] ^ d[18] ^ d[16] ^
+               d[11] ^ d[9] ^ d[8] ^ d[6] ^ d[5] ^ d[3];
+    hash[20] = d[30] ^ d[28] ^ d[27] ^ d[24] ^ d[22] ^ d[19] ^ d[17] ^
+               d[12] ^ d[10] ^ d[9] ^ d[7] ^ d[6] ^ d[4] ^ d[0];
+    hash[21] = d[31] ^ d[29] ^ d[28] ^ d[25] ^ d[23] ^ d[20] ^ d[18] ^
+               d[13] ^ d[11] ^ d[10] ^ d[8] ^ d[7] ^ d[5] ^ d[1] ^
+               d[0];
+    hash[22] = d[31] ^ d[30] ^ d[27] ^ d[26] ^ d[25] ^ d[24] ^ d[23] ^
+               d[20] ^ d[19] ^ d[16] ^ d[12] ^ d[11] ^ d[8] ^ d[6] ^
+               d[5] ^ d[0];
+    hash[23] = d[29] ^ d[28] ^ d[26] ^ d[24] ^ d[23] ^ d[17] ^ d[16] ^
+               d[14] ^ d[13] ^ d[12] ^ d[7] ^ d[6] ^ d[5] ^ d[2] ^
+               d[0];
+    hash[24] = d[30] ^ d[29] ^ d[27] ^ d[25] ^ d[24] ^ d[18] ^ d[17] ^
+               d[15] ^ d[14] ^ d[13] ^ d[8] ^ d[7] ^ d[6] ^ d[3] ^
+               d[1] ^ d[0];
+    hash[25] = d[31] ^ d[30] ^ d[28] ^ d[26] ^ d[25] ^ d[19] ^ d[18] ^
+               d[16] ^ d[15] ^ d[14] ^ d[9] ^ d[8] ^ d[7] ^ d[4] ^
+               d[2] ^ d[1] ^ d[0];
+    hash[26] = d[26] ^ d[25] ^ d[23] ^ d[21] ^ d[19] ^ d[17] ^ d[15] ^
+               d[14] ^ d[10] ^ d[8] ^ d[3];
+    hash[27] = d[27] ^ d[26] ^ d[24] ^ d[22] ^ d[20] ^ d[18] ^ d[16] ^
+               d[15] ^ d[11] ^ d[9] ^ d[4] ^ d[0];
+    hash[28] = d[28] ^ d[27] ^ d[25] ^ d[23] ^ d[21] ^ d[19] ^ d[17] ^
+               d[16] ^ d[12] ^ d[10] ^ d[5] ^ d[1];
+    hash[29] = d[29] ^ d[28] ^ d[26] ^ d[24] ^ d[22] ^ d[20] ^ d[18] ^
+               d[17] ^ d[13] ^ d[11] ^ d[6] ^ d[2];
+    hash[30] = d[30] ^ d[29] ^ d[27] ^ d[25] ^ d[23] ^ d[21] ^ d[19] ^
+               d[18] ^ d[14] ^ d[12] ^ d[7] ^ d[3] ^ d[0];
+    hash[31] = d[31] ^ d[30] ^ d[28] ^ d[26] ^ d[24] ^ d[22] ^ d[20] ^
+               d[19] ^ d[15] ^ d[13] ^ d[8] ^ d[4] ^ d[1] ^ d[0];
+
+    return hash;
+
+endfunction
+
+
 function Bit#(24) hash24(Bit#(24) d);
     //
     // CRC-24, polynomial 0 1 3 4 5 6 7 10 11 14 17 18 23 24.
@@ -240,6 +414,65 @@ function Bit#(24) hash24(Bit#(24) d);
 endfunction
 
 
+function Bit#(24) hash24_inv(Bit#(24) d);
+    //
+    // Inverse of hash24
+    //
+    Bit#(24) hash;
+    hash[0] = d[23] ^ d[22] ^ d[19] ^ d[17] ^ d[14] ^ d[13] ^ d[12] ^
+              d[9] ^ d[7] ^ d[6] ^ d[1] ^ d[0];
+    hash[1] = d[22] ^ d[20] ^ d[19] ^ d[18] ^ d[17] ^ d[15] ^ d[12] ^
+              d[10] ^ d[9] ^ d[8] ^ d[6] ^ d[2];
+    hash[2] = d[23] ^ d[21] ^ d[20] ^ d[19] ^ d[18] ^ d[16] ^ d[13] ^
+              d[11] ^ d[10] ^ d[9] ^ d[7] ^ d[3];
+    hash[3] = d[23] ^ d[21] ^ d[20] ^ d[13] ^ d[11] ^ d[10] ^ d[9] ^
+              d[8] ^ d[7] ^ d[6] ^ d[4] ^ d[1] ^ d[0];
+    hash[4] = d[23] ^ d[21] ^ d[19] ^ d[17] ^ d[13] ^ d[11] ^ d[10] ^
+              d[8] ^ d[6] ^ d[5] ^ d[2];
+    hash[5] = d[23] ^ d[20] ^ d[19] ^ d[18] ^ d[17] ^ d[13] ^ d[11] ^
+              d[3] ^ d[1];
+    hash[6] = d[23] ^ d[22] ^ d[21] ^ d[20] ^ d[18] ^ d[17] ^ d[13] ^
+              d[9] ^ d[7] ^ d[6] ^ d[4] ^ d[2] ^ d[1] ^ d[0];
+    hash[7] = d[21] ^ d[18] ^ d[17] ^ d[13] ^ d[12] ^ d[10] ^ d[9] ^
+              d[8] ^ d[6] ^ d[5] ^ d[3] ^ d[2];
+    hash[8] = d[22] ^ d[19] ^ d[18] ^ d[14] ^ d[13] ^ d[11] ^ d[10] ^
+              d[9] ^ d[7] ^ d[6] ^ d[4] ^ d[3];
+    hash[9] = d[23] ^ d[20] ^ d[19] ^ d[15] ^ d[14] ^ d[12] ^ d[11] ^
+              d[10] ^ d[8] ^ d[7] ^ d[5] ^ d[4] ^ d[0];
+    hash[10] = d[23] ^ d[22] ^ d[21] ^ d[20] ^ d[19] ^ d[17] ^ d[16] ^
+               d[15] ^ d[14] ^ d[11] ^ d[8] ^ d[7] ^ d[5];
+    hash[11] = d[21] ^ d[20] ^ d[19] ^ d[18] ^ d[16] ^ d[15] ^ d[14] ^
+               d[13] ^ d[8] ^ d[7] ^ d[1];
+    hash[12] = d[22] ^ d[21] ^ d[20] ^ d[19] ^ d[17] ^ d[16] ^ d[15] ^
+               d[14] ^ d[9] ^ d[8] ^ d[2];
+    hash[13] = d[23] ^ d[22] ^ d[21] ^ d[20] ^ d[18] ^ d[17] ^ d[16] ^
+               d[15] ^ d[10] ^ d[9] ^ d[3] ^ d[0];
+    hash[14] = d[21] ^ d[18] ^ d[16] ^ d[14] ^ d[13] ^ d[12] ^ d[11] ^
+               d[10] ^ d[9] ^ d[7] ^ d[6] ^ d[4] ^ d[0];
+    hash[15] = d[22] ^ d[19] ^ d[17] ^ d[15] ^ d[14] ^ d[13] ^ d[12] ^
+               d[11] ^ d[10] ^ d[8] ^ d[7] ^ d[5] ^ d[1] ^ d[0];
+    hash[16] = d[23] ^ d[20] ^ d[18] ^ d[16] ^ d[15] ^ d[14] ^ d[13] ^
+               d[12] ^ d[11] ^ d[9] ^ d[8] ^ d[6] ^ d[2] ^ d[1];
+    hash[17] = d[23] ^ d[22] ^ d[21] ^ d[16] ^ d[15] ^ d[10] ^ d[6] ^
+               d[3] ^ d[2] ^ d[1] ^ d[0];
+    hash[18] = d[19] ^ d[16] ^ d[14] ^ d[13] ^ d[12] ^ d[11] ^ d[9] ^
+               d[6] ^ d[4] ^ d[3] ^ d[2] ^ d[0];
+    hash[19] = d[20] ^ d[17] ^ d[15] ^ d[14] ^ d[13] ^ d[12] ^ d[10] ^
+               d[7] ^ d[5] ^ d[4] ^ d[3] ^ d[1];
+    hash[20] = d[21] ^ d[18] ^ d[16] ^ d[15] ^ d[14] ^ d[13] ^ d[11] ^
+               d[8] ^ d[6] ^ d[5] ^ d[4] ^ d[2];
+    hash[21] = d[22] ^ d[19] ^ d[17] ^ d[16] ^ d[15] ^ d[14] ^ d[12] ^
+               d[9] ^ d[7] ^ d[6] ^ d[5] ^ d[3];
+    hash[22] = d[23] ^ d[20] ^ d[18] ^ d[17] ^ d[16] ^ d[15] ^ d[13] ^
+               d[10] ^ d[8] ^ d[7] ^ d[6] ^ d[4] ^ d[0];
+    hash[23] = d[23] ^ d[22] ^ d[21] ^ d[18] ^ d[16] ^ d[13] ^ d[12] ^
+               d[11] ^ d[8] ^ d[6] ^ d[5] ^ d[0];
+
+    return hash;
+
+endfunction
+
+
 function Bit#(16) hash16(Bit#(16) d);
     //
     // CRC-16, polynomial 0 2 15 16.
@@ -270,6 +503,47 @@ function Bit#(16) hash16(Bit#(16) d);
 endfunction
 
 
+function Bit#(16) hash16_inv(Bit#(16) d);
+    //
+    // Inverse of hash16
+    //
+    Bit#(16) hash;
+    hash[0] = d[14] ^ d[12] ^ d[10] ^ d[8] ^ d[6] ^ d[4] ^ d[2] ^
+              d[1];
+    hash[1] = d[15] ^ d[13] ^ d[11] ^ d[9] ^ d[7] ^ d[5] ^ d[3] ^
+              d[2];
+    hash[2] = d[3] ^ d[2] ^ d[1] ^ d[0];
+    hash[3] = d[4] ^ d[3] ^ d[2] ^ d[1] ^ d[0];
+    hash[4] = d[5] ^ d[4] ^ d[3] ^ d[2] ^ d[1] ^ d[0];
+    hash[5] = d[6] ^ d[5] ^ d[4] ^ d[3] ^ d[2] ^ d[1] ^ d[0];
+    hash[6] = d[7] ^ d[6] ^ d[5] ^ d[4] ^ d[3] ^ d[2] ^ d[1] ^
+              d[0];
+    hash[7] = d[8] ^ d[7] ^ d[6] ^ d[5] ^ d[4] ^ d[3] ^ d[2] ^
+              d[1] ^ d[0];
+    hash[8] = d[9] ^ d[8] ^ d[7] ^ d[6] ^ d[5] ^ d[4] ^ d[3] ^
+              d[2] ^ d[1] ^ d[0];
+    hash[9] = d[10] ^ d[9] ^ d[8] ^ d[7] ^ d[6] ^ d[5] ^ d[4] ^
+              d[3] ^ d[2] ^ d[1] ^ d[0];
+    hash[10] = d[11] ^ d[10] ^ d[9] ^ d[8] ^ d[7] ^ d[6] ^ d[5] ^
+               d[4] ^ d[3] ^ d[2] ^ d[1] ^ d[0];
+    hash[11] = d[12] ^ d[11] ^ d[10] ^ d[9] ^ d[8] ^ d[7] ^ d[6] ^
+               d[5] ^ d[4] ^ d[3] ^ d[2] ^ d[1] ^ d[0];
+    hash[12] = d[13] ^ d[12] ^ d[11] ^ d[10] ^ d[9] ^ d[8] ^ d[7] ^
+               d[6] ^ d[5] ^ d[4] ^ d[3] ^ d[2] ^ d[1] ^ d[0];
+    hash[13] = d[14] ^ d[13] ^ d[12] ^ d[11] ^ d[10] ^ d[9] ^ d[8] ^
+               d[7] ^ d[6] ^ d[5] ^ d[4] ^ d[3] ^ d[2] ^ d[1] ^
+               d[0];
+    hash[14] = d[15] ^ d[14] ^ d[13] ^ d[12] ^ d[11] ^ d[10] ^ d[9] ^
+               d[8] ^ d[7] ^ d[6] ^ d[5] ^ d[4] ^ d[3] ^ d[2] ^
+               d[1];
+    hash[15] = d[15] ^ d[13] ^ d[11] ^ d[9] ^ d[7] ^ d[5] ^ d[3] ^
+               d[1] ^ d[0];
+
+    return hash;
+
+endfunction
+
+
 function Bit#(8) hash8(Bit#(8) d);
     //
     // CRC-8 (ATM HEC), polynomial 0 1 2 8.
@@ -283,6 +557,25 @@ function Bit#(8) hash8(Bit#(8) d);
     hash[5] = d[5] ^ d[4] ^ d[3];
     hash[6] = d[6] ^ d[5] ^ d[4];
     hash[7] = d[7] ^ d[6] ^ d[5];
+
+    return hash;
+
+endfunction
+
+
+function Bit#(8) hash8_inv(Bit#(8) d);
+    //
+    // Inverse of hash8
+    //
+    Bit#(8) hash;
+    hash[0] = d[7] ^ d[5] ^ d[4] ^ d[2] ^ d[1] ^ d[0];
+    hash[1] = d[7] ^ d[6] ^ d[4] ^ d[3];
+    hash[2] = d[2] ^ d[1];
+    hash[3] = d[3] ^ d[2] ^ d[0];
+    hash[4] = d[4] ^ d[3] ^ d[1] ^ d[0];
+    hash[5] = d[5] ^ d[4] ^ d[2] ^ d[1];
+    hash[6] = d[6] ^ d[5] ^ d[3] ^ d[2] ^ d[0];
+    hash[7] = d[7] ^ d[6] ^ d[4] ^ d[3] ^ d[1] ^ d[0];
 
     return hash;
 
@@ -311,6 +604,24 @@ function Bit#(8) hash8a(Bit#(8) d);
 
 endfunction
 
+function Bit#(8) hash8a_inv(Bit#(8) d);
+    //
+    // Inverse of hash8a
+    //
+    Bit#(8) hash;
+    hash[0] = d[6] ^ d[5] ^ d[4] ^ d[0];
+    hash[1] = d[7] ^ d[6] ^ d[5] ^ d[1] ^ d[0];
+    hash[2] = d[7] ^ d[5] ^ d[4] ^ d[2] ^ d[1];
+    hash[3] = d[4] ^ d[3] ^ d[2];
+    hash[4] = d[5] ^ d[4] ^ d[3] ^ d[0];
+    hash[5] = d[6] ^ d[5] ^ d[4] ^ d[1];
+    hash[6] = d[7] ^ d[6] ^ d[5] ^ d[2];
+    hash[7] = d[7] ^ d[5] ^ d[4] ^ d[3];
+
+    return hash;
+
+endfunction
+
 
 function Bit#(8) hash8b(Bit#(8) d);
     //
@@ -325,6 +636,25 @@ function Bit#(8) hash8b(Bit#(8) d);
     hash[5] = d[7] ^ d[6] ^ d[3] ^ d[1] ^ d[0];
     hash[6] = d[7] ^ d[4] ^ d[2] ^ d[1];
     hash[7] = d[5] ^ d[3] ^ d[2];
+
+    return hash;
+
+endfunction
+
+
+function Bit#(8) hash8b_inv(Bit#(8) d);
+    //
+    // Inverse of hash8b
+    //
+    Bit#(8) hash;
+    hash[0] = d[4] ^ d[3];
+    hash[1] = d[5] ^ d[4];
+    hash[2] = d[6] ^ d[5] ^ d[0];
+    hash[3] = d[7] ^ d[6] ^ d[1];
+    hash[4] = d[7] ^ d[4] ^ d[3] ^ d[2] ^ d[0];
+    hash[5] = d[5] ^ d[1] ^ d[0];
+    hash[6] = d[6] ^ d[2] ^ d[1];
+    hash[7] = d[7] ^ d[3] ^ d[2];
 
     return hash;
 
@@ -350,6 +680,25 @@ function Bit#(8) hash8c(Bit#(8) d);
 endfunction
 
 
+function Bit#(8) hash8c_inv(Bit#(8) d);
+    //
+    // Inverse of hash8c
+    //
+    Bit#(8) hash;
+    hash[0] = d[6] ^ d[5] ^ d[1] ^ d[0];
+    hash[1] = d[7] ^ d[6] ^ d[2] ^ d[1] ^ d[0];
+    hash[2] = d[7] ^ d[6] ^ d[5] ^ d[3] ^ d[2];
+    hash[3] = d[7] ^ d[5] ^ d[4] ^ d[3] ^ d[1];
+    hash[4] = d[4] ^ d[2] ^ d[1];
+    hash[5] = d[5] ^ d[3] ^ d[2];
+    hash[6] = d[6] ^ d[4] ^ d[3];
+    hash[7] = d[7] ^ d[5] ^ d[4] ^ d[0];
+
+    return hash;
+
+endfunction
+
+
 function Bit#(8) hash8d(Bit#(8) d);
     //
     // CRC-8, polynomial 0 2 4 6 7 8.
@@ -363,6 +712,157 @@ function Bit#(8) hash8d(Bit#(8) d);
     hash[5] = d[7] ^ d[5] ^ d[3] ^ d[2] ^ d[1];
     hash[6] = d[7] ^ d[4] ^ d[2] ^ d[1] ^ d[0];
     hash[7] = d[7] ^ d[6] ^ d[5] ^ d[2] ^ d[0];
+
+    return hash;
+
+endfunction
+
+
+function Bit#(8) hash8d_inv(Bit#(8) d);
+    //
+    // Inverse of hash8d
+    //
+    Bit#(8) hash;
+    hash[0] = d[6] ^ d[1];
+    hash[1] = d[7] ^ d[2];
+    hash[2] = d[6] ^ d[3] ^ d[1] ^ d[0];
+    hash[3] = d[7] ^ d[4] ^ d[2] ^ d[1] ^ d[0];
+    hash[4] = d[6] ^ d[5] ^ d[3] ^ d[2];
+    hash[5] = d[7] ^ d[6] ^ d[4] ^ d[3] ^ d[0];
+    hash[6] = d[7] ^ d[6] ^ d[5] ^ d[4] ^ d[0];
+    hash[7] = d[7] ^ d[5] ^ d[0];
+
+    return hash;
+
+endfunction
+
+
+function Bit#(7) hash7(Bit#(7) d);
+    //
+    // CRC-7, polynomial 0 3 7.
+    //
+    Bit#(7) hash;
+    hash[0] = d[4] ^ d[0];
+    hash[1] = d[5] ^ d[1];
+    hash[2] = d[6] ^ d[2];
+    hash[3] = d[4] ^ d[3] ^ d[0];
+    hash[4] = d[5] ^ d[4] ^ d[1];
+    hash[5] = d[6] ^ d[5] ^ d[2];
+    hash[6] = d[6] ^ d[3];
+
+    return hash;
+
+endfunction
+
+
+function Bit#(7) hash7_inv(Bit#(7) d);
+    //
+    // Inverse of hash7
+    //
+    Bit#(7) hash;
+    hash[0] = d[4] ^ d[1] ^ d[0];
+    hash[1] = d[5] ^ d[2] ^ d[1];
+    hash[2] = d[6] ^ d[3] ^ d[2] ^ d[0];
+    hash[3] = d[3] ^ d[0];
+    hash[4] = d[4] ^ d[1];
+    hash[5] = d[5] ^ d[2];
+    hash[6] = d[6] ^ d[3] ^ d[0];
+
+    return hash;
+
+endfunction
+
+
+function Bit#(6) hash6(Bit#(6) d);
+    //
+    // CRC-6 (ITU), polynomial 0 1 6.
+    //
+    Bit#(6) hash;
+    hash[0] = d[5] ^ d[0];
+    hash[1] = d[5] ^ d[1] ^ d[0];
+    hash[2] = d[2] ^ d[1];
+    hash[3] = d[3] ^ d[2];
+    hash[4] = d[4] ^ d[3];
+    hash[5] = d[5] ^ d[4];
+
+    return hash;
+
+endfunction
+
+
+function Bit#(6) hash6_inv(Bit#(6) d);
+    //
+    // Inverse of hash6
+    //
+    Bit#(6) hash;
+    hash[0] = d[5] ^ d[4] ^ d[3] ^ d[2] ^ d[1];
+    hash[1] = d[1] ^ d[0];
+    hash[2] = d[2] ^ d[1] ^ d[0];
+    hash[3] = d[3] ^ d[2] ^ d[1] ^ d[0];
+    hash[4] = d[4] ^ d[3] ^ d[2] ^ d[1] ^ d[0];
+    hash[5] = d[5] ^ d[4] ^ d[3] ^ d[2] ^ d[1] ^ d[0];
+
+    return hash;
+
+endfunction
+
+
+function Bit#(5) hash5(Bit#(5) d);
+    //
+    // CRC-5 (USB), polynomial 0 2 5.
+    //
+    Bit#(5) hash;
+    hash[0] = d[3] ^ d[0];
+    hash[1] = d[4] ^ d[1];
+    hash[2] = d[3] ^ d[2] ^ d[0];
+    hash[3] = d[4] ^ d[3] ^ d[1];
+    hash[4] = d[4] ^ d[2];
+
+    return hash;
+
+endfunction
+
+
+function Bit#(5) hash5_inv(Bit#(5) d);
+    //
+    // Inverse of hash5
+    //
+    Bit#(5) hash;
+    hash[0] = d[3] ^ d[1] ^ d[0];
+    hash[1] = d[4] ^ d[2] ^ d[1] ^ d[0];
+    hash[2] = d[2] ^ d[0];
+    hash[3] = d[3] ^ d[1];
+    hash[4] = d[4] ^ d[2] ^ d[0];
+
+    return hash;
+
+endfunction
+
+
+function Bit#(4) hash4(Bit#(4) d);
+    //
+    // CRC-4 (ITU), polynomial 0 1 4.
+    //
+    Bit#(4) hash;
+    hash[0] = d[3] ^ d[0];
+    hash[1] = d[3] ^ d[1] ^ d[0];
+    hash[2] = d[2] ^ d[1];
+    hash[3] = d[3] ^ d[2];
+
+    return hash;
+
+endfunction
+
+
+function Bit#(4) hash4_inv(Bit#(4) d);
+    //
+    // Inverse of hash4
+    //
+    Bit#(4) hash;
+    hash[0] = d[3] ^ d[2] ^ d[1];
+    hash[1] = d[1] ^ d[0];
+    hash[2] = d[2] ^ d[1] ^ d[0];
+    hash[3] = d[3] ^ d[2] ^ d[1] ^ d[0];
 
     return hash;
 

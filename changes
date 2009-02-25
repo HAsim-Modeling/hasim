@@ -17478,3 +17478,18 @@ Directory modules/hasim/util/common
 - Fix/improve scoreboard FIFOs.
 
 - Fix BRAM version of memory heap.
+
+----------
+aparasha    Date: Wed Feb 25 03:05:48 EST 2009  CSN: CSN-hasim-591
+                  Wed Feb 25 08:05:48 UTC 2009
+
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid.apm       Locally Modified          590 
+ mem_test_hybrid_htg.apm   Locally Modified          590 
+
+Directory modules/system/test/mem_test
+ MemTest.bsv               Locally Modified          590 
+
+Updated MemTest to write some data into the Scratchpad Memory before reading
+it out again.

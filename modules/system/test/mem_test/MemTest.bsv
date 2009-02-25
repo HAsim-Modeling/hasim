@@ -7,11 +7,13 @@ import platform_interface::*;
 `include "asim/dict/STREAMID.bsh"
 `include "asim/dict/STREAMS_MEMTEST.bsh"
 
-`define LAST_ADDR 'h2000
+`define START_ADDR 'h1000
+`define LAST_ADDR  'h2000
 
 typedef enum
 {
-    STATE_ready,
+    STATE_writing,
+    STATE_reading,
     STATE_awaitingResponse,
     STATE_finished
 }
@@ -21,14 +23,33 @@ STATE
 module [HASIM_MODULE] mkSystem ();
 
     Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory <- mkConnection_Client("vdev_memory");
-    Connection_Receive#(SCRATCHPAD_MEM_ADDRESS)              link_memory_inval <- mkConnection_Receive("vdev_memory_invalidate");
-    Connection_Send#(STREAMS_REQUEST)          link_streams <- mkConnection_Send("vdev_streams");
+    Connection_Receive#(SCRATCHPAD_MEM_ADDRESS)                      link_memory_inval <- mkConnection_Receive("vdev_memory_invalidate");
+    Connection_Send#(STREAMS_REQUEST)                                link_streams <- mkConnection_Send("vdev_streams");
 
-    Reg#(Bit#(32)) cooldown <- mkReg(1000);
-    Reg#(SCRATCHPAD_MEM_ADDRESS) addr <- mkReg('h1000);
-    Reg#(STATE)    state <- mkReg(STATE_ready);
-
-    rule send(state == STATE_ready && addr != `LAST_ADDR);
+    Reg#(Bit#(32))               cooldown <- mkReg(1000);
+    Reg#(SCRATCHPAD_MEM_ADDRESS) addr <- mkReg(`START_ADDR);
+    Reg#(STATE)                  state <- mkReg(STATE_writing);
+    
+    rule send_write (state == STATE_writing);
+        
+        // write address+1 to data
+        SCRATCHPAD_MEM_VALUE data = (addr == '1) ? pack(addr) : pack(addr) + 1;
+        
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_STORE { addr: addr, val: data });
+        
+        if (addr + 4 == `LAST_ADDR)
+        begin
+            addr <= `START_ADDR;
+            state <= STATE_reading;
+        end
+        else
+        begin
+            addr <= addr + 4;
+        end
+        
+    endrule
+    
+    rule send(state == STATE_reading && addr != `LAST_ADDR);
 
         link_memory.makeReq(tagged SCRATCHPAD_MEM_LOAD addr);
         state <= STATE_awaitingResponse;
@@ -47,12 +68,12 @@ module [HASIM_MODULE] mkSystem ();
                                                 payload0: addr,
                                                 payload1: v });
         end
-
+        
         addr  <= addr + 4;
-        state <= STATE_ready;
+        state <= STATE_reading;
 
     endrule
-
+    
     rule terminate (state != STATE_finished && addr == `LAST_ADDR);
 
         link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,

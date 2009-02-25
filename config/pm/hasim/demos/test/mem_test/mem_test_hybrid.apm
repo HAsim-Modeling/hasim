@@ -8,26 +8,20 @@ Name=Hybrid Virtual Memory Test Model
 Type=HAsim
 Class=Asim::Model
 
-
 [Model]
 DefaultAttributes=bram-test  hasim hybrid simulation
 model=HAsim Hybrid Model Foundation
 
-
-
 [Hasim - Virtual Memory Test system]
-File=modules/system/mem_test/mem_test.awb
+File=modules/system/test/mem_test/mem_test.awb
 Packagehint=hasim
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
 
-
-
-
 [HAsim Hybrid Model Foundation/Requires]
-hasim_common=New Hasim Common Library
+hasim_common=Hasim Common Library
 hasim_system=Hasim - Virtual Memory Test system
 hasim_controller=Hybrid Null Controller
 fpgaenv=FPGA Environment
@@ -40,6 +34,7 @@ Packagehint=hasim
 File=modules/model/hasim_model.awb
 Packagehint=hasim
 
-[New Hasim Common Library]
+
+[Hasim Common Library]
 File=config/pm/hasim/submodels/common/hasim_common.apm
 Packagehint=hasim

@@ -17503,3 +17503,48 @@ Directory tools/scripts
  hasim-xilinx-summary      Locally Modified          591 
 
 Fix the clocks summary line that broke after more clocks were added for DRAM.
+
+----------
+mcadler     Date: Wed Mar  4 15:45:39 EST 2009  CSN: CSN-hasim-593
+                  Wed Mar  4 20:45:39 UTC 2009
+
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Modified          592 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          592 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          592 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          592 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          592 
+ hybrid-funcp-memory.rrr   Locally Modified          592 
+ hybrid-funcp-memory-datatypes.bsv Locally Modified          592 
+ hybrid-funcp-memory.h     Locally Modified          592 
+ hybrid-funcp-memory.bsv   Locally Modified          592 
+
+Directory modules/hasim/util/cache
+ hasim-cache.bsv           Locally Modified          592 
+
+- Add word-level valid bits to each line in the set associative cache.
+  Writes that miss in the cache set the word valid bits and do not trigger
+  a fill of the whole line.  When a dirty line is evicted the valid bits
+  mask which words get stored to memory.  Performance in regions with lots
+  of stores is dramatically improved, since the line is unlocked immediately
+  after the first store instead of waiting for a fill to return.
+  Performance appears not to be affected significantly in other regions.
+- Widen maximum soft connection data width for cache line store word mask.
+  (Cache line store is the widest message).
+- A few tweaks to iverilog build rules.  Still doesn't build without adding
+  links in the build directory to some C modules in the tree.  I think that's
+  a Bluespec wrapper bug.
+
+The cache policy change makes a timing bug in RRR more likely.  RRR methods
+within a service are not guaranteed to be ordered.  This can allow a
+load and a store to be reordered before reaching the memory service.
+Angshuman is working on that.

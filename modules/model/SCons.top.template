@@ -331,13 +331,8 @@ env.Alias('exe', exe)
 ##
 ############################################################################
 
-if (env['ENV'].has_key('IVERILOGDIR')):
-    iverilogdir = env['ENV']['IVERILOGDIR']
-else:
-    iverilogdir = '/usr'
-
 vexe_gen_command = \
-    BSC + ' ' + BSC_FLAGS + ' -I ' + iverilogdir + '/include' + \
+    BSC + ' -vsim iverilog ' + BSC_FLAGS + ' -I ' + env['DEFS']['ROOT_DIR_HW'] + '/' + env['DEFS']['ROOT_DIR_MODEL'] + '/' + env['DEFS']['TMP_BSC_DIR'] + \
     ' -o $TARGET -verilog -e ' + ROOT_WRAPPER_SYNTH_ID + \
     ' $SOURCES ' + env['DEFS']['BDPI_BAS']
 
@@ -376,7 +371,7 @@ FPGA_PART = env['DEFS']['FPGA_PART']
 
 xilinx_ngc = env.Command(
     XILINX_APM_NAME + '.ngc',
-    wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' '),
+    wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' ') + ['config/' + APM_NAME + '.xst'],
     [ Delete(XILINX_APM_NAME + '.srp'),
       Delete(XILINX_APM_NAME + '_xst.xrpt'),
       'xst -ifn config/' + APM_NAME + '.xst -ofn ' + XILINX_APM_NAME + '.srp' ])

@@ -32,11 +32,13 @@ service FUNCP_MEMORY
                      in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
 
         method StoreCacheLine(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                              in UINT8[8] wordValid,
                               in MEM_ADDRESS_RRR[64] addr,
                               in MEM_CACHELINE[FUNCP_CACHELINE_BITS] data);
 
         // Store cache line with ACK
         method StoreCacheLine_Sync(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                                   in UINT8[8] wordValid,
                                    in MEM_ADDRESS_RRR[64] addr,
                                    in MEM_CACHELINE[FUNCP_CACHELINE_BITS] data,
                                    out UINT32[32] ack);

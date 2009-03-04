@@ -95,7 +95,7 @@ typedef Vector#(CACHELINE_WORDS, MEM_VALUE) FUNCP_MEM_CACHELINE_VEC;
 // ===================================================================
 
 interface FUNCP_MEM_INTERFACE;
-    interface HASIM_CACHE_SOURCE_DATA#(FUNCP_MEM_CACHE_TAG, FUNCP_MEM_CACHELINE, FUNCP_MEM_CACHE_REF_INFO) cacheIfc;
+    interface HASIM_CACHE_SOURCE_DATA#(FUNCP_MEM_CACHE_TAG, FUNCP_MEM_CACHELINE, CACHELINE_WORDS, FUNCP_MEM_CACHE_REF_INFO) cacheIfc;
 
     method Action readWordReq(MEM_LOAD_INFO ldInfo);
     method ActionValue#(MEMSTATE_RESP) readWordResp();
@@ -128,7 +128,7 @@ FUNCP_MEM_CACHE_REQ
 typedef struct
 {
     CONTEXT_ID contextId;
-    FUNCP_MEM_CACHELINE_OFFSET offset;
+    FUNCP_MEM_CACHELINE_OFFSET wordIdx;
     Bool iStream;
     FUNCP_MEMREF_TOKEN memRefToken;
 }
@@ -168,13 +168,13 @@ module [HASIM_MODULE] mkFuncpMemInterface
         endmethod
     
         // Asynchronous write (no response)
-        method Action write(FUNCP_MEM_CACHE_TAG addr, FUNCP_MEM_CACHELINE val, FUNCP_MEM_CACHE_REF_INFO refInfo);
-            link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE MEM_STORE_CACHELINE_INFO { contextId: refInfo.contextId, addr: memAddrFromCacheTag(addr), val: unpack(val) });
+        method Action write(FUNCP_MEM_CACHE_TAG addr, MEM_CACHELINE_WORD_VALID_MASK wordMask, FUNCP_MEM_CACHELINE val, FUNCP_MEM_CACHE_REF_INFO refInfo);
+            link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE MEM_STORE_CACHELINE_INFO { contextId: refInfo.contextId, wordValidMask: wordMask, addr: memAddrFromCacheTag(addr), val: unpack(val) });
         endmethod
     
         // Synchronous write.  writeSyncWait() blocks until the response arrives.
-        method Action writeSyncReq(FUNCP_MEM_CACHE_TAG addr, FUNCP_MEM_CACHELINE val, FUNCP_MEM_CACHE_REF_INFO refInfo);
-            link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE_SYNC MEM_STORE_CACHELINE_INFO { contextId: refInfo.contextId, addr: memAddrFromCacheTag(addr), val: unpack(val) });
+        method Action writeSyncReq(FUNCP_MEM_CACHE_TAG addr, MEM_CACHELINE_WORD_VALID_MASK wordMask, FUNCP_MEM_CACHELINE val, FUNCP_MEM_CACHE_REF_INFO refInfo);
+            link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE_SYNC MEM_STORE_CACHELINE_INFO { contextId: refInfo.contextId, wordValidMask: wordMask, addr: memAddrFromCacheTag(addr), val: unpack(val) });
         endmethod
 
         method Action writeSyncWait() if (link_funcp_memory.getResp() matches tagged MEM_REPLY_STORE_CACHELINE_ACK .v);
@@ -270,8 +270,8 @@ endmodule
 // ===================================================================
 
 interface FUNCP_MEM_L1_MULTICTX;
-    // Two levels of Maybe#() in the read result to support the reserve method.
-    method ActionValue#(Maybe#(Maybe#(FUNCP_MEM_CACHELINE))) read(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag);
+    // L1 cache read.  Each word within a line has an independent valid bit.
+    method ActionValue#(Vector#(CACHELINE_WORDS, Maybe#(MEM_VALUE))) read(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag);
 
     // Hold a line with the tag in preparation for filling it with a read from
     // the main cache.  If a store comes along later while the read is still in
@@ -279,7 +279,7 @@ interface FUNCP_MEM_L1_MULTICTX;
     method Action reserve(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag);
 
     // Update a line if the tag matches.
-    method Action update(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag, FUNCP_MEM_CACHELINE val);
+    method Action update(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag, Vector#(CACHELINE_WORDS, Maybe#(MEM_VALUE)) val);
 
     // Invalidate caches matching tag in all contexts.
     method Action inval(FUNCP_MEM_CACHE_TAG tag);
@@ -297,7 +297,7 @@ module [HASIM_MODULE] mkFUNCP_L1Cache_MultiCtx#(DEBUG_FILE debugLog)
     //
     Vector#(NUM_CONTEXTS,
             HASIM_TINY_CACHE#(FUNCP_MEM_CACHE_TAG,
-                              Maybe#(FUNCP_MEM_CACHELINE),
+                              Vector#(CACHELINE_WORDS, Maybe#(MEM_VALUE)),
                               1,
                               FUNCP_MEM_ADDR_NONTAG_BITS)) l1cache = newVector();
 
@@ -311,17 +311,20 @@ module [HASIM_MODULE] mkFUNCP_L1Cache_MultiCtx#(DEBUG_FILE debugLog)
     // Methods
     //
 
-    method ActionValue#(Maybe#(Maybe#(FUNCP_MEM_CACHELINE))) read(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag);
+    method ActionValue#(Vector#(CACHELINE_WORDS, Maybe#(MEM_VALUE))) read(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag);
         let r <- l1cache[ctxId].read(tag);
-        return r;
+        if (r matches tagged Valid .v)
+            return v;
+        else
+            return replicate(tagged Invalid);
     endmethod
 
     method Action reserve(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag);
-        l1cache[ctxId].write(tag, tagged Invalid);
+        l1cache[ctxId].write(tag, replicate(tagged Invalid));
     endmethod
 
-    method Action update(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag, FUNCP_MEM_CACHELINE val);
-        l1cache[ctxId].update(tag, tagged Valid val);
+    method Action update(CONTEXT_ID ctxId, FUNCP_MEM_CACHE_TAG tag, Vector#(CACHELINE_WORDS, Maybe#(MEM_VALUE)) val);
+        l1cache[ctxId].update(tag, val);
     endmethod
 
     method Action inval(FUNCP_MEM_CACHE_TAG tag);
@@ -418,7 +421,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
     endfunction
 
 
-    function FUNCP_MEM_CACHELINE_OFFSET cacheLineOffsetFromAddr(MEM_ADDRESS addr);
+    function FUNCP_MEM_CACHELINE_OFFSET cacheWordIdxFromAddr(MEM_ADDRESS addr);
 
         Tuple3#(FUNCP_MEM_CACHE_TAG, FUNCP_MEM_CACHELINE_OFFSET, FUNCP_MEM_ISA_WORD_OFFSET) tup = unpack(addr);
         match { .tag, .cloff, .woff } = tup;
@@ -433,7 +436,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
                                                        FUNCP_MEMREF_TOKEN memRefToken);
         FUNCP_MEM_CACHE_REF_INFO r;
         r.contextId = ctxId;
-        r.offset = cacheLineOffsetFromAddr(addr);
+        r.wordIdx = cacheWordIdxFromAddr(addr);
         r.iStream = iStream;
         r.memRefToken = memRefToken;
         return r;
@@ -457,29 +460,26 @@ module [HASIM_MODULE] mkFUNCP_Cache
         debugLog.record($format("LOAD: ctx=%d, ", ld.contextId) + fshow(ld.memRefToken) + $format(", addr=0x%x", ld.addr));
 
         let tag = cacheTagFromAddr(ld.addr);
+        let word_idx = cacheWordIdxFromAddr(ld.addr);
 
         let l1_d <- cacheL1D.read(ld.contextId, tag);
         let l1_i <- cacheL1I.read(ld.contextId, tag);
 
-        if (l1_d matches tagged Valid .l1_d_line &&&
-            l1_d_line matches tagged Valid .v)
+        if (l1_d[word_idx] matches tagged Valid .v)
         begin
             // L1 D cache hit
             debugLog.record($format("  LOAD: addr=0x%x, L1 D Hit", ld.addr));
             statLoadL1DHit.incr();
 
-            FUNCP_MEM_CACHELINE_VEC val_vec = unpack(v);
-            loadFromL1CacheQ.enq(tuple2(ld, val_vec[cacheLineOffsetFromAddr(ld.addr)]));
+            loadFromL1CacheQ.enq(tuple2(ld, v));
         end
-        else if (l1_i matches tagged Valid .l1_i_line &&&
-                 l1_i_line matches tagged Valid .v)
+        else if (l1_i[word_idx] matches tagged Valid .v)
         begin
             // L1 I cache hit
             debugLog.record($format("  LOAD: addr=0x%x, L1 I Hit", ld.addr));
             statLoadL1IHit.incr();
 
-            FUNCP_MEM_CACHELINE_VEC val_vec = unpack(v);
-            loadFromL1CacheQ.enq(tuple2(ld, val_vec[cacheLineOffsetFromAddr(ld.addr)]));
+            loadFromL1CacheQ.enq(tuple2(ld, v));
         end
         else
         begin
@@ -562,13 +562,14 @@ module [HASIM_MODULE] mkFUNCP_Cache
             tagged MEM_LOAD .ld:
             begin
                 cache.readReq(cacheTagFromAddr(ld.addr),
+                              cacheWordIdxFromAddr(ld.addr),
                               initCacheRefInfo(ld.contextId, ld.addr, ld.iStream, ld.memRefToken));
             end
 
             tagged MEM_STORE .st:
             begin
                 let tag = cacheTagFromAddr(st.addr);
-                let word = cacheLineOffsetFromAddr(st.addr);
+                let word = cacheWordIdxFromAddr(st.addr);
 
                 cache.write(tag, st.val, word,
                             initCacheRefInfo(st.contextId, st.addr, ?, ?));
@@ -599,8 +600,8 @@ module [HASIM_MODULE] mkFUNCP_Cache
 
         link_memstate.makeResp(memStateResp(load_info.memRefToken, val));
 
-        let offset = cacheLineOffsetFromAddr(load_info.addr);
-        debugLog.record($format("  LOAD L1 done: idx=%d, data=0x%x", offset, val));
+        let wordIdx = cacheWordIdxFromAddr(load_info.addr);
+        debugLog.record($format("  LOAD L1 done: idx=%d, data=0x%x", wordIdx, val));
     endrule
     
 
@@ -613,18 +614,17 @@ module [HASIM_MODULE] mkFUNCP_Cache
 
         let load_info = r.refInfo;
         let tag = r.addr;
-        let offset = load_info.offset;
+        let wordIdx = load_info.wordIdx;
 
-        FUNCP_MEM_CACHELINE_VEC v = unpack(r.value);
-        link_memstate.makeResp(memStateResp(load_info.memRefToken, v[offset]));
+        link_memstate.makeResp(memStateResp(load_info.memRefToken, validValue(r.words[wordIdx])));
 
         // Store load in L1 cache
         if (load_info.iStream)
-            cacheL1I.update(load_info.contextId, tag, r.value);
+            cacheL1I.update(load_info.contextId, tag, r.words);
         else
-            cacheL1D.update(load_info.contextId, tag, r.value);
+            cacheL1D.update(load_info.contextId, tag, r.words);
 
-        debugLog.record($format("  LOAD done: ") + fshow(load_info.memRefToken) + $format(", idx=%d, data=0x%x", offset, v[offset]));
+        debugLog.record($format("  LOAD done: ") + fshow(load_info.memRefToken) + $format(", idx=%d, data=0x%x", wordIdx, validValue(r.words[wordIdx])));
     endrule
     
 

@@ -114,6 +114,7 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
     MEM_VALUE   data;
     MEM_VALUE   va;
     MEM_CACHELINE line;
+    MEM_CACHELINE_WORD_VALID_MASK wordValid;
     CONTEXT_ID ctx_id;
 
     UMF_MESSAGE resp;
@@ -196,18 +197,50 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
         // extract data
         req->ExtractBytes(sizeof(MEM_CACHELINE), (unsigned char *) &line);
         addr = MEM_ADDRESS(req->ExtractUINT64());
+        wordValid = MEM_CACHELINE_WORD_VALID_MASK(req->ExtractUINT8());
         ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
 
         if (TRACING(1))
         {
+            MEM_CACHELINE_WORD_VALID_MASK mask_pos = 1;
+
             T1("\tfuncp_memory: STline CTX " << UINT64(ctx_id) << (need_response ? " SYNC" : "") << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
             for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
                 MEM_VALUE v = ((MEM_VALUE *)&line) [i];
-                T1("\t\t" << fmt_data(v));
+                if ((wordValid & mask_pos) != 0)
+                {
+                    T1("\t\t" << fmt_data(v));
+                }
+                else
+                {
+                    T1("\t\tXXXXXXXX");
+                }
+
+                mask_pos <<= 1;
             }
         }
 
-        memory->Write(ctx_id, addr, sizeof(MEM_CACHELINE), &line);
+        if (wordValid == ((1 << sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE)) - 1))
+        {
+            // Entire line is valid.  Write in a single chunk.
+            memory->Write(ctx_id, addr, sizeof(MEM_CACHELINE), &line);
+        }
+        else
+        {
+            // Write only the valid words in the line.  Assumes little endian
+            // addressing.
+            MEM_CACHELINE_WORD_VALID_MASK mask_pos = 1;
+            MEM_ADDRESS w_addr = addr;
+            for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
+                MEM_VALUE v = ((MEM_VALUE *)&line) [i];
+                if ((wordValid & mask_pos) != 0)
+                {
+                    memory->Write(ctx_id, w_addr, sizeof(MEM_VALUE), &v);
+                }
+                w_addr += sizeof(MEM_VALUE);
+                mask_pos <<= 1;
+            }
+        }
 
         // free
         req->Delete();

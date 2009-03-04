@@ -335,7 +335,7 @@ endmodule
 //
 // ===================================================================
 
-typedef HASIM_CACHE_SOURCE_DATA#(FUNCP_L2TLB_RAW_IDX, FUNCP_L2TLB_ENTRY, Bool) FUNCP_TLB_CACHE_INTERFACE;
+typedef HASIM_CACHE_SOURCE_DATA#(FUNCP_L2TLB_RAW_IDX, FUNCP_L2TLB_ENTRY, 1, Bool) FUNCP_TLB_CACHE_INTERFACE;
 
 //
 // mkVtoPInterface --
@@ -373,11 +373,11 @@ module [HASIM_MODULE] mkVtoPInterface
     endmethod
 
     // No writes can happen
-    method Action write(FUNCP_L2TLB_RAW_IDX idx, FUNCP_L2TLB_ENTRY entry, Bool allocOnFault);
+    method Action write(FUNCP_L2TLB_RAW_IDX idx, Vector#(1, Bool) mask, FUNCP_L2TLB_ENTRY entry, Bool allocOnFault);
         noAction;
     endmethod
 
-    method Action writeSyncReq(FUNCP_L2TLB_RAW_IDX idx, FUNCP_L2TLB_ENTRY entry, Bool allocOnFault);
+    method Action writeSyncReq(FUNCP_L2TLB_RAW_IDX idx, Vector#(1, Bool) mask, FUNCP_L2TLB_ENTRY entry, Bool allocOnFault);
         noAction;
     endmethod
 
@@ -558,7 +558,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         debugLog.record($format("  ") + fshow(tok.index) + $format(": I hybrid req: VA 0x%x", vaFromPage(req.vp, 0)));
 
         pendingTLBQ.enq(tuple2(req, FUNCP_ITLB));
-        cache.readReq(tlbCacheIdx(tok, req.vp), req.allocOnFault);
+        cache.readReq(tlbCacheIdx(tok, req.vp), 0, req.allocOnFault);
     endrule
 
     rule translateVtoP_D_Request (True);
@@ -570,7 +570,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         debugLog.record($format("  ") + fshow(tok.index) + $format(": D hybrid req: VA 0x%x", vaFromPage(req.vp, 0)));
 
         pendingTLBQ.enq(tuple2(req, FUNCP_DTLB));
-        cache.readReq(tlbCacheIdx(tok, req.vp), req.allocOnFault);
+        cache.readReq(tlbCacheIdx(tok, req.vp), 0, req.allocOnFault);
     endrule
 
     (* descending_urgency= "translateVtoP_D_Request, translateVtoP_I_Request" *)
@@ -578,7 +578,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     rule translateVtoPResponse (True);
 
         let cache_resp <- cache.readResp();
-        let tlb_entry = cache_resp.value;
+        let tlb_entry = validValue(cache_resp.words[0]);
 
         match { .req, .which_tlb } = pendingTLBQ.first();
         pendingTLBQ.deq();

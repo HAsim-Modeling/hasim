@@ -85,12 +85,18 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
             tagged MEM_STORE_CACHELINE .stinfo:
             begin
-                client_stub.makeRequest_StoreCacheLine(contextIdToRRR(stinfo.contextId), zeroExtend(stinfo.addr), stinfo.val);
+                client_stub.makeRequest_StoreCacheLine(contextIdToRRR(stinfo.contextId),
+                                                       zeroExtend(pack(stinfo.wordValidMask)),
+                                                       zeroExtend(stinfo.addr),
+                                                       stinfo.val);
             end
 
             tagged MEM_STORE_CACHELINE_SYNC .stinfo:
             begin
-                client_stub.makeRequest_StoreCacheLine_Sync(contextIdToRRR(stinfo.contextId), zeroExtend(stinfo.addr), stinfo.val);
+                client_stub.makeRequest_StoreCacheLine_Sync(contextIdToRRR(stinfo.contextId),
+                                                            zeroExtend(pack(stinfo.wordValidMask)),
+                                                            zeroExtend(stinfo.addr),
+                                                            stinfo.val);
             end
         endcase
 

@@ -38,6 +38,7 @@ import Vector::*;
 
 typedef TDiv#(`FUNCP_CACHELINE_BITS,`FUNCP_ISA_INT_REG_SIZE) CACHELINE_WORDS;
 typedef Vector#(CACHELINE_WORDS, MEM_VALUE) MEM_CACHELINE;
+typedef Vector#(CACHELINE_WORDS, Bool) MEM_CACHELINE_WORD_VALID_MASK;
 
 // MEM_REQUEST
 
@@ -66,6 +67,9 @@ MEM_STORE_INFO
 typedef struct
 {
     CONTEXT_ID  contextId;
+    // Partial writes are legal.  Writer must set a valid bit for every
+    // word in val to be written to memory.
+    MEM_CACHELINE_WORD_VALID_MASK wordValidMask;
     MEM_ADDRESS addr;
     MEM_CACHELINE val;
 }

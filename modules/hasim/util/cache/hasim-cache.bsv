@@ -36,6 +36,7 @@
 import FIFO::*;
 import FIFOF::*;
 import Vector::*;
+import SpecialFIFOs::*;
 
 // Project foundation imports.
 
@@ -54,11 +55,16 @@ import Vector::*;
 //
 typedef struct
 {
-    t_CACHE_LINE value;
+    // Not all returned words are guaranteed, so they are protected by Maybe#().
+    // The requested word is guaranteed valid.
+    Vector#(nWriteDataWordsPerLine, Maybe#(t_CACHE_WORD)) words;
     t_CACHE_ADDR addr;
     t_CACHE_REF_INFO refInfo;
 }
-HASIM_CACHE_LOAD_RESP#(type t_CACHE_ADDR, type t_CACHE_LINE, type t_CACHE_REF_INFO)
+HASIM_CACHE_LOAD_RESP#(type t_CACHE_ADDR,
+                       type t_CACHE_WORD,
+                       numeric type nWriteDataWordsPerLine,
+                       type t_CACHE_REF_INFO)
     deriving (Eq, Bits);
 
 
@@ -80,12 +86,20 @@ interface HASIM_CACHE#(type t_CACHE_ADDR,
                        numeric type nWays,
                        numeric type nTagExtraLowBits);
 
-    // Read a full line.  Read from backing store if not already cached.
-    method Action readReq(t_CACHE_ADDR addr, t_CACHE_REF_INFO refInfo);
-    method ActionValue#(HASIM_CACHE_LOAD_RESP#(t_CACHE_ADDR, t_CACHE_LINE, t_CACHE_REF_INFO)) readResp();
+    // Read up to a full line.  Read from backing store if not already cached.
+    // The read response is guaranteed to return at least the requested
+    // word in the line.  If more of the line is already available it will
+    // be returned as well.
+    method Action readReq(t_CACHE_ADDR addr,
+                          Bit#(TLog#(nWriteDataWordsPerLine)) wordIdx,
+                          t_CACHE_REF_INFO refInfo);
+
+    method ActionValue#(HASIM_CACHE_LOAD_RESP#(t_CACHE_ADDR, t_CACHE_WORD, nWriteDataWordsPerLine, t_CACHE_REF_INFO)) readResp();
+
     // Predicate to test whether a read response is ready this cycle.
     method Bool readRespReady();
     
+
     // Write a word to a cache line.  Word index 0 corresponds to the
     // low bits of a cache line.
     method Action write(t_CACHE_ADDR addr,
@@ -123,6 +137,7 @@ endinterface: HASIM_CACHE
 //
 interface HASIM_CACHE_SOURCE_DATA#(type t_CACHE_ADDR,
                                    type t_CACHE_LINE,
+                                   numeric type nWriteDataWordsPerLine,
                                    type t_CACHE_REF_INFO);
 
     // Read request and response with data
@@ -131,11 +146,13 @@ interface HASIM_CACHE_SOURCE_DATA#(type t_CACHE_ADDR,
     
     // Asynchronous write (no response)
     method Action write(t_CACHE_ADDR addr,
+                        Vector#(nWriteDataWordsPerLine, Bool) wordValidMask,
                         t_CACHE_LINE val,
                         t_CACHE_REF_INFO refInfo);
     
     // Synchronous write.  writeSyncWait() blocks until the response arrives.
     method Action writeSyncReq(t_CACHE_ADDR addr,
+                               Vector#(nWriteDataWordsPerLine, Bool) wordValidMask,
                                t_CACHE_LINE val,
                                t_CACHE_REF_INFO refInfo);
     method Action writeSyncWait();
@@ -186,7 +203,6 @@ HASIM_CACHE_STATE
 typedef struct
 {
     t_CACHE_WORD val;
-    t_CACHE_WRITE_WORD_IDX wordIdx;
 }
 HASIM_CACHE_WRITE_INFO#(type t_CACHE_WORD, type t_CACHE_WRITE_WORD_IDX)
     deriving (Eq, Bits);
@@ -194,9 +210,10 @@ HASIM_CACHE_WRITE_INFO#(type t_CACHE_WORD, type t_CACHE_WRITE_WORD_IDX)
 //
 // Bit size of the write data heap index.  To save space, write data is passed
 // through the cache pipelines as a pointer.  The heap size limits the number
-// of writes in flight.
+// of writes in flight.  Writes never wait for a fill, so the heap doesn't
+// have to be especially large.
 //
-typedef 5 WRITE_DATA_HEAP_IDX_SZ;
+typedef 3 WRITE_DATA_HEAP_IDX_SZ;
 
 //
 // Meta-data associated with a write request.
@@ -204,8 +221,9 @@ typedef 5 WRITE_DATA_HEAP_IDX_SZ;
 typedef struct
 {
     Bit#(WRITE_DATA_HEAP_IDX_SZ) dataIdx;
+    Bit#(TLog#(nWriteDataWordsPerLine)) wordIdx;
 }
-HASIM_CACHE_WRITE_REQ
+HASIM_CACHE_WRITE_REQ#(numeric type nWriteDataWordsPerLine)
     deriving (Eq, Bits);
 
 
@@ -222,8 +240,9 @@ typedef struct
 {
     t_CACHE_TAG tag;
     Bool dirty;
+    Vector#(nWriteDataWordsPerLine, Bool) wordValid;
 }
-HASIM_CACHE_METADATA#(type t_CACHE_TAG)
+HASIM_CACHE_METADATA#(type t_CACHE_TAG, numeric type nWriteDataWordsPerLine)
     deriving(Bits, Eq);
 
 //
@@ -258,8 +277,18 @@ typedef Bit#(TLog#(HASIM_CACHE_MAX_INVAL)) HASIM_CACHE_INVAL_IDX;
 // tradeoff for reads than flush requests.
 //
 typedef 4 HASIM_CACHE_MAX_READ;
-typedef Bit#(TLog#(HASIM_CACHE_MAX_READ)) HASIM_CACHE_READ_IDX;
+typedef Bit#(TLog#(HASIM_CACHE_MAX_READ)) HASIM_CACHE_READ_FIFO_IDX;
 
+//
+// Meta-data associated with a read request.
+//
+typedef struct
+{
+    Bit#(TLog#(nWriteDataWordsPerLine)) wordIdx;
+    HASIM_CACHE_READ_FIFO_IDX readFifoIdx;
+}
+HASIM_CACHE_READ_REQ#(numeric type nWriteDataWordsPerLine)
+    deriving (Eq, Bits);
 
 
 //
@@ -287,16 +316,16 @@ HASIM_CACHE_REQ_BASE#(type t_CACHE_TAG,
 typedef union tagged
 {
     // Reads have no extra data (beyond HASIM_CACHE_REQ_BASE above)
-    HASIM_CACHE_READ_IDX HCOP_READ;
+    HASIM_CACHE_READ_REQ#(nWriteDataWordsPerLine) HCOP_READ;
 
     // Writes have pointer to data to be written
-    HASIM_CACHE_WRITE_REQ HCOP_WRITE;
+    HASIM_CACHE_WRITE_REQ#(nWriteDataWordsPerLine) HCOP_WRITE;
 
     // Inval and flush have a bool indicating whether an ACK is needed
     Maybe#(HASIM_CACHE_INVAL_IDX) HCOP_INVAL;
     Maybe#(HASIM_CACHE_INVAL_IDX) HCOP_FLUSH_DIRTY;
 }
-HASIM_CACHE_REQ
+HASIM_CACHE_REQ#(numeric type nWriteDataWordsPerLine)
     deriving(Bits, Eq);
 
 
@@ -313,7 +342,7 @@ HASIM_CACHE_REQ
 //
 // ========================================================================
 
-module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_LINE, t_CACHE_REF_INFO) sourceData,
+module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_LINE, nWriteDataWordsPerLine, t_CACHE_REF_INFO) sourceData,
                         HASIM_CACHE_STATS stats,
                         Bool permitOOOReadResp,
                         DEBUG_FILE debugLog)
@@ -348,14 +377,17 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
               Alias#(HASIM_CACHE_WAY_IDX#(nWays), t_CACHE_WAY_IDX),
               Alias#(Vector#(nWays, HASIM_CACHE_WAY_IDX#(nWays)), t_LRU_LIST),
               Alias#(HASIM_CACHE_DATA_IDX#(nWays, t_CACHE_SET_IDX), t_CACHE_DATA_IDX),
-              Alias#(HASIM_CACHE_METADATA#(t_CACHE_TAG), t_METADATA),
-              Alias#(HASIM_CACHE_LOAD_RESP#(t_CACHE_ADDR, t_CACHE_LINE, t_CACHE_REF_INFO), t_CACHE_LOAD_RESP),
-              Alias#(Vector#(nWays, Maybe#(HASIM_CACHE_METADATA#(t_CACHE_TAG))), t_METADATA_VECTOR),
+              Alias#(HASIM_CACHE_METADATA#(t_CACHE_TAG, nWriteDataWordsPerLine), t_METADATA),
+              Alias#(HASIM_CACHE_LOAD_RESP#(t_CACHE_ADDR, t_CACHE_WORD, nWriteDataWordsPerLine, t_CACHE_REF_INFO), t_CACHE_LOAD_RESP),
+              Alias#(Vector#(nWays, Maybe#(HASIM_CACHE_METADATA#(t_CACHE_TAG, nWriteDataWordsPerLine))), t_METADATA_VECTOR),
               Alias#(HASIM_CACHE_REQ_BASE#(t_CACHE_TAG, t_CACHE_SET_IDX, t_CACHE_WAY_IDX, t_CACHE_REF_INFO), t_CACHE_REQ_BASE),
-              Alias#(HASIM_CACHE_REQ, t_CACHE_REQ),
+              Alias#(HASIM_CACHE_REQ#(nWriteDataWordsPerLine), t_CACHE_REQ),
               Alias#(Bit#(TLog#(nWriteDataWordsPerLine)), t_CACHE_WRITE_WORD_IDX),
               Alias#(HASIM_CACHE_WRITE_INFO#(t_CACHE_WORD, t_CACHE_WRITE_WORD_IDX), t_CACHE_WRITE_INFO),
+              Alias#(Vector#(nWriteDataWordsPerLine, Bool), t_CACHE_WORD_VALID_MASK),
        
+              Bits#(t_CACHE_REQ, t_CACHE_REQ_SZ),
+
               // Unbelievably ugly tautologies required by the compiler:
               Add#(t_CACHE_ADDR_SZ, nTagExtraLowBits, TAdd#(t_CACHE_ADDR_SZ, nTagExtraLowBits)),
               Log#(nWays, TLog#(nWays)),
@@ -367,8 +399,10 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
 
     // Tags & dirty bits
     BRAM#(t_CACHE_SET_IDX, t_METADATA_VECTOR) cacheMeta <- mkBRAMInitialized(Vector::replicate(tagged Invalid));
+
     // Values
-    Vector#(nWriteDataWordsPerLine, BRAM_MULTI_READ#(2, t_CACHE_DATA_IDX, t_CACHE_WORD)) cacheData <- replicateM(mkBRAMPseudoMultiRead());
+    Vector#(nWriteDataWordsPerLine, BRAM_MULTI_READ#(4, t_CACHE_DATA_IDX, t_CACHE_WORD)) cacheData <- replicateM(mkBRAMPseudoMultiRead());
+
     // LRU hint
     BRAM#(t_CACHE_SET_IDX, t_LRU_LIST) cacheLRU <- mkBRAMInitialized(Vector::genWith(fromInteger));
 
@@ -380,7 +414,7 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
 
     // Write data is kept in a heap to avoid passing it around through FIFOs.
     // The heap size limits the number of writes in flight.
-    MEMORY_HEAP#(Bit#(WRITE_DATA_HEAP_IDX_SZ), t_CACHE_WRITE_INFO) reqInfo_writeData <- mkMemoryHeapUnionBRAM();
+    MEMORY_HEAP_IMM#(Bit#(WRITE_DATA_HEAP_IDX_SZ), t_CACHE_WRITE_INFO) reqInfo_writeData <- mkMemoryHeapUnionLUTRAM();
 
     // Is the cache write back?  If not, never set a dirty bit.  It is then the
     // responsibility of the caller to write values to backing storage.
@@ -397,29 +431,43 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     // Incoming requests
     FIFO#(Tuple2#(t_CACHE_REQ_BASE, t_CACHE_REQ)) newReqQ <- mkFIFO();
 
+    // First stage coming out of handleIncomingReq
     FIFO#(Tuple2#(t_CACHE_REQ_BASE, t_CACHE_REQ)) processReqQ0 <- mkFIFO();
-    FIFO#(Tuple2#(t_CACHE_REQ_BASE, t_CACHE_REQ)) processReqQ1 <- mkFIFO();
 
-    FIFO#(Tuple4#(t_CACHE_REQ_BASE, t_CACHE_REQ, t_LRU_LIST, t_METADATA_VECTOR)) missQ <- mkFIFO();
-    FIFO#(Tuple3#(t_CACHE_REQ_BASE, t_CACHE_REQ, t_CACHE_TAG)) flushDirtyForFillQ <- mkFIFO();
+    // Hit path for operations that read the cache (read and flush)
+    FIFO#(Tuple3#(t_CACHE_REQ_BASE, t_CACHE_REQ, t_CACHE_WORD_VALID_MASK)) readHitQ <- mkFIFO();
+    // Side paths, also for read and flush hit.
+    FIFO#(t_CACHE_DATA_IDX) cacheReadForHitQ <- mkFIFO();
+    FIFO#(t_CACHE_DATA_IDX) cacheReadForFlushReqQ <- mkFIFO();
 
-    FIFO#(Tuple2#(t_CACHE_REQ_BASE, t_CACHE_REQ)) fillLineQ <- mkSizedFIFO(16);
+    // Queues on miss path
+    FIFO#(Tuple4#(t_CACHE_REQ_BASE, t_CACHE_REQ, t_LRU_LIST, t_METADATA_VECTOR)) lineMissQ <- mkFIFO();
+    FIFO#(Tuple3#(t_CACHE_REQ_BASE, t_CACHE_REQ, t_CACHE_WORD_VALID_MASK)) wordMissQ <- mkFIFO();
+    FIFO#(t_CACHE_DATA_IDX) cacheReadForEvictDirtyQ <- mkFIFO();
+    FIFO#(Tuple3#(t_CACHE_REQ_BASE, t_CACHE_REQ, t_METADATA)) evictDirtyForFillQ <- mkFIFO1();
 
-    FIFO#(Tuple2#(t_CACHE_REQ_BASE, HASIM_CACHE_WRITE_REQ)) writeDataQ <- mkFIFO();
+    // Fill for read path
+    FIFO#(Tuple2#(t_CACHE_REQ_BASE, t_CACHE_REQ)) fillLineRequestQ <- mkFIFO();
+    FIFO#(Tuple3#(t_CACHE_REQ_BASE, t_CACHE_REQ, t_CACHE_WORD_VALID_MASK)) fillLineQ <- mkSizedFIFO(16);
 
+    // Write data to an allocated queue entry
+    FIFO#(Tuple2#(t_CACHE_REQ_BASE, HASIM_CACHE_WRITE_REQ#(nWriteDataWordsPerLine))) writeDataQ <- mkFIFO();
+
+    // Wait for ACK from backing store that flush was received
+    FIFO#(Tuple2#(t_CACHE_SET_IDX, Maybe#(HASIM_CACHE_INVAL_IDX))) flushAckQ <- mkFIFO();
+
+    // Exit from all paths
     FIFO#(t_CACHE_SET_IDX) doneQ <- mkFIFO();
 
     // Read responses may be returned either OOO or in request order, depending
     // on the value of permitOOOReadResp.  Define both queues but only one will
     // actually be used.
-    FIFOF#(Tuple2#(t_CACHE_REQ_BASE, t_CACHE_LINE)) readRespToClientQ_OOO <- mkFIFOF();
-    SCOREBOARD_FIFO#(HASIM_CACHE_MAX_READ, Tuple2#(t_CACHE_REQ_BASE, t_CACHE_LINE)) readRespToClientQ_InOrder <- mkScoreboardFIFO();
+    FIFOF#(Tuple3#(t_CACHE_REQ_BASE, t_CACHE_LINE, t_CACHE_WORD_VALID_MASK)) readRespToClientQ_OOO <- mkBypassFIFOF();
+    SCOREBOARD_FIFO#(HASIM_CACHE_MAX_READ, Tuple3#(t_CACHE_REQ_BASE, t_CACHE_LINE, t_CACHE_WORD_VALID_MASK)) readRespToClientQ_InOrder <- mkScoreboardFIFO();
 
     // Invalidate and flush requests are always returned in the order they
     // were requested.
     SCOREBOARD_FIFO#(HASIM_CACHE_MAX_INVAL, Bool) invalReqDoneQ <- mkScoreboardFIFO();
-
-    FIFO#(Tuple2#(t_CACHE_SET_IDX, Maybe#(HASIM_CACHE_INVAL_IDX))) flushAckQ <- mkFIFO();
 
     // ***** Indexing functions *****
 
@@ -506,16 +554,19 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
 
     // ***** Meta data searches *****
 
-    function t_METADATA metaData(t_CACHE_TAG tag, Bool dirty);
+    function t_METADATA metaData(t_CACHE_TAG tag,
+                                 Bool dirty,
+                                 t_CACHE_WORD_VALID_MASK wordValid);
         t_METADATA meta;
         meta.tag = tag;
         meta.dirty = dirty;
+        meta.wordValid = wordValid;
     
         return meta;
     endfunction
 
 
-    function Maybe#(t_CACHE_WAY_IDX) findWayMatch(t_CACHE_TAG tag, t_METADATA_VECTOR meta);
+    function Maybe#(Tuple2#(t_CACHE_WAY_IDX, t_METADATA)) findWayMatch(t_CACHE_TAG tag, t_METADATA_VECTOR meta);
         Vector#(nWays, Bool) way_match = replicate(False);
 
         for (Integer w = 0; w < valueOf(nWays); w = w + 1)
@@ -526,7 +577,11 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
                            endcase;
         end
 
-        return findElem(True, way_match);
+        let way = findElem(True, way_match);
+        if (way matches tagged Valid .w)
+            return tagged Valid tuple2(w, validValue(meta[w]));
+        else
+            return tagged Invalid;
     endfunction
 
 
@@ -588,11 +643,13 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
 
 
 
-    function Action cacheDebugLRUUpdate(t_CACHE_SET_IDX set,
-                                        t_CACHE_WAY_IDX way,
-                                        t_LRU_LIST cur_lru,
-                                        t_LRU_LIST new_lru);
+    function Action cacheLRUUpdate(t_CACHE_SET_IDX set,
+                                   t_CACHE_WAY_IDX way,
+                                   t_LRU_LIST cur_lru);
     action
+        let new_lru = pushMRU(cur_lru, way);
+        cacheLRU.write(set, new_lru);
+
         if ((getMRU(cur_lru) != way) || (cur_lru != new_lru))
         begin
             debugLog.record($format("    Update LRU (set=0x%x): %b -> %b", set, cur_lru, new_lru));
@@ -666,14 +723,14 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     rule handleInvalOrFlush (curState == HCST_NORMAL &&
                              reqIsInvalOrFlush(tpl_2(processReqQ0.first())));
 
-        match {.req_base, .req} = processReqQ0.first();
+        match {.req_base_in, .req} = processReqQ0.first();
         processReqQ0.deq();
 
         let meta <- cacheMeta.readRsp();
         let cur_lru <- cacheLRU.readRsp();
 
-        let tag = req_base.tag;
-        let set = req_base.set;
+        let tag = req_base_in.tag;
+        let set = req_base_in.set;
 
         Maybe#(HASIM_CACHE_INVAL_IDX) need_ack = ?;
         Bool is_inval = ?;
@@ -694,21 +751,22 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         endcase
 
         Bool found_dirty_line = False;
-        let req_base_out = req_base;
+        let req_base_out = req_base_in;
 
-        if (findWayMatch(tag, meta) matches tagged Valid .way)
+        if (findWayMatch(tag, meta) matches tagged Valid {.way, .way_meta})
         begin
-            if (meta[way] matches tagged Valid .m &&& m.dirty)
+            if (way_meta.dirty)
             begin
                 // Found dirty line.  Prepare for write back.
                 req_base_out.way = way;
-                cacheDataReadReq(0, getDataIdx(set, way));
+                cacheReadForFlushReqQ.enq(getDataIdx(set, way));
+                readHitQ.enq(tuple3(req_base_out, req, way_meta.wordValid));
                 found_dirty_line = True;
 
                 if (! is_inval)
                 begin
                     // FLUSH:  Line no longer dirty.  Update meta data.
-                    let new_meta = m;
+                    let new_meta = way_meta;
                     new_meta.dirty = False;
                     meta[way] = tagged Valid new_meta;
                 end
@@ -726,9 +784,7 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
             debugLog.record($format("  FLUSH/INVAL HIT %s: addr=0x%x, set=0x%x, way=%0d", (found_dirty_line ? "dirty" : "clean"), debugAddrFromTag(tag, set), set, way));
         end
         
-        if (found_dirty_line)
-            processReqQ1.enq(tuple2(req_base_out, req));
-        else
+        if (! found_dirty_line)
         begin
             // Line is not dirty.  Done with this request.
             doneQ.enq(set);
@@ -739,14 +795,28 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
 
 
     //
+    // readCacheDataForFlushReq --
+    //     There isn't enough time to request the cache data read during way
+    //     hit detection in handleInvalOrFlush.  The cache read is requested
+    //     here for use in flushDirtyLine.
+    //    
+    rule readCacheDataForFlushReq (curState == HCST_NORMAL);
+        let idx = cacheReadForFlushReqQ.first();
+        cacheReadForFlushReqQ.deq();
+
+        cacheDataReadReq(0, idx);
+    endrule
+
+
+    //
     // flushDirtyLine --
     //   Flush a dirty line and continue on to fill, if appropriate.
     //
     rule flushDirtyLine (curState == HCST_NORMAL &&
-                         reqIsInvalOrFlush(tpl_2(processReqQ1.first())));
+                         reqIsInvalOrFlush(tpl_2(readHitQ.first())));
 
-        match {.req_base, .req} = processReqQ1.first();
-        processReqQ1.deq();
+        match {.req_base, .req, .word_valid_mask} = readHitQ.first();
+        readHitQ.deq();
 
         let flushData <- cacheDataReadRsp(0);
 
@@ -761,11 +831,11 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
             endcase;
 
         stats.dirtyLineFlush();
-        debugLog.record($format("  Write back DIRTY: addr=0x%x, set=0x%x, data=0x%x", debugAddrFromTag(tag, set), set, flushData));
+        debugLog.record($format("  Write back DIRTY: addr=0x%x, set=0x%x, mask=0x%x, data=0x%x", debugAddrFromTag(tag, set), set, word_valid_mask, flushData));
 
         // Flush for invalidate request.  Use sync method to know the
         // data arrived.
-        sourceData.writeSyncReq(cacheAddr(tag, set), flushData, req_base.refInfo);
+        sourceData.writeSyncReq(cacheAddr(tag, set), word_valid_mask, flushData, req_base.refInfo);
         flushAckQ.enq(tuple2(set, need_ack));
     endrule
 
@@ -803,95 +873,135 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     // ====================================================================
 
     //
-    // handleReadOrWrite --
-    //     Cache read or write request.
+    // handleRead --
+    //     First unique stage of cache READ path.
     //
-
-    function Bool reqIsReadOrWrite(t_CACHE_REQ req);
-        if (req matches tagged HCOP_READ .readRespIdx)
-            return True;
-        else if (req matches tagged HCOP_WRITE .wReq)
-            return True;
-        else
-            return False;
-    endfunction
-
     (* conservative_implicit_conditions *)
-    rule handleReadOrWrite (curState == HCST_NORMAL &&
-                            reqIsReadOrWrite(tpl_2(processReqQ0.first())));
+    rule handleRead (curState == HCST_NORMAL &&&
+                     tpl_2(processReqQ0.first()) matches tagged HCOP_READ .rReq);
 
-        match {.req_base, .req} = processReqQ0.first();
+        match {.req_base_in, .req} = processReqQ0.first();
         processReqQ0.deq();
 
         let meta <- cacheMeta.readRsp();
         let cur_lru <- cacheLRU.readRsp();
 
-        let tag = req_base.tag;
-        let set = req_base.set;
+        let tag = req_base_in.tag;
+        let set = req_base_in.set;
 
-        Bool is_write = ?;
-        HASIM_CACHE_READ_IDX read_idx = ?;
-        HASIM_CACHE_WRITE_REQ w_req = ?;
+        debugLog.record($format("  Process request: READ addr=0x%x, set=0x%x", debugAddrFromTag(tag, set), set));
 
-        case (req) matches
-        tagged HCOP_READ .readRespIdx:
-        begin
-            is_write = False;
-            read_idx = readRespIdx;
-            debugLog.record($format("  Process request: READ addr=0x%x, set=0x%x", debugAddrFromTag(tag, set), set));
-        end
-        tagged HCOP_WRITE .wReq:
-        begin
-            is_write = True;
-            w_req = wReq;
-            debugLog.record($format("  Process request: WRITE addr=0x%x, set=0x%x", debugAddrFromTag(tag, set), set));
-        end
-        endcase
+        let req_base_out = req_base_in;
 
-        cacheIsEmpty <= False;
-        let req_base_out = req_base;
-
-        if (findWayMatch(tag, meta) matches tagged Valid .way)
+        if (findWayMatch(tag, meta) matches tagged Valid {.way, .way_meta})
         begin
             //
-            // Hit!
+            // Line hit!
             //
             req_base_out.way = way;
 
             // Update LRU
-            let new_lru = pushMRU(cur_lru, way);
-            cacheLRU.write(set, new_lru);
-            cacheDebugLRUUpdate(set, way, cur_lru, new_lru);
+            cacheLRUUpdate(set, way, cur_lru);
 
-            let idx = getDataIdx(set, way);
-            if (! is_write)
+            if (way_meta.wordValid[rReq.wordIdx])
             begin
-                // Read
-                stats.readHit();
-                cacheDataReadReq(0, idx);
-                processReqQ1.enq(tuple2(req_base_out, req));
+                // Word hit!
+                cacheReadForHitQ.enq(getDataIdx(set, way));
+                readHitQ.enq(tuple3(req_base_out, req, way_meta.wordValid));
             end
             else
             begin
-                // Write
-                stats.writeHit();
+                // Line valid but word in line is not.  Fill.
+                wordMissQ.enq(tuple3(req_base_out, req, way_meta.wordValid));
 
-                // Mark line dirty
+                // Mark all words valid in the line.  They will be after
+                // the fill completes.
                 let meta_upd = meta;
-                meta_upd[way] = tagged Valid metaData(tag, writeBackCache);
+                meta_upd[way] = tagged Valid metaData(tag, way_meta.dirty, replicate(True));
                 cacheMeta.write(set, meta_upd);
-
-                // Request write to cache
-                writeDataQ.enq(tuple2(req_base_out, w_req));
-                reqInfo_writeData.readReq(w_req.dataIdx);
-                debugLog.record($format("  Write HIT: addr=0x%x, set=0x%x, way=%0d", debugAddrFromTag(tag, set), set, way));
             end
         end
         else
         begin
             // Miss.
-            missQ.enq(tuple4(req_base_out, req, cur_lru, meta));
+            lineMissQ.enq(tuple4(req_base_out, req, cur_lru, meta));
         end
+    endrule
+
+
+    //
+    // handleWrite --
+    //     First unique stage of cache WRITE path.
+    //
+    (* conservative_implicit_conditions *)
+    rule handleWrite (curState == HCST_NORMAL &&&
+                      tpl_2(processReqQ0.first()) matches tagged HCOP_WRITE .wReq);
+
+        match {.req_base_in, .req} = processReqQ0.first();
+        processReqQ0.deq();
+
+        let meta <- cacheMeta.readRsp();
+        let cur_lru <- cacheLRU.readRsp();
+
+        let tag = req_base_in.tag;
+        let set = req_base_in.set;
+
+        debugLog.record($format("  Process request: WRITE addr=0x%x, set=0x%x", debugAddrFromTag(tag, set), set));
+
+        cacheIsEmpty <= False;
+        let req_base_out = req_base_in;
+
+        if (findWayMatch(tag, meta) matches tagged Valid {.way, .way_meta})
+        begin
+            //
+            // Line hit!
+            //
+            req_base_out.way = way;
+
+            // Update LRU
+            cacheLRUUpdate(set, way, cur_lru);
+
+            stats.writeHit();
+
+            // Mark line dirty and word valid
+            let new_word_valid = way_meta.wordValid;
+            new_word_valid[wReq.wordIdx] = True;
+
+            let meta_upd = meta;
+            meta_upd[way] = tagged Valid metaData(tag, writeBackCache, new_word_valid);
+            cacheMeta.write(set, meta_upd);
+
+            // Request write to cache
+            writeDataQ.enq(tuple2(req_base_out, wReq));
+            debugLog.record($format("  Write HIT: addr=0x%x, set=0x%x, way=%0d, mask=0x%x", debugAddrFromTag(tag, set), set, way, new_word_valid));
+        end
+        else
+        begin
+            // Miss.
+            lineMissQ.enq(tuple4(req_base_out, req, cur_lru, meta));
+        end
+    endrule
+
+
+
+    // ====================================================================
+    //
+    // Read or write hits end here.
+    //
+    // ====================================================================
+
+    //
+    // readCacheDataForReadHit --
+    //     There isn't enough time to request the cache data read during way
+    //     hit detection in handleRead.  The cache read is requested here
+    //     for use in handleReadCacheHit.
+    //    
+    rule readCacheDataForReadHit (curState == HCST_NORMAL);
+        let idx = cacheReadForHitQ.first();
+        cacheReadForHitQ.deq();
+
+        stats.readHit();
+        cacheDataReadReq(1, idx);
     endrule
 
 
@@ -900,39 +1010,68 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     //   Forward data coming from cache BRAM from handleRead to back to the requester.
     //
     rule handleReadCacheHit (curState == HCST_NORMAL &&&
-                             tpl_2(processReqQ1.first()) matches tagged HCOP_READ .readRespIdx);
+                             tpl_2(readHitQ.first()) matches tagged HCOP_READ .rReq);
 
-        match {.req_base, .req} = processReqQ1.first();
-        processReqQ1.deq();
+        match {.req_base, .req, .word_valid_mask} = readHitQ.first();
+        readHitQ.deq();
 
-        let v <- cacheDataReadRsp(0);
+        let v <- cacheDataReadRsp(1);
 
         let tag = req_base.tag;
         let set = req_base.set;
         let way = req_base.way;
 
         if (permitOOOReadResp)
-            readRespToClientQ_OOO.enq(tuple2(req_base, v));
+            readRespToClientQ_OOO.enq(tuple3(req_base, v, word_valid_mask));
         else
-            readRespToClientQ_InOrder.setValue(readRespIdx, tuple2(req_base, v));
+            readRespToClientQ_InOrder.setValue(rReq.readFifoIdx, tuple3(req_base, v, word_valid_mask));
 
         // Done with this read request
         doneQ.enq(set);
 
-        debugLog.record($format("  Read HIT: addr=0x%x, set=0x%x, way=%0d, data=0x%x", debugAddrFromTag(tag, set), set, way, v));
+        debugLog.record($format("  Read HIT: addr=0x%x, set=0x%x, way=%0d, mask=0x%x, data=0x%x", debugAddrFromTag(tag, set), set, way, word_valid_mask, v));
     endrule
 
 
     //
-    // handleMiss --
-    //     Miss handler for read and write requests.
+    // writeCacheData --
+    //   All cache writes terminate here, including the line miss path.
     //
-    Reg#(Bool) stallMissForFlush <- mkReg(False);
+    rule writeCacheData (curState == HCST_NORMAL);
+        match {.req_base, .w_req} = writeDataQ.first();
+        writeDataQ.deq();
 
-    (* conservative_implicit_conditions *)
-    rule handleMiss (curState == HCST_NORMAL && ! stallMissForFlush);
-        match {.req_base, .req, .cur_lru, .meta} = missQ.first();
-        missQ.deq();
+        let w_data = reqInfo_writeData.sub(w_req.dataIdx);
+
+        let tag = req_base.tag;
+        let set = req_base.set;
+        let way = req_base.way;
+
+        cacheData[w_req.wordIdx].write(getDataIdx(set, way), w_data.val);
+
+        debugLog.record($format("  WRITE Word: addr=0x%x, set=0x%x, way=%0d, word=%0d, data=0x%x", debugAddrFromTag(tag, set), set, way, w_req.wordIdx, w_data.val));
+
+        reqInfo_writeData.free(w_req.dataIdx);
+        doneQ.enq(set);
+    endrule
+
+
+    // ====================================================================
+    //
+    // Miss handlers.
+    //
+    // ====================================================================
+
+    //
+    // handleWordMissForRead --
+    //     Line is present in the cache but incomplete.  Request the full line
+    //     from backing storage and merge it into the line.
+    //
+    rule handleWordMissForRead (curState == HCST_NORMAL &&&
+                                tpl_2(wordMissQ.first()) matches tagged HCOP_READ .rReq);
+
+        match {.req_base, .req, .word_valid_mask} = wordMissQ.first();
+        wordMissQ.deq();
 
         let tag = req_base.tag;
         let set = req_base.set;
@@ -941,27 +1080,31 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         // Miss.  Pick a victim.
         //
 
-        Bool is_write = ?;
-        HASIM_CACHE_READ_IDX read_idx = ?;
-        HASIM_CACHE_WRITE_REQ w_req = ?;
+        stats.readMiss();
 
-        case (req) matches
-        tagged HCOP_READ .readRespIdx:
-        begin
-            is_write = False;
-            read_idx = readRespIdx;
-        end
-        tagged HCOP_WRITE .wReq:
-        begin
-            is_write = True;
-            w_req = wReq;
-        end
-        endcase
+        let addr = cacheAddr(tag, set);
+        sourceData.readReq(addr, req_base.refInfo);
+        fillLineQ.enq(tuple3(req_base, req, word_valid_mask));
 
-        if (is_write)
-            stats.writeMiss();
-        else
-            stats.readMiss();
+        debugLog.record($format("  READ WORD MISS (FILL): addr=0x%x, set=0x%x, way=%0d", debugAddr(addr), set, req_base.way));
+    endrule
+
+
+    //
+    // handleMissForRead --
+    //     Pick a victim and prepare to fill a way from backing storage.
+    //
+    (* conservative_implicit_conditions *)
+    rule handleMissForRead (curState == HCST_NORMAL &&&
+                            tpl_2(lineMissQ.first()) matches tagged HCOP_READ .rReq);
+
+        match {.req_base_in, .req, .cur_lru, .meta} = lineMissQ.first();
+        lineMissQ.deq();
+
+        let tag = req_base_in.tag;
+        let set = req_base_in.set;
+
+        stats.readMiss();
 
         //
         // Pick a fill victim:  either the first invalid or the LRU entry.
@@ -972,95 +1115,181 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
             fill_way = inval_way;
         end
 
-        let req_base_out = req_base;
+        let req_base_out = req_base_in;
         req_base_out.way = fill_way;
 
         // Update LRU
-        let new_lru = pushMRU(cur_lru, fill_way);
-        cacheLRU.write(set, new_lru);
-        cacheDebugLRUUpdate(set, fill_way, cur_lru, new_lru);
+        cacheLRUUpdate(set, fill_way, cur_lru);
 
-        // Update tag here for the filled line since we have the details
+        //
+        // Update metadata here for the filled line since we have the details.
+        //
         let meta_upd = meta;
-        meta_upd[fill_way] = tagged Valid metaData(tag, writeBackCache && is_write);
+        meta_upd[fill_way] = tagged Valid metaData(tag, False, replicate(True));
         cacheMeta.write(set, meta_upd);
 
         //
         // Now must figure out the next state...
         //
 
-        let idx = getDataIdx(set, fill_way);
-
-        // Dirty victim?  Flush.
+        // Is victim dirty?
         Bool flushed_dirty = False;
         if (meta[fill_way] matches tagged Valid .m)
         begin
             stats.invalLine();
             if (m.dirty)
             begin
+                // Victim is dirty.  Flush data.
                 flushed_dirty = True;
-                cacheDataReadReq(1, idx);
-                flushDirtyForFillQ.enq(tuple3(req_base_out, req, m.tag));
+                cacheReadForEvictDirtyQ.enq(getDataIdx(set, fill_way));
+                evictDirtyForFillQ.enq(tuple3(req_base_out, req, m));
 
-                debugLog.record($format("  %s MISS (FLUSH): addr=0x%x, set=0x%x, way=%0d", (is_write ? "WRITE" : "READ"), debugAddrFromTag(m.tag, set), set, fill_way));
+                debugLog.record($format("  READ MISS (FLUSH): addr=0x%x, set=0x%x, way=%0d", debugAddrFromTag(m.tag, set), set, fill_way));
             end
         end
 
-        Bool need_backing_data = (!is_write || (valueOf(nWriteDataWordsPerLine) > 1));
-        let addr = cacheAddr(tag, set);
+        if (! flushed_dirty)
+        begin
+            let addr = cacheAddr(tag, set);
+            sourceData.readReq(addr, req_base_out.refInfo);
+            fillLineQ.enq(tuple3(req_base_out, req, replicate(False)));
 
-        if (flushed_dirty)
-        begin
-            //
-            // Flushing an old line or either read or write requests.
-            //
-            sourceData.readReq(addr, req_base.refInfo);
-
-            // fillLineQ connection to fill path request is delayed for the
-            // flush path.  Stall this pipeline until the flush request is
-            // done so enqueue to fillLineQ is consistent with sourceData
-            // read requests.
-            stallMissForFlush <= True;
-        end
-        else if (need_backing_data)
-        begin
-            sourceData.readReq(addr, req_base.refInfo);
-            fillLineQ.enq(tuple2(req_base_out, req));
-            debugLog.record($format("  %s MISS (FILL): addr=0x%x, set=0x%x, way=%0d", (is_write ? "WRITE" : "READ"), debugAddr(addr), set, req_base_out.way));
-        end
-        else
-        begin
-            // Writing the full line and no flush of an old line.  We're
-            // ready now.
-            writeDataQ.enq(tuple2(req_base_out, w_req));
-            reqInfo_writeData.readReq(w_req.dataIdx);
-            debugLog.record($format("  Write to INVAL: addr=0x%x, set=0x%x, way=%0d", debugAddr(addr), set, fill_way));
+            debugLog.record($format("  READ MISS (FILL): addr=0x%x, set=0x%x, way=%0d", debugAddr(addr), set, req_base_out.way));
         end
     endrule
 
 
     //
-    // flushDirtyForFill --
+    // handleMissForWrite --
+    //     Pick a victim and write back the dirty data, if needed.
+    //
+    (* conservative_implicit_conditions *)
+    rule handleMissForWrite (curState == HCST_NORMAL &&&
+                             tpl_2(lineMissQ.first()) matches tagged HCOP_WRITE .wReq);
+
+        match {.req_base_in, .req, .cur_lru, .meta} = lineMissQ.first();
+        lineMissQ.deq();
+
+        let tag = req_base_in.tag;
+        let set = req_base_in.set;
+
+        stats.writeMiss();
+
+        //
+        // Pick a fill victim:  either the first invalid or the LRU entry.
+        // 
+        t_CACHE_WAY_IDX fill_way = getLRU(cur_lru);
+        if (findFirstInvalid(meta) matches tagged Valid .inval_way)
+        begin
+            fill_way = inval_way;
+        end
+
+        let req_base_out = req_base_in;
+        req_base_out.way = fill_way;
+
+        // Update LRU
+        cacheLRUUpdate(set, fill_way, cur_lru);
+
+        //
+        // Update metadata here for the filled line since we have the details.
+        //
+        
+        // The full line will not be filled from memory for a write.  Only
+        // mark the word being written valid.
+        t_CACHE_WORD_VALID_MASK word_valid_mask = replicate(False);
+        word_valid_mask[wReq.wordIdx] = True;
+
+        // Update tag and write metadata
+        let meta_upd = meta;
+        meta_upd[fill_way] = tagged Valid metaData(tag, writeBackCache, word_valid_mask);
+        cacheMeta.write(set, meta_upd);
+
+        //
+        // Now must figure out the next state...
+        //
+
+        // Is victim dirty?
+        Bool flushed_dirty = False;
+        if (meta[fill_way] matches tagged Valid .m)
+        begin
+            stats.invalLine();
+            if (m.dirty)
+            begin
+                // Victim is dirty.  Flush data.
+                flushed_dirty = True;
+                cacheReadForEvictDirtyQ.enq(getDataIdx(set, fill_way));
+                evictDirtyForFillQ.enq(tuple3(req_base_out, req, m));
+
+                debugLog.record($format("  WRITE MISS (FLUSH): addr=0x%x, set=0x%x, way=%0d", debugAddrFromTag(m.tag, set), set, fill_way));
+            end
+        end
+
+        if (! flushed_dirty)
+        begin
+            // Writing does not require a fill.  Ready now.
+            writeDataQ.enq(tuple2(req_base_out, wReq));
+            debugLog.record($format("  Write to INVAL: addr=0x%x, set=0x%x, way=%0d", debugAddr(cacheAddr(tag, set)), set, fill_way));
+        end
+    endrule
+
+
+    //
+    // readCacheDataForEvict --
+    //     There isn't enough time to request the cache data read during way
+    //     victim selection in flushDirtyForRead and flushDirtyForWrite.  The
+    //     cache read is requested here for use in flushDirtyForFill.
+    //    
+    rule readCacheDataForEvict (curState == HCST_NORMAL);
+        let idx = cacheReadForEvictDirtyQ.first();
+        cacheReadForEvictDirtyQ.deq();
+
+        cacheDataReadReq(2, idx);
+    endrule
+
+
+    //
+    // evictDirtyForFill --
     //   Flush a dirty line and continue on to fill, if appropriate.
     //
-    rule flushDirtyForFill (curState == HCST_NORMAL && stallMissForFlush);
-        match {.req_base, .req, .flush_tag} = flushDirtyForFillQ.first();
-        flushDirtyForFillQ.deq();
+    rule evictDirtyForFill (curState == HCST_NORMAL);
+        match {.req_base, .req, .flush_meta} = evictDirtyForFillQ.first();
+        evictDirtyForFillQ.deq();
 
-        let flush_data <- cacheDataReadRsp(1);
+        let flush_data <- cacheDataReadRsp(2);
 
         let set = req_base.set;
         let way = req_base.way;
 
         stats.dirtyLineFlush();
-        debugLog.record($format("  Write back DIRTY: addr=0x%x, set=0x%x, way=%0d, data=0x%x", debugAddrFromTag(flush_tag, set), set, way, flush_data));
+        debugLog.record($format("  Write back DIRTY: addr=0x%x, set=0x%x, way=%0d, mask=0x%x, data=0x%x", debugAddrFromTag(flush_meta.tag, set), set, way, flush_meta.wordValid, flush_data));
 
         // Normal flush before a fill
-        sourceData.write(cacheAddr(flush_tag, set), flush_data, req_base.refInfo);
+        sourceData.write(cacheAddr(flush_meta.tag, set), flush_meta.wordValid, flush_data, req_base.refInfo);
 
-        // Pass the request on to the fill stage
-        fillLineQ.enq(tuple2(req_base, req));
-        stallMissForFlush <= False;
+        if (req matches tagged HCOP_WRITE .wReq)
+        begin
+            // WRITE: Line is empty and ready to receive write data.
+            writeDataQ.enq(tuple2(req_base, wReq));
+        end
+        else
+        begin
+            // READ: Pass the request on to the fill stage.
+            fillLineRequestQ.enq(tuple2(req_base, req));
+        end
+    endrule
+
+
+    rule sendFillRequest (curState == HCST_NORMAL);
+        match {.req_base, .req} = fillLineRequestQ.first();
+        fillLineRequestQ.deq();
+
+        let tag = req_base.tag;
+        let set = req_base.set;
+        let way = req_base.way;
+
+        let addr = cacheAddr(tag, set);
+        sourceData.readReq(addr, req_base.refInfo);
+        fillLineQ.enq(tuple3(req_base, req, replicate(False)));
     endrule
 
 
@@ -1069,9 +1298,9 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     //    Update the cache with requested data coming back from memory.
     //
     rule handleFillForRead (curState == HCST_NORMAL &&&
-                            tpl_2(fillLineQ.first()) matches tagged HCOP_READ .readRespIdx);
+                            tpl_2(fillLineQ.first()) matches tagged HCOP_READ .rReq);
 
-        match {.req_base, .req} = fillLineQ.first();
+        match {.req_base, .req, .cur_word_valid_mask} = fillLineQ.first();
         fillLineQ.deq();
 
         let v <- sourceData.readResp();
@@ -1080,72 +1309,34 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         let set = req_base.set;
         let way = req_base.way;
 
-        // Cache the value
-        cacheDataWrite(getDataIdx(set, way), v);
+        // Cache the new values.  Don't overwrite entries that are currently
+        // valid, since they may be dirty.
+        t_CACHE_WORD_VALID_MASK ret_valid_words;
+        Vector#(nWriteDataWordsPerLine, t_CACHE_WORD) lineWords = unpack(pack(v));
+        for (Integer w = 0; w < valueOf(nWriteDataWordsPerLine); w = w + 1)
+        begin
+            if (! cur_word_valid_mask[w])
+            begin
+                cacheData[w].write(getDataIdx(set, way), lineWords[w]);
+            end
+            
+            // On return only claim that the newly filled lines are valid.
+            // We could retrieve the entire line but that would take another
+            // stage and more wires to read the dirty data from the cache.
+            ret_valid_words[w] = ! cur_word_valid_mask[w];
+        end
 
         if (permitOOOReadResp)
         begin
-            readRespToClientQ_OOO.enq(tuple2(req_base, v));
-            debugLog.record($format("  Read FILL: addr=0x%x, set=0x%x, way=%0d, data=0x%x", debugAddrFromTag(tag, set), set, way, v));
+            readRespToClientQ_OOO.enq(tuple3(req_base, v, ret_valid_words));
+            debugLog.record($format("  Read FILL: addr=0x%x, set=0x%x, way=%0d, mask=0x%x, data=0x%x", debugAddrFromTag(tag, set), set, way, ret_valid_words, v));
         end
         else
         begin
-            readRespToClientQ_InOrder.setValue(readRespIdx, tuple2(req_base, v));
-            debugLog.record($format("  Read FILL: addr=0x%x, set=0x%x, way=%0d, idx=%d, data=0x%x", debugAddrFromTag(tag, set), set, way, readRespIdx, v));
+            readRespToClientQ_InOrder.setValue(rReq.readFifoIdx, tuple3(req_base, v, ret_valid_words));
+            debugLog.record($format("  Read FILL: addr=0x%x, set=0x%x, way=%0d, mask=0x%x, idx=%d, data=0x%x", debugAddrFromTag(tag, set), set, way, ret_valid_words, rReq.readFifoIdx, v));
         end
 
-        doneQ.enq(set);
-    endrule
-    
-
-    //
-    // handleFillForWrite --
-    //    Update the cache with requested data coming back from memory merged
-    //    with the write data.
-    //
-    rule handleFillForWrite (curState == HCST_NORMAL &&&
-                            tpl_2(fillLineQ.first()) matches tagged HCOP_WRITE .wReq);
-
-        match {.req_base, .req} = fillLineQ.first();
-        fillLineQ.deq();
-
-        let v <- sourceData.readResp();
-
-        let tag = req_base.tag;
-        let set = req_base.set;
-        let way = req_base.way;
-
-        // Store the line's current value in the cache.  The word being written
-        // will be updated next cycle.
-        cacheDataWrite(getDataIdx(set, way), v);
-
-        debugLog.record($format("  Fill for WRITE: addr=0x%x, set=0x%x, way=%0d, data=0x%x", debugAddrFromTag(tag, set), set, way, v));
-
-        // Merge with full line and update cache
-        writeDataQ.enq(tuple2(req_base, wReq));
-        reqInfo_writeData.readReq(wReq.dataIdx);
-    endrule
-
-
-    //
-    // writeCacheData --
-    //   All cache writes terminate here.
-    //
-    rule writeCacheData (curState == HCST_NORMAL);
-        match {.req_base, .w_req} = writeDataQ.first();
-        writeDataQ.deq();
-
-        let w_data <- reqInfo_writeData.readRsp();
-
-        let tag = req_base.tag;
-        let set = req_base.set;
-        let way = req_base.way;
-
-        cacheData[w_data.wordIdx].write(getDataIdx(set, way), w_data.val);
-
-        debugLog.record($format("  WRITE Word: addr=0x%x, set=0x%x, way=%0d, word=%0d, data=0x%x", debugAddrFromTag(tag, set), set, way, w_data.wordIdx, w_data.val));
-
-        reqInfo_writeData.free(w_req.dataIdx);
         doneQ.enq(set);
     endrule
 
@@ -1176,7 +1367,7 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     // ====================================================================
 
     FIFO#(Tuple3#(t_CACHE_SET_IDX, t_METADATA_VECTOR, Bool)) invalAllFlushSetQ <- mkFIFO();
-    FIFO#(Tuple2#(t_CACHE_TAG, t_CACHE_SET_IDX)) invalAllFlushLineQ <- mkFIFO();
+    FIFO#(Tuple3#(t_CACHE_TAG, t_CACHE_SET_IDX, t_CACHE_WORD_VALID_MASK)) invalAllFlushLineQ <- mkFIFO();
 
     // State for invalidate all
     Reg#(Bool)             invalidatingAllLastSet  <- mkReg(False);
@@ -1196,6 +1387,7 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         debugLog.record($format("  Start INVAL ALL"));
 
         invalidateAllReq <= False;
+        invalidatingAllLastSet <= False;
 
         if (cacheIsEmpty)
         begin
@@ -1238,7 +1430,7 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
 
 
     // Not required for correctness: get rid of warning messages...
-    (* descending_urgency = "writeCacheData, handleFlushACK, flushDirtyLine, handleFillForRead, handleFillForWrite, handleMiss, handleReadCacheHit, handleReadOrWrite, handleInvalOrFlush, handleIncomingReq, flushDirtyLineForInvalAll, invalSetForInvalAll, handleInvalidateAll, handleInvalAllReq" *)
+    (* descending_urgency = "writeCacheData, handleFlushACK, flushDirtyLine, handleFillForRead, evictDirtyForFill, handleWordMissForRead, handleMissForRead, handleMissForWrite, handleReadCacheHit, readCacheDataForEvict, readCacheDataForReadHit, readCacheDataForFlushReq, handleRead, handleWrite, handleInvalOrFlush, handleIncomingReq, flushDirtyLineForInvalAll, invalSetForInvalAll, handleInvalidateAll, handleInvalAllReq" *)
 
 
     //
@@ -1251,8 +1443,8 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         
         if (meta[invalidateFlushWay] matches tagged Valid .m &&& m.dirty)
         begin
-            invalAllFlushLineQ.enq(tuple2(m.tag, set));
-            cacheDataReadReq(0, getDataIdx(set, invalidateFlushWay));
+            invalAllFlushLineQ.enq(tuple3(m.tag, set, m.wordValid));
+            cacheDataReadReq(3, getDataIdx(set, invalidateFlushWay));
         end
 
         // Done with the set?
@@ -1265,7 +1457,6 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
             if (last_set)
             begin
                 curState <= HCST_INVAL_ALL_DONE;
-                invalidatingAllLastSet <= False;
                 debugLog.record($format("  Request done: INVAL ALL"));
             end
         end
@@ -1279,14 +1470,14 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     //     Flush one dirty line, requested by invalSetForInvalAll.
     //
     rule flushDirtyLineForInvalAll (True);
-        match { .tag, .set } = invalAllFlushLineQ.first();
+        match { .tag, .set, .word_valid_mask } = invalAllFlushLineQ.first();
         invalAllFlushLineQ.deq();
 
-        let flush_data <- cacheDataReadRsp(0);
-        sourceData.write(cacheAddr(tag, set), flush_data, invalidateAll_refInfo);
+        let flush_data <- cacheDataReadRsp(3);
+        sourceData.write(cacheAddr(tag, set), word_valid_mask, flush_data, invalidateAll_refInfo);
 
         stats.dirtyLineFlush();
-        debugLog.record($format("  Write back DIRTY: addr=0x%x, set=0x%x, data=0x%x", debugAddrFromTag(tag, set), set, flush_data));
+        debugLog.record($format("  Write back DIRTY: addr=0x%x, set=0x%x, mask=0x%x, data=0x%x", debugAddrFromTag(tag, set), set, word_valid_mask, flush_data));
     endrule
 
 
@@ -1324,22 +1515,28 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     //
     // readReq -- Read a full line.  Fetch from backing store if not in the cache.
     //
-    method Action readReq(t_CACHE_ADDR addr, t_CACHE_REF_INFO refInfo) if (curState == HCST_NORMAL);
+    method Action readReq(t_CACHE_ADDR addr,
+                          Bit#(TLog#(nWriteDataWordsPerLine)) wordIdx,
+                          t_CACHE_REF_INFO refInfo) if (curState == HCST_NORMAL);
         //
         // If resonses are supposed to be returned in order than allocate a slot
         // in the response queue.
         //
-        HASIM_CACHE_READ_IDX readIdx = ?;
+        HASIM_CACHE_READ_FIFO_IDX readIdx = ?;
         if (! permitOOOReadResp)
         begin
             readIdx <- readRespToClientQ_InOrder.enq();
         end
 
-        let set <- genRequest(tagged HCOP_READ readIdx, addr, refInfo);
+        HASIM_CACHE_READ_REQ#(nWriteDataWordsPerLine) req;
+        req.wordIdx = wordIdx;
+        req.readFifoIdx = readIdx;
+    
+        let set <- genRequest(tagged HCOP_READ req, addr, refInfo);
         if (permitOOOReadResp)
-            debugLog.record($format("  New request: READ addr=0x%x, set=0x%x", debugAddr(addr), set));
+            debugLog.record($format("  New request: READ addr=0x%x, set=0x%x, word=%0d", debugAddr(addr), set, wordIdx));
         else
-            debugLog.record($format("  New request: READ addr=0x%x, set=0x%x, readIdx=%0d", debugAddr(addr), set, readIdx));
+            debugLog.record($format("  New request: READ addr=0x%x, set=0x%x, word=%0d, readIdx=%0d", debugAddr(addr), set, wordIdx, readIdx));
     endmethod
 
     method ActionValue#(t_CACHE_LOAD_RESP) readResp();
@@ -1348,25 +1545,29 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
         // value of permitOOOReadResp.
         //
         t_CACHE_REQ_BASE req_base;
-        t_CACHE_LINE value;
+        Vector#(nWriteDataWordsPerLine, t_CACHE_WORD) value;
+        t_CACHE_WORD_VALID_MASK valid_words;    
 
         if (permitOOOReadResp)
         begin
-            match {.rb, .v} = readRespToClientQ_OOO.first();
+            match {.rb, .v, .word_mask} = readRespToClientQ_OOO.first();
             readRespToClientQ_OOO.deq();
             req_base = rb;
-            value = v;
+            value = unpack(pack(v));
+            valid_words = word_mask;
         end
         else
         begin
-            match {.rb, .v} = readRespToClientQ_InOrder.first();
+            match {.rb, .v, .word_mask} = readRespToClientQ_InOrder.first();
             readRespToClientQ_InOrder.deq();
             req_base = rb;
-            value = v;
+            value = unpack(pack(v));
+            valid_words = word_mask;
         end
 
         t_CACHE_LOAD_RESP rsp;
-        rsp.value = value;
+        for (Integer w = 0; w < valueOf(nWriteDataWordsPerLine); w = w + 1)
+            rsp.words[w] = valid_words[w] ? tagged Valid value[w] : tagged Invalid;
         rsp.addr = cacheAddr(req_base.tag, req_base.set);
         rsp.refInfo = req_base.refInfo;
 
@@ -1386,12 +1587,12 @@ module mkCacheSetAssoc#(HASIM_CACHE_SOURCE_DATA#(Bit#(t_CACHE_ADDR_SZ), t_CACHE_
     method Action write(t_CACHE_ADDR addr, t_CACHE_WORD val, t_CACHE_WRITE_WORD_IDX wordIdx, t_CACHE_REF_INFO refInfo) if (curState == HCST_NORMAL);
         t_CACHE_WRITE_INFO w_info;
         w_info.val = val;
-        w_info.wordIdx = wordIdx;
 
         let h <- reqInfo_writeData.malloc();
-        reqInfo_writeData.write(h, w_info);
+        reqInfo_writeData.upd(h, w_info);
 
-        HASIM_CACHE_WRITE_REQ w_req;
+        HASIM_CACHE_WRITE_REQ#(nWriteDataWordsPerLine) w_req;
+        w_req.wordIdx = wordIdx;    
         w_req.dataIdx = h;
 
         let set <- genRequest(tagged HCOP_WRITE w_req, addr, refInfo);

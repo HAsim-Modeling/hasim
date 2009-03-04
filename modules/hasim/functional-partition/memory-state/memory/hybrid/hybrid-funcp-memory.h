@@ -27,9 +27,14 @@
 
 typedef FUNCP_PADDR     MEM_ADDRESS;
 typedef FUNCP_INT_REG   MEM_VALUE;
+
 typedef struct {
     char _x[FUNCP_CACHELINE_BITS/8];
 } MEM_CACHELINE;
+
+// Valid bits corresponding to words in a cache line.  Bit 0 corresponds to the
+// low word when viewed as a full cache line.
+typedef UINT32 MEM_CACHELINE_WORD_VALID_MASK;
 
 typedef class FUNCP_MEMORY_SERVER_CLASS* FUNCP_MEMORY_SERVER;
 

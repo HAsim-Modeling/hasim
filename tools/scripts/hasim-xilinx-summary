@@ -44,8 +44,9 @@ while (<MAP>)
 }
 close(MAP);
 
+print "\n";
+
 my $clk_err = 0;
-my $got_clk = 0;
 while (<PAR>)
 {
     chomp;
@@ -71,53 +72,29 @@ while (<PAR>)
         {
             print "\n";
             printf "FPGA Clock:  Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
-            printf " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
+            printf " / Achieves %0.2f MHz (%0.3f ns)", 1000 / $clk_limit, $clk_limit;
 
             if ($clk_limit > $clk_req)
             {
                 $clk_err = 1;
+                printf " **";
                 printf ERR "FPGA Clock:  Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
                 printf ERR " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
             }
 
+            printf "\n";
             last;
         }
     }
 
-    ## User clock follows FPGA board clock on the next line
-    if ($got_clk)
-    {
-        ## Line following TS_CLK is the derived clock
-        ## Extract period requirement and actual periods
-
-        my $s = $_;
-        # Drop spaces
-        $s =~ s/ //g;
-        # Drop "ns"
-        $s =~ s/ns//g;
-        my @clk = split('\|', $s);
-
-        my $clk_req = $clk[2];
-        my $clk_limit = $clk[3];
-
-        printf "Logic Clock: Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
-        printf " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
-
-        if (($clk_limit > $clk_req) || $clk_err)
-        {
-            $clk_err = 1;
-            printf ERR "Logic Clock: Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
-            printf ERR " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
-        }
-
-        last;
-    }
-
     ## |TS_CLK line is FPGA board clock for designs with user clocks
-    if (/\|TS_CLK /)
-    {
-        $got_clk = 1;
+    my $clock_type;
+    $clock_type = 'FPGA ' if (/\|TS_CLK /);
+    $clock_type = 'Model' if (/\| TS_.*CLKFX/);
+    $clock_type = 'DDR2 ' if (/\| TS_.*ddr2/);
 
+    if (defined($clock_type))
+    {
         ## Extract period requirement and actual periods
 
         my $s = $_;
@@ -128,17 +105,22 @@ while (<PAR>)
         my @clk = split('\|', $s);
 
         my $clk_req = $clk[2];
-        my $clk_limit = $clk[4];
+        my $clk_limit = (($clk[4] eq 'N/A') ? $clk[3] : $clk[4]);
 
-        print "\n";
-        printf "FPGA Clock:  Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
-        printf " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
-
-        if ($clk_limit > $clk_req)
+        if ($clk_limit ne 'N/A')
         {
-            $clk_err = 1;
-            printf ERR "FPGA Clock:  Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
-            printf ERR " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
+            printf "${clock_type} Clock:  Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
+            printf " / Achieves %0.2f MHz (%0.3f ns)", 1000 / $clk_limit, $clk_limit;
+
+            if ($clk_limit > $clk_req)
+            {
+                $clk_err = 1;
+                printf " **";
+                printf ERR "${clock_type} Clock:  Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
+                printf ERR " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
+            }
+
+            printf "\n";
         }
     }
 }

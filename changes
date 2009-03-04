@@ -17493,3 +17493,13 @@ Directory modules/system/test/mem_test
 
 Updated MemTest to write some data into the Scratchpad Memory before reading
 it out again.
+
+----------
+mcadler     Date: Wed Mar  4 11:36:36 EST 2009  CSN: CSN-hasim-592
+                  Wed Mar  4 16:36:36 UTC 2009
+
+
+Directory tools/scripts
+ hasim-xilinx-summary      Locally Modified          591 
+
+Fix the clocks summary line that broke after more clocks were added for DRAM.

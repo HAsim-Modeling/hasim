@@ -438,4 +438,30 @@ sub print_remote_client_stub
     }
 }
 
+##
+## print client control IDs for a given target into a given file *** SLIGHTLY HACKY ***
+##
+sub print_client_control_ids
+{
+    # capture params
+    my $self   = shift;
+    my $file   = shift;
+    my $target = shift;
+
+    # for each entry in my list of clients...
+    foreach my $client (@{ $self->{clientlist} })
+    {
+        # look for the specified target name. It is guaranteed that
+        # each client in this list will have a unique target name.
+        if ($client->target() eq $target && $client->interface() eq "connection")
+        {
+            # ask the client to print out its control IDs
+            $client->print_control_ids($file);
+        }
+
+        # NOTE: we are guaranteed to only print one set of IDs
+        # for a given target
+    }
+}
+
 1;

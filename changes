@@ -17604,3 +17604,26 @@ Directory modules/hasim/util/modellib
 * Small bugfix in Ports. (Still haven't quite fixed Guan Yi's bug.)
 
 Michael P.
+
+----------
+aparasha    Date: Thu Mar  5 18:13:35 EST 2009  CSN: CSN-hasim-596
+                  Thu Mar  5 23:13:35 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ BSV.pm                    Locally Modified          595 
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Service.pm                Locally Modified          595 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Client
+ BSV.pm                    Locally Modified          595 
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          595 
+
+Added a client control connection for each connection-based RRR service.
+An RRR request from the model sends the method ID over this control
+connection and ensures that requests arrive at the RRR demarshaller in
+the same sequence that they were made.
+

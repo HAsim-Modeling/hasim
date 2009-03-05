@@ -780,14 +780,10 @@ sub print_proxy_make_request_definition
 ##
 sub print_remote_make_request_definition
 {
-    # get object
-    my $self = shift;
-
-    # get file handle
-    my $file = shift;
-
-    # get indentation
-    my $indent = shift;
+    my $self        = shift;
+    my $file        = shift;
+    my $indent      = shift;
+    my $servicename = shift;
 
     # header
     print $file $indent                             .
@@ -811,6 +807,10 @@ sub print_remote_make_request_definition
         # send-type connection
         print $file $indent . "    link_" . $self->{name} . ".send(pack(req));\n";
     }
+
+    # send control ID
+    print $file $indent .
+        "    control.send(\`$servicename\_" . $self->{name} . "_CONTROL_ID);\n";    
 
     # endmethod
     print $file $indent . "endmethod\n\n";
@@ -1061,7 +1061,8 @@ sub print_client_link_rules
     if ($self->outargs()->num() == 0)
     {
         # no return: create only request rule, use receive()
-        print $file $indent . "rule client_makeRequest_$servicename\_$methodname (True);\n";
+        print $file $indent . "rule client_makeRequest_$servicename\_$methodname (controlID_$servicename == \`$servicename\_$methodname\_CONTROL_ID);\n";
+        print $file $indent . "    control_client_$servicename.deq();\n";
         print $file $indent . "    $intype req = link_client_$servicename\_$methodname.receive();\n";
         print $file $indent . "    link_client_$servicename\_$methodname.deq();\n";
         print $file $indent . "    stub_client_$servicename.makeRequest\_$methodname(req);\n";
@@ -1073,7 +1074,8 @@ sub print_client_link_rules
         my $outtype = $self->outargs()->makebitvector();
 
         # need return: create request and response rules, use getReq()
-        print $file $indent . "rule client_makeRequest_$servicename\_$methodname (True);\n";
+        print $file $indent . "rule client_makeRequest_$servicename\_$methodname (controlID_$servicename == \`$servicename\_$methodname\_CONTROL_ID);\n";
+        print $file $indent . "    control_client_$servicename.deq();\n";
         print $file $indent . "    $intype req = link_client_$servicename\_$methodname.getReq();\n";
         print $file $indent . "    link_client_$servicename\_$methodname.deq();\n";
         print $file $indent . "    stub_client_$servicename.makeRequest\_$methodname(req);\n";

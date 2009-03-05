@@ -307,6 +307,14 @@ sub print_connections
             # ask method to print out a connection instantiation
             $method->print_client_connection($file, $indent, $self->{name});
         }
+
+        # print control ID link
+        print $file $indent                                              .
+                    "Connection_Receive#(UMF_METHOD_ID) control_client_" .
+                    $self->{name}                                        .
+                    " <- mkConnection_Receive(\"control_client_"         .
+                    $self->{name}                                        .
+                    "\");\n";
     }
     else
     {
@@ -327,6 +335,14 @@ sub print_link_rules
     # check if RRR file requested a connection for this client
     if ($self->{ifc} eq "connection")
     {
+        # peek into current control ID for this service
+        print $file $indent                    .
+                    "UMF_METHOD_ID controlID_" .
+                    $self->{name}              .
+                    " = control_client_"       .
+                    $self->{name}              .
+                    ".receive();\n\n";
+
         # Hack:  give priority to low method ids.  This lets us guarantee
         # delivery of one method ahead of another.
         # Start by gathering method names...
@@ -395,6 +411,8 @@ sub print_remote_stub
     print $file "`include \"rrr.bsh\"\n";
     print $file "`include \"channelio.bsh\"\n";
     print $file "`include \"umf.bsh\"\n";
+    print $file "`include \"asim/rrr/service_ids.bsh\"\n";
+    print $file "`include \"asim/rrr/client_control_ids.bsh\"\n";
     print $file "\n";
 
     # compute max request and response bitwidths
@@ -455,11 +473,18 @@ sub print_remote_stub
     }
     print $file "\n";
     
+    # print control ID link
+    print $file $indent                                           .
+                "Connection_Send#(UMF_METHOD_ID) control "        .
+                "<- mkConnection_Send(\"control_client_"          .
+                $self->{name}                                     .
+                "\");\n\n";
+
     # method definitions
     foreach my $method (@{ $self->{methodlist} })
     {
-        $method->print_remote_make_request_definition($file, $indent);
-        $method->print_remote_get_response_definition($file, $indent);
+        $method->print_remote_make_request_definition($file, $indent, $self->{name});
+        $method->print_remote_get_response_definition($file, $indent, $self->{name});
     }
     
     # endmodule
@@ -469,6 +494,46 @@ sub print_remote_stub
     # closing stamements
     print $file "`endif\n";
     print $file "\n";
+}
+
+######################################
+#    CONTROL IDS FOR REMOTE STUB     #
+######################################
+
+##
+## print control IDs into a given file in bsv
+##
+sub print_control_ids
+{
+    # capture params
+    my $self   = shift;
+    my $file   = shift;
+
+    # make sure it's a Bluespec target
+    if ($self->{lang} ne "bsv")
+    {
+        return;
+    }    
+
+    # interface should be connection
+    if ($self->{ifc} ne "connection")
+    {
+        die "control IDs are valid only for connection-type interfaces";
+    }
+
+    # print entry for each method
+    my $controlID = 0;
+    foreach my $method (@{ $self->{methodlist} })
+    {
+        print $file "\`define "     .
+                    $self->{name}   .
+                    "_"             .
+                    $method->name() .
+                    "_CONTROL_ID "  .
+                    $controlID      .
+                    "\n";
+        $controlID = $controlID + 1;
+    }
 }
 
 1;

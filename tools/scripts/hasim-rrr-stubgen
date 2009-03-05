@@ -110,7 +110,7 @@ else
 if ($mode eq "stub")
 {
     ##
-    ## Generate individual BSV stubs
+    ## Generate individual stubs
     ##
     foreach my $service (@serviceTable)
     {
@@ -153,6 +153,12 @@ if ($mode eq "stub")
     $ofile = $odir . "/client_connections.bsh";
     open($ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
     print_client_connections($ohandle, "hw", @serviceTable);
+    close($ohandle);
+
+    # client control IDs *** SLIGHTLY HACKY *** see method definition
+    $ofile = $odir . "/client_control_ids.bsh";
+    open($ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
+    print_client_control_ids($ohandle, "hw", @serviceTable);
     close($ohandle);
 
     ##
@@ -319,6 +325,47 @@ sub print_service_ids
     print $ofile_bsh "\`define NUM_SERVICES $serviceID\n";
     print $ofile_bsh "\n";
     print $ofile_bsh "\`endif // __RRR_SERVICE_IDS__\n";
+}
+
+###############################################################################
+# print_client_control_ids: *** SLIGHTLY HACKY ***
+#                           given a parsed service table, print per-method
+#                           controlIDs for BSV client-connections. These method
+#                           IDs are the same numerals as the actual RRR method
+#                           IDs, so we should unify them. We could also print
+#                           them into one or more separate files. Note that the
+#                           method identifier namespace will still have to be
+#                           global because client_connections.bsh is global
+#                           across all RRR services.
+
+sub print_client_control_ids
+{
+    my $file = shift;
+    my $target = shift;
+    my @serviceTable = @_;
+
+    # generate common header
+    print $file "//\n";
+    print $file "// Synthesized header file created by hasim-rrr-stubgen\n";
+    print $file "//\n\n";
+    print $file "`ifndef _RRR_CLIENT_CONTROL_IDS_\n";
+    print $file "`define _RRR_CLIENT_CONTROL_IDS_\n";
+    print $file "\n";
+
+    # for each service
+    foreach my $service (@serviceTable)
+    {
+        # print module and connection instantiations
+        if ($service->needs_client_connections($target))
+        {
+            $service->print_client_control_ids($file, $target);
+            print $file "\n";
+        }
+    }
+
+    # end file
+    print $file "`endif\n";
+    print $file "\n";
 }
 
 ################################################################
@@ -490,6 +537,7 @@ sub print_client_connections
     print $file "`include \"channelio.bsh\"\n";
     print $file "`include \"umf.bsh\"\n";
     print $file "`include \"asim/rrr/service_ids.bsh\"\n";
+    print $file "`include \"asim/rrr/client_control_ids.bsh\"\n";
     print $file "\n";
 
     # import header files for generated stubs

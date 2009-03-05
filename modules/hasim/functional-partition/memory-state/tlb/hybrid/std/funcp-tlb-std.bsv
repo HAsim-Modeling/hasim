@@ -31,7 +31,6 @@ import FShow::*;
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/fpga_components.bsh"
-`include "asim/provides/hasim_cache.bsh"
 
 `include "asim/provides/hasim_isa.bsh"
 `include "asim/provides/funcp_base_types.bsh"

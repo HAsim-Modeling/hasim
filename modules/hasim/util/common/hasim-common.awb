@@ -2,7 +2,6 @@
 %desc Hasim Common Library
 %provides hasim_common
 %requires hasim_modellib
-%requires hasim_cache
 %requires platform_interface
 %requires smart_synth_boundaries
 %requires soft_connections
@@ -11,17 +10,11 @@
 
 %attributes hasim
 
-%public alias_def.bsv
+%public hasim-common.bsh
+
 %public token.bsv
-%public extends.bsv
-%public fifos.bsv
-%public fpga-fifos.bsv
-%public debug-file.bsv
+%public hasim-debug-file.bsv
 %public assertion-checker.bsv
-%public hash-bits.bsv
-%public counting-filter.bsv
-%public counters.bsv
-%public memory-heap.bsv
 %public utils.bsv
 %public multictx.bsv 
 %public stats.bsv
@@ -29,7 +22,6 @@
 %public dynamic-parameters.bsv 
 
 %sources -t DICT -v PUBLIC hasim-common.dic
-%private bluespec-common.prj
 
 %param --global CONTEXT_ID_BITS 1 "Number of bits in context ID (2 = 4 contexts)."
 %param --global CONTEXT_ID_BITS_RRR 8 "RRR-friendly size that holds a context ID."

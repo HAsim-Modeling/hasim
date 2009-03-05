@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2008 Intel Corporation
+// Copyright (C) 2009 Intel Corporation
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -17,11 +17,6 @@
 //
 
 //
-// Hacks for defining type aliases within a module to work around lack of
-// "typedef" inside module scope.
+// Include base FPGA libraries
 //
-typeclass Alias#(type a, type b);
-endtypeclass
-
-instance Alias#(a,a);
-endinstance
+`include "asim/provides/libfpga_bsv.bsh"

@@ -21,61 +21,7 @@
 import Vector::*;
 
 // All debug output files go in a subdirectory
-function String debugPath(String fname) = "hasim_debug/" + fname;
-
-
-// ========================================================================
-//
-//   Basic debug file.  No model cycle, no thread context.
-//
-// ========================================================================
-
-// DEBUG_FILE
-
-// A wrapper for a simulation debugging file.
-
-interface DEBUG_FILE;
-
-    method Action record(Fmt fmt);
-
-endinterface
-
-
-//
-// mkDebugFile --
-//     Standard simulation debugging file.
-//
-module mkDebugFile#(String fname)
-    // interface:
-        (DEBUG_FILE);
-
-    COUNTER#(32) fpga_cycle <- mkLCounter(0);
-
-    Reg#(File) debugLog <- mkReg(InvalidFile);
-    Reg#(Bool) initialized <- mkReg(False);
-
-    rule open (initialized == False);
-        let fd <- $fopen(debugPath(fname), "w");
-        if (fd == InvalidFile)
-        begin
-            $display("Error opening debugging logfile " + debugPath(fname));
-            $finish(1);
-        end
-
-        debugLog <= fd;
-        initialized <= True;
-    endrule
-
-    rule inc (True);
-        fpga_cycle.up();
-    endrule
-
-    method Action record(Fmt fmt) if (initialized);
-        $fdisplay(debugLog, $format("[%d]: ", fpga_cycle.value()) + fmt);
-        $fflush(debugLog);
-    endmethod
-
-endmodule
+function String debugPath(String fname) = `DEBUG_LOG_DIR + "/" + fname;
 
 
 // ========================================================================

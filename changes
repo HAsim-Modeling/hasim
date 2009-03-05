@@ -17548,3 +17548,45 @@ The cache policy change makes a timing bug in RRR more likely.  RRR methods
 within a service are not guaranteed to be ordered.  This can allow a
 load and a store to be reordered before reaching the memory service.
 Angshuman is working on that.
+
+----------
+mcadler     Date: Wed Mar  4 22:30:23 EST 2009  CSN: CSN-hasim-594
+                  Thu Mar  5 03:30:23 UTC 2009
+
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Modified          593 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          593 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          593 
+
+Directory modules/hasim/util
+ cache/                    Locally Removed           592 
+
+Directory modules/hasim/util/common
+ bluespec-common.prj       Locally Removed           592 
+ counters.bsv              Locally Removed           592 
+ hasim-debug-file.bsv      Locally Added               - 
+ debug-file.bsv            Locally Removed           592 
+ fifos.bsv                 Locally Removed           592 
+ hasim-common.awb          Locally Modified          592 
+ alias_def.bsv             Locally Removed           592 
+ hasim-common.bsh          Locally Added               0 
+ counting-filter.bsv       Locally Removed           592 
+ extends.bsv               Locally Removed           592 
+ token.bsv                 Locally Modified          592 
+ fpga-fifos.bsv            Locally Removed           592 
+ hash-bits.bsv             Locally Removed           592 
+ memory-heap.bsv           Locally Removed           592 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          592 
+
+- hasim-configure now treats public BSH files as include files instead of as
+  imported Bluespec libraries.  BSH files are included by the synthesized
+  header instead of being imported in the synthesized BSV file.
+- Move core modules that aren't part of a HAsim timing model to the platforms
+  repository.

@@ -697,6 +697,18 @@ sub __make_bsvfiles {
     }
     print BSHFILE "\n";
 
+    # .bsh (include) files get included in the synthesized headers.  That way
+    # a module can declare a set of public files that get included as source.
+    # Bluespec would normally import a compiled file and not see the source.
+    foreach my $f ($module->sources("BSH", "PUBLIC")) {
+        print BSHFILE "`include \"$f\"\n";
+        if ($f eq "${provides}.bsv") {
+            print STDERR "File name clash:  interface ${provides} uses a source file with the same name!\n";
+            exit(1);
+        }
+    }
+    print BSHFILE "\n";
+
     print BSHFILE "`ifndef BUILDING_MODULE_${safe_provides}\n";
     print BSHFILE "    import ${provides}::*;\n";
     print BSHFILE "`endif\n";
@@ -721,7 +733,8 @@ sub __make_bsvfiles {
     print BSVFILE "`include \"asim/provides/${provides}.bsh\"\n";
     print BSVFILE "\n";
 
-    # Add includes of public and private bsc files
+    # Add includes of public and private bsc files.  Skip .bsh files since they
+    # were included above in the synthesized bsh file.
     if ($public) {
         foreach my $f ($module->sources("BSV", "PUBLIC")) {
             print BSVFILE "`include \"$f\"\n";

@@ -21,6 +21,8 @@
 
 import FShow::*;
 
+`include "asim/provides/fpga_components.bsh"
+
 //
 // TOKEN_INDEX is a combination of two ID's:  the context ID and the token ID
 // within a context.

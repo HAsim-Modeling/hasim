@@ -17590,3 +17590,17 @@ Directory tools/scripts
   header instead of being imported in the synthesized BSV file.
 - Move core modules that aren't part of a HAsim timing model to the platforms
   repository.
+
+----------
+pellauer    Date: Thu Mar  5 16:05:27 EST 2009  CSN: CSN-hasim-595
+                  Thu Mar  5 21:05:27 UTC 2009
+
+
+Directory modules/hasim/util/modellib
+ stall-ports.bsv           Locally Modified          594 
+ a-ports.bsv               Locally Modified          594 
+
+
+* Small bugfix in Ports. (Still haven't quite fixed Guan Yi's bug.)
+
+Michael P.

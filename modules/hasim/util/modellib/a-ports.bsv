@@ -105,15 +105,15 @@ module [HASIM_MODULE] mkPortRecv#(String portname, Integer latency)
   
   let p <- case (latency)
              0: mkPortRecv_L0(portname);
-             1: mkPortRecv_L1(portname);
-             default: mkPortRecv_Buffered(portname, latency, 0);
+             1: mkPortRecv_L1(portname, tagged Invalid);
+             default: mkPortRecv_Buffered(portname, latency, 0, tagged Invalid);
            endcase;
  
   return p;
 
 endmodule
 
-module [HASIM_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Integer extra_buffering)
+module [HASIM_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Integer extra_buffering, Maybe#(msg_T) init_value)
     //interface:
                 (PORT_RECV#(msg_T))
       provisos
@@ -130,7 +130,7 @@ module [HASIM_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Int
   Reg#(Maybe#(msg_T)) rs[rMax];
   
   for (Integer x = 0; x < rMax; x = x + 1)
-    rs[x] <- mkReg(Invalid);
+    rs[x] <- mkReg(init_value);
 
   Reg#(Bit#(8)) head <- mkReg(fromInteger(latency));
   Reg#(Bit#(8)) tail <- mkReg(0);
@@ -210,7 +210,7 @@ endmodule
 
 //Port optimized for latency 1
 
-module [HASIM_MODULE] mkPortRecv_L1#(String portname)
+module [HASIM_MODULE] mkPortRecv_L1#(String portname, Maybe#(msg_T) init_value)
     //interface:
                 (PORT_RECV#(msg_T))
       provisos
@@ -218,7 +218,7 @@ module [HASIM_MODULE] mkPortRecv_L1#(String portname)
                  Transmittable#(Maybe#(msg_T)));
 
   Connection_Receive#(Maybe#(msg_T)) con <- mkConnection_Receive(portname);
-  Reg#(Bool) initval <- mkReg(True);
+  Reg#(Bool) initializing <- mkReg(True);
      
 
   //XXX a temporary set of control info
@@ -234,10 +234,10 @@ module [HASIM_MODULE] mkPortRecv_L1#(String portname)
 
   
   method ActionValue#(Maybe#(msg_T)) receive();
-    if (initval)
+    if (initializing)
     begin
-      initval <= False;
-      return Invalid;
+      initializing <= False;
+      return init_value;
     end
     else
     begin
@@ -290,7 +290,35 @@ module [HASIM_MODULE] mkPortRecv_MultiCtx#(String portname, Integer latency)
 
     for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
     begin
-      ports[x] <- mkPortRecvUG(portname + "_" + integerToString(x), latency);
+      ports[x] <- mkPortRecvUG(portname + "_" + integerToString(x), latency, tagged Invalid);
+      portCtrls[x] = ports[x].ctrl;
+    end
+
+    interface ctrl = portCtrls;
+
+    method ActionValue#(Maybe#(t_MSG)) receive(CONTEXT_ID ctx);
+
+      let res <- ports[ctx].receive();
+      return res;
+
+    endmethod
+
+endmodule
+
+module [HASIM_MODULE] mkPortRecvInitial_MultiCtx#(String portname, Integer latency, t_MSG initValue)
+    //interface:
+        (PORT_RECV_MULTICTX#(t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         Transmittable#(Maybe#(t_MSG)));
+
+
+    Vector#(NUM_CONTEXTS, PORT_RECV#(t_MSG)) ports = newVector();
+    Vector#(NUM_CONTEXTS, PORT_CONTROL) portCtrls = newVector();
+
+    for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+    begin
+      ports[x] <- mkPortRecvUG(portname + "_" + integerToString(x), latency, tagged Valid initValue);
       portCtrls[x] = ports[x].ctrl;
     end
 
@@ -389,7 +417,7 @@ module [HASIM_MODULE] mkPortSendUG#(String portname)
   
 endmodule
 
-module [HASIM_MODULE] mkPortRecvUG#(String portname, Integer latency)
+module [HASIM_MODULE] mkPortRecvUG#(String portname, Integer latency, Maybe#(msg_T) initValue)
     //interface:
         (PORT_RECV#(msg_T))
         provisos
@@ -398,14 +426,14 @@ module [HASIM_MODULE] mkPortRecvUG#(String portname, Integer latency)
 
     let p <- case (latency)
                0: mkPortRecvUG_L0(portname);
-               1: mkPortRecvUG_L1(portname);
-               default: mkPortRecvUG_Buffered(portname, latency, 0);
+               1: mkPortRecvUG_L1(portname, initValue);
+               default: mkPortRecvUG_Buffered(portname, latency, 0, initValue);
              endcase;
 
     return p;
 
 endmodule
-module [HASIM_MODULE] mkPortRecvUG_Buffered#(String portname, Integer latency, Integer extra_buffering)
+module [HASIM_MODULE] mkPortRecvUG_Buffered#(String portname, Integer latency, Integer extra_buffering, Maybe#(msg_T) init_value)
     //interface:
                 (PORT_RECV#(msg_T))
       provisos
@@ -422,7 +450,7 @@ module [HASIM_MODULE] mkPortRecvUG_Buffered#(String portname, Integer latency, I
   Reg#(Maybe#(msg_T)) rs[rMax];
   
   for (Integer x = 0; x < rMax; x = x + 1)
-    rs[x] <- mkReg(Invalid);
+    rs[x] <- mkReg(init_value);
 
   Reg#(Bit#(8)) head <- mkReg(fromInteger(latency));
   Reg#(Bit#(8)) tail <- mkReg(0);
@@ -507,7 +535,7 @@ endmodule
 
 //Port optimized for latency 1
 
-module [HASIM_MODULE] mkPortRecvUG_L1#(String portname)
+module [HASIM_MODULE] mkPortRecvUG_L1#(String portname, Maybe#(msg_T) init_value)
     //interface:
                 (PORT_RECV#(msg_T))
       provisos
@@ -515,13 +543,13 @@ module [HASIM_MODULE] mkPortRecvUG_L1#(String portname)
                  Transmittable#(Maybe#(msg_T)));
 
   Connection_Receive#(Maybe#(msg_T)) con <- mkConnectionRecvUG(portname);
-  Reg#(Bool) initval <- mkReg(True);
+  Reg#(Bool) initializing <- mkReg(True);
      
 
   //XXX a temporary set of control info
   interface PORT_CONTROL ctrl;
 
-        method Bool empty() = !(con.notEmpty || initval);
+        method Bool empty() = !(con.notEmpty || initializing);
         method Bool full() = True;
         method Bool balanced() = True;
         method Bool light() = False;
@@ -531,10 +559,10 @@ module [HASIM_MODULE] mkPortRecvUG_L1#(String portname)
 
   method ActionValue#(Maybe#(msg_T)) receive();
 
-    if (initval)
+    if (initializing)
     begin
-      initval <= False;
-      return Invalid;
+      initializing <= False;
+      return init_value;
     end
     else
     begin

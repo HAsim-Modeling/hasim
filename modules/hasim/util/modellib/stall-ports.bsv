@@ -150,7 +150,7 @@ module [HASIM_MODULE] mkPortStallRecv#(String s)
 
     Connection_Send#(Bool) creditToProducer <- mkConnectionSendUG(s + ":cred");
 
-    PORT_RECV#(a) enqFromProducer <- mkPortRecvUG(s + ":portDataEnq", 0);
+    PORT_RECV#(a) enqFromProducer <- mkPortRecvUG_L0(s + ":portDataEnq");
 
     FIFOF#(a) fifo <- mkUGSizedFIFOF(2);
 

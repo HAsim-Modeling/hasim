@@ -17627,3 +17627,21 @@ An RRR request from the model sends the method ID over this control
 connection and ensures that requests arrive at the RRR demarshaller in
 the same sequence that they were made.
 
+
+----------
+mcadler     Date: Tue Mar 10 23:00:31 EDT 2009  CSN: CSN-hasim-597
+                  Wed Mar 11 03:00:31 UTC 2009
+
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid.apm       Locally Removed           596 
+ mem_test_hybrid_exe.apm   Locally Added               - 
+
+Directory modules/system/test/mem_test
+ MemTest.bsv               Locally Modified          596 
+ memtest-streams.dic       Locally Modified          596 
+
+- Update memory test to changes in the scratchpad interface.
+- Emit pipelined reads instead of waiting for the response before starting the
+  next.
+- Add a read latency test.

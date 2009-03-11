@@ -17645,3 +17645,29 @@ Directory modules/system/test/mem_test
 - Emit pipelined reads instead of waiting for the response before starting the
   next.
 - Add a read latency test.
+
+----------
+aparasha    Date: Wed Mar 11 09:35:25 EDT 2009  CSN: CSN-hasim-598
+                  Wed Mar 11 13:35:25 UTC 2009
+
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_htg.apm      Locally Modified          597 
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_exe.apm    Locally Modified          597 
+ rrrtest_hybrid_htg.apm    Locally Modified          597 
+
+Directory config/pm/bluespec/demos/fir_filter
+ fir_filter_hw_exe.apm     Locally Modified          597 
+ fir_filter_sw.apm         Locally Modified          597 
+
+Directory config/pm/bluespec/demos/simple
+ switch2led.apm            Locally Modified          597 
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hwonly_xup.apm    Locally Modified          597 
+ devtest_hybrid_htg.apm    Locally Modified          597 
+
+Updated "pure bluespec" APMs to use NULL Bluespec Common since all
+required library .v's are now part of libfpga.

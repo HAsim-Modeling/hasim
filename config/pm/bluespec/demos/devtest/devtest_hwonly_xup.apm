@@ -21,14 +21,8 @@ File=modules/bluespec/system/demos/devtest/devtest.awb
 Packagehint=hasim
 
 
-
-
-[Bluespec Common Library with FPGA]
-File=modules/bluespec/common/base/bluespec_base.awb
-Packagehint=hasim
-
 [Pure Bluespec Hardware-Only Model Foundation/Requires]
-bluespec_common=Bluespec Common Library with FPGA
+bluespec_common=Bluespec Null Library
 bluespec_system=Bluespec Device Tester
 hasim_controller=Hardware-Only Null Controller
 fpgaenv=FPGA Environment
@@ -42,4 +36,8 @@ MAKE_ALL_TARGET=bit
 
 [Pure Bluespec Hardware-Only Model Foundation]
 File=modules/model/pure_bluespec_model.awb
+Packagehint=hasim
+
+[Bluespec Null Library]
+File=modules/bluespec/common/null/bluespec_null.awb
 Packagehint=hasim

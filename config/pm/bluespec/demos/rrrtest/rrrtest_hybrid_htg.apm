@@ -16,20 +16,15 @@ model=Pure Bluespec Hybrid Model Foundation
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
 Packagehint=platforms
 
-
 [Pure Bluespec Hybrid Model Foundation]
 File=modules/model/pure_bluespec_hybrid_model.awb
 Packagehint=hasim
 
 [Pure Bluespec Hybrid Model Foundation/Requires]
-bluespec_common=Bluespec Common Library with FPGA
 bluespec_system=Bluespec RRR Test and Benchmarking Program
 fpgaenv=FPGA Environment
 hasim_controller=Hybrid Null Controller
-
-[Bluespec Common Library with FPGA]
-File=modules/bluespec/common/base/bluespec_base.awb
-Packagehint=hasim
+bluespec_common=Bluespec Null Library
 
 [Pure Bluespec Hybrid Model Foundation/Params]
 MAKE_ALL_TARGET=bit
@@ -40,4 +35,8 @@ Packagehint=hasim
 
 [Bluespec RRR Test and Benchmarking Program]
 File=modules/bluespec/system/demos/rrrtest/rrrtest.awb
+Packagehint=hasim
+
+[Bluespec Null Library]
+File=modules/bluespec/common/null/bluespec_null.awb
 Packagehint=hasim

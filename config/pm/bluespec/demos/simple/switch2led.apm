@@ -16,13 +16,12 @@ model=Pure Bluespec Hybrid Model Foundation
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
 Packagehint=platforms
 
-
 [Bluespec Switch to Led Example]
 File=modules/bluespec/system/demos/switch2led/switch2led_system.awb
 Packagehint=hasim
 
 [Pure Bluespec Hybrid Model Foundation/Requires]
-bluespec_common=Bluespec Common Library with FPGA
+bluespec_common=Bluespec Null Library
 bluespec_system=Bluespec Switch to Led Example
 fpgaenv=FPGA Environment
 hasim_controller=Hybrid Null Controller
@@ -35,6 +34,7 @@ Packagehint=hasim
 File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
 Packagehint=hasim
 
-[Bluespec Common Library with FPGA]
-File=modules/bluespec/common/base/bluespec_base.awb
+
+[Bluespec Null Library]
+File=modules/bluespec/common/null/bluespec_null.awb
 Packagehint=hasim

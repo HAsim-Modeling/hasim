@@ -28,15 +28,16 @@ File=modules/model/pure_bluespec_hybrid_model.awb
 Packagehint=hasim
 
 [Pure Bluespec Hybrid Model Foundation/Requires]
-bluespec_common=Bluespec Common Library with FPGA
+bluespec_common=Bluespec Null Library
 bluespec_system=Bluespec Device Tester
 fpgaenv=FPGA Environment
 hasim_controller=Hybrid Null Controller
 
-[Bluespec Common Library with FPGA]
-File=modules/bluespec/common/base/bluespec_base.awb
-Packagehint=hasim
 
 [Hybrid Null Controller]
 File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
+Packagehint=hasim
+
+[Bluespec Null Library]
+File=modules/bluespec/common/null/bluespec_null.awb
 Packagehint=hasim

@@ -21,7 +21,7 @@ File=modules/model/pure_bluespec_hybrid_model.awb
 Packagehint=hasim
 
 [Pure Bluespec Hybrid Model Foundation/Requires]
-bluespec_common=Bluespec Common Library with FPGA
+bluespec_common=Bluespec Null Library
 bluespec_system=SW only FIR Filter Demo
 fpgaenv=FPGA Environment
 hasim_controller=Hybrid Null Controller
@@ -34,6 +34,7 @@ Packagehint=hasim
 File=modules/bluespec/system/demos/fir-filter/sw-only/fir-filter-system.awb
 Packagehint=hasim
 
-[Bluespec Common Library with FPGA]
-File=modules/bluespec/common/base/bluespec_base.awb
+
+[Bluespec Null Library]
+File=modules/bluespec/common/null/bluespec_null.awb
 Packagehint=hasim

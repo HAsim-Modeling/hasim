@@ -1,4 +1,10 @@
+// Connection to scratchpad memory
+def VDEV.SCRATCH.MEMTEST     "scratch_memtest";
+
+// Messages
 def STREAMS.MEMTEST.DATA     "mem[0x%8x] = 0x%08x\n";
 def STREAMS.MEMTEST.LATENCY  "latency (8 loads, one byte per load) = 0x%08x%08x\n";
 def STREAMS.MEMTEST.INVAL    "invalidating 0x%08x\n";
 def STREAMS.MEMTEST.DONE     "memtest: done (addr sz = %d, data sz = %d)\n";
+
+def STREAMID.MEMTEST          "memtest";

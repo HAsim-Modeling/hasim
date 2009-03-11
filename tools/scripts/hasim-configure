@@ -694,6 +694,16 @@ sub __make_bsvfiles {
       my $pvalue = $p->value();
       
       print BSHFILE "`define $pname $pvalue\n";
+
+      ##
+      ## This hack works around a weakness in Bluespec's preprocessor.  There
+      ## is an ifdef test but no comparison (e.g. `if FOO = 0).  So we can at
+      ## least use awb parameters as preprocessor booleans, we define
+      ## a special name when the value of a predicate is 0.
+      ##
+      if ($p->isInt() && ($pvalue == 0)) {
+          print BSHFILE "`define ${pname}_Z $pvalue\n";
+      }
     }
     print BSHFILE "\n";
 

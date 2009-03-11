@@ -104,15 +104,16 @@ sub EmitEnumValues($$$$) {
     my $idxBits = $dict->GetTotalNumBits() - $dict->GetUIDNumBits();
     my $uid = $dict->GetUID() << $idxBits;
 
-    printf $of $format, $m, '_BASE', $uid;
-    printf $of "\n";
-
     my $idx = -1;
     foreach my $n ($dict->GetSortedEntries()) {
         $idx += 1;
         my $id = $idx + $uid;
         printf $of $format, $m, $n, $id;
     }
+
+    printf $of "\n";
+    printf $of $format, $m, '_BASE', $uid;
+    printf $of $format, $m, '_NENTRIES', $idx + 1;
 
     if ($idx == -1) {
         $idx = 0;

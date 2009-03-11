@@ -19,6 +19,8 @@
 // partitions. The token type includes an index for token tables, epochs,
 // and scratchpads which partitions can use as they see fit.             
 
+import Vector::*;
+
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/front_panel.bsh"
@@ -33,13 +35,15 @@
 
 typedef struct
 {
-  Bit#(1) b_up;
-  Bit#(1) b_down;
-  Bit#(1) b_left;
-  Bit#(1) b_right;
-  Bit#(1) b_center;
+    Bit#(1) b_up;
+    Bit#(1) b_down;
+    Bit#(1) b_left;
+    Bit#(1) b_right;
+    Bit#(1) b_center;
 }
-  ButtonInfo deriving (Eq, Bits);
+ButtonInfo
+    deriving (Eq, Bits);
+
 
 module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelReset)
     // interface
@@ -54,8 +58,11 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
     Connection_Send#(Bool) link_reset <- mkConnection_Send("soft_reset");
 
     // currently only one user can read and write memory
-    Connection_Server#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory       <- mkConnection_Server("vdev_memory");
-    Connection_Send#(SCRATCHPAD_MEM_ADDRESS)              link_memory_inval <- mkConnection_Send("vdev_memory_invalidate");
+    Vector#(SCRATCHPAD_N_CLIENTS, Connection_Server#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE)) link_memory = newVector();
+    for (Integer p = 0; p < valueOf(SCRATCHPAD_N_CLIENTS); p = p + 1)
+    begin
+        link_memory[p] <- mkConnection_Server("vdev_memory_" + integerToString(p));
+    end
 
     // other virtual devices
     Connection_Receive#(STREAMS_REQUEST) link_streams <- mkConnection_Receive("vdev_streams");
@@ -64,9 +71,9 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
     LowLevelPlatformInterface llpint <- mkLowLevelPlatformInterface(topLevelClock, topLevelReset);
 
     // instantiate virtual devices
-    FrontPanel   frontPanel <- mkFrontPanel(llpint);
-    SCRATCHPAD_MEMORY_VIRTUAL_DEVICE  memory     <- mkMemoryVirtualDevice(llpint);
-    Streams      streams    <- mkStreams(llpint);
+    FrontPanel frontPanel <- mkFrontPanel(llpint);
+    SCRATCHPAD_MEMORY_VIRTUAL_DEVICE memory <- mkMemoryVirtualDevice(llpint);
+    Streams streams <- mkStreams(llpint);
 
     // connection terminus
     let t <- mkConnectionTerminus();
@@ -112,34 +119,6 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
         llpint.physicalDrivers.soft_reset();
         link_reset.send(?);
     endrule
-    
-    rule send_mem_req (True);
-      //Read in memory request and pass it on.
-      //Eventually we'll have to arbitrate between different users
-      let mreq = link_memory.getReq();
-      link_memory.deq();
-      
-      memory.makeMemRequest(mreq);
-    
-    endrule
-    
-    rule send_mem_resp (True);
-    
-      //Read in mem resp and pass it on.
-      //Eventually we'll have to figure out which user to send it to.
-      let mrsp <- memory.getMemResponse();
-      link_memory.makeResp(mrsp);
-    
-    endrule
-    
-    rule send_mem_inval (True);
-    
-      //Read the mem invalidates and pass them on.
-      //This will ultimately be a broadcast to all users.
-      let inval <- memory.getInvalidateRequest();
-      link_memory_inval.send(inval);
-    
-    endrule
 
     rule send_streams_req (True);
 
@@ -153,6 +132,34 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
 
     endrule
 
+    //
+    // Scratchpad connections.  One connection for each individual port.
+    //
+    for (Integer p = 0; p < valueOf(SCRATCHPAD_N_CLIENTS); p = p + 1)
+    begin
+        rule sendScratchpadReq (True);
+            let req = link_memory[p].getReq();
+            link_memory[p].deq();
+
+            case (req) matches
+                tagged SCRATCHPAD_MEM_READ .addr:
+                begin
+                    memory.ports[p].readReq(addr);
+                end
+
+                tagged SCRATCHPAD_MEM_WRITE .wr_info:
+                begin
+                    memory.ports[p].write(wr_info.addr, wr_info.val);
+                end
+            endcase
+        endrule
+    
+        rule sendScratchpadResp (True);
+            let d <- memory.ports[p].readRsp();
+            link_memory[p].makeResp(d);
+        endrule
+    end
+    
     // return interface to top-level wires
     return llpint.topLevelWires;
 

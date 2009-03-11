@@ -17671,3 +17671,45 @@ Directory config/pm/bluespec/demos/devtest
 
 Updated "pure bluespec" APMs to use NULL Bluespec Common since all
 required library .v's are now part of libfpga.
+
+----------
+mcadler     Date: Wed Mar 11 18:02:42 EDT 2009  CSN: CSN-hasim-599
+                  Wed Mar 11 22:02:42 UTC 2009
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          598 
+ hasim-dict                Locally Modified          598 
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid_exe.apm   Locally Modified          598 
+ mem_test_hybrid_htg.apm   Locally Modified          598 
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.awb    Locally Modified          598 
+ platform-interface.bsv    Locally Modified          598 
+ connection-terminus.bsv   Locally Modified          598 
+ platform-scratchpad-memory.bsv Locally Added               0 
+
+Directory modules/system/test/mem_test
+ memtest-streamid.dic      Locally Removed           598 
+ mem-test.awb              Locally Added               - 
+ mem-test.bsv              Locally Added               - 
+ mem_test.awb              Locally Removed           598 
+ MemTest.bsv               Locally Removed           598 
+ memtest-streams.dic       Locally Removed           598 
+ mem-test.dic              Locally Added               - 
+
+- Add a hack to hasim-configure to work around the lack of `if in the Bluespec
+  preprocessor.  When an awb parameter is 0, hasim-configure adds a second
+  definition using the name with a _Z suffix (e.g. LOCAL_MEM_USE_LINES_Z).
+  Conditional code can then check `ifdef LOCAL_MEM_USE_LINES_Z as a test for
+  zero/nonzero.
+- Add a `define with the number of entries at each level of a dictionary.
+- Change the platform interface to export one port to the scratchpad memory
+  for every dictionary entry in VDEV.SCRATCH.
+- Wrap the data passed from a model to scratchpad memory in method calls at
+  each end.  The end points no longer know that the message is passed through
+  a soft connection.  Using this interface a cache could be inserted
+  without the knowledge of the end points.
+- Update mem-test to use the new scratchpad interface.

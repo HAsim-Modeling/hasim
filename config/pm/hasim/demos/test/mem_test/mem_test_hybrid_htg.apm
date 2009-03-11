@@ -18,7 +18,7 @@ Packagehint=platforms
 
 [HAsim Hybrid Model Foundation/Requires]
 hasim_common=Hasim Common Library
-hasim_system=Hasim - Virtual Memory Test system
+hasim_system=HAsim Scratchpad Memory Test System
 hasim_controller=Hybrid Null Controller
 fpgaenv=FPGA Environment
 
@@ -38,7 +38,6 @@ File=config/pm/hasim/submodels/common/hasim_common.apm
 Packagehint=hasim
 
 
-
-[Hasim - Virtual Memory Test system]
-File=modules/system/test/mem_test/mem_test.awb
+[HAsim Scratchpad Memory Test System]
+File=modules/system/test/mem_test/mem-test.awb
 Packagehint=hasim

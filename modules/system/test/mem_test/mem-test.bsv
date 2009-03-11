@@ -27,9 +27,11 @@ import Vector::*;
 
 `include "asim/provides/scratchpad_memory.bsh"
 `include "asim/provides/streams.bsh"
+`include "asim/dict/VDEV_SCRATCH.bsh"
 `include "asim/dict/STREAMID.bsh"
 `include "asim/dict/STREAMS_MEMTEST.bsh"
 `include "asim/dict/STREAMS_MESSAGE.bsh"
+
 
 `define START_ADDR 0
 `define LAST_ADDR  'h100
@@ -53,9 +55,9 @@ typedef Bit#(32) CYCLE_COUNTER;
 
 module [HASIM_MODULE] mkSystem ();
 
-    Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory <- mkConnection_Client("vdev_memory");
-    Connection_Receive#(SCRATCHPAD_MEM_ADDRESS)                      link_memory_inval <- mkConnection_Receive("vdev_memory_invalidate");
-    Connection_Send#(STREAMS_REQUEST)                                link_streams <- mkConnection_Send("vdev_streams");
+    MEMORY_IFC#(SCRATCHPAD_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE) memory <- mkDirectScratchpad(`VDEV_SCRATCH_MEMTEST);
+
+    Connection_Send#(STREAMS_REQUEST) link_streams <- mkConnection_Send("vdev_streams");
 
     Reg#(CYCLE_COUNTER) cycle <- mkReg(0);
     Reg#(STATE) state <- mkReg(STATE_init);
@@ -88,7 +90,7 @@ module [HASIM_MODULE] mkSystem ();
         // write address+1 to data
         SCRATCHPAD_MEM_VALUE data = (addr == 1) ? zeroExtend(pack(addr)) : ~zeroExtend(pack(addr));
         
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_STORE { addr: addr, val: data });
+        memory.write(addr, data);
         
         if (addr == `LAST_ADDR)
         begin
@@ -109,7 +111,7 @@ module [HASIM_MODULE] mkSystem ();
     Reg#(Bool) readDone <- mkReg(False);
 
     rule readReq (state == STATE_reading && ! readDone);
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_LOAD addr);
+        memory.readReq(addr);
         readAddrQ.enq(addr);
         addr <= addr + 1;
 
@@ -121,9 +123,7 @@ module [HASIM_MODULE] mkSystem ();
         let r_addr = readAddrQ.first();
         readAddrQ.deq();
 
-        SCRATCHPAD_MEM_VALUE v = link_memory.getResp();
-        link_memory.deq();
-
+        let v <- memory.readRsp();
         if (v != 0)
         begin
             link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
@@ -149,7 +149,7 @@ module [HASIM_MODULE] mkSystem ();
     Reg#(Vector#(8, Bit#(8))) readCycles <- mkRegU();
 
     rule readTimeReq (state == STATE_read_timing && (readCycleReqIdx != 8));
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_LOAD addr);
+        memory.readReq(addr);
         readCycleQ.enq(cycle);
         addr <= addr + 4;
         readCycleReqIdx <= readCycleReqIdx + 1;
@@ -159,9 +159,7 @@ module [HASIM_MODULE] mkSystem ();
         let start_cycle = readCycleQ.first();
         readCycleQ.deq();
 
-        SCRATCHPAD_MEM_VALUE v = link_memory.getResp();
-        link_memory.deq();
-        
+        let v <- memory.readRsp();
         readCycles[readCycleRespIdx] <= truncate(cycle - start_cycle);
         readCycleRespIdx <= readCycleRespIdx + 1;
 
@@ -200,16 +198,6 @@ module [HASIM_MODULE] mkSystem ();
                                             stringID: `STREAMS_MESSAGE_EXIT,
                                             payload0: 0,
                                             payload1: 0 });
-    endrule
-
-
-    rule accept_invalidates(True);
-        SCRATCHPAD_MEM_ADDRESS addr = link_memory_inval.receive();
-        link_memory_inval.deq();
-        link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
-                                            stringID: `STREAMS_MEMTEST_INVAL,
-                                            payload0: zeroExtend(addr),
-                                            payload1: ? });
     endrule
 
 endmodule

@@ -108,9 +108,9 @@ module [HASIM_MODULE] mkPortStallSend#(String s)
             provisos (Bits#(a, sa),
                       Transmittable#(Maybe#(a)));
 
-    Connection_Receive#(Bool) creditFromQueue <- mkConnectionRecvUG(s + ":cred");
+    Connection_Receive#(Bool) creditFromQueue <- mkConnectionRecvUG(s + "__cred");
 
-    PORT_SEND#(a) enqToQueue <- mkPortSendUG(s + ":portDataEnq");
+    PORT_SEND#(a) enqToQueue <- mkPortSendUG(s + "__portDataEnq");
 
     Reg#(Bool) initCredit <- mkReg(True);
 
@@ -148,9 +148,9 @@ module [HASIM_MODULE] mkPortStallRecv#(String s)
             provisos (Bits#(a, sa),
                       Transmittable#(Maybe#(a)));
 
-    Connection_Send#(Bool) creditToProducer <- mkConnectionSendUG(s + ":cred");
+    Connection_Send#(Bool) creditToProducer <- mkConnectionSendUG(s + "__cred");
 
-    PORT_RECV#(a) enqFromProducer <- mkPortRecvUG_L0(s + ":portDataEnq");
+    PORT_RECV#(a) enqFromProducer <- mkPortRecvUG_L0(s + "__portDataEnq");
 
     FIFOF#(a) fifo <- mkUGSizedFIFOF(2);
 

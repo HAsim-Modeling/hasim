@@ -17713,3 +17713,19 @@ Directory modules/system/test/mem_test
   a soft connection.  Using this interface a cache could be inserted
   without the knowledge of the end points.
 - Update mem-test to use the new scratchpad interface.
+
+----------
+pellauer    Date: Tue Mar 17 15:35:17 EDT 2009  CSN: CSN-hasim-600
+                  Tue Mar 17 19:35:17 UTC 2009
+
+
+Directory modules/hasim/util/modellib
+ stall-ports.bsv           Locally Modified          599 
+
+
+* Turns out the colons in stall port names we'ren't getting parsed right by
+  hasim-connect. Changed to double-underscore.
+
+
+Michael P.
+

@@ -33,6 +33,8 @@
 //
 typedef union tagged 
 {
+    SCRATCHPAD_MEM_ADDRESS SCRATCHPAD_MEM_INIT;
+
     SCRATCHPAD_MEM_ADDRESS SCRATCHPAD_MEM_READ;
     struct {SCRATCHPAD_MEM_ADDRESS addr; SCRATCHPAD_MEM_VALUE val;} SCRATCHPAD_MEM_WRITE;
 }
@@ -50,12 +52,30 @@ function String scratchPortName(Integer n) = "vdev_memory_" + integerToString(n 
     
 module [HASIM_MODULE] mkDirectScratchpad#(Integer scratchpadID)
     // interface:
-    (MEMORY_IFC#(SCRATCHPAD_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE));
+    (MEMORY_IFC#(t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE))
+    provisos (Bits#(t_MEM_ADDRESS, t_MEM_ADDRESS_SZ),
+              Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
+
+              // Requested address type must be smaller than scratchpad maximum
+              Add#(a__, t_MEM_ADDRESS_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
     
     Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
 
-    method Action readReq(SCRATCHPAD_MEM_ADDRESS addr);
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_READ addr);
+    Reg#(Bool) initialized <- mkReg(False);
+    
+    //
+    // Allocate memory for this scratchpad region
+    //
+    rule doInit (! initialized);
+        initialized <= True;
+
+        Bit#(t_MEM_ADDRESS_SZ) alloc = maxBound;
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT zeroExtend(alloc));
+    endrule
+
+
+    method Action readReq(t_MEM_ADDRESS addr) if (initialized);
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_READ zeroExtend(pack(addr)));
     endmethod
 
     method ActionValue#(SCRATCHPAD_MEM_VALUE) readRsp();
@@ -65,7 +85,7 @@ module [HASIM_MODULE] mkDirectScratchpad#(Integer scratchpadID)
         return v;
     endmethod
 
-    method Action write(SCRATCHPAD_MEM_ADDRESS addr, SCRATCHPAD_MEM_VALUE val);
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE { addr: addr, val: val });
+    method Action write(t_MEM_ADDRESS addr, SCRATCHPAD_MEM_VALUE val) if (initialized);
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE { addr: zeroExtend(pack(addr)), val: val });
     endmethod
 endmodule

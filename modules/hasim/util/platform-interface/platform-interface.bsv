@@ -134,31 +134,52 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
 
     //
     // Scratchpad connections.  One connection for each individual port.
+    // Some implementations of scratchpad funnel all ports through the same
+    // FIFO and, thus, have conflicts between the ports.  The code below
+    // forces a static priority among the ports.
     //
+    Rules send_req = emptyRules;
     for (Integer p = 0; p < valueOf(SCRATCHPAD_N_CLIENTS); p = p + 1)
     begin
-        rule sendScratchpadReq (True);
-            let req = link_memory[p].getReq();
-            link_memory[p].deq();
+        let r =
+            (rules
+                rule sendScratchpadReq (True);
+                    let req = link_memory[p].getReq();
+                    link_memory[p].deq();
 
-            case (req) matches
-                tagged SCRATCHPAD_MEM_READ .addr:
-                begin
-                    memory.ports[p].readReq(addr);
-                end
+                    case (req) matches
+                        tagged SCRATCHPAD_MEM_INIT .allocLastWordIdx:
+                        begin
+                            let s <- memory.ports[p].init(allocLastWordIdx);
+                            if (! s)
+                            begin
+                                $display("ERROR: Out of scratchpad memory!");
+                                $finish;
+                            end
+                        end
 
-                tagged SCRATCHPAD_MEM_WRITE .wr_info:
-                begin
-                    memory.ports[p].write(wr_info.addr, wr_info.val);
-                end
-            endcase
-        endrule
+                        tagged SCRATCHPAD_MEM_READ .addr:
+                        begin
+                            memory.ports[p].mem.readReq(addr);
+                        end
+
+                        tagged SCRATCHPAD_MEM_WRITE .wr_info:
+                        begin
+                            memory.ports[p].mem.write(wr_info.addr, wr_info.val);
+                        end
+                    endcase
+                endrule
+            endrules);
+
+        send_req = rJoinDescendingUrgency(send_req, r);
     
         rule sendScratchpadResp (True);
-            let d <- memory.ports[p].readRsp();
+            let d <- memory.ports[p].mem.readRsp();
             link_memory[p].makeResp(d);
         endrule
     end
+
+    addRules(send_req);
     
     // return interface to top-level wires
     return llpint.topLevelWires;

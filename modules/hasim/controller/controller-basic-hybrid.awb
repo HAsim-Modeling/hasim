@@ -1,0 +1,13 @@
+%name Hybrid Basic Controller
+%desc Hybrid Basic Controller
+%attributes hasim
+
+%provides hasim_controller
+
+%requires command_switches
+%requires starter
+%requires central_controllers
+
+%public controller-basic.bsv 
+%public controller-basic.h
+%public controller-basic.cpp

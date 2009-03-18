@@ -165,8 +165,8 @@ module [Connected_Module] mkDynamicParameter#(PARAMS_DICT_TYPE myID, PARAMETER_N
     //interface:
         (Param#(bits)) provisos (Add#(a__, bits, 64));
 
-    Reg#(Bit#(bits)) value <- mkReg(0);
- 
+    Reg#(Maybe#(Bit#(bits))) value <- mkReg(tagged Invalid);
+
     // setValue
     //
     // Monitor the parameter node and update the parameter when it comes through.
@@ -174,12 +174,12 @@ module [Connected_Module] mkDynamicParameter#(PARAMS_DICT_TYPE myID, PARAMETER_N
     rule setValue(True);
         if (paramNode.checkForNewValue(myID) matches tagged Valid .v)
         begin
-            value <= truncate(v);
+            value <= tagged Valid truncate(v);
         end
     endrule
 
-    method Bit#(bits) _read();
-        return value;
+    method Bit#(bits) _read() if (value matches tagged Valid .v);
+        return v;
     endmethod
 
 endmodule

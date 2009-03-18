@@ -1,0 +1,12 @@
+%name Hybrid Pure Bluespec Controller
+%desc Hybrid Pure Bluespec Controller
+%attributes hasim
+
+%provides hasim_controller
+
+%requires command_switches
+%requires starter
+
+%public controller-pure.bsv 
+%public controller-pure.h
+%public controller-pure.cpp

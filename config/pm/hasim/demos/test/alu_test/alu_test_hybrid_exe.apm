@@ -19,12 +19,9 @@ Packagehint=platforms
 [HAsim Hybrid Model Foundation/Requires]
 hasim_common=Hasim Common Library
 hasim_system=Hasim - ALU Test System
-hasim_controller=Hybrid Null Controller
+hasim_controller=Hybrid Basic Controller
 fpgaenv=FPGA Environment
 
-[Hybrid Null Controller]
-File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
-Packagehint=hasim
 
 [HAsim Hybrid Model Foundation]
 File=modules/model/hasim_model.awb
@@ -36,4 +33,8 @@ Packagehint=hasim
 
 [Hasim Common Library]
 File=config/pm/hasim/submodels/common/hasim_common.apm
+Packagehint=hasim
+
+[Hybrid Basic Controller]
+File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
 Packagehint=hasim

@@ -17729,3 +17729,113 @@ Directory modules/hasim/util/modellib
 
 Michael P.
 
+
+----------
+mcadler     Date: Tue Mar 17 22:10:16 EDT 2009  CSN: CSN-hasim-601
+                  Wed Mar 18 02:10:16 UTC 2009
+
+
+Directory tools/scripts/bmark
+ setup-bmark               Locally Modified          600 
+
+Directory config/pm/hasim/demos/test/alu_test
+ alu_test_hybrid_htg.apm   Locally Modified          600 
+ alu_test_hybrid_exe.apm   Locally Modified          600 
+
+Directory config/pm/hasim/demos/test/bram_test
+ bram_test_hybrid_htg.apm  Locally Modified          600 
+ bram_test_hybrid_exe.apm  Locally Modified          600 
+
+Directory config/pm/hasim/demos/test/interconnect_test
+ interconnect_test_hybrid_exe.apm Locally Modified          600 
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid_exe.apm   Locally Modified          600 
+ mem_test_hybrid_htg.apm   Locally Modified          600 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_htg_v5_pcie_synth.apm Locally Modified          600 
+ traffic_light_exe_nosynth.apm Locally Modified          600 
+ traffic_light_exe_synth.apm Locally Modified          600 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          600 
+
+Directory config/pm/hasim/demos/switch_to_led
+ multiplier4x4_exe.apm     Locally Modified          600 
+ echo4x4_exe.apm           Locally Modified          600 
+ adder4x4_exe.apm          Locally Modified          600 
+ echo4x4_htg.apm           Locally Modified          600 
+ square4x4_exe.apm         Locally Modified          600 
+
+Directory config/pm/hasim/submodels/controller
+ hybrid_basic_controller.apm Locally Added               0 
+ hybrid_null_controller.apm Locally Removed           600 
+ hybrid_pure_bluespec_controller.apm Locally Added               0 
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_exe.apm      Locally Modified          600 
+ hello_hybrid_htg.apm      Locally Modified          600 
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_exe.apm    Locally Modified          600 
+ rrrtest_hybrid_htg.apm    Locally Modified          600 
+
+Directory config/pm/bluespec/demos/fir_filter
+ fir_filter_hw_exe.apm     Locally Modified          600 
+ fir_filter_sw.apm         Locally Modified          600 
+
+Directory config/pm/bluespec/demos/simple
+ switch2led.apm            Locally Modified          600 
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hybrid_exe.apm    Locally Modified          600 
+ devtest_hybrid_htg.apm    Locally Modified          600 
+
+Directory modules/hasim/controller
+ controller-null.h         Locally Removed           600 
+ controller-pure.h         Locally Added               0 
+ controller-null-hybrid.awb Locally Removed           600 
+ controller-basic.cpp      Locally Added               - 
+ controller-pure-hybrid.awb Locally Added               0 
+ controller-pure.bsv       Locally Added               0 
+ controller-basic.h        Locally Added               - 
+ controller-basic-hybrid.awb Locally Added               - 
+ controller-basic.bsv      Locally Added               0 
+ controller-null.cpp       Locally Removed           600 
+ controller-pure.cpp       Locally Added               0 
+
+Directory modules/hasim/controller/central_controllers
+ central-controllers-basic.awb Locally Added               0 
+ central-controllers-basic.bsv Locally Added               0 
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.bsv    Locally Modified          600 
+ platform-scratchpad-memory.bsv Locally Modified          600 
+
+Directory modules/hasim/util/common
+ dynamic-parameters.bsv    Locally Modified          600 
+
+Directory modules/system/test/mem_test
+ mem-test.awb              Locally Modified          600 
+ mem-test.bsv              Locally Modified          600 
+ mem-test.dic              Locally Modified          600 
+
+- Improve the memory test.  It now uses three scratchpads that are accessed
+  through the packed memory interface.  One maps a single object to
+  multiple scratchpad words.  One maps one object to one word.  Another
+  maps multiple objects to a scrathpad word.  Reads test for errors
+  and a final pass does a quick pipelined read performance test.
+
+- Break the hybrid null controller into two different configurations:
+  - The "basic" controller requires a central controller.  The basic central
+    controller requires support for dynamic parameters and assertions.
+  - The "pure Bluespec" controller does not require a central controller.
+
+- Scratchpad memory now supports an index that is smaller than the entire
+  scratchpad.  The size of the index is reported automatically during
+  run-time initialization so the scratchpad manager can map multiple
+  scratchpad regions into memory.
+
+- Add a predicate to dynamic parameters making them unreadable until after
+  they have been set by the host.

@@ -1,0 +1,10 @@
+%name Basic Central Controllers
+%desc Basic Central Controllers Grouping
+%provides central_controllers
+
+%attributes hasim
+
+%requires assertions_controller
+%requires params_controller
+
+%public central-controllers-basic.bsv

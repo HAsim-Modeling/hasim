@@ -24,7 +24,7 @@ Packagehint=hasim
 bluespec_common=Bluespec Null Library
 bluespec_system=Bluespec Device Tester
 fpgaenv=FPGA Environment
-hasim_controller=Hybrid Null Controller
+hasim_controller=Hybrid Basic Controller
 
 [Bluespec Null Library]
 File=modules/bluespec/common/null/bluespec_null.awb
@@ -34,6 +34,7 @@ Packagehint=hasim
 File=modules/bluespec/system/demos/devtest/devtest.awb
 Packagehint=hasim
 
-[Hybrid Null Controller]
-File=config/pm/hasim/submodels/controller/hybrid_null_controller.apm
+
+[Hybrid Basic Controller]
+File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
 Packagehint=hasim

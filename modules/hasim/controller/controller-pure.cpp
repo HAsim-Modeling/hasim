@@ -2,7 +2,8 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "controller-null.h"
+#include "asim/provides/hasim_controller.h"
+
 
 using namespace std;
 

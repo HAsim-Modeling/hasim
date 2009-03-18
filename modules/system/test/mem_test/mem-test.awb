@@ -6,3 +6,5 @@
 
 %public mem-test.bsv
 %public mem-test.dic
+
+%param --dynamic MEM_TEST_INIT_MODE  0  "0: normal, 1: write zeros, 2: no writes"

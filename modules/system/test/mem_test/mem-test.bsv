@@ -25,7 +25,6 @@ import Vector::*;
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/platform_interface.bsh"
 
-`include "asim/provides/scratchpad_memory.bsh"
 `include "asim/provides/streams.bsh"
 `include "asim/dict/VDEV_SCRATCH.bsh"
 `include "asim/dict/STREAMID.bsh"
@@ -33,6 +32,13 @@ import Vector::*;
 `include "asim/dict/STREAMS_MESSAGE.bsh"
 
 `include "asim/dict/PARAMS_HASIM_SYSTEM.bsh"
+
+// It is normally NOT necessary to include scratchpad_memory.bsh to use
+// scratchpads.  mem-test includes it only to get the value of
+// SCRATCHPAD_MEM_VALUE in order to pick data sizes that will force
+// the three possible container scenarios:  multiple containers per
+// datum, one container per datum, multiple data per container.
+`include "asim/provides/scratchpad_memory.bsh"
 
 `define START_ADDR 0
 `define LAST_ADDR  'h7f
@@ -63,41 +69,29 @@ MEM_DATA_SM
 typedef Bit#(7) MEM_ADDRESS;
 
 module [HASIM_MODULE] mkSystem ()
-    provisos (Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
-              Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
-
-              Bits#(MEM_ADDRESS, t_MEM_ADDRESS_SZ),
+    provisos (Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
 
               // Large data (multiple containers for single datum)
               Alias#(Int#(TAdd#(t_SCRATCHPAD_MEM_VALUE_SZ, 1)), t_MEM_DATA_LG),
-              Bits#(t_MEM_DATA_LG, t_MEM_DATA_LG_SZ),
-              Alias#(MEM_PACK_CONTAINER_ADDR#(t_MEM_ADDRESS_SZ, t_MEM_DATA_LG_SZ, t_SCRATCHPAD_MEM_VALUE_SZ), t_CONTAINER_ADDR_LG),
 
               // Medium data (same container size as data)
               Alias#(Bit#(TSub#(t_SCRATCHPAD_MEM_VALUE_SZ, 1)), t_MEM_DATA_MD),
-              Bits#(t_MEM_DATA_MD, t_MEM_DATA_MD_SZ),
-              Alias#(MEM_PACK_CONTAINER_ADDR#(t_MEM_ADDRESS_SZ, t_MEM_DATA_MD_SZ, t_SCRATCHPAD_MEM_VALUE_SZ), t_CONTAINER_ADDR_MD),
 
               // Small data (multiple data per container)
-              Alias#(MEM_DATA_SM, t_MEM_DATA_SM),
-              Bits#(t_MEM_DATA_SM, t_MEM_DATA_SM_SZ),
-              Alias#(MEM_PACK_CONTAINER_ADDR#(t_MEM_ADDRESS_SZ, t_MEM_DATA_SM_SZ, t_SCRATCHPAD_MEM_VALUE_SZ), t_CONTAINER_ADDR_SM));
+              Alias#(MEM_DATA_SM, t_MEM_DATA_SM));
 
     //
-    // Allocate containers and scratchpads
+    // Allocate scratchpads
     //
 
     // Large data (multiple containers for single datum)
-    MEMORY_IFC#(t_CONTAINER_ADDR_LG, SCRATCHPAD_MEM_VALUE) containerMemoryLG <- mkDirectScratchpad(`VDEV_SCRATCH_MEMTEST_LG);
-    MEM_PACK#(MEM_ADDRESS, t_MEM_DATA_LG, t_CONTAINER_ADDR_LG, SCRATCHPAD_MEM_VALUE) memoryLG <- mkMemPack(containerMemoryLG);
+    MEMORY_IFC#(MEM_ADDRESS, t_MEM_DATA_LG) memoryLG <- mkBasicScratchpad(`VDEV_SCRATCH_MEMTEST_LG);
 
     // Medium data (same container size as data)
-    MEMORY_IFC#(t_CONTAINER_ADDR_MD, SCRATCHPAD_MEM_VALUE) containerMemoryMD <- mkDirectScratchpad(`VDEV_SCRATCH_MEMTEST_MD);
-    MEM_PACK#(MEM_ADDRESS, t_MEM_DATA_MD, t_CONTAINER_ADDR_MD, SCRATCHPAD_MEM_VALUE) memoryMD <- mkMemPack(containerMemoryMD);
+    MEMORY_IFC#(MEM_ADDRESS, t_MEM_DATA_MD) memoryMD <- mkBasicScratchpad(`VDEV_SCRATCH_MEMTEST_MD);
 
     // Small data (multiple data per container)
-    MEMORY_IFC#(t_CONTAINER_ADDR_SM, SCRATCHPAD_MEM_VALUE) containerMemorySM <- mkDirectScratchpad(`VDEV_SCRATCH_MEMTEST_SM);
-    MEM_PACK#(MEM_ADDRESS, t_MEM_DATA_SM, t_CONTAINER_ADDR_SM, SCRATCHPAD_MEM_VALUE) memorySM <- mkMemPack(containerMemorySM);
+    MEMORY_IFC#(MEM_ADDRESS, t_MEM_DATA_SM) memorySM <- mkBasicScratchpad(`VDEV_SCRATCH_MEMTEST_SM);
 
     // Heap
     MEMORY_HEAP#(MEM_ADDRESS, t_MEM_DATA_SM) heap <- mkMemoryHeapUnionScratchpad(`VDEV_SCRATCH_MEMTEST_HEAP);

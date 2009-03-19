@@ -57,64 +57,34 @@ function String scratchPortName(Integer n) = "vdev_memory_" + integerToString(n 
 // ========================================================================
     
 //
-// mkDirectScratchpad --
-//     Allocate a scratchpad with no local cache.  All accesses go to the
-//     platform scratchpad virtual device.
+// mkBasicScratchpad --
+//     Build a basic scratchpad with no local cache.
 //
-module [HASIM_MODULE] mkDirectScratchpad#(Integer scratchpadID)
+module [HASIM_MODULE] mkBasicScratchpad#(Integer scratchpadID)
     // interface:
-    (MEMORY_IFC#(t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE))
-    provisos (Bits#(t_MEM_ADDRESS, t_MEM_ADDRESS_SZ),
+    (MEMORY_IFC#(t_ADDR, t_DATA))
+    provisos (Bits#(t_ADDR, t_ADDR_SZ),
+              Bits#(t_DATA, t_DATA_SZ),
+
+              // Compute container index type (size)
               Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
+              Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
+              Alias#(MEM_PACK_CONTAINER_ADDR#(t_ADDR_SZ, t_DATA_SZ, t_SCRATCHPAD_MEM_VALUE_SZ), t_CONTAINER_ADDR),
 
               // Requested address type must be smaller than scratchpad maximum
-              Add#(a__, t_MEM_ADDRESS_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
+              Bits#(t_CONTAINER_ADDR, t_CONTAINER_ADDR_SZ),
+              Add#(a__, t_CONTAINER_ADDR_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
+
+    // Container maps requested data size to the platform's scratchpad
+    // word size.
+    MEMORY_IFC#(t_CONTAINER_ADDR, SCRATCHPAD_MEM_VALUE) containerMemory <- mkDirectScratchpad(scratchpadID);
     
-    Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
+    // Wrap the container with a marshaller.
+    MEM_PACK#(t_ADDR, t_DATA, t_CONTAINER_ADDR, SCRATCHPAD_MEM_VALUE) memory <- mkMemPack(containerMemory);
 
-    // Merge FIFOF combines read and write requests in temporal order,
-    // with reads from the same cycle as a write going first.
-    MERGE_FIFOF#(2, SCRATCHPAD_MEM_REQUEST) mergeQ <- mkMergeBypassFIFOF();
-
-    Reg#(Bool) initialized <- mkReg(False);
-    
-    //
-    // Allocate memory for this scratchpad region
-    //
-    rule doInit (! initialized);
-        initialized <= True;
-
-        Bit#(t_MEM_ADDRESS_SZ) alloc = maxBound;
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT zeroExtend(alloc));
-    endrule
-
-    //
-    // Forward merged requests to the memory.
-    //
-    rule forwardReq (True);
-        let r = mergeQ.first();
-        mergeQ.deq();
-        
-        link_memory.makeReq(r);
-    endrule
-
-    method Action readReq(t_MEM_ADDRESS addr) if (initialized);
-        mergeQ.ports[0].enq(tagged SCRATCHPAD_MEM_READ zeroExtend(pack(addr)));
-    endmethod
-
-    method ActionValue#(SCRATCHPAD_MEM_VALUE) readRsp();
-        let v = link_memory.getResp();
-        link_memory.deq();
-    
-        return v;
-    endmethod
-
-    method Action write(t_MEM_ADDRESS addr, SCRATCHPAD_MEM_VALUE val) if (initialized);
-        mergeQ.ports[1].enq(tagged SCRATCHPAD_MEM_WRITE { addr: zeroExtend(pack(addr)), val: val });
-    endmethod
+    return memory;
 endmodule
-    
-    
+
 
 // ========================================================================
 //
@@ -202,4 +172,73 @@ module [HASIM_MODULE] mkMemoryHeapUnionScratchpadStorage#(Integer scratchpadID)
             pool.write(addr, zeroExtendNP(pack(value)));
         endmethod
     endinterface
+endmodule
+    
+    
+    
+// ========================================================================
+//
+// Internal modules
+//
+// ========================================================================
+    
+    
+//
+// mkDirectScratchpad --
+//     Allocate a connection to the platform's scratchpad interface for
+//     a single scratchpad region.  This module does no marshalling of
+//     data sizes or caching.  BEWARE: the word size of the virtual
+//     platform's scratchpad is platform dependent.
+//
+module [HASIM_MODULE] mkDirectScratchpad#(Integer scratchpadID)
+    // interface:
+    (MEMORY_IFC#(t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE))
+    provisos (Bits#(t_MEM_ADDRESS, t_MEM_ADDRESS_SZ),
+              Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
+
+              // Requested address type must be smaller than scratchpad maximum
+              Add#(a__, t_MEM_ADDRESS_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
+    
+    Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
+
+    // Merge FIFOF combines read and write requests in temporal order,
+    // with reads from the same cycle as a write going first.
+    MERGE_FIFOF#(2, SCRATCHPAD_MEM_REQUEST) mergeQ <- mkMergeBypassFIFOF();
+
+    Reg#(Bool) initialized <- mkReg(False);
+    
+    //
+    // Allocate memory for this scratchpad region
+    //
+    rule doInit (! initialized);
+        initialized <= True;
+
+        Bit#(t_MEM_ADDRESS_SZ) alloc = maxBound;
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT zeroExtend(alloc));
+    endrule
+
+    //
+    // Forward merged requests to the memory.
+    //
+    rule forwardReq (True);
+        let r = mergeQ.first();
+        mergeQ.deq();
+        
+        link_memory.makeReq(r);
+    endrule
+
+    method Action readReq(t_MEM_ADDRESS addr) if (initialized);
+        mergeQ.ports[0].enq(tagged SCRATCHPAD_MEM_READ zeroExtend(pack(addr)));
+    endmethod
+
+    method ActionValue#(SCRATCHPAD_MEM_VALUE) readRsp();
+        let v = link_memory.getResp();
+        link_memory.deq();
+    
+        return v;
+    endmethod
+
+    method Action write(t_MEM_ADDRESS addr, SCRATCHPAD_MEM_VALUE val) if (initialized);
+        mergeQ.ports[1].enq(tagged SCRATCHPAD_MEM_WRITE { addr: zeroExtend(pack(addr)), val: val });
+    endmethod
 endmodule

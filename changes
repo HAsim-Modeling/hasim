@@ -17860,3 +17860,22 @@ Directory modules/system/test/mem_test
 - Govern transition from a memory interface to the scratchpad soft connection
   using a merge FIFO.
 - Add a managed heap to mem-test.
+
+----------
+mcadler     Date: Thu Mar 19 07:45:43 EDT 2009  CSN: CSN-hasim-603
+                  Thu Mar 19 11:45:43 UTC 2009
+
+
+Directory modules/hasim/util/platform-interface
+ platform-scratchpad-memory.bsv Locally Modified          602 
+
+Directory modules/system/test/mem_test
+ mem-test.bsv              Locally Modified          602 
+
+Move creation of the marshalling container to the platform scratchpad module.
+Since the virtual platform's scratchpad word size may vary by physical
+platform it is always a good idea to use the marshalling wrapper, which
+adds no latency cost when the container size matches the data size.
+
+Building a scratchpad in normal code is now a single module constructor
+call using standard memory interface arguments.

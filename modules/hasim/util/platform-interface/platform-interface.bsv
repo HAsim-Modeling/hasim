@@ -33,6 +33,8 @@ import Vector::*;
 `include "asim/rrr/server_connections.bsh"
 `include "asim/rrr/client_connections.bsh"
 
+`include "asim/dict/ASSERTIONS_PLATFORM_INTERFACE.bsh"
+
 typedef struct
 {
     Bit#(1) b_up;
@@ -56,6 +58,10 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
 
     // soft reset
     Connection_Send#(Bool) link_reset <- mkConnection_Send("soft_reset");
+
+    // ***** Assertion Checkers *****
+    ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_PLATFORM_INTERFACE__BASE);
+    ASSERTION assertScratchpadSpace <- mkAssertionChecker(`ASSERTIONS_PLATFORM_INTERFACE_SCRATCHPAD_FULL, ASSERT_ERROR, assertNode);
 
     // currently only one user can read and write memory
     Vector#(SCRATCHPAD_N_CLIENTS, Connection_Server#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE)) link_memory = newVector();
@@ -151,11 +157,7 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
                         tagged SCRATCHPAD_MEM_INIT .allocLastWordIdx:
                         begin
                             let s <- memory.ports[p].init(allocLastWordIdx);
-                            if (! s)
-                            begin
-                                $display("ERROR: Out of scratchpad memory!");
-                                $finish;
-                            end
+                            assertScratchpadSpace(s);
                         end
 
                         tagged SCRATCHPAD_MEM_READ .addr:

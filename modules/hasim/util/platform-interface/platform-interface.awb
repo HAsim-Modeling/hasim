@@ -9,6 +9,8 @@
 %public platform-scratchpad-memory.bsv
 %public connection-terminus.bsv
 
+%public platform-interface.dic
+
 %param --global TERM_FPGA_SWITCHES            1   "termimate fpga_switches?"
 %param --global TERM_FPGA_BUTTONS             1   "termimate fpga_buttons?"
 %param --global TERM_FPGA_LEDS                1   "termimate fpga_leds?"

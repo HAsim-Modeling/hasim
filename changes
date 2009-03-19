@@ -17839,3 +17839,24 @@ Directory modules/system/test/mem_test
 
 - Add a predicate to dynamic parameters making them unreadable until after
   they have been set by the host.
+
+----------
+mcadler     Date: Wed Mar 18 20:37:32 EDT 2009  CSN: CSN-hasim-602
+                  Thu Mar 19 00:37:32 UTC 2009
+
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.dic    Locally Added               0 
+ platform-interface.awb    Locally Modified          601 
+ platform-interface.bsv    Locally Modified          601 
+ platform-scratchpad-memory.bsv Locally Modified          601 
+
+Directory modules/system/test/mem_test
+ mem-test.bsv              Locally Modified          601 
+ mem-test.dic              Locally Modified          601 
+
+- Add a managed heap scratchpad method.
+- Trigger an assertion when scratchpad memory fills.
+- Govern transition from a memory interface to the scratchpad soft connection
+  using a merge FIFO.
+- Add a managed heap to mem-test.

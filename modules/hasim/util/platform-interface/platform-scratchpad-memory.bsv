@@ -50,6 +50,17 @@ SCRATCHPAD_MEM_REQUEST
 function String scratchPortName(Integer n) = "vdev_memory_" + integerToString(n - `VDEV_SCRATCH__BASE);
     
     
+// ========================================================================
+//
+// Modules that instantiate a scratchpad memory.
+//
+// ========================================================================
+    
+//
+// mkDirectScratchpad --
+//     Allocate a scratchpad with no local cache.  All accesses go to the
+//     platform scratchpad virtual device.
+//
 module [HASIM_MODULE] mkDirectScratchpad#(Integer scratchpadID)
     // interface:
     (MEMORY_IFC#(t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE))
@@ -60,6 +71,10 @@ module [HASIM_MODULE] mkDirectScratchpad#(Integer scratchpadID)
               Add#(a__, t_MEM_ADDRESS_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
     
     Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
+
+    // Merge FIFOF combines read and write requests in temporal order,
+    // with reads from the same cycle as a write going first.
+    MERGE_FIFOF#(2, SCRATCHPAD_MEM_REQUEST) mergeQ <- mkMergeBypassFIFOF();
 
     Reg#(Bool) initialized <- mkReg(False);
     
@@ -73,9 +88,18 @@ module [HASIM_MODULE] mkDirectScratchpad#(Integer scratchpadID)
         link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT zeroExtend(alloc));
     endrule
 
+    //
+    // Forward merged requests to the memory.
+    //
+    rule forwardReq (True);
+        let r = mergeQ.first();
+        mergeQ.deq();
+        
+        link_memory.makeReq(r);
+    endrule
 
     method Action readReq(t_MEM_ADDRESS addr) if (initialized);
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_READ zeroExtend(pack(addr)));
+        mergeQ.ports[0].enq(tagged SCRATCHPAD_MEM_READ zeroExtend(pack(addr)));
     endmethod
 
     method ActionValue#(SCRATCHPAD_MEM_VALUE) readRsp();
@@ -86,6 +110,96 @@ module [HASIM_MODULE] mkDirectScratchpad#(Integer scratchpadID)
     endmethod
 
     method Action write(t_MEM_ADDRESS addr, SCRATCHPAD_MEM_VALUE val) if (initialized);
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE { addr: zeroExtend(pack(addr)), val: val });
+        mergeQ.ports[1].enq(tagged SCRATCHPAD_MEM_WRITE { addr: zeroExtend(pack(addr)), val: val });
     endmethod
+endmodule
+    
+    
+
+// ========================================================================
+//
+// Heaps layered on scratchpad memory
+//
+// ========================================================================
+
+
+//
+// mkMemoryHeapUnionScratchpad --
+//     Data and free list share same storage in a scratchpad memory.
+//
+module [HASIM_MODULE] mkMemoryHeapUnionScratchpad#(Integer scratchpadID)
+    // interface:
+    (MEMORY_HEAP#(t_INDEX, t_DATA))
+    provisos (Bits#(t_DATA, t_DATA_SZ),
+              Bits#(t_INDEX, t_INDEX_SZ),
+              Max#(t_INDEX_SZ, t_DATA_SZ, t_UNION_SZ),
+
+              // Compute container index type (size)
+              Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
+              Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
+              Alias#(MEM_PACK_CONTAINER_ADDR#(t_INDEX_SZ, t_UNION_SZ, t_SCRATCHPAD_MEM_VALUE_SZ), t_CONTAINER_INDEX),
+
+              // Assert that container index the container fits in the scratchpad
+              // address space.
+              Bits#(t_CONTAINER_INDEX, t_CONTAINER_INDEX_SZ),
+              Add#(x, t_CONTAINER_INDEX_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
+
+    MEMORY_HEAP_DATA#(t_INDEX, t_DATA) pool <- mkMemoryHeapUnionScratchpadStorage(scratchpadID);
+    MEMORY_HEAP#(t_INDEX, t_DATA) heap <- mkMemoryHeap(pool);
+
+    return heap;
+endmodule
+
+
+//
+// mkMemoryHeapUnionScratchpadStorage --
+//     Backing storage for a memory heap where the data and free list are
+//     stored in the same, unioned, scratchpad memory.
+//
+module [HASIM_MODULE] mkMemoryHeapUnionScratchpadStorage#(Integer scratchpadID)
+    // interface:
+    (MEMORY_HEAP_DATA#(t_INDEX, t_DATA))
+    provisos (Bits#(t_INDEX, t_INDEX_SZ),
+              Bits#(t_DATA, t_DATA_SZ),
+              Max#(t_INDEX_SZ, t_DATA_SZ, t_UNION_SZ),
+
+              // Compute container index type (size)
+              Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
+              Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
+              Alias#(MEM_PACK_CONTAINER_ADDR#(t_INDEX_SZ, t_UNION_SZ, t_SCRATCHPAD_MEM_VALUE_SZ), t_CONTAINER_INDEX),
+
+              // Assert that container index the container fits in the scratchpad
+              // address space.
+              Bits#(t_CONTAINER_INDEX, t_CONTAINER_INDEX_SZ),
+              Add#(x, t_CONTAINER_INDEX_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
+
+    // Union storage
+    MEMORY_IFC#(t_CONTAINER_INDEX, SCRATCHPAD_MEM_VALUE) containerMemory <- mkDirectScratchpad(scratchpadID);
+    MEM_PACK_MULTI_READ#(2, t_INDEX, Bit#(t_UNION_SZ), t_CONTAINER_INDEX, SCRATCHPAD_MEM_VALUE) pool <- mkMemPackPseudoMultiRead(containerMemory);
+
+    interface MEMORY_HEAP_BACKING_STORE data;
+        method Action readReq(t_INDEX addr) = pool.readPorts[0].readReq(addr);
+
+        method ActionValue#(t_DATA) readRsp();
+            let r <- pool.readPorts[0].readRsp();
+            return unpack(truncateNP(r));
+        endmethod
+
+        method Action write(t_INDEX addr, t_DATA value);
+            pool.write(addr, zeroExtendNP(pack(value)));
+        endmethod
+    endinterface
+
+    interface MEMORY_HEAP_BACKING_STORE freeList;
+        method Action readReq(t_INDEX addr) = pool.readPorts[1].readReq(addr);
+
+        method ActionValue#(t_INDEX) readRsp();
+            let r <- pool.readPorts[1].readRsp();
+            return unpack(truncateNP(r));
+        endmethod
+
+        method Action write(t_INDEX addr, t_INDEX value);
+            pool.write(addr, zeroExtendNP(pack(value)));
+        endmethod
+    endinterface
 endmodule

@@ -89,15 +89,21 @@ module [HASIM_MODULE] mkSystem ()
 
     // Large data (multiple containers for single datum)
     MEMORY_IFC#(t_CONTAINER_ADDR_LG, SCRATCHPAD_MEM_VALUE) containerMemoryLG <- mkDirectScratchpad(`VDEV_SCRATCH_MEMTEST_LG);
-    MEM_PACK_IFC#(MEM_ADDRESS, t_MEM_DATA_LG, t_CONTAINER_ADDR_LG, SCRATCHPAD_MEM_VALUE) memoryLG <- mkMemPack(containerMemoryLG);
+    MEM_PACK#(MEM_ADDRESS, t_MEM_DATA_LG, t_CONTAINER_ADDR_LG, SCRATCHPAD_MEM_VALUE) memoryLG <- mkMemPack(containerMemoryLG);
 
     // Medium data (same container size as data)
     MEMORY_IFC#(t_CONTAINER_ADDR_MD, SCRATCHPAD_MEM_VALUE) containerMemoryMD <- mkDirectScratchpad(`VDEV_SCRATCH_MEMTEST_MD);
-    MEM_PACK_IFC#(MEM_ADDRESS, t_MEM_DATA_MD, t_CONTAINER_ADDR_MD, SCRATCHPAD_MEM_VALUE) memoryMD <- mkMemPack(containerMemoryMD);
+    MEM_PACK#(MEM_ADDRESS, t_MEM_DATA_MD, t_CONTAINER_ADDR_MD, SCRATCHPAD_MEM_VALUE) memoryMD <- mkMemPack(containerMemoryMD);
 
     // Small data (multiple data per container)
     MEMORY_IFC#(t_CONTAINER_ADDR_SM, SCRATCHPAD_MEM_VALUE) containerMemorySM <- mkDirectScratchpad(`VDEV_SCRATCH_MEMTEST_SM);
-    MEM_PACK_IFC#(MEM_ADDRESS, t_MEM_DATA_SM, t_CONTAINER_ADDR_SM, SCRATCHPAD_MEM_VALUE) memorySM <- mkMemPack(containerMemorySM);
+    MEM_PACK#(MEM_ADDRESS, t_MEM_DATA_SM, t_CONTAINER_ADDR_SM, SCRATCHPAD_MEM_VALUE) memorySM <- mkMemPack(containerMemorySM);
+
+    // Heap
+    MEMORY_HEAP#(MEM_ADDRESS, t_MEM_DATA_SM) heap <- mkMemoryHeapUnionScratchpad(`VDEV_SCRATCH_MEMTEST_HEAP);
+
+
+    DEBUG_FILE debugLog <- mkDebugFile("mem_test.out");
 
     // Dynamic parameters.
     PARAMETER_NODE paramNode <- mkDynamicParameterNode();
@@ -143,17 +149,31 @@ module [HASIM_MODULE] mkSystem ()
             t_MEM_DATA_LG dataLG = 0;
             t_MEM_DATA_MD dataMD = 0;
             t_MEM_DATA_SM dataSM = unpack(0);
+            t_MEM_DATA_SM dataH  = unpack(0);
+
+            // Allocate a slot in the heap
+            let heap_idx <- heap.malloc();
+            debugLog.record($format("malloc: idx 0x%x", heap_idx));
 
             if (memInitMode == 0)
             begin
                 dataLG = -(unpack(zeroExtend(pack(addr))) + 2);
                 dataMD = unpack(zeroExtend(pack(addr))) + 1;
                 dataSM = unpack(zeroExtend(pack(addr)));
+                dataH  = unpack(~zeroExtend(pack(heap_idx)));
             end
 
             memoryLG.write(addr, dataLG);
+            debugLog.record($format("writeLG: addr 0x%x, data 0x%x", addr, dataLG));
+
             memoryMD.write(addr, dataMD);
+            debugLog.record($format("writeMD: addr 0x%x, data 0x%x", addr, dataMD));
+
             memorySM.write(addr, dataSM);
+            debugLog.record($format("writeSM: addr 0x%x, data 0x%x", addr, dataSM));
+            
+            heap.write(heap_idx, dataH);
+            debugLog.record($format("writeH: idx 0x%x, data 0x%x", heap_idx, dataH));
         end
         
         if (addr == `LAST_ADDR)
@@ -177,6 +197,7 @@ module [HASIM_MODULE] mkSystem ()
     FIFO#(MEM_ADDRESS) readAddrLGQ <- mkSizedFIFO(32);
     FIFO#(MEM_ADDRESS) readAddrMDQ <- mkSizedFIFO(32);
     FIFO#(MEM_ADDRESS) readAddrSMQ <- mkSizedFIFO(32);
+    FIFO#(MEM_ADDRESS) readAddrHQ  <- mkSizedFIFO(32);
     Reg#(Bool) readDone <- mkReg(False);
     Reg#(Bit#(2)) nCompleteReads <- mkReg(0);
 
@@ -187,10 +208,23 @@ module [HASIM_MODULE] mkSystem ()
         memoryLG.readReq(addr);
         memoryMD.readReq(addr);
         memorySM.readReq(addr);
+        heap.readReq(addr);
 
         readAddrLGQ.enq(addr);
         readAddrMDQ.enq(addr);
         readAddrSMQ.enq(addr);
+        readAddrHQ.enq(addr);
+
+        debugLog.record($format("read from all: addr 0x%x", addr));
+
+        // malloc on every 4th access just to keep things interesting.
+        // The readRecvHeap rule is freeing every read address, so there
+        // will be entries available.
+        if (addr[1:0] == 3)
+        begin
+            let m <- heap.malloc();
+            debugLog.record($format("malloc: idx 0x%x", m));
+        end
 
         if (addr == `LAST_ADDR)
         begin
@@ -208,11 +242,12 @@ module [HASIM_MODULE] mkSystem ()
     // The Bluespec scheduler will pick an order.
     //
 
-    rule readRecvLG (True);
+    rule readRecvLG (state == STATE_reading);
         let r_addr = readAddrLGQ.first();
         readAddrLGQ.deq();
 
         let v <- memoryLG.readRsp();
+        debugLog.record($format("readLG: addr 0x%x, data 0x%x", r_addr, v));
 
         // Convert value so it equals r_addr
         if (memInitMode == 0)
@@ -233,18 +268,19 @@ module [HASIM_MODULE] mkSystem ()
         if (r_addr == `LAST_ADDR)
         begin
             // All readers done?
-            if (nCompleteReads == 2)
+            if (nCompleteReads == 3)
                 state <= STATE_read_timing;
             
             nCompleteReads <= nCompleteReads + 1;
         end
     endrule
 
-    rule readRecvMD (True);
+    rule readRecvMD (state == STATE_reading);
         let r_addr = readAddrMDQ.first();
         readAddrMDQ.deq();
 
         let v <- memoryMD.readRsp();
+        debugLog.record($format("readMD: addr 0x%x, data 0x%x", r_addr, v));
 
         // Convert value so it equals r_addr
         if (memInitMode == 0)
@@ -265,18 +301,19 @@ module [HASIM_MODULE] mkSystem ()
         if (r_addr == `LAST_ADDR)
         begin
             // All readers done?
-            if (nCompleteReads == 2)
+            if (nCompleteReads == 3)
                 state <= STATE_read_timing;
             
             nCompleteReads <= nCompleteReads + 1;
         end
     endrule
 
-    rule readRecvSM (True);
+    rule readRecvSM (state == STATE_reading);
         let r_addr = readAddrSMQ.first();
         readAddrSMQ.deq();
 
         let v <- memorySM.readRsp();
+        debugLog.record($format("readSM: addr 0x%x, data 0x%x", r_addr, v));
 
         STREAMS_DICT_TYPE msg_id = `STREAMS_MEMTEST_DATA_SM;
         if (((memInitMode != 1) && (v != unpack(zeroExtend(pack(r_addr))))) ||
@@ -293,7 +330,42 @@ module [HASIM_MODULE] mkSystem ()
         if (r_addr == `LAST_ADDR)
         begin
             // All readers done?
-            if (nCompleteReads == 2)
+            if (nCompleteReads == 3)
+                state <= STATE_read_timing;
+            
+            nCompleteReads <= nCompleteReads + 1;
+        end
+    endrule
+
+    rule readRecvHeap (state == STATE_reading);
+        let r_addr = readAddrHQ.first();
+        readAddrHQ.deq();
+
+        heap.free(r_addr);
+        debugLog.record($format("free: idx 0x%x", r_addr));
+
+        let v <- heap.readRsp();
+        debugLog.record($format("readH: idx 0x%x, data 0x%x", r_addr, v));
+
+        if (memInitMode == 0)
+            v = unpack(~pack(v));
+
+        STREAMS_DICT_TYPE msg_id = `STREAMS_MEMTEST_DATA_H;
+        if (((memInitMode != 1) && (v != unpack(zeroExtend(pack(r_addr))))) ||
+            ((memInitMode == 1) && (v != unpack(0))))
+        begin
+            msg_id = `STREAMS_MEMTEST_DATA_H_ERR;
+        end
+
+        link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
+                                            stringID: msg_id,
+                                            payload0: zeroExtend(r_addr),
+                                            payload1: zeroExtend(pack(v)) });
+        
+        if (r_addr == `LAST_ADDR)
+        begin
+            // All readers done?
+            if (nCompleteReads == 3)
                 state <= STATE_read_timing;
             
             nCompleteReads <= nCompleteReads + 1;

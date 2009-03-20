@@ -20,7 +20,7 @@
 // Interfaces to scratchpad memory.
 //
 
-`include "asim/provides/libfpga_bsv_base.bsh"
+`include "asim/provides/librl_bsv_base.bsh"
 `include "asim/provides/scratchpad_memory.bsh"
 
 `include "asim/dict/VDEV.bsh"

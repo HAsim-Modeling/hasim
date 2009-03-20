@@ -17879,3 +17879,16 @@ adds no latency cost when the container size matches the data size.
 
 Building a scratchpad in normal code is now a single module constructor
 call using standard memory interface arguments.
+
+----------
+mcadler     Date: Fri Mar 20 17:31:49 EDT 2009  CSN: CSN-hasim-604
+                  Fri Mar 20 21:31:49 UTC 2009
+
+
+Directory modules/hasim/util/platform-interface
+ platform-scratchpad-memory.bsv Locally Modified          603 
+
+Directory modules/hasim/util/common
+ hasim-common.bsh          Locally Modified          602 
+
+Rename libfpga to librl.

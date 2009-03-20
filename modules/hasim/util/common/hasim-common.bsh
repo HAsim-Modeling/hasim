@@ -17,6 +17,6 @@
 //
 
 //
-// Include base FPGA libraries
+// Include base libraries for reconfigurable logic.
 //
-`include "asim/provides/libfpga_bsv.bsh"
+`include "asim/provides/librl_bsv.bsh"

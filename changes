@@ -17892,3 +17892,23 @@ Directory modules/hasim/util/common
  hasim-common.bsh          Locally Modified          602 
 
 Rename libfpga to librl.
+
+----------
+pellauer    Date: Mon Mar 23 10:16:29 EDT 2009  CSN: CSN-hasim-605
+                  Mon Mar 23 14:16:29 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          604 
+
+Directory modules/hasim/util/modellib
+ a-ports.bsv               Locally Modified          604 
+
+
+* Fixed a bug in multi-latency A-Ports. They had an infinite loop that was
+  causing compilation to run out of steps.
+
+* Don't allocate a functional store buffer slot for junk tokens - the rewind
+  signal for them has already occurred, so those slots will never be freed.
+
+Michael P.

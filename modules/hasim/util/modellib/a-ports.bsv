@@ -142,11 +142,11 @@ module [HASIM_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Int
     return (tmp == fromInteger(rMax)) ? 0 : tmp;
   endfunction
 
-  Bool full  = overflow_incr(head) == tail;
-  Bool empty = head == tail;
+  Bool fullQ  = overflow_incr(head) == tail;
+  Bool emptyQ = head == tail;
   
   
-  rule shift (!full);
+  rule shift (!fullQ);
   
     let d = con.receive();
     con.deq();
@@ -159,15 +159,15 @@ module [HASIM_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Int
   //XXX a temporary set of control info
   interface PORT_CONTROL ctrl;
 
-        method Bool empty() = empty;
-        method Bool full() = full;
+        method Bool empty() = emptyQ;
+        method Bool full() = fullQ;
         method Bool balanced() = True;
         method Bool light() = False;
         method Bool heavy() = False;
 
   endinterface
 
-  method ActionValue#(Maybe#(msg_T)) receive() if (!empty);
+  method ActionValue#(Maybe#(msg_T)) receive() if (!emptyQ);
     
     tail <= overflow_incr(tail);
     return rs[tail._read()]._read();
@@ -191,7 +191,7 @@ module [HASIM_MODULE] mkPortRecv_L0#(String portname)
   //XXX a temporary set of control info
   interface PORT_CONTROL ctrl;
 
-    method Bool empty() = empty;
+    method Bool empty() = !con.notEmpty();
     method Bool full() = True;
     method Bool balanced() = True;
     method Bool light() = False;
@@ -433,6 +433,7 @@ module [HASIM_MODULE] mkPortRecvUG#(String portname, Integer latency, Maybe#(msg
     return p;
 
 endmodule
+
 module [HASIM_MODULE] mkPortRecvUG_Buffered#(String portname, Integer latency, Integer extra_buffering, Maybe#(msg_T) init_value)
     //interface:
                 (PORT_RECV#(msg_T))
@@ -444,43 +445,33 @@ module [HASIM_MODULE] mkPortRecvUG_Buffered#(String portname, Integer latency, I
    
   Integer rMax = latency + extra_buffering + 1;
   
-  if (rMax > 255)
-    error("Total Port buffering cannot currently exceed 255. Port: " + portname);
+  if (rMax > 32)
+    error("Total Port buffering cannot currently exceed 32. Port: " + portname);
   
-  Reg#(Maybe#(msg_T)) rs[rMax];
+  LUTRAM#(Bit#(5), Maybe#(msg_T)) rs <- mkLUTRAM(init_value);
   
-  for (Integer x = 0; x < rMax; x = x + 1)
-    rs[x] <- mkReg(init_value);
-
-  Reg#(Bit#(8)) head <- mkReg(fromInteger(latency));
-  Reg#(Bit#(8)) tail <- mkReg(0);
-  Bit#(8) numElems = head - tail;
+  Reg#(Bit#(5)) head <- mkReg(0);
+  Reg#(Bit#(5)) tail <- mkReg(fromInteger(latency));
   
-  function Bit#(n) overflow_incr(Bit#(n) x);
-    
-    let tmp = x + 1;
-    return (tmp == fromInteger(rMax)) ? 0 : tmp;
-  endfunction
-
-  Bool full  = overflow_incr(head) == tail;
-  Bool empty = head == tail;
+  Bool fullQ  = tail + 1 == head;
+  Bool emptyQ = head == tail;
   
   
-  rule shift (!full && !con.notEmpty());
+  rule shift (!fullQ && con.notEmpty());
   
     let d = con.receive();
     con.deq();
     
-    (rs[head._read()]) <= d;
-    head <= overflow_incr(head);
+    rs.upd(tail, d);
+    tail <= tail + 1;
    
   endrule
   
   //XXX a temporary set of control info
   interface PORT_CONTROL ctrl;
 
-        method Bool empty() = empty;
-        method Bool full() = full;
+        method Bool empty() = emptyQ;
+        method Bool full() = fullQ;
         method Bool balanced() = True;
         method Bool light() = False;
         method Bool heavy() = False;
@@ -489,11 +480,11 @@ module [HASIM_MODULE] mkPortRecvUG_Buffered#(String portname, Integer latency, I
 
   method ActionValue#(Maybe#(msg_T)) receive();
     
-    if (empty)
+    if (emptyQ)
         $display("WARNING: Underflow on unguarded receive port %s! Junk data added!", portname);
 
-    tail <= overflow_incr(tail);
-    return rs[tail._read()]._read();
+    head <= head + 1;
+    return rs.sub(head);
     
   endmethod
 

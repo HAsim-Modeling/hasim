@@ -154,7 +154,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
             debugLog.record(fshow(tok.index) + $format(": GetDeps2: Load type %0d", isaLoadType(inst)));
         end
 
-        if (isaIsStore(inst))
+        if (isaIsStore(inst) && tok_active)
         begin
             tokScoreboard.setStoreType(tok.index, isaStoreType(inst));
             storeBufferAllocate.send(tok.index);

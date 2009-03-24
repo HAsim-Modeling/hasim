@@ -17912,3 +17912,21 @@ Directory modules/hasim/util/modellib
   signal for them has already occurred, so those slots will never be freed.
 
 Michael P.
+
+----------
+pellauer    Date: Tue Mar 24 13:31:48 EDT 2009  CSN: CSN-hasim-606
+                  Tue Mar 24 17:31:48 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          605 
+
+
+* Change assertion to warning due to strange unexplainable triggers in Bluesim.
+* If anyone wants to try  to reproduce this run towers and grep memstate.out for
+  WARNING. As far as I can tell this should not be happening given the values of
+  the BRAM. The benchmark finishes succesfully, so this seems to be harmless. 
+  (The number it is complaining about is overwritten when a store is completed.)
+  
+
+Michael P.

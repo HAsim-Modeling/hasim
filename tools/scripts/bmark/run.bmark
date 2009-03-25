@@ -227,7 +227,11 @@ else {
 
 # Generate dump.vcd for wave viewer (e.g. gtkwave)?
 if (defined($vcdStart)) {
-    my $vcdCmd = "sim step $vcdStart; sim vcd on; sim step $vcdCycles; sim stop";
+    my $vcdCmd = "sim vcd on; sim step $vcdCycles; sim stop";
+    if ($vcdStart > 0) {
+        $vcdCmd = "sim step ${vcdStart}; ${vcdCmd}";
+    }
+
     if (defined($bluesimCmd)) {
         $bluesimCmd .= " ";
     }

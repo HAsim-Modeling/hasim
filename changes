@@ -17940,3 +17940,29 @@ Directory tools/scripts/bmark
  run.bmark                 Locally Modified          606 
 
 Support 0 as a starting cycle for waveform dumps.
+
+----------
+mcadler     Date: Thu Mar 26 07:14:24 EDT 2009  CSN: CSN-hasim-608
+                  Thu Mar 26 11:14:24 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          606 
+ regstate-data.dic         Locally Modified          606 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-commitStores.bsv Locally Modified          606 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          606 
+ memstate-hashed-store-buffer.dic Locally Modified          606 
+
+- commitStores now checks whether the token or the token's alias is live and,
+  if it is, triggers an assertion.  A live token indicates the store token
+  lived long enough that the token or token alias was allocated before the
+  store token was dropped by the timing model.  This new check depends on
+  the timing model calling commitResults for a store before calling commitStores.
+
+- Put back the assertion removed a few days ago in the store buffer.  Change
+  the error message to note that the token's alias could cause a problem, though
+  that is now unlikely since the commitStores assertion above will fire first.

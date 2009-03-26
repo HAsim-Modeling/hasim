@@ -107,6 +107,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitStores#(
         let fault = isValid(tokScoreboard.getFault(tok.index));
         assertion.commitedStoreIsActuallyAStore(isStore && !fault);
 
+        // Update the scoreboard.
+        tokScoreboard.commitStoresStart(tok.index);
+
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": CommitStores: Committing.")); 
 

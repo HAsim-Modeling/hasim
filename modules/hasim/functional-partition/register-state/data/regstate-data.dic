@@ -6,6 +6,7 @@ def ASSERTIONS.REGSTATE.SCOREBOARD.REALLOCATE "FUNCP: Allocating an already-allo
 def ASSERTIONS.REGSTATE.SCOREBOARD.DEALLOCATE "FUNCP: De-allocating an un-allocated Token!";
 def ASSERTIONS.REGSTATE.SCOREBOARD.COMPLETION "FUNCP: Completing Tokens out of order!";
 def ASSERTIONS.REGSTATE.SCOREBOARD.COMMIT_POISON_INSTR "FUNCP: Attempt to commit poisoned instruction!";
+def ASSERTIONS.REGSTATE.SCOREBOARD.COMMIT_STORE_LIFETIME "FUNCP: Commit store token lifetime overlaps lifetime of next token with same ID or alias ID!";
 
 def ASSERTIONS.REGSTATE.SCOREBOARD.FINISH.ITRANS        "FUNCP: Finishing ITranslate on token that hasn't started.";
 def ASSERTIONS.REGSTATE.SCOREBOARD.START.FETCH          "FUNCP: Starting Fetch on token at improper time.";

@@ -316,12 +316,17 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
         // Make sure the last instance of the token ID was cleaned up properly.
         // If it was there is no more work to do.
-        // NOTE: This was failing spuriously. Perhaps due to a bug in Bluesim. For now we have reduced this to a warning in the debug log.
-        // assertNotBusy(sb_tok.nStores == 0);
+        //
+        // An error here could also be caused by an alias problem if a store
+        // token's lifetime extends so long that it is alive at the same time
+        // as its live-token alias.
+        //
         if (sb_tok.nStores != 0) 
         begin
-            debugLog.record($format("WARNING: ALLOC ASSERTION FAILURE: nStores: %0d", sb_tok.nStores));
+            debugLog.record($format("ERROR: ALLOC ASSERTION FAILURE: nStores: %0d", sb_tok.nStores));
         end
+
+        assertNotBusy(sb_tok.nStores == 0);
 
         state <= SBUFFER_STATE_READY;
     endrule

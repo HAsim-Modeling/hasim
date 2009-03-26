@@ -91,6 +91,7 @@ interface FUNCP_SCOREBOARD;
   method Action storeStart(TOKEN_INDEX t);
   method Action storeFinish(TOKEN_INDEX t);
   method Action commitStart(TOKEN_INDEX t);
+  method Action commitStoresStart(TOKEN_INDEX t);
   
   // Set the offsets after we align the address.
   method Action setFetchOffset(TOKEN_INDEX t, MEM_OFFSET o);
@@ -240,6 +241,9 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // Poisoned instruction
     ASSERTION assert_poison_instr           <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_COMMIT_POISON_INSTR, ASSERT_ERROR, assertNode);
 
+    // Store lifetime too long before commitStores
+    ASSERTION assert_token_store_lifetime   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_COMMIT_STORE_LIFETIME, ASSERT_ERROR, assertNode);
+
     // The following assertions make sure things happen at the right time.
     ASSERTION assert_token_can_finish_itr   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_ITRANS, ASSERT_ERROR, assertNodeFinish); 
     ASSERTION assert_token_can_start_fet    <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_FETCH, ASSERT_ERROR, assertNodeStart);
@@ -310,27 +314,35 @@ module [Connected_Module] mkFUNCP_Scoreboard
         return alloc[tokIdx.context_id][tokIdx.token_id];
     endfunction
 
-
-    function Bool canAllocate(CONTEXT_ID ctx_id);
-
+    function Bool tokIdxAliasIsAllocated(TOKEN_INDEX tokIdx);
         //
         // We allocate only half the tokens at once in order to enable relative
-        // age comparison of tokens.  To allocate, we check two things:
+        // age comparison of tokens.  The alias of a token shares all bits of
+        // its index but the high bit.
+        //
+        let high_bit_num = valueOf(TOKEN_ID_SIZE) - 1;
+
+        let alias_idx = tokIdx;
+        alias_idx.token_id[high_bit_num] = alias_idx.token_id[high_bit_num] ^ 1;
+    
+        return tokIdxIsAllocated(alias_idx);
+    endfunction
+
+
+    function Bool canAllocate(CONTEXT_ID ctx_id);
+        //
+        // To allocate, we check two things:
         //
         //   1.  The alias for the next token (the token with the same number
         //       except for the high bit) is not in use.
         //   2.  The high bit of the number of in flight tokens is 0.
         //        
-        let high_bit_num = valueOf(TOKEN_ID_SIZE) - 1;
-
-        let next_tok_alias = next_free_tok[ctx_id];
-        next_tok_alias[high_bit_num] = next_tok_alias[high_bit_num] ^ 1;
-
+        let next_tok_idx = tokenIndexFromIds(ctx_id, next_free_tok[ctx_id]);
         let num_in_flight = next_free_tok[ctx_id] - oldest_tok[ctx_id];
 
-        let next_tok_idx = tokenIndexFromIds(ctx_id, next_tok_alias);
-        return (num_in_flight[high_bit_num] == 0 && ! tokIdxIsAllocated(next_tok_idx));
+        let high_bit_num = valueOf(TOKEN_ID_SIZE) - 1;
 
+        return (num_in_flight[high_bit_num] == 0 && ! tokIdxAliasIsAllocated(next_tok_idx));
     endfunction
 
 
@@ -663,7 +675,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     endmethod
 
-    // commit_start
+    // commitStart
 
     // When:   Any time.
     // Effect: Update the scoreboard.
@@ -683,6 +695,23 @@ module [Connected_Module] mkFUNCP_Scoreboard
         commit_start.upd(t, True);
         num_in_commit[t.context_id].up();
 
+    endmethod
+
+    //
+    // commitStoresStart --
+    //     Token's have already been deallocated during the commitResults
+    //     stage of the pipeline.  When a store commit is seen validate
+    //     that the token has not yet been reused for a later instruction
+    //     since the token index is still in use by the store buffer.
+    //
+    method Action commitStoresStart(TOKEN_INDEX t);
+        assert_token_store_lifetime(! tokIdxIsAllocated(t) && ! tokIdxAliasIsAllocated(t));
+
+        if (tokIdxIsAllocated(t))
+            $display("ERROR: commit stores token (%d, %d) is live", t.context_id, t.token_id);
+
+        if (tokIdxAliasIsAllocated(t))
+            $display("ERROR: commit stores token (%d, %d) ALIAS is live", t.context_id, t.token_id);
     endmethod
 
     // setFetchOffset

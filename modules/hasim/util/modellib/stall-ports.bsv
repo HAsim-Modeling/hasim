@@ -86,20 +86,20 @@ interface PORT_STALL_RECV#(type a);
 endinterface
 
 
-interface PORT_STALL_SEND_MULTICTX#(type a);
-    method Action doEnq(CONTEXT_ID ctx, a x);
-    method Action noEnq(CONTEXT_ID ctx);
-    method Bool   canEnq(CONTEXT_ID ctx);
-    interface Vector#(NUM_CONTEXTS, PORT_CONTROL) ctrl;
+interface PORT_STALL_SEND_MULTIPLEXED#(type ni, type a);
+    method Action doEnq(INSTANCE_ID#(ni) iid, a x);
+    method Action noEnq(INSTANCE_ID#(ni) iid);
+    method Bool   canEnq(INSTANCE_ID#(ni) iid);
+    interface Vector#(ni, PORT_CONTROL) ctrl;
 
 endinterface
 
-interface PORT_STALL_RECV_MULTICTX#(type a);
-    method Bool   canDeq(CONTEXT_ID ctx);
-    method Action noDeq(CONTEXT_ID ctx);
-    method Action doDeq(CONTEXT_ID ctx);
-    method a      peek(CONTEXT_ID ctx);
-    interface Vector#(NUM_CONTEXTS, PORT_CONTROL) ctrl;
+interface PORT_STALL_RECV_MULTIPLEXED#(type ni, type a);
+    method Bool   canDeq(INSTANCE_ID#(ni) iid);
+    method Action noDeq(INSTANCE_ID#(ni) iid);
+    method Action doDeq(INSTANCE_ID#(ni) iid);
+    method a      peek(INSTANCE_ID#(ni) iid);
+    interface Vector#(ni, PORT_CONTROL) ctrl;
 endinterface
 
 
@@ -209,15 +209,15 @@ module [HASIM_MODULE] mkPortStallRecv#(String s)
 endmodule
 
 
-module [HASIM_MODULE] mkPortStallSend_MultiCtx#(String s)
-                       (PORT_STALL_SEND_MULTICTX#(a))
+module [HASIM_MODULE] mkPortStallSend_Multiplexed#(String s)
+                       (PORT_STALL_SEND_MULTIPLEXED#(ni, a))
             provisos (Bits#(a, sa),
                       Transmittable#(Maybe#(a)));
 
-    Vector#(NUM_CONTEXTS, PORT_STALL_SEND#(a)) ports = newVector();
-    Vector#(NUM_CONTEXTS, PORT_CONTROL) portCtrls = newVector();
+    Vector#(ni, PORT_STALL_SEND#(a)) ports = newVector();
+    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
 
-    for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+    for (Integer x = 0; x < valueOf(ni); x = x + 1)
     begin
       ports[x] <- mkPortStallSend(s + "_" + integerToString(x));
       portCtrls[x] = ports[x].ctrl;
@@ -225,29 +225,29 @@ module [HASIM_MODULE] mkPortStallSend_MultiCtx#(String s)
 
     interface ctrl = portCtrls;
 
-    method Action doEnq(CONTEXT_ID ctx, a x);
-        ports[ctx].doEnq(x);
+    method Action doEnq(INSTANCE_ID#(ni) iid, a x);
+        ports[iid].doEnq(x);
     endmethod
 
-    method Action noEnq(CONTEXT_ID ctx);
-        ports[ctx].noEnq();
+    method Action noEnq(INSTANCE_ID#(ni) iid);
+        ports[iid].noEnq();
     endmethod
 
-    method Bool   canEnq(CONTEXT_ID ctx);
-        return ports[ctx].canEnq();
+    method Bool   canEnq(INSTANCE_ID#(ni) iid);
+        return ports[iid].canEnq();
     endmethod
   
 endmodule
 
-module [HASIM_MODULE] mkPortStallRecv_MultiCtx#(String s)
-        (PORT_STALL_RECV_MULTICTX#(a))
+module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
+        (PORT_STALL_RECV_MULTIPLEXED#(ni, a))
             provisos (Bits#(a, sa),
                       Transmittable#(Maybe#(a)));
 
-    Vector#(NUM_CONTEXTS, PORT_STALL_RECV#(a)) ports = newVector();
-    Vector#(NUM_CONTEXTS, PORT_CONTROL) portCtrls = newVector();
+    Vector#(ni, PORT_STALL_RECV#(a)) ports = newVector();
+    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
 
-    for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+    for (Integer x = 0; x < valueOf(ni); x = x + 1)
     begin
       ports[x] <- mkPortStallRecv(s + "_" + integerToString(x));
       portCtrls[x] = ports[x].ctrl;
@@ -255,20 +255,20 @@ module [HASIM_MODULE] mkPortStallRecv_MultiCtx#(String s)
 
     interface ctrl = portCtrls;
 
-    method Bool   canDeq(CONTEXT_ID ctx);
-        return ports[ctx].canDeq();
+    method Bool   canDeq(INSTANCE_ID#(ni) iid);
+        return ports[iid].canDeq();
     endmethod
 
-    method Action noDeq(CONTEXT_ID ctx);
-        ports[ctx].noDeq();
+    method Action noDeq(INSTANCE_ID#(ni) iid);
+        ports[iid].noDeq();
     endmethod
 
-    method Action doDeq(CONTEXT_ID ctx);
-        ports[ctx].doDeq();
+    method Action doDeq(INSTANCE_ID#(ni) iid);
+        ports[iid].doDeq();
     endmethod
 
-    method a      peek(CONTEXT_ID ctx);
-        return ports[ctx].peek();
+    method a      peek(INSTANCE_ID#(ni) iid);
+        return ports[iid].peek();
     endmethod
 
 endmodule

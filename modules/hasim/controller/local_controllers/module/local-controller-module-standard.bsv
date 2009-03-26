@@ -37,11 +37,12 @@ import FIFO::*;
 `include "asim/dict/RINGID.bsh"
 
 
-interface LOCAL_CONTROLLER;
+// ni is number of instances to control.
+interface LOCAL_CONTROLLER#(type ni);
 
-    method ActionValue#(CONTEXT_ID) startModelCycle();
-    method Action endModelCycle(CONTEXT_ID ctx, Bit#(8) path);
-    method Action contextDone(CONTEXT_ID ctx_id, Bool passfail);
+    method ActionValue#(INSTANCE_ID#(ni)) startModelCycle();
+    method Action endModelCycle(INSTANCE_ID#(ni) iid, Bit#(8) path);
+    method Action instanceDone(INSTANCE_ID#(ni) iid, Bool passfail);
 
 endinterface
 
@@ -56,36 +57,36 @@ typedef enum
 LC_STATE
     deriving (Eq, Bits);
 
-module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(NUM_CONTEXTS, PORT_CONTROL)) inports, Vector#(m, Vector#(NUM_CONTEXTS, PORT_CONTROL)) outports)
+module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(ni, PORT_CONTROL)) inports, Vector#(m, Vector#(ni, PORT_CONTROL)) outports)
     //interface:
-        (LOCAL_CONTROLLER);
+        (LOCAL_CONTROLLER#(ni));
 
     Reg#(LC_STATE) state <- mkReg(LC_Idle);
   
-    // Vector of active contexts
-    Reg#(Vector#(NUM_CONTEXTS, Bool)) contextActive <- mkReg(replicate(False));
-    // Vector of running contexts
-    Reg#(Vector#(NUM_CONTEXTS, Bool)) contextRunning <- mkReg(replicate(False));
+    // Vector of active instances
+    Reg#(Vector#(ni, Bool)) instanceActive <- mkReg(replicate(False));
+    // Vector of running instances
+    Reg#(Vector#(ni, Bool)) instanceRunning <- mkReg(replicate(False));
     // Track stepping state.
-    Reg#(Vector#(NUM_CONTEXTS, Bool)) contextStepped <- mkReg(replicate(False));
+    Reg#(Vector#(ni, Bool)) instanceStepped <- mkReg(replicate(False));
     // Check balanced state.
-    Reg#(Vector#(NUM_CONTEXTS, Bool)) contextBalancedSinceQuery <- mkReg(replicate(False));
-    Reg#(Vector#(NUM_CONTEXTS, Bool)) contextCheckingBalance <- mkReg(replicate(False));
+    Reg#(Vector#(ni, Bool)) instanceBalancedSinceQuery <- mkReg(replicate(False));
+    Reg#(Vector#(ni, Bool)) instanceCheckingBalance <- mkReg(replicate(False));
     
     // Are we checking if the ports have quiesced?
     Reg#(Bool) checkBalanced <- mkReg(False);
 
-    Vector#(NUM_CONTEXTS, PulseWire)    startCycleW <- replicateM(mkPulseWire());
-    Vector#(NUM_CONTEXTS, PulseWire)      endCycleW <- replicateM(mkPulseWire());
-    Vector#(NUM_CONTEXTS, Wire#(Bit#(8))) pathDoneW <- replicateM(mkWire());
+    Vector#(ni, PulseWire)    startCycleW <- replicateM(mkPulseWire());
+    Vector#(ni, PulseWire)      endCycleW <- replicateM(mkPulseWire());
+    Vector#(ni, Wire#(Bit#(8))) pathDoneW <- replicateM(mkWire());
     
     
-    // For now this local controller just goes round-robin over the contexts.
+    // For now this local controller just goes round-robin over the instances.
     // This is guaranteed to be correct accross multiple modules.
     // The performance of this could be improved, but the interaction with time-multiplexed
     // ports needs to be worked out.
     
-    COUNTER#(CONTEXT_ID_SIZE) nextContext <- mkLCounter(0);
+    COUNTER#(INSTANCE_ID_BITS#(ni)) nextInstance <- mkLCounter(0);
     
     Connection_Chain#(CONTROLLER_COMMAND)  cmds  <- mkConnection_Chain(`RINGID_MODULE_COMMANDS);
     Connection_Chain#(CONTROLLER_RESPONSE) resps <- mkConnection_Chain(`RINGID_MODULE_RESPONSES);
@@ -113,46 +114,46 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(NUM_CONTEXTS, PORT_C
                endcase;
     endfunction
 
-    // This function will determine the next context in a non-round-robin manner when we're ready
+    // This function will determine the next instance in a non-round-robin manner when we're ready
     // to go that route. Currently this is unused.
 
-    function Bool contextReady(CONTEXT_ID ctx_id);
+    function Bool instanceReady(INSTANCE_ID#(ni) iid);
         
         Bool canRead  = True;
         Bool canWrite = True;
 
         // Can we read/write all of the ports?
         for (Integer x = 0; x < valueOf(n); x = x + 1)
-            canRead = canRead && canReadFrom(inports[x][ctx_id]);
+            canRead = canRead && canReadFrom(inports[x][iid]);
 
         for (Integer x = 0; x < valueOf(m); x = x + 1)
-            canWrite = canWrite && canWriteTo(outports[x][ctx_id]);
+            canWrite = canWrite && canWriteTo(outports[x][iid]);
 
-        // A context is ready to go only if it's been enabled.
-        return contextActive[ctx_id] && !contextRunning[ctx_id] && canRead && canWrite;
+        // An instance is ready to go only if it's been enabled.
+        return instanceActive[iid] && !instanceRunning[iid] && canRead && canWrite;
 
     endfunction
 
-    function CONTEXT_ID nextReadyContext();
+    function INSTANCE_ID#(ni) nextReadyInstance();
         
-        CONTEXT_ID res = 0;
+        INSTANCE_ID#(ni) res = 0;
 
-        for (Integer x = 0; x < valueof(NUM_CONTEXTS); x = x + 1)
+        for (Integer x = 0; x < valueof(ni); x = x + 1)
         begin
-            res = contextReady(fromInteger(x)) ? fromInteger(x) : res;
+            res = instanceReady(fromInteger(x)) ? fromInteger(x) : res;
         end
         
         return res;
     
     endfunction
 
-    function Bool someContextReady();
+    function Bool someInstanceReady();
         
         Bool res = False;
 
-        for (Integer x = 0; x < valueof(NUM_CONTEXTS); x = x + 1)
+        for (Integer x = 0; x < valueof(ni); x = x + 1)
         begin
-            res = contextReady(fromInteger(x)) || res;
+            res = instanceReady(fromInteger(x)) || res;
         end
         
         return res;
@@ -161,18 +162,18 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(NUM_CONTEXTS, PORT_C
 
 
 
-    function Bool balanced(Integer ctx_id);
+    function Bool balanced(Integer iid);
         Bool res = True;
         
         // Are the ports all balanced?
         for (Integer x = 0; x < valueOf(n); x = x + 1)
         begin
-            res = res && inports[x][ctx_id].balanced();
+            res = res && inports[x][iid].balanced();
         end
 
         for (Integer x = 0; x < valueOf(m); x = x + 1)
         begin
-            res = res && outports[x][ctx_id].balanced();
+            res = res && outports[x][iid].balanced();
         end
 
         return res;
@@ -197,13 +198,13 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(NUM_CONTEXTS, PORT_C
             tagged COM_StartSyncQuery:
             begin
                 checkBalanced <= True;
-                contextBalancedSinceQuery <= replicate(True);
+                instanceBalancedSinceQuery <= replicate(True);
             end
 
             tagged COM_SyncQuery:
             begin
                 checkBalanced <= False;
-                if (allTrue(contextBalancedSinceQuery))
+                if (allTrue(instanceBalancedSinceQuery))
                     resps.send_to_next(RESP_Balanced);
                 else
                     resps.send_to_next(RESP_UnBalanced);
@@ -213,23 +214,25 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(NUM_CONTEXTS, PORT_C
             begin
 
                 state <= LC_Stepping;
-                Vector#(NUM_CONTEXTS, Bool) context_stepped = newVector();
-                for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+                Vector#(ni, Bool) instance_stepped = newVector();
+                for (Integer x = 0; x < valueOf(ni); x = x + 1)
                 begin
-                   context_stepped[x] = !contextActive[x];
+                   instance_stepped[x] = !instanceActive[x];
                 end
-                contextStepped <= context_stepped;
+                instanceStepped <= instance_stepped;
                 
             end
 
-            tagged COM_EnableContext .ctx_id:
+            // TODO: should this be COM_EnableInstance??
+            tagged COM_EnableContext .iid:
             begin
-                contextActive[ctx_id] <= True;
+                instanceActive[iid] <= True;
             end
 
-            tagged COM_DisableContext .ctx_id:
+            // TODO: should this be COM_DisableInstance??
+            tagged COM_DisableContext .iid:
             begin
-                contextActive[ctx_id] <= False;
+                instanceActive[iid] <= False;
             end
         endcase
 
@@ -239,14 +242,14 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(NUM_CONTEXTS, PORT_C
   
     rule checkBalance (checkBalanced);
 
-        Vector#(NUM_CONTEXTS, Bool) new_balanced = contextBalancedSinceQuery;
+        Vector#(ni, Bool) new_balanced = instanceBalancedSinceQuery;
 
-        for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+        for (Integer x = 0; x < valueOf(ni); x = x + 1)
         begin
             new_balanced[x] = new_balanced[x] && balanced(x);
         end
         
-        contextBalancedSinceQuery <= new_balanced;
+        instanceBalancedSinceQuery <= new_balanced;
 
     endrule
 
@@ -256,19 +259,19 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(NUM_CONTEXTS, PORT_C
         resps.send_to_next(resp);
     endrule
 
-    rule ignoreDisabledContexts (!contextActive[nextContext.value()]);
+    rule ignoreDisabledInstances (!instanceActive[nextInstance.value()]);
     
-        nextContext.up();
+        nextInstance.up();
     
     endrule
 
     rule updateRunning (True);
     
-        Vector#(NUM_CONTEXTS, Bool) new_running = contextRunning;
+        Vector#(ni, Bool) new_running = instanceRunning;
 
-        for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+        for (Integer x = 0; x < valueOf(ni); x = x + 1)
         begin
-            if (contextRunning[x])
+            if (instanceRunning[x])
                 new_running[x] =  !endCycleW[x];
             else if (startCycleW[x])
                 new_running[x] = !endCycleW[x];
@@ -276,39 +279,39 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(NUM_CONTEXTS, PORT_C
                 noAction;
         end
         
-        contextRunning <= new_running;
+        instanceRunning <= new_running;
     
     endrule
 
-    method ActionValue#(CONTEXT_ID) startModelCycle() if ((state != LC_Idle) && contextReady(nextContext.value()));
+    method ActionValue#(INSTANCE_ID#(ni)) startModelCycle() if ((state != LC_Idle) && instanceReady(nextInstance.value()));
 
         if (state == LC_Stepping)
         begin
 
-            contextStepped[nextContext.value()] <= True;
-            if (allTrue(contextStepped))
+            instanceStepped[nextInstance.value()] <= True;
+            if (allTrue(instanceStepped))
                 state <= LC_Idle;
 
         end
-        startCycleW[nextContext.value()].send();
-        nextContext.up();
-        return nextContext.value();
+        startCycleW[nextInstance.value()].send();
+        nextInstance.up();
+        return nextInstance.value();
 
     endmethod
 /*
-    method Bool contextIsActive(CONTEXT_ID ctx_id);
-        return contextActive.sub(ctx_id);
+    method Bool instanceIsActive(INSTANCE_ID#(ni) iid);
+        return instanceActive.sub(iid);
     endmethod
 */
-    method Action endModelCycle(CONTEXT_ID ctx, Bit#(8) path);
+    method Action endModelCycle(INSTANCE_ID#(ni) iid, Bit#(8) path);
     
-        endCycleW[ctx].send();
-        pathDoneW[ctx] <= path; // Put the path into the waveform.
+        endCycleW[iid].send();
+        pathDoneW[iid] <= path; // Put the path into the waveform.
     
     endmethod
 
-    method Action contextDone(CONTEXT_ID ctx_id, Bool pf);
-        // XXX this should be per-context.
+    method Action instanceDone(INSTANCE_ID#(ni) iid, Bool pf);
+        // XXX this should be per-instance.
         resps.send_to_next(tagged RESP_DoneRunning pf);
     endmethod
     

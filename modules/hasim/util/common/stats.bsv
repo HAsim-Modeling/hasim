@@ -158,23 +158,23 @@ module [Connected_Module] mkStatCounter_Disabled#(STATS_DICT_TYPE statname)
 endmodule
 
 
-interface STAT_RECORDER_MULTICTX;
+interface STAT_RECORDER_MULTIPLEXED#(type ni);
   
-  method Action incr(CONTEXT_ID ctx);
-  method Action decr(CONTEXT_ID ctx);
+  method Action incr(INSTANCE_ID#(ni) iid);
+  method Action decr(INSTANCE_ID#(ni) iid);
   
 endinterface
 
-module [Connected_Module] mkStatCounter_MultiCtx#(STATS_DICT_TYPE myID)
+module [Connected_Module] mkStatCounter_Multiplexed#(STATS_DICT_TYPE myID)
   //interface:
-              (STAT_RECORDER_MULTICTX);
+              (STAT_RECORDER_MULTIPLEXED#(ni));
 
   Connection_Chain#(STAT_DATA) chain <- mkConnection_Chain(`RINGID_STATS);
-  MULTICTX#(COUNTER#(`HASIM_STATS_SIZE)) ctx_stat  <- mkMultiCtx(mkLCounter(0));
+  MULTIPLEXED#(ni, COUNTER#(`HASIM_STATS_SIZE)) statPool  <- mkMultiplexed(mkLCounter(0));
 
   Reg#(STAT_STATE)          state <- mkReg(Recording);
   Reg#(Bool)                enabled <- mkReg(True);
-  COUNTER#(CONTEXT_ID_SIZE) currentCtx <- mkLCounter(0);
+  COUNTER#(INSTANCE_ID_BITS#(ni)) currentInstance <- mkLCounter(0);
  
   rule finishDump (state == FinishingDump);
     
@@ -185,12 +185,12 @@ module [Connected_Module] mkStatCounter_MultiCtx#(STATS_DICT_TYPE myID)
 
   rule dump (state == Dumping);
     
-    chain.send_to_next(tagged ST_Val {statID: myID, value: ctx_stat[currentCtx.value()].value()});
+    chain.send_to_next(tagged ST_Val {statID: myID, value: statPool[currentInstance.value()].value()});
     
-    ctx_stat[currentCtx.value()].setC(0);
-    currentCtx.up();
+    statPool[currentInstance.value()].setC(0);
+    currentInstance.up();
 
-    if (currentCtx.value() == fromInteger(valueOf(NUM_CONTEXTS) - 1)) 
+    if (currentInstance.value() == fromInteger(valueOf(ni) - 1)) 
         state <= FinishingDump;
 
   endrule
@@ -208,16 +208,16 @@ module [Connected_Module] mkStatCounter_MultiCtx#(STATS_DICT_TYPE myID)
         // the counter.  If the run continues the software side will request
         // more stats dumps and compute the sum.
         //
-        chain.send_to_next(tagged ST_Val {statID: myID, value: ctx_stat[0].value()});
-        ctx_stat[0].setC(0);
-        currentCtx.setC(1);
+        chain.send_to_next(tagged ST_Val {statID: myID, value: statPool[0].value()});
+        statPool[0].setC(0);
+        currentInstance.setC(1);
         state <= Dumping;
       end
       tagged ST_Reset: 
       begin
         chain.send_to_next(st);
-        for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
-            ctx_stat[x].setC(0);
+        for (Integer x = 0; x < valueOf(ni); x = x + 1)
+            statPool[x].setC(0);
       end
       tagged ST_Disable: 
       begin
@@ -234,17 +234,17 @@ module [Connected_Module] mkStatCounter_MultiCtx#(STATS_DICT_TYPE myID)
 
   endrule
   
-  method Action incr(CONTEXT_ID ctx);
+  method Action incr(INSTANCE_ID#(ni) iid);
     
     if (enabled)
-      ctx_stat[ctx].up();
+      statPool[iid].up();
   
   endmethod
 
-  method Action decr(CONTEXT_ID ctx);
+  method Action decr(INSTANCE_ID#(ni) iid);
     
     if (enabled)
-      ctx_stat[ctx].down();
+      statPool[iid].down();
   
   endmethod
 

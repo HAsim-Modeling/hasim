@@ -142,13 +142,13 @@ module [Connected_Module] mkEventRecorder_Disabled#(EVENTS_DICT_TYPE eventID)
 
 endmodule
 
-interface EVENT_RECORDER_MULTICTX;
-  method Action recordEvent(CONTEXT_ID ctx, Maybe#(EventParam) mdata);
+interface EVENT_RECORDER_MULTIPLEXED#(type ni);
+  method Action recordEvent(INSTANCE_ID#(ni) iid, Maybe#(EventParam) mdata);
 endinterface
 
-module [Connected_Module] mkEventRecorder_MultiCtx#(EVENTS_DICT_TYPE eventID)
+module [Connected_Module] mkEventRecorder_Multiplexed#(EVENTS_DICT_TYPE eventID)
     //interface:
-                (EVENT_RECORDER_MULTICTX);
+                (EVENT_RECORDER_MULTIPLEXED#(ni));
 
   Bit#(8) eventNum = zeroExtend(pack(eventID));
 
@@ -171,7 +171,7 @@ module [Connected_Module] mkEventRecorder_MultiCtx#(EVENTS_DICT_TYPE eventID)
 
   endrule
 
-  method Action recordEvent(CONTEXT_ID ctx, Maybe#(EventParam) mdata);
+  method Action recordEvent(INSTANCE_ID#(ni) iid, Maybe#(EventParam) mdata);
     noAction;
   endmethod
 

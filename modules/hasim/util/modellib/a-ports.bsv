@@ -37,7 +37,7 @@ interface PORT_CONTROL;
 
 endinterface
 
-typedef Vector#(NUM_CONTEXTS, PORT_CONTROL) PORT_CONTROLS;
+typedef Vector#(ni, PORT_CONTROL) PORT_CONTROLS#(type ni);
 
 interface PORT_SEND#(type msg_T);
   
@@ -53,17 +53,17 @@ interface PORT_RECV#(type msg_T);
 
 endinterface
 
-interface PORT_SEND_MULTICTX#(type t_MSG);
+interface PORT_SEND_MULTIPLEXED#(type ni, type t_MSG);
   
-  method Action send(CONTEXT_ID ctx, Maybe#(t_MSG) m);
-  interface PORT_CONTROLS ctrl;
+  method Action send(INSTANCE_ID#(ni) iid, Maybe#(t_MSG) m);
+  interface PORT_CONTROLS#(ni) ctrl;
   
 endinterface
 
-interface PORT_RECV_MULTICTX#(type t_MSG);
+interface PORT_RECV_MULTIPLEXED#(type ni, type t_MSG);
 
-  method ActionValue#(Maybe#(t_MSG)) receive(CONTEXT_ID ctx);
-  interface PORT_CONTROLS ctrl;
+  method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(ni) iid);
+  interface PORT_CONTROLS#(ni) ctrl;
 
 endinterface
 
@@ -251,17 +251,17 @@ endmodule
 
 
 
-module [HASIM_MODULE] mkPortSend_MultiCtx#(String portname)
+module [HASIM_MODULE] mkPortSend_Multiplexed#(String portname)
     //interface:
-        (PORT_SEND_MULTICTX#(t_MSG))
+        (PORT_SEND_MULTIPLEXED#(ni, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
          Transmittable#(Maybe#(t_MSG)));
 
-    Vector#(NUM_CONTEXTS, PORT_SEND#(t_MSG)) ports = newVector();
-    Vector#(NUM_CONTEXTS, PORT_CONTROL) portCtrls = newVector();
+    Vector#(ni, PORT_SEND#(t_MSG)) ports = newVector();
+    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
 
-    for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+    for (Integer x = 0; x < valueOf(ni); x = x + 1)
     begin
       ports[x] <- mkPortSendUG(portname + "_" + integerToString(x));
       portCtrls[x] = ports[x].ctrl;
@@ -269,26 +269,26 @@ module [HASIM_MODULE] mkPortSend_MultiCtx#(String portname)
 
     interface ctrl = portCtrls;
 
-    method Action send(CONTEXT_ID ctx, Maybe#(t_MSG) m);
+    method Action send(INSTANCE_ID#(ni) iid, Maybe#(t_MSG) m);
 
-      ports[ctx].send(m);
+      ports[iid].send(m);
 
     endmethod
   
 endmodule
 
-module [HASIM_MODULE] mkPortRecv_MultiCtx#(String portname, Integer latency)
+module [HASIM_MODULE] mkPortRecv_Multiplexed#(String portname, Integer latency)
     //interface:
-        (PORT_RECV_MULTICTX#(t_MSG))
+        (PORT_RECV_MULTIPLEXED#(ni, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
          Transmittable#(Maybe#(t_MSG)));
 
 
-    Vector#(NUM_CONTEXTS, PORT_RECV#(t_MSG)) ports = newVector();
-    Vector#(NUM_CONTEXTS, PORT_CONTROL) portCtrls = newVector();
+    Vector#(ni, PORT_RECV#(t_MSG)) ports = newVector();
+    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
 
-    for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+    for (Integer x = 0; x < valueOf(ni); x = x + 1)
     begin
       ports[x] <- mkPortRecvUG(portname + "_" + integerToString(x), latency, tagged Invalid);
       portCtrls[x] = ports[x].ctrl;
@@ -296,27 +296,27 @@ module [HASIM_MODULE] mkPortRecv_MultiCtx#(String portname, Integer latency)
 
     interface ctrl = portCtrls;
 
-    method ActionValue#(Maybe#(t_MSG)) receive(CONTEXT_ID ctx);
+    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(ni) iid);
 
-      let res <- ports[ctx].receive();
+      let res <- ports[iid].receive();
       return res;
 
     endmethod
 
 endmodule
 
-module [HASIM_MODULE] mkPortRecvInitial_MultiCtx#(String portname, Integer latency, t_MSG initValue)
+module [HASIM_MODULE] mkPortRecvInitial_Multiplexed#(String portname, Integer latency, t_MSG initValue)
     //interface:
-        (PORT_RECV_MULTICTX#(t_MSG))
+        (PORT_RECV_MULTIPLEXED#(ni, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
          Transmittable#(Maybe#(t_MSG)));
 
 
-    Vector#(NUM_CONTEXTS, PORT_RECV#(t_MSG)) ports = newVector();
-    Vector#(NUM_CONTEXTS, PORT_CONTROL) portCtrls = newVector();
+    Vector#(ni, PORT_RECV#(t_MSG)) ports = newVector();
+    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
 
-    for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+    for (Integer x = 0; x < valueOf(ni); x = x + 1)
     begin
       ports[x] <- mkPortRecvUG(portname + "_" + integerToString(x), latency, tagged Valid initValue);
       portCtrls[x] = ports[x].ctrl;
@@ -324,9 +324,9 @@ module [HASIM_MODULE] mkPortRecvInitial_MultiCtx#(String portname, Integer laten
 
     interface ctrl = portCtrls;
 
-    method ActionValue#(Maybe#(t_MSG)) receive(CONTEXT_ID ctx);
+    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(ni) iid);
 
-      let res <- ports[ctx].receive();
+      let res <- ports[iid].receive();
       return res;
 
     endmethod
@@ -334,17 +334,17 @@ module [HASIM_MODULE] mkPortRecvInitial_MultiCtx#(String portname, Integer laten
 endmodule
 
 
-module [HASIM_MODULE] mkPortSendGuarded_MultiCtx#(String portname)
+module [HASIM_MODULE] mkPortSendGuarded_Multiplexed#(String portname)
     //interface:
-        (PORT_SEND_MULTICTX#(t_MSG))
+        (PORT_SEND_MULTIPLEXED#(ni, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
          Transmittable#(Maybe#(t_MSG)));
 
-    Vector#(NUM_CONTEXTS, PORT_SEND#(t_MSG)) ports = newVector();
-    Vector#(NUM_CONTEXTS, PORT_CONTROL) portCtrls = newVector();
+    Vector#(ni, PORT_SEND#(t_MSG)) ports = newVector();
+    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
 
-    for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+    for (Integer x = 0; x < valueOf(ni); x = x + 1)
     begin
       ports[x] <- mkPortSend(portname + "_" + integerToString(x));
       portCtrls[x] = ports[x].ctrl;
@@ -352,26 +352,26 @@ module [HASIM_MODULE] mkPortSendGuarded_MultiCtx#(String portname)
 
     interface ctrl = portCtrls;
 
-    method Action send(CONTEXT_ID ctx, Maybe#(t_MSG) m);
+    method Action send(INSTANCE_ID#(ni) iid, Maybe#(t_MSG) m);
 
-      ports[ctx].send(m);
+      ports[iid].send(m);
 
     endmethod
   
 endmodule
 
-module [HASIM_MODULE] mkPortRecvGuarded_MultiCtx#(String portname, Integer latency)
+module [HASIM_MODULE] mkPortRecvGuarded_Multiplexed#(String portname, Integer latency)
     //interface:
-        (PORT_RECV_MULTICTX#(t_MSG))
+        (PORT_RECV_MULTIPLEXED#(ni, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
          Transmittable#(Maybe#(t_MSG)));
 
 
-    Vector#(NUM_CONTEXTS, PORT_RECV#(t_MSG)) ports = newVector();
-    Vector#(NUM_CONTEXTS, PORT_CONTROL) portCtrls = newVector();
+    Vector#(ni, PORT_RECV#(t_MSG)) ports = newVector();
+    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
 
-    for (Integer x = 0; x < valueOf(NUM_CONTEXTS); x = x + 1)
+    for (Integer x = 0; x < valueOf(ni); x = x + 1)
     begin
       ports[x] <- mkPortRecv(portname + "_" + integerToString(x), latency);
       portCtrls[x] = ports[x].ctrl;
@@ -379,9 +379,9 @@ module [HASIM_MODULE] mkPortRecvGuarded_MultiCtx#(String portname, Integer laten
 
     interface ctrl = portCtrls;
 
-    method ActionValue#(Maybe#(t_MSG)) receive(CONTEXT_ID ctx);
+    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(ni) iid);
 
-      let res <- ports[ctx].receive();
+      let res <- ports[iid].receive();
       return res;
 
     endmethod

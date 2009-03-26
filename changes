@@ -17966,3 +17966,28 @@ Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hash
 - Put back the assertion removed a few days ago in the store buffer.  Change
   the error message to note that the token's alias could cause a problem, though
   that is now unlikely since the commitStores assertion above will fire first.
+
+----------
+ruhler      Date: Thu Mar 26 13:36:45 EDT 2009  CSN: CSN-hasim-609
+                  Thu Mar 26 17:36:45 UTC 2009
+
+
+Directory modules/hasim/controller/local_controllers/module
+ local-controller-module-standard.bsv Locally Modified          608 
+
+Directory modules/hasim/util/modellib
+ events.bsv                Locally Modified          608 
+ stall-ports.bsv           Locally Modified          608 
+ a-ports.bsv               Locally Modified          608 
+
+Directory modules/hasim/util/common
+ hasim-common.awb          Locally Modified          608 
+ multictx.bsv              Locally Removed           608 
+ multiplexed.bsv           Locally Added               0 
+ stats.bsv                 Locally Modified          608 
+ hasim-debug-file.bsv      Locally Modified          608 
+
+Replaced all *MULTICTX with *MULTIPLEXED, which takes the number of instances
+as a parameter.
+LOCAL_CONTROLLER now takes number of instances as a parameter.
+

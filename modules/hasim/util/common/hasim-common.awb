@@ -16,7 +16,7 @@
 %public hasim-debug-file.bsv
 %public assertion-checker.bsv
 %public utils.bsv
-%public multictx.bsv 
+%public multiplexed.bsv
 %public stats.bsv
 %public stat-fifo.bsv
 %public dynamic-parameters.bsv 

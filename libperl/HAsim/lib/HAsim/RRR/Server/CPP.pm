@@ -104,6 +104,61 @@ sub print_stub
         return;
     }
 
+    #
+    # Types section
+    #
+
+    print $file "//\n";
+    print $file "// Types\n";
+    print $file "//\n";
+    print $file "\n";
+
+    # gate type-printing if only stub was requested
+    print $file "#ifndef STUB_ONLY\n";
+    print $file "\n";
+
+    # primary types gate
+    print $file "#ifndef __" . $self->name() . "_SERVER_TYPES__\n";
+    print $file "#define __" . $self->name() . "_SERVER_TYPES__\n";
+    print $file "\n";
+
+    # for TEMPORARY backwards-compatibility, we allow servers to bypass the stub and
+    # process the UMF_MESSAGE directly, in which case we shouldn't print the types
+    print $file "#ifndef BYPASS_SERVER_STUB\n";
+    print $file "\n";
+
+    # print types
+    foreach my $method (@{ $self->{methodlist} })
+    {
+        $method->print_types($file);
+    }
+    print $file "\n";
+
+    # close the #ifndef for the TEMPORARY stub-bypass trick
+    print $file "#endif\n";
+    print $file "\n";
+
+    # close primary types gate
+    print $file "#endif\n";
+    print $file "\n";
+
+    # close stub-only gate
+    print $file "#endif\n";
+    print $file "\n";
+
+    #
+    # Stub section
+    #
+
+    print $file "//\n";
+    print $file "// Stub\n";
+    print $file "//\n";
+    print $file "\n";
+
+    # gate stub-printing if only types were requested
+    print $file "#ifndef TYPES_ONLY\n";
+    print $file "\n";
+
     # defines and includes
     print $file "#ifndef __" . $self->name() . "_SERVER_STUB__\n";
     print $file "#define __" . $self->name() . "_SERVER_STUB__\n";
@@ -125,22 +180,6 @@ sub print_stub
 
     # other generic stuff
     print $file "using namespace std;\n";
-    print $file "\n";
-
-    # for TEMPORARY backwards-compatibility, we allow servers to bypass the stub and
-    # process the UMF_MESSAGE directly, in which case we shouldn't print the types
-    print $file "#ifndef BYPASS_SERVER_STUB\n";
-    print $file "\n";
-
-    # print types
-    foreach my $method (@{ $self->{methodlist} })
-    {
-        $method->print_types($file);
-    }
-    print $file "\n";
-
-    # close the #ifndef for the TEMPORARY stub-bypass trick
-    print $file "#endif\n";
     print $file "\n";
 
     # start creating the server class
@@ -243,7 +282,11 @@ sub print_stub
     print $file "};\n";
     print $file "\n";
 
-    # end the stub file
+    # end the stub, close primary gate
+    print $file "#endif\n";
+    print $file "\n";
+
+    # print types-only gate
     print $file "#endif\n";
 }
 

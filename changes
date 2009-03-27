@@ -18003,3 +18003,32 @@ Directory modules/hasim/util/common
 When simulating count cycles and print a message, including the cycle number,
 when an assertion is triggered.  Finally this should give us a way to
 figure out exactly when an assertion happens.
+
+----------
+aparasha    Date: Fri Mar 27 02:31:33 EDT 2009  CSN: CSN-hasim-611
+                  Fri Mar 27 06:31:33 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Server
+ CPP.pm                    Locally Modified          610 
+
+C++ RRR server code can now choose to include only the definitions of
+the aggregated input and output types for its methods. To do this,
+define the macro TYPES_ONLY before including the server stub header,
+and undefine the macro immediately after the include. Subsequent
+un-gated includes of the stub header will automatically avoid
+re-defining the types.
+
+Example usage in a C++ server definition:
+
+#define TYPES_ONLY
+#include "asim/rrr/server_stub_FOO.h"
+#undef TYPES_ONLY
+
+class FOO_SERVER_CLASS
+{
+    ...
+    ...
+};
+
+#include "asim/rrr/server_stub_FOO.h"

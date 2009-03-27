@@ -117,6 +117,18 @@ module [Connected_Module] mkAssertionNode#(ASSERTIONS_DICT_TYPE baseID)
 
     // *********** Rules ***********
 
+    //
+    // Cycle counter used for printing in simulation.  Will be optimized away
+    // in hardware.
+    //
+    Reg#(Bit#(64)) cycle <- mkReg(0);
+
+    rule countCycle (True);
+        cycle <= cycle + 1;
+    endrule
+
+
+
     function Bool isSet(ASSERTION_SEVERITY a) = (a != ASSERT_NONE);
 
     //
@@ -203,6 +215,15 @@ module [Connected_Module] mkAssertionNode#(ASSERTIONS_DICT_TYPE baseID)
     method Action raiseAssertion(ASSERTIONS_DICT_TYPE myID, ASSERTION_SEVERITY mySeverity);
 
         raiseWire[myID - baseID] <= mySeverity;
+
+        String a_type = case (mySeverity)
+                            ASSERT_NONE: "NONE";
+                            ASSERT_MESSAGE: "MESSAGE";
+                            ASSERT_WARNING: "WARNING";
+                            ASSERT_ERROR: "ERROR";
+                        endcase;
+
+        $display("ASSERTION %s: cycle %0d, %s", a_type, cycle, showASSERTIONS_DICT(myID));
 
     endmethod
 

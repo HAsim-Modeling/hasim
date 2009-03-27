@@ -17991,3 +17991,15 @@ Replaced all *MULTICTX with *MULTIPLEXED, which takes the number of instances
 as a parameter.
 LOCAL_CONTROLLER now takes number of instances as a parameter.
 
+
+----------
+mcadler     Date: Thu Mar 26 21:24:09 EDT 2009  CSN: CSN-hasim-610
+                  Fri Mar 27 01:24:09 UTC 2009
+
+
+Directory modules/hasim/util/common
+ assertion-checker.bsv     Locally Modified          609 
+
+When simulating count cycles and print a message, including the cycle number,
+when an assertion is triggered.  Finally this should give us a way to
+figure out exactly when an assertion happens.

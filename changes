@@ -18032,3 +18032,15 @@ class FOO_SERVER_CLASS
 };
 
 #include "asim/rrr/server_stub_FOO.h"
+
+----------
+mcadler     Date: Mon Mar 30 16:45:41 EDT 2009  CSN: CSN-hasim-612
+                  Mon Mar 30 20:45:41 UTC 2009
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          611 
+
+When a module defined in awb has only .bsh files treat it as include-only.  Do
+not build a .bsv wrapper and do not add the module name to the set of wrappers
+to compile.

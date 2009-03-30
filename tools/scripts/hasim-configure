@@ -665,6 +665,8 @@ sub __make_bsvfiles {
     my $bsvfile = HAsim::Util::path_append($my_dir,"$provides.bsv");
     my $hfile   = HAsim::Util::path_append($sw_inc_dir,"$provides.h");
 
+    my @bsv_sources = $module->sources("BSV", "PUBLIC");
+
     $sim_config->print("Register(\"Module_${provides}\",\"provides ${provides} (${description})\",UINT64,module_${provides},true)\n");
 
     unlink($bshfile);
@@ -717,11 +719,13 @@ sub __make_bsvfiles {
             exit(1);
         }
     }
-    print BSHFILE "\n";
 
-    print BSHFILE "`ifndef BUILDING_MODULE_${safe_provides}\n";
-    print BSHFILE "    import ${provides}::*;\n";
-    print BSHFILE "`endif\n";
+    if (@bsv_sources) {
+        print BSHFILE "\n";
+        print BSHFILE "`ifndef BUILDING_MODULE_${safe_provides}\n";
+        print BSHFILE "    import ${provides}::*;\n";
+        print BSHFILE "`endif\n";
+    }
 
     print BSHFILE "\n";
     print BSHFILE "`endif  // INCLUDED_MODULE_${safe_provides}\n";
@@ -729,28 +733,30 @@ sub __make_bsvfiles {
     close(BSHFILE);
 
     unlink($bsvfile);
-    open(BSVFILE, ">$bsvfile");
+    if (@bsv_sources) {
+        open(BSVFILE, ">$bsvfile");
 
-    print BSVFILE "//\n";
-    print BSVFILE "// Synthesized compilation file for module: $provides\n";
-    print BSVFILE "//\n";
-    print BSVFILE "//   This file was created by " . basename($0) . "\n";
-    print BSVFILE "//\n";
-    print BSVFILE "\n";
+        print BSVFILE "//\n";
+        print BSVFILE "// Synthesized compilation file for module: $provides\n";
+        print BSVFILE "//\n";
+        print BSVFILE "//   This file was created by " . basename($0) . "\n";
+        print BSVFILE "//\n";
+        print BSVFILE "\n";
 
-    # Prevent circular imports
-    print BSVFILE "`define BUILDING_MODULE_${safe_provides}\n";
-    print BSVFILE "`include \"asim/provides/${provides}.bsh\"\n";
-    print BSVFILE "\n";
+        # Prevent circular imports
+        print BSVFILE "`define BUILDING_MODULE_${safe_provides}\n";
+        print BSVFILE "`include \"asim/provides/${provides}.bsh\"\n";
+        print BSVFILE "\n";
 
-    # Add includes of public and private bsc files.  Skip .bsh files since they
-    # were included above in the synthesized bsh file.
-    if ($public) {
-        foreach my $f ($module->sources("BSV", "PUBLIC")) {
-            print BSVFILE "`include \"$f\"\n";
-            if ($f eq "${provides}.bsv") {
-                print STDERR "File name clash:  interface ${provides} uses a source file with the same name!\n";
-                exit(1);
+        # Add includes of public and private bsc files.  Skip .bsh files since they
+        # were included above in the synthesized bsh file.
+        if ($public) {
+            foreach my $f ($module->sources("BSV", "PUBLIC")) {
+                print BSVFILE "`include \"$f\"\n";
+                if ($f eq "${provides}.bsv") {
+                    print STDERR "File name clash:  interface ${provides} uses a source file with the same name!\n";
+                    exit(1);
+                }
             }
         }
     }
@@ -1317,8 +1323,10 @@ sub __generate_makefile_sub {
 	    HAsim::Util::hash_append($current_replacements_r, " ", '@BDPI_BAS@', $fname);
     }
 
-    my $mod_rule = "\n$mod_bsv: $deps\n\ttouch \$\@\n";
-    HAsim::Util::hash_append($current_replacements_r, " ", '@GEN_BSVS@', $mod_bsv);
+    # Add module to build list if it has sources that need to be built
+    if ($module->sources("BSV", "PUBLIC")) {
+        HAsim::Util::hash_append($current_replacements_r, " ", '@GEN_BSVS@', $mod_bsv);
+    }
 
     #recurse
     HAsim::Build::check_submodules_defined($module);

@@ -18044,3 +18044,13 @@ Directory tools/scripts
 When a module defined in awb has only .bsh files treat it as include-only.  Do
 not build a .bsv wrapper and do not add the module name to the set of wrappers
 to compile.
+
+----------
+mcadler     Date: Mon Mar 30 20:47:15 EDT 2009  CSN: CSN-hasim-613
+                  Tue Mar 31 00:47:15 UTC 2009
+
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.bsv    Locally Modified          611 
+
+Scratchpad interface name change.

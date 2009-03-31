@@ -25,6 +25,7 @@ import Vector::*;
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/front_panel.bsh"
 `include "asim/provides/physical_platform.bsh"
+`include "asim/provides/virtual_devices.bsh"
 `include "asim/provides/low_level_platform_interface.bsh"
 `include "asim/provides/rrr.bsh"
 `include "asim/provides/scratchpad_memory.bsh"
@@ -78,7 +79,7 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
 
     // instantiate virtual devices
     FrontPanel frontPanel <- mkFrontPanel(llpint);
-    SCRATCHPAD_MEMORY_VIRTUAL_DEVICE memory <- mkMemoryVirtualDevice(llpint);
+    SCRATCHPAD_MEMORY_IFC memory <- mkMemoryVirtualDevice(llpint);
     Streams streams <- mkStreams(llpint);
 
     // connection terminus

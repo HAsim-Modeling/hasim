@@ -199,25 +199,23 @@ endfunction
 
 // initFuncpRspHandleFault
 
-function FUNCP_RSP_HANDLE_FAULT initFuncpRspHandleFault(TOKEN tok, ISA_ADDRESS nextInstrAddr, TOKEN_EPOCH epoch);
+function FUNCP_RSP_HANDLE_FAULT initFuncpRspHandleFault(TOKEN tok, ISA_ADDRESS nextInstrAddr);
 
     return FUNCP_RSP_HANDLE_FAULT
             {
                 token: tok,
-                nextInstructionAddress: nextInstrAddr,
-                epoch: epoch
+                nextInstructionAddress: nextInstrAddr
             };
 
 endfunction
 
 // initFuncpRspRewindToToken
 
-function FUNCP_RSP_REWIND_TO_TOKEN initFuncpRspRewindToToken(TOKEN tok, TOKEN_EPOCH epoch);
+function FUNCP_RSP_REWIND_TO_TOKEN initFuncpRspRewindToToken(TOKEN tok);
 
     return FUNCP_RSP_REWIND_TO_TOKEN
             {
-                token: tok,
-                epoch: epoch
+                token: tok
             };
 
 endfunction

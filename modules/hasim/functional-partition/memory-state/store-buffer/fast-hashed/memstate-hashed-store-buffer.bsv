@@ -376,8 +376,8 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
                 // Use this hit as current best match if the store is before
                 // the load and either this is the first address match or this
                 // store was executed later than the previous match.
-                if (tokenIsOlderOrEq(node.tokIdx, reqToken) &&
-                    (tokenIsOlderOrEq(respClosestReqToken, node.tokIdx) || ! isValid(respValue)))
+                if (tokenIsOlderOrEq(node.tokIdx.token_id, reqToken.token_id) &&
+                    (tokenIsOlderOrEq(respClosestReqToken.token_id, node.tokIdx.token_id) || ! isValid(respValue)))
                 begin
                     debugLog.record($format("      SB Current Best: ") + fshow(reqToken) + $format(", node_token=") + fshow(node.tokIdx));
 
@@ -444,7 +444,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             debugLog.record($format("    SB Store ") + fshow(reqToken) + $format(" is youngest"));
         end
         else if (youngestStoreHint[ctx_id] matches tagged Valid .cur_youngest &&&
-                 tokenIsOlderOrEq(cur_youngest, reqToken))
+                 tokenIsOlderOrEq(cur_youngest.token_id, reqToken.token_id))
         begin
             youngestStoreHint[ctx_id] <= tagged Valid reqToken;
             debugLog.record($format("    SB Store ") + fshow(reqToken) + $format(" is youngest -- replaces ") + fshow(cur_youngest));
@@ -861,7 +861,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             debugLog.record($format("  SB Rewind: Store buffer is already empty"));
         end
         else if (youngestStoreHint[ctx_id] matches tagged Valid .cur_youngest &&&
-                 tokenIsOlderOrEq(cur_youngest, rewind_to))
+                 tokenIsOlderOrEq(cur_youngest.token_id, rewind_to.token_id))
         begin
             // Youngest token in store buffer is older than rewind target.
             debugLog.record($format("  SB Rewind: Nothing to do (rewind to ") + fshow(rewind_to) + $format(", current youngest is ") + fshow(cur_youngest) + $format(")"));
@@ -873,7 +873,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
             // Pick the first token in the rewind range that has a store.
             if (youngestStoreHint[ctx_id] matches tagged Valid .cur_youngest &&&
-                tokenIsOlderOrEq(cur_youngest, rewind_from))
+                tokenIsOlderOrEq(cur_youngest.token_id, rewind_from.token_id))
             begin
                 rewindCur <= cur_youngest;
                 debugLog.record($format("  SB Rewind: Starting rewind at current youngest ") + fshow(cur_youngest));

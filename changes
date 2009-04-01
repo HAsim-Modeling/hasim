@@ -18064,3 +18064,36 @@ Directory modules/bluespec/common/base
  bluespec_common.prj       Locally Modified          612 
 
 Replace RegFile.v with lutram.v.  See the change in platforms.
+
+----------
+pellauer    Date: Wed Apr  1 16:33:26 EDT 2009  CSN: CSN-hasim-615
+                  Wed Apr  1 20:33:26 UTC 2009
+
+
+Directory modules/hasim/functional-partition/interface
+ funcp-timing-interface.bsv Locally Modified          614 
+ funcp-rsp-constructors.bsv Locally Modified          614 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          614 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-newInFlight.bsv Locally Modified          614 
+ regmgr-macro-pipe-exception.bsv Locally Modified          614 
+ regmgr-macro.bsv          Locally Modified          614 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          614 
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          614 
+
+
+* Epochs were no longer being used by the functional partition 
+  (which now has a more general exception mechanism). They have been removed and are a timing
+  model-only construct now.
+
+* tokIsOlderOrEq now takes TOKEN_ID rather than TOKEN_INDEX.
+
+Michael P.
+

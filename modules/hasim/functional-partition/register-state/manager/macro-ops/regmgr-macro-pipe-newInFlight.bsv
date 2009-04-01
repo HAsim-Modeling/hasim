@@ -29,9 +29,7 @@
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_NewInFlight#(
     REGMGR_GLOBAL_DATA glob,
-    REGSTATE_REG_MAPPING_NEWINFLIGHT regMapping,
-    LUTRAM#(CONTEXT_ID, TOKEN_BRANCH_EPOCH) branchEpoch,
-    LUTRAM#(CONTEXT_ID, TOKEN_FAULT_EPOCH) faultEpoch)
+    REGSTATE_REG_MAPPING_NEWINFLIGHT regMapping)
     //interface:
                 ();
 
@@ -95,7 +93,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_NewInFlight#(
         // The timing partition scratchpad must be filled in by up.
         let newtok = TOKEN { index: idx,
                              poison: False,
-                             epoch: TOKEN_EPOCH { branch: branchEpoch.sub(ctx_id), fault: faultEpoch.sub(ctx_id) },
                              timep_info: TOKEN_TIMEP_INFO { scratchpad: 0 } };
         
         // Reset the free list pointer so rewind knows whether this token has

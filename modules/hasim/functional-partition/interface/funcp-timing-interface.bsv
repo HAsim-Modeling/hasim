@@ -270,7 +270,6 @@ typedef struct
 {
     TOKEN token;
     ISA_ADDRESS nextInstructionAddress;  // Resume pipeline here
-    TOKEN_EPOCH epoch;                   // New epoch
 }
     FUNCP_RSP_HANDLE_FAULT
         deriving (Eq, Bits);
@@ -291,7 +290,6 @@ typedef struct
 typedef struct
 {
     TOKEN token;
-    TOKEN_EPOCH epoch;                   // New epoch
 }
     FUNCP_RSP_REWIND_TO_TOKEN
         deriving (Eq, Bits);

@@ -157,8 +157,8 @@ endfunction
 // tokenIsOlderOrEQ returns true iff token "older" really is older than or equal
 // to "younger".
 //
-function Bool tokenIsOlderOrEq(TOKEN_INDEX older, TOKEN_INDEX younger);
-    return (younger.token_id - older.token_id)[valueOf(TOKEN_ID_SIZE) - 1] == 0;
+function Bool tokenIsOlderOrEq(TOKEN_ID older, TOKEN_ID younger);
+    return (younger - older)[valueOf(TOKEN_ID_SIZE) - 1] == 0;
 endfunction
 
 
@@ -217,10 +217,6 @@ typedef struct
     // Will not change during or after funcp_commitResults.
     Bool poison;
 
-    // Initialized by the functional partition when a token is allocated.
-    // Will not change after that.
-    TOKEN_EPOCH epoch;
-
     // Initialized by the functional partition when a token is created.
     // Values set by the timing partition pass through the functional partition
     // unmodified.
@@ -235,10 +231,6 @@ function TOKEN_ID tokTokenId(TOKEN tok) = tok.index.token_id;
 
 function Bool tokIsPoisoned(TOKEN tok) = tok.poison;
 
-function TOKEN_BRANCH_EPOCH tokBranchEpoch(TOKEN tok) = tok.epoch.branch;
-function TOKEN_FAULT_EPOCH tokFaultEpoch(TOKEN tok) = tok.epoch.fault;
-function TOKEN_EPOCH tokEpoch(TOKEN tok) = tok.epoch;
-    
 function TOKEN_EPOCH initEpoch(TOKEN_BRANCH_EPOCH b, TOKEN_FAULT_EPOCH f) =
     TOKEN_EPOCH { branch: b, fault: f };
 

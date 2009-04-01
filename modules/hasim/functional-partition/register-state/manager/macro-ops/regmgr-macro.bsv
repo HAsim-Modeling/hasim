@@ -92,14 +92,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     // ******* High-Level FSM State *******
 
-    // The epoch tells us when to discard junk tokens that were in flight when
-    // the timing partition killed them.
-    LUTRAM#(CONTEXT_ID, TOKEN_BRANCH_EPOCH) branchEpoch <- mkLUTRAMU();
-
-    // The fault epoch tells us when to discard junk tokens that were in flight
-    // killed by the timing partition's fault handler.
-    LUTRAM#(CONTEXT_ID, TOKEN_FAULT_EPOCH) faultEpoch <- mkLUTRAMU();
-     
     // ====================================================================
     //
     //   Submodules holding global state or managing external connections
@@ -134,9 +126,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
 
     let newInFlight <- mkFUNCP_RegMgrMacro_Pipe_NewInFlight(
                             globData,
-                            regMapping.newInFlight,
-                            branchEpoch,
-                            faultEpoch);
+                            regMapping.newInFlight);
 
     let doITranslate <- mkFUNCP_RegMgrMacro_Pipe_DoITranslate(
                             globData,
@@ -207,9 +197,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                             tokDsts.readPorts[2],
                             freelist,
                             tokAddr.readPorts[1],
-                            tokMemAddr.readPorts[1],
-                            branchEpoch,
-                            faultEpoch);
+                            tokMemAddr.readPorts[1]);
 
 
     // ====================================================================
@@ -257,7 +245,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // a good reason.
     //
     (* descending_urgency=
-        "exception.rewindToToken4, exception.rewindToToken3, exception.rewindToToken2, exception.rewindToToken1, exception.rewindToTokenS, exception.handleFault3, exception.handleFault2, exception.handleFault1, exception.handleFaultS, commitStores.commitStores1, commitResults.commitResults2, commitResults.commitResults1, doStores.doStores3, doStores.doStores2SpanEnd, doStores.doStores2SpanRsp2, doStores.doStores2SpanRsp1, doStores.doStores2SpanReq, doStores.doStores2RMW, doStores.doStores2, doStores.doStores1, doStores.doStoresS, doLoads.doLoads3Span, doLoads.doLoads3, doLoads.doLoads2Span, doLoads.doLoads2, doLoads.doLoads1, doDTranslate.doDTranslate3Span, doDTranslate.doDTranslate3, doDTranslate.doDTranslate2Span, doDTranslate.doDTranslate2, doDTranslate.doDTranslate1, getResults.emulateInstruction4, getResults.emulateInstruction3_UpdateRegWrite, getResults.emulateInstruction3_UpdateReg, getResults.emulateInstruction3, getResults.emulateInstruction2_Rsp, getResults.emulateInstruction2_Req, getResults.emulateInstruction2_PRFReq, getResults.emulateInstruction1_GenRegMapResp, getResults.emulateInstruction1_GenRegMapReq, getResults.emulateInstruction1, getResults.getResults4AdditionalWriteback, getResults.getResults4, getResults.getResults3, getResults.getResults2, getResults.getResults1, getDependencies.getDependencies4, getDependencies.getDependencies3, getDependencies.getDependencies2, getDependencies.getDependencies1, getInstruction.getInstruction3Span, getInstruction.getInstruction3, getInstruction.getInstruction2Span, getInstruction.getInstruction2, getInstruction.getInstruction1, doITranslate.doITranslate2Span, doITranslate.doITranslate2, doITranslate.doITranslate1Span, doITranslate.doITranslate1, newInFlight.newInFlight, initializeRegmgrTok, initializeRegmgrCtx" *)
+        "exception.rewindToToken4, exception.rewindToToken3, exception.rewindToToken2, exception.rewindToToken1, exception.rewindToTokenS, exception.handleFault3, exception.handleFault2, exception.handleFault1, exception.handleFaultS, commitStores.commitStores1, commitResults.commitResults2, commitResults.commitResults1, doStores.doStores3, doStores.doStores2SpanEnd, doStores.doStores2SpanRsp2, doStores.doStores2SpanRsp1, doStores.doStores2SpanReq, doStores.doStores2RMW, doStores.doStores2, doStores.doStores1, doStores.doStoresS, doLoads.doLoads3Span, doLoads.doLoads3, doLoads.doLoads2Span, doLoads.doLoads2, doLoads.doLoads1, doDTranslate.doDTranslate3Span, doDTranslate.doDTranslate3, doDTranslate.doDTranslate2Span, doDTranslate.doDTranslate2, doDTranslate.doDTranslate1, getResults.emulateInstruction4, getResults.emulateInstruction3_UpdateRegWrite, getResults.emulateInstruction3_UpdateReg, getResults.emulateInstruction3, getResults.emulateInstruction2_Rsp, getResults.emulateInstruction2_Req, getResults.emulateInstruction2_PRFReq, getResults.emulateInstruction1_GenRegMapResp, getResults.emulateInstruction1_GenRegMapReq, getResults.emulateInstruction1, getResults.getResults4AdditionalWriteback, getResults.getResults4, getResults.getResults3, getResults.getResults2, getResults.getResults1, getDependencies.getDependencies4, getDependencies.getDependencies3, getDependencies.getDependencies2, getDependencies.getDependencies1, getInstruction.getInstruction3Span, getInstruction.getInstruction3, getInstruction.getInstruction2Span, getInstruction.getInstruction2, getInstruction.getInstruction1, doITranslate.doITranslate2Span, doITranslate.doITranslate2, doITranslate.doITranslate1Span, doITranslate.doITranslate1, newInFlight.newInFlight, initializeRegmgrTok" *)
 
     rule initializeRegmgrTok ((initState == 0) &&
                               (globData.state.getState() == RSM_Initializing));
@@ -275,27 +263,12 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         Bit#(TOKEN_INDEX_SIZE) idx_as_bit = pack(initTokIdx);
         if (idx_as_bit == maxBound)
         begin
-            initState <= 1;
+            globData.state.setState(RSM_Running);
         end
 
         initTokIdx <= unpack(idx_as_bit + 1);
 
     endrule
 
-    rule initializeRegmgrCtx ((initState == 1) &&
-                              (globData.state.getState() == RSM_Initializing));
-
-        branchEpoch.upd(initCtxIdx, 0);
-        faultEpoch.upd(initCtxIdx, 0);
-
-        // Done?
-        if (initCtxIdx == maxBound)
-        begin
-            globData.state.setState(RSM_Running);
-        end
-
-        initCtxIdx <= initCtxIdx + 1;
-
-    endrule
 
 endmodule

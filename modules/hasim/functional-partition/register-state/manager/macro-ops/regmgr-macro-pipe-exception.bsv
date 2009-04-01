@@ -61,9 +61,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     BROM#(TOKEN_INDEX, REGMGR_DST_REGS) tokDsts,
     FUNCP_FREELIST freelist,
     BROM#(TOKEN_INDEX, ISA_ADDRESS) tokAddr,
-    BROM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr,
-    LUTRAM#(CONTEXT_ID, TOKEN_BRANCH_EPOCH) branchEpoch,
-    LUTRAM#(CONTEXT_ID, TOKEN_FAULT_EPOCH) faultEpoch)
+    BROM#(TOKEN_INDEX, ISA_ADDRESS) tokMemAddr)
     //interface:
                 ();
 
@@ -244,7 +242,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         //
         let rewind_to = TOKEN {index: (tok.index - 1),
                                poison: False,
-                               epoch: ?,
                                timep_info: ?};
 
         rewindTok <= rewind_to;
@@ -281,12 +278,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": handleFault3: Restart at 0x%h", resumeInstrAddr)); 
 
-        // Update the fault epoch so we can discard appropriate updates.
-        let new_fault_epoch = faultEpoch.sub(ctx_id) + 1;
-        faultEpoch.upd(ctx_id, new_fault_epoch);
-
         // Send response to timing model
-        linkHandleFault.makeResp(initFuncpRspHandleFault(tok, resumeInstrAddr, initEpoch(branchEpoch.sub(ctx_id), new_fault_epoch)));
+        linkHandleFault.makeResp(initFuncpRspHandleFault(tok, resumeInstrAddr));
 
         state.clearException();
         state_exc <= RSM_EXC_Running;
@@ -361,9 +354,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         // Tell the memory to drop non-committed stores.
         let m_req = MEMSTATE_REQ_REWIND {rewind_to: tok.index, rewind_from: tokScoreboard.youngestDecoded_Safe(tok.index)};
         linkToMem.makeReq(tagged REQ_REWIND m_req);
-
-        // Update the epoch so we can discard appropriate updates.
-        branchEpoch.upd(ctx_id, branchEpoch.sub(ctx_id) + 1);
 
         // Log our failure.
         debugLog.record($format("Rewind: Initiating rewind (Oldest: ") + fshow(tokScoreboard.oldest(tokContextId(tok))));
@@ -489,7 +479,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
             if (! rewindForFault)
             begin
                 // Normal rewind -- return response
-                linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok, initEpoch(branchEpoch.sub(ctx_id), faultEpoch.sub(ctx_id) )));
+                linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok));
                 state.clearException();
                 state_exc <= RSM_EXC_Running;
             end

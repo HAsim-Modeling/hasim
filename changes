@@ -18054,3 +18054,13 @@ Directory modules/hasim/util/platform-interface
  platform-interface.bsv    Locally Modified          611 
 
 Scratchpad interface name change.
+
+----------
+mcadler     Date: Wed Apr  1 15:58:23 EDT 2009  CSN: CSN-hasim-614
+                  Wed Apr  1 19:58:23 UTC 2009
+
+
+Directory modules/bluespec/common/base
+ bluespec_common.prj       Locally Modified          612 
+
+Replace RegFile.v with lutram.v.  See the change in platforms.

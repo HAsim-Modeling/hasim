@@ -29,6 +29,7 @@ import Vector::*;
 `include "asim/provides/low_level_platform_interface.bsh"
 `include "asim/provides/rrr.bsh"
 `include "asim/provides/scratchpad_memory.bsh"
+`include "asim/provides/central_cache.bsh"
 `include "asim/provides/streams.bsh"
 
 `include "asim/rrr/server_connections.bsh"
@@ -79,7 +80,8 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
 
     // instantiate virtual devices
     FrontPanel frontPanel <- mkFrontPanel(llpint);
-    SCRATCHPAD_MEMORY_IFC memory <- mkMemoryVirtualDevice(llpint);
+    CENTRAL_CACHE_IFC central_cache <- mkCentralCache(llpint);
+    SCRATCHPAD_MEMORY_IFC memory <- mkMemoryVirtualDevice(llpint, central_cache);
     Streams streams <- mkStreams(llpint);
 
     // connection terminus

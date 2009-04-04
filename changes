@@ -18097,3 +18097,13 @@ Directory modules/hasim/util/common
 
 Michael P.
 
+
+----------
+mcadler     Date: Sat Apr  4 10:24:03 EDT 2009  CSN: CSN-hasim-616
+                  Sat Apr  4 14:24:03 UTC 2009
+
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.bsv    Locally Modified          615 
+
+Allocate the virtual platform's central cache.

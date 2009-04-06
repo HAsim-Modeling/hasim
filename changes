@@ -18107,3 +18107,17 @@ Directory modules/hasim/util/platform-interface
  platform-interface.bsv    Locally Modified          615 
 
 Allocate the virtual platform's central cache.
+
+----------
+mcadler     Date: Mon Apr  6 07:28:29 EDT 2009  CSN: CSN-hasim-617
+                  Mon Apr  6 11:28:29 UTC 2009
+
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.bsv    Locally Modified          616 
+ platform-interface.awb    Locally Modified          615 
+
+Dynamic parameters enable or disable the local cache and control whether it is a
+write-through or write-back cache.  These parameters are mainly useful for
+debugging on real FPGA hardware, as they force more memory state to be visible
+to the host software.

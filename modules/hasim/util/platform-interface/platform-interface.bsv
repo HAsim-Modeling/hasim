@@ -36,6 +36,7 @@ import Vector::*;
 `include "asim/rrr/client_connections.bsh"
 
 `include "asim/dict/ASSERTIONS_PLATFORM_INTERFACE.bsh"
+`include "asim/dict/PARAMS_PLATFORM_INTERFACE.bsh"
 
 typedef struct
 {
@@ -60,6 +61,15 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
 
     // soft reset
     Connection_Send#(Bool) link_reset <- mkConnection_Send("soft_reset");
+
+    // ***** Dynamic parameters *****
+    PARAMETER_NODE paramNode <- mkDynamicParameterNode();
+
+    Param#(1) enableCentralCacheParam <- mkDynamicParameter(`PARAMS_PLATFORM_INTERFACE_CENTRAL_CACHE_ENABLE, paramNode);
+    function Bool enableCentralCache() = (enableCentralCacheParam == 1);
+
+    Param#(1) writeBackCentralCacheParam <- mkDynamicParameter(`PARAMS_PLATFORM_INTERFACE_CENTRAL_CACHE_WRITE_BACK, paramNode);
+    function Bool centralCacheIsWriteBack() = (writeBackCentralCacheParam == 1);
 
     // ***** Assertion Checkers *****
     ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_PLATFORM_INTERFACE__BASE);
@@ -91,6 +101,13 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
     let rrr_server_links <- mkServerConnections(llpint.rrrServer);
     let rrr_client_links <- mkClientConnections(llpint.rrrClient);
     
+    // Initialization
+    Reg#(Bool) initialized <- mkReg(False);
+    rule doInit (! initialized);
+        central_cache.init(enableCentralCache, centralCacheIsWriteBack);
+        initialized <= True;
+    endrule
+
     // rules
     rule set_leds (True);
         let newval = link_leds.receive();

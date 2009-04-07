@@ -13,7 +13,7 @@ def STREAMS.MEMTEST.DATA_SM     "memSM [0x%8x] = 0x%08x\n";
 def STREAMS.MEMTEST.DATA_SM_ERR "memSM [0x%8x] = 0x%08x  ERROR\n";
 def STREAMS.MEMTEST.DATA_H      "memH  [0x%8x] = 0x%08x\n";
 def STREAMS.MEMTEST.DATA_H_ERR  "memH  [0x%8x] = 0x%08x  ERROR\n";
-def STREAMS.MEMTEST.LATENCY     "latency (8 loads, one byte per load) = 0x%08x%08x\n";
+def STREAMS.MEMTEST.LATENCY     "latency (4 loads, 2 bytes per load) = 0x%08x%08x\n";
 def STREAMS.MEMTEST.INVAL       "invalidating 0x%08x\n";
 def STREAMS.MEMTEST.DONE        "memtest: done\n";
 

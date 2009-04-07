@@ -18121,3 +18121,28 @@ Dynamic parameters enable or disable the local cache and control whether it is a
 write-through or write-back cache.  These parameters are mainly useful for
 debugging on real FPGA hardware, as they force more memory state to be visible
 to the host software.
+
+----------
+mcadler     Date: Tue Apr  7 17:35:28 EDT 2009  CSN: CSN-hasim-618
+                  Tue Apr  7 21:35:28 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          616 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          616 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          616 
+ hybrid-funcp-memory.rrr   Locally Modified          616 
+ hybrid-funcp-memory.h     Locally Modified          616 
+ hybrid-funcp-memory.bsv   Locally Modified          616 
+
+Directory modules/system/test/mem_test
+ mem-test.bsv              Locally Modified          616 
+ mem-test.dic              Locally Modified          616 
+
+- Interface changes to set-associative cache in RL library.
+- Set associative cache no longer supports full cache invalidate.  It was never
+  used and becoming too complicated.

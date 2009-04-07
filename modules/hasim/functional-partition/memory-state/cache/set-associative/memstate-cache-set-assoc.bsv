@@ -87,14 +87,14 @@ typedef Vector#(CACHELINE_WORDS, MEM_VALUE) FUNCP_MEM_CACHELINE_VEC;
 // FUNCP_MEM_INTERFACE
 //
 //    Interface for talking to main memory.  In addition to the
-//    HASIM_CACHE_SORUCE_DATA subinterface, FUNCP_MEM_INTERFACE has bypass
+//    RL_SA_CACHE_SORUCE_DATA subinterface, FUNCP_MEM_INTERFACE has bypass
 //    methods for reading and writing word-sized data from/to main memory.
 //    The bypass methods are used when the cache is disabled.
 //
 // ===================================================================
 
 interface FUNCP_MEM_INTERFACE;
-    interface HASIM_CACHE_SOURCE_DATA#(FUNCP_MEM_CACHE_TAG, FUNCP_MEM_CACHELINE, CACHELINE_WORDS, FUNCP_MEM_CACHE_REF_INFO) cacheIfc;
+    interface RL_SA_CACHE_SOURCE_DATA#(FUNCP_MEM_CACHE_TAG, FUNCP_MEM_CACHELINE, CACHELINE_WORDS, FUNCP_MEM_CACHE_REF_INFO) cacheIfc;
 
     method Action readWordReq(MEM_LOAD_INFO ldInfo);
     method ActionValue#(MEMSTATE_RESP) readWordResp();
@@ -155,7 +155,7 @@ module [HASIM_MODULE] mkFuncpMemInterface
     // that lack the low bits for addressing within a line to system addresses
     // that include the low bits.
     //
-    interface HASIM_CACHE_SOURCE_DATA cacheIfc;
+    interface RL_SA_CACHE_SOURCE_DATA cacheIfc;
 
         method Action readReq(FUNCP_MEM_CACHE_TAG addr, FUNCP_MEM_CACHE_REF_INFO refInfo);
             link_funcp_memory.makeReq(funcpMemLoadCacheLineReq(refInfo.contextId, memAddrFromCacheTag(addr)));
@@ -215,7 +215,7 @@ endmodule
 
 module [HASIM_MODULE] mkFuncpMemoryCacheStats
     // interface:
-        (HASIM_CACHE_STATS);
+        (RL_SA_CACHE_STATS);
     
     Stat statLoadHit   <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_LOAD_HIT);
     Stat statLoadMiss  <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_LOAD_MISS);
@@ -352,7 +352,8 @@ endmodule
 
 module [HASIM_MODULE] mkFUNCP_Cache
     // interface:
-        ();
+    ()
+    provisos (Bits#(FUNCP_MEM_CACHE_TAG, t_FUNCP_MEM_CACHE_TAG_SZ));
 
     DEBUG_FILE debugLog <- mkDebugFile(`FUNCP_MEMCACHE_LOGFILE_NAME);
 
@@ -370,7 +371,6 @@ module [HASIM_MODULE] mkFUNCP_Cache
     Connection_Server#(MEM_REQUEST, MEMSTATE_RESP) link_memstate <- mkConnection_Server("mem_cache");
 
     Connection_Server#(MEM_INVAL_FUNCP_CACHE_SERVICE_INFO, Bool) link_funcp_memory_inval <- mkConnection_Server("funcp_memory_cache_invalidate");
-    Connection_Server#(CONTEXT_ID, Bool) link_funcp_memory_inval_all <- mkConnection_Server("funcp_memory_cache_invalidate_all");
 
 
     // ***** Statistics *****
@@ -379,17 +379,25 @@ module [HASIM_MODULE] mkFUNCP_Cache
 
     // Interfaces required by the base cache module
     FUNCP_MEM_INTERFACE funcpMemIfc <- mkFuncpMemInterface();
-    HASIM_CACHE_STATS statIfc <- mkFuncpMemoryCacheStats();
+    RL_SA_CACHE_STATS statIfc <- mkFuncpMemoryCacheStats();
+
+    // Local storage for the cache data
+    RL_SA_CACHE_LOCAL_DATA#(t_FUNCP_MEM_CACHE_TAG_SZ, // Cache address size
+                            MEM_VALUE,                // Cache word
+                            CACHELINE_WORDS,          // Words per cache line
+                            FUNCP_MEMCACHE_SETS,      // Sets in the cache
+                            `FUNCP_MEMCACHE_WAYS) cacheLocalData <- mkBRAMCacheLocalData();
 
     // The cache
-    HASIM_CACHE#(FUNCP_MEM_CACHE_TAG,      // Cache address type
-                 FUNCP_MEM_CACHELINE,      // Cache line
+    RL_SA_CACHE#(FUNCP_MEM_CACHE_TAG,      // Cache address type
                  MEM_VALUE,                // Cache word
                  CACHELINE_WORDS,          // Words per cache line
                  FUNCP_MEM_CACHE_REF_INFO, // Reference meta-data (passed to RRR)
-                 FUNCP_MEMCACHE_SETS,      // Sets in the cache
-                 `FUNCP_MEMCACHE_WAYS,     // Ways per set
-                 FUNCP_MEM_ADDR_NONTAG_BITS) cache <- mkCacheSetAssoc(funcpMemIfc.cacheIfc, statIfc, True, debugLog);
+                 FUNCP_MEM_ADDR_NONTAG_BITS) cache <- mkCacheSetAssoc(funcpMemIfc.cacheIfc,
+                                                                      cacheLocalData,
+                                                                      statIfc,
+                                                                      True,
+                                                                      debugLog);
 
     // Single entry L1 caches
     FUNCP_MEM_L1_MULTICTX cacheL1D <- mkFUNCP_L1Cache_MultiCtx(debugLog);
@@ -452,7 +460,6 @@ module [HASIM_MODULE] mkFUNCP_Cache
     //
     (* conservative_implicit_conditions *)
     rule handleReq_LOAD (enableCache && (invalLoopNLines == 0) &&&
-                         ! link_funcp_memory_inval_all.reqNotEmpty() &&&
                          link_memstate.getReq() matches tagged MEM_LOAD .ld);
         link_memstate.deq();
         
@@ -499,7 +506,6 @@ module [HASIM_MODULE] mkFUNCP_Cache
 
 
     rule handleReq_STORE (enableCache && (invalLoopNLines == 0) &&&
-                          ! link_funcp_memory_inval_all.reqNotEmpty() &&&
                           link_memstate.getReq() matches tagged MEM_STORE .s);
         link_memstate.deq();
 
@@ -523,7 +529,6 @@ module [HASIM_MODULE] mkFUNCP_Cache
 
 
     rule handleReq_INVAL (enableCache && (invalLoopNLines == 0) &&&
-                          ! link_funcp_memory_inval_all.reqNotEmpty() &&&
                           link_memstate.getReq() matches tagged MEM_INVALIDATE_CACHELINE .inval);
         link_memstate.deq();
 
@@ -538,7 +543,6 @@ module [HASIM_MODULE] mkFUNCP_Cache
 
 
     rule handleReq_FLUSH (enableCache && (invalLoopNLines == 0) &&&
-                         ! link_funcp_memory_inval_all.reqNotEmpty() &&&
                          link_memstate.getReq() matches tagged MEM_FLUSH_CACHELINE .flush);
         link_memstate.deq();
 
@@ -682,8 +686,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
     //    not currently invalidating and when no global invalidation request
     //    is pending.
     //
-    rule handleInvalReq ((invalLoopNLines == 0) &&
-                         ! link_funcp_memory_inval_all.reqNotEmpty());
+    rule handleInvalReq (invalLoopNLines == 0);
         let line_info = link_funcp_memory_inval.getReq();
         link_funcp_memory_inval.deq();
 
@@ -723,6 +726,8 @@ module [HASIM_MODULE] mkFUNCP_Cache
         invalLoopNLines <= invalLoopNLines - 1;
     endrule
 
+    (* descending_urgency = "doInvals, handleResp, handleRespL1, handleReqCache, handleReq_FLUSH, handleReq_INVAL, handleReq_STORE, handleReq_LOAD" *)
+
     //
     // handleInvalResp --
     //     Send a message back when inval is done
@@ -731,34 +736,6 @@ module [HASIM_MODULE] mkFUNCP_Cache
         cache.invalOrFlushWait();
         link_funcp_memory_inval.makeResp(?);
         debugLog.record($format("  FLUSH/INVAL done"));
-    endrule
-
-    //
-    // handleInvalAllReq --
-    //    Incoming invalidate line request
-    //
-    (* descending_urgency = "handleInvalAllReq, doInvals, handleResp, handleRespL1, handleReqCache, handleReq_FLUSH, handleReq_INVAL, handleReq_STORE, handleReq_LOAD" *)
-    rule handleInvalAllReq (invalLoopNLines == 0);
-        let ctx_id = link_funcp_memory_inval_all.getReq();
-        link_funcp_memory_inval_all.deq();
-
-        cache.invalAllReq(initCacheRefInfo(ctx_id, ?, ?, ?));
-
-        // Invalidate address in L1 caches
-        cacheL1D.invalAll();
-        cacheL1I.invalAll();
-
-        debugLog.record($format("INVAL all"));
-    endrule
-
-    //
-    // handleInvalAllResp --
-    //     Send a message back when inval is done
-    //
-    rule handleInvalAllResp (True);
-        cache.invalAllWait();
-        link_funcp_memory_inval_all.makeResp(?);
-        debugLog.record($format("  INVAL all done"));
     endrule
 
 endmodule: mkFUNCP_Cache

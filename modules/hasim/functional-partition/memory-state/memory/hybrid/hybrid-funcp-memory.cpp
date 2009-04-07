@@ -36,7 +36,6 @@
 #define CMD_VTOP                 5
 
 #define METHOD_ID_INVALIDATE     0
-#define METHOD_ID_INVALIDATE_ALL 1
 
 // service instantiation
 FUNCP_MEMORY_SERVER_CLASS FUNCP_MEMORY_SERVER_CLASS::instance;
@@ -322,31 +321,6 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
 // or invalidate the FPGA-side cache.
 //
 //***********************************************************************
-
-void
-FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryWriteUnknownAddr(CONTEXT_ID ctxId)
-{
-    instance.InvalidateAllCaches(ctxId);
-}
-
-void
-FUNCP_MEMORY_SERVER_CLASS::InvalidateAllCaches(CONTEXT_ID ctxId)
-{
-    T1("\tfuncp_memory: INVAL ALL");
-
-    // create message for RRR client
-    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
-    msg->SetLength(sizeof(CONTEXT_ID_RRR));
-    msg->SetServiceID(SERVICE_ID);
-    msg->SetMethodID(METHOD_ID_INVALIDATE_ALL);
-    msg->AppendCONTEXT_ID_RRR(ctxId);
-
-    UMF_MESSAGE resp = RRRClient->MakeRequest(msg);
-
-    // Response indicates flush is done
-    resp->Delete();
-}
-
 
 void
 FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryRead(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_ADDRESS size)

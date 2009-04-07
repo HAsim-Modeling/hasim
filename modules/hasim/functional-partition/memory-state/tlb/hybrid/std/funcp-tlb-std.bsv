@@ -334,7 +334,7 @@ endmodule
 //
 // ===================================================================
 
-typedef HASIM_CACHE_SOURCE_DATA#(FUNCP_L2TLB_RAW_IDX, FUNCP_L2TLB_ENTRY, 1, Bool) FUNCP_TLB_CACHE_INTERFACE;
+typedef RL_SA_CACHE_SOURCE_DATA#(FUNCP_L2TLB_RAW_IDX, FUNCP_L2TLB_ENTRY, 1, Bool) FUNCP_TLB_CACHE_INTERFACE;
 
 //
 // mkVtoPInterface --
@@ -393,7 +393,7 @@ endmodule
 //
 module [HASIM_MODULE] mkTLBCacheStats
     // interface:
-        (HASIM_CACHE_STATS);
+        (RL_SA_CACHE_STATS);
     
     // ***** Statistics *****
 
@@ -442,7 +442,8 @@ endmodule
 //
 module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     // interface:
-        ();
+    ()
+    provisos (Bits#(FUNCP_L2TLB_RAW_IDX, t_FUNCP_L2TLB_RAW_IDX_SZ));
 
     DEBUG_FILE debugLog <- mkDebugFile(`FUNCP_TLB_LOGFILE_NAME);
 
@@ -465,17 +466,21 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     FUNCP_TLB#(4) dtlb <- mkFUNCP_TLB(FUNCP_DTLB, dtlb_vtop_req, dtlb_vtop_resp, debugLog);
 
     FUNCP_TLB_CACHE_INTERFACE vtopIfc <- mkVtoPInterface();
-    HASIM_CACHE_STATS statIfc <- mkTLBCacheStats();
+    RL_SA_CACHE_STATS statIfc <- mkTLBCacheStats();
+
+    // Local storage for the translation cache
+    RL_SA_CACHE_LOCAL_DATA#(t_FUNCP_L2TLB_RAW_IDX_SZ, // Cache address size
+                            FUNCP_L2TLB_ENTRY,        // Cache word
+                            1,                        // Words per cache line
+                            FUNCP_TLB_CACHE_SETS,     // Sets in the cache
+                            `FUNCP_TLB_CACHE_WAYS) cacheLocalData <- mkBRAMCacheLocalData();
 
     // Translation cache
-    HASIM_CACHE#(FUNCP_L2TLB_RAW_IDX,      // Cache address type
-                 FUNCP_L2TLB_ENTRY,        // Data type
-                 FUNCP_L2TLB_ENTRY,        // Cache word (this cache has 1 word per line)
+    RL_SA_CACHE#(FUNCP_L2TLB_RAW_IDX,      // Cache address type
+                 FUNCP_L2TLB_ENTRY,        // Cache word
                  1,                        // Words per cache line
                  Bool,                     // Reference meta-data (passed to RRR)
-                 FUNCP_TLB_CACHE_SETS,     // Sets in the cache
-                 `FUNCP_TLB_CACHE_WAYS,    // Ways per set
-                 `FUNCP_ISA_PAGE_SHIFT) cache <- mkCacheSetAssoc(vtopIfc, statIfc, False, debugLog);
+                 `FUNCP_ISA_PAGE_SHIFT) cache <- mkCacheSetAssoc(vtopIfc, cacheLocalData, statIfc, False, debugLog);
 
     FIFO#(Tuple2#(FUNCP_TRANSLATION_REQ, FUNCP_TLB_TYPE)) pendingTLBQ <- mkFIFO1();
     FIFO#(Bool) itlbQ <- mkFIFO();

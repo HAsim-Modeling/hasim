@@ -74,10 +74,8 @@ class FUNCP_MEMORY_SERVER_CLASS: public RRR_SERVER_CLASS,
     //
     static void NoteSystemMemoryRead(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_ADDRESS size);
     static void NoteSystemMemoryWrite(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_ADDRESS size);
-    static void NoteSystemMemoryWriteUnknownAddr(CONTEXT_ID ctxId);
 
     void SystemMemoryRef(CONTEXT_ID ctxId, MEM_ADDRESS addr, UINT64 size, bool isWrite);
-    void InvalidateAllCaches(CONTEXT_ID ctxId);
 };
 
 // server stub

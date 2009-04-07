@@ -11,9 +11,6 @@ service FUNCP_MEMORY
                           in UINT8[8] nLines,
                           in UINT8[8] onlyFlush,
                           out UINT32[32] ack);
-
-        method InvalidateAll(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                             out UINT32[32] ack);
     };
 
     server sw (cpp, method) <- hw (bsv, connection)

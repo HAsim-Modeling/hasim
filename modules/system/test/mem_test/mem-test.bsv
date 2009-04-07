@@ -48,7 +48,8 @@ typedef enum
     STATE_writing,
     STATE_reading,
     STATE_read_timing,
-    STATE_read_timing_emit,
+    STATE_read_timing_emit0,
+    STATE_read_timing_emit1,
     STATE_finished,
     STATE_exit
 }
@@ -376,7 +377,7 @@ module [HASIM_MODULE] mkSystem ()
     FIFO#(CYCLE_COUNTER) readCycleQ <- mkSizedFIFO(32);
     Reg#(Bit#(4)) readCycleReqIdx <- mkReg(0);
     Reg#(Bit#(4)) readCycleRespIdx <- mkReg(0);
-    Reg#(Vector#(8, Bit#(8))) readCycles <- mkRegU();
+    Reg#(Vector#(8, Bit#(16))) readCycles <- mkRegU();
     Reg#(Bit#(2)) timingPass <- mkReg(0);
 
     rule readTimeReq (state == STATE_read_timing && (readCycleReqIdx != 8));
@@ -407,16 +408,26 @@ module [HASIM_MODULE] mkSystem ()
         if (readCycleRespIdx == 7)
         begin
             addr <= `START_ADDR;
-            state <= STATE_read_timing_emit;
+            state <= STATE_read_timing_emit0;
         end
     endrule
     
-    rule readTimeEmit (state == STATE_read_timing_emit);
-        Bit#(64) latency = pack(readCycles);
+    rule readTimeEmit0 (state == STATE_read_timing_emit0);
+        Bit#(128) latency = pack(readCycles);
         link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
                                             stringID: `STREAMS_MEMTEST_LATENCY,
                                             payload0: latency[63:32],
                                             payload1: latency[31:0] });
+
+        state <= STATE_read_timing_emit1;
+    endrule
+
+    rule readTimeEmit1 (state == STATE_read_timing_emit1);
+        Bit#(128) latency = pack(readCycles);
+        link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
+                                            stringID: `STREAMS_MEMTEST_LATENCY,
+                                            payload0: latency[127:96],
+                                            payload1: latency[95:64] });
 
         if (timingPass == 2)
         begin

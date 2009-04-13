@@ -1,0 +1,12 @@
+#include "asim/provides/hasim_common.h"
+#include "asim/provides/funcp_base_types.h"
+
+service FUNCP_TLB
+{
+    server sw (cpp, method) <- hw (bsv, connection)
+    {
+        method VtoP(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                    in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] va,
+                    out MEM_ADDRESS_RRR[64] pa);
+    };
+};

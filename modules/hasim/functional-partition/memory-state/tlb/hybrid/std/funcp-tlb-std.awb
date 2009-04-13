@@ -5,12 +5,15 @@
 
 %attributes hasim funcp memstate
 
-%public funcp-tlb-std.bsv
-%public funcp-tlb-std.dic
+%public  funcp-tlb-std.bsv
+%public  funcp-tlb-std.dic
+%private funcp-tlb-std.rrr
+%public  funcp-tlb-std.h
+%private funcp-tlb-std.cpp
 
 %param FUNCP_TLB_LOGFILE_NAME "hasim_funcp_tlb.out" "Name of logfile for functional TLB cache"
 
-%param --global FUNCP_TLB_CACHE_SET_INDEX_BITS  5  "Set index bits in the L2 translation cache"
-%param          FUNCP_TLB_CACHE_WAYS            4  "Ways in each L2 translation cache set"
+%param --global FUNCP_TLB_CACHE_SET_INDEX_BITS  6  "Set index bits in the L2 translation cache"
+%param          FUNCP_TLB_CACHE_WAYS            2  "Ways in each L2 translation cache set"
 
 %param SYNTH_BOUNDARY mkFUNCP_CPU_TLBS "Name of synthesis boundary"

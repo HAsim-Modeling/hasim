@@ -38,6 +38,7 @@ import FShow::*;
 `include "asim/provides/funcp_memory.bsh"
 
 `include "asim/dict/STATS_FUNCP_TLB.bsh"
+`include "asim/rrr/remote_client_stub_FUNCP_TLB.bsh"
 
 
 // ===================================================================
@@ -358,27 +359,30 @@ module [HASIM_MODULE] mkVtoPInterface
         (FUNCP_TLB_CACHE_INTERFACE);
 
     // Connection to memory translation service
-    Connection_Client#(MEM_VTOP_REQUEST, MEM_VTOP_REPLY) link_memory <- mkConnection_Client("funcp_memory_VtoP");
+    ClientStub_FUNCP_TLB clientTranslationStub <- mkClientStub_FUNCP_TLB();
 
     method Action readReq(FUNCP_L2TLB_RAW_IDX raw_idx, FUNCP_L2TLB_REFINFO refInfo);
         FUNCP_L2TLB_IDX idx = unpack(raw_idx);
+        ISA_ADDRESS va = vaFromPage(idx.vp, 0);
 
-        MEM_VTOP_REQUEST req;
-        req.context_id = idx.context_id;
-        req.allocOnFault = refInfo.allocOnFault;
-        req.va = vaFromPage(idx.vp, 0);
+        // RRR doesn't support single bit arguments and we know the low bit of
+        // the VA is 0.  Pass allocOnFault in bit 0.
+        va[0] = pack(refInfo.allocOnFault);
 
-        link_memory.makeReq(req);
+        clientTranslationStub.makeRequest_VtoP(contextIdToRRR(idx.context_id), va);
     endmethod
 
     method ActionValue#(FUNCP_L2TLB_ENTRY) readResp();
-        let resp = link_memory.getResp();
-        link_memory.deq();
+        let pa <- clientTranslationStub.getResponse_VtoP();
+
+        // RRR doesn't support single bit arguments.  We would otherwise ignore
+        // the low bits of the PA, since they are an index into the page.
+        // Use the low two bits for flags.
 
         FUNCP_L2TLB_ENTRY entry;
-        entry.ioSpace = resp.ioSpace;
-        entry.pageFault = resp.pageFault;
-        entry.page = pageFromPA(resp.pa);
+        entry.ioSpace = unpack(pa[1]);
+        entry.pageFault = unpack(pa[0]);
+        entry.page = pageFromPA(truncate(pa));
 
         return entry;
     endmethod

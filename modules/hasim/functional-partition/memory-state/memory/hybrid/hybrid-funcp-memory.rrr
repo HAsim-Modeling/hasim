@@ -39,9 +39,5 @@ service FUNCP_MEMORY
                                    in MEM_ADDRESS_RRR[64] addr,
                                    in MEM_CACHELINE[FUNCP_CACHELINE_BITS] data,
                                    out UINT32[32] ack);
-
-        method VtoP(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                    in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] va,
-                    out MEM_ADDRESS_RRR[64] pa);
     };
 };

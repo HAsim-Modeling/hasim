@@ -44,10 +44,6 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     Connection_Receive#(FUNCP_TLB_FAULT) link_funcp_itlb_fault <- mkConnection_Receive("funcp_itlb_pagefault");
     Connection_Receive#(FUNCP_TLB_FAULT) link_funcp_dtlb_fault <- mkConnection_Receive("funcp_dtlb_pagefault");
 
-    // Connection to memory translation service.  This won't be called since
-    // VA == PA.
-    Connection_Client#(MEM_VTOP_REQUEST, MEM_VTOP_REPLY) link_memory <- mkConnection_Client("funcp_memory_VtoP");
-
     // ***** Rules for communcation with functional register state manager *****
     
     rule itlb_req (True);

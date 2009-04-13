@@ -18180,3 +18180,35 @@ Directory modules/system/test/bram_test
   module now has a more efficient, internal, mode that bypasses the cache.
 - Update central cache control parameters in platform interface.
 - Fix BRAM test.
+
+----------
+mcadler     Date: Mon Apr 13 15:53:20 EDT 2009  CSN: CSN-hasim-620
+                  Mon Apr 13 19:53:20 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          619 
+ funcp-tlb-std.rrr         Locally Added               0 
+ funcp-tlb-std.awb         Locally Modified          618 
+ funcp-tlb-std.cpp         Locally Added               0 
+ funcp-tlb-std.h           Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/null
+ funcp-tlb-null.bsv        Locally Modified          618 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          618 
+ hybrid-funcp-memory.rrr   Locally Modified          618 
+ hybrid-funcp-memory-datatypes.bsv Locally Modified          618 
+ hybrid-funcp-memory.h     Locally Modified          618 
+ hybrid-funcp-memory.bsv   Locally Modified          618 
+
+- Reduce functional TLB cache ways per set to 2 from 4.  The tags are large, since
+  tags are virtual addresses.  Doubled the default number of sets, so storage
+  is identical but conflict misses more likely.
+- Separate TLB and memory value hybrid modules.  This is the first step in
+  eliminating a layer of soft connections.  In the old scheme, the Bluespec
+  TLB module communicated with the host through a soft connection to
+  hybrid-funcp-memory.  In the new scheme, the TLB module has its own RRR
+  client for getting translations.  The next step will eliminate a layer
+  of soft connections for functional memory values.

@@ -26,16 +26,7 @@
 
 #include "asim/rrr/service_ids.h"
 
-#define SERVICE_ID  FUNCP_MEMORY_SERVICE_ID
-
-#define CMD_LOAD                 0
-#define CMD_LOAD_CACHELINE       1
-#define CMD_STORE                2
-#define CMD_STORE_CACHELINE      3
-#define CMD_STORE_CACHELINE_SYNC 4
-#define CMD_VTOP                 5
-
-#define METHOD_ID_INVALIDATE     0
+#define METHOD_ID_Invalidate     0
 
 // service instantiation
 FUNCP_MEMORY_SERVER_CLASS FUNCP_MEMORY_SERVER_CLASS::instance;
@@ -123,7 +114,7 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
     // decode command
     switch (req->GetMethodID())
     {
-      case CMD_LOAD:
+      case METHOD_ID_Load:
         addr = MEM_ADDRESS(req->ExtractUINT64());
         ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
 
@@ -136,7 +127,7 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
         // create response message
         resp = UMF_MESSAGE_CLASS::New();
         resp->SetLength(sizeof(MEM_VALUE));
-        resp->SetMethodID(CMD_LOAD);
+        resp->SetMethodID(METHOD_ID_Load);
         resp->AppendUINT(data, sizeof(MEM_VALUE));
 
         // return response
@@ -144,7 +135,7 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
 
         break;
 
-      case CMD_LOAD_CACHELINE:
+      case METHOD_ID_LoadCacheLine:
         addr = MEM_ADDRESS(req->ExtractUINT64());
         ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
 
@@ -164,7 +155,7 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
         // create response message
         resp = UMF_MESSAGE_CLASS::New();
         resp->SetLength(sizeof(MEM_CACHELINE));
-        resp->SetMethodID(CMD_LOAD_CACHELINE);
+        resp->SetMethodID(METHOD_ID_LoadCacheLine);
         resp->AppendBytes(sizeof(MEM_CACHELINE), (unsigned char *) &line);
 
         // return response
@@ -172,7 +163,7 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
 
         break;
 
-      case CMD_STORE:
+      case METHOD_ID_Store:
         // extract data
         data = MEM_VALUE(req->ExtractUINT(sizeof(MEM_VALUE)));
         addr = MEM_ADDRESS(req->ExtractUINT64());
@@ -189,9 +180,9 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
  
         break;
 
-      case CMD_STORE_CACHELINE:
-      case CMD_STORE_CACHELINE_SYNC:
-        need_response = (req->GetMethodID() == CMD_STORE_CACHELINE_SYNC);
+      case METHOD_ID_StoreCacheLine:
+      case METHOD_ID_StoreCacheLine_Sync:
+        need_response = (req->GetMethodID() == METHOD_ID_StoreCacheLine_Sync);
 
         // extract data
         req->ExtractBytes(sizeof(MEM_CACHELINE), (unsigned char *) &line);
@@ -254,7 +245,7 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
             // create response message
             resp = UMF_MESSAGE_CLASS::New();
             resp->SetLength(4);
-            resp->SetMethodID(CMD_STORE_CACHELINE_SYNC);
+            resp->SetMethodID(METHOD_ID_StoreCacheLine_Sync);
             resp->AppendUINT32(0);
 
             // return response
@@ -263,47 +254,6 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
  
         break;
 
-      case CMD_VTOP: {
-        // extract data.  VA comes in as a register sized MEM_VALUE.
-        va = MEM_VALUE(req->ExtractUINT(sizeof(MEM_VALUE)));
-        ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
-        req->Delete();
-
-        //
-        // The allocate on fault bit is stored in the low bit of the request
-        // to save space.
-        //
-        bool alloc_on_fault = false;
-        if (va & 1)
-        {
-            alloc_on_fault = true;
-            va ^= 1;    // Clear low bit
-            T1("\tfuncp_memory: VtoP VA " << fmt_data(va) << " -- allocate on fault");
-        }
-
-        FUNCP_MEM_VTOP_RESP vtop = memory->VtoP(ctx_id, va, alloc_on_fault);
-
-        T1("\tfuncp_memory: VtoP CTX " << UINT64(ctx_id) << " VA " << fmt_data(va) << " -> PA " << fmt_addr(vtop.pa) <<
-           (vtop.ioSpace ? " [I/O SPACE]" : "") <<
-           (vtop.pageFault ? " [PAGE FAULT]" : ""));
-
-        // Flags will be sent in the low two bits.  They must be 0 in
-        // the translation.
-        ASSERTX((vtop.pa & 3) == 0);
-
-        // create response message
-        resp = UMF_MESSAGE_CLASS::New();
-        resp->SetLength(8);
-        resp->SetMethodID(CMD_VTOP);
-        // Pass the ioSpace and pageFault bits in the low bits of the PA to
-        // save space.
-        resp->AppendUINT64(vtop.pa |
-                           (vtop.ioSpace   ? 2 : 0) |
-                           (vtop.pageFault ? 1 : 0));
-
-        // return response
-        return resp;
-      }
       default:
         ASIMWARNING("Invalid command\n");
         parent->CallbackExit(1);
@@ -370,8 +320,8 @@ FUNCP_MEMORY_SERVER_CLASS::SystemMemoryRef(CONTEXT_ID ctxId, MEM_ADDRESS addr, U
         // create message for RRR client
         UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
         msg->SetLength(10 + sizeof(CONTEXT_ID_RRR));
-        msg->SetServiceID(SERVICE_ID);
-        msg->SetMethodID(METHOD_ID_INVALIDATE);
+        msg->SetServiceID(FUNCP_MEMORY_SERVICE_ID);
+        msg->SetMethodID(METHOD_ID_Invalidate);
         msg->AppendUINT8(isWrite ? 0 : 0xff);
         msg->AppendUINT8(tLines);
         msg->AppendUINT64(addr);
@@ -385,4 +335,20 @@ FUNCP_MEMORY_SERVER_CLASS::SystemMemoryRef(CONTEXT_ID ctxId, MEM_ADDRESS addr, U
         addr += MEM_ADDRESS(tLines) * sizeof(MEM_CACHELINE);
         nLines -= tLines;
     }
+}
+
+
+
+//***********************************************************************
+//
+// Expose the handle to simulated memory to any other services that may
+// need it.  This should be fixed to have a common parent construct
+// the memory.
+//
+//***********************************************************************
+
+FUNCP_SIMULATED_MEMORY
+FUNCP_MEMORY_SERVER_CLASS::GetMemoryHandle()
+{
+    return instance.memory;
 }

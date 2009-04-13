@@ -47,7 +47,6 @@ module [HASIM_MODULE] mkFUNCP_Memory
     
     // Links that we expose to the outside world
     Connection_Server#(MEM_REQUEST, MEM_REPLY)   link_memory <- mkConnection_Server("funcp_memory");
-    Connection_Server#(MEM_VTOP_REQUEST, MEM_VTOP_REPLY) link_tlb <- mkConnection_Server("funcp_memory_VtoP");
 
     Connection_Client#(MEM_INVAL_FUNCP_CACHE_SERVICE_INFO, Bool) link_memory_inval <- mkConnection_Client("funcp_memory_cache_invalidate");
 
@@ -144,43 +143,6 @@ module [HASIM_MODULE] mkFUNCP_Memory
     rule get_invalidate_response (True);
         link_memory_inval.deq();
         server_stub.sendResponse_Invalidate(?);
-    endrule
-
-
-    //
-    // Virtual to physical translation
-    //
-
-    rule translate_VtoP_request (True);
-
-        let req = link_tlb.getReq();
-        link_tlb.deq();
-
-        ISA_ADDRESS va = req.va;
-
-        // RRR doesn't support single bit arguments and we know the low bit of
-        // the VA is 0.  Pass allocOnFault in bit 0.
-        va[0] = pack(req.allocOnFault);
-
-        client_stub.makeRequest_VtoP(contextIdToRRR(req.context_id), va);
-
-    endrule
-
-    rule translate_VtoP_response (True);
-
-        let pa <- client_stub.getResponse_VtoP();
-
-        // RRR doesn't support single bit arguments.  We know the low bits of the
-        // PA must be 0.  Use the low two bits for flags.
-
-        MEM_VTOP_REPLY v;
-        v.ioSpace = unpack(pa[1]);
-        v.pageFault = unpack(pa[0]);
-        v.pa = truncate(pa);
-        v.pa[1:0] = 0;
-
-        link_tlb.makeResp(v);
-
     endrule
 
 endmodule

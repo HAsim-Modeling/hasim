@@ -139,32 +139,6 @@ MEM_INVAL_FUNCP_CACHE_SERVICE_INFO
     deriving (Eq, Bits);
 
 
-//
-// Virtual to physical translation request
-//
-typedef struct
-{
-    CONTEXT_ID context_id;
-    Bool allocOnFault;     // Allocate new page if necessary
-    ISA_ADDRESS va;
-}
-MEM_VTOP_REQUEST
-    deriving (Eq, Bits);
-
-
-//
-// Virtual to physical translation reply
-//
-typedef struct
-{
-    Bool ioSpace;          // Memory mapped I/O.
-    Bool pageFault;        // Translation failed.  Raised a page fault.
-    MEM_ADDRESS pa;
-}
-MEM_VTOP_REPLY
-    deriving (Eq, Bits);
-
-
 // ***** RRR Datatype definitions *****
 
 typedef Bit#(64) MEM_ADDRESS_RRR;

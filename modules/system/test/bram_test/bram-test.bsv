@@ -508,8 +508,6 @@ endmodule
 
 module [HASIM_MODULE] mkSystem ();
 
-    Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory <- mkConnection_Client("vdev_memory");
-    Connection_Receive#(SCRATCHPAD_MEM_ADDRESS) link_memory_inval <- mkConnection_Receive("vdev_memory_invalidate");
     Connection_Send#(STREAMS_REQUEST) link_streams <- mkConnection_Send("vdev_streams");
 
     FIFO#(STREAMS_REQUEST) streamsQ <- mkSizedFIFO(128);

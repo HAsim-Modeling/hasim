@@ -16,5 +16,4 @@
 %param --global TERM_FPGA_LEDS                1   "termimate fpga_leds?"
 %param --global TERM_VDEV_STREAMS             1   "termimate vdev_streams?"
 
-%param --dynamic CENTRAL_CACHE_ENABLE         1   "Enable the central cache"
-%param --dynamic CENTRAL_CACHE_WRITE_BACK     1   "1 for write-back, 0 for write-through"
+%param --dynamic CENTRAL_CACHE_MODE           0   "0: write-back, 1: write-through, 2: disabled"

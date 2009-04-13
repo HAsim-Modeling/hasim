@@ -334,7 +334,19 @@ endmodule
 //
 // ===================================================================
 
-typedef RL_SA_CACHE_SOURCE_DATA#(FUNCP_L2TLB_RAW_IDX, FUNCP_L2TLB_ENTRY, 1, Bool) FUNCP_TLB_CACHE_INTERFACE;
+//
+// refInfo for L2 cache
+//
+typedef 2 FUNCP_L2TLB_REFS;
+typedef struct
+{
+    Bool allocOnFault;
+    SCOREBOARD_FIFO_ENTRY_ID#(FUNCP_L2TLB_REFS) refIdx;
+}
+FUNCP_L2TLB_REFINFO
+    deriving (Eq, Bits);
+
+typedef RL_SA_CACHE_SOURCE_DATA#(FUNCP_L2TLB_RAW_IDX, FUNCP_L2TLB_ENTRY, 1, FUNCP_L2TLB_REFINFO) FUNCP_TLB_CACHE_INTERFACE;
 
 //
 // mkVtoPInterface --
@@ -348,12 +360,12 @@ module [HASIM_MODULE] mkVtoPInterface
     // Connection to memory translation service
     Connection_Client#(MEM_VTOP_REQUEST, MEM_VTOP_REPLY) link_memory <- mkConnection_Client("funcp_memory_VtoP");
 
-    method Action readReq(FUNCP_L2TLB_RAW_IDX raw_idx, Bool allocOnFault);
+    method Action readReq(FUNCP_L2TLB_RAW_IDX raw_idx, FUNCP_L2TLB_REFINFO refInfo);
         FUNCP_L2TLB_IDX idx = unpack(raw_idx);
 
         MEM_VTOP_REQUEST req;
         req.context_id = idx.context_id;
-        req.allocOnFault = allocOnFault;
+        req.allocOnFault = refInfo.allocOnFault;
         req.va = vaFromPage(idx.vp, 0);
 
         link_memory.makeReq(req);
@@ -372,11 +384,11 @@ module [HASIM_MODULE] mkVtoPInterface
     endmethod
 
     // No writes can happen
-    method Action write(FUNCP_L2TLB_RAW_IDX idx, Vector#(1, Bool) mask, FUNCP_L2TLB_ENTRY entry, Bool allocOnFault);
+    method Action write(FUNCP_L2TLB_RAW_IDX idx, Vector#(1, Bool) mask, FUNCP_L2TLB_ENTRY entry, FUNCP_L2TLB_REFINFO refInfo);
         noAction;
     endmethod
 
-    method Action writeSyncReq(FUNCP_L2TLB_RAW_IDX idx, Vector#(1, Bool) mask, FUNCP_L2TLB_ENTRY entry, Bool allocOnFault);
+    method Action writeSyncReq(FUNCP_L2TLB_RAW_IDX idx, Vector#(1, Bool) mask, FUNCP_L2TLB_ENTRY entry, FUNCP_L2TLB_REFINFO refInfo);
         noAction;
     endmethod
 
@@ -468,6 +480,9 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     FUNCP_TLB_CACHE_INTERFACE vtopIfc <- mkVtoPInterface();
     RL_SA_CACHE_STATS statIfc <- mkTLBCacheStats();
 
+    // Reorder buffer for cache responses.  Cache doesn't guarantee ordered return.
+    SCOREBOARD_FIFO#(FUNCP_L2TLB_REFS, FUNCP_L2TLB_ENTRY) cacheRespQ <- mkScoreboardFIFO();
+
     // Local storage for the translation cache
     RL_SA_CACHE_LOCAL_DATA#(t_FUNCP_L2TLB_RAW_IDX_SZ, // Cache address size
                             FUNCP_L2TLB_ENTRY,        // Cache word
@@ -479,8 +494,8 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     RL_SA_CACHE#(FUNCP_L2TLB_RAW_IDX,      // Cache address type
                  FUNCP_L2TLB_ENTRY,        // Cache word
                  1,                        // Words per cache line
-                 Bool,                     // Reference meta-data (passed to RRR)
-                 `FUNCP_ISA_PAGE_SHIFT) cache <- mkCacheSetAssoc(vtopIfc, cacheLocalData, statIfc, False, debugLog);
+                 FUNCP_L2TLB_REFINFO,      // Reference meta-data (passed to RRR)
+                 `FUNCP_ISA_PAGE_SHIFT) cache <- mkCacheSetAssoc(vtopIfc, cacheLocalData, statIfc, debugLog);
 
     FIFO#(Tuple2#(FUNCP_TRANSLATION_REQ, FUNCP_TLB_TYPE)) pendingTLBQ <- mkFIFO1();
     FIFO#(Bool) itlbQ <- mkFIFO();
@@ -562,7 +577,10 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         debugLog.record($format("  ") + fshow(tok.index) + $format(": I hybrid req: VA 0x%x", vaFromPage(req.vp, 0)));
 
         pendingTLBQ.enq(tuple2(req, FUNCP_ITLB));
-        cache.readReq(tlbCacheIdx(tok, req.vp), 0, req.allocOnFault);
+        let idx <- cacheRespQ.enq();
+        cache.readReq(tlbCacheIdx(tok, req.vp), 0,
+                      FUNCP_L2TLB_REFINFO { allocOnFault: req.allocOnFault,
+                                            refIdx: idx });
     endrule
 
     rule translateVtoP_D_Request (True);
@@ -574,15 +592,30 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         debugLog.record($format("  ") + fshow(tok.index) + $format(": D hybrid req: VA 0x%x", vaFromPage(req.vp, 0)));
 
         pendingTLBQ.enq(tuple2(req, FUNCP_DTLB));
-        cache.readReq(tlbCacheIdx(tok, req.vp), 0, req.allocOnFault);
+        let idx <- cacheRespQ.enq();
+        cache.readReq(tlbCacheIdx(tok, req.vp), 0,
+                      FUNCP_L2TLB_REFINFO { allocOnFault: req.allocOnFault,
+                                            refIdx: idx });
     endrule
+
+
+    //
+    // receiveCacheResponse --
+    //     Forward cache response to the reorder buffer.  The TLB requires
+    //     in-order responses from the cache.
+    //
+    rule receiveCacheResponse (True);
+        let cache_resp <- cache.readResp();
+        cacheRespQ.setValue(cache_resp.refInfo.refIdx,
+                            validValue(cache_resp.words[0]));
+    endrule
+
 
     (* descending_urgency= "translateVtoP_D_Request, translateVtoP_I_Request" *)
 
     rule translateVtoPResponse (True);
-
-        let cache_resp <- cache.readResp();
-        let tlb_entry = validValue(cache_resp.words[0]);
+        let tlb_entry = cacheRespQ.first();
+        cacheRespQ.deq();
 
         match { .req, .which_tlb } = pendingTLBQ.first();
         pendingTLBQ.deq();
@@ -593,7 +626,8 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         if (tlb_entry.pageFault)
         begin
             debugLog.record($format("    ") + fshow(tok.index) + $format(": Uncacheable: VA 0x%x -> PA 0x%x", vaFromPage(req.vp, 0), paFromPage(tlb_entry.page, 0)));
-            cache.invalReq(tlbCacheIdx(tok, req.vp), False, False);
+            cache.invalReq(tlbCacheIdx(tok, req.vp), False,
+                           FUNCP_L2TLB_REFINFO { allocOnFault: False, refIdx: ? });
         end
 
         FUNCP_TRANSLATION_RESP resp;

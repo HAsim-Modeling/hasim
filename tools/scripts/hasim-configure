@@ -602,7 +602,9 @@ sub dyn_params()
     foreach my $param (sort keys(%dynamic_params)) {
         my $value = $dynamic_params{$param}[1];
         $value =~ s/"/\\"/g;
-        print PARAM "    cout << \"    ${param}\ = \" << ${param} << endl;\n";
+        my $descr = $dynamic_params{$param}[3];
+        $descr =~ s/"/\\"/g;
+        print PARAM "    cout << \"    ${param}\ = \" << ${param} << '\\t' << \"${descr}\" << endl;\n";
     }
     print PARAM "}\n";
 

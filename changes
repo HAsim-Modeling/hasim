@@ -18146,3 +18146,37 @@ Directory modules/system/test/mem_test
 - Interface changes to set-associative cache in RL library.
 - Set associative cache no longer supports full cache invalidate.  It was never
   used and becoming too complicated.
+
+----------
+mcadler     Date: Mon Apr 13 09:31:46 EDT 2009  CSN: CSN-hasim-619
+                  Mon Apr 13 13:31:46 UTC 2009
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          618 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          618 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          618 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.awb Locally Modified          618 
+ memstate-cache-set-assoc.bsv Locally Modified          618 
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.awb    Locally Modified          618 
+ platform-interface.bsv    Locally Modified          618 
+
+Directory modules/system/test/bram_test
+ bram-test.bsv             Locally Modified          618 
+
+- Message in response to --listparams now prints the comment text to explain
+  possible parameter values.
+- TLB cache read path has to sort the responses now that the cache code may
+  return results OOO.
+- Move the functional memory cache bypass (cache disabled path).  The cache
+  module now has a more efficient, internal, mode that bypasses the cache.
+- Update central cache control parameters in platform interface.
+- Fix BRAM test.

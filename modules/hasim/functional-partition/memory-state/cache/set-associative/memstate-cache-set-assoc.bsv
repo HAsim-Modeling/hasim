@@ -23,15 +23,10 @@
 //
 // Run-time parameters controlling behavior:
 //
-// FUNCP_MEM_CACHE_ENABLE:
-//   0: Cache disabled.  All requests bypass cache and go directly to memory.
-//   1: Cache enabled.
-//
-// FUNCP_MEM_CACHE_WRITE_BACK:
-//   0: Write back.  Stores flushed on victimization.
-//   1: Write through.  Stores write to memory directly and cache dirty bits
-//      are never set.
-//
+// FUNCP_MEMCACHE_MODE:
+//   0: Write back cache.
+//   1: Write through cache.
+//   2: Cache disabled.
 //
 
 // Library imports.
@@ -86,22 +81,11 @@ typedef Vector#(CACHELINE_WORDS, MEM_VALUE) FUNCP_MEM_CACHELINE_VEC;
 //
 // FUNCP_MEM_INTERFACE
 //
-//    Interface for talking to main memory.  In addition to the
-//    RL_SA_CACHE_SORUCE_DATA subinterface, FUNCP_MEM_INTERFACE has bypass
-//    methods for reading and writing word-sized data from/to main memory.
-//    The bypass methods are used when the cache is disabled.
+//    Interface for talking to main memory.
 //
 // ===================================================================
 
-interface FUNCP_MEM_INTERFACE;
-    interface RL_SA_CACHE_SOURCE_DATA#(FUNCP_MEM_CACHE_TAG, FUNCP_MEM_CACHELINE, CACHELINE_WORDS, FUNCP_MEM_CACHE_REF_INFO) cacheIfc;
-
-    method Action readWordReq(MEM_LOAD_INFO ldInfo);
-    method ActionValue#(MEMSTATE_RESP) readWordResp();
-
-    method Action writeWord(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_VALUE val);
-
-endinterface: FUNCP_MEM_INTERFACE
+typedef RL_SA_CACHE_SOURCE_DATA#(FUNCP_MEM_CACHE_TAG, FUNCP_MEM_CACHELINE, CACHELINE_WORDS, FUNCP_MEM_CACHE_REF_INFO) FUNCP_MEM_INTERFACE;
 
 
 //
@@ -138,7 +122,7 @@ FUNCP_MEM_CACHE_REF_INFO
 
 module [HASIM_MODULE] mkFuncpMemInterface
     // interface:
-        (FUNCP_MEM_INTERFACE);
+    (FUNCP_MEM_INTERFACE);
 
     // Connection to main memory
     Connection_Client#(MEM_REQUEST, MEM_REPLY) link_funcp_memory <- mkConnection_Client("funcp_memory");
@@ -150,57 +134,30 @@ module [HASIM_MODULE] mkFuncpMemInterface
     endfunction
 
     //
-    // This is the standard interface passed to the cache.  All the methods
-    // operate on cache-line sized data.  They also translate cache addresses
-    // that lack the low bits for addressing within a line to system addresses
-    // that include the low bits.
+    // This is the standard interface passed to the cache.
     //
-    interface RL_SA_CACHE_SOURCE_DATA cacheIfc;
-
-        method Action readReq(FUNCP_MEM_CACHE_TAG addr, FUNCP_MEM_CACHE_REF_INFO refInfo);
-            link_funcp_memory.makeReq(funcpMemLoadCacheLineReq(refInfo.contextId, memAddrFromCacheTag(addr)));
-        endmethod
-
-        method ActionValue#(FUNCP_MEM_CACHELINE) readResp() if (link_funcp_memory.getResp() matches tagged MEM_REPLY_LOAD_CACHELINE .v);
-            link_funcp_memory.deq();
-            return pack(v);
-        endmethod
-    
-        // Asynchronous write (no response)
-        method Action write(FUNCP_MEM_CACHE_TAG addr, MEM_CACHELINE_WORD_VALID_MASK wordMask, FUNCP_MEM_CACHELINE val, FUNCP_MEM_CACHE_REF_INFO refInfo);
-            link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE MEM_STORE_CACHELINE_INFO { contextId: refInfo.contextId, wordValidMask: wordMask, addr: memAddrFromCacheTag(addr), val: unpack(val) });
-        endmethod
-    
-        // Synchronous write.  writeSyncWait() blocks until the response arrives.
-        method Action writeSyncReq(FUNCP_MEM_CACHE_TAG addr, MEM_CACHELINE_WORD_VALID_MASK wordMask, FUNCP_MEM_CACHELINE val, FUNCP_MEM_CACHE_REF_INFO refInfo);
-            link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE_SYNC MEM_STORE_CACHELINE_INFO { contextId: refInfo.contextId, wordValidMask: wordMask, addr: memAddrFromCacheTag(addr), val: unpack(val) });
-        endmethod
-
-        method Action writeSyncWait() if (link_funcp_memory.getResp() matches tagged MEM_REPLY_STORE_CACHELINE_ACK .v);
-            link_funcp_memory.deq();
-        endmethod
-
-    endinterface: cacheIfc
-
-    //
-    // This is the private interface used when bypassing the cache
-    //
-    method Action readWordReq(MEM_LOAD_INFO ldInfo);
-        link_funcp_memory.makeReq(funcpMemLoadReq(ldInfo.contextId,
-                                                  ldInfo.addr,
-                                                  ldInfo.iStream,
-                                                  ldInfo.memRefToken));
+    method Action readReq(FUNCP_MEM_CACHE_TAG addr, FUNCP_MEM_CACHE_REF_INFO refInfo);
+        link_funcp_memory.makeReq(funcpMemLoadCacheLineReq(refInfo.contextId, memAddrFromCacheTag(addr)));
     endmethod
 
-    method ActionValue#(MEMSTATE_RESP) readWordResp() if (link_funcp_memory.getResp() matches tagged MEM_REPLY_LOAD .v);
+    method ActionValue#(FUNCP_MEM_CACHELINE) readResp() if (link_funcp_memory.getResp() matches tagged MEM_REPLY_LOAD_CACHELINE .v);
         link_funcp_memory.deq();
-        return v;
+        return pack(v);
     endmethod
 
-    method Action writeWord(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_VALUE val);
-        link_funcp_memory.makeReq(funcpMemStoreReq(ctxId, addr, val));
+    // Asynchronous write (no response)
+    method Action write(FUNCP_MEM_CACHE_TAG addr, MEM_CACHELINE_WORD_VALID_MASK wordMask, FUNCP_MEM_CACHELINE val, FUNCP_MEM_CACHE_REF_INFO refInfo);
+        link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE MEM_STORE_CACHELINE_INFO { contextId: refInfo.contextId, wordValidMask: wordMask, addr: memAddrFromCacheTag(addr), val: unpack(val) });
     endmethod
 
+    // Synchronous write.  writeSyncWait() blocks until the response arrives.
+    method Action writeSyncReq(FUNCP_MEM_CACHE_TAG addr, MEM_CACHELINE_WORD_VALID_MASK wordMask, FUNCP_MEM_CACHELINE val, FUNCP_MEM_CACHE_REF_INFO refInfo);
+        link_funcp_memory.makeReq(tagged MEM_STORE_CACHELINE_SYNC MEM_STORE_CACHELINE_INFO { contextId: refInfo.contextId, wordValidMask: wordMask, addr: memAddrFromCacheTag(addr), val: unpack(val) });
+    endmethod
+
+    method Action writeSyncWait() if (link_funcp_memory.getResp() matches tagged MEM_REPLY_STORE_CACHELINE_ACK .v);
+        link_funcp_memory.deq();
+    endmethod
 endmodule
 
 
@@ -360,11 +317,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
     // ***** Dynamic parameters *****
     PARAMETER_NODE paramNode <- mkDynamicParameterNode();
 
-    Param#(1) enableCacheParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEMCACHE_ENABLE, paramNode);
-    function Bool enableCache() = (enableCacheParam == 1);
-
-    Param#(1) writeBackParam <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEMCACHE_WRITE_BACK, paramNode);
-    function Bool writeBackCache() = (writeBackParam == 1);
+    Param#(2) memCacheMode <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_CACHE_FUNCP_MEMCACHE_MODE, paramNode);
 
 
     // ***** Soft Connections *****
@@ -393,10 +346,9 @@ module [HASIM_MODULE] mkFUNCP_Cache
                  MEM_VALUE,                // Cache word
                  CACHELINE_WORDS,          // Words per cache line
                  FUNCP_MEM_CACHE_REF_INFO, // Reference meta-data (passed to RRR)
-                 FUNCP_MEM_ADDR_NONTAG_BITS) cache <- mkCacheSetAssoc(funcpMemIfc.cacheIfc,
+                 FUNCP_MEM_ADDR_NONTAG_BITS) cache <- mkCacheSetAssoc(funcpMemIfc,
                                                                       cacheLocalData,
                                                                       statIfc,
-                                                                      True,
                                                                       debugLog);
 
     // Single entry L1 caches
@@ -412,6 +364,8 @@ module [HASIM_MODULE] mkFUNCP_Cache
     Reg#(Bool) invalLoopOnlyFlush <- mkRegU();
     Reg#(CONTEXT_ID) invalLoopContextId <- mkRegU();
 
+
+    Reg#(Bool) initialized <- mkReg(False);
 
     // ***** Assertion Checkers *****
 
@@ -451,6 +405,13 @@ module [HASIM_MODULE] mkFUNCP_Cache
     endfunction
 
 
+    // ***** Initialization ***** //
+    rule initCache (! initialized);
+        cache.setCacheMode(unpack(memCacheMode));
+        initialized <= True;
+    endrule
+
+
     // ***** Cache client-side rules ***** //
 
     //
@@ -459,7 +420,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
     //    is in pending.
     //
     (* conservative_implicit_conditions *)
-    rule handleReq_LOAD (enableCache && (invalLoopNLines == 0) &&&
+    rule handleReq_LOAD (invalLoopNLines == 0 &&&
                          link_memstate.getReq() matches tagged MEM_LOAD .ld);
         link_memstate.deq();
         
@@ -505,13 +466,9 @@ module [HASIM_MODULE] mkFUNCP_Cache
     endrule
 
 
-    rule handleReq_STORE (enableCache && (invalLoopNLines == 0) &&&
+    rule handleReq_STORE (invalLoopNLines == 0 &&&
                           link_memstate.getReq() matches tagged MEM_STORE .s);
         link_memstate.deq();
-
-        // The value of writeBackCache must be stable for an entire run since
-        // setting write-back to false does not flush existing dirty lines.
-        cache.setModeWriteBack(writeBackCache);
 
         debugLog.record($format("STORE: ctx=%0d, addr=0x%x, data=0x%x", s.contextId, s.addr, s.val));
 
@@ -521,14 +478,10 @@ module [HASIM_MODULE] mkFUNCP_Cache
         let tag = cacheTagFromAddr(s.addr);
         cacheL1D.inval(tag);
         cacheL1I.inval(tag);
-
-        // Write-through now?
-        if (! writeBackCache)
-            funcpMemIfc.writeWord(s.contextId, s.addr, s.val);
     endrule
 
 
-    rule handleReq_INVAL (enableCache && (invalLoopNLines == 0) &&&
+    rule handleReq_INVAL (invalLoopNLines == 0 &&&
                           link_memstate.getReq() matches tagged MEM_INVALIDATE_CACHELINE .inval);
         link_memstate.deq();
 
@@ -542,7 +495,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
     endrule
 
 
-    rule handleReq_FLUSH (enableCache && (invalLoopNLines == 0) &&&
+    rule handleReq_FLUSH (invalLoopNLines == 0 &&&
                          link_memstate.getReq() matches tagged MEM_FLUSH_CACHELINE .flush);
         link_memstate.deq();
 
@@ -557,7 +510,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
     //     cache request can't fit in a cycle.
     //
     (* conservative_implicit_conditions *)
-    rule handleReqCache (enableCache);
+    rule handleReqCache (initialized);
         let req = handleReqQ.first();
         handleReqQ.deq();
         
@@ -597,7 +550,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
     // handleRespL1 --
     //     Response from read request initiated by handleReq that hit in L1 cache
     //
-    rule handleRespL1 (enableCache);
+    rule handleRespL1 (True);
         match { .load_info, .val } = loadFromL1CacheQ.first();
         loadFromL1CacheQ.deq();
 
@@ -612,7 +565,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
     // handleResp --
     //     Response from read request initiated by handleReq from main cache
     //
-    rule handleResp (enableCache);
+    rule handleResp (initialized);
         let r <- cache.readResp();
 
         let load_info = r.refInfo;
@@ -628,53 +581,6 @@ module [HASIM_MODULE] mkFUNCP_Cache
             cacheL1D.update(load_info.contextId, tag, r.words);
 
         debugLog.record($format("  LOAD done: ") + fshow(load_info.memRefToken) + $format(", idx=%d, data=0x%x", wordIdx, validValue(r.words[wordIdx])));
-    endrule
-    
-
-    //
-    // handleBypassReq --
-    //     Handle incoming requests when the cache is bypassed
-    //
-    rule handleBypassReq (! enableCache);
-        let mem_req = link_memstate.getReq();
-        link_memstate.deq();
-        
-        case (mem_req) matches
-            tagged MEM_LOAD .ld:
-            begin
-                debugLog.record($format("LOAD: ctx=%d, ", ld.contextId) + fshow(ld.memRefToken) + $format(", addr=0x%x", ld.addr));
-                funcpMemIfc.readWordReq(ld);
-            end
-
-            tagged MEM_STORE .s:
-            begin
-                debugLog.record($format("STORE: ctx=%d, addr=0x%x, data=0x%x", s.contextId, s.addr, s.val));
-                funcpMemIfc.writeWord(s.contextId, s.addr, s.val);
-            end
-
-            tagged MEM_INVALIDATE_CACHELINE .a:
-            begin
-                noAction;
-            end
-
-            tagged MEM_FLUSH_CACHELINE .a:
-            begin
-                noAction;
-            end
-
-            default: assertValidRequest(False);
-        endcase
-    endrule
-
-
-    //
-    // handleBypassResp --
-    //     Response from request initiated by handleBypassReq
-    //
-    rule handleBypassResp (! enableCache);
-        let v <- funcpMemIfc.readWordResp();
-        link_memstate.makeResp(v);
-        debugLog.record($format("  LOAD done: ") + fshow(v.memRefToken) + $format(", data=0x%x", v));
     endrule
 
 
@@ -698,7 +604,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
         debugLog.record($format("%s: ctx=%d, addr=0x%x, nLines=%d", (line_info.onlyFlush ? "FLUSH" : "INVAL"), line_info.contextId, line_info.addr, line_info.nLines));
     endrule
 
-    rule doInvals (invalLoopNLines != 0);
+    rule doInvals (initialized && (invalLoopNLines != 0));
         //
         // Invalidate request specifies address, number of lines and whether
         // to invalidate or just flush dirty lines.  Loop here over the
@@ -732,7 +638,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
     // handleInvalResp --
     //     Send a message back when inval is done
     //
-    rule handleInvalResp (True);
+    rule handleInvalResp (initialized);
         cache.invalOrFlushWait();
         link_funcp_memory_inval.makeResp(?);
         debugLog.record($format("  FLUSH/INVAL done"));

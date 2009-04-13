@@ -37,8 +37,6 @@
 using namespace std;
 
 
-int MAXIMUM_CONTEXTS = pow(2.0, CONTEXT_ID_BITS);
-
 // ===== service instantiation =====
 STATS_SERVER_CLASS STATS_SERVER_CLASS::instance;
 
@@ -98,9 +96,12 @@ STATS_SERVER_CLASS::Cleanup()
     // Free stats
     delete sawStat;
 
-    for (int x = 0; x < globalArgs->NumContexts(); x++)
+    if (globalArgs != NULL)
     {
-        delete statValues[x];
+        for (int x = 0; x < globalArgs->NumContexts(); x++)
+        {
+            delete statValues[x];
+        }
     }
 
     delete [] statValues;

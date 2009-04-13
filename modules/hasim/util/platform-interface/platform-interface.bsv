@@ -65,11 +65,7 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
     // ***** Dynamic parameters *****
     PARAMETER_NODE paramNode <- mkDynamicParameterNode();
 
-    Param#(1) enableCentralCacheParam <- mkDynamicParameter(`PARAMS_PLATFORM_INTERFACE_CENTRAL_CACHE_ENABLE, paramNode);
-    function Bool enableCentralCache() = (enableCentralCacheParam == 1);
-
-    Param#(1) writeBackCentralCacheParam <- mkDynamicParameter(`PARAMS_PLATFORM_INTERFACE_CENTRAL_CACHE_WRITE_BACK, paramNode);
-    function Bool centralCacheIsWriteBack() = (writeBackCentralCacheParam == 1);
+    Param#(2) centralCacheMode <- mkDynamicParameter(`PARAMS_PLATFORM_INTERFACE_CENTRAL_CACHE_MODE, paramNode);
 
     // ***** Assertion Checkers *****
     ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_PLATFORM_INTERFACE__BASE);
@@ -104,7 +100,7 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
     // Initialization
     Reg#(Bool) initialized <- mkReg(False);
     rule doInit (! initialized);
-        central_cache.init(enableCentralCache, centralCacheIsWriteBack);
+        central_cache.init(unpack(centralCacheMode));
         initialized <= True;
     endrule
 

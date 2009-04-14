@@ -221,10 +221,10 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
     FIFO#(FUNCP_TLB_RESP) response <- mkFIFO();
 
     // Small local caches of recent translations
-    Vector#(NUM_CONTEXTS, HASIM_TINY_CACHE#(FUNCP_V_PAGE,
-                                            FUNCP_L1TLB_ENTRY,
-                                            n_CACHE_ENTRIES,
-                                            `FUNCP_ISA_PAGE_SHIFT)) tinyCaches = newVector();
+    Vector#(NUM_CONTEXTS, RL_TINY_CACHE#(FUNCP_V_PAGE,
+                                         FUNCP_L1TLB_ENTRY,
+                                         n_CACHE_ENTRIES,
+                                         `FUNCP_ISA_PAGE_SHIFT)) tinyCaches = newVector();
     for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
     begin
         tinyCaches[c] <- mkTinyCache(debugLog);

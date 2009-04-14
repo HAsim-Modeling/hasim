@@ -1,10 +1,10 @@
 
 [Global]
 SaveParameters=0
-Description=Hybrid Virtual Memory Test Model
+Description=Hybrid Virtual Memory Test Model with Private Caches
 File=mem_test_hybrid_exe
 Version=2.1
-Name=Hybrid Virtual Memory Test Model
+Name=Hybrid Virtual Memory Test Model with Private Caches
 Type=HAsim
 Class=Asim::Model
 
@@ -33,9 +33,6 @@ Packagehint=hasim
 [HAsim Scratchpad Memory Test System]
 File=modules/system/test/mem_test/mem-test.awb
 Packagehint=hasim
-
-
-
 
 [Hybrid Basic Controller]
 File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm

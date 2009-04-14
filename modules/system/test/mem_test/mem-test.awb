@@ -8,3 +8,5 @@
 %public mem-test.dic
 
 %param --dynamic MEM_TEST_INIT_MODE  0  "0: normal, 1: write zeros, 2: no writes"
+
+%param MEM_TEST_PRIVATE_CACHES 1  "Enable (1) / disable (0) private scratchpad caches."

@@ -21,6 +21,7 @@
 //
 
 `include "asim/provides/librl_bsv_base.bsh"
+`include "asim/provides/librl_bsv_cache.bsh"
 `include "asim/provides/scratchpad_memory.bsh"
 
 `include "asim/dict/VDEV.bsh"
@@ -48,8 +49,8 @@ SCRATCHPAD_MEM_REQUEST
 // name space.
 //
 function String scratchPortName(Integer n) = "vdev_memory_" + integerToString(n - `VDEV_SCRATCH__BASE);
-    
-    
+
+
 // ========================================================================
 //
 // Modules that instantiate a scratchpad memory.
@@ -57,10 +58,13 @@ function String scratchPortName(Integer n) = "vdev_memory_" + integerToString(n 
 // ========================================================================
     
 //
-// mkBasicScratchpad --
-//     Build a basic scratchpad with no local cache.
+// mkScratchpad --
+//     This is the typical scratchpad module.
 //
-module [HASIM_MODULE] mkBasicScratchpad#(Integer scratchpadID)
+//     Build a scratchpad of an arbitrary data type with marshalling to the
+//     global scratchpad base memory size.
+//
+module [HASIM_MODULE] mkScratchpad#(Integer scratchpadID, Bool cached)
     // interface:
     (MEMORY_IFC#(t_ADDR, t_DATA))
     provisos (Bits#(t_ADDR, t_ADDR_SZ),
@@ -77,7 +81,9 @@ module [HASIM_MODULE] mkBasicScratchpad#(Integer scratchpadID)
 
     // Container maps requested data size to the platform's scratchpad
     // word size.
-    MEMORY_IFC#(t_CONTAINER_ADDR, SCRATCHPAD_MEM_VALUE) containerMemory <- mkDirectScratchpad(scratchpadID);
+    MEMORY_IFC#(t_CONTAINER_ADDR, SCRATCHPAD_MEM_VALUE) containerMemory <- cached ?
+                                                                           mkUnmarshalledCachedScratchpad(scratchpadID) :
+                                                                           mkUnmarshalledScratchpad(scratchpadID);
     
     // Wrap the container with a marshaller.
     MEM_PACK#(t_ADDR, t_DATA, t_CONTAINER_ADDR, SCRATCHPAD_MEM_VALUE) memory <- mkMemPack(containerMemory);
@@ -97,7 +103,7 @@ endmodule
 // mkMemoryHeapUnionScratchpad --
 //     Data and free list share same storage in a scratchpad memory.
 //
-module [HASIM_MODULE] mkMemoryHeapUnionScratchpad#(Integer scratchpadID)
+module [HASIM_MODULE] mkMemoryHeapUnionScratchpad#(Integer scratchpadID, Bool cached)
     // interface:
     (MEMORY_HEAP#(t_INDEX, t_DATA))
     provisos (Bits#(t_DATA, t_DATA_SZ),
@@ -114,7 +120,7 @@ module [HASIM_MODULE] mkMemoryHeapUnionScratchpad#(Integer scratchpadID)
               Bits#(t_CONTAINER_INDEX, t_CONTAINER_INDEX_SZ),
               Add#(x, t_CONTAINER_INDEX_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
 
-    MEMORY_HEAP_DATA#(t_INDEX, t_DATA) pool <- mkMemoryHeapUnionScratchpadStorage(scratchpadID);
+    MEMORY_HEAP_DATA#(t_INDEX, t_DATA) pool <- mkMemoryHeapUnionScratchpadStorage(scratchpadID, cached);
     MEMORY_HEAP#(t_INDEX, t_DATA) heap <- mkMemoryHeap(pool);
 
     return heap;
@@ -126,7 +132,8 @@ endmodule
 //     Backing storage for a memory heap where the data and free list are
 //     stored in the same, unioned, scratchpad memory.
 //
-module [HASIM_MODULE] mkMemoryHeapUnionScratchpadStorage#(Integer scratchpadID)
+module [HASIM_MODULE] mkMemoryHeapUnionScratchpadStorage#(Integer scratchpadID,
+                                                          Bool cached)
     // interface:
     (MEMORY_HEAP_DATA#(t_INDEX, t_DATA))
     provisos (Bits#(t_INDEX, t_INDEX_SZ),
@@ -144,11 +151,23 @@ module [HASIM_MODULE] mkMemoryHeapUnionScratchpadStorage#(Integer scratchpadID)
               Add#(x, t_CONTAINER_INDEX_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
 
     // Union storage
-    MEMORY_IFC#(t_CONTAINER_INDEX, SCRATCHPAD_MEM_VALUE) containerMemory <- mkDirectScratchpad(scratchpadID);
+    MEMORY_IFC#(t_CONTAINER_INDEX, SCRATCHPAD_MEM_VALUE) containerMemory <- cached ?
+                                                                            mkUnmarshalledCachedScratchpad(scratchpadID) :
+                                                                            mkUnmarshalledScratchpad(scratchpadID);
     MEM_PACK_MULTI_READ#(2, t_INDEX, Bit#(t_UNION_SZ), t_CONTAINER_INDEX, SCRATCHPAD_MEM_VALUE) pool <- mkMemPackPseudoMultiRead(containerMemory);
 
+    //
+    // Scheduling hints like descending_urgency don't work on methods.  We use
+    // wires instead.
+    //
+    Wire#(Bool) dataReadReqFired <- mkDWire(False);
+    Wire#(Bool) dataWriteFired <- mkDWire(False);
+
     interface MEMORY_HEAP_BACKING_STORE data;
-        method Action readReq(t_INDEX addr) = pool.readPorts[0].readReq(addr);
+        method Action readReq(t_INDEX addr);
+            dataReadReqFired <= True;
+            pool.readPorts[0].readReq(addr);
+        endmethod
 
         method ActionValue#(t_DATA) readRsp();
             let r <- pool.readPorts[0].readRsp();
@@ -156,19 +175,24 @@ module [HASIM_MODULE] mkMemoryHeapUnionScratchpadStorage#(Integer scratchpadID)
         endmethod
 
         method Action write(t_INDEX addr, t_DATA value);
+            dataWriteFired <= True;
             pool.write(addr, zeroExtendNP(pack(value)));
         endmethod
     endinterface
 
     interface MEMORY_HEAP_BACKING_STORE freeList;
-        method Action readReq(t_INDEX addr) = pool.readPorts[1].readReq(addr);
+        method Action readReq(t_INDEX addr) if (! dataReadReqFired &&
+                                                ! dataWriteFired);
+            pool.readPorts[1].readReq(addr);
+        endmethod
 
         method ActionValue#(t_INDEX) readRsp();
             let r <- pool.readPorts[1].readRsp();
             return unpack(truncateNP(r));
         endmethod
 
-        method Action write(t_INDEX addr, t_INDEX value);
+        method Action write(t_INDEX addr, t_INDEX value) if (! dataReadReqFired &&
+                                                             ! dataWriteFired);
             pool.write(addr, zeroExtendNP(pack(value)));
         endmethod
     endinterface
@@ -184,13 +208,13 @@ endmodule
     
     
 //
-// mkDirectScratchpad --
+// mkUnmarshalledScratchpad --
 //     Allocate a connection to the platform's scratchpad interface for
 //     a single scratchpad region.  This module does no marshalling of
 //     data sizes or caching.  BEWARE: the word size of the virtual
 //     platform's scratchpad is platform dependent.
 //
-module [HASIM_MODULE] mkDirectScratchpad#(Integer scratchpadID)
+module [HASIM_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
     // interface:
     (MEMORY_IFC#(t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE))
     provisos (Bits#(t_MEM_ADDRESS, t_MEM_ADDRESS_SZ),
@@ -220,14 +244,14 @@ module [HASIM_MODULE] mkDirectScratchpad#(Integer scratchpadID)
     //
     // Forward merged requests to the memory.
     //
-    rule forwardReq (True);
+    rule forwardReq (initialized);
         let r = mergeQ.first();
         mergeQ.deq();
         
         link_memory.makeReq(r);
     endrule
 
-    method Action readReq(t_MEM_ADDRESS addr) if (initialized);
+    method Action readReq(t_MEM_ADDRESS addr);
         mergeQ.ports[0].enq(tagged SCRATCHPAD_MEM_READ zeroExtend(pack(addr)));
     endmethod
 
@@ -238,7 +262,104 @@ module [HASIM_MODULE] mkDirectScratchpad#(Integer scratchpadID)
         return v;
     endmethod
 
-    method Action write(t_MEM_ADDRESS addr, SCRATCHPAD_MEM_VALUE val) if (initialized);
+    method Action write(t_MEM_ADDRESS addr, SCRATCHPAD_MEM_VALUE val);
         mergeQ.ports[1].enq(tagged SCRATCHPAD_MEM_WRITE { addr: zeroExtend(pack(addr)), val: val });
     endmethod
 endmodule
+    
+    
+//
+// mkUnmarshalledCachedScratchpad --
+//     Allocate a cached connection to the platform's scratchpad interface for
+//     a single scratchpad region.  This module does no marshalling of
+//     data sizes.
+//
+module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
+    // interface:
+    (MEMORY_IFC#(t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE))
+    provisos (Bits#(t_MEM_ADDRESS, t_MEM_ADDRESS_SZ),
+              Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
+
+              // Requested address type must be smaller than scratchpad maximum
+              Add#(a__, t_MEM_ADDRESS_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
+    
+    DEBUG_FILE debugLog <- mkDebugFile("platform_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE) + ".out");
+
+    RL_DM_CACHE_SOURCE_DATA#(Bit#(t_MEM_ADDRESS_SZ), SCRATCHPAD_MEM_VALUE, void) sourceData <- mkScratchpadCacheSourceData(scratchpadID);
+    RL_DM_CACHE#(Bit#(t_MEM_ADDRESS_SZ), SCRATCHPAD_MEM_VALUE, void, 0) cache <- mkCacheDirectMapped(sourceData, debugLog);
+
+    method Action readReq(t_MEM_ADDRESS addr);
+        cache.readReq(pack(addr), ?);
+    endmethod
+
+    method ActionValue#(SCRATCHPAD_MEM_VALUE) readRsp();
+        let r <- cache.readResp();
+        return r.val;
+    endmethod
+
+    method Action write(t_MEM_ADDRESS addr, SCRATCHPAD_MEM_VALUE val);
+        cache.write(pack(addr), val, ?);
+    endmethod
+endmodule
+    
+    
+module [HASIM_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
+    // interface:
+    (RL_DM_CACHE_SOURCE_DATA#(t_CACHE_ADDR, SCRATCHPAD_MEM_VALUE, t_CACHE_REF_INFO))
+    provisos (Bits#(t_CACHE_ADDR, t_CACHE_ADDR_SZ),
+              Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
+              Alias#(RL_DM_CACHE_FILL_RESP#(t_CACHE_ADDR, SCRATCHPAD_MEM_VALUE, t_CACHE_REF_INFO), t_CACHE_FILL_RESP),
+
+              // Requested address type must be smaller than scratchpad maximum
+              Add#(a__, t_CACHE_ADDR_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
+
+    Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
+
+    Reg#(Bool) initialized <- mkReg(False);
+    
+    //
+    // Allocate memory for this scratchpad region
+    //
+    rule doInit (! initialized);
+        initialized <= True;
+
+        Bit#(t_CACHE_ADDR_SZ) alloc = maxBound;
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT zeroExtend(alloc));
+    endrule
+
+    method Action readReq(t_CACHE_ADDR addr, t_CACHE_REF_INFO refInfo) if (initialized);
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_READ zeroExtend(pack(addr)));
+    endmethod
+
+    method ActionValue#(t_CACHE_FILL_RESP) readResp();
+        let v = link_memory.getResp();
+        link_memory.deq();
+    
+        t_CACHE_FILL_RESP r;
+        r.addr = ?;
+        r.val = v;
+        r.refInfo = ?;
+
+        return r;
+    endmethod
+    
+
+    // Asynchronous write (no response)
+    method Action write(t_CACHE_ADDR addr,
+                        SCRATCHPAD_MEM_VALUE val,
+                        t_CACHE_REF_INFO refInfo) if (initialized);
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE { addr: zeroExtend(pack(addr)), val: val });
+    endmethod
+    
+    // Synchronous write.  writeSyncWait() blocks until the response arrives.
+    method Action writeSyncReq(t_CACHE_ADDR addr,
+                               SCRATCHPAD_MEM_VALUE val,
+                               t_CACHE_REF_INFO refInfo) if (initialized);
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE { addr: zeroExtend(pack(addr)), val: val });
+    endmethod
+
+    method Action writeSyncWait() if (False);
+        noAction;
+    endmethod
+endmodule
+    

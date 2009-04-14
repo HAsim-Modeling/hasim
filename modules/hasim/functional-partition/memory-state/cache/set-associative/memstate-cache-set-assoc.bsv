@@ -252,10 +252,10 @@ module [HASIM_MODULE] mkFUNCP_L1Cache_MultiCtx#(DEBUG_FILE debugLog)
     // Allocate a single cache line entry for each context.
     //
     Vector#(NUM_CONTEXTS,
-            HASIM_TINY_CACHE#(FUNCP_MEM_CACHE_TAG,
-                              Vector#(CACHELINE_WORDS, Maybe#(MEM_VALUE)),
-                              1,
-                              FUNCP_MEM_ADDR_NONTAG_BITS)) l1cache = newVector();
+            RL_TINY_CACHE#(FUNCP_MEM_CACHE_TAG,
+                           Vector#(CACHELINE_WORDS, Maybe#(MEM_VALUE)),
+                           1,
+                           FUNCP_MEM_ADDR_NONTAG_BITS)) l1cache = newVector();
 
     for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
     begin

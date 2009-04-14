@@ -85,17 +85,19 @@ module [HASIM_MODULE] mkSystem ()
     // Allocate scratchpads
     //
 
+    let private_caches = (`MEM_TEST_PRIVATE_CACHES != 0);
+
     // Large data (multiple containers for single datum)
-    MEMORY_IFC#(MEM_ADDRESS, t_MEM_DATA_LG) memoryLG <- mkBasicScratchpad(`VDEV_SCRATCH_MEMTEST_LG);
+    MEMORY_IFC#(MEM_ADDRESS, t_MEM_DATA_LG) memoryLG <- mkScratchpad(`VDEV_SCRATCH_MEMTEST_LG, private_caches);
 
     // Medium data (same container size as data)
-    MEMORY_IFC#(MEM_ADDRESS, t_MEM_DATA_MD) memoryMD <- mkBasicScratchpad(`VDEV_SCRATCH_MEMTEST_MD);
+    MEMORY_IFC#(MEM_ADDRESS, t_MEM_DATA_MD) memoryMD <- mkScratchpad(`VDEV_SCRATCH_MEMTEST_MD, private_caches);
 
     // Small data (multiple data per container)
-    MEMORY_IFC#(MEM_ADDRESS, t_MEM_DATA_SM) memorySM <- mkBasicScratchpad(`VDEV_SCRATCH_MEMTEST_SM);
+    MEMORY_IFC#(MEM_ADDRESS, t_MEM_DATA_SM) memorySM <- mkScratchpad(`VDEV_SCRATCH_MEMTEST_SM, private_caches);
 
     // Heap
-    MEMORY_HEAP#(MEM_ADDRESS, t_MEM_DATA_SM) heap <- mkMemoryHeapUnionScratchpad(`VDEV_SCRATCH_MEMTEST_HEAP);
+    MEMORY_HEAP#(MEM_ADDRESS, t_MEM_DATA_SM) heap <- mkMemoryHeapUnionScratchpad(`VDEV_SCRATCH_MEMTEST_HEAP, private_caches);
 
 
     DEBUG_FILE debugLog <- mkDebugFile("mem_test.out");
@@ -332,6 +334,7 @@ module [HASIM_MODULE] mkSystem ()
         end
     endrule
 
+    (* descending_urgency = "readRecvHeap, readRecvSM, readRecvMD, readRecvLG" *)
     rule readRecvHeap (state == STATE_reading);
         let r_addr = readAddrHQ.first();
         readAddrHQ.deq();
@@ -407,7 +410,6 @@ module [HASIM_MODULE] mkSystem ()
 
         if (readCycleRespIdx == 7)
         begin
-            addr <= `START_ADDR;
             state <= STATE_read_timing_emit0;
         end
     endrule
@@ -438,6 +440,7 @@ module [HASIM_MODULE] mkSystem ()
         begin
             // Another pass on a different access port
             state <= STATE_read_timing;
+            addr <= `START_ADDR;
             readCycleReqIdx <= 0;
             readCycleRespIdx <= 0;
             timingPass <= timingPass + 1;

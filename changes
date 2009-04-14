@@ -18212,3 +18212,30 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
   hybrid-funcp-memory.  In the new scheme, the TLB module has its own RRR
   client for getting translations.  The next step will eliminate a layer
   of soft connections for functional memory values.
+
+----------
+mcadler     Date: Tue Apr 14 19:47:12 EDT 2009  CSN: CSN-hasim-621
+                  Tue Apr 14 23:47:12 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          620 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          619 
+
+Directory modules/hasim/util/platform-interface
+ platform-scratchpad-memory.bsv Locally Modified          619 
+
+Directory modules/system/test/mem_test
+ mem-test.awb              Locally Modified          619 
+ mem-test.bsv              Locally Modified          619 
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid_nopvt_exe.apm Locally Added               0 
+ mem_test_hybrid_nopvt_htg.apm Locally Added               0 
+ mem_test_hybrid_exe.apm   Locally Modified          619 
+ mem_test_hybrid_htg.apm   Locally Modified          619 
+
+- Add a predicate to standard scratchpad modules to add an optional private cache.
+- Add new flavors of mem_test_hybrid for with and without private caches.

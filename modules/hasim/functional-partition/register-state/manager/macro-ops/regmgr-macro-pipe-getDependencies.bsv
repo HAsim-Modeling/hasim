@@ -32,9 +32,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     REGSTATE_REG_MAPPING_GETDEPENDENCIES regMapping,
     REGSTATE_PHYSICAL_REGS_INVAL_REGS prf,
     FUNCP_FREELIST freelist,
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_ADDRESS) tokAddr,
+    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst,
     BRAM#(TOKEN_INDEX, ISA_INST_SRCS) tokWriters,
-    BRAM_MULTI_READ#(3, TOKEN_INDEX, REGMGR_DST_REGS) tokDsts,
-    BROM#(TOKEN_INDEX, ISA_INSTRUCTION) tokInst)
+    BRAM_MULTI_READ#(3, TOKEN_INDEX, REGMGR_DST_REGS) tokDsts)
     //interface:
                 ();
 
@@ -76,13 +77,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     //
     // ====================================================================
 
-    FIFO#(TOKEN) deps1Q <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN, ISA_INSTRUCTION)) deps1Q <- mkFIFO();
 
-    FIFO#(Tuple4#(TOKEN, Bool,
+    FIFO#(Tuple3#(TOKEN, 
                   Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
                   Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)))) deps2Q <- mkFIFO();
 
-    FIFO#(Tuple4#(TOKEN, Bool,
+    FIFO#(Tuple3#(TOKEN,
                   Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
                   ISA_DST_MAPPING)) deps3Q <- mkFIFO();
 
@@ -98,31 +99,42 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     // 4-stage macro-operation.
     
     // When:   When the timing partiton request the dependencies of an operation.
-    // Effect: Allocate all destination registers in maptable. 
+    // Effect: Allocate a token, allocate all destination registers in maptable. 
     //         Lookup all source registers in maptable.
-    // Soft Inputs:  TOKEN
+    // Soft Inputs:  CONTEXT_ID, INSTRUCTION, ADDRESS
     // Soft Returns: TOKEN, ISA_DEPENDENCY_INFO
  
     //
     // getDependencies1 --
-    //   Read instruction opcode.
+    //   Get a token for this instruction. 
     //
-    rule getDependencies1 (state.readyToBegin(tokContextId(linkGetDeps.getReq().token)));
+    (* conservative_implicit_conditions *)
+    rule getDependencies1 (state.readyToBegin(linkGetDeps.getReq().contextId));
 
         // Read inputs. Begin macro-operation.
         let req = linkGetDeps.getReq();
         linkGetDeps.deq();
-        let tok = req.token;
-        debugLog.record(fshow(tok.index) + $format(": GetDeps: Begin"));
-        
-        // Update the status.
-        tokScoreboard.decStart(tok.index);
-        
-        // Retrieve the instruction.
-        tokInst.readReq(tok.index);
+        let ctx_id = req.contextId;
 
+        // Get the next token from the scoreboard.
+        let idx <- tokScoreboard.allocate(ctx_id);
+        debugLog.record($format("GetDeps: Begin. Allocating ") + fshow(idx));
+
+        // The timing partition scratchpad must be filled in by us.
+        let newtok = TOKEN { index: idx,
+                             poison: False,
+                             dummy: req.dummy,
+                             timep_info: TOKEN_TIMEP_INFO { scratchpad: 0 } };
+        
+        
+        // Record the address. (For relative branches, etc.)
+        tokAddr.write(idx, req.virtualAddress);
+        
+        // Record the instruction.
+        tokInst.write(idx, req.instruction);
+        
         // Pass on to stage 2.
-        deps1Q.enq(tok);
+        deps1Q.enq(tuple2(newtok, req.instruction));
 
     endrule
 
@@ -134,18 +146,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     //   will be needed.  Also, send the set of architectural registers accessed
     //   to the register mapper.
     //
-    (* conservative_implicit_conditions *)
-    rule getDependencies2 (state.readyToContinue());
+    rule getDependencies2 (deps1Q.first() matches {.tok, .inst} &&& state.readyToContinue());
 
         // Get the info from the previous stage.
-        let tok = deps1Q.first();
         deps1Q.deq();
 
-        // Get instruction requested by previous stage.
-        let inst <- tokInst.readRsp();
-
-        // Token active or was it killed?
-        let tok_active = tokScoreboard.isAllocated(tok.index);
+        // Token active or is it a dummy?
+        let tok_active = !tokIsDummy(tok);
 
         // Use the scoreboard to record other instruction properties
         if (isaIsLoad(inst))
@@ -241,7 +248,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         freelist.allocateRegs(dst_reg_reqs);
         debugLog.record(fshow(tok.index) + $format(": GetDeps2: Freelist request mask is %0b", pack(dst_reg_reqs)));
 
-        deps2Q.enq(tuple4(tok, tok_active, ar_srcs, ar_dsts));
+        deps2Q.enq(tuple3(tok, ar_srcs, ar_dsts));
 
     endrule
 
@@ -256,8 +263,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     (* conservative_implicit_conditions *)
     rule getDependencies3 (state.readyToContinue());
 
-        match {.tok, .tok_active, .ar_srcs, .ar_dsts} = deps2Q.first();
+        match {.tok, .ar_srcs, .ar_dsts} = deps2Q.first();
         deps2Q.deq();
+
+        // Only update the maptable for live tokens.
+        let tok_active = !tokIsDummy(tok);
 
         // Get the physical registers requested earlier
         let phy_dsts <- freelist.allocateRsp();
@@ -317,7 +327,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
             end
         end
 
-        deps3Q.enq(tuple4(tok, tok_active, ar_srcs, map_dsts));
+        deps3Q.enq(tuple3(tok, ar_srcs, map_dsts));
 
     endrule
 
@@ -329,8 +339,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     //
     rule getDependencies4 (state.readyToContinue());
 
-        match {.tok, .tok_active, .ar_srcs, .map_dsts} = deps3Q.first();
+        match {.tok, .ar_srcs, .map_dsts} = deps3Q.first();
         deps3Q.deq();
+        
+        let tok_active = !tokIsDummy(tok);
 
         let phy_srcs <- regMapping.decodeRsp();
 

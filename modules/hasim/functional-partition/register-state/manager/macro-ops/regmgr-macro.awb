@@ -14,7 +14,6 @@
 
 %public regmgr-macro.bsv
 
-%public regmgr-macro-pipe-newInFlight.bsv
 %public regmgr-macro-pipe-doITranslate.bsv
 %public regmgr-macro-pipe-getInstruction.bsv
 %public regmgr-macro-pipe-getDependencies.bsv

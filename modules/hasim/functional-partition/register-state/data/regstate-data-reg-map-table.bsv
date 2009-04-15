@@ -83,14 +83,6 @@ REGSTATE_REWIND_INFO
 // ========================================================================
 
 //
-// REGSTATE_REG_MAPPING_NEWINFLIGHT --
-//   Interface for new token allocation.
-//
-interface REGSTATE_REG_MAPPING_NEWINFLIGHT;
-    method Action initToken(TOKEN tok);
-endinterface
-
-//
 // REGSTATE_REG_MAPPING_GETDEPENDENCIES -- Interface used by getDependencies
 //   pipeline for reading current mappings for register sources and
 //   updating mappings for destinations.
@@ -123,6 +115,7 @@ endinterface
 //   Commit pipeline interface.
 //
 interface REGSTATE_REG_MAPPING_COMMITRESULTS;
+    method Action updateMap(REGSTATE_NEW_MAPPINGS map_dsts);
     method Action readRewindReq(TOKEN tok);
     method ActionValue#(Maybe#(REGSTATE_REWIND_INFO)) readRewindRsp();
 endinterface
@@ -140,7 +133,6 @@ endinterface
 
 
 interface REGSTATE_REG_MAPPING;
-    interface REGSTATE_REG_MAPPING_NEWINFLIGHT     newInFlight;
     interface REGSTATE_REG_MAPPING_GETDEPENDENCIES getDependencies;
     interface REGSTATE_REG_MAPPING_GETRESULTS      getResults;
     interface REGSTATE_REG_MAPPING_COMMITRESULTS   commitResults;
@@ -318,7 +310,6 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     FIFO#(REGSTATE_NEW_MAPPINGS) exceptInQ <- mkFIFO();
 
     // Incoming token rewind info requests
-    FIFO#(TOKEN) rewInitInQ <- mkFIFO();
     FIFOF#(TOKEN_INDEX) rewGetResultsReadInQ <- mkFIFOF();
     FIFOF#(TOKEN) rewCommitReadInQ <- mkFIFOF();
     FIFOF#(TOKEN_INDEX) rewExceptionReadInQ <- mkFIFOF();
@@ -503,21 +494,6 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     // ====================================================================
 
     //
-    // doRewindInit --
-    //   Mark token's rewind info invalid.   
-    //
-    //
-    (* descending_urgency = "doRewindInit, doMapDecode" *)
-    rule doRewindInit (True);
-        let tok = rewInitInQ.first();
-        rewInitInQ.deq();
-
-        rewindInfo.write(tok.index, tagged Invalid);
-        debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Init REWIND"));
-    endrule
-
-
-    //
     // doRewindReads --
     //   Handle all incoming requests to read the rewind information,
     //   including arbitration between pipelines.
@@ -579,15 +555,6 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     //   Interfaces
     //
     // ====================================================================
-
-
-    interface REGSTATE_REG_MAPPING_NEWINFLIGHT newInFlight;
-
-        method Action initToken(TOKEN tok);
-            rewInitInQ.enq(tok);
-        endmethod
-
-    endinterface
 
 
     interface REGSTATE_REG_MAPPING_GETDEPENDENCIES getDependencies;
@@ -664,6 +631,11 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
             rewindReaderQ.deq();
             let r <- rewindInfo.readRsp();
             return r;
+        endmethod
+
+        method Action updateMap(REGSTATE_NEW_MAPPINGS map_dsts);
+            exceptInQ.enq(map_dsts);
+            newMapTableReqQ_EXC.enq(map_dsts.context_id);
         endmethod
 
     endinterface

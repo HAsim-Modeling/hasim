@@ -59,8 +59,8 @@ typedef struct
 
 typedef struct
 {
-    TOKEN       token; 
-    ISA_ADDRESS address;  // Address to associate with the instruction.
+    CONTEXT_ID  contextId;
+    ISA_ADDRESS virtualAddress;  // Virtual address to translate
 }
     FUNCP_REQ_DO_ITRANSLATE
         deriving (Eq, Bits);
@@ -70,8 +70,9 @@ typedef struct
 
 typedef struct
 {
-    TOKEN       token; 
+    CONTEXT_ID  contextId;
     MEM_ADDRESS physicalAddress;  // Result of translation.
+    MEM_OFFSET  offset;           // Offset of the instruction.
     Bool        fault;            // Translation failure:  fault will be raised on
                                   //   attempts to commit this token.  physicalAddress
                                   //   is on the guard page, so it can still be used
@@ -86,7 +87,10 @@ typedef struct
 
 typedef struct
 {
-    TOKEN           token;
+    CONTEXT_ID  contextId;
+    MEM_ADDRESS physicalAddress; // The address to fetch from.
+    MEM_OFFSET  offset;          // The offset into the chunk.
+    Bool        hasMore;         // If the instruction spans chunks, then make a second request.
 }
     FUNCP_REQ_GET_INSTRUCTION
         deriving (Eq, Bits);
@@ -96,8 +100,8 @@ typedef struct
 
 typedef struct
 {
-    TOKEN           token;
-    ISA_INSTRUCTION instruction;
+    CONTEXT_ID contextId;
+    ISA_INSTRUCTION instruction; // The instruction at that physical address.
 }
     FUNCP_RSP_GET_INSTRUCTION
         deriving (Eq, Bits);
@@ -107,7 +111,10 @@ typedef struct
 
 typedef struct
 {
-    TOKEN               token;
+    CONTEXT_ID contextId;
+    Bool dummy;
+    ISA_INSTRUCTION instruction;
+    ISA_ADDRESS virtualAddress;
 }
     FUNCP_REQ_GET_DEPENDENCIES
         deriving (Eq, Bits);
@@ -117,7 +124,7 @@ typedef struct
 
 typedef struct
 {
-    TOKEN               token;
+    TOKEN               token;      // The token that refers to this instruction from now on.
     ISA_SRC_MAPPING     srcMap;     // The mapping from architectural sources to physical sources.
     ISA_DST_MAPPING     dstMap;     // The mapping from architectural dests to physical dests.
 }
@@ -219,6 +226,7 @@ typedef struct
 typedef struct
 {
     TOKEN token;
+    Bool abort;
 }
     FUNCP_REQ_COMMIT_RESULTS
         deriving (Eq, Bits);

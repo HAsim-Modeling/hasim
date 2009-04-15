@@ -39,52 +39,49 @@
 typedef union tagged
 {
     void        ITRANS1_NORMAL;
-    ISA_ADDRESS ITRANS1_SPAN_REQ;
+    Tuple2#(ISA_ADDRESS, MEM_OFFSET) ITRANS1_SPAN_REQ;
 }
 STATE_ITRANS1
     deriving (Eq, Bits);
 
 
 // STATE_ITRANS2
-typedef union tagged
+typedef enum
 {
-    void        ITRANS2_NORMAL;
-    struct
-    {
-        MEM_ADDRESS firstPA;
-        Bool firstRefFaulted;
-    }
-    ITRANS2_SPAN_RSP;
+    ITRANS2_NORMAL, 
+    ITRANS2_SPAN_RSP
 }
 STATE_ITRANS2
     deriving (Eq, Bits);
 
 
 // ITRANS_INFO
-typedef union tagged
+typedef struct
 {
-    TOKEN ITRANS_NORMAL;
-    TOKEN ITRANS_SPAN;
+    CONTEXT_ID contextId;
+    MEM_OFFSET offset;
+    Bool span;
 }
 ITRANS_INFO
     deriving (Eq, Bits); 
 
+function ITRANS_INFO initITransNormal(CONTEXT_ID ctx_id, MEM_OFFSET offs);
 
-function TOKEN getITransToken(ITRANS_INFO i);
+    return ITRANS_INFO {contextId: ctx_id, offset: offs, span: False};
 
-    case (i) matches
-        tagged ITRANS_NORMAL .tok: return tok;
-        tagged ITRANS_SPAN   .tok: return tok;
-    endcase
+endfunction
+
+function ITRANS_INFO initITransSpan(CONTEXT_ID ctx_id, MEM_OFFSET offs);
+
+    // NOTE: offset refers to offset of the first addr.
+    return ITRANS_INFO {contextId: ctx_id, offset: offs, span: True};
 
 endfunction
 
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     REGMGR_GLOBAL_DATA glob,
-    REGSTATE_TLB_TRANSLATE link_itlb_trans,
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_ADDRESS) tokAddr,
-    BRAM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs)
+    REGSTATE_TLB_TRANSLATE link_itlb_trans)
     //interface:
                 ();
 
@@ -114,7 +111,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     // ====================================================================
 
     let state = glob.state;
-    let tokScoreboard = glob.tokScoreboard;
 
 
     // ====================================================================
@@ -140,7 +136,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     
     // When:         The timing model tells us to translate a fetch address.
     // Effect:       Record the virtual address, access the TLB, return and cache the result.
-    // Soft Inputs:  TOKEN, ISA_ADDRESS.
+    // Soft Inputs:  ISA_ADDRESS.
     // Soft Returns: One or Two MEM_ADDRESS, depending on the alignment.
 
 
@@ -149,25 +145,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     // When:   The timing model makes a new ITranslate req.
     // Effect: Record the virtual address, make the req to the TLB.
 
-    rule doITranslate1 (state.readyToBegin(tokContextId(linkDoITranslate.getReq().token)));
+    rule doITranslate1 (True);
 
         // Get the input from the timing model. Begin macro operation.
         let req = linkDoITranslate.getReq();
-        let tok = req.token;
-        let vaddr = req.address;
-        debugLog.record(fshow(tok.index) + $format(": DoITranslate: Begin."));
-        
-        // Update scoreboard.
-        tokScoreboard.iTransStart(tok.index);
+        let vaddr = req.virtualAddress;
 
-        // Record the address. (For relative branches, etc.)
-        tokAddr.write(tok.index, vaddr);
-        
         // Align the address.
         match {.aligned_addr, .offset_addr} = isaAlignAddress(vaddr);
-        
-        // Record the offset for the fetch stage.
-        tokScoreboard.setFetchOffset(tok.index, offset_addr);
 
         if (!isaFetchSpansTwoMemValues(vaddr))
         begin
@@ -176,26 +161,26 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
             linkDoITranslate.deq();
 
             // Get the translation from the TLB.
-            link_itlb_trans.makeReq(normalTLBQuery(tok, aligned_addr));
+            link_itlb_trans.makeReq(normalTLBQuery(req.contextId, aligned_addr));
             
             // Log it.
-            debugLog.record(fshow(tok.index) + $format(": DoITranslate1: ITLB Req (VA: 0x%h, AA: 0x%h)", vaddr, aligned_addr));
+            debugLog.record($format("DoITranslate1: ITLB Req (VA: 0x%h, AA: 0x%h)", vaddr, aligned_addr));
   
             // Pass to the next stage.
-            iTransQ.enq(tagged ITRANS_NORMAL tok);
+            iTransQ.enq(initITransNormal(req.contextId, offset_addr));
 
         end
         else     // A spanning fetch.
         begin
 
             // Log it.
-            debugLog.record(fshow(tok.index) + $format(": DoITranslate1: Spanning ITLB Req 1 (VA: 0x%h, AA1: 0x%h)", vaddr, aligned_addr));
+            debugLog.record($format("DoITranslate1: Spanning ITLB Req 1 (VA: 0x%h, AA1: 0x%h)", vaddr, aligned_addr));
   
             // A spanning ITranslate. Make the first request to the TLB.
-            link_itlb_trans.makeReq(normalTLBQuery(tok, aligned_addr));
+            link_itlb_trans.makeReq(normalTLBQuery(req.contextId, aligned_addr));
   
             // Stall to make the second request.
-            stateITrans1 <= tagged ITRANS1_SPAN_REQ aligned_addr;
+            stateITrans1 <= tagged ITRANS1_SPAN_REQ tuple2(aligned_addr, offset_addr);
 
         end
 
@@ -206,27 +191,27 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     // When:   After doITranslate1 stalls because of an unaligned access.
     // Effect: Make the second request to the TLB and unstall.
 
-    rule doITranslate1Span (state.readyToContinue() &&& stateITrans1 matches tagged ITRANS1_SPAN_REQ .aligned_addr1);
+    rule doITranslate1Span (stateITrans1 matches tagged ITRANS1_SPAN_REQ {.aligned_addr1, .offset});
          
         // Get the data from the previous stage.
         let req = linkDoITranslate.getReq();
-        let tok = req.token;
+        let ctx_id = req.contextId;
     
         // Calculate the second virtual address.
         let aligned_addr2 = aligned_addr1 + fromInteger(valueOf(SizeOf#(MEM_VALUE)) / 8);
     
         // Make the second request to the tlb.
-        link_itlb_trans.makeReq(normalTLBQuery(tok, aligned_addr2));
+        link_itlb_trans.makeReq(normalTLBQuery(ctx_id, aligned_addr2));
 
         // Log it.
-        debugLog.record(fshow(tok.index) + $format(": DoITranslate1: Second ITLB Req 2 (AA2: 0x%h)", aligned_addr2));
+        debugLog.record($format("DoITranslate1: Second ITLB Req 2 (AA2: 0x%h)", aligned_addr2));
   
         // Unstall this stage.
         linkDoITranslate.deq();  
         stateITrans1 <= tagged ITRANS1_NORMAL;  
 
         // Pass to the next stage.
-        iTransQ.enq(tagged ITRANS_SPAN tok);
+        iTransQ.enq(initITransSpan(ctx_id, offset));
     
     endrule
 
@@ -235,70 +220,56 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     // When:   Some time after doITranslate1.
     // Effect: Get the response from the TLB, record it and return it.
 
-    rule doITranslate2 (state.readyToContinue() &&& stateITrans2 matches tagged ITRANS2_NORMAL);
+    rule doITranslate2 (stateITrans2 == ITRANS2_NORMAL);
     
         // Get the response from the TLB.
         let translated_addr = link_itlb_trans.getResp();
         link_itlb_trans.deq();
-
-        // If the TLB couldn't translate it we're in big trouble.
         MEM_ADDRESS mem_addr = translated_addr.pa;
         Bool page_fault = translated_addr.pageFault;
 
         // Get the data from the previous stage.
-        case (iTransQ.first()) matches
-            tagged ITRANS_NORMAL .tok:
+        let itrans_info = iTransQ.first();
+        
+        if (!itrans_info.span)
+        begin
+
+            // A single access. We do not stall.
+            iTransQ.deq();
+
+            // Log it.
+            debugLog.record($format("DoITranslate2: ITLB Rsp (PA: 0x%h)", mem_addr));
+
+            if (page_fault)
             begin
-
-                // A single access. We do not stall.
-                iTransQ.deq();
-
-                // Log it.
-                debugLog.record(fshow(tok.index) + $format(": DoITranslate2: ITLB Rsp (PA: 0x%h)", mem_addr));
-
-                if (page_fault)
-                begin
-                    debugLog.record(fshow(tok.index) + $format(": DoITranslate2: ITLB PAGE FAULT"));
-                    tokScoreboard.setFault(tok.index, FAULT_ITRANS);
-                end
-
-                // Record the physical addr.
-                tokPhysicalAddrs.write(tok.index, tagged ONE mem_addr);
-
-                // Update the scoreboard.
-                tokScoreboard.iTransFinish(tok.index);
-
-                // Return it to the timing partition. End of macro-operation (path 1)
-                linkDoITranslate.makeResp(initFuncpRspDoITranslate(tok, mem_addr, page_fault));
-                debugLog.record(fshow(tok.index) + $format(": DoITranslate: End (path 1)."));
-
+                debugLog.record($format("DoITranslate2: ITLB PAGE FAULT"));
             end
-            tagged ITRANS_SPAN .tok:
+
+            // Return it to the timing partition. End of macro-operation (path 1)
+            linkDoITranslate.makeResp(initFuncpRspDoITranslate(itrans_info.contextId, mem_addr, itrans_info.offset, page_fault));
+            debugLog.record($format("DoITranslate: End (path 1)."));
+
+        end
+        else
+        begin
+
+            // A spanning access.
+
+            // Log it.
+            debugLog.record($format("DoITranslate2: ITLB Spanning Rsp 1 (PA1: 0x%h)", mem_addr));
+
+            if (page_fault)
             begin
-
-                // A spanning access.
-
-                // Log it.
-                debugLog.record(fshow(tok.index) + $format(": DoITranslate2: ITLB Spanning Rsp 1 (PA1: 0x%h)", mem_addr));
-
-                if (page_fault)
-                begin
-                    debugLog.record(fshow(tok.index) + $format(": DoITranslate2: ITLB PAGE FAULT"));
-                    tokScoreboard.setFault(tok.index, FAULT_ITRANS);
-                end
-
-                // Return the first part to the timing partition.
-                linkDoITranslate.makeResp(initFuncpRspDoITranslate_part1(tok, mem_addr, page_fault));
-
-                // Stall this stage to get the second response.
-                stateITrans2 <= tagged ITRANS2_SPAN_RSP
-                                       {
-                                           firstPA: mem_addr,
-                                           firstRefFaulted: page_fault
-                                       };
-
+                debugLog.record($format("DoITranslate2: ITLB PAGE FAULT"));
             end
-        endcase
+
+            // Return the first part to the timing partition.
+            linkDoITranslate.makeResp(initFuncpRspDoITranslate_part1(itrans_info.contextId, mem_addr, itrans_info.offset, page_fault));
+
+            // Stall this stage to get the second response.
+            stateITrans2 <= ITRANS2_SPAN_RSP;
+
+        end
     
     endrule
     
@@ -307,44 +278,34 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     // When:   After doITranslate1 stalls for a lookup which spans two locations.
     // Effect: Get the second response, record it, and return it.
 
-    rule doITranslate2Span (state.readyToContinue() &&& stateITrans2 matches tagged ITRANS2_SPAN_RSP .trans1);
+    rule doITranslate2Span (stateITrans2 == ITRANS2_SPAN_RSP);
     
         // Get the data from the previous stage.
-        let tok = getITransToken(iTransQ.first());
+        let itrans_info = iTransQ.first();
+        let ctx_id = itrans_info.contextId;
     
-        // Propagate poison bit from first translation
-        tok.poison = tok.poison || trans1.firstRefFaulted;
-
         // Get the response from the TLB.
         let translated_addr = link_itlb_trans.getResp();
         link_itlb_trans.deq();
-
-        // If the TLB couldn't translate it we're in big trouble.
         MEM_ADDRESS mem_addr2 = translated_addr.pa;
         Bool page_fault = translated_addr.pageFault;
 
         if (page_fault)
         begin
-            debugLog.record(fshow(tok.index) + $format(": DoITranslate2: ITLB Spanning 2 PAGE FAULT"));
-            tokScoreboard.setFault(tok.index, FAULT_ITRANS2);
+            debugLog.record($format("DoITranslate2: ITLB Spanning 2 PAGE FAULT"));
         end
 
         // Log it.
-        debugLog.record(fshow(tok.index) + $format(": DoITranslate2: ITLB Spanning Rsp 2 (PA2: 0x%h)", mem_addr2));
-
-        // Record the physical addr.
-        tokPhysicalAddrs.write(tok.index, tagged TWO tuple2(trans1.firstPA, mem_addr2));
+        debugLog.record($format("DoITranslate2: ITLB Spanning Rsp 2 (PA2: 0x%h)", mem_addr2));
 
         // Unstall the pipeline.
         stateITrans2 <= ITRANS2_NORMAL;
         iTransQ.deq();
 
-        // Update the scoreboard.
-        tokScoreboard.iTransFinish(tok.index);
-
         // Return the rest to the timing partition. End of macro-operation (path 2).
-        linkDoITranslate.makeResp(initFuncpRspDoITranslate_part2(tok, mem_addr2, page_fault));
-        debugLog.record(fshow(tok.index) + $format(": DoITranslate: End (path 2)."));
+        // Note: part 2 has an offset of zero.... otherwise it would be non-contiguous
+        linkDoITranslate.makeResp(initFuncpRspDoITranslate_part2(ctx_id, mem_addr2, 0, page_fault));
+        debugLog.record($format("DoITranslate: End (path 2)."));
     
     endrule
 

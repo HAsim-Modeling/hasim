@@ -251,7 +251,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // ====================================================================
 
     // Intermediate state between pipeline stages
-    FIFO#(Tuple2#(TOKEN, Bool)) res1Q <- mkFIFO();
+    FIFO#(TOKEN) res1Q <- mkFIFO();
     FIFO#(TOKEN) res2Q <- mkFIFO();
     FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) res3Q   <- mkFIFO();
     FIFO#(ISA_REG_INDEX) syncPRFReqQ <- mkFIFO();
@@ -302,7 +302,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         debugLog.record(fshow(tok.index) + $format(": GetResults: Begin."));
 
         // Token active or was it killed?
-        let tok_active = tokScoreboard.isAllocated(tok.index);
+        let tok_active = !tokIsDummy(tok);
 
         if (tokScoreboard.emulateInstruction(tok.index) && tok_active)
         begin
@@ -329,7 +329,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             tokWriters.readReq(tok.index);
 
             // Pass it along to the next stage.
-            res1Q.enq(tuple2(tok, tok_active));
+            res1Q.enq(tok);
         
         end
 
@@ -344,8 +344,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     rule getResults2 (state.readyToContinue());
 
         // Get input from getResults1.
-        match { .tok, .tok_active } = res1Q.first();
+        let tok = res1Q.first();
         res1Q.deq();
+        let tok_active = !tokIsDummy(tok);
 
         // Response from previous stage.
         let ws <- tokWriters.readRsp();
@@ -628,13 +629,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         // Update the scoreboard.
         tokScoreboard.exeStart(emulatingToken.index);
         
-        emulateMapCurTok <= tokScoreboard.youngestDecoded(ctx_id);
+        emulateMapCurTok <= tokScoreboard.youngest(ctx_id);
         emulateMapReqDone <= False;
         emulateRegMap.reset();
 
         state_res <= RSM_RES_EmulateGenRegMap;
 
-        debugLog.record(fshow(emulatingToken.index) + $format(": emulateInstruction1:  Youngest decoded token is %0d (youngest is %0d)", tokScoreboard.youngestDecoded(ctx_id), tokScoreboard.youngest(ctx_id)));
+        debugLog.record(fshow(emulatingToken.index) + $format(": emulateInstruction1:  Youngest token is %0d.", tokScoreboard.youngest(ctx_id)));
     endrule
 
 

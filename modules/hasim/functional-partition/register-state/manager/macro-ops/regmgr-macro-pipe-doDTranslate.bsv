@@ -206,7 +206,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
             dTrans1Q.deq();
 
             // Get the translation from the TLB.
-            link_dtlb_trans.makeReq(normalTLBQuery(tok, aligned_addr));
+            link_dtlb_trans.makeReq(normalTLBQuery(tokContextId(tok), aligned_addr));
 
             // Log it.
             debugLog.record(fshow(tok.index) + $format(": DoDTranslate2: DTLB Req (VA: 0x%h AA: 0x%h)", vaddr, aligned_addr));
@@ -222,7 +222,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
             debugLog.record(fshow(tok.index) + $format(": DoDTranslate2: DTLB Req Spanning 1 (VA: 0x%h, AA1: 0x%h)", vaddr, aligned_addr));
   
             // A spanning DTranslate. Make the first request to the TLB.
-            link_dtlb_trans.makeReq(normalTLBQuery(tok, aligned_addr));
+            link_dtlb_trans.makeReq(normalTLBQuery(tokContextId(tok), aligned_addr));
             
             // Stall to make the second request.
             stateDTrans2 <= tagged DTRANS2_SPAN_REQ aligned_addr;
@@ -245,7 +245,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
         let aligned_addr2 = aligned_addr1 + fromInteger(valueOf(SizeOf#(MEM_VALUE)) / 8);
         
         // Make the second request to the tlb.
-        link_dtlb_trans.makeReq(normalTLBQuery(tok, aligned_addr2));
+        link_dtlb_trans.makeReq(normalTLBQuery(tokContextId(tok), aligned_addr2));
 
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": DoDTranslate2: DTLB Req Spanning 2 (AA2: 0x%h)", aligned_addr2));

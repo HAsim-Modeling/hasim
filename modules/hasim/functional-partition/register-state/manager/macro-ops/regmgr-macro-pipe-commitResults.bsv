@@ -37,7 +37,8 @@
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     REGMGR_GLOBAL_DATA glob,
     REGSTATE_REG_MAPPING_COMMITRESULTS regMapping,
-    FUNCP_FREELIST freelist)
+    FUNCP_FREELIST freelist,
+    BROM#(TOKEN_INDEX, REGMGR_DST_REGS) tokDsts)
     //interface:
                 ();
 
@@ -58,7 +59,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
 
     Connection_Server#(FUNCP_REQ_COMMIT_RESULTS,
                        FUNCP_RSP_COMMIT_RESULTS) linkCommitResults <- mkConnection_Server("funcp_commitResults");
-
 
     // ====================================================================
     //
@@ -161,6 +161,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
 
         // Update the scoreboard so the token can be reused.
         tokScoreboard.deallocate(tok.index);
+        tokScoreboard.commitFinish(tok.index);
 
         // Respond to the timing model. End of macro-operation (except any more registers below).
         linkCommitResults.makeResp(initFuncpRspCommitResults(tok));
@@ -168,4 +169,5 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
 
     endrule
     
+
 endmodule

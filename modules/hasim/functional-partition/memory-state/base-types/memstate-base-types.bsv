@@ -151,7 +151,7 @@ endfunction
 typedef struct
 {
     FUNCP_VADDR va;
-    TOKEN tok;
+    CONTEXT_ID contextId;
 }
 FUNCP_TLB_QUERY
     deriving (Eq, Bits);
@@ -161,12 +161,12 @@ typedef FUNCP_TLB_QUERY FUNCP_TLB_FAULT;
 //
 // Helper functions for constructing FUNCP_TLB_QUERY
 //
-function FUNCP_TLB_QUERY normalTLBQuery(TOKEN tok, FUNCP_VADDR va);
-    return FUNCP_TLB_QUERY { va: va, tok: tok };
+function FUNCP_TLB_QUERY normalTLBQuery(CONTEXT_ID ctx, FUNCP_VADDR va);
+    return FUNCP_TLB_QUERY { va: va, contextId: ctx };
 endfunction
 
-function FUNCP_TLB_FAULT handleTLBPageFault(TOKEN tok, FUNCP_VADDR va);
-    return FUNCP_TLB_FAULT { va: va, tok: tok };
+function FUNCP_TLB_FAULT handleTLBPageFault(CONTEXT_ID ctx, FUNCP_VADDR va);
+    return FUNCP_TLB_FAULT { va: va, contextId: ctx };
 endfunction
 
 

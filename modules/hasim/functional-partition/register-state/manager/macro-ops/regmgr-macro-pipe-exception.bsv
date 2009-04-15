@@ -196,28 +196,28 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
             begin
                 let addr = iAddr_aligned;
                 debugLog.record(fshow(tok.index) + $format(": handleFault2: ITRANS (VA: 0x%h)", addr)); 
-                link_itlb_fault.pageFault(handleTLBPageFault(tok, addr));
+                link_itlb_fault.pageFault(handleTLBPageFault(tokContextId(tok), addr));
             end
 
             FAULT_ITRANS2:
             begin
                 let addr = iAddr_aligned + mem_ref_bytes;
                 debugLog.record(fshow(tok.index) + $format(": handleFault2: ITRANS2 (VA: 0x%h)", addr)); 
-                link_itlb_fault.pageFault(handleTLBPageFault(tok, addr));
+                link_itlb_fault.pageFault(handleTLBPageFault(tokContextId(tok), addr));
             end
 
             FAULT_DTRANS:
             begin
                 let addr = dAddr_aligned;
                 debugLog.record(fshow(tok.index) + $format(": handleFault2: DTRANS (VA: 0x%h)", addr)); 
-                link_dtlb_fault.pageFault(handleTLBPageFault(tok, addr));
+                link_dtlb_fault.pageFault(handleTLBPageFault(tokContextId(tok), addr));
             end
 
             FAULT_DTRANS2:
             begin
                 let addr = dAddr_aligned + mem_ref_bytes;
                 debugLog.record(fshow(tok.index) + $format(": handleFault2: DTRANS2 (VA: 0x%h)", addr)); 
-                link_dtlb_fault.pageFault(handleTLBPageFault(tok, addr));
+                link_dtlb_fault.pageFault(handleTLBPageFault(tokContextId(tok), addr));
             end
 
             default:
@@ -242,11 +242,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         //
         let rewind_to = TOKEN {index: (tok.index - 1),
                                poison: False,
+                               dummy: True,
                                timep_info: ?};
 
         rewindTok <= rewind_to;
         rewindForFault <= True;
-        let rewind_from = tokScoreboard.youngestDecoded_Safe(rewind_to.index);
+        let rewind_from = tokScoreboard.youngest(tokContextId(rewind_to));
         rewindCur <= rewind_from;
         
         // Tell the memory to drop non-committed stores.
@@ -335,7 +336,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         let tok = req.token;
         let ctx_id = tokContextId(tok);
 
-        debugLog.record($format("Rewind: Ready to rewind to ") + fshow(tok.index) + $format(" (youngest: ") + fshow(tokScoreboard.youngest(ctx_id)) + $format(" / youngest decoded: ") + fshow(tokScoreboard.youngestDecoded(ctx_id)));
+        debugLog.record($format("Rewind: Ready to rewind to ") + fshow(tok.index) + $format(" youngest: ") + fshow(tokScoreboard.youngest(ctx_id)));
         state_exc <= RSM_EXC_ReadyToRewind;
 
     endrule
@@ -352,7 +353,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         let ctx_id = tokContextId(tok);
 
         // Tell the memory to drop non-committed stores.
-        let m_req = MEMSTATE_REQ_REWIND {rewind_to: tok.index, rewind_from: tokScoreboard.youngestDecoded_Safe(tok.index)};
+        let m_req = MEMSTATE_REQ_REWIND {rewind_to: tok.index, rewind_from: tokScoreboard.youngest(ctx_id)};
         linkToMem.makeReq(tagged REQ_REWIND m_req);
 
         // Log our failure.
@@ -365,7 +366,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         rewindForFault <= False;
 
         // Start at the youngest and go backward.
-        rewindCur <= tokScoreboard.youngestDecoded_Safe(tok.index);
+        rewindCur <= tokScoreboard.youngest(ctx_id);
 
         // Proceed with rewind.
         state_exc <= RSM_EXC_Rewinding;

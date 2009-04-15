@@ -13,12 +13,12 @@ endfunction
 
 // initFuncpReqDoITranslate
 
-function FUNCP_REQ_DO_ITRANSLATE initFuncpReqDoITranslate(TOKEN tok, ISA_ADDRESS addr);
+function FUNCP_REQ_DO_ITRANSLATE initFuncpReqDoITranslate(CONTEXT_ID ctx_id, ISA_ADDRESS addr);
 
     return FUNCP_REQ_DO_ITRANSLATE 
             {
-                token: tok, 
-                address: addr
+                contextId: ctx_id,
+                virtualAddress: addr
             };
 
 endfunction
@@ -26,11 +26,44 @@ endfunction
 
 // initFuncpReqGetInstruction
 
-function FUNCP_REQ_GET_INSTRUCTION initFuncpReqGetInstruction(TOKEN tok);
+function FUNCP_REQ_GET_INSTRUCTION initFuncpReqGetInstruction(CONTEXT_ID ctx_id, MEM_ADDRESS addr, MEM_OFFSET offs);
 
     return FUNCP_REQ_GET_INSTRUCTION
             {
-                token: tok
+                contextId: ctx_id,
+                physicalAddress: addr,
+                offset: offs,
+                hasMore: False
+            };
+
+endfunction
+
+
+// initFuncpReqGetInstruction_part1
+
+function FUNCP_REQ_GET_INSTRUCTION initFuncpReqGetInstruction_part1(CONTEXT_ID ctx_id, MEM_ADDRESS addr, MEM_OFFSET offs);
+
+    return FUNCP_REQ_GET_INSTRUCTION
+            {
+                contextId: ctx_id,
+                physicalAddress: addr,
+                offset: offs,
+                hasMore: True
+            };
+
+endfunction
+
+
+// initFuncpReqGetInstruction_part2
+
+function FUNCP_REQ_GET_INSTRUCTION initFuncpReqGetInstruction_part2(CONTEXT_ID ctx_id, MEM_ADDRESS addr, MEM_OFFSET offs);
+
+    return FUNCP_REQ_GET_INSTRUCTION
+            {
+                contextId: ctx_id,
+                physicalAddress: addr,
+                offset: offs,
+                hasMore: False
             };
 
 endfunction
@@ -38,11 +71,28 @@ endfunction
 
 // initFuncpReqGetDependencies
 
-function FUNCP_REQ_GET_DEPENDENCIES initFuncpReqGetDependencies(TOKEN tok);
+function FUNCP_REQ_GET_DEPENDENCIES initFuncpReqGetDependencies(CONTEXT_ID ctx_id, ISA_INSTRUCTION inst, ISA_ADDRESS virt_addr);
     
     return FUNCP_REQ_GET_DEPENDENCIES
             {
-                token: tok
+                contextId: ctx_id,
+                dummy: False,
+                instruction: inst,
+                virtualAddress: virt_addr
+            };
+
+endfunction
+
+// initFuncpReqGetDummyToken
+
+function FUNCP_REQ_GET_DEPENDENCIES initFuncpReqGetDummyToken(CONTEXT_ID ctx_id, ISA_INSTRUCTION inst, ISA_ADDRESS virt_addr);
+    
+    return FUNCP_REQ_GET_DEPENDENCIES
+            {
+                contextId: ctx_id,
+                dummy: True,
+                instruction: inst,
+                virtualAddress: virt_addr
             };
 
 endfunction

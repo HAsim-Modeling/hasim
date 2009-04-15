@@ -18239,3 +18239,59 @@ Directory config/pm/hasim/demos/test/mem_test
 
 - Add a predicate to standard scratchpad modules to add an optional private cache.
 - Add new flavors of mem_test_hybrid for with and without private caches.
+
+----------
+pellauer    Date: Wed Apr 15 11:02:46 EDT 2009  CSN: CSN-hasim-622
+                  Wed Apr 15 15:02:46 UTC 2009
+
+
+Directory modules/hasim/functional-partition/interface
+ funcp-req-constructors.bsv Locally Modified          621 
+ funcp-timing-interface.bsv Locally Modified          621 
+ funcp-rsp-constructors.bsv Locally Modified          621 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          621 
+ regstate-data-reg-map-table.bsv Locally Modified          621 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-newInFlight.bsv Locally Removed           621 
+ regmgr-macro-pipe-getInstruction.bsv Locally Modified          621 
+ regmgr-macro-pipe-doDTranslate.bsv Locally Modified          621 
+ regmgr-macro.awb          Locally Modified          621 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          621 
+ regmgr-macro-pipe-doITranslate.bsv Locally Modified          621 
+ regmgr-macro-pipe-exception.bsv Locally Modified          621 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          621 
+ regmgr-macro.bsv          Locally Modified          621 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          621 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          621 
+
+Directory modules/hasim/functional-partition/memory-state/base-types
+ memstate-base-types.bsv   Locally Modified          621 
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          621 
+
+
+Changes to minimize the number of rewinds and tokens necessary:
+
+* The newInFlight call has been removed. Tokens are now assigned at the getDependencies call.
+* Comensurately, the doITranslate/getInstruction calls no longer operate on tokens. 
+  Instead doITranslate takes a contextID + virtual address and returns a physical address + offest.
+  getInstruction takes that address and offest and returns an instruction.
+  getDependencies now takes the contextID, instruction, and virtual address (for branches, etc)
+  and returns a Token, and the dependencies.
+* The epoch is no longer maintained in the functional partition. It was obsoleted by our fault-handling,
+  so now it is a timing-model only construct.
+* As a replacement a token now has a single field called "dummy" which indicates that the instruction
+  should have no effect. This replaces epoch checks in the functional partition, but is probably
+  unnecesary if the timing model is maintaining epochs correctly.
+* rewindToToken now no longer distinguishes between decoded/undecoded, as all tokens have been decoded.
+* The Memstate requests no longer use tokens. These were just being used for debugging messages, so
+  a contextID is sufficient for their functionality.
+  
+
+Michael P.

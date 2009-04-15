@@ -217,6 +217,9 @@ typedef struct
     // Will not change during or after funcp_commitResults.
     Bool poison;
 
+    // Set to indicate that the token is a dummy which does not actually alter any state.
+    Bool dummy;
+
     // Initialized by the functional partition when a token is created.
     // Values set by the timing partition pass through the functional partition
     // unmodified.
@@ -230,6 +233,7 @@ function CONTEXT_ID tokContextId(TOKEN tok) = tok.index.context_id;
 function TOKEN_ID tokTokenId(TOKEN tok) = tok.index.token_id;
 
 function Bool tokIsPoisoned(TOKEN tok) = tok.poison;
+function Bool tokIsDummy(TOKEN tok) = tok.dummy;
 
 function TOKEN_EPOCH initEpoch(TOKEN_BRANCH_EPOCH b, TOKEN_FAULT_EPOCH f) =
     TOKEN_EPOCH { branch: b, fault: f };
@@ -250,6 +254,8 @@ endinstance
 instance FShow#(TOKEN);
     function Fmt fshow(TOKEN tok);
         Fmt s = fshow(tok.index);
+        if (tokIsDummy(tok))
+            s = s + fshow(" DUMMY ");
         if (tokIsPoisoned(tok))
             s = s + fshow(" POISON");
 

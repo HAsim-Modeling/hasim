@@ -76,11 +76,6 @@ interface FUNCP_SCOREBOARD;
   method Action deallocate(TOKEN_INDEX t);
   
   // These methods track the internal status of which macro-operation a token is in.
-  method Action iTransStart(TOKEN_INDEX t);
-  method Action iTransFinish(TOKEN_INDEX t);
-  method Action fetStart(TOKEN_INDEX t);
-  method Action fetFinish(TOKEN_INDEX t);
-  method Action decStart(TOKEN_INDEX t);
   method Action decFinish(TOKEN_INDEX t);
   method Action exeStart(TOKEN_INDEX t);
   method Action exeFinish(TOKEN_INDEX t);
@@ -91,10 +86,10 @@ interface FUNCP_SCOREBOARD;
   method Action storeStart(TOKEN_INDEX t);
   method Action storeFinish(TOKEN_INDEX t);
   method Action commitStart(TOKEN_INDEX t);
+  method Action commitFinish(TOKEN_INDEX t);
   method Action commitStoresStart(TOKEN_INDEX t);
   
   // Set the offsets after we align the address.
-  method Action setFetchOffset(TOKEN_INDEX t, MEM_OFFSET o);
   method Action setMemOpOffset(TOKEN_INDEX t, MEM_OFFSET o);
   
   // Set the memory type that we use for accessing memory.
@@ -116,20 +111,11 @@ interface FUNCP_SCOREBOARD;
   method Bool isStore(TOKEN_INDEX t);
   method Bool emulateInstruction(TOKEN_INDEX t);
   method Maybe#(FUNCP_FAULT) getFault(TOKEN_INDEX t);
-  method MEM_OFFSET getFetchOffset(TOKEN_INDEX t);
   method MEM_OFFSET getMemOpOffset(TOKEN_INDEX t);
   method ISA_MEMOP_TYPE getLoadType(TOKEN_INDEX t);
   method ISA_MEMOP_TYPE getStoreType(TOKEN_INDEX t);
   method TOKEN_INDEX youngest(CONTEXT_ID ctx_id);
   method TOKEN_INDEX oldest(CONTEXT_ID ctx_id);
-
-  // youngestDecoded can be useful when rewinding.  There are times when it
-  // may point to a token that hasn't yet been decoded, but it will never
-  // point to a token older than the youngest decoded.
-  method TOKEN_INDEX youngestDecoded(CONTEXT_ID ctx_id);
-  // Safe is the same as youngestDecoded() but the response must be no older
-  // than the input argument.
-  method TOKEN_INDEX youngestDecoded_Safe(TOKEN_INDEX t);
 
   method Bool canEmulate(TOKEN_INDEX t);
   method Bool canRewind(TOKEN_INDEX t);
@@ -153,11 +139,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
     end
 
     // The actual scoreboards.
-    TOKEN_SCOREBOARD startedITR    <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD finishedITR   <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD startedFET    <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD finishedFET   <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD startedDEC    <- mkLiveTokenLUTRAMU();
     TOKEN_SCOREBOARD finishedDEC   <- mkLiveTokenLUTRAMU();
     TOKEN_SCOREBOARD tokIsLoad     <- mkLiveTokenLUTRAMU();
     TOKEN_SCOREBOARD tokIsStore    <- mkLiveTokenLUTRAMU();
@@ -172,7 +153,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
     TOKEN_SCOREBOARD startedCOM    <- mkLiveTokenLUTRAMU();
     TOKEN_SCOREBOARD tokIsEmulated <- mkLiveTokenLUTRAMU();
 
-    LUTRAM#(TOKEN_INDEX, MEM_OFFSET)          fetchOffset <- mkLiveTokenLUTRAMU();
     LUTRAM#(TOKEN_INDEX, MEM_OFFSET)          memopOffset <- mkLiveTokenLUTRAMU();
     LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE)      loadType    <- mkLiveTokenLUTRAMU();
     LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE)      storeType   <- mkLiveTokenLUTRAMU();
@@ -193,12 +173,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // A pointer to the oldest active token.
     Reg#(Vector#(NUM_CONTEXTS, TOKEN_ID)) oldestTok <- mkReg(replicate(0));
     
-    // A pointer to the youngest decoded token.
-    Reg#(Vector#(NUM_CONTEXTS, TOKEN_ID)) youngestDecodedTok <- mkReg(replicate(0));
-    
     // A register tracking how many tokens are active in pipelines.
-    Vector#(NUM_CONTEXTS, COUNTER_Z#(TOKEN_ID_SIZE)) numInITR = newVector();
-    Vector#(NUM_CONTEXTS, COUNTER_Z#(TOKEN_ID_SIZE)) numInFET = newVector();
     Vector#(NUM_CONTEXTS, COUNTER_Z#(TOKEN_ID_SIZE)) numInDEC = newVector();
     Vector#(NUM_CONTEXTS, COUNTER_Z#(TOKEN_ID_SIZE)) numInEXE = newVector();
     Vector#(NUM_CONTEXTS, COUNTER_Z#(TOKEN_ID_SIZE)) numInDTR = newVector();
@@ -208,8 +183,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
     begin
-        numInITR[c] <- mkLCounter_Z(0);
-        numInFET[c] <- mkLCounter_Z(0);
         numInDEC[c] <- mkLCounter_Z(0);
         numInEXE[c] <- mkLCounter_Z(0);
         numInDTR[c] <- mkLCounter_Z(0);
@@ -245,10 +218,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
     ASSERTION assertTokenStoreLifetime   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_COMMIT_STORE_LIFETIME, ASSERT_ERROR, assertNode);
 
     // The following assertions make sure things happen at the right time.
-    ASSERTION assertTokenCanFinishITR   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_ITRANS, ASSERT_ERROR, assertNodeFinish); 
-    ASSERTION assertTokenCanStartFET    <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_FETCH, ASSERT_ERROR, assertNodeStart);
-    ASSERTION assertTokenCanFinishFET   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_FETCH, ASSERT_ERROR, assertNodeFinish);
-    ASSERTION assertTokenCanStartDEC    <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_DECODE, ASSERT_ERROR, assertNodeStart);
     ASSERTION assertTokenCanFinishDEC   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_DECODE, ASSERT_ERROR, assertNodeFinish);
     ASSERTION assertTokenCanStartEXE    <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_EXECUTE, ASSERT_ERROR, assertNodeStart);
     ASSERTION assertTokenCanFinishExe   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_EXECUTE, ASSERT_ERROR, assertNodeFinish);
@@ -283,9 +252,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
         begin
             can_rew[c] =
-                (numInITR[c].isZero() &&
-                 numInFET[c].isZero() &&
-                 numInDEC[c].isZero() &&
+                (numInDEC[c].isZero() &&
                  numInEXE[c].isZero() &&
                  numInDTR[c].isZero() &&
                  numInLOA[c].isZero() &&
@@ -353,18 +320,16 @@ module [Connected_Module] mkFUNCP_Scoreboard
     function Bool isBusy(TOKEN_INDEX t);
 
         // Has this token started a macro operation but not finished it?
-        let itr_busy =       startedITR.sub(t) && !finishedITR.sub(t);
-        let fet_busy =       startedFET.sub(t) && !finishedFET.sub(t);
-        let dec_busy =       startedDEC.sub(t) && !finishedDEC.sub(t);
-        let exe_busy =       startedEXE.sub(t) && !finishedEXE.sub(t);
-        let dtr_busy =       startedDTR.sub(t) && !finishedDTR.sub(t);
-        let load_busy =     startedLOA.sub(t) && !finishedLOA.sub(t);
+        let dec_busy =     !finishedDEC.sub(t);
+        let exe_busy =     startedEXE.sub(t) && !finishedEXE.sub(t);
+        let dtr_busy =     startedDTR.sub(t) && !finishedDTR.sub(t);
+        let load_busy =    startedLOA.sub(t) && !finishedLOA.sub(t);
         let store_busy =   startedSTO.sub(t) && !finishedSTO.sub(t);
         // It's not done committing if it's still allocated.  alloc tested later.
         let commit_busy = startedCOM.sub(t);
 
         // If it is in any macro operation it is busy.
-        return tokIdxIsAllocated(t) && (itr_busy || fet_busy || dec_busy || exe_busy || dtr_busy || load_busy || store_busy || commit_busy);
+        return tokIdxIsAllocated(t) && (dec_busy || exe_busy || dtr_busy || load_busy || store_busy || commit_busy);
 
     endfunction
 
@@ -401,14 +366,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
         // Update the oldest token.
         oldestTok[ctx_id] <= nextTok.sub(t);
 
-        if (youngestDecodedTok[ctx_id] == oldestTok[ctx_id])
-            youngestDecodedTok[ctx_id] <= nextTok.sub(t);
-
         // Update the allocated bit
         alloc[t.context_id][t.token_id] <= False;
-
-        // Record that the token has finished commit.
-        numInCOM[ctx_id].down();
 
     endmethod
 
@@ -431,13 +390,9 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
         // Update the allocated bit
         alloc[new_tok.context_id][new_tok.token_id] <= True;
+        numInDEC[new_tok.context_id].up();
 
         // Reset all the scoreboards.
-        startedITR.upd(new_tok, False);
-        finishedITR.upd(new_tok, False);
-        startedFET.upd(new_tok, False);
-        finishedFET.upd(new_tok, False);
-        startedDEC.upd(new_tok, False);
         finishedDEC.upd(new_tok, False);
         tokIsLoad.upd(new_tok, False);
         tokIsStore.upd(new_tok, False);
@@ -465,84 +420,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
         nextFreeTok[ctx_id] <= next_token_idx.token_id;
 
         return new_tok;
-
-    endmethod
-
-    // iTransStart
-
-    // When:   Any time.
-    // Effect: Update the scoreboard.
-
-    method Action iTransStart(TOKEN_INDEX t);
-
-        // We don't need an assert here, because it's okay to begin working on killed tokens.
-
-        startedITR.upd(t, True);
-        numInITR[t.context_id].up();
-
-    endmethod
-
-    // iTransFinish
-
-    // When:   Any time.
-    // Effect: Update the scoreboard.
-
-    method Action iTransFinish(TOKEN_INDEX t);
-
-        assertTokenCanFinishITR(startedITR.sub(t));
-
-        finishedITR.upd(t, True);
-        numInITR[t.context_id].down();
-
-    endmethod
-
-    // fetStart
-
-    // When:   Any time.
-    // Effect: Update the scoreboard.
-
-    method Action fetStart(TOKEN_INDEX t);
-
-        assertTokenCanStartFET(finishedITR.sub(t));
-
-        startedFET.upd(t, True);
-        numInFET[t.context_id].up();
-
-    endmethod
-
-    // fetFinish
-
-    // When:   Any time.
-    // Effect: Update the scoreboard.
-
-    method Action fetFinish(TOKEN_INDEX t);
-
-        assertTokenCanFinishFET(startedFET.sub(t));
-
-        finishedFET.upd(t, True);
-        numInFET[t.context_id].down();
-
-    endmethod
-
-    // decStart
-
-    // When:   Any time.
-    // Effect: Update the scoreboard.
-
-    method Action decStart(TOKEN_INDEX t);
-
-        let ctx_id = t.context_id;
-
-        assertTokenCanStartDEC(finishedFET.sub(t));
-
-        startedDEC.upd(t, True);
-        numInDEC[t.context_id].up();
-
-        let youngest_idx = tokenIndexFromIds(ctx_id, youngestDecodedTok[ctx_id]);
-        if (tokenIsOlderOrEq(youngest_idx.token_id, t.token_id) && tokIdxIsAllocated(t))
-        begin
-            youngestDecodedTok[ctx_id] <= t.token_id;
-        end
 
     endmethod
 
@@ -697,6 +574,14 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     endmethod
 
+    method Action commitFinish(TOKEN_INDEX t);
+
+        // Record that the token has finished commit.
+        numInCOM[t.context_id].down();
+
+    endmethod
+
+
     //
     // commitStoresStart --
     //     Token's have already been deallocated during the commitResults
@@ -712,17 +597,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
         if (tokIdxAliasIsAllocated(t))
             $display("ERROR: commit stores token (%d, %d) ALIAS is live", t.context_id, t.token_id);
-    endmethod
-
-    // setFetchOffset
-
-    // When:   Any time.
-    // Effect: Record the fetch offset.
-
-    method Action setFetchOffset(TOKEN_INDEX t, MEM_OFFSET offset);
-    
-        fetchOffset.upd(t, offset);
-    
     endmethod
 
     // setMemOpOffset
@@ -818,14 +692,12 @@ module [Connected_Module] mkFUNCP_Scoreboard
         
             // t is not allocated, and there's no one older, so there are no tokens in flight.
             oldestTok[ctx_id] <= nextFreeTok[ctx_id];
-            youngestDecodedTok[ctx_id] <= nextFreeTok[ctx_id];
 
         end
         else
         begin
             // t is allocated. Mark what the token committed after t should be.
             nextTok.upd(t, nextFreeTok[ctx_id]);
-            youngestDecodedTok[ctx_id] <= t.token_id;
         end
 
         //
@@ -899,17 +771,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     endmethod
 
-    // getFetchOffset
-    
-    // When:   Any time.
-    // Effect: Accessor method.
-
-    method MEM_OFFSET getFetchOffset(TOKEN_INDEX t);
-    
-        return fetchOffset.sub(t);
-    
-    endmethod
-
     // getMemOpOffset
     
     // When:   Any time.
@@ -962,30 +823,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
     method TOKEN_INDEX oldest(CONTEXT_ID ctx_id);
 
         return tokenIndexFromIds(ctx_id, oldestTok[ctx_id]);
-
-    endmethod
-
-    // youngestDecoded
-
-    // When:   Any time.
-    // Effect: Accessor method.
-
-    method TOKEN_INDEX youngestDecoded(CONTEXT_ID ctx_id);
-
-        return tokenIndexFromIds(ctx_id, youngestDecodedTok[ctx_id]);
-
-    endmethod
-
-    // youngestDecoded_Safe
-
-    // When:   Any time.
-    // Effect: Similar to youngestDecoded but returned value may be no older than t.
-
-    method TOKEN_INDEX youngestDecoded_Safe(TOKEN_INDEX t);
-
-        let ctx_id = t.context_id;
-        let youngest_idx = tokenIndexFromIds(ctx_id, youngestDecodedTok[ctx_id]);
-        return tokenIsOlderOrEq(t.token_id, youngest_idx.token_id) ? youngest_idx : t;
 
     endmethod
 

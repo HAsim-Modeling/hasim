@@ -12,15 +12,13 @@ endfunction
 
 // initFuncpRspDoITranslate
 
-function FUNCP_RSP_DO_ITRANSLATE initFuncpRspDoITranslate(TOKEN tok, MEM_ADDRESS addr, Bool fault);
-
-    // Update poison bit
-    tok.poison = tok.poison || fault;
+function FUNCP_RSP_DO_ITRANSLATE initFuncpRspDoITranslate(CONTEXT_ID ctx_id, MEM_ADDRESS addr, MEM_OFFSET offs, Bool fault);
 
     return FUNCP_RSP_DO_ITRANSLATE 
             {
-                token: tok, 
+                contextId: ctx_id,
                 physicalAddress: addr, 
+                offset: offs,
                 fault: fault,
                 hasMore: False
             };
@@ -29,15 +27,13 @@ endfunction
 
 // initFuncpRspDoITranslate_part1
 
-function FUNCP_RSP_DO_ITRANSLATE initFuncpRspDoITranslate_part1(TOKEN tok, MEM_ADDRESS addr, Bool fault);
-
-    // Update poison bit
-    tok.poison = tok.poison || fault;
+function FUNCP_RSP_DO_ITRANSLATE initFuncpRspDoITranslate_part1(CONTEXT_ID ctx_id, MEM_ADDRESS addr, MEM_OFFSET offs, Bool fault);
 
     return FUNCP_RSP_DO_ITRANSLATE 
             {
-                token: tok,
-                physicalAddress: addr, 
+                contextId: ctx_id,
+                physicalAddress: addr,
+                offset: offs, 
                 fault: fault,
                 hasMore: True
             };
@@ -46,15 +42,13 @@ endfunction
 
 // initFuncpRspDoITranslate_part2
 
-function FUNCP_RSP_DO_ITRANSLATE initFuncpRspDoITranslate_part2(TOKEN tok, MEM_ADDRESS addr, Bool fault);
-
-    // Update poison bit
-    tok.poison = tok.poison || fault;
+function FUNCP_RSP_DO_ITRANSLATE initFuncpRspDoITranslate_part2(CONTEXT_ID ctx_id, MEM_ADDRESS addr, MEM_OFFSET offs, Bool fault);
 
     return FUNCP_RSP_DO_ITRANSLATE 
             {
-                token: tok, 
+                contextId: ctx_id,
                 physicalAddress: addr, 
+                offset: offs,
                 fault: fault,
                 hasMore: False
             };
@@ -64,11 +58,11 @@ endfunction
 
 // initFuncpRspGetInstruction
 
-function FUNCP_RSP_GET_INSTRUCTION initFuncpRspGetInstruction(TOKEN tok, ISA_INSTRUCTION inst);
+function FUNCP_RSP_GET_INSTRUCTION initFuncpRspGetInstruction(CONTEXT_ID ctx_id, ISA_INSTRUCTION inst);
 
     return FUNCP_RSP_GET_INSTRUCTION
             {
-                token: tok,
+                contextId: ctx_id,
                 instruction: inst
             };
 

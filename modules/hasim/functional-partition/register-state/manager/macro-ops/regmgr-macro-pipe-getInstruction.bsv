@@ -36,37 +36,50 @@
 // INST_INFO
 typedef struct
 {
-    TOKEN token;
-    UP_TO_TWO#(MEM_ADDRESS) memAddrs;
+    CONTEXT_ID contextId;
+    MEM_OFFSET offset;
+    Bool span;
 }
 INST_INFO
     deriving (Eq, Bits);
+
+function INST_INFO initFetchNormal(CONTEXT_ID ctx_id, MEM_OFFSET offs);
+
+    return INST_INFO {contextId: ctx_id, offset: offs, span: False};
+
+endfunction
+
+
+function INST_INFO initFetchSpan(CONTEXT_ID ctx_id, MEM_OFFSET offs);
+
+    return INST_INFO {contextId: ctx_id, offset: offs, span: True};
+
+endfunction
+
+
+// STATE_INST1
+typedef union tagged
+{
+    void        INST1_NORMAL;
+    MEM_OFFSET  INST1_SPAN_REQ;
+}
+STATE_INST1
+    deriving (Eq, Bits);
+
 
 // STATE_INST2
 typedef union tagged
 {
     void        INST2_NORMAL;
-    INST_INFO   INST2_SPAN_REQ;
+    ISA_VALUE   INST2_SPAN_RSP;
 }
 STATE_INST2
     deriving (Eq, Bits);
 
 
-// STATE_INST3
-typedef union tagged
-{
-    void        INST3_NORMAL;
-    ISA_VALUE   INST3_SPAN_RSP;
-}
-STATE_INST3
-    deriving (Eq, Bits);
-
-
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
     REGMGR_GLOBAL_DATA glob,
-    REGSTATE_MEMORY_QUEUE linkToMem,
-    BRAM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs,
-    BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst)
+    REGSTATE_MEMORY_QUEUE linkToMem)
     //interface:
                 ();
 
@@ -98,7 +111,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
     let state = glob.state;
     let tokScoreboard = glob.tokScoreboard;
 
-
     // ====================================================================
     //
     //   Local state
@@ -107,8 +119,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
 
     FIFO#(TOKEN) inst1Q  <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
     FIFO#(INST_INFO) inst2Q  <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
+    Reg#(STATE_INST1) stateInst1 <- mkReg(INST1_NORMAL);
     Reg#(STATE_INST2) stateInst2 <- mkReg(INST2_NORMAL);
-    Reg#(STATE_INST3) stateInst3 <- mkReg(INST3_NORMAL);
 
     // ====================================================================
     //
@@ -127,113 +139,99 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
     // getInstruction1
     
     // When:   The timing model makes a new FETCH req.
-    // Effect: Retrieve the phsyical address(es).
-
-    rule getInstruction1 (state.readyToBegin(tokContextId(linkGetInst.getReq().token)));
-
-        // Read input. Beginning of macro-operation.
-        let req = linkGetInst.getReq();
-        let tok = req.token;
-        linkGetInst.deq();
-        debugLog.record(fshow(tok.index) + $format(": GetInstruction: Begin."));
-
-        // Update scoreboard.
-        tokScoreboard.fetStart(tok.index);
-
-        // Retrieve the physical address.
-        tokPhysicalAddrs.readReq(tok.index);
-        
-        // Send to the next stage.
-        inst1Q.enq(tok);
-        
-    endrule
-    
-    // getInstruction2 
-    
-    // When:   Some time after getInstruction1 and we are not stalled.
     // Effect: Pass the physical address on to memory. If the address spans
     //         memory locations stall for a second request.
 
-    rule getInstruction2 (state.readyToContinue() &&& stateInst2 matches tagged INST2_NORMAL);
-    
+    rule getInstruction1 (stateInst1 matches tagged INST1_NORMAL);
+
+        // Read input. Beginning of macro-operation.
+        let req = linkGetInst.getReq();
+        linkGetInst.deq();
+
         // Get the info from the previous stage.
         let tok = inst1Q.first();
         
-        // Get the physical address(es).
-        let p_addrs <- tokPhysicalAddrs.readRsp();
-        
-        case (p_addrs) matches
-            tagged ONE .p_addr:
-            begin
+        if (!req.hasMore)
+        begin
 
-                // We are not stalled.
-                inst1Q.deq();
-                
-                // Log it.
-                debugLog.record(fshow(tok.index) + $format(": GetInstruction2: Load Req (PA: 0x%h)", p_addr));
+            // A normal non-spanning request.
+            debugLog.record($format("GetInstruction2: Load Req (PA: 0x%h)", req.physicalAddress));
 
-                // Kick to Mem State.
-                let m_req = memStateReqLoad(tok, p_addr, True);
-                linkToMem.makeReq(tagged REQ_LOAD m_req);
+            // Kick to Mem State.
+            let youngest_tok = tokScoreboard.youngest(req.contextId);
+            let dummy_tok = TOKEN { index: youngest_tok,
+                                    poison: False,
+                                    dummy: True,
+                                    timep_info: TOKEN_TIMEP_INFO { scratchpad: 0 } };
+            let m_req = memStateReqLoad(dummy_tok, req.physicalAddress, True);
+            linkToMem.makeReq(tagged REQ_LOAD m_req);
+            
+            // Pass it to the next stage.
+            inst2Q.enq(initFetchNormal(req.contextId, req.offset));
 
-                // Pass it to the next stage.
-                inst2Q.enq(INST_INFO {token: tok, memAddrs: p_addrs});
+        end
+        else
+        begin
 
-            end
-            tagged TWO {.p_addr1, .p_addr2}:
-            begin
+            // Log it.
+            debugLog.record($format("GetInstruction2: Spanning Load Req 1 (PA1: 0x%h)", req.physicalAddress));
 
-                // Log it.
-                debugLog.record(fshow(tok.index) + $format(": GetInstruction2: Spanning Load Req 1 (PA1: 0x%h, PA2: 0x%h)", p_addr1, p_addr2));
+            // Kick the first request to the MemState.
+            let youngest_tok = tokScoreboard.youngest(req.contextId);
+            let dummy_tok = TOKEN { index: youngest_tok,
+                                    poison: False,
+                                    dummy: True,
+                                    timep_info: TOKEN_TIMEP_INFO { scratchpad: 0 } };
+            let m_req = memStateReqLoad(dummy_tok, req.physicalAddress, True);
+            linkToMem.makeReq(tagged REQ_LOAD m_req);
 
-                // Kick the first request to the MemState.
-                let m_req = memStateReqLoad(tok, p_addr1, True);
-                linkToMem.makeReq(tagged REQ_LOAD m_req);
+            // Stall to make the second request.
+            stateInst1 <= tagged INST1_SPAN_REQ req.offset;
 
-                // Stall to make the second request.
-                stateInst2 <= tagged INST2_SPAN_REQ (INST_INFO {token: tok, memAddrs: p_addrs});
-
-            end
-
-        endcase
-        
-    
+        end
+            
     endrule
     
-    // getInstruction2Span
+    // getInstruction1Span
     
-    // When:   After getInstruction2 stalls because of a spanning instruction.
+    // When:   After getInstruction1 stalls because of a spanning instruction.
     // Effect: Make the second request to memory. Unstall the stage.
 
-    rule getInstruction2Span (state.readyToContinue() &&& stateInst2 matches tagged INST2_SPAN_REQ .fetch_info);
+    rule getInstruction1Span (stateInst1 matches tagged INST1_SPAN_REQ .offset);
             
-        // Get the data from the previous stage.
-        let tok = inst1Q.first();
+        // Get the rest of the req from the timing model.
+        let req = linkGetInst.getReq();
+        linkGetInst.deq();
         
         // Kick the second request to MemState.
-        let p_addr2 = getSecondOfTwo(fetch_info.memAddrs);
-        let m_req = memStateReqLoad(tok, p_addr2, True);
+        let p_addr2 = req.physicalAddress;
+        let youngest_tok = tokScoreboard.youngest(req.contextId);
+        let dummy_tok = TOKEN { index: youngest_tok,
+                                poison: False,
+                                dummy: True,
+                                timep_info: TOKEN_TIMEP_INFO { scratchpad: 0 } };
+        
+        let m_req = memStateReqLoad(dummy_tok, p_addr2, True);
         linkToMem.makeReq(tagged REQ_LOAD m_req);
 
         // Log it.
-        debugLog.record(fshow(tok.index) + $format(": GetInstruction2: Spanning Load Req 2 (PA2: 0x%h)", p_addr2));
+        debugLog.record($format("GetInstruction2: Spanning Load Req 2 (PA2: 0x%h)", p_addr2));
 
         // Unstall this stage.
-        inst1Q.deq();
-        stateInst2 <= tagged INST2_NORMAL;
+        stateInst1 <= tagged INST1_NORMAL;
         
         // Pass it to the next stage.
-        inst2Q.enq(fetch_info);
+        inst2Q.enq(initFetchSpan(req.contextId, offset));
         
     endrule
 
-    // getInstruction3
+    // getInstruction2
 
     // When:   Physical address and instruction are available after getInstruction2.
-    // Effect: If there was just one request, record the instruction, kick back to timing model.
+    // Effect: If there was just one request, kick the instruction back to timing model.
     //         Otherwise stall to get the second response.
 
-    rule getInstruction3 (state.readyToContinue() &&& stateInst3 matches tagged INST3_NORMAL);
+    rule getInstruction2 (stateInst2 matches tagged INST2_NORMAL);
 
         // Get the data from the previous stage.
         let fetch_info = inst2Q.first();
@@ -242,53 +240,42 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
         MEM_VALUE v = linkToMem.getResp();
         linkToMem.deq();
      
-        case (fetch_info.memAddrs) matches
-            tagged ONE .p_addr:
-            begin
+        if (!fetch_info.span)
+        begin
 
-                // Normal fetch. We are not stalled.
-                inst2Q.deq();
-                
-                // Get the offset from ITranslate.
-                let offset = tokScoreboard.getFetchOffset(fetch_info.token.index);
+            // Normal fetch. We are not stalled.
+            inst2Q.deq();
 
-                ISA_INSTRUCTION inst = isaInstructionFromMemValue(v, offset);
+            ISA_INSTRUCTION inst = isaInstructionFromMemValue(v, fetch_info.offset);
 
-                // Log it.
-                debugLog.record(fshow(fetch_info.token.index) + $format(": GetInstruction3: Load Rsp (V: 0x%h, I: 0x%h)", v, inst));
+            // Log it.
+            debugLog.record($format("GetInstruction3: Load Rsp (V: 0x%h, I: 0x%h)", v, inst));
 
-                // Record the instruction.
-                tokInst.write(fetch_info.token.index, inst);
-
-                // Update scoreboard.
-                tokScoreboard.fetFinish(fetch_info.token.index);
-
-                // Send response to timing partition. End of macro-operation (path 1).
-                linkGetInst.makeResp(initFuncpRspGetInstruction(fetch_info.token, inst));
-                debugLog.record(fshow(fetch_info.token.index) + $format(": GetInstruction: End (path 1)."));
+            // Send response to timing partition. End of macro-operation (path 1).
+            linkGetInst.makeResp(initFuncpRspGetInstruction(fetch_info.contextId, inst));
+            debugLog.record($format("GetInstruction: End (path 1)."));
 
 
-            end
-            tagged TWO {.p_addr1, .p_addr2}:
-            begin
+        end
+        else
+        begin
 
-                // Log it.
-                debugLog.record(fshow(fetch_info.token.index) + $format(": getInstruction3: Spanning Load Rsp 1 (V1: 0x%h)", v));
+            // Log it.
+            debugLog.record($format("getInstruction3: Spanning Load Rsp 1 (V1: 0x%h)", v));
 
-                // We need two fetches for this guy. Stall for the second response.
-                stateInst3 <= tagged INST3_SPAN_RSP v;
+            // We need two fetches for this guy. Stall for the second response.
+            stateInst2 <= tagged INST2_SPAN_RSP v;
 
-            end
-        endcase
+        end
 
     endrule
 
-    // getInstruction3Span
+    // getInstruction2Span
 
-    // When:   After getInstruction3 has stalled waiting for a second response.
+    // When:   After getInstruction2 has stalled waiting for a second response.
     // Effect: Use both responses to create the instruction. Record it and return it to the timing model.
 
-    rule getInstruction3Span (state.readyToContinue() &&& stateInst3 matches tagged INST3_SPAN_RSP .v1);
+    rule getInstruction2Span (stateInst2 matches tagged INST2_SPAN_RSP .v1);
     
         // Get the data from the previous stage.
         INST_INFO fetch_info = inst2Q.first();
@@ -296,29 +283,20 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
         // Get resp from the Mem State.
         MEM_VALUE v2 = linkToMem.getResp();
         linkToMem.deq();
-        
-        // Get the offset from ITranslate.
-        let offset = tokScoreboard.getFetchOffset(fetch_info.token.index);
 
         // Convert the raw bits to an instruction.
-        ISA_INSTRUCTION inst = isaInstructionFromSpanningMemValues(v1, v2, offset);
+        ISA_INSTRUCTION inst = isaInstructionFromSpanningMemValues(v1, v2, fetch_info.offset);
 
         // Log it.
-        debugLog.record(fshow(fetch_info.token.index) + $format(": GetInstruction3: Spanning Load Rsp 2 (V2: 0x%h, I: 0x%h)", v2, inst));
-
-        // Record the instruction.
-        tokInst.write(fetch_info.token.index, inst);
-
-        // Update scoreboard.
-        tokScoreboard.fetFinish(fetch_info.token.index);
+        debugLog.record($format("GetInstruction2: Spanning Load Rsp 2 (V2: 0x%h, I: 0x%h)", v2, inst));
 
         // Unstall this stage.
         inst2Q.deq();
-        stateInst3 <= tagged INST3_NORMAL;
+        stateInst2 <= tagged INST2_NORMAL;
         
         // Send response to timing partition. End of macro-operation (path 2).
-        linkGetInst.makeResp(initFuncpRspGetInstruction(fetch_info.token, inst));
-        debugLog.record(fshow(fetch_info.token.index) + $format(": GetInstruction: End (path 2)."));
+        linkGetInst.makeResp(initFuncpRspGetInstruction(fetch_info.contextId, inst));
+        debugLog.record($format("GetInstruction: End (path 2)."));
         
     endrule
 

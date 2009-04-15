@@ -77,9 +77,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // The destinations of the instruction (a convenience which saves us from reading the instruction/maptable).
     BRAM_MULTI_READ#(3, TOKEN_INDEX, REGMGR_DST_REGS) tokDsts <- mkLiveTokenBRAMMultiRead(True);
 
-    // The physical address(es) for the instruction.
-    BRAM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalAddrs <- mkLiveTokenBRAM();
-
     // If an instruction has sources in other inflight instructions it will be noted here.
     BRAM#(TOKEN_INDEX, ISA_INST_SRCS) tokWriters <- mkLiveTokenBRAM();
 
@@ -124,30 +121,23 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     //
     // ====================================================================
 
-    let newInFlight <- mkFUNCP_RegMgrMacro_Pipe_NewInFlight(
-                            globData,
-                            regMapping.newInFlight);
-
     let doITranslate <- mkFUNCP_RegMgrMacro_Pipe_DoITranslate(
                             globData,
-                            linkITLB.translate,
-                            tokAddr,
-                            tokPhysicalAddrs);
+                            linkITLB.translate);
 
     let getInstruction <- mkFUNCP_RegMgrMacro_Pipe_GetInstruction(
                             globData,
-                            linkToMem.getInstructionQueue,
-                            tokPhysicalAddrs,
-                            tokInst);
+                            linkToMem.getInstructionQueue);
     
     let getDependencies <- mkFUNCP_RegMgrMacro_Pipe_GetDependencies(
                             globData,
                             regMapping.getDependencies,
                             prf.getDependencies,
                             freelist,
+                            tokAddr,
+                            tokInst,
                             tokWriters,
-                            tokDsts,
-                            tokInst.readPorts[0]);
+                            tokDsts);
 
     let getResults <- mkFUNCP_RegMgrMacro_Pipe_GetResults(
                             globData,
@@ -182,7 +172,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     let commitResults <- mkFUNCP_RegMgrMacro_Pipe_CommitResults(
                             globData,
                             regMapping.commitResults,
-                            freelist);
+                            freelist,
+                            tokDsts.readPorts[2]);
 
     let commitStores <- mkFUNCP_RegMgrMacro_Pipe_CommitStores(
                             globData,
@@ -228,7 +219,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // straightforward. In terms of macro-operations, the "later" operations are
     // favored:
     //
-    // newInFlight < doITrans < getInst < getDeps < getResult < doDTrans < doLoads < doStores < commitResults < commitStores
+    // doITrans < getInst < getDeps < getResult < doDTrans < doLoads < doStores < commitResults < commitStores
     //
     // Thus getResults() should be favored over getDeps().
     //
@@ -245,13 +236,12 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // a good reason.
     //
     (* descending_urgency=
-        "exception.rewindToToken4, exception.rewindToToken3, exception.rewindToToken2, exception.rewindToToken1, exception.rewindToTokenS, exception.handleFault3, exception.handleFault2, exception.handleFault1, exception.handleFaultS, commitStores.commitStores1, commitResults.commitResults2, commitResults.commitResults1, doStores.doStores3, doStores.doStores2SpanEnd, doStores.doStores2SpanRsp2, doStores.doStores2SpanRsp1, doStores.doStores2SpanReq, doStores.doStores2RMW, doStores.doStores2, doStores.doStores1, doStores.doStoresS, doLoads.doLoads3Span, doLoads.doLoads3, doLoads.doLoads2Span, doLoads.doLoads2, doLoads.doLoads1, doDTranslate.doDTranslate3Span, doDTranslate.doDTranslate3, doDTranslate.doDTranslate2Span, doDTranslate.doDTranslate2, doDTranslate.doDTranslate1, getResults.emulateInstruction4, getResults.emulateInstruction3_UpdateRegWrite, getResults.emulateInstruction3_UpdateReg, getResults.emulateInstruction3, getResults.emulateInstruction2_Rsp, getResults.emulateInstruction2_Req, getResults.emulateInstruction2_PRFReq, getResults.emulateInstruction1_GenRegMapResp, getResults.emulateInstruction1_GenRegMapReq, getResults.emulateInstruction1, getResults.getResults4AdditionalWriteback, getResults.getResults4, getResults.getResults3, getResults.getResults2, getResults.getResults1, getDependencies.getDependencies4, getDependencies.getDependencies3, getDependencies.getDependencies2, getDependencies.getDependencies1, getInstruction.getInstruction3Span, getInstruction.getInstruction3, getInstruction.getInstruction2Span, getInstruction.getInstruction2, getInstruction.getInstruction1, doITranslate.doITranslate2Span, doITranslate.doITranslate2, doITranslate.doITranslate1Span, doITranslate.doITranslate1, newInFlight.newInFlight, initializeRegmgrTok" *)
+        "exception.rewindToToken4, exception.rewindToToken3, exception.rewindToToken2, exception.rewindToToken1, exception.rewindToTokenS, exception.handleFault3, exception.handleFault2, exception.handleFault1, exception.handleFaultS, commitStores.commitStores1, commitResults.commitResults2, commitResults.commitResults1, doStores.doStores3, doStores.doStores2SpanEnd, doStores.doStores2SpanRsp2, doStores.doStores2SpanRsp1, doStores.doStores2SpanReq, doStores.doStores2RMW, doStores.doStores2, doStores.doStores1, doStores.doStoresS, doLoads.doLoads3Span, doLoads.doLoads3, doLoads.doLoads2Span, doLoads.doLoads2, doLoads.doLoads1, doDTranslate.doDTranslate3Span, doDTranslate.doDTranslate3, doDTranslate.doDTranslate2Span, doDTranslate.doDTranslate2, doDTranslate.doDTranslate1, getResults.emulateInstruction4, getResults.emulateInstruction3_UpdateRegWrite, getResults.emulateInstruction3_UpdateReg, getResults.emulateInstruction3, getResults.emulateInstruction2_Rsp, getResults.emulateInstruction2_Req, getResults.emulateInstruction2_PRFReq, getResults.emulateInstruction1_GenRegMapResp, getResults.emulateInstruction1_GenRegMapReq, getResults.emulateInstruction1, getResults.getResults4AdditionalWriteback, getResults.getResults4, getResults.getResults3, getResults.getResults2, getResults.getResults1, getDependencies.getDependencies4, getDependencies.getDependencies3, getDependencies.getDependencies2, getDependencies.getDependencies1, getInstruction.getInstruction2Span, getInstruction.getInstruction2, getInstruction.getInstruction1Span, getInstruction.getInstruction1, doITranslate.doITranslate2Span, doITranslate.doITranslate2, doITranslate.doITranslate1Span, doITranslate.doITranslate1, initializeRegmgrTok" *)
 
     rule initializeRegmgrTok ((initState == 0) &&
                               (globData.state.getState() == RSM_Initializing));
 
         tokAddr.write(initTokIdx, 0);
-        tokPhysicalAddrs.write(initTokIdx, tagged ONE 0);
         tokInst.write(initTokIdx, 0);
         tokDsts.write(initTokIdx, REGMGR_DST_REGS { ar: replicate(tagged Invalid), pr: replicate(tagged Invalid) });
         tokWriters.write(initTokIdx, replicate(tagged Invalid));

@@ -54,7 +54,7 @@ typedef TExp#(`FUNCP_TLB_CACHE_SET_INDEX_BITS) FUNCP_TLB_CACHE_SETS;
 //     Interface to a single TLB (instruction or data).
 //
 interface FUNCP_TLB#(numeric type n_CACHE_ENTRIES);
-    method Action lookupReq(TOKEN tok, ISA_ADDRESS va, Bool alloc_on_fault);
+    method Action lookupReq(CONTEXT_ID ctx_id, ISA_ADDRESS va, Bool alloc_on_fault);
     method ActionValue#(FUNCP_TLB_RESP) lookupResp();
 endinterface: FUNCP_TLB
 
@@ -82,9 +82,9 @@ FUNCP_L2TLB_IDX
 // Cache module needs an index that is just bits
 typedef Bit#(SizeOf#(FUNCP_L2TLB_IDX)) FUNCP_L2TLB_RAW_IDX;
 
-function FUNCP_L2TLB_RAW_IDX tlbCacheIdx(TOKEN tok, FUNCP_V_PAGE vp);
+function FUNCP_L2TLB_RAW_IDX tlbCacheIdx(CONTEXT_ID ctx_id, FUNCP_V_PAGE vp);
     FUNCP_L2TLB_IDX idx;
-    idx.context_id = tokContextId(tok);
+    idx.context_id = ctx_id;
     idx.vp = vp;
 
     return pack(idx);
@@ -119,7 +119,7 @@ FUNCP_L2TLB_ENTRY
 //
 typedef struct
 {
-    TOKEN token;
+    CONTEXT_ID contextId;
     Bool allocOnFault;
     FUNCP_V_PAGE vp;
 }
@@ -131,7 +131,7 @@ FUNCP_TRANSLATION_REQ
 //
 typedef struct
 {
-    TOKEN token;
+    CONTEXT_ID contextId;
     Bool ioSpace;          // Memory mapped I/O.
     Bool pageFault;        // Translation failed.  Raised a page fault.
     FUNCP_P_PAGE page;
@@ -259,18 +259,18 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
 
         if (! resp.pageFault)
         begin
-            debugLog.record($format("  ") + fshow(resp.token.index) + $format(": %s VtoP response: VA 0x%x -> PA 0x%x", i_or_d, reqVA, pa));
+            debugLog.record($format("  %s VtoP response: VA 0x%x -> PA 0x%x", i_or_d, reqVA, pa));
             response.enq(validTranslation(pa, resp.ioSpace));
 
             // Store the translation in the small cache
             FUNCP_L1TLB_ENTRY entry;
             entry.ioSpace = resp.ioSpace;
             entry.page = resp.page;
-            tinyCaches[tokContextId(resp.token)].write(pageFromVA(reqVA), entry);
+            tinyCaches[resp.contextId].write(pageFromVA(reqVA), entry);
         end
         else
         begin
-            debugLog.record($format("  ") + fshow(resp.token.index) + $format(": %s VtoP response: VA 0x%x -> PA 0x%x [PAGE FAULT]", i_or_d, reqVA, pa));
+            debugLog.record($format("  %s VtoP response: VA 0x%x -> PA 0x%x [PAGE FAULT]", i_or_d, reqVA, pa));
             response.enq(invalidTranslation(pa));
 
             statTLBNoTranslation.incr();
@@ -281,10 +281,9 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
 
     // ***** Methods *****
 
-    method Action lookupReq(TOKEN tok, ISA_ADDRESS va, Bool alloc_on_fault) if (state == FUNCP_TLB_IDLE);
+    method Action lookupReq(CONTEXT_ID ctx_id, ISA_ADDRESS va, Bool alloc_on_fault) if (state == FUNCP_TLB_IDLE);
 
-        let ctx_id = tokContextId(tok);
-        debugLog.record(fshow(tok.index) + $format(": %s req: VA 0x%x", i_or_d, va));
+        debugLog.record($format("%s req: VA 0x%x", i_or_d, va));
 
         FUNCP_V_PAGE vp = pageFromVA(va);
 
@@ -311,7 +310,7 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
             //
             // Ask the memory service for a translation.
             //
-            reqVtoP.enq(FUNCP_TRANSLATION_REQ { token: tok, allocOnFault: alloc_on_fault, vp: vp });
+            reqVtoP.enq(FUNCP_TRANSLATION_REQ { contextId: ctx_id, allocOnFault: alloc_on_fault, vp: vp });
 
             reqVA <= va;
             state <= FUNCP_TLB_BUSY;
@@ -513,7 +512,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         let r = link_funcp_itlb_fault.receive();
         link_funcp_itlb_fault.deq();
 
-        itlb.lookupReq(r.tok, r.va, True);
+        itlb.lookupReq(r.contextId, r.va, True);
         itlbQ.enq(True);
     endrule
 
@@ -523,7 +522,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         let r = link_funcp_itlb_trans.getReq();
         link_funcp_itlb_trans.deq();
 
-        itlb.lookupReq(r.tok, r.va, False);
+        itlb.lookupReq(r.contextId, r.va, False);
         itlbQ.enq(False);
     endrule
 
@@ -543,7 +542,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         let r = link_funcp_dtlb_fault.receive();
         link_funcp_dtlb_fault.deq();
 
-        dtlb.lookupReq(r.tok, r.va, True);
+        dtlb.lookupReq(r.contextId, r.va, True);
         dtlbQ.enq(True);
     endrule
 
@@ -553,7 +552,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         let r = link_funcp_dtlb_trans.getReq();
         link_funcp_dtlb_trans.deq();
 
-        dtlb.lookupReq(r.tok, r.va, False);
+        dtlb.lookupReq(r.contextId, r.va, False);
         dtlbQ.enq(False);
     endrule
 
@@ -576,13 +575,13 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         let req = itlb_vtop_req.first();
         itlb_vtop_req.deq();
 
-        let tok = req.token;
+        let ctx_id = req.contextId;
 
-        debugLog.record($format("  ") + fshow(tok.index) + $format(": I hybrid req: VA 0x%x", vaFromPage(req.vp, 0)));
+        debugLog.record($format("  I hybrid req: VA 0x%x", vaFromPage(req.vp, 0)));
 
         pendingTLBQ.enq(tuple2(req, FUNCP_ITLB));
         let idx <- cacheRespQ.enq();
-        cache.readReq(tlbCacheIdx(tok, req.vp), 0,
+        cache.readReq(tlbCacheIdx(ctx_id, req.vp), 0,
                       FUNCP_L2TLB_REFINFO { allocOnFault: req.allocOnFault,
                                             refIdx: idx });
     endrule
@@ -591,13 +590,13 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         let req = dtlb_vtop_req.first();
         dtlb_vtop_req.deq();
 
-        let tok = req.token;
+        let ctx_id = req.contextId;
 
-        debugLog.record($format("  ") + fshow(tok.index) + $format(": D hybrid req: VA 0x%x", vaFromPage(req.vp, 0)));
+        debugLog.record($format("  D hybrid req: VA 0x%x", vaFromPage(req.vp, 0)));
 
         pendingTLBQ.enq(tuple2(req, FUNCP_DTLB));
         let idx <- cacheRespQ.enq();
-        cache.readReq(tlbCacheIdx(tok, req.vp), 0,
+        cache.readReq(tlbCacheIdx(ctx_id, req.vp), 0,
                       FUNCP_L2TLB_REFINFO { allocOnFault: req.allocOnFault,
                                             refIdx: idx });
     endrule
@@ -624,18 +623,18 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         match { .req, .which_tlb } = pendingTLBQ.first();
         pendingTLBQ.deq();
 
-        let tok = req.token;
+        let ctx_id = req.contextId;
 
         // Don't cache invalid or uncacheable translations.
         if (tlb_entry.pageFault)
         begin
-            debugLog.record($format("    ") + fshow(tok.index) + $format(": Uncacheable: VA 0x%x -> PA 0x%x", vaFromPage(req.vp, 0), paFromPage(tlb_entry.page, 0)));
-            cache.invalReq(tlbCacheIdx(tok, req.vp), False,
+            debugLog.record($format("    Uncacheable: VA 0x%x -> PA 0x%x", vaFromPage(req.vp, 0), paFromPage(tlb_entry.page, 0)));
+            cache.invalReq(tlbCacheIdx(ctx_id, req.vp), False,
                            FUNCP_L2TLB_REFINFO { allocOnFault: False, refIdx: ? });
         end
 
         FUNCP_TRANSLATION_RESP resp;
-        resp.token = tok;
+        resp.contextId = ctx_id;
         resp.ioSpace = tlb_entry.ioSpace;
         resp.pageFault = tlb_entry.pageFault;
         resp.page = tlb_entry.page;

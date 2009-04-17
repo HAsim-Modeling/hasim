@@ -18295,3 +18295,20 @@ Changes to minimize the number of rewinds and tokens necessary:
   
 
 Michael P.
+
+----------
+mcadler     Date: Fri Apr 17 09:07:03 EDT 2009  CSN: CSN-hasim-623
+                  Fri Apr 17 13:07:03 UTC 2009
+
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.awb    Locally Modified          622 
+ platform-scratchpad-memory.bsv Locally Modified          622 
+
+Directory modules/system/test/mem_test
+ mem-test.awb              Locally Modified          622 
+ mem-test.bsv              Locally Modified          622 
+
+- Add random address test to mem-test to exercise caches.  Old code streamed
+  through addresses.
+- Add optional private caches to scratchpad memories.

@@ -19,7 +19,8 @@
 
 import FIFO::*;
 import Vector::*;
-
+import GetPut::*;
+import LFSR::*;
 
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
@@ -45,8 +46,10 @@ import Vector::*;
 
 typedef enum
 {
+    STATE_init,
     STATE_writing,
-    STATE_reading,
+    STATE_read_random,
+    STATE_read_sequential,
     STATE_read_timing,
     STATE_read_timing_emit0,
     STATE_read_timing_emit1,
@@ -67,7 +70,7 @@ typedef struct
 MEM_DATA_SM
     deriving (Bits, Eq);
 
-typedef Bit#(7) MEM_ADDRESS;
+typedef Bit#(11) MEM_ADDRESS;
 
 module [HASIM_MODULE] mkSystem ()
     provisos (Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
@@ -111,18 +114,32 @@ module [HASIM_MODULE] mkSystem ()
     //  2 -- no writes
     Param#(2) memInitMode <- mkDynamicParameter(`PARAMS_HASIM_SYSTEM_MEM_TEST_INIT_MODE, paramNode);
 
+    // Verbose mode
+    //  0 -- quiet
+    //  1 -- verbose
+    Param#(1) verboseMode <- mkDynamicParameter(`PARAMS_HASIM_SYSTEM_MEM_TEST_VERBOSE, paramNode);
+    let verbose = verboseMode == 1;
+
     // Streams (output)
     Connection_Send#(STREAMS_REQUEST) link_streams <- mkConnection_Send("vdev_streams");
 
     Reg#(CYCLE_COUNTER) cycle <- mkReg(0);
-    Reg#(STATE) state <- mkReg(STATE_writing);
+    Reg#(STATE) state <- mkReg(STATE_init);
 
     Reg#(MEM_ADDRESS) addr <- mkReg(`START_ADDR);
+
+    // Random number generator
+    LFSR#(Bit#(16)) lfsr <- mkLFSR_16();
 
     
     (* fire_when_enabled *)
     rule cycleCount (True);
         cycle <= cycle + 1;
+    endrule
+
+    rule doInit (state == STATE_init);
+        lfsr.seed(1);
+        state <= STATE_writing;
     endrule
 
 
@@ -132,6 +149,7 @@ module [HASIM_MODULE] mkSystem ()
     //
     // ====================================================================
 
+    (* conservative_implicit_conditions *)
     rule sendWrite (state == STATE_writing);
         //
         // Store different values in each of the memories to increase confidence
@@ -156,8 +174,8 @@ module [HASIM_MODULE] mkSystem ()
             begin
                 dataLG = -(unpack(zeroExtend(pack(addr))) + 2);
                 dataMD = unpack(zeroExtend(pack(addr))) + 1;
-                dataSM = unpack(zeroExtend(pack(addr)));
-                dataH  = unpack(~zeroExtend(pack(heap_idx)));
+                dataSM = unpack(truncate(pack(addr)));
+                dataH  = unpack(~truncate(pack(heap_idx)));
             end
 
             memoryLG.write(addr, dataLG);
@@ -176,7 +194,7 @@ module [HASIM_MODULE] mkSystem ()
         if (addr == `LAST_ADDR)
         begin
             addr <= `START_ADDR;
-            state <= STATE_reading;
+            state <= STATE_read_random;
         end
         else
         begin
@@ -191,28 +209,56 @@ module [HASIM_MODULE] mkSystem ()
     //
     // ====================================================================
 
-    FIFO#(MEM_ADDRESS) readAddrLGQ <- mkSizedFIFO(32);
-    FIFO#(MEM_ADDRESS) readAddrMDQ <- mkSizedFIFO(32);
-    FIFO#(MEM_ADDRESS) readAddrSMQ <- mkSizedFIFO(32);
-    FIFO#(MEM_ADDRESS) readAddrHQ  <- mkSizedFIFO(32);
-    Reg#(Bool) readDone <- mkReg(False);
+    FIFO#(Tuple2#(MEM_ADDRESS, Bool)) readAddrLGQ <- mkSizedFIFO(32);
+    FIFO#(Tuple2#(MEM_ADDRESS, Bool)) readAddrMDQ <- mkSizedFIFO(32);
+    FIFO#(Tuple2#(MEM_ADDRESS, Bool)) readAddrSMQ <- mkSizedFIFO(32);
+    FIFO#(Tuple2#(MEM_ADDRESS, Bool)) readAddrHQ  <- mkSizedFIFO(32);
+    Reg#(Bool) readSeqDone <- mkReg(False);
     Reg#(Bit#(2)) nCompleteReads <- mkReg(0);
+    Reg#(Bit#(8)) randTrip <- mkReg(0);
 
     //
-    // Initiate read request on each memory in parallel.
+    // Initiate random read request on each memory in parallel.  This is mostly
+    // a cache test.
     //
-    rule readReq (state == STATE_reading && ! readDone);
+    rule readRandomReq (state == STATE_read_random && (randTrip != maxBound));
+        MEM_ADDRESS r_addr = truncate(lfsr.value) & `LAST_ADDR;
+        lfsr.next();
+
+        memoryLG.readReq(r_addr);
+        memoryMD.readReq(r_addr);
+        memorySM.readReq(r_addr);
+        heap.readReq(r_addr);
+
+        let done = ((randTrip + 1) == maxBound);
+
+        readAddrLGQ.enq(tuple2(r_addr, done));
+        readAddrMDQ.enq(tuple2(r_addr, done));
+        readAddrSMQ.enq(tuple2(r_addr, done));
+        readAddrHQ.enq(tuple2(r_addr, done));
+
+        debugLog.record($format("read RAND from all: addr 0x%x", r_addr));
+
+        randTrip <= randTrip + 1;
+    endrule
+
+    //
+    // Initiate sequential read request on each memory in parallel.
+    //
+    rule readSequentialReq (state == STATE_read_sequential && ! readSeqDone);
         memoryLG.readReq(addr);
         memoryMD.readReq(addr);
         memorySM.readReq(addr);
         heap.readReq(addr);
 
-        readAddrLGQ.enq(addr);
-        readAddrMDQ.enq(addr);
-        readAddrSMQ.enq(addr);
-        readAddrHQ.enq(addr);
+        let done = (addr == `LAST_ADDR);
 
-        debugLog.record($format("read from all: addr 0x%x", addr));
+        readAddrLGQ.enq(tuple2(addr, done));
+        readAddrMDQ.enq(tuple2(addr, done));
+        readAddrSMQ.enq(tuple2(addr, done));
+        readAddrHQ.enq(tuple2(addr, done));
+
+        debugLog.record($format("read SEQ from all: addr 0x%x", addr));
 
         // malloc on every 4th access just to keep things interesting.
         // The readRecvHeap rule is freeing every read address, so there
@@ -223,10 +269,10 @@ module [HASIM_MODULE] mkSystem ()
             debugLog.record($format("malloc: idx 0x%x", m));
         end
 
-        if (addr == `LAST_ADDR)
+        if (done)
         begin
             addr <= `START_ADDR;
-            readDone <= True;
+            readSeqDone <= True;
         end
         else
         begin
@@ -239,8 +285,8 @@ module [HASIM_MODULE] mkSystem ()
     // The Bluespec scheduler will pick an order.
     //
 
-    rule readRecvLG (state == STATE_reading);
-        let r_addr = readAddrLGQ.first();
+    rule readRecvLG ((state == STATE_read_random) || (state == STATE_read_sequential));
+        match {.r_addr, .done} = readAddrLGQ.first();
         readAddrLGQ.deq();
 
         let v <- memoryLG.readRsp();
@@ -250,30 +296,35 @@ module [HASIM_MODULE] mkSystem ()
         if (memInitMode == 0)
             v = -(v + 2);
         
+        Bool error = False;
         STREAMS_DICT_TYPE msg_id = `STREAMS_MEMTEST_DATA_LG;
         if (((memInitMode != 1) && (v != unpack(zeroExtend(pack(r_addr))))) ||
             ((memInitMode == 1) && (v != unpack(0))))
         begin
             msg_id = `STREAMS_MEMTEST_DATA_LG_ERR;
+            error = True;
         end
 
-        link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
-                                            stringID: msg_id,
-                                            payload0: zeroExtend(r_addr),
-                                            payload1: truncate(pack(v)) });
+        if (verbose || error)
+        begin
+            link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
+                                                stringID: msg_id,
+                                                payload0: zeroExtend(r_addr),
+                                               payload1: truncate(pack(v)) });
+        end
         
-        if (r_addr == `LAST_ADDR)
+        if (done)
         begin
             // All readers done?
             if (nCompleteReads == 3)
-                state <= STATE_read_timing;
+                state <= unpack(pack(state) + 1);
             
             nCompleteReads <= nCompleteReads + 1;
         end
     endrule
 
-    rule readRecvMD (state == STATE_reading);
-        let r_addr = readAddrMDQ.first();
+    rule readRecvMD ((state == STATE_read_random) || (state == STATE_read_sequential));
+        match {.r_addr, .done} = readAddrMDQ.first();
         readAddrMDQ.deq();
 
         let v <- memoryMD.readRsp();
@@ -283,64 +334,77 @@ module [HASIM_MODULE] mkSystem ()
         if (memInitMode == 0)
             v = v - 1;
 
+        Bool error = False;
         STREAMS_DICT_TYPE msg_id = `STREAMS_MEMTEST_DATA_MD;
         if (((memInitMode != 1) && (v != unpack(zeroExtend(pack(r_addr))))) ||
             ((memInitMode == 1) && (v != unpack(0))))
         begin
             msg_id = `STREAMS_MEMTEST_DATA_MD_ERR;
+            error = True;
         end
 
-        link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
-                                            stringID: msg_id,
-                                            payload0: zeroExtend(r_addr),
-                                            payload1: truncate(pack(v)) });
+        if (verbose || error)
+        begin
+            link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
+                                                stringID: msg_id,
+                                                payload0: zeroExtend(r_addr),
+                                                payload1: truncate(pack(v)) });
+        end
         
-        if (r_addr == `LAST_ADDR)
+        if (done)
         begin
             // All readers done?
             if (nCompleteReads == 3)
-                state <= STATE_read_timing;
+                state <= unpack(pack(state) + 1);
             
             nCompleteReads <= nCompleteReads + 1;
         end
     endrule
 
-    rule readRecvSM (state == STATE_reading);
-        let r_addr = readAddrSMQ.first();
+    rule readRecvSM ((state == STATE_read_random) || (state == STATE_read_sequential));
+        match {.r_addr, .done} = readAddrSMQ.first();
         readAddrSMQ.deq();
 
         let v <- memorySM.readRsp();
         debugLog.record($format("readSM: addr 0x%x, data 0x%x", r_addr, v));
 
+        Bool error = False;
         STREAMS_DICT_TYPE msg_id = `STREAMS_MEMTEST_DATA_SM;
-        if (((memInitMode != 1) && (v != unpack(zeroExtend(pack(r_addr))))) ||
+        if (((memInitMode != 1) && (v != unpack(truncate(pack(r_addr))))) ||
             ((memInitMode == 1) && (v != unpack(0))))
         begin
             msg_id = `STREAMS_MEMTEST_DATA_SM_ERR;
+            error = True;
         end
 
-        link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
-                                            stringID: msg_id,
-                                            payload0: zeroExtend(r_addr),
-                                            payload1: zeroExtend(pack(v)) });
+        if (verbose || error)
+        begin
+            link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
+                                                stringID: msg_id,
+                                                payload0: zeroExtend(r_addr),
+                                                payload1: zeroExtend(pack(v)) });
+        end
         
-        if (r_addr == `LAST_ADDR)
+        if (done)
         begin
             // All readers done?
             if (nCompleteReads == 3)
-                state <= STATE_read_timing;
+                state <= unpack(pack(state) + 1);
             
             nCompleteReads <= nCompleteReads + 1;
         end
     endrule
 
     (* descending_urgency = "readRecvHeap, readRecvSM, readRecvMD, readRecvLG" *)
-    rule readRecvHeap (state == STATE_reading);
-        let r_addr = readAddrHQ.first();
+    rule readRecvHeap ((state == STATE_read_random) || (state == STATE_read_sequential));
+        match {.r_addr, .done} = readAddrHQ.first();
         readAddrHQ.deq();
 
-        heap.free(r_addr);
-        debugLog.record($format("free: idx 0x%x", r_addr));
+        if (state == STATE_read_sequential)
+        begin
+            heap.free(r_addr);
+            debugLog.record($format("free: idx 0x%x", r_addr));
+        end
 
         let v <- heap.readRsp();
         debugLog.record($format("readH: idx 0x%x, data 0x%x", r_addr, v));
@@ -348,23 +412,28 @@ module [HASIM_MODULE] mkSystem ()
         if (memInitMode == 0)
             v = unpack(~pack(v));
 
+        Bool error = False;
         STREAMS_DICT_TYPE msg_id = `STREAMS_MEMTEST_DATA_H;
-        if (((memInitMode != 1) && (v != unpack(zeroExtend(pack(r_addr))))) ||
+        if (((memInitMode != 1) && (v != unpack(truncate(pack(r_addr))))) ||
             ((memInitMode == 1) && (v != unpack(0))))
         begin
             msg_id = `STREAMS_MEMTEST_DATA_H_ERR;
+            error = True;
         end
 
-        link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
-                                            stringID: msg_id,
-                                            payload0: zeroExtend(r_addr),
-                                            payload1: zeroExtend(pack(v)) });
+        if (verbose || error)
+        begin
+            link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
+                                                stringID: msg_id,
+                                                payload0: zeroExtend(r_addr),
+                                                payload1: zeroExtend(pack(v)) });
+        end
         
-        if (r_addr == `LAST_ADDR)
+        if (done)
         begin
             // All readers done?
             if (nCompleteReads == 3)
-                state <= STATE_read_timing;
+                state <= unpack(pack(state) + 1);
             
             nCompleteReads <= nCompleteReads + 1;
         end

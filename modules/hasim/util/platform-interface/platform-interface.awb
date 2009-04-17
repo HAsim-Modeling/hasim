@@ -17,3 +17,6 @@
 %param --global TERM_VDEV_STREAMS             1   "termimate vdev_streams?"
 
 %param --dynamic CENTRAL_CACHE_MODE           0   "0: write-back, 1: write-through, 2: disabled"
+%param --dynamic SCRATCHPAD_PVT_CACHE_MODE    0   "0: write-back, 1: write-through, 2: disabled"
+
+%param SCRATCHPAD_PVT_CACHE_ENTRIES  256  "Scratchpad private cache entries (must be a power of 2)"

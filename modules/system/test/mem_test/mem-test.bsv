@@ -42,7 +42,7 @@ import LFSR::*;
 `include "asim/provides/scratchpad_memory.bsh"
 
 `define START_ADDR 0
-`define LAST_ADDR  'h7f
+`define LAST_ADDR  'h1ff
 
 typedef enum
 {
@@ -215,7 +215,7 @@ module [HASIM_MODULE] mkSystem ()
     FIFO#(Tuple2#(MEM_ADDRESS, Bool)) readAddrHQ  <- mkSizedFIFO(32);
     Reg#(Bool) readSeqDone <- mkReg(False);
     Reg#(Bit#(2)) nCompleteReads <- mkReg(0);
-    Reg#(Bit#(8)) randTrip <- mkReg(0);
+    Reg#(Bit#(10)) randTrip <- mkReg(0);
 
     //
     // Initiate random read request on each memory in parallel.  This is mostly

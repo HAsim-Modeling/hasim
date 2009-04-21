@@ -72,7 +72,7 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
     ASSERTION assertScratchpadSpace <- mkAssertionChecker(`ASSERTIONS_PLATFORM_INTERFACE_SCRATCHPAD_FULL, ASSERT_ERROR, assertNode);
 
     // currently only one user can read and write memory
-    Vector#(SCRATCHPAD_N_CLIENTS, Connection_Server#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE)) link_memory = newVector();
+    Vector#(SCRATCHPAD_N_CLIENTS, Connection_Server#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_READ_RESP)) link_memory = newVector();
     for (Integer p = 0; p < valueOf(SCRATCHPAD_N_CLIENTS); p = p + 1)
     begin
         link_memory[p] <- mkConnection_Server("vdev_memory_" + integerToString(p));
@@ -155,10 +155,9 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
     endrule
 
     //
-    // Scratchpad connections.  One connection for each individual port.
-    // Some implementations of scratchpad funnel all ports through the same
-    // FIFO and, thus, have conflicts between the ports.  The code below
-    // forces a static priority among the ports.
+    // Scratchpad connections.  One soft connection for each individual port.
+    // All the soft connections funnel down into a single memory-style
+    // interface to the scratchpad here.
     //
     Rules send_req = emptyRules;
     for (Integer p = 0; p < valueOf(SCRATCHPAD_N_CLIENTS); p = p + 1)
@@ -172,28 +171,39 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
                     case (req) matches
                         tagged SCRATCHPAD_MEM_INIT .allocLastWordIdx:
                         begin
-                            let s <- memory.ports[p].init(allocLastWordIdx);
+                            let s <- memory.init(allocLastWordIdx, fromInteger(p));
                             assertScratchpadSpace(s);
                         end
 
-                        tagged SCRATCHPAD_MEM_READ .addr:
+                        tagged SCRATCHPAD_MEM_READ .r_req:
                         begin
-                            memory.ports[p].mem.readReq(addr);
+                            let ref_info = SCRATCHPAD_REF_INFO { portNum: fromInteger(p),
+                                                                 clientRefInfo: r_req.clientRefInfo };
+                            memory.readReq(r_req.addr, ref_info);
                         end
 
-                        tagged SCRATCHPAD_MEM_WRITE .wr_info:
+                        tagged SCRATCHPAD_MEM_WRITE .w_req:
                         begin
-                            memory.ports[p].mem.write(wr_info.addr, wr_info.val);
+                            memory.write(w_req.addr, w_req.val, fromInteger(p));
                         end
                     endcase
                 endrule
             endrules);
 
         send_req = rJoinDescendingUrgency(send_req, r);
+    end
     
+    //
+    // All read responses from the scratchpad are retrieved here and forwarded
+    // to the appropriate soft connection to the client.
+    //
+    if (valueOf(SCRATCHPAD_N_CLIENTS) > 0)
+    begin
         rule sendScratchpadResp (True);
-            let d <- memory.ports[p].mem.readRsp();
-            link_memory[p].makeResp(d);
+            let r <- memory.readRsp();
+            link_memory[r.refInfo.portNum].makeResp(SCRATCHPAD_READ_RESP { val: r.val,
+                                                                           addr: r.addr,
+                                                                           clientRefInfo: r.refInfo.clientRefInfo });
         endrule
     end
 

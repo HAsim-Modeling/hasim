@@ -18312,3 +18312,22 @@ Directory modules/system/test/mem_test
 - Add random address test to mem-test to exercise caches.  Old code streamed
   through addresses.
 - Add optional private caches to scratchpad memories.
+
+----------
+mcadler     Date: Tue Apr 21 16:48:26 EDT 2009  CSN: CSN-hasim-624
+                  Tue Apr 21 20:48:26 UTC 2009
+
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.bsv    Locally Modified          622 
+ platform-scratchpad-memory.bsv Locally Modified          623 
+
+Directory modules/system/test/mem_test
+ mem-test.bsv              Locally Modified          623 
+
+- Enhance the multi-read-port scratchpad interface to make the ports independent.
+  Scratchpads now support N-simultaneous read requests and provide N-independent
+  read result FIFOs.  Results are returned in-order on a given read port but
+  may be out-of-order across ports.  Load/store order is enforced across ports.
+
+- Add a random address component to the memory test for better cache testing.

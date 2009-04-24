@@ -18331,3 +18331,29 @@ Directory modules/system/test/mem_test
   may be out-of-order across ports.  Load/store order is enforced across ports.
 
 - Add a random address component to the memory test for better cache testing.
+
+----------
+mcadler     Date: Fri Apr 24 16:33:54 EDT 2009  CSN: CSN-hasim-625
+                  Fri Apr 24 20:33:54 UTC 2009
+
+
+Directory modules/system/test/shared_pipeline_test
+ shared-pipeline-test.bsv  Locally Added               0 
+ shared-pipeline-test.dic  Locally Added               0 
+ shared-pipeline-test.awb  Locally Added               0 
+
+Directory modules/system/test
+ shared_pipeline_test/     Locally Added               0 
+
+Directory config/pm/hasim/demos/test
+ pipeline_test/            Locally Added               0 
+
+Directory config/pm/hasim/demos/test/pipeline_test
+ pipeline_test_shared_rule_htg.apm Locally Added               0 
+ pipeline_test_shared_rule_routed_exe.apm Locally Added               0 
+ pipeline_test_shared_rule_routed_htg.apm Locally Added               0 
+ pipeline_test_private_rule_exe.apm Locally Added               0 
+ pipeline_test_private_rule_htg.apm Locally Added               0 
+ pipeline_test_shared_rule_exe.apm Locally Added               0 
+
+Pipeline resource usage tests with different coding styles.

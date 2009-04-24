@@ -1,0 +1,4 @@
+// Messages
+def STREAMS.PIPETEST.DONE     "pipetest: done\n";
+
+def STREAMID.PIPETEST         "pipeline test";

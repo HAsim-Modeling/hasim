@@ -152,7 +152,8 @@ function FUNCP_REQ_COMMIT_RESULTS initFuncpReqCommitResults(TOKEN tok);
 
     return FUNCP_REQ_COMMIT_RESULTS
             {
-                token: tok
+                token: tok,
+                abort: False
             };
 
 endfunction

@@ -18357,3 +18357,20 @@ Directory config/pm/hasim/demos/test/pipeline_test
  pipeline_test_shared_rule_exe.apm Locally Added               0 
 
 Pipeline resource usage tests with different coding styles.
+
+----------
+mcadler     Date: Mon Apr 27 13:25:10 EDT 2009  CSN: CSN-hasim-626
+                  Mon Apr 27 17:25:10 UTC 2009
+
+
+Directory modules/hasim/functional-partition/interface
+ funcp-req-constructors.bsv Locally Modified          625 
+
+Directory modules/hasim/util/platform-interface
+ platform-scratchpad-memory.bsv Locally Modified          625 
+
+- Re-enable allocating a BRAM for small scratchpad requests where the BRAM is
+  smaller than a private cache.  It was disabled waiting for the buffered
+  pseudo multi-reader BRAM, added today.
+
+- Fix initialization of FUNCP_REQ_COMMIT_RESULTS.

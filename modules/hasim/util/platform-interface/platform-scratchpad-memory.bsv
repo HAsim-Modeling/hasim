@@ -158,11 +158,11 @@ module [HASIM_MODULE] mkMultiReadScratchpad#(Integer scratchpadID, Bool cached)
               Bits#(t_CONTAINER_ADDR, t_CONTAINER_ADDR_SZ),
               Add#(a__, t_CONTAINER_ADDR_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
 
-    if (False && cached && (valueOf(TExp#(t_CONTAINER_ADDR_SZ)) <= `SCRATCHPAD_PVT_CACHE_ENTRIES))
+    if (cached && (valueOf(TExp#(t_CONTAINER_ADDR_SZ)) <= `SCRATCHPAD_PVT_CACHE_ENTRIES))
     begin
         // A special case:  cached scratchpad requested but the container
         // is smaller than the cache would have been.  Just allocate a BRAM.
-        MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA) memory <- mkBRAMPseudoMultiReadInitialized(unpack(0));
+        MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA) memory <- mkBRAMBufferedPseudoMultiReadInitialized(unpack(0));
 
         // Dummy soft connection
         Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_READ_RESP) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));

@@ -18374,3 +18374,26 @@ Directory modules/hasim/util/platform-interface
   pseudo multi-reader BRAM, added today.
 
 - Fix initialization of FUNCP_REQ_COMMIT_RESULTS.
+
+----------
+pellauer    Date: Mon Apr 27 18:21:01 EDT 2009  CSN: CSN-hasim-627
+                  Mon Apr 27 22:21:01 UTC 2009
+
+
+Directory config/pm/hasim/demos/test/pipeline_test
+ pipeline_test_duplicate_modules_exe.apm Locally Added               0 
+ pipeline_test_duplicate_modules_htg.apm Locally Added               0 
+ pipeline_test_stage_ctrl_unguarded_exe.apm Locally Added               0 
+ pipeline_test_stage_ctrl_unguarded_htg.apm Locally Added               0 
+ pipeline_test_stage_ctrl_exe.apm Locally Added               0 
+ pipeline_test_stage_ctrl_htg.apm Locally Added               0 
+
+Directory modules/system/test/shared_pipeline_test
+ shared-pipeline-test.bsv  Locally Modified          626 
+ shared-pipeline-test.awb  Locally Modified          626 
+
+
+* Added two pipeline tests: duplicated modules and pipeline stage controller.
+* Added flag to use unguarded FIFOs in pipeline test.
+
+Michael P.

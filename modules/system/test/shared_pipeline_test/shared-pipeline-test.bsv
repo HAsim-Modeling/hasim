@@ -47,10 +47,23 @@ STATE
 typedef Bit#(`PIPE_TEST_DATA_BITS) PIPE_TEST_DATA;
 typedef Bit#(TLog#(`PIPE_TEST_NUM_PIPES)) PIPELINE_IDX;
 
+function PIPELINE_IDX getPipeIdx(PIPE_TEST_DATA d);
+
+    return truncateNP(d);
+
+endfunction
 
 interface PIPELINE_TEST#(numeric type n_STAGES, numeric type n_PARALLEL_PIPES);
     interface Vector#(n_PARALLEL_PIPES, FIFOF#(PIPE_TEST_DATA)) pipes;
 endinterface: PIPELINE_TEST
+
+module mkTestFIFOF (FIFOF#(t)) provisos (Bits#(t, t_SZ));
+
+    FIFOF#(t) q <- (`PIPE_TEST_GUARDED_FIFOS != 0) ? mkFIFOF() : mkUGFIFOF();
+
+    return q;
+
+endmodule
 
 
 module [HASIM_MODULE] mkSystem ();
@@ -66,8 +79,14 @@ module [HASIM_MODULE] mkSystem ();
         pipes <- mkSharedPipeTest();
     else if (`PIPE_TEST_LOOP_MODE == 1)
         pipes <- mkSharedTreePipeTest();
-    else
+    else if (`PIPE_TEST_LOOP_MODE == 2)
         pipes <- mkPrivatePipeTest();
+    else if (`PIPE_TEST_LOOP_MODE == 3)
+        pipes <- mkDuplicatedPipeTest();
+    else if (`PIPE_TEST_LOOP_MODE == 4)
+        pipes <- mkPipelineStageControllerTest();
+    else
+        pipes <- error("ERROR: PIPE_TEST_LOOP_MODE out of bounds.");
 
     // Random number generator
     LFSR#(Bit#(32)) lfsr_0 <- mkLFSR_32();
@@ -88,7 +107,7 @@ module [HASIM_MODULE] mkSystem ();
     Reg#(PIPELINE_IDX) pipeIdx <- mkReg(0);
     Reg#(Bit#(1)) pipeTrips <- mkReg(0);
 
-    rule doEnq (state == STATE_enq);
+    rule doEnq (state == STATE_enq  && pipes.pipes[pipeIdx].notFull());
         // Pass random data so no optimizer can reduce pipeline sizes
         let v0 = lfsr_0.value();
         lfsr_0.next();
@@ -135,7 +154,7 @@ module [HASIM_MODULE] mkSystem ();
 
     Reg#(PIPE_TEST_DATA) outData <- mkReg(0);
 
-    rule doDeq (state == STATE_deq);
+    rule doDeq (state == STATE_deq && pipes.pipes[pipeIdx].notEmpty());
         let d = pipes.pipes[pipeIdx].first();
         pipes.pipes[pipeIdx].deq();
         
@@ -199,7 +218,7 @@ module mkSharedPipeTest
     // FIFOs
     //
     Vector#(n_STAGES, Vector#(n_PARALLEL_PIPES, FIFOF#(PIPE_TEST_DATA))) fifos <-
-        replicateM(replicateM(mkFIFOF()));
+        replicateM(replicateM(mkTestFIFOF()));
 
     //
     // Parallel pipelines must be written round-robin.  These control registers
@@ -209,7 +228,7 @@ module mkSharedPipeTest
 
     for (Integer s = 0; s < valueOf(n_STAGES) - 1; s = s + 1)
     begin
-        rule pipeStage (True);
+        rule pipeStage (fifos[s][curPipe[s]].notEmpty() && fifos[s + 1][curPipe[s]].notFull());
             let d = fifos[s][curPipe[s]].first();
             fifos[s][curPipe[s]].deq();
 
@@ -262,7 +281,7 @@ module mkSharedTreePipeTest
     // FIFOs
     //
     Vector#(n_STAGES, Vector#(n_PARALLEL_PIPES, FIFOF#(PIPE_TEST_DATA))) fifos <-
-        replicateM(replicateM(mkFIFOF()));
+        replicateM(replicateM(mkTestFIFOF()));
 
     //
     // Parallel pipelines must be written round-robin.  These control registers
@@ -272,11 +291,8 @@ module mkSharedTreePipeTest
 
     for (Integer s = 0; s < valueOf(n_STAGES) - 1; s = s + 1)
     begin
-        rule pipeStage (True);
-            let d = fifos[s][curPipe[s]].first();
+        rule pipeStage (fifos[s][curPipe[s]].first() matches .d &&& getPipeIdx(d) matches .tgt &&& fifos[s][curPipe[s]].notEmpty() &&& fifos[s + 1][tgt].notFull());
             fifos[s][curPipe[s]].deq();
-
-            Bit#(TLog#(n_PARALLEL_PIPES)) tgt = truncateNP(d);
             fifos[s + 1][tgt].enq(d);
             curPipe[s] <= curPipe[s] + 1;
         endrule
@@ -325,7 +341,7 @@ module mkPrivatePipeTest
     // FIFOs
     //
     Vector#(n_STAGES, Vector#(n_PARALLEL_PIPES, FIFOF#(PIPE_TEST_DATA))) fifos <-
-        replicateM(replicateM(mkFIFOF()));
+        replicateM(replicateM(mkTestFIFOF()));
 
     //
     // Parallel pipelines must be written round-robin.  These control registers
@@ -337,7 +353,7 @@ module mkPrivatePipeTest
     begin
         for (Integer p = 0; p < valueOf(n_PARALLEL_PIPES); p = p + 1)
         begin
-            rule pipeStage (curPipe[s] == fromInteger(p));
+            rule pipeStage (curPipe[s] == fromInteger(p) && fifos[s][p].notEmpty() && fifos[s + 1][p].notFull());
                 let d = fifos[s][p].first();
                 fifos[s][p].deq();
 
@@ -372,4 +388,268 @@ module mkPrivatePipeTest
     end
 
     interface pipes = pipesLocal;
+endmodule
+
+// ========================================================================
+//
+// Implementation of the pipelines in which we just duplicate the pipeline.
+//
+// ========================================================================
+
+module mkDuplicatedPipeTest
+    // interface:
+    (PIPELINE_TEST#(n_STAGES, n_PARALLEL_PIPES));
+    
+    //
+    // FIFOs
+    //
+    Vector#(n_PARALLEL_PIPES, PIPELINE_TEST#(n_STAGES, 1)) dupedPipes <-
+        replicateM(mkPipeTest());
+
+    //
+    // Methods
+    //
+
+    Vector#(n_PARALLEL_PIPES, FIFOF#(PIPE_TEST_DATA)) pipesLocal = newVector();
+
+    for (Integer p = 0; p < valueOf(n_PARALLEL_PIPES); p = p + 1)
+    begin
+        pipesLocal[p] =
+            interface FIFOF#(PIPE_TEST_DATA);
+                method Action enq(PIPE_TEST_DATA d) = dupedPipes[p].pipes[0].enq(d);
+
+                method Action deq() = dupedPipes[p].pipes[0].deq();
+                method PIPE_TEST_DATA first() = dupedPipes[p].pipes[0].first();
+
+                method Bool notFull() = dupedPipes[p].pipes[0].notFull();
+                method Bool notEmpty() = dupedPipes[p].pipes[0].notEmpty();
+
+                method Action clear();
+                    noAction;
+                endmethod
+            endinterface;
+    end
+
+    interface pipes = pipesLocal;
+
+endmodule
+
+
+module mkPipeTest (PIPELINE_TEST#(n_STAGES, 1));
+
+    //
+    // FIFOs
+    //
+
+    Vector#(n_STAGES, FIFOF#(PIPE_TEST_DATA)) fifos <- replicateM(mkTestFIFOF());
+
+    for (Integer s = 0; s < valueOf(n_STAGES) - 1; s = s + 1)
+    begin
+        rule pipeStage (fifos[s].notEmpty() && fifos[s + 1].notFull());
+            let d = fifos[s].first();
+            fifos[s].deq();
+
+            fifos[s + 1].enq(d);
+        endrule
+    end
+
+    Vector#(1, FIFOF#(PIPE_TEST_DATA)) pipesLocal = newVector();
+
+    //
+    // Methods
+    //
+
+    pipesLocal[0] =
+        interface FIFOF#(PIPE_TEST_DATA);
+            method Action enq(PIPE_TEST_DATA d) = fifos[0].enq(d);
+
+            method Action deq() = fifos[valueOf(n_STAGES) - 1].deq();
+            method PIPE_TEST_DATA first() = fifos[valueOf(n_STAGES) - 1].first();
+
+            method Bool notFull() = fifos[0].notFull();
+            method Bool notEmpty() = fifos[valueOf(n_STAGES) - 1].notEmpty();
+
+            method Action clear();
+                noAction;
+            endmethod
+        endinterface;
+
+    interface pipes = pipesLocal;
+
+endmodule
+
+// ========================================================================
+//
+// Implementation of the pipelines in which a single rule manages all
+// pipelines for a given stage.
+//
+// ========================================================================
+
+module mkPipelineStageControllerTest
+    // interface:
+    (PIPELINE_TEST#(n_STAGES, n_PARALLEL_PIPES));
+    
+    //
+    // FIFOs
+    //
+    Vector#(n_STAGES, Vector#(n_PARALLEL_PIPES, FIFOF#(PIPE_TEST_DATA))) fifos <-
+        replicateM(replicateM(mkTestFIFOF()));
+
+    Vector#(n_STAGES, PIPELINE_STAGE_CONTROLLER#(n_PARALLEL_PIPES)) stageCtrl = newVector();
+
+    for (Integer s = 0; s < valueOf(n_STAGES) - 1; s = s + 1)
+    begin
+        
+        let inqs  = map(fifofToPortControl, fifos[s]);
+        let outqs = map(fifofToPortControl, fifos[s+1]);
+        
+        stageCtrl[s] <- mkPipelineStageController(cons(inqs, nil), cons(outqs, nil), s == 0);
+    
+        rule pipeStage (True); // Note: no explicit conditions necessary. Guarded by nextReadyInstance.
+            let iid <- stageCtrl[s].nextReadyInstance();
+            let d = fifos[s][iid].first();
+            fifos[s][iid].deq();
+
+            fifos[s + 1][iid].enq(d);
+            stageCtrl[s + 1].ready(iid);
+        endrule
+    end
+
+    //
+    // Methods
+    //
+
+    Vector#(n_PARALLEL_PIPES, FIFOF#(PIPE_TEST_DATA)) pipesLocal = newVector();
+
+    for (Integer p = 0; p < valueOf(n_PARALLEL_PIPES); p = p + 1)
+    begin
+        pipesLocal[p] =
+            interface FIFOF#(PIPE_TEST_DATA);
+                method Action enq(PIPE_TEST_DATA d) = fifos[0][p].enq(d);
+
+                method Action deq() = fifos[valueOf(n_STAGES) - 1][p].deq();
+                method PIPE_TEST_DATA first() = fifos[valueOf(n_STAGES) - 1][p].first();
+
+                method Bool notFull() = fifos[0][p].notFull();
+                method Bool notEmpty() = fifos[valueOf(n_STAGES) - 1][p].notEmpty();
+
+                method Action clear();
+                    noAction;
+                endmethod
+            endinterface;
+    end
+
+    interface pipes = pipesLocal;
+endmodule
+
+
+typedef Bit#(TLog#(t_NUM_INSTANCES)) INSTANCE_ID#(type t_NUM_INSTANCES);
+
+interface PORT_CONTROL;
+
+    method Bool full();
+    method Bool empty();
+
+endinterface
+
+function PORT_CONTROL fifofToPortControl(FIFOF#(a) q);
+
+    return (interface PORT_CONTROL;
+               method Bool full() = !q.notFull();
+               method Bool empty() = !q.notEmpty();
+            endinterface);
+
+endfunction
+
+interface PIPELINE_STAGE_CONTROLLER#(type t_NUM_INSTANCES);
+
+    method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
+    method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+
+endinterface
+
+module mkPipelineStageController#(Vector#(n, Vector#(ni, PORT_CONTROL)) inports, Vector#(m, Vector#(ni, PORT_CONTROL)) outports, Bool initRdy)
+    //interface:
+        (PIPELINE_STAGE_CONTROLLER#(ni));
+
+    Vector#(ni, PulseWire)    startRunningW <- replicateM(mkPulseWire());
+    Vector#(ni, PulseWire)      readyW <- replicateM(mkPulseWire());
+    
+    
+    // Vector of ready instances.
+    Reg#(Vector#(ni, Bool)) instanceReadies <- mkReg(replicate(initRdy));
+
+    function Bool allTrue(Vector#(k, Bool) v);
+        return foldr(\&& , True, v);
+    endfunction
+
+    // This function will determine the next instance in a non-round-robin manner when we're ready
+    // to go that route. Currently this is unused.
+
+    function Bool instanceReady(INSTANCE_ID#(ni) iid);
+        
+        Bool canRead  = True;
+        Bool canWrite = True;
+
+        // Can we read/write all of the ports?
+        for (Integer x = 0; x < valueOf(n); x = x + 1)
+            canRead = canRead && !inports[x][iid].empty();
+
+        for (Integer x = 0; x < valueOf(m); x = x + 1)
+            canWrite = canWrite && !outports[x][iid].full();
+
+        // An instance is ready to go only if it's not currently running.
+        return instanceReadies[iid] && canRead && canWrite;
+
+    endfunction
+
+    function Bool someInstanceReady();
+        
+        Bool res = False;
+
+        for (Integer x = 0; x < valueof(ni); x = x + 1)
+        begin
+            res = instanceReady(fromInteger(x)) || res;
+        end
+        
+        return res;
+    
+    endfunction
+
+
+    rule updateReadies (True);
+    
+        Vector#(ni, Bool) new_readies = instanceReadies;
+
+        for (Integer x = 0; x < valueOf(ni); x = x + 1)
+        begin
+            if (!instanceReadies[x] || startRunningW[x])
+                new_readies[x] = readyW[x];
+        end
+        
+        instanceReadies <= new_readies;
+    
+    endrule
+
+    method ActionValue#(INSTANCE_ID#(ni)) nextReadyInstance() if (someInstanceReady());
+    
+        INSTANCE_ID#(ni) res = 0;
+
+        for (Integer x = 0; x < valueof(ni); x = x + 1)
+        begin
+            res = instanceReady(fromInteger(x)) ? fromInteger(x) : res;
+        end
+        
+        startRunningW[res].send();
+
+        return res;
+
+    endmethod
+
+    method Action ready(INSTANCE_ID#(ni) iid);
+    
+        readyW[iid].send();
+    
+    endmethod
+    
 endmodule

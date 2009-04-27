@@ -1,0 +1,42 @@
+
+[Global]
+SaveParameters=0
+Description=Experiment with resource consumtion of varying Bluespec pipeline coding methods
+File=pipeline_test_duplicate_modules_exe
+Version=2.1
+Name=HAsim Pipeline Resource Tests
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hasim simulation
+model=HAsim Hybrid Model Foundation
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
+Packagehint=platforms
+
+[HAsim Hybrid Model Foundation/Requires]
+hasim_common=Hasim Common Library
+hasim_system=HAsim - Shared Pipeline Resource Tests
+hasim_controller=Hybrid Basic Controller
+fpgaenv=FPGA Environment
+
+[HAsim Hybrid Model Foundation]
+File=modules/model/hasim_model.awb
+Packagehint=hasim
+
+[Hasim Common Library]
+File=config/pm/hasim/submodels/common/hasim_common.apm
+Packagehint=hasim
+
+[Hybrid Basic Controller]
+File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
+Packagehint=hasim
+
+[HAsim - Shared Pipeline Resource Tests]
+File=modules/system/test/shared_pipeline_test/shared-pipeline-test.awb
+Packagehint=hasim
+
+[HAsim - Shared Pipeline Resource Tests/Params]
+PIPE_TEST_LOOP_MODE=2

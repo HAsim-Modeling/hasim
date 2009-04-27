@@ -7,7 +7,9 @@
 %public shared-pipeline-test.bsv
 %public shared-pipeline-test.dic
 
-%param PIPE_TEST_LOOP_MODE  0     "Pipeline stage expansion mode: 0 shared static route, 1 shared data routed, 2 private static route"
+%param PIPE_TEST_LOOP_MODE  0     "Pipeline stage expansion mode: 0 shared static route, 1 shared data routed, 2 private static route, 3 duplicate modules, 4 pipeline stage controller."
+
+%param PIPE_TEST_GUARDED_FIFOS  1 "0 = Unguarded FIFOs (explicitly guarded). 1 = guarded fifos (explicit guards are extraneous, but harmlesss)."
 
 %param PIPE_TEST_DATA_BITS  32    "Size of data flowing through the pipeline"
 %param PIPE_TEST_STAGES     10    "Depth of the test pipeline"

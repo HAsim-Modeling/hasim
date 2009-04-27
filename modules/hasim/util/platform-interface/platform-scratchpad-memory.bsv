@@ -346,7 +346,7 @@ module [HASIM_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
     // Scratchpad responses are not ordered.  Sort them with a reorder buffer.
     // Each read port gets its own reorder buffer so that each port returns data
     // when available, independent of the latency of requests on other ports.
-    Vector#(n_READERS, SCOREBOARD_FIFO#(SCRATCHPAD_PORT_ROB_SLOTS, SCRATCHPAD_MEM_VALUE)) sortResponseQ <- replicateM(mkScoreboardFIFO());
+    Vector#(n_READERS, SCOREBOARD_FIFOF#(SCRATCHPAD_PORT_ROB_SLOTS, SCRATCHPAD_MEM_VALUE)) sortResponseQ <- replicateM(mkScoreboardFIFOF());
 
     // Merge FIFOF combines read and write requests in temporal order,
     // with reads from the same cycle as a write going first.  Each read port
@@ -431,20 +431,27 @@ module [HASIM_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
 
     Vector#(n_READERS, MEMORY_READER_IFC#(t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE)) portsLocal = newVector();
 
-    for(Integer i = 0; i < valueOf(n_READERS); i = i + 1)
+    for(Integer p = 0; p < valueOf(n_READERS); p = p + 1)
     begin
-        portsLocal[i] =
+        portsLocal[p] =
             interface MEMORY_READER_IFC#(t_ADDR, t_DATA);
                 method Action readReq(t_MEM_ADDRESS addr);
-                    incomingReqQ.ports[i].enq(addr);
+                    incomingReqQ.ports[p].enq(addr);
                 endmethod
 
                 method ActionValue#(SCRATCHPAD_MEM_VALUE) readRsp();
-                    let r = sortResponseQ[i].first();
-                    sortResponseQ[i].deq();
+                    let r = sortResponseQ[p].first();
+                    sortResponseQ[p].deq();
 
                     return r;
                 endmethod
+
+                method SCRATCHPAD_MEM_VALUE peek();
+                    return sortResponseQ[p].first();
+                endmethod
+
+                method Bool notEmpty() = sortResponseQ[p].notEmpty();
+                method Bool notFull() = incomingReqQ.ports[p].notFull();
             endinterface;
     end
 
@@ -455,6 +462,8 @@ module [HASIM_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
         incomingReqQ.ports[valueOf(n_READERS)].enq(addr);
         writeDataQ.enq(val);
     endmethod
+
+    method Bool writeNotFull = incomingReqQ.ports[valueOf(n_READERS)].notFull();
 endmodule
     
     
@@ -510,7 +519,7 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
     FIFO#(SCRATCHPAD_MEM_VALUE) writeDataQ <- mkFIFO();
 
     // Cache responses are not ordered.  Sort them with a reorder buffer.
-    Vector#(n_READERS, SCOREBOARD_FIFO#(SCRATCHPAD_PORT_ROB_SLOTS, SCRATCHPAD_MEM_VALUE)) sortResponseQ <- replicateM(mkScoreboardFIFO());
+    Vector#(n_READERS, SCOREBOARD_FIFOF#(SCRATCHPAD_PORT_ROB_SLOTS, SCRATCHPAD_MEM_VALUE)) sortResponseQ <- replicateM(mkScoreboardFIFOF());
 
     
     // Initialization
@@ -538,19 +547,19 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
 
 
     // Read requests
-    for(Integer i = 0; i < valueOf(n_READERS); i = i + 1)
+    for (Integer p = 0; p < valueOf(n_READERS); p = p + 1)
     begin
-        rule forwardReadReq (initialized && (incomingReqQ.firstPortID() == fromInteger(i)));
+        rule forwardReadReq (initialized && (incomingReqQ.firstPortID() == fromInteger(p)));
             let addr = incomingReqQ.first();
             incomingReqQ.deq();
 
             // Allocate a slot in the reorder buffer for the read request.  Each
             // read port gets its own reorder buffer.
-            let idx <- sortResponseQ[i].enq();
+            let idx <- sortResponseQ[p].enq();
 
             // The refInfo for this request is the concatenation of the
             // port ID and the ROB index.
-            t_REF_INFO ref_info = tuple2(fromInteger(i), idx);
+            t_REF_INFO ref_info = tuple2(fromInteger(p), idx);
 
             // Request data from the cache
             cache.readReq(pack(addr), ref_info);
@@ -561,14 +570,14 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
         //     Push read responses to the reorder buffer.  They will be returned
         //     through readRsp() in order.
         //
-        rule receiveResp (tpl_1(cache.peekResp().refInfo) == fromInteger(i));
+        rule receiveResp (tpl_1(cache.peekResp().refInfo) == fromInteger(p));
             let r <- cache.readResp();
 
             // The clientRefInfo field holds the concatenation of the port ID and
             // the port's reorder buffer index.
             match {.port, .idx} = r.refInfo;
 
-            sortResponseQ[i].setValue(idx, r.val);
+            sortResponseQ[p].setValue(idx, r.val);
         endrule
     end
 
@@ -580,20 +589,27 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
 
     Vector#(n_READERS, MEMORY_READER_IFC#(t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE)) portsLocal = newVector();
 
-    for(Integer i = 0; i < valueOf(n_READERS); i = i + 1)
+    for(Integer p = 0; p < valueOf(n_READERS); p = p + 1)
     begin
-        portsLocal[i] =
+        portsLocal[p] =
             interface MEMORY_READER_IFC#(t_ADDR, t_DATA);
                 method Action readReq(t_MEM_ADDRESS addr);
-                    incomingReqQ.ports[i].enq(addr);
+                    incomingReqQ.ports[p].enq(addr);
                 endmethod
 
                 method ActionValue#(SCRATCHPAD_MEM_VALUE) readRsp();
-                    let r = sortResponseQ[i].first();
-                    sortResponseQ[i].deq();
+                    let r = sortResponseQ[p].first();
+                    sortResponseQ[p].deq();
 
                     return r;
                 endmethod
+
+                method SCRATCHPAD_MEM_VALUE peek();
+                    return sortResponseQ[p].first();
+                endmethod
+
+                method Bool notEmpty() = sortResponseQ[p].notEmpty();
+                method Bool notFull() = incomingReqQ.ports[p].notFull();
             endinterface;
     end
 
@@ -604,6 +620,8 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
         incomingReqQ.ports[valueOf(n_READERS)].enq(addr);
         writeDataQ.enq(val);
     endmethod
+
+    method Bool writeNotFull = incomingReqQ.ports[valueOf(n_READERS)].notFull();
 endmodule
     
 

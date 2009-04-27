@@ -293,10 +293,15 @@ module mkLiveTokenBRAM
         return rsp;
     endmethod
 
+    method peek = mem.peek;
+    method notEmpty = mem.notEmpty;
+    method notFull = mem.notFull;
+
     method Action write(TOKEN_INDEX a, data_T d);
         mem.write(liveTokenIdx(a), d);
     endmethod
 
+    method writeNotFull = mem.writeNotFull;
 endmodule
 
 
@@ -317,10 +322,15 @@ module mkLiveTokenBRAMInitialized#(data_T initval)
         return rsp;
     endmethod
 
+    method peek = mem.peek;
+    method notEmpty = mem.notEmpty;
+    method notFull = mem.notFull;
+
     method Action write(TOKEN_INDEX a, data_T d);
         mem.write(liveTokenIdx(a), d);
     endmethod
 
+    method writeNotFull = mem.writeNotFull;
 endmodule
 
 
@@ -344,17 +354,21 @@ module mkLiveTokenBRAMMultiRead#(Bool realPorts)
 
     Vector#(n, BROM#(TOKEN_INDEX, data_T)) portsLocal = newVector();
 
-    for(Integer i = 0; i < valueOf(n); i = i + 1)
+    for (Integer p = 0; p < valueOf(n); p = p + 1)
     begin
-        portsLocal[i] = (interface BROM#(TOKEN_INDEX, data_T);
+        portsLocal[p] = (interface BROM#(TOKEN_INDEX, data_T);
                              method Action readReq(TOKEN_INDEX a);
-                                 mem.readPorts[i].readReq(liveTokenIdx(a));
+                                 mem.readPorts[p].readReq(liveTokenIdx(a));
                              endmethod
 
                              method ActionValue#(data_T) readRsp();
-                                 data_T rsp <- mem.readPorts[i].readRsp();
+                                 data_T rsp <- mem.readPorts[p].readRsp();
                                  return rsp;
                              endmethod
+
+                             method peek = mem.readPorts[p].peek;
+                             method notEmpty = mem.readPorts[p].notEmpty;
+                             method notFull = mem.readPorts[p].notFull;
                          endinterface);
     end
 
@@ -364,6 +378,7 @@ module mkLiveTokenBRAMMultiRead#(Bool realPorts)
         mem.write(liveTokenIdx(a), d);
     endmethod
 
+    method writeNotFull = mem.writeNotFull;
 endmodule
 
 
@@ -387,17 +402,21 @@ module mkLiveTokenBRAMMultiReadInitialized#(Bool realPorts, data_T initval)
 
     Vector#(n, BROM#(TOKEN_INDEX, data_T)) portsLocal = newVector();
 
-    for(Integer i = 0; i < valueOf(n); i = i + 1)
+    for (Integer p = 0; p < valueOf(n); p = p + 1)
     begin
-        portsLocal[i] = (interface BROM#(TOKEN_INDEX, data_T);
+        portsLocal[p] = (interface BROM#(TOKEN_INDEX, data_T);
                              method Action readReq(TOKEN_INDEX a);
-                                 mem.readPorts[i].readReq(liveTokenIdx(a));
+                                 mem.readPorts[p].readReq(liveTokenIdx(a));
                              endmethod
 
                              method ActionValue#(data_T) readRsp();
-                                 data_T rsp <- mem.readPorts[i].readRsp();
+                                 data_T rsp <- mem.readPorts[p].readRsp();
                                  return rsp;
                              endmethod
+
+                             method peek = mem.readPorts[p].peek;
+                             method notEmpty = mem.readPorts[p].notEmpty;
+                             method notFull = mem.readPorts[p].notFull;
                          endinterface);
     end
 
@@ -407,6 +426,7 @@ module mkLiveTokenBRAMMultiReadInitialized#(Bool realPorts, data_T initval)
         mem.write(liveTokenIdx(a), d);
     endmethod
 
+    method writeNotFull = mem.writeNotFull;
 endmodule
 
 

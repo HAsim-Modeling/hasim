@@ -484,7 +484,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     RL_SA_CACHE_STATS statIfc <- mkTLBCacheStats();
 
     // Reorder buffer for cache responses.  Cache doesn't guarantee ordered return.
-    SCOREBOARD_FIFO#(FUNCP_L2TLB_REFS, FUNCP_L2TLB_ENTRY) cacheRespQ <- mkScoreboardFIFO();
+    SCOREBOARD_FIFOF#(FUNCP_L2TLB_REFS, FUNCP_L2TLB_ENTRY) cacheRespQ <- mkScoreboardFIFOF();
 
     // Local storage for the translation cache
     RL_SA_CACHE_LOCAL_DATA#(t_FUNCP_L2TLB_RAW_IDX_SZ, // Cache address size

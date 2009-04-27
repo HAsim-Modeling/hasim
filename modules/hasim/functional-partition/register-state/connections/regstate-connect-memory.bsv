@@ -102,9 +102,9 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
     // Response queues with values.  We want these queues large enough that
     // their sizes are too big to put in LUTs.  Once they are in BRAMs it
     // makes sense for them to use a good fraction of an 18kb BRAM slice.
-    SCOREBOARD_FIFO#(MAX_FUNCP_INFLIGHT_MEMREFS, MEM_VALUE) respInstruction <- mkBRAMScoreboardFIFO();
-    SCOREBOARD_FIFO#(MAX_FUNCP_INFLIGHT_MEMREFS, MEM_VALUE) respDoLoads <- mkBRAMScoreboardFIFO();
-    SCOREBOARD_FIFO#(MAX_FUNCP_INFLIGHT_MEMREFS, MEM_VALUE) respDoStores <- mkBRAMScoreboardFIFO();
+    SCOREBOARD_FIFOF#(MAX_FUNCP_INFLIGHT_MEMREFS, MEM_VALUE) respInstruction <- mkBRAMScoreboardFIFOF();
+    SCOREBOARD_FIFOF#(MAX_FUNCP_INFLIGHT_MEMREFS, MEM_VALUE) respDoLoads <- mkBRAMScoreboardFIFOF();
+    SCOREBOARD_FIFOF#(MAX_FUNCP_INFLIGHT_MEMREFS, MEM_VALUE) respDoStores <- mkBRAMScoreboardFIFOF();
 
     
     function Action decorateAndQueueLoad(MEMSTATE_REQ req,

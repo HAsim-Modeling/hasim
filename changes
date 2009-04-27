@@ -18397,3 +18397,23 @@ Directory modules/system/test/shared_pipeline_test
 * Added flag to use unguarded FIFOs in pipeline test.
 
 Michael P.
+
+----------
+mcadler     Date: Mon Apr 27 19:49:46 EDT 2009  CSN: CSN-hasim-628
+                  Mon Apr 27 23:49:46 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/connections
+ regstate-connect-memory.bsv Locally Modified          627 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          627 
+
+Directory modules/hasim/util/platform-interface
+ platform-scratchpad-memory.bsv Locally Modified          627 
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          627 
+
+Update all modules implementing a MEMORY_IFC to provide new methods (notEmpty,
+notFull....)

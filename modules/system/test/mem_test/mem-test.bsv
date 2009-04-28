@@ -120,6 +120,12 @@ module [HASIM_MODULE] mkSystem ()
     Param#(1) verboseMode <- mkDynamicParameter(`PARAMS_HASIM_SYSTEM_MEM_TEST_VERBOSE, paramNode);
     let verbose = verboseMode == 1;
 
+    // Heap enable -- allow heap tests?  Skip heap case (it used to cause deadlocks).
+    //  0 -- disable
+    //  1 -- enable
+    Param#(1) heapTestMode <- mkDynamicParameter(`PARAMS_HASIM_SYSTEM_MEM_TEST_HEAP, paramNode);
+    let enableHeap = heapTestMode == 1;
+
     // Streams (output)
     Connection_Send#(STREAMS_REQUEST) link_streams <- mkConnection_Send("vdev_streams");
 
@@ -131,6 +137,11 @@ module [HASIM_MODULE] mkSystem ()
     // Random number generator
     LFSR#(Bit#(16)) lfsr <- mkLFSR_16();
 
+    Reg#(Bit#(2)) nCompleteReads <- mkRegU();
+
+    // If not doing heap tests then mark heap test done already
+    function Bit#(2) completeReadsInitVal() = enableHeap ? 0 : 1;
+
     
     (* fire_when_enabled *)
     rule cycleCount (True);
@@ -138,6 +149,8 @@ module [HASIM_MODULE] mkSystem ()
     endrule
 
     rule doInit (state == STATE_init);
+        nCompleteReads <= completeReadsInitVal();
+
         lfsr.seed(1);
         state <= STATE_writing;
     endrule
@@ -166,16 +179,11 @@ module [HASIM_MODULE] mkSystem ()
             t_MEM_DATA_SM dataSM = unpack(0);
             t_MEM_DATA_SM dataH  = unpack(0);
 
-            // Allocate a slot in the heap
-            let heap_idx <- heap.malloc();
-            debugLog.record($format("malloc: idx 0x%x", heap_idx));
-
             if (memInitMode == 0)
             begin
                 dataLG = -(unpack(zeroExtend(pack(addr))) + 2);
                 dataMD = unpack(zeroExtend(pack(addr))) + 1;
                 dataSM = unpack(truncate(pack(addr)));
-                dataH  = unpack(~truncate(pack(heap_idx)));
             end
 
             memoryLG.write(addr, dataLG);
@@ -187,8 +195,20 @@ module [HASIM_MODULE] mkSystem ()
             memorySM.write(addr, dataSM);
             debugLog.record($format("writeSM: addr 0x%x, data 0x%x", addr, dataSM));
             
-            heap.write(heap_idx, dataH);
-            debugLog.record($format("writeH: idx 0x%x, data 0x%x", heap_idx, dataH));
+            // Allocate a slot in the heap
+            if (enableHeap)
+            begin
+                let heap_idx <- heap.malloc();
+                debugLog.record($format("malloc: idx 0x%x", heap_idx));
+
+                if (memInitMode == 0)
+                begin
+                    dataH  = unpack(~truncate(pack(heap_idx)));
+                end
+
+                heap.write(heap_idx, dataH);
+                debugLog.record($format("writeH: idx 0x%x, data 0x%x", heap_idx, dataH));
+            end
         end
         
         if (addr == `LAST_ADDR)
@@ -214,7 +234,6 @@ module [HASIM_MODULE] mkSystem ()
     FIFO#(Tuple2#(MEM_ADDRESS, Bool)) readAddrSMQ <- mkSizedFIFO(32);
     FIFO#(Tuple2#(MEM_ADDRESS, Bool)) readAddrHQ  <- mkSizedFIFO(32);
     Reg#(Bool) readSeqDone <- mkReg(False);
-    Reg#(Bit#(2)) nCompleteReads <- mkReg(0);
     Reg#(Bit#(10)) randTrip <- mkReg(0);
 
     //
@@ -228,14 +247,16 @@ module [HASIM_MODULE] mkSystem ()
         memoryLG.readReq(r_addr);
         memoryMD.readReq(r_addr);
         memorySM.readReq(r_addr);
-        heap.readReq(r_addr);
+        if (enableHeap)
+            heap.readReq(r_addr);
 
         let done = ((randTrip + 1) == maxBound);
 
         readAddrLGQ.enq(tuple2(r_addr, done));
         readAddrMDQ.enq(tuple2(r_addr, done));
         readAddrSMQ.enq(tuple2(r_addr, done));
-        readAddrHQ.enq(tuple2(r_addr, done));
+        if (enableHeap)
+            readAddrHQ.enq(tuple2(r_addr, done));
 
         debugLog.record($format("read RAND from all: addr 0x%x", r_addr));
 
@@ -249,21 +270,23 @@ module [HASIM_MODULE] mkSystem ()
         memoryLG.readReq(addr);
         memoryMD.readReq(addr);
         memorySM.readReq(addr);
-        heap.readReq(addr);
+        if (enableHeap)
+            heap.readReq(addr);
 
         let done = (addr == `LAST_ADDR);
 
         readAddrLGQ.enq(tuple2(addr, done));
         readAddrMDQ.enq(tuple2(addr, done));
         readAddrSMQ.enq(tuple2(addr, done));
-        readAddrHQ.enq(tuple2(addr, done));
+        if (enableHeap)
+            readAddrHQ.enq(tuple2(addr, done));
 
         debugLog.record($format("read SEQ from all: addr 0x%x", addr));
 
         // malloc on every 4th access just to keep things interesting.
         // The readRecvHeap rule is freeing every read address, so there
         // will be entries available.
-        if (addr[1:0] == 3)
+        if (enableHeap && (addr[1:0] == 3))
         begin
             let m <- heap.malloc();
             debugLog.record($format("malloc: idx 0x%x", m));
@@ -317,9 +340,14 @@ module [HASIM_MODULE] mkSystem ()
         begin
             // All readers done?
             if (nCompleteReads == 3)
+            begin
                 state <= unpack(pack(state) + 1);
-            
-            nCompleteReads <= nCompleteReads + 1;
+                nCompleteReads <= completeReadsInitVal();
+            end
+            else
+            begin
+                nCompleteReads <= nCompleteReads + 1;
+            end
         end
     endrule
 
@@ -355,9 +383,14 @@ module [HASIM_MODULE] mkSystem ()
         begin
             // All readers done?
             if (nCompleteReads == 3)
+            begin
                 state <= unpack(pack(state) + 1);
-            
-            nCompleteReads <= nCompleteReads + 1;
+                nCompleteReads <= completeReadsInitVal();
+            end
+            else
+            begin
+                nCompleteReads <= nCompleteReads + 1;
+            end
         end
     endrule
 
@@ -389,9 +422,14 @@ module [HASIM_MODULE] mkSystem ()
         begin
             // All readers done?
             if (nCompleteReads == 3)
+            begin
                 state <= unpack(pack(state) + 1);
-            
-            nCompleteReads <= nCompleteReads + 1;
+                nCompleteReads <= completeReadsInitVal();
+            end
+            else
+            begin
+                nCompleteReads <= nCompleteReads + 1;
+            end
         end
     endrule
 
@@ -433,9 +471,14 @@ module [HASIM_MODULE] mkSystem ()
         begin
             // All readers done?
             if (nCompleteReads == 3)
+            begin
                 state <= unpack(pack(state) + 1);
-            
-            nCompleteReads <= nCompleteReads + 1;
+                nCompleteReads <= completeReadsInitVal();
+            end
+            else
+            begin
+                nCompleteReads <= nCompleteReads + 1;
+            end
         end
     endrule
     

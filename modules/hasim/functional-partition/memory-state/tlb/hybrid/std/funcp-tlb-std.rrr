@@ -1,12 +1,15 @@
 #include "asim/provides/hasim_common.h"
 #include "asim/provides/funcp_base_types.h"
 
+// Temporary hack until RRR has a type system
+#define FUNCP_ISA_P_ADDR_SIZE_RRR 64
+
 service FUNCP_TLB
 {
     server sw (cpp, method) <- hw (bsv, connection)
     {
         method VtoP(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
                     in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] va,
-                    out MEM_ADDRESS_RRR[64] pa);
+                    out FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] pa);
     };
 };

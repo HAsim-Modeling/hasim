@@ -27,14 +27,22 @@
 #include "asim/provides/funcp_base_types.h"
 #include "asim/provides/funcp_simulated_memory.h"
 
+#include "asim/rrr/client_stub_FUNCP_MEMORY.h"
+
+// Get the data types from the functional memory RRR definition
+#define TYPES_ONLY
+#include "asim/rrr/server_stub_FUNCP_MEMORY.h"
+#undef TYPES_ONLY
+
 // types
 
-typedef FUNCP_PADDR     MEM_ADDRESS;
-typedef FUNCP_INT_REG   MEM_VALUE;
-
+//
+// Cache line, described as words.
+//
 typedef struct {
-    char _x[FUNCP_CACHELINE_BITS/8];
-} MEM_CACHELINE;
+    MEM_VALUE w[FUNCP_CACHELINE_BITS / FUNCP_ISA_INT_REG_SIZE];
+}
+MEM_CACHELINE;
 
 // Valid bits corresponding to words in a cache line.  Bit 0 corresponds to the
 // low word when viewed as a full cache line.
@@ -52,11 +60,22 @@ class FUNCP_MEMORY_SERVER_CLASS: public RRR_SERVER_CLASS,
 
     // stubs
     RRR_SERVER_STUB serverStub;
+    FUNCP_MEMORY_CLIENT_STUB clientStub;
 
     FUNCP_SIMULATED_MEMORY memory;
 
     Format fmt_addr;
     Format fmt_data;
+
+    //
+    // Current state of a pipelined store line
+    //
+    UINT8 stWordIdx;
+    UINT8 stWordValid;
+    UINT8 stSendAck;
+    CONTEXT_ID stCtxId;
+    FUNCP_PADDR stAddr;
+    MEM_CACHELINE stData;
 
   public:
     FUNCP_MEMORY_SERVER_CLASS();
@@ -70,16 +89,23 @@ class FUNCP_MEMORY_SERVER_CLASS: public RRR_SERVER_CLASS,
     //
     // RRR Service Methods
     //
-    UMF_MESSAGE Request(UMF_MESSAGE);
+    MEM_VALUE Load(CONTEXT_ID ctxId, FUNCP_PADDR addr);
+    void Store(CONTEXT_ID ctxId, FUNCP_PADDR addr, MEM_VALUE val);
+
+    void LoadLine(CONTEXT_ID ctxId, FUNCP_PADDR addr);
+
+    void StoreLine(CONTEXT_ID ctxId, UINT8 wordValid, UINT8 sendAck, FUNCP_PADDR addr);
+    void StoreData(MEM_VALUE val);
+
 
     //
     // Incoming messages from the software side (e.g. instruction emulation)
     // that may cause changes in the FPGA-side cache of simulated memory.
     //
-    static void NoteSystemMemoryRead(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_ADDRESS size);
-    static void NoteSystemMemoryWrite(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_ADDRESS size);
+    static void NoteSystemMemoryRead(CONTEXT_ID ctxId, FUNCP_PADDR addr, FUNCP_PADDR size);
+    static void NoteSystemMemoryWrite(CONTEXT_ID ctxId, FUNCP_PADDR addr, FUNCP_PADDR size);
 
-    void SystemMemoryRef(CONTEXT_ID ctxId, MEM_ADDRESS addr, UINT64 size, bool isWrite);
+    void SystemMemoryRef(CONTEXT_ID ctxId, FUNCP_PADDR addr, UINT64 size, bool isWrite);
 
     // Other code may need to talk to simulated memory.  We should fix this hack
     // and have simulated memory allocated by a parent of all the classes that
@@ -88,9 +114,7 @@ class FUNCP_MEMORY_SERVER_CLASS: public RRR_SERVER_CLASS,
 };
 
 // server stub
-#define BYPASS_SERVER_STUB
 #include "asim/rrr/server_stub_FUNCP_MEMORY.h"
-#undef  BYPASS_SERVER_STUB
 
 // hack: required because m5 ISA_EMULATOR uses the name FUNCP_MEMORY_CLASS: FIXME
 typedef FUNCP_MEMORY_SERVER_CLASS FUNCP_MEMORY_CLASS;

@@ -46,6 +46,21 @@ typedef UINT32 FUNCP_PADDR;
 typedef UINT64 FUNCP_PADDR;
 #endif
 
+// More RRR hacks.  For now a physical address is always passed as 64 bits.
+typedef UINT64 FUNCP_PADDR_RRR;
+#define AppendFUNCP_PADDR_RRR AppendUINT64
+#define ExtractFUNCP_PADDR_RRR ExtractUINT64
+
+
+typedef FUNCP_INT_REG MEM_VALUE;
+
+#if (FUNCP_ISA_INT_REG_SIZE == 32)
+#define AppendMEM_VALUE AppendUINT32
+#define ExtractMEM_VALUE ExtractUINT32
+#else
+#define AppendMEM_VALUE AppendUINT64
+#define ExtractMEM_VALUE ExtractUINT64
+#endif
 
 //
 // Context ID as passed through RRR.  The #define of AppendCONTEXT_ID_RRR is

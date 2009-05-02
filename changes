@@ -18428,3 +18428,55 @@ Directory modules/system/test/mem_test
  mem-test.bsv              Locally Modified          628 
 
 Add a parameter to disable the heap accesses.
+
+----------
+mcadler     Date: Sat May  2 08:20:35 EDT 2009  CSN: CSN-hasim-630
+                  Sat May  2 12:20:35 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.cpp         Locally Modified          629 
+ funcp-tlb-std.rrr         Locally Modified          629 
+ funcp-tlb-std.h           Locally Modified          629 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          629 
+ hybrid-funcp-memory.rrr   Locally Modified          629 
+ hybrid-funcp-memory-datatypes.bsv Locally Modified          629 
+ hybrid-funcp-memory.h     Locally Modified          629 
+ hybrid-funcp-memory.awb   Locally Modified          629 
+ hybrid-funcp-memory.bsv   Locally Modified          629 
+ hybrid-funcp-memory.dic   Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.awb Locally Modified          629 
+ memstate_manager_macro_ops.bsv Locally Modified          629 
+
+Directory modules/hasim/functional-partition/memory-state
+ memstate_default.bsv      Locally Modified          629 
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.h        Locally Modified          629 
+
+Directory modules/hasim/util/platform-interface
+ platform-central-cache.bsv Locally Added               0 
+ platform-interface.awb    Locally Modified          629 
+ platform-interface.bsv    Locally Modified          629 
+
+Directory modules/bluespec/common/base
+ bluespec_common.prj       Locally Modified          629 
+
+- Add support for central cache clients to the platform interface.  The
+  implementation is similar to scratchpads.  Clients see a private interface
+  using their own data types (as long as they fit in the central cache's
+  buckets).  Platform interface code automatically marshalls types and
+  transfers requests and responses over a soft connection.
+- Functional memory uses the central cache.  For now it has no private cache.
+- Eliminate the private set associate cache for functional memory.  The
+  memory manager now routes memory requests directly to the funcp_memory module.
+- Hybrid functional memory interface is now pipelined to limit data bus widths.
+  Line read and write requests trigger multiple, word-sized, pipelined transfers.
+- Both TLB and functional memory sofware-side RRR implementations now use RRR-
+  generated methods instead of the low level interface.  Needed to put in
+  some temporary #define hacks for the marshalling functions, mapping them to
+  integers.

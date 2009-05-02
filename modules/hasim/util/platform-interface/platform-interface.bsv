@@ -38,6 +38,8 @@ import Vector::*;
 `include "asim/dict/ASSERTIONS_PLATFORM_INTERFACE.bsh"
 `include "asim/dict/PARAMS_PLATFORM_INTERFACE.bsh"
 
+`include "asim/dict/VDEV.bsh"
+
 typedef struct
 {
     Bit#(1) b_up;
@@ -70,13 +72,6 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
     // ***** Assertion Checkers *****
     ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_PLATFORM_INTERFACE__BASE);
     ASSERTION assertScratchpadSpace <- mkAssertionChecker(`ASSERTIONS_PLATFORM_INTERFACE_SCRATCHPAD_FULL, ASSERT_ERROR, assertNode);
-
-    // currently only one user can read and write memory
-    Vector#(SCRATCHPAD_N_CLIENTS, Connection_Server#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_READ_RESP)) link_memory = newVector();
-    for (Integer p = 0; p < valueOf(SCRATCHPAD_N_CLIENTS); p = p + 1)
-    begin
-        link_memory[p] <- mkConnection_Server("vdev_memory_" + integerToString(p));
-    end
 
     // other virtual devices
     Connection_Receive#(STREAMS_REQUEST) link_streams <- mkConnection_Receive("vdev_streams");
@@ -154,14 +149,22 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
 
     endrule
 
+
+    // ====================================================================
     //
-    // Scratchpad connections.  One soft connection for each individual port.
-    // All the soft connections funnel down into a single memory-style
-    // interface to the scratchpad here.
+    // Scratchpad connections.  One soft connection for each individual
+    // port. All the soft connections funnel down into a single
+    // memory-style interface to the scratchpad here.
     //
-    Rules send_req = emptyRules;
+    // ====================================================================
+
+    Vector#(SCRATCHPAD_N_CLIENTS, Connection_Server#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_READ_RESP)) link_memory = newVector();
+
+    Rules mem_send_req = emptyRules;
     for (Integer p = 0; p < valueOf(SCRATCHPAD_N_CLIENTS); p = p + 1)
     begin
+        link_memory[p] <- mkConnection_Server("vdev_memory_" + integerToString(p));
+
         let r =
             (rules
                 rule sendScratchpadReq (True);
@@ -190,7 +193,7 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
                 endrule
             endrules);
 
-        send_req = rJoinDescendingUrgency(send_req, r);
+        mem_send_req = rJoinDescendingUrgency(mem_send_req, r);
     end
     
     //
@@ -207,7 +210,139 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
         endrule
     end
 
-    addRules(send_req);
+    addRules(mem_send_req);
+    
+
+
+    // ====================================================================
+    //
+    // Central cache connections.  Two soft connections for each individual
+    // port.  One connection is for requests to the cache.  The other
+    // is for requests from the cache to backing storage provided by the
+    // client.
+    //
+    // ====================================================================
+
+    Vector#(CENTRAL_CACHE_N_CLIENTS, Connection_Server#(CENTRAL_CACHE_REQ, CENTRAL_CACHE_RESP)) link_cache = newVector();
+    Vector#(CENTRAL_CACHE_N_CLIENTS, Connection_Client#(CENTRAL_CACHE_BACKING_REQ, CENTRAL_CACHE_BACKING_RESP)) link_cache_backing = newVector();
+
+    for (Integer p = 0; p < valueOf(CENTRAL_CACHE_N_CLIENTS); p = p + 1)
+    begin
+        //
+        // The central cache may have clients that are inside the virtual platform,
+        // such as scratchpad memory.  Internal clients tag themselves by
+        // setting their dictionary string to "platform".  Do not build soft
+        // connections for internal clients.
+        //
+        if (showVDEV_CACHE_DICT(fromInteger(p + `VDEV_CACHE__BASE)) != "platform")
+        begin
+            link_cache[p] <- mkConnection_Server("vdev_cache_" + integerToString(p));
+
+            //
+            // Forward requests to the central cache.
+            //
+            rule sendCentralCacheReq (True);
+                let req = link_cache[p].getReq();
+                link_cache[p].deq();
+
+                central_cache.clientPorts[p].newReq(req);
+            endrule
+
+
+            //
+            // Return responses from the central cache.
+            //
+            let resp_data =
+                (rules
+                    rule recvCentralCacheData (True);
+                        let d <- central_cache.clientPorts[p].readResp();
+
+                        //
+                        // The central cache returns an entire line.  For now
+                        // just return the requested word.
+                        //
+                        CENTRAL_CACHE_READ_RESP r;
+                        r.addr = d.addr;
+                        r.wordIdx = d.reqWordIdx;
+                        r.val = validValue(d.words[d.reqWordIdx]);
+                        r.refInfo = d.refInfo;
+                 
+                        link_cache[p].makeResp(tagged CENTRAL_CACHE_READ r);
+                    endrule
+                endrules);
+
+            let resp_flush_ack =
+                (rules
+                    // Flush or invalidate ACK response
+                    rule recvCentralCacheFlushAck (True);
+                        let d <- central_cache.clientPorts[p].invalOrFlushWait();
+                        link_cache[p].makeResp(tagged CENTRAL_CACHE_FLUSH_ACK False);
+                    endrule
+                endrules);
+
+            addRules(rJoinDescendingUrgency(resp_flush_ack, resp_data));
+
+
+            //
+            // Backing storage communication.  Requests come from the cache
+            // back to the client.
+            //
+
+            link_cache_backing[p] <- mkConnection_Client("vdev_cache_backing_" + integerToString(p));
+
+            //
+            // Forward requests to the central cache.
+            //
+            let back_rules =
+                (rules
+                    rule sendCentralCacheBackingReadReq (True);
+                        let r <- central_cache.backingPorts[p].getReadReq();
+                        link_cache_backing[p].makeReq(tagged CENTRAL_CACHE_BACK_READ r);
+                    endrule
+                endrules);
+
+            let back_wreq =
+                (rules
+                    rule sendCentralCacheBackingWriteReq (True);
+                        let r <- central_cache.backingPorts[p].getWriteReq();
+                        link_cache_backing[p].makeReq(tagged CENTRAL_CACHE_BACK_WREQ r);
+                    endrule
+                endrules);
+
+            back_rules = rJoinDescendingUrgency(back_rules, back_wreq);
+
+            let back_wdata =
+                (rules
+                    rule sendCentralCacheBackingWriteData (True);
+                        let d <- central_cache.backingPorts[p].getWriteData();
+                        link_cache_backing[p].makeReq(tagged CENTRAL_CACHE_BACK_WDATA d);
+                    endrule
+                endrules);
+
+            back_rules = rJoinDescendingUrgency(back_rules, back_wdata);
+            addRules(back_rules);
+
+            //
+            // Backing storage responses
+            //
+            rule recvCentralCacheBackingResp (True);
+                let resp = link_cache_backing[p].getResp();
+                link_cache_backing[p].deq();
+
+                case (resp) matches
+                    tagged CENTRAL_CACHE_BACK_READ .r:
+                    begin
+                        central_cache.backingPorts[p].sendReadResp(r);
+                    end
+
+                    tagged CENTRAL_CACHE_BACK_WACK .dummy:
+                    begin
+                        central_cache.backingPorts[p].sendWriteAck();
+                    end
+                endcase
+            endrule
+        end
+    end
     
     // return interface to top-level wires
     return llpint.topLevelWires;

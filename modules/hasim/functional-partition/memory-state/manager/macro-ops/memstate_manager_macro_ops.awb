@@ -4,7 +4,6 @@
 %provides funcp_memstate_manager
 
 %requires funcp_memstate_storebuffer
-%requires funcp_memstate_cache
 
 %attributes hasim funcp memstate
 

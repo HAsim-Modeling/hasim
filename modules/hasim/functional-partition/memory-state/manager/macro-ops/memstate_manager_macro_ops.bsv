@@ -18,7 +18,7 @@
 
 // memstate_manager_macro_ops
 
-// Tracks memory state with a cache and a store buffer,
+// Tracks memory state with a store buffer,
 // using the macro-operation design pattern.
 
 // Library imports
@@ -44,7 +44,7 @@ import FShow::*;
 // mkFUNCP_MemStateManager
 
 // The module which encapsulates Loads and Stores,
-// using macro-operations to refer to the store buffer and cache.
+// using macro-operations to refer to the store buffer and memory.
 
 module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
@@ -60,8 +60,8 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // Links to the functional partition register state.
     Connection_Server#(MEMSTATE_REQ, MEMSTATE_RESP) linkRegState <- mkConnection_Server("funcp_memstate");
 
-    // Link to the Cache
-    Connection_Client#(MEM_REQUEST, MEMSTATE_RESP) linkCache <- mkConnection_Client("mem_cache");
+    // Link to memory
+    Connection_Client#(MEM_REQUEST, MEMSTATE_RESP) linkMemory <- mkConnection_Client("funcp_memory");
 
     // ***** Local data ***** //
 
@@ -75,7 +75,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // 1-stage macro-operation.
     
     // When:   Any time we get a Store request from the register state.
-    // Effect: We record the store in the store buffer but don't actually change the cache.
+    // Effect: We record the store in the store buffer but don't actually change memory.
     //         This change will take effect when the store is committed.
     // Parameters: MEMSTATE_REQ (MEMSTATE_REQ_STORE)
     // Returns:    None.
@@ -88,7 +88,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         
         debugLog.record($format("STORE: ") + fshow(stInfo.tok.index) + $format(", addr=0x%x, value=0x%x", stInfo.addr, stInfo.value));
 
-        // Place the value in store buffer, but don't actually change the cache.
+        // Place the value in store buffer, but don't actually change memory.
         stBuffer.insertReq(stInfo.tok.index, stInfo.addr, stInfo.value);
 
     endrule
@@ -98,7 +98,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // 2- or 3-stage macro-operation. (Depending on if store buffer hits.)
  
     // When:   Any time we get a Load request from the register state.
-    // Effect: We check the store buffer and the cache and return the response.
+    // Effect: We check the store buffer and memory and return the response.
     // Parameters: MEMSTATE_REQ (MEMSTATE_REQ_LOAD)
     // Returns:    MEMSTATE_RSP (MEMSTATE_RSP_LOAD)
 
@@ -107,7 +107,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // When:   Any time we get a Load request from the register state.
     //         Loads may not be processed while commit is in progress because
     //         values are removed from the store buffer before being written
-    //         to the cache.  There is a window in which earlier stores
+    //         to memory.  There is a window in which earlier stores
     //         may be invisible.
     // Effect: Convert the address and send it to the store buffer.
 
@@ -120,7 +120,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
         debugLog.record($format("LOAD: ") + fshow(ldInfo.tok.index) + $format(" / ") + fshow(ldInfo.memRefToken) + $format(", addr=0x%x", ldInfo.addr));
 
-        // Send it on to the store buffer and the cache in parallel.
+        // Send it on to the store buffer and memory in parallel.
         // Since most loads miss in the store buffer there isn't much point
         // in waiting for the response.
         let check_sb <- stBuffer.lookupReq(ldInfo.tok.index, ldInfo.addr);
@@ -137,15 +137,15 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         end
         else
         begin
-            // Value is not in store buffer.  Request from cache.
-            linkCache.makeReq(tagged MEM_LOAD load_req);
+            // Value is not in store buffer.  Request from memory.
+            linkMemory.makeReq(tagged MEM_LOAD load_req);
             debugLog.record($format("  LOAD SB hash miss"));
         end
 
     endrule
 
     //
-    // NOTE ON ORDER -- memLoadSB and memLoadCache may return load results
+    // NOTE ON ORDER -- memLoadSB and memLoadMemory may return load results
     //                  out of order in order to improve performance!  The
     //                  register state manager is expected to deal with this.
     //
@@ -164,13 +164,13 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         case (sb_rsp.mvalue) matches
           tagged Invalid:
           begin
-              // A miss in the store buffer.  Look in the cache.
-              linkCache.makeReq(tagged MEM_LOAD load_req);
+              // A miss in the store buffer.  Look in memory.
+              linkMemory.makeReq(tagged MEM_LOAD load_req);
               debugLog.record($format("  LOAD SB miss"));
           end
           tagged Valid .sb_val:
           begin
-              // A hit in the store buffer.  No need to look in the cache.
+              // A hit in the store buffer.  No need to look in memory.
               linkRegState.makeResp(memStateResp(load_req.memRefToken, sb_val));
               debugLog.record($format("  LOAD SB hit: value=0x%x, ", sb_val) + fshow(load_req.memRefToken));
           end
@@ -179,16 +179,16 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
 
     //
-    // memLoadCache --
-    //   Forward load response from cache back to the register state manager.
+    // memLoadMemory --
+    //   Forward load response from memory back to the register state manager.
     //
-    (* descending_urgency = "memLoadCache, memLoadSB, memLoad" *)
-    rule memLoadCache (True);
-        let cache_resp = linkCache.getResp();
-        linkCache.deq();
+    (* descending_urgency = "memLoadMemory, memLoadSB, memLoad" *)
+    rule memLoadMemory (True);
+        let mem_resp = linkMemory.getResp();
+        linkMemory.deq();
 
-        linkRegState.makeResp(cache_resp);
-        debugLog.record($format("  LOAD from mem: value=0x%x, ", cache_resp.value) + fshow(cache_resp.memRefToken));
+        linkRegState.makeResp(mem_resp);
+        debugLog.record($format("  LOAD from mem: value=0x%x, ", mem_resp.value) + fshow(mem_resp.memRefToken));
     endrule
 
   
@@ -197,7 +197,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     
     // 2-stage macro-operation
     // When:   When the register state requests a committed store.
-    // Effect: Remove a value from the store buffer and send it on to the cache.
+    // Effect: Remove a value from the store buffer and send it on to memory.
     // Parameters: TOKEN
     // Returns:    N/A
     
@@ -225,7 +225,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // commit2
     
     // When:   Some time after commit1
-    // Effect: Send the store on to update the cache/memory.
+    // Effect: Send the store on to update memory.
 
     rule commit2 (True);
 
@@ -237,8 +237,8 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
         debugLog.record($format("  COMMIT resp: addr=0x%x, value=0x%x, more=%d", rsp.addr, rsp.value, rsp.hasMore));
 
-        // Send the actual store to the cache.
-        linkCache.makeReq(funcpMemStoreReq(rsp.tokIdx.context_id, rsp.addr, rsp.value));
+        // Send the actual store to memory.
+        linkMemory.makeReq(funcpMemStoreReq(rsp.tokIdx.context_id, rsp.addr, rsp.value));
 
     endrule
 

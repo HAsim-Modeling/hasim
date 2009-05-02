@@ -2,42 +2,71 @@
 #include "asim/provides/funcp_base_types.h"
 #include "asim/provides/funcp_memory.h"
 
+// Temporary hack until RRR has a type system
+#define FUNCP_ISA_P_ADDR_SIZE_RRR 64
+
 service FUNCP_MEMORY
 {
     server hw (bsv, connection) <- sw (cpp, method)
     {
+        //
+        // Pipelined Load --
+        //     The host sends one message for every word in a line to this
+        //     method in response to a LoadLine request on the host server.
+        //
+        method LoadData(in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
+
+        //
+        // Software ACK that pipelined store is complete.
+        //
+        method StoreACK(in UINT8[8] ack);
+
+        //
+        // Request from host to invalidate a line cached in hardware.
+        //
         method Invalidate(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                          in MEM_ADDRESS_RRR[64] addr,
-                          in UINT8[8] nLines,
+                          in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
                           in UINT8[8] onlyFlush,
-                          out UINT32[32] ack);
+                          out UINT8[8] ack);
     };
 
     server sw (cpp, method) <- hw (bsv, connection)
     {
+        // Load a single word
         method Load (in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                     in MEM_ADDRESS_RRR[64] addr,
+                     in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
                      out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
 
-        method LoadCacheLine (in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                              in MEM_ADDRESS_RRR[64] addr,
-                              out MEM_CACHELINE[FUNCP_CACHELINE_BITS] data);
+        //
+        // Pipelined Load Line --
+        //     The client hardware makes a single load request.  The host
+        //     server responds with multiple messages on the LoadData method
+        //     of the hardware's server interface.
+        method LoadLine (in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                         in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr);
 
 
+        // Store a single word
         method Store(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                     in MEM_ADDRESS_RRR[64] addr,
+                     in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
                      in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
 
-        method StoreCacheLine(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                              in UINT8[8] wordValid,
-                              in MEM_ADDRESS_RRR[64] addr,
-                              in MEM_CACHELINE[FUNCP_CACHELINE_BITS] data);
+        //
+        // Pipelined Store Line -- 
+        //     Store line begins with a StoreLineCtrl() request and is followed
+        //     by one StoreData request for every word in the line.  Low bits
+        //     of the message are sent first and bit 0 of the word valid mask
+        //     corresponds to the low word.  A message is sent for a word
+        //     even when the wordValid bit is 0.
+        //
+        //     When sendAck is set, the host sends on ACK to StoreACK in the
+        //     hardware server.
+        //
+        method StoreLine(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                         in UINT8[8] wordValid,
+                         in UINT8[8] sendAck,
+                         in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr);
 
-        // Store cache line with ACK
-        method StoreCacheLine_Sync(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                                   in UINT8[8] wordValid,
-                                   in MEM_ADDRESS_RRR[64] addr,
-                                   in MEM_CACHELINE[FUNCP_CACHELINE_BITS] data,
-                                   out UINT32[32] ack);
+        method StoreData(in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
     };
 };

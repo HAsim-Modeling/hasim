@@ -4,10 +4,11 @@
 %provides funcp_memory
 %requires funcp_simulated_memory
 
-%sources -t BSV -v PUBLIC   hybrid-funcp-memory-datatypes.bsv
-%sources -t BSV -v PUBLIC   hybrid-funcp-memory.bsv
-%sources -t CPP -v PRIVATE  hybrid-funcp-memory.cpp
-%sources -t H   -v PUBLIC   hybrid-funcp-memory.h
-%sources -t RRR -v PRIVATE  hybrid-funcp-memory.rrr
+%public   hybrid-funcp-memory-datatypes.bsv
+%public   hybrid-funcp-memory.bsv
+%private  hybrid-funcp-memory.cpp
+%public   hybrid-funcp-memory.h
+%private  hybrid-funcp-memory.rrr
+%public   hybrid-funcp-memory.dic
 
 %param FUNCP_CACHELINE_BITS 256 "Cache line size in bits"

@@ -26,11 +26,16 @@
 #include "asim/provides/rrr.h"
 #include "asim/dict/VDEV.h"
 
+// Get the data types from the functional memory RRR definition
+#define TYPES_ONLY
+#include "asim/rrr/server_stub_FUNCP_TLB.h"
+#undef TYPES_ONLY
+
 typedef class FUNCP_TLB_SERVER_CLASS* FUNCP_TLB_SERVER;
 
 class FUNCP_TLB_SERVER_CLASS: public RRR_SERVER_CLASS,
-                                      public PLATFORMS_MODULE_CLASS,
-                                      public TRACEABLE_CLASS
+                              public PLATFORMS_MODULE_CLASS,
+                              public TRACEABLE_CLASS
 {
   private:
     // self-instantiation
@@ -53,12 +58,10 @@ class FUNCP_TLB_SERVER_CLASS: public RRR_SERVER_CLASS,
     void   Poll();
 
     // RRR request methods
-    UMF_MESSAGE Request(UMF_MESSAGE);
+    FUNCP_PADDR VtoP(CONTEXT_ID ctxId, MEM_VALUE va);
 };
 
 // Now that the server class is defined the RRR wrapper can be loaded.
-#define BYPASS_SERVER_STUB
 #include "asim/rrr/server_stub_FUNCP_TLB.h"
-#undef  BYPASS_SERVER_STUB
 
 #endif

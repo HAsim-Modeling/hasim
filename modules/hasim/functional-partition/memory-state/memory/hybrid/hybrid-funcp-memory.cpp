@@ -26,23 +26,23 @@
 
 #include "asim/rrr/service_ids.h"
 
-#define METHOD_ID_Invalidate     0
-
 // service instantiation
 FUNCP_MEMORY_SERVER_CLASS FUNCP_MEMORY_SERVER_CLASS::instance;
 
 // constructor
 FUNCP_MEMORY_SERVER_CLASS::FUNCP_MEMORY_SERVER_CLASS() :
-    memory(NULL)
+    memory(NULL),
+    stWordIdx(0)
 {
     SetTraceableName("funcp_memory");
 
     // instantiate stubs
     serverStub = new FUNCP_MEMORY_SERVER_STUB_CLASS(this);
+    clientStub = new FUNCP_MEMORY_CLIENT_STUB_CLASS(this);
 
     char fmt[16];
 
-    sprintf(fmt, "0%dx", sizeof(MEM_ADDRESS) * 2);
+    sprintf(fmt, "0%dx", sizeof(FUNCP_PADDR) * 2);
     fmt_addr = Format("0x", fmt);
 
     sprintf(fmt, "0%dx", sizeof(MEM_VALUE) * 2);
@@ -85,6 +85,7 @@ FUNCP_MEMORY_SERVER_CLASS::Cleanup()
 
     // deallocate stubs
     delete serverStub;
+    delete clientStub;
 }
 
 // poll
@@ -94,173 +95,159 @@ FUNCP_MEMORY_SERVER_CLASS::Poll()
     // do nothing
 }
 
-// request
-UMF_MESSAGE
-FUNCP_MEMORY_SERVER_CLASS::Request(
-    UMF_MESSAGE req)
+
+//
+// Load --
+//     Load one word from memory.
+//
+MEM_VALUE
+FUNCP_MEMORY_SERVER_CLASS::Load(CONTEXT_ID ctxId, FUNCP_PADDR addr)
 {
-    bool need_response;
-    MEM_ADDRESS addr;
-    MEM_VALUE   data;
-    MEM_VALUE   va;
-    MEM_CACHELINE line;
-    MEM_CACHELINE_WORD_VALID_MASK wordValid;
-    CONTEXT_ID ctx_id;
-
-    UMF_MESSAGE resp;
-
     ASSERTX(memory != NULL);
 
-    // decode command
-    switch (req->GetMethodID())
+    MEM_VALUE data;
+    memory->Read(ctxId, addr, sizeof(MEM_VALUE), &data);
+    T1("\tfuncp_memory: LD CTX " << UINT64(ctxId) << " (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] -> " << fmt_data(data));
+
+    return data;
+}
+
+//
+// Store --
+//     Store one word to memory.
+//
+void
+FUNCP_MEMORY_SERVER_CLASS::Store(
+    CONTEXT_ID ctxId,
+    FUNCP_PADDR addr,
+    MEM_VALUE val)
+{
+    ASSERTX(memory != NULL);
+
+    T1("\tfuncp_memory: ST CTX " << UINT64(ctxId) << " (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] <- " << fmt_data(val));
+    memory->Write(ctxId, addr, sizeof(MEM_VALUE), &val);
+}
+
+//
+// LoadLine --
+//     Request one line from memory.  Words from the requested line are sent
+//     as separate messages to the LoadData remote server method.
+//
+void
+FUNCP_MEMORY_SERVER_CLASS::LoadLine(CONTEXT_ID ctxId, FUNCP_PADDR addr)
+{
+    ASSERTX(memory != NULL);
+
+    //
+    // Read line in simulator
+    //
+    MEM_CACHELINE line;
+    memory->Read(ctxId, addr, sizeof(MEM_CACHELINE), &line);
+    if (TRACING(1))
     {
-      case METHOD_ID_Load:
-        addr = MEM_ADDRESS(req->ExtractUINT64());
-        ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
-
-        // free
-        req->Delete();
-
-        memory->Read(ctx_id, addr, sizeof(MEM_VALUE), &data);
-        T1("\tfuncp_memory: LD CTX " << UINT64(ctx_id) << " (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] -> " << fmt_data(data));
-
-        // create response message
-        resp = UMF_MESSAGE_CLASS::New();
-        resp->SetLength(sizeof(MEM_VALUE));
-        resp->SetMethodID(METHOD_ID_Load);
-        resp->AppendUINT(data, sizeof(MEM_VALUE));
-
-        // return response
-        return resp;
-
-        break;
-
-      case METHOD_ID_LoadCacheLine:
-        addr = MEM_ADDRESS(req->ExtractUINT64());
-        ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
-
-        // free
-        req->Delete();
-
-        memory->Read(ctx_id, addr, sizeof(MEM_CACHELINE), &line);
-        if (TRACING(1))
-        {
-            T1("\tfuncp_memory: LDline CTX " << UINT64(ctx_id) << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
-            for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
-                MEM_VALUE v = ((MEM_VALUE *)&line) [i];
-                T1("\t\t" << fmt_data(v));
-            }
+        T1("\tfuncp_memory: LDline CTX " << UINT64(ctxId) << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
+        for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
+            T1("\t\t" << fmt_data(line.w[i]));
         }
-
-        // create response message
-        resp = UMF_MESSAGE_CLASS::New();
-        resp->SetLength(sizeof(MEM_CACHELINE));
-        resp->SetMethodID(METHOD_ID_LoadCacheLine);
-        resp->AppendBytes(sizeof(MEM_CACHELINE), (unsigned char *) &line);
-
-        // return response
-        return resp;
-
-        break;
-
-      case METHOD_ID_Store:
-        // extract data
-        data = MEM_VALUE(req->ExtractUINT(sizeof(MEM_VALUE)));
-        addr = MEM_ADDRESS(req->ExtractUINT64());
-        ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
-
-        T1("\tfuncp_memory: ST CTX " << UINT64(ctx_id) << " (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] <- " << fmt_data(data));
-        memory->Write(ctx_id, addr, sizeof(MEM_VALUE), &data);
-
-        // free
-        req->Delete();
-
-        // no response
-        return NULL;
- 
-        break;
-
-      case METHOD_ID_StoreCacheLine:
-      case METHOD_ID_StoreCacheLine_Sync:
-        need_response = (req->GetMethodID() == METHOD_ID_StoreCacheLine_Sync);
-
-        // extract data
-        req->ExtractBytes(sizeof(MEM_CACHELINE), (unsigned char *) &line);
-        addr = MEM_ADDRESS(req->ExtractUINT64());
-        wordValid = MEM_CACHELINE_WORD_VALID_MASK(req->ExtractUINT8());
-        ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
-
-        if (TRACING(1))
-        {
-            MEM_CACHELINE_WORD_VALID_MASK mask_pos = 1;
-
-            T1("\tfuncp_memory: STline CTX " << UINT64(ctx_id) << (need_response ? " SYNC" : "") << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
-            for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
-                MEM_VALUE v = ((MEM_VALUE *)&line) [i];
-                if ((wordValid & mask_pos) != 0)
-                {
-                    T1("\t\t" << fmt_data(v));
-                }
-                else
-                {
-                    T1("\t\tXXXXXXXX");
-                }
-
-                mask_pos <<= 1;
-            }
-        }
-
-        if (wordValid == ((1 << sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE)) - 1))
-        {
-            // Entire line is valid.  Write in a single chunk.
-            memory->Write(ctx_id, addr, sizeof(MEM_CACHELINE), &line);
-        }
-        else
-        {
-            // Write only the valid words in the line.  Assumes little endian
-            // addressing.
-            MEM_CACHELINE_WORD_VALID_MASK mask_pos = 1;
-            MEM_ADDRESS w_addr = addr;
-            for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
-                MEM_VALUE v = ((MEM_VALUE *)&line) [i];
-                if ((wordValid & mask_pos) != 0)
-                {
-                    memory->Write(ctx_id, w_addr, sizeof(MEM_VALUE), &v);
-                }
-                w_addr += sizeof(MEM_VALUE);
-                mask_pos <<= 1;
-            }
-        }
-
-        // free
-        req->Delete();
-
-        if (! need_response)
-        {
-            // no response
-            return NULL;
-        }
-        else
-        {
-            // create response message
-            resp = UMF_MESSAGE_CLASS::New();
-            resp->SetLength(4);
-            resp->SetMethodID(METHOD_ID_StoreCacheLine_Sync);
-            resp->AppendUINT32(0);
-
-            // return response
-            return resp;
-        }
- 
-        break;
-
-      default:
-        ASIMWARNING("Invalid command\n");
-        parent->CallbackExit(1);
-        break;
     }
 
-    return NULL;
+    //
+    // Send each word in the line to the FPGA
+    //
+    for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++)
+    {
+        clientStub->LoadData(line.w[i]);
+    }
+}
+
+//
+// StoreLine --
+//     Control message for a store line request.  Data will follow on the
+//     StoreData method.
+//
+void
+FUNCP_MEMORY_SERVER_CLASS::StoreLine(
+    CONTEXT_ID ctxId,
+    UINT8 wordValid,
+    UINT8 sendAck,
+    FUNCP_PADDR addr)
+{
+    ASSERTX(memory != NULL);
+    // Hardware MUST send all store data before requesting a new store line
+    ASSERT(stWordIdx == 0, "New store line request before last line's data complete");
+
+    stWordIdx = 1;
+    stCtxId = ctxId;
+    stWordValid = wordValid;
+    stSendAck = sendAck;
+    stAddr = addr;
+}
+
+//
+// StoreData --
+//     Data associated with a StoreLine request.  Data arrives one word at a
+//     time and is written to memory once the entire line arrives.
+//
+void
+FUNCP_MEMORY_SERVER_CLASS::StoreData(MEM_VALUE val)
+{
+    ASSERTX(stWordIdx <= (sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE)));
+
+    stData.w[stWordIdx - 1] = val;
+    if (stWordIdx != (sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE)))
+    {
+        // Not done with line
+        stWordIdx += 1;
+        return;
+    }
+
+    // Done with line.  Write it to memory.
+    stWordIdx = 0;
+
+    if (TRACING(1))
+    {
+        MEM_CACHELINE_WORD_VALID_MASK mask_pos = 1;
+
+        T1("\tfuncp_memory: STline CTX " << UINT64(stCtxId) << (stSendAck ? " SYNC" : "") << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(stAddr) << "] -> line:");
+        for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
+            if ((stWordValid & mask_pos) != 0)
+            {
+                T1("\t\t" << fmt_data(stData.w[i]));
+            }
+            else
+            {
+                T1("\t\tXXXXXXXX");
+            }
+
+            mask_pos <<= 1;
+        }
+    }
+
+    if (stWordValid == ((1 << sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE)) - 1))
+    {
+        // Entire line is valid.  Write in a single chunk.
+        memory->Write(stCtxId, stAddr, sizeof(MEM_CACHELINE), &stData);
+    }
+    else
+    {
+        // Write only the valid words in the line.  Assumes little endian
+        // addressing.
+        MEM_CACHELINE_WORD_VALID_MASK mask_pos = 1;
+        FUNCP_PADDR w_addr = stAddr;
+        for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
+            if ((stWordValid & mask_pos) != 0)
+            {
+                memory->Write(stCtxId, w_addr, sizeof(MEM_VALUE), &stData.w[i]);
+            }
+            w_addr += sizeof(MEM_VALUE);
+            mask_pos <<= 1;
+        }
+    }
+
+    if (stSendAck)
+    {
+        clientStub->StoreACK(1);
+    }
 }
 
 
@@ -273,67 +260,48 @@ FUNCP_MEMORY_SERVER_CLASS::Request(
 //***********************************************************************
 
 void
-FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryRead(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_ADDRESS size)
+FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryRead(CONTEXT_ID ctxId, FUNCP_PADDR addr, FUNCP_PADDR size)
 {
     instance.SystemMemoryRef(ctxId, addr, size, false);
 }
 
 void
-FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryWrite(CONTEXT_ID ctxId, MEM_ADDRESS addr, MEM_ADDRESS size)
+FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryWrite(CONTEXT_ID ctxId, FUNCP_PADDR addr, FUNCP_PADDR size)
 {
 //    NoteSystemMemoryWriteUnknownAddr();
     instance.SystemMemoryRef(ctxId, addr, size, true);
 }
 
 void
-FUNCP_MEMORY_SERVER_CLASS::SystemMemoryRef(CONTEXT_ID ctxId, MEM_ADDRESS addr, UINT64 size, bool isWrite)
+FUNCP_MEMORY_SERVER_CLASS::SystemMemoryRef(CONTEXT_ID ctxId, FUNCP_PADDR addr, UINT64 size, bool isWrite)
 {
     T1("\tfuncp_memory: Note system memory " << (isWrite ? "WRITE" : "READ") << " (Addr=" << fmt_addr(addr) << " bytes=" << fmt_addr(size) << ")");
 
-    MEM_ADDRESS endAddr = addr + size + sizeof(MEM_CACHELINE) - 1;
+    FUNCP_PADDR endAddr = addr + size + sizeof(MEM_CACHELINE) - 1;
 
     // Cache-line align the start and end address
-    addr &= ~ MEM_ADDRESS(sizeof(MEM_CACHELINE) - 1);
-    endAddr &= ~ MEM_ADDRESS(sizeof(MEM_CACHELINE) - 1);
+    addr &= ~ FUNCP_PADDR(sizeof(MEM_CACHELINE) - 1);
+    endAddr &= ~ FUNCP_PADDR(sizeof(MEM_CACHELINE) - 1);
 
     UINT64 nLines = (endAddr - addr) / sizeof(MEM_CACHELINE);
 
-    //
-    // Number of lines per message is stored in 8 bits in FPGA messages.
-    // Generated messages to cover the range.
-    //
     while (nLines > 0)
     {
-        UINT8 tLines = (nLines < 0xff) ? nLines : 0xff;
-
         if (isWrite)
         {
             // Flush pending stores & invalidate in preparation for writes.
-            T1("\tfuncp_memory: INVAL Addr=" << fmt_addr(addr) << " nLines=" << UINT32(tLines));
+            T1("\tfuncp_memory: INVAL Addr=" << fmt_addr(addr));
         }
         else
         {
             // Just flush pending stores for reads.  No need to invalidate.
-            T1("\tfuncp_memory: FLUSH Addr=" << fmt_addr(addr) << " nLines=" << UINT32(tLines));
+            T1("\tfuncp_memory: FLUSH Addr=" << fmt_addr(addr));
         }
 
-        // create message for RRR client
-        UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
-        msg->SetLength(10 + sizeof(CONTEXT_ID_RRR));
-        msg->SetServiceID(FUNCP_MEMORY_SERVICE_ID);
-        msg->SetMethodID(METHOD_ID_Invalidate);
-        msg->AppendUINT8(isWrite ? 0 : 0xff);
-        msg->AppendUINT8(tLines);
-        msg->AppendUINT64(addr);
-        msg->AppendCONTEXT_ID_RRR(ctxId);
+        clientStub->Invalidate(ctxId, addr, isWrite ? 0 : 0xff);
 
-        UMF_MESSAGE resp = RRRClient->MakeRequest(msg);
-
-        // Response indicates flush is done
-        resp->Delete();
-
-        addr += MEM_ADDRESS(tLines) * sizeof(MEM_CACHELINE);
-        nLines -= tLines;
+        addr += sizeof(MEM_CACHELINE);
+        nLines -= 1;
     }
 }
 

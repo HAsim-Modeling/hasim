@@ -15,9 +15,6 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
-// Tokens are the main way for HAsim to track data across simulator      
-// partitions. The token type includes an index for token tables, epochs,
-// and scratchpads which partitions can use as they see fit.             
 
 import Vector::*;
 
@@ -31,6 +28,7 @@ import Vector::*;
 `include "asim/provides/scratchpad_memory.bsh"
 `include "asim/provides/central_cache.bsh"
 `include "asim/provides/streams.bsh"
+`include "asim/provides/clocks_device.bsh"
 
 `include "asim/rrr/server_connections.bsh"
 `include "asim/rrr/client_connections.bsh"
@@ -51,18 +49,57 @@ typedef struct
 ButtonInfo
     deriving (Eq, Bits);
 
+//
+// PLATFORM_INTERFACE: the interface itself is a replica of the LLPI interface
+//
 
-module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelReset)
+interface PLATFORM_INTERFACE;
+    
+    interface PHYSICAL_DRIVERS physicalDrivers;
+    interface TOP_LEVEL_WIRES  topLevelWires;
+        
+endinterface
+
+//
+// mkPlatformInterface: For code cleanliness, we split this module into a raw
+//                      raw "un-clocked" module and a real clocked module
+//
+
+module [HASIM_MODULE] mkPlatformInterface
     // interface
-        (TOP_LEVEL_WIRES);
+        (PLATFORM_INTERFACE);
+
+    // Platform Interface is instantiated inside a NULL clock domain, so
+    // the first thing we should do is instantiate the LLPI and obtain
+    // a clock and reset from it.
+
+    // instantiate low-level platform interface
+    LowLevelPlatformInterface llpint <- mkLowLevelPlatformInterface();
+
+    Clock clk = llpint.physicalDrivers.clocksDriver.clock;
+    Reset rst = llpint.physicalDrivers.clocksDriver.reset;
+    
+    // instantiate the real platform interface using our new clock and reset
+    let pi <- mkClockedPlatformInterface(llpint, clocked_by clk, reset_by rst);
+    
+    // export LLPI's drivers and wires to the top level
+    interface physicalDrivers = llpint.physicalDrivers;
+    interface topLevelWires   = llpint.topLevelWires;
+    
+endmodule
+
+//
+// mkClockedPlatformInterface: The real clocked platform interface
+//
+
+module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpint)
+    // interface
+        ();
 
     // instantiate connections
     Connection_Receive#(FRONTP_MASKED_LEDS) link_leds <- mkConnection_Receive("fpga_leds");
     Connection_Send#(FRONTP_SWITCHES) link_switches   <- mkConnection_Send("fpga_switches");
     Connection_Send#(ButtonInfo)      link_buttons    <- mkConnection_Send("fpga_buttons");
-
-    // soft reset
-    Connection_Send#(Bool) link_reset <- mkConnection_Send("soft_reset");
 
     // ***** Dynamic parameters *****
     PARAMETER_NODE paramNode <- mkDynamicParameterNode();
@@ -75,9 +112,6 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
 
     // other virtual devices
     Connection_Receive#(STREAMS_REQUEST) link_streams <- mkConnection_Receive("vdev_streams");
-
-    // instantiate low-level platform interface
-    LowLevelPlatformInterface llpint <- mkLowLevelPlatformInterface(topLevelClock, topLevelReset);
 
     // instantiate virtual devices
     FrontPanel frontPanel <- mkFrontPanel(llpint);
@@ -131,12 +165,6 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
         link_buttons.send(bi);
     endrule
     
-    rule send_reset (True);
-        // accept soft reset request and send it out to whoever cares
-        llpint.physicalDrivers.soft_reset();
-        link_reset.send(?);
-    endrule
-
     rule send_streams_req (True);
 
         // read in streams request and send it to device
@@ -344,7 +372,4 @@ module [HASIM_MODULE] mkPlatformInterface#(Clock topLevelClock, Reset topLevelRe
         end
     end
     
-    // return interface to top-level wires
-    return llpint.topLevelWires;
-
 endmodule

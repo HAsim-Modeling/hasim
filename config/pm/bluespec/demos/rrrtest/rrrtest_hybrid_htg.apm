@@ -23,12 +23,11 @@ Packagehint=hasim
 [Pure Bluespec Hybrid Model Foundation/Requires]
 bluespec_system=Bluespec RRR Test and Benchmarking Program
 fpgaenv=FPGA Environment
-hasim_controller=Hybrid Basic Controller
+hasim_controller=Hybrid Pure Bluespec Controller
 bluespec_common=Bluespec Null Library
 
 [Pure Bluespec Hybrid Model Foundation/Params]
 MAKE_ALL_TARGET=bit
-
 
 [Bluespec RRR Test and Benchmarking Program]
 File=modules/bluespec/system/demos/rrrtest/rrrtest.awb
@@ -38,6 +37,6 @@ Packagehint=hasim
 File=modules/bluespec/common/null/bluespec_null.awb
 Packagehint=hasim
 
-[Hybrid Basic Controller]
-File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
+[Hybrid Pure Bluespec Controller]
+File=config/pm/hasim/submodels/controller/hybrid_pure_bluespec_controller.apm
 Packagehint=hasim

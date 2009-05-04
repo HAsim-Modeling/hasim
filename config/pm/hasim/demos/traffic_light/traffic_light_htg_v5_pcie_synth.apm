@@ -27,7 +27,6 @@ Packagehint=hasim
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
 Packagehint=platforms
 
-
 [HAsim Hybrid Model Foundation/Requires]
 hasim_common=Hasim Common Library
 hasim_system=Hasim - Traffic light system
@@ -41,7 +40,6 @@ MAKE_ALL_TARGET=bit
 File=modules/model/hasim_model.awb
 Packagehint=hasim
 
-
 [Hasim Common Library]
 File=config/pm/hasim/submodels/common/hasim_common.apm
 Packagehint=hasim
@@ -49,3 +47,8 @@ Packagehint=hasim
 [Hybrid Basic Controller]
 File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
 Packagehint=hasim
+
+[Hasim Common Library/Params]
+TERM_FPGA_SWITCHES=0
+TERM_FPGA_BUTTONS=0
+TERM_FPGA_LEDS=0

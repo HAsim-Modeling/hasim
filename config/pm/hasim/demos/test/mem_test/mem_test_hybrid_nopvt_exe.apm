@@ -40,3 +40,6 @@ Packagehint=hasim
 
 [HAsim Scratchpad Memory Test System/Params]
 MEM_TEST_PRIVATE_CACHES=0
+
+[Hasim Common Library/Params]
+TERM_VDEV_STREAMS=0

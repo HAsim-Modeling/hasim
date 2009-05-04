@@ -3,41 +3,22 @@ import Clocks::*;
 `include "bluespec_system.bsh"
 `include "fpgaenv.bsh"
 `include "low_level_platform_interface.bsh"
+`include "clocks_device.bsh"
 
 module mkModel(TOP_LEVEL_WIRES);
 
-    // expose current clock and reset
-    Clock clock      <- exposeCurrentClock();
-    Reset hard_reset <- exposeCurrentReset();
-    
-    // top-level clock and reset need to be passed down to the platform
-    Clock topLevelClock = clock;
-    Reset topLevelReset = hard_reset;
-
-    // 0 is number of stages
-    // False = do not start in reset
-    MakeResetIfc soft_reset_wrapper <- mkReset(0, False, clock);
-
-    // use mkResetEither as the output
-    Reset new_reset <- mkResetEither(hard_reset, soft_reset_wrapper.new_rst);
-
-    // instantiate LLPI and system with new reset
+    // The Model is instantiated inside a NULL (noClock) clock domain,
+    // so first instantiate the LLPI and get a clock and reset from it.
 
     // name must be pi_llpint --- explain!!!
-    let pi_llpint <- mkLowLevelPlatformInterface(topLevelClock, topLevelReset, reset_by new_reset);
-    let system    <- mkSystem(pi_llpint, reset_by new_reset);
+    let pi_llpint <- mkLowLevelPlatformInterface();
 
-    // create a rule to assert our generated reset
-    rule assert_reset (True);
-        
-        // accept a reset request
-        pi_llpint.physicalDrivers.soft_reset();        
-        
-        // blow up the entire model
-        soft_reset_wrapper.assertReset();
-        
-    endrule
-
+    Clock clk = pi_llpint.physicalDrivers.clocksDriver.clock;
+    Reset rst = pi_llpint.physicalDrivers.clocksDriver.reset;
+    
+    // instantiate system with new clock and reset
+    let system <- mkSystem(pi_llpint, clocked_by clk, reset_by rst);
+    
     // return top level wires interface
     return pi_llpint.topLevelWires;
 

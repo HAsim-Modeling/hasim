@@ -23,11 +23,9 @@ hasim_traffic_light_function=Hasim - Traffic light function w. synthesis boundar
 File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function_synth.awb
 Packagehint=hasim
 
-
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-xup.apm
 Packagehint=platforms
-
 
 [Hardware-Only Null Controller]
 File=config/pm/hasim/submodels/controller/hardware_null_controller.apm
@@ -41,11 +39,17 @@ Packagehint=hasim
 MAKE_ALL_TARGET=bit
 
 [HAsim Hardware-Only Model Foundation/Requires]
-hasim_common=New Hasim Common Library
+hasim_common=Hasim Common Library
 hasim_system=Hasim - Traffic light system
 hasim_controller=Hardware-Only Null Controller
 fpgaenv=FPGA Environment
 
-[New Hasim Common Library]
+
+[Hasim Common Library]
 File=config/pm/hasim/submodels/common/hasim_common.apm
 Packagehint=hasim
+
+[Hasim Common Library/Params]
+TERM_FPGA_SWITCHES=0
+TERM_FPGA_BUTTONS=0
+TERM_FPGA_LEDS=0

@@ -22,7 +22,6 @@ hasim_system=Hasim - Interconnect Test System
 hasim_controller=Hybrid Basic Controller
 fpgaenv=FPGA Environment
 
-
 [HAsim Hybrid Model Foundation]
 File=modules/model/hasim_model.awb
 Packagehint=hasim
@@ -45,3 +44,6 @@ physical_interconnect=Shared Tree Physical Interconnect
 [Hybrid Basic Controller]
 File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
 Packagehint=hasim
+
+[Hasim Common Library/Params]
+TERM_VDEV_STREAMS=0

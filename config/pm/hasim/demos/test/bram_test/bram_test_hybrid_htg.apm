@@ -22,7 +22,6 @@ hasim_system=Hasim - BRAM Test System
 hasim_controller=Hybrid Basic Controller
 fpgaenv=FPGA Environment
 
-
 [HAsim Hybrid Model Foundation/Params]
 MAKE_ALL_TARGET=bit
 
@@ -41,3 +40,6 @@ Packagehint=hasim
 [Hybrid Basic Controller]
 File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
 Packagehint=hasim
+
+[Hasim Common Library/Params]
+TERM_VDEV_STREAMS=0

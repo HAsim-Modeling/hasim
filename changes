@@ -18480,3 +18480,98 @@ Directory modules/bluespec/common/base
   generated methods instead of the low level interface.  Needed to put in
   some temporary #define hacks for the marshalling functions, mapping them to
   integers.
+
+----------
+aparasha    Date: Mon May  4 15:37:21 EDT 2009  CSN: CSN-hasim-631
+                  Mon May  4 19:37:21 UTC 2009
+
+
+Directory .
+ configure                 Locally Modified          630 
+ Makefile.in               Locally Modified          630 
+
+Directory libperl
+ Makefile.in               Locally Modified          630 
+
+Directory tools/hasim
+ Makefile.in               Locally Modified          630 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.in               Locally Modified          630 
+
+Directory tools
+ Makefile.in               Locally Modified          630 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          630 
+ Makefile.in               Locally Modified          630 
+
+Directory config/pm/hasim/demos/test/alu_test
+ alu_test_hybrid_htg.apm   Locally Modified          630 
+ alu_test_hybrid_exe.apm   Locally Modified          630 
+
+Directory config/pm/hasim/demos/test/bram_test
+ bram_test_hybrid_htg.apm  Locally Modified          630 
+ bram_test_hybrid_exe.apm  Locally Modified          630 
+
+Directory config/pm/hasim/demos/test/interconnect_test
+ interconnect_test_hybrid_exe.apm Locally Modified          630 
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid_nopvt_exe.apm Locally Modified          630 
+ mem_test_hybrid_nopvt_htg.apm Locally Modified          630 
+ mem_test_hybrid_exe.apm   Locally Modified          630 
+ mem_test_hybrid_htg.apm   Locally Modified          630 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          630 
+ traffic_light_htg_v5_pcie_synth.apm Locally Modified          630 
+ traffic_light_xup_synth.apm Locally Modified          630 
+ traffic_light_exe_nosynth.apm Locally Modified          630 
+ traffic_light_exe_synth.apm Locally Modified          630 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          630 
+
+Directory config/pm/hasim/demos/switch_to_led
+ multiplier4x4_exe.apm     Locally Modified          630 
+ echo4x4_xup.apm           Locally Modified          630 
+ adder4x4_xup.apm          Locally Modified          630 
+ square4x4_xup.apm         Locally Modified          630 
+ echo4x4_exe.apm           Locally Modified          630 
+ adder4x4_exe.apm          Locally Modified          630 
+ echo4x4_htg.apm           Locally Modified          630 
+ square4x4_exe.apm         Locally Modified          630 
+ multiplier4x4_xup.apm     Locally Modified          630 
+
+Directory config/pm/bluespec/demos/fir_filter
+ fir_filter_hw_exe.apm     Locally Modified          630 
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_exe.apm    Locally Modified          630 
+ rrrtest_hybrid_htg.apm    Locally Modified          630 
+
+Directory config/pm/bluespec/demos/simple
+ switch2led.apm            Locally Modified          630 
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hybrid_exe.apm    Locally Modified          630 
+ devtest_hybrid_htg.apm    Locally Modified          630 
+
+Directory modules/model
+ pure_bluespec_model.bsv   Locally Modified          630 
+ hasim_model.bsv           Locally Modified          630 
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.bsv    Locally Modified          630 
+
+- Added support for new Clocking/Reset methodology (see hasim commit).
+
+- Fixed incorrect Connection Terminus parameters for all models. Please be
+  careful with these parameters for future models. If set incorrectly,
+  the model would build without errors but would deadlock or execute
+  incorrectly at runtime. For better or for worse, the new clocking
+  structure seems to be more prone to failure if these parameters are set
+  incorrectly.
+
+- Fixed Controller selection for several Pure Bluespec models.

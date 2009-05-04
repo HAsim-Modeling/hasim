@@ -40,3 +40,6 @@ Packagehint=hasim
 [Hybrid Basic Controller]
 File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
 Packagehint=hasim
+
+[Hasim Common Library/Params]
+TERM_VDEV_STREAMS=0

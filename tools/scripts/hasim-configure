@@ -1461,7 +1461,8 @@ sub generate_wrapper {
         print WRAPPER "import physical_platform::*;\n";
         print WRAPPER "\n";
         print WRAPPER "(* synthesize *)\n";
-	print WRAPPER "module ${module_name} (TOP_LEVEL_WIRES);\n";    
+        print WRAPPER "(* no_default_clock, no_default_reset *)\n";
+        print WRAPPER "module ${module_name} (TOP_LEVEL_WIRES);\n";    
     } else {
         print WRAPPER "`ifndef CONNECTION_SIZES_KNOWN\n";
         print WRAPPER "// First pass to see how large the vectors should be\n";

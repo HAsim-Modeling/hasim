@@ -20,7 +20,6 @@ File=modules/system/mulitplier_system/multiplier_system.awb
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
 
-
 [HAsim Hardware-Only Model Foundation/Requires]
 hasim_common=Hasim Common Library
 hasim_system=Hasim - Multiplier system
@@ -31,7 +30,6 @@ fpgaenv=FPGA Environment
 File=modules/model/hasim_hwonly_model.awb
 Packagehint=hasim
 
-
 [Hasim Common Library]
 File=config/pm/hasim/submodels/common/hasim_common.apm
 Packagehint=hasim
@@ -39,3 +37,8 @@ Packagehint=hasim
 [Hybrid Basic Controller]
 File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
 Packagehint=hasim
+
+[Hasim Common Library/Params]
+TERM_FPGA_SWITCHES=0
+TERM_FPGA_BUTTONS=0
+TERM_FPGA_LEDS=0

@@ -28,6 +28,9 @@ import FIFO::*;
 `include "asim/rrr/remote_server_stub_FUNCP_MEMORY.bsh"
 
 `include "asim/dict/VDEV_CACHE.bsh"
+`include "asim/dict/PARAMS_FUNCP_MEMORY.bsh"
+`include "asim/dict/STATS_FUNCP_MEMORY.bsh"
+
 
 // Can't include hasim_isa.bsh here or it causes a loop
 typedef MEM_VALUE ISA_ADDRESS;
@@ -111,16 +114,31 @@ module [HASIM_MODULE] mkFUNCP_Memory
     // Connection between the central cache and remote functional memory
     FUNCP_MEM_HOST_IFC remoteFuncpMem <- mkRemoteFuncpMem(debugLog);
 
-    // Local functional memory cache
-    CENTRAL_CACHE_CLIENT#(FUNCP_MEM_WORD_PADDR, MEM_VALUE, FUNCP_CACHE_REF_INFO) cache <-
-        mkCentralCacheClient(`VDEV_CACHE_FUNCP_MEM, remoteFuncpMem.cacheBacking);
+    // Private cache statistics
+    RL_CACHE_STATS stats <- mkFuncpMemPvtCacheStats();
 
+    // Local functional memory cache
+    CENTRAL_CACHE_CLIENT#(FUNCP_MEM_WORD_PADDR, MEM_VALUE, FUNCP_CACHE_REF_INFO, `FUNCP_PVT_CACHE_ENTRIES) cache <-
+        mkCentralCacheClient(`VDEV_CACHE_FUNCP_MEMORY, remoteFuncpMem.cacheBacking, stats);
+
+    // Dynamic parameters
+    PARAMETER_NODE paramNode <- mkDynamicParameterNode();
+    Param#(2) cacheMode <- mkDynamicParameter(`PARAMS_FUNCP_MEMORY_FUNCP_MEM_PVT_CACHE_MODE, paramNode);
+
+    //
+    // Initialization
+    //
+    Reg#(Bool) initialized <- mkReg(False);
+    rule doInit (! initialized);
+        cache.setCacheMode(unpack(cacheMode));
+        initialized <= True;
+    endrule
 
     //
     // handleMemReq --
     //     Service memory requests from the model.
     //
-    rule handleMemReq (True);
+    rule handleMemReq (initialized);
         let req = linkMemory.getReq();
         linkMemory.deq();
         
@@ -131,6 +149,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
                                                       memRefToken: ldinfo.memRefToken };
                 let w_addr = wordAddrFromByteAddr(ldinfo.addr);
                 cache.readReq(w_addr, ref_info);
+
                 debugLog.record($format("cache readReq: ctx=%0d, addr=0x%x, w_addr=0x%x", ldinfo.contextId, ldinfo.addr, w_addr));
             end
             
@@ -159,25 +178,52 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
 
     //
-    // Pass invalidate and flush requests from the software side to local FPGA
-    // caches.
+    // getInvalidateReq --
+    //     Process incoming invalidation requests from the host and send
+    //     then on to processInvalidateReq.
     //
-    rule getInvalidateReq (True);
+    FIFO#(Tuple3#(CONTEXT_ID, FUNCP_MEM_WORD_PADDR, Bool)) invalQ <- mkFIFO();
+
+    rule getInvalidateReq (initialized);
         let r <- remoteFuncpMem.inval.getReq();
         match {.ctx_id, .addr, .only_flush} = r;
 
-        let ref_info = FUNCP_CACHE_REF_INFO { contextId: ctx_id, memRefToken: ? };
         let w_addr = wordAddrFromByteAddr(addr);
         
+        invalQ.enq(tuple3(ctx_id, w_addr, only_flush));
+        debugLog.record($format("cache flush/inval req: ctx=%0d, addr=0x%x, w_addr=0x%x", ctx_id, addr, w_addr));
+    endrule
+
+    //
+    // processInvalidateReq --
+    //     Invalidate all words in a line.
+    //
+    Reg#(Bit#(TLog#(FUNCP_MEM_CACHELINE_WORDS))) invalWordIdx <- mkReg(0);
+
+    (* descending_urgency = "processInvalidateReq, handleMemReq" *)
+    rule processInvalidateReq (True);
+        match {.ctx_id, .addr, .only_flush} = invalQ.first();
+
+        Bool lastWordInLine = (invalWordIdx == maxBound);
+        if (lastWordInLine)
+            invalQ.deq();
+
+        // Invalidate the next word in the line.  The software side guarantees
+        // the address is line-aligned, so the OR operation works.
+        FUNCP_MEM_WORD_PADDR w_addr = addr | zeroExtend(invalWordIdx);
+        invalWordIdx <= invalWordIdx + 1;
+
+        let ref_info = FUNCP_CACHE_REF_INFO { contextId: ctx_id, memRefToken: ? };
+
         if (only_flush)
         begin
-            cache.flushReq(w_addr, True, ref_info);
-            debugLog.record($format("cache flush: ctx=%0d, addr=0x%x, w_addr=0x%x", ctx_id, addr, w_addr));
+            cache.flushReq(w_addr, lastWordInLine, ref_info);
+            debugLog.record($format("cache flush: ctx=%0d, w_addr=0x%x", ctx_id, w_addr));
         end
         else
         begin
-            cache.invalReq(w_addr, True, ref_info);
-            debugLog.record($format("cache inval: ctx=%0d, addr=0x%x, w_addr=0x%x", ctx_id, addr, w_addr));
+            cache.invalReq(w_addr, lastWordInLine, ref_info);
+            debugLog.record($format("cache inval: ctx=%0d, w_addr=0x%x", ctx_id, w_addr));
         end
     endrule
 
@@ -288,4 +334,42 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
             serverStub.sendResponse_Invalidate(?);
         endmethod
     endinterface
+endmodule
+
+
+//
+// mkFuncpMemPvtCacheStats --
+//     Statistics callbacks from private cache in front of the central cache.
+//
+module [HASIM_MODULE] mkFuncpMemPvtCacheStats
+    // interface:
+    (RL_CACHE_STATS);
+    
+
+    Stat statLoadHit <- mkStatCounter(`STATS_FUNCP_MEMORY_PVT_CACHE_LOAD_HIT);
+    Stat statLoadMiss <- mkStatCounter(`STATS_FUNCP_MEMORY_PVT_CACHE_LOAD_MISS);
+
+    method Action readHit();
+        statLoadHit.incr();
+    endmethod
+
+    method Action readMiss();
+        statLoadMiss.incr();
+    endmethod
+
+    method Action writeHit();
+    endmethod
+
+    method Action writeMiss();
+    endmethod
+
+    method Action invalEntry();
+    endmethod
+
+    method Action dirtyEntryFlush();
+    endmethod
+
+    method Action forceInvalLine();
+    endmethod
+
 endmodule

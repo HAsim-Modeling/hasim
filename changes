@@ -18575,3 +18575,28 @@ Directory modules/hasim/util/platform-interface
   incorrectly.
 
 - Fixed Controller selection for several Pure Bluespec models.
+
+----------
+mcadler     Date: Tue May  5 10:23:07 EDT 2009  CSN: CSN-hasim-632
+                  Tue May  5 14:23:07 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.cpp         Locally Modified          631 
+ funcp-tlb-std.bsv         Locally Modified          631 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          631 
+ hybrid-funcp-memory.awb   Locally Modified          631 
+ hybrid-funcp-memory.bsv   Locally Modified          631 
+ hybrid-funcp-memory.dic   Locally Modified          631 
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.dic    Locally Modified          631 
+ platform-central-cache.bsv Locally Modified          631 
+ platform-interface.bsv    Locally Modified          631 
+ platform-scratchpad-memory.bsv Locally Modified          631 
+
+- Add the option of allocating a private direct mapped cache in front of a
+  central cache connection.
+- Add statistics to the central cache.

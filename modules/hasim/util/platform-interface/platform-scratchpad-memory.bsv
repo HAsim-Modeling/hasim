@@ -503,12 +503,14 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
                              SCRATCHPAD_MEM_VALUE,
                              t_REF_INFO) sourceData <- mkScratchpadCacheSourceData(scratchpadID);
 
+    // Dummy statistics buckets
+    RL_CACHE_STATS stats <- mkNullRLCacheStats();
+
     // Private cache
     RL_DM_CACHE#(Bit#(t_MEM_ADDRESS_SZ),
                  SCRATCHPAD_MEM_VALUE,
                  t_REF_INFO,
-                 0,
-                 `SCRATCHPAD_PVT_CACHE_ENTRIES) cache <- mkCacheDirectMapped(sourceData, debugLog);
+                 `SCRATCHPAD_PVT_CACHE_ENTRIES) cache <- mkCacheDirectMapped(sourceData, stats, debugLog);
 
     // Merge FIFOF combines read and write requests in temporal order,
     // with reads from the same cycle as a write going first.  Each read port
@@ -645,8 +647,6 @@ module [HASIM_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
 
     Reg#(Bool) initialized <- mkReg(False);
 
-    FIFO#(Bool) writeSyncQ <- mkFIFO();
-
     //
     // Allocate memory for this scratchpad region
     //
@@ -683,23 +683,6 @@ module [HASIM_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
         let req = SCRATCHPAD_WRITE_REQ { addr: zeroExtend(pack(addr)),
                                          val: val };
         link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE req);
-    endmethod
-
-    // Synchronous write.  writeSyncWait() blocks until the response arrives.
-    method Action writeSyncReq(t_CACHE_ADDR addr,
-                               SCRATCHPAD_MEM_VALUE val,
-                               t_CACHE_REF_INFO refInfo) if (initialized);
-        let req = SCRATCHPAD_WRITE_REQ { addr: zeroExtend(pack(addr)),
-                                         val: val };
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE req);
-
-        // Waiting for a flush doesn't mean anything for scratchpad memory.
-        // Just feed the ack right back.
-        writeSyncQ.enq(?);
-    endmethod
-
-    method Action writeSyncWait();
-        writeSyncQ.deq();
     endmethod
 
     //

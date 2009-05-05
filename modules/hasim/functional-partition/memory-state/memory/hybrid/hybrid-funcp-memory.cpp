@@ -19,6 +19,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "asim/syntax.h"
+#include "asim/mesg.h"
+#include "asim/trace.h"
+
 #include "asim/provides/model.h"
 #include "asim/provides/funcp_memory.h"
 #include "asim/provides/funcp_simulated_memory.h"

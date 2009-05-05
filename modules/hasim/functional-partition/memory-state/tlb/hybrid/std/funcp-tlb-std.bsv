@@ -408,7 +408,7 @@ endmodule
 //
 module [HASIM_MODULE] mkTLBCacheStats
     // interface:
-        (RL_SA_CACHE_STATS);
+    (RL_CACHE_STATS);
     
     // ***** Statistics *****
 
@@ -427,10 +427,10 @@ module [HASIM_MODULE] mkTLBCacheStats
     method Action writeMiss();
     endmethod
 
-    method Action invalLine();
+    method Action invalEntry();
     endmethod
 
-    method Action dirtyLineFlush();
+    method Action dirtyEntryFlush();
     endmethod
 
     method Action forceInvalLine();
@@ -481,7 +481,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     FUNCP_TLB#(4) dtlb <- mkFUNCP_TLB(FUNCP_DTLB, dtlb_vtop_req, dtlb_vtop_resp, debugLog);
 
     FUNCP_TLB_CACHE_INTERFACE vtopIfc <- mkVtoPInterface();
-    RL_SA_CACHE_STATS statIfc <- mkTLBCacheStats();
+    RL_CACHE_STATS statIfc <- mkTLBCacheStats();
 
     // Reorder buffer for cache responses.  Cache doesn't guarantee ordered return.
     SCOREBOARD_FIFOF#(FUNCP_L2TLB_REFS, FUNCP_L2TLB_ENTRY) cacheRespQ <- mkScoreboardFIFOF();

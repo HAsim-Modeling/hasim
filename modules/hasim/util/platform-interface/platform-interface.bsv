@@ -101,6 +101,8 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
     Connection_Send#(FRONTP_SWITCHES) link_switches   <- mkConnection_Send("fpga_switches");
     Connection_Send#(ButtonInfo)      link_buttons    <- mkConnection_Send("fpga_buttons");
 
+    DEBUG_FILE debugLog <- mkDebugFile("platform_interface.out");
+
     // ***** Dynamic parameters *****
     PARAMETER_NODE paramNode <- mkDynamicParameterNode();
 
@@ -115,8 +117,9 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
 
     // instantiate virtual devices
     FrontPanel frontPanel <- mkFrontPanel(llpint);
-    CENTRAL_CACHE_IFC central_cache <- mkCentralCache(llpint);
-    SCRATCHPAD_MEMORY_IFC memory <- mkMemoryVirtualDevice(llpint, central_cache);
+    RL_CACHE_STATS centralCacheStats <- mkCentralCacheStats();
+    CENTRAL_CACHE_IFC centralCache <- mkCentralCache(llpint, centralCacheStats);
+    SCRATCHPAD_MEMORY_IFC memory <- mkMemoryVirtualDevice(llpint, centralCache);
     Streams streams <- mkStreams(llpint);
 
     // connection terminus
@@ -129,7 +132,7 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
     // Initialization
     Reg#(Bool) initialized <- mkReg(False);
     rule doInit (! initialized);
-        central_cache.init(unpack(centralCacheMode));
+        centralCache.init(unpack(centralCacheMode));
         initialized <= True;
     endrule
 
@@ -254,6 +257,10 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
     Vector#(CENTRAL_CACHE_N_CLIENTS, Connection_Server#(CENTRAL_CACHE_REQ, CENTRAL_CACHE_RESP)) link_cache = newVector();
     Vector#(CENTRAL_CACHE_N_CLIENTS, Connection_Client#(CENTRAL_CACHE_BACKING_REQ, CENTRAL_CACHE_BACKING_RESP)) link_cache_backing = newVector();
 
+    // Save the last line read as a prefetch.  If private caches work well then
+    // there ought to be a reasonable chance of hitting in it.
+    Vector#(CENTRAL_CACHE_N_CLIENTS, Reg#(Maybe#(CENTRAL_CACHE_READ_LINE_RESP))) cacheLastReadLineResp <- replicateM(mkReg(tagged Invalid));
+
     for (Integer p = 0; p < valueOf(CENTRAL_CACHE_N_CLIENTS); p = p + 1)
     begin
         //
@@ -269,26 +276,61 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
             //
             // Forward requests to the central cache.
             //
-            rule sendCentralCacheReq (True);
-                let req = link_cache[p].getReq();
-                link_cache[p].deq();
+            let req_data =
+                (rules
+                    (* conservative_implicit_conditions *)
+                    rule sendCentralCacheReq (True);
+                        let req = link_cache[p].getReq();
+                        link_cache[p].deq();
 
-                central_cache.clientPorts[p].newReq(req);
-            endrule
+                        if (req matches tagged CENTRAL_CACHE_READ .cur)
+                        begin
+                            // Read.  Is the request in the one entry local cache of
+                            // the last response?
+                            if (cacheLastReadLineResp[p] matches tagged Valid .last &&&
+                                cur.addr == last.addr &&&
+                                last.words[cur.wordIdx] matches tagged Valid .val)
+                            begin
+                                // Last line matches and is valid.
+                                CENTRAL_CACHE_READ_RESP r;
+                                r.addr = cur.addr;
+                                r.wordIdx = cur.wordIdx;
+                                r.val = val;
+                                r.refInfo = cur.refInfo;
 
+                                debugLog.record($format("c-cache: read local HIT addr=0x%0x", cur.addr));
+                                link_cache[p].makeResp(tagged CENTRAL_CACHE_READ r);
+                            end
+                            else
+                            begin
+                                // Request a new line
+                                centralCache.clientPorts[p].newReq(req);
+                                debugLog.record($format("c-cache: read req addr=0x%0x", cur.addr));
+                            end
+                        end
+                        else
+                        begin
+                            // Not a read.  Invalidate the last line cache and forward
+                            // the request.
+                            cacheLastReadLineResp[p] <= tagged Invalid;
+                            centralCache.clientPorts[p].newReq(req);
+                        end
+                    endrule
+                endrules);
 
             //
             // Return responses from the central cache.
             //
             let resp_data =
                 (rules
+                    // Return the requested word of the line fetched from
+                    // the cache.
                     rule recvCentralCacheData (True);
-                        let d <- central_cache.clientPorts[p].readResp();
+                        let d <- centralCache.clientPorts[p].readResp();
 
-                        //
-                        // The central cache returns an entire line.  For now
-                        // just return the requested word.
-                        //
+                        // Record the last read result
+                        cacheLastReadLineResp[p] <= tagged Valid d;
+
                         CENTRAL_CACHE_READ_RESP r;
                         r.addr = d.addr;
                         r.wordIdx = d.reqWordIdx;
@@ -303,12 +345,14 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
                 (rules
                     // Flush or invalidate ACK response
                     rule recvCentralCacheFlushAck (True);
-                        let d <- central_cache.clientPorts[p].invalOrFlushWait();
+                        let d <- centralCache.clientPorts[p].invalOrFlushWait();
                         link_cache[p].makeResp(tagged CENTRAL_CACHE_FLUSH_ACK False);
                     endrule
                 endrules);
 
-            addRules(rJoinDescendingUrgency(resp_flush_ack, resp_data));
+            let port_rules = rJoinDescendingUrgency(resp_flush_ack, resp_data);
+            port_rules = rJoinDescendingUrgency(port_rules, req_data);
+            addRules(port_rules);
 
 
             //
@@ -324,7 +368,7 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
             let back_rules =
                 (rules
                     rule sendCentralCacheBackingReadReq (True);
-                        let r <- central_cache.backingPorts[p].getReadReq();
+                        let r <- centralCache.backingPorts[p].getReadReq();
                         link_cache_backing[p].makeReq(tagged CENTRAL_CACHE_BACK_READ r);
                     endrule
                 endrules);
@@ -332,7 +376,7 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
             let back_wreq =
                 (rules
                     rule sendCentralCacheBackingWriteReq (True);
-                        let r <- central_cache.backingPorts[p].getWriteReq();
+                        let r <- centralCache.backingPorts[p].getWriteReq();
                         link_cache_backing[p].makeReq(tagged CENTRAL_CACHE_BACK_WREQ r);
                     endrule
                 endrules);
@@ -342,7 +386,7 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
             let back_wdata =
                 (rules
                     rule sendCentralCacheBackingWriteData (True);
-                        let d <- central_cache.backingPorts[p].getWriteData();
+                        let d <- centralCache.backingPorts[p].getWriteData();
                         link_cache_backing[p].makeReq(tagged CENTRAL_CACHE_BACK_WDATA d);
                     endrule
                 endrules);
@@ -360,12 +404,12 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
                 case (resp) matches
                     tagged CENTRAL_CACHE_BACK_READ .r:
                     begin
-                        central_cache.backingPorts[p].sendReadResp(r);
+                        centralCache.backingPorts[p].sendReadResp(r);
                     end
 
                     tagged CENTRAL_CACHE_BACK_WACK .dummy:
                     begin
-                        central_cache.backingPorts[p].sendWriteAck();
+                        centralCache.backingPorts[p].sendWriteAck();
                     end
                 endcase
             endrule

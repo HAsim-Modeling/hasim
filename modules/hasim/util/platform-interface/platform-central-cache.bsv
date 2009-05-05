@@ -31,6 +31,7 @@ import SpecialFIFOs::*;
 `include "asim/provides/virtual_devices.bsh"
 
 `include "asim/dict/PARAMS_PLATFORM_INTERFACE.bsh"
+`include "asim/dict/STATS_PLATFORM_INTERFACE.bsh"
 
 `include "asim/dict/VDEV.bsh"
 `ifndef VDEV_CACHE__BASE
@@ -45,40 +46,16 @@ import SpecialFIFOs::*;
 // ========================================================================
 
 //
-// Clients may pick any address, data and refInfo sizes as long as they are
-// smaller than the maximum sizes configured for the central cache.
+// Interface provided to clients of the central cache is identical to the
+// standard direct mapped cache interface.  The n_ENTRIES parameter is the number
+// of entries in a PRIVATE cache that will be allocated automatically in
+// front of the central cache.  Setting n_ENTRIES to 0 instantiates a direct
+// connection between the client and the central cache with no intermediate
+// private cache.
 //
 
-typedef struct
-{
-    t_ADDR addr;
-    t_DATA val;
-    t_REF_INFO refInfo;
-}
-CENTRAL_CACHE_CLIENT_RESP#(type t_ADDR, type t_DATA, type t_REF_INFO)
-    deriving (Eq, Bits);
-
-
-//
-// Interface provided to clients of the central cache.
-//
-interface CENTRAL_CACHE_CLIENT#(type t_ADDR, type t_DATA, type t_REF_INFO);
-    //
-    // Main client methods...
-    //
-
-    method Action readReq(t_ADDR addr, t_REF_INFO refInfo);
-    method ActionValue#(CENTRAL_CACHE_CLIENT_RESP#(t_ADDR, t_DATA, t_REF_INFO)) readResp();
-
-    method Action write(t_ADDR addr, t_DATA val, t_REF_INFO refInfo);
-
-    // Invalidate & flush requests.  Both write dirty lines back.  Invalidate drops
-    // the line from the cache.  Flush keeps the line in the cache.  A response
-    // is returned for invalOrFlushWait iff sendAck is true.
-    method Action invalReq(t_ADDR addr, Bool sendAck, t_REF_INFO refInfo);
-    method Action flushReq(t_ADDR addr, Bool sendAck, t_REF_INFO refInfo);
-    method Action invalOrFlushWait();
-endinterface: CENTRAL_CACHE_CLIENT
+typedef RL_DM_CACHE#(t_ADDR, t_DATA, t_REF_INFO, n_ENTRIES)
+    CENTRAL_CACHE_CLIENT#(type t_ADDR, type t_DATA, type t_REF_INFO, numeric type n_ENTRIES);
 
 
 //
@@ -186,6 +163,12 @@ CENTRAL_CACHE_BACKING_RESP
 function String cachePortName(Integer n) = "vdev_cache_" + integerToString(n - `VDEV_CACHE__BASE);
 function String backingPortName(Integer n) = "vdev_cache_backing_" + integerToString(n - `VDEV_CACHE__BASE);
 
+
+// ========================================================================
+//
+// Public interface to central cache.
+//
+// ========================================================================
     
 //
 // mkCentralCacheClient --
@@ -195,9 +178,10 @@ function String backingPortName(Integer n) = "vdev_cache_backing_" + integerToSt
 //     refer to entire lines expect line-aligned addresses.
 //
 module [HASIM_MODULE] mkCentralCacheClient#(Integer cacheID,
-                                            CENTRAL_CACHE_CLIENT_BACKING#(t_ADDR, t_DATA, t_REF_INFO) backing)
+                                            CENTRAL_CACHE_CLIENT_BACKING#(t_ADDR, t_DATA, t_REF_INFO) backing,
+                                            RL_CACHE_STATS stats)
     // interface:
-    (CENTRAL_CACHE_CLIENT#(t_ADDR, t_DATA, t_REF_INFO))
+    (CENTRAL_CACHE_CLIENT#(t_ADDR, t_DATA, t_REF_INFO, n_ENTRIES))
     provisos (Bits#(t_ADDR, t_ADDR_SZ),
               Bits#(t_DATA, t_DATA_SZ),
               Bits#(t_REF_INFO, t_REF_INFO_SZ),
@@ -218,6 +202,60 @@ module [HASIM_MODULE] mkCentralCacheClient#(Integer cacheID,
               Add#(extraAddrBits, t_ADDR_SZ, t_CENTRAL_CACHE_WORD_ADDR_SZ));
 
     DEBUG_FILE debugLog <- mkDebugFile("memory_central_cache_" + integerToString(cacheID - `VDEV_CACHE__BASE) + ".out");
+
+    //
+    // Allocate the connection between a private cache and the central cache.
+    //
+    RL_DM_CACHE_SOURCE_DATA#(t_ADDR, t_DATA, t_REF_INFO) centralCacheConnection <-
+        mkCentralCacheConnection(cacheID, backing, debugLog);
+
+    RL_DM_CACHE#(t_ADDR, t_DATA, t_REF_INFO, n_ENTRIES) pvtCache;
+    if (valueOf(n_ENTRIES) == 0)
+        pvtCache <- mkNullCacheDirectMapped(centralCacheConnection, debugLog);
+    else
+        pvtCache <- mkCacheDirectMapped(centralCacheConnection, stats, debugLog);
+    
+    return pvtCache;
+endmodule
+
+
+
+// ========================================================================
+//
+// Internal modules
+//
+// ========================================================================
+    
+//
+// mkCentralCacheConnection --
+//     Internal module connecting the backing store interface of a direct
+//     mapped cache to the central cache.  The central cache client interface
+//     above allocates a direct mapped private cache and uses this module
+//     to make the connection to the central cache.
+//
+module [HASIM_MODULE] mkCentralCacheConnection#(Integer cacheID,
+                                                CENTRAL_CACHE_CLIENT_BACKING#(t_ADDR, t_DATA, t_REF_INFO) backing,
+                                                DEBUG_FILE debugLog)
+    // interface:
+    (RL_DM_CACHE_SOURCE_DATA#(t_ADDR, t_DATA, t_REF_INFO))
+    provisos (Bits#(t_ADDR, t_ADDR_SZ),
+              Bits#(t_DATA, t_DATA_SZ),
+              Bits#(t_REF_INFO, t_REF_INFO_SZ),
+       
+              // data must fit in central cache space
+              Bits#(CENTRAL_CACHE_WORD, t_CENTRAL_CACHE_WORD_SZ),
+              Add#(extraDataBits, t_DATA_SZ, t_CENTRAL_CACHE_WORD_SZ),
+
+              // refInfo must fit in central cache space
+              Bits#(CENTRAL_CACHE_REF_INFO, t_CENTRAL_CACHE_REF_INFO_SZ),
+              Add#(extraRefInfoBits, t_REF_INFO_SZ, t_CENTRAL_CACHE_REF_INFO_SZ),
+
+              // Address space must fit in central cache addressing
+              Bits#(CENTRAL_CACHE_LINE_ADDR, t_CENTRAL_CACHE_LINE_ADDR_SZ),
+              Bits#(CENTRAL_CACHE_WORD_IDX, t_CENTRAL_CACHE_WORD_IDX_SZ),
+              // Full central cache word-addressed space
+              Add#(t_CENTRAL_CACHE_LINE_ADDR_SZ, t_CENTRAL_CACHE_WORD_IDX_SZ, t_CENTRAL_CACHE_WORD_ADDR_SZ),
+              Add#(extraAddrBits, t_ADDR_SZ, t_CENTRAL_CACHE_WORD_ADDR_SZ));
 
     Connection_Client#(CENTRAL_CACHE_REQ, CENTRAL_CACHE_RESP) link_cache <- mkConnection_Client(cachePortName(cacheID));
     Connection_Server#(CENTRAL_CACHE_BACKING_REQ, CENTRAL_CACHE_BACKING_RESP) link_cache_backing <- mkConnection_Server(backingPortName(cacheID));
@@ -271,6 +309,12 @@ module [HASIM_MODULE] mkCentralCacheClient#(Integer cacheID,
         backing.writeData(unpack(truncate(val)));
     endrule
 
+    //
+    // backingWriteAck --
+    //     Response from backing storage that a write has arrived.  The responses
+    //     returns up the cache hierarchy from the bottom to the top.
+    //
+    (* descending_urgency = "backingWriteAck, backingReadResp" *)
     rule backingWriteAck (True);
         backing.writeAckWait();
         debugLog.record($format("backWriteAck"));
@@ -297,14 +341,14 @@ module [HASIM_MODULE] mkCentralCacheClient#(Integer cacheID,
     endmethod
 
     // Read response
-    method ActionValue#(CENTRAL_CACHE_CLIENT_RESP#(t_ADDR, t_DATA, t_REF_INFO)) readResp() if (link_cache.getResp() matches tagged CENTRAL_CACHE_READ .resp);
+    method ActionValue#(RL_DM_CACHE_FILL_RESP#(t_ADDR, t_DATA, t_REF_INFO)) readResp() if (link_cache.getResp() matches tagged CENTRAL_CACHE_READ .resp);
         link_cache.deq();
 
         let addr = centralAddrToAddr(resp.addr, resp.wordIdx);
         t_DATA val = unpack(truncate(resp.val));
-        let r = CENTRAL_CACHE_CLIENT_RESP { addr: addr,
-                                            val: val,
-                                            refInfo: unpack(truncate(resp.refInfo)) };
+        let r = RL_DM_CACHE_FILL_RESP { addr: addr,
+                                        val: val,
+                                        refInfo: unpack(truncate(resp.refInfo)) };
 
         debugLog.record($format("readResp: addr=0x%x, val=0x%x", addr, val));
 
@@ -352,4 +396,61 @@ module [HASIM_MODULE] mkCentralCacheClient#(Integer cacheID,
         link_cache.deq();
         debugLog.record($format("flush/inval: ACK"));
     endmethod
+endmodule
+    
+    
+// ===================================================================
+//
+// STATISTICS INTERFACE
+//
+// mkCentralCacheStats --
+//     Statistics callbacks from central cache class.
+//
+// ===================================================================
+
+module [HASIM_MODULE] mkCentralCacheStats
+    // interface:
+    (RL_CACHE_STATS);
+    
+    Stat statLoadHit   <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_LOAD_HIT);
+    Stat statLoadMiss  <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_LOAD_MISS);
+
+    Stat statStoreHit  <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_STORE_HIT);
+    Stat statStoreMiss <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_STORE_MISS);
+
+    Stat statInvalEntry
+                       <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_INVAL_LINE);
+    Stat statDirtyEntryFlush
+                       <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_DIRTY_LINE_FLUSH);
+    Stat statForceInvalLine
+                       <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_FORCE_INVAL_LINE);
+
+    method Action readHit();
+        statLoadHit.incr();
+    endmethod
+
+    method Action readMiss();
+        statLoadMiss.incr();
+    endmethod
+
+    method Action writeHit();
+        statStoreHit.incr();
+    endmethod
+
+    method Action writeMiss();
+        statStoreMiss.incr();
+    endmethod
+
+    method Action invalEntry();
+        statInvalEntry.incr();
+    endmethod
+
+    method Action dirtyEntryFlush();
+        statDirtyEntryFlush.incr();
+    endmethod
+
+    method Action forceInvalLine();
+        statForceInvalLine.incr();
+    endmethod
+
 endmodule

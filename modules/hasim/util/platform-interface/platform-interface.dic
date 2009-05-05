@@ -17,3 +17,13 @@
 //
 
 def ASSERTIONS.PLATFORM_INTERFACE.SCRATCHPAD_FULL     "Platform interface: Scratchpad memory is oversubscribed!";
+
+def STATS.PLATFORM_INTERFACE.CACHE_LOAD_HIT         "Central Cache: Load hits";
+def STATS.PLATFORM_INTERFACE.CACHE_LOAD_MISS        "Central Cache: Load misses";
+
+def STATS.PLATFORM_INTERFACE.CACHE_STORE_HIT        "Central Cache: Store hits";
+def STATS.PLATFORM_INTERFACE.CACHE_STORE_MISS       "Central Cache: Store misses";
+
+def STATS.PLATFORM_INTERFACE.CACHE_INVAL_LINE       "Central Cache: Lines invalidated due to capacity";
+def STATS.PLATFORM_INTERFACE.CACHE_DIRTY_LINE_FLUSH "Central Cache: Dirty lines flushed to memory";
+def STATS.PLATFORM_INTERFACE.CACHE_FORCE_INVAL_LINE "Central Cache: Lines forcibly invalidated (not due to capacity)";

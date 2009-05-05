@@ -28,6 +28,10 @@
 #include <string.h>
 #include <errno.h>
 
+#include "asim/syntax.h"
+#include "asim/mesg.h"
+#include "asim/trace.h"
+
 #include "asim/provides/funcp_memory.h"
 #include "asim/provides/funcp_memstate_tlb.h"
 #include "asim/rrr/service_ids.h"

@@ -346,8 +346,8 @@ module [HASIM_MODULE] mkFuncpMemPvtCacheStats
     (RL_CACHE_STATS);
     
 
-    Stat statLoadHit <- mkStatCounter(`STATS_FUNCP_MEMORY_PVT_CACHE_LOAD_HIT);
-    Stat statLoadMiss <- mkStatCounter(`STATS_FUNCP_MEMORY_PVT_CACHE_LOAD_MISS);
+    STAT statLoadHit <- mkStatCounter(`STATS_FUNCP_MEMORY_PVT_CACHE_LOAD_HIT);
+    STAT statLoadMiss <- mkStatCounter(`STATS_FUNCP_MEMORY_PVT_CACHE_LOAD_MISS);
 
     method Action readHit();
         statLoadHit.incr();

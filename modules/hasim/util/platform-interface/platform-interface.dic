@@ -27,3 +27,6 @@ def STATS.PLATFORM_INTERFACE.CACHE_STORE_MISS       "Central Cache: Store misses
 def STATS.PLATFORM_INTERFACE.CACHE_INVAL_LINE       "Central Cache: Lines invalidated due to capacity";
 def STATS.PLATFORM_INTERFACE.CACHE_DIRTY_LINE_FLUSH "Central Cache: Dirty lines flushed to memory";
 def STATS.PLATFORM_INTERFACE.CACHE_FORCE_INVAL_LINE "Central Cache: Lines forcibly invalidated (not due to capacity)";
+
+def STATS.PLATFORM_INTERFACE.CACHE_RECENT_LINE_HIT  "Central Cache: Recent line cache hits";
+def STATS.PLATFORM_INTERFACE.CACHE_RECENT_LINE_MISS "Central Cache: Recent line cache misses";

@@ -34,7 +34,7 @@ typedef enum
 
 module [Connected_Module] mkStatFIFO#(STATS_DICT_TYPE myID) (FIFO#(t)) provisos (Bits#(t, t_SZ));
 
-  Stat stat <- mkStatCounter(myID);
+  STAT stat <- mkStatCounter(myID);
   
   FIFO#(t) q <- mkFIFO();
   PulseWire enqW <- mkPulseWire();

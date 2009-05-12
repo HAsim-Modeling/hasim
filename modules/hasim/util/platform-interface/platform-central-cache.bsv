@@ -104,20 +104,6 @@ endinterface: CENTRAL_CACHE_CLIENT_BACKING
 //
 
 //
-// Response from reading a word.
-//
-typedef struct
-{
-    CENTRAL_CACHE_LINE_ADDR addr;
-    CENTRAL_CACHE_WORD_IDX wordIdx;
-    CENTRAL_CACHE_WORD val;
-    CENTRAL_CACHE_REF_INFO refInfo;
-}
-CENTRAL_CACHE_READ_RESP
-    deriving (Eq, Bits);
-
-
-//
 // Union of all possible messages returning from the central cache.
 //
 typedef union tagged
@@ -410,47 +396,76 @@ endmodule
 
 module [HASIM_MODULE] mkCentralCacheStats
     // interface:
-    (RL_CACHE_STATS);
+    (CENTRAL_CACHE_STATS);
     
-    Stat statLoadHit   <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_LOAD_HIT);
-    Stat statLoadMiss  <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_LOAD_MISS);
+    Vector#(9, STATS_DICT_TYPE) statIDs = newVector();
 
-    Stat statStoreHit  <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_STORE_HIT);
-    Stat statStoreMiss <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_STORE_MISS);
+    statIDs[0] = `STATS_PLATFORM_INTERFACE_CACHE_LOAD_HIT;
+    let statLoadHit = 0;
 
-    Stat statInvalEntry
-                       <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_INVAL_LINE);
-    Stat statDirtyEntryFlush
-                       <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_DIRTY_LINE_FLUSH);
-    Stat statForceInvalLine
-                       <- mkStatCounter(`STATS_PLATFORM_INTERFACE_CACHE_FORCE_INVAL_LINE);
+    statIDs[1] = `STATS_PLATFORM_INTERFACE_CACHE_LOAD_MISS;
+    let statLoadMiss = 1;
 
-    method Action readHit();
-        statLoadHit.incr();
-    endmethod
+    statIDs[2] = `STATS_PLATFORM_INTERFACE_CACHE_STORE_HIT;
+    let statStoreHit  = 2;
 
-    method Action readMiss();
-        statLoadMiss.incr();
-    endmethod
+    statIDs[3] = `STATS_PLATFORM_INTERFACE_CACHE_STORE_MISS;
+    let statStoreMiss = 3;
 
-    method Action writeHit();
-        statStoreHit.incr();
-    endmethod
+    statIDs[4] = `STATS_PLATFORM_INTERFACE_CACHE_INVAL_LINE;
+    let statInvalEntry = 4;
 
-    method Action writeMiss();
-        statStoreMiss.incr();
-    endmethod
+    statIDs[5] = `STATS_PLATFORM_INTERFACE_CACHE_DIRTY_LINE_FLUSH;
+    let statDirtyEntryFlush = 5;
 
-    method Action invalEntry();
-        statInvalEntry.incr();
-    endmethod
+    statIDs[6] = `STATS_PLATFORM_INTERFACE_CACHE_FORCE_INVAL_LINE;
+    let statForceInvalLine = 6;
 
-    method Action dirtyEntryFlush();
-        statDirtyEntryFlush.incr();
-    endmethod
+    statIDs[7] = `STATS_PLATFORM_INTERFACE_CACHE_RECENT_LINE_HIT;
+    let statRecentLineHit = 7;
 
-    method Action forceInvalLine();
-        statForceInvalLine.incr();
-    endmethod
+    statIDs[8] = `STATS_PLATFORM_INTERFACE_CACHE_RECENT_LINE_MISS;
+    let statRecentLineMiss = 8;
 
+    let stats <- mkStatCounter_Vector(statIDs);
+
+    interface RL_CACHE_STATS cacheStats;
+        method Action readHit();
+            stats.incr(statLoadHit);
+        endmethod
+
+        method Action readMiss();
+            stats.incr(statLoadMiss);
+        endmethod
+
+        method Action writeHit();
+            stats.incr(statStoreHit);
+        endmethod
+
+        method Action writeMiss();
+            stats.incr(statStoreMiss);
+        endmethod
+
+        method Action invalEntry();
+            stats.incr(statInvalEntry);
+        endmethod
+
+        method Action dirtyEntryFlush();
+            stats.incr(statDirtyEntryFlush);
+        endmethod
+
+        method Action forceInvalLine();
+            stats.incr(statForceInvalLine);
+        endmethod
+    endinterface
+
+    interface CENTRAL_CACHE_RECENT_LINE_STATS recentLineStats;
+        method Action readHit();
+            stats.incr(statRecentLineHit);
+        endmethod
+
+        method Action readMiss();
+            stats.incr(statRecentLineMiss);
+        endmethod
+    endinterface
 endmodule

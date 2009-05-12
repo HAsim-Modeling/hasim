@@ -46,52 +46,24 @@ close(MAP);
 
 print "\n";
 
+my $timing_score = undef;
 my $clk_err = 0;
 while (<PAR>)
 {
     chomp;
 
-    ## TS_CLK with a best case achievable value other than N/A means design
-    ## is running at board clock speed
-    if (/^[\* ] TS_CLK = PERIOD TIMEGRP/)
+    ## Timing score
+    if (/^Timing Score: ([0-9]*)/)
     {
-        my $s = $_;
-
-        # Isolate speed from TS_CLK = PERIOD TIMEGRP "CLK" xx MHz HIGH
-        $s =~ s/^[^0-9]*([0-9]+)[^|]*|/$1/;
-        # Drop spaces
-        $s =~ s/ //g;
-        # Drop "ns"
-        $s =~ s/ns//g;
-        my @clk = split('\|', $s);
-
-        my $clk_req = 1000.0 / $clk[0];
-        my $clk_limit = $clk[3];
-
-        if ($clk_limit ne 'N/A')
-        {
-            print "\n";
-            printf "FPGA Clock:  Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
-            printf " / Achieves %0.2f MHz (%0.3f ns)", 1000 / $clk_limit, $clk_limit;
-
-            if ($clk_limit > $clk_req)
-            {
-                $clk_err = 1;
-                printf " **";
-                printf ERR "FPGA Clock:  Requires %0.2f MHz (%0.3f ns)", 1000 / $clk_req, $clk_req;
-                printf ERR " / Achieves %0.2f MHz (%0.3f ns)\n", 1000 / $clk_limit, $clk_limit;
-            }
-
-            printf "\n";
-            last;
-        }
+        $timing_score = $1;
     }
 
     ## |TS_CLK line is FPGA board clock for designs with user clocks
     my $clock_type;
     $clock_type = 'FPGA ' if (/\|TS_CLK /);
-    $clock_type = 'Model' if (/\| TS_.*CLKFX/);
-    $clock_type = 'DDR2 ' if (/\| TS_.*ddr2/);
+    $clock_type = 'Model' if (/\| TS_.*phys_plat_clock/);
+    $clock_type = 'DDR2 ' if (/\| TS_.*phys_plat_ddr2/);
+    $clock_type = 'PCIe ' if (/\| TS_.*phys_plat_pci/);
 
     if (defined($clock_type))
     {
@@ -125,6 +97,14 @@ while (<PAR>)
     }
 }
 
+if (! defined($timing_score))
+{
+    print "Failed to find timing score!\n";
+    $clk_err = 1;
+}
+
+print "\nTiming Score: ${timing_score}\n";
+
 if ($clk_err)
 {
     print "\n";
@@ -133,7 +113,7 @@ if ($clk_err)
 }
 else
 {
-    print "\nDesign meets timing.\n";
+    print "Design meets timing.\n";
 }
 
 close(PAR);

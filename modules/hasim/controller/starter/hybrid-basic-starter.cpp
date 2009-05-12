@@ -193,7 +193,8 @@ STARTER_SERVER_CLASS::EndSimulation(int exitValue)
             allFPGACycles = fpga_cycles;
         }
 
-        allInstrCommits += ctxHeartbeat[c].GetInstrCommits();
+        allInstrCommits += (ctxHeartbeat[c].GetInstrCommits() -
+                            ctxHeartbeat[c].GetInstrStartCommits());
         allIPS += ctxHeartbeat[c].GetModelIPS();
     }
 

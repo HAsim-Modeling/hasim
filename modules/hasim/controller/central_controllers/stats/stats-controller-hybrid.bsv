@@ -108,11 +108,11 @@ module [Connected_Module] mkStatsController
   rule sendReq (!((state == SC_Idle) || (state == SC_Initializing)));
   
     let nextCommand = case (state) matches
-                       tagged SC_Dumping:      return tagged ST_Dump;
-                       tagged SC_Enabling:     return tagged ST_Enable;
-                       tagged SC_Disabling:    return tagged ST_Disable;
-                       tagged SC_Reseting:     return tagged ST_Reset;
-                       default:                return tagged ST_Dump;
+                       tagged SC_Dumping:      return tagged ST_DUMP;
+                       tagged SC_Enabling:     return tagged ST_ENABLE;
+                       tagged SC_Disabling:    return tagged ST_DISABLE;
+                       tagged SC_Reseting:     return tagged ST_RESET;
+                       default:                return tagged ST_DUMP;
                      endcase;
   
     chain.send_to_next(nextCommand);
@@ -130,13 +130,13 @@ module [Connected_Module] mkStatsController
     let st <- chain.receive_from_prev();
     
     case (st) matches
-      tagged ST_Val .stinfo: //A stat to dump
+      tagged ST_VAL .stinfo: //A stat to dump
       begin
           
         client_stub.makeRequest_Send(zeroExtend(stinfo.statID), stinfo.value);
           
       end
-      tagged ST_Dump:  //We're done dumping
+      tagged ST_DUMP:  //We're done dumping
       begin
         
         client_stub.makeRequest_Done(?);

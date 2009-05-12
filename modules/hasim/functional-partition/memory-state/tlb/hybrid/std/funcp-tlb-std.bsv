@@ -199,17 +199,21 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
 
     // ***** Statistics *****
 
-    let hit_stat_id  = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_L1_ITLB_HIT : `STATS_FUNCP_TLB_L1_DTLB_HIT;
-    Stat statTLBHit <- mkStatCounter(hit_stat_id);
+    Vector#(4, STATS_DICT_TYPE) statIDs = newVector();
 
-    let miss_stat_id = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_L1_ITLB_MISS : `STATS_FUNCP_TLB_L1_DTLB_MISS;
-    Stat statTLBMiss <- mkStatCounter(miss_stat_id);
+    statIDs[0] = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_L1_ITLB_HIT : `STATS_FUNCP_TLB_L1_DTLB_HIT;
+    let statTLBHit = 0;
 
-    let no_translation_stat_id = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_ITLB_NOT_MAPPED : `STATS_FUNCP_TLB_DTLB_NOT_MAPPED;
-    Stat statTLBNoTranslation <- mkStatCounter(no_translation_stat_id);
+    statIDs[1] = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_L1_ITLB_MISS : `STATS_FUNCP_TLB_L1_DTLB_MISS;
+    let statTLBMiss = 1;
 
-    let page_fault_stat_id = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_ITLB_PAGE_FAULT : `STATS_FUNCP_TLB_DTLB_PAGE_FAULT;
-    Stat statTLBPageFault <- mkStatCounter(page_fault_stat_id);
+    statIDs[2] = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_ITLB_NOT_MAPPED : `STATS_FUNCP_TLB_DTLB_NOT_MAPPED;
+    let statTLBNoTranslation = 2;
+
+    statIDs[3] = (tlbType == FUNCP_ITLB) ? `STATS_FUNCP_TLB_ITLB_PAGE_FAULT : `STATS_FUNCP_TLB_DTLB_PAGE_FAULT;
+    let statTLBPageFault = 3;
+
+    let stats <- mkStatCounter_Vector(statIDs);
 
     // ***** Local State *****
     
@@ -273,7 +277,7 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
             debugLog.record($format("  %s VtoP response: VA 0x%x -> PA 0x%x [PAGE FAULT]", i_or_d, reqVA, pa));
             response.enq(invalidTranslation(pa));
 
-            statTLBNoTranslation.incr();
+            stats.incr(statTLBNoTranslation);
         end
 
     endrule
@@ -290,7 +294,7 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
         if (alloc_on_fault)
         begin
             // Page fault handler is allocating a new page.
-            statTLBPageFault.incr();
+            stats.incr(statTLBPageFault);
         end
 
         let m_tc <- tinyCaches[ctx_id].read(vp);
@@ -303,7 +307,7 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
             response.enq(validTranslation(pa, tc.ioSpace));
 
             debugLog.record($format("  %s quick hit: VA 0x%x -> PA 0x%x", i_or_d, va, pa));
-            statTLBHit.incr();
+            stats.incr(statTLBHit);
         end
         else
         begin
@@ -314,7 +318,7 @@ module [HASIM_MODULE] mkFUNCP_TLB#(FUNCP_TLB_TYPE tlbType,
 
             reqVA <= va;
             state <= FUNCP_TLB_BUSY;
-            statTLBMiss.incr();
+            stats.incr(statTLBMiss);
         end
 
     endmethod
@@ -412,7 +416,7 @@ module [HASIM_MODULE] mkTLBCacheStats
     
     // ***** Statistics *****
 
-    Stat statTLBMiss <- mkStatCounter(`STATS_FUNCP_TLB_L2_MISS);
+    STAT statTLBMiss <- mkStatCounter(`STATS_FUNCP_TLB_L2_MISS);
 
     method Action readHit();
     endmethod

@@ -18600,3 +18600,48 @@ Directory modules/hasim/util/platform-interface
 - Add the option of allocating a private direct mapped cache in front of a
   central cache connection.
 - Add statistics to the central cache.
+
+----------
+mcadler     Date: Tue May 12 07:34:49 EDT 2009  CSN: CSN-hasim-633
+                  Tue May 12 11:34:49 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          632 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          632 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getResults.bsv Locally Modified          631 
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.bsv    Locally Modified          632 
+ platform-interface.dic    Locally Modified          632 
+ platform-interface.awb    Locally Modified          631 
+ platform-central-cache.bsv Locally Modified          632 
+
+Directory modules/hasim/util/common
+ stat-fifo.bsv             Locally Modified          631 
+ stats.bsv                 Locally Modified          631 
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          631 
+ hybrid-basic-starter.h    Locally Modified          631 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.bsv Locally Modified          631 
+
+Directory tools/scripts
+ hasim-xilinx-summary      Locally Modified          631 
+
+- Drop the toy, single entry, line cache in the platform central cache interface.
+  It is replaced by a BRAM in the central cache.
+- Add central cache statistics.
+- Update Xilinx timing summary script for new model topology.
+- Fix IPC summary at the end of runs in the hybrid starter.
+- Recode statistics support to allow definition of a vector of statistics all
+  managed by a single ring stop.  The multiplexed and single entry modules
+  now use the vector implementation, so there is a single base module.
+  Ring stops are reasonably expensive in the hardware and can make timing
+  difficult.

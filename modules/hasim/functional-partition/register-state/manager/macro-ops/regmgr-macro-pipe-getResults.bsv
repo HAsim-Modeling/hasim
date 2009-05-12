@@ -269,7 +269,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
     Reg#(REGMGR_RES_STATE_ENUM) state_res <- mkReg(RSM_RES_Running);
 
-    Stat stat_isa_emul <- mkStatCounter(`STATS_REGMGR_GETRESULTS_EMULATED_INSTRS);
+    STAT stat_isa_emul <- mkStatCounter(`STATS_REGMGR_GETRESULTS_EMULATED_INSTRS);
 
     // ====================================================================
     //

@@ -36,6 +36,7 @@ class CONTEXT_HEARTBEAT_CLASS
     void ProgressStats(CONTEXT_ID ctxId);
 
     UINT64 GetInstrCommits() const { return instrCommits; };
+    UINT64 GetInstrStartCommits() const { return modelStartInstrs; };
     UINT64 GetModelCycles() const { return modelCycles; };
     UINT64 GetModelStartCycle() const { return modelStartCycle; };
     UINT64 GetFPGACycles() const { return fpgaLastCycle - fpgaStartCycle; };

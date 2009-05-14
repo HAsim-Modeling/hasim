@@ -18645,3 +18645,17 @@ Directory tools/scripts
   now use the vector implementation, so there is a single base module.
   Ring stops are reasonably expensive in the hardware and can make timing
   difficult.
+
+----------
+aparasha    Date: Thu May 14 17:27:25 EDT 2009  CSN: CSN-hasim-634
+                  Thu May 14 21:27:25 UTC 2009
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          633 
+
+Added a flag each to the ngdbuild and bitgen command lines to enable
+ACP models to build correctly. The changes do not affect HTG models.
+
+The rrrtest_hybrid_acp model should now build completely, although it
+won't work because the software side is incomplete.

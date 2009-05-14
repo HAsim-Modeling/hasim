@@ -390,7 +390,7 @@ xilinx_ngd = env.Command(
     xilinx_ngc + xilinx_ucf,
     [ Delete(XILINX_APM_NAME + '.bld'),
       Delete(XILINX_APM_NAME + '_ngdbuild.xrpt'),
-      'ngdbuild -sd ' + env['DEFS']['ROOT_DIR_HW_MODEL'] + ' -uc ' + XILINX_APM_NAME + '.ucf $SOURCE $TARGET',
+      'ngdbuild -p ' + FPGA_PART + ' -sd ' + env['DEFS']['ROOT_DIR_HW_MODEL'] + ' -uc ' + XILINX_APM_NAME + '.ucf $SOURCE $TARGET',
       Move(TMP_XILINX_DIR + '/netlist.lst', 'netlist.lst') ])
 
 Clean(xilinx_ngd, TMP_XILINX_DIR + '/netlist.lst')
@@ -438,7 +438,7 @@ xilinx_bit = env.Command(
     XILINX_APM_NAME + '_par.bit',
     [ 'config/' + APM_NAME + '.ut', xilinx_par ],
     [ Delete('config/signature.sh'),
-      'bitgen -f $SOURCES' ])
+      'bitgen -f $SOURCES $TARGET ' + XILINX_APM_NAME + '.pcf' ])
 
 # Generate the signature for the FPGA image
 signature = env.Command(

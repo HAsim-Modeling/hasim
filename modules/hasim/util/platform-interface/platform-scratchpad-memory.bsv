@@ -256,6 +256,7 @@ module [HASIM_MODULE] mkMemoryHeapUnionScratchpadStorage#(Integer scratchpadID,
     // These wires are used to block backing store I/O when there is free list
     // traffic.
     //
+
     Wire#(Bool) freeListReadReqFired <- mkDWire(False);
     Wire#(Bool) freeListWriteFired <- mkDWire(False);
 
@@ -489,7 +490,7 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
               // Reference info passed to the cache needed to route the response
               Alias#(Tuple2#(Bit#(n_SAFE_READERS_SZ), t_REORDER_ID), t_REF_INFO),
 
-              // Requested address type must be smaller than scratchpad maximum
+              // Requested address type must be smaller than scratchpad maximum.
               Add#(a__, t_MEM_ADDRESS_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
     
     DEBUG_FILE debugLog <- mkDebugFile("platform_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE) + ".out");
@@ -510,7 +511,7 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
     RL_DM_CACHE#(Bit#(t_MEM_ADDRESS_SZ),
                  SCRATCHPAD_MEM_VALUE,
                  t_REF_INFO,
-                 `SCRATCHPAD_PVT_CACHE_ENTRIES) cache <- mkCacheDirectMapped(sourceData, stats, debugLog);
+                 `SCRATCHPAD_PVT_CACHE_ENTRIES) cache <- mkCacheDirectMapped(sourceData, False, stats, debugLog);
 
     // Merge FIFOF combines read and write requests in temporal order,
     // with reads from the same cycle as a write going first.  Each read port

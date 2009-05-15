@@ -119,7 +119,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
     // Local functional memory cache
     CENTRAL_CACHE_CLIENT#(FUNCP_MEM_WORD_PADDR, MEM_VALUE, FUNCP_CACHE_REF_INFO, `FUNCP_PVT_CACHE_ENTRIES) cache <-
-        mkCentralCacheClient(`VDEV_CACHE_FUNCP_MEMORY, remoteFuncpMem.cacheBacking, stats);
+        mkCentralCacheClient(`VDEV_CACHE_FUNCP_MEMORY, True, remoteFuncpMem.cacheBacking, stats);
 
     // Dynamic parameters
     PARAMETER_NODE paramNode <- mkDynamicParameterNode();

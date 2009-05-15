@@ -164,6 +164,7 @@ function String backingPortName(Integer n) = "vdev_cache_backing_" + integerToSt
 //     refer to entire lines expect line-aligned addresses.
 //
 module [HASIM_MODULE] mkCentralCacheClient#(Integer cacheID,
+                                            Bool hashLocalCacheAddrs,
                                             CENTRAL_CACHE_CLIENT_BACKING#(t_ADDR, t_DATA, t_REF_INFO) backing,
                                             RL_CACHE_STATS stats)
     // interface:
@@ -199,7 +200,7 @@ module [HASIM_MODULE] mkCentralCacheClient#(Integer cacheID,
     if (valueOf(n_ENTRIES) == 0)
         pvtCache <- mkNullCacheDirectMapped(centralCacheConnection, debugLog);
     else
-        pvtCache <- mkCacheDirectMapped(centralCacheConnection, stats, debugLog);
+        pvtCache <- mkCacheDirectMapped(centralCacheConnection, hashLocalCacheAddrs, stats, debugLog);
     
     return pvtCache;
 endmodule

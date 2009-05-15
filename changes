@@ -18659,3 +18659,17 @@ ACP models to build correctly. The changes do not affect HTG models.
 
 The rrrtest_hybrid_acp model should now build completely, although it
 won't work because the software side is incomplete.
+
+----------
+mcadler     Date: Fri May 15 14:42:41 EDT 2009  CSN: CSN-hasim-635
+                  Fri May 15 18:42:41 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          634 
+
+Directory modules/hasim/util/platform-interface
+ platform-central-cache.bsv Locally Modified          634 
+ platform-scratchpad-memory.bsv Locally Modified          634 
+
+Functional memory private cache now hashes addresses.

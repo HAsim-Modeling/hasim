@@ -18673,3 +18673,18 @@ Directory modules/hasim/util/platform-interface
  platform-scratchpad-memory.bsv Locally Modified          634 
 
 Functional memory private cache now hashes addresses.
+
+----------
+mcadler     Date: Tue May 19 11:00:02 EDT 2009  CSN: CSN-hasim-636
+                  Tue May 19 15:00:02 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-reg-map-table.bsv Locally Modified          634 
+
+Restructure the architectural to physical register map table to have one read
+port for each source and each destination of an instruction.  The previous
+implementation simply read the entire table for a context.  Even with 7 BRAMs
+allocated as individual read ports, the new version requires fewer BRAMs
+and less logic.  The only run-time penalty is for instructions that have more
+than one destination register (rare).

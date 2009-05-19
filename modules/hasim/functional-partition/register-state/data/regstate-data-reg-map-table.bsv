@@ -173,6 +173,19 @@ REGSTATE_REWIND_READER
     deriving (Eq, Bits);
 
 
+//
+// REGSTATE_MAPTABLE_IDX is a combination of the context and a virtual
+// register.
+//
+typedef struct
+{
+    CONTEXT_ID ctxId;
+    ISA_REG_INDEX ar;
+}
+REGSTATE_MAPTABLE_IDX
+    deriving (Eq, Bits);
+
+
 // ========================================================================
 //
 //   The busy vector tracks active map table read requests.  Only one
@@ -241,7 +254,8 @@ endmodule
 //
 module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     // interface:
-    (REGSTATE_REG_MAPPING);
+    (REGSTATE_REG_MAPPING)
+    provisos (Add#(ISA_MAX_SRCS, ISA_MAX_DSTS, t_MAP_READ_PORTS));
 
     // ====================================================================
     //
@@ -264,32 +278,29 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     // AR N of context 0 -> PR N
     // AR 0 of context 1 -> PR N+1
     // etc
-    Vector#(NUM_CONTEXTS, Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX)) initMap = newVector();
-    for (Integer y = 0; y < valueOf(NUM_CONTEXTS); y = y + 1)
-    begin
-        for (Integer x  = 0; x < valueOf(ISA_NUM_REGS); x = x + 1)
-        begin
-            initMap[y][x] = fromInteger(x+(y*valueOf(ISA_NUM_REGS)));
-        end
-    end
-
-    function Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) initMapFunc(CONTEXT_ID x);
-        return initMap[x];
+    function FUNCP_PHYSICAL_REG_INDEX initMapTable(REGSTATE_MAPTABLE_IDX idx);
+        return zeroExtend(idx.ctxId) * fromInteger(valueOf(ISA_NUM_REGS)) +
+               zeroExtend(pack(idx.ar));
     endfunction
 
-    // The true map table
-    BRAM#(CONTEXT_ID, Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX)) mapTable <- mkBRAMInitializedWith(initMapFunc);
+    // Uninitialized map table
+    BRAM_MULTI_READ#(t_MAP_READ_PORTS, REGSTATE_MAPTABLE_IDX, FUNCP_PHYSICAL_REG_INDEX) uninitMapTable <- mkBRAMMultiRead();
+
+    // Map table
+    BRAM_MULTI_READ#(t_MAP_READ_PORTS, REGSTATE_MAPTABLE_IDX, FUNCP_PHYSICAL_REG_INDEX) mapTable <-
+        mkMultiMemInitializedWith(uninitMapTable, initMapTable);
     
     // Queue to track proper consumer of read data coming from map table BRAM
     FIFO#(MAPTABLE_CONSUMER) mapTableConsumerQ <- mkFIFO();
     
-    // Queue to rate limit requests coming in to the map table.  No new read
-    // requests may be queued if a request is already in flight for the same
-    // context.  Read requests for different contexts may be in flight at the
-    // same time.  The bypass FIFO saves a pipeline stage.
-    FIFO#(CONTEXT_ID) newMapTableReqQ_DEC <- mkBypassFIFO();
-    FIFO#(CONTEXT_ID) newMapTableReqQ_READ <- mkBypassFIFO();
-    FIFO#(CONTEXT_ID) newMapTableReqQ_EXC <- mkBypassFIFO();
+    //
+    // Incoming request queues for decode, read and exception queues.
+    //
+    FIFO#(Tuple3#(TOKEN,
+                  Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
+                  Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)))) newMapTableReqQ_DEC <- mkBypassFIFO();
+    FIFO#(Tuple2#(CONTEXT_ID, ISA_REG_INDEX)) newMapTableReqQ_READ <- mkBypassFIFO();
+    FIFO#(REGSTATE_NEW_MAPPINGS) newMapTableReqQ_EXC <- mkBypassFIFO();
 
     // mapTableBusy tracks which context are in flight.
     MAP_BUSY_VECTOR mapTableBusy <- mkMapBusyVector();
@@ -300,14 +311,26 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     BRAM#(TOKEN_INDEX, Maybe#(REGSTATE_REWIND_INFO)) rewindInfo <- mkBRAM();
     FIFO#(REGSTATE_REWIND_READER) rewindReaderQ <- mkFIFO();
 
-    // Incoming request queues
-    FIFO#(Tuple2#(Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
-                  Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)))) decodeStage1InQ <- mkFIFO();
-    FIFO#(Tuple2#(TOKEN,
-                  Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)))) decodeStage2InQ <- mkFIFO();
+    // Internal decode queues
+    FIFO#(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) newPhyDstsInQ <- mkBypassFIFO();
+    FIFO#(Tuple3#(TOKEN,
+                  Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
+                  Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)))) decodeReadCurQ <- mkFIFO();
+    FIFO#(Tuple3#(TOKEN,
+                  Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)),
+                  Bool)) decodeUpdateQ <- mkFIFO();
+    // Merge FIFO collapses multiple write port requests into a series of write
+    // requests -- one per cycle.
+    MERGE_FIFOF#(ISA_MAX_DSTS, Tuple2#(ISA_REG_INDEX, FUNCP_PHYSICAL_REG_INDEX)) decodeUpdateDstQ <- mkMergeFIFOF();
 
+    // Internal read mapping request queue.
     FIFO#(Tuple2#(CONTEXT_ID, ISA_REG_INDEX)) getResultsReqInQ <- mkFIFO();
-    FIFO#(REGSTATE_NEW_MAPPINGS) exceptInQ <- mkFIFO();
+    FIFO#(FUNCP_PHYSICAL_REG_INDEX) readMapRspQ <- mkBypassFIFO();
+
+    // Exception register updates.  Map table has only one write port so multiple
+    // register updates go into a merge FIFO and are handled one at a time.
+    MERGE_FIFOF#(ISA_MAX_DSTS, Tuple2#(ISA_REG_INDEX, FUNCP_PHYSICAL_REG_INDEX)) exceptUpdateQ <- mkMergeFIFOF();
+    FIFO#(CONTEXT_ID) exceptInfoQ <- mkFIFO();
 
     // Incoming token rewind info requests
     FIFOF#(TOKEN_INDEX) rewGetResultsReadInQ <- mkFIFOF();
@@ -320,77 +343,158 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
     // ====================================================================
     //
-    //   Map table logic
+    //   All incoming requests begin rule processing here...
     //
     // ====================================================================
 
     //
-    // newMapTableReq --
-    //   Consume all possible read requests for the map table.  New requests
-    //   may start BRAM reads only if no other operations for the context
-    //   are in flight.
+    // mapTableIdx --
+    //     Index into the map table given a context ID and architectural register.
     //
+    function mapTableIdx(CONTEXT_ID ctxId, ISA_REG_INDEX ar);
+        return REGSTATE_MAPTABLE_IDX {ctxId: ctxId, ar: ar};
+    endfunction
 
-    rule newMapTableReq_DEC (mapTableBusy.notBusy(newMapTableReqQ_DEC.first()));
-        let ctx_id = newMapTableReqQ_DEC.first();
+
+    //
+    // newMapTableReq_DEC --
+    //     Head of the decode pipeline.  Begin by requesting the physical register
+    //     mappings of the instruction's source and destination registers.
+    //
+    (* conservative_implicit_conditions *)
+    rule newMapTableReq_DEC (mapTableBusy.notBusy(tokContextId(tpl_1(newMapTableReqQ_DEC.first()))));
+        match {.tok, .ar_srcs, .ar_dsts} = newMapTableReqQ_DEC.first();
         newMapTableReqQ_DEC.deq();
 
+        // Lock map table for this context
+        let ctx_id = tokContextId(tok);
         mapTableBusy.set(ctx_id);
-        mapTable.readReq(ctx_id);
         mapTableConsumerQ.enq(REGSTATE_MAPT_DECODE);
 
+        //
+        // Request current physical mappings for instruction source registers.
+        //
+        for (Integer x = 0; x < valueOf(ISA_MAX_SRCS); x = x + 1)
+        begin
+            // Make the request on all possible registers so we can use
+            // conservative scheduling rules on the consumer.
+            let ar = validValue(ar_srcs[x]);
+            mapTable.readPorts[x].readReq(mapTableIdx(ctx_id, ar));
+        end
+
+        //
+        // Request current (old) destination mappings for filling in rewind info.
+        //
+        for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
+        begin
+            // Make the request on all possible registers so we can use
+            // conservative scheduling rules on the consumer.
+            let ar = validValue(ar_dsts[x]);
+            mapTable.readPorts[valueOf(ISA_MAX_SRCS) + x].readReq(mapTableIdx(ctx_id, ar));
+        end
+
         debugLog.record($format("MAP: Table read context %0d, consumer DECODE", ctx_id));
+
+        // Forward request to next decode rule
+        decodeReadCurQ.enq(tuple3(tok, ar_srcs, ar_dsts));
     endrule
 
-    rule newMapTableReq_READ (mapTableBusy.notBusy(newMapTableReqQ_READ.first()));
-        let ctx_id = newMapTableReqQ_READ.first();
+
+    //
+    // newMapTableReq_READ --
+    //     Simple read of a single register mapping.
+    //
+    rule newMapTableReq_READ (mapTableBusy.notBusy(tpl_1(newMapTableReqQ_READ.first())));
+        match {.ctx_id, .ar} = newMapTableReqQ_READ.first();
         newMapTableReqQ_READ.deq();
 
         mapTableBusy.set(ctx_id);
-        mapTable.readReq(ctx_id);
         mapTableConsumerQ.enq(REGSTATE_MAPT_READMAP);
+
+        // Read mapping
+        mapTable.readPorts[0].readReq(mapTableIdx(ctx_id, ar));
 
         debugLog.record($format("MAP: Table read context %0d, consumer READ", ctx_id));
     endrule
 
+
+    //
+    // newMapTableReq_EXC --
+    //     Exception handling (unwind) flow.  Update register mapping with
+    //     the mapping that preceded the instruction.
+    //
     (* descending_urgency = "newMapTableReq_EXC, newMapTableReq_READ, newMapTableReq_DEC" *)
-    rule newMapTableReq_EXC (mapTableBusy.notBusy(newMapTableReqQ_EXC.first()));
-        let ctx_id = newMapTableReqQ_EXC.first();
+    (* conservative_implicit_conditions *)
+    rule newMapTableReq_EXC (mapTableBusy.notBusy(newMapTableReqQ_EXC.first().context_id));
+        let new_maps = newMapTableReqQ_EXC.first();
         newMapTableReqQ_EXC.deq();
 
-        mapTableBusy.set(ctx_id);
-        mapTable.readReq(ctx_id);
-        mapTableConsumerQ.enq(REGSTATE_MAPT_EXCEPTION);
+        // Request specific register updates.  Writing them to a MergeFIFO
+        // serializes multiple write requests.
+        Bool updated_map = False;
+        for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
+        begin
+            if (new_maps.mappings[x] matches tagged Valid { .ar, .pr })
+            begin
+                exceptUpdateQ.ports[x].enq(tuple2(ar, pr));
+                updated_map = True;
+            end
+        end
 
-        debugLog.record($format("MAP: Table read context %0d, consumer EXC", ctx_id));
+        if (updated_map)
+        begin
+            // Lock the map table because updates may take multiple cycles if more
+            // then one register mapping is being changed.
+            mapTableBusy.set(new_maps.context_id);
+            exceptInfoQ.enq(new_maps.context_id);
+        end
+
+        debugLog.record($format("MAP: Table read context %0d, consumer EXC", new_maps.context_id));
     endrule
 
 
+    // ====================================================================
     //
-    // doMapDecode --
-    //   Three separate requests rendezvous here:
-    //     1.  The mapTable for the token's context.
-    //     2.  The source and destination architectural register vectors from
-    //         decodeStage1.
-    //     3.  The new physical registers for the token, from decodeStage2.
+    //   Mapping for decode stage pipeline
     //
-    //   From this the rule:
-    //     1.  Updates the map table for the new register pairs written by
-    //         the token.
-    //     2.  Updates rewind information for the token.
-    //     3.  Returns a vector of physical registers corresponding to the
-    //         architectural source registers.
-    //
-    rule doMapDecode (mapTableConsumerQ.first() == REGSTATE_MAPT_DECODE);
-        match {.ar_srcs, .ar_dsts} = decodeStage1InQ.first();
-        decodeStage1InQ.deq();
+    // ====================================================================
 
-        match {.tok, .phy_dsts} = decodeStage2InQ.first();
-        decodeStage2InQ.deq();
-
-        let map <- mapTable.readRsp();
+    //
+    // doMapDecode1 --
+    //     Receive source and current destination register mapping.  The
+    //     current destination register mapping are written to the
+    //     token's rewind info.
+    //
+    //     Also begins the process of updating the destination register mapping
+    //     to the new physical registers provided on the newPhyDstsInQ.
+    //
+    (* conservative_implicit_conditions *)
+    rule doMapDecodeReadCur (mapTableConsumerQ.first() == REGSTATE_MAPT_DECODE);
         mapTableConsumerQ.deq();
-        mapTableBusy.clear(tokContextId(tok));
+
+        match {.tok, .ar_srcs, .ar_dsts} = decodeReadCurQ.first();
+        decodeReadCurQ.deq();
+
+        let phy_dsts = newPhyDstsInQ.first();
+        newPhyDstsInQ.deq();
+
+        //
+        // Compute source mappings.
+        //
+        Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_srcs;
+        for (Integer x = 0; x < valueOf(ISA_MAX_SRCS); x = x + 1)
+        begin
+            let pr <- mapTable.readPorts[x].readRsp();
+            if (ar_srcs[x] matches tagged Valid .ar)
+            begin
+                phy_srcs[x] = tagged Valid pr;
+                debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Slot #%0d source AR %0d is PR %0d", x, validValue(ar_srcs[x]), pr));
+            end
+            else
+            begin
+                phy_srcs[x] = tagged Invalid;
+            end
+        end
 
         //
         // Compute physical registers that are freed when this token commits.
@@ -400,13 +504,16 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
         Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) old_phy_dsts;
         for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
         begin
-            old_phy_dsts[x] = case (ar_dsts[x]) matches
-                                  tagged Valid .ar: tagged Valid map[pack(ar)];
-                                  tagged Invalid: tagged Invalid;
-                              endcase;
-
-            if (old_phy_dsts[x] matches tagged Valid .pr)
+            let pr <- mapTable.readPorts[valueOf(ISA_MAX_SRCS) + x].readRsp();
+            if (ar_dsts[x] matches tagged Valid .ar)
+            begin
+                old_phy_dsts[x] = tagged Valid pr;
                 debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Slot #%0d AR %0d will free PR %0d", x, validValue(ar_dsts[x]), pr));
+            end
+            else
+            begin
+                old_phy_dsts[x] = tagged Invalid;
+            end
         end
         
         // For instruction with no true destination free the dummy physical reg.
@@ -424,66 +531,126 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
 
         //
-        // Update mappings for destinations.
+        // Now it is safe to update the mappings for new destinations.  The
+        // updates are written to decodeUpdateDstQ and will be written to
+        // the map table in the next stage.
         //
-        Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) updated_map = map;
+        Bool updated_map = False;
         for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
         begin
             if (ar_dsts[x] matches tagged Valid .ar &&&
                 phy_dsts[x] matches tagged Valid .pr)
             begin
-                updated_map[pack(ar)] = pr;
-                debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Slot #%0d dest AR %0d -> PR %0d", x, ar, pr));
+                decodeUpdateDstQ.ports[x].enq(tuple2(ar, pr));
+                updated_map = True;
             end
         end
 
-
-        //
-        // Compute source mappings.
-        //
-        Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_srcs;
-        for (Integer x = 0; x < valueOf(ISA_MAX_SRCS); x = x + 1)
-        begin
-            phy_srcs[x] = case (ar_srcs[x]) matches
-                                  tagged Valid .ar: tagged Valid map[pack(ar)];
-                                  tagged Invalid: tagged Invalid;
-                          endcase;
-
-            if (phy_srcs[x] matches tagged Valid .pr)
-                debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Slot #%0d source AR %0d is PR %0d", x, validValue(ar_srcs[x]), pr));
-        end
-        
-
-        mapTable.write(tokContextId(tok), updated_map);
-        mapDecodeOutQ.enq(phy_srcs);
+        decodeUpdateQ.enq(tuple3(tok, phy_srcs, updated_map));
     endrule
 
+
+    //
+    // doMapDecodeNoUpdate --
+    //     This path is taken when the instruction writes no registers.
+    //
+    rule doMapDecodeNoUpdate (! tpl_3(decodeUpdateQ.first()));
+        match {.tok, .phy_srcs, .updated_map} = decodeUpdateQ.first();
+        let ctx_id = tokContextId(tok);
+
+        decodeUpdateQ.deq();
+        mapTableBusy.clear(ctx_id);
+
+        mapDecodeOutQ.enq(phy_srcs);
+        debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Done"));
+    endrule
+
+
+    //
+    // doMapDecodeWithUpdate --
+    //     Stage three iterates over all the registers written by the instruction,
+    //     updating the map table.
+    //
+    (* conservative_implicit_conditions *)
+    rule doMapDecodeWithUpdate (tpl_3(decodeUpdateQ.first()));
+        match {.tok, .phy_srcs, .updated_map} = decodeUpdateQ.first();
+        let ctx_id = tokContextId(tok);
+
+        // Update one register mapping
+        match {.ar, .pr} = decodeUpdateDstQ.first();
+        decodeUpdateDstQ.deq();
+
+        mapTable.write(mapTableIdx(ctx_id, ar), pr);
+        debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Slot #%0d dest AR %0d -> PR %0d", decodeUpdateDstQ.firstPortID(), ar, pr));
+
+        // If this the end of the current instruction's update request then
+        // unlock the context and return the physical source mapping to the
+        // caller.
+        if (decodeUpdateDstQ.lastInGroup())
+        begin
+            decodeUpdateQ.deq();
+            mapTableBusy.clear(ctx_id);
+
+            mapDecodeOutQ.enq(phy_srcs);
+            debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Done"));
+        end
+    endrule
+
+
+    // ====================================================================
+    //
+    //   Read map table processing
+    //
+    // ====================================================================
+
+    //
+    // doReadMap --
+    //   Complete the read of a single entry in the map table.
+    //
+    rule doReadMap (mapTableConsumerQ.first() == REGSTATE_MAPT_READMAP);
+        match {.ctx_id, .req_ar} = getResultsReqInQ.first();
+        getResultsReqInQ.deq();
+
+        // Physical register mapping
+        let pr <- mapTable.readPorts[0].readRsp();
+        debugLog.record($format("MAP: Read: context %0d, AR %0d is PR %0d", ctx_id, req_ar, pr));
+
+        // Release mapTable and context ID locks
+        mapTableConsumerQ.deq();
+        mapTableBusy.clear(ctx_id);
+
+        readMapRspQ.enq(pr);
+    endrule
+
+    // ====================================================================
+    //
+    //   Exception processing
+    //
+    // ====================================================================
 
     //
     // doExceptionUpdates --
     //   Update map table during exception rewind.
     //
-    (* descending_urgency = "doExceptionUpdates, doMapDecode" *)
-    rule doExceptionUpdates (mapTableConsumerQ.first() == REGSTATE_MAPT_EXCEPTION);
-        let new_maps = exceptInQ.first();
-        exceptInQ.deq();
+    (* descending_urgency = "doExceptionUpdates, doReadMap, doMapDecodeWithUpdate, doMapDecodeNoUpdate" *)
+    (* conservative_implicit_conditions *)
+    rule doExceptionUpdates (True);
+        let ctx_id = exceptInfoQ.first();
 
-        let map <- mapTable.readRsp();
-        mapTableConsumerQ.deq();
-        mapTableBusy.clear(new_maps.context_id);
+        // Update one register mapping
+        match {.ar, .pr} = exceptUpdateQ.first();
+        exceptUpdateQ.deq();
 
-        Vector#(ISA_NUM_REGS, FUNCP_PHYSICAL_REG_INDEX) updated_map = map;
+        mapTable.write(mapTableIdx(ctx_id, ar), pr);
+        debugLog.record($format("MAP: EXC Update: context %0d, AR %0d -> PR %0d", ctx_id, ar, pr));
 
-        for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
+        // If this the end of the current instruction's rewind request then
+        // unlock the context.
+        if (exceptUpdateQ.lastInGroup())
         begin
-            if (new_maps.mappings[x] matches tagged Valid { .ar, .pr })
-            begin
-                updated_map[pack(ar)] = pr;
-                debugLog.record($format("MAP: Update: context %0d, AR %0d -> PR %0d", new_maps.context_id, ar, pr));
-            end
+            exceptInfoQ.deq();
+            mapTableBusy.clear(ctx_id);
         end
-        
-        mapTable.write(new_maps.context_id, updated_map);
     endrule
 
 
@@ -559,23 +726,27 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
     interface REGSTATE_REG_MAPPING_GETDEPENDENCIES getDependencies;
 
+        //
+        // Decode request arrives in two stages because the new destination
+        // physical registers take longer to compute.  We can start working
+        // on the source mapping while waiting.
+        //
         method Action decodeStage1(TOKEN tok,
                                    Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)) ar_srcs,
                                    Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)) ar_dsts);
 
-            decodeStage1InQ.enq(tuple2(ar_srcs, ar_dsts));
+            newMapTableReqQ_DEC.enq(tuple3(tok, ar_srcs, ar_dsts));
             debugLog.record($format("MAP: ") + fshow(tok.index) + $format(":decodeStage1"));
         endmethod
 
         method Action decodeStage2(TOKEN tok,
                                    Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_dsts);
 
-            newMapTableReqQ_DEC.enq(tokContextId(tok));
-
-            decodeStage2InQ.enq(tuple2(tok, phy_dsts));
+            newPhyDstsInQ.enq(phy_dsts);
             debugLog.record($format("MAP: ") + fshow(tok.index) + $format(":decodeStage2"));
         endmethod
 
+        // Decode response describes source register mappings.
         method ActionValue#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) decodeRsp();
             let r = mapDecodeOutQ.first();
             mapDecodeOutQ.deq();
@@ -589,21 +760,14 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
         method Action readMapReq(CONTEXT_ID ctx_id, ISA_REG_INDEX ar);
             getResultsReqInQ.enq(tuple2(ctx_id, ar));
-            newMapTableReqQ_READ.enq(ctx_id);
+            newMapTableReqQ_READ.enq(tuple2(ctx_id, ar));
 
             debugLog.record($format("MAP: Request context %0d, AR %0d for RSLT", ctx_id, ar));
         endmethod
 
-        method ActionValue#(FUNCP_PHYSICAL_REG_INDEX) readMapRsp() if (mapTableConsumerQ.first() == REGSTATE_MAPT_READMAP);
-            match { .ctx_id, .req_ar } = getResultsReqInQ.first();
-            getResultsReqInQ.deq();
-
-            let map <- mapTable.readRsp();
-            mapTableConsumerQ.deq();
-            mapTableBusy.clear(ctx_id);
-
-            let pr = map[pack(req_ar)];
-            debugLog.record($format("MAP: Resp: context %0d, AR %0d is PR %0d", ctx_id, req_ar, pr));
+        method ActionValue#(FUNCP_PHYSICAL_REG_INDEX) readMapRsp();
+            let pr = readMapRspQ.first();
+            readMapRspQ.deq();
 
             return pr;
         endmethod
@@ -634,8 +798,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
         endmethod
 
         method Action updateMap(REGSTATE_NEW_MAPPINGS map_dsts);
-            exceptInQ.enq(map_dsts);
-            newMapTableReqQ_EXC.enq(map_dsts.context_id);
+            newMapTableReqQ_EXC.enq(map_dsts);
         endmethod
 
     endinterface
@@ -654,8 +817,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
         endmethod
 
         method Action updateMap(REGSTATE_NEW_MAPPINGS map_dsts);
-            exceptInQ.enq(map_dsts);
-            newMapTableReqQ_EXC.enq(map_dsts.context_id);
+            newMapTableReqQ_EXC.enq(map_dsts);
         endmethod
 
     endinterface

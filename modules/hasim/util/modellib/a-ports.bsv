@@ -27,81 +27,93 @@ import FIFOF::*;
 import Vector::*;
 import ModuleCollect::*;
 
-interface PORT_CONTROL;
+interface INSTANCE_CONTROL_OUT#(numeric type t_NUM_INSTANCES);
 
-  method Bool empty();
   method Bool full();
   method Bool balanced();
-  method Bool light();
   method Bool heavy();
 
 endinterface
 
-typedef Vector#(ni, PORT_CONTROL) PORT_CONTROLS#(type ni);
+interface INSTANCE_CONTROL_IN#(numeric type t_NUM_INSTANCES);
 
-interface PORT_SEND#(type msg_T);
-  
-  method Action send(Maybe#(msg_T) m);
-  interface PORT_CONTROL ctrl;
-  
-endinterface
+    method Bool empty();
+    method Bool balanced();
+    method Bool light();
 
-interface PORT_RECV#(type msg_T);
-
-  method ActionValue#(Maybe#(msg_T)) receive();
-  interface PORT_CONTROL ctrl;
+    method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance;
+    method Action drop();
 
 endinterface
 
-interface PORT_SEND_MULTIPLEXED#(type ni, type t_MSG);
+interface INSTANCE_CONTROL_IN_OUT#(numeric type t_NUM_INSTANCES);
+
+    interface INSTANCE_CONTROL_IN#(t_NUM_INSTANCES) in;
+    interface INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES) out;
+
+endinterface
+
+
+interface PORT_SEND#(type t_MSG);
   
-  method Action send(INSTANCE_ID#(ni) iid, Maybe#(t_MSG) m);
-  interface PORT_CONTROLS#(ni) ctrl;
+  method Action send(Maybe#(t_MSG) m);
+  interface INSTANCE_CONTROL_OUT#(1) ctrl;
   
 endinterface
 
-interface PORT_RECV_MULTIPLEXED#(type ni, type t_MSG);
+interface PORT_RECV#(type t_MSG);
 
-  method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(ni) iid);
-  interface PORT_CONTROLS#(ni) ctrl;
+  method ActionValue#(Maybe#(t_MSG)) receive();
+  interface INSTANCE_CONTROL_IN#(1) ctrl;
+
+endinterface
+
+interface PORT_SEND_MULTIPLEXED#(type t_NUM_INSTANCES, type t_MSG);
+  
+  method Action send(INSTANCE_ID#(t_NUM_INSTANCES) iid, Maybe#(t_MSG) m);
+  interface INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES) ctrl;
+  
+endinterface
+
+interface PORT_RECV_MULTIPLEXED#(type t_NUM_INSTANCES, type t_MSG);
+
+  method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+  interface INSTANCE_CONTROL_IN#(t_NUM_INSTANCES) ctrl;
 
 endinterface
 
 module [HASIM_MODULE] mkPortSend#(String portname)
-  //interface:
-              (PORT_SEND#(msg_T))
-  provisos
-          (Bits#(msg_T, msg_SZ),
-           Transmittable#(Maybe#(msg_T)));
+    //interface:
+        (PORT_SEND#(t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         Transmittable#(Maybe#(t_MSG)));
         
-  Connection_Send#(Maybe#(msg_T)) con <- mkConnection_Send(portname);
-    
-  //XXX a temporary set of control info
-    
-  interface PORT_CONTROL ctrl;
+    Connection_Send#(Maybe#(t_MSG)) con <- mkConnection_Send(portname);
 
-    method Bool empty() = True;
-    method Bool full() = !con.notFull;
-    method Bool balanced() = True;
-    method Bool light() = False;
-    method Bool heavy() = False;
+    //A temporary set of control info
+    interface INSTANCE_CONTROL_OUT ctrl;
 
-  endinterface
-  
-  method Action send(Maybe#(msg_T) m);
-    
-    con.send(m);
-    
-  endmethod
+        method Bool full() = !con.notFull;
+        method Bool balanced() = True;
+        method Bool heavy() = False;
+
+    endinterface
+
+    method Action send(Maybe#(t_MSG) m);
+
+        con.send(m);
+
+    endmethod
   
 endmodule
 
 module [HASIM_MODULE] mkPortRecv#(String portname, Integer latency)
   //interface:
-              (PORT_RECV#(msg_T))
+              (PORT_RECV#(t_MSG))
       provisos
-                (Bits#(msg_T, msg_SZ),
-                 Transmittable#(Maybe#(msg_T)));
+                (Bits#(t_MSG, t_MSG_SZ),
+                 Transmittable#(Maybe#(t_MSG)));
   
   let p <- case (latency)
              0: mkPortRecv_L0(portname);
@@ -113,21 +125,21 @@ module [HASIM_MODULE] mkPortRecv#(String portname, Integer latency)
 
 endmodule
 
-module [HASIM_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Integer extra_buffering, Maybe#(msg_T) init_value)
+module [HASIM_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Integer extra_buffering, Maybe#(t_MSG) init_value)
     //interface:
-                (PORT_RECV#(msg_T))
+                (PORT_RECV#(t_MSG))
       provisos
-                (Bits#(msg_T, msg_SZ),
-                 Transmittable#(Maybe#(msg_T)));
+                (Bits#(t_MSG, t_MSG_SZ),
+                 Transmittable#(Maybe#(t_MSG)));
 
-  Connection_Receive#(Maybe#(msg_T)) con <- mkConnection_Receive(portname);
+  Connection_Receive#(Maybe#(t_MSG)) con <- mkConnection_Receive(portname);
    
   Integer rMax = latency + extra_buffering + 1;
   
   if (rMax > 255)
     error("Total Port buffering cannot currently exceed 255.");
   
-  Reg#(Maybe#(msg_T)) rs[rMax];
+  Reg#(Maybe#(t_MSG)) rs[rMax];
   
   for (Integer x = 0; x < rMax; x = x + 1)
     rs[x] <- mkReg(init_value);
@@ -156,18 +168,20 @@ module [HASIM_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Int
    
   endrule
   
-  //XXX a temporary set of control info
-  interface PORT_CONTROL ctrl;
+  //A temporary set of control info
+  interface INSTANCE_CONTROL_IN ctrl;
 
         method Bool empty() = emptyQ;
-        method Bool full() = fullQ;
         method Bool balanced() = True;
         method Bool light() = False;
-        method Bool heavy() = False;
+        method Maybe#(INSTANCE_ID#(1)) nextReadyInstance = tagged Valid (?);
+        method Action drop;
+            tail <= overflow_incr(tail);
+        endmethod
 
   endinterface
 
-  method ActionValue#(Maybe#(msg_T)) receive() if (!emptyQ);
+  method ActionValue#(Maybe#(t_MSG)) receive() if (!emptyQ);
     
     tail <= overflow_incr(tail);
     return rs[tail._read()]._read();
@@ -181,25 +195,25 @@ endmodule
 
 module [HASIM_MODULE] mkPortRecv_L0#(String portname)
     //interface:
-                (PORT_RECV#(msg_T))
+                (PORT_RECV#(t_MSG))
       provisos
-                (Bits#(msg_T, msg_SZ),
-                 Transmittable#(Maybe#(msg_T)));
+                (Bits#(t_MSG, t_MSG_SZ),
+                 Transmittable#(Maybe#(t_MSG)));
 
-  Connection_Receive#(Maybe#(msg_T)) con <- mkConnection_Receive(portname);
+  Connection_Receive#(Maybe#(t_MSG)) con <- mkConnection_Receive(portname);
      
-  //XXX a temporary set of control info
-  interface PORT_CONTROL ctrl;
+  //A temporary set of control info
+  interface INSTANCE_CONTROL_IN ctrl;
 
     method Bool empty() = !con.notEmpty();
-    method Bool full() = True;
     method Bool balanced() = True;
     method Bool light() = False;
-    method Bool heavy() = False;
+    method Maybe#(INSTANCE_ID#(1)) nextReadyInstance() = tagged Valid (?);
+    method Action drop() = con.deq();
 
   endinterface
 
-  method ActionValue#(Maybe#(msg_T)) receive();
+  method ActionValue#(Maybe#(t_MSG)) receive();
   
     con.deq();
     return con.receive();
@@ -210,30 +224,30 @@ endmodule
 
 //Port optimized for latency 1
 
-module [HASIM_MODULE] mkPortRecv_L1#(String portname, Maybe#(msg_T) init_value)
+module [HASIM_MODULE] mkPortRecv_L1#(String portname, Maybe#(t_MSG) init_value)
     //interface:
-                (PORT_RECV#(msg_T))
+                (PORT_RECV#(t_MSG))
       provisos
-                (Bits#(msg_T, msg_SZ),
-                 Transmittable#(Maybe#(msg_T)));
+                (Bits#(t_MSG, t_MSG_SZ),
+                 Transmittable#(Maybe#(t_MSG)));
 
-  Connection_Receive#(Maybe#(msg_T)) con <- mkConnection_Receive(portname);
+  Connection_Receive#(Maybe#(t_MSG)) con <- mkConnection_Receive(portname);
   Reg#(Bool) initializing <- mkReg(True);
      
 
-  //XXX a temporary set of control info
-  interface PORT_CONTROL ctrl;
+  // A temporary set of control info
+  interface INSTANCE_CONTROL_IN ctrl;
 
     method Bool empty() = con.notEmpty;
-    method Bool full() = True;
     method Bool balanced() = True;
     method Bool light() = False;
-    method Bool heavy() = False;
+    method Maybe#(INSTANCE_ID#(1)) nextReadyInstance = tagged Valid (?);
+    method Action drop() = con.deq();
 
   endinterface
 
   
-  method ActionValue#(Maybe#(msg_T)) receive();
+  method ActionValue#(Maybe#(t_MSG)) receive();
     if (initializing)
     begin
       initializing <= False;
@@ -253,108 +267,160 @@ endmodule
 
 module [HASIM_MODULE] mkPortSend_Multiplexed#(String portname)
     //interface:
-        (PORT_SEND_MULTIPLEXED#(ni, t_MSG))
+        (PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Transmittable#(Maybe#(t_MSG)));
+         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
 
-    Vector#(ni, PORT_SEND#(t_MSG)) ports = newVector();
-    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
+    Connection_Send#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) con <- mkConnection_Send(portname);
 
-    for (Integer x = 0; x < valueOf(ni); x = x + 1)
-    begin
-      ports[x] <- mkPortSendUG(portname + "_" + integerToString(x));
-      portCtrls[x] = ports[x].ctrl;
-    end
+    interface INSTANCE_CONTROL_OUT ctrl;
 
-    interface ctrl = portCtrls;
+        method Bool full() = !con.notFull();
+        method Bool balanced() = True;
+        method Bool heavy() = False;
 
-    method Action send(INSTANCE_ID#(ni) iid, Maybe#(t_MSG) m);
+    endinterface
 
-      ports[iid].send(m);
+    method Action send(INSTANCE_ID#(t_NUM_INSTANCES) iid, Maybe#(t_MSG) m);
+
+        con.send(tuple2(iid, m));
 
     endmethod
-  
+
 endmodule
 
 module [HASIM_MODULE] mkPortRecv_Multiplexed#(String portname, Integer latency)
     //interface:
-        (PORT_RECV_MULTIPLEXED#(ni, t_MSG))
+        (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+        provisos
+                  (Bits#(t_MSG, t_MSG_SZ),
+                   Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6),
+                   Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+
+    let p <- case (latency)
+               0: mkPortRecvL0_Multiplexed(portname);
+               default: mkPortRecvBuffered_Multiplexed(portname, latency);
+             endcase;
+
+    return p;
+
+endmodule
+
+module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer latency)
+    //interface:
+        (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Transmittable#(Maybe#(t_MSG)));
+         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6),
+         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+
+    Connection_Receive#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) con <- mkConnection_Receive(portname);
+
+    Integer rMax = (latency * valueof(t_NUM_INSTANCES)) + 1;
+
+    if (rMax > 64)
+        error("Total Port buffering cannot currently exceed 64. Port: " + portname);
+
+    function Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG)) initfunc(Bit#(6) idx);
+        INSTANCE_ID#(t_NUM_INSTANCES) iid = truncate(idx);
+        return tuple2(iid, tagged Invalid);
+    endfunction
+
+    LUTRAM#(Bit#(6), Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) rs <- mkLUTRAMWith(initfunc);
+
+    COUNTER#(6) head <- mkLCounter(0);
+    COUNTER#(6) tail <- mkLCounter((fromInteger(latency * valueof(t_NUM_INSTANCES))));
+
+    Bool fullQ  = tail.value() + 1 == head.value();
+    Bool emptyQ = head.value() == tail.value();
 
 
-    Vector#(ni, PORT_RECV#(t_MSG)) ports = newVector();
-    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
+    rule shift (!fullQ && con.notEmpty());
 
-    for (Integer x = 0; x < valueOf(ni); x = x + 1)
-    begin
-      ports[x] <- mkPortRecvUG(portname + "_" + integerToString(x), latency, tagged Invalid);
-      portCtrls[x] = ports[x].ctrl;
-    end
+        let d = con.receive();
+        con.deq();
 
-    interface ctrl = portCtrls;
+        rs.upd(tail.value(), d);
+        tail.up();
 
-    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(ni) iid);
+    endrule
+    
+    interface INSTANCE_CONTROL_IN ctrl;
 
-      let res <- ports[iid].receive();
-      return res;
+
+        method Bool empty() = emptyQ;
+        method Bool balanced() = True;
+        method Bool light() = False;
+        
+        method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
+        
+            match {.iid, .m} = rs.sub(head.value());
+            return (emptyQ) ? tagged Invalid : tagged Valid iid;
+        
+        endmethod
+        
+        method Action drop();
+        
+            head.up();
+
+        endmethod
+
+    endinterface
+
+    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) dummy) if (!emptyQ);
+
+        // TEMPORARILY COMMENT OUT TO REMOVE READ OF tail. This introduced spurious conflicts.
+        //if (emptyQ)
+        //    $display("WARNING: Underflow on unguarded receive port %s! Junk data added!", portname);
+
+        match {.iid, .m} = rs.sub(head.value());
+        head.up();
+        return m;
 
     endmethod
 
 endmodule
 
-module [HASIM_MODULE] mkPortRecvInitial_Multiplexed#(String portname, Integer latency, t_MSG initValue)
+module [HASIM_MODULE] mkPortRecvL0_Multiplexed#(String portname)
     //interface:
-        (PORT_RECV_MULTIPLEXED#(ni, t_MSG))
-    provisos
-        (Bits#(t_MSG, t_MSG_SZ),
-         Transmittable#(Maybe#(t_MSG)));
+                (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+      provisos
+                (Bits#(t_MSG, t_MSG_SZ),
+                 Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
 
+    Connection_Receive#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) con <- mkConnection_Receive(portname);
+     
+    interface INSTANCE_CONTROL_IN ctrl;
 
-    Vector#(ni, PORT_RECV#(t_MSG)) ports = newVector();
-    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
+        method Bool empty() = !con.notEmpty();
+        method Bool balanced() = True;
+        method Bool light() = False;
 
-    for (Integer x = 0; x < valueOf(ni); x = x + 1)
-    begin
-      ports[x] <- mkPortRecvUG(portname + "_" + integerToString(x), latency, tagged Valid initValue);
-      portCtrls[x] = ports[x].ctrl;
-    end
+        method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
+        
+            match {.iid, .m} = con.receive();
+            return (con.notEmpty) ? tagged Valid iid : tagged Invalid;
+        
+        endmethod
+        
+        method Action drop();
+        
+            con.deq();
 
-    interface ctrl = portCtrls;
+        endmethod
 
-    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(ni) iid);
+    endinterface
 
-      let res <- ports[iid].receive();
-      return res;
+    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) dummy);
 
-    endmethod
+        if (!con.notEmpty)
+            $display("WARNING: Underflow on unguarded receive port %s! Junk data added!", portname);
 
-endmodule
+        con.deq();
+        match {.iid, .m} = con.receive();
+        return m;
 
-
-module [HASIM_MODULE] mkPortSendGuarded_Multiplexed#(String portname)
-    //interface:
-        (PORT_SEND_MULTIPLEXED#(ni, t_MSG))
-    provisos
-        (Bits#(t_MSG, t_MSG_SZ),
-         Transmittable#(Maybe#(t_MSG)));
-
-    Vector#(ni, PORT_SEND#(t_MSG)) ports = newVector();
-    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
-
-    for (Integer x = 0; x < valueOf(ni); x = x + 1)
-    begin
-      ports[x] <- mkPortSend(portname + "_" + integerToString(x));
-      portCtrls[x] = ports[x].ctrl;
-    end
-
-    interface ctrl = portCtrls;
-
-    method Action send(INSTANCE_ID#(ni) iid, Maybe#(t_MSG) m);
-
-      ports[iid].send(m);
 
     endmethod
   
@@ -362,222 +428,40 @@ endmodule
 
 module [HASIM_MODULE] mkPortRecvGuarded_Multiplexed#(String portname, Integer latency)
     //interface:
-        (PORT_RECV_MULTIPLEXED#(ni, t_MSG))
+        (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Transmittable#(Maybe#(t_MSG)));
+         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6),
+         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
 
 
-    Vector#(ni, PORT_RECV#(t_MSG)) ports = newVector();
-    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
-
-    for (Integer x = 0; x < valueOf(ni); x = x + 1)
-    begin
-      ports[x] <- mkPortRecv(portname + "_" + integerToString(x), latency);
-      portCtrls[x] = ports[x].ctrl;
-    end
-
-    interface ctrl = portCtrls;
-
-    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(ni) iid);
-
-      let res <- ports[iid].receive();
-      return res;
-
+    PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG) port <- mkPortRecv_Multiplexed(portname, latency);
+    
+    interface ctrl = port.ctrl;
+    
+    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) iid) if (!port.ctrl.empty());
+    
+        let m <- port.receive(iid);
+        return m;
+    
     endmethod
 
 endmodule
 
-module [HASIM_MODULE] mkPortSendUG#(String portname)
-  //interface:
-              (PORT_SEND#(t_MSG))
-  provisos
-          (Bits#(t_MSG, t_MSG_SZ),
-           Transmittable#(Maybe#(t_MSG)));
-        
-  Connection_Send#(Maybe#(t_MSG)) con <- mkConnectionSendUG(portname);
-    
-  interface PORT_CONTROL ctrl;
 
-        method Bool empty() = True;
-        method Bool full() = !con.notFull();
-        method Bool balanced() = True;
-        method Bool light() = False;
-        method Bool heavy() = False;
 
-  endinterface
-  
-  method Action send(Maybe#(t_MSG) m);
-    
-    con.send(m);
-    if (!con.notFull)
-        $display("WARNING: Overflow for unguarded send Port %s. Dropped Message occurred!", portname);
-    
-  endmethod
-  
-endmodule
-
-module [HASIM_MODULE] mkPortRecvUG#(String portname, Integer latency, Maybe#(msg_T) initValue)
-    //interface:
-        (PORT_RECV#(msg_T))
-        provisos
-                  (Bits#(msg_T, msg_SZ),
-                   Transmittable#(Maybe#(msg_T)));
-
-    let p <- case (latency)
-               0: mkPortRecvUG_L0(portname);
-               1: mkPortRecvUG_L1(portname, initValue);
-               default: mkPortRecvUG_Buffered(portname, latency, 0, initValue);
-             endcase;
-
-    return p;
-
-endmodule
-
-module [HASIM_MODULE] mkPortRecvUG_Buffered#(String portname, Integer latency, Integer extra_buffering, Maybe#(msg_T) init_value)
-    //interface:
-                (PORT_RECV#(msg_T))
-      provisos
-                (Bits#(msg_T, msg_SZ),
-                 Transmittable#(Maybe#(msg_T)));
-
-  Connection_Receive#(Maybe#(msg_T)) con <- mkConnectionRecvUG(portname);
-   
-  Integer rMax = latency + extra_buffering + 1;
-  
-  if (rMax > 32)
-    error("Total Port buffering cannot currently exceed 32. Port: " + portname);
-  
-  LUTRAM#(Bit#(5), Maybe#(msg_T)) rs <- mkLUTRAM(init_value);
-  
-  Reg#(Bit#(5)) head <- mkReg(0);
-  Reg#(Bit#(5)) tail <- mkReg(fromInteger(latency));
-  
-  Bool fullQ  = tail + 1 == head;
-  Bool emptyQ = head == tail;
-  
-  
-  rule shift (!fullQ && con.notEmpty());
-  
-    let d = con.receive();
-    con.deq();
-    
-    rs.upd(tail, d);
-    tail <= tail + 1;
-   
-  endrule
-  
-  //XXX a temporary set of control info
-  interface PORT_CONTROL ctrl;
-
-        method Bool empty() = emptyQ;
-        method Bool full() = fullQ;
-        method Bool balanced() = True;
-        method Bool light() = False;
-        method Bool heavy() = False;
-
-  endinterface
-
-  method ActionValue#(Maybe#(msg_T)) receive();
-    
-    if (emptyQ)
-        $display("WARNING: Underflow on unguarded receive port %s! Junk data added!", portname);
-
-    head <= head + 1;
-    return rs.sub(head);
-    
-  endmethod
-
-endmodule
-
-//Port optimized for latency 0
-
-module [HASIM_MODULE] mkPortRecvUG_L0#(String portname)
-    //interface:
-                (PORT_RECV#(msg_T))
-      provisos
-                (Bits#(msg_T, msg_SZ),
-                 Transmittable#(Maybe#(msg_T)));
-
-  Connection_Receive#(Maybe#(msg_T)) con <- mkConnectionRecvUG(portname);
-     
-  //XXX a temporary set of control info
-  interface PORT_CONTROL ctrl;
-
-        method Bool empty() = !con.notEmpty();
-        method Bool full() = True;
-        method Bool balanced() = True;
-        method Bool light() = False;
-        method Bool heavy() = False;
-
-  endinterface
-
-  method ActionValue#(Maybe#(msg_T)) receive();
-  
-    if (!con.notEmpty)
-        $display("WARNING: Underflow on unguarded receive port %s! Junk data added!", portname);
-
-    con.deq();
-    return con.receive();
-    
-  endmethod
-  
-endmodule
-
-//Port optimized for latency 1
-
-module [HASIM_MODULE] mkPortRecvUG_L1#(String portname, Maybe#(msg_T) init_value)
-    //interface:
-                (PORT_RECV#(msg_T))
-      provisos
-                (Bits#(msg_T, msg_SZ),
-                 Transmittable#(Maybe#(msg_T)));
-
-  Connection_Receive#(Maybe#(msg_T)) con <- mkConnectionRecvUG(portname);
-  Reg#(Bool) initializing <- mkReg(True);
-     
-
-  //XXX a temporary set of control info
-  interface PORT_CONTROL ctrl;
-
-        method Bool empty() = !(con.notEmpty || initializing);
-        method Bool full() = True;
-        method Bool balanced() = True;
-        method Bool light() = False;
-        method Bool heavy() = False;
-
-  endinterface
-
-  method ActionValue#(Maybe#(msg_T)) receive();
-
-    if (initializing)
-    begin
-      initializing <= False;
-      return init_value;
-    end
-    else
-    begin
-      if (!con.notEmpty)
-          $display("WARNING: Underflow on unguarded receive port %s! Junk data added!", portname);
-      let m = con.receive();
-      con.deq();
-      return m;
-    end
-  endmethod
-
-endmodule
 
 module [Connected_Module] mkConnectionSendUG#(String portname)
     //interface:
-                (Connection_Send#(msg_T))
+                (Connection_Send#(t_MSG))
     provisos
-            (Bits#(msg_T, msg_SZ),
-	     Transmittable#(msg_T));
+            (Bits#(t_MSG, t_MSG_SZ),
+	     Transmittable#(t_MSG));
 
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-  FIFOF#(msg_T) q <- mkUGFIFOF();
+  FIFOF#(t_MSG) q <- mkUGFIFOF();
   
   //Bind the interface to a name for convenience
   let outg = (interface CON_Out;
@@ -589,7 +473,7 @@ module [Connected_Module] mkConnectionSendUG#(String portname)
 	     endinterface);
 
   //Figure out my type for typechecking
-  msg_T msg = ?;
+  t_MSG msg = ?;
   String mytype = printType(typeOf(msg));
 
   //Add our interface to the ModuleCollect collection
@@ -600,7 +484,7 @@ module [Connected_Module] mkConnectionSendUG#(String portname)
     return q.notFull();
   endmethod
   
-  method Action send(msg_T data);
+  method Action send(t_MSG data);
     q.enq(data);
   endmethod
 
@@ -608,13 +492,13 @@ endmodule
 
 module [Connected_Module] mkConnectionRecvUG#(String portname)
     //interface:
-                (Connection_Receive#(msg_T))
+                (Connection_Receive#(t_MSG))
     provisos
-            (Bits#(msg_T, msg_SZ),
-	     Transmittable#(msg_T));
+            (Bits#(t_MSG, t_MSG_SZ),
+	     Transmittable#(t_MSG));
 
   PulseWire      en_w    <- mkPulseWire();
-  RWire#(msg_T)  data_w  <- mkRWire();
+  RWire#(t_MSG)  data_w  <- mkRWire();
   
   //Bind the interface to a name for convenience
   let inc = (interface CON_In;
@@ -630,14 +514,14 @@ module [Connected_Module] mkConnectionRecvUG#(String portname)
 	     endinterface);
 
   //Figure out my type for typechecking
-  msg_T msg = ?;
+  t_MSG msg = ?;
   String mytype = printType(typeOf(msg));
 
   //Add our interface to the ModuleCollect collection
   let info = CRecv_Info {cname: portname, ctype: mytype, conn: inc};
   addToCollection(tagged LRecv info);
   
-  method msg_T receive();
+  method t_MSG receive();
     return validValue(data_w.wget());
   endmethod
 

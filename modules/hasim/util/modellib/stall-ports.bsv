@@ -73,16 +73,15 @@ interface PORT_STALL_SEND#(type a);
     method Action doEnq(a x);
     method Action noEnq();
     method Bool   canEnq();
-    interface PORT_CONTROL ctrl;
+    interface INSTANCE_CONTROL_IN_OUT#(1) ctrl;
 
 endinterface
 
 interface PORT_STALL_RECV#(type a);
-    method Bool   canDeq();
     method Action noDeq();
     method Action doDeq();
-    method a      peek();
-    interface PORT_CONTROL ctrl;
+    method ActionValue#(Maybe#(a)) receive();
+    interface INSTANCE_CONTROL_IN_OUT#(1) ctrl;
 endinterface
 
 
@@ -90,16 +89,15 @@ interface PORT_STALL_SEND_MULTIPLEXED#(type ni, type a);
     method Action doEnq(INSTANCE_ID#(ni) iid, a x);
     method Action noEnq(INSTANCE_ID#(ni) iid);
     method Bool   canEnq(INSTANCE_ID#(ni) iid);
-    interface Vector#(ni, PORT_CONTROL) ctrl;
+    interface INSTANCE_CONTROL_IN_OUT#(ni) ctrl;
 
 endinterface
 
 interface PORT_STALL_RECV_MULTIPLEXED#(type ni, type a);
-    method Bool   canDeq(INSTANCE_ID#(ni) iid);
     method Action noDeq(INSTANCE_ID#(ni) iid);
     method Action doDeq(INSTANCE_ID#(ni) iid);
-    method a      peek(INSTANCE_ID#(ni) iid);
-    interface Vector#(ni, PORT_CONTROL) ctrl;
+    method ActionValue#(Maybe#(a)) receive(INSTANCE_ID#(ni) iid);
+    interface INSTANCE_CONTROL_IN_OUT#(ni) ctrl;
 endinterface
 
 
@@ -110,11 +108,11 @@ module [HASIM_MODULE] mkPortStallSend#(String s)
 
     Connection_Receive#(Bool) creditFromQueue <- mkConnectionRecvUG(s + "__cred");
 
-    PORT_SEND#(a) enqToQueue <- mkPortSendUG(s + "__portDataEnq");
+    PORT_SEND#(a) enqToQueue <- mkPortSend(s + "__portDataEnq");
 
     Reg#(Bool) initCredit <- mkReg(True);
 
-    method Action doEnq (a x);
+    method Action doEnq (a x) if (initCredit || creditFromQueue.notEmpty());
         if (!initCredit)
         begin
             creditFromQueue.deq();
@@ -123,7 +121,7 @@ module [HASIM_MODULE] mkPortStallSend#(String s)
         enqToQueue.send(tagged Valid x);
     endmethod
 
-    method Action noEnq();
+    method Action noEnq() if (initCredit || creditFromQueue.notEmpty());
         if (!initCredit)
         begin
             creditFromQueue.deq();
@@ -132,15 +130,40 @@ module [HASIM_MODULE] mkPortStallSend#(String s)
         enqToQueue.send(tagged Invalid);
     endmethod
 
-    method Bool canEnq() = initCredit ? True : creditFromQueue.receive();
+    method Bool canEnq() if (initCredit || creditFromQueue.notEmpty()) = initCredit ? True : creditFromQueue.receive();
 
-    interface PORT_CONTROL ctrl;
-        method Bool empty() = !(creditFromQueue.notEmpty() || initCredit); // This is that we have a credit token.
-        method Bool full() = enqToQueue.ctrl.full(); // This is if the output port is full.
-        method Bool balanced() = True;
-        method Bool light() = False;
-        method Bool heavy() = False;
+    interface INSTANCE_CONTROL_IN_OUT ctrl;
+
+        interface INSTANCE_CONTROL_IN in;
+        
+            method Bool empty() = !(creditFromQueue.notEmpty() || initCredit); // This is that we have a credit token.
+            method Bool balanced() = True;
+            method Bool light() = False;
+            
+            method Maybe#(INSTANCE_ID#(1)) nextReadyInstance() = tagged Valid (?);
+            method Action drop() if (initCredit || creditFromQueue.notEmpty());
+
+                if (!initCredit)
+                begin
+                    creditFromQueue.deq();
+                end
+                initCredit <= False;
+                // Note: we purposely don't write enqToQueue here, since it's a drop.
+            
+            endmethod
+        
+        endinterface
+        
+        interface INSTANCE_CONTROL_OUT out;
+            
+            method Bool full() = enqToQueue.ctrl.full(); // This is if the output port is full.
+            method Bool balanced() = True;
+            method Bool heavy() = False;
+        
+        endinterface
+
     endinterface
+
 endmodule
 
 module [HASIM_MODULE] mkPortStallRecv#(String s)
@@ -150,14 +173,14 @@ module [HASIM_MODULE] mkPortStallRecv#(String s)
 
     Connection_Send#(Bool) creditToProducer <- mkConnectionSendUG(s + "__cred");
 
-    PORT_RECV#(a) enqFromProducer <- mkPortRecvUG_L0(s + "__portDataEnq");
+    PORT_RECV#(a) enqFromProducer <- mkPortRecv_L0(s + "__portDataEnq");
 
     FIFOF#(a) fifo <- mkUGSizedFIFOF(2);
 
     Reg#(Bool) producerCompleted <- mkReg(False); // producer model cycle completed
     Reg#(Bool) consumerCompleted <- mkReg(False); // consumer model cycle completed
 
-    rule endModelCycle (producerCompleted && consumerCompleted);
+    rule endModelCycle (producerCompleted && consumerCompleted && creditToProducer.notFull());
 
         creditToProducer.send(fifo.notFull());
         producerCompleted <= False;
@@ -182,93 +205,283 @@ module [HASIM_MODULE] mkPortStallRecv#(String s)
     //       !ctrl.empty -> canDeq ? 
     //                          (peek* -> (doDeq | noDeq)) :
     //                          noDeq
-    method Bool canDeq();
-        return fifo.notEmpty();
-    endmethod
 
-    method Action doDeq();
+    method Action doDeq() if (!consumerCompleted);
         fifo.deq();
         consumerCompleted <= True;
     endmethod
 
-    method a peek();
-        return fifo.first(); 
+    method ActionValue#(Maybe#(a)) receive() if (!consumerCompleted);
+        return fifo.notEmpty() ? tagged Valid fifo.first() : tagged Invalid;
     endmethod
 
-    method Action noDeq();
+    method Action noDeq() if (!consumerCompleted);
         consumerCompleted <= True;
     endmethod
 
-    interface PORT_CONTROL ctrl;
-        method Bool empty() = consumerCompleted; // This is that we calculated the next state of the FIFO.
-        method Bool full() = !creditToProducer.notFull(); // This is that the credit port is full.
-        method Bool balanced() = True;
-        method Bool light() = False;
-        method Bool heavy() = False;
+    interface INSTANCE_CONTROL_IN_OUT ctrl;
+
+        interface INSTANCE_CONTROL_IN in;
+
+            method Bool empty() = consumerCompleted; // This is that we calculated the next state of the FIFO.
+            method Bool balanced() = True;
+            method Bool light() = False;
+            
+            method Maybe#(INSTANCE_ID#(ni)) nextReadyInstance() = tagged Valid (?);
+            method Action drop();
+                consumerCompleted <= True;
+            endmethod
+        
+        endinterface
+    
+        interface INSTANCE_CONTROL_OUT out;
+    
+            method Bool full() = !creditToProducer.notFull(); // This is that the credit port is full.
+            method Bool balanced() = True;
+            method Bool heavy() = False;
+        
+        endinterface
+
     endinterface
+
 endmodule
 
 
 module [HASIM_MODULE] mkPortStallSend_Multiplexed#(String s)
                        (PORT_STALL_SEND_MULTIPLEXED#(ni, a))
             provisos (Bits#(a, sa),
-                      Transmittable#(Maybe#(a)));
+                      Transmittable#(Tuple2#(INSTANCE_ID#(ni), Bool)),
+                      Transmittable#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))));
 
-    Vector#(ni, PORT_STALL_SEND#(a)) ports = newVector();
-    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
+    Connection_Receive#(Tuple2#(INSTANCE_ID#(ni), Bool)) creditFromQueue <- mkConnectionRecvUG(s + "__cred");
 
-    for (Integer x = 0; x < valueOf(ni); x = x + 1)
-    begin
-      ports[x] <- mkPortStallSend(s + "_" + integerToString(x));
-      portCtrls[x] = ports[x].ctrl;
-    end
+    Connection_Send#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) enqToQueue <- mkConnection_Send(s + "__portDataEnq");
 
-    interface ctrl = portCtrls;
+    Reg#(Maybe#(INSTANCE_ID#(ni))) initCredit <- mkReg(tagged Valid 0);
 
-    method Action doEnq(INSTANCE_ID#(ni) iid, a x);
-        ports[iid].doEnq(x);
+    method Action doEnq (INSTANCE_ID#(ni) iid, a x) if (isValid(initCredit) || creditFromQueue.notEmpty());
+
+        if (initCredit matches tagged Valid .cur_iid)
+        begin
+            if (cur_iid == maxBound)
+                initCredit <= tagged Invalid;
+            else
+                initCredit <= tagged Valid (cur_iid + 1);
+        end
+        else
+        begin
+            creditFromQueue.deq();
+        end
+        
+        enqToQueue.send(tuple2(iid, tagged Valid x));
+
     endmethod
 
-    method Action noEnq(INSTANCE_ID#(ni) iid);
-        ports[iid].noEnq();
+    method Action noEnq(INSTANCE_ID#(ni) iid) if (isValid(initCredit) || creditFromQueue.notEmpty());
+        if (initCredit matches tagged Valid .cur_iid)
+        begin
+            if (cur_iid == maxBound)
+                initCredit <= tagged Invalid;
+            else
+                initCredit <= tagged Valid (cur_iid + 1);
+        end
+        else
+        begin
+            creditFromQueue.deq();
+        end
+        
+        enqToQueue.send(tuple2(iid, tagged Invalid));
+
     endmethod
 
-    method Bool   canEnq(INSTANCE_ID#(ni) iid);
-        return ports[iid].canEnq();
+    method Bool canEnq(INSTANCE_ID#(ni) iid) if (isValid(initCredit) || creditFromQueue.notEmpty());
+
+        if (initCredit matches tagged Invalid)
+        begin
+
+            match {.*, .b} = creditFromQueue.receive();
+            return b;
+
+        end
+        else
+        begin
+
+            return True;
+
+        end
+
     endmethod
+
+    interface INSTANCE_CONTROL_IN_OUT ctrl;
+
+        interface INSTANCE_CONTROL_IN in;
+        
+            method Bool empty() = !(creditFromQueue.notEmpty() || isValid(initCredit)); // This is that we have a credit token.
+            method Bool balanced() = True;
+            method Bool light() = False;
+            
+            method Maybe#(INSTANCE_ID#(ni)) nextReadyInstance();
+                if (initCredit matches tagged Valid .iid)
+                begin
+                    return tagged Valid iid;
+                end
+                else if (creditFromQueue.notEmpty())
+                begin
+                    match {.iid, .*} = creditFromQueue.receive();
+                    return tagged Valid iid;
+                end
+                else
+                begin
+                    return tagged Invalid;
+                end
+            endmethod
+
+            method Action drop() if (isValid(initCredit) || creditFromQueue.notEmpty());
+
+                if (initCredit matches tagged Valid .cur_iid)
+                begin
+                    if (cur_iid == maxBound)
+                        initCredit <= tagged Invalid;
+                    else
+                        initCredit <= tagged Valid (cur_iid + 1);
+                end
+                else
+                begin
+                    creditFromQueue.deq();
+                end
+
+                // Note: we purposely don't write enqToQueue here, since it's a drop.
+                
+            endmethod
+        
+        endinterface
+        
+        interface INSTANCE_CONTROL_OUT out;
+            
+            method Bool full() = !enqToQueue.notFull(); // This is if the output port is full.
+            method Bool balanced() = True;
+            method Bool heavy() = False;
+        
+        endinterface
+
+    endinterface
+
+
   
 endmodule
 
 module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
         (PORT_STALL_RECV_MULTIPLEXED#(ni, a))
             provisos (Bits#(a, sa),
-                      Transmittable#(Maybe#(a)));
+                      Transmittable#(Tuple2#(INSTANCE_ID#(ni), Bool)),
+                      Transmittable#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))));
 
-    Vector#(ni, PORT_STALL_RECV#(a)) ports = newVector();
-    Vector#(ni, PORT_CONTROL) portCtrls = newVector();
+    Connection_Send#(Tuple2#(INSTANCE_ID#(ni), Bool)) creditToProducer <- mkConnectionSendUG(s + "__cred");
 
-    for (Integer x = 0; x < valueOf(ni); x = x + 1)
-    begin
-      ports[x] <- mkPortStallRecv(s + "_" + integerToString(x));
-      portCtrls[x] = ports[x].ctrl;
-    end
+    Connection_Receive#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) enqFromProducer <- mkConnection_Receive(s + "__portDataEnq");
 
-    interface ctrl = portCtrls;
+    // We use these like soft connections which are self-contained.
+    FIFOF#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) firstQ <- mkFIFOF();
+    FIFOF#(Bool) deqQ   <- mkFIFOF();
+    FIFOF#(INSTANCE_ID#(ni)) writesQ   <- mkFIFOF();
 
-    method Bool   canDeq(INSTANCE_ID#(ni) iid);
-        return ports[iid].canDeq();
+    Vector#(ni, FIFOF#(a)) fifos <- replicateM(mkUGSizedFIFOF(2));
+
+    rule stage1_enqAndFirst (True);
+
+        match {.iid, .m_enq} = enqFromProducer.receive();
+        enqFromProducer.deq();
+        
+        if (m_enq matches tagged Valid .val)
+        begin
+            fifos[iid].enq(val);
+        end
+
+        if (fifos[iid].notEmpty())
+        begin
+            firstQ.enq(tuple2(iid, tagged Valid fifos[iid].first()));
+        end
+        else
+        begin
+            firstQ.enq(tuple2(iid, tagged Invalid));
+        end
+        
+        writesQ.enq(iid);
+        
+    endrule
+
+    rule stage2_deqAndCredit (creditToProducer.notFull());
+
+        let iid = writesQ.first();
+        writesQ.deq();
+ 
+        if (deqQ.first())
+        begin
+            fifos[iid].deq();
+        end
+        deqQ.deq();
+        
+        creditToProducer.send(tuple2(iid, (fifos[iid].notFull || deqQ.first())));
+
+    endrule
+    
+    // NOTE: These depend on higher-level guard checking by local controller
+    //       and the consumer module.
+    //       !ctrl.empty -> canDeq ? 
+    //                          (peek* -> (doDeq | noDeq)) :
+    //                          noDeq
+
+    method Action doDeq(INSTANCE_ID#(ni) iid);
+        deqQ.enq(True);
+    endmethod
+
+    method ActionValue#(Maybe#(a)) receive(INSTANCE_ID#(ni) iid);
+        match {.iid2, .m_val} = firstQ.first();
+        firstQ.deq();
+        return m_val; 
     endmethod
 
     method Action noDeq(INSTANCE_ID#(ni) iid);
-        ports[iid].noDeq();
+        deqQ.enq(False);
     endmethod
 
-    method Action doDeq(INSTANCE_ID#(ni) iid);
-        ports[iid].doDeq();
-    endmethod
+    interface INSTANCE_CONTROL_IN_OUT ctrl;
 
-    method a      peek(INSTANCE_ID#(ni) iid);
-        return ports[iid].peek();
-    endmethod
+        interface INSTANCE_CONTROL_IN in;
+
+            method Bool empty() = !firstQ.notEmpty();
+            method Bool balanced() = True;
+            method Bool light() = False;
+            method Maybe#(INSTANCE_ID#(ni)) nextReadyInstance();
+            
+                if (firstQ.notEmpty())
+                begin
+                    match {.iid, .*} = firstQ.first();
+                    return tagged Valid iid;
+                end
+                else
+                begin
+                    return tagged Invalid;
+                end
+            
+            endmethod
+            
+            method Action drop();
+                firstQ.deq();
+            endmethod
+        
+        endinterface
+    
+        interface INSTANCE_CONTROL_OUT out;
+    
+            method Bool full() = !deqQ.notFull();
+            method Bool balanced() = True;
+            method Bool heavy() = False;
+        
+        endinterface
+
+    endinterface
+
+
 
 endmodule

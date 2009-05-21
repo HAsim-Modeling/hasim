@@ -18688,3 +18688,32 @@ implementation simply read the entire table for a context.  Even with 7 BRAMs
 allocated as individual read ports, the new version requires fewer BRAMs
 and less logic.  The only run-time penalty is for instructions that have more
 than one destination register (rare).
+
+----------
+pellauer    Date: Thu May 21 13:26:48 EDT 2009  CSN: CSN-hasim-637
+                  Thu May 21 17:26:48 UTC 2009
+
+
+Directory modules/hasim/controller/local_controllers/module
+ local-controller-module-standard.awb Locally Modified          636 
+ local-controller-module-standard.bsv Locally Modified          636 
+
+Directory modules/hasim/util/modellib
+ stall-ports.bsv           Locally Modified          636 
+ a-ports.bsv               Locally Modified          636 
+
+
+* A-Ports now are time-multiplexed instead of replicated. As a side effect 
+  all timing model modules should write a port all in the same stage. IE instead
+  of conditionally writing a port in Stage 1 or Stage 3, it should only be
+  written in Stage 3. Otherwise context order could get mixed-up.
+
+* Local Controller goes round-robin implicitly, and just performs a sanity check
+  that all the tags are from the same context. In the future we could drop the
+  tags if we're confident that no problems are ever being introduced.
+  
+* Stage Controller is added as a lightweight way to control pipeline stages
+  within a module. In the round-robin scheme this is just a FIFO wrapped in a
+  prettier interface.
+
+Michael P.

@@ -37,12 +37,12 @@ import FIFO::*;
 `include "asim/dict/RINGID.bsh"
 
 
-// ni is number of instances to control.
-interface LOCAL_CONTROLLER#(type ni);
+// t_NUM_INSTANCES is number of instances to control.
+interface LOCAL_CONTROLLER#(type t_NUM_INSTANCES);
 
-    method ActionValue#(INSTANCE_ID#(ni)) startModelCycle();
-    method Action endModelCycle(INSTANCE_ID#(ni) iid, Bit#(8) path);
-    method Action instanceDone(INSTANCE_ID#(ni) iid, Bool passfail);
+    method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES)) startModelCycle();
+    method Action endModelCycle(INSTANCE_ID#(t_NUM_INSTANCES) iid, Bit#(8) path);
+    method Action instanceDone(INSTANCE_ID#(t_NUM_INSTANCES) iid, Bool passfail);
 
 endinterface
 
@@ -57,28 +57,34 @@ typedef enum
 LC_STATE
     deriving (Eq, Bits);
 
-module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(ni, PORT_CONTROL)) inports, Vector#(m, Vector#(ni, PORT_CONTROL)) outports)
-    //interface:
-        (LOCAL_CONTROLLER#(ni));
+module [HASIM_MODULE] mkLocalController
+
+    // parameters:
+    #(
+    Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls, 
+    Vector#(t_NUM_OUTPORTS, INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES)) outctrls
+    )
+    // interface:
+        (LOCAL_CONTROLLER#(t_NUM_INSTANCES));
 
     Reg#(LC_STATE) state <- mkReg(LC_Idle);
   
     // Vector of active instances
-    Reg#(Vector#(ni, Bool)) instanceActive <- mkReg(replicate(False));
+    Reg#(Vector#(t_NUM_INSTANCES, Bool)) instanceActive <- mkReg(replicate(False));
     // Vector of running instances
-    Reg#(Vector#(ni, Bool)) instanceRunning <- mkReg(replicate(False));
+    Reg#(Vector#(t_NUM_INSTANCES, Bool)) instanceRunning <- mkReg(replicate(False));
     // Track stepping state.
-    Reg#(Vector#(ni, Bool)) instanceStepped <- mkReg(replicate(False));
+    Reg#(Vector#(t_NUM_INSTANCES, Bool)) instanceStepped <- mkReg(replicate(False));
     // Check balanced state.
-    Reg#(Vector#(ni, Bool)) instanceBalancedSinceQuery <- mkReg(replicate(False));
-    Reg#(Vector#(ni, Bool)) instanceCheckingBalance <- mkReg(replicate(False));
+    Reg#(Vector#(t_NUM_INSTANCES, Bool)) instanceBalancedSinceQuery <- mkReg(replicate(False));
+    Reg#(Vector#(t_NUM_INSTANCES, Bool)) instanceCheckingBalance <- mkReg(replicate(False));
     
     // Are we checking if the ports have quiesced?
     Reg#(Bool) checkBalanced <- mkReg(False);
 
-    Vector#(ni, PulseWire)    startCycleW <- replicateM(mkPulseWire());
-    Vector#(ni, PulseWire)      endCycleW <- replicateM(mkPulseWire());
-    Vector#(ni, Wire#(Bit#(8))) pathDoneW <- replicateM(mkWire());
+    Vector#(t_NUM_INSTANCES, PulseWire)    startCycleW <- replicateM(mkPulseWire());
+    Vector#(t_NUM_INSTANCES, PulseWire)      endCycleW <- replicateM(mkPulseWire());
+    Vector#(t_NUM_INSTANCES, Wire#(Bit#(8))) pathDoneW <- replicateM(mkWire());
     
     
     // For now this local controller just goes round-robin over the instances.
@@ -86,7 +92,7 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(ni, PORT_CONTROL)) i
     // The performance of this could be improved, but the interaction with time-multiplexed
     // ports needs to be worked out.
     
-    COUNTER#(INSTANCE_ID_BITS#(ni)) nextInstance <- mkLCounter(0);
+    COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES)) nextInstance <- mkLCounter(0);
     
     Connection_Chain#(CONTROLLER_COMMAND)  cmds  <- mkConnection_Chain(`RINGID_MODULE_COMMANDS);
     Connection_Chain#(CONTROLLER_RESPONSE) resps <- mkConnection_Chain(`RINGID_MODULE_RESPONSES);
@@ -96,20 +102,20 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(ni, PORT_CONTROL)) i
     endfunction
 
     // Can this module read from this Port?
-    function Bool canReadFrom(PORT_CONTROL inport);
+    function Bool canReadFrom(INSTANCE_CONTROL_IN#(t_NUM_INSTANCES) ctrl_in);
         return case (state)
-                   LC_Running:        return !inport.empty();
-                   LC_Stepping:       return !inport.empty();
-                   LC_Synchronizing:  return !inport.light();
+                   LC_Running:        return !ctrl_in.empty();
+                   LC_Stepping:       return !ctrl_in.empty();
+                   LC_Synchronizing:  return !ctrl_in.light();
                    default:           return False;
                endcase;
     endfunction
 
-    function canWriteTo(PORT_CONTROL outport);
+    function canWriteTo(INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES) ctrl_out);
         return case (state)
-                   LC_Running:        return !outport.full();
-                   LC_Stepping:       return !outport.full();
-                   LC_Synchronizing:  return !outport.heavy();
+                   LC_Running:        return !ctrl_out.full();
+                   LC_Stepping:       return !ctrl_out.full();
+                   LC_Synchronizing:  return !ctrl_out.heavy();
                    default:           return False;
                endcase;
     endfunction
@@ -117,28 +123,49 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(ni, PORT_CONTROL)) i
     // This function will determine the next instance in a non-round-robin manner when we're ready
     // to go that route. Currently this is unused.
 
-    function Bool instanceReady(INSTANCE_ID#(ni) iid);
+    function Bool instanceReady(INSTANCE_ID#(t_NUM_INSTANCES) iid);
         
         Bool canRead  = True;
         Bool canWrite = True;
 
         // Can we read/write all of the ports?
-        for (Integer x = 0; x < valueOf(n); x = x + 1)
-            canRead = canRead && canReadFrom(inports[x][iid]);
+        for (Integer x = 0; x < valueOf(t_NUM_INPORTS); x = x + 1)
+            canRead = canRead && canReadFrom(inctrls[x]);
 
-        for (Integer x = 0; x < valueOf(m); x = x + 1)
-            canWrite = canWrite && canWriteTo(outports[x][iid]);
+        for (Integer x = 0; x < valueOf(t_NUM_OUTPORTS); x = x + 1)
+            canWrite = canWrite && canWriteTo(outctrls[x]);
 
         // An instance is ready to go only if it's been enabled.
-        return instanceActive[iid] && !instanceRunning[iid] && canRead && canWrite;
+        return instanceActive[iid] && !instanceRunning[iid]; //&& canRead && canWrite;
 
     endfunction
 
-    function INSTANCE_ID#(ni) nextReadyInstance();
+    function Action checkInstanceSanity();
+    action
+    
+        // Verify all of the input ports share the same instance, and 
+        // that it's the expected instance.
+        for (Integer x = 0; x < valueOf(t_NUM_INPORTS); x = x + 1)
+        begin
         
-        INSTANCE_ID#(ni) res = 0;
+            if (inctrls[x].nextReadyInstance() matches tagged Valid .iid &&&
+                iid != nextInstance.value())
+            begin
 
-        for (Integer x = 0; x < valueof(ni); x = x + 1)
+                $display("WARNING: Local controller expected instance id: %0d, found: %0d on port #%0d", nextInstance.value(), iid, fromInteger(x));
+
+            end
+
+        end
+
+    endaction
+    endfunction
+
+    function INSTANCE_ID#(t_NUM_INSTANCES) nextReadyInstance();
+        
+        INSTANCE_ID#(t_NUM_INSTANCES) res = 0;
+
+        for (Integer x = 0; x < valueof(t_NUM_INSTANCES); x = x + 1)
         begin
             res = instanceReady(fromInteger(x)) ? fromInteger(x) : res;
         end
@@ -151,7 +178,7 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(ni, PORT_CONTROL)) i
         
         Bool res = False;
 
-        for (Integer x = 0; x < valueof(ni); x = x + 1)
+        for (Integer x = 0; x < valueof(t_NUM_INSTANCES); x = x + 1)
         begin
             res = instanceReady(fromInteger(x)) || res;
         end
@@ -162,18 +189,18 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(ni, PORT_CONTROL)) i
 
 
 
-    function Bool balanced(Integer iid);
+    function Bool balanced();
         Bool res = True;
         
         // Are the ports all balanced?
-        for (Integer x = 0; x < valueOf(n); x = x + 1)
+        for (Integer x = 0; x < valueOf(t_NUM_INPORTS); x = x + 1)
         begin
-            res = res && inports[x][iid].balanced();
+            res = res && inctrls[x].balanced();
         end
 
-        for (Integer x = 0; x < valueOf(m); x = x + 1)
+        for (Integer x = 0; x < valueOf(t_NUM_OUTPORTS); x = x + 1)
         begin
-            res = res && outports[x][iid].balanced();
+            res = res && outctrls[x].balanced();
         end
 
         return res;
@@ -214,8 +241,8 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(ni, PORT_CONTROL)) i
             begin
 
                 state <= LC_Stepping;
-                Vector#(ni, Bool) instance_stepped = newVector();
-                for (Integer x = 0; x < valueOf(ni); x = x + 1)
+                Vector#(t_NUM_INSTANCES, Bool) instance_stepped = newVector();
+                for (Integer x = 0; x < valueOf(t_NUM_INSTANCES); x = x + 1)
                 begin
                    instance_stepped[x] = !instanceActive[x];
                 end
@@ -242,14 +269,7 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(ni, PORT_CONTROL)) i
   
     rule checkBalance (checkBalanced);
 
-        Vector#(ni, Bool) new_balanced = instanceBalancedSinceQuery;
-
-        for (Integer x = 0; x < valueOf(ni); x = x + 1)
-        begin
-            new_balanced[x] = new_balanced[x] && balanced(x);
-        end
-        
-        instanceBalancedSinceQuery <= new_balanced;
+        instanceBalancedSinceQuery <= replicate(balanced());
 
     endrule
 
@@ -259,17 +279,29 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(ni, PORT_CONTROL)) i
         resps.send_to_next(resp);
     endrule
 
-    rule ignoreDisabledInstances (!instanceActive[nextInstance.value()]);
+    rule ignoreDisabledInstances (state != LC_Idle && !instanceActive[nextInstance.value()]);
     
         nextInstance.up();
     
     endrule
+    
+    for (Integer x = 0; x < valueof(t_NUM_INPORTS); x = x + 1)
+    begin
+    
+        rule dropDisabledInstance (inctrls[x].nextReadyInstance() matches tagged Valid .iid &&&
+                                   !instanceActive[iid] &&&
+                                   state != LC_Idle);
+            inctrls[x].drop();
+                    
+        endrule
+    
+    end
 
     rule updateRunning (True);
     
-        Vector#(ni, Bool) new_running = instanceRunning;
+        Vector#(t_NUM_INSTANCES, Bool) new_running = instanceRunning;
 
-        for (Integer x = 0; x < valueOf(ni); x = x + 1)
+        for (Integer x = 0; x < valueOf(t_NUM_INSTANCES); x = x + 1)
         begin
             if (instanceRunning[x])
                 new_running[x] =  !endCycleW[x];
@@ -283,37 +315,100 @@ module [HASIM_MODULE] mkLocalController#(Vector#(n, Vector#(ni, PORT_CONTROL)) i
     
     endrule
 
-    method ActionValue#(INSTANCE_ID#(ni)) startModelCycle() if ((state != LC_Idle) && instanceReady(nextInstance.value()));
+    method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES)) startModelCycle() if ((state != LC_Idle) && instanceReady(nextInstance.value()));
+
+        let next_iid = nextInstance.value();
 
         if (state == LC_Stepping)
         begin
 
-            instanceStepped[nextInstance.value()] <= True;
+            instanceStepped[next_iid] <= True;
             if (allTrue(instanceStepped))
                 state <= LC_Idle;
 
         end
-        startCycleW[nextInstance.value()].send();
+        
+        // checkInstanceSanity();
+        
+        startCycleW[next_iid].send();
         nextInstance.up();
-        return nextInstance.value();
+        return next_iid;
 
     endmethod
-/*
-    method Bool instanceIsActive(INSTANCE_ID#(ni) iid);
-        return instanceActive.sub(iid);
-    endmethod
-*/
-    method Action endModelCycle(INSTANCE_ID#(ni) iid, Bit#(8) path);
+
+    method Action endModelCycle(INSTANCE_ID#(t_NUM_INSTANCES) iid, Bit#(8) path);
     
         endCycleW[iid].send();
         pathDoneW[iid] <= path; // Put the path into the waveform.
     
     endmethod
 
-    method Action instanceDone(INSTANCE_ID#(ni) iid, Bool pf);
+    method Action instanceDone(INSTANCE_ID#(t_NUM_INSTANCES) iid, Bool pf);
         // XXX this should be per-instance.
         resps.send_to_next(tagged RESP_DoneRunning pf);
     endmethod
     
 endmodule
 
+interface STAGE_CONTROLLER#(numeric type t_NUM_INSTANCES, type t_PIPE_STATE);
+
+    method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid, t_PIPE_STATE st);
+    
+    method ActionValue#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE)) nextReadyInstance();
+
+endinterface
+
+interface STAGE_CONTROLLER_VOID#(numeric type t_NUM_INSTANCES);
+
+    method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+    
+    method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
+
+endinterface
+
+module mkStageController 
+    // interface:
+        (STAGE_CONTROLLER#(t_NUM_INSTANCES, t_PIPE_STATE))
+    provisos
+        (Bits#(t_PIPE_STATE, t_PIPE_STATE_SZ));
+
+    FIFO#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE)) q <- mkSizedFIFO(`STAGE_CONTROLLER_BUFFERING);
+
+    
+    method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid, t_PIPE_STATE st);
+    
+        q.enq(tuple2(iid, st));
+    
+    endmethod
+    
+    method ActionValue#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE)) nextReadyInstance();
+
+        q.deq();
+        return q.first();
+
+    endmethod
+
+endmodule
+
+
+module mkStageControllerVoid
+    // interface:
+        (STAGE_CONTROLLER_VOID#(t_NUM_INSTANCES));
+
+    STAGE_CONTROLLER#(t_NUM_INSTANCES, Bit#(0)) m <- mkStageController();
+
+    method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+    
+        m.ready(iid, (?));
+    
+    endmethod
+    
+    method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
+    
+        match {.iid, .*} <- m.nextReadyInstance();
+        
+        return iid;
+    
+    endmethod
+
+endmodule

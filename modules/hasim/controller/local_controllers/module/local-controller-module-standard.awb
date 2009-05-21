@@ -17,6 +17,8 @@
 # %public local-controller-module-standard.bsv
 # %sources -t DICT -v PUBLIC local-controller-module.dic
 #
+# %param STAGE_CONTROLLER_BUFFERING 2 "Amount of buffering for the stage controller. Should not be greater than NUM_CONTEXTS."
+#
 # %AWB_END
 # */
 

@@ -18777,3 +18777,20 @@ Directory modules/hasim/util/common
 
 - Auto-size store buffer structures based on the number of contexts supported
   and the number of STORE_TOKENs instead of using separate awb parameters.
+
+----------
+aparasha    Date: Fri May 22 17:13:30 EDT 2009  CSN: CSN-hasim-639
+                  Fri May 22 21:13:30 UTC 2009
+
+
+Directory modules/hasim/controller
+ controller-basic.cpp      Locally Modified          638 
+ controller-standard.cpp   Locally Modified          638 
+ controller-pure.cpp       Locally Modified          638 
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest.cpp               Locally Modified          638 
+
+- added explicit CallbackExit() calls to quit the application at
+  the end of Controller's Main().
+- updated rrrtest to make it run shorter.

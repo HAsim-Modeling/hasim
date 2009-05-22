@@ -81,4 +81,6 @@ CONTROLLER_CLASS::Main()
     // stop hardware
     STARTER_CLASS::GetInstance()->Pause();
     STARTER_CLASS::GetInstance()->Sync();
+
+    CallbackExit(0);
 }

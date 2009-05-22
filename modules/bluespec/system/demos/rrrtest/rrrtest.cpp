@@ -56,7 +56,7 @@ void
 BLUESPEC_SYSTEM_CLASS::Main()
 {
     UINT64 cycles;
-    UINT64 test_length  = 1000000; // FIXME: take this from a dynamic parameter
+    UINT64 test_length  = 10000; // FIXME: take this from a dynamic parameter
     UINT64 fpga_freq    = 50;     // FIXME: take this from a dynamic parameter
     UINT64 payload_bits = 64;     // FIXME: no idea how
 

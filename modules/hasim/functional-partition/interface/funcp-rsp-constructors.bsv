@@ -171,11 +171,12 @@ endfunction
 
 // initFuncpRspCommitResults
 
-function FUNCP_RSP_COMMIT_RESULTS initFuncpRspCommitResults(TOKEN tok);
+function FUNCP_RSP_COMMIT_RESULTS initFuncpRspCommitResults(TOKEN tok, Maybe#(STORE_TOKEN) storeTok);
 
     return FUNCP_RSP_COMMIT_RESULTS
             {
-                token: tok
+                token: tok,
+                storeToken: storeTok
             };
 
 endfunction

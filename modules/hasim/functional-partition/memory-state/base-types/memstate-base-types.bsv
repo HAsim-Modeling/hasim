@@ -88,11 +88,30 @@ function MEMSTATE_REQ_LOAD memStateReqLoad(TOKEN tok, MEM_ADDRESS addr, Bool iSt
 endfunction
 
 
+//
+// MEMSTATE_REQ_COMMIT --
+//     Store instruction is committing but store buffer should not be flushed.
+//     Token will be released.  All future references to the store will be
+//     with the store token.
+//
 typedef struct
 {
     TOKEN tok;
+    STORE_TOKEN storeTok;
 }
 MEMSTATE_REQ_COMMIT
+    deriving (Eq, Bits);
+
+
+//
+// MEMSTATE_REQ_WRITE_BACK --
+//     Move store data from store buffer to memory.
+//
+typedef struct
+{
+    STORE_TOKEN storeTok;
+}
+MEMSTATE_REQ_WRITE_BACK
     deriving (Eq, Bits);
 
 
@@ -106,10 +125,11 @@ MEMSTATE_REQ_REWIND
 
 typedef union tagged
 {
-    MEMSTATE_REQ_LOAD    REQ_LOAD;
-    MEMSTATE_REQ_STORE   REQ_STORE;
-    MEMSTATE_REQ_COMMIT  REQ_COMMIT;
-    MEMSTATE_REQ_REWIND  REQ_REWIND;
+    MEMSTATE_REQ_LOAD        REQ_LOAD;
+    MEMSTATE_REQ_STORE       REQ_STORE;
+    MEMSTATE_REQ_COMMIT      REQ_COMMIT;
+    MEMSTATE_REQ_WRITE_BACK  REQ_WRITE_BACK;
+    MEMSTATE_REQ_REWIND      REQ_REWIND;
 }
 MEMSTATE_REQ
     deriving (Eq, Bits);

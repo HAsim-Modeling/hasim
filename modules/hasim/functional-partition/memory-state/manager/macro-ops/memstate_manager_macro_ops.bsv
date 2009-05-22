@@ -65,7 +65,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
     // ***** Local data ***** //
 
-    FIFOF#(Bool) commitQ <- mkFIFOF();
+    FIFOF#(Bool) writeBackQ <- mkFIFOF();
     FIFO#(MEM_LOAD_INFO) sbLookupQ <- mkFIFO();
 
 
@@ -113,7 +113,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
     (* conservative_implicit_conditions *)
     rule memLoad (linkRegState.getReq() matches tagged REQ_LOAD .ldInfo &&&
-                  ! commitQ.notEmpty());
+                  ! writeBackQ.notEmpty());
 
         // Pop the request from the register state.
         linkRegState.deq();
@@ -166,7 +166,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
           begin
               // A miss in the store buffer.  Look in memory.
               linkMemory.makeReq(tagged MEM_LOAD load_req);
-              debugLog.record($format("  LOAD SB miss"));
+              debugLog.record($format("  LOAD SB miss, ") + fshow(load_req.memRefToken));
           end
           tagged Valid .sb_val:
           begin
@@ -182,7 +182,6 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // memLoadMemory --
     //   Forward load response from memory back to the register state manager.
     //
-    (* descending_urgency = "memLoadMemory, memLoadSB, memLoad" *)
     rule memLoadMemory (True);
         let mem_resp = linkMemory.getResp();
         linkMemory.deq();
@@ -192,54 +191,61 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     endrule
 
   
+    //
+    // commitResults --
+    //   Remap a commited store in the store buffer from the TOKEN index space
+    //   to the STORE_TOKEN index space.
+    rule commitResults (linkRegState.getReq() matches tagged REQ_COMMIT .req);
+        linkRegState.deq();
 
-    // commit
+        stBuffer.commitReq(req.tok.index, req.storeTok.index);
+        debugLog.record($format("COMMIT: ") + fshow(req.tok.index) + $format(" is now ") + fshow(req.storeTok.index));
+    endrule
+
+
+    // writeBack
     
     // 2-stage macro-operation
-    // When:   When the register state requests a committed store.
+    // When:   When the register state requests a write back for a store.
     // Effect: Remove a value from the store buffer and send it on to memory.
     // Parameters: TOKEN
     // Returns:    N/A
     
-    // commit1
-    
-    // When:   When the register state requests a committed store.
+    // writeBack1
+
     // Effect: Retrieve the value from the store buffer.
 
-    rule commit1 (linkRegState.getReq() matches tagged REQ_COMMIT .req);
-
+    rule writeBack1 (linkRegState.getReq() matches tagged REQ_WRITE_BACK .req);
         // Get the input from the register state. Begin macro-operation.
         linkRegState.deq();
 
-        debugLog.record($format("COMMIT: ") + fshow(req.tok.index));
+        debugLog.record($format("WRITEBACK: ") + fshow(req.storeTok.index));
 
         // Send the request on to the store buffer.
-        stBuffer.commitReq(req.tok.index);
+        stBuffer.writeBackReq(req.storeTok.index);
 
-        // Commit queue is used just to lock out loads while the location
+        // WriteBack queue is used just to lock out loads while the location
         // of stored data is unpredictable.
-        commitQ.enq(?);
-
+        writeBackQ.enq(?);
     endrule
     
-    // commit2
+    // writeBack2
     
-    // When:   Some time after commit1
+    // When:   Some time after writeBack1
     // Effect: Send the store on to update memory.
 
-    rule commit2 (True);
-
+    (* descending_urgency = "writeBack2, memLoadMemory, memLoadSB, memLoad" *)
+    rule writeBack2 (True);
         // Get the response from the store buffer.
-        let rsp <- stBuffer.commitResp();
+        let rsp <- stBuffer.writeBackResp();
 
         if (!rsp.hasMore)
-            commitQ.deq();
+            writeBackQ.deq();
 
-        debugLog.record($format("  COMMIT resp: addr=0x%x, value=0x%x, more=%d", rsp.addr, rsp.value, rsp.hasMore));
+        debugLog.record($format("  WRITEBACK resp: addr=0x%x, value=0x%x, more=%d", rsp.addr, rsp.value, rsp.hasMore));
 
         // Send the actual store to memory.
         linkMemory.makeReq(funcpMemStoreReq(rsp.tokIdx.context_id, rsp.addr, rsp.value));
-
     endrule
 
     // rewind

@@ -20,6 +20,7 @@
 
 import FIFO::*;
 import FIFOF::*;
+import SpecialFIFOs::*;
 import Vector::*;
 import FShow::*;
 
@@ -57,7 +58,7 @@ typedef struct
     MEM_ADDRESS addr;
     MEM_VALUE value;
 }
-MEMSTATE_SBUFFER_RSP_COMMIT
+MEMSTATE_SBUFFER_RSP_WRITEBACK
     deriving (Eq, Bits);
 
 
@@ -80,11 +81,17 @@ interface MEMSTATE_SBUFFER;
     method Action insertReq(TOKEN_INDEX tokIdx, MEM_ADDRESS addr, MEM_VALUE value);
     
     //
-    // COMMIT:  Remove an entry from the store buffer, returning the value.
-    //          The caller will forward the value down the memory hierarchy.
+    // COMMIT: Move store from TOKEN_INDEX space to STORE_TOKEN_INDEX space.
+    //         The store remains in the store buffer until WRITE BACK.
+    method Action commitReq(TOKEN_INDEX tokIdx, STORE_TOKEN_INDEX storeTokIdx);
+
     //
-    method Action commitReq(TOKEN_INDEX tokIdx);
-    method ActionValue#(MEMSTATE_SBUFFER_RSP_COMMIT) commitResp();
+    // WRITE BACK:
+    //        Remove an entry from the store buffer, returning the value.
+    //        The caller will forward the value down the memory hierarchy.
+    //
+    method Action writeBackReq(STORE_TOKEN_INDEX storeTokIdx);
+    method ActionValue#(MEMSTATE_SBUFFER_RSP_WRITEBACK) writeBackResp();
 
     //
     // REWIND
@@ -100,8 +107,9 @@ endinterface: MEMSTATE_SBUFFER
 //
 // ===================================================================
 
-// Store buffer index (pointer) into the store buffer.
-typedef Bit#(`MEMSTATE_SBUFFER_INDEX_BITS) MEMSTATE_SBUFFER_INDEX;
+// Store buffer index (pointer) into the store buffer.  Allocating as many
+// nodes as store IDs seems safe.
+typedef Bit#(STORE_TOKEN_INDEX_SIZE) MEMSTATE_SBUFFER_INDEX;
 
 //
 // Each token may have more than one store associated with it.  For
@@ -121,26 +129,36 @@ MEMSTATE_SBUFFER_TOKEN
     deriving (Eq, Bits);
 
 //
-// Primary store buffer data structure.  Entries are on linked lists where
-// every entry on the list shares an address hash value.
+// Primary store buffer data structure, broken into two types.  The metadata
+// type holds the linked list pointers.  The data type holds the address and
+// value.  The data type is stored separately because it is read less often
+// and is large.  Entries on linked lists share an address hash value.
 //
 typedef struct
 {
     Maybe#(MEMSTATE_SBUFFER_INDEX) prev;
     Maybe#(MEMSTATE_SBUFFER_INDEX) next;
+}
+MEMSTATE_SBUFFER_METADATA_NODE
+    deriving (Eq, Bits);
 
+typedef struct
+{
     TOKEN_INDEX tokIdx;
     MEM_ADDRESS addr;
     MEM_VALUE value;
+    Bool committed;
 }
-MEMSTATE_SBUFFER_NODE
+MEMSTATE_SBUFFER_DATA_NODE
     deriving (Eq, Bits);
 
 
 //
-// Addresses are hashed into buckets
+// Addresses are hashed into buckets.  Allocate 4 entries per context.
+// The entries are shared by all contexts, so 4 per context is merely
+// a sizing heuristic.
 //
-typedef Bit#(`MEMSTATE_SBUFFER_ADDR_HASH_BITS) MEMSTATE_SBUFFER_ADDR_HASH_IDX;
+typedef Bit#(TAdd#(2, CONTEXT_ID_SIZE)) MEMSTATE_SBUFFER_ADDR_HASH_IDX;
 
 
 //
@@ -150,11 +168,11 @@ typedef enum
 {
     SBUFFER_STATE_INIT,             // Initialization
     SBUFFER_STATE_READY,            // Ready for command
-    SBUFFER_STATE_ALLOC,            // Token allocation
     SBUFFER_STATE_LOOKUP,           // Lookup (load) result ready
     SBUFFER_STATE_LOOKUP_SEARCH,    // Searching for address in buffer
     SBUFFER_STATE_INSERT,           // Add new entry to buffer
-    SBUFFER_STATE_COMMIT,           // Commit store (return result & remove entry)
+    SBUFFER_STATE_COMMIT,           // Convert TOKEN to STORE_TOKEN
+    SBUFFER_STATE_WRITEBACK,        // Write back store (return result & remove entry)
     SBUFFER_STATE_REWIND_TOKENS,    // Stepping through token range & remove from buffer
     SBUFFER_STATE_REWIND,           // Removing stores for a single token
     SBUFFER_STATE_REMOVE_UPD_PREV,  // Removing token: update prev in addr hash list
@@ -177,6 +195,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
     ASSERTION_NODE assertNode        <- mkAssertionNode(`ASSERTIONS_FUNCP_MEMSTATE_SBUFFER__BASE);
     ASSERTION assertNotBusy          <- mkAssertionChecker(`ASSERTIONS_FUNCP_MEMSTATE_SBUFFER_BUSY_TOKEN, ASSERT_ERROR, assertNode);
+    ASSERTION assertStoreTokNotBusy  <- mkAssertionChecker(`ASSERTIONS_FUNCP_MEMSTATE_SBUFFER_BUSY_STORE_TOKEN, ASSERT_ERROR, assertNode);
     ASSERTION assertTooManyStores    <- mkAssertionChecker(`ASSERTIONS_FUNCP_MEMSTATE_SBUFFER_TOO_MANY_TOKEN_STORES, ASSERT_ERROR, assertNode);
     ASSERTION assertFreeListNotEmpty <- mkAssertionChecker(`ASSERTIONS_FUNCP_MEMSTATE_SBUFFER_FREELIST_EMPTY, ASSERT_ERROR, assertNode);
     ASSERTION assertNoStores         <- mkAssertionChecker(`ASSERTIONS_FUNCP_MEMSTATE_SBUFFER_NO_STORES, ASSERT_ERROR, assertNode);
@@ -185,10 +204,20 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
     // Store-buffer data for a token
     let tokInit = MEMSTATE_SBUFFER_TOKEN { nStores: 0, storeNodePtr: ? };
-    BRAM#(TOKEN_INDEX, MEMSTATE_SBUFFER_TOKEN) tokData <- mkLiveTokenBRAMInitialized(tokInit);
+    BRAM_MULTI_READ#(4, TOKEN_INDEX, MEMSTATE_SBUFFER_TOKEN) tokData <- mkLiveTokenBRAMMultiReadInitialized(False, tokInit);
+    let tokDataPort_ALLOC = 0;
+    let tokDataPort_INSERT = 1;
+    let tokDataPort_COMMIT = 2;
+    let tokDataPort_REMOVE = 3;
+
+    // Store-buffer data for a store token
+    BRAM_MULTI_READ#(2, STORE_TOKEN_INDEX, MEMSTATE_SBUFFER_TOKEN) storeTokData <- mkBRAMPseudoMultiReadInitialized(tokInit);
+    let storeTokDataPort_COMMIT = 0;
+    let storeTokDataPort_WRITEBACK = 1;
 
     // Storage for store buffer entries
-    BRAM#(MEMSTATE_SBUFFER_INDEX, MEMSTATE_SBUFFER_NODE) sBuffer <- mkBRAM();
+    BRAM#(MEMSTATE_SBUFFER_INDEX, MEMSTATE_SBUFFER_METADATA_NODE) sBufferMeta <- mkBRAM();
+    BRAM#(MEMSTATE_SBUFFER_INDEX, MEMSTATE_SBUFFER_DATA_NODE) sBufferData <- mkBRAM();
 
     // Map from address to stores using a hash table.  This is in LUTs instead
     // of BRAM because it can be small enough that it is a waste of BRAM.  The
@@ -203,6 +232,9 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     
     // Store insert pipeline
     FIFO#(Tuple2#(MEMSTATE_SBUFFER_INDEX, MEMSTATE_SBUFFER_INDEX)) insertPrev <- mkFIFO();
+
+    // Commit pipeline
+    FIFO#(Tuple2#(TOKEN_INDEX, STORE_TOKEN_INDEX)) commitQ <- mkFIFO();
 
     // Number of stores in the store buffer.  There can be at most two stores
     // for every token.  Since the number of tokens in flight can be at most
@@ -226,12 +258,8 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         youngestStoreHint[c] <- mkReg(tagged Invalid);
     end
 
-    // Index of store within a token.  Use in remove_token_stores rule.
-    Reg#(MEMSTATE_SBUFFER_TOK_STORE_CNT) removeTokenStoreIdx <- mkRegU();
-
-    // Remove token pipeline
-    //    next state
-    FIFO#(SBUFFER_STATE) removeToken <- mkFIFO();
+    // Index of store within a token.  Use in multiple rules.
+    Reg#(MEMSTATE_SBUFFER_TOK_STORE_CNT) operTokenStoreIdx <- mkRegU();
 
     // Remove store pipeline
     //             next state    store buffer idx of ref
@@ -241,8 +269,8 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     FIFO#(Tuple3#(SBUFFER_STATE, MEMSTATE_SBUFFER_INDEX, Maybe#(MEMSTATE_SBUFFER_INDEX))) removeUpdateHashChain <- mkFIFO();
 
 
-    // Commit response pipeline
-    FIFOF#(MEMSTATE_SBUFFER_RSP_COMMIT) commitRespPipe <- mkFIFOF();
+    // Write back response pipeline
+    FIFOF#(MEMSTATE_SBUFFER_RSP_WRITEBACK) writeBackRespPipe <- mkFIFOF();
 
     // Current request details
     Reg#(TOKEN_INDEX) reqToken <- mkRegU();
@@ -253,13 +281,6 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     // Response details
     Reg#(Maybe#(MEM_VALUE)) respValue <- mkRegU();
     Reg#(TOKEN_INDEX)       respClosestReqToken <- mkRegU();
-
-    // Rewind request state
-    Reg#(TOKEN_INDEX) rewindTo  <- mkRegU();
-    Reg#(TOKEN_INDEX) rewindCur <- mkRegU();
-
-    // Index used to initialize the SB node free list
-    Reg#(MEMSTATE_SBUFFER_INDEX) initIdx <- mkReg(0);
 
     //
     // Map address to store buffer address hash
@@ -273,21 +294,22 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     // init --
     //     Initialize the free list.
     //
+    Reg#(MEMSTATE_SBUFFER_INDEX) initIdx <- mkReg(0);
+
     rule init (state == SBUFFER_STATE_INIT);
         if (initIdx != maxBound)
         begin
             // next points to idx + 1
-            sBuffer.write(initIdx,
-                          MEMSTATE_SBUFFER_NODE { prev: tagged Invalid, next: tagged Valid (initIdx + 1), tokIdx: ?, addr: ?, value: ? });
+            sBufferMeta.write(initIdx,
+                              MEMSTATE_SBUFFER_METADATA_NODE { prev: tagged Invalid, next: tagged Valid (initIdx + 1) });
         end
         else
         begin
             // Last entry on free list (next is Invalid)
-            sBuffer.write(initIdx,
-                          MEMSTATE_SBUFFER_NODE { prev: tagged Invalid, next: tagged Invalid, tokIdx: ?, addr: ?, value: ? });
+            sBufferMeta.write(initIdx,
+                              MEMSTATE_SBUFFER_METADATA_NODE { prev: tagged Invalid, next: tagged Invalid });
             state <= SBUFFER_STATE_READY;
         end
-
 
         initIdx <= initIdx + 1;
     endrule
@@ -306,13 +328,11 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         // We could do the allocation in a single cycle if we skipped the check
         // that the last instance of the token was cleaned up.  Instead, we
         // read the current state and confirm that it holds no stores.
-        tokData.readReq(tok_idx);
-
-        state <= SBUFFER_STATE_ALLOC;
+        tokData.readPorts[tokDataPort_ALLOC].readReq(tok_idx);
     endrule
 
-    rule alloc_done (state == SBUFFER_STATE_ALLOC);
-        let sb_tok <- tokData.readRsp();
+    rule allocDone (True);
+        let sb_tok <- tokData.readPorts[tokDataPort_ALLOC].readRsp();
 
         // Make sure the last instance of the token ID was cleaned up properly.
         // If it was there is no more work to do.
@@ -327,23 +347,63 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         end
 
         assertNotBusy(sb_tok.nStores == 0);
-
-        state <= SBUFFER_STATE_READY;
     endrule
 
 
     //
-    // lookup_search_node --
+    // startLookupReq --
+    //     The lookupReq method determined that a hash chain exists for the
+    //     address.  Start a walk of the chain too see whether there is a match.
+    //
+    FIFOF#(Tuple3#(TOKEN_INDEX,
+                   MEM_ADDRESS,
+                   MEMSTATE_SBUFFER_ADDR_HASH_IDX)) lookupQ <- mkBypassFIFOF();
+
+    (* conservative_implicit_conditions *)
+    rule startLookupReq (state == SBUFFER_STATE_READY);
+        match {.tok_idx, .addr, .hash} = lookupQ.first();
+        lookupQ.deq();
+
+        // Read the head of the address hash chain again in case it
+        // has changed since lookupReq().
+        if (addrHash.sub(hash) matches tagged Valid .node_idx)
+        begin
+            // Read the first node in the hash chain
+            debugLog.record($format("  SB Lookup: ") + fshow(tok_idx) + $format(", addr=0x%x, hash=%0d, head node=%0d", addr, hash, node_idx));
+
+            sBufferMeta.readReq(node_idx);
+            sBufferData.readReq(node_idx);
+            state <= SBUFFER_STATE_LOOKUP_SEARCH;
+        end
+        else
+        begin
+            // Hash chain now empty.  Return nothing.
+            debugLog.record($format("  SB hash now empty: ") + fshow(tok_idx) + $format(", addr=0x%x, hash=%0d", addr, hash));
+            state <= SBUFFER_STATE_LOOKUP;
+        end
+
+        // Initialize global request state
+        reqAddr <= addr;
+        reqToken <= tok_idx;
+    
+        // Initialize response
+        respValue <= tagged Invalid;
+    endrule
+
+
+    //
+    // lookupSearchNode --
     //     Iterate over nodes in the store buffer, looking for a match to
     //     the request.  On match return the value.  On mismatch loop by
     //     requesting the next node in the hash chain.
     //
     (* conservative_implicit_conditions *)
-    rule lookup_search_node (state == SBUFFER_STATE_LOOKUP_SEARCH);
-        let node <- sBuffer.readRsp();
+    rule lookupSearchNode (state == SBUFFER_STATE_LOOKUP_SEARCH);
+        let node_meta <- sBufferMeta.readRsp();
+        let node_data <- sBufferData.readRsp();
         
-        if ((node.addr == reqAddr) &&
-            (node.tokIdx.context_id == reqToken.context_id))
+        if ((node_data.addr == reqAddr) &&
+            (node_data.tokIdx.context_id == reqToken.context_id))
         begin
             //
             // Two search modes are implemented here.  When MEMSTATE_SBUFFER_OOO_MEM
@@ -363,38 +423,56 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             if (`MEMSTATE_SBUFFER_OOO_MEM == 0)
             begin
                 // Ordered memory mode.  Take first hit, ignore age.
-                debugLog.record($format("    SB Addr Match: ") + fshow(reqToken) + $format(", node_token=") + fshow(node.tokIdx) + $format(", node_addr=0x%x, value=0x%x, ending search", node.addr, node.value));
+                debugLog.record($format("    SB Addr Match: ") + fshow(reqToken) + $format(", node_token=") + fshow(node_data.tokIdx) + $format(", node_addr=0x%x, value=0x%x, ending search", node_data.addr, node_data.value));
 
-                respValue <= tagged Valid node.value;
+                respValue <= tagged Valid node_data.value;
                 state <= SBUFFER_STATE_LOOKUP;
             end
             else
             begin
                 // Out-of-order mode
-                debugLog.record($format("    SB Addr Match: ") + fshow(reqToken) + $format(", node_token=") + fshow(node.tokIdx) + $format(", node_addr=0x%x, value=0x%x", node.addr, node.value));
+                debugLog.record($format("    SB Addr Match: ") + fshow(reqToken) + $format(", node_token=") + fshow(node_data.tokIdx) + $format(", node_addr=0x%x, value=0x%x", node_data.addr, node_data.value));
 
-                // Use this hit as current best match if the store is before
-                // the load and either this is the first address match or this
-                // store was executed later than the previous match.
-                if (tokenIsOlderOrEq(node.tokIdx.token_id, reqToken.token_id) &&
-                    (tokenIsOlderOrEq(respClosestReqToken.token_id, node.tokIdx.token_id) || ! isValid(respValue)))
+                if (node_data.committed)
                 begin
-                    debugLog.record($format("      SB Current Best: ") + fshow(reqToken) + $format(", node_token=") + fshow(node.tokIdx));
+                    // This node has been committed.  Stores are pushed to the head
+                    // of the list, so this store must be the youngest committed
+                    // store to the address.  Either return the best speculative
+                    // result or this committed value.
+                    if (! isValid(respValue))
+                    begin
+                        debugLog.record($format("      SB Match Committed: ") + fshow(reqToken));
+                        respValue <= tagged Valid node_data.value;
+                    end
 
-                    respValue <= tagged Valid node.value;
-                    respClosestReqToken <= node.tokIdx;
-                end
-
-                // Is there more to search?
-                if (node.next matches tagged Valid .n_idx)
-                begin
-                    // Yes -- search next entry
-                    sBuffer.readReq(n_idx);
+                    state <= SBUFFER_STATE_LOOKUP;
                 end
                 else
                 begin
-                    // No -- done
-                    state <= SBUFFER_STATE_LOOKUP;
+                    // Use this hit as current best match if the store is before
+                    // the load and either this is the first address match or this
+                    // store was executed later than the previous match.
+                    if (tokenIsOlderOrEq(node_data.tokIdx.token_id, reqToken.token_id) &&
+                       (tokenIsOlderOrEq(respClosestReqToken.token_id, node_data.tokIdx.token_id) || ! isValid(respValue)))
+                    begin
+                        debugLog.record($format("      SB Current Best: ") + fshow(reqToken) + $format(", node_token=") + fshow(node_data.tokIdx));
+
+                        respValue <= tagged Valid node_data.value;
+                        respClosestReqToken <= node_data.tokIdx;
+                    end
+
+                    // Is there more to search?
+                    if (node_meta.next matches tagged Valid .n_idx)
+                    begin
+                        // Yes -- search next entry
+                        sBufferMeta.readReq(n_idx);
+                        sBufferData.readReq(n_idx);
+                    end
+                    else
+                    begin
+                        // No -- done
+                        state <= SBUFFER_STATE_LOOKUP;
+                    end
                 end
             end
         end
@@ -403,17 +481,18 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             //
             // Mismatch.  Is there another entry in the chain?
             //
-            if (node.next matches tagged Valid .n_idx)
+            if (node_meta.next matches tagged Valid .n_idx)
             begin
                 // Yes -- search next entry
-                debugLog.record($format("    SB mismatch: ") + fshow(reqToken) + $format(", node_token=") + fshow(node.tokIdx) + $format(", node_addr=0x%x, node_next=%0d", node.addr, n_idx));
+                debugLog.record($format("    SB mismatch: ") + fshow(reqToken) + $format(", node_token=") + fshow(node_data.tokIdx) + $format(", node_addr=0x%x, node_next=%0d", node_data.addr, n_idx));
 
-                sBuffer.readReq(n_idx);
+                sBufferMeta.readReq(n_idx);
+                sBufferData.readReq(n_idx);
             end
             else
             begin
                 // No -- give up
-                debugLog.record($format("    SB mismatch: ") + fshow(reqToken) + $format(", node_token=") + fshow(node.tokIdx) + $format(", node_addr=0x%x, end of chain", node.addr));
+                debugLog.record($format("    SB mismatch: ") + fshow(reqToken) + $format(", node_token=") + fshow(node_data.tokIdx) + $format(", node_addr=0x%x, end of chain", node_data.addr));
 
                 state <= SBUFFER_STATE_LOOKUP;
             end
@@ -422,14 +501,14 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
     
     //
-    // insert_store --
+    // insertStore --
     //     Add a store to the store buffer.
     //
     (* conservative_implicit_conditions *)
-    rule insert_store (state == SBUFFER_STATE_INSERT);
+    rule insertStore (state == SBUFFER_STATE_INSERT);
         // Receive the old node and address hash head values
-        let old_node <- sBuffer.readRsp();
-        let old_tok_data <- tokData.readRsp();
+        let old_node <- sBufferMeta.readRsp();
+        let old_tok_data <- tokData.readPorts[tokDataPort_INSERT].readRsp();
 
         let old_addr_hash_head = addrHash.sub(reqAddrHash);
 
@@ -457,13 +536,17 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         //
         // Update node with new store details
         //
-        MEMSTATE_SBUFFER_NODE new_node;
-        new_node.prev = tagged Invalid;
-        new_node.next = old_addr_hash_head;
-        new_node.tokIdx = reqToken;
-        new_node.addr = reqAddr;
-        new_node.value = reqValue;
-        sBuffer.write(node_idx, new_node);
+        MEMSTATE_SBUFFER_METADATA_NODE new_meta_node;
+        new_meta_node.prev = tagged Invalid;
+        new_meta_node.next = old_addr_hash_head;
+        sBufferMeta.write(node_idx, new_meta_node);
+
+        MEMSTATE_SBUFFER_DATA_NODE new_data_node;
+        new_data_node.tokIdx = reqToken;
+        new_data_node.addr = reqAddr;
+        new_data_node.value = reqValue;
+        new_data_node.committed = False;
+        sBufferData.write(node_idx, new_data_node);
 
         //
         // Update store info for the token.  Tokens may have more than one store.
@@ -498,7 +581,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         if (old_addr_hash_head matches tagged Valid .hash_next)
         begin
             // Need another cycle to set prev pointer in existing hash chain
-            sBuffer.readReq(hash_next);
+            sBufferMeta.readReq(hash_next);
             insertPrev.enq(tuple2(node_idx, hash_next));
 
             debugLog.record($format("    SB Pushing address hash=%0d, node=%0d, next=%0d", reqAddrHash, node_idx, hash_next));
@@ -511,18 +594,19 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     endrule
 
     //
-    // insert_store_prev --
+    // insertStorePrev --
     //     Final step of adding a store:  set the prev pointer in the address
     //     hash chain from the old head of the chain to the node just added.
     //
-    rule insert_store_prev (state == SBUFFER_STATE_INSERT);
+    (* descending_urgency = "insertStorePrev, insertStore" *)
+    rule insertStorePrev (state == SBUFFER_STATE_INSERT);
         // Receive the old node and address hash head values
-        let next_node <- sBuffer.readRsp();
+        let next_node <- sBufferMeta.readRsp();
         match {.new_node_idx, .next_node_idx} = insertPrev.first();
         insertPrev.deq();
         
         next_node.prev = tagged Valid new_node_idx;
-        sBuffer.write(next_node_idx, next_node);
+        sBufferMeta.write(next_node_idx, next_node);
 
         debugLog.record($format("    SB Set prev pointer for node=%0d, prev=%0d", next_node_idx, new_node_idx));
 
@@ -531,60 +615,131 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
 
     //
-    // remove_token_store --
-    //     Remove all stores associated with a token from the store buffer.
-    //     Removal is due either to commit or rewind.  The rule keeps
-    //     processing the token until all stores are handled.
+    // moveToStoreToken --
+    //     Token is being committed but not yet written back to memory.  The
+    //     details are now associated with a store token instead of a main
+    //     token.  This allows us to keep the main token space smaller and
+    //     pack long-lived stores densely.
     //
-    (* conservative_implicit_conditions *)
-    rule remove_token_stores ((state == SBUFFER_STATE_COMMIT) || (state == SBUFFER_STATE_REWIND));
-        let tok_data <- tokData.readRsp();
-        let next_state = removeToken.first();
+    FIFO#(Tuple2#(Bool, MEMSTATE_SBUFFER_INDEX)) markCommittedQ <- mkFIFO();
 
-        // Token must have stores to commit!
-        if (state == SBUFFER_STATE_COMMIT)
+    rule moveToStoreToken (state == SBUFFER_STATE_COMMIT);
+        match {.tok_idx, .store_tok_idx} = commitQ.first();
+
+        let tok_data = tokData.readPorts[tokDataPort_COMMIT].peek();
+        let old_store_tok = storeTokData.readPorts[storeTokDataPort_COMMIT].peek();
+
+        // Has previous use of the store token been written back?
+        assertStoreTokNotBusy(old_store_tok.nStores == 0);
+
+        debugLog.record($format("  SB COMMIT ") + fshow(tok_idx) + $format(" is now ") + fshow(store_tok_idx) + $format(", store id=%0d", operTokenStoreIdx));
+
+        // Request the data for the store
+        let node_idx = tok_data.storeNodePtr[operTokenStoreIdx];
+        sBufferData.readReq(node_idx);
+
+        Bool done;
+        if (operTokenStoreIdx + 1 == tok_data.nStores)
         begin
-            assertNoStores(tok_data.nStores != 0);
+            // Done with all stores for the token.
+            done = True;
+            commitQ.deq();
+
+            // Pop the read data
+            let dummy0 <- tokData.readPorts[tokDataPort_COMMIT].readRsp();
+            let dummy1 <- storeTokData.readPorts[storeTokDataPort_COMMIT].readRsp();
+
+            // Move the record to the store token's data
+            tokData.write(tok_idx, tokInit);
+            storeTokData.write(store_tok_idx, tok_data);
         end
+        else
+        begin
+            done = False;
+
+            // More stores for this token.  This rule will run again.
+            operTokenStoreIdx <= operTokenStoreIdx + 1;
+        end
+            
+        // Pass control details to markStoreCommitted rule.
+        markCommittedQ.enq(tuple2(done, node_idx));
+    endrule
+
+
+    //
+    // markStoreCommitted --
+    //     Receive requests from moveToStoreToken to mark individual store
+    //     buffer entries committed.  Once committed the original TOKEN_INDEX
+    //     is no longer used to address the token.
+    //
+    rule markStoreCommitted (state == SBUFFER_STATE_COMMIT);
+        match {.done, .node_idx} = markCommittedQ.first();
+        markCommittedQ.deq();
+
+        let node <- sBufferData.readRsp();
+        node.committed = True;
+        sBufferData.write(node_idx, node);
+
+        if (done)
+        begin
+            state <= SBUFFER_STATE_READY;
+        end
+    endrule
+
+
+    //
+    // rewindStores --
+    //     Remove all stores associated with a token from the store buffer
+    //     due to a rewind.  The rule keeps processing the token until all
+    //     stores are handled.
+    //
+    FIFO#(Tuple2#(TOKEN_INDEX, SBUFFER_STATE)) rewindQ <- mkFIFO();
+
+    (* descending_urgency = "alloc, rewindStores" *)
+    (* conservative_implicit_conditions *)
+    rule rewindStores (state == SBUFFER_STATE_REWIND);
+        let tok_data = tokData.readPorts[tokDataPort_REMOVE].peek();
+        match {.tok_idx, .next_state} = rewindQ.first();
 
         if (tok_data.nStores != 0)
         begin
-            debugLog.record($format("  SB remove: ") + fshow(reqToken) + $format(", store id=%0d", removeTokenStoreIdx));
+            debugLog.record($format("  SB rewind: ") + fshow(tok_idx) + $format(", store id=%0d", operTokenStoreIdx));
 
             // Request the data for the store
-            let node_idx = tok_data.storeNodePtr[removeTokenStoreIdx];
-            sBuffer.readReq(node_idx);
+            let node_idx = tok_data.storeNodePtr[operTokenStoreIdx];
+            sBufferMeta.readReq(node_idx);
+            sBufferData.readReq(node_idx);
 
-            if (removeTokenStoreIdx + 1 == tok_data.nStores)
+            if (operTokenStoreIdx + 1 == tok_data.nStores)
             begin
                 // Done with all stores for the token.  Clear it.
-                let tokInit = MEMSTATE_SBUFFER_TOKEN { nStores: 0, storeNodePtr: ? };
-                debugLog.record($format("    SB REMOVE WRITE TOK DATA. IDX: %0d, NUM STORES: %0d", reqToken, tokInit.nStores));
-                tokData.write(reqToken, tokInit);
+                debugLog.record($format("    SB REMOVE WRITE TOK DATA. IDX: %0d, NUM STORES: %0d", tok_idx, tokInit.nStores));
+                tokData.write(tok_idx, tokInit);
+
+                // Pop the read result
+                let dummy <- tokData.readPorts[tokDataPort_REMOVE].readRsp();
 
                 // Done processing this token
-                removeToken.deq();
+                rewindQ.deq();
             end
             else
             begin
-                // More stores for this token.  Another read request will cause
-                // this rule to run again.
-                tokData.readReq(reqToken);
-                removeTokenStoreIdx <= removeTokenStoreIdx + 1;
+                // More stores for this token.  This rule will run again.
+                operTokenStoreIdx <= operTokenStoreIdx + 1;
 
                 // Iterate in this state while there are more stores for this
                 // token.
                 next_state = state;
             end
             
-            // Pass control details to remove_one_store rule.
+            // Pass control details to removeOneStore rule.
             removeStore.enq(tuple2(next_state, node_idx));
 
             // Update global state
             nStoresInBuffer.down();
-            let ctx_id = reqToken.context_id;
+            let ctx_id = tok_idx.context_id;
             if (youngestStoreHint[ctx_id] matches tagged Valid .cur_youngest &&&
-                cur_youngest == reqToken)
+                cur_youngest == tok_idx)
             begin
                 youngestStoreHint[ctx_id] <= tagged Invalid;
             end
@@ -594,36 +749,93 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             //
             // Doing rewind and token has no stores.  Nothing to do.
             //
-            debugLog.record($format("  SB remove: no stores, ") + fshow(reqToken));
-            removeToken.deq();
+            debugLog.record($format("  SB rewind: no stores, ") + fshow(tok_idx));
+            let dummy <- tokData.readPorts[tokDataPort_REMOVE].readRsp();
+            rewindQ.deq();
             state <= next_state;
         end
     endrule
 
 
     //
-    // remove_one_store --
+    // writeBackStores --
+    //     Remove all stores associated with a store token from the store buffer
+    //     due to a write back.  The rule keeps processing the token until all
+    //     stores are handled.
+    //
+    FIFO#(STORE_TOKEN_INDEX) writeBackQ <- mkFIFO();
+
+    (* conservative_implicit_conditions *)
+    rule writeBackStores (state == SBUFFER_STATE_WRITEBACK);
+        let store_tok_idx = writeBackQ.first();
+
+        let tok_data = storeTokData.readPorts[storeTokDataPort_WRITEBACK].peek();
+        let next_state = SBUFFER_STATE_READY;
+
+        // Token must have stores to write back!
+        assertNoStores(tok_data.nStores != 0);
+
+        debugLog.record($format("  SB write back: ") + fshow(store_tok_idx) + $format(", store id=%0d", operTokenStoreIdx));
+
+        // Request the data for the store
+        let node_idx = tok_data.storeNodePtr[operTokenStoreIdx];
+        sBufferMeta.readReq(node_idx);
+        sBufferData.readReq(node_idx);
+
+        if (operTokenStoreIdx + 1 == tok_data.nStores)
+        begin
+            // Done with all stores for the token.  Pop the read response
+            // and clear the token.
+            debugLog.record($format("    SB REMOVE WRITE TOK DATA. IDX: %0d, NUM STORES: %0d", store_tok_idx, tokInit.nStores));
+
+            let dummy <- storeTokData.readPorts[storeTokDataPort_WRITEBACK].readRsp();
+            writeBackQ.deq();
+
+            storeTokData.write(store_tok_idx, tokInit);
+        end
+        else
+        begin
+            // More stores for this token.
+            operTokenStoreIdx <= operTokenStoreIdx + 1;
+
+            // Iterate in this state while there are more stores for this
+            // token.
+            next_state = state;
+        end
+            
+        // Pass control details to removeOneStore rule.
+        removeStore.enq(tuple2(next_state, node_idx));
+
+        // Update global state
+        nStoresInBuffer.down();
+    endrule
+
+
+    //
+    // removeOneStore --
     //     Fed by remove_token_stores.  Removes a store buffer node from
-    //     its address hash chain.  For commits, also forwards store data to
-    //     commit response method.  The commit logic can then start writing
+    //     its address hash chain.  For write backs, also forwards store data to
+    //     write back response method.  The write back logic can then start writing
     //     the value to memory while code here mucks with linked lists.
     //
+    (* descending_urgency = "removeOneStore, writeBackStores, rewindStores" *)
     (* conservative_implicit_conditions *)
-    rule remove_one_store ((state == SBUFFER_STATE_COMMIT) || (state == SBUFFER_STATE_REWIND));
-        let node <- sBuffer.readRsp();
+    rule removeOneStore ((state == SBUFFER_STATE_WRITEBACK) || (state == SBUFFER_STATE_REWIND));
+        let node_meta <- sBufferMeta.readRsp();
+        let node_data <- sBufferData.readRsp();
         match { .next_state, .node_idx } = removeStore.first();
         removeStore.deq();
 
-        debugLog.record($format("    SB remove addr=0x%x, value=0x%x, next_state=%0d", node.addr, node.value, next_state));
+        debugLog.record($format("    SB remove addr=0x%x, value=0x%x, next_state=%0d", node_data.addr, node_data.value, next_state));
 
-        // Respond with store info for commits
-        if (state == SBUFFER_STATE_COMMIT)
-            commitRespPipe.enq(MEMSTATE_SBUFFER_RSP_COMMIT { tokIdx: node.tokIdx, hasMore: (next_state == SBUFFER_STATE_COMMIT), addr: node.addr, value: node.value });
+        // Respond with store info for write backs
+        if (state == SBUFFER_STATE_WRITEBACK)
+            writeBackRespPipe.enq(MEMSTATE_SBUFFER_RSP_WRITEBACK { tokIdx: node_data.tokIdx, hasMore: (next_state == SBUFFER_STATE_WRITEBACK), addr: node_data.addr, value: node_data.value });
         
         //
         // Put the node back on the free list
         //
-        sBuffer.write(node_idx, MEMSTATE_SBUFFER_NODE { prev: tagged Invalid, next: tagged Valid freeListHead, tokIdx: ?, addr: ?, value: ? });
+        sBufferMeta.write(node_idx, MEMSTATE_SBUFFER_METADATA_NODE { prev: tagged Invalid, next: tagged Valid freeListHead });
         freeListHead <= node_idx;
 
         //
@@ -631,25 +843,25 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         //
         
         // Prev pointer valid?
-        if (node.prev matches tagged Valid .prev_node_idx)
+        if (node_meta.prev matches tagged Valid .prev_node_idx)
         begin
             // Yes:  request previous node so its next pointer can be updated
-            removeUpdateHashChain.enq(tuple3(next_state, prev_node_idx, node.next));
-            sBuffer.readReq(prev_node_idx);
+            removeUpdateHashChain.enq(tuple3(next_state, prev_node_idx, node_meta.next));
+            sBufferMeta.readReq(prev_node_idx);
             state <= SBUFFER_STATE_REMOVE_UPD_PREV;
         end
         else
         begin
             // No:  head of list.  Write sbAddrHash directly.
-            let addr_hash = sbAddrHash(node.addr);
-            addrHash.upd(addr_hash, node.next);
+            let addr_hash = sbAddrHash(node_data.addr);
+            addrHash.upd(addr_hash, node_meta.next);
 
             // Next pointer valid?
-            if (node.next matches tagged Valid .next_node_idx)
+            if (node_meta.next matches tagged Valid .next_node_idx)
             begin
                 // Yes:  request next node so its prev pointer can be updated
                 removeUpdateHashChain.enq(tuple3(next_state, next_node_idx, tagged Invalid));
-                sBuffer.readReq(next_node_idx);
+                sBufferMeta.readReq(next_node_idx);
                 debugLog.record($format("      SB new addr_hash head: hash=%0d, next=%0d", addr_hash, next_node_idx));
                 state <= SBUFFER_STATE_REMOVE_UPD_NEXT;
             end
@@ -663,12 +875,12 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     endrule
 
     //
-    // remove_store_udpate_prev --
+    // removeStoreUdpatePrev --
     //     Updates the node before the node being removed from an address
     //     hash chain.
     //
-    rule remove_store_update_prev (state == SBUFFER_STATE_REMOVE_UPD_PREV);
-        let prev_node <- sBuffer.readRsp();
+    rule removeStoreUpdatePrev (state == SBUFFER_STATE_REMOVE_UPD_PREV);
+        let prev_node <- sBufferMeta.readRsp();
         match { .next_state, .prev_node_idx, .next_node } = removeUpdateHashChain.first();
         removeUpdateHashChain.deq();
         
@@ -676,16 +888,16 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
         // Update the pointer
         prev_node.next = next_node;
-        sBuffer.write(prev_node_idx, prev_node);
+        sBufferMeta.write(prev_node_idx, prev_node);
         
         // Does the new next node need its prev pointer fixed?
         if (next_node matches tagged Valid .next_node_idx)
         begin
-            // Yes:  prepare for remove_store_update_next rule
+            // Yes:  prepare for removeStoreUpdateNext rule
             debugLog.record($format("      SB update prev: node=%0d, old_next=%0d, new_next=%0d", prev_node_idx, old_next_idx, next_node_idx));
 
             removeUpdateHashChain.enq(tuple3(next_state, next_node_idx, tagged Valid prev_node_idx));
-            sBuffer.readReq(next_node_idx);
+            sBufferMeta.readReq(next_node_idx);
             state <= SBUFFER_STATE_REMOVE_UPD_NEXT;
         end
         else
@@ -699,18 +911,18 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
 
     //
-    // remove_store_update_next --
+    // removeStoreUpdateNext --
     //     Final stage of address hash chain update.  Fix prev pointer of next node.
     //
-    rule remove_store_update_next (state == SBUFFER_STATE_REMOVE_UPD_NEXT);
-        let next_node <- sBuffer.readRsp();
+    rule removeStoreUpdateNext (state == SBUFFER_STATE_REMOVE_UPD_NEXT);
+        let next_node <- sBufferMeta.readRsp();
         match { .next_state, .next_node_idx, .prev_node } = removeUpdateHashChain.first();
         removeUpdateHashChain.deq();
         
         let old_prev_idx = validValue(next_node.prev);
 
         next_node.prev = prev_node;
-        sBuffer.write(next_node_idx, next_node);
+        sBufferMeta.write(next_node_idx, next_node);
 
         if (prev_node matches tagged Valid .prev_node_idx)
             debugLog.record($format("      SB update next: node=%0d, old_prev=%0d, new_prev=%0d", next_node_idx, old_prev_idx, prev_node_idx));
@@ -724,21 +936,26 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     //
     // rewind --
     //     Remove all tokens from rewindCur down to rewindTo.  Rewind of a single
-    //     token is almost identical in behavior to commit.  The only difference
-    //     is commit streams out the store values as it removes entries from
-    //     the store buffer.  Rewind shares the commit rules (remove_....)
+    //     token is almost identical in behavior to write back.  The only difference
+    //     is write back streams out the store values as it removes entries from
+    //     the store buffer.  Rewind shares the write back rules (remove_....)
     //
+    Reg#(TOKEN_INDEX) rewindTo  <- mkRegU();
+    Reg#(TOKEN_INDEX) rewindCur <- mkRegU();
+
+    (* descending_urgency = "alloc, rewind" *)
     rule rewind (state == SBUFFER_STATE_REWIND_TOKENS);
         // Read token's store pointers.  Will be consumed by remove_token_stores.
-        tokData.readReq(rewindCur);
+        tokData.readPorts[tokDataPort_REMOVE].readReq(rewindCur);
 
         // After token is removed state should return to REWIND for processing
         // the next token until the rewind point is reached.
         let next_rewind = rewindCur - 1;
-        removeToken.enq(next_rewind != rewindTo ? SBUFFER_STATE_REWIND_TOKENS : SBUFFER_STATE_READY);
+        rewindQ.enq(tuple2(rewindCur,
+                           next_rewind != rewindTo ? SBUFFER_STATE_REWIND_TOKENS :
+                                                     SBUFFER_STATE_READY));
 
-        reqToken <= rewindCur;
-        removeTokenStoreIdx <= 0;
+        operTokenStoreIdx <= 0;
 
         rewindCur <= next_rewind;
         state <= SBUFFER_STATE_REWIND;
@@ -750,40 +967,42 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     //
 
     //
-    // LOAD:  Look up and return a value from the store buffer.
-    //     Load is only allowed to fire when the commit response
-    //     pipe is empty.  This avoids having to manage an explicit
-    //     lock for loads vs. commits in the memory state manager.
+    // LOAD:
+    //   Search the store buffer for a match.  This method starts with a quick
+    //   check of the address hash table.  If the hash bucket is empty then there
+    //   is no match in the table and the method responds "False".
     //
-    method ActionValue#(Bool) lookupReq(TOKEN_INDEX tokIdx, MEM_ADDRESS addr) if ((state == SBUFFER_STATE_READY) && ! commitRespPipe.notEmpty());
+    //   The predicate on this method is relaxed, requiring only that no update
+    //   to the head of the hash chains be in flight and that all write back
+    //   requests are complete.  This optimizes the lookup case where hash
+    //   buckets are empty (the typical case.)  If the hash bucket is not empty
+    //   the request is forwarded to startLookupReq, which waits until the
+    //   store buffer is ready for a new request.
+    //
+    method ActionValue#(Bool) lookupReq(TOKEN_INDEX tokIdx, MEM_ADDRESS addr) if ((state != SBUFFER_STATE_INIT) &&
+                                                                                  (state != SBUFFER_STATE_INSERT) &&
+                                                                                  ! writeBackRespPipe.notEmpty());
         Bool resp;
 
-        // Read the head of the address hash chain and start walking it
+        // Read the head of the address hash chain
         let hash = sbAddrHash(addr);
         if (addrHash.sub(hash) matches tagged Valid .node_idx)
         begin
-            debugLog.record($format("  SB Lookup: ") + fshow(tokIdx) + $format(", addr=0x%x, hash=%0d, head node=%0d", addr, hash, node_idx));
+            // Hash table isn't empty, so we must walk the chain.  Forward the
+            // request to startLookupReq, which has a stronger predicate than
+            // this method.
+            debugLog.record($format("  SB hash not empty: ") + fshow(tokIdx) + $format(", addr=0x%x, hash=%0d, head node=%0d", addr, hash, node_idx));
 
-            // Read the first node in the hash chain
-            sBuffer.readReq(node_idx);
-            state <= SBUFFER_STATE_LOOKUP_SEARCH;
+            lookupQ.enq(tuple3(tokIdx, addr, hash));
             resp = True;
         end
         else
         begin
+            // Hash bucket is empty.  Respond with a "quick" miss.
             debugLog.record($format("  SB Lookup Miss (empty hash head): ") + fshow(tokIdx) + $format(", addr=0x%x, hash=%0d", addr, hash));
             
-            // Respond with "quick" miss.  No need to wait for lookupResp.
             resp = False;
         end
-
-        // Initialize global request state
-        reqAddr <= addr;
-        reqToken <= tokIdx;
-        reqAddrHash <= hash;
-    
-        // Initialize response
-        respValue <= tagged Invalid;
 
         return resp;
     endmethod: lookupReq
@@ -801,7 +1020,9 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     //     prevents a false positive of allocate detecting a token with stores
     //     when the token was empty at the time allocate was called.
     //
-    method Action insertReq(TOKEN_INDEX tokIdx, MEM_ADDRESS addr, MEM_VALUE value) if ((state == SBUFFER_STATE_READY) && ! allocate.notEmpty());
+    method Action insertReq(TOKEN_INDEX tokIdx, MEM_ADDRESS addr, MEM_VALUE value) if ((state == SBUFFER_STATE_READY) &&
+                                                                                       ! allocate.notEmpty() &&
+                                                                                       ! lookupQ.notEmpty());
         // New value will be stored to the free list head
         let node_idx = freeListHead;
     
@@ -812,10 +1033,10 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
         // Start by reading the first node on the free list.  We need the node's
         // next pointer to update the free list head.
-        sBuffer.readReq(freeListHead);
-    
+        sBufferMeta.readReq(freeListHead);
+
         // Read existing store info for the token
-        tokData.readReq(tokIdx);
+        tokData.readPorts[tokDataPort_INSERT].readReq(tokIdx);
 
         reqToken <= tokIdx;
         reqAddr <= addr;
@@ -824,36 +1045,53 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         state <= SBUFFER_STATE_INSERT;
     endmethod: insertReq
 
-    
-    //
-    // COMMIT:  Remove an entry from the store buffer, returning the value.
-    //          The caller will forward the value down the memory hierarchy.
-    //
-    method Action commitReq(TOKEN_INDEX tokIdx) if (state == SBUFFER_STATE_READY);
-        // Read existing store info for the token
-        tokData.readReq(tokIdx);
-    
-        // After token is removed state should return to READY
-        removeToken.enq(SBUFFER_STATE_READY);
 
-        reqToken <= tokIdx;
-        removeTokenStoreIdx <= 0;
+    //
+    // COMMIT: Move store from TOKEN_INDEX space to STORE_TOKEN_INDEX space.
+    //         The store remains in the store buffer until WRITE BACK.
+    method Action commitReq(TOKEN_INDEX tokIdx, STORE_TOKEN_INDEX storeTokIdx) if ((state == SBUFFER_STATE_READY) &&
+                                                                                   ! allocate.notEmpty() &&
+                                                                                   ! lookupQ.notEmpty());
+        // Read the current mapping.  The reads will be consumed by
+        // moveToStoreToken.
+        tokData.readPorts[tokDataPort_COMMIT].readReq(tokIdx);
+        storeTokData.readPorts[storeTokDataPort_COMMIT].readReq(storeTokIdx);
+
+        operTokenStoreIdx <= 0;
+        commitQ.enq(tuple2(tokIdx, storeTokIdx));
         state <= SBUFFER_STATE_COMMIT;
     endmethod: commitReq
 
 
-    method ActionValue#(MEMSTATE_SBUFFER_RSP_COMMIT) commitResp();
-        let rsp = commitRespPipe.first();
-        commitRespPipe.deq();
+    //
+    // WRITE BACK:
+    //        Remove an entry from the store buffer, returning the value.
+    //        The caller will forward the value down the memory hierarchy.
+    //
+    method Action writeBackReq(STORE_TOKEN_INDEX storeTokIdx) if (state == SBUFFER_STATE_READY &&
+                                                                  ! lookupQ.notEmpty());
+        // Read existing store info for the token
+        storeTokData.readPorts[storeTokDataPort_WRITEBACK].readReq(storeTokIdx);
+
+        operTokenStoreIdx <= 0;
+        writeBackQ.enq(storeTokIdx);
+        state <= SBUFFER_STATE_WRITEBACK;
+    endmethod: writeBackReq
+
+
+    method ActionValue#(MEMSTATE_SBUFFER_RSP_WRITEBACK) writeBackResp();
+        let rsp = writeBackRespPipe.first();
+        writeBackRespPipe.deq();
 
         return rsp;
-    endmethod: commitResp
+    endmethod: writeBackResp
 
 
     //
     // REWIND
     //
-    method Action rewindReq(TOKEN_INDEX rewind_to, TOKEN_INDEX rewind_from) if (state == SBUFFER_STATE_READY);
+    method Action rewindReq(TOKEN_INDEX rewind_to, TOKEN_INDEX rewind_from) if (state == SBUFFER_STATE_READY &&
+                                                                                ! lookupQ.notEmpty());
         let ctx_id = rewind_to.context_id;
 
         if (nStoresInBuffer.value() == 0)

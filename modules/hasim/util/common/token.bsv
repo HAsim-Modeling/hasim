@@ -465,3 +465,71 @@ module mkLiveTokenLUTRAMU
 
 endmodule
 
+
+
+// ========================================================================
+//
+// STORE TOKEN
+//
+// Store token's are allocated when a store commits and live until global
+// commit of the store token.  They exist so the standard token space
+// can be smaller.  Without them there would have to be many more standard
+// tokens allocated only to represent committed stores that are no longer
+// flowing through the timing model, except for global commit.
+//
+// ========================================================================
+
+// Allocate half as many store tokens as standard tokens
+typedef TSub#(TOKEN_ID_SIZE, 1) STORE_TOKEN_ID_SIZE;
+typedef Bit#(STORE_TOKEN_ID_SIZE) STORE_TOKEN_ID;
+
+typedef struct
+{
+    //
+    // The order of fields is important here for the same reasons as
+    // TOKEN_INDEX above.
+    //
+    CONTEXT_ID context_id;
+    STORE_TOKEN_ID store_token_id;
+}
+STORE_TOKEN_INDEX
+    deriving (Eq, Bits);
+
+typedef TAdd#(CONTEXT_ID_SIZE, STORE_TOKEN_ID_SIZE) STORE_TOKEN_INDEX_SIZE;
+typedef TExp#(STORE_TOKEN_INDEX_SIZE) NUM_STORE_TOKENS;
+
+
+//
+// Standard constructor
+//
+function STORE_TOKEN_INDEX storeTokenIndexFromIds(CONTEXT_ID c_id, STORE_TOKEN_ID t_id);
+    return STORE_TOKEN_INDEX { context_id: c_id, store_token_id: t_id };
+endfunction
+
+
+//
+// Store token passed around the simulator.
+//
+typedef struct
+{
+    STORE_TOKEN_INDEX index;
+}
+STORE_TOKEN 
+    deriving (Eq, Bits);
+
+
+function CONTEXT_ID storeTokContextId(STORE_TOKEN tok) = tok.index.context_id;
+function STORE_TOKEN_ID storeTokTokenId(STORE_TOKEN tok) = tok.index.store_token_id;
+
+
+instance FShow#(STORE_TOKEN_INDEX);
+    function Fmt fshow(STORE_TOKEN_INDEX sTokIdx);
+        return $format("STORE TOKEN (%0d, %0d)", sTokIdx.context_id, sTokIdx.store_token_id);
+    endfunction
+endinstance
+
+instance FShow#(STORE_TOKEN);
+    function Fmt fshow(STORE_TOKEN sTok);
+        return $format("STORE TOKEN (%0d, %0d)", sTok.index.context_id, sTok.index.store_token_id);
+    endfunction
+endinstance

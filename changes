@@ -18717,3 +18717,63 @@ Directory modules/hasim/util/modellib
   prettier interface.
 
 Michael P.
+
+----------
+mcadler     Date: Fri May 22 07:25:22 EDT 2009  CSN: CSN-hasim-638
+                  Fri May 22 11:25:22 UTC 2009
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          637 
+
+Directory modules/hasim/functional-partition/interface
+ funcp-timing-interface.bsv Locally Modified          637 
+ funcp-rsp-constructors.bsv Locally Modified          637 
+
+Directory modules/hasim/functional-partition/register-state/connections
+ regstate-connect-memory.bsv Locally Modified          637 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          637 
+ regstate-data.dic         Locally Modified          637 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-commitStores.bsv Locally Modified          637 
+ regmgr-macro.bsv          Locally Modified          637 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          637 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.awb Locally Modified          637 
+ memstate-hashed-store-buffer.bsv Locally Modified          637 
+ memstate-hashed-store-buffer.dic Locally Modified          637 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          637 
+
+Directory modules/hasim/functional-partition/memory-state/base-types
+ memstate-base-types.bsv   Locally Modified          637 
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          637 
+
+- Hack around Unix linker searching libraries only in command line order by
+  putting all requested libraries twice on the link command line.
+
+- Add STORE_TOKEN to represent committed stores that have not yet been
+  written back to memory.  Tokens in limbo between commitResults and
+  commitStores in the functional interface were forcing us to make the
+  TOKEN space significantly larger.  Densely packing committed stores
+  in their own, dense, STORE_TOKEN space solves the problem.
+
+  - Committed stores remain in the functional store buffer.
+  - The functional interface has not yet been changed.  commitStores still
+    expects a TOKEN.  It has its own table to map TOKENs to STORE_TOKENs.
+    Once the timing models and the interface are changed the table can
+    be eliminated.
+
+- Further optimized the store buffer for the load path.  A miss in the hash
+  table can now be detected in more store buffer states.  In the old code
+  the buffer had to be idle.
+
+- Auto-size store buffer structures based on the number of contexts supported
+  and the number of STORE_TOKENs instead of using separate awb parameters.

@@ -173,6 +173,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                             globData,
                             regMapping.commitResults,
                             freelist,
+                            linkToMem.commitResultsQueue,
                             tokDsts.readPorts[2]);
 
     let commitStores <- mkFUNCP_RegMgrMacro_Pipe_CommitStores(

@@ -75,6 +75,10 @@ interface FUNCP_SCOREBOARD;
   // Finish a token and free it for reuse.
   method Action deallocate(TOKEN_INDEX t);
   
+  // Allocate a store token given a token.  Should be called during normal
+  // instruction commit for stores.
+  method ActionValue#(STORE_TOKEN_INDEX) allocateStore(TOKEN_INDEX t);
+
   // These methods track the internal status of which macro-operation a token is in.
   method Action decFinish(TOKEN_INDEX t);
   method Action exeStart(TOKEN_INDEX t);
@@ -87,7 +91,9 @@ interface FUNCP_SCOREBOARD;
   method Action storeFinish(TOKEN_INDEX t);
   method Action commitStart(TOKEN_INDEX t);
   method Action commitFinish(TOKEN_INDEX t);
-  method Action commitStoresStart(TOKEN_INDEX t);
+
+  // *** TEMPORARY ***
+  method ActionValue#(STORE_TOKEN_INDEX) mapToStoreToken(TOKEN_INDEX t);
   
   // Set the offsets after we align the address.
   method Action setMemOpOffset(TOKEN_INDEX t, MEM_OFFSET o);
@@ -170,6 +176,11 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // A pointer to the next token to be allocated.
     Reg#(Vector#(NUM_CONTEXTS, TOKEN_ID)) nextFreeTok <- mkReg(replicate(0));
 
+    // A pointer to the next store token to be allocated.
+    Reg#(Vector#(NUM_CONTEXTS, STORE_TOKEN_ID)) nextFreeStoreTok <- mkReg(replicate(0));
+    // *** TEMPORARY ***
+    LUTRAM#(TOKEN_INDEX, STORE_TOKEN_INDEX) storeTokenMap <- mkLiveTokenLUTRAMU();
+
     // A pointer to the oldest active token.
     Reg#(Vector#(NUM_CONTEXTS, TOKEN_ID)) oldestTok <- mkReg(replicate(0));
     
@@ -216,6 +227,9 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     // Store lifetime too long before commitStores
     ASSERTION assertTokenStoreLifetime   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_COMMIT_STORE_LIFETIME, ASSERT_ERROR, assertNode);
+
+    // Store lifetime too long before commitStores
+    ASSERTION assertIllegalStoreToken   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_ILLEGAL_STORE_TOKEN, ASSERT_ERROR, assertNode);
 
     // The following assertions make sure things happen at the right time.
     ASSERTION assertTokenCanFinishDEC   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_DECODE, ASSERT_ERROR, assertNodeFinish);
@@ -423,6 +437,34 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     endmethod
 
+
+    // allocateStore
+
+    // When:   Commit of a store instruction.
+    // Effect: Allocate a store token so the main token can be released.
+
+    method ActionValue#(STORE_TOKEN_INDEX) allocateStore(TOKEN_INDEX t);
+        let ctx_id = t.context_id;
+
+        // Token must be a store and must have locally commited the store
+        assertIllegalStoreToken(tokIsStore.sub(t) && finishedSTO.sub(t));
+
+        //
+        // This code does not check that the token is not busy.  The store
+        // buffer will check.
+        //
+        let new_tok = storeTokenIndexFromIds(ctx_id, nextFreeStoreTok[ctx_id]);
+
+        // Update the free pointer.
+        nextFreeStoreTok[ctx_id] <= nextFreeStoreTok[ctx_id] + 1;
+
+        // *** temporary ***
+        storeTokenMap.upd(t, new_tok);
+
+        return new_tok;
+    endmethod
+
+
     // decFinish
 
     // When:   Any time.
@@ -583,13 +625,12 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
 
     //
-    // commitStoresStart --
-    //     Token's have already been deallocated during the commitResults
-    //     stage of the pipeline.  When a store commit is seen validate
-    //     that the token has not yet been reused for a later instruction
-    //     since the token index is still in use by the store buffer.
+    // mapToStoreToken --
+    //    *** TEMPORARY ****
+    //    This method may be removed completely once the timing/functional
+    //    interface passes STORE_TOKENs for global commit.
     //
-    method Action commitStoresStart(TOKEN_INDEX t);
+    method ActionValue#(STORE_TOKEN_INDEX) mapToStoreToken(TOKEN_INDEX t);
         assertTokenStoreLifetime(! tokIdxIsAllocated(t) && ! tokIdxAliasIsAllocated(t));
 
         if (tokIdxIsAllocated(t))
@@ -597,6 +638,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
         if (tokIdxAliasIsAllocated(t))
             $display("ERROR: commit stores token (%d, %d) ALIAS is live", t.context_id, t.token_id);
+
+        return storeTokenMap.sub(t);
     endmethod
 
     // setMemOpOffset

@@ -38,6 +38,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     REGMGR_GLOBAL_DATA glob,
     REGSTATE_REG_MAPPING_COMMITRESULTS regMapping,
     FUNCP_FREELIST freelist,
+    REGSTATE_MEMORY_QUEUE linkToMem,
     BROM#(TOKEN_INDEX, REGMGR_DST_REGS) tokDsts)
     //interface:
                 ();
@@ -77,7 +78,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     //
     // ====================================================================
 
-    FIFO#(TOKEN) commQ   <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN, Maybe#(STORE_TOKEN))) commQ   <- mkFIFO();
 
     // ====================================================================
     //
@@ -125,11 +126,24 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         // Update the scoreboard.
         tokScoreboard.commitStart(tok.index);
 
+        // Convert the token to a store token
+        Maybe#(STORE_TOKEN) store_token = tagged Invalid;
+        if (tokScoreboard.isStore(tok.index))
+        begin
+            let store_tok_idx <- tokScoreboard.allocateStore(tok.index);
+            let store_tok = STORE_TOKEN { index: store_tok_idx };
+
+            debugLog.record(fshow(tok.index) + $format(": commitResults1:  Allocate ") + fshow(store_tok));
+
+            linkToMem.makeReq(tagged REQ_COMMIT MEMSTATE_REQ_COMMIT {tok: tok, storeTok: store_tok});
+            store_token = tagged Valid store_tok;
+        end
+
         // Request the registers to be freed.
         regMapping.readRewindReq(tok);
 
         // Pass to the next stage.
-        commQ.enq(tok);
+        commQ.enq(tuple2(tok, store_token));
 
     endrule
 
@@ -144,13 +158,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     rule commitResults2 (state.readyToContinue());
 
         // Get the input from the previous stage.
-        let tok = commQ.first();
+        match {.tok, .store_token} = commQ.first();
         commQ.deq();
 
         let ctx_id = tokContextId(tok);
         assertion.expectedOldestTok(tok.index == tokScoreboard.oldest(ctx_id));
         if (tok.index != tokScoreboard.oldest(ctx_id))
             debugLog.record(fshow(tok.index) + $format(": commitResults1:  Token is not oldest!  Oldest: ") + fshow(tokScoreboard.oldest(ctx_id)));
+
+        if (store_token matches tagged Valid .s_tok)
+        begin
+            linkToMem.deq();
+        end
 
         // Retrieve the registers to be freed.
         let rewind_info <- regMapping.readRewindRsp();
@@ -164,7 +183,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         tokScoreboard.commitFinish(tok.index);
 
         // Respond to the timing model. End of macro-operation (except any more registers below).
-        linkCommitResults.makeResp(initFuncpRspCommitResults(tok));
+        linkCommitResults.makeResp(initFuncpRspCommitResults(tok, store_token));
         debugLog.record(fshow(tok.index) + $format(": CommitResults: End.")); 
 
     endrule

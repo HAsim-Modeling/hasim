@@ -107,13 +107,15 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitStores#(
         let fault = isValid(tokScoreboard.getFault(tok.index));
         assertion.commitedStoreIsActuallyAStore(isStore && !fault);
 
-        // Update the scoreboard.
-        tokScoreboard.commitStoresStart(tok.index);
+        // *** TEMPORARY ***  Remove this when the timing model passes in a
+        // store token.
+        let store_tok_idx <- tokScoreboard.mapToStoreToken(tok.index);
+        let store_tok = STORE_TOKEN { index: store_tok_idx };
 
         // Log it.
-        debugLog.record(fshow(tok.index) + $format(": CommitStores: Committing.")); 
+        debugLog.record(fshow(store_tok) + $format(": CommitStores: Committing.")); 
 
-        linkToMem.makeReq(tagged REQ_COMMIT MEMSTATE_REQ_COMMIT {tok: tok});
+        linkToMem.makeReq(tagged REQ_WRITE_BACK MEMSTATE_REQ_WRITE_BACK {storeTok: store_tok});
         commitQ.enq(tok);
 
     endrule

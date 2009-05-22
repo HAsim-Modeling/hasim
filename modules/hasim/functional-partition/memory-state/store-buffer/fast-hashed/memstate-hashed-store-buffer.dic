@@ -13,6 +13,7 @@
 //
  
 def ASSERTIONS.FUNCP_MEMSTATE_SBUFFER.BUSY_TOKEN            "FUNCP SBuffer: Token or token's alias already allocated!";
+def ASSERTIONS.FUNCP_MEMSTATE_SBUFFER.BUSY_STORE_TOKEN      "FUNCP SBuffer: Old store token state still dirty!"; 
 def ASSERTIONS.FUNCP_MEMSTATE_SBUFFER.TOO_MANY_TOKEN_STORES "FUNCP SBuffer: Too many stores for token!";
 def ASSERTIONS.FUNCP_MEMSTATE_SBUFFER.FREELIST_EMPTY        "FUNCP SBuffer: Free list empty!";
 def ASSERTIONS.FUNCP_MEMSTATE_SBUFFER.NO_STORES             "FUNCP SBuffer: Token has no stores to commit!";

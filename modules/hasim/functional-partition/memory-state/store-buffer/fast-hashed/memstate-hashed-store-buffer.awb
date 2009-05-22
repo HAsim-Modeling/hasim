@@ -8,7 +8,4 @@
 %public memstate-hashed-store-buffer.bsv
 %public memstate-hashed-store-buffer.dic
 
-%param MEMSTATE_SBUFFER_INDEX_BITS 6     "Index of active stores in the buffer"
-%param MEMSTATE_SBUFFER_ADDR_HASH_BITS 4 "Index of address hash pointer table"
-
 %param --global MEMSTATE_SBUFFER_OOO_MEM 0 "0=Return youngest match, 1=Search history for best match"

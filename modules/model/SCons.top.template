@@ -581,7 +581,12 @@ if SW_EXE != []:
         sw_link_tgt = [ SW_EXE[0] + '.no_python' ]
 
 
-    sw_exe = sw_env.Program(sw_link_tgt, sw_objects + libs, LIBPATH=sw_libpath, LIBS=sw_link_libs)
+    ##
+    ## Put libs on the list of objects twice as a hack to work around the
+    ## inability to specify the order of %library declarations across separate
+    ## awb files.  Unix ld only searches libraries in command line order.
+    ##
+    sw_exe = sw_env.Program(sw_link_tgt, sw_objects + libs + libs, LIBPATH=sw_libpath, LIBS=sw_link_libs)
 
     if (M5_BUILD_DIR != ''):
         ##

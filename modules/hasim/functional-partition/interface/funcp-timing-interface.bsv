@@ -237,6 +237,11 @@ typedef struct
 typedef struct
 {
     TOKEN token;
+
+    // At commit the handle to a store switches from a TOKEN to a STORE_TOKEN.
+    // The TOKEN is now dead.  The STORE_TOKEN will be used to write the
+    // store back to memory.
+    Maybe#(STORE_TOKEN) storeToken;
 }
     FUNCP_RSP_COMMIT_RESULTS
         deriving (Eq, Bits);

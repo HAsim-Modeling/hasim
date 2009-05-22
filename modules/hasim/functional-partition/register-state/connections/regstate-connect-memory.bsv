@@ -53,6 +53,7 @@ interface REGSTATE_MEMORY_CONNECTION;
     interface REGSTATE_MEMORY_QUEUE getInstructionQueue;
     interface REGSTATE_MEMORY_QUEUE doLoadsQueue;
     interface REGSTATE_MEMORY_QUEUE doStoresQueue;
+    interface REGSTATE_MEMORY_QUEUE commitResultsQueue;
     interface REGSTATE_MEMORY_QUEUE commitStoresQueue;
     interface REGSTATE_MEMORY_QUEUE exceptionQueue;
 endinterface
@@ -90,11 +91,13 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
     FIFO#(MEMSTATE_REQ) mqInstruction <- mkFIFO();
     FIFO#(MEMSTATE_REQ) mqDoLoads <- mkFIFO();
     FIFO#(MEMSTATE_REQ) mqDoStores <- mkFIFO();
-    FIFO#(MEMSTATE_REQ) mqCommit <- mkFIFO();
+    FIFO#(MEMSTATE_REQ) mqCommitResults <- mkFIFO();
+    FIFO#(MEMSTATE_REQ) mqCommitStores <- mkFIFO();
     FIFO#(MEMSTATE_REQ) mqException <- mkFIFO();
 
     // Response queues for commit and exceptions
-    FIFOF#(Bool) respCommit <- mkFIFOF();
+    FIFOF#(Bool) respCommitResults <- mkFIFOF();
+    FIFOF#(Bool) respCommitStores <- mkFIFOF();
     FIFOF#(Bool) respException <- mkFIFOF();
 
     FIFO#(FUNCP_MEMRESP_SCOREBOARD_ID) releaseStoresQ <- mkFIFO();
@@ -132,6 +135,20 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
     // subsystem.  This guarantees cross-cycle order is maintained.
     //
 
+    rule handleReqCommitResults (True);
+        linkToMem.makeReq(mqCommitResults.first());
+        mqCommitResults.deq();
+        respCommitResults.enq(?);
+        debugLog.record($format("Commit Results REQ"));
+    endrule
+    
+    rule handleReqCommitStores (True);
+        linkToMem.makeReq(mqCommitStores.first());
+        mqCommitStores.deq();
+        respCommitStores.enq(?);
+        debugLog.record($format("Commit Store REQ"));
+    endrule
+    
     rule handleReqException (True);
         linkToMem.makeReq(mqException.first());
         mqException.deq();
@@ -139,13 +156,6 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
         debugLog.record($format("Exception REQ"));
     endrule
 
-    rule handleReqCommit (True);
-        linkToMem.makeReq(mqCommit.first());
-        mqCommit.deq();
-        respCommit.enq(?);
-        debugLog.record($format("Commit Store REQ"));
-    endrule
-    
 
     //
     // The remaining requests get responses from the memory subsystem.
@@ -191,7 +201,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
         debugLog.record($format("Do Loads REQ, id=%0d", resp_id));
     endrule
 
-    (* descending_urgency = "handleReqException, handleReqCommit, handleReqStore, handleReqLoad, handleReqInstruction" *)
+    (* descending_urgency = "handleReqException, handleReqCommitStores, handleReqCommitResults, handleReqStore, handleReqLoad, handleReqInstruction" *)
     rule handleReqInstruction (True);
         let req = mqInstruction.first();
         mqInstruction.deq();
@@ -299,22 +309,37 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
 
 
     //
-    // commitStores and the exception queue only need to know that their
-    // requests have reached memory.  The response is generated inside
+    // Commits for stores and the exception queue only need to know that
+    // their requests have reached memory.  The response is generated inside
     // this module.
     //
 
-    interface REGSTATE_MEMORY_QUEUE commitStoresQueue;
+    interface REGSTATE_MEMORY_QUEUE commitResultsQueue;
         method Action makeReq(MEMSTATE_REQ req);
-            mqCommit.enq(req);
+            mqCommitResults.enq(req);
         endmethod
 
-        method MEM_VALUE getResp() if (respCommit.notEmpty());
+        method MEM_VALUE getResp() if (respCommitResults.notEmpty());
             return ?;
         endmethod
 
         method Action deq();
-            respCommit.deq();
+            respCommitResults.deq();
+            debugLog.record($format("Commit Results DEQ"));
+        endmethod
+    endinterface
+
+    interface REGSTATE_MEMORY_QUEUE commitStoresQueue;
+        method Action makeReq(MEMSTATE_REQ req);
+            mqCommitStores.enq(req);
+        endmethod
+
+        method MEM_VALUE getResp() if (respCommitStores.notEmpty());
+            return ?;
+        endmethod
+
+        method Action deq();
+            respCommitStores.deq();
             debugLog.record($format("Commit Store DEQ"));
         endmethod
     endinterface

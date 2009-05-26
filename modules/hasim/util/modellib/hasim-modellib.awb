@@ -13,7 +13,7 @@
 #
 # %attributes hasim
 #
-# %public events.bsv commands.bsv a-ports.bsv stall-ports.bsv credit-ports.bsv
+# %public events.bsv commands.bsv a-ports.bsv stall-ports.bsv credit-ports.bsv multiplexed-memories.bsv
 # %sources -t DICT -v PUBLIC hasim-modellib.dic
 #
 # %param HASIM_EVENTS_SIZE 32 "Number of bits for Event parameter."

@@ -18832,3 +18832,18 @@ Directory modules/hasim/util/common
 
 - Change functional memory RRR line sized reads and writes to full lines instead
   of streamed words to improve performance.
+
+----------
+mpellaue    Date: Tue May 26 13:07:35 EDT 2009  CSN: CSN-hasim-641
+                  Tue May 26 17:07:35 UTC 2009
+
+
+Directory modules/hasim/util/modellib
+ multiplexed-memories.bsv  Locally Added               0 
+ hasim-modellib.awb        Locally Modified          640 
+
+
+* Add a multiplexed BRAM. This is just an extension of the address space by
+  the number of instances.
+  
+Michael P.

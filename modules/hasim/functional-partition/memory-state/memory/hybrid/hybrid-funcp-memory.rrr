@@ -10,13 +10,6 @@ service FUNCP_MEMORY
     server hw (bsv, connection) <- sw (cpp, method)
     {
         //
-        // Pipelined Load --
-        //     The host sends one message for every word in a line to this
-        //     method in response to a LoadLine request on the host server.
-        //
-        method LoadData(in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
-
-        //
         // Software ACK that pipelined store is complete.
         //
         method StoreACK(in UINT8[8] ack);
@@ -38,12 +31,15 @@ service FUNCP_MEMORY
                      out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
 
         //
-        // Pipelined Load Line --
-        //     The client hardware makes a single load request.  The host
-        //     server responds with multiple messages on the LoadData method
-        //     of the hardware's server interface.
+        // Load Line --
+        //     Assumes 4 words per line until RRR types are more genreal.
+        //
         method LoadLine (in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                         in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr);
+                         in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
+                         out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data0,
+                         out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data1,
+                         out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data2,
+                         out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data3);
 
 
         // Store a single word
@@ -52,12 +48,10 @@ service FUNCP_MEMORY
                      in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
 
         //
-        // Pipelined Store Line -- 
-        //     Store line begins with a StoreLineCtrl() request and is followed
-        //     by one StoreData request for every word in the line.  Low bits
-        //     of the message are sent first and bit 0 of the word valid mask
-        //     corresponds to the low word.  A message is sent for a word
-        //     even when the wordValid bit is 0.
+        // Store Line -- 
+        //     Store a line of data.  The current implementation assumes
+        //     4 words per line.  When RRR gets a more general type representation
+        //     the data description can be generalized.
         //
         //     When sendAck is set, the host sends on ACK to StoreACK in the
         //     hardware server.
@@ -65,8 +59,10 @@ service FUNCP_MEMORY
         method StoreLine(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
                          in UINT8[8] wordValid,
                          in UINT8[8] sendAck,
-                         in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr);
-
-        method StoreData(in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
+                         in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
+                         in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data0,
+                         in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data1,
+                         in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data2,
+                         in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data3);
     };
 };

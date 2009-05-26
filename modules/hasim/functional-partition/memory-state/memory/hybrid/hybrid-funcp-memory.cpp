@@ -35,8 +35,7 @@ FUNCP_MEMORY_SERVER_CLASS FUNCP_MEMORY_SERVER_CLASS::instance;
 
 // constructor
 FUNCP_MEMORY_SERVER_CLASS::FUNCP_MEMORY_SERVER_CLASS() :
-    memory(NULL),
-    stWordIdx(0)
+    memory(NULL)
 {
     SetTraceableName("funcp_memory");
 
@@ -134,10 +133,9 @@ FUNCP_MEMORY_SERVER_CLASS::Store(
 
 //
 // LoadLine --
-//     Request one line from memory.  Words from the requested line are sent
-//     as separate messages to the LoadData remote server method.
+//     Request one line from memory.
 //
-void
+OUT_TYPE_LoadLine
 FUNCP_MEMORY_SERVER_CLASS::LoadLine(CONTEXT_ID ctxId, FUNCP_PADDR addr)
 {
     ASSERTX(memory != NULL);
@@ -155,66 +153,44 @@ FUNCP_MEMORY_SERVER_CLASS::LoadLine(CONTEXT_ID ctxId, FUNCP_PADDR addr)
         }
     }
 
-    //
-    // Send each word in the line to the FPGA
-    //
-    for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++)
-    {
-        clientStub->LoadData(line.w[i]);
-    }
+    OUT_TYPE_LoadLine v;
+    v.data0 = line.w[0];
+    v.data1 = line.w[1];
+    v.data2 = line.w[2];
+    v.data3 = line.w[3];
+    return v;
 }
 
 //
 // StoreLine --
-//     Control message for a store line request.  Data will follow on the
-//     StoreData method.
+//     Store a full data line.  The code assumes 4 words per line and little
+//     endian memory.  The data can be made more general after RRR understands
+//     types.
 //
 void
 FUNCP_MEMORY_SERVER_CLASS::StoreLine(
     CONTEXT_ID ctxId,
     UINT8 wordValid,
     UINT8 sendAck,
-    FUNCP_PADDR addr)
+    FUNCP_PADDR addr,
+    MEM_VALUE word0, MEM_VALUE word1, MEM_VALUE word2, MEM_VALUE word3)
 {
     ASSERTX(memory != NULL);
-    // Hardware MUST send all store data before requesting a new store line
-    ASSERT(stWordIdx == 0, "New store line request before last line's data complete");
 
-    stWordIdx = 1;
-    stCtxId = ctxId;
-    stWordValid = wordValid;
-    stSendAck = sendAck;
-    stAddr = addr;
-}
-
-//
-// StoreData --
-//     Data associated with a StoreLine request.  Data arrives one word at a
-//     time and is written to memory once the entire line arrives.
-//
-void
-FUNCP_MEMORY_SERVER_CLASS::StoreData(MEM_VALUE val)
-{
-    ASSERTX(stWordIdx <= (sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE)));
-
-    stData.w[stWordIdx - 1] = val;
-    if (stWordIdx != (sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE)))
-    {
-        // Not done with line
-        stWordIdx += 1;
-        return;
-    }
-
-    // Done with line.  Write it to memory.
-    stWordIdx = 0;
+    // Convert value to a clean data structure
+    MEM_CACHELINE stData;
+    stData.w[0] = word0;
+    stData.w[1] = word1;
+    stData.w[2] = word2;
+    stData.w[3] = word3;
 
     if (TRACING(1))
     {
         MEM_CACHELINE_WORD_VALID_MASK mask_pos = 1;
 
-        T1("\tfuncp_memory: STline CTX " << UINT64(stCtxId) << (stSendAck ? " SYNC" : "") << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(stAddr) << "] -> line:");
+        T1("\tfuncp_memory: STline CTX " << UINT64(ctxId) << (sendAck ? " SYNC" : "") << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
         for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
-            if ((stWordValid & mask_pos) != 0)
+            if ((wordValid & mask_pos) != 0)
             {
                 T1("\t\t" << fmt_data(stData.w[i]));
             }
@@ -227,28 +203,28 @@ FUNCP_MEMORY_SERVER_CLASS::StoreData(MEM_VALUE val)
         }
     }
 
-    if (stWordValid == ((1 << sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE)) - 1))
+    if (wordValid == ((1 << sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE)) - 1))
     {
         // Entire line is valid.  Write in a single chunk.
-        memory->Write(stCtxId, stAddr, sizeof(MEM_CACHELINE), &stData);
+        memory->Write(ctxId, addr, sizeof(MEM_CACHELINE), &stData);
     }
     else
     {
         // Write only the valid words in the line.  Assumes little endian
         // addressing.
         MEM_CACHELINE_WORD_VALID_MASK mask_pos = 1;
-        FUNCP_PADDR w_addr = stAddr;
+        FUNCP_PADDR w_addr = addr;
         for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
-            if ((stWordValid & mask_pos) != 0)
+            if ((wordValid & mask_pos) != 0)
             {
-                memory->Write(stCtxId, w_addr, sizeof(MEM_VALUE), &stData.w[i]);
+                memory->Write(ctxId, w_addr, sizeof(MEM_VALUE), &stData.w[i]);
             }
             w_addr += sizeof(MEM_VALUE);
             mask_pos <<= 1;
         }
     }
 
-    if (stSendAck)
+    if (sendAck)
     {
         clientStub->StoreACK(1);
     }

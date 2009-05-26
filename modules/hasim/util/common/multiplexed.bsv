@@ -1,3 +1,20 @@
+//
+// Copyright (C) 2009 Massachusetts Institute of Technology
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
 
 // MULTIPLEXED
 
@@ -23,6 +40,7 @@
 //     // Update the PC.
 //     pc <= bpred.prediction(pc);
 
+`include "asim/provides/fpga_components.bsh"
 
 // INSTANCE_ID#(ni) is an instance ID to distinguish between ni different
 // instances.
@@ -32,7 +50,10 @@ typedef Bit#(INSTANCE_ID_BITS#(ni)) INSTANCE_ID#(type ni);
 
 typedef Vector#(ni, t) MULTIPLEXED#(type ni, parameter type t);
 
-module [m] mkMultiplexed#(function m#(t) f) (MULTIPLEXED#(ni, t)) provisos (IsModule#(m, a));
+module [m] mkMultiplexed#(function m#(t) f)
+    // Interface:
+    (MULTIPLEXED#(ni, t))
+    provisos (IsModule#(m, a));
 
     MULTIPLEXED#(ni, t) v = newVector();
     for (Integer x = 0; x < valueOf(ni); x = x + 1)
@@ -41,4 +62,37 @@ module [m] mkMultiplexed#(function m#(t) f) (MULTIPLEXED#(ni, t)) provisos (IsMo
     end
     return v;
 
+endmodule
+
+//
+// mkMultiplexedLUTRAM --
+//     Special case: efficient, implementation of a multiplexed LUTRAM that
+//     merges all the virtual LUTRAMs into a single one.
+//
+//     NOTE:  The constructor function should NOT have its initial value
+//            be a function of the index, since the index of the
+//            instantiated LUTRAM is different.
+//
+module [m] mkMultiplexedLUTRAM#(function m#(LUTRAM#(t_MERGED_IDX, t_DATA)) f)
+    // Interface:
+    (MULTIPLEXED#(ni, LUTRAM#(t_INDEX, t_DATA)))
+    provisos (IsModule#(m, a),
+              Alias#(Tuple2#(INSTANCE_ID#(ni), t_INDEX), t_MERGED_IDX));
+
+    // Allocate a single, merged, LUTRAM for all instances.
+    LUTRAM#(t_MERGED_IDX, t_DATA) mergedData <- f();
+
+    MULTIPLEXED#(ni, LUTRAM#(t_INDEX, t_DATA)) v = newVector();
+    for (Integer x = 0; x < valueOf(ni); x = x + 1)
+    begin
+        v[x] =
+           (interface LUTRAM#(t_INDEX, t_DATA);
+                method Action upd(t_INDEX addr, t_DATA val) =
+                    mergedData.upd(tuple2(fromInteger(x), addr), val);
+            
+                method t_DATA sub(t_INDEX addr) =
+                    mergedData.sub(tuple2(fromInteger(x), addr));
+            endinterface);
+    end
+    return v;
 endmodule

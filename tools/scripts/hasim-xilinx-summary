@@ -65,6 +65,10 @@ while (<PAR>)
     $clock_type = 'DDR2 ' if (/\| TS_.*phys_plat_ddr2/);
     $clock_type = 'PCIe ' if (/\| TS_.*phys_plat_pci/);
 
+    ## ACP
+    $clock_type = 'Base ' if (/\|TS_fpga1_clk100 /);
+    $clock_type = 'Model' if (/\| TS_.*phys_plat_arch/);
+
     if (defined($clock_type))
     {
         ## Extract period requirement and actual periods

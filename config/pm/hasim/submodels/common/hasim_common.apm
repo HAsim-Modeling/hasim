@@ -52,8 +52,7 @@ platform_interface=Hasim Platform Interface
 hasim_modellib=HAsim Modeling Library
 
 [Soft Connections/Params]
-CON_CWIDTH=336
-
+CON_CWIDTH=350
 
 [HAsim Modeling Library]
 File=modules/hasim/util/modellib/hasim-modellib.awb

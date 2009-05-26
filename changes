@@ -18794,3 +18794,41 @@ Directory modules/bluespec/system/demos/rrrtest
 - added explicit CallbackExit() calls to quit the application at
   the end of Controller's Main().
 - updated rrrtest to make it run shorter.
+
+----------
+mcadler     Date: Mon May 25 22:40:28 EDT 2009  CSN: CSN-hasim-640
+                  Tue May 26 02:40:28 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ BSV.pm                    Locally Modified          639 
+
+Directory tools/scripts
+ hasim-xilinx-summary      Locally Modified          639 
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Modified          639 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          639 
+ hybrid-funcp-memory.rrr   Locally Modified          639 
+ hybrid-funcp-memory.h     Locally Modified          639 
+ hybrid-funcp-memory.awb   Locally Modified          639 
+ hybrid-funcp-memory.bsv   Locally Modified          639 
+
+Directory modules/hasim/util/common
+ multiplexed.bsv           Locally Modified          639 
+
+- Add peekResponse methods to RRR client interface so client can see the response
+  without deq.
+- Detect ACP clocks in summary.
+
+- Add mkMultiplexedLUTRAM special case.  The interface is identical to a standard
+  MULTIPLEXED object but it builds a single LUTRAM and swizzles the index.
+  The code might not do what we want.  Initial evidence suggests that the
+  compiler treats each array entry as a separate RegFile read port, which won't
+  work.  Either we need to fix the compiler or rethink the code.  I'm checking
+  this in as a starting point.
+
+- Change functional memory RRR line sized reads and writes to full lines instead
+  of streamed words to improve performance.

@@ -254,6 +254,26 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
     ClientStub_FUNCP_MEMORY clientStub <- mkClientStub_FUNCP_MEMORY();
 
     //
+    // Buffered store state to merge control and data messages into a single
+    // RRR message.
+    //
+    FIFO#(Tuple4#(CONTEXT_ID,
+                  FUNCP_MEM_CACHELINE_WORD_VALID_MASK,
+                  Bool,
+                  FUNCP_MEM_WORD_PADDR)) stCtrlQ <- mkFIFO();
+
+    Reg#(Bit#(TLog#(FUNCP_MEM_CACHELINE_WORDS))) rdWordIdx <- mkReg(0);
+
+    Reg#(Bit#(TLog#(FUNCP_MEM_CACHELINE_WORDS))) stWordIdx <- mkReg(0);
+    Reg#(FUNCP_MEM_CACHELINE) stData <- mkRegU();
+
+    //
+    // Buffered load state to convert a full line RRR response to word-sized
+    // messages to the cache.
+    //
+    Reg#(Bit#(TLog#(FUNCP_MEM_CACHELINE_WORDS))) ldWordIdx <- mkReg(0);
+
+    //
     // Interface between host functional memory and the central cache.
     //
     interface FUNCP_CENTRAL_CACHE_BACKING cacheBacking;
@@ -270,12 +290,27 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
 
         //
         // readResp --
-        //     Pipelined load response.  Words come in, and are expected
-        //     by the cache, one at a time.
+        //     Pick the next word from the line-sized response.
         //
         method ActionValue#(MEM_VALUE) readResp();
-            let val <- serverStub.acceptRequest_LoadData();
-            debugLog.record($format("back readResp: val=0x%x", val));
+            // Pick a word from the current incoming value.  Pop the entry if on
+            // the last word.
+            OUT_TYPE_LoadLine r;
+            if (rdWordIdx == maxBound)
+                r <- clientStub.getResponse_LoadLine();
+            else
+                r = clientStub.peekResponse_LoadLine();
+
+            FUNCP_MEM_CACHELINE line;
+            line[0] = r.data0;
+            line[1] = r.data1;
+            line[2] = r.data2;
+            line[3] = r.data3;
+
+            let val = line[rdWordIdx];
+            rdWordIdx <= rdWordIdx + 1;
+
+            debugLog.record($format("back readResp: idx=%0d, val=0x%x", rdWordIdx, val));
             return val;
         endmethod
 
@@ -291,13 +326,11 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
         method Action writeLineReq(FUNCP_MEM_WORD_PADDR wAddr,
                                    FUNCP_MEM_CACHELINE_WORD_VALID_MASK wordValidMask,
                                    FUNCP_CACHE_REF_INFO refInfo,
-                                   Bool sendAck);
+                                   Bool sendAck) if (stWordIdx == 0);
             let addr = byteAddrFromWordAddr(wAddr);
             debugLog.record($format("back writeCtrl: ctx=%0d, addr=0x%x, valid=0x%x, ack=%d", refInfo.contextId, addr, pack(wordValidMask), pack(sendAck)));
-            clientStub.makeRequest_StoreLine(contextIdToRRR(refInfo.contextId),
-                                             zeroExtend(pack(wordValidMask)),
-                                             zeroExtend(pack(sendAck)),
-                                             zeroExtend(addr));
+
+            stCtrlQ.enq(tuple4(refInfo.contextId, wordValidMask, sendAck, wAddr));
         endmethod
 
         //
@@ -305,8 +338,30 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
         //     Forward data associated with writeLineReq() above.
         //
         method Action writeData(MEM_VALUE val);
-            debugLog.record($format("back writeData: val=0x%x", val));
-            clientStub.makeRequest_StoreData(val);
+            debugLog.record($format("back writeData: idx=%0d, val=0x%x", stWordIdx, val));
+
+            if (stWordIdx != maxBound)
+            begin
+                // Still collecting data
+                stData[stWordIdx] <= val;
+            end
+            else
+            begin
+                // Send the store
+                match {.ctx_id, .word_valid_mask, .send_ack, .w_addr} = stCtrlQ.first();
+                stCtrlQ.deq();
+
+                clientStub.makeRequest_StoreLine(contextIdToRRR(ctx_id),
+                                                 zeroExtend(pack(word_valid_mask)),
+                                                 zeroExtend(pack(send_ack)),
+                                                 zeroExtend(byteAddrFromWordAddr(w_addr)),
+                                                 stData[0],
+                                                 stData[1],
+                                                 stData[2],
+                                                 val);
+            end
+
+            stWordIdx <= stWordIdx + 1;
         endmethod
 
         method Action writeAckWait();

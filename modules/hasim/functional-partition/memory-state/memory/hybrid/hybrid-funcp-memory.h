@@ -67,16 +67,6 @@ class FUNCP_MEMORY_SERVER_CLASS: public RRR_SERVER_CLASS,
     Format fmt_addr;
     Format fmt_data;
 
-    //
-    // Current state of a pipelined store line
-    //
-    UINT8 stWordIdx;
-    UINT8 stWordValid;
-    UINT8 stSendAck;
-    CONTEXT_ID stCtxId;
-    FUNCP_PADDR stAddr;
-    MEM_CACHELINE stData;
-
   public:
     FUNCP_MEMORY_SERVER_CLASS();
     ~FUNCP_MEMORY_SERVER_CLASS();
@@ -92,11 +82,13 @@ class FUNCP_MEMORY_SERVER_CLASS: public RRR_SERVER_CLASS,
     MEM_VALUE Load(CONTEXT_ID ctxId, FUNCP_PADDR addr);
     void Store(CONTEXT_ID ctxId, FUNCP_PADDR addr, MEM_VALUE val);
 
-    void LoadLine(CONTEXT_ID ctxId, FUNCP_PADDR addr);
+    OUT_TYPE_LoadLine LoadLine(CONTEXT_ID ctxId, FUNCP_PADDR addr);
 
-    void StoreLine(CONTEXT_ID ctxId, UINT8 wordValid, UINT8 sendAck, FUNCP_PADDR addr);
-    void StoreData(MEM_VALUE val);
-
+    void StoreLine(CONTEXT_ID ctxId,
+                   UINT8 wordValid,
+                   UINT8 sendAck,
+                   FUNCP_PADDR addr,
+                   MEM_VALUE word0, MEM_VALUE word1, MEM_VALUE word2, MEM_VALUE word3);
 
     //
     // Incoming messages from the software side (e.g. instruction emulation)

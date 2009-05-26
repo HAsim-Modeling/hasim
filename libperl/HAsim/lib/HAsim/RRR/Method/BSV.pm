@@ -160,6 +160,21 @@ sub _make_get_header
                  "()";
 }
 
+sub _make_get_noaction_header
+{
+    my $self        = shift;
+    my $methodclass = shift;
+    my $typestring  = shift;
+    
+    my $string = "method " .
+                 $typestring            .
+                 " "                    .
+                 $methodclass           .
+                 "_"                    .
+                 $self->{name}          .
+                 "()";
+}
+
 ##
 ## create a "put"-type header
 ##
@@ -879,6 +894,11 @@ sub print_remote_get_response_declaration
                 $self->_make_get_header("getResponse",
                                         $self->_outtype_name()) .
                 ";\n";
+
+    print $file $indent                                      .
+                $self->_make_get_noaction_header("peekResponse",
+                                                 $self->_outtype_name()) .
+                ";\n";
 }
 
 ##
@@ -980,6 +1000,26 @@ sub print_remote_get_response_definition
     # body
     print $file $indent . "    let a = link_" . $self->{name} . ".getResp();\n";
     print $file $indent . "    link_" . $self->{name} . ".deq();\n";
+    print $file $indent . "    return unpack(a);\n";
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
+
+
+    ##
+    ## Equivalent peekResponse method (everything but the deq)
+    ##
+
+    # header
+    print $file $indent                                      .
+                $self->_make_get_noaction_header("peekResponse",
+                                                 $self->_outtype_name());
+
+    # no conditions
+    print $file ";\n";
+
+    # body
+    print $file $indent . "    let a = link_" . $self->{name} . ".getResp();\n";
     print $file $indent . "    return unpack(a);\n";
 
     # endmethod

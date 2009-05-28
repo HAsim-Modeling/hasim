@@ -18847,3 +18847,21 @@ Directory modules/hasim/util/modellib
   the number of instances.
   
 Michael P.
+
+----------
+mpellaue    Date: Thu May 28 18:16:46 EDT 2009  CSN: CSN-hasim-642
+                  Thu May 28 22:16:46 UTC 2009
+
+
+Directory modules/hasim/util/modellib
+ stall-ports.bsv           Locally Modified          641 
+
+
+* Update stall ports in an effort to regain some performance in the inorder model.
+
+* The newer implementation now models a conservative FIFO, instead of an LFIFO.
+
+* The FMR drops to 29 or so for 1 context, but the IPC also drops a bit do to
+  the lost parallelism.
+  
+Michael P.

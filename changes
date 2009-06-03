@@ -18865,3 +18865,23 @@ Directory modules/hasim/util/modellib
   the lost parallelism.
   
 Michael P.
+
+----------
+ruhler      Date: Wed Jun  3 14:29:59 EDT 2009  CSN: CSN-hasim-643
+                  Wed Jun  3 18:29:59 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-doStores.bsv Locally Modified          642 
+
+Directory modules/hasim/util/modellib
+ stall-ports.bsv           Locally Modified          642 
+ a-ports.bsv               Locally Modified          642 
+
+
+Changed stall ports canEnq method into an ActionValue so we don't give out
+duplicate credits.
+
+Removed guarded receive port and replaced it with a "dependent" port which
+always has latency zero and shouldn't be added to the local controller.
+

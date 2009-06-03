@@ -72,7 +72,7 @@ import soft_connections::*;
 interface PORT_STALL_SEND#(type a);
     method Action doEnq(a x);
     method Action noEnq();
-    method Bool   canEnq();
+    method ActionValue#(Bool) canEnq();
     interface INSTANCE_CONTROL_IN_OUT#(1) ctrl;
 
 endinterface
@@ -88,7 +88,7 @@ endinterface
 interface PORT_STALL_SEND_MULTIPLEXED#(type ni, type a);
     method Action doEnq(INSTANCE_ID#(ni) iid, a x);
     method Action noEnq(INSTANCE_ID#(ni) iid);
-    method Bool   canEnq(INSTANCE_ID#(ni) iid);
+    method ActionValue#(Bool) canEnq(INSTANCE_ID#(ni) iid);
     interface INSTANCE_CONTROL_IN_OUT#(ni) ctrl;
 
 endinterface
@@ -113,19 +113,22 @@ module [HASIM_MODULE] mkPortStallSend#(String s)
 
     method Action doEnq (a x);
 
-        creditFromQueue.deq();
         enqToQueue.send(tagged Valid x);
 
     endmethod
 
     method Action noEnq();
 
-        creditFromQueue.deq();
         enqToQueue.send(tagged Invalid);
 
     endmethod
 
-    method Bool canEnq() = creditFromQueue.receive();
+    method ActionValue#(Bool) canEnq();
+
+        creditFromQueue.deq();
+        return creditFromQueue.receive();
+
+    endmethod
 
     interface INSTANCE_CONTROL_IN_OUT ctrl;
 
@@ -275,20 +278,19 @@ module [HASIM_MODULE] mkPortStallSend_Multiplexed#(String s)
 
     method Action doEnq (INSTANCE_ID#(ni) iid, a x);
 
-        creditFromQueue.deq();        
         enqToQueue.send(tuple2(iid, tagged Valid x));
 
     endmethod
 
     method Action noEnq(INSTANCE_ID#(ni) iid);
 
-        creditFromQueue.deq();        
         enqToQueue.send(tuple2(iid, tagged Invalid));
 
     endmethod
 
-    method Bool canEnq(INSTANCE_ID#(ni) iid);
+    method ActionValue#(Bool) canEnq(INSTANCE_ID#(ni) iid);
 
+        creditFromQueue.deq();        
         match {.*, .b} = creditFromQueue.receive();
         return b;
 

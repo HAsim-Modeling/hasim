@@ -426,33 +426,32 @@ module [HASIM_MODULE] mkPortRecvL0_Multiplexed#(String portname)
   
 endmodule
 
-module [HASIM_MODULE] mkPortRecvGuarded_Multiplexed#(String portname, Integer latency)
-    //interface:
-        (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
-    provisos
-        (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6),
-         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
-
-
-    PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG) port <- mkPortRecv_Multiplexed(portname, latency);
+module [Connected_Module] mkPortRecvDependent#(String portname)
+    // interface:
+                (PORT_RECV#(t_MSG))
+      provisos
+                (Bits#(t_MSG, t_MSG_SZ),
+                 Transmittable#(Maybe#(t_MSG)));
     
-    interface ctrl = port.ctrl;
+    let m <- mkPortRecv_L0(portname);
+    return m;
     
-    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) iid) if (!port.ctrl.empty());
-    
-        let m <- port.receive(iid);
-        return m;
-    
-    endmethod
-
 endmodule
 
-
-
+module [Connected_Module] mkPortRecvDependent_Multiplexed#(String portname)
+    // interface:
+                (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+      provisos
+                (Bits#(t_MSG, t_MSG_SZ),
+                 Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+    
+    let m <- mkPortRecvL0_Multiplexed(portname);
+    return m;
+    
+endmodule
 
 module [Connected_Module] mkConnectionSendUG#(String portname)
-    //interface:
+    // interface:
                 (Connection_Send#(t_MSG))
     provisos
             (Bits#(t_MSG, t_MSG_SZ),

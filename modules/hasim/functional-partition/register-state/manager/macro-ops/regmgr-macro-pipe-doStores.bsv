@@ -143,6 +143,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         // If it's not actually a store, it's an exception.
         let isStore = tokScoreboard.isStore(tok.index);
         assertion.instructionIsActuallyAStore(isStore);
+        if (!isStore) begin
+            debugLog.record(fshow(tok.index) + $format(": BAD STORE")); 
+        end
 
         storesSQ.enq(req);
 

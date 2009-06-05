@@ -31,12 +31,14 @@ interface Starter;
     method Action acceptRequest_Pause();
     method Action acceptRequest_Sync();
     method Action acceptRequest_DumpStats();
+    method Action acceptRequest_DebugScan();
 
     method ActionValue#(CONTEXT_ID) acceptRequest_EnableContext();
     method ActionValue#(CONTEXT_ID) acceptRequest_DisableContext();
 
     // service methods: responses
     method Action sendResponse_DumpStats();
+    method Action sendResponse_DebugScan();
 
     // client methods
     method Action makeRequest_EndSim(Bool success);
@@ -52,6 +54,13 @@ interface Starter;
     //     instr_commits -- Committed instructions since the last heartbeat.
     //
     method Action makeRequest_Heartbeat(CONTEXT_ID ctxId, Bit#(64) fpga_cycles, Bit#(32) model_cycles, Bit#(32) instr_commits);
+
+    //
+    // FPGA Heartbeat --
+    //   Central controller message based in FPGA clock, not model cycles.
+    //   Useful for detecting deadlocks.
+    //
+    method Action makeRequest_FPGAHeartbeat(Bit#(64) fpga_cycles);
 
 endinterface
 
@@ -89,6 +98,16 @@ module [HASIM_MODULE] mkStarter(Starter);
         server_stub.sendResponse_DumpStats(0);
     endmethod
 
+    // DebugScan
+    method Action acceptRequest_DebugScan ();
+        let r <- server_stub.acceptRequest_DebugScan();
+    endmethod
+
+    // send response to DebugScan
+    method Action sendResponse_DebugScan();
+        server_stub.sendResponse_DebugScan(0);
+    endmethod
+
     // SW side says enable a context
     method ActionValue#(CONTEXT_ID) acceptRequest_EnableContext();
         let r <- server_stub.acceptRequest_EnableContext();
@@ -110,7 +129,11 @@ module [HASIM_MODULE] mkStarter(Starter);
 
     // Heartbeat
     method Action makeRequest_Heartbeat(CONTEXT_ID ctxId, Bit#(64) fpga_cycles, Bit#(32) model_cycles, Bit#(32) instr_commits);
-        client_stub.makeRequest_Heartbeat(contextIdToRRR(ctxId), fpga_cycles, model_cycles, instr_commits);
+        client_stub.makeRequest_Heartbeat(0, contextIdToRRR(ctxId), fpga_cycles, model_cycles, instr_commits);
+    endmethod
+
+    method Action makeRequest_FPGAHeartbeat(Bit#(64) fpga_cycles);
+        client_stub.makeRequest_Heartbeat(1, 0, fpga_cycles, 0, 0);
     endmethod
 
 endmodule

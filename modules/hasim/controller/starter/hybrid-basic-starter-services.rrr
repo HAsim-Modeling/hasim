@@ -9,6 +9,7 @@ service STARTER
         method Pause     (in UINT32[32] payload);
         method Sync      (in UINT32[32] payload);
         method DumpStats (in UINT32[32] payload, out UINT32[32] retval);
+        method DebugScan (in UINT32[32] payload, out UINT32[32] retval);
 
         method EnableContext(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId);
         method DisableContext(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId);
@@ -17,7 +18,8 @@ service STARTER
     server sw (cpp, method) <- hw (bsv, connection)
     {
         method EndSim    (in UINT8[8] success);
-        method Heartbeat (in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+        method Heartbeat (in UINT8[8] fpgaClockBeat,
+                          in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
                           in UINT64[64] fpga_cycles,
                           in UINT32[32] model_cycles,
                           in UINT32[32] instr_commits);

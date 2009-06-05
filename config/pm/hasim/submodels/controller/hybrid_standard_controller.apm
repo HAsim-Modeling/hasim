@@ -55,6 +55,7 @@ module_controller=Module Controller
 events_controller=Hybrid Events Controller
 stats_controller=Hybrid Stats Controller
 params_controller=Hybrid Dynamic Parameters Controller
+debug_scan_controller=Hybrid Debug Scan Controller
 
 [Standard Central Controllers]
 File=modules/hasim/controller/central_controllers/central-controllers-standard.awb
@@ -70,4 +71,8 @@ Packagehint=hasim
 
 [Hybrid Dynamic Parameters Controller]
 File=modules/hasim/controller/central_controllers/params/params-controller-hybrid.awb
+Packagehint=hasim
+
+[Hybrid Debug Scan Controller]
+File=modules/hasim/controller/central_controllers/debug_scan/debug-scan-controller-hybrid.awb
 Packagehint=hasim

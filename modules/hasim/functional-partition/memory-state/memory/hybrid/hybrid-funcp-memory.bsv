@@ -17,6 +17,7 @@
 //
 
 import FIFO::*;
+import FIFOF::*;
 
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
@@ -30,6 +31,7 @@ import FIFO::*;
 `include "asim/dict/VDEV_CACHE.bsh"
 `include "asim/dict/PARAMS_FUNCP_MEMORY.bsh"
 `include "asim/dict/STATS_FUNCP_MEMORY.bsh"
+`include "asim/dict/DEBUG_SCAN.bsh"
 
 
 // Can't include hasim_isa.bsh here or it causes a loop
@@ -125,14 +127,55 @@ module [HASIM_MODULE] mkFUNCP_Memory
     PARAMETER_NODE paramNode <- mkDynamicParameterNode();
     Param#(2) cacheMode <- mkDynamicParameter(`PARAMS_FUNCP_MEMORY_FUNCP_MEM_PVT_CACHE_MODE, paramNode);
 
+    // Invalidate requests
+    FIFOF#(Tuple3#(CONTEXT_ID, FUNCP_MEM_WORD_PADDR, Bool)) invalQ <- mkFIFOF();
+
+
+    // ====================================================================
     //
     // Initialization
     //
+    // ====================================================================
+
     Reg#(Bool) initialized <- mkReg(False);
     rule doInit (! initialized);
         cache.setCacheMode(unpack(cacheMode));
         initialized <= True;
     endrule
+
+
+    // ====================================================================
+    //
+    // Debug scan state
+    //
+    // ====================================================================
+
+    //
+    // Debug state that can be scanned out:
+    //
+    //     Bit    6: invalQ.notEmpty
+    //     Bits 5-0: loadsInFlight counter
+    //
+    Wire#(Bit#(6)) debugScanData <- mkBypassWire();
+    DEBUG_SCAN#(Bit#(6)) debugScan <- mkDebugScanNode(`DEBUG_SCAN_FUNCP_MEMORY, debugScanData);
+
+    COUNTER#(5) loadsInFlight <- mkLCounter(0);
+
+    (* no_implicit_conditions *)
+    rule updateDebugScanState (True);
+        Bit#(6) d = ?;
+        d[5] = pack(invalQ.notEmpty());
+        d[4:0] = loadsInFlight.value();
+
+        debugScanData <= d;
+    endrule
+
+
+    // ====================================================================
+    //
+    // Main rules
+    //
+    // ====================================================================
 
     //
     // handleMemReq --
@@ -150,6 +193,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
                 let w_addr = wordAddrFromByteAddr(ldinfo.addr);
                 cache.readReq(w_addr, ref_info);
 
+                loadsInFlight.up();
                 debugLog.record($format("cache readReq: ctx=%0d, addr=0x%x, w_addr=0x%x", ldinfo.contextId, ldinfo.addr, w_addr));
             end
             
@@ -173,6 +217,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
         let r <- cache.readResp();
         linkMemory.makeResp(memStateResp(r.refInfo.memRefToken, r.val));
 
+        loadsInFlight.down();
         debugLog.record($format("cache readResp: val=0x%x", r.val));
     endrule
 
@@ -182,8 +227,6 @@ module [HASIM_MODULE] mkFUNCP_Memory
     //     Process incoming invalidation requests from the host and send
     //     then on to processInvalidateReq.
     //
-    FIFO#(Tuple3#(CONTEXT_ID, FUNCP_MEM_WORD_PADDR, Bool)) invalQ <- mkFIFO();
-
     rule getInvalidateReq (initialized);
         let r <- remoteFuncpMem.inval.getReq();
         match {.ctx_id, .addr, .only_flush} = r;

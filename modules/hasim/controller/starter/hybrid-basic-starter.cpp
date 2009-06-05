@@ -3,6 +3,8 @@
 #include <iostream>
 #include <iomanip>
 
+#include "asim/atomic.h"
+
 #include "asim/rrr/service_ids.h"
 #include "asim/provides/hasim_common.h"
 #include "asim/provides/starter.h"
@@ -19,7 +21,11 @@ using namespace std;
 STARTER_SERVER_CLASS STARTER_SERVER_CLASS::instance;
 
 // constructor
-STARTER_SERVER_CLASS::STARTER_SERVER_CLASS()
+STARTER_SERVER_CLASS::STARTER_SERVER_CLASS() :
+    lastStatsScanCycle(0),
+    lastFPGAClockModelCycles(0),
+    lastFPGAClockCommits(0),
+    noChangeBeats(0)
 {
     // instantiate stubs
     clientStub = new STARTER_CLIENT_STUB_CLASS(this);
@@ -42,7 +48,6 @@ STARTER_SERVER_CLASS::STARTER_SERVER_CLASS()
            "Heartbeat too infrequent for triggering statistics scan out");
 
     statsScanMask = 1 << (HASIM_STATS_SIZE - 2);
-    lastStatsScanCycle = 0;
 }
 
 // destructor
@@ -113,12 +118,16 @@ STARTER_SERVER_CLASS::EndSim(
 // Heartbeat
 void
 STARTER_SERVER_CLASS::Heartbeat(
+    UINT8 fpgaClockBeat,
     CONTEXT_ID ctxId,
     UINT64 fpga_cycles,
     UINT32 model_cycles,
     UINT32 instr_commits)
 {
-    ctxHeartbeat[ctxId].Heartbeat(ctxId, fpga_cycles, model_cycles, instr_commits);
+    if (! fpgaClockBeat)
+    {
+        ctxHeartbeat[ctxId].Heartbeat(ctxId, fpga_cycles, model_cycles, instr_commits);
+    }
 
     //
     // HW statistics counters are smaller than full counters to save
@@ -126,10 +135,43 @@ STARTER_SERVER_CLASS::Heartbeat(
     // they wrap around?
     //
     UINT64 total_model_cycles = 0;
+    UINT64 total_model_commits = 0;
     for (CONTEXT_ID c = 0; c < NUM_CONTEXTS; c++)
     {
         total_model_cycles += ctxHeartbeat[ctxId].GetModelCycles();
+        total_model_commits += ctxHeartbeat[ctxId].GetInstrCommits();
     }
+
+    //
+    // Is the current heartbeat an FPGA-clock heartbeat?  If so, just check
+    // for deadlocks.
+    //
+    if (fpgaClockBeat)
+    {
+        // Has the model progressed since the last FPGA clock heartbeat?
+        if ((total_model_cycles == lastFPGAClockModelCycles) &&
+            (total_model_commits == lastFPGAClockCommits))
+        {
+            // No!  Possible deadlock.
+            noChangeBeats += 1;
+        }
+        else
+        {
+            lastFPGAClockModelCycles = total_model_cycles;
+            lastFPGAClockCommits = total_model_commits;
+            noChangeBeats = 0;
+        }
+
+        if (noChangeBeats == 1000)
+        {
+            cerr << "starter: model deadlock!" << endl;
+            DebugScan();
+            EndSimulation(1);
+        }
+
+        return;
+    }
+
 
     if (((total_model_cycles ^ lastStatsScanCycle) & statsScanMask) != 0)
     {
@@ -259,6 +301,20 @@ void
 STARTER_SERVER_CLASS::DumpStats()
 {
     UINT32 ack = clientStub->DumpStats(0);
+}
+
+// client: debug scan
+void
+STARTER_SERVER_CLASS::DebugScan()
+{
+    // Only allow one scan to be active at a time.  Just drop requests that
+    // happen simultaneously.
+    static volatile UINT32 scanBusy = 0;
+    if (CompareAndExchangeU32(&scanBusy, 0, 1))
+    {
+        UINT32 ack = clientStub->DebugScan(0);
+        scanBusy = 0;
+    }
 }
 
 // client: enable context

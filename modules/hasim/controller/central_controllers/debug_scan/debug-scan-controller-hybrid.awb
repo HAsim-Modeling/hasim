@@ -1,0 +1,10 @@
+%name Hybrid Debug Scan Controller
+%desc Hybrid Debug Scan Controller
+%provides debug_scan_controller
+
+%attributes hasim
+
+%public  debug-scan-controller-hybrid.bsv
+%public  debug-scan-controller-hybrid.h
+%private debug-scan-controller-hybrid.cpp
+%public  debug-scan-controller.rrr

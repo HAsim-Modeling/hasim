@@ -26,6 +26,7 @@ import Vector::*;
 `include "asim/provides/module_controller.bsh"
 `include "asim/provides/events_controller.bsh"
 `include "asim/provides/stats_controller.bsh"
+`include "asim/provides/debug_scan_controller.bsh"
 `include "asim/provides/params_controller.bsh"
 `include "asim/provides/assertions_controller.bsh"
 `include "asim/provides/starter.bsh"
@@ -36,10 +37,9 @@ typedef Tuple2#(CONTEXT_ID, MODEL_NUM_COMMITS) CONTROL_MODEL_COMMIT_MSG;
 // control state
 typedef enum
 {
-    CONTROL_STATE_idle,    // simulation halted, modules are sync'ed
-    CONTROL_STATE_running, // simulation running
-    CONTROL_STATE_paused,  // simulation halted, modules may not be sync'ed
-    CONTROL_STATE_dumping  // simulation halted, modules sync'ed, dumping stats
+    CONTROL_STATE_idle,       // simulation halted, modules are sync'ed
+    CONTROL_STATE_running,    // simulation running
+    CONTROL_STATE_paused      // simulation halted, modules may not be sync'ed
 }
 CONTROL_STATE
     deriving (Bits, Eq);
@@ -83,8 +83,10 @@ module [HASIM_MODULE] mkController ();
     // If Bit#(32) isn't big enough the heartbeat isn't being sent often enough.
     LUTRAM#(CONTEXT_ID, Bit#(32)) instrCommits <- mkLUTRAM(0);
 
-    // In the middle of dumping statistics?
+    // In the middle of dumping statistics or a debug scan
     Reg#(Bool) dumpingStats <- mkReg(False);
+    Reg#(Bool) debugScanActive <- mkReg(False);
+
 
     // === rules ===
 
@@ -138,6 +140,20 @@ module [HASIM_MODULE] mkController ();
         dumpingStats <= False;
     endrule
 
+    // accept DebugScan request from starter
+    rule accept_request_DebugScan (! debugScanActive);
+        starter.acceptRequest_DebugScan();
+        centralControllers.debugScanController.scanStart();
+        debugScanActive <= True;
+        debugLog.record_all($format("DEBUG_SCAN Start"));
+    endrule
+
+    // monitor stats controller
+    rule complete_DebugScan (debugScanActive && centralControllers.debugScanController.scanIsDone());
+        starter.sendResponse_DebugScan();
+        debugScanActive <= False;
+    endrule
+
     // monitor requests to enable contexts
     rule accept_request_EnableContext (True);
         let ctx_id <- starter.acceptRequest_EnableContext();
@@ -154,10 +170,9 @@ module [HASIM_MODULE] mkController ();
         debugLog.record(ctx_id, $format("DISABLE Context"));
     endrule
 
-    (* descending_urgency = "model_commits, model_tick" *)
 
     // Count the model cycle and send heartbeat updates
-    rule model_tick (True);
+    rule modelTick (True);
         CONTEXT_ID ctx_id = link_model_cycle.receive();
         link_model_cycle.deq();
 
@@ -178,7 +193,21 @@ module [HASIM_MODULE] mkController ();
         end
     endrule
 
-    rule model_commits (True);
+    // Trigger heartbeat on FPGA cycle too, in case of model deadlock
+    let fpgaClockTriggerBit = `HEARTBEAT_TRIGGER_BIT + 10;
+    Reg#(Bit#(1)) lastFPGATrigger <- mkReg(0);
+
+    rule fpgaClockHeartbeat (fpgaCycle[fpgaClockTriggerBit] != lastFPGATrigger);
+        starter.makeRequest_FPGAHeartbeat(fpgaCycle);
+        lastFPGATrigger <= fpgaCycle[fpgaClockTriggerBit];
+    endrule
+
+
+    //
+    // Monitor committed instructions.
+    //
+    (* descending_urgency = "fpgaClockHeartbeat, modelCommits, modelTick" *)
+    rule modelCommits (True);
         match { .ctx_id, .commits } = link_model_commit.receive();
         link_model_commit.deq();
 

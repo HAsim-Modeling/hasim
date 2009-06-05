@@ -342,6 +342,8 @@ module [HASIM_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
               // Requested address type must be smaller than scratchpad maximum
               Add#(a__, t_MEM_ADDRESS_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
     
+    DEBUG_FILE debugLog <- mkDebugFile("memory_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE) + ".out");
+
     Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_READ_RESP) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
 
     // Scratchpad responses are not ordered.  Sort them with a reorder buffer.
@@ -438,12 +440,14 @@ module [HASIM_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
             interface MEMORY_READER_IFC#(t_ADDR, t_DATA);
                 method Action readReq(t_MEM_ADDRESS addr);
                     incomingReqQ.ports[p].enq(addr);
+                    debugLog.record($format("read port %0d: req addr=0x%x", p, addr));
                 endmethod
 
                 method ActionValue#(SCRATCHPAD_MEM_VALUE) readRsp();
                     let r = sortResponseQ[p].first();
                     sortResponseQ[p].deq();
 
+                    debugLog.record($format("read port %0d: resp val=0x%x", p, r));
                     return r;
                 endmethod
 
@@ -462,6 +466,7 @@ module [HASIM_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
         // The write port is last in the merge FIFO
         incomingReqQ.ports[valueOf(n_READERS)].enq(addr);
         writeDataQ.enq(val);
+        debugLog.record($format("write addr=0x%x, val=0x%x", addr, val));
     endmethod
 
     method Bool writeNotFull = incomingReqQ.ports[valueOf(n_READERS)].notFull();
@@ -493,7 +498,7 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
               // Requested address type must be smaller than scratchpad maximum.
               Add#(a__, t_MEM_ADDRESS_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
     
-    DEBUG_FILE debugLog <- mkDebugFile("platform_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE) + ".out");
+    DEBUG_FILE debugLog <- mkDebugFile("memory_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE) + ".out");
 
     // Dynamic parameters
     PARAMETER_NODE paramNode <- mkDynamicParameterNode();
@@ -598,12 +603,14 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
             interface MEMORY_READER_IFC#(t_ADDR, t_DATA);
                 method Action readReq(t_MEM_ADDRESS addr);
                     incomingReqQ.ports[p].enq(addr);
+                    debugLog.record($format("read port %0d: req addr=0x%x", p, addr));
                 endmethod
 
                 method ActionValue#(SCRATCHPAD_MEM_VALUE) readRsp();
                     let r = sortResponseQ[p].first();
                     sortResponseQ[p].deq();
 
+                    debugLog.record($format("read port %0d: resp val=0x%x", p, r));
                     return r;
                 endmethod
 
@@ -622,6 +629,7 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
         // The write port is last in the merge FIFO
         incomingReqQ.ports[valueOf(n_READERS)].enq(addr);
         writeDataQ.enq(val);
+        debugLog.record($format("write addr=0x%x, val=0x%x", addr, val));
     endmethod
 
     method Bool writeNotFull = incomingReqQ.ports[valueOf(n_READERS)].notFull();

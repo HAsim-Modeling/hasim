@@ -18,6 +18,7 @@
 %public utils.bsv
 %public multiplexed.bsv
 %public stats.bsv
+%public debug-scan.bsv
 %public stat-fifo.bsv
 %public dynamic-parameters.bsv 
 

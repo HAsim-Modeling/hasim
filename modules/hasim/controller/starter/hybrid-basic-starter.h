@@ -104,7 +104,8 @@ class STARTER_SERVER_CLASS: public RRR_SERVER_CLASS,
     // RRR service methods
     //
     void EndSim(UINT8 success);
-    void Heartbeat(CONTEXT_ID ctxId,
+    void Heartbeat(UINT8 fpgaClockBeat,
+                   CONTEXT_ID ctxId,
                    UINT64 fpga_cycles,
                    UINT32 model_cycles,
                    UINT32 instr_commits);
@@ -114,6 +115,7 @@ class STARTER_SERVER_CLASS: public RRR_SERVER_CLASS,
     void Pause();
     void Sync();
     void DumpStats();
+    void DebugScan();
     void EnableContext(CONTEXT_ID ctx_id);
     void DisableContext(CONTEXT_ID ctx_id);
 
@@ -124,6 +126,11 @@ class STARTER_SERVER_CLASS: public RRR_SERVER_CLASS,
     UINT64 lastStatsScanCycle;
     // Mask of bits to monitor for triggering statistics scan out from HW
     UINT64 statsScanMask;
+
+    // Deadlock detection
+    UINT64 lastFPGAClockModelCycles;
+    UINT64 lastFPGAClockCommits;
+    UINT32 noChangeBeats;
 };
 
 

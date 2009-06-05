@@ -7,6 +7,7 @@
 %requires module_controller
 %requires events_controller
 %requires stats_controller
+%requires debug_scan_controller
 %requires assertions_controller
 %requires params_controller
 

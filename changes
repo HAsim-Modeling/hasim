@@ -18885,3 +18885,53 @@ duplicate credits.
 Removed guarded receive port and replaced it with a "dependent" port which
 always has latency zero and shouldn't be added to the local controller.
 
+
+----------
+mcadler     Date: Thu Jun  4 19:58:51 EDT 2009  CSN: CSN-hasim-644
+                  Thu Jun  4 23:58:51 UTC 2009
+
+
+Directory config/pm/hasim/submodels/controller
+ hybrid_standard_controller.apm Locally Modified          643 
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          643 
+ hybrid-basic-starter-services.rrr Locally Modified          643 
+ hybrid-basic-starter.h    Locally Modified          643 
+ hybrid-basic-starter.bsv  Locally Modified          643 
+
+Directory modules/hasim/controller
+ controller-standard.bsv   Locally Modified          643 
+
+Directory modules/hasim/controller/central_controllers
+ central-controllers-standard.awb Locally Modified          643 
+ central-controllers-standard.bsv Locally Modified          643 
+ debug_scan/               Locally Added               0 
+
+Directory modules/hasim/controller/central_controllers/debug_scan
+ debug-scan-controller-hybrid.awb Locally Added               0 
+ debug-scan-controller-hybrid.bsv Locally Added               0 
+ debug-scan-controller-hybrid.cpp Locally Added               0 
+ debug-scan-controller.rrr Locally Added               0 
+ debug-scan-controller-hybrid.h Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          643 
+ hybrid-funcp-memory.dic   Locally Modified          643 
+
+Directory modules/hasim/util/platform-interface
+ platform-scratchpad-memory.bsv Locally Modified          643 
+
+Directory modules/hasim/util/common
+ hasim-common.awb          Locally Modified          643 
+ debug-scan.bsv            Locally Added               0 
+ hasim-common.dic          Locally Modified          643 
+
+Directory modules/bluespec/common/soft_connections
+ soft_connections.awb      Locally Modified          643 
+
+- Add more debug info to scratchpad memory.
+- Add FPGA clock-based heartbeat that can be used to detect model deadlocks.
+- Add debug scan ring and protocol.  Any module can add a node to the debug
+  scan ring.  Scan ring is triggered by the software when a deadlock is
+  detected.  Deadlock detection output beautification still required.

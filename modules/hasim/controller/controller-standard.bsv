@@ -96,7 +96,7 @@ module [HASIM_MODULE] mkController ();
     endrule
   
     // accept Run request from starter
-    rule accept_request_Run (state == CONTROL_STATE_idle || state == CONTROL_STATE_paused);
+    rule acceptRequestRun (state == CONTROL_STATE_idle || state == CONTROL_STATE_paused);
         starter.acceptRequest_Run();
         centralControllers.moduleController.run();
         state <= CONTROL_STATE_running;
@@ -104,7 +104,7 @@ module [HASIM_MODULE] mkController ();
     endrule
 
     // accept Pause request from starter
-    rule accept_request_Pause (state == CONTROL_STATE_running);
+    rule acceptRequestPause (state == CONTROL_STATE_running);
         starter.acceptRequest_Pause();
         centralControllers.moduleController.pause();
         state <= CONTROL_STATE_paused;
@@ -112,7 +112,7 @@ module [HASIM_MODULE] mkController ();
     endrule
 
     // accept Sync request from starter
-    rule accept_request_Sync (state == CONTROL_STATE_paused);
+    rule acceptRequestSync (state == CONTROL_STATE_paused);
         starter.acceptRequest_Sync();
         centralControllers.moduleController.sync();
         state <= CONTROL_STATE_idle;
@@ -120,14 +120,14 @@ module [HASIM_MODULE] mkController ();
     endrule
 
     // monitor module controller
-    rule monitor_module_controller (state == CONTROL_STATE_running);
+    rule monitorModuleController (state == CONTROL_STATE_running);
         let success = centralControllers.moduleController.queryResult();
         starter.makeRequest_EndSim(success);
         state <= CONTROL_STATE_paused;
     endrule
 
     // accept DumpStats request from starter
-    rule accept_request_DumpStats (! dumpingStats);
+    rule acceptRequestDumpStats (! dumpingStats);
         starter.acceptRequest_DumpStats();
         centralControllers.statsController.doCommand(STATS_Dump);
         dumpingStats <= True;
@@ -135,13 +135,13 @@ module [HASIM_MODULE] mkController ();
     endrule
 
     // monitor stats controller
-    rule sync_model (dumpingStats && centralControllers.statsController.noMoreStats());
+    rule syncModel (dumpingStats && centralControllers.statsController.noMoreStats());
         starter.sendResponse_DumpStats();
         dumpingStats <= False;
     endrule
 
     // accept DebugScan request from starter
-    rule accept_request_DebugScan (! debugScanActive);
+    rule acceptRequestDebugScan (! debugScanActive);
         starter.acceptRequest_DebugScan();
         centralControllers.debugScanController.scanStart();
         debugScanActive <= True;
@@ -149,13 +149,14 @@ module [HASIM_MODULE] mkController ();
     endrule
 
     // monitor stats controller
-    rule complete_DebugScan (debugScanActive && centralControllers.debugScanController.scanIsDone());
+    (* descending_urgency = "completeDebugScan, syncModel" *)
+    rule completeDebugScan (debugScanActive && centralControllers.debugScanController.scanIsDone());
         starter.sendResponse_DebugScan();
         debugScanActive <= False;
     endrule
 
     // monitor requests to enable contexts
-    rule accept_request_EnableContext (True);
+    rule acceptRequestEnableContext (True);
         let ctx_id <- starter.acceptRequest_EnableContext();
         centralControllers.moduleController.enableContext(ctx_id);
 
@@ -163,7 +164,8 @@ module [HASIM_MODULE] mkController ();
     endrule
 
     // monitor requests to disable contexts
-    rule accept_request_DisableContext (True);
+    (* descending_urgency = "monitorModuleController, acceptRequestSync, acceptRequestPause, acceptRequestDisableContext, acceptRequestEnableContext, acceptRequestRun" *)
+    rule acceptRequestDisableContext (True);
         let ctx_id <- starter.acceptRequest_DisableContext();
         centralControllers.moduleController.disableContext(ctx_id);
 
@@ -206,7 +208,7 @@ module [HASIM_MODULE] mkController ();
     //
     // Monitor committed instructions.
     //
-    (* descending_urgency = "fpgaClockHeartbeat, modelCommits, modelTick" *)
+    (* descending_urgency = "fpgaClockHeartbeat, modelCommits, modelTick, monitorModuleController" *)
     rule modelCommits (True);
         match { .ctx_id, .commits } = link_model_commit.receive();
         link_model_commit.deq();

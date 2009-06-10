@@ -31,6 +31,8 @@
 // Manage debug scan chain coming from the hardware.
 //
 
+#define DEBUG_SCAN_MAX_MSG_SIZE 1024
+
 typedef class DEBUG_SCAN_SERVER_CLASS* DEBUG_SCAN_SERVER;
 
 class DEBUG_SCAN_SERVER_CLASS: public RRR_SERVER_CLASS,
@@ -42,6 +44,13 @@ class DEBUG_SCAN_SERVER_CLASS: public RRR_SERVER_CLASS,
 
     // stubs
     RRR_SERVER_STUB serverStub;
+
+    // Internal display method
+    void DisplayMsg();
+
+    UINT8 msg[DEBUG_SCAN_MAX_MSG_SIZE];
+    int msgIdx;
+    UINT8 msgID;
 
   public:
     DEBUG_SCAN_SERVER_CLASS();

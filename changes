@@ -18935,3 +18935,35 @@ Directory modules/bluespec/common/soft_connections
 - Add debug scan ring and protocol.  Any module can add a node to the debug
   scan ring.  Scan ring is triggered by the software when a deadlock is
   detected.  Deadlock detection output beautification still required.
+
+----------
+mcadler     Date: Tue Jun  9 22:45:18 EDT 2009  CSN: CSN-hasim-645
+                  Wed Jun 10 02:45:18 UTC 2009
+
+
+Directory modules/hasim/controller
+ controller-standard.bsv   Locally Modified          644 
+
+Directory modules/hasim/controller/central_controllers/debug_scan
+ debug-scan-controller-hybrid.cpp Locally Modified          644 
+ debug-scan-controller-hybrid.h Locally Modified          644 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.bsv Locally Modified          644 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          644 
+ hybrid-funcp-memory.dic   Locally Modified          644 
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.dic    Locally Modified          644 
+ platform-interface.bsv    Locally Modified          644 
+
+Directory modules/bluespec/common/soft_connections
+ Connections.bsv           Locally Modified          644 
+
+- Improve debug scan printing.  Output still goes to stdout.  It should probably
+  be written to a file.
+- Add respNotEmpty/reqNotFull methods to client/server soft connections.
+  Useful for debugging if nothing else.
+- Clean up some scheduling conflicts in the central controller.

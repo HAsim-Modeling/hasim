@@ -31,7 +31,7 @@ import FIFOF::*;
 `include "asim/dict/VDEV_CACHE.bsh"
 `include "asim/dict/PARAMS_FUNCP_MEMORY.bsh"
 `include "asim/dict/STATS_FUNCP_MEMORY.bsh"
-`include "asim/dict/DEBUG_SCAN.bsh"
+`include "asim/dict/DEBUG_SCAN_FUNCP_MEMORY.bsh"
 
 
 // Can't include hasim_isa.bsh here or it causes a loop
@@ -157,7 +157,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
     //     Bits 5-0: loadsInFlight counter
     //
     Wire#(Bit#(6)) debugScanData <- mkBypassWire();
-    DEBUG_SCAN#(Bit#(6)) debugScan <- mkDebugScanNode(`DEBUG_SCAN_FUNCP_MEMORY, debugScanData);
+    DEBUG_SCAN#(Bit#(6)) debugScan <- mkDebugScanNode(`DEBUG_SCAN_FUNCP_MEMORY_STATE, debugScanData);
 
     COUNTER#(5) loadsInFlight <- mkLCounter(0);
 

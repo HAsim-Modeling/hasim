@@ -30,3 +30,5 @@ def STATS.PLATFORM_INTERFACE.CACHE_FORCE_INVAL_LINE "Central Cache: Lines forcib
 
 def STATS.PLATFORM_INTERFACE.CACHE_RECENT_LINE_HIT  "Central Cache: Recent line cache hits";
 def STATS.PLATFORM_INTERFACE.CACHE_RECENT_LINE_MISS "Central Cache: Recent line cache misses";
+
+def DEBUG_SCAN.PLATFORM_INTERFACE.CENTRAL_CACHE     "(Def. in std-virtual-device-interfaces.bsv)";

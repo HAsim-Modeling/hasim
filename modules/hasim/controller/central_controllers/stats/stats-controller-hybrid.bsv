@@ -91,8 +91,7 @@ module [Connected_Module] mkStatsController
   ClientStub_STATS client_stub <- mkClientStub_STATS();
   
   // Track if we are done dumping
-  Reg#(Bool) done_requested <- mkReg(False);
-  Reg#(Bool) dump_finished  <- mkReg(False);
+  Reg#(Bool) dumpFinished  <- mkReg(False);
   
   // Our internal state
   Reg#(STATS_CON_STATE)  state <- mkReg(SC_Idle);
@@ -132,23 +131,11 @@ module [Connected_Module] mkStatsController
     case (st) matches
       tagged ST_VAL .stinfo: //A stat to dump
       begin
-          
         client_stub.makeRequest_Send(zeroExtend(stinfo.statID), stinfo.value);
-          
       end
       tagged ST_DUMP:  //We're done dumping
       begin
-        
         client_stub.makeRequest_Done(?);
-        state <= SC_Idle;
-        done_requested <= True;
-          
-      end
-      default:  //This should never happen
-      begin
-            
-        state <= SC_Idle;
-          
       end
     endcase
      
@@ -158,10 +145,10 @@ module [Connected_Module] mkStatsController
     
   // Wait for response to Done() RRR request
     
-  rule waitForDoneAck (done_requested);
+  rule waitForDoneAck (! dumpFinished);
     
       let a <- client_stub.getResponse_Done();
-      dump_finished <= True;
+      dumpFinished <= True;
       
   endrule
     
@@ -177,8 +164,8 @@ module [Connected_Module] mkStatsController
       STATS_Reset:    state <= SC_Reseting;
       STATS_Dump:
       begin
-        state         <= SC_Dumping;
-        dump_finished <= False;
+        state <= SC_Dumping;
+        dumpFinished <= False;
       end
     endcase
 
@@ -189,9 +176,7 @@ module [Connected_Module] mkStatsController
   // When this goes on the outside world knows not to expect any more stats.
   
   method Bool noMoreStats();
-  
-    return dump_finished;
-    
+    return dumpFinished;
   endmethod
   
 endmodule

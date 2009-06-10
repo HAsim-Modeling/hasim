@@ -35,6 +35,7 @@ import Vector::*;
 
 `include "asim/dict/ASSERTIONS_PLATFORM_INTERFACE.bsh"
 `include "asim/dict/PARAMS_PLATFORM_INTERFACE.bsh"
+`include "asim/dict/DEBUG_SCAN_PLATFORM_INTERFACE.bsh"
 
 `include "asim/dict/VDEV.bsh"
 
@@ -371,5 +372,25 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
             endrule
         end
     end
-    
+
+
+    // ====================================================================
+    //
+    // DEBUG_SCAN state
+    //
+    // ====================================================================
+
+    //
+    // Debug state that can be scanned out:
+    //
+    //     Bits 5-0: cacheReadsInFlight counter
+    //
+    Wire#(CENTRAL_CACHE_DEBUG_SCAN) debugScanData <- mkBypassWire();
+    DEBUG_SCAN#(CENTRAL_CACHE_DEBUG_SCAN) debugScan <- mkDebugScanNode(`DEBUG_SCAN_PLATFORM_INTERFACE_CENTRAL_CACHE, debugScanData);
+
+    (* no_implicit_conditions *)
+    rule updateCentralCacheDebugScanState (True);
+        debugScanData <= centralCache.debugScanState();
+    endrule
+
 endmodule

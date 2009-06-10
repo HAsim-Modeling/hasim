@@ -36,14 +36,15 @@
 
 using namespace std;
 
-
 // ===== service instantiation =====
 DEBUG_SCAN_SERVER_CLASS DEBUG_SCAN_SERVER_CLASS::instance;
 
 // ===== methods =====
 
 // constructor
-DEBUG_SCAN_SERVER_CLASS::DEBUG_SCAN_SERVER_CLASS()
+DEBUG_SCAN_SERVER_CLASS::DEBUG_SCAN_SERVER_CLASS() :
+    msgIdx(0),
+    msgID(DEBUG_SCAN_NULL)
 {
     // instantiate stubs
     serverStub = new DEBUG_SCAN_SERVER_STUB_CLASS(this);
@@ -99,7 +100,21 @@ DEBUG_SCAN_SERVER_CLASS::Send(
     UINT8 value)
 {
     VERIFY(id < DEBUG_SCAN_DICT_ENTRIES, "debug-scan-controller:  Invalid id");
-    cout << "DEBUG SCAN " << DEBUG_SCAN_DICT::Name(id) << " " << UINT32(value) << endl;
+
+    if (id != msgID)
+    {
+        // New message ID.  Print the previous one now that we have the whole
+        // message.
+        DisplayMsg();
+
+        msgID = id;
+        msgIdx = 0;
+    }
+
+    ASSERT(msgIdx < DEBUG_SCAN_MAX_MSG_SIZE, "DEBUG SCAN " << DEBUG_SCAN_DICT::Name(id) << "message is too large");
+
+    msg[msgIdx] = value;
+    msgIdx += 1;
 }
 
 
@@ -111,6 +126,14 @@ UINT8
 DEBUG_SCAN_SERVER_CLASS::Done(
     UINT8 syn)
 {
+    if (msgIdx != 0)
+    {
+        DisplayMsg();
+
+        msgID = DEBUG_SCAN_NULL;
+        msgIdx = 0;
+    }
+
     // Return ACK
     return 1;
 }
@@ -120,4 +143,50 @@ DEBUG_SCAN_SERVER_CLASS::Done(
 void
 DEBUG_SCAN_SERVER_CLASS::Poll()
 {
+}
+
+
+//
+// DisplayMsg --
+//     Print a message for a given scan message.
+//
+void
+DEBUG_SCAN_SERVER_CLASS::DisplayMsg()
+{
+    FILE *of = stdout;
+
+    if (msgID == DEBUG_SCAN_NULL)
+    {
+        // First, dummy, message.  Just print a header and return.
+        fprintf(of, "\nDEBUG SCAN:\n");
+        return;
+    }
+
+    // Default just prints a number
+    fprintf(of, "  %s: %s\n\tH ", DEBUG_SCAN_DICT::Name(msgID), DEBUG_SCAN_DICT::Str(msgID));
+
+    // Print a long hex string
+    for (int i = 0; i < msgIdx; i++)
+    {
+        if ((i & 1) == 0)
+            fprintf(of, " ");
+
+        fprintf(of, "%02x", msg[i]);
+    }
+
+    fprintf(of, "  \tB");
+
+    // Print a long binary string
+    for (int i = 0; i < msgIdx; i++)
+    {
+        for (int b = 8; b > 0; b--)
+        {
+            if ((b & 3) == 0)
+                fprintf(of, " ");
+
+            fprintf(of, "%d", (msg[i] >> (b - 1)) & 1);
+        }
+    }
+
+    fprintf(of, "\n");
 }

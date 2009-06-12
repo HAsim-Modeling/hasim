@@ -527,10 +527,10 @@ sub dyn_params()
     foreach my $fname ('config.h', 'param.h') {
         my $base;
         if ($fname eq 'config.h') {
-            $base = `awb-resolver base/hasim-$fname`;
+            $base = Asim::resolve("base/hasim-$fname");
         }       
         else {
-            $base = `awb-resolver base/$fname`;
+            $base = Asim::resolve("base/$fname");
         }
         chomp($base);
         if ($base ne '') {
@@ -539,7 +539,7 @@ sub dyn_params()
     }
 
     my $base_dir = HAsim::Util::path_append($builddir,"sw/model");
-    my $base = `awb-resolver base/hasim-config.cpp`;
+    my $base = Asim::resolve("base/hasim-config.cpp");
     chomp($base);
     if ($base ne '') {
         system("ln -f -s $base ${base_dir}/config.cpp");
@@ -1152,23 +1152,44 @@ sub __generate_makefile_hw_top {
     }
 
     ## @SW_LIBS@
-    foreach my $f ($module->library()) {
-        $f = `awb-resolver $f`;
-        chomp($f);
-        if ($f ne '') {
+    my $need_global_includes = 0;
+    foreach my $lib ($module->library()) {
+        my $f = Asim::resolve($lib);
+        if (defined $f) {
             HAsim::Util::hash_append($replacements_r," ",'@SW_LIBS@',$f);
             # Automatically add library directory as an include path
             HAsim::Util::hash_append($replacements_r," ",'@SW_INC_DIRS@',HAsim::Util::path_append(dirname($f),'include'));
         }
+        else {
+            # Try for one last location in the installed $libdir
+            $f = Asim::Libdir() . "/" . basename($lib);
+            if (-e $f) {
+                print "AWB resolver using installed version of library $lib.\n";
+                # We found it in the install dir.
+                HAsim::Util::hash_append($replacements_r," ",'@SW_LIBS@',$f);
+                $need_global_includes = 1;
+            }
+            else {
+                print "AWB resolver did not find library $lib.\n";
+            }
+            
+        }
     }
 
     ## @SW_INC_DIRS@
-    foreach my $f ($module->include()) {
-        $f = `awb-resolver $f`;
-        chomp($f);
-        if ($f ne '') {
+    foreach my $inc ($module->include()) {
+        my $f = Asim::resolve($inc);
+        if (defined $f) {
             HAsim::Util::hash_append($replacements_r," ",'@SW_INC_DIRS@',$f);
         }
+        else {
+            print "AWB resolver did not find include directory $inc.\n";
+        }
+    }
+
+    # Did we need to include the installed includedir?
+    if ($need_global_includes) {
+        HAsim::Util::hash_append($replacements_r," ",'@SW_INC_DIRS@', Asim::Includedir());
     }
 
     # recurse

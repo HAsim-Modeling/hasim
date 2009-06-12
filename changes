@@ -18967,3 +18967,20 @@ Directory modules/bluespec/common/soft_connections
 - Add respNotEmpty/reqNotFull methods to client/server soft connections.
   Useful for debugging if nothing else.
 - Clean up some scheduling conflicts in the central controller.
+
+----------
+pellauer    Date: Fri Jun 12 11:05:06 EDT 2009  CSN: CSN-hasim-646
+                  Fri Jun 12 15:05:06 UTC 2009
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          645 
+
+
+* hasim-configure now checks for globally-installed libraries as well (like
+  libasim.a) 
+  
+* hasim-configure uses Asim::resolve rather than executing awb-resolver.
+
+Michael P.
+

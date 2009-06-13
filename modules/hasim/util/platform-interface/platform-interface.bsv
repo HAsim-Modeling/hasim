@@ -120,7 +120,7 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
     FrontPanel frontPanel <- mkFrontPanel(llpint);
     let centralCacheStats <- mkCentralCacheStats();
     CENTRAL_CACHE_IFC centralCache <- mkCentralCache(llpint, centralCacheStats);
-    SCRATCHPAD_MEMORY_IFC memory <- mkMemoryVirtualDevice(llpint, centralCache);
+    SCRATCHPAD_MEMORY_VDEV memory <- mkMemoryVirtualDevice(llpint, centralCache);
     Streams streams <- mkStreams(llpint);
 
     // connection terminus

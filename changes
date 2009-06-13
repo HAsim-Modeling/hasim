@@ -18984,3 +18984,34 @@ Directory tools/scripts
 
 Michael P.
 
+
+----------
+mcadler     Date: Fri Jun 12 23:13:11 EDT 2009  CSN: CSN-hasim-647
+                  Sat Jun 13 03:13:11 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.awb   Locally Modified          646 
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.awb    Locally Modified          646 
+ platform-interface.bsv    Locally Modified          646 
+ platform-scratchpad-memory.bsv Locally Modified          646 
+
+Directory modules/system/test/mem_test
+ mem-test.bsv              Locally Modified          646 
+
+- Default private caches now have 1K entries, which ought to be the most
+  efficient size for Xilinx BRAM.
+
+- Thought about changing the main modules for scratchpad memory to make them
+  more flexible and then decided that was a bad idea because the result made
+  the common case really ugly.  Left the constructors simple and the common
+  user gets a reasonable configuration with default number of entries (1K)
+  and policy (write back).  I did change the interface to the routine one
+  level down (mkUnmarshalledCachedScratchpad) so that a client with
+  special requirements can specify both the cache size and the default
+  mode.  Special case clients can then construct whatever they want by
+  writing a relatively simple replacement for mkScratchpad.
+
+- Update cache mode comments to reflect mode changes in caches.

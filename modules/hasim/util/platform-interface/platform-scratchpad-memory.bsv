@@ -37,6 +37,20 @@ import SpecialFIFOs::*;
 
 
 //
+// Scratchpad cache interface is a basic memory interface with an extra
+// parameter controlling the cache size.
+//
+typedef MEMORY_IFC#(t_ADDR, t_DATA)
+    SCRATCHPAD_MEMORY_IFC#(type t_ADDR, type t_DATA, numeric type n_CACHE_ENTRIES);
+
+typedef MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA)
+    SCRATCHPAD_MEMORY_MULTI_READ_IFC#(numeric type n_READERS,
+                                      type t_ADDR,
+                                      type t_DATA,
+                                      numeric type n_CACHE_ENTRIES);
+
+
+//
 // Data structures flowing through soft connections between scratchpad clients
 // and the platform interface.
 //
@@ -158,7 +172,7 @@ module [HASIM_MODULE] mkMultiReadScratchpad#(Integer scratchpadID, Bool cached)
               Bits#(t_CONTAINER_ADDR, t_CONTAINER_ADDR_SZ),
               Add#(a__, t_CONTAINER_ADDR_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
 
-    if (cached && (valueOf(TExp#(t_CONTAINER_ADDR_SZ)) <= `SCRATCHPAD_PVT_CACHE_ENTRIES))
+    if (cached && (valueOf(TExp#(t_CONTAINER_ADDR_SZ)) <= `SCRATCHPAD_STD_PVT_CACHE_ENTRIES))
     begin
         // A special case:  cached scratchpad requested but the container
         // is smaller than the cache would have been.  Just allocate a BRAM.
@@ -173,9 +187,9 @@ module [HASIM_MODULE] mkMultiReadScratchpad#(Integer scratchpadID, Bool cached)
     begin
         // Container maps requested data size to the platform's scratchpad
         // word size.
-        MEMORY_MULTI_READ_IFC#(n_READERS, t_CONTAINER_ADDR, SCRATCHPAD_MEM_VALUE) containerMemory;
+        SCRATCHPAD_MEMORY_MULTI_READ_IFC#(n_READERS, t_CONTAINER_ADDR, SCRATCHPAD_MEM_VALUE, `SCRATCHPAD_STD_PVT_CACHE_ENTRIES) containerMemory;
         if (cached)
-            containerMemory <- mkUnmarshalledCachedScratchpad(scratchpadID);
+            containerMemory <- mkUnmarshalledCachedScratchpad(scratchpadID, `PARAMS_PLATFORM_INTERFACE_SCRATCHPAD_PVT_CACHE_MODE);
         else
             containerMemory <- mkUnmarshalledScratchpad(scratchpadID);
     
@@ -479,9 +493,9 @@ endmodule
 //     a single scratchpad region.  This module does no marshalling of
 //     data sizes.
 //
-module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
+module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, Integer cacheModeParam)
     // interface:
-    (MEMORY_MULTI_READ_IFC#(n_READERS, t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE))
+    (SCRATCHPAD_MEMORY_MULTI_READ_IFC#(n_READERS, t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE, n_CACHE_ENTRIES))
     provisos (Bits#(t_MEM_ADDRESS, t_MEM_ADDRESS_SZ),
               Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
 
@@ -502,7 +516,7 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
 
     // Dynamic parameters
     PARAMETER_NODE paramNode <- mkDynamicParameterNode();
-    Param#(2) cacheMode <- mkDynamicParameter(`PARAMS_PLATFORM_INTERFACE_SCRATCHPAD_PVT_CACHE_MODE, paramNode);
+    Param#(2) cacheMode <- mkDynamicParameter(fromInteger(cacheModeParam), paramNode);
 
     // Connection between private cache and the scratchpad virtual device
     RL_DM_CACHE_SOURCE_DATA#(Bit#(t_MEM_ADDRESS_SZ),
@@ -516,7 +530,7 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID)
     RL_DM_CACHE#(Bit#(t_MEM_ADDRESS_SZ),
                  SCRATCHPAD_MEM_VALUE,
                  t_REF_INFO,
-                 `SCRATCHPAD_PVT_CACHE_ENTRIES) cache <- mkCacheDirectMapped(sourceData, False, stats, debugLog);
+                 n_CACHE_ENTRIES) cache <- mkCacheDirectMapped(sourceData, False, stats, debugLog);
 
     // Merge FIFOF combines read and write requests in temporal order,
     // with reads from the same cycle as a write going first.  Each read port

@@ -70,7 +70,7 @@ typedef struct
 MEM_DATA_SM
     deriving (Bits, Eq);
 
-typedef Bit#(11) MEM_ADDRESS;
+typedef Bit#(13) MEM_ADDRESS;
 
 module [HASIM_MODULE] mkSystem ()
     provisos (Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),

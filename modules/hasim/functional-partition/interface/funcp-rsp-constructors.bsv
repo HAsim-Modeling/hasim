@@ -183,11 +183,11 @@ endfunction
 
 // initFuncpRspCommitStores
 
-function FUNCP_RSP_COMMIT_STORES initFuncpRspCommitStores(TOKEN tok);
+function FUNCP_RSP_COMMIT_STORES initFuncpRspCommitStores(STORE_TOKEN st_tok);
 
     return FUNCP_RSP_COMMIT_STORES
             {
-                token: tok
+                storeToken: st_tok
             };
 
 endfunction

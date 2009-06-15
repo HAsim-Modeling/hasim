@@ -19015,3 +19015,29 @@ Directory modules/system/test/mem_test
   writing a relatively simple replacement for mkScratchpad.
 
 - Update cache mode comments to reflect mode changes in caches.
+
+----------
+mpellaue    Date: Mon Jun 15 14:53:05 EDT 2009  CSN: CSN-hasim-648
+                  Mon Jun 15 18:53:05 UTC 2009
+
+
+Directory modules/hasim/functional-partition/interface
+ funcp-req-constructors.bsv Locally Modified          647 
+ funcp-timing-interface.bsv Locally Modified          647 
+ funcp-rsp-constructors.bsv Locally Modified          647 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          647 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.dic          Locally Modified          647 
+ regmgr-macro-global-data.bsv Locally Modified          647 
+ regmgr-macro-pipe-commitStores.bsv Locally Modified          647 
+
+
+* Expose STORE_TOKEN to the timing model.
+* Remove mapping of TOKEN->STORE_TOKEN in functional partition.
+* commitStores no longer asserts since only non-faulting stores are given 
+  STORE_TOKENs to begin with.
+  
+Michael P.

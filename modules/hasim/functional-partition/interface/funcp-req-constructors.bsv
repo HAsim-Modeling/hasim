@@ -161,11 +161,11 @@ endfunction
 
 // initFuncpReqCommitStores
 
-function FUNCP_REQ_COMMIT_STORES initFuncpReqCommitStores(TOKEN tok);
+function FUNCP_REQ_COMMIT_STORES initFuncpReqCommitStores(STORE_TOKEN st_tok);
 
     return FUNCP_REQ_COMMIT_STORES
             {
-                token: tok
+                storeToken: st_tok
             };
 
 endfunction

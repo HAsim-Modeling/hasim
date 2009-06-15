@@ -91,9 +91,6 @@ interface FUNCP_SCOREBOARD;
   method Action storeFinish(TOKEN_INDEX t);
   method Action commitStart(TOKEN_INDEX t);
   method Action commitFinish(TOKEN_INDEX t);
-
-  // *** TEMPORARY ***
-  method ActionValue#(STORE_TOKEN_INDEX) mapToStoreToken(TOKEN_INDEX t);
   
   // Set the offsets after we align the address.
   method Action setMemOpOffset(TOKEN_INDEX t, MEM_OFFSET o);
@@ -178,8 +175,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     // A pointer to the next store token to be allocated.
     Reg#(Vector#(NUM_CONTEXTS, STORE_TOKEN_ID)) nextFreeStoreTok <- mkReg(replicate(0));
-    // *** TEMPORARY ***
-    LUTRAM#(TOKEN_INDEX, STORE_TOKEN_INDEX) storeTokenMap <- mkLiveTokenLUTRAMU();
 
     // A pointer to the oldest active token.
     Reg#(Vector#(NUM_CONTEXTS, TOKEN_ID)) oldestTok <- mkReg(replicate(0));
@@ -458,9 +453,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
         // Update the free pointer.
         nextFreeStoreTok[ctx_id] <= nextFreeStoreTok[ctx_id] + 1;
 
-        // *** temporary ***
-        storeTokenMap.upd(t, new_tok);
-
         return new_tok;
     endmethod
 
@@ -621,25 +613,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
         // Record that the token has finished commit.
         numInCOM[t.context_id].down();
 
-    endmethod
-
-
-    //
-    // mapToStoreToken --
-    //    *** TEMPORARY ****
-    //    This method may be removed completely once the timing/functional
-    //    interface passes STORE_TOKENs for global commit.
-    //
-    method ActionValue#(STORE_TOKEN_INDEX) mapToStoreToken(TOKEN_INDEX t);
-        assertTokenStoreLifetime(! tokIdxIsAllocated(t) && ! tokIdxAliasIsAllocated(t));
-
-        if (tokIdxIsAllocated(t))
-            $display("ERROR: commit stores token (%d, %d) is live", t.context_id, t.token_id);
-
-        if (tokIdxAliasIsAllocated(t))
-            $display("ERROR: commit stores token (%d, %d) ALIAS is live", t.context_id, t.token_id);
-
-        return storeTokenMap.sub(t);
     endmethod
 
     // setMemOpOffset

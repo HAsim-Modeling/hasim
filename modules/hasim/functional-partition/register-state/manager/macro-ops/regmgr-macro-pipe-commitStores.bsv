@@ -76,7 +76,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitStores#(
     //
     // ====================================================================
 
-    FIFO#(TOKEN) commitQ <- mkFIFO();
+    FIFO#(STORE_TOKEN) commitQ <- mkFIFO();
 
 
     // ====================================================================
@@ -95,42 +95,32 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitStores#(
     // Soft Inputs:  Token
     // Soft Returns: Token
     
-    rule commitStores1 (state.readyToBegin(tokContextId(linkCommitStores.getReq().token)));
+    rule commitStores1 (state.readyToBegin(storeTokContextId(linkCommitStores.getReq().storeToken)));
 
         // Get the input from the timing model. Begin macro-operation.
         let req = linkCommitStores.getReq();
         linkCommitStores.deq();
-        let tok = req.token;
-
-        // If the token was not actually a store, it's an exception.
-        let isStore = tokScoreboard.isStore(tok.index);
-        let fault = isValid(tokScoreboard.getFault(tok.index));
-        assertion.commitedStoreIsActuallyAStore(isStore && !fault);
-
-        // *** TEMPORARY ***  Remove this when the timing model passes in a
-        // store token.
-        let store_tok_idx <- tokScoreboard.mapToStoreToken(tok.index);
-        let store_tok = STORE_TOKEN { index: store_tok_idx };
+        let store_tok = req.storeToken;
 
         // Log it.
         debugLog.record(fshow(store_tok) + $format(": CommitStores: Committing.")); 
 
         linkToMem.makeReq(tagged REQ_WRITE_BACK MEMSTATE_REQ_WRITE_BACK {storeTok: store_tok});
-        commitQ.enq(tok);
+        commitQ.enq(store_tok);
 
     endrule
 
 
     rule commitStores2 (state.readyToContinue());
 
-        let tok = commitQ.first();
+        let store_tok = commitQ.first();
         commitQ.deq();
 
         // Get the confirmation that the memory request was forwarded to memory
         linkToMem.deq();
 
         // Respond to timing model. End of macro-operation.
-        linkCommitStores.makeResp(initFuncpRspCommitStores(tok));
+        linkCommitStores.makeResp(initFuncpRspCommitStores(store_tok));
 
     endrule
     

@@ -251,7 +251,7 @@ typedef struct
 
 typedef struct
 {
-    TOKEN token;
+    STORE_TOKEN storeToken;
 }
     FUNCP_REQ_COMMIT_STORES
         deriving (Eq, Bits);
@@ -261,7 +261,7 @@ typedef struct
 
 typedef struct
 {
-    TOKEN token;
+    STORE_TOKEN storeToken;
 }
     FUNCP_RSP_COMMIT_STORES
         deriving (Eq, Bits);

@@ -1104,6 +1104,13 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             // Youngest token in store buffer is older than rewind target.
             debugLog.record($format("  SB Rewind: Nothing to do (rewind to ") + fshow(rewind_to) + $format(", current youngest is ") + fshow(cur_youngest) + $format(")"));
         end
+        else if (rewind_to == rewind_from)
+        begin
+
+            // They asked for an empty rewind.
+            debugLog.record($format("  SB Rewind: Nothing to do (rewind to ") + fshow(rewind_to) + $format(" is equal to rewind from ") + fshow(rewind_from) + $format(")"));
+        
+        end
         else
         begin
             state <= SBUFFER_STATE_REWIND_TOKENS;

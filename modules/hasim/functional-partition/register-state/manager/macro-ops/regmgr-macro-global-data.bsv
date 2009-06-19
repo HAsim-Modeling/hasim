@@ -52,7 +52,6 @@ interface REGMGR_ASSERTIONS;
     interface ASSERTION poisonBit;
     interface ASSERTION instructionIsActuallyALoad;
     interface ASSERTION dTranslateOnMemOp;
-    interface ASSERTION commitFaultingInstr;
 
 endinterface: REGMGR_ASSERTIONS
 
@@ -100,7 +99,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager_GlobalData
     ASSERTION assertPoisonBit                         <- mkAssertionChecker(`ASSERTIONS_REGMGR_BAD_POISON_BIT, ASSERT_ERROR, assertNode);
     ASSERTION assertInstructionIsActuallyALoad        <- mkAssertionChecker(`ASSERTIONS_REGMGR_LOAD_ON_NONLOAD, ASSERT_WARNING, assertNode);
     ASSERTION assertDTranslateOnMemOp                 <- mkAssertionChecker(`ASSERTIONS_REGMGR_DTRANSLATE_ON_MEMOP, ASSERT_ERROR, assertNode);
-    ASSERTION assertCommitFaultingInstr               <- mkAssertionChecker(`ASSERTIONS_REGMGR_COMMIT_FAULTING_INSTR, ASSERT_ERROR, assertNode);
 
 
     // ====================================================================
@@ -124,7 +122,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager_GlobalData
         interface ASSERTION poisonBit = assertPoisonBit;
         interface ASSERTION instructionIsActuallyALoad = assertInstructionIsActuallyALoad;
         interface ASSERTION dTranslateOnMemOp = assertDTranslateOnMemOp;
-        interface ASSERTION commitFaultingInstr = assertCommitFaultingInstr;
     endinterface: assertion
 
 endmodule

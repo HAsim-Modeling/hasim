@@ -43,7 +43,6 @@ typedef enum
     RSM_EXC_DrainingForFault,
     RSM_EXC_DrainingForRewind,
     RSM_EXC_HandleFault,
-    RSM_EXC_HandleFaultRewindDone,
     RSM_EXC_ReadyToRewind,
     RSM_EXC_Rewinding,
     RSM_EXC_RewindingWaitForSlowRemap
@@ -104,7 +103,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     // ====================================================================
 
     FIFO#(TOKEN) faultQ <- mkFIFO();
-    FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) faultResumeQ <- mkFIFO();
     FIFO#(Tuple3#(TOKEN_INDEX, Bool, Bool)) rewindQ <- mkFIFO();
 
     // Rewind state
@@ -112,7 +110,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
 
     Reg#(TOKEN) rewindTok <- mkRegU();
     Reg#(TOKEN_INDEX) rewindCur <- mkRegU();
-    Reg#(Bool) rewindForFault <- mkRegU();
 
     Reg#(REGMGR_EXC_STATE_ENUM) state_exc <- mkReg(RSM_EXC_Running);
 
@@ -127,10 +124,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     // ******* handleFault ******* //
 
     // Handle a fault raised in an earlier stage.  Returns the address from
-    // which fetch should resume.
+    // which fetch should resume. We assume that this will result in a later
+    // call to rewindToToken, as with any redirection.
 
     // When:   When the timing model requests it.
-    // Effect: Do fault action & rewind
+    // Effect: Do fault action
     // Soft Inputs:  Token
     // Soft Returns: Token & next fetch address
 
@@ -233,55 +231,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
             debugLog.record(fshow(tok.index) + $format(": handleFault2: Instruction did not fault"));
         end
 
-        //
-        // Start a rewind, killing all younger than the faulting token and
-        // the faulting token.  Fast rewind won't work because the faulting token
-        // is being killed.
-        //
-        // Make a dummy token since rewind really needs tok.index - 1
-        //
-        let rewind_to = TOKEN {index: (tok.index - 1),
-                               poison: False,
-                               dummy: True,
-                               timep_info: ?};
-
-        rewindTok <= rewind_to;
-        rewindForFault <= True;
-        let rewind_from = tokScoreboard.youngest(tokContextId(rewind_to));
-        rewindCur <= rewind_from;
-        
-        // Tell the memory to drop non-committed stores.
-        let m_req = MEMSTATE_REQ_REWIND {rewind_to: rewind_to.index, rewind_from: rewind_from};
-        linkToMem.makeReq(tagged REQ_REWIND m_req);
-
-        debugLog.record($format("Rewind: Initiating rewind to ") + fshow(rewind_to.index));
-                
-        // After rewind, fetch should resume at this token's address
-        faultResumeQ.enq(tuple2(tok, iAddr));
-
-        // Start at the youngest and go backward.
-
-        // Proceed with rewind.
-        state_exc <= RSM_EXC_Rewinding;
-
-    endrule
-
-    //
-    // handleFault3 -- Control returns here following rewind.
-    //
-    rule handleFault3 (state_exc == RSM_EXC_HandleFaultRewindDone);
-
-        match { .tok, .resumeInstrAddr } = faultResumeQ.first();
-        faultResumeQ.deq();
-
-        let ctx_id = tokContextId(tok);
+        // Since we don't have a software handler, fetch should resume at the token's address.
+        let resume_instr_addr = iAddr;
 
         // Log it.
-        debugLog.record(fshow(tok.index) + $format(": handleFault3: Restart at 0x%h", resumeInstrAddr)); 
+        debugLog.record(fshow(tok.index) + $format(": handleFault2: Restart at 0x%h", resume_instr_addr)); 
 
         // Send response to timing model
-        linkHandleFault.makeResp(initFuncpRspHandleFault(tok, resumeInstrAddr));
-
+        linkHandleFault.makeResp(initFuncpRspHandleFault(tok, resume_instr_addr));
+        
+        // Resume normal execution.
         state.clearException();
         state_exc <= RSM_EXC_Running;
 
@@ -361,9 +320,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         
         // Stop when we get to the token.
         rewindTok <= tok;
-
-        // Normal rewind
-        rewindForFault <= False;
 
         // Start at the youngest and go backward.
         rewindCur <= tokScoreboard.youngest(ctx_id);
@@ -477,18 +433,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
         begin
             debugLog.record($format("Rewind: Done."));  
             tokScoreboard.rewindTo(rewindTok.index);
-            if (! rewindForFault)
-            begin
-                // Normal rewind -- return response
-                linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok));
-                state.clearException();
-                state_exc <= RSM_EXC_Running;
-            end
-            else
-            begin
-                // Rewind for fault handler -- resume fault handler path
-                state_exc <= RSM_EXC_HandleFaultRewindDone;
-            end
+            // Return response
+            linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok));
+            state.clearException();
+            state_exc <= RSM_EXC_Running;
         end
 
     endrule

@@ -242,6 +242,10 @@ typedef struct
     // The TOKEN is now dead.  The STORE_TOKEN will be used to write the
     // store back to memory.
     Maybe#(STORE_TOKEN) storeToken;
+    // If a fault occurred then this will be the address the timing model should redirect to.
+    // The token was not actually committed, so the timing model should later rewind to the 
+    // token before this one.
+    Maybe#(ISA_ADDRESS) faultRedirect;
 }
     FUNCP_RSP_COMMIT_RESULTS
         deriving (Eq, Bits);

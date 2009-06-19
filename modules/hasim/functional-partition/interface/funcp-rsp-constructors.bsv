@@ -171,12 +171,13 @@ endfunction
 
 // initFuncpRspCommitResults
 
-function FUNCP_RSP_COMMIT_RESULTS initFuncpRspCommitResults(TOKEN tok, Maybe#(STORE_TOKEN) storeTok);
+function FUNCP_RSP_COMMIT_RESULTS initFuncpRspCommitResults(TOKEN tok, Maybe#(STORE_TOKEN) storeTok, Maybe#(ISA_ADDRESS) redirect);
 
     return FUNCP_RSP_COMMIT_RESULTS
             {
                 token: tok,
-                storeToken: storeTok
+                storeToken: storeTok,
+                faultRedirect: redirect
             };
 
 endfunction

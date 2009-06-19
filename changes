@@ -19041,3 +19041,33 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
   STORE_TOKENs to begin with.
   
 Michael P.
+
+----------
+pellauer    Date: Fri Jun 19 11:15:45 EDT 2009  CSN: CSN-hasim-649
+                  Fri Jun 19 15:15:45 UTC 2009
+
+
+Directory modules/hasim/functional-partition/interface
+ funcp-timing-interface.bsv Locally Modified          648 
+ funcp-rsp-constructors.bsv Locally Modified          648 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.dic          Locally Modified          648 
+ regmgr-macro-global-data.bsv Locally Modified          648 
+ regmgr-macro-pipe-exception.bsv Locally Modified          648 
+ regmgr-macro.bsv          Locally Modified          648 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          648 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          648 
+
+
+* handleFault is now split from rewindToExe.
+* handleFault is now an implicit side effect of commitResults. It returns the handler address. It is assumed 
+  that the timing model will do a rewindToToken if necessary. (Unpipelined, for instance, does not.)
+* Removed some assertions that are made redundant by this change.
+* Add a check for rewinds in the store buffer. Rewinds from Token N to Token N are now treated as "no rewind" rather 
+  "rewind all tokens."
+
+Michael P.
+

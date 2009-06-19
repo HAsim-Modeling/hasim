@@ -12,7 +12,6 @@ def ASSERTIONS.REGMGR.ILLEGAL_INSTRUCTION      "FUNCP: Regstate: Illegal instruc
 def ASSERTIONS.REGMGR.LOAD_ON_NONLOAD          "FUNCP: Regstate: Told to do loads on a non-load instruction!";
 def ASSERTIONS.REGMGR.BAD_POISON_BIT           "FUNCP: Regstate: Timing model did not propagate token poison bit!";
 def ASSERTIONS.REGMGR.STORE_ON_NONSTORE        "FUNCP: Regstate: Told to do stores for an instruction that is not a store!";
-def ASSERTIONS.REGMGR.COMMIT_FAULTING_INSTR    "FUNCP: Regstate: Attempt to commmit faulting instruction!";
 
 
 //

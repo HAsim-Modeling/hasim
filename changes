@@ -19071,3 +19071,15 @@ Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hash
 
 Michael P.
 
+
+----------
+keflemin    Date: Mon Jun 22 15:21:55 EDT 2009  CSN: CSN-hasim-650
+                  Mon Jun 22 19:21:55 UTC 2009
+
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.awb    Locally Modified          649 
+ platform-scratchpad-memory.bsv Locally Modified          649 
+
+
+Added support for disabling memory debug

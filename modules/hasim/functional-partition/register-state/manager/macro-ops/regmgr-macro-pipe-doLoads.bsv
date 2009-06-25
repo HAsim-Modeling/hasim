@@ -138,12 +138,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     // Effect: Lookup the effective address(es) of this token.
 
     (* conservative_implicit_conditions *)
-    rule doLoads1 (state.readyToBegin(tokContextId(linkDoLoads.getReq().token)));
+    rule doLoads1 (linkDoLoads.getReq().token matches .tok &&&
+                   state.readyToBegin(tokContextId(tok)) &&&
+                   tokScoreboard.canStartLoad(tok.index));
 
         // Get the input from the timing model. Begin macro-operation.
         let req = linkDoLoads.getReq();
         linkDoLoads.deq();
-        let tok = req.token;
 
         // Confirm timing model propagated poison bit correctly
         assertion.poisonBit(tokIsPoisoned(tok) == isValid(tokScoreboard.getFault(tok.index)));

@@ -130,12 +130,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // When:   When the timing model starts a doStores().
     // Effect: Broke off from doStores1 to meet faster timing.  Prepare to store.
 
-    rule doStoresS (state.readyToBegin(tokContextId(linkDoStores.getReq().token)));
+    rule doStoresS (linkDoStores.getReq().token matches .tok &&&
+                    state.readyToBegin(tokContextId(tok)) &&&
+                    tokScoreboard.canStartStore(tok.index));
 
         // Get the input from the timing model. Begin macro-operation.
         let req = linkDoStores.getReq();
         linkDoStores.deq();
-        let tok = req.token;
 
         // Confirm timing model propagated poison bit correctly
         assertion.poisonBit(tokIsPoisoned(tok) == isValid(tokScoreboard.getFault(tok.index)));

@@ -19083,3 +19083,31 @@ Directory modules/hasim/util/platform-interface
 
 
 Added support for disabling memory debug
+
+----------
+mpellaue    Date: Thu Jun 25 17:26:12 EDT 2009  CSN: CSN-hasim-651
+                  Thu Jun 25 21:26:12 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          650 
+ regstate-data.dic         Locally Modified          650 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-doDTranslate.bsv Locally Modified          650 
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          650 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          650 
+ regmgr-macro-pipe-doStores.bsv Locally Modified          650 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          650 
+
+
+* Functional partition stages now stall until the previous stage is finished, 
+  rather than asserting that the timing model should coordinate this.
+* This works better with a world in which timing model modules slip in time, 
+  allowing the timing model to (for example) request a commit ot Token 54 while
+  the Store is still ongoing. The commit blocks until the Store has finished.
+* Unfortunately this technique does not extend to a cross-cutting operation like
+  rewindToToken. This still requires some timing model coordination.
+* Removed some assertions which were obsolete in the new scheme.
+
+Michael P.

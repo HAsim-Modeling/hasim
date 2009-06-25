@@ -292,13 +292,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // Effect: Lookup the locations of this token's sources.
 
     (* conservative_implicit_conditions *)
-    rule getResults1 (state.readyToBegin(tokContextId(linkGetResults.getReq().token)) &&
-                      (state_res == RSM_RES_Running));
+    rule getResults1 (linkGetResults.getReq().token matches .tok &&&
+                      state.readyToBegin(tokContextId(tok)) &&&
+                      tokScoreboard.canStartExe(tok.index) &&&
+                      state_res == RSM_RES_Running);
 
         // Get parameter from the timing model. Begin macro-operation.
         let req = linkGetResults.getReq();
         linkGetResults.deq();
-        let tok = req.token;
         debugLog.record(fshow(tok.index) + $format(": GetResults: Begin."));
 
         // Token active or was it killed?

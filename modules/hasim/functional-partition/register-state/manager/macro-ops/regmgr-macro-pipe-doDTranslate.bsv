@@ -150,12 +150,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
     // When:   The timing model makes a new DTranslate req.
     // Effect: Retrieve the effective address.
 
-    rule doDTranslate1 (state.readyToBegin(tokContextId(linkDoDTranslate.getReq().token)));
+    rule doDTranslate1 (linkDoDTranslate.getReq().token matches .tok &&&
+                        state.readyToBegin(tokContextId(tok)) &&&
+                        tokScoreboard.canStartDTrans(tok.index));
 
         // Get the input from the timing model. Begin macro operation.
         let req = linkDoDTranslate.getReq();
         linkDoDTranslate.deq();
-        let tok = req.token;
         debugLog.record(fshow(tok.index) + $format(": DoDTranslate: Start."));
 
         // Update scoreboard.

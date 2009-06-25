@@ -108,6 +108,14 @@ interface FUNCP_SCOREBOARD;
   // Rollback the allocations younger than t.
   method Action rewindTo(TOKEN_INDEX t);
   
+  // Test if it is possible for a token to start a given state.
+  // These return false if the previous stage is still unfinished.
+  method Bool canStartExe(TOKEN_INDEX t);
+  method Bool canStartDTrans(TOKEN_INDEX t);
+  method Bool canStartLoad(TOKEN_INDEX t);
+  method Bool canStartStore(TOKEN_INDEX t);
+  method Bool canStartCommit(TOKEN_INDEX t);
+  
   // Accessor methods.
   method Bool isAllocated(TOKEN_INDEX t);
   method Bool isLoad(TOKEN_INDEX t);
@@ -202,20 +210,12 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     // Use multiple assertion nodes because we have so many assertions.
     ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_REGSTATE_SCOREBOARD__BASE);
-    ASSERTION_NODE assertNodeStart <- mkAssertionNode(`ASSERTIONS_REGSTATE_SCOREBOARD_START__BASE);
-    ASSERTION_NODE assertNodeFinish <- mkAssertionNode(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH__BASE);
 
     // Do we have enough tokens to do everything the timing model wants us to?
     ASSERTION assertEnoughTokens <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_OUT_OF_TOKENS, ASSERT_ERROR, assertNode);
 
     // Don't allocate a token which is already allocated.
     ASSERTION assert_token_is_not_allocated <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_REALLOCATE, ASSERT_ERROR, assertNode);
-
-    // Don't de-allocate a token which isn't allocated.
-    // Assertion assert_token_is_allocated <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_DEALLOCATE, ASSERT_ERROR, assertNode);
-
-    // Are we completing tokens in order?
-    // Assertion assert_completing_tokens_in_order <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_COMPLETION, ASSERT_WARNING, assertNode);
 
     // Poisoned instruction
     ASSERTION assertPoisonInstr           <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_COMMIT_POISON_INSTR, ASSERT_ERROR, assertNode);
@@ -227,19 +227,11 @@ module [Connected_Module] mkFUNCP_Scoreboard
     ASSERTION assertIllegalStoreToken   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_ILLEGAL_STORE_TOKEN, ASSERT_ERROR, assertNode);
 
     // The following assertions make sure things happen at the right time.
-    ASSERTION assertTokenCanFinishDEC   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_DECODE, ASSERT_ERROR, assertNodeFinish);
-    ASSERTION assertTokenCanStartEXE    <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_EXECUTE, ASSERT_ERROR, assertNodeStart);
-    ASSERTION assertTokenCanFinishExe   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_EXECUTE, ASSERT_ERROR, assertNodeFinish);
-    ASSERTION assertTokenCanStartDTR    <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_DTRANS, ASSERT_ERROR, assertNodeStart); 
-    ASSERTION assertTokenCanFinishDTR   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_DTRANS, ASSERT_ERROR, assertNodeFinish); 
-    ASSERTION assertTokenCanStartLOA    <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_LOAD, ASSERT_ERROR, assertNodeStart);
-    ASSERTION assertTokenCanFinishLOA   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_LOAD, ASSERT_ERROR, assertNodeFinish);
-    ASSERTION assertTokenCanStartSTO    <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_STORE, ASSERT_ERROR, assertNodeStart);
-    ASSERTION assertTokenCanFinishSTO   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_STORE, ASSERT_ERROR, assertNodeFinish);
-    ASSERTION assertTokenCanStartCOM    <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_COMMIT, ASSERT_ERROR, assertNodeStart);
-    ASSERTION assertTokenHasDoneLoads   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_COMMIT_WITHOUT_LOAD, ASSERT_ERROR, assertNodeStart);
-    ASSERTION assertTokenHasDoneStores  <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_START_COMMIT_WITHOUT_STORE, ASSERT_ERROR, assertNodeStart);
-
+    ASSERTION assertTokenCanFinishDEC   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_DECODE, ASSERT_ERROR, assertNode);
+    ASSERTION assertTokenCanFinishEXE   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_EXECUTE, ASSERT_ERROR, assertNode);
+    ASSERTION assertTokenCanFinishDTR   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_DTRANS, ASSERT_ERROR, assertNode); 
+    ASSERTION assertTokenCanFinishLOA   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_LOAD, ASSERT_ERROR, assertNode);
+    ASSERTION assertTokenCanFinishSTO   <- mkAssertionChecker(`ASSERTIONS_REGSTATE_SCOREBOARD_FINISH_STORE, ASSERT_ERROR, assertNode);
 
     // ***** Rules ***** //
 
@@ -481,8 +473,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Action exeStart(TOKEN_INDEX t);
 
-        assertTokenCanStartEXE(finishedDEC.sub(t));
-
         startedEXE.upd(t, True);
         numInEXE[t.context_id].up();
 
@@ -495,7 +485,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Action exeFinish(TOKEN_INDEX t);
 
-        assertTokenCanFinishExe(startedEXE.sub(t));
+        assertTokenCanFinishEXE(startedEXE.sub(t));
 
         finishedEXE.upd(t, True);
         numInEXE[t.context_id].down();
@@ -508,8 +498,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // Effect: Update the scoreboard.
 
     method Action dTransStart(TOKEN_INDEX t);
-
-        assertTokenCanStartDTR(finishedEXE.sub(t));
 
         startedDTR.upd(t, True);
         numInDTR[t.context_id].up();
@@ -537,8 +525,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Action loadStart(TOKEN_INDEX t);
 
-        assertTokenCanStartLOA(finishedDTR.sub(t));
-
         startedLOA.upd(t, True);
         numInLOA[t.context_id].up();
 
@@ -564,8 +550,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // Effect: Update the scoreboard.
 
     method Action storeStart(TOKEN_INDEX t);
-
-        assertTokenCanStartSTO(finishedDTR.sub(t));
 
         startedSTO.upd(t, True);
         numInSTO[t.context_id].up();
@@ -593,15 +577,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Action commitStart(TOKEN_INDEX t);
 
-        if (tokIsLoad.sub(t))
-            assertTokenHasDoneLoads(finishedLOA.sub(t));
-
-        if (tokIsStore.sub(t))
-            assertTokenHasDoneStores(finishedSTO.sub(t));
-
         assertPoisonInstr( ! isValid(checkFaults(t)) );
-
-        assertTokenCanStartCOM(finishedEXE.sub(t));
 
         startedCOM.upd(t, True);
         numInCOM[t.context_id].up();
@@ -858,6 +834,31 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Bool canRewind(TOKEN_INDEX t);
         return contextCanRewind[t.context_id] == 1;
+    endmethod
+
+    method Bool canStartExe(TOKEN_INDEX t);
+        return finishedDEC.sub(t);
+    endmethod
+
+    method Bool canStartDTrans(TOKEN_INDEX t);
+        return finishedEXE.sub(t);
+    endmethod
+
+    method Bool canStartLoad(TOKEN_INDEX t);
+        return finishedDTR.sub(t);
+    endmethod
+
+    method Bool canStartStore(TOKEN_INDEX t);
+        return finishedDTR.sub(t);
+    endmethod
+
+    method Bool canStartCommit(TOKEN_INDEX t);
+        let bad_mem_op = faultDTrans.sub(t) || faultDTrans2.sub(t);
+        let good_load = finishedLOA.sub(t) || bad_mem_op;
+        let good_store = finishedSTO.sub(t) || bad_mem_op;
+        return  tokIsLoad.sub(t) ? good_load : 
+                tokIsStore.sub(t) ? good_store :
+                finishedEXE.sub(t);
     endmethod
 
 endmodule

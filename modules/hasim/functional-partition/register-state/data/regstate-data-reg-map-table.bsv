@@ -163,14 +163,9 @@ MAPTABLE_CONSUMER
 // REGSTATE_REWIND_READER manages responses for multiple readers of rewind
 // BRAM.
 //
-typedef enum
-{
-    REGSTATE_REWR_GETRESULTS,
-    REGSTATE_REWR_COMMITRESULTS,
-    REGSTATE_REWR_EXCEPTION
-}
-REGSTATE_REWIND_READER
-    deriving (Eq, Bits);
+`define REGSTATE_REWR_GETRESULTS 0 
+`define REGSTATE_REWR_COMMITRESULTS 1
+`define REGSTATE_REWR_EXCEPTION 2
 
 
 //
@@ -308,8 +303,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     //
     // Rewind information
     //
-    BRAM#(TOKEN_INDEX, Maybe#(REGSTATE_REWIND_INFO)) rewindInfo <- mkBRAM();
-    FIFO#(REGSTATE_REWIND_READER) rewindReaderQ <- mkFIFO();
+    BRAM_MULTI_READ#(3, TOKEN_INDEX, Maybe#(REGSTATE_REWIND_INFO)) rewindInfo <- mkBRAMBufferedPseudoMultiRead();
 
     // Internal decode queues
     FIFO#(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) newPhyDstsInQ <- mkBypassFIFO();
@@ -686,8 +680,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
             let tok_idx = rewGetResultsReadInQ.first();
             rewGetResultsReadInQ.deq();
 
-            rewindReaderQ.enq(REGSTATE_REWR_GETRESULTS);
-            rewindInfo.readReq(tok_idx);
+            rewindInfo.readPorts[`REGSTATE_REWR_GETRESULTS].readReq(tok_idx);
 
             debugLog.record($format("MAP: ") + fshow(tok_idx) + $format(": Request REWIND info for GETRESULTS"));
         end
@@ -699,8 +692,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
             let tok = rewCommitReadInQ.first();
             rewCommitReadInQ.deq();
 
-            rewindReaderQ.enq(REGSTATE_REWR_COMMITRESULTS);
-            rewindInfo.readReq(tok.index);
+            rewindInfo.readPorts[`REGSTATE_REWR_COMMITRESULTS].readReq(tok.index);
 
             debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Request REWIND info for COMMIT"));
         end
@@ -709,8 +701,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
             let tok_idx = rewExceptionReadInQ.first();
             rewExceptionReadInQ.deq();
 
-            rewindReaderQ.enq(REGSTATE_REWR_EXCEPTION);
-            rewindInfo.readReq(tok_idx);
+            rewindInfo.readPorts[`REGSTATE_REWR_EXCEPTION].readReq(tok_idx);
 
             debugLog.record($format("MAP: ") + fshow(tok_idx) + $format(": Request REWIND info for EXCEPT"));
         end
@@ -776,9 +767,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
             rewGetResultsReadInQ.enq(tokIdx);
         endmethod
 
-        method ActionValue#(Maybe#(REGSTATE_REWIND_INFO)) readRewindRsp() if (rewindReaderQ.first() == REGSTATE_REWR_GETRESULTS);
-            rewindReaderQ.deq();
-            let r <- rewindInfo.readRsp();
+        method ActionValue#(Maybe#(REGSTATE_REWIND_INFO)) readRewindRsp();
+            let r <- rewindInfo.readPorts[`REGSTATE_REWR_GETRESULTS].readRsp();
             return r;
         endmethod
 
@@ -791,9 +781,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
             rewCommitReadInQ.enq(tok);
         endmethod
 
-        method ActionValue#(Maybe#(REGSTATE_REWIND_INFO)) readRewindRsp() if (rewindReaderQ.first() == REGSTATE_REWR_COMMITRESULTS);
-            rewindReaderQ.deq();
-            let r <- rewindInfo.readRsp();
+        method ActionValue#(Maybe#(REGSTATE_REWIND_INFO)) readRewindRsp();
+            let r <- rewindInfo.readPorts[`REGSTATE_REWR_COMMITRESULTS].readRsp();
             return r;
         endmethod
 
@@ -810,9 +799,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
             rewExceptionReadInQ.enq(tokIdx);
         endmethod
 
-        method ActionValue#(Maybe#(REGSTATE_REWIND_INFO)) readRewindRsp() if (rewindReaderQ.first() == REGSTATE_REWR_EXCEPTION);
-            rewindReaderQ.deq();
-            let r <- rewindInfo.readRsp();
+        method ActionValue#(Maybe#(REGSTATE_REWIND_INFO)) readRewindRsp();
+            let r <- rewindInfo.readPorts[`REGSTATE_REWR_EXCEPTION].readRsp();
             return r;
         endmethod
 

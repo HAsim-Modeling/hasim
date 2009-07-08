@@ -19111,3 +19111,22 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 * Removed some assertions which were obsolete in the new scheme.
 
 Michael P.
+
+----------
+ruhler      Date: Wed Jul  8 11:50:17 EDT 2009  CSN: CSN-hasim-652
+                  Wed Jul  8 15:50:17 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-reg-map-table.bsv Locally Modified          651 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          651 
+
+
+Switched from BRAM to BRAM_MULTI_READ in regstate-data-reg-map-table to fix
+potential deadlock.
+
+Dequeue response from memory for committing store faults. Also fixes potential
+deadlock.
+

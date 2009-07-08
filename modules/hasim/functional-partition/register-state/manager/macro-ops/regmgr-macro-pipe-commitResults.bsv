@@ -39,7 +39,7 @@
 typedef union tagged
 {
     Tuple2#(TOKEN, Maybe#(STORE_TOKEN)) COMMIT2_commitRsp;
-    void COMMIT2_faultRsp;
+    Bool COMMIT2_faultRsp;
 }
 COMMIT2_PATH deriving (Eq, Bits);
 
@@ -153,11 +153,17 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
                 // Tell the store buffer to drop any stores associated with this token.
                 let m_req = MEMSTATE_REQ_REWIND {rewind_to: tok.index - 1, rewind_from: tok.index};
                 linkToMem.makeReq(tagged REQ_REWIND m_req);
+
+                commQ.enq(tagged COMMIT2_faultRsp True);
         
             end
-            
-            // Make sure no responses pass this response.
-            commQ.enq(tagged COMMIT2_faultRsp);
+            else
+            begin
+
+                // Make sure no responses pass this response.
+                commQ.enq(tagged COMMIT2_faultRsp False);
+
+            end
 
         end
         else
@@ -229,12 +235,17 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
 
     endrule
 
-    rule commitFaultRsp (commQ.first() matches tagged COMMIT2_faultRsp);
+    rule commitFaultRsp (commQ.first() matches tagged COMMIT2_faultRsp .is_store);
         commQ.deq();
     
         // Get the response from the fault handler to pass it on to the timing model.
         let rsp = linkHandleFault.getResp();
         linkHandleFault.deq();
+
+        if (is_store)
+        begin
+            linkToMem.deq();
+        end
 
         // Retrieve the registers to be freed.
         let rewind_info <- regMapping.readRewindRsp();

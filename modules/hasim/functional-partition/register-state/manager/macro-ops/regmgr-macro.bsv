@@ -75,7 +75,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_INSTRUCTION) tokInst <- mkLiveTokenBRAMMultiRead(True);
 
     // The destinations of the instruction (a convenience which saves us from reading the instruction/maptable).
-    BRAM_MULTI_READ#(3, TOKEN_INDEX, REGMGR_DST_REGS) tokDsts <- mkLiveTokenBRAMMultiRead(True);
+    BRAM_MULTI_READ#(4, TOKEN_INDEX, REGMGR_DST_REGS) tokDsts <- mkLiveTokenBRAMMultiRead(True);
 
     // If an instruction has sources in other inflight instructions it will be noted here.
     BRAM#(TOKEN_INDEX, ISA_INST_SRCS) tokWriters <- mkLiveTokenBRAM();
@@ -186,7 +186,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                             linkDTLB.fault,
                             linkToMem.exceptionQueue,
                             regMapping.exceptionQueue,
-                            tokDsts.readPorts[2],
+                            tokDsts.readPorts[3],
                             freelist,
                             tokAddr.readPorts[1],
                             tokMemAddr.readPorts[1]);

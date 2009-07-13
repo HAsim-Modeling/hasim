@@ -19130,3 +19130,17 @@ potential deadlock.
 Dequeue response from memory for committing store faults. Also fixes potential
 deadlock.
 
+
+----------
+ruhler      Date: Mon Jul 13 10:50:17 EDT 2009  CSN: CSN-hasim-653
+                  Mon Jul 13 14:50:17 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          652 
+ regmgr-macro.bsv          Locally Modified          652 
+
+Gave commitResults and exception each their own port to the tokDsts
+BRAM_MULTI_READ instead of sharing a single port, which was causing bad stuff
+to happen.
+

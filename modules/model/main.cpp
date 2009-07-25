@@ -14,6 +14,7 @@
 
 #include "asim/provides/command_switches.h"
 #include "asim/provides/hasim_controller.h"
+#include "asim/provides/software_system.h"
 #include "asim/provides/virtual_platform.h"
 #include "asim/provides/low_level_platform_interface.h"
 

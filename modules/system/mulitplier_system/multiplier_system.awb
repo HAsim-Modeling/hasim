@@ -9,7 +9,7 @@
 #
 # %name Hasim - Multiplier system
 # %desc Hasim - Multiplier system
-# %provides hasim_system
+# %provides hardware_system
 #
 # %attributes hasim
 #

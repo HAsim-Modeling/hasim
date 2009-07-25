@@ -14,6 +14,7 @@
 %requires bluespec_common
 
 %public pure_bluespec_model.bsv
+%public default_software_system.h
 
 %makefile Makefile.top.template
 %scons %top   SCons.top.template

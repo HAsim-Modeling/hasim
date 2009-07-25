@@ -9,13 +9,12 @@
 #
 # %name Hasim - Traffic light system
 # %desc Hasim - Traffic light system
-# %provides hasim_system
+# %provides hardware_system
 # %requires hasim_traffic_light_function
 #
 # %attributes hasim
 #
 # %public System.bsv
-#
 #
 # %AWB_END
 # */

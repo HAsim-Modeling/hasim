@@ -57,3 +57,6 @@ CON_CWIDTH=350
 [HAsim Modeling Library]
 File=modules/hasim/util/modellib/hasim-modellib.awb
 Packagehint=hasim
+
+[Hasim Platform Interface/Params]
+SCRATCHPAD_STD_PVT_CACHE_ENTRIES=8192

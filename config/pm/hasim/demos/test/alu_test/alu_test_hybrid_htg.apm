@@ -18,7 +18,7 @@ Packagehint=platforms
 
 [HAsim Hybrid Model Foundation/Requires]
 hasim_common=Hasim Common Library
-hasim_system=Hasim - ALU Test System
+system=Hybrid System foundation
 hasim_controller=Hybrid Basic Controller
 fpgaenv=FPGA Environment
 
@@ -46,3 +46,17 @@ Packagehint=hasim
 
 [Hasim Common Library/Params]
 TERM_VDEV_STREAMS=0
+
+
+[Default Software System]
+File=modules/model/default_software_system.awb
+Packagehint=hasim
+
+[Hybrid System foundation/Requires]
+software_system=Default Software System
+hardware_system=Hasim - ALU Test System
+
+[Hybrid System foundation]
+File=modules/model/hybrid_system.awb
+Packagehint=hasim
+

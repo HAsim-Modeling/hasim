@@ -2,8 +2,9 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "asim/provides/hasim_controller.h"
+#include "asim/provides/software_system.h"
 #include "asim/provides/params_controller.h"
+#include "controller-basic.h"
 
 
 using namespace std;

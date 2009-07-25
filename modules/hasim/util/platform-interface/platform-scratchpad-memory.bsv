@@ -1,4 +1,4 @@
-//
+///
 // Copyright (C) 2009 Intel Corporation
 //
 // This program is free software; you can redistribute it and/or
@@ -22,6 +22,7 @@
 
 import FIFO::*;
 import SpecialFIFOs::*;
+
 
 `include "asim/provides/librl_bsv_base.bsh"
 `include "asim/provides/librl_bsv_cache.bsh"
@@ -48,7 +49,6 @@ typedef MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA)
                                       type t_ADDR,
                                       type t_DATA,
                                       numeric type n_CACHE_ENTRIES);
-
 
 //
 // Data structures flowing through soft connections between scratchpad clients
@@ -199,7 +199,6 @@ module [HASIM_MODULE] mkMultiReadScratchpad#(Integer scratchpadID, Bool cached)
         return memory;
     end
 endmodule
-
 
 // ========================================================================
 //
@@ -531,10 +530,10 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, Inte
     RL_CACHE_STATS stats <- mkNullRLCacheStats();
 
     // Private cache
-    RL_DM_CACHE#(Bit#(t_MEM_ADDRESS_SZ),
-                 SCRATCHPAD_MEM_VALUE,
-                 t_REF_INFO,
-                 n_CACHE_ENTRIES) cache <- mkCacheDirectMapped(sourceData, False, stats, debugLog);
+    RL_DM_CACHE_SIZED#(Bit#(t_MEM_ADDRESS_SZ),
+                       SCRATCHPAD_MEM_VALUE,
+                       t_REF_INFO,
+                       n_CACHE_ENTRIES) cache <- mkCacheDirectMapped(sourceData, False, stats, debugLog);
 
     // Merge FIFOF combines read and write requests in temporal order,
     // with reads from the same cycle as a write going first.  Each read port
@@ -652,7 +651,7 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, Inte
 
     method Bool writeNotFull = incomingReqQ.ports[valueOf(n_READERS)].notFull();
 endmodule
-    
+
 
 //
 // mkScratchpadCacheSourceData --
@@ -702,6 +701,16 @@ module [HASIM_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
         return r;
     endmethod
 
+    method t_CACHE_FILL_RESP peekResp();
+        let s = link_memory.getResp();
+        
+        t_CACHE_FILL_RESP r;
+        r.addr = unpack(truncate(s.addr));
+        r.val = s.val;
+        r.refInfo = unpack(truncateNP(s.clientRefInfo));
+
+        return r;
+    endmethod
 
     // Asynchronous write (no response)
     method Action write(t_CACHE_ADDR addr,

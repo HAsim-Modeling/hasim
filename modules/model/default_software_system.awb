@@ -1,0 +1,15 @@
+********************************************************************
+* Default software system - provides a simple software system
+********************************************************************
+
+%AWB_START
+
+%name Default Software System
+%desc A simple software system for use in designs that have no software component.
+%attributes hasim hybrid
+
+%provides software_system
+
+%public default_software_system.h
+
+%AWB_END

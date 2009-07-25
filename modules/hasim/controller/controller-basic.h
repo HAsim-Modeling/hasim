@@ -7,9 +7,10 @@
 #include "platforms-module.h"
 #include "asim/provides/starter.h"
 #include "asim/provides/low_level_platform_interface.h"
+#include "asim/provides/software_system.h"
 
 // FIXME FIXME FIXME: we need a SYSTEM base class
-typedef class SYSTEM_CLASS* SYSTEM;
+/*typedef class SYSTEM_CLASS* SYSTEM;
 class SYSTEM_CLASS
 {
   private:
@@ -31,7 +32,7 @@ class SYSTEM_CLASS
         pthread_cond_wait(&cond, &lock);
         pthread_mutex_unlock(&lock);
     }
-};
+    };*/
 
 // controller
 typedef class CONTROLLER_CLASS* CONTROLLER;

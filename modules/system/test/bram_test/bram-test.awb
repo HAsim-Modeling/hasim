@@ -1,6 +1,6 @@
 %name Hasim - BRAM Test System
 %desc Hasim - BRAM Test System
-%provides hasim_system
+%provides hardware_system
 
 %attributes hasim
 

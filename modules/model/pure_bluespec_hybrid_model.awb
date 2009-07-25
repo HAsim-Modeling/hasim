@@ -13,6 +13,7 @@
 %requires fpgaenv
 %requires bluespec_common
 
+%public default_software_system.h
 %public pure_bluespec_main.h
 %private pure_bluespec_main.cpp
 

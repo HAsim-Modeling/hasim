@@ -11,7 +11,7 @@
 %provides model
 
 %requires hasim_controller
-%requires hasim_system
+%requires system
 %requires hasim_common
 %requires fpgaenv
 

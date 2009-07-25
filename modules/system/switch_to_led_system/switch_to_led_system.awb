@@ -6,7 +6,7 @@
 
 %name Hasim - Switch in to LED out system
 %desc Hasim - Switch in to LED out system
-%provides hasim_system
+%provides hardware_system
 %requires calculation4x4
 
 %library lib/libasim/libasim.a

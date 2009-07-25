@@ -19144,3 +19144,129 @@ Gave commitResults and exception each their own port to the tokDsts
 BRAM_MULTI_READ instead of sharing a single port, which was causing bad stuff
 to happen.
 
+
+----------
+keflemin    Date: Sat Jul 25 15:47:04 EDT 2009  CSN: CSN-hasim-654
+                  Sat Jul 25 19:47:04 UTC 2009
+
+
+Directory config/pm/hasim/demos/test/alu_test
+ alu_test_hybrid_htg.apm   Locally Modified          653 
+ alu_test_hybrid_exe.apm   Locally Modified          653 
+
+Directory config/pm/hasim/demos/test/bram_test
+ bram_test_hybrid_htg.apm  Locally Modified          653 
+ bram_test_hybrid_exe.apm  Locally Modified          653 
+
+Directory config/pm/hasim/demos/test/pipeline_test
+ pipeline_test_shared_rule_htg.apm Locally Modified          653 
+ pipeline_test_shared_rule_routed_exe.apm Locally Modified          653 
+ pipeline_test_shared_rule_routed_htg.apm Locally Modified          653 
+ pipeline_test_private_rule_exe.apm Locally Modified          653 
+ pipeline_test_duplicate_modules_exe.apm Locally Modified          653 
+ pipeline_test_private_rule_htg.apm Locally Modified          653 
+ pipeline_test_duplicate_modules_htg.apm Locally Modified          653 
+ pipeline_test_stage_ctrl_unguarded_exe.apm Locally Modified          653 
+ pipeline_test_stage_ctrl_unguarded_htg.apm Locally Modified          653 
+ pipeline_test_stage_ctrl_exe.apm Locally Modified          653 
+ pipeline_test_stage_ctrl_htg.apm Locally Modified          653 
+ pipeline_test_shared_rule_exe.apm Locally Modified          653 
+
+Directory config/pm/hasim/demos/test/interconnect_test
+ interconnect_test_hybrid_exe.apm Locally Modified          653 
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid_nopvt_exe.apm Locally Modified          653 
+ mem_test_hybrid_nopvt_htg.apm Locally Modified          653 
+ mem_test_hybrid_exe.apm   Locally Modified          653 
+ mem_test_hybrid_htg.apm   Locally Modified          653 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          653 
+ traffic_light_htg_v5_pcie_synth.apm Locally Modified          653 
+ traffic_light_xup_synth.apm Locally Modified          653 
+ traffic_light_exe_nosynth.apm Locally Modified          653 
+ traffic_light_exe_synth.apm Locally Modified          653 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          653 
+
+Directory config/pm/hasim/demos/switch_to_led
+ multiplier4x4_exe.apm     Locally Modified          653 
+ echo4x4_xup.apm           Locally Modified          653 
+ adder4x4_xup.apm          Locally Modified          653 
+ square4x4_xup.apm         Locally Modified          653 
+ echo4x4_exe.apm           Locally Modified          653 
+ adder4x4_exe.apm          Locally Modified          653 
+ echo4x4_htg.apm           Locally Modified          653 
+ square4x4_exe.apm         Locally Modified          653 
+ multiplier4x4_xup.apm     Locally Modified          653 
+
+Directory config/pm/hasim/submodels/controller
+ hybrid_standard_controller.apm Locally Modified          653 
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Modified          653 
+
+Directory modules/model
+ pure_bluespec_main.cpp    Locally Modified          653 
+ pure_bluespec_model.awb   Locally Modified          653 
+ pure_bluespec_hybrid_model.awb Locally Modified          653 
+ default_software_system.h Locally Added               0 
+ hasim_model.awb           Locally Modified          653 
+ hasim_hwonly_model.awb    Locally Modified          653 
+ hybrid_system.awb         Locally Added               0 
+ main.cpp                  Locally Modified          653 
+ hasim_model.bsv           Locally Modified          653 
+ default_software_system.awb Locally Added               0 
+
+Directory modules/hasim/controller
+ controller-pure.h         Locally Modified          653 
+ controller-basic.cpp      Locally Modified          653 
+ controller-basic.h        Locally Modified          653 
+ controller-standard.awb   Locally Modified          653 
+ controller-standard.cpp   Locally Modified          653 
+ controller-standard.h     Locally Modified          653 
+
+Directory modules/hasim/util/platform-interface
+ platform-scratchpad-multi-chached-memory.bsv Locally Added               0 
+ platform-central-cache.bsv Locally Modified          653 
+ platform-interface.awb    Locally Modified          653 
+ platform-scratchpad-multi-cached-memory.bsv Locally Added               0 
+ platform-scratchpad-memory.bsv Locally Modified          653 
+
+Directory modules/system/afu_system
+ afu_system.awb            Locally Modified          653 
+
+Directory modules/system/test/alu_test
+ alu-test.awb              Locally Modified          653 
+
+Directory modules/system/test/bram_test
+ bram-test.awb             Locally Modified          653 
+
+Directory modules/system/test/interconnect_test
+ interconnect-test.awb     Locally Modified          653 
+
+Directory modules/system/test/shared_pipeline_test
+ shared-pipeline-test.awb  Locally Modified          653 
+
+Directory modules/system/test/mem_test
+ mem-test.awb              Locally Modified          653 
+
+Directory modules/system/dme_system
+ dme_system.awb            Locally Modified          653 
+
+Directory modules/system/traffic_light_system
+ traffic_light_system.awb  Locally Modified          653 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.awb     Locally Modified          653 
+
+Directory modules/system/cpu_system
+ System.h                  Locally Added               0 
+ hasim_system.awb          Locally Modified          653 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.awb  Locally Modified          653 
+
+Migrated to split sw/hw system

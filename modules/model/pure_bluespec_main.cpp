@@ -15,6 +15,7 @@
 #include "asim/provides/low_level_platform_interface.h"
 #include "asim/provides/hasim_controller.h"
 #include "asim/provides/bluespec_system.h"
+#include "asim/provides/model.h"
 
 #include "pure_bluespec_main.h"
 
@@ -36,7 +37,7 @@ int main(int argc, char *argv[])
     // 2. Controller
     // 3. System
     LLPI       llpi       = new LLPI_CLASS();
-    SYSTEM     system     = new BLUESPEC_SYSTEM_CLASS();
+    SYSTEM     system     = new SYSTEM_CLASS();
     CONTROLLER controller = new CONTROLLER_CLASS(llpi, system);
 
     // transfer control to controller

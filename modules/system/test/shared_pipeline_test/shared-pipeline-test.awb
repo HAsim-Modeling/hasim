@@ -1,6 +1,6 @@
 %name HAsim - Shared Pipeline Resource Tests
 %desc HAsim - Shared Pipeline Resource Tests
-%provides hasim_system
+%provides hardware_system
 
 %attributes hasim
 

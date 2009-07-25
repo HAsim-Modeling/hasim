@@ -54,7 +54,7 @@ import SpecialFIFOs::*;
 // private cache.
 //
 
-typedef RL_DM_CACHE#(t_ADDR, t_DATA, t_REF_INFO, n_ENTRIES)
+typedef RL_DM_CACHE_SIZED#(t_ADDR, t_DATA, t_REF_INFO, n_ENTRIES)
     CENTRAL_CACHE_CLIENT#(type t_ADDR, type t_DATA, type t_REF_INFO, numeric type n_ENTRIES);
 
 
@@ -196,7 +196,7 @@ module [HASIM_MODULE] mkCentralCacheClient#(Integer cacheID,
     RL_DM_CACHE_SOURCE_DATA#(t_ADDR, t_DATA, t_REF_INFO) centralCacheConnection <-
         mkCentralCacheConnection(cacheID, backing, debugLog);
 
-    RL_DM_CACHE#(t_ADDR, t_DATA, t_REF_INFO, n_ENTRIES) pvtCache;
+    RL_DM_CACHE_SIZED#(t_ADDR, t_DATA, t_REF_INFO, n_ENTRIES) pvtCache;
     if (valueOf(n_ENTRIES) == 0)
         pvtCache <- mkNullCacheDirectMapped(centralCacheConnection, debugLog);
     else
@@ -342,6 +342,17 @@ module [HASIM_MODULE] mkCentralCacheConnection#(Integer cacheID,
         return r;
     endmethod
 
+    // Read response peek
+    method RL_DM_CACHE_FILL_RESP#(t_ADDR, t_DATA, t_REF_INFO) peekResp() if (link_cache.getResp() matches tagged CENTRAL_CACHE_READ .resp);
+
+        let addr = centralAddrToAddr(resp.addr, resp.wordIdx);
+        t_DATA val = unpack(truncate(resp.val));
+        let r = RL_DM_CACHE_FILL_RESP { addr: addr,
+                                        val: val,
+                                        refInfo: unpack(truncate(resp.refInfo)) };
+
+        return r;
+    endmethod
 
     // Write request
     method Action write(t_ADDR addr, t_DATA val, t_REF_INFO refInfo);

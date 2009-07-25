@@ -1,6 +1,6 @@
 %name Hasim - ALU Test System
 %desc Hasim - ALU Test System
-%provides hasim_system
+%provides hardware_system
 
 %attributes hasim
 

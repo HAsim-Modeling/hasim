@@ -1,6 +1,6 @@
 %name Hasim - Interconnect Test System
 %desc Hasim - Interconnect Test System
-%provides hasim_system
+%provides hardware_system
 
 %attributes hasim
 

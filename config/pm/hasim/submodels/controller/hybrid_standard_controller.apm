@@ -4,6 +4,7 @@ central_controllers=Standard Central Controllers
 local_controllers=Standard Local Controllers
 starter=Hybrid Basic Starter
 command_switches=Standard Command Switches
+funcp_base_types=Functional Partition Base Types
 
 [Global]
 Type=Asim
@@ -75,4 +76,8 @@ Packagehint=hasim
 
 [Hybrid Debug Scan Controller]
 File=modules/hasim/controller/central_controllers/debug_scan/debug-scan-controller-hybrid.awb
+Packagehint=hasim
+
+[Functional Partition Base Types]
+File=modules/hasim/functional-partition/base-types/funcp-base-types.awb
 Packagehint=hasim

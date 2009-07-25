@@ -7,6 +7,7 @@
 
 %public platform-interface.bsv
 %public platform-scratchpad-memory.bsv
+%public platform-scratchpad-multi-cached-memory.bsv
 %public platform-central-cache.bsv
 %public connection-terminus.bsv
 

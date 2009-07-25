@@ -9,7 +9,7 @@
 #
 # %name Hasim - FSB AFU system
 # %desc Hasim - FSB AFU system
-# %provides hasim_system
+# %provides hardware_system
 # %requires afu_alg
 #
 # %attributes hasim fsb afu

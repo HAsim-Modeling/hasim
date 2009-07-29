@@ -79,8 +79,8 @@ $status = GetOptions( "private!"    => \$private,
 		      "builddir=s"  => \$builddir,
 		      "benchmark=s" => \$benchmark,
 		      "rundir=s"    => \$rundir,
-                      "buildopt=s"  => \$buildopt,
-		      "runopt=s"    => \$runopt,
+                      "buildopt:s"  => \$buildopt,
+		      "runopt:s"    => \$runopt,
                       "help"        => \$help
 		      );
 		      

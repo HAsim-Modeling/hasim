@@ -19270,3 +19270,13 @@ Directory modules/system/switch_to_led_system
  switch_to_led_system.awb  Locally Modified          653 
 
 Migrated to split sw/hw system
+
+----------
+emer        Date: Wed Jul 29 19:28:30 EDT 2009  CSN: CSN-hasim-655
+                  Wed Jul 29 23:28:30 UTC 2009
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          654 
+
+Allow empty --buildopt and --runopt switches.

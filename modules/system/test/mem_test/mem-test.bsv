@@ -32,7 +32,7 @@ import LFSR::*;
 `include "asim/dict/STREAMS_MEMTEST.bsh"
 `include "asim/dict/STREAMS_MESSAGE.bsh"
 
-`include "asim/dict/PARAMS_HASIM_SYSTEM.bsh"
+`include "asim/dict/PARAMS_HARDWARE_SYSTEM.bsh"
 
 // It is normally NOT necessary to include scratchpad_memory.bsh to use
 // scratchpads.  mem-test includes it only to get the value of
@@ -112,18 +112,18 @@ module [HASIM_MODULE] mkSystem ()
     //  0 -- normal
     //  1 -- write zeros
     //  2 -- no writes
-    Param#(2) memInitMode <- mkDynamicParameter(`PARAMS_HASIM_SYSTEM_MEM_TEST_INIT_MODE, paramNode);
+    Param#(2) memInitMode <- mkDynamicParameter(`PARAMS_HARDWARE_SYSTEM_MEM_TEST_INIT_MODE, paramNode);
 
     // Verbose mode
     //  0 -- quiet
     //  1 -- verbose
-    Param#(1) verboseMode <- mkDynamicParameter(`PARAMS_HASIM_SYSTEM_MEM_TEST_VERBOSE, paramNode);
+    Param#(1) verboseMode <- mkDynamicParameter(`PARAMS_HARDWARE_SYSTEM_MEM_TEST_VERBOSE, paramNode);
     let verbose = verboseMode == 1;
 
     // Heap enable -- allow heap tests?  Skip heap case (it used to cause deadlocks).
     //  0 -- disable
     //  1 -- enable
-    Param#(1) heapTestMode <- mkDynamicParameter(`PARAMS_HASIM_SYSTEM_MEM_TEST_HEAP, paramNode);
+    Param#(1) heapTestMode <- mkDynamicParameter(`PARAMS_HARDWARE_SYSTEM_MEM_TEST_HEAP, paramNode);
     let enableHeap = heapTestMode == 1;
 
     // Streams (output)

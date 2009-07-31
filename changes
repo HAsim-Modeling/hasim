@@ -19280,3 +19280,17 @@ Directory tools/scripts
  hasim-configure           Locally Modified          654 
 
 Allow empty --buildopt and --runopt switches.
+
+----------
+mcadler     Date: Fri Jul 31 14:45:34 EDT 2009  CSN: CSN-hasim-656
+                  Fri Jul 31 18:45:34 UTC 2009
+
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.bsv    Locally Modified          655 
+
+Directory modules/system/test/mem_test
+ mem-test.bsv              Locally Modified          655 
+
+- Make platform interface compile when no central cache clients exist.
+- Update memory test to new system spec.

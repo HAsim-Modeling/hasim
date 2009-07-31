@@ -273,6 +273,7 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
         // setting their dictionary string to "platform".  Do not build soft
         // connections for internal clients.
         //
+`ifdef VDEV_CACHE__BASE
         if (showVDEV_CACHE_DICT(fromInteger(p + `VDEV_CACHE__BASE)) != "platform")
         begin
             link_cache[p] <- mkConnection_Server("vdev_cache_" + integerToString(p));
@@ -371,6 +372,7 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
                 endcase
             endrule
         end
+`endif
     end
 
 

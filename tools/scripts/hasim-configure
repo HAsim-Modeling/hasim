@@ -557,6 +557,7 @@ sub dyn_params()
     print PARAM "\n";
 
     print PARAM "#include \"asim/param.h\"\n";
+    print PARAM "#include <strings.h>\n";
     print PARAM "#include \"asim/atoi.h\"\n\n";
 
     foreach my $param (sort keys(%dynamic_params)) {
@@ -1135,6 +1136,18 @@ sub __generate_makefile_hw_top {
 
     foreach my $f ($module->sources("UCF", "*")) {
         HAsim::Util::hash_append($replacements_r," ",'@GIVEN_UCFS@',HAsim::Util::path_append($my_dir, $f));
+    }
+
+    ## @GIVEN_BMMS  - bmm files for those modules including a soft proc##
+
+    foreach my $f ($module->sources("BMM", "*")) {
+        HAsim::Util::hash_append($replacements_r," ",'@GIVEN_BMMS@',HAsim::Util::path_append($my_dir, $f));
+    }
+
+    ## @GIVEN_ELFS  - bmm files for those modules including a soft proc##
+
+    foreach my $f ($module->sources("ELF", "*")) {
+        HAsim::Util::hash_append($replacements_r," ",'@GIVEN_ELFS@',HAsim::Util::path_append($my_dir, $f));
     }
 
     ## @BDPI_CS@

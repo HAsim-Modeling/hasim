@@ -19320,3 +19320,18 @@ Directory modules/hasim/util/platform-interface
   doStores now spins, waiting for the store data to be valid.  No changes
   are visible in the timing model.
 - New interface for passing cache size to direct mapped caches.
+
+----------
+keflemin    Date: Sun Aug  2 19:33:59 EDT 2009  CSN: CSN-hasim-658
+                  Sun Aug  2 23:33:59 UTC 2009
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          657 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          657 
+
+
+
+Added support to bmm and elf

@@ -22,6 +22,8 @@ defs = {
     'GIVEN_CS'           : '@GIVEN_CS@',
     'GIVEN_VS'           : '@GIVEN_VS@',
     'GIVEN_UCFS'         : '@GIVEN_UCFS@',
+    'GIVEN_BMMS'         : '@GIVEN_BMMS@', 
+    'GIVEN_ELFS'         : '@GIVEN_ELFS@',
     'GEN_BAS'            : '@GEN_BAS@',
     'GEN_CXXS'           : 'schedule.cxx @GEN_CXXS@',
     'GEN_HS'             : 'schedule.h @GEN_HS@',
@@ -41,6 +43,7 @@ defs = {
     'TMP_XILINX_DIR'     : '@TMP_XILINX_DIR@',
     'WORKSPACE_ROOT'     : '@WORKSPACE_ROOT@',
     'XST_FILE'           : '@XST_FILE@',
+    'MAP_OPTIONS'        : '@MAP_OPTIONS@',
 }
 
 # Propagate environment from external state
@@ -385,12 +388,19 @@ xilinx_ucf = env.Command(
     clean_split(env['DEFS']['GIVEN_UCFS'], sep = ' '),
     'cat $SOURCES > $TARGET')
 
+
+if(len(env['DEFS']['GIVEN_BMMS']) != 0):
+    bmm = ' -bm ' +  env['DEFS']['GIVEN_BMMS']
+else:
+    bmm = ''
+
+
 xilinx_ngd = env.Command(
     XILINX_APM_NAME + '.ngd',
     xilinx_ngc + xilinx_ucf,
     [ Delete(XILINX_APM_NAME + '.bld'),
       Delete(XILINX_APM_NAME + '_ngdbuild.xrpt'),
-      'ngdbuild -p ' + FPGA_PART + ' -sd ' + env['DEFS']['ROOT_DIR_HW_MODEL'] + ' -uc ' + XILINX_APM_NAME + '.ucf $SOURCE $TARGET',
+      'ngdbuild -p ' + FPGA_PART + ' -sd ' + env['DEFS']['ROOT_DIR_HW_MODEL'] + ' -uc ' + XILINX_APM_NAME + '.ucf ' + bmm + ' $SOURCE $TARGET',
       Move(TMP_XILINX_DIR + '/netlist.lst', 'netlist.lst') ])
 
 Clean(xilinx_ngd, TMP_XILINX_DIR + '/netlist.lst')
@@ -407,7 +417,7 @@ xilinx_map = env.Command(
       Delete(XILINX_APM_NAME + '_map.ncd'),
       Delete(XILINX_APM_NAME + '_map.ngm'),
       Delete(XILINX_APM_NAME + '_map.psr'),
-      'map -cm balanced -timing -t ' + env['DEFS']['COST_TABLE'] + ' -global_opt on -logic_opt on -ol high -register_duplication -retiming on -pr b -c 100 -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf' ])
+      'map -cm balanced -timing -t ' + env['DEFS']['COST_TABLE'] +  env['DEFS']['MAP_OPTIONS'] + ' -logic_opt on -ol high -register_duplication -retiming on -pr b -c 100 -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf' ])
 
 Clean(xilinx_map, TMP_XILINX_DIR + '/xilinx_device_details.xml')
 
@@ -432,13 +442,17 @@ xilinx_trce = env.Command(
     [ xilinx_par, XILINX_APM_NAME + '.pcf' ],
     'trce -e 100 $SOURCES -o $TARGET')
 
+if(len(env['DEFS']['GIVEN_ELFS']) != 0):
+    elf = ' -bd ' + env['DEFS']['GIVEN_ELFS']
+else:
+    elf = ''
 
 # Generate the FPGA image
 xilinx_bit = env.Command(
     XILINX_APM_NAME + '_par.bit',
     [ 'config/' + APM_NAME + '.ut', xilinx_par ],
     [ Delete('config/signature.sh'),
-      'bitgen -f $SOURCES $TARGET ' + XILINX_APM_NAME + '.pcf' ])
+      'bitgen ' + elf + ' -f $SOURCES $TARGET ' + XILINX_APM_NAME + '.pcf' ])
 
 # Generate the signature for the FPGA image
 signature = env.Command(

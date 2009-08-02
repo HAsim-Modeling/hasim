@@ -98,6 +98,7 @@ interface FUNCP_SCOREBOARD;
   // Set the memory type that we use for accessing memory.
   method Action setLoadType(TOKEN_INDEX t,  ISA_MEMOP_TYPE mt);
   method Action setStoreType(TOKEN_INDEX t, ISA_MEMOP_TYPE mt);
+  method Action setStoreDataValid(TOKEN_INDEX t);
   
   // Set whether or not the instruction should be emulated in software.
   method Action setEmulation(TOKEN_INDEX t, Bool em);
@@ -120,6 +121,7 @@ interface FUNCP_SCOREBOARD;
   method Bool isAllocated(TOKEN_INDEX t);
   method Bool isLoad(TOKEN_INDEX t);
   method Bool isStore(TOKEN_INDEX t);
+  method Bool isStoreDataValid(TOKEN_INDEX t);
   method Bool emulateInstruction(TOKEN_INDEX t);
   method Maybe#(FUNCP_FAULT) getFault(TOKEN_INDEX t);
   method MEM_OFFSET getMemOpOffset(TOKEN_INDEX t);
@@ -162,6 +164,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
     TOKEN_SCOREBOARD startedSTO    <- mkLiveTokenLUTRAMU();
     TOKEN_SCOREBOARD finishedSTO   <- mkLiveTokenLUTRAMU();
     TOKEN_SCOREBOARD startedCOM    <- mkLiveTokenLUTRAMU();
+
+    TOKEN_SCOREBOARD tokStoreDataValid <- mkLiveTokenLUTRAMU();
     TOKEN_SCOREBOARD tokIsEmulated <- mkLiveTokenLUTRAMU();
 
     LUTRAM#(TOKEN_INDEX, MEM_OFFSET)          memopOffset <- mkLiveTokenLUTRAMU();
@@ -407,6 +411,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         finishedSTO.upd(new_tok, False);
         startedCOM.upd(new_tok, False);
 
+        tokStoreDataValid.upd(new_tok, False);
         tokIsEmulated.upd(new_tok, False);
 
         faultIllegalInstr.upd(new_tok, False);
@@ -628,6 +633,19 @@ module [Connected_Module] mkFUNCP_Scoreboard
     
     endmethod
 
+
+    // setStoreDataValid
+
+    // When:   Any time.
+    // Effect: Flag token's store data as valid.  Store data is recorded
+    //         separately in BRAM.
+
+    method Action setStoreDataValid(TOKEN_INDEX t);
+    
+        tokStoreDataValid.upd(t, True);
+    
+    endmethod
+
     // setEmulation
 
     // When:   Any time.
@@ -793,6 +811,17 @@ module [Connected_Module] mkFUNCP_Scoreboard
     method ISA_MEMOP_TYPE getStoreType(TOKEN_INDEX t);
     
         return storeType.sub(t);
+    
+    endmethod
+
+    // isStoreDataValid
+    
+    // When:   Any time.
+    // Effect: Accessor method
+
+    method Bool isStoreDataValid(TOKEN_INDEX t);
+    
+        return tokStoreDataValid.sub(t);
     
     endmethod
 

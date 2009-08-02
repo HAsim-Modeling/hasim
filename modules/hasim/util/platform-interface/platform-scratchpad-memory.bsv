@@ -530,10 +530,14 @@ module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, Inte
     RL_CACHE_STATS stats <- mkNullRLCacheStats();
 
     // Private cache
-    RL_DM_CACHE_SIZED#(Bit#(t_MEM_ADDRESS_SZ),
+    NumTypeParam#(n_CACHE_ENTRIES) num_cache_entries = ?;
+    RL_DM_CACHE#(Bit#(t_MEM_ADDRESS_SZ),
                        SCRATCHPAD_MEM_VALUE,
-                       t_REF_INFO,
-                       n_CACHE_ENTRIES) cache <- mkCacheDirectMapped(sourceData, False, stats, debugLog);
+                       t_REF_INFO) cache <- mkCacheDirectMapped(sourceData,
+                                                                num_cache_entries,
+                                                                False,
+                                                                stats,
+                                                                debugLog);
 
     // Merge FIFOF combines read and write requests in temporal order,
     // with reads from the same cycle as a write going first.  Each read port

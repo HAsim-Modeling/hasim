@@ -431,31 +431,27 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         // Get the destination response
         let dsts <- tokDsts.readRsp();
-        
+
         // The first dest should always be valid (it may not be architecturally visible)
         let dst_pr = validValue(dsts.pr[0]);
 
         // Perform the first writeback, if any.
         case (wbvals[0]) matches
             tagged Invalid:  noAction; // Not writing back, either a Load, or no dests.
+
             tagged Valid .v: 
             begin // Do the first writeback.
-                
                 if (tokScoreboard.isStore(tok.index))
                 begin
-                
                     // Stores write dest0 insto the token table instead of the PRF.
                     tokStoreValue.write(tok.index, v);
-                
+                    tokScoreboard.setStoreDataValid(tok.index);
                 end
                 else  // A normal PRF writeback
                 begin
-            
                     prf.write(dst_pr, v);
                     debugLog.record(fshow(tok.index) + $format(": GetResults4: Writing (PR%0d <= 0x%x)", dst_pr, v));
-                
                 end
-
             end
         endcase
         

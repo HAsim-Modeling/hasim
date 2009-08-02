@@ -47,15 +47,11 @@ import SpecialFIFOs::*;
 
 //
 // Interface provided to clients of the central cache is identical to the
-// standard direct mapped cache interface.  The n_ENTRIES parameter is the number
-// of entries in a PRIVATE cache that will be allocated automatically in
-// front of the central cache.  Setting n_ENTRIES to 0 instantiates a direct
-// connection between the client and the central cache with no intermediate
-// private cache.
+// standard direct mapped cache interface.
 //
 
-typedef RL_DM_CACHE_SIZED#(t_ADDR, t_DATA, t_REF_INFO, n_ENTRIES)
-    CENTRAL_CACHE_CLIENT#(type t_ADDR, type t_DATA, type t_REF_INFO, numeric type n_ENTRIES);
+typedef RL_DM_CACHE#(t_ADDR, t_DATA, t_REF_INFO)
+    CENTRAL_CACHE_CLIENT#(type t_ADDR, type t_DATA, type t_REF_INFO);
 
 
 //
@@ -163,12 +159,18 @@ function String backingPortName(Integer n) = "vdev_cache_backing_" + integerToSt
 //     The client interface uses only word-level addressing.  Methods that
 //     refer to entire lines expect line-aligned addresses.
 //
+//     The n_ENTRIES parameter is the number of entries in a PRIVATE cache that
+//     will be allocated automatically in front of the central cache.  Setting
+//     n_ENTRIES to 0 instantiates a direct connection between the client and
+//     the central cache with no intermediate private cache.
+//
 module [HASIM_MODULE] mkCentralCacheClient#(Integer cacheID,
+                                            NumTypeParam#(n_ENTRIES) nEntries,
                                             Bool hashLocalCacheAddrs,
                                             CENTRAL_CACHE_CLIENT_BACKING#(t_ADDR, t_DATA, t_REF_INFO) backing,
                                             RL_CACHE_STATS stats)
     // interface:
-    (CENTRAL_CACHE_CLIENT#(t_ADDR, t_DATA, t_REF_INFO, n_ENTRIES))
+    (CENTRAL_CACHE_CLIENT#(t_ADDR, t_DATA, t_REF_INFO))
     provisos (Bits#(t_ADDR, t_ADDR_SZ),
               Bits#(t_DATA, t_DATA_SZ),
               Bits#(t_REF_INFO, t_REF_INFO_SZ),
@@ -196,12 +198,16 @@ module [HASIM_MODULE] mkCentralCacheClient#(Integer cacheID,
     RL_DM_CACHE_SOURCE_DATA#(t_ADDR, t_DATA, t_REF_INFO) centralCacheConnection <-
         mkCentralCacheConnection(cacheID, backing, debugLog);
 
-    RL_DM_CACHE_SIZED#(t_ADDR, t_DATA, t_REF_INFO, n_ENTRIES) pvtCache;
+    RL_DM_CACHE#(t_ADDR, t_DATA, t_REF_INFO) pvtCache;
     if (valueOf(n_ENTRIES) == 0)
         pvtCache <- mkNullCacheDirectMapped(centralCacheConnection, debugLog);
     else
-        pvtCache <- mkCacheDirectMapped(centralCacheConnection, hashLocalCacheAddrs, stats, debugLog);
-    
+        pvtCache <- mkCacheDirectMapped(centralCacheConnection,
+                                        nEntries,
+                                        hashLocalCacheAddrs,
+                                        stats,
+                                        debugLog);
+
     return pvtCache;
 endmodule
 

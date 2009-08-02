@@ -19294,3 +19294,29 @@ Directory modules/system/test/mem_test
 
 - Make platform interface compile when no central cache clients exist.
 - Update memory test to new system spec.
+
+----------
+mcadler     Date: Sun Aug  2 11:02:40 EDT 2009  CSN: CSN-hasim-657
+                  Sun Aug  2 15:02:40 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          656 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getResults.bsv Locally Modified          656 
+ regmgr-macro-pipe-doStores.bsv Locally Modified          656 
+ regmgr-macro.bsv          Locally Modified          656 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          656 
+
+Directory modules/hasim/util/platform-interface
+ platform-central-cache.bsv Locally Modified          656 
+ platform-scratchpad-memory.bsv Locally Modified          656 
+
+- Add a store valid bit to tokens.  This will become useful once the ISA
+  pipeline's result response is decoupled from the getResults pipeline.
+  doStores now spins, waiting for the store data to be valid.  No changes
+  are visible in the timing model.
+- New interface for passing cache size to direct mapped caches.

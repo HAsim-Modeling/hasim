@@ -247,7 +247,6 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
         tokDsts.write(initTokIdx, REGMGR_DST_REGS { ar: replicate(tagged Invalid), pr: replicate(tagged Invalid) });
         tokWriters.write(initTokIdx, replicate(tagged Invalid));
         tokMemAddr.write(initTokIdx, 0);
-        tokStoreValue.write(initTokIdx, 0);
         tokPhysicalMemAddrs.write(initTokIdx, tagged ONE 0);
 
         // Done?

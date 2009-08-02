@@ -162,7 +162,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     rule doStores1 (state.readyToBegin(tokContextId(storesSQ.first().token)));
 
         let req = storesSQ.first();
-        storesSQ.deq();
         let tok = req.token;
 
         if (tokScoreboard.emulateInstruction(tok.index) ||
@@ -171,13 +170,23 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
             // Log it.
             debugLog.record(fshow(tok.index) + $format(": DoStores: Ignoring junk token or emulated instruction."));
 
+            storesSQ.deq();
+
             // Respond to the timing model. End of macro-operation.
             linkDoStores.makeResp(initFuncpRspDoStores(tok));
+        end
+        else if (! tokScoreboard.isStoreDataValid(tok.index))
+        begin
+            // Store data isn't valid yet -- still waiting for data path.
+            // Leave storesSQ at the head of the FIFO and spin.
+            noAction;
         end
         else // Everything's fine.
         begin
             // Log it.
             debugLog.record(fshow(tok.index) + $format(": DoStores: Begin.")); 
+
+            storesSQ.deq();
 
             // Update the scoreboard.
             tokScoreboard.storeStart(tok.index);

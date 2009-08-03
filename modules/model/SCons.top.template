@@ -19,17 +19,18 @@ defs = {
     'CONNECTION_SCRIPT'  : 'hasim-connect',
     'COST_TABLE'         : '@COST_TABLE@',
     'FPGA_PART'          : '@FPGA_PART@',
+    'GIVEN_BMMS'         : '@GIVEN_BMMS@', 
+    'GIVEN_ELFS'         : '@GIVEN_ELFS@',
     'GIVEN_CS'           : '@GIVEN_CS@',
     'GIVEN_VS'           : '@GIVEN_VS@',
     'GIVEN_UCFS'         : '@GIVEN_UCFS@',
-    'GIVEN_BMMS'         : '@GIVEN_BMMS@', 
-    'GIVEN_ELFS'         : '@GIVEN_ELFS@',
     'GEN_BAS'            : '@GEN_BAS@',
     'GEN_CXXS'           : 'schedule.cxx @GEN_CXXS@',
     'GEN_HS'             : 'schedule.h @GEN_HS@',
     'LDFLAGS'            : '-L /usr/lib64/curses -L /usr/lib/curses',
-    'MAKE_ALL_TARGET'    : '@MAKE_ALL_TARGET@',
     'M5_BUILD_DIR'       : '@M5_BUILD_DIR@',    # Defined if m5 simulator is present
+    'MAKE_ALL_TARGET'    : '@MAKE_ALL_TARGET@',
+    'MAP_OPTIONS'        : '@MAP_OPTIONS@',
     'WORKSPACE_ROOT'     : '@MODEL_ROOT@',
     'ROOT_DIR_MODEL'     : '@ROOT_DIR_MODEL@',
     'ROOT_DIR_HW'        : '@ROOT_DIR_HW@',
@@ -43,7 +44,6 @@ defs = {
     'TMP_XILINX_DIR'     : '@TMP_XILINX_DIR@',
     'WORKSPACE_ROOT'     : '@WORKSPACE_ROOT@',
     'XST_FILE'           : '@XST_FILE@',
-    'MAP_OPTIONS'        : '@MAP_OPTIONS@',
 }
 
 # Propagate environment from external state
@@ -417,7 +417,7 @@ xilinx_map = env.Command(
       Delete(XILINX_APM_NAME + '_map.ncd'),
       Delete(XILINX_APM_NAME + '_map.ngm'),
       Delete(XILINX_APM_NAME + '_map.psr'),
-      'map -cm balanced -timing -t ' + env['DEFS']['COST_TABLE'] +  env['DEFS']['MAP_OPTIONS'] + ' -logic_opt on -ol high -register_duplication -retiming on -pr b -c 100 -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf' ])
+      'map -cm balanced -timing -t ' + env['DEFS']['COST_TABLE'] + ' ' +  env['DEFS']['MAP_OPTIONS'] + ' -logic_opt on -ol high -register_duplication -retiming on -pr b -c 100 -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf' ])
 
 Clean(xilinx_map, TMP_XILINX_DIR + '/xilinx_device_details.xml')
 

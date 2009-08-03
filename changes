@@ -19335,3 +19335,18 @@ Directory modules/model
 
 
 Added support to bmm and elf
+
+----------
+mcadler     Date: Mon Aug  3 07:47:29 EDT 2009  CSN: CSN-hasim-659
+                  Mon Aug  3 11:47:29 UTC 2009
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          658 
+
+Directory modules/hasim/util/platform-interface
+ platform-scratchpad-multi-chached-memory.bsv Locally Removed           658 
+
+- Fix alphabetical sorting of SCons options
+- Don't require spaces around MAP_OPTIONS value
+- Remove scratchpad file added due to typo

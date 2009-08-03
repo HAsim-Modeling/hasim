@@ -96,3 +96,43 @@ module [m] mkMultiplexedLUTRAM#(function m#(LUTRAM#(t_MERGED_IDX, t_DATA)) f)
     end
     return v;
 endmodule
+
+
+// mkMultiplexedLUTRAM --
+//     Special case: merged LUTRAM where the LUTRAM's initial value is a function
+//     of its index. We do this by transforming the initialization function.
+//
+
+module mkMultiplexedLUTRAMInitializedWith#(function t_DATA getInitVal(t_INDEX i))
+    // Interface:
+    (MULTIPLEXED#(ni, LUTRAM#(t_INDEX, t_DATA)))
+    provisos (Bits#(t_DATA, t_DATA_SZ),
+              Alias#(Tuple2#(INSTANCE_ID#(ni), t_INDEX), t_MERGED_IDX),
+              Bounded#(t_MERGED_IDX),
+              Bits#(t_MERGED_IDX, t_MERGED_IDX_SZ));
+
+    // Create a new initialization function from the given function.
+    // We do this just be dropping the extra indexing in the tuple,
+    // then feeding this into the original function.
+    function t_DATA new_getInitVal(Tuple2#(INSTANCE_ID#(ni), t_INDEX) merged_idx);
+        match {.iid, .idx} = merged_idx;
+        return getInitVal(idx);
+    endfunction
+
+    // Allocate a single, merged, LUTRAM for all instances.
+    LUTRAM#(t_MERGED_IDX, t_DATA) mergedData <- mkLUTRAMWith(new_getInitVal);
+
+    MULTIPLEXED#(ni, LUTRAM#(t_INDEX, t_DATA)) v = newVector();
+    for (Integer x = 0; x < valueOf(ni); x = x + 1)
+    begin
+        v[x] =
+           (interface LUTRAM#(t_INDEX, t_DATA);
+                method Action upd(t_INDEX addr, t_DATA val) =
+                    mergedData.upd(tuple2(fromInteger(x), addr), val);
+            
+                method t_DATA sub(t_INDEX addr) =
+                    mergedData.sub(tuple2(fromInteger(x), addr));
+            endinterface);
+    end
+    return v;
+endmodule

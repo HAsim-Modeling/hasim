@@ -60,3 +60,10 @@ Packagehint=hasim
 
 [Hasim Platform Interface/Params]
 SCRATCHPAD_STD_PVT_CACHE_ENTRIES=8192
+
+[Cache Modeling Algorithms]
+File=modules/hasim/timing-models/caches/cache-algorithms/cache-algorithms.awb
+Packagehint=hasim-models
+
+[HAsim Modeling Library/Requires]
+hasim_cache_algorithms=Cache Modeling Algorithms

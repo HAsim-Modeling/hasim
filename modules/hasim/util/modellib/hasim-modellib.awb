@@ -11,6 +11,8 @@
 # %desc HAsim Modeling Library
 # %provides hasim_modellib
 #
+# %requires hasim_cache_algorithms
+#
 # %attributes hasim
 #
 # %public events.bsv commands.bsv a-ports.bsv stall-ports.bsv credit-ports.bsv multiplexed-memories.bsv

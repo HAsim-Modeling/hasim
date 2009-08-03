@@ -34,6 +34,7 @@ typedef Bit#(`FUNCP_ISA_V_ADDR_SIZE) FUNCP_VADDR;
 //
 // Physical address size.
 //
+typedef `FUNCP_ISA_P_ADDR_SIZE FUNCP_PADDR_SIZE;
 typedef Bit#(`FUNCP_ISA_P_ADDR_SIZE) FUNCP_PADDR;
 
 //

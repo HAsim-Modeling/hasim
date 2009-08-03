@@ -31,6 +31,7 @@
 // The address space the memory virtual device uses. A parameter by default.
 //
 typedef FUNCP_PADDR MEM_ADDRESS;
+typedef FUNCP_PADDR_SIZE MEM_ADDRESS_SIZE;
 
 
 //

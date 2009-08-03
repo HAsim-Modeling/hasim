@@ -19350,3 +19350,35 @@ Directory modules/hasim/util/platform-interface
 - Fix alphabetical sorting of SCons options
 - Don't require spaces around MAP_OPTIONS value
 - Remove scratchpad file added due to typo
+
+----------
+mpellaue    Date: Mon Aug  3 17:29:48 EDT 2009  CSN: CSN-hasim-660
+                  Mon Aug  3 21:29:48 UTC 2009
+
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Modified          659 
+
+Directory modules/hasim/functional-partition/memory-state/base-types
+ memstate-base-types.bsv   Locally Modified          659 
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.bsv      Locally Modified          659 
+
+Directory modules/hasim/util/modellib
+ hasim-modellib.awb        Locally Modified          659 
+
+Directory modules/hasim/util/common
+ multiplexed.bsv           Locally Modified          659 
+
+
+* Minor changes to memstate base types.
+* Added multiplexed LUTRAM initialized with a function.
+* Modellib now takes a cache_algorithm library. This library is currently
+  in hasim_models. This may introduce a dependency on hasim-models for designs
+  which use the hasim standard controller, since it uses modellib. The correct
+  long-term solution is probably to separate out the modeling functionality and 
+  move it all into hasim-models.
+
+Michael P.
+

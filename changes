@@ -19514,3 +19514,25 @@ accessor returns a list.
 Added null.cfg as the default benchmark to many .apm files.
 
 Added an example note to the hello demo system module.
+
+----------
+mcadler     Date: Tue Aug  4 15:28:20 EDT 2009  CSN: CSN-hasim-664
+                  Tue Aug  4 19:28:20 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/connections
+ regstate-connect-memory.bsv Locally Modified          663 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-reg-map-table.bsv Locally Modified          663 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-state.bsv    Locally Modified          663 
+ regmgr-macro.awb          Locally Modified          663 
+ regmgr-macro-pipe-rewind.bsv Locally Added               0 
+ regmgr-macro-pipe-exception.bsv Locally Modified          663 
+ regmgr-macro.bsv          Locally Modified          663 
+
+- Exception and rewind pipelines are no longer intertwined.  Separate them
+  into a pair of files.
+- Fully pipeline exception path.  No context locks are required any more.

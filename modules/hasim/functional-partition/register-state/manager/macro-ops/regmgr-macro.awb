@@ -24,6 +24,7 @@
 %public regmgr-macro-pipe-commitResults.bsv
 %public regmgr-macro-pipe-commitStores.bsv
 %public regmgr-macro-pipe-exception.bsv
+%public regmgr-macro-pipe-rewind.bsv
 
 %public regmgr-macro.dic
 

@@ -55,7 +55,7 @@ interface REGSTATE_MEMORY_CONNECTION;
     interface REGSTATE_MEMORY_QUEUE doStoresQueue;
     interface REGSTATE_MEMORY_QUEUE commitResultsQueue;
     interface REGSTATE_MEMORY_QUEUE commitStoresQueue;
-    interface REGSTATE_MEMORY_QUEUE exceptionQueue;
+    interface REGSTATE_MEMORY_QUEUE rewindQueue;
 endinterface
 
 
@@ -93,12 +93,12 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
     FIFO#(MEMSTATE_REQ) mqDoStores <- mkFIFO();
     FIFO#(MEMSTATE_REQ) mqCommitResults <- mkFIFO();
     FIFO#(MEMSTATE_REQ) mqCommitStores <- mkFIFO();
-    FIFO#(MEMSTATE_REQ) mqException <- mkFIFO();
+    FIFO#(MEMSTATE_REQ) mqRewind <- mkFIFO();
 
-    // Response queues for commit and exceptions
+    // Response queues for commit and rewinds
     FIFOF#(Bool) respCommitResults <- mkFIFOF();
     FIFOF#(Bool) respCommitStores <- mkFIFOF();
-    FIFOF#(Bool) respException <- mkFIFOF();
+    FIFOF#(Bool) respRewind <- mkFIFOF();
 
     FIFO#(FUNCP_MEMRESP_SCOREBOARD_ID) releaseStoresQ <- mkFIFO();
 
@@ -129,7 +129,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
     //
     
     //
-    // The memory subsystem makes no response for exception and commit
+    // The memory subsystem makes no response for rewind and commit
     // requests.  The code here generates a response when the request
     // is processed to indicate the request now being ordered in the memory
     // subsystem.  This guarantees cross-cycle order is maintained.
@@ -149,11 +149,11 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
         debugLog.record($format("Commit Store REQ"));
     endrule
     
-    rule handleReqException (True);
-        linkToMem.makeReq(mqException.first());
-        mqException.deq();
-        respException.enq(?);
-        debugLog.record($format("Exception REQ"));
+    rule handleReqRewind (True);
+        linkToMem.makeReq(mqRewind.first());
+        mqRewind.deq();
+        respRewind.enq(?);
+        debugLog.record($format("Rewind REQ"));
     endrule
 
 
@@ -201,7 +201,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
         debugLog.record($format("Do Loads REQ, id=%0d", resp_id));
     endrule
 
-    (* descending_urgency = "handleReqException, handleReqCommitStores, handleReqCommitResults, handleReqStore, handleReqLoad, handleReqInstruction" *)
+    (* descending_urgency = "handleReqRewind, handleReqCommitStores, handleReqCommitResults, handleReqStore, handleReqLoad, handleReqInstruction" *)
     rule handleReqInstruction (True);
         let req = mqInstruction.first();
         mqInstruction.deq();
@@ -309,7 +309,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
 
 
     //
-    // Commits for stores and the exception queue only need to know that
+    // Commits for stores and the rewind queue only need to know that
     // their requests have reached memory.  The response is generated inside
     // this module.
     //
@@ -344,18 +344,18 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
         endmethod
     endinterface
 
-    interface REGSTATE_MEMORY_QUEUE exceptionQueue;
+    interface REGSTATE_MEMORY_QUEUE rewindQueue;
         method Action makeReq(MEMSTATE_REQ req);
-            mqException.enq(req);
+            mqRewind.enq(req);
         endmethod
 
-        method MEM_VALUE getResp() if (respException.notEmpty());
+        method MEM_VALUE getResp() if (respRewind.notEmpty());
             return ?;
         endmethod
 
         method Action deq();
-            respException.deq();
-            debugLog.record($format("Exception DEQ"));
+            respRewind.deq();
+            debugLog.record($format("Rewind DEQ"));
         endmethod
     endinterface
 

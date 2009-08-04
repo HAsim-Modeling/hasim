@@ -22,7 +22,7 @@
 // Now that there are separate state machines for each pipeline the code
 // here is responsible for global control:  blocking individual contexts
 // from entering the functional pipelines during instruction emulation and
-// exception handling.
+// rewind handling.
 //
 
 // REGMGR_STATE
@@ -46,8 +46,8 @@ interface REGMGR_STATE;
     method Action setEmulate(CONTEXT_ID ctxId);
     method Action clearEmulate();
 
-    method Action setException(CONTEXT_ID ctxId);
-    method Action clearException();
+    method Action setRewind(CONTEXT_ID ctxId);
+    method Action clearRewind();
 
     // Ready to start a new operation?
     method Bool readyToBegin(CONTEXT_ID ctxId);
@@ -66,7 +66,7 @@ module mkRegmanagerState#(REGMGR_STATE_ENUM init)
     Reg#(Bit#(1)) bscSchedHint <- mkReg(0);
 
     Reg#(Maybe#(CONTEXT_ID)) emulateCtxId <- mkReg(tagged Invalid);
-    Reg#(Maybe#(CONTEXT_ID)) exceptionCtxId <- mkReg(tagged Invalid);
+    Reg#(Maybe#(CONTEXT_ID)) rewindCtxId <- mkReg(tagged Invalid);
 
 
     method REGMGR_STATE_ENUM getState();
@@ -92,23 +92,23 @@ module mkRegmanagerState#(REGMGR_STATE_ENUM init)
     endmethod
 
 
-    method Action setException(CONTEXT_ID ctxId);
-        exceptionCtxId <= tagged Valid ctxId;
+    method Action setRewind(CONTEXT_ID ctxId);
+        rewindCtxId <= tagged Valid ctxId;
     endmethod
 
-    method Action clearException();
-        exceptionCtxId <= tagged Invalid;
+    method Action clearRewind();
+        rewindCtxId <= tagged Invalid;
     endmethod
 
 
     method Bool readyToBegin(CONTEXT_ID ctxId);
         //
         // Ready to begin if state is RSM_Running and the context is not either
-        // blocked for emulation or an exception.
+        // blocked for emulation or a rewind.
         //
         return (state == RSM_Running) &&
                (! isValid(emulateCtxId) || (validValue(emulateCtxId) != ctxId)) &&
-               (! isValid(exceptionCtxId) || (validValue(exceptionCtxId) != ctxId));
+               (! isValid(rewindCtxId) || (validValue(rewindCtxId) != ctxId));
     endmethod
 
     method Bool readyToContinue();

@@ -121,10 +121,10 @@ interface REGSTATE_REG_MAPPING_COMMITRESULTS;
 endinterface
 
 //
-// REGSTATE_REG_MAPPING_EXCEPTION --
-//   Exception pipeline interface.
+// REGSTATE_REG_MAPPING_REWIND --
+//   Rewind pipeline interface.
 //
-interface REGSTATE_REG_MAPPING_EXCEPTION;
+interface REGSTATE_REG_MAPPING_REWIND;
     method Action readRewindReq(TOKEN_INDEX tokIdx);
     method ActionValue#(Maybe#(REGSTATE_REWIND_INFO)) readRewindRsp();
 
@@ -136,7 +136,7 @@ interface REGSTATE_REG_MAPPING;
     interface REGSTATE_REG_MAPPING_GETDEPENDENCIES getDependencies;
     interface REGSTATE_REG_MAPPING_GETRESULTS      getResults;
     interface REGSTATE_REG_MAPPING_COMMITRESULTS   commitResults;
-    interface REGSTATE_REG_MAPPING_EXCEPTION       exceptionQueue;
+    interface REGSTATE_REG_MAPPING_REWIND          rewindQueue;
 endinterface
 
 
@@ -153,7 +153,7 @@ endinterface
 typedef enum
 {
     REGSTATE_MAPT_DECODE,
-    REGSTATE_MAPT_EXCEPTION,
+    REGSTATE_MAPT_REWIND,
     REGSTATE_MAPT_READMAP
 }
 MAPTABLE_CONSUMER
@@ -165,7 +165,7 @@ MAPTABLE_CONSUMER
 //
 `define REGSTATE_REWR_GETRESULTS 0 
 `define REGSTATE_REWR_COMMITRESULTS 1
-`define REGSTATE_REWR_EXCEPTION 2
+`define REGSTATE_REWR_REWIND 2
 
 
 //
@@ -186,8 +186,7 @@ REGSTATE_MAPTABLE_IDX
 //   The busy vector tracks active map table read requests.  Only one
 //   access may be in flight for a given context, though multiple contexts
 //   may be in flight.  Only one may be in flight for a context because
-//   exception (rewind) requests must be given priority over other queued
-//   requests.
+//   rewind requests must be given priority over other queued requests.
 //
 // ========================================================================
 
@@ -289,7 +288,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     FIFO#(MAPTABLE_CONSUMER) mapTableConsumerQ <- mkFIFO();
     
     //
-    // Incoming request queues for decode, read and exception queues.
+    // Incoming request queues for decode, read and rewind queues.
     //
     FIFO#(Tuple3#(TOKEN,
                   Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
@@ -321,7 +320,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     FIFO#(Tuple2#(CONTEXT_ID, ISA_REG_INDEX)) getResultsReqInQ <- mkFIFO();
     FIFO#(FUNCP_PHYSICAL_REG_INDEX) readMapRspQ <- mkBypassFIFO();
 
-    // Exception register updates.  Map table has only one write port so multiple
+    // Rewind register updates.  Map table has only one write port so multiple
     // register updates go into a merge FIFO and are handled one at a time.
     MERGE_FIFOF#(ISA_MAX_DSTS, Tuple2#(ISA_REG_INDEX, FUNCP_PHYSICAL_REG_INDEX)) exceptUpdateQ <- mkMergeFIFOF();
     FIFO#(CONTEXT_ID) exceptInfoQ <- mkFIFO();
@@ -329,7 +328,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     // Incoming token rewind info requests
     FIFOF#(TOKEN_INDEX) rewGetResultsReadInQ <- mkFIFOF();
     FIFOF#(TOKEN) rewCommitReadInQ <- mkFIFOF();
-    FIFOF#(TOKEN_INDEX) rewExceptionReadInQ <- mkFIFOF();
+    FIFOF#(TOKEN_INDEX) rewReadInQ <- mkFIFOF();
 
     // Outgoing queues
     FIFO#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) mapDecodeOutQ <- mkFIFO();
@@ -414,7 +413,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
     //
     // newMapTableReq_EXC --
-    //     Exception handling (unwind) flow.  Update register mapping with
+    //     Rewind handling flow.  Update register mapping with
     //     the mapping that preceded the instruction.
     //
     (* descending_urgency = "newMapTableReq_EXC, newMapTableReq_READ, newMapTableReq_DEC" *)
@@ -618,17 +617,17 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
     // ====================================================================
     //
-    //   Exception processing
+    //   Rewind processing
     //
     // ====================================================================
 
     //
-    // doExceptionUpdates --
-    //   Update map table during exception rewind.
+    // doRewindUpdates --
+    //   Update map table during rewind.
     //
-    (* descending_urgency = "doExceptionUpdates, doReadMap, doMapDecodeWithUpdate, doMapDecodeNoUpdate" *)
+    (* descending_urgency = "doRewindUpdates, doReadMap, doMapDecodeWithUpdate, doMapDecodeNoUpdate" *)
     (* conservative_implicit_conditions *)
-    rule doExceptionUpdates (True);
+    rule doRewindUpdates (True);
         let ctx_id = exceptInfoQ.first();
 
         // Update one register mapping
@@ -696,12 +695,12 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
             debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": Request REWIND info for COMMIT"));
         end
-        else if (rewExceptionReadInQ.notEmpty())
+        else if (rewReadInQ.notEmpty())
         begin
-            let tok_idx = rewExceptionReadInQ.first();
-            rewExceptionReadInQ.deq();
+            let tok_idx = rewReadInQ.first();
+            rewReadInQ.deq();
 
-            rewindInfo.readPorts[`REGSTATE_REWR_EXCEPTION].readReq(tok_idx);
+            rewindInfo.readPorts[`REGSTATE_REWR_REWIND].readReq(tok_idx);
 
             debugLog.record($format("MAP: ") + fshow(tok_idx) + $format(": Request REWIND info for EXCEPT"));
         end
@@ -793,14 +792,14 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     endinterface
 
 
-    interface REGSTATE_REG_MAPPING_EXCEPTION exceptionQueue;
+    interface REGSTATE_REG_MAPPING_REWIND rewindQueue;
 
         method Action readRewindReq(TOKEN_INDEX tokIdx);
-            rewExceptionReadInQ.enq(tokIdx);
+            rewReadInQ.enq(tokIdx);
         endmethod
 
         method ActionValue#(Maybe#(REGSTATE_REWIND_INFO)) readRewindRsp();
-            let r <- rewindInfo.readPorts[`REGSTATE_REWR_EXCEPTION].readRsp();
+            let r <- rewindInfo.readPorts[`REGSTATE_REWR_REWIND].readRsp();
             return r;
         endmethod
 

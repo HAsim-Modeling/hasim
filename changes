@@ -19408,3 +19408,15 @@ The end of the getResults pipeline is now much simpler since it doesn't have
 to cope with multiple register write requests all arriving in the same cycle.
 The bus width of the soft connection is now a single register instead of the
 maximum number of instruction destinations.
+
+----------
+keflemin    Date: Tue Aug  4 11:26:19 EDT 2009  CSN: CSN-hasim-662
+                  Tue Aug  4 15:26:19 UTC 2009
+
+
+Directory modules/hasim/util/platform-interface
+ platform-scratchpad-multi-cached-memory.bsv Locally Modified          661 
+
+Support for mem coalescing
+
+fixed hasim interface

@@ -430,8 +430,7 @@ module [HASIM_MODULE] mkUnmarshalledMultiCachedScratchpad#(
               Alias#(Tuple2#(Bit#(n_SAFE_READERS_SZ), t_REORDER_ID), t_REF_INFO),
 
               // Requested address type must be smaller than scratchpad maximum.
-              Add#(a__, t_MEM_ADDRESS_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ)/*,
-              IsModule#(m,c)*/);
+              Add#(a__, t_MEM_ADDRESS_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
     
 
     // Connection between private cache and the scratchpad virtual device
@@ -483,7 +482,7 @@ module [HASIM_MODULE] mkUnmarshalledMultiCachedScratchpad#(
         initialized <= True;
     endrule
 
-    rule doWrite;
+    rule doWrite(initialized);
         writeDataQ.deq;
         t_REF_INFO refInfo = tuple2(0,0); // dummy value
         // Send Write to all caches (keep them all coherent for now)

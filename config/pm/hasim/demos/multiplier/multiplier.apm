@@ -5,6 +5,7 @@ Description=Multiplier FPGA Demo
 File=multiplier
 Version=2.1
 Name=Multiplier Model
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

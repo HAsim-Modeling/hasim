@@ -5,6 +5,7 @@ Description=Device tester using hardware-only streams
 File=devtest_hwonly_vexe
 Version=2.1
 Name=Device Tester - vexe
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

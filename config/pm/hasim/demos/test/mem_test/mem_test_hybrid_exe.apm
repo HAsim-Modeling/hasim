@@ -5,6 +5,7 @@ Description=Hybrid Virtual Memory Test Model with Private Caches
 File=mem_test_hybrid_exe
 Version=2.1
 Name=Hybrid Virtual Memory Test Model with Private Caches
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

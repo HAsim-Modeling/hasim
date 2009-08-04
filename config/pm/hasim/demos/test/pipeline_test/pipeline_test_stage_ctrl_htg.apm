@@ -5,6 +5,7 @@ Description=Experiment with resource consumtion of varying Bluespec pipeline cod
 File=pipeline_test_stage_ctrl_htg
 Version=2.1
 Name=HAsim Pipeline Resource Tests
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

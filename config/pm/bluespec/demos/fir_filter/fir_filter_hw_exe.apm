@@ -5,6 +5,7 @@ Description=FIR Filter HW Only Bluesim
 File=fir_filter_hw_exe
 Version=2.1
 Name=FIR Filter HW Only Bluesim
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

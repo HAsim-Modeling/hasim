@@ -5,6 +5,7 @@ Description=Hybrid Interconnect Test Model
 File=interconnect_test_hybrid_exe
 Version=2.1
 Name=Hybrid Interconnect Test Model
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

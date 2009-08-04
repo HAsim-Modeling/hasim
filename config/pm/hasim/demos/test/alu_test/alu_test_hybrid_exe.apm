@@ -5,6 +5,7 @@ Description=Hybrid ALU Test Model
 File=alu_test_hybrid_exe
 Version=2.1
 Name=Hybrid ALU Test Model
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

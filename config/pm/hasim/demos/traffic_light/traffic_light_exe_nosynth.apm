@@ -5,6 +5,7 @@ Description=Traffic Light from Bluespec Tutorial for simulation w.o synthesis bo
 File=traffic_light_exe_nosynth
 Version=2.1
 Name=Traffic Light Model - Exe
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

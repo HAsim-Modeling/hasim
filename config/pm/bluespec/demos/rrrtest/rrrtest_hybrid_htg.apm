@@ -5,6 +5,7 @@ Description=RRR Test and Benchmarking Program for HTG v5 PCIe
 File=rrrtest_hybrid_htg
 Version=2.1
 Name=RRR Test and Benchmarking Program for HTG v5 PCIe
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

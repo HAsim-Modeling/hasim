@@ -8,6 +8,7 @@ SaveParameters=0
 Description=Switch to LED w. adder - xup
 File=adder4x4_xup
 Version=2.1
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Name=Switch to LED w. adder - xup
 Class=Asim::Model

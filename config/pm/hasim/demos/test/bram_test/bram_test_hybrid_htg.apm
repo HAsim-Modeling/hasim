@@ -5,6 +5,7 @@ Description=Hybrid BRAM Test Model for HTG
 File=bram_test_hybrid_htg
 Version=2.1
 Name=Hybrid BRAM Test Model for HTG
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

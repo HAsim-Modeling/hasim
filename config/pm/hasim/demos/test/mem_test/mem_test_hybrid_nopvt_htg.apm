@@ -5,6 +5,7 @@ Description=Hybrid Virtual Memory Test Model without Private Caches for HTG
 File=mem_test_hybrid_nopvt_htg
 Version=2.1
 Name=Hybrid Virtual Memory Test Model without Private Caches for HTG
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

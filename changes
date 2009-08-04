@@ -19420,3 +19420,97 @@ Directory modules/hasim/util/platform-interface
 Support for mem coalescing
 
 fixed hasim interface
+
+----------
+emer        Date: Tue Aug  4 15:05:37 EDT 2009  CSN: CSN-hasim-663
+                  Tue Aug  4 19:05:37 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim
+ Build.pm                  Locally Modified          662 
+
+Directory config/pm/hasim/demos/test/alu_test
+ alu_test_hybrid_htg.apm   Locally Modified          662 
+ alu_test_hybrid_exe.apm   Locally Modified          662 
+
+Directory config/pm/hasim/demos/test/bram_test
+ bram_test_hybrid_htg.apm  Locally Modified          662 
+ bram_test_hybrid_exe.apm  Locally Modified          662 
+
+Directory config/pm/hasim/demos/test/pipeline_test
+ pipeline_test_shared_rule_htg.apm Locally Modified          662 
+ pipeline_test_shared_rule_routed_exe.apm Locally Modified          662 
+ pipeline_test_shared_rule_routed_htg.apm Locally Modified          662 
+ pipeline_test_private_rule_exe.apm Locally Modified          662 
+ pipeline_test_duplicate_modules_exe.apm Locally Modified          662 
+ pipeline_test_private_rule_htg.apm Locally Modified          662 
+ pipeline_test_duplicate_modules_htg.apm Locally Modified          662 
+ pipeline_test_stage_ctrl_unguarded_exe.apm Locally Modified          662 
+ pipeline_test_stage_ctrl_unguarded_htg.apm Locally Modified          662 
+ pipeline_test_stage_ctrl_exe.apm Locally Modified          662 
+ pipeline_test_stage_ctrl_htg.apm Locally Modified          662 
+ pipeline_test_shared_rule_exe.apm Locally Modified          662 
+
+Directory config/pm/hasim/demos/test/interconnect_test
+ interconnect_test_hybrid_exe.apm Locally Modified          662 
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid_nopvt_exe.apm Locally Modified          662 
+ mem_test_hybrid_nopvt_htg.apm Locally Modified          662 
+ mem_test_hybrid_exe.apm   Locally Modified          662 
+ mem_test_hybrid_htg.apm   Locally Modified          662 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          662 
+ traffic_light_htg_v5_pcie_synth.apm Locally Modified          662 
+ traffic_light_xup_synth.apm Locally Modified          662 
+ traffic_light_exe_nosynth.apm Locally Modified          662 
+ traffic_light_exe_synth.apm Locally Modified          662 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          662 
+
+Directory config/pm/hasim/demos/switch_to_led
+ multiplier4x4_exe.apm     Locally Modified          662 
+ echo4x4_xup.apm           Locally Modified          662 
+ adder4x4_xup.apm          Locally Modified          662 
+ square4x4_xup.apm         Locally Modified          662 
+ echo4x4_exe.apm           Locally Modified          662 
+ adder4x4_exe.apm          Locally Modified          662 
+ echo4x4_htg.apm           Locally Modified          662 
+ square4x4_exe.apm         Locally Modified          662 
+ multiplier4x4_xup.apm     Locally Modified          662 
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_exe.apm      Locally Modified          662 
+ hello_hybrid_htg.apm      Locally Modified          662 
+
+Directory config/pm/bluespec/demos/fir_filter
+ fir_filter_hw_exe.apm     Locally Modified          662 
+ fir_filter_sw.apm         Locally Modified          662 
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_exe.apm    Locally Modified          662 
+ rrrtest_hybrid_htg.apm    Locally Modified          662 
+
+Directory config/pm/bluespec/demos/simple
+ multiplier.apm            Locally Modified          662 
+ switch2led.apm            Locally Modified          662 
+ counter.apm               Locally Modified          662 
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hwonly_vexe.apm   Locally Modified          662 
+ devtest_hwonly_xup.apm    Locally Modified          662 
+ devtest_hybrid_exe.apm    Locally Modified          662 
+ devtest_hybrid_htg.apm    Locally Modified          662 
+
+Directory modules/bluespec/system/demos/hello
+ hello.txt                 Locally Added               0 
+ hello.awb                 Locally Modified          662 
+
+Updated hasim-configure to accomodate fact that Asim::Module->scons
+accessor returns a list.
+
+Added null.cfg as the default benchmark to many .apm files.
+
+Added an example note to the hello demo system module.

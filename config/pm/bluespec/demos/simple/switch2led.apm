@@ -5,6 +5,7 @@ Description=Bluespec Switch to Led Demo
 File=switch2led
 Version=2.1
 Name=Bluespec Switch to Led Demo
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

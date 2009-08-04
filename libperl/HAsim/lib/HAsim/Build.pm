@@ -21,16 +21,6 @@ use strict;
 ############################################################
 # scons file functions
 #
-sub get_scons_template($$) {
-    my $module = shift;
-    my $category = shift;
-
-    my $template = $module->scons($category);
-    return undef if (! defined($template));
-
-    return Asim::resolve(HAsim::Util::path_append($module->base_dir(),$template));
-}
-
 sub get_scons_root_template {
     my $model = shift;
     my $category = shift;
@@ -46,6 +36,18 @@ sub get_scons_hw_sub_template {
     my $root = $model->modelroot();
 
     return get_scons_template($root, 'hw');
+}
+
+sub get_scons_template($$) {
+    my $module = shift;
+    my $category = shift;
+
+    my $template; 
+
+    ($template) = $module->scons($category);
+    return undef if (! defined($template));
+
+    return Asim::resolve(HAsim::Util::path_append($module->base_dir(),$template));
 }
 
 ############################################################

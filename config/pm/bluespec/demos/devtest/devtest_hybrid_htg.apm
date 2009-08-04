@@ -5,6 +5,7 @@ Description=Device tester using hybrid streams
 File=devtest_hybrid_htg
 Version=2.1
 Name=Device Tester - Hybrid - HTG
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

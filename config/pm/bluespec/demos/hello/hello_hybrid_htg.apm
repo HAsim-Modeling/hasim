@@ -5,6 +5,7 @@ Description=Hello World Demo using hybrid streams for HTG v5 PCIe
 File=hello_hybrid_htg
 Version=2.1
 Name=Hello World for HTG v5 PCIe
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 

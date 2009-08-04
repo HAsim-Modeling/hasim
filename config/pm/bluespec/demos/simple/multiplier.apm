@@ -1,5 +1,6 @@
 
 [Global]
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Version=2.1
 File=multiplier

@@ -11,6 +11,8 @@
 
 %attributes bluespec
 
+%notes hello.txt 
+
 %sources -t BSV  -v PUBLIC  hello.bsv
 %sources -t H    -v PUBLIC  hello.h
 %sources -t CPP  -v PRIVATE hello.cpp

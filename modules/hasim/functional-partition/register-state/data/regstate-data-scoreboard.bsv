@@ -100,6 +100,9 @@ interface FUNCP_SCOREBOARD;
   method Action setStoreType(TOKEN_INDEX t, ISA_MEMOP_TYPE mt);
   method Action setStoreDataValid(TOKEN_INDEX t);
   
+  // Set when all destinations have been written.
+  method Action setAllDestsValid(TOKEN_INDEX t);
+
   // Set whether or not the instruction should be emulated in software.
   method Action setEmulation(TOKEN_INDEX t, Bool em);
   
@@ -122,6 +125,8 @@ interface FUNCP_SCOREBOARD;
   method Bool isLoad(TOKEN_INDEX t);
   method Bool isStore(TOKEN_INDEX t);
   method Bool isStoreDataValid(TOKEN_INDEX t);
+  method Bool allDestsValid(TOKEN_INDEX t);
+  method Bool destWritesInFlight(TOKEN_INDEX t);
   method Bool emulateInstruction(TOKEN_INDEX t);
   method Maybe#(FUNCP_FAULT) getFault(TOKEN_INDEX t);
   method MEM_OFFSET getMemOpOffset(TOKEN_INDEX t);
@@ -166,6 +171,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
     TOKEN_SCOREBOARD startedCOM    <- mkLiveTokenLUTRAMU();
 
     TOKEN_SCOREBOARD tokStoreDataValid <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD tokAllDestsValid <- mkLiveTokenLUTRAMU();
     TOKEN_SCOREBOARD tokIsEmulated <- mkLiveTokenLUTRAMU();
 
     LUTRAM#(TOKEN_INDEX, MEM_OFFSET)          memopOffset <- mkLiveTokenLUTRAMU();
@@ -359,6 +365,17 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     endfunction
 
+    //
+    // checkDestWritesInFlight --
+    //     Helper function for destWritesInFlight method.  Compute whether
+    //     the token has reached the execute stage without yet updating all
+    //     destinations.
+    //
+    function Bool checkDestWritesInFlight(TOKEN_INDEX t);
+        return startedEXE.sub(t) && ! tokAllDestsValid.sub(t);
+    endfunction
+
+
     // deallocate
 
     // When:   Any time.
@@ -412,6 +429,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         startedCOM.upd(new_tok, False);
 
         tokStoreDataValid.upd(new_tok, False);
+        tokAllDestsValid.upd(new_tok, False);
         tokIsEmulated.upd(new_tok, False);
 
         faultIllegalInstr.upd(new_tok, False);
@@ -646,6 +664,19 @@ module [Connected_Module] mkFUNCP_Scoreboard
     
     endmethod
 
+    // setAllDestsValid
+
+    // When:   Any time.
+    // Effect: Assert that all of the token's destinations (both register and
+    //         store data) have been written AND that no further updates are
+    //         pending.
+
+    method Action setAllDestsValid(TOKEN_INDEX t);
+    
+        tokAllDestsValid.upd(t, True);
+    
+    endmethod
+
     // setEmulation
 
     // When:   Any time.
@@ -825,6 +856,28 @@ module [Connected_Module] mkFUNCP_Scoreboard
     
     endmethod
 
+    // allDestsValid
+    
+    // When:   Any time.
+    // Effect: Accessor method
+
+    method Bool allDestsValid(TOKEN_INDEX t);
+    
+        return tokAllDestsValid.sub(t);
+    
+    endmethod
+
+    // destWritesInFlight
+    
+    // When:   Any time.
+    // Effect: Compute whether token destination writes are in flight
+
+    method Bool destWritesInFlight(TOKEN_INDEX t);
+
+        return checkDestWritesInFlight(t);
+    
+    endmethod
+
     // youngest
 
     // When:   Any time.
@@ -883,11 +936,28 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Bool canStartCommit(TOKEN_INDEX t);
         let bad_mem_op = faultDTrans.sub(t) || faultDTrans2.sub(t);
-        let good_load = finishedLOA.sub(t) || bad_mem_op;
-        let good_store = finishedSTO.sub(t) || bad_mem_op;
-        return  tokIsLoad.sub(t) ? good_load : 
-                tokIsStore.sub(t) ? good_store :
-                finishedEXE.sub(t);
+
+        if (checkDestWritesInFlight(t))
+        begin
+            // Must wait for all destination writes to complete before
+            // deallocating the token.
+            return False;
+        end
+        else if (tokIsLoad.sub(t))
+        begin
+            // Load
+            return finishedLOA.sub(t) || bad_mem_op;
+        end
+        else if (tokIsStore.sub(t))
+        begin
+            // Store
+            return finishedSTO.sub(t) || bad_mem_op;
+        end
+        else
+        begin
+            // Normal op
+            return finishedEXE.sub(t);
+        end
     endmethod
 
 endmodule

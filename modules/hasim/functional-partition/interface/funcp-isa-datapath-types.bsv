@@ -44,19 +44,22 @@ typedef struct
     TOKEN             token;
     ISA_INSTRUCTION   instruction;
     ISA_ADDRESS       instAddress;
+    ISA_INST_DSTS     instDstPhysRegs;    // Destination physical registers
 }
-    FUNCP_ISA_DATAPATH_REQ
-        deriving (Eq, Bits);
+FUNCP_ISA_DATAPATH_REQ
+    deriving (Eq, Bits);
 
-function FUNCP_ISA_DATAPATH_REQ initISADatapathReq(TOKEN tok, ISA_INSTRUCTION i, ISA_ADDRESS pc);
-
+function FUNCP_ISA_DATAPATH_REQ initISADatapathReq(TOKEN tok,
+                                                   ISA_INSTRUCTION i,
+                                                   ISA_ADDRESS pc,
+                                                   ISA_INST_DSTS dstPrs);
     return FUNCP_ISA_DATAPATH_REQ
             {
                 token: tok,
                 instruction: i,
-                instAddress: pc
+                instAddress: pc,
+                instDstPhysRegs: dstPrs
             };
-
 endfunction
 
 
@@ -79,48 +82,6 @@ function FUNCP_ISA_DATAPATH_SRCVALS initISADatapathSrcVals(ISA_SOURCE_VALUES sr)
 endfunction
 
 
-// FUNCP_ISA_DATAPATH_RSP
-
-typedef struct
-{
-    FUNCP_ISA_DATAPATH_EXCEPTIONS except;       // Exceptions
-    FUNCP_ISA_EXECUTION_RESULT    timepResult;  // Result to give to the timing partition.
-    ISA_RESULT_VALUES             writebacks;   // Values to write back to the registers.
-}
-    FUNCP_ISA_DATAPATH_RSP
-        deriving (Eq, Bits);
-
-function FUNCP_ISA_DATAPATH_RSP initISADatapathRsp(FUNCP_ISA_DATAPATH_EXCEPTIONS except,
-                                                   FUNCP_ISA_EXECUTION_RESULT r,
-                                                   ISA_RESULT_VALUES wr);
-    if (except != FUNCP_ISA_EXCEPT_NONE)
-    begin
-        // Claim all valid outputs on exception
-        wr = replicate(tagged Valid 0);
-    end
-
-    return FUNCP_ISA_DATAPATH_RSP
-            {
-                except: except,
-                timepResult: r,
-                writebacks:  wr
-            };
-
-endfunction
-
-function FUNCP_ISA_DATAPATH_RSP initISADatapathRspOp(FUNCP_ISA_EXECUTION_RESULT r,
-                                                     ISA_RESULT_VALUES wr);
-    return initISADatapathRsp(FUNCP_ISA_EXCEPT_NONE, r, wr);
-endfunction
-
-function FUNCP_ISA_DATAPATH_RSP initISADatapathRspException(FUNCP_ISA_DATAPATH_EXCEPTIONS except);
-    return initISADatapathRsp(except, tagged RNop, replicate(tagged Valid 0));
-endfunction
-
-function FUNCP_ISA_DATAPATH_RSP initISADatapathRspNop();
-    return initISADatapathRsp(FUNCP_ISA_EXCEPT_NONE, tagged RNop, replicate(tagged Invalid));
-endfunction
-
 
 // FUNCP_ISA_EXECUTION_RESULT
 
@@ -129,12 +90,74 @@ endfunction
 
 typedef union tagged
 {
-  ISA_ADDRESS RBranchTaken;    //Branch was taken to this Addr
-  ISA_ADDRESS RBranchNotTaken; //Branch was not taken
-  ISA_ADDRESS REffectiveAddr;  //Load/Store effective address for DCache
-  void        RNop;            //ALU op with no interesting data
-  Bool        RTerminate;      //End the run if this instruction commits. Bool is pass/fail.
+    ISA_ADDRESS RBranchTaken;    //Branch was taken to this Addr
+    ISA_ADDRESS RBranchNotTaken; //Branch was not taken
+    ISA_ADDRESS REffectiveAddr;  //Load/Store effective address for DCache
+    void        RNop;            //ALU op with no interesting data
+    Bool        RTerminate;      //End the run if this instruction commits. Bool is pass/fail.
 }
-  FUNCP_ISA_EXECUTION_RESULT 
-    deriving 
-            (Eq, Bits);
+FUNCP_ISA_EXECUTION_RESULT 
+    deriving (Eq, Bits);
+
+
+//
+// FUNCP_ISA_DATAPATH_RSP --
+//     Response from the ISA datapath describes exceptions and control flow
+//     for the timing partition.  It does not include register writebacks!
+//     These are returned on a separate pipeline, allowing the timing model
+//     to procede even when datapath computation is slow.  The functional
+//     model will block on register use.
+//
+typedef struct
+{
+    FUNCP_ISA_DATAPATH_EXCEPTIONS except;       // Exceptions
+    FUNCP_ISA_EXECUTION_RESULT    timepResult;  // Result to give to the timing partition.
+}
+FUNCP_ISA_DATAPATH_RSP
+    deriving (Eq, Bits);
+
+function FUNCP_ISA_DATAPATH_RSP initISADatapathRsp(FUNCP_ISA_DATAPATH_EXCEPTIONS except,
+                                                   FUNCP_ISA_EXECUTION_RESULT r);
+    return FUNCP_ISA_DATAPATH_RSP { except: except, timepResult: r };
+endfunction
+
+function FUNCP_ISA_DATAPATH_RSP initISADatapathRspOp(FUNCP_ISA_EXECUTION_RESULT r);
+    return initISADatapathRsp(FUNCP_ISA_EXCEPT_NONE, r);
+endfunction
+
+function FUNCP_ISA_DATAPATH_RSP initISADatapathRspException(FUNCP_ISA_DATAPATH_EXCEPTIONS except);
+    return initISADatapathRsp(except, tagged RNop);
+endfunction
+
+function FUNCP_ISA_DATAPATH_RSP initISADatapathRspNop();
+    return initISADatapathRsp(FUNCP_ISA_EXCEPT_NONE, tagged RNop);
+endfunction
+
+
+//
+// FUNCP_ISA_WRITEBACK
+//
+// Register writes are flow from the ISA datapath to the register state manager
+// in a separate pipeline from the execution server request/response.
+// Writebacks are tagged with the token and physical register target so no
+// bookkeeping is required in the register state manager.
+//
+// The physical register has a valid bit so a "tokDone" message can be sent even
+// when an instruction writes no registers.
+//
+typedef struct
+{
+    TOKEN token;
+    Maybe#(FUNCP_PHYSICAL_REG_INDEX) physDst;
+    ISA_VALUE value;
+    Bool tokDone;               // Last write for token
+}
+FUNCP_ISA_WRITEBACK
+    deriving (Eq, Bits);
+
+function FUNCP_ISA_WRITEBACK initISAWriteback(TOKEN tok,
+                                              Maybe#(FUNCP_PHYSICAL_REG_INDEX) pr,
+                                              ISA_VALUE val,
+                                              Bool done);
+    return FUNCP_ISA_WRITEBACK { token: tok, physDst: pr, value: val, tokDone: done };
+endfunction

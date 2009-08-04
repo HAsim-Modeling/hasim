@@ -366,9 +366,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     // predicate makes it clearer to the Bluespec scheduler when the rule fires
     // and whether it may conflict with the standard pipeline.
     //
+    // The rule blocks if the token has been through getResults and the
+    // register updates are still in progress.
+    //
     (* conservative_implicit_conditions *)
-    rule rewindToToken4 ((state_exc == RSM_EXC_Rewinding) ||
-                         (state_exc == RSM_EXC_RewindingWaitForSlowRemap));
+    rule rewindToToken4 (((state_exc == RSM_EXC_Rewinding) ||
+                          (state_exc == RSM_EXC_RewindingWaitForSlowRemap)) &&
+                         ! tokScoreboard.destWritesInFlight(tpl_1(rewindQ.first())));
 
         match { .tok_idx, .tok_active, .done } = rewindQ.first();
         rewindQ.deq();

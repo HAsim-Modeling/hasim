@@ -65,22 +65,6 @@ REGMGR_RES_STATE_ENUM
     deriving (Eq, Bits);
 
 
-// STATE_RES4
-typedef union tagged
-{
-    void        RES4_NORMAL;
-    struct
-    {
-        Vector#(TSub#(ISA_MAX_DSTS, 1), Maybe#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE))) remainingValues;
-        FUNCP_ISA_EXECUTION_RESULT result;
-        Bit#(4)    current; 
-    }
-    RES4_ADDITIONAL_WB;
-}
-STATE_RES4
-    deriving (Eq, Bits);
-
-
 // ========================================================================
 //
 //   Internal method for managing a local architectural to physical
@@ -228,6 +212,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     Connection_Client#(FUNCP_ISA_DATAPATH_REQ,
                        FUNCP_ISA_DATAPATH_RSP) linkToDatapath <- mkConnection_Client("isa_datapath");
 
+    Connection_Receive#(FUNCP_ISA_WRITEBACK) linkISAWritebacks <- mkConnection_Receive("isa_datapath_writeback");
+
     // Emulation RRR Stubs
     ClientStub_ISA_EMULATOR emul_client_stub <- mkClientStub_ISA_EMULATOR();
     ServerStub_ISA_EMULATOR emul_server_stub <- mkServerStub_ISA_EMULATOR();
@@ -256,9 +242,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) res3Q   <- mkFIFO();
     FIFO#(ISA_REG_INDEX) syncPRFReqQ <- mkFIFO();
     FIFO#(Tuple2#(Bool, ISA_REG_INDEX)) syncQ <- mkFIFO();
-    FIFO#(Tuple2#(ISA_REG_INDEX, ISA_VALUE)) updateRegQ <- mkFIFO();
-
-    Reg#(STATE_RES4) stateRes4 <- mkReg(RES4_NORMAL);
+    FIFOF#(Tuple2#(ISA_REG_INDEX, ISA_VALUE)) updateRegQ <- mkFIFOF();
 
     // Which token's instruction are we emulating?
     Reg#(TOKEN) emulatingToken <- mkRegU();
@@ -369,6 +353,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         tokAddr.readReq(tok.index);
         tokInst.readReq(tok.index);
+        tokDsts.readReq(tok.index);
+
         res2Q.enq(tok);
 
     endrule
@@ -387,15 +373,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         // Get all the data the previous stage kicked off.
         let addr <- tokAddr.readRsp();
         let inst <- tokInst.readRsp();
+        let dsts <- tokDsts.readRsp();
 
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": GetResults3: Sending to Datapath."));
 
         // Send it to the datapath.
-        linkToDatapath.makeReq(initISADatapathReq(tok, inst, addr));
-
-        // Look up the destinations for the writeback.
-        tokDsts.readReq(tok.index);
+        linkToDatapath.makeReq(initISADatapathReq(tok, inst, addr, dsts.pr));
 
         // Pass it to the next stage.
         res3Q.enq(tuple2(tok, addr));
@@ -404,18 +388,22 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     
     // getResults4
     // When:   After getResults3 and the datapath returns the result.
-    // Effect: If one or fewer destinations, write back the result and 
-    //         return the result to the timing partition.
-    //         If more results then the stall and continue to write them back.
-
-    rule getResults4 (state.readyToContinue() &&& stateRes4 matches tagged RES4_NORMAL);
-
+    // Effect: Forward the response from the ISA datapath to the timing model.
+    //         This rule does not update the physical registers.  That is
+    //         handled by getResultsWritebacks below.
+    //
+    //         The pipeline can safely return a message to the timing model before
+    //         register writebacks are complete because functional pipelines
+    //         that depenend on the register values will block until a
+    //         register's valid bit is set in getResultsWritebacks.
+    //
+    rule getResults4 (state.readyToContinue());
         // Get the token from the previous stage.
         match {.tok, .addr} = res3Q.first();
+        res3Q.deq();
 
         // Get the response from the datapath.
         let rsp = linkToDatapath.getResp();
-        let wbvals = rsp.writebacks;
         linkToDatapath.deq();
 
         // Tag illegal instruction.  An error will be raised on attempts to commit.
@@ -429,159 +417,54 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         if (rsp.timepResult matches tagged REffectiveAddr .ea)
             tokMemAddr.write(tok.index, ea);
 
-        // Get the destination response
-        let dsts <- tokDsts.readRsp();
+        // Update scoreboard.
+        tokScoreboard.exeFinish(tok.index);
 
-        // The first dest should always be valid (it may not be architecturally visible)
-        let dst_pr = validValue(dsts.pr[0]);
-
-        // Perform the first writeback, if any.
-        case (wbvals[0]) matches
-            tagged Invalid:  noAction; // Not writing back, either a Load, or no dests.
-
-            tagged Valid .v: 
-            begin // Do the first writeback.
-                if (tokScoreboard.isStore(tok.index))
-                begin
-                    // Stores write dest0 insto the token table instead of the PRF.
-                    tokStoreValue.write(tok.index, v);
-                    tokScoreboard.setStoreDataValid(tok.index);
-                end
-                else  // A normal PRF writeback
-                begin
-                    prf.write(dst_pr, v);
-                    debugLog.record(fshow(tok.index) + $format(": GetResults4: Writing (PR%0d <= 0x%x)", dst_pr, v));
-                end
-            end
-        endcase
-        
-        // Is there anything more to writeback?
-
-        Bool writing_back_more = False;
-
-        for (Integer x = 1; x < valueof(ISA_MAX_DSTS); x = x + 1)
-        begin // There is more to do if both the dest and val are valid.
-          writing_back_more = writing_back_more || (isValid(dsts.pr[x]) && isValid(wbvals[x]));
-        end
-
-        if (!writing_back_more)
-        begin
-        
-            // We're done, so don't stall.
-            res3Q.deq();
-
-            // Update scoreboard.
-            tokScoreboard.exeFinish(tok.index);
-
-            // Return timing model. End of macro-operation (path 1).
-            linkGetResults.makeResp(initFuncpRspGetResults(tok, addr, rsp.timepResult));
-            debugLog.record(fshow(tok.index) + $format(": GetResults: End (path 1)."));
-
-        end
-        else // We've got to write back more.
-        begin
-            
-            // Log it.
-            debugLog.record(fshow(tok.index) + $format(": GetResults4: Writing back additional values."));
-
-            // Marshall up the values for writeback.
-
-            Vector#(TSub#(ISA_MAX_DSTS, 1), Maybe#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE))) remaining_values = newVector();
-            for (Integer x = 1; x < valueof(ISA_MAX_DSTS) ; x = x + 1)
-            begin
-                remaining_values[x-1] = case (dsts.pr[x]) matches
-                                         tagged Invalid:  tagged Invalid;
-                                         tagged Valid .dst_pr:
-                                           case (wbvals[x]) matches 
-                                              tagged Invalid:  tagged Invalid; // Not writing it now - presumably it's a load.
-                                              tagged Valid .v: tagged Valid tuple2(dst_pr, v);
-                                           endcase
-                                     endcase;
-            end
-
-            // Stall the pipeline.
-            stateRes4 <= tagged RES4_ADDITIONAL_WB
-                                {
-                                    remainingValues: remaining_values,
-                                    result: rsp.timepResult,
-                                    current: 0 
-                                };
-        end
-      
+        // Return timing model. End of macro-operation (path 1).
+        linkGetResults.makeResp(initFuncpRspGetResults(tok, addr, rsp.timepResult));
+        debugLog.record(fshow(tok.index) + $format(": GetResults: End (path 1)."));
     endrule
 
-    // getResults4AdditionalWriteback
-    
-    // When:   After a result from getResults4 writes back additonal destinations.
-    // Effect: Finish the writebacks of the physical register file.
-    
-    if(valueOf(ISA_MAX_DSTS) > 1)
-    begin
 
-        rule getResults4AdditionalWriteback (state.readyToContinue() &&& stateRes4 matches tagged RES4_ADDITIONAL_WB .wb_info);
-        
-            // Get the info from the previous stage.
-            match {.tok, .addr} = res3Q.first();
-            
-            // Do the writeback.
-            case (wb_info.remainingValues[wb_info.current]) matches
-                tagged Invalid:
-                begin
-                    // Hopefully this doesn't happen too much.
-                    debugLog.record(fshow(tok.index) + $format(": GetResults4: Skipping Dest %0d", wb_info.current + 1));
+    //
+    // getResultsWritebacks --
+    //     This rule is independent of the getResults pipeline.  It receives
+    //     writeback messages from the ISA datapath.  The first writeback for
+    //     a store is assumed to be the store value.  A token is marked complete
+    //     when the tokDone bit is sent in the writebacks message.
+    //
+    rule getResultsWritebacks (True);
+        let wb = linkISAWritebacks.receive();
+        linkISAWritebacks.deq();
 
-                end
-                tagged Valid {.dst, .val}:
-                begin
+        let tok = wb.token;
 
-                    // An actual writeback.
-                    prf.write(dst, val);
-                    debugLog.record(fshow(tok.index) + $format(": GetResults4: Writing Dest %0d (PR%0d <= 0x%x)", wb_info.current + 1, dst, val));
+        // By convention, the first writeback for a store is the store
+        // value.  Handle it specially.
+        if (tokScoreboard.isStore(tok.index) &&
+           ! tokScoreboard.isStoreDataValid(tok.index))
+        begin
+            // Stores write dest0 insto the token table instead of the PRF.
+            tokStoreValue.write(tok.index, wb.value);
+            tokScoreboard.setStoreDataValid(tok.index);
+            debugLog.record(fshow(tok.index) + $format(": GetResultsWB: Writing STORE val 0x%x", wb.value));
+        end
+        else if (wb.physDst matches tagged Valid .pr)
+        begin
+            // Normal physical register update
+            prf.write(pr, wb.value);
+            debugLog.record(fshow(tok.index) + $format(": GetResultsWB: Writing (PR%0d <= 0x%x)", pr, wb.value));
+        end
 
-                end
-            endcase
-      
-            // We're done when we've checked every additional dest.
-            if (wb_info.current == fromInteger(valueOf(ISA_MAX_DSTS) - 2))
-            begin
-      
-                // We're done. Unstall the pipeline.
-                res3Q.deq();
-                stateRes4 <= tagged RES4_NORMAL;
+        // All writebacks complete for token?
+        if (wb.tokDone)
+        begin
+            tokScoreboard.setAllDestsValid(tok.index);
+            debugLog.record(fshow(tok.index) + $format(": GetResultsWB: Done"));
+        end
+    endrule
 
-                // Update scoreboard.
-                tokScoreboard.exeFinish(tok.index);
-          
-                // Return to timing model. End of macro-operation (path 2).
-                linkGetResults.makeResp(initFuncpRspGetResults(tok, addr, wb_info.result));
-                debugLog.record(fshow(tok.index) + $format(": GetResults: End (path 2)."));
 
-            end
-            else
-            begin
-            
-                // We're not done. Update the state for next time.
-                stateRes4 <= tagged RES4_ADDITIONAL_WB
-                                    {
-                                        remainingValues: wb_info.remainingValues,
-                                        result: wb_info.result,
-                                        current: wb_info.current + 1
-                                    };
-            
-            end
-    
-        endrule
-    end
-    else
-    begin
-        //
-        // Dummy rule to keep execution_order pragma below happy
-        //
-        rule getResults4AdditionalWriteback (True);
-        endrule
-    end
-
-    
     // ******* emulateInstruction ******* //
 
     //    
@@ -903,7 +786,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // Effect: This means the emulation is complete. Resume normal operations.
     //         Return a NOP to the timing model.
 
-    rule emulateInstruction4 (state_res == RSM_RES_UpdatingRegisters);
+    rule emulateInstruction4 ((state_res == RSM_RES_UpdatingRegisters) &&
+                              ! updateRegQ.notEmpty());
         
         // Get the ACK from software that they're complete.
         ISA_ADDRESS newPc <- emul_client_stub.getResponse_emulate();
@@ -915,6 +799,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         // Update scoreboard.
         tokScoreboard.exeFinish(emulatingToken.index);
+        tokScoreboard.setAllDestsValid(emulatingToken.index);
 
         // Hack alert -- until RRR allows us to pass multiple objects cleanly
         // we pass a branch target and flags as a single 64 bit value.  We use

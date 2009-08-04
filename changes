@@ -19382,3 +19382,29 @@ Directory modules/hasim/util/common
 
 Michael P.
 
+
+----------
+mcadler     Date: Mon Aug  3 20:38:02 EDT 2009  CSN: CSN-hasim-661
+                  Tue Aug  4 00:38:03 UTC 2009
+
+
+Directory modules/hasim/functional-partition/interface
+ funcp-isa-datapath-types.bsv Locally Modified          660 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          660 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-exception.bsv Locally Modified          660 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          660 
+ regmgr-macro.bsv          Locally Modified          660 
+
+Add a new soft connection for passing register writebacks from the ISA datapath
+to the register state manager.  This decouples register writes from the response
+from getResults to the timing partition.  The functional model blocks on attempts
+to read registers that are not yet written.
+
+The end of the getResults pipeline is now much simpler since it doesn't have
+to cope with multiple register write requests all arriving in the same cycle.
+The bus width of the soft connection is now a single register instead of the
+maximum number of instruction destinations.

@@ -519,8 +519,10 @@ sub init_sim_config_file($)
 
 ############################################################
 # dyn_params:  set up include files for parameter registration
-sub dyn_params()
+sub dyn_params($)
 {
+    my $model = shift;
+
     ##
     ## Add some include files needed for parameter registration
     ##
@@ -538,7 +540,10 @@ sub dyn_params()
         }
     }
 
-    my $base_dir = HAsim::Util::path_append($builddir,"sw/model");
+    my $base_dir = HAsim::Build::get_module_build_dir($model->modelroot(),
+						      HAsim::Util::path_append($builddir,"sw"));
+
+
     my $base = Asim::resolve("base/hasim-config.cpp");
     chomp($base);
     if ($base ne '') {
@@ -636,7 +641,17 @@ sub make_bsvfiles {
 
     $sim_config->close();
 
-    dyn_params();
+    dyn_params($model);
+
+    #
+    # Hack to link model.h to <rootprovidestype>.h.
+    # This is for legacy code that expects the root to be model.h
+    #
+    my $provides = $root->provides();
+
+    if (! -e "${builddir}/sw/include/asim/provides/model.h") {
+	system("cd ${builddir}/sw/include/asim/provides; ln -s $provides.h model.h");
+    }
 
     return 1;
 }

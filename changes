@@ -19536,3 +19536,14 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 - Exception and rewind pipelines are no longer intertwined.  Separate them
   into a pair of files.
 - Fully pipeline exception path.  No context locks are required any more.
+
+----------
+emer        Date: Wed Aug  5 16:01:25 EDT 2009  CSN: CSN-hasim-665
+                  Wed Aug  5 20:01:25 UTC 2009
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          664 
+
+Hasim-configure will now support .apm files that have a root with an
+arbitary awb-type.

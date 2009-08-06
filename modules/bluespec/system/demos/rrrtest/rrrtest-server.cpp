@@ -63,6 +63,8 @@ RRRTEST_SERVER_CLASS::F2HOneWayMsg(
     UINT64 payload)
 {
     // do nothing
+//    static int msg_count = 0;
+//    cout << "server: received one-way msg [" << msg_count++ << "]\t = " << hex << payload << dec << endl << flush;
 }
 
 // F2HTwoWayMsg

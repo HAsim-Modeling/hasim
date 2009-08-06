@@ -1,0 +1,43 @@
+
+[Global]
+SaveParameters=0
+Description=Shared Memory Test and Benchmarking Program for HTG v5 PCIe
+File=shmem_hybrid_htg
+Version=2.1
+Name=Shared Memory Test and Benchmarking Program for HTG v5 PCIe
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hybrid htg bluespec
+model=Pure Bluespec Hybrid Model Foundation
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
+Packagehint=platforms
+
+[Pure Bluespec Hybrid Model Foundation]
+File=modules/model/pure_bluespec_hybrid_model.awb
+Packagehint=hasim
+
+[Pure Bluespec Hybrid Model Foundation/Requires]
+bluespec_system=Shared Memory Test and Benchmarking Application
+fpgaenv=FPGA Environment
+hasim_controller=Hybrid Pure Bluespec Controller
+bluespec_common=Bluespec Null Library
+
+[Pure Bluespec Hybrid Model Foundation/Params]
+MAKE_ALL_TARGET=bit
+
+[Bluespec Null Library]
+File=modules/bluespec/common/null/bluespec_null.awb
+Packagehint=hasim
+
+[Hybrid Pure Bluespec Controller]
+File=config/pm/hasim/submodels/controller/hybrid_pure_bluespec_controller.apm
+Packagehint=hasim
+
+[Shared Memory Test and Benchmarking Application]
+File=modules/bluespec/system/demos/shmem-test/shmem-test.awb
+Packagehint=hasim

@@ -38,7 +38,8 @@
 using namespace std;
 
 // constructor
-BLUESPEC_SYSTEM_CLASS::BLUESPEC_SYSTEM_CLASS() :
+BLUESPEC_SYSTEM_CLASS::BLUESPEC_SYSTEM_CLASS(
+    LLPI llpi) :
         PLATFORMS_MODULE_CLASS(NULL)
 {
     // instantiate client stub
@@ -56,9 +57,9 @@ void
 BLUESPEC_SYSTEM_CLASS::Main()
 {
     UINT64 cycles;
-    UINT64 test_length  = 10000; // FIXME: take this from a dynamic parameter
-    UINT64 fpga_freq    = 50;     // FIXME: take this from a dynamic parameter
-    UINT64 payload_bits = 64;     // FIXME: no idea how
+    UINT64 test_length  = 100; // FIXME: take this from a dynamic parameter
+    UINT64 fpga_freq    = 50;    // FIXME: take this from a dynamic parameter
+    UINT64 payload_bits = 64;    // FIXME: no idea how
 
     double datasize = payload_bits / 8;
     double latency_c;
@@ -69,7 +70,7 @@ BLUESPEC_SYSTEM_CLASS::Main()
     cout << "\n";
     cout << "Test Parameters\n";
     cout << "---------------\n";
-    cout << "Number of Transactions  = " << test_length << endl;
+    cout << "Number of Transactions  = " << dec << test_length << endl;
     cout << "Payload Width (in bits) = " << payload_bits << endl;
     cout << "FPGA Clock Frequency    = " << fpga_freq << endl;
 

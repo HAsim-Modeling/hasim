@@ -19547,3 +19547,60 @@ Directory tools/scripts
 
 Hasim-configure will now support .apm files that have a root with an
 arbitary awb-type.
+
+----------
+aparasha    Date: Thu Aug  6 17:39:10 EDT 2009  CSN: CSN-hasim-666
+                  Thu Aug  6 21:39:10 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Server
+ BSV.pm                    Locally Modified          665 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Client
+ BSV.pm                    Locally Modified          665 
+
+Directory config/pm/bluespec/demos
+ shmem/                    Locally Added               0 
+
+Directory config/pm/bluespec/demos/shmem
+ shmem_hybrid_htg.apm      Locally Added               0 
+
+Directory modules/model
+ pure_bluespec_main.cpp    Locally Modified          665 
+
+Directory modules/bluespec/system/demos/hello
+ hello.cpp                 Locally Modified          665 
+ hello.h                   Locally Modified          665 
+
+Directory modules/bluespec/system/demos/fir-filter/hw-only
+ fir-filter-system.cpp     Locally Modified          665 
+ fir-filter-system.h       Locally Modified          665 
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest.cpp               Locally Modified          665 
+ rrrtest-server.cpp        Locally Modified          665 
+ rrrtest.h                 Locally Modified          665 
+
+Directory modules/bluespec/system/demos
+ shmem-test/               Locally Added               0 
+
+Directory modules/bluespec/system/demos/shmem-test
+ shmem-test.bsv            Locally Added               0 
+ shmem-test.cpp            Locally Added               0 
+ shmem-test.rrr            Locally Added               0 
+ shmem-test.h              Locally Added               0 
+ shmem-test.awb            Locally Added               0 
+
+- Added include of service_ids.bsh to RRR stubs.
+
+- Updated pure_bluespec_main to accept pointer to LLPI
+  via its constructor. This is required because the
+  software side now sees virtual devices (specifically,
+  the Shared Memory device). This is a temporary change,
+  and will be over-ridden by the software-side overhaul
+  being currently carried out.
+
+  Also updated some pure bluespec systems to sync with
+  this change.
+
+- Added a new Shared Memory Test system.

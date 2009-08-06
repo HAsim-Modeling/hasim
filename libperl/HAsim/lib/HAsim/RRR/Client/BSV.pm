@@ -114,9 +114,11 @@ sub print_stub
     print $file "`define _" . $self->{name} . "_CLIENT_STUB_\n";
     print $file "\n";
 
-    print $file "`include \"rrr.bsh\"\n";
-    print $file "`include \"channelio.bsh\"\n";
-    print $file "`include \"umf.bsh\"\n";
+    print $file "`include \"asim/provides/rrr.bsh\"\n";
+    print $file "`include \"asim/provides/channelio.bsh\"\n";
+    print $file "`include \"asim/provides/umf.bsh\"\n";
+    print $file "\n";
+    print $file "`include \"asim/rrr/service_ids.bsh\"\n";
     print $file "\n";
 
     # compute max request and response bitwidths
@@ -406,11 +408,12 @@ sub print_remote_stub
     print $file "`define _" . $self->{name} . "_REMOTE_CLIENT_STUB_\n";
     print $file "\n";
 
-    print $file "`include \"hasim_common.bsh\"\n";
-    print $file "`include \"soft_connections.bsh\"\n";
-    print $file "`include \"rrr.bsh\"\n";
-    print $file "`include \"channelio.bsh\"\n";
-    print $file "`include \"umf.bsh\"\n";
+    print $file "`include \"asim/provides/hasim_common.bsh\"\n";
+    print $file "`include \"asim/provides/soft_connections.bsh\"\n";
+    print $file "`include \"asim/provides/rrr.bsh\"\n";
+    print $file "`include \"asim/provides/channelio.bsh\"\n";
+    print $file "`include \"asim/provides/umf.bsh\"\n";
+    print $file "\n";
     print $file "`include \"asim/rrr/service_ids.bsh\"\n";
     print $file "`include \"asim/rrr/client_control_ids.bsh\"\n";
     print $file "\n";

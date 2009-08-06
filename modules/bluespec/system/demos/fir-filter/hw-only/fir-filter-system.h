@@ -9,7 +9,7 @@ class BLUESPEC_SYSTEM_CLASS: public SYSTEM_CLASS,
                              public PLATFORMS_MODULE_CLASS
 {
   public:
-    BLUESPEC_SYSTEM_CLASS();
+    BLUESPEC_SYSTEM_CLASS(LLPI);
     ~BLUESPEC_SYSTEM_CLASS();
 
     // main

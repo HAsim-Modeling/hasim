@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     // 2. Controller
     // 3. System
     LLPI       llpi       = new LLPI_CLASS();
-    SYSTEM     system     = new SYSTEM_CLASS();
+    SYSTEM     system     = new BLUESPEC_SYSTEM_CLASS(llpi);
     CONTROLLER controller = new CONTROLLER_CLASS(llpi, system);
 
     // transfer control to controller

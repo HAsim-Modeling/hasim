@@ -12,11 +12,13 @@ class BLUESPEC_SYSTEM_CLASS: public SYSTEM_CLASS,
                              public PLATFORMS_MODULE_CLASS
 {
   private:
+
     // client stub
     RRRTEST_CLIENT_STUB clientStub;
 
   public:
-    BLUESPEC_SYSTEM_CLASS();
+
+    BLUESPEC_SYSTEM_CLASS(LLPI llpi);
     ~BLUESPEC_SYSTEM_CLASS();
 
     // main

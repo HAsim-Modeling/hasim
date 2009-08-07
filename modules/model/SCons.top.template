@@ -403,6 +403,8 @@ xilinx_ngd = env.Command(
       'ngdbuild -p ' + FPGA_PART + ' -sd ' + env['DEFS']['ROOT_DIR_HW_MODEL'] + ' -uc ' + XILINX_APM_NAME + '.ucf ' + bmm + ' $SOURCE $TARGET',
       Move(TMP_XILINX_DIR + '/netlist.lst', 'netlist.lst') ])
 
+Depends(xilinx_ngd, env['DEFS']['GIVEN_BMMS']);
+
 Clean(xilinx_ngd, TMP_XILINX_DIR + '/netlist.lst')
 
 # Alias for everything up to map...
@@ -447,12 +449,17 @@ if(len(env['DEFS']['GIVEN_ELFS']) != 0):
 else:
     elf = ''
 
+
+
+
 # Generate the FPGA image
 xilinx_bit = env.Command(
     XILINX_APM_NAME + '_par.bit',
-    [ 'config/' + APM_NAME + '.ut', xilinx_par ],
+    [ 'config/' + APM_NAME + '.ut', xilinx_par],
     [ Delete('config/signature.sh'),
       'bitgen ' + elf + ' -f $SOURCES $TARGET ' + XILINX_APM_NAME + '.pcf' ])
+
+Depends(xilinx_bit, env['DEFS']['GIVEN_ELFS']);
 
 # Generate the signature for the FPGA image
 signature = env.Command(

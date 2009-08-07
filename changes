@@ -19604,3 +19604,15 @@ Directory modules/bluespec/system/demos/shmem-test
   this change.
 
 - Added a new Shared Memory Test system.
+
+----------
+aparasha    Date: Fri Aug  7 16:20:15 EDT 2009  CSN: CSN-hasim-668
+                  Fri Aug  7 20:20:15 UTC 2009
+
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.awb    Locally Modified          667 
+ platform-interface.bsv    Locally Modified          667 
+ connection-terminus.bsv   Locally Modified          667 
+
+- Added connection to shared memory device to platform interface.

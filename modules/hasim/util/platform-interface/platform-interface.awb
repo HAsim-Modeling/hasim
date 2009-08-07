@@ -17,6 +17,7 @@
 %param --global TERM_FPGA_BUTTONS             1   "termimate fpga_buttons?"
 %param --global TERM_FPGA_LEDS                1   "termimate fpga_leds?"
 %param --global TERM_VDEV_STREAMS             1   "termimate vdev_streams?"
+%param --global TERM_VDEV_SHMEM               1   "termimate vdev_shmem_*?"
 
 %param --dynamic CENTRAL_CACHE_MODE           0   "Bits 0-1: 0 write-back, 1 write-through, 3 disabled / Bit 2 disables recent line cache"
 %param --dynamic SCRATCHPAD_PVT_CACHE_MODE    0   "0: write-back, 1: write-through, 2: write-no-allocate, 3: disabled"
@@ -26,5 +27,3 @@
 %param SCRATCHPAD_STD_PVT_CACHE_ENTRIES  1024  "Scratchpad private cache entries (must be a power of 2)"
 
 %param --global PLATFORM_SCRATCHPAD_DEBUG_ENABLE 1 "Enable Platform Scratchpad Debug Log"
-
-

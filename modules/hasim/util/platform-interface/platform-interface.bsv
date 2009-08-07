@@ -29,6 +29,7 @@ import Vector::*;
 `include "asim/provides/central_cache.bsh"
 `include "asim/provides/streams.bsh"
 `include "asim/provides/clocks_device.bsh"
+`include "asim/provides/shared_memory.bsh"
 
 `include "asim/rrr/server_connections.bsh"
 `include "asim/rrr/client_connections.bsh"
@@ -97,11 +98,26 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
     // interface
         ();
 
-    // instantiate connections
-    Connection_Receive#(FRONTP_MASKED_LEDS) link_leds <- mkConnection_Receive("fpga_leds");
-    Connection_Send#(FRONTP_SWITCHES) link_switches   <- mkConnection_Send("fpga_switches");
-    Connection_Send#(ButtonInfo)      link_buttons    <- mkConnection_Send("fpga_buttons");
+    // instantiate virtual devices
+    FrontPanel frontPanel          <- mkFrontPanel(llpint);
+    let centralCacheStats          <- mkCentralCacheStats();
+    CENTRAL_CACHE_IFC centralCache <- mkCentralCache(llpint, centralCacheStats);
+    SCRATCHPAD_MEMORY_VDEV memory  <- mkMemoryVirtualDevice(llpint, centralCache);
+    Streams streams                <- mkStreams(llpint);
+    SHARED_MEMORY sharedMemory     <- mkSharedMemory(llpint);
 
+    // Patch Connections to Virtual Devices
+    Connection_Receive#(FRONTP_MASKED_LEDS) link_leds     <- mkConnection_Receive("fpga_leds");
+    Connection_Send#(FRONTP_SWITCHES)       link_switches <- mkConnection_Send("fpga_switches");
+    Connection_Send#(ButtonInfo)            link_buttons  <- mkConnection_Send("fpga_buttons");
+
+    Connection_Receive#(STREAMS_REQUEST)    link_streams  <- mkConnection_Receive("vdev_streams");
+
+    Connection_Receive#(SHARED_MEMORY_REQUEST) link_shmem_req        <- mkConnection_Receive("vdev_shmem_req");
+    Connection_Send#(SHARED_MEMORY_DATA)       link_shmem_data_read  <- mkConnection_Send("vdev_shmem_data_read");
+    Connection_Receive#(SHARED_MEMORY_DATA)    link_shmem_data_write <- mkConnection_Receive("vdev_shmem_data_write");
+
+    // debug log
     DEBUG_FILE debugLog <- mkDebugFile("platform_interface.out");
 
     // ***** Dynamic parameters *****
@@ -112,16 +128,6 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
     // ***** Assertion Checkers *****
     ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_PLATFORM_INTERFACE__BASE);
     ASSERTION assertScratchpadSpace <- mkAssertionChecker(`ASSERTIONS_PLATFORM_INTERFACE_SCRATCHPAD_FULL, ASSERT_ERROR, assertNode);
-
-    // other virtual devices
-    Connection_Receive#(STREAMS_REQUEST) link_streams <- mkConnection_Receive("vdev_streams");
-
-    // instantiate virtual devices
-    FrontPanel frontPanel <- mkFrontPanel(llpint);
-    let centralCacheStats <- mkCentralCacheStats();
-    CENTRAL_CACHE_IFC centralCache <- mkCentralCache(llpint, centralCacheStats);
-    SCRATCHPAD_MEMORY_VDEV memory <- mkMemoryVirtualDevice(llpint, centralCache);
-    Streams streams <- mkStreams(llpint);
 
     // connection terminus
     let t <- mkConnectionTerminus();
@@ -188,6 +194,37 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
 
     endrule
 
+    // ====================================================================
+    //
+    // Shared Memory connections.
+    //
+    // ====================================================================
+
+    rule send_shmem_req (True);
+        
+        let req = link_shmem_req.receive();
+        link_shmem_req.deq();
+        case (req) matches
+            tagged SHARED_MEMORY_READ  .info: sharedMemory.readBurstReq(info.addr, info.len);
+            tagged SHARED_MEMORY_WRITE .info: sharedMemory.writeBurstReq(info.addr, info.len);
+        endcase
+
+    endrule
+    
+    rule recv_shmem_read_data (True);
+        
+        let data <- sharedMemory.readBurstResp();
+        link_shmem_data_read.send(data);
+        
+    endrule
+    
+    rule send_shmem_write_data (True);
+        
+        let data = link_shmem_data_write.receive();
+        link_shmem_data_write.deq();
+        sharedMemory.writeBurstData(data);
+        
+    endrule
 
     // ====================================================================
     //

@@ -35,4 +35,11 @@ module [HASIM_MODULE] mkConnectionTerminus();
     if (`TERM_VDEV_STREAMS == 1)
         Connection_Send#(STREAMS_REQUEST) link_streams <- mkConnection_Send("vdev_streams");
 
+    if (`TERM_VDEV_SHMEM == 1)
+    begin
+        Connection_Send#(SHARED_MEMORY_REQUEST) link_shmem_req        <- mkConnection_Send("vdev_shmem_req");
+        Connection_Receive#(SHARED_MEMORY_DATA) link_shmem_data_read  <- mkConnection_Receive("vdev_shmem_data_read");
+        Connection_Send#(SHARED_MEMORY_DATA)    link_shmem_data_write <- mkConnection_Send("vdev_shmem_data_write");        
+    end
+
 endmodule

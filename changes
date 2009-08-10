@@ -19616,3 +19616,29 @@ Directory modules/hasim/util/platform-interface
  connection-terminus.bsv   Locally Modified          667 
 
 - Added connection to shared memory device to platform interface.
+
+----------
+emer        Date: Mon Aug 10 14:59:52 EDT 2009  CSN: CSN-hasim-669
+                  Mon Aug 10 18:59:52 UTC 2009
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_exe_nosynth.apm Locally Modified          668 
+ traffic_light_exe_synth.apm Locally Modified          668 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          668 
+
+Directory config/pm/hasim/demos/switch_to_led
+ multiplier4x4_exe.apm     Locally Modified          668 
+ echo4x4_exe.apm           Locally Modified          668 
+ adder4x4_exe.apm          Locally Modified          668 
+ square4x4_exe.apm         Locally Modified          668 
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_exe.apm      Locally Modified          668 
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_exe.apm    Locally Modified          668 
+
+Added default runflag to some benchmarks.

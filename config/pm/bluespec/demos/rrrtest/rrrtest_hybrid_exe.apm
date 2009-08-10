@@ -8,6 +8,7 @@ Name=RRR Test and Benchmarking Program (Bluesim)
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
+DefaultRunOpts=--bluesim='-m 50000'
 
 [Model]
 DefaultAttributes=hybrid simulation bluespec
@@ -34,7 +35,6 @@ Packagehint=hasim
 [Bluespec RRR Test and Benchmarking Program]
 File=modules/bluespec/system/demos/rrrtest/rrrtest.awb
 Packagehint=hasim
-
 
 [Hybrid Pure Bluespec Controller]
 File=config/pm/hasim/submodels/controller/hybrid_pure_bluespec_controller.apm

@@ -410,6 +410,13 @@ Clean(xilinx_ngd, TMP_XILINX_DIR + '/netlist.lst')
 # Alias for everything up to map...
 env.Alias('xst', xilinx_ngd)
 
+#check for a cached post par ncd
+if(FindFile( APM_NAME + '_par.ncd', 
+             [env['DEFS']['WORKSPACE_ROOT'] + '/var/']) != None):
+    smartguide = ' -smartguide ' +  env['DEFS']['WORKSPACE_ROOT'] + '/var/' + APM_NAME + '_par.ncd' 
+else:
+    smartguide = ''
+
 # Map
 xilinx_map = env.Command(
     [ XILINX_APM_NAME + '_map.ncd', XILINX_APM_NAME + '.pcf' ],
@@ -419,9 +426,12 @@ xilinx_map = env.Command(
       Delete(XILINX_APM_NAME + '_map.ncd'),
       Delete(XILINX_APM_NAME + '_map.ngm'),
       Delete(XILINX_APM_NAME + '_map.psr'),
-      'map -cm balanced -timing -t ' + env['DEFS']['COST_TABLE'] + ' ' +  env['DEFS']['MAP_OPTIONS'] + ' -logic_opt on -ol high -register_duplication -retiming on -pr b -c 100 -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf' ])
+      'map -cm balanced -timing ' + smartguide + ' -t ' + env['DEFS']['COST_TABLE'] + ' ' +  env['DEFS']['MAP_OPTIONS'] + ' -logic_opt on -ol high -register_duplication -retiming on -pr b -c 100 -p ' + FPGA_PART + ' -o $TARGET $SOURCE ' + XILINX_APM_NAME + '.pcf' ])
 
 Clean(xilinx_map, TMP_XILINX_DIR + '/xilinx_device_details.xml')
+
+
+
 
 # Place and route
 xilinx_par = env.Command(
@@ -434,7 +444,8 @@ xilinx_par = env.Command(
       Delete(XILINX_APM_NAME + '_par.xpi'),
       Delete(XILINX_APM_NAME + '_par_pad.csv'),
       Delete(XILINX_APM_NAME + '_par_pad.txt'),
-      'par -w -ol high -t ' + env['DEFS']['COST_TABLE'] + ' ' + XILINX_APM_NAME + '_map.ncd $TARGET ' + XILINX_APM_NAME + '.pcf' ])
+      'par -w -ol high ' + smartguide + ' -t ' + env['DEFS']['COST_TABLE'] + ' ' + XILINX_APM_NAME + '_map.ncd $TARGET ' + XILINX_APM_NAME + '.pcf',
+      'cp $TARGET ' + env['DEFS']['WORKSPACE_ROOT'] + '/var/'])
 
 
 # Generate the FPGA timing report -- this report isn't built by default.  Use

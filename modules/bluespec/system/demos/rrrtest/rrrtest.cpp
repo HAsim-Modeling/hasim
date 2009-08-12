@@ -31,30 +31,34 @@
 #include <iomanip>
 
 #include "asim/rrr/service_ids.h"
-#include "asim/provides/bluespec_system.h"
+#include "asim/provides/hybrid_application.h"
 #include "asim/provides/command_switches.h"
 #include "asim/ioformat.h"
 
 using namespace std;
 
 // constructor
-BLUESPEC_SYSTEM_CLASS::BLUESPEC_SYSTEM_CLASS(
-    LLPI llpi) :
-        PLATFORMS_MODULE_CLASS(NULL)
+HYBRID_APPLICATION_CLASS::HYBRID_APPLICATION_CLASS(
+    VIRTUAL_PLATFORM vp)
 {
     // instantiate client stub
-    clientStub = new RRRTEST_CLIENT_STUB_CLASS(this);
+    clientStub = new RRRTEST_CLIENT_STUB_CLASS(NULL);
 }
 
 // destructor
-BLUESPEC_SYSTEM_CLASS::~BLUESPEC_SYSTEM_CLASS()
+HYBRID_APPLICATION_CLASS::~HYBRID_APPLICATION_CLASS()
 {
     delete clientStub;
 }
 
+void
+HYBRID_APPLICATION_CLASS::Init()
+{
+}
+
 // main
 void
-BLUESPEC_SYSTEM_CLASS::Main()
+HYBRID_APPLICATION_CLASS::Main()
 {
     UINT64 cycles;
     UINT64 test_length  = 100; // FIXME: take this from a dynamic parameter

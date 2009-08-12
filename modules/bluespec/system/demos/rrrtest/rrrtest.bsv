@@ -19,8 +19,10 @@
 // @author Angshuman Parashar
 //
 
-`include "physical_platform.bsh"
-`include "low_level_platform_interface.bsh"
+`include "asim/provides/virtual_platform.bsh"
+`include "asim/provides/virtual_devices.bsh"
+`include "asim/provides/physical_platform.bsh"
+`include "asim/provides/low_level_platform_interface.bsh"
 
 `include "asim/rrr/service_ids.bsh"
 `include "asim/rrr/server_stub_RRRTEST.bsh"
@@ -40,9 +42,11 @@ STATE deriving(Bits,Eq);
 
 typedef Bit#(64) PAYLOAD;
 
-// mkSystem
+// mkApplication
 
-module mkSystem#(LowLevelPlatformInterface llpi)();
+module mkApplication#(VIRTUAL_PLATFORM vp)();
+
+    LowLevelPlatformInterface llpi = vp.llpint;
     
     // instantiate stubs
     ServerStub_RRRTEST serverStub <- mkServerStub_RRRTEST(llpi.rrrServer);

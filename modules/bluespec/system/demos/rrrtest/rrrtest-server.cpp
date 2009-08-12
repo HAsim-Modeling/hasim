@@ -4,7 +4,7 @@
 #include <iomanip>
 
 #include "asim/rrr/service_ids.h"
-#include "asim/provides/bluespec_system.h"
+#include "asim/provides/hybrid_application.h"
 
 using namespace std;
 

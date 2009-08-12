@@ -10,34 +10,34 @@ Name=Bluespec Multiplier Example
 Type=HAsim
 Class=Asim::Model
 
-
-
 [Bluespec Multiplier Example]
 File=modules/bluespec/system/demos/multiplier/mult_system.awb
 Packagehint=hasim
 
 [Model]
 DefaultAttributes=simulation bluespec
-model=Pure Bluespec Hardware-Only Model Foundation
+model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-null.apm
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
 
-[Bluespec Null Library]
-File=modules/bluespec/common/null/bluespec_null.awb
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
+
+[Base Hybrid Application Environment]
+File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
+Packagehint=platforms
+
+[Standard Command Switches]
+File=modules/hasim/controller/command_switches/standard-command-switches.awb
 Packagehint=hasim
 
-[Pure Bluespec Hardware-Only Model Foundation/Requires]
-bluespec_common=Bluespec Null Library
-bluespec_system=Bluespec Multiplier Example
-hasim_controller=Hardware-Only Null Controller
+[HW/SW Hybrid Project Foundation/Requires]
+command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
+application_env=Base Hybrid Application Environment
 
-[Hardware-Only Null Controller]
-File=config/pm/hasim/submodels/controller/hardware_null_controller.apm
-Packagehint=hasim
-
-[Pure Bluespec Hardware-Only Model Foundation]
-File=modules/model/pure_bluespec_model.awb
-Packagehint=hasim
+[Base Hybrid Application Environment/Requires]
+hybrid_application=Bluespec Multiplier Example

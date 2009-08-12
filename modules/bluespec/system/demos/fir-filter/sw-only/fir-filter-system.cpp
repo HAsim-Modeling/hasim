@@ -3,7 +3,7 @@
 #include <math.h>
 #include <fstream>
 
-#include "asim/provides/bluespec_system.h"
+#include "asim/provides/hybrid_application.h"
 #include "fixed.h"
 
 using namespace std;
@@ -21,19 +21,23 @@ Fixed fir(Fixed* coeffs, Fixed* regs, Fixed new_input)
 }
 
 // constructor
-BLUESPEC_SYSTEM_CLASS::BLUESPEC_SYSTEM_CLASS() :
-        PLATFORMS_MODULE_CLASS(NULL)
+HYBRID_APPLICATION_CLASS::HYBRID_APPLICATION_CLASS(VIRTUAL_PLATFORM vp)
 {
 }
 
 // destructor
-BLUESPEC_SYSTEM_CLASS::~BLUESPEC_SYSTEM_CLASS()
+HYBRID_APPLICATION_CLASS::~HYBRID_APPLICATION_CLASS()
+{
+}
+
+void
+HYBRID_APPLICATION_CLASS::Init()
 {
 }
 
 // main
 void
-BLUESPEC_SYSTEM_CLASS::Main()
+HYBRID_APPLICATION_CLASS::Main()
 {
 
     Fixed coeffs[N_TAPS];

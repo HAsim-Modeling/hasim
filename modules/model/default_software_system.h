@@ -37,11 +37,7 @@ class SYSTEM_CLASS
 
     virtual void Main()
     {
-        // go off to sleep by waiting on a cond var that
-        // will never be signaled
-        pthread_mutex_lock(&lock);
-        pthread_cond_wait(&cond, &lock);
-        pthread_mutex_unlock(&lock);
+        return;
     }
 };
 

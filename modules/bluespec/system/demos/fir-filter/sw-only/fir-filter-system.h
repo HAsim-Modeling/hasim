@@ -1,17 +1,17 @@
-#ifndef __BLUESPEC_SYSTEM__
-#define __BLUESPEC_SYSTEM__
+#ifndef __HYBRID_APPLICATION__
+#define __HYBRID_APPLICATION__
 
-#include "platforms-module.h"
-#include "asim/provides/hasim_controller.h"
+#include "asim/provides/virtual_platform.h"
 
-typedef class BLUESPEC_SYSTEM_CLASS* BLUESPEC_SYSTEM;
-class BLUESPEC_SYSTEM_CLASS: public SYSTEM_CLASS,
-                             public PLATFORMS_MODULE_CLASS
+typedef class HYBRID_APPLICATION_CLASS* HYBRID_APPLICATION;
+class HYBRID_APPLICATION_CLASS
 {
   public:
-    BLUESPEC_SYSTEM_CLASS();
-    ~BLUESPEC_SYSTEM_CLASS();
+    HYBRID_APPLICATION_CLASS(VIRTUAL_PLATFORM vp);
+    ~HYBRID_APPLICATION_CLASS();
 
+    // init
+    void Init();
     // main
     void Main();
 };

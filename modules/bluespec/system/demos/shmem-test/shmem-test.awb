@@ -7,9 +7,9 @@
 %name Shared Memory Test and Benchmarking Application
 %desc Shared Memory Test and Benchmarking Application
 
-%provides bluespec_system
+%provides hybrid_application
 
-%attributes bluespec
+%attributes hybrid
 
 %sources -t BSV  -v PUBLIC  shmem-test.bsv
 %sources -t H    -v PUBLIC  shmem-test.h

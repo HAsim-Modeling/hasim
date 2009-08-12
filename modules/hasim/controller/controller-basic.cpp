@@ -9,9 +9,6 @@
 
 using namespace std;
 
-// globally-visible threadID of system thread
-pthread_t monitorThreadID;
-
 // constructor
 CONTROLLER_CLASS::CONTROLLER_CLASS(
     LLPI   l,
@@ -46,31 +43,10 @@ CONTROLLER_CLASS::Cleanup()
 {
 }
 
-// *** trampolene function for LLPI's Main() ***
-void * LLPI_Main(void *argv)
-{
-    LLPI instance = LLPI(argv);
-    instance->Main();
-    return NULL;
-}
-
 // controller's main()
 void
 CONTROLLER_CLASS::Main()
 {
-    // spawn off Monitor/Service thread by calling LLPI's Main()
-    if (pthread_create(&monitorThreadID,
-                       NULL,
-                       LLPI_Main,
-                       (void *)llpi) != 0)
-    {
-        perror("pthread_create");
-        exit(1);
-    }
-
-    //
-    // I am now the System thread
-    //
 
     // send all dynamic parameters to the hardware
     PARAMS_CONTROLLER_CLASS::GetInstance()->SendAllParams();
@@ -84,8 +60,8 @@ CONTROLLER_CLASS::Main()
     // system's Main() exited => end simulation
 
     // stop hardware
-    STARTER_CLASS::GetInstance()->Pause();
-    STARTER_CLASS::GetInstance()->Sync();
+    // STARTER_CLASS::GetInstance()->Pause();
+    // STARTER_CLASS::GetInstance()->Sync();
 
-    CallbackExit(0);
+    return;
 }

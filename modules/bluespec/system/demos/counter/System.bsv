@@ -1,13 +1,15 @@
 import Counter::*;
 
+`include "virtual_platform.bsh"
+`include "virtual_devices.bsh"
 `include "low_level_platform_interface.bsh"
 `include "physical_platform.bsh"
 `include "front_panel.bsh"
 
-module mkSystem#(LowLevelPlatformInterface llpi)();
+module mkApplication#(VIRTUAL_PLATFORM vp)();
 
     // instantiate virtual devices
-    FrontPanel      fp      <- mkFrontPanel(llpi);
+    FrontPanel      fp      = vp.virtualDevices.frontPanel;
 
     Counter         counter <- mkCounter();
     Reg#(Bit#(16))  state   <- mkReg(0);

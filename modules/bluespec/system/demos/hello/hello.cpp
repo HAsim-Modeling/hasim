@@ -14,30 +14,36 @@
 
 //
 // @file hello.cpp
-// @brief Bluespec System
+// @brief Raw Application
 //
 // @author Angshuman Parashar
 //
 
-#include "asim/provides/bluespec_system.h"
+#include "asim/provides/hybrid_application.h"
 
 using namespace std;
 
 // constructor
-BLUESPEC_SYSTEM_CLASS::BLUESPEC_SYSTEM_CLASS(
-    LLPI llpi) :
-        PLATFORMS_MODULE_CLASS(NULL)
+HYBRID_APPLICATION_CLASS::HYBRID_APPLICATION_CLASS(VIRTUAL_PLATFORM vp)
 {
 }
 
 // destructor
-BLUESPEC_SYSTEM_CLASS::~BLUESPEC_SYSTEM_CLASS()
+HYBRID_APPLICATION_CLASS::~HYBRID_APPLICATION_CLASS()
 {
+}
+
+// init
+void
+HYBRID_APPLICATION_CLASS::Init()
+{
+    return;
 }
 
 // main
 void
-BLUESPEC_SYSTEM_CLASS::Main()
+HYBRID_APPLICATION_CLASS::Main()
 {
-    SYSTEM_CLASS::Main();
+    cout << "Hello, World! This is software speaking." << endl;
+    return;
 }

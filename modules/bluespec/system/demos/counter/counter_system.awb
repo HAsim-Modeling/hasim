@@ -7,10 +7,12 @@
 %name Bluespec Counter Example
 %desc Bluespec Counter Example
 
-%provides bluespec_system
+%provides hybrid_application
 
-%attributes bluespec
+%attributes hybrid
 
 %public mkCounter.bsv System.bsv
+%public counter-system.h
+%private counter-system.cpp
 
 %AWB_END

@@ -7,9 +7,9 @@
 %name Bluespec RRR Test and Benchmarking Program
 %desc Bluespec RRR Test and Benchmarking Program
 
-%provides bluespec_system
+%provides hybrid_application
 
-%attributes bluespec
+%attributes hybrid
 
 %sources -t BSV  -v PUBLIC  rrrtest.bsv
 %sources -t H    -v PUBLIC  rrrtest.h   rrrtest-server.h

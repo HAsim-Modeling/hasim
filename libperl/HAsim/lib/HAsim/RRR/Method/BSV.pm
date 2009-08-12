@@ -852,6 +852,11 @@ sub print_direct_get_response_declaration
                 $self->_make_get_header("getResponse",
                                         $self->_outtype_name()) .
                 ";\n";
+
+    print $file $indent                                      .
+                $self->_make_get_noaction_header("peekResponse",
+                                                 $self->_outtype_name()) .
+                ";\n";
 }
 
 ##
@@ -872,6 +877,11 @@ sub print_proxy_get_response_declaration
     print $file $indent                                      .
                 $self->_make_get_header("getResponse",
                                         $self->outargs()->makebitvector()) .
+                ";\n";
+
+    print $file $indent                                      .
+                $self->_make_get_noaction_header("peekResponse",
+                                                 $self->outargs()->makebitvector()) .
                 ";\n";
 }
 
@@ -935,6 +945,28 @@ sub print_direct_get_response_definition
 
     # endmethod
     print $file $indent . "endmethod\n\n";
+    
+    ##
+    ## Equivalent peekResponse method (everything but the deq)
+    ##
+
+    # header
+    print $file $indent                                      .
+                $self->_make_get_noaction_header("peekResponse",
+                                                 $self->_outtype_name());
+
+    # no conditions
+    print $file ";\n";
+
+    # body
+    print $file $indent . "    let a = dem.peek();\n";
+    print $file $indent . "    ";
+    print $file $self->_outtype_name();
+    print $file " retval = unpack(truncate(a));\n";
+    print $file $indent . "    return retval;\n";
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
 }
 
 ##
@@ -964,6 +996,28 @@ sub print_proxy_get_response_definition
 
     # body
     print $file $indent . "    let a <- dem.readAndDelete();\n";
+    print $file $indent . "    ";
+    print $file $self->outargs()->makebitvector();
+    print $file " retval = unpack(truncate(a));\n";
+    print $file $indent . "    return retval;\n";
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
+
+    ##
+    ## Equivalent peekResponse method (everything but the deq)
+    ##
+
+    # header
+    print $file $indent                                      .
+                $self->_make_get_noaction_header("peekResponse",
+                                                 $self->outargs()->makebitvector());
+
+    # no conditions
+    print $file ";\n";
+
+    # body
+    print $file $indent . "    let a = dem.peek();\n";
     print $file $indent . "    ";
     print $file $self->outargs()->makebitvector();
     print $file " retval = unpack(truncate(a));\n";

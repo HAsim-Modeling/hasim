@@ -1,9 +1,8 @@
 
-`include "front_panel.bsh"
-`include "physical_platform.bsh"
-`include "low_level_platform_interface.bsh"
-
-`include "streams.bsh"
+`include "asim/provides/virtual_platform.bsh"
+`include "asim/provides/virtual_devices.bsh"
+`include "asim/provides/streams.bsh"
+`include "asim/provides/starter_device.bsh"
 
 `include "asim/dict/STREAMID.bsh"
 `include "asim/dict/STREAMS.bsh"
@@ -17,14 +16,17 @@ typedef enum
     STATE deriving(Bits,Eq);
 
 
-module mkSystem#(LowLevelPlatformInterface llpi)();
+module mkApplication#(VIRTUAL_PLATFORM virtualPlatform)();
 
-    // instantiate virtual devices
-    Streams    streams <- mkStreams(llpi);
+    Streams streams = virtualPlatform.virtualDevices.streams;
+    
+    STARTER starter = virtualPlatform.virtualDevices.starter;
 
     Reg#(STATE) state <- mkReg(STATE_start);
 
     rule hello (state == STATE_start);
+    
+       starter.acceptRequest_Start();
 
        streams.makeRequest(`STREAMID_MESSAGE,
                            `STREAMS_MESSAGE_HELLO,
@@ -37,11 +39,15 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
 
 
     rule exit (state == STATE_exit);
+    
+       starter.makeRequest_End(0);
 
+    /*
        streams.makeRequest(`STREAMID_MESSAGE,
                            `STREAMS_MESSAGE_EXIT,
                            0,
                            ?);
+    */
   
        state <= STATE_finish;
 

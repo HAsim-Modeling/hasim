@@ -8,7 +8,6 @@ Name=Traffic Light Model - Exe
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
-DefaultRunOpts=-showfp=gui
 
 [Hasim - Traffic light system]
 Packagehint=hasim
@@ -63,3 +62,6 @@ hardware_system=Hasim - Traffic light system
 [Hybrid System foundation]
 File=modules/model/hybrid_system.awb
 Packagehint=hasim
+
+[Hasim - Traffic light function w.o synthesis boundary/Params]
+MAX_WAIT='d50

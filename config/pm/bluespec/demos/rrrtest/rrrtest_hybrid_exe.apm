@@ -8,34 +8,38 @@ Name=RRR Test and Benchmarking Program (Bluesim)
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
-DefaultRunOpts=--bluesim='-m 50000'
 
 [Model]
 DefaultAttributes=hybrid simulation bluespec
-model=Pure Bluespec Hybrid Model Foundation
+model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
 
-[Pure Bluespec Hybrid Model Foundation]
-File=modules/model/pure_bluespec_hybrid_model.awb
-Packagehint=hasim
-
-[Pure Bluespec Hybrid Model Foundation/Requires]
-bluespec_common=Bluespec Null Library
-bluespec_system=Bluespec RRR Test and Benchmarking Program
-fpgaenv=FPGA Environment
-hasim_controller=Hybrid Pure Bluespec Controller
-
-[Bluespec Null Library]
-File=modules/bluespec/common/null/bluespec_null.awb
-Packagehint=hasim
-
 [Bluespec RRR Test and Benchmarking Program]
 File=modules/bluespec/system/demos/rrrtest/rrrtest.awb
 Packagehint=hasim
 
-[Hybrid Pure Bluespec Controller]
-File=config/pm/hasim/submodels/controller/hybrid_pure_bluespec_controller.apm
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
+
+[Base Hybrid Application Environment]
+File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
+Packagehint=platforms
+
+[Standard Command Switches]
+File=modules/hasim/controller/command_switches/standard-command-switches.awb
 Packagehint=hasim
+
+[HW/SW Hybrid Project Foundation/Requires]
+command_switches=Standard Command Switches
+fpgaenv=FPGA Environment
+application_env=Base Hybrid Application Environment
+
+[Base Hybrid Application Environment/Requires]
+hybrid_application=Bluespec RRR Test and Benchmarking Program
+
+[HW/SW Hybrid Project Foundation/Params]
+WAIT_FOR_HARDWARE=0

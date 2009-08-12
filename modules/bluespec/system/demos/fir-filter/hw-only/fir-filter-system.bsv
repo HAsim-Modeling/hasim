@@ -2,13 +2,13 @@ import Vector::*;
 import RegFile::*;
 import FixedPoint::*;
 
-`include "asim/provides/low_level_platform_interface.bsh"
+`include "asim/provides/virtual_platform.bsh"
 
 typedef UInt#(TLog#(`INPUT_SIZE)) INPUT_IDX;
 typedef UInt#(TLog#(`N_TAPS))     TAP_IDX;
 typedef FixedPoint#(16, 16)      FIR_VAL;
 
-module mkSystem#(LowLevelPlatformInterface llpi) ();
+module mkApplication#(VIRTUAL_PLATFORM vp) ();
 
     RegFile#(INPUT_IDX, Int#(32)) inputVals <- mkRegFileLoad(`INPUT_FILE, 0, `INPUT_SIZE - 1);
     Reg#(File) outFile <- mkReg(InvalidFile);

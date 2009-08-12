@@ -7,10 +7,12 @@
 %name Bluespec Switch to Led Example
 %desc Bluespec Switch to Led Example
 
-%provides bluespec_system
+%provides hybrid_application
 
-%attributes bluespec
+%attributes hybrid
 
-%public System.bsv
+%public  System.bsv
+%public  switch2led-system.h
+%private switch2led-system.cpp
 
 %AWB_END

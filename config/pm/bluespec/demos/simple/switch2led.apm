@@ -11,7 +11,7 @@ Class=Asim::Model
 
 [Model]
 DefaultAttributes=hybrid bluespec
-model=Pure Bluespec Hybrid Model Foundation
+model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
@@ -21,21 +21,25 @@ Packagehint=platforms
 File=modules/bluespec/system/demos/switch2led/switch2led_system.awb
 Packagehint=hasim
 
-[Pure Bluespec Hybrid Model Foundation/Requires]
-bluespec_common=Bluespec Null Library
-bluespec_system=Bluespec Switch to Led Example
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
+
+[Base Hybrid Application Environment]
+File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
+Packagehint=platforms
+
+[Standard Command Switches]
+File=modules/hasim/controller/command_switches/standard-command-switches.awb
+Packagehint=hasim
+
+[HW/SW Hybrid Project Foundation/Requires]
+command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
-hasim_controller=Hybrid Pure Bluespec Controller
+application_env=Base Hybrid Application Environment
 
-[Pure Bluespec Hybrid Model Foundation]
-File=modules/model/pure_bluespec_hybrid_model.awb
-Packagehint=hasim
+[Base Hybrid Application Environment/Requires]
+hybrid_application=Bluespec Switch to Led Example
 
-[Bluespec Null Library]
-File=modules/bluespec/common/null/bluespec_null.awb
-Packagehint=hasim
-
-
-[Hybrid Pure Bluespec Controller]
-File=config/pm/hasim/submodels/controller/hybrid_pure_bluespec_controller.apm
-Packagehint=hasim
+[HW/SW Hybrid Project Foundation/Params]
+MAKE_ALL_TARGET=bit

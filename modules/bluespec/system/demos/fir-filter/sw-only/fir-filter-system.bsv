@@ -1,6 +1,6 @@
-`include "asim/provides/low_level_platform_interface.bsh"
+`include "asim/provides/virtual_platform.bsh"
 
-module mkSystem#(LowLevelPlatformInterface llpi) ();
+module mkApplication#(VIRTUAL_PLATFORM vp) ();
 
 endmodule
 

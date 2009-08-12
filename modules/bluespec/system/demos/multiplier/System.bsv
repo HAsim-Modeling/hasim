@@ -1,15 +1,16 @@
 
-`include "low_level_platform_interface.bsh"
+`include "virtual_platform.bsh"
+`include "virtual_devices.bsh"
 `include "physical_platform.bsh"
 `include "front_panel.bsh"
 
 import Multiplier::*;
 
 
-module mkSystem#(LowLevelPlatformInterface llpi)();
+module mkApplication#(VIRTUAL_PLATFORM vp)();
 
     // instantiate virtual devices
-    FrontPanel      fp      <- mkFrontPanel(llpi);
+    FrontPanel      fp = vp.virtualDevices.frontPanel;
 
     /* state */
     Multiplier      mult        <- mkMultiplier();

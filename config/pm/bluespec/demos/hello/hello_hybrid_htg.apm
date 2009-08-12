@@ -11,34 +11,35 @@ Class=Asim::Model
 
 [Model]
 DefaultAttributes=hybrid htg bluespec
-model=Pure Bluespec Hybrid Model Foundation
+model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
 Packagehint=platforms
 
-[Bluespec Hello World Example]
+[Base Hybrid Application Environment]
+File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
+Packagehint=platforms
+
+[Base Hybrid Application Environment/Requires]
+hybrid_application=Hello World
+
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
+
+[Hello World]
 File=modules/bluespec/system/demos/hello/hello.awb
 Packagehint=hasim
 
-[Pure Bluespec Hybrid Model Foundation]
-File=modules/model/pure_bluespec_hybrid_model.awb
+[Standard Command Switches]
+File=modules/hasim/controller/command_switches/standard-command-switches.awb
 Packagehint=hasim
 
-[Pure Bluespec Hybrid Model Foundation/Requires]
-bluespec_common=Bluespec Null Library
-bluespec_system=Bluespec Hello World Example
-fpgaenv=FPGA Environment
-hasim_controller=Hybrid Pure Bluespec Controller
-
-[Pure Bluespec Hybrid Model Foundation/Params]
+[HW/SW Hybrid Project Foundation/Params]
 MAKE_ALL_TARGET=bit
 
-[Bluespec Null Library]
-File=modules/bluespec/common/null/bluespec_null.awb
-Packagehint=hasim
-
-
-[Hybrid Pure Bluespec Controller]
-File=config/pm/hasim/submodels/controller/hybrid_pure_bluespec_controller.apm
-Packagehint=hasim
+[HW/SW Hybrid Project Foundation/Requires]
+command_switches=Standard Command Switches
+fpgaenv=FPGA Environment
+application_env=Base Hybrid Application Environment

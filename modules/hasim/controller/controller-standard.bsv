@@ -70,6 +70,9 @@ module [HASIM_MODULE] mkController ();
     Connection_Receive#(CONTROL_MODEL_CYCLE_MSG) link_model_cycle <- mkConnection_Receive("model_cycle");
     Connection_Receive#(CONTROL_MODEL_COMMIT_MSG) link_model_commit <- mkConnection_Receive("model_commits");
 
+    // Link to the starter virtual device
+    Connection_Send#(Bit#(8)) link_starter <- mkConnection_Send("vdev_starter_finish_run");
+
     // state
     Reg#(CONTROL_STATE) state <- mkReg(CONTROL_STATE_idle);
 
@@ -123,6 +126,7 @@ module [HASIM_MODULE] mkController ();
     rule monitorModuleController (state == CONTROL_STATE_running);
         let success = centralControllers.moduleController.queryResult();
         starter.makeRequest_EndSim(success);
+        // link_starter.send(zeroExtend(pack(!success)));
         state <= CONTROL_STATE_paused;
     endrule
 

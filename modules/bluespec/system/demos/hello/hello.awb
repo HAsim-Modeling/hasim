@@ -4,12 +4,12 @@
 
 %AWB_START
 
-%name Bluespec Hello World Example
-%desc Bluespec Hello World Example
+%name Hello World
+%desc Hello World
 
-%provides bluespec_system
+%provides hybrid_application
 
-%attributes bluespec
+%attributes hybrid
 
 %notes hello.txt 
 

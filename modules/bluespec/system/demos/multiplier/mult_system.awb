@@ -7,10 +7,13 @@
 %name Bluespec Multiplier Example
 %desc Bluespec Multiplier Example
 
-%provides bluespec_system
+%provides hybrid_application
 
-%attributes bluespec
+%attributes hybrid
 
-%public Multiplier.bsv System.bsv
+%public Multiplier.bsv System.bsv 
+%public multiplier-system.h
+%private multiplier-system.cpp
+
 
 %AWB_END

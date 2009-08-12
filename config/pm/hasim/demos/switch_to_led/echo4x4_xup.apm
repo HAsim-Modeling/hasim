@@ -30,9 +30,9 @@ Packagehint=platforms
 
 [HAsim Hardware-Only Model Foundation/Requires]
 hasim_common=Hasim Common Library
-system=Hybrid System foundation
 hasim_controller=Hardware-Only Null Controller
 fpgaenv=FPGA Environment
+hardware_system=Hasim - Switch in to LED out system
 
 [Hardware-Only Null Controller]
 File=config/pm/hasim/submodels/controller/hardware_null_controller.apm
@@ -45,7 +45,6 @@ Packagehint=hasim
 [HAsim Hardware-Only Model Foundation/Params]
 MAKE_ALL_TARGET=bit
 
-
 [Hasim Common Library]
 File=config/pm/hasim/submodels/common/hasim_common.apm
 Packagehint=hasim
@@ -56,15 +55,5 @@ TERM_FPGA_BUTTONS=0
 TERM_FPGA_LEDS=0
 
 
-[Default Software System]
-File=modules/model/default_software_system.awb
-Packagehint=hasim
 
-[Hybrid System foundation/Requires]
-software_system=Default Software System
-hardware_system=Hasim - Switch in to LED out system
-
-[Hybrid System foundation]
-File=modules/model/hybrid_system.awb
-Packagehint=hasim
 

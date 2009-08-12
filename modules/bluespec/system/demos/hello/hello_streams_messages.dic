@@ -1,2 +1,2 @@
-def STREAMS.MESSAGE.HELLO     "Hello, World\n";
+def STREAMS.MESSAGE.HELLO     "Hello, World! This is hardware speaking.\n";
 

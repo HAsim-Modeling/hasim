@@ -22,12 +22,14 @@ import Vector::*;
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/front_panel.bsh"
 `include "asim/provides/physical_platform.bsh"
+`include "asim/provides/virtual_platform.bsh"
 `include "asim/provides/virtual_devices.bsh"
 `include "asim/provides/low_level_platform_interface.bsh"
 `include "asim/provides/rrr.bsh"
 `include "asim/provides/scratchpad_memory.bsh"
 `include "asim/provides/central_cache.bsh"
 `include "asim/provides/streams.bsh"
+`include "asim/provides/starter_device.bsh"
 `include "asim/provides/clocks_device.bsh"
 `include "asim/provides/shared_memory.bsh"
 
@@ -51,60 +53,25 @@ typedef struct
 ButtonInfo
     deriving (Eq, Bits);
 
-//
-// PLATFORM_INTERFACE: the interface itself is a replica of the LLPI interface
-//
-
-interface PLATFORM_INTERFACE;
-    
-    interface PHYSICAL_DRIVERS physicalDrivers;
-    interface TOP_LEVEL_WIRES  topLevelWires;
-        
-endinterface
 
 //
-// mkPlatformInterface: For code cleanliness, we split this module into a raw
-//                      raw "un-clocked" module and a real clocked module
+// mkPlatformInterface: Wrap the LLPI and virtual devices in soft connections.
 //
 
-module [HASIM_MODULE] mkPlatformInterface
-    // interface
-        (PLATFORM_INTERFACE);
-
-    // Platform Interface is instantiated inside a NULL clock domain, so
-    // the first thing we should do is instantiate the LLPI and obtain
-    // a clock and reset from it.
-
-    // instantiate low-level platform interface
-    LowLevelPlatformInterface llpint <- mkLowLevelPlatformInterface();
-
-    Clock clk = llpint.physicalDrivers.clocksDriver.clock;
-    Reset rst = llpint.physicalDrivers.clocksDriver.reset;
-    
-    // instantiate the real platform interface using our new clock and reset
-    let pi <- mkClockedPlatformInterface(llpint, clocked_by clk, reset_by rst);
-    
-    // export LLPI's drivers and wires to the top level
-    interface physicalDrivers = llpint.physicalDrivers;
-    interface topLevelWires   = llpint.topLevelWires;
-    
-endmodule
-
-//
-// mkClockedPlatformInterface: The real clocked platform interface
-//
-
-module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpint)
+module [HASIM_MODULE] mkPlatformInterface#(VIRTUAL_PLATFORM virtualPlatform)
     // interface
         ();
 
-    // instantiate virtual devices
-    FrontPanel frontPanel          <- mkFrontPanel(llpint);
-    let centralCacheStats          <- mkCentralCacheStats();
-    CENTRAL_CACHE_IFC centralCache <- mkCentralCache(llpint, centralCacheStats);
-    SCRATCHPAD_MEMORY_VDEV memory  <- mkMemoryVirtualDevice(llpint, centralCache);
-    Streams streams                <- mkStreams(llpint);
-    SHARED_MEMORY sharedMemory     <- mkSharedMemory(llpint);
+    // Get a link to the LLPI.
+    LowLevelPlatformInterface llpint = virtualPlatform.llpint;
+
+    // Get links to the virtual devices
+    FrontPanel frontPanel          = virtualPlatform.virtualDevices.frontPanel;
+    CENTRAL_CACHE_IFC centralCache = virtualPlatform.virtualDevices.centralCache;
+    SCRATCHPAD_MEMORY_VDEV memory  = virtualPlatform.virtualDevices.scratchpadMemory;
+    SHARED_MEMORY sharedMemory     = virtualPlatform.virtualDevices.sharedMemory;
+    Streams streams                = virtualPlatform.virtualDevices.streams;
+    STARTER starter                = virtualPlatform.virtualDevices.starter;
 
     // Patch Connections to Virtual Devices
     Connection_Receive#(FRONTP_MASKED_LEDS) link_leds     <- mkConnection_Receive("fpga_leds");
@@ -116,6 +83,9 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
     Connection_Receive#(SHARED_MEMORY_REQUEST) link_shmem_req        <- mkConnection_Receive("vdev_shmem_req");
     Connection_Send#(SHARED_MEMORY_DATA)       link_shmem_data_read  <- mkConnection_Send("vdev_shmem_data_read");
     Connection_Receive#(SHARED_MEMORY_DATA)    link_shmem_data_write <- mkConnection_Receive("vdev_shmem_data_write");
+
+    Connection_Receive#(Bit#(8))               link_starter_finish_run <- mkConnection_Receive("vdev_starter_finish_run");
+
 
     // debug log
     DEBUG_FILE debugLog <- mkDebugFile("platform_interface.out");
@@ -223,6 +193,14 @@ module [HASIM_MODULE] mkClockedPlatformInterface#(LowLevelPlatformInterface llpi
         let data = link_shmem_data_write.receive();
         link_shmem_data_write.deq();
         sharedMemory.writeBurstData(data);
+        
+    endrule
+
+    rule send_starter_finish_run (True);
+        
+        let exit_code = link_starter_finish_run.receive();
+        link_starter_finish_run.deq();
+        starter.makeRequest_End(exit_code);
         
     endrule
 

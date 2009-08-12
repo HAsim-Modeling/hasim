@@ -42,4 +42,8 @@ module [HASIM_MODULE] mkConnectionTerminus();
         Connection_Send#(SHARED_MEMORY_DATA)    link_shmem_data_write <- mkConnection_Send("vdev_shmem_data_write");        
     end
 
+    if (`TERM_VDEV_STARTER == 1)
+    begin
+        Connection_Send#(Bit#(8)) link_starter_finish_run       <- mkConnection_Send("vdev_starter_finish_run");
+    end
 endmodule

@@ -4,11 +4,13 @@
 
 %name Bluespec Device Tester
 %desc Bluespec Device Tester
-%attributes bluespec
+%attributes hybrid
 
-%provides bluespec_system
+%provides hybrid_application
 
 %sources -t BSV  -v PUBLIC devtest.bsv
+%sources -t H    -v PUBLIC devtest.h
+%sources -t CPP  -v PRIVATE devtest.cpp
 %sources -t DICT -v PUBLIC devtest-streams-id.dic
 %sources -t DICT -v PUBLIC devtest-streams-messages.dic
 

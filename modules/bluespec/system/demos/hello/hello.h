@@ -19,21 +19,22 @@
 // @author Angshuman Parashar
 //
 
-#ifndef __BLUESPEC_SYSTEM__
-#define __BLUESPEC_SYSTEM__
+#ifndef __HYBRID_APPLICATION__
+#define __HYBRID_APPLICATION__
 
-#include "platforms-module.h"
-#include "asim/provides/hasim_controller.h"
+#include <iostream>
 
-typedef class BLUESPEC_SYSTEM_CLASS* BLUESPEC_SYSTEM;
-class BLUESPEC_SYSTEM_CLASS: public SYSTEM_CLASS,
-                             public PLATFORMS_MODULE_CLASS
+#include "asim/provides/virtual_platform.h"
+
+typedef class HYBRID_APPLICATION_CLASS* HYBRID_APPLICATION;
+class HYBRID_APPLICATION_CLASS
 {
   public:
-    BLUESPEC_SYSTEM_CLASS(LLPI llpi);
-    ~BLUESPEC_SYSTEM_CLASS();
+    HYBRID_APPLICATION_CLASS(VIRTUAL_PLATFORM vp);
+    ~HYBRID_APPLICATION_CLASS();
 
-    // main
+    // methods called by the application environment
+    void Init();
     void Main();
 };
 

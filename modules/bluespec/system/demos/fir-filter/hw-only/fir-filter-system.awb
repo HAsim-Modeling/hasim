@@ -9,7 +9,7 @@
 #
 # %name HW only FIR Filter Demo
 # %desc FIR Filter using simulated hardware only.
-# %provides bluespec_system
+# %provides hybrid_application
 #
 # %attributes demo
 #

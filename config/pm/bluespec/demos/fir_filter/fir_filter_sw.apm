@@ -10,32 +10,37 @@ Type=HAsim
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=hybrid swonly bluespec
-model=Pure Bluespec Hybrid Model Foundation
+DefaultAttributes=hybrid bluespec
+model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
 
-[Pure Bluespec Hybrid Model Foundation]
-File=modules/model/pure_bluespec_hybrid_model.awb
-Packagehint=hasim
-
-[Pure Bluespec Hybrid Model Foundation/Requires]
-bluespec_common=Bluespec Null Library
-bluespec_system=SW only FIR Filter Demo
-fpgaenv=FPGA Environment
-hasim_controller=Hybrid Basic Controller
 
 
 [SW only FIR Filter Demo]
 File=modules/bluespec/system/demos/fir-filter/sw-only/fir-filter-system.awb
 Packagehint=hasim
 
-[Bluespec Null Library]
-File=modules/bluespec/common/null/bluespec_null.awb
+
+
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
+
+[Base Hybrid Application Environment]
+File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
+Packagehint=platforms
+
+[Standard Command Switches]
+File=modules/hasim/controller/command_switches/standard-command-switches.awb
 Packagehint=hasim
 
-[Hybrid Basic Controller]
-File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
-Packagehint=hasim
+[HW/SW Hybrid Project Foundation/Requires]
+command_switches=Standard Command Switches
+fpgaenv=FPGA Environment
+application_env=Base Hybrid Application Environment
+
+[Base Hybrid Application Environment/Requires]
+hybrid_application=SW only FIR Filter Demo

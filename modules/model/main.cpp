@@ -18,7 +18,9 @@
 #include "asim/provides/virtual_platform.h"
 #include "asim/provides/low_level_platform_interface.h"
 
-#include "main.h"
+#include "asim/provides/model.h"
+#include "hardware-done.h"
+
 
 // =======================================
 //                 MAIN
@@ -44,17 +46,31 @@ int main(int argc, char *argv[])
     // 3. System
     // 4. Controller
     VIRTUAL_PLATFORM vp         = new VIRTUAL_PLATFORM_CLASS();
-    LLPI             llpi       = new LLPI_CLASS();
     SYSTEM           system     = new SYSTEM_CLASS();
-    CONTROLLER       controller = new CONTROLLER_CLASS(llpi, system);
+    CONTROLLER       controller = new CONTROLLER_CLASS(vp->llpint, system);
+
+    vp->Init(); // TODO: Does this want command line params?
 
     // transfer control to controller
     controller->Main();
 
+    // Application's Main() exited => wait for hardware to be done.
+    // The user can use a parameter to indicate the hardware never 
+    // terminates (IE because it's a pure server).
+    
+    if (WAIT_FOR_HARDWARE && !hardwareFinished)
+    {
+        // We need to wait for it and it's not finished.
+        // So we'll wait to receive the signal from the VP.
+
+        pthread_mutex_lock(&hardwareStatusLock);
+        pthread_cond_wait(&hardwareFinishedSignal, &hardwareStatusLock);
+        pthread_mutex_unlock(&hardwareStatusLock);
+    }
+
     // cleanup and exit
     delete controller;
     delete system;
-    delete llpi;
     delete vp;
 
     return 0;

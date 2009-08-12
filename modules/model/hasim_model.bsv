@@ -23,6 +23,8 @@ import Clocks::*;
 `include "asim/provides/hasim_controller.bsh"
 `include "asim/provides/software_system.bsh"
 `include "asim/provides/hardware_system.bsh"
+`include "asim/provides/virtual_platform.bsh"
+`include "asim/provides/low_level_platform_interface.bsh"
 `include "asim/provides/platform_interface.bsh"
 `include "asim/provides/physical_platform.bsh"
 `include "asim/provides/fpga_components.bsh"
@@ -34,16 +36,19 @@ module [HASIM_MODULE] mkModel (TOP_LEVEL_WIRES);
     // so first instantiate the Platform Interface and get a clock and
     // reset from it.
 
-    let pi <- mkPlatformInterface();
+    // name must be pi_llpint --- explain!!!
+    VIRTUAL_PLATFORM vp <- mkVirtualPlatform();
 
-    Clock clk = pi.physicalDrivers.clocksDriver.clock;
-    Reset rst = pi.physicalDrivers.clocksDriver.reset;
+    Clock clk = vp.llpint.physicalDrivers.clocksDriver.clock;
+    Reset rst = vp.llpint.physicalDrivers.clocksDriver.reset;
     
+    let pi <- mkPlatformInterface(vp, clocked_by clk, reset_by rst);
+
     // instantiate system and controller
     let system     <- mkSystem    (clocked_by clk, reset_by rst);
     let controller <- mkController(clocked_by clk, reset_by rst);
     
     // return top level wires interface
-    return pi.topLevelWires;
+    return vp.llpint.topLevelWires;
 
 endmodule

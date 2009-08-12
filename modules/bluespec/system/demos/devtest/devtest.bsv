@@ -17,11 +17,14 @@
 
 // Include virtual devices
 
-`include "low_level_platform_interface.bsh"
-`include "physical_platform.bsh"
+`include "asim/provides/virtual_platform.bsh"
+`include "asim/provides/virtual_devices.bsh"
+`include "asim/provides/low_level_platform_interface.bsh"
+`include "asim/provides/physical_platform.bsh"
 
-`include "front_panel.bsh"
-`include "streams.bsh"
+`include "asim/provides/front_panel.bsh"
+`include "asim/provides/streams.bsh"
+`include "asim/provides/starter_device.bsh"
 
 // Include symbol defintions
 
@@ -39,12 +42,13 @@ typedef enum
     STATE deriving(Bits,Eq);
 
 
-module mkSystem#(LowLevelPlatformInterface llpi)();
+module mkApplication#(VIRTUAL_PLATFORM virtualPlatform)();
 
     // Instantiate virtual devices
 
-    FrontPanel       fp       <- mkFrontPanel(llpi);
-    Streams          streams  <- mkStreams(llpi);
+    FrontPanel       fp      = virtualPlatform.virtualDevices.frontPanel;
+    Streams          streams = virtualPlatform.virtualDevices.streams;
+    STARTER          starter = virtualPlatform.virtualDevices.starter;
 
     // Instantiate our local state
 
@@ -57,6 +61,8 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
     //
 
     rule start (state == STATE_start);
+
+       starter.acceptRequest_Start();
 
        let newvalue = 0;
 
@@ -161,10 +167,7 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
 
     rule finish (state == STATE_finish);
 
-       streams.makeRequest(`STREAMID_MESSAGE,
-                           `STREAMS_MESSAGE_FINISH,
-                           zeroExtend(value),
-                           ?);
+       starter.makeRequest_End(0);
   
        value <= 0;
        state <= STATE_shutdown;

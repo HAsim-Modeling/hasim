@@ -19642,3 +19642,170 @@ Directory config/pm/bluespec/demos/rrrtest
  rrrtest_hybrid_exe.apm    Locally Modified          668 
 
 Added default runflag to some benchmarks.
+
+----------
+mpellaue    Date: Wed Aug 12 16:07:05 EDT 2009  CSN: CSN-hasim-671
+                  Wed Aug 12 20:07:05 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ BSV.pm                    Locally Modified          670 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          670 
+ traffic_light_xup_synth.apm Locally Modified          670 
+ traffic_light_exe_nosynth.apm Locally Modified          670 
+
+Directory config/pm/hasim/demos/switch_to_led
+ echo4x4_xup.apm           Locally Modified          670 
+ adder4x4_xup.apm          Locally Modified          670 
+ square4x4_xup.apm         Locally Modified          670 
+ multiplier4x4_xup.apm     Locally Modified          670 
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_exe.apm      Locally Modified          670 
+ hello_hybrid_htg.apm      Locally Modified          670 
+
+Directory config/pm/bluespec/demos/fir_filter
+ fir_filter_hw_exe.apm     Locally Modified          670 
+ fir_filter_sw.apm         Locally Modified          670 
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_exe.apm    Locally Modified          670 
+ rrrtest_hybrid_htg.apm    Locally Modified          670 
+
+Directory config/pm/bluespec/demos/shmem
+ shmem_hybrid_htg.apm      Locally Modified          670 
+
+Directory config/pm/bluespec/demos/simple
+ multiplier.apm            Locally Modified          670 
+ switch2led.apm            Locally Modified          670 
+ counter.apm               Locally Modified          670 
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hwonly_vexe.apm   Locally Removed           670 
+ devtest_hwonly_xup.apm    Locally Removed           670 
+ devtest_hybrid_exe.apm    Locally Modified          670 
+ devtest_hybrid_htg.apm    Locally Modified          670 
+
+Directory modules/model
+ default_software_system.h Locally Modified          670 
+ hasim_model.awb           Locally Modified          670 
+ main.cpp                  Locally Modified          670 
+ hardware-done.h           Locally Added               0 
+ main.h                    Locally Modified          670 
+ hasim_model.bsv           Locally Modified          670 
+
+Directory modules/hasim/controller
+ controller-basic.cpp      Locally Modified          670 
+ controller-standard.cpp   Locally Modified          670 
+ controller-standard.bsv   Locally Modified          670 
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.awb    Locally Modified          670 
+ platform-interface.bsv    Locally Modified          670 
+ connection-terminus.bsv   Locally Modified          670 
+
+Directory modules/bluespec/system/demos/counter
+ counter-system.cpp        Locally Added               0 
+ counter-system.h          Locally Added               0 
+ counter_system.awb        Locally Modified          670 
+ System.bsv                Locally Modified          670 
+
+Directory modules/bluespec/system/demos/fir-filter/sw-only
+ fir-filter-system.cpp     Locally Modified          670 
+ fir-filter-system.h       Locally Modified          670 
+ fir-filter-system.awb     Locally Modified          670 
+ fir-filter-system.bsv     Locally Modified          670 
+
+Directory modules/bluespec/system/demos/fir-filter/hw-only
+ fir-filter-system.cpp     Locally Modified          670 
+ fir-filter-system.h       Locally Modified          670 
+ fir-filter-system.awb     Locally Modified          670 
+ fir-filter-system.bsv     Locally Modified          670 
+
+Directory modules/bluespec/system/demos/hello
+ hello.cpp                 Locally Modified          670 
+ hello_streams_messages.dic Locally Modified          670 
+ hello.h                   Locally Modified          670 
+ hello.awb                 Locally Modified          670 
+ hello.bsv                 Locally Modified          670 
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest.cpp               Locally Modified          670 
+ rrrtest-server.cpp        Locally Modified          670 
+ rrrtest.h                 Locally Modified          670 
+ rrrtest.awb               Locally Modified          670 
+ rrrtest.bsv               Locally Modified          670 
+
+Directory modules/bluespec/system/demos/multiplier
+ multiplier-system.cpp     Locally Added               0 
+ System.bsv                Locally Modified          670 
+ mult_system.awb           Locally Modified          670 
+ multiplier-system.h       Locally Added               0 
+
+Directory modules/bluespec/system/demos/shmem-test
+ shmem-test.bsv            Locally Modified          670 
+ shmem-test.awb            Locally Modified          670 
+
+Directory modules/bluespec/system/demos/switch2led
+ switch2led-system.h       Locally Added               0 
+ switch2led_system.awb     Locally Modified          670 
+ switch2led-system.cpp     Locally Added               0 
+ System.bsv                Locally Modified          670 
+
+Directory modules/bluespec/system/demos/devtest
+ devtest.cpp               Locally Added               0 
+ devtest.h                 Locally Added               0 
+ devtest.awb               Locally Modified          670 
+ devtest.bsv               Locally Modified          670 
+
+
+* Stage 1 of unravelling HAsim from other applications which use AWB.
+
+* All non-soft connection (formerly "pure bluespec") models have been brought up
+  to date in the new system.
+
+* Although this checkin may seem far-reaching, in reality most of the modified
+  files are due to the following four changes:
+
+1) The Virtual Platform now instantiates the Virtual Devices. The Application
+   (formerly System) is passed the entire Virtual Platform, rather than the
+   LLPI.
+
+2) Hybrid models which do NOT use Soft Connections now must provide a C++
+   HYBRID_APPLICATION class. This must have Init() and Main() methods. This
+   brings software in line with Bluespec, where the user must provide a
+   mkApplication module.
+
+3) A new virtual device called the "starter" has been added. This is the
+   beginning of moving functionality from the hasim_controller into
+   virtual_devices.
+   
+4) The soft connections "platform_interface" now wraps the new Starter device.
+   Models which use the platform_interface with the "Standard Controller" should
+   set TERM_VDEV_STARTER to 0 in the connection terminus.
+
+Still To Do:
+
+* Stage 2: Move models which use soft connections to the new scheme, so they
+  will no longer depend on hasim_common or other hasim-specific modules.
+
+* The top-level type will eventually be "project" instead of model. Currently
+  our synthesis scripts seem to depend on the name.
+
+* We need a better story on command-line argument parsing. Currently the old
+  system is still in place.
+
+* Many files should be moved out of "hasim" and into "platforms" or "awb"
+
+* There seems to be a small race condition between the VP destructor and
+  ChannelIO polling. This can result in spurious EOF messages when an
+  application exits succesfully.
+  
+* Coordination between the RRR Starter service and the main.cpp file currently
+  uses a global variable. This should be cleaned up.
+  
+* Currently the starter virtual device is named "starter_device" so as to be
+  distinct from the hasim "starter". When Stage 2 is complete this name could be
+  changed.

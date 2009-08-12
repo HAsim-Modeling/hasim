@@ -1,8 +1,4 @@
 
-#include <iostream>
-#include <math.h>
-#include <fstream>
-
 #include "asim/provides/hybrid_application.h"
 
 using namespace std;

@@ -16,6 +16,8 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
+`include "asim/provides/virtual_platform.bsh"
+`include "asim/provides/virtual_devices.bsh"
 `include "asim/provides/physical_platform.bsh"
 `include "asim/provides/low_level_platform_interface.bsh"
 `include "asim/provides/shared_memory.bsh"
@@ -36,20 +38,20 @@ typedef Bit#(64) PAYLOAD;
 
 // mkSystem
 
-module mkSystem#(LowLevelPlatformInterface llpi)();
+module mkApplication#(VIRTUAL_PLATFORM vp)();
     
     // instantiate the virtual devices I need
-    SHARED_MEMORY sharedMemory <- mkSharedMemory(llpi);
+    SHARED_MEMORY sharedMemory = vp.virtualDevices.sharedMemory;
 
     // instantiate stubs
-    ServerStub_SHMEM_TEST serverStub <- mkServerStub_SHMEM_TEST(llpi.rrrServer);
+    ServerStub_SHMEM_TEST serverStub <- mkServerStub_SHMEM_TEST(vp.llpint.rrrServer);
     
     // counters
-    Reg#(Bit#(64)) curTick     <- mkReg(0);
-    Reg#(Bit#(64)) timer       <- mkReg(0);
-    Reg#(Bit#(32)) burstLength <- mkReg(0);
+    Reg#(SHARED_MEMORY_DATA) curTick     <- mkReg(0);
+    Reg#(SHARED_MEMORY_DATA) timer       <- mkReg(0);
+    Reg#(SHARED_MEMORY_BURST_LENGTH) burstLength <- mkReg(0);
 
-    Bit#(64) cycles = curTick - timer;
+    SHARED_MEMORY_DATA cycles = curTick - timer;
 
     // test payload
     PAYLOAD payload = '1;
@@ -85,7 +87,7 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
             timer <= curTick;
         end
         
-        burstLength <= burst_length;
+        burstLength <= unpack(burst_length);
         state       <= STATE_OneWay;
         
         sharedMemory.writeBurstReq(0, burst_length);
@@ -101,7 +103,7 @@ module mkSystem#(LowLevelPlatformInterface llpi)();
     
     rule end_oneway_test (state == STATE_OneWay && burstLength == 0);
         
-        serverStub.sendResponse_OneWayTest(cycles);
+        serverStub.sendResponse_OneWayTest(pack(cycles));
         state <= STATE_idle;
         
     endrule

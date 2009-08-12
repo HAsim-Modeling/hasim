@@ -9,7 +9,8 @@
 
 typedef enum 
     {
-        STATE_start, 
+        STATE_start,
+        STATE_say_hello,
         STATE_exit,
         STATE_finish 
     } 
@@ -18,21 +19,28 @@ typedef enum
 
 module mkApplication#(VIRTUAL_PLATFORM virtualPlatform)();
 
+    STARTER starter = virtualPlatform.virtualDevices.starter;
+
     Streams streams = virtualPlatform.virtualDevices.streams;
     
-    STARTER starter = virtualPlatform.virtualDevices.starter;
 
     Reg#(STATE) state <- mkReg(STATE_start);
 
-    rule hello (state == STATE_start);
+    rule start (state == STATE_start);
     
        starter.acceptRequest_Start();
 
+       state <= STATE_say_hello;
+
+    endrule
+
+    rule hello (state == STATE_say_hello);
+  
        streams.makeRequest(`STREAMID_MESSAGE,
                            `STREAMS_MESSAGE_HELLO,
                            ?,
                            ?);
-  
+
        state <= STATE_exit;
 
     endrule
@@ -42,13 +50,6 @@ module mkApplication#(VIRTUAL_PLATFORM virtualPlatform)();
     
        starter.makeRequest_End(0);
 
-    /*
-       streams.makeRequest(`STREAMID_MESSAGE,
-                           `STREAMS_MESSAGE_EXIT,
-                           0,
-                           ?);
-    */
-  
        state <= STATE_finish;
 
     endrule

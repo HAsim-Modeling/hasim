@@ -19809,3 +19809,14 @@ Still To Do:
 * Currently the starter virtual device is named "starter_device" so as to be
   distinct from the hasim "starter". When Stage 2 is complete this name could be
   changed.
+
+----------
+emer        Date: Wed Aug 12 18:33:07 EDT 2009  CSN: CSN-hasim-672
+                  Wed Aug 12 22:33:07 UTC 2009
+
+
+Directory modules/bluespec/system/demos/hello
+ hello.bsv                 Locally Modified          671 
+
+Made saying hello a separate rule from start to make things a
+little simpler for the first time viewer.

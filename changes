@@ -19820,3 +19820,21 @@ Directory modules/bluespec/system/demos/hello
 
 Made saying hello a separate rule from start to make things a
 little simpler for the first time viewer.
+
+----------
+mcadler     Date: Thu Aug 13 08:53:56 EDT 2009  CSN: CSN-hasim-673
+                  Thu Aug 13 12:53:56 UTC 2009
+
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          672 
+ isa-emulator.h            Locally Modified          672 
+
+Directory modules/hasim/functional-partition/isa-emulator/null
+ null-isa-emulator-impl.h  Locally Modified          672 
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.h        Locally Modified          672 
+ funcp-base-types.awb      Locally Modified          672 
+
+Copy FP registers during emulation

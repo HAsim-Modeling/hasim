@@ -31,6 +31,18 @@ typedef UINT32 FUNCP_INT_REG;
 typedef UINT64 FUNCP_INT_REG;
 #endif
 
+typedef double FUNCP_FP_REG;
+
+//
+// Union of all possible register value types
+//
+typedef union
+{
+    FUNCP_INT_REG intReg;
+    FUNCP_FP_REG fpReg;
+}
+FUNCP_REG;
+
 //
 // Address size.  Also defines the PC size.
 //

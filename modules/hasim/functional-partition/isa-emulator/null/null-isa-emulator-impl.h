@@ -37,7 +37,7 @@ class ISA_EMULATOR_IMPL_CLASS
     void SyncReg(
         CONTEXT_ID ctxId,
         ISA_REG_INDEX_CLASS rName,
-        FUNCP_INT_REG rVal)
+        FUNCP_REG rVal)
     {};
 
     ISA_EMULATOR_RESULT Emulate(

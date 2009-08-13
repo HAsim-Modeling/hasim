@@ -100,7 +100,7 @@ typedef UINT32 ISA_INSTRUCTION;
 UMF_MESSAGE
 ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
 {
-    FUNCP_INT_REG rVal;
+    FUNCP_REG rVal;
     FUNCP_VADDR pc;
     ISA_REG_INDEX_CLASS rName;
     ISA_INSTRUCTION inst;
@@ -111,7 +111,7 @@ ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
     switch(req->GetMethodID())
     {
       case CMD_SYNC:
-        rVal = req->ExtractUINT(sizeof(rVal));
+        rVal.intReg = req->ExtractUINT(sizeof(rVal));
         rName = req->ExtractUINT(2);
         ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
         req->Delete();
@@ -120,19 +120,23 @@ ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
         {
             if (rName.IsArchReg())
             {
-                T1("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " ArchReg " << fmt_regnum(rName.ArchRegNum()) << ": " << fmt_regval(rVal));
+                T1("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " ArchReg " << fmt_regnum(rName.ArchRegNum()) << ": " << fmt_regval(rVal.intReg));
+            }
+            else if (rName.IsFPReg())
+            {
+                T1("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " FPReg " << fmt_regnum(rName.FPRegNum()) << ": " << fmt_regval(rVal.intReg));
             }
             else if (rName.IsControlReg())
             {
-                T1("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " ControlReg:  " << fmt_regval(rVal));
+                T1("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " ControlReg:  " << fmt_regval(rVal.intReg));
             }
             else if (rName.IsLockReg())
             {
-                T1("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " LockReg:     " << fmt_regval(rVal));
+                T1("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " LockReg:     " << fmt_regval(rVal.intReg));
             }
             else if (rName.IsLockAddrReg())
             {
-                T1("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " LockAddrReg: " << fmt_regval(rVal));
+                T1("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " LockAddrReg: " << fmt_regval(rVal.intReg));
             }
             else
             {
@@ -202,25 +206,29 @@ void
 ISA_EMULATOR_SERVER_CLASS::UpdateRegister(
     CONTEXT_ID ctxId,
     ISA_REG_INDEX_CLASS rName,
-    FUNCP_INT_REG rVal)
+    FUNCP_REG rVal)
 {
     if (TRACING(1))
     {
         if (rName.IsArchReg())
         {
-            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " ArchReg " << fmt_regnum(rName.ArchRegNum()) << ": " << fmt_regval(rVal));
+            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " ArchReg " << fmt_regnum(rName.ArchRegNum()) << ": " << fmt_regval(rVal.intReg));
+        }
+        else if (rName.IsFPReg())
+        {
+            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " FPReg " << fmt_regnum(rName.FPRegNum()) << ": " << fmt_regval(rVal.intReg));
         }
         else if (rName.IsControlReg())
         {
-            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " ControlReg: " << fmt_regval(rVal));
+            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " ControlReg: " << fmt_regval(rVal.intReg));
         }
         else if (rName.IsLockReg())
         {
-            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " LockReg: " << fmt_regval(rVal));
+            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " LockReg: " << fmt_regval(rVal.intReg));
         }
         else if (rName.IsLockAddrReg())
         {
-            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " LockAddrReg: " << fmt_regval(rVal));
+            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " LockAddrReg: " << fmt_regval(rVal.intReg));
         }
         else
         {
@@ -228,12 +236,16 @@ ISA_EMULATOR_SERVER_CLASS::UpdateRegister(
         }
     }
 
-    // create message for RRR client
+    //
+    // Create message for RRR client.
+    //
+    // Assumes integer and FP registers are the same size!
+    //
     UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
     msg->SetLength(sizeof(rVal) + 2 + sizeof(CONTEXT_ID_RRR));
     msg->SetServiceID(SERVICE_ID);
     msg->SetMethodID(METHOD_ID_UPDATE_REG);
-    msg->AppendUINT(rVal, sizeof(rVal));
+    msg->AppendUINT(rVal.intReg, sizeof(rVal));
     msg->AppendUINT(rName, 2);
     msg->AppendUINT(CONTEXT_ID_RRR(ctxId), sizeof(CONTEXT_ID_RRR));
 

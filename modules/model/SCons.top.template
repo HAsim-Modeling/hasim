@@ -419,12 +419,11 @@ env.Alias('xst', xilinx_ngd)
 # USE_SMARTGUIDE on the scons command line to a non-zero value.
 #
 smartguide_cache_dir = env['DEFS']['WORKSPACE_ROOT'] + '/var/xilinx_ncd'
-if not os.path.isdir(smartguide_cache_dir):
-    os.mkdir(smartguide_cache_dir)
+smartguide_cache_file = APM_NAME + '_par.ncd'
 
 if ((int(ARGUMENTS.get('USE_SMARTGUIDE', 0)) or env['ENV'].has_key('USE_SMARTGUIDE')) and
     (FindFile(APM_NAME + '_par.ncd', [smartguide_cache_dir]) != None)):
-    smartguide = ' -smartguide ' +  smartguide_cache_dir + '/' + APM_NAME + '_par.ncd' 
+    smartguide = ' -smartguide ' +  smartguide_cache_dir + '/' + smartguide_cache_file
 else:
     smartguide = ''
 
@@ -456,8 +455,9 @@ xilinx_par = env.Command(
       Delete(XILINX_APM_NAME + '_par.xpi'),
       Delete(XILINX_APM_NAME + '_par_pad.csv'),
       Delete(XILINX_APM_NAME + '_par_pad.txt'),
+      Mkdir(smartguide_cache_dir),
       'par -w -ol high ' + smartguide + ' -t ' + env['DEFS']['COST_TABLE'] + ' ' + XILINX_APM_NAME + '_map.ncd $TARGET ' + XILINX_APM_NAME + '.pcf',
-      'cp -f $TARGET ' + smartguide_cache_dir ])
+      Copy(smartguide_cache_dir + '/' + smartguide_cache_file, '$TARGET') ])
 
 
 # Generate the FPGA timing report -- this report isn't built by default.  Use

@@ -19855,3 +19855,14 @@ set USE_SMARTGUIDE=1 on the scons command line.
 
 Also, put ncd files to guide smart guide in a xilinx_ncd subdirectory of the
 workspace's var directory instead of polluting the top level.
+
+----------
+mcadler     Date: Fri Aug 14 08:19:13 EDT 2009  CSN: CSN-hasim-675
+                  Fri Aug 14 12:19:13 UTC 2009
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          674 
+
+A little clean up on the smart guide code:  use copy and mkdir scons methods
+instead of shell commands.

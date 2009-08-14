@@ -19866,3 +19866,13 @@ Directory modules/model
 
 A little clean up on the smart guide code:  use copy and mkdir scons methods
 instead of shell commands.
+
+----------
+mcadler     Date: Fri Aug 14 16:18:25 EDT 2009  CSN: CSN-hasim-676
+                  Fri Aug 14 20:18:25 UTC 2009
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          675 
+
+SCons Mkdir() fails if the directory already exists.

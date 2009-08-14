@@ -19838,3 +19838,20 @@ Directory modules/hasim/functional-partition/base-types
  funcp-base-types.awb      Locally Modified          672 
 
 Copy FP registers during emulation
+
+----------
+mcadler     Date: Fri Aug 14 00:05:38 EDT 2009  CSN: CSN-hasim-674
+                  Fri Aug 14 04:05:38 UTC 2009
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          672 
+
+Xilinx smart guide option took a design that would have worked and, instead,
+made the design fail par with all cost tables.  To add insult, it ran through
+map more slowly than without smart guide.  Smart guide is now OFF by default.
+To turn it on either set the USE_SMARTGUIDE environment variable or
+set USE_SMARTGUIDE=1 on the scons command line.
+
+Also, put ncd files to guide smart guide in a xilinx_ncd subdirectory of the
+workspace's var directory instead of polluting the top level.

@@ -38,9 +38,9 @@ FUNCP_SIMULATED_MEMORY_CLASS::FUNCP_SIMULATED_MEMORY_CLASS()
 
     // Load image
     char *benchmark = "program.vmh";
-    if (globalArgs->FuncPlatformArgc() > 1)
+    if (globalArgs->FuncPlatformArgc() > 0)
     {
-        benchmark = globalArgs->FuncPlatformArgv()[1];
+        benchmark = globalArgs->FuncPlatformArgv()[0];
     }
 
     bool s = vmh_load_image(benchmark, memory, MEM_SIZE);

@@ -27,7 +27,7 @@
 // =======================================
 
 // globally visible variables
-GLOBAL_ARGS globalArgs;
+extern GLOBAL_ARGS globalArgs;
 
 // main
 int main(int argc, char *argv[])
@@ -36,9 +36,6 @@ int main(int argc, char *argv[])
     // unbuffered already, but be sure.
     setvbuf(stdout, NULL, _IOLBF, 0);
     setvbuf(stderr, NULL, _IOLBF, 0);
-
-    // parse args and place in global array
-    globalArgs = new GLOBAL_ARGS_CLASS(argc, argv);
 
     // instantiate:
     // 1. Virtual platform
@@ -49,7 +46,14 @@ int main(int argc, char *argv[])
     SYSTEM           system     = new SYSTEM_CLASS();
     CONTROLLER       controller = new CONTROLLER_CLASS(vp->llpint, system);
 
-    vp->Init(); // TODO: Does this want command line params?
+    // Set up default switches
+    globalArgs = new GLOBAL_ARGS_CLASS();
+    
+    // Process command line arguments
+    COMMAND_SWITCH_PROCESSOR switchProc = new COMMAND_SWITCH_PROCESSOR_CLASS();
+    switchProc->ProcessArgs(argc, argv);
+
+    vp->Init();
 
     // transfer control to controller
     controller->Main();

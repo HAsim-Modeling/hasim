@@ -22,6 +22,8 @@ STARTER_SERVER_CLASS STARTER_SERVER_CLASS::instance;
 
 // constructor
 STARTER_SERVER_CLASS::STARTER_SERVER_CLASS() :
+    stopCycleSwitch(),
+    messageIntervalSwitch(),
     lastStatsScanCycle(0),
     lastFPGAClockModelCycles(0),
     lastFPGAClockCommits(0),
@@ -64,7 +66,7 @@ STARTER_SERVER_CLASS::Init(
     parent = p;
     for (CONTEXT_ID c = 0; c < NUM_CONTEXTS; c++)
     {
-        ctxHeartbeat[c].Init();
+        ctxHeartbeat[c].Init(&messageIntervalSwitch);
     }
 }
 
@@ -182,8 +184,8 @@ STARTER_SERVER_CLASS::Heartbeat(
     //
     // Done?
     //
-    if (globalArgs->StopCycle() &&
-        (ctxHeartbeat[ctxId].GetModelCycles() >= globalArgs->StopCycle()))
+    if (stopCycleSwitch.StopCycle() &&
+        (ctxHeartbeat[ctxId].GetModelCycles() >= stopCycleSwitch.StopCycle()))
     {
         cout << "starter: simulation reached stop cycle." << endl;
         EndSimulation(0);
@@ -351,9 +353,10 @@ CONTEXT_HEARTBEAT_CLASS::CONTEXT_HEARTBEAT_CLASS() :
 
 
 void
-CONTEXT_HEARTBEAT_CLASS::Init()
+CONTEXT_HEARTBEAT_CLASS::Init(MESSAGE_INTERVAL_SWITCH_CLASS* mis)
 {
-    nextProgressMsgCycle = globalArgs->ProgressMsgInterval();
+    messageIntervalSwitch = mis;
+    nextProgressMsgCycle = mis->ProgressMsgInterval();
 }
 
 void
@@ -389,7 +392,7 @@ CONTEXT_HEARTBEAT_CLASS::Heartbeat(
 
     if (nextProgressMsgCycle && (modelCycles >= nextProgressMsgCycle))
     {
-        nextProgressMsgCycle += globalArgs->ProgressMsgInterval();
+        nextProgressMsgCycle += messageIntervalSwitch->ProgressMsgInterval();
         
         cout << "[" << std::dec << std::setw(13) << fpga_cycles << "] ";
         ProgressStats(ctxId);
@@ -445,4 +448,49 @@ CONTEXT_HEARTBEAT_CLASS::GetModelIPS() const
     {
         return 0;
     }
+}
+
+// Switch for reading the stop cycle.
+STOP_CYCLE_SWITCH_CLASS::STOP_CYCLE_SWITCH_CLASS() :
+    COMMAND_SWITCH_INT_CLASS("cycles")
+{
+}
+
+STOP_CYCLE_SWITCH_CLASS::~STOP_CYCLE_SWITCH_CLASS()
+{
+}
+
+void
+STOP_CYCLE_SWITCH_CLASS::ProcessSwitchInt(int arg)
+{
+    stopCycle = arg;
+}
+
+bool
+STOP_CYCLE_SWITCH_CLASS::ShowSwitch(char* buff)
+{
+    strcpy(buff, "[--cycles=<n>]          Stop simulation after n cycles");
+}
+
+// Switch for reading the progress message interval
+MESSAGE_INTERVAL_SWITCH_CLASS::MESSAGE_INTERVAL_SWITCH_CLASS() :
+    COMMAND_SWITCH_INT_CLASS("pc"),
+    messageInterval(1)
+{
+}
+
+MESSAGE_INTERVAL_SWITCH_CLASS::~MESSAGE_INTERVAL_SWITCH_CLASS()
+{
+}
+
+void
+MESSAGE_INTERVAL_SWITCH_CLASS::ProcessSwitchInt(int arg)
+{
+    messageInterval = arg;
+}
+
+bool
+MESSAGE_INTERVAL_SWITCH_CLASS::ShowSwitch(char* buff)
+{
+    strcpy(buff, "[--pc=<interval>]       Progress message (hearbeat) interval.");
 }

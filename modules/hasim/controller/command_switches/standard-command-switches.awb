@@ -10,5 +10,9 @@
 
 %provides command_switches
 
-%sources -t H   -v PUBLIC  standard-command-switches.h
-%sources -t CPP -v PRIVATE standard-command-switches.cpp
+%sources -t H   -v PUBLIC  command-switches.h
+%sources -t H   -v PUBLIC  command-switch-processor.h
+%sources -t H   -v PUBLIC  default-switches.h
+%sources -t CPP -v PRIVATE command-switches.cpp
+%sources -t CPP -v PRIVATE command-switch-processor.cpp
+%sources -t CPP -v PRIVATE default-switches.cpp

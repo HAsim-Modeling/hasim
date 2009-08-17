@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <sys/time.h>
 
+#include "command-switches.h"
+
 #include "asim/provides/low_level_platform_interface.h"
 #include "asim/provides/rrr.h"
 #include "asim/provides/funcp_base_types.h"
@@ -18,6 +20,36 @@
 //    Maintain heartbeat information for a single context.
 //
 
+class STOP_CYCLE_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
+{
+  private:
+    int stopCycle;
+
+  public:
+    STOP_CYCLE_SWITCH_CLASS();
+    ~STOP_CYCLE_SWITCH_CLASS();
+    
+    void ProcessSwitchInt(int arg);
+    bool ShowSwitch(char *buff);
+    
+    int StopCycle() { return stopCycle; }
+};
+
+class MESSAGE_INTERVAL_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
+{
+  private:
+    int messageInterval;
+
+  public:
+    MESSAGE_INTERVAL_SWITCH_CLASS();
+    ~MESSAGE_INTERVAL_SWITCH_CLASS();
+    
+    void ProcessSwitchInt(int arg);
+    bool ShowSwitch(char *buff);
+    
+    int ProgressMsgInterval() { return messageInterval; }
+};
+
 typedef class CONTEXT_HEARTBEAT_CLASS* CONTEXT_HEARTBEAT;
 
 class CONTEXT_HEARTBEAT_CLASS
@@ -26,7 +58,7 @@ class CONTEXT_HEARTBEAT_CLASS
     CONTEXT_HEARTBEAT_CLASS();
     ~CONTEXT_HEARTBEAT_CLASS() {};
 
-    void Init();
+    void Init(MESSAGE_INTERVAL_SWITCH_CLASS* mis);
 
     void Heartbeat(CONTEXT_ID ctxId,
                    UINT64 fpga_cycles,
@@ -49,6 +81,7 @@ class CONTEXT_HEARTBEAT_CLASS
     UINT64 fpgaLastCycle;
     UINT64 modelStartCycle;
     UINT64 modelStartInstrs;
+    MESSAGE_INTERVAL_SWITCH_CLASS* messageIntervalSwitch;
 
     double latestFMR;
     struct timeval heartbeatStartTime;
@@ -120,6 +153,12 @@ class STARTER_SERVER_CLASS: public RRR_SERVER_CLASS,
     void DisableContext(CONTEXT_ID ctx_id);
 
   private:
+    // Command switch for stop cycle
+    STOP_CYCLE_SWITCH_CLASS stopCycleSwitch;
+    
+    // Command switch for message interval
+    MESSAGE_INTERVAL_SWITCH_CLASS messageIntervalSwitch;
+
     CONTEXT_HEARTBEAT_CLASS ctxHeartbeat[NUM_CONTEXTS];
 
     // Cycle when statistics were last scanned

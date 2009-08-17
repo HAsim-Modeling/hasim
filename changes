@@ -19876,3 +19876,55 @@ Directory modules/model
  SCons.top.template        Locally Modified          675 
 
 SCons Mkdir() fails if the directory already exists.
+
+----------
+mpellaue    Date: Mon Aug 17 12:30:54 EDT 2009  CSN: CSN-hasim-677
+                  Mon Aug 17 16:30:54 UTC 2009
+
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_exe.apm    Locally Modified          676 
+
+Directory modules/model
+ main.cpp                  Locally Modified          676 
+
+Directory modules/hasim/controller/starter
+ hybrid-basic-starter.cpp  Locally Modified          676 
+ hybrid-basic-starter.h    Locally Modified          676 
+
+Directory modules/hasim/controller/command_switches
+ command-switch-processor.h Locally Added               0 
+ default-switches.h        Locally Added               0 
+ standard-command-switches.cpp Locally Removed           676 
+ command-switches.cpp      Locally Added               0 
+ standard-command-switches.h Locally Removed           676 
+ standard-command-switches.awb Locally Modified          676 
+ command-switch-processor.cpp Locally Added               0 
+ command-switches.h        Locally Added               0 
+ default-switches.cpp      Locally Added               0 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
+ vmh-memory.cpp            Locally Modified          676 
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest.cpp               Locally Modified          676 
+ rrrtest-server.cpp        Locally Modified          676 
+
+
+* A better story on command-line switch processing.
+
+* Now indivual software modules can define new switches and respond to their
+  presence. If these modules are not present then the switch will not appear.
+  
+* For instance --bluesim is now only a valid switch in _exe builds. Similarly
+  --pc is only present in models that use hasim_starter and --showfp is only
+  present in models that use the Front Panel.
+
+* A set of default_arguments is available for arguments that are required, like 
+  --workload, which is required by the run script.
+
+* The --contexts variable is still a global argument for now. This will be
+  disentangled in Stage 2 of our reorganization.
+
+Michael P.
+

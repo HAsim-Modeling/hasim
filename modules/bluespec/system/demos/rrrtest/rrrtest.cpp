@@ -32,7 +32,6 @@
 
 #include "asim/rrr/service_ids.h"
 #include "asim/provides/hybrid_application.h"
-#include "asim/provides/command_switches.h"
 #include "asim/ioformat.h"
 
 using namespace std;

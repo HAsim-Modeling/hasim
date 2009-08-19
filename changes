@@ -19939,3 +19939,38 @@ Directory modules/hasim/controller/command_switches
  default-switches.cpp      Locally Modified          677 
 
 Added some #include's needed for later versions of gcc.
+
+----------
+emer        Date: Wed Aug 19 19:32:12 EDT 2009  CSN: CSN-hasim-679
+                  Wed Aug 19 23:32:12 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          678 
+ Templates.pm              Locally Modified          678 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          678 
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_exe.apm      Locally Modified          678 
+
+Directory modules/bluespec/system/demos
+ template/                 Locally Added               0 
+
+Directory modules/bluespec/system/demos/template
+ hybrid_application.txt    Locally Added               0 
+ hybrid_application.cpp    Locally Added               0 
+ hybrid_application_streams_messages.dic Locally Added               0 
+ hybrid_application.h      Locally Added               0 
+ hybrid_application.awb    Locally Added               0 
+ hybrid_application_streams_id.dic Locally Added               0 
+ hybrid_application.bsv    Locally Added               0 
+
+Directory modules/bluespec/common/base
+ bluespec_base.awb         Locally Modified          678 
+
+Added support for verilog includes, thus eliminating the need
+for .prj files.
+
+Added a template for a hybrid application.

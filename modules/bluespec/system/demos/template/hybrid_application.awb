@@ -1,0 +1,22 @@
+********************************************************************
+* Awb module specification
+********************************************************************
+
+%AWB_START
+
+%name *** Hybrid Application Template ***
+%desc Hybrid Application Template
+
+%provides --template hybrid_application
+
+%attributes hybrid bluespec
+
+%notes hybrid_application.txt  hybrid_application.pdf	hybrid_application.tex
+
+%sources -t BSV  -v PUBLIC  hybrid_application.bsv
+%sources -t H    -v PUBLIC  hybrid_application.h
+%sources -t CPP  -v PRIVATE hybrid_application.cpp
+%sources -t DICT -v PUBLIC  hybrid_application_streams_id.dic
+%sources -t DICT -v PUBLIC  hybrid_application_streams_messages.dic
+
+%AWB_END

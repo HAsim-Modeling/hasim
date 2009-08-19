@@ -1,0 +1,16 @@
+This is the template for a hybrid application.
+
+On the software side, this module must provide a HYBRID_APPLICATION class
+with a constructor that takes a virtual platform:
+
+    HYBRID_APPLICATION_CLASS(VIRTUAL_PLATFORM vp);
+
+and two mandatory methods:
+
+    void Init();
+    void Main();
+
+On the hardware side this module must provide a constructor:
+
+    module mkApplication#(VIRTUAL_PLATFORM virtualPlatform)();
+

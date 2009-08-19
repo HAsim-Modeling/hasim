@@ -1,0 +1,2 @@
+def STREAMS.MESSAGE.HELLO     "Hello, World\n";
+

@@ -9,7 +9,7 @@
 
 %attributes bluespec
 
-%private bluespec_common.prj
+%include --type=verilog @BLUESPECDIR@/Verilog/
 
 %library lib/libasim/libasim.a
 

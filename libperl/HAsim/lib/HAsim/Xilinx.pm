@@ -116,13 +116,9 @@ sub generate_prj_file {
     my $name = HAsim::Build::get_model_name($model);
     
     my $final_prj_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".prj");
-   
-    #first add all local .prj files
 
-    open(PRJFILE, "> $final_prj_file") || return undef;
-    
-    my @model_prj_files = find_all_files_with_suffix($model->modelroot(), ".prj");
-    
+    # Create replacements hash
+
     my $replacements_r = HAsim::Util::empty_hash_ref();
     
     HAsim::Util::common_replacements($model, $replacements_r);
@@ -132,6 +128,15 @@ sub generate_prj_file {
     my $bdir = bluespec_dir();
     HAsim::Util::hash_set($replacements_r,'@BLUESPECDIR@', $bdir);
 
+    # Create final prj file
+
+    open(PRJFILE, "> $final_prj_file") || return undef;
+
+    # First add all local .prj files
+    # TBD: Make sure there is a matching .sdf file for each .prj
+
+    my @model_prj_files = find_all_files_with_suffix($model->modelroot(), ".prj");
+
     foreach my $model_prj_file (@model_prj_files)
     {
       HAsim::Templates::do_template_replacements($model_prj_file, *PRJFILE{IO}, $replacements_r);
@@ -139,7 +144,8 @@ sub generate_prj_file {
 
     #now add all bsc-generated verilog files
 
-    __generate_prj_file($model->modelroot(),"hw",*PRJFILE{IO});
+    __generate_prj_file($model->modelroot(),"hw",*PRJFILE{IO}, $replacements_r);
+
     close(PRJFILE);
 
     return 1;
@@ -151,13 +157,14 @@ sub __generate_prj_file {
     my $module = shift;
     my $parent_dir = shift;
     my $file = shift;
+    my $replacements_r = shift;
 
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
 
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-	__generate_prj_file($child,$my_dir,$file);
+	__generate_prj_file($child,$my_dir,$file,$replacements_r);
     }
 
     if (HAsim::Build::is_synthesis_boundary($module)) {
@@ -183,6 +190,21 @@ sub __generate_prj_file {
       }
     }
 
+    # Add files from %include --type=verilog
+
+    foreach my $f ($module->include("verilog")) {
+	my $incdir = HAsim::Templates::do_line_replacements($f, $replacements_r);
+
+	my @i = glob(HAsim::Util::path_append($incdir,"*.v"));
+
+	foreach my $v_file (@i) {
+	    # Don't include main in an include...
+	    next if ($v_file =~ /main.v$/);
+
+	    print $file "verilog work \"$v_file\"\n";
+	}
+    }
+	    
 }
 
 ############################################################

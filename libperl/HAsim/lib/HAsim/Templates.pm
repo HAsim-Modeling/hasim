@@ -18,6 +18,22 @@ use strict;
 
 
 ############################################################
+# do_replacements: The function to create a new file
+
+sub do_replacements {
+    my $template = shift;
+    my $dst = shift;
+    my $replacements_r = shift;
+    
+    CORE::open(DST, "> $dst") || return undef;
+    
+    return do_template_replacements($template, *DST{IO}, $replacements_r);
+    
+    CORE::close(DST);
+    
+}
+
+############################################################
 # do_template_replacements: Given a template file, a 
 #                           destination file, and a hash of
 #                           replacement keys to values, 
@@ -42,37 +58,38 @@ sub do_template_replacements {
     CORE::open(TEMPLATE, "< $template") || return undef;
 
     while (my $line = <TEMPLATE>) {
-	# check for each possible substitution
-	while ( my ($key, $value) = each %$replacements_r ) {
-	    $line =~ s/$key/$value/g;
-	}
-	
-	# remove any unmatched replacements
-	while ($line =~ /@([\w\-]+)@/) {
-	    $line =~ s/@[\w\-]+@//g;
-	}
-	print $dstfile $line;
+	print $dstfile do_line_replacements($line,$replacements_r);
     }
     CORE::close(TEMPLATE);
 
     return 1;
 }
 
+
 ############################################################
-# do_replacements: The function to create a new file
+# do_line_replacements: Given a string and a hash of
+#                           replacement keys to values, 
+#                           produce destination line 
+#                           with substitutions made
 
-sub do_replacements {
-    my $template = shift;
-    my $dst = shift;
+
+sub do_line_replacements {
+    my $line = shift;
     my $replacements_r = shift;
-    
-    CORE::open(DST, "> $dst") || return undef;
-    
-    return do_template_replacements($template, *DST{IO}, $replacements_r);
-    
-    CORE::close(DST);
-    
-}
 
+    # check for each possible substitution
+
+    while ( my ($key, $value) = each %$replacements_r ) {
+	$line =~ s/$key/$value/g;
+    }
+	
+    # remove any unmatched replacements
+
+    while ($line =~ /@([\w\-]+)@/) {
+	$line =~ s/@[\w\-]+@//g;
+    }
+
+    return $line;
+}
 
 return 1;

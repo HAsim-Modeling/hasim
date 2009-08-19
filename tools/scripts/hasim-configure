@@ -126,21 +126,20 @@ print "Opening... $model\n" if $debug;
     
 
 if ($configure) {
-    print "Configuring build tree for $model . . . ";
+    print "Configuring build tree for $model . . . \n";
     $status = configure_build_tree($model);
 } elsif ($nuke) {
-    print "Nuking build tree. . . ";
+    print "Nuking build tree. . . \n";
     $status = delete_build_tree($model);
-} elsif ($setup) {
-    $status = setup_benchmark($model, $benchmark);
 } elsif ($build) {
-#	WARN_AND_DIE("build command not yet implemented");
-    print "Compiling build tree. . . ";
+    print "Compiling build tree. . . \n";
     $status = build_build_tree($model);
+} elsif ($setup) {
+    print "Setting up benchmark. . . \n";
+    $status = setup_benchmark($model, $benchmark);
 } elsif ($run) {
-    print "Running model. . . ";
+    print "Running model. . . \n";
     $status = run_model($model, $benchmark);
-#	WARN_AND_DIE("run command not yet implemented");
 }
 
 if ($status) {

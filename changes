@@ -19928,3 +19928,14 @@ Directory modules/bluespec/system/demos/rrrtest
 
 Michael P.
 
+
+----------
+emer        Date: Wed Aug 19 13:38:03 EDT 2009  CSN: CSN-hasim-678
+                  Wed Aug 19 17:38:03 UTC 2009
+
+
+Directory modules/hasim/controller/command_switches
+ command-switches.cpp      Locally Modified          677 
+ default-switches.cpp      Locally Modified          677 
+
+Added some #include's needed for later versions of gcc.

@@ -1,4 +1,6 @@
 
+#include <string.h>
+
 #include "command-switches.h"
 
 COMMAND_SWITCH COMMAND_SWITCH_CLASS::switchProcessors = NULL;

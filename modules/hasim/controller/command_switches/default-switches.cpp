@@ -1,3 +1,6 @@
+
+#include <string.h>
+
 #include "default-switches.h"
 
 

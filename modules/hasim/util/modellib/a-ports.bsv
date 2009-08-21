@@ -476,7 +476,7 @@ module [Connected_Module] mkConnectionSendUG#(String portname)
   String mytype = printType(typeOf(msg));
 
   //Add our interface to the ModuleCollect collection
-  let info = CSend_Info {cname: portname, ctype: mytype, conn: outg};
+  let info = CSend_Info {cname: portname, ctype: mytype, optional: False, conn: outg};
   addToCollection(tagged LSend info);
 
   method Bool notFull();
@@ -517,7 +517,7 @@ module [Connected_Module] mkConnectionRecvUG#(String portname)
   String mytype = printType(typeOf(msg));
 
   //Add our interface to the ModuleCollect collection
-  let info = CRecv_Info {cname: portname, ctype: mytype, conn: inc};
+  let info = CRecv_Info {cname: portname, ctype: mytype, optional: False, conn: inc};
   addToCollection(tagged LRecv info);
   
   method t_MSG receive();

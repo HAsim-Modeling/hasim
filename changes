@@ -19974,3 +19974,288 @@ Added support for verilog includes, thus eliminating the need
 for .prj files.
 
 Added a template for a hybrid application.
+
+----------
+mpellaue    Date: Fri Aug 21 17:19:09 EDT 2009  CSN: CSN-hasim-680
+                  Fri Aug 21 21:19:09 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ BSV.pm                    Locally Modified          679 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Server
+ BSV.pm                    Locally Modified          679 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Client
+ BSV.pm                    Locally Modified          679 
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          679 
+
+Directory config/pm/hasim/demos/test/alu_test
+ alu_test_hybrid_htg.apm   Locally Modified          679 
+ alu_test_hybrid_exe.apm   Locally Modified          679 
+
+Directory config/pm/hasim/demos/test/bram_test
+ bram_test_hybrid_htg.apm  Locally Modified          679 
+ bram_test_hybrid_exe.apm  Locally Modified          679 
+
+Directory config/pm/hasim/demos/test/interconnect_test
+ interconnect_test_hybrid_exe.apm Locally Modified          679 
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid_nopvt_exe.apm Locally Modified          679 
+ mem_test_hybrid_nopvt_htg.apm Locally Modified          679 
+ mem_test_hybrid_exe.apm   Locally Modified          679 
+ mem_test_hybrid_htg.apm   Locally Modified          679 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          679 
+ traffic_light_htg_v5_pcie_synth.apm Locally Modified          679 
+ traffic_light_xup_synth.apm Locally Modified          679 
+ traffic_light_exe_nosynth.apm Locally Modified          679 
+ traffic_light_exe_synth.apm Locally Modified          679 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Modified          679 
+
+Directory config/pm/hasim/demos/switch_to_led
+ multiplier4x4_exe.apm     Locally Modified          679 
+ echo4x4_xup.apm           Locally Modified          679 
+ adder4x4_xup.apm          Locally Modified          679 
+ square4x4_xup.apm         Locally Modified          679 
+ echo4x4_exe.apm           Locally Modified          679 
+ adder4x4_exe.apm          Locally Modified          679 
+ echo4x4_htg.apm           Locally Modified          679 
+ square4x4_exe.apm         Locally Modified          679 
+ multiplier4x4_xup.apm     Locally Modified          679 
+
+Directory config/pm/hasim/submodels
+ platform-services/        Locally Added               0 
+
+Directory config/pm/hasim/submodels/platform-services
+ standard-platform-services.apm Locally Added               0 
+
+Directory config/pm/hasim/submodels/common
+ soft-connections-lib.apm  Locally Added               0 
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_exe.apm      Locally Modified          679 
+
+Directory config/pm/bluespec/demos/fir_filter
+ fir_filter_hw_exe.apm     Locally Modified          679 
+ fir_filter_sw.apm         Locally Modified          679 
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_exe.apm    Locally Modified          679 
+
+Directory config/pm/bluespec/demos/simple
+ multiplier.apm            Locally Modified          679 
+ switch2led.apm            Locally Modified          679 
+ counter.apm               Locally Modified          679 
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hybrid_exe.apm    Locally Modified          679 
+
+Directory modules/hasim/controller/central_controllers/events
+ events-controller-hybrid.bsv Locally Modified          679 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.bsv Locally Modified          679 
+
+Directory modules/hasim/util/platform-interface
+ platform-central-cache.bsv Locally Modified          679 
+ platform-interface.awb    Locally Modified          679 
+ platform-scratchpad-multi-cached-memory.bsv Locally Modified          679 
+ platform-interface.bsv    Locally Modified          679 
+ connection-terminus.bsv   Locally Removed           679 
+ platform-scratchpad-memory.bsv Locally Modified          679 
+
+Directory modules/hasim/util
+ platform-services/        Locally Added               0 
+
+Directory modules/hasim/util/platform-services
+ mem-services/             Locally Added               0 
+
+Directory modules/hasim/util/platform-services/mem-services
+ scratchpad-memory-service/ Locally Added               0 
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ scratchpad-memory-service.awb Locally Added               0 
+ scratchpad-memory-service.bsv Locally Added               0 
+ platform-scratchpad-multi-cached-memory.bsv Locally Added               0 
+ platform-scratchpad-memory.bsv Locally Added               0 
+ scratchpad-memory-service.dic Locally Added               0 
+
+Directory modules/hasim/util/platform-services/mem-services
+ mem-services-standard.awb Locally Added               0 
+ mem-services-standard.bsv Locally Added               0 
+ central-cache-service/    Locally Added               0 
+
+Directory modules/hasim/util/platform-services/mem-services/central-cache-service
+ central-cache-service.awb Locally Added               0 
+ central-cache-service.bsv Locally Added               0 
+ platform-central-cache.bsv Locally Added               0 
+ central-cache-service.dic Locally Added               0 
+
+Directory modules/hasim/util/platform-services/mem-services
+ mem-services-standard.bsh Locally Added               0 
+ shared-memory-service/    Locally Added               0 
+
+Directory modules/hasim/util/platform-services/mem-services/shared-memory-service
+ shared-memory-service.awb Locally Added               0 
+ shared-memory-service.bsv Locally Added               0 
+
+Directory modules/hasim/util/platform-services
+ starter-service/          Locally Added               0 
+
+Directory modules/hasim/util/platform-services/starter-service
+ starter-service.awb       Locally Added               0 
+ starter-service.bsv       Locally Added               0 
+
+Directory modules/hasim/util/platform-services
+ front-panel-service/      Locally Added               0 
+
+Directory modules/hasim/util/platform-services/front-panel-service
+ front-panel-service.awb   Locally Added               0 
+ front-panel-service.bsv   Locally Added               0 
+
+Directory modules/hasim/util/platform-services
+ common-services/          Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services
+ common-services-standard.awb Locally Added               0 
+ common-services-standard.bsv Locally Added               0 
+ streams-io-service/       Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services/streams-io-service
+ streams-io-service.awb    Locally Added               0 
+ streams-io-service.bsv    Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services
+ stats-io-service/         Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services/stats-io-service
+ stats-io-local.bsv        Locally Added               0 
+ stats-io-service.awb      Locally Added               0 
+ stats-io-service.bsv      Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services
+ common-services-standard.bsh Locally Added               0 
+ common-services-standard.dic Locally Added               0 
+ dynamic-parameters-io-service/ Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services/dynamic-parameters-io-service
+ dynamic-parameters-io-service.awb Locally Added               0 
+ dynamic-parameters-io-service.bsv Locally Added               0 
+ dynamic-parameters-io-local.bsv Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services
+ debug-scan-io-service/    Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services/debug-scan-io-service
+ debug-scan-io-service.awb Locally Added               0 
+ debug-scan-io-service.bsv Locally Added               0 
+ debug-scan-io-local.bsv   Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services
+ assertions-io-service/    Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services/assertions-io-service
+ assertions-io-local.bsv   Locally Added               0 
+ assertions-io-service.awb Locally Added               0 
+ assertions-io-service.bsv Locally Added               0 
+
+Directory modules/hasim/util/platform-services
+ platform-services-standard.awb Locally Added               0 
+ platform-services-standard.bsv Locally Added               0 
+
+Directory modules/hasim/util/smart-synthesis-boundaries
+ bury-connections.bsv      Locally Modified          679 
+ expose-connections.bsv    Locally Modified          679 
+
+Directory modules/hasim/util/modellib
+ a-ports.bsv               Locally Modified          679 
+
+Directory modules/bluespec/system/demos/hello
+ hello.bsv                 Locally Modified          679 
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest.h                 Locally Modified          679 
+
+Directory modules/bluespec/common/soft_connections
+ Connected_Module.bsv      Locally Modified          679 
+
+Directory modules/bluespec/common/soft_connections/alg/typed
+ ConnectionAlg.bsv         Locally Modified          679 
+
+Directory modules/bluespec/common/soft_connections
+ Connections.bsv           Locally Modified          679 
+ soft_connections_lib.awb  Locally Added               0 
+
+Directory modules/system/test/alu_test
+ alu-test.awb              Locally Modified          679 
+ alu-test.bsv              Locally Modified          679 
+
+Directory modules/system/test/bram_test
+ bram-test.awb             Locally Modified          679 
+ bram-test.bsv             Locally Modified          679 
+
+Directory modules/system/test/mem_test
+ mem-test.bsv              Locally Modified          679 
+
+Directory modules/system/traffic_light_system
+ traffic_light_system.awb  Locally Modified          679 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Modified          679 
+ TL0.bsv                   Locally Modified          679 
+ hasim_traffic_light_function_synth.awb Locally Modified          679 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Modified          679 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.awb     Locally Modified          679 
+ multiplier_system.bsv     Locally Modified          679 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.bsv  Locally Modified          679 
+
+Directory modules/system/switch_to_led_system/calculation4x4/adder
+ adder4x4.awb              Locally Modified          679 
+ adder4x4.bsv              Locally Modified          679 
+
+Directory modules/system/switch_to_led_system/calculation4x4/square
+ square4x4.bsv             Locally Modified          679 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ multiplier4x4.bsv         Locally Modified          679 
+
+Directory modules/system/switch_to_led_system/calculation4x4/echo
+ echo4x4.bsv               Locally Modified          679 
+
+
+* Stage 2 of reorganization for generalization of the AWB infrastructure.
+
+* A new application_env for Soft Connections is added.
+
+* Stats, Params, Assertions, and Debug Scan are now virtual devices.
+
+* Features of the hasim platform_interface and hasim_controller are now in platform_services. This is
+  organized into "sub-services" just like hasim_controller. This fixes much ugliness that had accrued
+  in the platform_interface.
+
+* Test cases which used soft connections now use the new application environment.
+
+* Added some support for optional soft connections. The optional flag is not yet carried through
+  synthesis boundaries, so for now this is just used in platform_services.
+  
+* Removed obsolete connection_terminus from platform_interface.
+
+* For now old platform_interface and hasim_controller remain for backwards compatability with hasim.
+  They will be removed in Stage 3.
+
+* stubgen no longer generates files which require hasim_common.
+
+Michael P.

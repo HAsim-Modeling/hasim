@@ -107,7 +107,7 @@ module [Connected_Module] mkConnection_Send#(String portname)
   String mytype = printType(typeOf(msg));
 
   //Add our interface to the ModuleCollect collection
-  let info = CSend_Info {cname: portname, ctype: mytype, conn: outg};
+  let info = CSend_Info {cname: portname, ctype: mytype, optional: False, conn: outg};
   addToCollection(tagged LSend info);
 
   method Action send(msg_T data);
@@ -118,6 +118,42 @@ module [Connected_Module] mkConnection_Send#(String portname)
 
 endmodule
 
+module [Connected_Module] mkConnectionSendOptional#(String portname)
+    //interface:
+                (Connection_Send#(msg_T))
+    provisos
+            (Bits#(msg_T, msg_SZ),
+	     Transmittable#(msg_T));
+
+  //This queue is here for correctness until the system is confirmed to work
+  //Later it could be removed or turned into a BypassFIFO to reduce latency.
+  
+  FIFOF#(msg_T) q <- mkCON_FIFOF();
+  
+  //Bind the interface to a name for convenience
+  let outg = (interface CON_Out;
+  
+	       method CON_Data try() = marshall(q.first());
+	       
+	       method Action success = q.deq();
+
+	     endinterface);
+
+  //Figure out my type for typechecking
+  msg_T msg = ?;
+  String mytype = printType(typeOf(msg));
+
+  //Add our interface to the ModuleCollect collection
+  let info = CSend_Info {cname: portname, ctype: mytype, optional: True, conn: outg};
+  addToCollection(tagged LSend info);
+
+  method Action send(msg_T data);
+    q.enq(data);
+  endmethod
+  
+  method Bool notFull() = q.notFull();
+
+endmodule
 /*
 module [Connected_Module] mkConnection_Send_Bypassed#(String portname)
     //interface:
@@ -183,7 +219,52 @@ module [Connected_Module] mkConnection_Receive#(String portname)
   String mytype = printType(typeOf(msg));
 
   //Add our interface to the ModuleCollect collection
-  let info = CRecv_Info {cname: portname, ctype: mytype, conn: inc};
+  let info = CRecv_Info {cname: portname, ctype: mytype, optional: False, conn: inc};
+  addToCollection(tagged LRecv info);
+  
+  method msg_T receive() if (data_w.wget() matches tagged Valid .val);
+    return val;
+  endmethod
+
+  method Bool notEmpty();
+    return isValid(data_w.wget());
+  endmethod
+
+  method Action deq() if (data_w.wget() matches tagged Valid .val);
+    en_w.send();
+  endmethod
+
+endmodule
+
+module [Connected_Module] mkConnectionRecvOptional#(String portname)
+    //interface:
+                (Connection_Receive#(msg_T))
+    provisos
+            (Bits#(msg_T, msg_SZ),
+	     Transmittable#(msg_T));
+
+  PulseWire      en_w    <- mkPulseWire();
+  RWire#(msg_T)  data_w  <- mkRWire();
+  
+  //Bind the interface to a name for convenience
+  let inc = (interface CON_In;
+  
+	       method Action get_TRY(CON_Data x);
+	         data_w.wset(unmarshall(x));
+	       endmethod
+	       
+	       method Bool get_SUCCESS();
+	         return en_w;
+	       endmethod
+
+	     endinterface);
+
+  //Figure out my type for typechecking
+  msg_T msg = ?;
+  String mytype = printType(typeOf(msg));
+
+  //Add our interface to the ModuleCollect collection
+  let info = CRecv_Info {cname: portname, ctype: mytype, optional: True, conn: inc};
   addToCollection(tagged LRecv info);
   
   method msg_T receive() if (data_w.wget() matches tagged Valid .val);
@@ -257,6 +338,42 @@ module [Connected_Module] mkConnection_Client#(String portname)
 
 endmodule
 
+module [Connected_Module] mkConnectionClientOptional#(String portname)
+    //interface:
+                (Connection_Client#(req_T, resp_T))
+    provisos
+            (Bits#(req_T,  req_SZ),
+	     Bits#(resp_T, resp_SZ),
+	     Transmittable#(req_T),
+	     Transmittable#(resp_T));
+
+  let sendname = genConnectionClientSendName(portname);
+  let recvname = genConnectionClientReceiveName(portname);
+  
+  Connection_Send#(req_T) reqconn <- mkConnectionSendOptional(sendname);
+  Connection_Receive#(resp_T) respconn <- mkConnectionRecvOptional(recvname);
+
+  method Bool reqNotFull();
+    return reqconn.notFull();
+  endmethod
+  
+  method Action makeReq(req_T data);
+    reqconn.send(data);
+  endmethod
+  
+  method Bool respNotEmpty();
+    return respconn.notEmpty();
+  endmethod
+  
+  method resp_T getResp();
+    return respconn.receive();
+  endmethod
+
+  method Action deq();
+    respconn.deq();
+  endmethod
+
+endmodule
 
 module [Connected_Module] mkConnection_Server#(String portname)
     //interface:
@@ -295,6 +412,42 @@ module [Connected_Module] mkConnection_Server#(String portname)
 
 endmodule
 
+module [Connected_Module] mkConnectionServerOptional#(String portname)
+    //interface:
+                (Connection_Server#(req_T, resp_T))
+    provisos
+            (Bits#(req_T,  req_SZ),
+	     Bits#(resp_T, resp_SZ),
+	     Transmittable#(req_T),
+	     Transmittable#(resp_T));
+
+  let sendname = genConnectionClientReceiveName(portname);
+  let recvname = genConnectionClientSendName(portname);
+  
+  Connection_Receive#(req_T) reqconn <- mkConnectionRecvOptional(recvname);
+  Connection_Send#(resp_T) respconn <- mkConnectionSendOptional(sendname);
+
+  method Bool respNotFull();
+    return respconn.notFull();
+  endmethod
+  
+  method Action makeResp(resp_T data);
+    respconn.send(data);
+  endmethod
+  
+  method Bool reqNotEmpty();
+    return reqconn.notEmpty();
+  endmethod
+  
+  method req_T getReq();
+    return reqconn.receive();
+  endmethod
+  
+  method Action deq();
+    reqconn.deq();
+  endmethod
+
+endmodule
 
 // ========================================================================
 //

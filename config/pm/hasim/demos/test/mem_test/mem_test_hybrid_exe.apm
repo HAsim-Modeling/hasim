@@ -10,48 +10,50 @@ Type=HAsim
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=bram-test  hasim hybrid simulation
-model=HAsim Hybrid Model Foundation
+DefaultAttributes=bram-test connected hybrid simulation
+model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
 Packagehint=platforms
 
-[HAsim Hybrid Model Foundation/Requires]
-hasim_common=Hasim Common Library
-system=Hybrid System foundation
-hasim_controller=Hybrid Basic Controller
-fpgaenv=FPGA Environment
-
-[HAsim Hybrid Model Foundation]
-File=modules/model/hasim_model.awb
-Packagehint=hasim
-
-[Hasim Common Library]
-File=config/pm/hasim/submodels/common/hasim_common.apm
-Packagehint=hasim
-
 [HAsim Scratchpad Memory Test System]
 File=modules/system/test/mem_test/mem-test.awb
 Packagehint=hasim
 
-[Hybrid Basic Controller]
-File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
-Packagehint=hasim
+[Soft Connections Hybrid Application Environment/Requires]
+connected_application=Default Software Connected Application
+platform_services=Platform Services
+soft_connections_lib=Soft Connections Library
 
-[Hasim Common Library/Params]
-TERM_VDEV_STREAMS=0
+[Default Software Connected Application]
+File=modules/application-env/hybrid/soft-connections/default-sw/connected-application-default-sw.awb
+Packagehint=platforms
 
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
 
-[Default Software System]
-File=modules/model/default_software_system.awb
-Packagehint=hasim
-
-[Hybrid System foundation/Requires]
-software_system=Default Software System
+[Default Software Connected Application/Requires]
 hardware_system=HAsim Scratchpad Memory Test System
 
-[Hybrid System foundation]
-File=modules/model/hybrid_system.awb
+[Standard Command Switches]
+File=modules/hasim/controller/command_switches/standard-command-switches.awb
 Packagehint=hasim
 
+[Soft Connections Hybrid Application Environment]
+File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Project Foundation/Requires]
+command_switches=Standard Command Switches
+fpgaenv=FPGA Environment
+application_env=Soft Connections Hybrid Application Environment
+
+[Platform Services]
+File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
+Packagehint=hasim
+
+[Soft Connections Library]
+File=config/pm/hasim/submodels/common/soft-connections-lib.apm
+Packagehint=hasim

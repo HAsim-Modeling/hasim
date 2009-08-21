@@ -1,8 +1,8 @@
-%name Hasim - BRAM Test System
-%desc Hasim - BRAM Test System
+%name BRAM Test System
+%desc BRAM Test System
 %provides hardware_system
 
-%attributes hasim
+%attributes hybrid connected
 
 %public bram-test.bsv
 %public bram-test.dic

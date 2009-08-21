@@ -37,13 +37,15 @@ import ClientServer::*;
 import GetPut::*;
 
 
-`include "asim/provides/hasim_common.bsh"
-`include "asim/provides/soft_connections.bsh"
-`include "asim/provides/platform_interface.bsh"
+`include "asim/provides/librl_bsv_base.bsh"
 `include "asim/provides/fpga_components.bsh"
 
 `include "scratchpad_memory.bsh"
-`include "streams.bsh"
+`include "streams_io.bsh"
+
+`include "asim/provides/soft_connections.bsh"
+`include "asim/provides/scratchpad_memory_service.bsh"
+
 `include "asim/dict/STREAMID.bsh"
 `include "asim/dict/STREAMS_BRAMTEST.bsh"
 `include "asim/dict/STREAMS_MESSAGE.bsh"
@@ -506,7 +508,7 @@ endmodule
 //
 // ========================================================================
 
-module [HASIM_MODULE] mkSystem ();
+module [CONNECTED_MODULE] mkSystem ();
 
     Connection_Send#(STREAMS_REQUEST) link_streams <- mkConnection_Send("vdev_streams");
 

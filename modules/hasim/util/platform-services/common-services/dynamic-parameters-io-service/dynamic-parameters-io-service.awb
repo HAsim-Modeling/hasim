@@ -1,0 +1,9 @@
+%name Dynamic Parameter Service
+%desc Wrap Dynamic Parameter IO in Soft Connections
+
+%provides dynamic_parameters_io_service
+
+%attributes hybrid connected
+
+%public dynamic-parameters-io-local.bsv 
+%public dynamic-parameters-io-service.bsv 

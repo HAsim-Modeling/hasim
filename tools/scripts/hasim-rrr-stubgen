@@ -423,7 +423,6 @@ sub print_server_connections
     print $file "`define _RRR_SERVER_CONNECTIONS_\n";
     print $file "\n";
 
-    print $file "`include \"hasim_common.bsh\"\n";
     print $file "`include \"soft_connections.bsh\"\n";
     print $file "`include \"rrr.bsh\"\n";
     print $file "`include \"channelio.bsh\"\n";
@@ -443,7 +442,7 @@ sub print_server_connections
     print $file "\n";
 
     # main module definition
-    print $file "module [HASIM_MODULE] mkServerConnections#(RRR_SERVER server) ();\n";
+    print $file "module [CONNECTED_MODULE] mkServerConnections#(RRR_SERVER server) ();\n";
     print $file "\n";
 
     # for each service
@@ -531,7 +530,6 @@ sub print_client_connections
     print $file "`define _RRR_CLIENT_CONNECTIONS_\n";
     print $file "\n";
 
-    print $file "`include \"hasim_common.bsh\"\n";
     print $file "`include \"soft_connections.bsh\"\n";
     print $file "`include \"rrr.bsh\"\n";
     print $file "`include \"channelio.bsh\"\n";
@@ -552,7 +550,7 @@ sub print_client_connections
     print $file "\n";
 
     # main module definition
-    print $file "module [HASIM_MODULE] mkClientConnections#(RRR_CLIENT client) ();\n";
+    print $file "module [CONNECTED_MODULE] mkClientConnections#(RRR_CLIENT client) ();\n";
     print $file "\n";
 
     # for each service

@@ -18,7 +18,7 @@ File=modules/bluespec/system/demos/counter/counter_system.awb
 Packagehint=hasim
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
 Packagehint=platforms
 
 [HW/SW Hybrid Project Foundation]

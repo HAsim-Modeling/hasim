@@ -1,0 +1,18 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Soft Connections Library
+# %desc Everything needed for soft connections
+# %provides soft_connections_lib
+# %requires soft_connections
+# %requires smart_synth_boundaries
+#
+# %AWB_END
+# */
+

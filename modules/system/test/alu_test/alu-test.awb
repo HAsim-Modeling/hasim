@@ -1,8 +1,8 @@
-%name Hasim - ALU Test System
-%desc Hasim - ALU Test System
+%name ALU Test System
+%desc ALU Test System
 %provides hardware_system
 
-%attributes hasim
+%attributes hybrid
 
 %sources -t BSV  -v PUBLIC alu-test.bsv
 %sources -t DICT -v PUBLIC alu-test-streams.dic

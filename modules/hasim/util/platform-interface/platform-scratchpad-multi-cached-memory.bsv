@@ -47,10 +47,10 @@ import Vector::*;
 //     a write requested in the same cycle.
 //
 
-module [HASIM_MODULE] mkMultiReadMultiCacheScratchpad#(
+module [CONNECTED_MODULE] mkMultiReadMultiCacheScratchpad#(
     Integer scratchpadID,
     Vector#(n_READERS, Integer) cacheModes,
-    Vector#(n_READERS, function HASIM_MODULE#(RL_DM_CACHE#(Bit#(t_CONTAINER_ADDR_SZ), 
+    Vector#(n_READERS, function CONNECTED_MODULE#(RL_DM_CACHE#(Bit#(t_CONTAINER_ADDR_SZ), 
                                                 SCRATCHPAD_MEM_VALUE, 
                                                 t_REF_INFO)) 
                        f(RL_DM_CACHE_SOURCE_DATA#(Bit#(t_CONTAINER_ADDR_SZ), 
@@ -144,17 +144,17 @@ endmodule
 //
 // Do something about n_Entries...  It isn't necessary, but okay for now.
 
-module [HASIM_MODULE] mkMultiReadMultiCacheWriteCacheScratchpad#(
+module [CONNECTED_MODULE] mkMultiReadMultiCacheWriteCacheScratchpad#(
     Integer scratchpadID,
     Integer writeCacheMode,
-    function HASIM_MODULE#(RL_DM_CACHE#(Bit#(t_CONTAINER_ADDR_SZ), 
+    function CONNECTED_MODULE#(RL_DM_CACHE#(Bit#(t_CONTAINER_ADDR_SZ), 
                                         SCRATCHPAD_MEM_VALUE, 
                                         t_REF_INFO)) 
                        writeCacheConstructor(RL_DM_CACHE_SOURCE_DATA#(Bit#(t_CONTAINER_ADDR_SZ), 
                                              SCRATCHPAD_MEM_VALUE, 
                                              t_REF_INFO) source),
     Vector#(n_READERS, Integer) cacheModes,
-    Vector#(n_READERS, function HASIM_MODULE#(RL_DM_CACHE#(Bit#(t_CONTAINER_ADDR_SZ), 
+    Vector#(n_READERS, function CONNECTED_MODULE#(RL_DM_CACHE#(Bit#(t_CONTAINER_ADDR_SZ), 
                                               SCRATCHPAD_MEM_VALUE, 
                                               t_REF_INFO)) 
                        f(RL_DM_CACHE_SOURCE_DATA#(Bit#(t_CONTAINER_ADDR_SZ), 
@@ -404,10 +404,10 @@ endmodule
 //     possibility of re-ordering reads and writes.  Be aware of this 
 //     relaxed memory ordering when using this module.  
              
-module [HASIM_MODULE] mkUnmarshalledMultiCachedScratchpad#(
+module [CONNECTED_MODULE] mkUnmarshalledMultiCachedScratchpad#(
     Integer scratchpadID, 
     Vector#(n_READERS, Integer) cacheModes,
-    Vector#(n_READERS, function HASIM_MODULE#(RL_DM_CACHE#(Bit#(t_MEM_ADDRESS_SZ), 
+    Vector#(n_READERS, function CONNECTED_MODULE#(RL_DM_CACHE#(Bit#(t_MEM_ADDRESS_SZ), 
                                                 SCRATCHPAD_MEM_VALUE, 
                                                 t_REF_INFO)) 
                        f(RL_DM_CACHE_SOURCE_DATA#(Bit#(t_MEM_ADDRESS_SZ), 
@@ -578,10 +578,10 @@ endmodule
 //     No coherence is guranteed. 
 //    This module does no marshalling of data sizes. 
              
-module [HASIM_MODULE] mkUnmarshalledMultiCachedIncoherentScratchpad#(
+module [CONNECTED_MODULE] mkUnmarshalledMultiCachedIncoherentScratchpad#(
     Integer scratchpadID, 
     Vector#(n_READERS, Integer) cacheModes,
-    Vector#(n_READERS, function HASIM_MODULE#(RL_DM_CACHE#(Bit#(t_MEM_ADDRESS_SZ), 
+    Vector#(n_READERS, function CONNECTED_MODULE#(RL_DM_CACHE#(Bit#(t_MEM_ADDRESS_SZ), 
                                                 SCRATCHPAD_MEM_VALUE, 
                                                 t_REF_INFO)) 
                        f(RL_DM_CACHE_SOURCE_DATA#(Bit#(t_MEM_ADDRESS_SZ), 

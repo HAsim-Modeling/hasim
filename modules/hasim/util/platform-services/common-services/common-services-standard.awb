@@ -1,0 +1,16 @@
+%name Common Services
+%desc Wrap Base Devices in Soft Connections
+
+%provides common_services
+
+%requires assertions_io_service
+%requires debug_scan_io_service
+%requires dynamic_parameters_io_service 
+%requires stats_io_service
+%requires streams_io_service
+
+%attributes hybrid connected
+
+%public common-services-standard.bsh
+%public common-services-standard.bsv
+%private common-services-standard.dic

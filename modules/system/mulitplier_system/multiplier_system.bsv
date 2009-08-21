@@ -1,12 +1,11 @@
-import hasim_common::*;
 import soft_connections::*;
-import platform_interface::*;
+import front_panel::*;
 
-module [HASIM_MODULE] mkSystem ();
+module [CONNECTED_MODULE] mkSystem ();
    
-  Connection_Receive#(Bit#(4)) link_switches <- mkConnection_Receive("fpga_switches");
-  Connection_Receive#(ButtonInfo) link_buttons  <- mkConnection_Receive("fpga_buttons");
-  Connection_Send#(Bit#(4))    link_leds     <- mkConnection_Send("fpga_leds");
+  Connection_Receive#(FRONTP_SWITCHES) link_switches <- mkConnection_Receive("fpga_switches");
+  Connection_Receive#(FRONTP_BUTTON_INFO) link_buttons  <- mkConnection_Receive("fpga_buttons");
+  Connection_Send#(FRONTP_MASKED_LEDS)    link_leds     <- mkConnection_Send("fpga_leds");
 
   Reg#(Bit#(2))  state        <- mkReg(0);
   Reg#(Bit#(4))  product      <- mkReg(0);
@@ -15,7 +14,7 @@ module [HASIM_MODULE] mkSystem ();
 
   rule start (state == 0);
      Bit#(4) inp = link_switches.receive();
-     ButtonInfo btns = link_buttons.receive();
+     FRONTP_BUTTON_INFO btns = link_buttons.receive();
      link_switches.deq();
      link_buttons.deq();
 
@@ -26,7 +25,7 @@ module [HASIM_MODULE] mkSystem ();
      r <= y; 
      product <= 0;
      
-     if (btns.b_center == 1)
+     if (btns.bCenter == 1)
      begin
        state <= 1;
        $display("Starting 0x%h X 0x%h", x, y);
@@ -46,8 +45,13 @@ module [HASIM_MODULE] mkSystem ();
 
 
   rule finishUp (state == 2);
-      
-    link_leds.send(product);
+    
+    let ledValue = FRONTP_MASKED_LEDS
+    {
+        state: zeroExtend(product),
+        mask: ~0
+    };
+    link_leds.send(ledValue);
     state <= 0;      
 
     $display("Finished: Product = 0x%h", product);

@@ -1,8 +1,6 @@
 // Copyright 2000--2006 Bluespec, Inc.  All rights reserved.
 
-`include "hasim_common.bsh"
 `include "soft_connections.bsh"
-`include "platform_interface.bsh"
 `include "front_panel.bsh"
 
 // Simple model of a traffic light
@@ -16,12 +14,12 @@ typedef enum {
    GreenE, AmberE, RedAfterE,
    GreenW, AmberW, RedAfterW} TLstates deriving (Eq, Bits);
 
-module [HASIM_MODULE] mk_traffic_light();
+module [CONNECTED_MODULE] mk_traffic_light();
    Reg#(TLstates) state <- mkReg(RedAfterW);
    
    Connection_Send#(FRONTP_MASKED_LEDS) link_leds <- mkConnection_Send("fpga_leds");
    Connection_Receive#(FRONTP_SWITCHES) link_switches <- mkConnection_Receive("fpga_switches");
-   Connection_Receive#(ButtonInfo) link_buttons <- mkConnection_Receive("fpga_buttons");
+   Connection_Receive#(FRONTP_BUTTON_INFO) link_buttons <- mkConnection_Receive("fpga_buttons");
    
    Reg#(Bit#(32)) waitCount <- mkReg(`MAX_WAIT);
    Reg#(FRONTP_MASKED_LEDS) leds <- mkReg(FRONTP_MASKED_LEDS {state: 0, mask: 'b1111});
@@ -56,6 +54,7 @@ module [HASIM_MODULE] mk_traffic_light();
       state <= RedAfterE;
       waitCount <= `MAX_WAIT;
    endrule
+
 
    rule fromRedAfterE (state == RedAfterE && waitCount == 0);
       state <= GreenW;

@@ -25,6 +25,7 @@ import SpecialFIFOs::*;
 
 
 `include "asim/provides/librl_bsv_base.bsh"
+`include "asim/provides/librl_bsv_storage.bsh"
 `include "asim/provides/librl_bsv_cache.bsh"
 `include "asim/provides/scratchpad_memory.bsh"
 `include "asim/provides/fpga_components.bsh"
@@ -124,7 +125,7 @@ function String scratchPortName(Integer n) = "vdev_memory_" + integerToString(n 
 //     Build a scratchpad of an arbitrary data type with marshalling to the
 //     global scratchpad base memory size.
 //
-module [HASIM_MODULE] mkScratchpad#(Integer scratchpadID, Bool cached)
+module [CONNECTED_MODULE] mkScratchpad#(Integer scratchpadID, Bool cached)
     // interface:
     (MEMORY_IFC#(t_ADDR, t_DATA))
     provisos (Bits#(t_ADDR, t_ADDR_SZ),
@@ -157,7 +158,7 @@ endmodule
 //     Requests are processed in order, with reads being scheduled before
 //     a write requested in the same cycle.
 //
-module [HASIM_MODULE] mkMultiReadScratchpad#(Integer scratchpadID, Bool cached)
+module [CONNECTED_MODULE] mkMultiReadScratchpad#(Integer scratchpadID, Bool cached)
     // interface:
     (MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA))
     provisos (Bits#(t_ADDR, t_ADDR_SZ),
@@ -211,7 +212,7 @@ endmodule
 // mkMemoryHeapUnionScratchpad --
 //     Data and free list share same storage in a scratchpad memory.
 //
-module [HASIM_MODULE] mkMemoryHeapUnionScratchpad#(Integer scratchpadID, Bool cached)
+module [CONNECTED_MODULE] mkMemoryHeapUnionScratchpad#(Integer scratchpadID, Bool cached)
     // interface:
     (MEMORY_HEAP#(t_INDEX, t_DATA))
     provisos (Bits#(t_DATA, t_DATA_SZ),
@@ -240,7 +241,7 @@ endmodule
 //     Backing storage for a memory heap where the data and free list are
 //     stored in the same, unioned, scratchpad memory.
 //
-module [HASIM_MODULE] mkMemoryHeapUnionScratchpadStorage#(Integer scratchpadID,
+module [CONNECTED_MODULE] mkMemoryHeapUnionScratchpadStorage#(Integer scratchpadID,
                                                           Bool cached)
     // interface:
     (MEMORY_HEAP_DATA#(t_INDEX, t_DATA))
@@ -336,7 +337,7 @@ endmodule
 //     data sizes or caching.  BEWARE: the word size of the virtual
 //     platform's scratchpad is platform dependent.
 //
-module [HASIM_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
+module [CONNECTED_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
     // interface:
     (MEMORY_MULTI_READ_IFC#(n_READERS, t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE))
     provisos (Bits#(t_MEM_ADDRESS, t_MEM_ADDRESS_SZ),
@@ -492,7 +493,7 @@ endmodule
 //     a single scratchpad region.  This module does no marshalling of
 //     data sizes.
 //
-module [HASIM_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, Integer cacheModeParam)
+module [CONNECTED_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, Integer cacheModeParam)
     // interface:
     (SCRATCHPAD_MEMORY_MULTI_READ_IFC#(n_READERS, t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE, n_CACHE_ENTRIES))
     provisos (Bits#(t_MEM_ADDRESS, t_MEM_ADDRESS_SZ),
@@ -662,7 +663,7 @@ endmodule
 //     Connection between a private cache for a scratchpad and the platform's
 //     scratchpad virtual device.
 //
-module [HASIM_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
+module [CONNECTED_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
     // interface:
     (RL_DM_CACHE_SOURCE_DATA#(t_CACHE_ADDR, SCRATCHPAD_MEM_VALUE, t_CACHE_REF_INFO))
     provisos (Bits#(t_CACHE_ADDR, t_CACHE_ADDR_SZ),

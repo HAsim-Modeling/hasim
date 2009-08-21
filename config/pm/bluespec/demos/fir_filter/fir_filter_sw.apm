@@ -14,16 +14,12 @@ DefaultAttributes=hybrid bluespec
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
 Packagehint=platforms
-
-
 
 [SW only FIR Filter Demo]
 File=modules/bluespec/system/demos/fir-filter/sw-only/fir-filter-system.awb
 Packagehint=hasim
-
-
 
 [HW/SW Hybrid Project Foundation]
 File=modules/project/project-hybrid.awb

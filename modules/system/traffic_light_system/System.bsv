@@ -1,10 +1,10 @@
 
-import hasim_common::*;
+import soft_connections::*;
 
-import hasim_traffic_light_function::*;
+import traffic_light_function::*;
 
 
-module [HASIM_MODULE] mkSystem ();
+module [CONNECTED_MODULE] mkSystem ();
 
    let tl <- mk_traffic_light();
   

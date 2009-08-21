@@ -1,0 +1,9 @@
+%name Debug Scan Services
+%desc Wrap Debug Scan IO in Soft Connections
+
+%provides debug_scan_io_service
+
+%attributes hybrid connected
+
+%public debug-scan-io-local.bsv 
+%public debug-scan-io-service.bsv 

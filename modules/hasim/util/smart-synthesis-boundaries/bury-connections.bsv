@@ -32,7 +32,7 @@ module [Connected_Module] addConnections#(WithConnections#(numIn, numOut) mod, L
    for (Integer x = 0; x < nSends; x = x + 1)
    begin
      match {.nm, .contype, .idx} = sends[x];
-     let inf = CSend_Info {cname: nm, ctype: contype, conn: mod.outgoing[idx]};
+     let inf = CSend_Info {cname: nm, ctype: contype, optional: False, conn: mod.outgoing[idx]};
      addToCollection(tagged LSend inf);
    end
 
@@ -42,7 +42,7 @@ module [Connected_Module] addConnections#(WithConnections#(numIn, numOut) mod, L
    for (Integer x = 0; x < nRecs; x = x + 1)
    begin
      match {.nm, .contype, .idx} = recs[x];
-     let inf = CRecv_Info {cname:nm, ctype: contype, conn: mod.incoming[idx]};
+     let inf = CRecv_Info {cname:nm, ctype: contype, optional: False, conn: mod.incoming[idx]};
      addToCollection(tagged LRecv inf);
    end
    

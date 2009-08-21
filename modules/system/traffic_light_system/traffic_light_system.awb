@@ -7,12 +7,12 @@
 #/*
 # %AWB_START
 #
-# %name Hasim - Traffic light system
-# %desc Hasim - Traffic light system
+# %name Traffic Light System with Soft Connections
+# %desc Traffic Light System with Soft Connections
 # %provides hardware_system
-# %requires hasim_traffic_light_function
+# %requires traffic_light_function
 #
-# %attributes hasim
+# %attributes hybrid connected
 #
 # %public System.bsv
 #

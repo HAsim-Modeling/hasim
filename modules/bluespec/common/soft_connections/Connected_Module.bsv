@@ -39,8 +39,8 @@ endinterface
 
 
 //Data about soft connections
-typedef struct {String cname; String ctype; CON_Out conn;} CSend_Info;
-typedef struct {String cname; String ctype; CON_In conn;} CRecv_Info;
+typedef struct {String cname; String ctype; Bool optional; CON_Out conn;} CSend_Info;
+typedef struct {String cname; String ctype; Bool optional; CON_In conn;} CRecv_Info;
 typedef struct {Integer cnum; String ctype; CON_Chain conn;} CChain_Info;
 
 //Data we collect with ModuleCollect
@@ -54,4 +54,8 @@ typedef union tagged
 
 //A connected Module is a Bluespec module which uses Soft Connections
 typedef ModuleCollect#(ConnectionData) Connected_Module;
+
+// New type convention:
+typedef Connected_Module CONNECTED_MODULE;
+
 

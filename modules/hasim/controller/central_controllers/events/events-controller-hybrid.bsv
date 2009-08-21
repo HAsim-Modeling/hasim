@@ -2,13 +2,15 @@ import FIFO::*;
 import Counter::*;
 import Vector::*;
 
+import hasim_common::*;
+import librl_bsv_base::*;
 import hasim_modellib::*;
 import soft_connections::*;
 `include "asim/dict/RINGID.bsh"
 `include "asim/dict/STREAMID.bsh"
 `include "asim/dict/EVENTS.bsh"
 
-`include "streams.bsh"
+`include "asim/provides/streams.bsh"
 `include "rrr.bsh"
 `include "asim/rrr/service_ids.bsh"
 `include "asim/rrr/remote_client_stub_EVENTS.bsh"

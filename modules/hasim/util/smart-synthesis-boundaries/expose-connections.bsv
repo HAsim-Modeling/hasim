@@ -20,9 +20,9 @@ import soft_connections_alg::*;
 
 //Instantiate a module with connections exposed
 
-module [Module] instantiateSmartBoundary#(Connected_Module#(inter_T) m) (WithConnections#(numIn, numOut));
+module instantiateSmartBoundary#(Connected_Module#(inter_T) m) (WithConnections#(numIn, numOut));
 
-  match {.m, .col} <- getCollection(m);
+  match {.m, .col} <- liftModule(getCollection(m));
   
   let x <- toWithConnections(col, m);
   return x;
@@ -36,7 +36,7 @@ endmodule
 
 //toWithConnections :: [ConnectionData] -> Module WithConnections
 
-module [Module] toWithConnections#(List#(ConnectionData) ld, inter_T i)       (WithConnections#(numIn, numOut));
+module toWithConnections#(List#(ConnectionData) ld, inter_T i)       (WithConnections#(numIn, numOut));
 
   //Group connections by type  
   match {.sends, .recvs, .chns} = splitConnections(ld);

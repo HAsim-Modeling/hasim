@@ -22,11 +22,13 @@ import Vector::*;
 import GetPut::*;
 import LFSR::*;
 
-`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/librl_bsv_base.bsh"
+`include "asim/provides/librl_bsv_storage.bsh"
 `include "asim/provides/soft_connections.bsh"
-`include "asim/provides/platform_interface.bsh"
+`include "asim/provides/mem_services.bsh"
+`include "asim/provides/common_services.bsh"
+`include "asim/provides/streams_io.bsh"
 
-`include "asim/provides/streams.bsh"
 `include "asim/dict/VDEV_SCRATCH.bsh"
 `include "asim/dict/STREAMID.bsh"
 `include "asim/dict/STREAMS_MEMTEST.bsh"
@@ -72,7 +74,7 @@ MEM_DATA_SM
 
 typedef Bit#(13) MEM_ADDRESS;
 
-module [HASIM_MODULE] mkSystem ()
+module [CONNECTED_MODULE] mkSystem ()
     provisos (Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
 
               // Large data (multiple containers for single datum)

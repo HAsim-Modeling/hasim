@@ -10,9 +10,9 @@ import soft_connections::*;
 
 //Instantiate a top-level module where dangling connections are errors
 
-module [Module] instantiateWithConnections#(Connected_Module#(inter_T) m) (inter_T);
+module instantiateWithConnections#(Connected_Module#(inter_T) m) (inter_T);
 
-  match {.m2, .col} <- getCollection(m);
+  match {.m2, .col} <- liftModule(getCollection(m));
   
   connectTopLevel(col, m);
   
@@ -40,16 +40,22 @@ module connectTopLevel#(List#(ConnectionData) ld, inter_T i) ();
   for (Integer x = 0; x < length(dsends); x = x + 1)
   begin
     let cur = dsends[x];
-    messageM(strConcat("ERROR: Dangling Send: ", cur.cname));
-    error_occurred = True;
+    if (!cur.optional)
+    begin
+        messageM(strConcat("ERROR: Dangling Send: ", cur.cname));
+        error_occurred = True;
+    end
   end
   
   //Final Dangling recs
   for (Integer x = 0; x < length(drecvs); x = x + 1)
   begin
     let cur = drecvs[x];
-    messageM(strConcat("ERROR: Dangling Receive: ", cur.cname));
-    error_occurred = True;
+    if (!cur.optional)
+    begin
+        messageM(strConcat("ERROR: Dangling Receive: ", cur.cname));
+        error_occurred = True;
+    end
   end
     
   let mychains <- connectChains(chns);

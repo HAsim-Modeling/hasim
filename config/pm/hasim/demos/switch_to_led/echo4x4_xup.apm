@@ -15,7 +15,7 @@ Class=Asim::Model
 
 [Model]
 DefaultAttributes=switch2led hasim hwonly xup
-model=HAsim Hardware-Only Model Foundation
+model=HW/SW Hybrid Project Foundation
 
 [Hasim - Switch in to LED out system/Requires]
 calculation4x4=Hasim - 4x4 echo
@@ -28,32 +28,42 @@ Packagehint=hasim
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-xup.apm
 Packagehint=platforms
 
-[HAsim Hardware-Only Model Foundation/Requires]
-hasim_common=Hasim Common Library
-hasim_controller=Hardware-Only Null Controller
-fpgaenv=FPGA Environment
+[Soft Connections Hybrid Application Environment/Requires]
+connected_application=Default Software Connected Application
+platform_services=Platform Services
+soft_connections_lib=Soft Connections Library
+
+[Default Software Connected Application]
+File=modules/application-env/hybrid/soft-connections/default-sw/connected-application-default-sw.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
+
+[Default Software Connected Application/Requires]
 hardware_system=Hasim - Switch in to LED out system
 
-[Hardware-Only Null Controller]
-File=config/pm/hasim/submodels/controller/hardware_null_controller.apm
+[Standard Command Switches]
+File=modules/hasim/controller/command_switches/standard-command-switches.awb
 Packagehint=hasim
 
-[HAsim Hardware-Only Model Foundation]
-File=modules/model/hasim_hwonly_model.awb
-Packagehint=hasim
-
-[HAsim Hardware-Only Model Foundation/Params]
+[HW/SW Hybrid Project Foundation/Params]
 MAKE_ALL_TARGET=bit
 
-[Hasim Common Library]
-File=config/pm/hasim/submodels/common/hasim_common.apm
+[Soft Connections Hybrid Application Environment]
+File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Project Foundation/Requires]
+command_switches=Standard Command Switches
+fpgaenv=FPGA Environment
+application_env=Soft Connections Hybrid Application Environment
+
+[Platform Services]
+File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
 Packagehint=hasim
 
-[Hasim Common Library/Params]
-TERM_FPGA_SWITCHES=0
-TERM_FPGA_BUTTONS=0
-TERM_FPGA_LEDS=0
-
-
-
-
+[Soft Connections Library]
+File=config/pm/hasim/submodels/common/soft-connections-lib.apm
+Packagehint=hasim

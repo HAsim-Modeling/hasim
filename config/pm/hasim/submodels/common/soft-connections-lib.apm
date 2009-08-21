@@ -1,0 +1,37 @@
+
+[Global]
+SaveParameters=0
+Description=Default Configuration for Soft Connections
+File=soft-connections-lib
+Version=2.1
+Name=Standard Soft Connections Lib
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hybrid connected
+model=Soft Connections Library
+
+[Smart Synthesis Boundaries]
+File=modules/hasim/util/smart-synthesis-boundaries/smart-synth-boundaries.awb
+Packagehint=hasim
+
+[Soft Connections/Requires]
+soft_connections_alg=Soft Connection Algorithm
+
+[Soft Connections]
+File=modules/bluespec/common/soft_connections/soft_connections.awb
+Packagehint=hasim
+
+[Soft Connection Algorithm]
+File=modules/bluespec/common/soft_connections/alg/typed/soft_connections_alg.awb
+Packagehint=hasim
+
+[Soft Connections Library]
+File=modules/bluespec/common/soft_connections/soft_connections_lib.awb
+Packagehint=hasim
+
+[Soft Connections Library/Requires]
+smart_synth_boundaries=Smart Synthesis Boundaries
+soft_connections=Soft Connections

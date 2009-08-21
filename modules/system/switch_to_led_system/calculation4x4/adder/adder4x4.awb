@@ -7,11 +7,11 @@
 #/*
 # %AWB_START
 #
-# %name Hasim - 4x4 adder
-# %desc Hasim - 4x4 adder
+# %name 4x4 adder
+# %desc 4x4 adder
 # %provides calculation4x4
 #
-# %attributes hasim
+# %attributes connected
 #
 # %public adder4x4.bsv
 #

@@ -7,8 +7,8 @@
 #/*
 # %AWB_START
 #
-# %name Hasim - Multiplier system
-# %desc Hasim - Multiplier system
+# %name Multiplier system with Soft Connections
+# %desc Multiplier system with Soft Connections
 # %provides hardware_system
 #
 # %attributes hasim

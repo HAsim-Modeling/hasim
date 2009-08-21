@@ -1,0 +1,10 @@
+%name Platform Services
+%desc Translates Virtual Devices into Soft Connections
+
+%provides platform_services
+
+%attributes hasim
+
+%public platform-services-standard.bsv
+
+%requires  starter_service front_panel_service mem_services common_services

@@ -9,61 +9,66 @@ DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 
-[Hasim - Traffic light system]
-Packagehint=hasim
-File=modules/system/traffic_light_system/traffic_light_system.awb
-
 [Model]
 DefaultAttributes=traffic-light hybrid htg hasim
-model=HAsim Hybrid Model Foundation
-
-[Hasim - Traffic light system/Requires]
-hasim_traffic_light_function=Hasim - Traffic light function w. synthesis boundary
-
-[Hasim - Traffic light function w. synthesis boundary]
-File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function_synth.awb
-Packagehint=hasim
+model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
 Packagehint=platforms
 
-[HAsim Hybrid Model Foundation/Requires]
-hasim_common=Hasim Common Library
-system=Hybrid System foundation
-hasim_controller=Hybrid Basic Controller
-fpgaenv=FPGA Environment
+[Soft Connections Hybrid Application Environment/Requires]
+connected_application=Default Software Connected Application
+platform_services=Platform Services
+soft_connections_lib=Soft Connections Library
 
-[HAsim Hybrid Model Foundation/Params]
+[Traffic Light System with Soft Connections]
+File=modules/system/traffic_light_system/traffic_light_system.awb
+Packagehint=hasim
+
+
+[Default Software Connected Application]
+File=modules/application-env/hybrid/soft-connections/default-sw/connected-application-default-sw.awb
+Packagehint=platforms
+
+[Traffic Light System with Soft Connections/Requires]
+traffic_light_function=Traffic light function w. synthesis boundary
+
+
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
+
+
+[Default Software Connected Application/Requires]
+hardware_system=Traffic Light System with Soft Connections
+
+
+[Standard Command Switches]
+File=modules/hasim/controller/command_switches/standard-command-switches.awb
+Packagehint=hasim
+
+[HW/SW Hybrid Project Foundation/Params]
 MAKE_ALL_TARGET=bit
 
-[HAsim Hybrid Model Foundation]
-File=modules/model/hasim_model.awb
+[Traffic light function w. synthesis boundary]
+File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function_synth.awb
 Packagehint=hasim
 
-[Hasim Common Library]
-File=config/pm/hasim/submodels/common/hasim_common.apm
+[Soft Connections Hybrid Application Environment]
+File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Project Foundation/Requires]
+command_switches=Standard Command Switches
+fpgaenv=FPGA Environment
+application_env=Soft Connections Hybrid Application Environment
+
+
+[Soft Connections Library]
+File=config/pm/hasim/submodels/common/soft-connections-lib.apm
 Packagehint=hasim
 
-[Hybrid Basic Controller]
-File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
+[Platform Services]
+File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
 Packagehint=hasim
-
-[Hasim Common Library/Params]
-TERM_FPGA_SWITCHES=0
-TERM_FPGA_BUTTONS=0
-TERM_FPGA_LEDS=0
-
-
-[Default Software System]
-File=modules/model/default_software_system.awb
-Packagehint=hasim
-
-[Hybrid System foundation/Requires]
-software_system=Default Software System
-hardware_system=Hasim - Traffic light system
-
-[Hybrid System foundation]
-File=modules/model/hybrid_system.awb
-Packagehint=hasim
-

@@ -164,7 +164,7 @@ function String backingPortName(Integer n) = "vdev_cache_backing_" + integerToSt
 //     n_ENTRIES to 0 instantiates a direct connection between the client and
 //     the central cache with no intermediate private cache.
 //
-module [HASIM_MODULE] mkCentralCacheClient#(Integer cacheID,
+module [CONNECTED_MODULE] mkCentralCacheClient#(Integer cacheID,
                                             NumTypeParam#(n_ENTRIES) nEntries,
                                             Bool hashLocalCacheAddrs,
                                             CENTRAL_CACHE_CLIENT_BACKING#(t_ADDR, t_DATA, t_REF_INFO) backing,
@@ -226,7 +226,7 @@ endmodule
 //     above allocates a direct mapped private cache and uses this module
 //     to make the connection to the central cache.
 //
-module [HASIM_MODULE] mkCentralCacheConnection#(Integer cacheID,
+module [CONNECTED_MODULE] mkCentralCacheConnection#(Integer cacheID,
                                                 CENTRAL_CACHE_CLIENT_BACKING#(t_ADDR, t_DATA, t_REF_INFO) backing,
                                                 DEBUG_FILE debugLog)
     // interface:
@@ -412,7 +412,7 @@ endmodule
 //
 // ===================================================================
 
-module [HASIM_MODULE] mkCentralCacheStats
+module [CONNECTED_MODULE] mkCentralCacheStats
     // interface:
     (CENTRAL_CACHE_STATS);
     

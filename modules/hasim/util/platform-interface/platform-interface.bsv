@@ -28,10 +28,12 @@ import Vector::*;
 `include "asim/provides/rrr.bsh"
 `include "asim/provides/scratchpad_memory.bsh"
 `include "asim/provides/central_cache.bsh"
-`include "asim/provides/streams.bsh"
 `include "asim/provides/starter_device.bsh"
 `include "asim/provides/clocks_device.bsh"
 `include "asim/provides/shared_memory.bsh"
+
+`include "asim/provides/common_utility_devices.bsh"
+`include "asim/provides/streams.bsh"
 
 `include "asim/rrr/server_connections.bsh"
 `include "asim/rrr/client_connections.bsh"
@@ -58,7 +60,7 @@ ButtonInfo
 // mkPlatformInterface: Wrap the LLPI and virtual devices in soft connections.
 //
 
-module [HASIM_MODULE] mkPlatformInterface#(VIRTUAL_PLATFORM virtualPlatform)
+module [CONNECTED_MODULE] mkPlatformInterface#(VIRTUAL_PLATFORM virtualPlatform)
     // interface
         ();
 
@@ -70,21 +72,23 @@ module [HASIM_MODULE] mkPlatformInterface#(VIRTUAL_PLATFORM virtualPlatform)
     CENTRAL_CACHE_IFC centralCache = virtualPlatform.virtualDevices.centralCache;
     SCRATCHPAD_MEMORY_VDEV memory  = virtualPlatform.virtualDevices.scratchpadMemory;
     SHARED_MEMORY sharedMemory     = virtualPlatform.virtualDevices.sharedMemory;
-    Streams streams                = virtualPlatform.virtualDevices.streams;
     STARTER starter                = virtualPlatform.virtualDevices.starter;
 
+    Streams   streams              = virtualPlatform.virtualDevices.commonUtilities.streams;
+    
+
     // Patch Connections to Virtual Devices
-    Connection_Receive#(FRONTP_MASKED_LEDS) link_leds     <- mkConnection_Receive("fpga_leds");
-    Connection_Send#(FRONTP_SWITCHES)       link_switches <- mkConnection_Send("fpga_switches");
-    Connection_Send#(ButtonInfo)            link_buttons  <- mkConnection_Send("fpga_buttons");
+    Connection_Receive#(FRONTP_MASKED_LEDS) link_leds     <- mkConnectionRecvOptional("fpga_leds");
+    Connection_Send#(FRONTP_SWITCHES)       link_switches <- mkConnectionSendOptional("fpga_switches");
+    Connection_Send#(ButtonInfo)            link_buttons  <- mkConnectionSendOptional("fpga_buttons");
 
-    Connection_Receive#(STREAMS_REQUEST)    link_streams  <- mkConnection_Receive("vdev_streams");
+    Connection_Receive#(STREAMS_REQUEST)    link_streams  <- mkConnectionRecvOptional("vdev_streams");
 
-    Connection_Receive#(SHARED_MEMORY_REQUEST) link_shmem_req        <- mkConnection_Receive("vdev_shmem_req");
-    Connection_Send#(SHARED_MEMORY_DATA)       link_shmem_data_read  <- mkConnection_Send("vdev_shmem_data_read");
-    Connection_Receive#(SHARED_MEMORY_DATA)    link_shmem_data_write <- mkConnection_Receive("vdev_shmem_data_write");
+    Connection_Receive#(SHARED_MEMORY_REQUEST) link_shmem_req        <- mkConnectionRecvOptional("vdev_shmem_req");
+    Connection_Send#(SHARED_MEMORY_DATA)       link_shmem_data_read  <- mkConnectionSendOptional("vdev_shmem_data_read");
+    Connection_Receive#(SHARED_MEMORY_DATA)    link_shmem_data_write <- mkConnectionRecvOptional("vdev_shmem_data_write");
 
-    Connection_Receive#(Bit#(8))               link_starter_finish_run <- mkConnection_Receive("vdev_starter_finish_run");
+    Connection_Receive#(Bit#(8))               link_starter_finish_run <- mkConnectionRecvOptional("vdev_starter_finish_run");
 
 
     // debug log
@@ -98,9 +102,6 @@ module [HASIM_MODULE] mkPlatformInterface#(VIRTUAL_PLATFORM virtualPlatform)
     // ***** Assertion Checkers *****
     ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_PLATFORM_INTERFACE__BASE);
     ASSERTION assertScratchpadSpace <- mkAssertionChecker(`ASSERTIONS_PLATFORM_INTERFACE_SCRATCHPAD_FULL, ASSERT_ERROR, assertNode);
-
-    // connection terminus
-    let t <- mkConnectionTerminus();
 
     // auto-generated submodules for RRR connections
     let rrr_server_links <- mkServerConnections(llpint.rrrServer);
@@ -217,7 +218,7 @@ module [HASIM_MODULE] mkPlatformInterface#(VIRTUAL_PLATFORM virtualPlatform)
     Rules mem_send_req = emptyRules;
     for (Integer p = 0; p < valueOf(SCRATCHPAD_N_CLIENTS); p = p + 1)
     begin
-        link_memory[p] <- mkConnection_Server("vdev_memory_" + integerToString(p));
+        link_memory[p] <- mkConnectionServerOptional("vdev_memory_" + integerToString(p));
 
         let r =
             (rules
@@ -291,7 +292,7 @@ module [HASIM_MODULE] mkPlatformInterface#(VIRTUAL_PLATFORM virtualPlatform)
 `ifdef VDEV_CACHE__BASE
         if (showVDEV_CACHE_DICT(fromInteger(p + `VDEV_CACHE__BASE)) != "platform")
         begin
-            link_cache[p] <- mkConnection_Server("vdev_cache_" + integerToString(p));
+            link_cache[p] <- mkConnectionServerOptional("vdev_cache_" + integerToString(p));
 
             //
             // Forward requests to the central cache.
@@ -333,7 +334,7 @@ module [HASIM_MODULE] mkPlatformInterface#(VIRTUAL_PLATFORM virtualPlatform)
             // back to the client.
             //
 
-            link_cache_backing[p] <- mkConnection_Client("vdev_cache_backing_" + integerToString(p));
+            link_cache_backing[p] <- mkConnectionClientOptional("vdev_cache_backing_" + integerToString(p));
 
             //
             // Forward requests to the central cache.

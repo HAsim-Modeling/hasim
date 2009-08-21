@@ -8,39 +8,52 @@ Name=Multiplier Model
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
-DefaultRunOpts=--showfp=gui
 
 [Model]
 DefaultAttributes=demo hasim software
-model=HAsim Hardware-Only Model Foundation
-
-[Hasim - Multiplier system]
-Packagehint=hasim
-File=modules/system/mulitplier_system/multiplier_system.awb
+model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
 Packagehint=platforms
 
-[HAsim Hardware-Only Model Foundation/Requires]
-hasim_common=Hasim Common Library
-hasim_controller=Hybrid Basic Controller
+[Soft Connections Hybrid Application Environment/Requires]
+connected_application=Default Software Connected Application
+platform_services=Platform Services
+soft_connections_lib=Soft Connections Library
+
+[Default Software Connected Application]
+File=modules/application-env/hybrid/soft-connections/default-sw/connected-application-default-sw.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
+
+[Default Software Connected Application/Requires]
+hardware_system=Multiplier system with Soft Connections
+
+[Standard Command Switches]
+File=modules/hasim/controller/command_switches/standard-command-switches.awb
+Packagehint=hasim
+
+[Soft Connections Hybrid Application Environment]
+File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Project Foundation/Requires]
+command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
-hardware_system=Hasim - Multiplier system
+application_env=Soft Connections Hybrid Application Environment
 
-[HAsim Hardware-Only Model Foundation]
-File=modules/model/hasim_hwonly_model.awb
+[Multiplier system with Soft Connections]
+File=modules/system/mulitplier_system/multiplier_system.awb
 Packagehint=hasim
 
-[Hasim Common Library]
-File=config/pm/hasim/submodels/common/hasim_common.apm
+[Platform Services]
+File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
 Packagehint=hasim
 
-[Hybrid Basic Controller]
-File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
+[Soft Connections Library]
+File=config/pm/hasim/submodels/common/soft-connections-lib.apm
 Packagehint=hasim
-
-[Hasim Common Library/Params]
-TERM_FPGA_SWITCHES=0
-TERM_FPGA_BUTTONS=0
-TERM_FPGA_LEDS=0

@@ -212,6 +212,10 @@ sub print_direct_accept_request_declaration
                 $self->_make_get_header("acceptRequest",
                                         $self->_intype_name()) .
                 ";\n";
+    print $file $indent                                      .
+                $self->_make_get_noaction_header("peekRequest",
+                                                 $self->_intype_name()) .
+                ";\n";
 }
 
 ##
@@ -227,6 +231,11 @@ sub print_proxy_accept_request_declaration
                 $self->_make_get_header("acceptRequest",
                                         $self->inargs()->makebitvector()) .
                 ";\n";
+
+    print $file $indent                                      .
+                $self->_make_get_noaction_header("peekRequest",
+                                        $self->inargs()->makebitvector()) .
+                ";\n";
 }
 
 ##
@@ -240,6 +249,11 @@ sub print_remote_accept_request_declaration
 
     print $file $indent                                      .
                 $self->_make_get_header("acceptRequest",
+                                        $self->_intype_name()) .
+                ";\n";
+
+    print $file $indent                                      .
+                $self->_make_get_noaction_header("peekRequest",
                                         $self->_intype_name()) .
                 ";\n";
 }
@@ -274,6 +288,28 @@ sub print_direct_accept_request_definition
 
     # endmethod
     print $file $indent . "endmethod\n\n";
+
+    # header
+    print $file $indent                             .
+                $self->_make_get_noaction_header("peekRequest",
+                                        $self->_intype_name());
+
+    # conditions
+    print $file " if (mid == fromInteger(mid_";
+    print $file $self->{name};
+    print $file "));\n";
+
+    # body
+    print $file $indent . "    let a = dem.peek();\n";
+    print $file $indent . "    ";
+
+    # acceptRequest()s always return a struct/bitvector
+    print $file $self->_intype_name();
+    print $file " retval = unpack(truncate(a));\n";
+    print $file $indent . "    return retval;\n";
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
 }
 
 ##
@@ -297,6 +333,28 @@ sub print_proxy_accept_request_definition
 
     # body
     print $file $indent . "    let a <- dem.readAndDelete();\n";
+    print $file $indent . "    ";
+
+    # acceptRequest()s always return a struct/bitvector
+    print $file $self->inargs()->makebitvector();
+    print $file " retval = unpack(truncate(a));\n";
+    print $file $indent . "    return retval;\n";
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
+
+    # header
+    print $file $indent                             .
+                $self->_make_get_noaction_header("peekRequest",
+                                        $self->inargs()->makebitvector());
+
+    # conditions
+    print $file " if (mid == fromInteger(mid_";
+    print $file $self->{name};
+    print $file "));\n";
+
+    # body
+    print $file $indent . "    let a = dem.peek();\n";
     print $file $indent . "    ";
 
     # acceptRequest()s always return a struct/bitvector
@@ -339,6 +397,31 @@ sub print_remote_accept_request_definition
         # receive-type connection
         print $file $indent . "    let a = link_" . $self->{name} . ".receive();\n";
         print $file $indent . "    link_" . $self->{name} . ".deq();\n";
+        print $file $indent . "    return unpack(a);\n";
+    }
+
+    # endmethod
+    print $file $indent . "endmethod\n\n";
+
+    # header
+    print $file $indent                             .
+                $self->_make_get_noaction_header("peekRequest",
+                                        $self->_intype_name());
+
+    # no conditions
+    print $file ";\n";
+
+    # body
+    if ($self->outargs()->num() != 0)
+    {
+        # server-type connection
+        print $file $indent . "    let a = link_" . $self->{name} . ".getReq();\n";
+        print $file $indent . "    return unpack(a);\n";
+    }
+    else
+    {
+        # receive-type connection
+        print $file $indent . "    let a = link_" . $self->{name} . ".receive();\n";
         print $file $indent . "    return unpack(a);\n";
     }
 

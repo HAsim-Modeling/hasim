@@ -1,0 +1,84 @@
+
+[Global]
+SaveParameters=0
+Description=Collection of Services Corresponding to Standard Virtual Devices
+File=standard-platform-services
+Version=2.1
+Name=Standard Platform Services
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
+Type=HAsim
+Class=Asim::Model
+
+[Model]
+DefaultAttributes=hybrid connected
+model=Platform Services
+
+[Scratchpad Memory Service]
+File=modules/hasim/util/platform-services/mem-services/scratchpad-memory-service/scratchpad-memory-service.awb
+Packagehint=hasim
+
+[Platform Services]
+File=modules/hasim/util/platform-services/platform-services-standard.awb
+Packagehint=hasim
+
+[Standard Mem Services]
+File=modules/hasim/util/platform-services/mem-services/mem-services-standard.awb
+Packagehint=hasim
+
+[Common Services]
+File=modules/hasim/util/platform-services/common-services/common-services-standard.awb
+Packagehint=hasim
+
+[Standard Mem Services/Requires]
+shared_memory_service=Shared Memory Services
+scratchpad_memory_service=Scratchpad Memory Service
+central_cache_service=Central Cache Service
+
+[Front Panel Service]
+File=modules/hasim/util/platform-services/front-panel-service/front-panel-service.awb
+Packagehint=hasim
+
+[Central Cache Service]
+File=modules/hasim/util/platform-services/mem-services/central-cache-service/central-cache-service.awb
+Packagehint=hasim
+
+[Shared Memory Services]
+File=modules/hasim/util/platform-services/mem-services/shared-memory-service/shared-memory-service.awb
+Packagehint=hasim
+
+[Starter Service]
+File=modules/hasim/util/platform-services/starter-service/starter-service.awb
+Packagehint=hasim
+
+[Platform Services/Requires]
+common_services=Common Services
+mem_services=Standard Mem Services
+front_panel_service=Front Panel Service
+starter_service=Starter Service
+
+[Assertions IO Service]
+File=modules/hasim/util/platform-services/common-services/assertions-io-service/assertions-io-service.awb
+Packagehint=hasim
+
+[Stats Service]
+File=modules/hasim/util/platform-services/common-services/stats-io-service/stats-io-service.awb
+Packagehint=hasim
+
+[Common Services/Requires]
+dynamic_parameters_io_service=Dynamic Parameter Service
+assertions_io_service=Assertions IO Service
+debug_scan_io_service=Debug Scan Services
+streams_io_service=Streams IO Services
+stats_io_service=Stats Service
+
+[Streams IO Services]
+File=modules/hasim/util/platform-services/common-services/streams-io-service/streams-io-service.awb
+Packagehint=hasim
+
+[Debug Scan Services]
+File=modules/hasim/util/platform-services/common-services/debug-scan-io-service/debug-scan-io-service.awb
+Packagehint=hasim
+
+[Dynamic Parameter Service]
+File=modules/hasim/util/platform-services/common-services/dynamic-parameters-io-service/dynamic-parameters-io-service.awb
+Packagehint=hasim

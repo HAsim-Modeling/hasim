@@ -7,11 +7,11 @@
 #/*
 # %AWB_START
 #
-# %name Hasim - Traffic light function w. synthesis boundary
-# %desc Hasim - Traffic light function w. synthesis boundary
-# %provides hasim_traffic_light_function
+# %name Traffic light function w. synthesis boundary
+# %desc Traffic light function w. synthesis boundary
+# %provides traffic_light_function
 #
-# %attributes hasim
+# %attributes hybrid connected
 #
 # %public TL0.bsv
 #

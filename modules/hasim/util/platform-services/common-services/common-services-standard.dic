@@ -1,0 +1,4 @@
+def RINGID.ASSERTS    "assertions";
+def RINGID.DEBUG_SCAN "debug_scan";
+def RINGID.PARAMS     "params";
+def RINGID.STATS      "stats";

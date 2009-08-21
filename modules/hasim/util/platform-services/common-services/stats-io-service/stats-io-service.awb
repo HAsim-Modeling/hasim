@@ -1,0 +1,9 @@
+%name Stats Service
+%desc Wrap Stats IO in Soft Connections
+
+%provides stats_io_service
+
+%attributes hybrid connected
+
+%public stats-io-local.bsv 
+%public stats-io-service.bsv 

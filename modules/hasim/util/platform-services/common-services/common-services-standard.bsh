@@ -1,0 +1,12 @@
+
+`include "asim/provides/assertions_io.bsh"
+`include "asim/provides/debug_scan_io.bsh"
+`include "asim/provides/dynamic_parameters_io.bsh"
+`include "asim/provides/stats_io.bsh"
+`include "asim/provides/streams_io.bsh"
+
+`include "asim/provides/assertions_io_service.bsh"
+`include "asim/provides/debug_scan_io_service.bsh"
+`include "asim/provides/dynamic_parameters_io_service.bsh"
+`include "asim/provides/stats_io_service.bsh"
+`include "asim/provides/streams_io_service.bsh"

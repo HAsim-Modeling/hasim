@@ -29,13 +29,14 @@
 
 import Vector::*;
 
-`include "asim/provides/hasim_common.bsh"
-`include "asim/provides/soft_connections.bsh"
-`include "asim/provides/platform_interface.bsh"
 `include "asim/provides/fpga_components.bsh"
 
 `include "scratchpad_memory.bsh"
-`include "streams.bsh"
+`include "streams_io.bsh"
+
+`include "asim/provides/soft_connections.bsh"
+`include "asim/provides/scratchpad_memory_service.bsh"
+
 `include "asim/dict/STREAMID.bsh"
 `include "asim/dict/STREAMS_ALUTEST.bsh"
 `include "asim/dict/STREAMS_MESSAGE.bsh"
@@ -55,7 +56,7 @@ STATE
     deriving (Bits, Eq);
 
 
-module [HASIM_MODULE] mkSystem ();
+module [CONNECTED_MODULE] mkSystem ();
 
     Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory <- mkConnection_Client("vdev_memory");
     Connection_Receive#(SCRATCHPAD_MEM_ADDRESS) link_memory_inval <- mkConnection_Receive("vdev_memory_invalidate");

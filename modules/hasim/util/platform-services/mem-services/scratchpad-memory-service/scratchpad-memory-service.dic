@@ -1,0 +1,2 @@
+
+def ASSERTIONS.SCRATCHPAD_MEMORY_SERVICE.FULL     "Platform services: Scratchpad memory is oversubscribed!";

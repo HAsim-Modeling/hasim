@@ -1,0 +1,12 @@
+%name Standard Mem Services
+%desc A Set of Standard Mem Services
+
+%provides mem_services
+%requires central_cache_service
+%requires scratchpad_memory_service
+%requires shared_memory_service
+
+%attributes hybrid connected
+
+%public mem-services-standard.bsh
+%public mem-services-standard.bsv

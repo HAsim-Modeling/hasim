@@ -1,0 +1,8 @@
+%name Streams IO Services
+%desc Wrap Streams IO in Soft Connections
+
+%provides streams_io_service
+
+%attributes hybrid connected
+
+%public streams-io-service.bsv 

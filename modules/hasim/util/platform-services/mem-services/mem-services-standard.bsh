@@ -1,0 +1,4 @@
+
+`include "asim/provides/central_cache_service.bsh"
+`include "asim/provides/scratchpad_memory_service.bsh"
+`include "asim/provides/shared_memory_service.bsh"

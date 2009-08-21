@@ -379,7 +379,6 @@ sub print_remote_stub
     print $file "`define _" . $self->{name} . "_REMOTE_SERVER_STUB_\n";
     print $file "\n";
 
-    print $file "`include \"asim/provides/hasim_common.bsh\"\n";
     print $file "`include \"asim/provides/soft_connections.bsh\"\n";
     print $file "`include \"asim/provides/rrr.bsh\"\n";
     print $file "`include \"asim/provides/channelio.bsh\"\n";
@@ -434,7 +433,7 @@ sub print_remote_stub
     print $file "\n";
     
     # module mk...
-    print $file "module [HASIM_MODULE] mkServerStub_" . $self->{name};
+    print $file "module [CONNECTED_MODULE] mkServerStub_" . $self->{name};
     print $file " (ServerStub_" . $self->{name} . ");\n";
     print $file "\n";
     

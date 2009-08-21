@@ -14,7 +14,7 @@ DefaultAttributes=hybrid simulation bluespec
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
 Packagehint=platforms
 
 [Bluespec RRR Test and Benchmarking Program]
@@ -29,13 +29,17 @@ Packagehint=platforms
 File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
 Packagehint=platforms
 
-
 [HW/SW Hybrid Project Foundation/Requires]
 fpgaenv=FPGA Environment
 application_env=Base Hybrid Application Environment
+command_switches=Standard Command Switches
 
 [Base Hybrid Application Environment/Requires]
 hybrid_application=Bluespec RRR Test and Benchmarking Program
 
 [HW/SW Hybrid Project Foundation/Params]
 WAIT_FOR_HARDWARE=0
+
+[Standard Command Switches]
+File=modules/hasim/controller/command_switches/standard-command-switches.awb
+Packagehint=hasim

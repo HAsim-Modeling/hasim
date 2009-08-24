@@ -1,8 +1,10 @@
 %name BRAM Test System
 %desc BRAM Test System
+
+%attributes bram_test test
+
 %provides hardware_system
 
-%attributes hybrid connected
-
-%public bram-test.bsv
 %public bram-test.dic
+%public bram-test.bsv
+

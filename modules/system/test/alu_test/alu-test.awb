@@ -1,8 +1,9 @@
 %name ALU Test System
 %desc ALU Test System
-%provides hardware_system
 
-%attributes hybrid
+%attributes alu_test test
+
+%provides hardware_system
 
 %sources -t BSV  -v PUBLIC alu-test.bsv
 %sources -t DICT -v PUBLIC alu-test-streams.dic

@@ -1,7 +1,4 @@
 
-[Hasim - Switch in to LED out system]
-Packagehint=hasim
-File=modules/system/switch_to_led_system/switch_to_led_system.awb
 
 [Global]
 SaveParameters=0
@@ -12,17 +9,13 @@ DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Name=Switch to LED w. square - xup
 Class=Asim::Model
+DefaultRunOpts=
 
 [Model]
-DefaultAttributes=switch2led hasim hwonly xup
+DefaultAttributes=square switch2led demo connected slave hybrid project xup
 model=HW/SW Hybrid Project Foundation
 
-[Hasim - Switch in to LED out system/Requires]
-calculation4x4=Hasim - 4x4 square
 
-[Hasim - 4x4 square]
-File=modules/system/switch_to_led_system/calculation4x4/square/square4x4.awb
-Packagehint=hasim
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-xup.apm
@@ -33,20 +26,16 @@ connected_application=Default Software Connected Application
 platform_services=Platform Services
 soft_connections_lib=Soft Connections Library
 
-
 [Default Software Connected Application]
 File=modules/application-env/hybrid/soft-connections/default-sw/connected-application-default-sw.awb
 Packagehint=platforms
-
 
 [HW/SW Hybrid Project Foundation]
 File=modules/project/project-hybrid.awb
 Packagehint=platforms
 
-
 [Default Software Connected Application/Requires]
-hardware_system=Hasim - Switch in to LED out system
-
+hardware_system=Switch in to LED out system
 
 [Standard Command Switches]
 File=modules/hasim/controller/command_switches/standard-command-switches.awb
@@ -64,11 +53,21 @@ command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
 application_env=Soft Connections Hybrid Application Environment
 
-
 [Soft Connections Library]
 File=config/pm/hasim/submodels/common/soft-connections-lib.apm
 Packagehint=hasim
 
 [Platform Services]
 File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
+Packagehint=hasim
+
+[Switch in to LED out system/Requires]
+calculation4x4=Switch2led - 4x4 square
+
+[Switch2led - 4x4 square]
+File=modules/system/switch_to_led_system/calculation4x4/square/square4x4.awb
+Packagehint=hasim
+
+[Switch in to LED out system]
+File=modules/system/switch_to_led_system/switch_to_led_system.awb
 Packagehint=hasim

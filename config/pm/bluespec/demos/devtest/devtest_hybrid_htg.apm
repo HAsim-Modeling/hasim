@@ -8,9 +8,10 @@ Name=Device Tester - Hybrid - HTG
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
+DefaultRunOpts=
 
 [Model]
-DefaultAttributes=hybrid htg bluespec
+DefaultAttributes=devtest unconnected hybrid project htg
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
@@ -20,11 +21,6 @@ Packagehint=platforms
 [Bluespec Device Tester]
 File=modules/bluespec/system/demos/devtest/devtest.awb
 Packagehint=hasim
-
-
-
-
-
 
 [HW/SW Hybrid Project Foundation]
 File=modules/project/project-hybrid.awb

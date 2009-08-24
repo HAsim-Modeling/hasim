@@ -8,18 +8,15 @@ Name=Hybrid Virtual Memory Test Model with Private Caches
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
+DefaultRunOpts=
 
 [Model]
-DefaultAttributes=bram-test connected hybrid simulation
+DefaultAttributes=scratchpad_test test connected slave hybrid project exe
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-hybrid-sim.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
 Packagehint=platforms
-
-[HAsim Scratchpad Memory Test System]
-File=modules/system/test/mem_test/mem-test.awb
-Packagehint=hasim
 
 [Soft Connections Hybrid Application Environment/Requires]
 connected_application=Default Software Connected Application
@@ -35,7 +32,7 @@ File=modules/project/project-hybrid.awb
 Packagehint=platforms
 
 [Default Software Connected Application/Requires]
-hardware_system=HAsim Scratchpad Memory Test System
+hardware_system=Scratchpad Memory Test System
 
 [Standard Command Switches]
 File=modules/hasim/controller/command_switches/standard-command-switches.awb
@@ -56,4 +53,8 @@ Packagehint=hasim
 
 [Soft Connections Library]
 File=config/pm/hasim/submodels/common/soft-connections-lib.apm
+Packagehint=hasim
+
+[Scratchpad Memory Test System]
+File=modules/system/test/mem_test/mem-test.awb
 Packagehint=hasim

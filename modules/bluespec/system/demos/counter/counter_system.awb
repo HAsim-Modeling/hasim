@@ -7,9 +7,11 @@
 %name Bluespec Counter Example
 %desc Bluespec Counter Example
 
+%attributes counter unconnected hybrid
+
 %provides hybrid_application
 
-%attributes hybrid
+%notes counter_system.txt
 
 %public mkCounter.bsv System.bsv
 %public counter-system.h

@@ -4,9 +4,12 @@
 
 %name Bluespec Device Tester
 %desc Bluespec Device Tester
-%attributes hybrid
+
+%attributes devtest unconnected hybrid
 
 %provides hybrid_application
+
+%notes devtest.txt
 
 %sources -t BSV  -v PUBLIC devtest.bsv
 %sources -t H    -v PUBLIC devtest.h

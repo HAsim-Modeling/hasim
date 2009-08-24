@@ -1,20 +1,22 @@
-#/********************************************************************
-# *
-# * Awb module specification
-# *
-# *******************************************************************/
+/********************************************************************
+ *
+ * Awb module specification
+ *
+ *******************************************************************/
 
-#/*
-# %AWB_START
-#
-# %name Traffic Light System with Soft Connections
-# %desc Traffic Light System with Soft Connections
-# %provides hardware_system
-# %requires traffic_light_function
-#
-# %attributes hybrid connected
-#
-# %public System.bsv
-#
-# %AWB_END
-# */
+
+%AWB_START
+
+%name Traffic Light System with Soft Connections
+%desc Traffic Light System with Soft Connections
+
+%attributes traffic_light demo
+
+%provides hardware_system
+%requires traffic_light_function
+
+%notes traffic_light_system.txt
+
+%public System.bsv
+
+%AWB_END

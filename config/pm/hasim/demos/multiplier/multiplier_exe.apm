@@ -1,21 +1,18 @@
 
 [Global]
 SaveParameters=0
-Description=Multiplier FPGA Demo
-File=multiplier
+Description=Multiplier FPGA Demo - EXE
+File=multiplier_exe
 Version=2.1
 Name=Multiplier Model
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
+DefaultRunOpts=--showfp=gui
 
 [Model]
-DefaultAttributes=demo hasim software
+DefaultAttributes=multiplier_system demo connected slave hybrid project exe
 model=HW/SW Hybrid Project Foundation
-
-[FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
-Packagehint=platforms
 
 [Soft Connections Hybrid Application Environment/Requires]
 connected_application=Default Software Connected Application
@@ -43,8 +40,8 @@ Packagehint=platforms
 
 [HW/SW Hybrid Project Foundation/Requires]
 command_switches=Standard Command Switches
-fpgaenv=FPGA Environment
 application_env=Soft Connections Hybrid Application Environment
+fpgaenv=FPGA Environment
 
 [Multiplier system with Soft Connections]
 File=modules/system/mulitplier_system/multiplier_system.awb
@@ -57,3 +54,7 @@ Packagehint=hasim
 [Soft Connections Library]
 File=config/pm/hasim/submodels/common/soft-connections-lib.apm
 Packagehint=hasim
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
+Packagehint=platforms

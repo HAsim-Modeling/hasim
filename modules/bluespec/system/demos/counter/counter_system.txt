@@ -1,0 +1,9 @@
+Echo System
+
+This is a simple demo that uses the front panel
+services without soft connections. It just a echo
+application that takes the value of the switches
+and displays them on the LEDs.
+
+Interally it is actually somewhat misnamed as talks
+about a counter, but there really is no counter.

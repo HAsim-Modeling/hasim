@@ -1,9 +1,10 @@
 
 %name SW only FIR Filter Demo
 %desc FIR Filter using software only.
-%provides hybrid_application
 
-%attributes demo
+%attributes fir_filter_sw unconnected hybrid
+
+%provides hybrid_application
 
 %public  fir-filter-system.h
 %public  fir-filter-system.bsv

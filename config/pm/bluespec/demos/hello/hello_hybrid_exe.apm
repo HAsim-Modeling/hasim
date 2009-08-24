@@ -11,7 +11,7 @@ Class=Asim::Model
 DefaultRunOpts=
 
 [Model]
-DefaultAttributes=hybrid simulation bluespec
+DefaultAttributes=hello unconnected hybrid project exe
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]

@@ -20259,3 +20259,179 @@ Directory modules/system/switch_to_led_system/calculation4x4/echo
 * stubgen no longer generates files which require hasim_common.
 
 Michael P.
+
+----------
+emer        Date: Mon Aug 24 19:04:57 EDT 2009  CSN: CSN-hasim-681
+                  Mon Aug 24 23:04:57 UTC 2009
+
+
+Directory experiments/hasim
+ demos/                    Locally Added               0 
+
+Directory experiments/hasim/demos
+ demos.benchmarks          Locally Added               0 
+ demos.models              Locally Added               0 
+
+Directory config/pm/hasim/demos/test/alu_test
+ alu_test_hybrid_htg.apm   Locally Modified          680 
+ alu_test_hybrid_exe.apm   Locally Modified          680 
+
+Directory config/pm/hasim/demos/test/bram_test
+ bram_test_hybrid_htg.apm  Locally Modified          680 
+ bram_test_hybrid_exe.apm  Locally Modified          680 
+
+Directory config/pm/hasim/demos/test/interconnect_test
+ interconnect_test_hybrid_exe.apm Locally Modified          680 
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid_nopvt_exe.apm Locally Modified          680 
+ mem_test_hybrid_nopvt_htg.apm Locally Modified          680 
+ mem_test_hybrid_exe.apm   Locally Modified          680 
+ mem_test_hybrid_htg.apm   Locally Modified          680 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          680 
+ traffic_light_htg_v5_pcie_synth.apm Locally Modified          680 
+ traffic_light_xup_synth.apm Locally Modified          680 
+ traffic_light_exe_nosynth.apm Locally Modified          680 
+ traffic_light_exe_synth.apm Locally Modified          680 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier.apm            Locally Removed           680 
+ multiplier_exe.apm        Locally Added               0 
+
+Directory config/pm/hasim/demos/switch_to_led
+ multiplier4x4_exe.apm     Locally Modified          680 
+ echo4x4_xup.apm           Locally Modified          680 
+ adder4x4_xup.apm          Locally Modified          680 
+ square4x4_xup.apm         Locally Modified          680 
+ echo4x4_exe.apm           Locally Modified          680 
+ adder4x4_exe.apm          Locally Modified          680 
+ echo4x4_htg.apm           Locally Modified          680 
+ square4x4_exe.apm         Locally Modified          680 
+ multiplier4x4_xup.apm     Locally Modified          680 
+
+Directory config/pm/hasim/submodels/platform-services
+ standard-platform-services.apm Locally Modified          680 
+
+Directory config/pm/hasim/submodels/common
+ soft-connections-lib.apm  Locally Modified          680 
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_exe.apm      Locally Modified          680 
+ hello_hybrid_htg.apm      Locally Modified          680 
+ hello_hybrid_xup2.apm     Locally Added               0 
+
+Directory config/pm/bluespec/demos/fir_filter
+ fir_filter_hw_exe.apm     Locally Modified          680 
+ fir_filter_sw.apm         Locally Modified          680 
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_exe.apm    Locally Modified          680 
+ rrrtest_hybrid_htg.apm    Locally Modified          680 
+
+Directory config/pm/bluespec/demos/simple
+ multiplier.apm            Locally Removed           680 
+ multiplier_exe.apm        Locally Added               0 
+ switch2led.apm            Locally Removed           680 
+ switch2led_exe.apm        Locally Added               0 
+ counter.apm               Locally Removed           680 
+ echo_exe.apm              Locally Added               0 
+
+Directory config/pm/bluespec/demos/shmem
+ shmem_hybrid_htg.apm      Locally Modified          680 
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hybrid_exe.apm    Locally Modified          680 
+ devtest_hybrid_htg.apm    Locally Modified          680 
+
+Directory modules/hasim/controller/command_switches
+ standard-command-switches.awb Locally Modified          680 
+
+Directory modules/bluespec/system/demos/counter
+ counter_system.txt        Locally Added               0 
+ counter_system.awb        Locally Modified          680 
+
+Directory modules/bluespec/system/demos/fir-filter/sw-only
+ fir-filter-system.awb     Locally Modified          680 
+
+Directory modules/bluespec/system/demos/fir-filter/hw-only
+ fir-filter-system.awb     Locally Modified          680 
+
+Directory modules/bluespec/system/demos/hello
+ hello.txt                 Locally Modified          680 
+ hello.awb                 Locally Modified          680 
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest.txt               Locally Added               0 
+ rrrtest.awb               Locally Modified          680 
+
+Directory modules/bluespec/system/demos/multiplier
+ multiplier-system.txt     Locally Added               0 
+ mult_system.awb           Locally Modified          680 
+
+Directory modules/bluespec/system/demos/shmem-test
+ shmem-test.awb            Locally Modified          680 
+
+Directory modules/bluespec/system/demos/switch2led
+ switch2led_system.awb     Locally Modified          680 
+ switch2led_system.txt     Locally Added               0 
+
+Directory modules/bluespec/system/demos/devtest
+ devtest.awb               Locally Modified          680 
+ devtest.bsv               Locally Modified          680 
+ devtest.txt               Locally Added               0 
+
+Directory modules/bluespec/util/physical-interconnects/shared-tree
+ shared-tree.awb           Locally Modified          680 
+
+Directory modules/system/test/alu_test
+ alu-test.awb              Locally Modified          680 
+
+Directory modules/system/test/bram_test
+ bram-test.awb             Locally Modified          680 
+
+Directory modules/system/test/interconnect_test
+ interconnect-test.awb     Locally Modified          680 
+ interconnect-test.bsv     Locally Modified          680 
+
+Directory modules/system/test/mem_test
+ mem-test.awb              Locally Modified          680 
+
+Directory modules/system/traffic_light_system
+ traffic_light_system.awb  Locally Modified          680 
+ traffic_light_system.txt  Locally Added               0 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Modified          680 
+ hasim_traffic_light_function_synth.awb Locally Modified          680 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.awb     Locally Modified          680 
+ multiplier_system.bsv     Locally Modified          680 
+ multiplier_system.txt     Locally Added               0 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.awb  Locally Modified          680 
+ switch_to_led_system.txt  Locally Added               0 
+
+Directory modules/system/switch_to_led_system/calculation4x4/adder
+ adder4x4.awb              Locally Modified          680 
+
+Directory modules/system/switch_to_led_system/calculation4x4/square
+ square4x4.awb             Locally Modified          680 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ multiplier4x4.awb         Locally Modified          680 
+
+Directory modules/system/switch_to_led_system/calculation4x4/echo
+ echo4x4.awb               Locally Modified          680 
+
+Cleanup of demo projects both unconnected and connected
+
+* Added regression test for most demos
+* Added attributes to many models and modules so defaults exist
+* Added module notes to many {hybrid,connected}_apps
+* Fixed devtest
+* Fixed couple of cases were wrong simulation platform was used
+* Alu_test and interconnect_test were (and still are) broken

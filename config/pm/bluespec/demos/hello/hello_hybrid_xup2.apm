@@ -1,34 +1,37 @@
 
 [Global]
 SaveParameters=0
-Description=RRR Test and Benchmarking Program for HTG v5 PCIe
-File=rrrtest_hybrid_htg
+Description=Hello World Demo using hybrid streams for HTG v5 PCIe
+File=hello_hybrid_xup2
 Version=2.1
-Name=RRR Test and Benchmarking Program for HTG v5 PCIe
+Name=Hello World for HTG v5 PCIe
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 DefaultRunOpts=
 
 [Model]
-DefaultAttributes=rrrtest unconnected hybrid project htg
+DefaultAttributes=hello unconnected hybrid project xup
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
-Packagehint=platforms
-
-[Bluespec RRR Test and Benchmarking Program]
-File=modules/bluespec/system/demos/rrrtest/rrrtest.awb
-Packagehint=hasim
-
-[HW/SW Hybrid Project Foundation]
-File=modules/project/project-hybrid.awb
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-xupv2-serial.apm
 Packagehint=platforms
 
 [Base Hybrid Application Environment]
 File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
 Packagehint=platforms
+
+[Base Hybrid Application Environment/Requires]
+hybrid_application=Hello World
+
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
+
+[Hello World]
+File=modules/bluespec/system/demos/hello/hello.awb
+Packagehint=hasim
 
 [Standard Command Switches]
 File=modules/hasim/controller/command_switches/standard-command-switches.awb
@@ -42,5 +45,5 @@ command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
 application_env=Base Hybrid Application Environment
 
-[Base Hybrid Application Environment/Requires]
-hybrid_application=Bluespec RRR Test and Benchmarking Program
+[FPGA Environment/Params]
+MODEL_CLOCK_MULTIPLIER=2

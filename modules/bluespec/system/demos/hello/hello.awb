@@ -7,9 +7,9 @@
 %name Hello World
 %desc Hello World
 
-%provides hybrid_application
+%attributes hello unconnected hybrid
 
-%attributes hybrid
+%provides hybrid_application
 
 %notes hello.txt 
 

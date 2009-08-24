@@ -15,16 +15,21 @@
 //     Right           Finish
 //
 
-// Include virtual devices
+// Include platform
 
-`include "asim/provides/virtual_platform.bsh"
-`include "asim/provides/virtual_devices.bsh"
 `include "asim/provides/low_level_platform_interface.bsh"
 `include "asim/provides/physical_platform.bsh"
+`include "asim/provides/virtual_platform.bsh"
 
-`include "asim/provides/front_panel.bsh"
-`include "asim/provides/streams.bsh"
+
+// Include virtual devices
+
+`include "asim/provides/virtual_devices.bsh"
+
 `include "asim/provides/starter_device.bsh"
+`include "asim/provides/front_panel.bsh"
+`include "asim/provides/common_utility_devices.bsh"
+`include "asim/provides/streams_io.bsh"
 
 // Include symbol defintions
 
@@ -33,7 +38,8 @@
 
 typedef enum 
     {
-        STATE_start, 
+        STATE_start,
+        STATE_initialize,
         STATE_debounce,
         STATE_doit,
         STATE_finish,
@@ -46,9 +52,10 @@ module mkApplication#(VIRTUAL_PLATFORM virtualPlatform)();
 
     // Instantiate virtual devices
 
-    FrontPanel       fp      = virtualPlatform.virtualDevices.frontPanel;
-    Streams          streams = virtualPlatform.virtualDevices.streams;
     STARTER          starter = virtualPlatform.virtualDevices.starter;
+    FrontPanel       fp      = virtualPlatform.virtualDevices.frontPanel;
+    STREAMS_IO       streams = virtualPlatform.virtualDevices.commonUtilities.streams;
+    
 
     // Instantiate our local state
 
@@ -57,12 +64,22 @@ module mkApplication#(VIRTUAL_PLATFORM virtualPlatform)();
 
 
     //
-    // Initialization state
+    // Start state
     //
 
     rule start (state == STATE_start);
 
        starter.acceptRequest_Start();
+
+       state <= STATE_initialize;
+
+    endrule
+
+    //
+    // Initialization state
+    //
+
+    rule initialize (state == STATE_initialize);
 
        let newvalue = 0;
 
@@ -137,7 +154,7 @@ module mkApplication#(VIRTUAL_PLATFORM virtualPlatform)();
       begin
         newvalue = value;
 
-        state <= STATE_start;
+        state <= STATE_initialize;
       end
 
       // RIGHT button

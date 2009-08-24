@@ -1,8 +1,9 @@
-%name HAsim Scratchpad Memory Test System
-%desc HAsim Scratchpad Memory Test System
-%provides hardware_system
+%name Scratchpad Memory Test System
+%desc Scratchpad Memory Test System
 
-%attributes hasim
+%attributes scratchpad_test test
+
+%provides hardware_system
 
 %public mem-test.bsv
 %public mem-test.dic

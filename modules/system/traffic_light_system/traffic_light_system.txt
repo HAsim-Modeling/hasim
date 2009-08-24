@@ -1,0 +1,16 @@
+Traffic Light System
+
+This simple application that uses soft connections
+to the front panel service to flash the LEDs in
+the pattern of the traffic lights at an 
+intersection described in the Bluespec tutorial.
+
+All the work is actually done in a submodule of 
+this module but through the magic of soft 
+connections no wires are explicitly passed through
+this module to the submodule.
+
+With only 4 LEDs only a subset of the lights
+are displayed.
+
+

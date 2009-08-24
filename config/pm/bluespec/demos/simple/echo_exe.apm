@@ -1,22 +1,22 @@
 
 [Global]
+SaveParameters=0
+Description=Counter Demo from Bluespec Tutorial
+File=echo_exe
+Version=2.1
+Name=Counter Demo
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
-Version=2.1
-File=multiplier
-SaveParameters=0
-Description=Bluespec Multiplier Example
-Name=Bluespec Multiplier Example
-Type=HAsim
 Class=Asim::Model
-
-[Bluespec Multiplier Example]
-File=modules/bluespec/system/demos/multiplier/mult_system.awb
-Packagehint=hasim
+DefaultRunOpts=--showfp=gui
 
 [Model]
-DefaultAttributes=simulation bluespec
+DefaultAttributes=counter unconnected hybrid project exe
 model=HW/SW Hybrid Project Foundation
+
+[Bluespec Counter Example]
+File=modules/bluespec/system/demos/counter/counter_system.awb
+Packagehint=hasim
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
@@ -40,4 +40,4 @@ fpgaenv=FPGA Environment
 application_env=Base Hybrid Application Environment
 
 [Base Hybrid Application Environment/Requires]
-hybrid_application=Bluespec Multiplier Example
+hybrid_application=Bluespec Counter Example

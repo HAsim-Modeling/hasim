@@ -21,20 +21,31 @@ import FIFO::*;
 import Counter::*;
 import FIFOF::*;
 
-`include "asim/provides/hasim_common.bsh"
-`include "asim/provides/soft_connections.bsh"
-`include "asim/provides/platform_interface.bsh"
+// General environmental includes
+
 `include "asim/provides/fpga_components.bsh"
+`include "asim/provides/soft_connections.bsh"
+
+// Raw devices (TBD: why isn't this included in the services below)
+
+`include "asim/provides/scratchpad_memory.bsh"
+
+// Virtual services
+
+`include "asim/provides/platform_services.bsh"
+`include "asim/provides/mem_services.bsh"
+`include "asim/provides/common_services.bsh"
+
+// Submodule includes
+
 `include "asim/provides/physical_interconnect.bsh"
 
-`include "scratchpad_memory.bsh"
-`include "streams.bsh"
 `include "asim/dict/STREAMID.bsh"
 `include "asim/dict/STREAMS_ICTEST.bsh"
 `include "asim/dict/STREAMS_MESSAGE.bsh"
 
 
-module [HASIM_MODULE] mkSystem ();
+module [CONNECTED_MODULE] mkSystem ();
 
     Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory <- mkConnection_Client("vdev_memory");
     Connection_Receive#(SCRATCHPAD_MEM_ADDRESS) link_memory_inval <- mkConnection_Receive("vdev_memory_invalidate");
@@ -80,7 +91,7 @@ typedef enum
         deriving (Eq, Bits);
 
 
-module [HASIM_MODULE] mkICTestController (Tuple2#(PHYSICAL_STATION, STATION_INFO));
+module [CONNECTED_MODULE] mkICTestController (Tuple2#(PHYSICAL_STATION, STATION_INFO));
 
     Connection_Send#(STREAMS_REQUEST) link_streams <- mkConnection_Send("vdev_streams");
     
@@ -510,7 +521,7 @@ typedef union tagged
     TEST_MSG
         deriving (Eq, Bits);
 
-module [HASIM_MODULE] mkICTestEntity1 (Tuple2#(PHYSICAL_STATION, STATION_INFO));
+module [CONNECTED_MODULE] mkICTestEntity1 (Tuple2#(PHYSICAL_STATION, STATION_INFO));
 
     
     FIFOF#(Bool) multi2Passed <- mkSizedFIFOF(16);
@@ -669,7 +680,7 @@ module [HASIM_MODULE] mkICTestEntity1 (Tuple2#(PHYSICAL_STATION, STATION_INFO));
 
 endmodule
 
-module [HASIM_MODULE] mkICTestEntity2 (Tuple2#(PHYSICAL_STATION, STATION_INFO));
+module [CONNECTED_MODULE] mkICTestEntity2 (Tuple2#(PHYSICAL_STATION, STATION_INFO));
 
     
     FIFOF#(Bool) multi1Passed <- mkSizedFIFOF(16);
@@ -826,7 +837,7 @@ module [HASIM_MODULE] mkICTestEntity2 (Tuple2#(PHYSICAL_STATION, STATION_INFO));
 endmodule
 
 
-module [HASIM_MODULE] mkICTestEntity3 (Tuple2#(PHYSICAL_STATION, STATION_INFO));
+module [CONNECTED_MODULE] mkICTestEntity3 (Tuple2#(PHYSICAL_STATION, STATION_INFO));
 
     
     FIFOF#(Bool) multi1Passed <- mkSizedFIFOF(16);

@@ -1,5 +1,7 @@
-import soft_connections::*;
-import front_panel::*;
+
+`include "asim/provides/soft_connections.bsh"
+`include "asim/provides/front_panel.bsh"
+`include "asim/provides/front_panel_service.bsh"
 
 module [CONNECTED_MODULE] mkSystem ();
    

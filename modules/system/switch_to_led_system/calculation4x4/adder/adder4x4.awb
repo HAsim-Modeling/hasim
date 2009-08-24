@@ -1,20 +1,19 @@
-#/********************************************************************
-# *
-# * Awb module specification
-# *
-# *******************************************************************/
+/********************************************************************
+ *
+ * Awb module specification
+ *
+ *******************************************************************/
 
-#/*
-# %AWB_START
-#
-# %name 4x4 adder
-# %desc 4x4 adder
-# %provides calculation4x4
-#
-# %attributes connected
-#
-# %public adder4x4.bsv
-#
-#
-# %AWB_END
-# */
+%AWB_START
+
+%name Switch2led - 4x4 adder
+%desc Switch2led - 4x4 adder
+
+%attributes adder switch2led
+
+%provides calculation4x4
+
+%public adder4x4.bsv
+
+%AWB_END
+

@@ -7,9 +7,9 @@
 %name Shared Memory Test and Benchmarking Application
 %desc Shared Memory Test and Benchmarking Application
 
-%provides hybrid_application
+%attributes shmem unconnected hybrid
 
-%attributes hybrid
+%provides hybrid_application
 
 %sources -t BSV  -v PUBLIC  shmem-test.bsv
 %sources -t H    -v PUBLIC  shmem-test.h

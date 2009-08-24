@@ -1,0 +1,12 @@
+Switch to Led System
+
+This is a connected application foundation that
+accepts a value from the front panel switches
+and displays the result of a computation on
+that value on the front panel LEDs. 
+
+The calculation is variable since it is a plugable 
+submodule of this module. The interface to the
+calculation is in the form of a request and response.
+
+

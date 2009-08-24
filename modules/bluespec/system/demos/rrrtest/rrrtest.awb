@@ -7,9 +7,11 @@
 %name Bluespec RRR Test and Benchmarking Program
 %desc Bluespec RRR Test and Benchmarking Program
 
+%attributes rrrtest unconnected hybrid
+
 %provides hybrid_application
 
-%attributes hybrid
+%notes rrrtest.txt
 
 %sources -t BSV  -v PUBLIC  rrrtest.bsv
 %sources -t H    -v PUBLIC  rrrtest.h   rrrtest-server.h

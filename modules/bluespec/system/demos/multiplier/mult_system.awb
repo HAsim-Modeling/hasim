@@ -7,9 +7,11 @@
 %name Bluespec Multiplier Example
 %desc Bluespec Multiplier Example
 
+%attributes multiplier_system unconnected hybrid
+
 %provides hybrid_application
 
-%attributes hybrid
+%notes multiplier-system.txt
 
 %public Multiplier.bsv System.bsv 
 %public multiplier-system.h

@@ -8,9 +8,10 @@ Name=Device Tester
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
+DefaultRunOpts=--showfp=gui
 
 [Model]
-DefaultAttributes=hybrid simulation bluespec
+DefaultAttributes=devtest unconnected hybrid project exe
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]

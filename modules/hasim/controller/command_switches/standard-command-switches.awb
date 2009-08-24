@@ -6,7 +6,8 @@
 
 %name Standard Command Switches
 %desc Standard Command Switches
-%attributes hasim
+
+%attributes project
 
 %provides command_switches
 

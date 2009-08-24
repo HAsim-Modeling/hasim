@@ -5,12 +5,13 @@ Description=Default Configuration for Soft Connections
 File=soft-connections-lib
 Version=2.1
 Name=Standard Soft Connections Lib
-DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
+DefaultBenchmark=
 Type=HAsim
 Class=Asim::Model
+DefaultRunOpts=
 
 [Model]
-DefaultAttributes=hybrid connected
+DefaultAttributes=connected hybrid
 model=Soft Connections Library
 
 [Smart Synthesis Boundaries]

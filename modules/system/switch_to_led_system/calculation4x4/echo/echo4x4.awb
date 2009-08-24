@@ -1,20 +1,18 @@
-#/********************************************************************
-# *
-# * Awb module specification
-# *
-# *******************************************************************/
+/********************************************************************
+ *
+ * Awb module specification
+ *
+ *******************************************************************/
 
-#/*
-# %AWB_START
-#
-# %name Hasim - 4x4 echo
-# %desc Hasim - 4x4 echo
-# %provides calculation4x4
-#
-# %attributes hasim
-#
-# %public echo4x4.bsv
-#
-#
-# %AWB_END
-# */
+%AWB_START
+
+%name Switch2led - 4x4 echo
+%desc Switch2led - 4x4 echo
+
+%attributes echo switch2led
+
+%provides calculation4x4
+
+%public echo4x4.bsv
+
+%AWB_END

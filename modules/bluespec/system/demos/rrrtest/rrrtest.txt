@@ -1,0 +1,6 @@
+RRR Test
+
+This is a hybrid applications that tests some simple
+RRR services (without soft connections) with the host
+software as client and the hardware as server and vice
+versa.

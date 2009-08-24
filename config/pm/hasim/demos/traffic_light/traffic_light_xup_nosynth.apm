@@ -8,13 +8,14 @@ Name=Traffic Light Model - XUP
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
+DefaultRunOpts=
 
 [Model]
-DefaultAttributes=traffic-light hybrid connected xup
+DefaultAttributes=function_not_as_boundary traffic_light demo connected slave hybrid project xup
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-xup.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-xupv2-serial.apm
 Packagehint=platforms
 
 [Soft Connections Hybrid Application Environment/Requires]

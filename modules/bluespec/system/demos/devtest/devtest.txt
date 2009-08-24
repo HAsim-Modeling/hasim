@@ -1,0 +1,17 @@
+Devtest
+
+This is a small demo program that exercises a
+variety of of the virtual platform devices, i.e.,
+the front panel buttons, switches and LEDs and
+streams I/O. It does not use any soft connections.
+
+It operates as follows:
+
+     Button          Action
+     ------          ------
+     Ok              Load switches into LEDs
+     Up              Increment LEDs by 1
+     Down            Decrement LEDs by 1
+     Left            Return to initial state
+     Right           Finish
+

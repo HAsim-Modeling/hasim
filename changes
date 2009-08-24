@@ -20435,3 +20435,13 @@ Cleanup of demo projects both unconnected and connected
 * Fixed devtest
 * Fixed couple of cases were wrong simulation platform was used
 * Alu_test and interconnect_test were (and still are) broken
+
+----------
+emer        Date: Mon Aug 24 19:33:38 EDT 2009  CSN: CSN-hasim-682
+                  Mon Aug 24 23:33:38 UTC 2009
+
+
+Directory experiments/hasim/demos
+ demos.models              Locally Modified          681 
+
+Fix typo in apm file name.

@@ -1,5 +1,5 @@
 hello                    config/pm/bluespec/demos/hello/hello_hybrid_exe.apm
-rrrtest                  config/pm/bluespec/demos/rrrtest/rrrtest_hybrid.apm                           --bluesim="-m 50000"
+rrrtest                  config/pm/bluespec/demos/rrrtest/rrrtest_hybrid_exe.apm                       --bluesim="-m 50000"
 simple_echo              config/pm/bluespec/demos/simple/echo_exe.apm                                  --bluesim="-m 50000"
 simple_switch2led        config/pm/bluespec/demos/simple/switch2led_exe.apm                            --bluesim="-m 50000"
 simple_multiplier        config/pm/bluespec/demos/simple/multiplier_exe.apm                            --bluesim="-m 50000"

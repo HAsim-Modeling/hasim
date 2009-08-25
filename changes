@@ -20445,3 +20445,18 @@ Directory experiments/hasim/demos
  demos.models              Locally Modified          681 
 
 Fix typo in apm file name.
+
+----------
+mcadler     Date: Tue Aug 25 10:48:31 EDT 2009  CSN: CSN-hasim-683
+                  Tue Aug 25 14:48:31 UTC 2009
+
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Modified          682 
+ isa-emulator.rrr          Locally Modified          682 
+ isa-emulator.h            Locally Modified          682 
+
+Directory modules/hasim/functional-partition/isa-emulator/null
+ null-isa-emulator-impl.h  Locally Modified          682 
+
+Add glue for register-only emulation method.

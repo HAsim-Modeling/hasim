@@ -62,4 +62,31 @@ class ISA_EMULATOR_IMPL_CLASS
     }
 };
 
+
+
+typedef class ISA_REGOP_EMULATOR_IMPL_CLASS* ISA_REGOP_EMULATOR_IMPL;
+
+class ISA_REGOP_EMULATOR_IMPL_CLASS
+{
+  private:
+    ISA_REGOP_EMULATOR parent;
+
+  public:
+    ISA_REGOP_EMULATOR_IMPL_CLASS(ISA_REGOP_EMULATOR parent) : parent(parent) {};
+    ~ISA_REGOP_EMULATOR_IMPL_CLASS() {};
+
+    FUNCP_REG EmulateRegOp(
+        CONTEXT_ID ctxId,
+        FUNCP_VADDR pc,
+        ISA_INSTRUCTION inst,
+        FUNCP_REG srcVal0,
+        FUNCP_REG srcVal1,
+        ISA_REG_INDEX_CLASS rNameSrc0,
+        ISA_REG_INDEX_CLASS rNameSrc1,
+        ISA_REG_INDEX_CLASS rNameDst)
+    {
+        return srcVal0;
+    }
+};
+
 #endif // _ISA_EMULATOR_IMPL_

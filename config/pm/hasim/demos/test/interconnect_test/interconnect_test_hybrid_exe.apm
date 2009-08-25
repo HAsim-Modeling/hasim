@@ -8,7 +8,6 @@ Name=Hybrid Interconnect Test Model
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
-DefaultRunOpts=
 
 [Model]
 DefaultAttributes=interconnect_test test connected slave hybrid project exe

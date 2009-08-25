@@ -1,0 +1,7 @@
+%name Duplicate Modules Pipeline Test
+%desc Baseline pipeline test - duplicate all modules
+%provides pipeline_test
+
+%attributes hybrid pipetest
+
+%public pipeline-duplicate-modules.bsv

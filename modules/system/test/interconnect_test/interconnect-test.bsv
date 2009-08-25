@@ -47,9 +47,6 @@ import FIFOF::*;
 
 module [CONNECTED_MODULE] mkSystem ();
 
-    Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_MEM_VALUE) link_memory <- mkConnection_Client("vdev_memory");
-    Connection_Receive#(SCRATCHPAD_MEM_ADDRESS) link_memory_inval <- mkConnection_Receive("vdev_memory_invalidate");
-
     match {.ic_ctrl, .ic_ctrl_info} <- mkICTestController();
     match {.ic_1, .ic_1_info} <- mkICTestEntity1();
     match {.ic_2, .ic_2_info} <- mkICTestEntity2();

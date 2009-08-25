@@ -1,0 +1,13 @@
+%name Base Pipetest Common
+%desc Common pipeline-test functionality
+%provides pipetest_common
+
+%attributes hybrid pipetest
+
+%public pipetest-common.bsv
+
+%param PIPE_TEST_GUARDED_FIFOS  1 "0 = Unguarded FIFOs (explicitly guarded). 1 = guarded fifos (explicit guards are extraneous, but harmlesss)."
+
+%param PIPE_TEST_DATA_BITS  32    "Size of data flowing through the pipeline"
+%param PIPE_TEST_STAGES     10    "Depth of the test pipeline"
+%param PIPE_TEST_NUM_PIPES  32    "Number of independent pipelines"

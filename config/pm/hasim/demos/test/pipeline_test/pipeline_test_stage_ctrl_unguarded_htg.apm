@@ -4,58 +4,75 @@ SaveParameters=0
 Description=Experiment with resource consumtion of varying Bluespec pipeline coding methods
 File=pipeline_test_stage_ctrl_unguarded_htg
 Version=2.1
-Name=HAsim Pipeline Resource Tests
+Name=Stage Controller Unguarded FIFOs Pipeline Resource Test
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 
 [Model]
-DefaultAttributes=hasim hybrid
-model=HAsim Hybrid Model Foundation
+DefaultAttributes=hybrid htg pipetest
+model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-htg-v5-pcie.apm
 Packagehint=platforms
 
-[HAsim Hybrid Model Foundation/Requires]
-hasim_common=Hasim Common Library
-system=Hybrid System foundation
-hasim_controller=Hybrid Basic Controller
-fpgaenv=FPGA Environment
+[Soft Connections Hybrid Application Environment/Requires]
+platform_services=Platform Services
+soft_connections_lib=Soft Connections Library
+connected_application=Default Software Connected Application
 
-[HAsim Hybrid Model Foundation/Params]
+[Soft Connections Library]
+File=config/pm/hasim/submodels/common/soft-connections-lib.apm
+Packagehint=hasim
+
+[Platform Services]
+File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
+Packagehint=hasim
+
+[Default Software Connected Application]
+File=modules/application-env/hybrid/soft-connections/default-sw/connected-application-default-sw.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
+
+[Default Software Connected Application/Requires]
+hardware_system=Shared Pipeline Resource Utlization Tests
+
+[Standard Command Switches]
+File=modules/hasim/controller/command_switches/standard-command-switches.awb
+Packagehint=hasim
+
+[HW/SW Hybrid Project Foundation/Params]
 MAKE_ALL_TARGET=bit
 
-[HAsim Hybrid Model Foundation]
-File=modules/model/hasim_model.awb
+[Soft Connections Hybrid Application Environment]
+File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Project Foundation/Requires]
+command_switches=Standard Command Switches
+fpgaenv=FPGA Environment
+application_env=Soft Connections Hybrid Application Environment
+
+
+[Base Pipetest Common]
+File=modules/system/test/shared_pipeline_test/common/pipetest-common.awb
 Packagehint=hasim
 
-[Hasim Common Library]
-File=config/pm/hasim/submodels/common/hasim_common.apm
+[Shared Pipeline Resource Utlization Tests/Requires]
+pipeline_test=Stage Controller Pipeline Test
+pipetest_common=Base Pipetest Common
+
+[Stage Controller Pipeline Test]
+File=modules/system/test/shared_pipeline_test/stage-ctrl/pipeline-stage-ctrl.awb
 Packagehint=hasim
 
-[Hybrid Basic Controller]
-File=config/pm/hasim/submodels/controller/hybrid_basic_controller.apm
-Packagehint=hasim
-
-[HAsim - Shared Pipeline Resource Tests]
-File=modules/system/test/shared_pipeline_test/shared-pipeline-test.awb
-Packagehint=hasim
-
-[HAsim - Shared Pipeline Resource Tests/Params]
-PIPE_TEST_LOOP_MODE=4
+[Base Pipetest Common/Params]
 PIPE_TEST_GUARDED_FIFOS=0
 
-
-[Default Software System]
-File=modules/model/default_software_system.awb
+[Shared Pipeline Resource Utlization Tests]
+File=modules/system/test/shared_pipeline_test/shared-pipeline-test.awb
 Packagehint=hasim
-
-[Hybrid System foundation/Requires]
-software_system=Default Software System
-hardware_system=HAsim - Shared Pipeline Resource Tests
-
-[Hybrid System foundation]
-File=modules/model/hybrid_system.awb
-Packagehint=hasim
-

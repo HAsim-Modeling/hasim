@@ -20460,3 +20460,83 @@ Directory modules/hasim/functional-partition/isa-emulator/null
  null-isa-emulator-impl.h  Locally Modified          682 
 
 Add glue for register-only emulation method.
+
+----------
+mpellaue    Date: Tue Aug 25 16:24:20 EDT 2009  CSN: CSN-hasim-684
+                  Tue Aug 25 20:24:20 UTC 2009
+
+
+Directory config/pm/hasim/demos/test/pipeline_test
+ pipeline_test_shared_rule_htg.apm Locally Modified          683 
+ pipeline_test_shared_rule_routed_exe.apm Locally Modified          683 
+ pipeline_test_shared_rule_routed_htg.apm Locally Modified          683 
+ pipeline_test_private_rule_exe.apm Locally Modified          683 
+ pipeline_test_duplicate_modules_exe.apm Locally Modified          683 
+ pipeline_test_private_rule_htg.apm Locally Modified          683 
+ pipeline_test_duplicate_modules_htg.apm Locally Modified          683 
+ pipeline_test_stage_ctrl_unguarded_exe.apm Locally Modified          683 
+ pipeline_test_stage_ctrl_unguarded_htg.apm Locally Modified          683 
+ pipeline_test_stage_ctrl_exe.apm Locally Modified          683 
+ pipeline_test_stage_ctrl_htg.apm Locally Modified          683 
+ pipeline_test_shared_rule_exe.apm Locally Modified          683 
+
+Directory config/pm/hasim/demos/test/interconnect_test
+ interconnect_test_hybrid_exe.apm Locally Modified          683 
+
+Directory modules/system/test/interconnect_test
+ interconnect-test.bsv     Locally Modified          683 
+
+Directory modules/system/test/shared_pipeline_test
+ shared-pipeline-test.bsv  Locally Modified          683 
+ private-rule/             Locally Added               0 
+
+Directory modules/system/test/shared_pipeline_test/private-rule
+ pipeline-private-rule.awb Locally Added               0 
+ pipeline-private-rule.bsv Locally Added               0 
+
+Directory modules/system/test/shared_pipeline_test
+ duplicate-modules/        Locally Added               0 
+
+Directory modules/system/test/shared_pipeline_test/duplicate-modules
+ pipeline-duplicate-modules.awb Locally Added               0 
+ pipeline-duplicate-modules.bsv Locally Added               0 
+
+Directory modules/system/test/shared_pipeline_test
+ shared-tree/              Locally Added               0 
+
+Directory modules/system/test/shared_pipeline_test/shared-tree
+ pipeline-shared-tree.bsv  Locally Added               0 
+ pipeline-shared-tree.awb  Locally Added               0 
+
+Directory modules/system/test/shared_pipeline_test
+ stage-ctrl/               Locally Added               0 
+
+Directory modules/system/test/shared_pipeline_test/stage-ctrl
+ pipeline-stage-ctrl.awb   Locally Added               0 
+ pipeline-stage-ctrl.bsv   Locally Added               0 
+ stage-controller.bsv      Locally Added               0 
+
+Directory modules/system/test/shared_pipeline_test
+ common/                   Locally Added               0 
+
+Directory modules/system/test/shared_pipeline_test/common
+ pipetest-common.awb       Locally Added               0 
+ pipetest-common.bsv       Locally Added               0 
+
+Directory modules/system/test/shared_pipeline_test
+ shared-rule/              Locally Added               0 
+
+Directory modules/system/test/shared_pipeline_test/shared-rule
+ pipeline-shared-rule.awb  Locally Added               0 
+ pipeline-shared-rule.bsv  Locally Added               0 
+
+Directory modules/system/test/shared_pipeline_test
+ shared-pipeline-test.awb  Locally Modified          683 
+
+
+* Fix interconnect test demo. 
+
+* Fix and reoganize pipeline test demo. Now uses AWB types to control
+  alternative options.
+
+Michael P.

@@ -33,7 +33,7 @@ Packagehint=platforms
 [HW/SW Hybrid Project Foundation/Requires]
 fpgaenv=FPGA Environment
 application_env=Base Hybrid Application Environment
-command_switches=Standard Command Switches
+project_common=Hybrid Project Common Utilities
 
 [Base Hybrid Application Environment/Requires]
 hybrid_application=Bluespec RRR Test and Benchmarking Program
@@ -41,6 +41,7 @@ hybrid_application=Bluespec RRR Test and Benchmarking Program
 [HW/SW Hybrid Project Foundation/Params]
 WAIT_FOR_HARDWARE=0
 
-[Standard Command Switches]
-File=modules/hasim/controller/command_switches/standard-command-switches.awb
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim

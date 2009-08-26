@@ -27,18 +27,15 @@ soft_connections_lib=Soft Connections Library
 File=modules/project/project-hybrid.awb
 Packagehint=platforms
 
-[Standard Command Switches]
-File=modules/hasim/controller/command_switches/standard-command-switches.awb
-Packagehint=hasim
 
 [Soft Connections Hybrid Application Environment]
 File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
 Packagehint=platforms
 
 [HW/SW Hybrid Project Foundation/Requires]
-command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
 application_env=Soft Connections Hybrid Application Environment
+project_common=Hybrid Project Common Utilities
 
 [Traffic Light System with Soft Connections]
 File=modules/system/traffic_light_system/traffic_light_system.awb
@@ -69,3 +66,7 @@ Packagehint=hasim
 File=config/pm/hasim/submodels/common/soft-connections-lib.apm
 Packagehint=hasim
 
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
+Packagehint=hasim

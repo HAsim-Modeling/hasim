@@ -31,14 +31,15 @@ Packagehint=platforms
 File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
 Packagehint=platforms
 
-[Standard Command Switches]
-File=modules/hasim/controller/command_switches/standard-command-switches.awb
-Packagehint=hasim
 
 [HW/SW Hybrid Project Foundation/Requires]
-command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
 application_env=Base Hybrid Application Environment
+project_common=Hybrid Project Common Utilities
 
 [Base Hybrid Application Environment/Requires]
 hybrid_application=Bluespec Multiplier Example
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
+Packagehint=hasim

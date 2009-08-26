@@ -22,18 +22,15 @@ Packagehint=platforms
 File=modules/project/project-hybrid.awb
 Packagehint=platforms
 
-[Standard Command Switches]
-File=modules/hasim/controller/command_switches/standard-command-switches.awb
-Packagehint=hasim
 
 [Soft Connections Hybrid Application Environment]
 File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
 Packagehint=platforms
 
 [HW/SW Hybrid Project Foundation/Requires]
-command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
 application_env=Soft Connections Hybrid Application Environment
+project_common=Hybrid Project Common Utilities
 
 [Soft Connections Hybrid Application Environment/Requires]
 connected_application=Default Software Connected Application
@@ -67,4 +64,8 @@ Packagehint=hasim
 
 [Platform Services]
 File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
+Packagehint=hasim
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim

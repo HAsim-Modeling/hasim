@@ -34,9 +34,6 @@ Packagehint=platforms
 [Default Software Connected Application/Requires]
 hardware_system=Scratchpad Memory Test System
 
-[Standard Command Switches]
-File=modules/hasim/controller/command_switches/standard-command-switches.awb
-Packagehint=hasim
 
 [HW/SW Hybrid Project Foundation/Params]
 MAKE_ALL_TARGET=bit
@@ -46,9 +43,9 @@ File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft
 Packagehint=platforms
 
 [HW/SW Hybrid Project Foundation/Requires]
-command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
 application_env=Soft Connections Hybrid Application Environment
+project_common=Hybrid Project Common Utilities
 
 [Platform Services]
 File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
@@ -60,4 +57,8 @@ Packagehint=hasim
 
 [Scratchpad Memory Test System]
 File=modules/system/test/mem_test/mem-test.awb
+Packagehint=hasim
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim

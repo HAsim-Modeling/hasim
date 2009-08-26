@@ -33,14 +33,15 @@ Packagehint=platforms
 File=modules/bluespec/system/demos/hello/hello.awb
 Packagehint=hasim
 
-[Standard Command Switches]
-File=modules/hasim/controller/command_switches/standard-command-switches.awb
-Packagehint=hasim
 
 [HW/SW Hybrid Project Foundation/Params]
 MAKE_ALL_TARGET=bit
 
 [HW/SW Hybrid Project Foundation/Requires]
-command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
 application_env=Base Hybrid Application Environment
+project_common=Hybrid Project Common Utilities
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
+Packagehint=hasim

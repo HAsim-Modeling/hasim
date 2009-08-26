@@ -26,14 +26,11 @@ Packagehint=platforms
 File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
 Packagehint=platforms
 
-[Standard Command Switches]
-File=modules/hasim/controller/command_switches/standard-command-switches.awb
-Packagehint=hasim
 
 [HW/SW Hybrid Project Foundation/Requires]
-command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
 application_env=Base Hybrid Application Environment
+project_common=Hybrid Project Common Utilities
 
 [HW only FIR Filter Demo]
 File=modules/bluespec/system/demos/fir-filter/hw-only/fir-filter-system.awb
@@ -41,3 +38,7 @@ Packagehint=hasim
 
 [Base Hybrid Application Environment/Requires]
 hybrid_application=HW only FIR Filter Demo
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
+Packagehint=hasim

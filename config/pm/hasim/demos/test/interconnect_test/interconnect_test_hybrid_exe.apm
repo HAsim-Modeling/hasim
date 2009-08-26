@@ -8,6 +8,7 @@ Name=Hybrid Interconnect Test Model
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
+DefaultRunOpts=
 
 [Model]
 DefaultAttributes=interconnect_test test connected slave hybrid project exe
@@ -37,18 +38,15 @@ Packagehint=platforms
 [Default Software Connected Application/Requires]
 hardware_system=Interconnect Test System
 
-[Standard Command Switches]
-File=modules/hasim/controller/command_switches/standard-command-switches.awb
-Packagehint=hasim
 
 [Soft Connections Hybrid Application Environment]
 File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
 Packagehint=platforms
 
 [HW/SW Hybrid Project Foundation/Requires]
-command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
 application_env=Soft Connections Hybrid Application Environment
+project_common=Hybrid Project Common Utilities
 
 [Platform Services]
 File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
@@ -63,4 +61,8 @@ physical_interconnect=Shared Tree Physical Interconnect
 
 [Interconnect Test System]
 File=modules/system/test/interconnect_test/interconnect-test.awb
+Packagehint=hasim
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim

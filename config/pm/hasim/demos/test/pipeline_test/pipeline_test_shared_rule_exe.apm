@@ -8,6 +8,7 @@ Name=Shared Rule Pipeline Resource Test
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
+DefaultRunOpts=
 
 [Model]
 DefaultAttributes=hybrid simulation pipetest
@@ -41,19 +42,15 @@ Packagehint=platforms
 [Default Software Connected Application/Requires]
 hardware_system=Shared Pipeline Resource Utlization Tests
 
-[Standard Command Switches]
-File=modules/hasim/controller/command_switches/standard-command-switches.awb
-Packagehint=hasim
 
 [Soft Connections Hybrid Application Environment]
 File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
 Packagehint=platforms
 
 [HW/SW Hybrid Project Foundation/Requires]
-command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
 application_env=Soft Connections Hybrid Application Environment
-
+project_common=Hybrid Project Common Utilities
 
 [Shared Rule Pipeline Test]
 File=modules/system/test/shared_pipeline_test/shared-rule/pipeline-shared-rule.awb
@@ -69,4 +66,8 @@ pipetest_common=Base Pipetest Common
 
 [Shared Pipeline Resource Utlization Tests]
 File=modules/system/test/shared_pipeline_test/shared-pipeline-test.awb
+Packagehint=hasim
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim

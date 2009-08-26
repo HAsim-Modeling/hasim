@@ -1,0 +1,7 @@
+%name Hybrid Project Common Utilities
+%desc A set of utilities useful for all hybrid projects.
+
+%provides project_common
+%requires command_switches
+
+%attributes hybrid

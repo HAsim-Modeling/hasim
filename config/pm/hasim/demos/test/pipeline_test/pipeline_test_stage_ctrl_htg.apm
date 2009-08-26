@@ -8,6 +8,7 @@ Name=Stage Controller Pipeline Resource Test
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
+DefaultRunOpts=
 
 [Model]
 DefaultAttributes=hybrid htg pipetest
@@ -41,9 +42,6 @@ Packagehint=platforms
 [Default Software Connected Application/Requires]
 hardware_system=Shared Pipeline Resource Utlization Tests
 
-[Standard Command Switches]
-File=modules/hasim/controller/command_switches/standard-command-switches.awb
-Packagehint=hasim
 
 [HW/SW Hybrid Project Foundation/Params]
 MAKE_ALL_TARGET=bit
@@ -53,10 +51,9 @@ File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft
 Packagehint=platforms
 
 [HW/SW Hybrid Project Foundation/Requires]
-command_switches=Standard Command Switches
 fpgaenv=FPGA Environment
 application_env=Soft Connections Hybrid Application Environment
-
+project_common=Hybrid Project Common Utilities
 
 [Base Pipetest Common]
 File=modules/system/test/shared_pipeline_test/common/pipetest-common.awb
@@ -72,4 +69,8 @@ Packagehint=hasim
 
 [Shared Pipeline Resource Utlization Tests]
 File=modules/system/test/shared_pipeline_test/shared-pipeline-test.awb
+Packagehint=hasim
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim

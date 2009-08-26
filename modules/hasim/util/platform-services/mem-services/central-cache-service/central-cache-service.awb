@@ -5,6 +5,7 @@
 
 %attributes hybrid connected
 
+%public central-cache-service.bsh
 %public central-cache-service.bsv
 %public platform-central-cache.bsv
 %private central-cache-service.dic

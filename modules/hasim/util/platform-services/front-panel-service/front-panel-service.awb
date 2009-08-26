@@ -5,4 +5,5 @@
 
 %attributes hybrid connected
 
+%public front-panel-service.bsh
 %public front-panel-service.bsv

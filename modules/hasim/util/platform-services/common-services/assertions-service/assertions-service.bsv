@@ -1,5 +1,5 @@
 
-module [CONNECTED_MODULE] mkAssertionsIOService#(ASSERTIONS_IO assertionsIO)
+module [CONNECTED_MODULE] mkAssertionsService#(ASSERTIONS assertionsDevice)
     // interface:
         ();
 
@@ -21,7 +21,7 @@ module [CONNECTED_MODULE] mkAssertionsIOService#(ASSERTIONS_IO assertionsIO)
     rule processResp (True);
 
         let ast <- chain.receive_from_prev();
-        assertionsIO.assertionNodeValues(ast.baseID, ast.assertions);
+        assertionsDevice.assertionNodeValues(ast.baseID, ast.assertions);
 
     endrule
 

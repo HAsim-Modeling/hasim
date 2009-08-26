@@ -13,10 +13,10 @@ module [CONNECTED_MODULE] mkCommonServices#(VIRTUAL_DEVICES vdevs)
 
     let com = vdevs.commonUtilities;
 
-    let assertionsIOService <- mkAssertionsIOService(com.assertions);
-    let debugScanIOService  <- mkDebugScanIOService(com.debugScan);
-    let paramsIOService     <- mkDynamicParametersIOService(com.dynamicParameters);
-    let statsIOService      <- mkStatsIOService(com.stats);
-    let streamsIOService    <- mkStreamsIOService(com.streams);
+    let assertionsService <- mkAssertionsService(com.assertions);
+    let debugScanService  <- mkDebugScanService(com.debugScan);
+    let paramsService     <- mkDynamicParametersService(com.dynamicParameters);
+    let statsService      <- mkStatsService(com.stats);
+    let streamsService    <- mkStreamsService(com.streams);
 
 endmodule

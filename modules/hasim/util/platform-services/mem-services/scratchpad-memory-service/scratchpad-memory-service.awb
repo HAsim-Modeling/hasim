@@ -5,6 +5,7 @@
 
 %attributes hybrid connected
 
+%public scratchpad-memory-service.bsh
 %public scratchpad-memory-service.bsv
 %public platform-scratchpad-memory.bsv
 %public platform-scratchpad-multi-cached-memory.bsv

@@ -1,6 +1,6 @@
 
 
-module [CONNECTED_MODULE] mkDebugScanIOService#(DEBUG_SCAN_IO debugScan)
+module [CONNECTED_MODULE] mkDebugScanService#(DEBUG_SCAN_DEVICE debugScan)
     // interface:
         ();
 

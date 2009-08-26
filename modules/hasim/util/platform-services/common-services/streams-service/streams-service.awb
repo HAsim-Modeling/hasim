@@ -1,0 +1,9 @@
+%name Streams Service
+%desc Wrap streams device in Soft Connections
+
+%provides streams_service
+
+%attributes hybrid connected
+
+%public streams-service.bsh
+%public streams-service.bsv 

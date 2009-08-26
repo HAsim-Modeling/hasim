@@ -20540,3 +20540,156 @@ Directory modules/system/test/shared_pipeline_test
   alternative options.
 
 Michael P.
+
+----------
+pellauer    Date: Wed Aug 26 13:48:17 EDT 2009  CSN: CSN-hasim-685
+                  Wed Aug 26 17:48:17 UTC 2009
+
+
+Directory config/pm/hasim/submodels/platform-services
+ standard-platform-services.apm Locally Modified          684 
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ scratchpad-memory-service.awb Locally Modified          684 
+ scratchpad-memory-service.bsh Locally Added               0 
+
+Directory modules/hasim/util/platform-services/mem-services/central-cache-service
+ central-cache-service.awb Locally Modified          684 
+ central-cache-service.bsh Locally Added               0 
+
+Directory modules/hasim/util/platform-services/mem-services/shared-memory-service
+ shared-memory-service.awb Locally Modified          684 
+ shared-memory-service.bsh Locally Added               0 
+
+Directory modules/hasim/util/platform-services/starter-service
+ starter-service.awb       Locally Modified          684 
+ starter-service.bsh       Locally Added               0 
+
+Directory modules/hasim/util/platform-services/front-panel-service
+ front-panel-service.awb   Locally Modified          684 
+ front-panel-service.bsh   Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services
+ common-services-standard.awb Locally Modified          684 
+ common-services-standard.bsv Locally Modified          684 
+ stats-io-service/         Locally Removed           684 
+
+Directory modules/hasim/util/platform-services/common-services/stats-io-service
+ stats-io-local.bsv        Locally Removed           684 
+ stats-io-service.awb      Locally Removed           684 
+ stats-io-service.bsv      Locally Removed           684 
+
+Directory modules/hasim/util/platform-services/common-services
+ streams-io-service/       Locally Removed           684 
+
+Directory modules/hasim/util/platform-services/common-services/streams-io-service
+ streams-io-service.awb    Locally Removed           684 
+ streams-io-service.bsv    Locally Removed           684 
+
+Directory modules/hasim/util/platform-services/common-services
+ common-services-standard.bsh Locally Modified          684 
+ dynamic-parameters-service/ Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services/dynamic-parameters-service
+ dynamic-parameters-local.bsv Locally Added               0 
+ dynamic-parameters-service.awb Locally Added               0 
+ dynamic-parameters-service.bsv Locally Added               0 
+ dynamic-parameters-service.bsh Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services
+ debug-scan-service/       Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services/debug-scan-service
+ debug-scan-service.bsv    Locally Added               0 
+ debug-scan-service.bsh    Locally Added               0 
+ debug-scan-local.bsv      Locally Added               0 
+ debug-scan-service.awb    Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services
+ dynamic-parameters-io-service/ Locally Removed           684 
+
+Directory modules/hasim/util/platform-services/common-services/dynamic-parameters-io-service
+ dynamic-parameters-io-service.awb Locally Removed           684 
+ dynamic-parameters-io-service.bsv Locally Removed           684 
+ dynamic-parameters-io-local.bsv Locally Removed           684 
+
+Directory modules/hasim/util/platform-services/common-services
+ assertions-service/       Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services/assertions-service
+ assertions-service.awb    Locally Added               0 
+ assertions-service.bsv    Locally Added               0 
+ assertions-service.bsh    Locally Added               0 
+ assertions-local.bsv      Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services
+ debug-scan-io-service/    Locally Removed           684 
+
+Directory modules/hasim/util/platform-services/common-services/debug-scan-io-service
+ debug-scan-io-service.awb Locally Removed           684 
+ debug-scan-io-service.bsv Locally Removed           684 
+ debug-scan-io-local.bsv   Locally Removed           684 
+
+Directory modules/hasim/util/platform-services/common-services
+ stats-service/            Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services/stats-service
+ stats-local.bsv           Locally Added               0 
+ stats-service.awb         Locally Added               0 
+ stats-service.bsv         Locally Added               0 
+ stats-service.bsh         Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services
+ streams-service/          Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services/streams-service
+ streams-service.awb       Locally Added               0 
+ streams-service.bsv       Locally Added               0 
+ streams-service.bsh       Locally Added               0 
+
+Directory modules/hasim/util/platform-services/common-services
+ assertions-io-service/    Locally Removed           684 
+
+Directory modules/hasim/util/platform-services/common-services/assertions-io-service
+ assertions-io-local.bsv   Locally Removed           684 
+ assertions-io-service.awb Locally Removed           684 
+ assertions-io-service.bsv Locally Removed           684 
+
+Directory modules/bluespec/system/demos/hello
+ hello.bsv                 Locally Modified          684 
+
+Directory modules/bluespec/system/demos/devtest
+ devtest.bsv               Locally Modified          684 
+
+Directory modules/system/test/alu_test
+ alu-test.bsv              Locally Modified          684 
+
+Directory modules/system/test/bram_test
+ bram-test.bsv             Locally Modified          684 
+
+Directory modules/system/test/interconnect_test
+ interconnect-test.bsv     Locally Modified          684 
+
+Directory modules/system/test/mem_test
+ mem-test.bsv              Locally Modified          684 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          684 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.bsv     Locally Modified          684 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.bsv  Locally Modified          684 
+
+
+* Clarify names of new virtual devices. "streams_device" instead of
+  "streams_io_service" and so on. The services are now exclusively in
+  platform_services.
+
+* Add .bsh files to the services which include the base virtual device.
+  That way the user doesn't need to import them all.
+
+* Clarify some type names as well.
+
+Michael P.

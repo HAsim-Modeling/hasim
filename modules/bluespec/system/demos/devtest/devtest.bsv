@@ -29,7 +29,7 @@
 `include "asim/provides/starter_device.bsh"
 `include "asim/provides/front_panel.bsh"
 `include "asim/provides/common_utility_devices.bsh"
-`include "asim/provides/streams_io.bsh"
+`include "asim/provides/streams_device.bsh"
 
 // Include symbol defintions
 
@@ -54,7 +54,7 @@ module mkApplication#(VIRTUAL_PLATFORM virtualPlatform)();
 
     STARTER          starter = virtualPlatform.virtualDevices.starter;
     FrontPanel       fp      = virtualPlatform.virtualDevices.frontPanel;
-    STREAMS_IO       streams = virtualPlatform.virtualDevices.commonUtilities.streams;
+    STREAMS          streams = virtualPlatform.virtualDevices.commonUtilities.streams;
     
 
     // Instantiate our local state

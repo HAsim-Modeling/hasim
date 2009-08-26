@@ -31,10 +31,8 @@ import Vector::*;
 
 `include "asim/provides/fpga_components.bsh"
 
-`include "scratchpad_memory.bsh"
-`include "streams_io.bsh"
-
 `include "asim/provides/soft_connections.bsh"
+`include "asim/provides/common_services.bsh"
 `include "asim/provides/scratchpad_memory_service.bsh"
 
 `include "asim/dict/STREAMID.bsh"

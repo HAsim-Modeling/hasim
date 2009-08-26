@@ -17,7 +17,7 @@ typedef enum
                deriving (Eq, Bits);
 
 
-module [CONNECTED_MODULE] mkStatsIOService#(STATS_IO statsIO)
+module [CONNECTED_MODULE] mkStatsService#(STATS statsDevice)
     // interface:
         ();
 
@@ -67,11 +67,11 @@ module [CONNECTED_MODULE] mkStatsIOService#(STATS_IO statsIO)
       case (st) matches
         tagged ST_VAL .stinfo: //A stat to dump
         begin
-          statsIO.reportStat(stinfo.statID, stinfo.value);
+          statsDevice.reportStat(stinfo.statID, stinfo.value);
         end
         tagged ST_DUMP:  //We're done dumping
         begin
-          statsIO.finishDump();
+          statsDevice.finishDump();
           dumpFinished <= True;
         end
       endcase
@@ -83,7 +83,7 @@ module [CONNECTED_MODULE] mkStatsIOService#(STATS_IO statsIO)
     //    
     // Begin a stat dump.
     //
-    rule dumpStart (state == SC_Idle && statsIO.dumping());
+    rule dumpStart (state == SC_Idle && statsDevice.dumping());
     
         state <= SC_Dumping;
 

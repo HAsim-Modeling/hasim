@@ -22,7 +22,7 @@ import Vector::*;
 
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/librl_bsv_base.bsh"
-`include "asim/provides/debug_scan_io.bsh"
+`include "asim/provides/debug_scan_device.bsh"
 
 `include "asim/dict/RINGID.bsh"
 `include "asim/dict/DEBUG_SCAN.bsh"

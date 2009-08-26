@@ -1,0 +1,4 @@
+
+// Include base device
+
+`include "asim/provides/shared_memory.bsh"

@@ -24,10 +24,11 @@ import LFSR::*;
 
 `include "asim/provides/librl_bsv_base.bsh"
 `include "asim/provides/librl_bsv_storage.bsh"
+
 `include "asim/provides/soft_connections.bsh"
+
 `include "asim/provides/mem_services.bsh"
 `include "asim/provides/common_services.bsh"
-`include "asim/provides/streams_io.bsh"
 
 `include "asim/dict/VDEV_SCRATCH.bsh"
 `include "asim/dict/STREAMID.bsh"

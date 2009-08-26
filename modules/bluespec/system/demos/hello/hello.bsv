@@ -2,7 +2,7 @@
 `include "asim/provides/virtual_platform.bsh"
 `include "asim/provides/virtual_devices.bsh"
 `include "asim/provides/common_utility_devices.bsh"
-`include "asim/provides/streams_io.bsh"
+`include "asim/provides/streams_device.bsh"
 `include "asim/provides/starter_device.bsh"
 
 `include "asim/dict/STREAMID.bsh"
@@ -22,7 +22,7 @@ module mkApplication#(VIRTUAL_PLATFORM virtualPlatform)();
 
     STARTER starter = virtualPlatform.virtualDevices.starter;
 
-    STREAMS_IO streams = virtualPlatform.virtualDevices.commonUtilities.streams;
+    STREAMS streams = virtualPlatform.virtualDevices.commonUtilities.streams;
     
 
     Reg#(STATE) state <- mkReg(STATE_start);

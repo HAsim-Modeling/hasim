@@ -20,7 +20,7 @@ import Vector::*;
 import FIFOF::*;
 
 `include "asim/provides/soft_connections.bsh"
-`include "asim/provides/assertions_io.bsh"
+`include "asim/provides/assertions_device.bsh"
 
 `include "asim/dict/RINGID.bsh"
 `include "asim/dict/ASSERTIONS.bsh"

@@ -1,7 +1,7 @@
 // Copyright 2000--2006 Bluespec, Inc.  All rights reserved.
 
 `include "soft_connections.bsh"
-`include "front_panel.bsh"
+`include "front_panel_service.bsh"
 
 // Simple model of a traffic light
 // (modeled after the light at the intersection of Rte 16 and Broadway

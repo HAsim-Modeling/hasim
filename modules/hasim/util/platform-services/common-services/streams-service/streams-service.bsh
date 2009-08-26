@@ -1,0 +1,4 @@
+
+// Include base virtual device
+`include "asim/provides/streams_device.bsh"
+

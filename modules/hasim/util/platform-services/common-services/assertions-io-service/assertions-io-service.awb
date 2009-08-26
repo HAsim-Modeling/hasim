@@ -1,9 +1,0 @@
-%name Assertions IO Service
-%desc Wrap Assertions IO in Soft Connections
-
-%provides assertions_io_service
-
-%attributes hybrid connected
-
-%public assertions-io-local.bsv 
-%public assertions-io-service.bsv 

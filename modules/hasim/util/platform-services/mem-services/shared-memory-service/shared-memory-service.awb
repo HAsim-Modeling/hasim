@@ -5,4 +5,5 @@
 
 %attributes hybrid connected
 
+%public shared-memory-service.bsh
 %public shared-memory-service.bsv

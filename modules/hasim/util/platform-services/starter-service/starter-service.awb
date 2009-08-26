@@ -5,4 +5,5 @@
 
 %attributes hybrid connected
 
+%public starter-service.bsh
 %public starter-service.bsv

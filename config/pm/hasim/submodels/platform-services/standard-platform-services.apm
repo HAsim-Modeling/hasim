@@ -5,10 +5,9 @@ Description=Collection of Services Corresponding to Standard Virtual Devices
 File=standard-platform-services
 Version=2.1
 Name=Standard Platform Services
-DefaultBenchmark=
+DefaultBenchmark=0
 Type=HAsim
 Class=Asim::Model
-DefaultRunOpts=
 
 [Model]
 DefaultAttributes=connected hybrid
@@ -57,29 +56,29 @@ mem_services=Standard Mem Services
 front_panel_service=Front Panel Service
 starter_service=Starter Service
 
-[Assertions IO Service]
-File=modules/hasim/util/platform-services/common-services/assertions-io-service/assertions-io-service.awb
-Packagehint=hasim
-
 [Stats Service]
-File=modules/hasim/util/platform-services/common-services/stats-io-service/stats-io-service.awb
+File=modules/hasim/util/platform-services/common-services/stats-service/stats-service.awb
 Packagehint=hasim
 
 [Common Services/Requires]
-dynamic_parameters_io_service=Dynamic Parameter Service
-assertions_io_service=Assertions IO Service
-debug_scan_io_service=Debug Scan Services
-streams_io_service=Streams IO Services
-stats_io_service=Stats Service
-
-[Streams IO Services]
-File=modules/hasim/util/platform-services/common-services/streams-io-service/streams-io-service.awb
-Packagehint=hasim
+stats_service=Stats Service
+assertions_service=Assertions Service
+debug_scan_service=Debug Scan Services
+streams_service=Streams Service
+dynamic_parameters_service=Dynamic Parameter Service
 
 [Debug Scan Services]
-File=modules/hasim/util/platform-services/common-services/debug-scan-io-service/debug-scan-io-service.awb
+File=modules/hasim/util/platform-services/common-services/debug-scan-service/debug-scan-service.awb
 Packagehint=hasim
 
 [Dynamic Parameter Service]
-File=modules/hasim/util/platform-services/common-services/dynamic-parameters-io-service/dynamic-parameters-io-service.awb
+File=modules/hasim/util/platform-services/common-services/dynamic-parameters-service/dynamic-parameters-service.awb
+Packagehint=hasim
+
+[Assertions Service]
+File=modules/hasim/util/platform-services/common-services/assertions-service/assertions-service.awb
+Packagehint=hasim
+
+[Streams Service]
+File=modules/hasim/util/platform-services/common-services/streams-service/streams-service.awb
 Packagehint=hasim

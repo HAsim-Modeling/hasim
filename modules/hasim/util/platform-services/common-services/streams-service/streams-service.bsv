@@ -1,9 +1,9 @@
 
 `include "asim/provides/soft_connections.bsh"
-`include "asim/provides/streams_io.bsh"
+`include "asim/provides/streams_device.bsh"
 
 
-module [CONNECTED_MODULE] mkStreamsIOService#(STREAMS_IO streamsIO)
+module [CONNECTED_MODULE] mkStreamsService#(STREAMS streams)
     // interface:
         ();
 
@@ -15,10 +15,10 @@ module [CONNECTED_MODULE] mkStreamsIOService#(STREAMS_IO streamsIO)
         // read in streams request and send it to device
         let sreq = linkStreams.receive();
         linkStreams.deq();
-        streamsIO.makeRequest(sreq.streamID,
-                              sreq.stringID,
-                              sreq.payload0,
-                              sreq.payload1);
+        streams.makeRequest(sreq.streamID,
+                            sreq.stringID,
+                            sreq.payload0,
+                            sreq.payload1);
 
     endrule
 

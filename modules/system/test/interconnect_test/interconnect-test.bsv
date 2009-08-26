@@ -26,10 +26,6 @@ import FIFOF::*;
 `include "asim/provides/fpga_components.bsh"
 `include "asim/provides/soft_connections.bsh"
 
-// Raw devices (TBD: why isn't this included in the services below)
-
-`include "asim/provides/scratchpad_memory.bsh"
-
 // Virtual services
 
 `include "asim/provides/platform_services.bsh"

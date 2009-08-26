@@ -16,7 +16,7 @@ typedef enum
 
 // Abstracts all communication from the main controller to individual stat counters.
 
-module [CONNECTED_MODULE] mkDynamicParametersIOService#(DYNAMIC_PARAMETERS_IO dynParam)
+module [CONNECTED_MODULE] mkDynamicParametersService#(DYNAMIC_PARAMETERS dynParam)
     //interface:
                 ();
 

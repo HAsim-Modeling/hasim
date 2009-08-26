@@ -22,12 +22,12 @@ import Vector::*;
 
 `include "asim/provides/librl_bsv_base.bsh"
 `include "asim/provides/soft_connections.bsh"
-`include "asim/provides/stats_io.bsh"
+`include "asim/provides/stats_device.bsh"
 
 //AWB Parameters
 //name:                  default:
-//HASIM_STATS_ENABLED   True
-//HASIM_STATS_SIZE      32
+//STATS_ENABLED   True
+//STATS_SIZE      32
 `include "asim/dict/RINGID.bsh"
 `include "asim/dict/STATS.bsh"
 
@@ -81,7 +81,7 @@ module [Connected_Module] mkStatCounter_Vector#(Vector#(n_STATS, STATS_DICT_TYPE
     // interface:
     (STAT_VECTOR#(n_STATS));
 
-    let m <- (`HASIM_STATS_ENABLED) ? mkStatCounterVec_Enabled(myIDs) :
+    let m <- (`STATS_ENABLED) ? mkStatCounterVec_Enabled(myIDs) :
                                       mkStatCounterVec_Disabled(myIDs);
     return m;
 endmodule
@@ -136,7 +136,7 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
 
     Connection_Chain#(STAT_DATA) chain <- mkConnection_Chain(`RINGID_STATS);
 
-    Vector#(n_STATS, COUNTER#(`HASIM_STATS_SIZE)) statPool <- replicateM(mkLCounter(0));
+    Vector#(n_STATS, COUNTER#(`STATS_SIZE)) statPool <- replicateM(mkLCounter(0));
 
     Reg#(STAT_STATE) state <- mkReg(RECORDING);
     Reg#(Bool) enabled <- mkReg(True);

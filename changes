@@ -20790,3 +20790,35 @@ Directory modules/bluespec/common
   
 Michael P.
 
+
+----------
+mpellaue    Date: Thu Aug 27 17:11:46 EDT 2009  CSN: CSN-hasim-687
+                  Thu Aug 27 21:11:46 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          686 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          686 
+
+Directory modules/hasim/util/platform-interface
+ platform-central-cache.bsv Locally Modified          686 
+ platform-scratchpad-multi-cached-memory.bsv Locally Modified          686 
+ platform-interface.bsv    Locally Modified          686 
+ platform-scratchpad-memory.bsv Locally Modified          686 
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ platform-scratchpad-multi-cached-memory.bsv Locally Modified          686 
+ platform-scratchpad-memory.bsv Locally Modified          686 
+
+Directory modules/hasim/util/platform-services/mem-services/central-cache-service
+ central-cache-service.awb Locally Modified          686 
+ central-cache-service.bsv Locally Modified          686 
+ platform-central-cache.bsv Locally Modified          686 
+
+
+* Re-enable stats for the Central Cache Device.
+* Also re-enable for backwards-compatable platform interface.
+
+Michael P.

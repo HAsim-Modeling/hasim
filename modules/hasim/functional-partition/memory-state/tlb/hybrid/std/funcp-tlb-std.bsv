@@ -410,35 +410,17 @@ endmodule
 // mkTLBCacheStats --
 //   Statistics for the main, shared, translation cache.
 //
-module [HASIM_MODULE] mkTLBCacheStats
+module [HASIM_MODULE] mkTLBCacheStats#(RL_CACHE_STATS stats)
     // interface:
-    (RL_CACHE_STATS);
+    ();
     
     // ***** Statistics *****
 
     STAT statTLBMiss <- mkStatCounter(`STATS_FUNCP_TLB_L2_MISS);
 
-    method Action readHit();
-    endmethod
-
-    method Action readMiss();
+    rule readMiss (stats.readMiss());
         statTLBMiss.incr();
-    endmethod
-
-    method Action writeHit();
-    endmethod
-
-    method Action writeMiss();
-    endmethod
-
-    method Action invalEntry();
-    endmethod
-
-    method Action dirtyEntryFlush();
-    endmethod
-
-    method Action forceInvalLine();
-    endmethod
+    endrule
 
 endmodule
 
@@ -485,7 +467,6 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     FUNCP_TLB#(4) dtlb <- mkFUNCP_TLB(FUNCP_DTLB, dtlb_vtop_req, dtlb_vtop_resp, debugLog);
 
     FUNCP_TLB_CACHE_INTERFACE vtopIfc <- mkVtoPInterface();
-    RL_CACHE_STATS statIfc <- mkTLBCacheStats();
 
     // Reorder buffer for cache responses.  Cache doesn't guarantee ordered return.
     SCOREBOARD_FIFOF#(FUNCP_L2TLB_REFS, FUNCP_L2TLB_ENTRY) cacheRespQ <- mkScoreboardFIFOF();
@@ -502,7 +483,10 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
                  FUNCP_L2TLB_ENTRY,        // Cache word
                  1,                        // Words per cache line
                  FUNCP_L2TLB_REFINFO,      // Reference meta-data (passed to RRR)
-                 `FUNCP_ISA_PAGE_SHIFT) cache <- mkCacheSetAssoc(vtopIfc, cacheLocalData, statIfc, debugLog);
+                 `FUNCP_ISA_PAGE_SHIFT) cache <- mkCacheSetAssoc(vtopIfc, cacheLocalData, debugLog);
+
+
+    let statIfc <- mkTLBCacheStats(cache.stats);
 
     FIFO#(Tuple2#(FUNCP_TRANSLATION_REQ, FUNCP_TLB_TYPE)) pendingTLBQ <- mkFIFO1();
     FIFO#(Bool) itlbQ <- mkFIFO();

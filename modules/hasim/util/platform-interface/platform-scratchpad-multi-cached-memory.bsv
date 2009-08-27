@@ -588,7 +588,6 @@ module [CONNECTED_MODULE] mkUnmarshalledMultiCachedIncoherentScratchpad#(
                                                   SCRATCHPAD_MEM_VALUE, 
                                                   t_REF_INFO) source,   
                          Bool hashAddresses,
-                         RL_CACHE_STATS stats,
                          DEBUG_FILE debugLog)) cacheConstructors)
                                                           
     // interface:
@@ -647,14 +646,12 @@ module [CONNECTED_MODULE] mkUnmarshalledMultiCachedIncoherentScratchpad#(
                            mkDebugFile(debugLogCacheFilename):
                            mkDebugFileNull(debugLogCacheFilename); 
 
-        RL_CACHE_STATS stats <- mkNullRLCacheStats();
-     
         RL_DM_CACHE_SOURCE_DATA#(Bit#(t_MEM_ADDRESS_SZ),
                                  SCRATCHPAD_MEM_VALUE,
                                  t_REF_INFO) sourceDataWrap <- 
                                      mkMultiReadSourceData(sourceData, i);
 
-        caches[i] <- cacheConstructors[i](sourceDataWrap, False, stats, debugLogCache);
+        caches[i] <- cacheConstructors[i](sourceDataWrap, False, debugLogCache);
     end 
 
     // Cache responses are not ordered.  Sort them with a reorder buffer.

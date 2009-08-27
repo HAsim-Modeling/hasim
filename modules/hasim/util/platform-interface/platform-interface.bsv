@@ -94,6 +94,10 @@ module [CONNECTED_MODULE] mkPlatformInterface#(VIRTUAL_PLATFORM virtualPlatform)
     // debug log
     DEBUG_FILE debugLog <- mkDebugFile("platform_interface.out");
 
+    // ***** Stats *****
+    
+    let centralCacheStats <- mkCentralCacheStats(centralCache.stats);
+
     // ***** Dynamic parameters *****
     PARAMETER_NODE paramNode <- mkDynamicParameterNode();
 

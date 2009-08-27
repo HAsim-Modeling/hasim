@@ -116,17 +116,16 @@ module [HASIM_MODULE] mkFUNCP_Memory
     // Connection between the central cache and remote functional memory
     FUNCP_MEM_HOST_IFC remoteFuncpMem <- mkRemoteFuncpMem(debugLog);
 
-    // Private cache statistics
-    RL_CACHE_STATS stats <- mkFuncpMemPvtCacheStats();
-
     // Local functional memory cache
     NumTypeParam#(`FUNCP_PVT_CACHE_ENTRIES) num_pvt_entries = ?;
     CENTRAL_CACHE_CLIENT#(FUNCP_MEM_WORD_PADDR, MEM_VALUE, FUNCP_CACHE_REF_INFO) cache <-
         mkCentralCacheClient(`VDEV_CACHE_FUNCP_MEMORY,
                              num_pvt_entries,
                              True,
-                             remoteFuncpMem.cacheBacking,
-                             stats);
+                             remoteFuncpMem.cacheBacking);
+
+    // Private cache statistics
+    let stats <- mkFuncpMemPvtCacheStats(cache.stats);
 
     // Dynamic parameters
     PARAMETER_NODE paramNode <- mkDynamicParameterNode();
@@ -444,35 +443,20 @@ endmodule
 // mkFuncpMemPvtCacheStats --
 //     Statistics callbacks from private cache in front of the central cache.
 //
-module [HASIM_MODULE] mkFuncpMemPvtCacheStats
+module [HASIM_MODULE] mkFuncpMemPvtCacheStats#(RL_CACHE_STATS stats)
     // interface:
-    (RL_CACHE_STATS);
+    ();
     
 
     STAT statLoadHit <- mkStatCounter(`STATS_FUNCP_MEMORY_PVT_CACHE_LOAD_HIT);
     STAT statLoadMiss <- mkStatCounter(`STATS_FUNCP_MEMORY_PVT_CACHE_LOAD_MISS);
 
-    method Action readHit();
+    rule readHit (stats.readHit());
         statLoadHit.incr();
-    endmethod
+    endrule
 
-    method Action readMiss();
+    rule readMiss (stats.readMiss());
         statLoadMiss.incr();
-    endmethod
-
-    method Action writeHit();
-    endmethod
-
-    method Action writeMiss();
-    endmethod
-
-    method Action invalEntry();
-    endmethod
-
-    method Action dirtyEntryFlush();
-    endmethod
-
-    method Action forceInvalLine();
-    endmethod
+    endrule
 
 endmodule

@@ -527,8 +527,6 @@ module [CONNECTED_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, 
                              SCRATCHPAD_MEM_VALUE,
                              t_REF_INFO) sourceData <- mkScratchpadCacheSourceData(scratchpadID);
 
-    // Dummy statistics buckets
-    RL_CACHE_STATS stats <- mkNullRLCacheStats();
 
     // Private cache
     NumTypeParam#(n_CACHE_ENTRIES) num_cache_entries = ?;
@@ -537,7 +535,6 @@ module [CONNECTED_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, 
                        t_REF_INFO) cache <- mkCacheDirectMapped(sourceData,
                                                                 num_cache_entries,
                                                                 False,
-                                                                stats,
                                                                 debugLog);
 
     // Merge FIFOF combines read and write requests in temporal order,

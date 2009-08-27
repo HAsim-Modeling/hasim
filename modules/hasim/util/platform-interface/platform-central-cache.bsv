@@ -167,8 +167,7 @@ function String backingPortName(Integer n) = "vdev_cache_backing_" + integerToSt
 module [CONNECTED_MODULE] mkCentralCacheClient#(Integer cacheID,
                                             NumTypeParam#(n_ENTRIES) nEntries,
                                             Bool hashLocalCacheAddrs,
-                                            CENTRAL_CACHE_CLIENT_BACKING#(t_ADDR, t_DATA, t_REF_INFO) backing,
-                                            RL_CACHE_STATS stats)
+                                            CENTRAL_CACHE_CLIENT_BACKING#(t_ADDR, t_DATA, t_REF_INFO) backing)
     // interface:
     (CENTRAL_CACHE_CLIENT#(t_ADDR, t_DATA, t_REF_INFO))
     provisos (Bits#(t_ADDR, t_ADDR_SZ),
@@ -205,7 +204,6 @@ module [CONNECTED_MODULE] mkCentralCacheClient#(Integer cacheID,
         pvtCache <- mkCacheDirectMapped(centralCacheConnection,
                                         nEntries,
                                         hashLocalCacheAddrs,
-                                        stats,
                                         debugLog);
 
     return pvtCache;
@@ -403,6 +401,7 @@ module [CONNECTED_MODULE] mkCentralCacheConnection#(Integer cacheID,
 endmodule
     
     
+    
 // ===================================================================
 //
 // STATISTICS INTERFACE
@@ -412,9 +411,12 @@ endmodule
 //
 // ===================================================================
 
-module [CONNECTED_MODULE] mkCentralCacheStats
+module [CONNECTED_MODULE] mkCentralCacheStats#(CENTRAL_CACHE_STATS statBundle)
     // interface:
-    (CENTRAL_CACHE_STATS);
+    ();
+    
+    let cacheStats = statBundle.cacheStats;
+    let recentLineStats = statBundle.recentLineStats;
     
     Vector#(9, STATS_DICT_TYPE) statIDs = newVector();
 
@@ -447,43 +449,41 @@ module [CONNECTED_MODULE] mkCentralCacheStats
 
     let stats <- mkStatCounter_Vector(statIDs);
 
-    interface RL_CACHE_STATS cacheStats;
-        method Action readHit();
-            stats.incr(statLoadHit);
-        endmethod
+    rule readHit (cacheStats.readHit());
+        stats.incr(statLoadHit);
+    endrule
 
-        method Action readMiss();
-            stats.incr(statLoadMiss);
-        endmethod
+    rule readMiss (cacheStats.readMiss());
+        stats.incr(statLoadMiss);
+    endrule
 
-        method Action writeHit();
-            stats.incr(statStoreHit);
-        endmethod
+    rule writeHit (cacheStats.writeHit());
+        stats.incr(statStoreHit);
+    endrule
 
-        method Action writeMiss();
-            stats.incr(statStoreMiss);
-        endmethod
+    rule writeMiss (cacheStats.writeMiss());
+        stats.incr(statStoreMiss);
+    endrule
 
-        method Action invalEntry();
-            stats.incr(statInvalEntry);
-        endmethod
+    rule invalEntry (cacheStats.invalEntry());
+        stats.incr(statInvalEntry);
+    endrule
 
-        method Action dirtyEntryFlush();
-            stats.incr(statDirtyEntryFlush);
-        endmethod
+    rule dirtyEntryFlush (cacheStats.dirtyEntryFlush());
+        stats.incr(statDirtyEntryFlush);
+    endrule
 
-        method Action forceInvalLine();
-            stats.incr(statForceInvalLine);
-        endmethod
-    endinterface
+    rule forceInvalLine (cacheStats.forceInvalLine());
+        stats.incr(statForceInvalLine);
+    endrule
 
-    interface CENTRAL_CACHE_RECENT_LINE_STATS recentLineStats;
-        method Action readHit();
-            stats.incr(statRecentLineHit);
-        endmethod
+    rule recentLineReadHit (recentLineStats.readHit());
+        stats.incr(statRecentLineHit);
+    endrule
 
-        method Action readMiss();
-            stats.incr(statRecentLineMiss);
-        endmethod
-    endinterface
+    rule recentLineReadMiss (recentLineStats.readMiss());
+        stats.incr(statRecentLineMiss);
+    endrule
+
 endmodule
+

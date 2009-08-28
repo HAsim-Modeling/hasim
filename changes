@@ -20822,3 +20822,24 @@ Directory modules/hasim/util/platform-services/mem-services/central-cache-servic
 * Also re-enable for backwards-compatable platform interface.
 
 Michael P.
+
+----------
+mpellaue    Date: Fri Aug 28 11:43:08 EDT 2009  CSN: CSN-hasim-688
+                  Fri Aug 28 15:43:08 UTC 2009
+
+
+Directory modules/hasim/util/platform-interface
+ platform-scratchpad-multi-cached-memory.bsv Locally Modified          687 
+
+
+* Re-enable stats in the "multi-memory" scratchpad. This memory currently takes
+  a list of scratchpad constructors and instantiates them all. Now it also takes
+  a list of stat trackers and instantiates those.
+
+* Add some typedefs to clean up the unwieldy-ness of passing constructors around
+  in Bluespec.
+
+* This change will be propogated to the new "platform-services" in Stage 3 of
+  the reorganization.
+  
+Michael P.

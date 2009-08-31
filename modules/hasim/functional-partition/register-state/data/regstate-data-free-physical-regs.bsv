@@ -31,6 +31,7 @@ import Vector::*;
 // Project foundation imports
 
 `include "asim/provides/hasim_common.bsh"
+`include "asim/provides/common_services.bsh"
 `include "asim/provides/fpga_components.bsh"
 `include "asim/provides/funcp_base_types.bsh"
 `include "asim/provides/hasim_isa.bsh"

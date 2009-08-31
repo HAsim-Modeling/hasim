@@ -1,0 +1,13 @@
+%name Model Services
+%desc Services useful for all HAsim models.
+
+%provides hasim_model_services
+
+%attributes hybrid hasim
+
+%public  model-services-standard.bsh
+%public  model-services-standard.bsv
+%public  model-services-standard.h
+
+%requires events_service commands_service
+

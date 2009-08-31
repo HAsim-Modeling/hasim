@@ -15,7 +15,7 @@ module [CONNECTED_MODULE] mkScratchpadMemoryService#(VIRTUAL_DEVICES vdevs)
 
     // ***** Assertion Checkers *****
     ASSERTION_NODE assertNode <- mkAssertionNode(`ASSERTIONS_SCRATCHPAD_MEMORY_SERVICE__BASE);
-    ASSERTION assertScratchpadSpace <- mkAssertionChecker(`ASSERTIONS_SCRATCHPAD_MEMORY_SERVICE_FULL, assertNode);
+    ASSERTION assertScratchpadSpace <- mkAssertionChecker(`ASSERTIONS_SCRATCHPAD_MEMORY_SERVICE_FULL, ASSERT_ERROR, assertNode);
 
     // ====================================================================
     //

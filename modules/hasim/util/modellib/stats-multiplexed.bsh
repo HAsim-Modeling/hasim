@@ -1,0 +1,3 @@
+
+// Include base stats
+`include "asim/provides/stats_service.bsh"

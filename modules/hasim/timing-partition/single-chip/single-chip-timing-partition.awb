@@ -1,0 +1,15 @@
+%name Single Chip Timing Partition
+%desc Simulate 1 chip, no inter-chip interconnect
+
+%provides hasim_timep
+
+%requires hasim_chip
+%requires hasim_memory
+%requires hasim_modellib
+
+%attributes hasim model
+
+%public single-chip-timing-partition.bsv
+%public single-chip-timing-partition.h
+
+%param SYNTH_BOUNDARY mkTimingPartition "Name of synthesis boundary"

@@ -1,0 +1,17 @@
+%name RRR-based Commands Service
+%desc Relays SW commands to HW modules.
+%provides commands_service
+
+%attributes hasim hybrid
+
+%sources -t BSV -v PUBLIC  commands-local.bsv
+%sources -t BSV -v PUBLIC  commands-service.bsv
+%sources -t H   -v PUBLIC  commands-service.h
+%sources -t CPP -v PRIVATE commands-service.cpp
+%sources -t RRR -v PUBLIC  commands-service.rrr
+%sources -t DICT -v PUBLIC commands-service.dic
+
+%param STAGE_CONTROLLER_BUFFERING 2 "Amount of buffering for the stage controller. Should not be greater than NUM_CONTEXTS."
+%param MODEL_COOLDOWN 2 "Number of FPGA cycles to run after simulation has finished to facilitate IO draining."
+%param --global HEARTBEAT_TRIGGER_BIT 13 "Transitions of this bit in the model cycle counter trigger heartbeat messages"
+

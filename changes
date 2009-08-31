@@ -20843,3 +20843,158 @@ Directory modules/hasim/util/platform-interface
   the reorganization.
   
 Michael P.
+
+----------
+mpellaue    Date: Mon Aug 31 18:43:56 EDT 2009  CSN: CSN-hasim-689
+                  Mon Aug 31 22:43:56 UTC 2009
+
+
+Directory config/pm/hasim/submodels/common
+ project-common-default.apm Locally Modified          688 
+ hasim-model-services.apm  Locally Added               0 
+
+Directory modules/hasim
+ model/                    Locally Added               0 
+
+Directory modules/hasim/model
+ hasim-model.cpp           Locally Added               0 
+ hasim-model.h             Locally Added               0 
+ hasim-model.awb           Locally Added               0 
+ hasim-model.bsv           Locally Added               0 
+
+Directory modules/hasim/functional-partition
+ functional-partition-default.h Locally Added               0 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.h            Locally Modified          688 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          688 
+ regstate-data-free-physical-regs.bsv Locally Modified          688 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-global-data.bsv Locally Modified          688 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          688 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          688 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          688 
+ hybrid-funcp-memory.bsv   Locally Modified          688 
+
+Directory modules/hasim/functional-partition
+ functional_partition_default.awb Locally Modified          688 
+
+Directory modules/hasim/util
+ model-services/           Locally Added               0 
+
+Directory modules/hasim/util/model-services
+ commands-service/         Locally Added               0 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Added               0 
+ commands-local.bsv        Locally Added               0 
+ commands-service.rrr      Locally Added               0 
+ commands-service.h        Locally Added               0 
+ commands-service.awb      Locally Added               0 
+ commands-service.bsv      Locally Added               0 
+ commands.bsv              Locally Added               0 
+ controller-standard.bsv   Locally Added               0 
+ commands-service.dic      Locally Added               0 
+
+Directory modules/hasim/util/model-services
+ events-service/           Locally Added               0 
+
+Directory modules/hasim/util/model-services/events-service
+ events-service.dic        Locally Added               0 
+ events-service.cpp        Locally Added               0 
+ events-local.bsv          Locally Added               0 
+ events-service.rrr        Locally Added               0 
+ events-service.h          Locally Added               0 
+ events-service.awb        Locally Added               0 
+ events-service.bsv        Locally Added               0 
+
+Directory modules/hasim/util/model-services
+ model-services-standard.h Locally Added               0 
+ model-services-standard.awb Locally Added               0 
+ model-services-standard.bsv Locally Added               0 
+ model-services-standard.bsh Locally Added               0 
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ scratchpad-memory-service.bsv Locally Modified          688 
+
+Directory modules/hasim/util/platform-services/common-services/dynamic-parameters-service
+ dynamic-parameters-service.bsv Locally Modified          688 
+
+Directory modules/hasim/util/platform-services/common-services/assertions-service
+ assertions-local.bsv      Locally Modified          688 
+
+Directory modules/hasim/util/platform-services/common-services/stats-service
+ stats-local.bsv           Locally Modified          688 
+
+Directory modules/hasim/util/modellib
+ stats-multiplexed.bsv     Locally Added               0 
+ multiplexed-memories.bsv  Locally Modified          688 
+ stats-multiplexed.bsh     Locally Added               0 
+ hasim-modellib.dic        Locally Modified          688 
+ multiplexed.bsv           Locally Added               0 
+ debug-file-multiplexed.bsv Locally Added               0 
+ commands.bsv              Locally Removed           688 
+ events.bsv                Locally Removed           688 
+ hasim-modellib.awb        Locally Modified          688 
+
+Directory modules/hasim/util/common
+ hasim-common.awb          Locally Modified          688 
+ debug-scan.bsv            Locally Removed           688 
+ assertion-checker.bsv     Locally Removed           688 
+ hasim-common.dic          Locally Removed           688 
+ multiplexed.bsv           Locally Removed           688 
+ stat-fifo.bsv             Locally Modified          688 
+ stats.bsv                 Locally Removed           688 
+ utils.bsv                 Locally Modified          688 
+ hasim-debug-file.bsv      Locally Modified          688 
+ dynamic-parameters.bsv    Locally Removed           688 
+
+Directory modules/hasim
+ timing-partition/         Locally Added               0 
+
+Directory modules/hasim/timing-partition
+ single-chip/              Locally Added               0 
+
+Directory modules/hasim/timing-partition/single-chip
+ single-chip-timing-partition.h Locally Added               0 
+ single-chip-timing-partition.awb Locally Added               0 
+ single-chip-timing-partition.bsv Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections
+ soft_connections.awb      Locally Modified          688 
+
+
+* Stage 3 of the reorganization: HAsim models now uses the new scheme.
+
+* A hasim_model is now just another connected_application.
+
+* hasim_common is not introduced until after this level. It is now mostly tokens and debug files.
+
+* hasim_model_services encapsulates the events and commands which are the remaining functionality from
+  the hasim_controller.
+
+* hasim_modellib is now not introduced until hasim_timep. It takes on all functionality related to
+  multiplexing. We may revisit this decision in the future.
+  
+* Timing partitions have a bit better structure.
+
+Still To Do:
+
+* The periodic dumping of stats is still based on the heartbeat. Instead it should be controlled
+entirely within the stat device - probably triggered by the hardware when counters are potentially
+overflowing.
+
+* NUM_CONTEXTS is still a global switch. This should be set in a model-dependent way.
+
+* Need more submodels for timing partitions.
+
+Michael P.

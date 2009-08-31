@@ -31,9 +31,6 @@ import Vector::*;
 `include "asim/dict/RINGID.bsh"
 `include "asim/dict/STATS.bsh"
 
-// FIXME
-typedef Bit#(n) INSTANCE_ID#(parameter numeric type n);
-
 //
 // Various statistics interfaces:
 //
@@ -45,16 +42,10 @@ interface STAT;
 endinterface: STAT
 
 // Vector of multiple instances of the same statistics ID
-interface STAT_RECORDER_MULTIPLEXED#(type ni);
-    method Action incr(INSTANCE_ID#(ni) iid);
-    method Action decr(INSTANCE_ID#(ni) iid);
+interface STAT_VECTOR#(type ni);
+    method Action incr(Bit#(TLog#(ni)) iid);
+    method Action decr(Bit#(TLog#(ni)) iid);
 endinterface
-
-// Vectors of multiple statistics IDs have an interface that is equivalent to
-// multiplexed statistics with a single ID.  The difference is the argument
-// to the module constructor.
-typedef STAT_RECORDER_MULTIPLEXED#(n_STATS) STAT_VECTOR#(numeric type n_STATS);
-
 
 //
 // mkStatCounter --
@@ -86,20 +77,6 @@ module [Connected_Module] mkStatCounter_Vector#(Vector#(n_STATS, STATS_DICT_TYPE
     return m;
 endmodule
 
-
-//
-// mkStatCounter_Multiplexed --
-//     Public module for the STAT_RECORDER_MULTIPLEXED multiple instances of
-//     a single ID interface.
-//
-module [Connected_Module] mkStatCounter_Multiplexed#(STATS_DICT_TYPE myID)
-    // interface:
-    (STAT_RECORDER_MULTIPLEXED#(ni));
-
-    Vector#(ni, STATS_DICT_TYPE) ids = replicate(myID);
-    let m <- mkStatCounter_Vector(ids);
-    return m;
-endmodule
 
 
 // ========================================================================
@@ -217,14 +194,14 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
     endrule
 
 
-    method Action incr(INSTANCE_ID#(n_STATS) idx);
+    method Action incr(Bit#(TLog#(n_STATS)) idx);
         if (enabled)
         begin
             statPool[idx].up();
         end
     endmethod
 
-    method Action decr(INSTANCE_ID#(n_STATS) idx);
+    method Action decr(Bit#(TLog#(n_STATS)) idx);
         if (enabled)
             statPool[idx].down();
     endmethod
@@ -235,11 +212,11 @@ module [Connected_Module] mkStatCounterVec_Disabled#(Vector#(n_STATS, STATS_DICT
     // interface:
     (STAT_VECTOR#(n_STATS));
 
-    method Action incr(INSTANCE_ID#(n_STATS) idx);
+    method Action incr(Bit#(TLog#(n_STATS)) idx);
         noAction;
     endmethod
 
-    method Action decr(INSTANCE_ID#(n_STATS) idx);
+    method Action decr(Bit#(TLog#(n_STATS)) idx);
         noAction;
     endmethod
 endmodule

@@ -1,0 +1,12 @@
+service EVENTS
+{
+    server hw (bsv, connection) <- sw (cpp, method)
+    {
+        method ToggleEvents(in UINT8[8] payload, out UINT8[8] dummy);
+    };
+
+    server sw (cpp, method) <- hw (bsv, connection)
+    {
+        method LogEvent(in UINT8[8] event_id, in UINT32[32] event_data, in UINT8[8] model_cc);
+    };
+};

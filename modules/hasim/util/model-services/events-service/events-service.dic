@@ -1,0 +1,3 @@
+def RINGID.EVENTS "events";
+
+def EVENTS.NULL   "null";

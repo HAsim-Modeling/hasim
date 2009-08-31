@@ -199,7 +199,7 @@ endmodule
 // mkAssertionChecker --
 //    Allocate a checker for a single assertion ID, connected to an assertion node.
 //
-module [CONNECTED_MODULE] mkAssertionCheckerBase#(ASSERTIONS_DICT_TYPE myID, ASSERTION_SEVERITY mySeverity, ASSERTION_NODE myNode)
+module [CONNECTED_MODULE] mkAssertionChecker#(ASSERTIONS_DICT_TYPE myID, ASSERTION_SEVERITY mySeverity, ASSERTION_NODE myNode)
     // interface:
         (ASSERTION);
 
@@ -222,11 +222,11 @@ module [CONNECTED_MODULE] mkAssertionCheckerBase#(ASSERTIONS_DICT_TYPE myID, ASS
 
 endmodule
 
-module [CONNECTED_MODULE] mkAssertionChecker#(ASSERTIONS_DICT_TYPE myID, ASSERTION_NODE myNode)
+module [CONNECTED_MODULE] mkAssertionCheckerError#(ASSERTIONS_DICT_TYPE myID, ASSERTION_NODE myNode)
     // interface:
         (ASSERTION);
 
-    let as <- mkAssertionCheckerBase(myID, ASSERT_ERROR, myNode);
+    let as <- mkAssertionChecker(myID, ASSERT_ERROR, myNode);
     return as;
 
 endmodule
@@ -235,7 +235,7 @@ module [CONNECTED_MODULE] mkAssertionCheckerWarning#(ASSERTIONS_DICT_TYPE myID, 
     // interface:
         (ASSERTION);
 
-    let as <- mkAssertionCheckerBase(myID, ASSERT_WARNING, myNode);
+    let as <- mkAssertionChecker(myID, ASSERT_WARNING, myNode);
     return as;
 
 endmodule
@@ -244,7 +244,7 @@ module [CONNECTED_MODULE] mkAssertionCheckerMessage#(ASSERTIONS_DICT_TYPE myID, 
     // interface:
         (ASSERTION);
 
-    let as <- mkAssertionCheckerBase(myID, ASSERT_MESSAGE, myNode);
+    let as <- mkAssertionChecker(myID, ASSERT_MESSAGE, myNode);
     return as;
 
 endmodule

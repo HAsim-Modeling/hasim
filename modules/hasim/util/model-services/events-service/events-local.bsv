@@ -26,6 +26,8 @@ import FIFO::*;
 // Project imports
 
 `include "asim/provides/soft_connections.bsh"
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/hasim_modellib.bsh"
 `include "asim/dict/RINGID.bsh"
 `include "asim/dict/EVENTS.bsh"
 
@@ -49,7 +51,7 @@ interface EventRecorder;
   method Action recordEvent(Maybe#(EventParam) mdata);
 endinterface
 
-module [Connected_Module] mkEventRecorder#(EVENTS_DICT_TYPE eventID)
+module [CONNECTED_MODULE] mkEventRecorder#(EVENTS_DICT_TYPE eventID)
     //interface:
                 (EventRecorder);
 
@@ -72,7 +74,7 @@ typedef union tagged
 
 
 
-module [Connected_Module] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
+module [CONNECTED_MODULE] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
     //interface:
                 (EventRecorder);
 
@@ -111,7 +113,7 @@ module [Connected_Module] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
 
 endmodule
 
-module [Connected_Module] mkEventRecorder_Disabled#(EVENTS_DICT_TYPE eventID)
+module [CONNECTED_MODULE] mkEventRecorder_Disabled#(EVENTS_DICT_TYPE eventID)
     //interface:
                 (EventRecorder);
 
@@ -146,7 +148,7 @@ interface EVENT_RECORDER_MULTIPLEXED#(type ni);
   method Action recordEvent(INSTANCE_ID#(ni) iid, Maybe#(EventParam) mdata);
 endinterface
 
-module [Connected_Module] mkEventRecorder_Multiplexed#(EVENTS_DICT_TYPE eventID)
+module [CONNECTED_MODULE] mkEventRecorder_Multiplexed#(EVENTS_DICT_TYPE eventID)
     //interface:
                 (EVENT_RECORDER_MULTIPLEXED#(ni));
 

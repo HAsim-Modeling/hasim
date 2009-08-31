@@ -1,10 +1,10 @@
 
 [Global]
 SaveParameters=0
-Description=Default Hyprid Project Common Utilities
+Description=Default Hybrid Project Common Utilities
 File=project-common-default
 Version=2.1
-Name=Default Hyprid Project Common Utilities
+Name=Default Hybrid Project Common Utilities
 Type=HAsim
 Class=Asim::Model
 DefaultBenchmark=

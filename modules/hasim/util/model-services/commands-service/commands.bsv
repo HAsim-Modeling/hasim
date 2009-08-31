@@ -23,31 +23,3 @@
 // Non-ISA-specific datatypes required by Controller model                   //
 //                                                                           //
 ///////////////////////////////////////////////////////////////////////////////
-
-// Project imports
-
-`include "asim/provides/hasim_common.bsh"
-
-
-typedef union tagged
-{
-    void         COM_RunProgram;     // Begin running, allowed to slip
-    void         COM_Synchronize;    // Start synchronizing the system
-    void         COM_StartSyncQuery; // Start checking if you're synchronized
-    void         COM_SyncQuery;      // Is the system synchronized yet?
-    void         COM_Step;           // Run exactly one model CC.
-    CONTEXT_ID   COM_EnableContext;  // Enable context
-    CONTEXT_ID   COM_DisableContext; // Disable context
-}
-CONTROLLER_COMMAND 
-    deriving (Eq, Bits);
-
-                
-typedef union tagged
-{
-    Bool RESP_DoneRunning; // Bool is run passed
-    void RESP_Balanced;    // Response to query
-    void RESP_UnBalanced;  // Response to query
-}
-CONTROLLER_RESPONSE
-    deriving (Eq, Bits);

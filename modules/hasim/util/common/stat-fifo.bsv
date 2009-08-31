@@ -21,7 +21,9 @@
 
 import FIFO::*;
 
+`include "asim/provides/common_services.bsh"
 `include "asim/dict/STATS.bsh"
+
 
 typedef enum
 {

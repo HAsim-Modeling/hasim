@@ -23,7 +23,6 @@
 #include "asim/mesg.h"
 #include "asim/trace.h"
 
-#include "asim/provides/model.h"
 #include "asim/provides/funcp_memory.h"
 #include "asim/provides/funcp_simulated_memory.h"
 #include "asim/provides/rrr.h"

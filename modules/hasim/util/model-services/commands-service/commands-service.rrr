@@ -1,0 +1,21 @@
+service COMMANDS
+{
+    server hw (bsv, connection) <- sw (cpp, method)
+    {
+        method Run       (in UINT32[32] payload);
+        method Pause     (in UINT32[32] payload);
+        method Sync      (in UINT32[32] payload);
+
+        method EnableContext(in UINT32[32] ctxId);
+        method DisableContext(in UINT32[32] ctxId);
+    };
+
+    server sw (cpp, method) <- hw (bsv, connection)
+    {
+        method EndSim    (in UINT8[8] success);
+        method ModelHeartbeat (in UINT32[32] ctxId,
+                               in UINT64[64] fpga_cycles,
+                               in UINT32[32] model_cycles,
+                               in UINT32[32] instr_commits);
+    };
+};

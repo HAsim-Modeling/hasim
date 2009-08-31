@@ -1,0 +1,16 @@
+%name HAsim Performance Model
+%desc Partitioned Performance Model using FPGAs
+%attributes hasim hybrid
+
+%provides connected_application
+
+%requires hasim_timep
+%requires hasim_funcp
+%requires hasim_isa
+%requires hasim_model_services
+%requires hasim_common
+
+%public  hasim-model.bsv
+%public  hasim-model.h
+%private hasim-model.cpp
+

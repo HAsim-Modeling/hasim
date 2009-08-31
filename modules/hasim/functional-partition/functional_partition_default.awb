@@ -12,5 +12,6 @@
 %attributes hasim funcp
 
 %public functional_partition_default.bsv
+%public functional-partition-default.h
 
 %param SYNTH_BOUNDARY mkFuncp "Name of synthesis boundary"

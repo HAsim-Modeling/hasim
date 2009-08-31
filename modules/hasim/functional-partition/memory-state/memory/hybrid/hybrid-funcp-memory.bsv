@@ -21,7 +21,8 @@ import FIFOF::*;
 
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
-`include "asim/provides/platform_interface.bsh"
+`include "asim/provides/common_services.bsh"
+`include "asim/provides/mem_services.bsh"
 `include "asim/provides/rrr.bsh"
 `include "asim/provides/channelio.bsh"
 

@@ -1,0 +1,14 @@
+%name RRR-based Events Service
+%desc Allows tme model to report cycle-by-cycle simulation results.
+%provides events_service
+
+%attributes hasim hybrid
+
+%sources -t RRR  -v PUBLIC  events-service.rrr
+%sources -t BSV  -v PUBLIC  events-local.bsv
+%sources -t BSV  -v PUBLIC  events-service.bsv
+%sources -t H    -v PUBLIC  events-service.h
+%sources -t CPP  -v PRIVATE events-service.cpp
+%sources -t DICT -v PRIVATE events-service.dic
+
+%param HASIM_EVENTS_SIZE 32 "Number of bits for Event parameter."

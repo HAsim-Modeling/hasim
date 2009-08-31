@@ -16,8 +16,8 @@
 #
 # %public Connected_Module.bsv Connections.bsv
 #
-# %param CON_CWIDTH 256 "Maximum Connection Bit Width."
-# %param CON_NUMCHAINS 7 "Number of Connection Chains."
+# %param --global CON_CWIDTH 256 "Maximum Connection Bit Width."
+# %param --global CON_NUMCHAINS 7 "Number of Connection Chains."
 #
 # %AWB_END
 # */

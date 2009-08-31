@@ -1,6 +1,5 @@
 
-`include "asim/provides/platform_interface.bsh"
-`include "asim/provides/scratchpad_memory.bsh"
+`include "asim/provides/mem_services.bsh"
 
 
 // A memory accessed by multiple instances.

@@ -22,6 +22,8 @@
 
 import Vector::*;
 
+`include "asim/provides/soft_connections.bsh"
+
 
 // Eventually a HASIM_MODULE will be more complex than this.
 // For now it's just a module with soft connections.

@@ -1,10 +1,6 @@
-%name Hasim Common Library
-%desc Hasim Common Library
+%name Default HAsim Common Library
+%desc Utilities common to all HAsim performance models
 %provides hasim_common
-%requires hasim_modellib
-%requires platform_interface
-%requires smart_synth_boundaries
-%requires soft_connections
 
 %library lib/libasim/libasim.a
 
@@ -14,15 +10,8 @@
 
 %public token.bsv
 %public hasim-debug-file.bsv
-%public assertion-checker.bsv
 %public utils.bsv
-%public multiplexed.bsv
-%public stats.bsv
-%public debug-scan.bsv
 %public stat-fifo.bsv
-%public dynamic-parameters.bsv 
-
-%sources -t DICT -v PUBLIC hasim-common.dic
 
 %param --global CONTEXT_ID_BITS 1 "Number of bits in context ID (2 = 4 contexts)."
 %param --global CONTEXT_ID_BITS_RRR 8 "RRR-friendly size that holds a context ID."
@@ -34,9 +23,4 @@
 
 %param TOKEN_EVENTS_ENABLED True "Statically enable/disable Event logging (True/False)."
 %param TOKEN_EVENTS_LOGFILE "hasim_events.out" "Name of Event logfile."
-
-%param ASSERTIONS_PER_NODE 16 "Max number of assertions connected to an assertion node (ring stop)."
-
-%param HASIM_STATS_ENABLED True "Statically enable/disable Stats logging (True/False)."
-%param HASIM_STATS_SIZE 32 "Number of bits per Stat counter."
 

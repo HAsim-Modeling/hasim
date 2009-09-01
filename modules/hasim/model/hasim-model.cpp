@@ -3,6 +3,7 @@
 #include "asim/provides/connected_application.h"
 
 CONNECTED_APPLICATION_CLASS::CONNECTED_APPLICATION_CLASS(VIRTUAL_PLATFORM vp) :
+    traceFlagParser(),
     modelServices(new MODEL_SERVICES_CLASS()),
     functionalPartition(new HASIM_FUNCP_CLASS()),
     timingPartition(new HASIM_TIMEP_CLASS())

@@ -20998,3 +20998,23 @@ overflowing.
 * Need more submodels for timing partitions.
 
 Michael P.
+
+----------
+pellauer    Date: Tue Sep  1 14:22:43 EDT 2009  CSN: CSN-hasim-690
+                  Tue Sep  1 18:22:43 UTC 2009
+
+
+Directory modules/hasim/model
+ hasim-model.cpp           Locally Modified          689 
+ hasim-model.h             Locally Modified          689 
+ hasim-trace-flag.cpp      Locally Added               0 
+ hasim-model.awb           Locally Modified          689 
+
+Directory modules/hasim/controller/command_switches
+ command-switch-processor.cpp Locally Modified          689 
+
+
+* Re-enable trace dumping flag for hasim models.
+* Fix a segfault for unrecognized switches.
+
+Michael P.

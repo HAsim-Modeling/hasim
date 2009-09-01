@@ -97,7 +97,10 @@ COMMAND_SWITCH_PROCESSOR_CLASS::ProcessArgs(int argc, char *argv[])
         c = getopt_long_only(argc, argv, "", long_options, &option_index);
         if (c != -1)
         {
-            //cout << "Found switch " << c << endl;
+            if (c == '?')
+            {
+                Usage();
+            }
             while (c != 0)
             {
                 cur_switch = cur_switch->GetNextProcessor();

@@ -13,4 +13,5 @@
 %public  hasim-model.bsv
 %public  hasim-model.h
 %private hasim-model.cpp
+%private hasim-trace-flag.cpp
 

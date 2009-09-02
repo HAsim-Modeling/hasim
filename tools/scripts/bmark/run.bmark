@@ -181,11 +181,16 @@ if ($config{feeder} eq 'm5') {
     $feedFlags = "--quiet --remote-gdb-port=0 ${feedFlags}";
 }
 
+my $ctxFlag = "";
+if (defined($config{workloadContexts})) {
+    $ctxFlag = "--contexts=$config{workloadContexts}";
+}
+
 my $cmd;
 
 if ($m5run == 0) {
     # Normal run
-    $cmd = "$config{modelDir}/$config{model} --modeldir=$config{modelDir} --workload=$config{workload} --showfp=${showfp} --funcp=\"${feedFlags}\" $config{genFlags}";
+    $cmd = "$config{modelDir}/$config{model} --modeldir=$config{modelDir} --workload=$config{workload} --showfp=${showfp} --funcp=\"${feedFlags}\" $config{genFlags} ${ctxFlag}";
     foreach my $c (@ARGV) {
         $cmd .= " $c";
     }
@@ -465,17 +470,23 @@ sub CompareOutput() {
 
     my $result = 0;
 
-    foreach my $cmp (split(':', $config{compare})) {
-        system($cmp);
-        if ($? == -1) {
-            ErrorExit("Failed to execute $cmp: $!");
+    # For now assume each context runs the same workload
+    my $ctx = 0;
+    while ($ctx < $config{workloadContexts}) {
+        foreach my $cmp (split(':', $config{compare})) {
+            system("cd program.${ctx}; $cmp");
+            if ($? == -1) {
+                ErrorExit("Failed to execute $cmp: $!");
+            }
+            elsif ($? & 127) {
+                ErrorExit("Child died with signal " . ($? & 127) . ", " . (($? & 128) ? 'with' : 'without') . " coredump");
+            }
+            elsif (($? >> 8) != 0) {
+                $result = $? >> 8;
+            }
         }
-        elsif ($? & 127) {
-            ErrorExit("Child died with signal " . ($? & 127) . ", " . (($? & 128) ? 'with' : 'without') . " coredump");
-        }
-        elsif (($? >> 8) != 0) {
-            $result = $? >> 8;
-        }
+
+        $ctx += 1;
     }
 
     if ($result == 0) {

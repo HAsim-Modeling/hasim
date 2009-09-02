@@ -47,6 +47,8 @@ COMMANDS_SERVER_CLASS::COMMANDS_SERVER_CLASS() :
     lastFPGAClockCommits(0),
     noChangeBeats(0)
 {
+    SetTraceableName("commands_server");
+
     // instantiate stubs
     clientStub = new COMMANDS_CLIENT_STUB_CLASS(this);
     serverStub = new COMMANDS_SERVER_STUB_CLASS(this);
@@ -155,6 +157,7 @@ COMMANDS_SERVER_CLASS::Sync()
 void
 COMMANDS_SERVER_CLASS::EnableContext(UINT32 ctx_id)
 {
+    T1("\tEnable context " << ctx_id);
     clientStub->EnableContext(ctx_id);
 }
 
@@ -162,6 +165,7 @@ COMMANDS_SERVER_CLASS::EnableContext(UINT32 ctx_id)
 void
 COMMANDS_SERVER_CLASS::DisableContext(UINT32 ctx_id)
 {
+    T1("\tDisable context " << ctx_id);
     clientStub->DisableContext(ctx_id);
 }
 

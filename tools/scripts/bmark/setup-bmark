@@ -31,6 +31,7 @@ my $feeder = '';
 my $group = undef;
 my $isa = "unknown_ISA";
 my $linkto = undef;
+my $numContexts = 1;
 
 #
 # Find the root of the benchmarks directory tree.
@@ -49,6 +50,7 @@ if (! GetOptions('binary=s' => \$binary,
                  'group=s' => \$group,
                  'isa=s' => \$isa,
                  'linkto=s' => \$linkto,
+                 'contexts=i' => \$numContexts,
                 )) {
     Usage();
 }
@@ -74,68 +76,78 @@ chdir($dstdir) or ErrorExit("Failed to cd to $dstdir");
 mkdir('hasim_debug') or ErrorExit("Failed to make 'hasim_debug' directory");
 
 # Set up benchmark for non-null feeders
-if ($feeder ne "none") {
-    my $src_prog;
+my $context = 0;
+while ($context < $numContexts) {
+    if ($feeder ne "none") {
+        my $src_prog;
 
-    mkdir('program') or ErrorExit("Failed to make 'program' directory");
+        mkdir("program.${context}") or ErrorExit("Failed to make program directory");
+        chdir("program.${context}") or ErrorExit("Failed to cd to program directory");
 
-    if (defined($binary)) {
-        $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${binary}";
-    }
-    elsif (-f "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.bin") {
-        $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.bin";
-    }
-    elsif (-f "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.vmh") {
-        $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.vmh";
-    }
-    else {
-        print STDERR "Can't find binary in ${benchmark_root}/hasim/${isa}/${group}\n";
-        exit(1);
-    }
+        if (defined($binary)) {
+            $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${binary}";
+        }
+        elsif (-f "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.bin") {
+            $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.bin";
+        }
+        elsif (-f "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.vmh") {
+            $src_prog = "${benchmark_root}/hasim/${isa}/${group}/${bmark}.${isa}.vmh";
+        }
+        else {
+            print STDERR "Can't find binary in ${benchmark_root}/hasim/${isa}/${group}\n";
+            exit(1);
+        }
 
-    my $dst_prog = "program/" . basename($src_prog);
+        my $dst_prog = basename($src_prog);
 
-    unlink($dst_prog);
-    symlink($src_prog, $dst_prog) or ErrorExit("Failed to symlink $dst_prog => $src_prog");
-}
+        unlink($dst_prog);
+        symlink($src_prog, $dst_prog) or ErrorExit("Failed to symlink $dst_prog => $src_prog");
 
-# Copy input data files
-if (defined($data)) {
-    if ($data =~ /\.tar\.gz$/) {
-        system("tar xzf ${data}");
-    }
-    elsif ($data =~ /\.tar$/) {
-        system("tar xf ${data}");
-    }
-}
+        # Copy input data files
+        if (defined($data)) {
+            if ($data =~ /\.tar\.gz$/) {
+                system("tar xzf ${data}");
+            }
+            elsif ($data =~ /\.tar$/) {
+                system("tar xf ${data}");
+            }
+        }
 
-# Link to files or directories
-if (defined($linkto)) {
-    foreach my $tgt (split(':', $linkto)) {
-        if ($tgt =~ /\/$/) {
-            # Trailing slash means link to all the files individually within
-            # a directory.
-            if (-d $tgt) {
-                opendir(DIR, $tgt) || die("Cannot open directory for --linkto $tgt\n");
-                my @tgt_objs = readdir(DIR);
-                closedir(DIR);
-                foreach my $t (@tgt_objs) {
-                    if (! (($t eq '.') || ($t eq '..'))) {
-                        symlink("${tgt}${t}", basename($t)) or die("Failed to link to ${tgt}${t}");
+        # Link to files or directories
+        if (defined($linkto)) {
+            foreach my $tgt (split(':', $linkto)) {
+                if ($tgt =~ /\/$/) {
+                    # Trailing slash means link to all the files individually within
+                    # a directory.
+                    if (-d $tgt) {
+                        opendir(DIR, $tgt) || die("Cannot open directory for --linkto $tgt\n");
+                        my @tgt_objs = readdir(DIR);
+                        closedir(DIR);
+                        foreach my $t (@tgt_objs) {
+                            if (! (($t eq '.') || ($t eq '..'))) {
+                                symlink("${tgt}${t}", basename($t)) or die("Failed to link to ${tgt}${t}");
+                            }
+                        }
                     }
+                }
+                else {
+                    # No trailing slash. Just link to a single object
+                    symlink($tgt, basename($tgt)) or die("Failed to link to $tgt");
                 }
             }
         }
-        else {
-            # No trailing slash. Just link to a single object
-            symlink($tgt, basename($tgt)) or die("Failed to link to $tgt");
-        }
+
+        # Back to main workload directory
+        chdir("..");
     }
+
+    $context += 1;
 }
 
 # Store compare rules to config
 open(ENV, '>>config/env.sh') or die("Failed to open config/env.sh");
 print ENV "ISA=\"${isa}\"\n";
+print ENV "workloadContexts=\"${numContexts}\"\n";
 if (defined($compare)) {
     print ENV "compare=\"${compare}\"\n";
 }

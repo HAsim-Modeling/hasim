@@ -803,9 +803,16 @@ sub __make_bsvfiles {
         my $pname = $p->name();
         my $pvalue = $p->value();
       
+        ## SYNTH_BOUNDARY is a special value meaningful for hardware
+        ## and not software.  It triggers redefined symbol warnings,
+        ## so don't emit in .h files.
+        my $isSynthBoundary = ($pname eq "SYNTH_BOUNDARY");
+
         if (! $p->isString() && ! $p->isInt()) {
             # Unknown parameter type
-            print HFILE "#define $pname $pvalue\n";
+            if (! $isSynthBoundary) {
+                print HFILE "#define $pname $pvalue\n";
+            }
             if ($p->dynamic()) {
                 print STDERR "Dynamic parameter $provides $pname must be string or integer\n";
                 exit(1);
@@ -821,7 +828,9 @@ sub __make_bsvfiles {
             my $type = $p->isInt() ? "UINT64" : "std::string";
 
             if (! $p->dynamic()) {
-                print HFILE "#define $pname $pvalue\n";
+                if (! $isSynthBoundary) {
+                    print HFILE "#define $pname $pvalue\n";
+                }
                 $sim_config->print("Register(\"Param_${pname}\",\"parameter ${pname}\",${type},param_${pname},${pvalue})\n");
             }
             else {

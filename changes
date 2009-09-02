@@ -21018,3 +21018,41 @@ Directory modules/hasim/controller/command_switches
 * Fix a segfault for unrecognized switches.
 
 Michael P.
+
+----------
+mcadler     Date: Tue Sep  1 20:28:17 EDT 2009  CSN: CSN-hasim-691
+                  Wed Sep  2 00:28:17 UTC 2009
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          690 
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          690 
+
+Directory tools/scripts/bmark/m5_configs
+ se.py                     Locally Modified          690 
+
+Directory tools/scripts/bmark
+ setup-bmark               Locally Modified          690 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.dic         Locally Modified          690 
+ funcp-tlb-std.cpp         Locally Modified          690 
+ funcp-tlb-std.rrr         Locally Modified          690 
+ funcp-tlb-std.h           Locally Modified          690 
+ funcp-tlb-std.awb         Locally Modified          690 
+ funcp-tlb-std.bsv         Locally Modified          690 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          690 
+ commands-service.h        Locally Modified          690 
+
+Directory modules/hasim/util/platform-interface
+ platform-central-cache.bsv Locally Modified          690 
+
+- m5 run script now supports multiple programs, each running on a separate
+  simulated CPU.  Each program runs in its own directory to avoid file
+  clashes.
+- Functional TLB now uses the central cache instead of private caches.
+- Add debugging output to software side of commands service.

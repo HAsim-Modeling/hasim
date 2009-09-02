@@ -87,15 +87,18 @@ system.physmem.port = system.membus.port
 for i in xrange(np):
     system.cpu[i].connectMemPorts(system.membus)
 
+    progdir = "program." + str(i) + "/";
+
     process = LiveProcess()
-    process.executable = options.cmd
-    process.cmd = [options.cmd] + options.options.split()
+    process.executable = progdir + options.cmd
+    process.cwd = progdir
+    process.cmd = [progdir + options.cmd] + options.options.split()
     if options.input != "":
-        process.input = options.input
+        process.input = progdir + options.input
     if options.output != "":
-        process.output = options.output
+        process.output = progdir + options.output
     if options.errout != "":
-        process.errout = options.errout
+        process.errout = progdir + options.errout
 
     system.cpu[i].workload = process
 

@@ -21,6 +21,9 @@
 
 #include <stdio.h>
 
+#include "asim/syntax.h"
+#include "asim/trace.h"
+
 #include "platforms-module.h"
 #include "asim/provides/rrr.h"
 #include "asim/provides/command_switches.h"
@@ -113,7 +116,8 @@ class CONTEXT_HEARTBEAT_CLASS
 
 
 class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
-                           public PLATFORMS_MODULE_CLASS
+                             public PLATFORMS_MODULE_CLASS,
+                             public TRACEABLE_CLASS
 {
   private:
     // self-instantiation

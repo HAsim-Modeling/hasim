@@ -103,8 +103,8 @@ FUNCP_TLB_SERVER_CLASS::Poll()
 //
 
 // request
-FUNCP_PADDR
-FUNCP_TLB_SERVER_CLASS::VtoP(CONTEXT_ID ctxId, MEM_VALUE va)
+OUT_TYPE_VtoP
+FUNCP_TLB_SERVER_CLASS::VtoP(CONTEXT_ID ctxId, MEM_VALUE va, UINT8 reqWordIdx)
 {
     // Get a pointer to simulated memory from the memory server.  This
     // should be fixed to have a common parent allocate the memory.
@@ -120,20 +120,51 @@ FUNCP_TLB_SERVER_CLASS::VtoP(CONTEXT_ID ctxId, MEM_VALUE va)
     {
         alloc_on_fault = true;
         va ^= 1;    // Clear low bit
-        T1("\tfuncp_memory: VtoP VA " << fmt_data(va) << " -- allocate on fault");
     }
 
-    FUNCP_MEM_VTOP_RESP vtop = memory->VtoP(ctxId, va, alloc_on_fault);
+    //
+    // Client expects to cache a group of translations in the central cache.
+    // Central cache entries have 4 lines.  There is currently no good way
+    // to describe a variable number of elements in RRR, so the number of
+    // entries is hard wired here.
+    //
+    FUNCP_PADDR xlate[4];
+    for (int i = 0; i < 4; i++)
+    {
+        // Translate one page.  The allocate on fault bit applies only to the
+        // requested entry, indicated by reqWordIdx.
+        //
+        bool do_alloc = alloc_on_fault && (reqWordIdx == i);
+        MEM_VALUE xlate_va = va + (1 << FUNCP_ISA_PAGE_SHIFT) * i;
 
-    T1("\tfuncp_memory: VtoP CTX " << UINT64(ctxId) << " VA " << fmt_data(va) << " -> PA " << fmt_addr(vtop.pa) <<
-       (vtop.ioSpace ? " [I/O SPACE]" : "") <<
-       (vtop.pageFault ? " [PAGE FAULT]" : ""));
+        FUNCP_MEM_VTOP_RESP vtop = memory->VtoP(ctxId, xlate_va, do_alloc);
 
-    // Flags will be sent in the low two bits.  They must be 0 in
-    // the translation.
-    ASSERTX((vtop.pa & 3) == 0);
+        if (do_alloc)
+        {
+            T1("\tfuncp_memory: VtoP VA " << fmt_data(xlate_va) << " -- allocate on fault");
+        }
 
-    // Pass the ioSpace and pageFault bits in the low bits of the PA to
-    // save space.
-    return vtop.pa | (vtop.ioSpace ? 2 : 0) | (vtop.pageFault ? 1 : 0);
+        T1("\tfuncp_memory: VtoP CTX " << UINT64(ctxId) << " VA " << fmt_data(xlate_va) << " -> PA " << fmt_addr(vtop.pa) <<
+           (vtop.ioSpace ? " [I/O SPACE]" : "") <<
+           (vtop.pageFault ? " [PAGE FAULT]" : ""));
+
+        // Flags will be sent in the low two bits.  They must be 0 in
+        // the translation.
+        ASSERTX((vtop.pa & 3) == 0);
+
+        // Pass the ioSpace and pageFault bits in the low bits of the PA to
+        // save space.
+        xlate[i] = vtop.pa | (vtop.ioSpace ? 2 : 0) | (vtop.pageFault ? 1 : 0);
+    }
+
+    //
+    // Return translations as named fields instead of an array due to RRR
+    // limitations.
+    //
+    OUT_TYPE_VtoP resp;
+    resp.pa0 = xlate[0];
+    resp.pa1 = xlate[1];
+    resp.pa2 = xlate[2];
+    resp.pa3 = xlate[3];
+    return resp;
 }

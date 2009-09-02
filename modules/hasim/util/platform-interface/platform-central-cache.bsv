@@ -43,6 +43,10 @@ import SpecialFIFOs::*;
 //
 // Interface for any client of the central cache.
 //
+//     Read responses from the central cache are NOT guaranteed to be
+//     returned in request order!  It is the client's responsibility
+//     to reassociate responses with requests.
+//
 // ========================================================================
 
 //

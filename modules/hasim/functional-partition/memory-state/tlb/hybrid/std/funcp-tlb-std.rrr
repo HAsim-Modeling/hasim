@@ -10,6 +10,10 @@ service FUNCP_TLB
     {
         method VtoP(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
                     in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] va,
-                    out FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] pa);
+                    in UINT8[8] reqWordIdx,
+                    out FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] pa0,
+                    out FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] pa1,
+                    out FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] pa2,
+                    out FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] pa3);
     };
 };

@@ -16,14 +16,8 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
-def STATS.FUNCP_TLB.L1_ITLB_HIT         "FUNCP TLB L1_I: Hits";
-def STATS.FUNCP_TLB.L1_ITLB_MISS        "FUNCP TLB L1_I: Misses";
-def STATS.FUNCP_TLB.ITLB_NOT_MAPPED     "FUNCP TLB L1_I: Page not mapped";
-def STATS.FUNCP_TLB.ITLB_PAGE_FAULT     "FUNCP TLB L1_I: Page fault handler invoked";
+def VDEV.CACHE.FUNCP_TLB                "Functional TLB central cache port";
 
-def STATS.FUNCP_TLB.L1_DTLB_HIT         "FUNCP TLB L1_D: Hits";
-def STATS.FUNCP_TLB.L1_DTLB_MISS        "FUNCP TLB L1_D: Misses";
-def STATS.FUNCP_TLB.DTLB_NOT_MAPPED     "FUNCP TLB L1_D: Page not mapped";
-def STATS.FUNCP_TLB.DTLB_PAGE_FAULT     "FUNCP TLB L1_D: Page fault handler invoked";
-
-def STATS.FUNCP_TLB.L2_MISS             "FUNCP TLB L2: Misses";
+def STATS.FUNCP_TLB.PVT_CACHE_HIT       "FUNCP TLB: Private cache hits";
+def STATS.FUNCP_TLB.PVT_CACHE_MISS      "FUNCP TLB: Private cache misses";
+def STATS.FUNCP_TLB.CENTRAL_CACHE_MISS  "FUNCP TLB: Central cache misses";

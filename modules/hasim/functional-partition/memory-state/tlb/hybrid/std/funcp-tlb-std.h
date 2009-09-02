@@ -58,7 +58,7 @@ class FUNCP_TLB_SERVER_CLASS: public RRR_SERVER_CLASS,
     void   Poll();
 
     // RRR request methods
-    FUNCP_PADDR VtoP(CONTEXT_ID ctxId, MEM_VALUE va);
+    OUT_TYPE_VtoP VtoP(CONTEXT_ID ctxId, MEM_VALUE va, UINT8 reqWordIdx);
 };
 
 // Now that the server class is defined the RRR wrapper can be loaded.

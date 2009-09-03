@@ -21056,3 +21056,33 @@ Directory modules/hasim/util/platform-interface
   clashes.
 - Functional TLB now uses the central cache instead of private caches.
 - Add debugging output to software side of commands service.
+
+----------
+mpellaue    Date: Thu Sep  3 11:05:47 EDT 2009  CSN: CSN-hasim-692
+                  Thu Sep  3 15:05:47 UTC 2009
+
+
+Directory modules/hasim/util/platform-services/common-services/stats-service
+ stats-local.bsv           Locally Modified          691 
+ stats-service.bsv         Locally Modified          691 
+
+Directory modules/hasim/util/modellib
+ stats-multiplexed.bsv     Locally Modified          691 
+
+Directory modules/hasim/timing-partition/single-chip
+ single-chip-timing-partition.h Locally Modified          691 
+
+
+* Stat vectors now work differently. The HW now reports just how long each stat
+vector is. Unused slots in the vector no longer show up in the stats output.
+
+* This means that stats are no longer hardwired to NUM_CONTEXTS.
+
+* Stat overflow is also treated differently. Instead of periodically scanning
+  the stats, the HW now just reports when an overflow of a single stat occurs.
+  This causes the SW to increment it by 32-bit UINT_MAX.
+
+* This should cut down on unnecessary RRR traffic, since only an actual overflow
+  will trigger this, rather than a potential time-based overflow.
+  
+Michael P.

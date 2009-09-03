@@ -4,7 +4,7 @@
 
 /* For now nothing under this level has an explicit software component. */
 /* Eventually it may make sense to instantiate an explicit Chip and     */
-/* submodules. For now this just instantiates timing model services.    */
+/* submodules. For now this just instantiates the contexts switch.      */
 
 typedef class HASIM_TIMEP_CLASS* HASIM_TIMEP;
 

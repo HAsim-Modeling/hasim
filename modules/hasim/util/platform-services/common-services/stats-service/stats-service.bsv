@@ -6,14 +6,13 @@
 
 typedef enum
 {
-  SC_Initializing, //Starting up, doing local runtime initialization
-  SC_Idle,         //Not executing any commands
-  SC_Dumping,      //Executing the Dump command
-  SC_Enabling,     //Executing the Enable command
-  SC_Disabling,    //Executing the Disable command
-  SC_Reseting      //Executing the Reset command
+  SC_Idle,           // Not executing any commands
+  SC_GettingLengths, // Executing the GetVectorLengths command
+  SC_Dumping,        // Executing the Dump command
+  SC_Toggling,       // Executing the Toggle command
+  SC_Reseting        // Executing the Reset command
 }
-  SOFT_STATS_STATE
+  STATS_SERVICE_STATE
                deriving (Eq, Bits);
 
 
@@ -26,66 +25,103 @@ module [CONNECTED_MODULE] mkStatsService#(STATS statsDevice)
     // Communication link to the Stats themselves
     Connection_Chain#(STAT_DATA) chain <- mkConnection_Chain(`RINGID_STATS);
 
-    // Track if we are done dumping
-    Reg#(Bool) dumpFinished  <- mkReg(False);
-
     // Our internal state
-    Reg#(SOFT_STATS_STATE)  state <- mkReg(SC_Idle);
+    Reg#(STATS_SERVICE_STATE)  state <- mkReg(SC_Idle);
 
     // ****** Rules ******
-
-    // sendReq
-
-    // Send a request to all the stats.
-    // We only do this if we're in a state which requires new communication.
-    // Afterwords we go back to idle.
-
-    rule sendReq (!((state == SC_Idle) || (state == SC_Initializing)));
-
-      let nextCommand = case (state) matches
-                         tagged SC_Dumping:      return tagged ST_DUMP;
-                         tagged SC_Enabling:     return tagged ST_ENABLE;
-                         tagged SC_Disabling:    return tagged ST_DISABLE;
-                         tagged SC_Reseting:     return tagged ST_RESET;
-                         default:                return tagged ST_DUMP;
-                       endcase;
-
-      chain.send_to_next(nextCommand);
-      state <= SC_Idle;
-
-    endrule
 
     // processResp
 
     // Process a response from an individual stat. 
     // Most of the time this is just sent on to the outputQ.
 
-    rule processResp (state != SC_Initializing);
+    rule processResp (True);
 
       let st <- chain.receive_from_prev();
 
       case (st) matches
-        tagged ST_VAL .stinfo: //A stat to dump
+        tagged ST_VAL .stinfo: // A stat to dump
         begin
-          statsDevice.reportStat(stinfo.statID, stinfo.value);
+          statsDevice.reportStat(stinfo.statID, stinfo.index, stinfo.value);
         end
-        tagged ST_DUMP:  //We're done dumping
+        tagged ST_LENGTH .stinfo: // A stat vector length
+        begin
+          statsDevice.setVectorLength(stinfo.statID, stinfo.length);
+        end
+        tagged ST_OVERFLOW .stinfo: // A stat overflowed its counter.
+        begin
+            // Tell the software to increment it by MAX_INT
+            statsDevice.statOverflow(stinfo.statID, stinfo.index);
+        end
+        tagged ST_GET_LENGTH:  // We're done getting lengths
+        begin
+          statsDevice.finishVectorLengths();
+          state <= SC_Idle;
+        end
+        tagged ST_DUMP:  // We're done dumping
         begin
           statsDevice.finishDump();
-          dumpFinished <= True;
+          state <= SC_Idle;
+        end
+        tagged ST_RESET:  // We're done reseting
+        begin
+          statsDevice.finishReseting();
+          state <= SC_Idle;
+        end
+        tagged ST_TOGGLE:  // We're done toggling
+        begin
+          statsDevice.finishToggling();
+          state <= SC_Idle;
         end
       endcase
 
     endrule
     
     //
-    // dumpStart --
+    // startVector --
+    //    
+    // Start getting vector lengths
+    //
+    rule startVector (state == SC_Idle && statsDevice.gettingVectorLengths());
+        
+        chain.send_to_next(ST_GET_LENGTH);
+        state <= SC_GettingLengths;
+
+    endrule
+
+    //
+    // startDump --
     //    
     // Begin a stat dump.
     //
-    rule dumpStart (state == SC_Idle && statsDevice.dumping());
+    rule startDump (state == SC_Idle && statsDevice.dumping());
     
+        chain.send_to_next(ST_DUMP);
         state <= SC_Dumping;
+
+    endrule
+
+    //
+    // startToggle --
+    //    
+    // Begin toggling stats between enabled/disabled.
+    //
+    rule startToggle (state == SC_Idle && statsDevice.toggling());
+    
+        chain.send_to_next(ST_TOGGLE);
+        state <= SC_Toggling;
+
+    endrule
+
+    //
+    // startReset --
+    //    
+    // Begin reseting all the stats.
+    //
+    rule startReset (state == SC_Idle && statsDevice.reseting());
+    
+        chain.send_to_next(ST_RESET);
+        state <= SC_Reseting;
 
     endrule
 

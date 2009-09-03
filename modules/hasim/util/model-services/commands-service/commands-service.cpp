@@ -115,6 +115,11 @@ COMMANDS_SERVER_CLASS::SetNumHardwareThreads(UINT32 num)
 void
 COMMANDS_SERVER_CLASS::Run()
 {
+
+    // Tell the stats device to setup itself. We wait until this
+    // point to do it to ensure that the RRR stack is up.
+    STATS_DEVICE_CLASS::GetInstance()->SetupStats();
+
     // Tell model which hardware threads are enabled.  Clearly this will need to change.
     for (int c = 0; c < numThreads; c++)
     {

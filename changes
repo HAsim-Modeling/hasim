@@ -21143,3 +21143,16 @@ Directory modules/hasim/util/platform-services/common-services/dynamic-parameter
 * Fix a potential deadlock in dynamic parameters.
 
 Michael P.
+
+----------
+mpellaue    Date: Thu Sep  3 17:31:42 EDT 2009  CSN: CSN-hasim-695
+                  Thu Sep  3 21:31:42 UTC 2009
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          694 
+
+
+* Fix another deadlock, this time in the stats device.
+
+Michael P.

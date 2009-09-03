@@ -44,25 +44,6 @@ WORKLOAD_SWITCH_CLASS::ShowSwitch(char *buff)
     return true;
 }
 
-CONTEXTS_SWITCH_CLASS::CONTEXTS_SWITCH_CLASS() :
-    numContexts(1),
-    COMMAND_SWITCH_INT_CLASS("contexts")
-{
-}
-
-void
-CONTEXTS_SWITCH_CLASS::ProcessSwitchInt(int arg)
-{
-    numContexts = arg;
-}
-
-bool
-CONTEXTS_SWITCH_CLASS::ShowSwitch(char *buff)
-{
-    strcpy(buff, "[--contexts=<n>]        Number of contexts to simulate (cores or hardware threads)");
-    return true;
-}
-
 FUNCP_SWITCH_CLASS::FUNCP_SWITCH_CLASS() :
     funcpArgc(0),
     funcpArgv(new char* [1]),

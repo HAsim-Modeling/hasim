@@ -53,25 +53,7 @@ COMMANDS_SERVER_CLASS::COMMANDS_SERVER_CLASS() :
     clientStub = new COMMANDS_CLIENT_STUB_CLASS(this);
     serverStub = new COMMANDS_SERVER_STUB_CLASS(this);
 
-    //
-    // The timing model doesn't stop running while statistics are scanned out.
-    // Make sure the counters are big enough so they don't wrap while the
-    // scan is running.  At least 24 bits should be safe.
-    //
-    ASSERT(STATS_SIZE >= 24, "Statistics counter too small");
-
-    //
-    // We assume that HW statistics counters may be incremented at most once
-    // per model cycle.  The heartbeat will be used to trigger scanning out
-    // intermediate counter values in the middle of a run.  Here we confirm
-    // that the heartbeat is frequent enough.
-    //
-    ASSERT(HEARTBEAT_TRIGGER_BIT < STATS_SIZE - 2,
-           "Heartbeat too infrequent for triggering statistics scan out");
-
-    statsScanMask = 1 << (STATS_SIZE - 2);
-
-    ctxHeartbeat = NULL;
+    hwThreadHeartbeat = NULL;
 
 }
 
@@ -87,11 +69,6 @@ COMMANDS_SERVER_CLASS::Init(
     PLATFORMS_MODULE p)
 {
     parent = p;
-    ctxHeartbeat = new CONTEXT_HEARTBEAT_CLASS[globalArgs->NumContexts()];
-    for (int c = 0; c < globalArgs->NumContexts(); c++)
-    {
-        ctxHeartbeat[c].Init(&messageIntervalSwitch);
-    }
 }
 
 // uninit: override
@@ -109,7 +86,7 @@ COMMANDS_SERVER_CLASS::Uninit()
 void
 COMMANDS_SERVER_CLASS::Cleanup()
 {
-    delete [] ctxHeartbeat;
+    delete [] hwThreadHeartbeat;
 
     // deallocate stubs
     delete clientStub;
@@ -122,14 +99,26 @@ COMMANDS_SERVER_CLASS::Poll()
 {
 }
 
+// init
+void
+COMMANDS_SERVER_CLASS::SetNumHardwareThreads(UINT32 num)
+{
+    numThreads = num;
+    hwThreadHeartbeat = new HW_THREAD_HEARTBEAT_CLASS[numThreads];
+    for (int c = 0; c < numThreads; c++)
+    {
+        hwThreadHeartbeat[c].Init(&messageIntervalSwitch);
+    }
+}
+
 // client: run
 void
 COMMANDS_SERVER_CLASS::Run()
 {
-    // Tell model which contexts are enabled.  Clearly this will need to change.
-    for (int c = 0; c < globalArgs->NumContexts(); c++)
+    // Tell model which hardware threads are enabled.  Clearly this will need to change.
+    for (int c = 0; c < numThreads; c++)
     {
-        EnableContext(c);
+        clientStub->EnableContext(c);
     }
 
     // log start time
@@ -153,21 +142,6 @@ COMMANDS_SERVER_CLASS::Sync()
     clientStub->Sync(0);
 }
 
-// client: enable context
-void
-COMMANDS_SERVER_CLASS::EnableContext(UINT32 ctx_id)
-{
-    T1("\tEnable context " << ctx_id);
-    clientStub->EnableContext(ctx_id);
-}
-
-// client: disable context
-void
-COMMANDS_SERVER_CLASS::DisableContext(UINT32 ctx_id)
-{
-    T1("\tDisable context " << ctx_id);
-    clientStub->DisableContext(ctx_id);
-}
 
 
 //
@@ -181,11 +155,11 @@ COMMANDS_SERVER_CLASS::EndSim(
 {
     if (success == 1)
     {
-        cout << "        starter: completed successfully. " << endl;
+        cout << "        commands relay: completed successfully. " << endl;
     }
     else
     {
-        cout << "        starter: completed with errors.  " << endl;
+        cout << "        commands relay: completed with errors.  " << endl;
     }
     
     EndSimulation(success == 0);
@@ -194,12 +168,12 @@ COMMANDS_SERVER_CLASS::EndSim(
 // Heartbeat
 void
 COMMANDS_SERVER_CLASS::ModelHeartbeat(
-    UINT32 ctxId,
+    UINT32 hwThreadId,
     UINT64 fpga_cycles,
     UINT32 model_cycles,
     UINT32 instr_commits)
 {
-    ctxHeartbeat[ctxId].Heartbeat(ctxId, fpga_cycles, model_cycles, instr_commits);
+    hwThreadHeartbeat[hwThreadId].Heartbeat(hwThreadId, fpga_cycles, model_cycles, instr_commits);
     
 
     //
@@ -209,10 +183,10 @@ COMMANDS_SERVER_CLASS::ModelHeartbeat(
     //
     UINT64 total_model_cycles = 0;
     UINT64 total_model_commits = 0;
-    for (int c = 0; c < globalArgs->NumContexts(); c++)
+    for (int c = 0; c < numThreads; c++)
     {
-        total_model_cycles += ctxHeartbeat[ctxId].GetModelCycles();
-        total_model_commits += ctxHeartbeat[ctxId].GetInstrCommits();
+        total_model_cycles += hwThreadHeartbeat[hwThreadId].GetModelCycles();
+        total_model_commits += hwThreadHeartbeat[hwThreadId].GetInstrCommits();
     }
 
     //
@@ -238,7 +212,7 @@ COMMANDS_SERVER_CLASS::ModelHeartbeat(
 
         if (noChangeBeats == 1000)
         {
-            cerr << "starter: model deadlock!" << endl;
+            cerr << "commands relay: model deadlock!" << endl;
             DebugScan();
             EndSimulation(1);
         }
@@ -247,20 +221,14 @@ COMMANDS_SERVER_CLASS::ModelHeartbeat(
     }
 
     */
-
-    if (((total_model_cycles ^ lastStatsScanCycle) & statsScanMask) != 0)
-    {
-        lastStatsScanCycle = total_model_cycles;
-        STATS_DEVICE_SERVER_CLASS::GetInstance()->DumpStats();
-    }
     
     //
     // Done?
     //
     if (stopCycleSwitch.StopCycle() &&
-        (ctxHeartbeat[ctxId].GetModelCycles() >= stopCycleSwitch.StopCycle()))
+        (hwThreadHeartbeat[hwThreadId].GetModelCycles() >= stopCycleSwitch.StopCycle()))
     {
-        cout << "starter: simulation reached stop cycle." << endl;
+        cout << "commands relay: simulation reached stop cycle." << endl;
         EndSimulation(0);
     }
 }
@@ -289,30 +257,30 @@ COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
     double allIPS = 0;
 
     cout << endl;
-    for (int c = 0; c < globalArgs->NumContexts(); c++)
+    for (int c = 0; c < numThreads; c++)
     {
-        if (ctxHeartbeat[c].GetModelCycles() != 0)
+        if (hwThreadHeartbeat[c].GetModelCycles() != 0)
         {
             cout << "    ";
-            ctxHeartbeat[c].ProgressStats(c);
+            hwThreadHeartbeat[c].ProgressStats(c);
         }
 
         //
-        // Compute a merged summary of all contexts
+        // Compute a merged summary of all HW threads
         //
 
-        allModelCycles += (ctxHeartbeat[c].GetModelCycles() -
-                           ctxHeartbeat[c].GetModelStartCycle());
+        allModelCycles += (hwThreadHeartbeat[c].GetModelCycles() -
+                           hwThreadHeartbeat[c].GetModelStartCycle());
 
-        UINT64 fpga_cycles = ctxHeartbeat[c].GetFPGACycles();
+        UINT64 fpga_cycles = hwThreadHeartbeat[c].GetFPGACycles();
         if (fpga_cycles > allFPGACycles)
         {
             allFPGACycles = fpga_cycles;
         }
 
-        allInstrCommits += (ctxHeartbeat[c].GetInstrCommits() -
-                            ctxHeartbeat[c].GetInstrStartCommits());
-        allIPS += ctxHeartbeat[c].GetModelIPS();
+        allInstrCommits += (hwThreadHeartbeat[c].GetInstrCommits() -
+                            hwThreadHeartbeat[c].GetInstrStartCommits());
+        allIPS += hwThreadHeartbeat[c].GetModelIPS();
     }
 
     if (allModelCycles > 0)
@@ -347,11 +315,11 @@ COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
 
 // ========================================================================
 //
-// Heartbeat monitor class for a single context.
+// Heartbeat monitor class for a single hardware thread.
 //
 // ========================================================================
 
-CONTEXT_HEARTBEAT_CLASS::CONTEXT_HEARTBEAT_CLASS() :
+HW_THREAD_HEARTBEAT_CLASS::HW_THREAD_HEARTBEAT_CLASS() :
     fpgaStartCycle(0),
     fpgaLastCycle(0),
     modelStartCycle(0),
@@ -364,15 +332,15 @@ CONTEXT_HEARTBEAT_CLASS::CONTEXT_HEARTBEAT_CLASS() :
 
 
 void
-CONTEXT_HEARTBEAT_CLASS::Init(MESSAGE_INTERVAL_SWITCH_CLASS* mis)
+HW_THREAD_HEARTBEAT_CLASS::Init(MESSAGE_INTERVAL_SWITCH_CLASS* mis)
 {
     messageIntervalSwitch = mis;
     nextProgressMsgCycle = mis->ProgressMsgInterval();
 }
 
 void
-CONTEXT_HEARTBEAT_CLASS::Heartbeat(
-    UINT32 ctxId,
+HW_THREAD_HEARTBEAT_CLASS::Heartbeat(
+    UINT32 hwThreadId,
     UINT64 fpga_cycles,
     UINT32 model_cycles,
     UINT32 instr_commits)
@@ -406,7 +374,7 @@ CONTEXT_HEARTBEAT_CLASS::Heartbeat(
         nextProgressMsgCycle += messageIntervalSwitch->ProgressMsgInterval();
         
         cout << "[" << std::dec << std::setw(13) << fpga_cycles << "] ";
-        ProgressStats(ctxId);
+        ProgressStats(hwThreadId);
     }
     
     //
@@ -420,11 +388,11 @@ CONTEXT_HEARTBEAT_CLASS::Heartbeat(
 }
 
 void
-CONTEXT_HEARTBEAT_CLASS::ProgressStats(UINT32 ctxId)
+HW_THREAD_HEARTBEAT_CLASS::ProgressStats(UINT32 hwThreadId)
 {
     if (modelCycles == 0) return;
 
-    cout << "CTX " << std::setw(2) << UINT64(ctxId)
+    cout << "CTX " << std::setw(2) << UINT64(hwThreadId)
          << ": " << std::setw(10) << modelCycles << " cycles";
 
     cout << " (IPC=" << IoFormat::fmt(".2f", (double)instrCommits / (double)modelCycles);
@@ -444,7 +412,7 @@ CONTEXT_HEARTBEAT_CLASS::ProgressStats(UINT32 ctxId)
 }
 
 double
-CONTEXT_HEARTBEAT_CLASS::GetModelIPS() const
+HW_THREAD_HEARTBEAT_CLASS::GetModelIPS() const
 {
     double sec = double(heartbeatLastTime.tv_sec) - double(heartbeatStartTime.tv_sec);
     double usec = double(heartbeatLastTime.tv_usec) - double(heartbeatStartTime.tv_usec);

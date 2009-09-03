@@ -3,7 +3,7 @@ def RINGID.MODULE_RESPONSES "module responses";
 
 def STREAMID.MESSAGE "message";
 
-def STREAMS.MESSAGE.START     "[%13u]: controller: program started.\n";
-def STREAMS.MESSAGE.SUCCESS   "[%13u]: controller: test program finished successfully.\n";
-def STREAMS.MESSAGE.FAILURE   "[%13u]: controller: test program finished, one or more failures occurred.\n";
-def STREAMS.MESSAGE.ERROR     "[%13u]: controller: ERROR: unexpected timing partition response: 0x%x\n";
+def STREAMS.MESSAGE.START     "[%13u]: commands relay: program started.\n";
+def STREAMS.MESSAGE.SUCCESS   "[%13u]: commands relay: test program finished successfully.\n";
+def STREAMS.MESSAGE.FAILURE   "[%13u]: commands relay: test program finished, one or more failures occurred.\n";
+def STREAMS.MESSAGE.ERROR     "[%13u]: commands relay: ERROR: unexpected timing partition response: 0x%x\n";

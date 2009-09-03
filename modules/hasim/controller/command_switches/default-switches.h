@@ -32,19 +32,6 @@ class WORKLOAD_SWITCH_CLASS : public COMMAND_SWITCH_STRING_CLASS
 
 };
 
-class CONTEXTS_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
-{
-    public:
-        CONTEXTS_SWITCH_CLASS();
-        ~CONTEXTS_SWITCH_CLASS() {}
-        UINT32 NumContexts() { return numContexts; }
-        
-        void ProcessSwitchInt(int arg);
-        bool ShowSwitch(char* buff);
-    private:
-        UINT32 numContexts;
-};
-
 class FUNCP_SWITCH_CLASS : public COMMAND_SWITCH_LIST_CLASS
 {
     public:
@@ -90,8 +77,6 @@ class GLOBAL_ARGS_CLASS
     int FuncPlatformArgc() { return funcpSwitch.FuncPlatformArgc(); }
     char **FuncPlatformArgv() { return funcpSwitch.FuncPlatformArgv(); }
 
-    UINT32 NumContexts() { return contextsSwitch.NumContexts(); };
-
     void SetExecutableName(char* name) { executableName = name; }
     char* ExecutableName() { return executableName; }
 
@@ -102,7 +87,6 @@ class GLOBAL_ARGS_CLASS
     char* executableName; // Name of executable (argv[0])
     MODEL_DIR_SWITCH_CLASS modelDirSwitch; // Model (pm) directory
     WORKLOAD_SWITCH_CLASS  workloadSwitch; // Name of the workload (affects stats file name)
-    CONTEXTS_SWITCH_CLASS  contextsSwitch; // TODO: move this elsewhere.
 
     // Functional platform arguments
     FUNCP_SWITCH_CLASS funcpSwitch;

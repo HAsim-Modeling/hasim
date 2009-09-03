@@ -21086,3 +21086,40 @@ vector is. Unused slots in the vector no longer show up in the stats output.
   will trigger this, rather than a potential time-based overflow.
   
 Michael P.
+
+----------
+mpellaue    Date: Thu Sep  3 14:43:58 EDT 2009  CSN: CSN-hasim-693
+                  Thu Sep  3 18:43:58 UTC 2009
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          691 
+ commands-service.h        Locally Modified          691 
+ commands-service.dic      Locally Modified          691 
+
+Directory modules/hasim/timing-partition/single-chip
+ single-chip-timing-partition.h Locally Modified          692 
+
+Directory modules/hasim/model
+ hasim-model.cpp           Locally Modified          691 
+
+Directory modules/hasim/controller/command_switches
+ default-switches.h        Locally Modified          691 
+ default-switches.cpp      Locally Modified          691 
+
+
+* The "contexts" switch is no longer a global default switch. 
+
+* M5 now automatically appends the "--num-cpus" flag to be the MAX_NUM_CPUS.
+  Always running the max number of CPUS doesn't seem to have a noticeable impact
+  on performance or memory usage (at least up to 8).
+
+* The timing model Socket now defines a "--num-cores" flag. This is the only
+  flag needed to set the number of cores dynamically. This is still not quite
+  what we want since also need to know threads-per-core, but it's a start.
+  
+* The model heartbeat is now set per-core, rather than per hardware-thread.
+
+Michael P.
+
+

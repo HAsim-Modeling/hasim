@@ -35,10 +35,6 @@
 
 typedef class COMMANDS_SERVER_CLASS* COMMANDS_SERVER;
 
-//
-// CONTEXT_HEARTBEAT_CLASS --
-//    Maintain heartbeat information for a single context.
-//
 
 class STOP_CYCLE_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
 {
@@ -70,22 +66,26 @@ class MESSAGE_INTERVAL_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
     int ProgressMsgInterval() { return messageInterval; }
 };
 
-typedef class CONTEXT_HEARTBEAT_CLASS* CONTEXT_HEARTBEAT;
+typedef class HW_THREAD_HEARTBEAT_CLASS* HW_THREAD_HEARTBEAT;
 
-class CONTEXT_HEARTBEAT_CLASS
+//
+// HW_THREAD_HEARTBEAT_CLASS --
+//    Maintain heartbeat information for a single hardware thread.
+//
+class HW_THREAD_HEARTBEAT_CLASS
 {
   public:
-    CONTEXT_HEARTBEAT_CLASS();
-    ~CONTEXT_HEARTBEAT_CLASS() {};
+    HW_THREAD_HEARTBEAT_CLASS();
+    ~HW_THREAD_HEARTBEAT_CLASS() {};
 
     void Init(MESSAGE_INTERVAL_SWITCH_CLASS* mis);
 
-    void Heartbeat(UINT32 ctxId,
+    void Heartbeat(UINT32 hwThreadId,
                    UINT64 fpga_cycles,
                    UINT32 model_cycles,
                    UINT32 instr_commits);
 
-    void ProgressStats(UINT32 ctxId);
+    void ProgressStats(UINT32 hwThreadId);
     UINT64 GetInstrCommits() const { return instrCommits; };
     UINT64 GetInstrStartCommits() const { return modelStartInstrs; };
     UINT64 GetModelCycles() const { return modelCycles; };
@@ -133,7 +133,10 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     // Command switch for message interval
     MESSAGE_INTERVAL_SWITCH_CLASS messageIntervalSwitch;
 
-    CONTEXT_HEARTBEAT_CLASS* ctxHeartbeat; // Dynamic arrays of heartbeats
+    HW_THREAD_HEARTBEAT_CLASS* hwThreadHeartbeat; // Dynamic arrays of heartbeats
+    
+    // Number of active HW threads.
+    UINT32 numThreads;
 
     // Cycle when statistics were last scanned
     UINT64 lastStatsScanCycle;
@@ -162,8 +165,7 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
      void Pause();
      void Sync();
 
-     void EnableContext(UINT32 ctx);
-     void DisableContext(UINT32 ctx);
+     void SetNumHardwareThreads(UINT32 num);
 
     // required RRR methods
     void Init(PLATFORMS_MODULE);
@@ -173,7 +175,7 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
 
     // RRR service methods
     void EndSim(UINT8 success);
-    void ModelHeartbeat(UINT32 ctxId,
+    void ModelHeartbeat(UINT32 hwThreadId,
                         UINT64 fpga_cycles,
                         UINT32 model_cycles,
                         UINT32 instr_commits);

@@ -30,7 +30,5 @@ CONNECTED_APPLICATION_CLASS::Init()
 int
 CONNECTED_APPLICATION_CLASS::Main()
 {
-    COMMANDS_SERVER commandRelay = COMMANDS_SERVER_CLASS::GetInstance();
-    commandRelay->Run();
     return timingPartition->SimulateModel();
 }

@@ -21123,3 +21123,23 @@ Directory modules/hasim/controller/command_switches
 Michael P.
 
 
+
+----------
+mpellaue    Date: Thu Sep  3 16:59:02 EDT 2009  CSN: CSN-hasim-694
+                  Thu Sep  3 20:59:02 UTC 2009
+
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          693 
+
+Directory modules/hasim/util/platform-services/common-services/dynamic-parameters-service
+ dynamic-parameters-service.bsv Locally Modified          693 
+
+
+* Disable the obsolete --contexts option in the run script. Now it is used to
+  determine how many programs to set up, but not passed as an actual paramter to
+  the model.
+
+* Fix a potential deadlock in dynamic parameters.
+
+Michael P.

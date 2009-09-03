@@ -83,11 +83,11 @@ module [CONNECTED_MODULE] mkDynamicParametersService#(DYNAMIC_PARAMETERS dynPara
     // them.  Send an ACK for PARAMS_NULL.  The software side sends NULL last
     // and waits for the ACK to know that all parameters have been received.
     //
-    rule receive (state == PCS_Waiting);
+    rule receive (True);
   
         PARAM_DATA msg <- chain.receive_from_prev();
 
-        if (msg matches tagged PARAM_ID .id)
+        if (msg matches tagged PARAM_ID .id &&& state == PCS_Waiting)
         begin
             dynParam.nextParameter();
             state <= PCS_Idle;

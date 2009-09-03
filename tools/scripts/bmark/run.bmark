@@ -182,9 +182,9 @@ if ($config{feeder} eq 'm5') {
 }
 
 my $ctxFlag = "";
-if (defined($config{workloadContexts})) {
-    $ctxFlag = "--contexts=$config{workloadContexts}";
-}
+#if (defined($config{workloadContexts})) {
+#    $ctxFlag = "--contexts=$config{workloadContexts}";
+#}
 
 my $cmd;
 

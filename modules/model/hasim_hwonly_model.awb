@@ -24,6 +24,5 @@
 %public hasim_model.bsv
 
 %param SYNTH_BOUNDARY  mkModel "name of synthesis boundary"
-%param MAKE_ALL_TARGET exe     "Target of 'make all'.  Most likely bit, exe or vexe."
 
 %AWB_END

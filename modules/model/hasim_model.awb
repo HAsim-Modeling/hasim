@@ -27,7 +27,6 @@
 %private hardware-done.h
 
 %param SYNTH_BOUNDARY  mkModel "name of synthesis boundary"
-%param MAKE_ALL_TARGET exe     "Target of 'make all'.  Most likely bit, exe or vexe."
 
 %param WAIT_FOR_HARDWARE    1         "1 = SW application waits for done signal from hardware."
 

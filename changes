@@ -21156,3 +21156,22 @@ Directory modules/hasim/util/model-services/commands-service
 * Fix another deadlock, this time in the stats device.
 
 Michael P.
+
+----------
+emer        Date: Tue Sep  8 14:11:46 EDT 2009  CSN: CSN-hasim-696
+                  Tue Sep  8 18:11:46 UTC 2009
+
+
+Directory modules/model
+ pure_bluespec_model.awb   Locally Modified          695 
+ pure_bluespec_hybrid_model.awb Locally Modified          695 
+ hasim_hwonly_model.awb    Locally Modified          695 
+ hasim_model.awb           Locally Modified          695 
+ default_software_system.awb Locally Modified          695 
+
+Moved MAKE_ALL_TARGET from the root modules (model/project) to the
+physical_platform module inside fpgaenv. In the various phyiscal
+platforms the default is set appropriately, e.g., exe for simulation,
+bit for real hardware. In the physical_platform module, MAKE_ALL_TARGET
+is declared as a 'global' parameter so it can be overridden in the
+model that requires an fpgaenv.

@@ -38,6 +38,28 @@ import Vector::*;
 `define VDEV_SCRATCH__BASE 0
 `endif
 
+// SCRATCHPAD_CACHE_CONSTRUCTOR
+
+// A function to instantiate an RL_DM_CACHE, given an RL_DM_CACHE_SOURCE_DATA
+// of the appropriate types.
+
+// Passed to the multi-cached-memory modules below.
+
+typedef function CONNECTED_MODULE#(RL_DM_CACHE#(Bit#(t_CONTAINER_ADDR_SZ), 
+                                                SCRATCHPAD_MEM_VALUE, 
+                                                t_REF_INFO)) 
+                       f(RL_DM_CACHE_SOURCE_DATA#(Bit#(t_CONTAINER_ADDR_SZ), 
+                                                  SCRATCHPAD_MEM_VALUE, 
+                                                  t_REF_INFO) source) 
+                            SCRATCHPAD_CACHE_CONSTRUCTOR#(type t_CONTAINER_ADDR_SZ,
+                                                          type t_REF_INFO);
+
+// SCRATCHPAD_STATS_CONSTRUCTOR
+
+// A function to instantiate a stat tracker. Passed to the multi-cached-memory
+// modules below.
+
+typedef function CONNECTED_MODULE#(Empty) f(RL_CACHE_STATS stats) SCRATCHPAD_STATS_CONSTRUCTOR;
 
 //
 // mkMultiReadMultiCacheScratchpad --
@@ -50,14 +72,11 @@ import Vector::*;
 module [CONNECTED_MODULE] mkMultiReadMultiCacheScratchpad#(
     Integer scratchpadID,
     Vector#(n_READERS, Integer) cacheModes,
-    Vector#(n_READERS, function CONNECTED_MODULE#(RL_DM_CACHE#(Bit#(t_CONTAINER_ADDR_SZ), 
-                                                SCRATCHPAD_MEM_VALUE, 
-                                                t_REF_INFO)) 
-                       f(RL_DM_CACHE_SOURCE_DATA#(Bit#(t_CONTAINER_ADDR_SZ), 
-                                                  SCRATCHPAD_MEM_VALUE, 
-                                                  t_REF_INFO) source)) cacheConstructors)                                          
+    Vector#(n_READERS, SCRATCHPAD_STATS_CONSTRUCTOR) mkCacheStats,
+    Vector#(n_READERS, SCRATCHPAD_CACHE_CONSTRUCTOR#(t_CONTAINER_ADDR_SZ,
+                                                     t_REF_INFO)) cacheConstructors)
     // interface:
-    (MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA))
+        (MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA))
     provisos (Bits#(t_ADDR, t_ADDR_SZ),
               Bits#(t_DATA, t_DATA_SZ),
  
@@ -106,7 +125,8 @@ module [CONNECTED_MODULE] mkMultiReadMultiCacheScratchpad#(
                                           `SCRATCHPAD_STD_PVT_CACHE_ENTRIES) containerMemory;
 
         containerMemory <- mkUnmarshalledMultiCachedScratchpad(scratchpadID, 
-                                                               cacheModes, 
+                                                               cacheModes,
+                                                               mkCacheStats,
                                                                cacheConstructors );
        
         // Wrap the container with a marshaller.
@@ -147,19 +167,13 @@ endmodule
 module [CONNECTED_MODULE] mkMultiReadMultiCacheWriteCacheScratchpad#(
     Integer scratchpadID,
     Integer writeCacheMode,
-    function CONNECTED_MODULE#(RL_DM_CACHE#(Bit#(t_CONTAINER_ADDR_SZ), 
-                                        SCRATCHPAD_MEM_VALUE, 
-                                        t_REF_INFO)) 
-                       writeCacheConstructor(RL_DM_CACHE_SOURCE_DATA#(Bit#(t_CONTAINER_ADDR_SZ), 
-                                             SCRATCHPAD_MEM_VALUE, 
-                                             t_REF_INFO) source),
+    SCRATCHPAD_STATS_CONSTRUCTOR mkWriteCacheStats,
+    SCRATCHPAD_CACHE_CONSTRUCTOR#(t_CONTAINER_ADDR_SZ,
+                                  t_REF_INFO) writeCacheConstructor,
     Vector#(n_READERS, Integer) cacheModes,
-    Vector#(n_READERS, function CONNECTED_MODULE#(RL_DM_CACHE#(Bit#(t_CONTAINER_ADDR_SZ), 
-                                              SCRATCHPAD_MEM_VALUE, 
-                                              t_REF_INFO)) 
-                       f(RL_DM_CACHE_SOURCE_DATA#(Bit#(t_CONTAINER_ADDR_SZ), 
-                                                  SCRATCHPAD_MEM_VALUE, 
-                                                  t_REF_INFO) source)) cacheConstructors)                                          
+    Vector#(n_READERS, SCRATCHPAD_STATS_CONSTRUCTOR) mkCacheStats,
+    Vector#(n_READERS, SCRATCHPAD_CACHE_CONSTRUCTOR#(t_CONTAINER_ADDR_SZ,
+                                                     t_REF_INFO)) cacheConstructors)
     // interface:
     (MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA))
     provisos (Bits#(t_ADDR, t_ADDR_SZ),
@@ -220,8 +234,9 @@ module [CONNECTED_MODULE] mkMultiReadMultiCacheWriteCacheScratchpad#(
         
  
          containerMemory <- mkUnmarshalledMultiCachedScratchpad(scratchpadID, 
-                                                               cons(writeCacheMode,cacheModes), 
-                                                               cons(writeCacheConstructor,cacheConstructors));
+                                                               cons(writeCacheMode, cacheModes), 
+                                                               cons(mkWriteCacheStats, mkCacheStats),
+                                                               cons(writeCacheConstructor, cacheConstructors));
        
         // Wrap the container with a marshaller.
         // since each read port is logically independent, we give each its own marshaller.
@@ -407,12 +422,9 @@ endmodule
 module [CONNECTED_MODULE] mkUnmarshalledMultiCachedScratchpad#(
     Integer scratchpadID, 
     Vector#(n_READERS, Integer) cacheModes,
-    Vector#(n_READERS, function CONNECTED_MODULE#(RL_DM_CACHE#(Bit#(t_MEM_ADDRESS_SZ), 
-                                                SCRATCHPAD_MEM_VALUE, 
-                                                t_REF_INFO)) 
-                       f(RL_DM_CACHE_SOURCE_DATA#(Bit#(t_MEM_ADDRESS_SZ), 
-                                                  SCRATCHPAD_MEM_VALUE, 
-                                                  t_REF_INFO) source)) cacheConstructors)
+    Vector#(n_READERS, SCRATCHPAD_STATS_CONSTRUCTOR) mkCacheStats,
+    Vector#(n_READERS, SCRATCHPAD_CACHE_CONSTRUCTOR#(t_MEM_ADDRESS_SZ,
+                                                     t_REF_INFO)) cacheConstructors)
                                                           
     // interface:
     (SCRATCHPAD_MEMORY_MULTI_READ_IFC#(n_READERS, t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE, n_CACHE_ENTRIES))
@@ -458,7 +470,6 @@ module [CONNECTED_MODULE] mkUnmarshalledMultiCachedScratchpad#(
     // some setup for each cache is needed.
     for(Integer i = 0; i < valueof(n_READERS); i = i + 1) 
     begin
-        // Dummy statistics buckets
 
         RL_DM_CACHE_SOURCE_DATA#(Bit#(t_MEM_ADDRESS_SZ),
                                  SCRATCHPAD_MEM_VALUE,
@@ -466,6 +477,10 @@ module [CONNECTED_MODULE] mkUnmarshalledMultiCachedScratchpad#(
                                      mkMultiReadNoWriteSourceData(sourceData, i);
 
         caches[i] <- cacheConstructors[i](sourceDataWrap);
+        
+        // Instantiate statistics tracker
+        let cacheStats <- mkCacheStats[i](caches[i].stats);
+
     end 
 
     // Cache responses are not ordered.  Sort them with a reorder buffer.
@@ -581,6 +596,7 @@ endmodule
 module [CONNECTED_MODULE] mkUnmarshalledMultiCachedIncoherentScratchpad#(
     Integer scratchpadID, 
     Vector#(n_READERS, Integer) cacheModes,
+    Vector#(n_READERS, SCRATCHPAD_STATS_CONSTRUCTOR) cacheStatConstructors,
     Vector#(n_READERS, function CONNECTED_MODULE#(RL_DM_CACHE#(Bit#(t_MEM_ADDRESS_SZ), 
                                                 SCRATCHPAD_MEM_VALUE, 
                                                 t_REF_INFO)) 
@@ -652,6 +668,9 @@ module [CONNECTED_MODULE] mkUnmarshalledMultiCachedIncoherentScratchpad#(
                                      mkMultiReadSourceData(sourceData, i);
 
         caches[i] <- cacheConstructors[i](sourceDataWrap, False, debugLogCache);
+        
+        let cacheStats <- cacheStatConstructors[i](caches[i].stats);
+
     end 
 
     // Cache responses are not ordered.  Sort them with a reorder buffer.
@@ -746,3 +765,4 @@ module [CONNECTED_MODULE] mkUnmarshalledMultiCachedIncoherentScratchpad#(
 
     method Bool writeNotFull = writeDataQ.notFull();
 endmodule
+

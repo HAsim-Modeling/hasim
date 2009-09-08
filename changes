@@ -21175,3 +21175,22 @@ platforms the default is set appropriately, e.g., exe for simulation,
 bit for real hardware. In the physical_platform module, MAKE_ALL_TARGET
 is declared as a 'global' parameter so it can be overridden in the
 model that requires an fpgaenv.
+
+----------
+pellauer    Date: Tue Sep  8 16:00:23 EDT 2009  CSN: CSN-hasim-697
+                  Tue Sep  8 20:00:23 UTC 2009
+
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ platform-scratchpad-multi-cached-memory.bsv Locally Modified          696 
+
+Directory modules/hasim/util/platform-services/mem-services
+ mem-services-standard.bsh Locally Modified          696 
+
+
+* Updated platform-services with scratchpad cache stats change from
+  platform_interfaces.
+  
+* mem-services BSH now includes previously missing librl_bsv_base.
+
+Michael P.

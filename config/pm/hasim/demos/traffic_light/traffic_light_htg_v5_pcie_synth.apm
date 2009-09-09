@@ -15,7 +15,7 @@ DefaultAttributes=function_as_boundary traffic_light demo connected slave hybrid
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-htg-v5-pcie.apm
 Packagehint=platforms
 
 [Soft Connections Hybrid Application Environment/Requires]
@@ -41,9 +41,6 @@ Packagehint=platforms
 [Default Software Connected Application/Requires]
 hardware_system=Traffic Light System with Soft Connections
 
-
-[HW/SW Hybrid Project Foundation/Params]
-MAKE_ALL_TARGET=bit
 
 [Traffic light function w. synthesis boundary]
 File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function_synth.awb

@@ -15,7 +15,7 @@ DefaultAttributes=hello unconnected hybrid project htg
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-htg-v5-pcie.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-htg-v5-pcie.apm
 Packagehint=platforms
 
 [Base Hybrid Application Environment]
@@ -33,9 +33,6 @@ Packagehint=platforms
 File=modules/bluespec/system/demos/hello/hello.awb
 Packagehint=hasim
 
-
-[HW/SW Hybrid Project Foundation/Params]
-MAKE_ALL_TARGET=bit
 
 [HW/SW Hybrid Project Foundation/Requires]
 fpgaenv=FPGA Environment

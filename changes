@@ -21233,3 +21233,43 @@ Directory config/pm/bluespec/demos/devtest
 exists for backwards compatability, but can probably be purged soon.
 
 Michael P.
+
+----------
+mcadler     Date: Mon Sep 14 09:28:19 EDT 2009  CSN: CSN-hasim-699
+                  Mon Sep 14 13:28:19 UTC 2009
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.bsv      Locally Modified          698 
+
+Directory modules/hasim/util/platform-services/mem-services/central-cache-service
+ platform-central-cache.bsv Locally Modified          698 
+
+Directory modules/hasim/util/platform-services/common-services/dynamic-parameters-service
+ dynamic-parameters-service.bsv Locally Modified          698 
+
+Directory modules/hasim/util/platform-services/common-services/debug-scan-service
+ debug-scan-service.bsv    Locally Modified          698 
+
+Directory modules/hasim/util/platform-services/common-services/stats-service
+ stats-local.bsv           Locally Modified          698 
+ stats-service.bsv         Locally Modified          698 
+
+Directory modules/hasim/util/modellib
+ stats-multiplexed.bsv     Locally Modified          698 
+
+Directory modules/hasim/util/common
+ hasim-common.awb          Locally Modified          698 
+ stat-fifo.bsv             Locally Removed           698 
+
+- Fix statistics counter code, making the counter again independent of other
+  counters.  Recent check-ins added auto dumping of statistics as they overflow,
+  which caused all counters to depend on the statistics ring state and,
+  consequently, each other.  The new code keeps auto dumping but elimintes
+  the dependence.
+- Dropped decr() from statistics counters interface, since it makes no sense
+  when auto dumping exists.  Had to eliminate stat-fifo.bsv (unused) since it
+  depends on decr().
+- Simplify statistics vector length discovery protocol.
+- Convert to new getCmd/finishCmd standard virtual device protocol.
+- Eliminate many Bluespec scheduler warnings.

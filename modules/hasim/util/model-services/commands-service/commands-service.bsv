@@ -187,8 +187,7 @@ module [HASIM_MODULE] mkCommandsService
 
 
     // run: begin/continue simulation when the main controller tells us to
-    rule run (True);
-
+    rule run (state == CON_Init);
         let dummy <- serverStub.acceptRequest_Run();
 
         link_command.send_to_next(COM_RunProgram);
@@ -211,6 +210,7 @@ module [HASIM_MODULE] mkCommandsService
 
 
     // sync: sync ports and events
+    (* descending_urgency = "sync, pause, disableContext, enableContext, run" *)
     rule sync (True);
         let dummy <- serverStub.acceptRequest_Sync();
         noAction;
@@ -218,6 +218,7 @@ module [HASIM_MODULE] mkCommandsService
 
 
     // Count the model cycle and send heartbeat updates
+    (* descending_urgency = "modelTick, finishRun" *)
     rule modelTick (True);
 
         CONTEXT_ID ctx_id = link_model_cycle.receive();
@@ -243,7 +244,7 @@ module [HASIM_MODULE] mkCommandsService
     //
     // Monitor committed instructions.
     //
-
+    (* descending_urgency = "modelCommits, modelTick" *)
     rule modelCommits (True);
         match { .ctx_id, .commits } = link_model_commit.receive();
         link_model_commit.deq();

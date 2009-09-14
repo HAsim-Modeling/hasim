@@ -11,7 +11,6 @@
 %public token.bsv
 %public hasim-debug-file.bsv
 %public utils.bsv
-%public stat-fifo.bsv
 
 %param --global CONTEXT_ID_BITS 1 "Number of bits in context ID (2 = 4 contexts)."
 %param --global CONTEXT_ID_BITS_RRR 8 "RRR-friendly size that holds a context ID."

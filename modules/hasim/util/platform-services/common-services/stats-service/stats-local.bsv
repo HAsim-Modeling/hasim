@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
+//
 
 import FIFO::*;
 import Counter::*;
@@ -38,13 +38,11 @@ import Vector::*;
 // Single statistic
 interface STAT;
     method Action incr();
-    method Action decr();
 endinterface: STAT
 
 // Vector of multiple instances of the same statistics ID
 interface STAT_VECTOR#(type ni);
     method Action incr(Bit#(TLog#(ni)) iid);
-    method Action decr(Bit#(TLog#(ni)) iid);
 endinterface
 
 //
@@ -56,11 +54,30 @@ module [Connected_Module] mkStatCounter#(STATS_DICT_TYPE statID)
     // interface:
     (STAT);
 
-    Vector#(1, STATS_DICT_TYPE) statID_vec = replicate(statID);
-    let m <- mkStatCounter_Vector(statID_vec);
+    STAT_VECTOR#(1) m <- mkStatCounter_MultiEntry(statID);
     
     method Action incr() = m.incr(0);
-    method Action decr() = m.decr(0);
+endmodule
+
+
+//
+// mkStatCounter_MultiEntry --
+//     Public module for the STAT_VECTOR with multiple instances of a single
+//     IDs interface.  This is most likely used to store separate counters
+//     for the same statistic across multiple instances.
+//
+//     *** This method is the only way to instantiate multiple buckets ***
+//     *** for a single statistic ID.                                  ***
+//
+module [Connected_Module] mkStatCounter_MultiEntry#(STATS_DICT_TYPE statID)
+    // interface:
+    (STAT_VECTOR#(n_STATS))
+    provisos (Add#(TLog#(n_STATS), k, STAT_VECTOR_INDEX_SZ));
+
+    Vector#(n_STATS, STATS_DICT_TYPE) statID_vec = replicate(statID);
+    let m <- (`STATS_ENABLED) ? mkStatCounterVec_Enabled(statID_vec, True) :
+                                mkStatCounterVec_Disabled(statID_vec);
+    return m;
 endmodule
 
 
@@ -71,11 +88,10 @@ endmodule
 module [Connected_Module] mkStatCounter_Vector#(Vector#(n_STATS, STATS_DICT_TYPE) myIDs)
     // interface:
     (STAT_VECTOR#(n_STATS))
-    provisos
-        (Add#(TLog#(n_STATS), k, 8));
+    provisos (Add#(TLog#(n_STATS), k, STAT_VECTOR_INDEX_SZ));
 
-    let m <- (`STATS_ENABLED) ? mkStatCounterVec_Enabled(myIDs) :
-                                      mkStatCounterVec_Disabled(myIDs);
+    let m <- (`STATS_ENABLED) ? mkStatCounterVec_Enabled(myIDs, False) :
+                                mkStatCounterVec_Disabled(myIDs);
     return m;
 endmodule
 
@@ -95,37 +111,44 @@ typedef union tagged
     void ST_RESET;
     struct {STATS_DICT_TYPE statID; STAT_VECTOR_INDEX index; STAT_VALUE value;}  ST_VAL;
     struct {STATS_DICT_TYPE statID; STAT_VECTOR_INDEX length;}  ST_LENGTH;
-    struct {STATS_DICT_TYPE statID; STAT_VECTOR_INDEX index;} ST_OVERFLOW;
-    
 }
 STAT_DATA
     deriving (Eq, Bits);
 
 typedef enum
 {
-    RECORDING, REPORTING_LENGTH, FINISHING_LENGTH, DUMPING, FINISHING_DUMP
+    RECORDING, FINISHING_LENGTH, DUMPING, FINISHING_DUMP
 }
 STAT_STATE
     deriving (Eq, Bits);
 
 
 //
-// Vector of individual statistics.
+// mkStatCounterVec_Enabled --
+//     Vector of individual statistics.  When singleID is true all entries share
+//     the same ID.
 //
-module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_TYPE) myIDs)
+module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_TYPE) myIDs,
+                                                    Bool singleID)
     // interface:
     (STAT_VECTOR#(n_STATS))
     provisos
-        (Add#(TLog#(n_STATS), k, 8));
+        (Add#(TLog#(n_STATS), k, STAT_VECTOR_INDEX_SZ));
 
     Connection_Chain#(STAT_DATA) chain <- mkConnection_Chain(`RINGID_STATS);
 
     Vector#(n_STATS, COUNTER#(`STATS_SIZE)) statPool <- replicateM(mkLCounter(0));
-    Vector#(n_STATS, Reg#(Bool)) seenPool <- replicateM(mkReg(False));
 
     Reg#(STAT_STATE) state <- mkReg(RECORDING);
     Reg#(Bool) enabled <- mkReg(True);
+
     Reg#(STAT_VECTOR_INDEX) curDumpIdx <- mkRegU();
+
+    //
+    // The statistic index sent to software should always be 1 unless this
+    // instance is a multi-entry vector of multiple instances of the same ID.
+    //
+    function STAT_VECTOR_INDEX statIdx(STAT_VECTOR_INDEX idx) = singleID ? idx : 0;
 
 
     //
@@ -133,38 +156,18 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
     //     Done one entry in the statistics vector.
     //
     rule dump (state == DUMPING);
+        chain.send_to_next(tagged ST_VAL { statID: myIDs[curDumpIdx],
+                                           index: statIdx(curDumpIdx),
+                                           value: statPool[curDumpIdx].value() });
 
-        if (seenPool[curDumpIdx])
-        begin
-
-            chain.send_to_next(tagged ST_VAL { statID: myIDs[curDumpIdx],
-                                               index: curDumpIdx,
-                                               value: statPool[curDumpIdx].value() });
-
-            statPool[curDumpIdx].setC(0);
-
-        end
+        statPool[curDumpIdx].setC(0);
 
         if (curDumpIdx == fromInteger(valueOf(n_STATS) - 1))
             state <= FINISHING_DUMP;
-        curDumpIdx <= curDumpIdx + 1;
 
+        curDumpIdx <= curDumpIdx + 1;
     endrule
 
-    //
-    // reportLength --
-    //     Send 1 for the length of the next stat in the vector.
-    //
-    rule reportLength (state == REPORTING_LENGTH);
-
-        chain.send_to_next(tagged ST_LENGTH { statID: myIDs[curDumpIdx],
-                                              length: fromInteger(valueof(n_STATS)) });
-
-        if (curDumpIdx == fromInteger(valueOf(n_STATS) - 1))
-            state <= FINISHING_LENGTH;
-        curDumpIdx <= curDumpIdx + 1;
-
-    endrule
 
     //
     // finishDump --
@@ -175,6 +178,7 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
         state <= RECORDING;
     endrule
 
+
     //
     // finishLength --
     //     Done reporting the length of the vector.
@@ -183,6 +187,7 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
         chain.send_to_next(tagged ST_GET_LENGTH);
         state <= RECORDING;
     endrule
+
 
     //
     // receiveCmd --
@@ -196,33 +201,26 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
             tagged ST_GET_LENGTH:
             begin
                 //
-                // Send length=1 for each stat in the vector.
-                chain.send_to_next(tagged ST_LENGTH { statID: myIDs[0], length: 1});
-                curDumpIdx <= 1;
-                if (valueOf(n_STATS) > 1)
-                    state <= REPORTING_LENGTH;
-                else
+                // Software assumes length 1 unless told otherwise.  The only
+                // case where the length may be greater than 1 is when there
+                // is a single statistic ID in the vector.
+                //
+                if (singleID)
+                begin
+                    chain.send_to_next(tagged ST_LENGTH { statID: myIDs[0],
+                                                          length: fromInteger(valueOf(n_STATS)) });
                     state <= FINISHING_LENGTH;
+                end
+                else
+                begin
+                    chain.send_to_next(st);
+                end
             end
 
             tagged ST_DUMP:
             begin
-                //
-                // Send the current value of the counter along the chain and reset
-                // the counter.  If the run continues the software side will request
-                // more stats dumps and compute the sum.
-                //
-                // Note we always send index zero whether or not it was seen.
-                chain.send_to_next(tagged ST_VAL { statID: myIDs[0],
-                                                       index: 0,
-                                                       value: statPool[0].value() });
-                statPool[0].setC(0);
-
-                curDumpIdx <= 1;
-                if (valueOf(n_STATS) > 1)
-                    state <= DUMPING;
-                else
-                    state <= FINISHING_DUMP;
+                curDumpIdx <= 0;
+                state <= DUMPING;
             end
 
             tagged ST_RESET: 
@@ -243,23 +241,36 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
     endrule
 
 
+    //
+    // dumpPartial --
+    //     Monitor counters and forward values to software before a counter
+    //     overflows.
+    //
+    Reg#(STAT_VECTOR_INDEX) curDumpPartialIdx <- mkReg(0);
+
+    (* descending_urgency = "receiveCmd, dumpPartial" *)
+    rule dumpPartial (state == RECORDING);
+        // Is the most significant bit set?
+        if (msb(statPool[curDumpPartialIdx].value()) == 1)
+        begin
+            chain.send_to_next(tagged ST_VAL { statID: myIDs[curDumpPartialIdx],
+                                               index: statIdx(curDumpPartialIdx),
+                                               value: statPool[curDumpPartialIdx].value() });
+
+            statPool[curDumpPartialIdx].setC(0);
+        end
+
+        if (curDumpPartialIdx == fromInteger(valueOf(n_STATS) - 1))
+            curDumpPartialIdx <= 0;
+        else
+            curDumpPartialIdx <= curDumpPartialIdx + 1;
+    endrule
+
+
     method Action incr(Bit#(TLog#(n_STATS)) idx);
         if (enabled)
         begin
             statPool[idx].up();
-            seenPool[idx] <= True;
-            if (statPool[idx].value() == ~0)
-            begin
-                chain.send_to_next(tagged ST_OVERFLOW {statID: myIDs[idx], index: zeroExtend(idx)});
-            end
-        end
-    endmethod
-
-    method Action decr(Bit#(TLog#(n_STATS)) idx);
-        if (enabled)
-        begin
-            statPool[idx].down();
-            seenPool[idx] <= True;
         end
     endmethod
 endmodule
@@ -270,10 +281,6 @@ module [Connected_Module] mkStatCounterVec_Disabled#(Vector#(n_STATS, STATS_DICT
     (STAT_VECTOR#(n_STATS));
 
     method Action incr(Bit#(TLog#(n_STATS)) idx);
-        noAction;
-    endmethod
-
-    method Action decr(Bit#(TLog#(n_STATS)) idx);
         noAction;
     endmethod
 endmodule

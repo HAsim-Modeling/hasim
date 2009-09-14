@@ -1,128 +1,82 @@
-
-
-// SOFT_STATS_STATE
-
-// An internal datatype to track the state of the stats controller
-
-typedef enum
-{
-  SC_Idle,           // Not executing any commands
-  SC_GettingLengths, // Executing the GetVectorLengths command
-  SC_Dumping,        // Executing the Dump command
-  SC_Toggling,       // Executing the Toggle command
-  SC_Reseting        // Executing the Reset command
-}
-  STATS_SERVICE_STATE
-               deriving (Eq, Bits);
-
+//
+// Copyright (C) 2009 Massachusetts Institute of Technology
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
 
 module [CONNECTED_MODULE] mkStatsService#(STATS statsDevice)
     // interface:
-        ();
+    ();
 
     // ****** State Elements ******
 
     // Communication link to the Stats themselves
     Connection_Chain#(STAT_DATA) chain <- mkConnection_Chain(`RINGID_STATS);
 
-    // Our internal state
-    Reg#(STATS_SERVICE_STATE)  state <- mkReg(SC_Idle);
-
     // ****** Rules ******
 
-    // processResp
+    //
+    // processReq --
+    //     Receive a command from the statistics device and begin an action
+    //     on the statistics ring.
+    //
+    rule processReq (True);
+        let cmd <- statsDevice.getCmd();
 
-    // Process a response from an individual stat. 
-    // Most of the time this is just sent on to the outputQ.
+        case (cmd)
+            STATS_CMD_GETLENGTHS:
+                chain.send_to_next(ST_GET_LENGTH);
 
+            STATS_CMD_DUMP:
+                chain.send_to_next(ST_DUMP);
+
+            STATS_CMD_RESET:
+                chain.send_to_next(ST_RESET);
+
+            STATS_CMD_TOGGLE:
+                chain.send_to_next(ST_TOGGLE);
+        endcase
+    endrule
+
+
+    //
+    // processResp --
+    //
+    //     Process responses returning on the statistics ring.
+    //
     rule processResp (True);
+        let st <- chain.receive_from_prev();
 
-      let st <- chain.receive_from_prev();
+        case (st) matches
+            tagged ST_VAL .stinfo: // A stat to dump
+                statsDevice.reportStat(stinfo.statID, stinfo.index, stinfo.value);
 
-      case (st) matches
-        tagged ST_VAL .stinfo: // A stat to dump
-        begin
-          statsDevice.reportStat(stinfo.statID, stinfo.index, stinfo.value);
-        end
-        tagged ST_LENGTH .stinfo: // A stat vector length
-        begin
-          statsDevice.setVectorLength(stinfo.statID, stinfo.length);
-        end
-        tagged ST_OVERFLOW .stinfo: // A stat overflowed its counter.
-        begin
-            // Tell the software to increment it by MAX_INT
-            statsDevice.statOverflow(stinfo.statID, stinfo.index);
-        end
-        tagged ST_GET_LENGTH:  // We're done getting lengths
-        begin
-          statsDevice.finishVectorLengths();
-          state <= SC_Idle;
-        end
-        tagged ST_DUMP:  // We're done dumping
-        begin
-          statsDevice.finishDump();
-          state <= SC_Idle;
-        end
-        tagged ST_RESET:  // We're done reseting
-        begin
-          statsDevice.finishReseting();
-          state <= SC_Idle;
-        end
-        tagged ST_TOGGLE:  // We're done toggling
-        begin
-          statsDevice.finishToggling();
-          state <= SC_Idle;
-        end
-      endcase
+            tagged ST_LENGTH .stinfo: // A stat vector length
+                statsDevice.setVectorLength(stinfo.statID, stinfo.length);
 
+            tagged ST_GET_LENGTH:  // We're done getting lengths
+                statsDevice.finishCmd(STATS_CMD_GETLENGTHS);
+
+            tagged ST_DUMP:  // We're done dumping
+                statsDevice.finishCmd(STATS_CMD_DUMP);
+
+            tagged ST_RESET:  // We're done reseting
+                statsDevice.finishCmd(STATS_CMD_RESET);
+
+            tagged ST_TOGGLE:  // We're done toggling
+                statsDevice.finishCmd(STATS_CMD_TOGGLE);
+        endcase
     endrule
-    
-    //
-    // startVector --
-    //    
-    // Start getting vector lengths
-    //
-    rule startVector (state == SC_Idle && statsDevice.gettingVectorLengths());
-        
-        chain.send_to_next(ST_GET_LENGTH);
-        state <= SC_GettingLengths;
-
-    endrule
-
-    //
-    // startDump --
-    //    
-    // Begin a stat dump.
-    //
-    rule startDump (state == SC_Idle && statsDevice.dumping());
-    
-        chain.send_to_next(ST_DUMP);
-        state <= SC_Dumping;
-
-    endrule
-
-    //
-    // startToggle --
-    //    
-    // Begin toggling stats between enabled/disabled.
-    //
-    rule startToggle (state == SC_Idle && statsDevice.toggling());
-    
-        chain.send_to_next(ST_TOGGLE);
-        state <= SC_Toggling;
-
-    endrule
-
-    //
-    // startReset --
-    //    
-    // Begin reseting all the stats.
-    //
-    rule startReset (state == SC_Idle && statsDevice.reseting());
-    
-        chain.send_to_next(ST_RESET);
-        state <= SC_Reseting;
-
-    endrule
-
 endmodule

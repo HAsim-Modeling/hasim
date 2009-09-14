@@ -448,38 +448,62 @@ module [CONNECTED_MODULE] mkCentralCacheStats#(CENTRAL_CACHE_STATS statBundle)
 
     let stats <- mkStatCounter_Vector(statIDs);
 
+    //
+    // fire_when_enabled and no_implicit_conditions pragmas confirm that
+    // the statistics counting code is ready to fire whenever an incoming
+    // statistics wire requests an update.
+    //
+
+    (* fire_when_enabled *)
+    (* no_implicit_conditions *)
     rule readHit (cacheStats.readHit());
         stats.incr(statLoadHit);
     endrule
 
+    (* fire_when_enabled *)
+    (* no_implicit_conditions *)
     rule readMiss (cacheStats.readMiss());
         stats.incr(statLoadMiss);
     endrule
 
+    (* fire_when_enabled *)
+    (* no_implicit_conditions *)
     rule writeHit (cacheStats.writeHit());
         stats.incr(statStoreHit);
     endrule
 
+    (* fire_when_enabled *)
+    (* no_implicit_conditions *)
     rule writeMiss (cacheStats.writeMiss());
         stats.incr(statStoreMiss);
     endrule
 
+    (* fire_when_enabled *)
+    (* no_implicit_conditions *)
     rule invalEntry (cacheStats.invalEntry());
         stats.incr(statInvalEntry);
     endrule
 
+    (* fire_when_enabled *)
+    (* no_implicit_conditions *)
     rule dirtyEntryFlush (cacheStats.dirtyEntryFlush());
         stats.incr(statDirtyEntryFlush);
     endrule
 
+    (* fire_when_enabled *)
+    (* no_implicit_conditions *)
     rule forceInvalLine (cacheStats.forceInvalLine());
         stats.incr(statForceInvalLine);
     endrule
 
+    (* fire_when_enabled *)
+    (* no_implicit_conditions *)
     rule recentLineReadHit (recentLineStats.readHit());
         stats.incr(statRecentLineHit);
     endrule
 
+    (* fire_when_enabled *)
+    (* no_implicit_conditions *)
     rule recentLineReadMiss (recentLineStats.readMiss());
         stats.incr(statRecentLineMiss);
     endrule

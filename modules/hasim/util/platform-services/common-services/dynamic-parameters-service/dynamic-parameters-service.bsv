@@ -1,3 +1,30 @@
+//
+// Copyright (C) 2009 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+
+
+//
+// Dynamic parameters are passed from the software during the startup phase.
+// The ring protocol breaks messages into 3 parts:  token ID, high half of
+// the value and low half of the value.  There is no synchronization ACK
+// returned to the software since the local code to read the value of a parameter
+// blocks until it has been initialized.
+//
+
 
 // SOFT_PARAMS_STATE
 
@@ -5,13 +32,12 @@
 
 typedef enum
 {
-    PCS_Idle,           // Not executing any commands
-    PCS_High32,         // Send the high 32 bits
-    PCS_Low32,          // Send the low 32 bits
-    PCS_Waiting         // Wait for the ring response to ACK parameter.
+    PCS_IDLE,           // Not executing any commands
+    PCS_HIGH32,         // Send the high 32 bits
+    PCS_LOW32          // Send the low 32 bits
 }
-    SOFT_PARAMS_STATE
-               deriving (Eq, Bits);
+SOFT_PARAMS_STATE
+    deriving (Eq, Bits);
 
 // mkParamsController
 
@@ -19,7 +45,7 @@ typedef enum
 
 module [CONNECTED_MODULE] mkDynamicParametersService#(DYNAMIC_PARAMETERS dynParam)
     //interface:
-                ();
+    ();
 
     // ****** State Elements ******
 
@@ -27,7 +53,7 @@ module [CONNECTED_MODULE] mkDynamicParametersService#(DYNAMIC_PARAMETERS dynPara
     Connection_Chain#(PARAM_DATA) chain <- mkConnection_Chain(`RINGID_PARAMS);
  
     // Our internal state
-    Reg#(SOFT_PARAMS_STATE) state <- mkReg(PCS_Idle);
+    Reg#(SOFT_PARAMS_STATE) state <- mkReg(PCS_IDLE);
     
     // ****** Rules ******
     
@@ -35,64 +61,47 @@ module [CONNECTED_MODULE] mkDynamicParametersService#(DYNAMIC_PARAMETERS dynPara
     //    
     // Wait for parameter update request
     
-    rule waitForParam (state == PCS_Idle);
-
-        DYN_PARAM p = dynParam.getParameter();
+    rule waitForParam (state == PCS_IDLE);
+        DYN_PARAM c = dynParam.peekCmd();
 
         //
         // The first message on the chain is the parameter ID
         //
-        PARAM_DATA msg = tagged PARAM_ID p.paramID;
+        PARAM_DATA msg = tagged PARAM_ID c.paramID;
         chain.send_to_next(msg);
 
-        state <= PCS_High32;
-
+        state <= PCS_HIGH32;
     endrule
     
     // send
     //
     // State machine for sending parameter values in two 32 bit chunks
     //
-    rule sendHigh (state == PCS_High32);
-  
-        PARAM_DATA msg;
-        let v = dynParam.getParameter().value;
+    rule sendHigh (state == PCS_HIGH32);
+        let c = dynParam.peekCmd();
+
         //
         // Send the high 32 bits first.
         //
-
-        msg = tagged PARAM_High32 v[63:32];
+        PARAM_DATA msg = tagged PARAM_High32 c.value[63:32];
         chain.send_to_next(msg);
-        state <= PCS_Low32;
-
+        state <= PCS_LOW32;
     endrule
     
-    rule sendLow (state == PCS_Low32);
-    
-        PARAM_DATA msg;
-        let v = dynParam.getParameter().value;
-        msg = tagged PARAM_Low32 v[31:0];
+    rule sendLow (state == PCS_LOW32);
+        let c <- dynParam.getCmd();
+        dynParam.finishCmd();
+
+        PARAM_DATA msg = tagged PARAM_Low32 c.value[31:0];
         chain.send_to_next(msg);
-        state <= PCS_Waiting;
-  
+        state <= PCS_IDLE;
     endrule
     
     // receive
     //
-    // Receive messages that completed their journey around the ring.  Drop
-    // them.  Send an ACK for PARAMS_NULL.  The software side sends NULL last
-    // and waits for the ACK to know that all parameters have been received.
+    // Sink messages coming around the ring.
     //
     rule receive (True);
-  
         PARAM_DATA msg <- chain.receive_from_prev();
-
-        if (msg matches tagged PARAM_ID .id &&& state == PCS_Waiting)
-        begin
-            dynParam.nextParameter();
-            state <= PCS_Idle;
-        end
-  
     endrule
-
 endmodule

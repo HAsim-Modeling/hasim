@@ -17,6 +17,23 @@ class HASIM_TRACE_FLAG_CLASS : public COMMAND_SWITCH_STRING_CLASS
         bool ShowSwitch(char* buff);
 };
 
+class CONTEXTS_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
+{
+    private:
+        UINT32 numContexts;
+    public:
+        CONTEXTS_SWITCH_CLASS() : numContexts(1), COMMAND_SWITCH_INT_CLASS("workload-contexts") {}
+        ~CONTEXTS_SWITCH_CLASS() {}
+        UINT32 NumContexts() { return numContexts; }
+        
+        void ProcessSwitchInt(int arg) { numContexts = arg; }
+        bool ShowSwitch(char* buff)
+        {
+            strcpy(buff, "[--workload-contexts=<n>]        Number of contexts for this benchmark.");
+            return true;
+        }
+};
+
 typedef class CONNECTED_APPLICATION_CLASS* CONNECTED_APPLICATION;
 
 class CONNECTED_APPLICATION_CLASS
@@ -24,6 +41,7 @@ class CONNECTED_APPLICATION_CLASS
 
     private:
         HASIM_TRACE_FLAG_CLASS traceFlagParser;
+        CONTEXTS_SWITCH_CLASS contextsSwitch;
         MODEL_SERVICES modelServices;
         HASIM_FUNCP functionalPartition;
         HASIM_TIMEP timingPartition;

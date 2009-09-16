@@ -21273,3 +21273,33 @@ Directory modules/hasim/util/common
 - Simplify statistics vector length discovery protocol.
 - Convert to new getCmd/finishCmd standard virtual device protocol.
 - Eliminate many Bluespec scheduler warnings.
+
+----------
+pellauer    Date: Wed Sep 16 11:22:36 EDT 2009  CSN: CSN-hasim-700
+                  Wed Sep 16 15:22:36 UTC 2009
+
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          699 
+
+Directory modules/hasim/model
+ hasim-model.cpp           Locally Modified          699 
+ hasim-model.h             Locally Modified          699 
+
+Directory modules/hasim/functional-partition
+ functional-partition-default.h Locally Modified          699 
+
+Directory modules/hasim/timing-partition/single-chip
+ single-chip-timing-partition.h Locally Modified          699 
+
+
+* Benchmarks with multiple workload contexts now set a --workload-contexts flag.
+
+* We now check that --workload-contexts is less than the number of statically
+  avaialble functional partition contexts.
+
+* The timing partition now has a MapContexts() method which uses a
+  model-specific method to map the contexts onto cores and HW/threads. The
+  parameters to control this mapping are also model-specific.
+
+Michael P.

@@ -21324,3 +21324,16 @@ Directory modules/model
 
 
 Adding support for using Synplify to synthesize models 
+
+----------
+ruhler      Date: Thu Sep 17 16:43:33 EDT 2009  CSN: CSN-hasim-702
+                  Thu Sep 17 20:43:33 UTC 2009
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          701 
+
+Changed heartbeat to not cry deadlock for a thread that has never committed
+any instructions. This works around a problem with smt where it claimed
+an inactive thread was deadlocked.
+

@@ -30,7 +30,6 @@ Packagehint=platforms
 File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
 Packagehint=platforms
 
-
 [HW/SW Hybrid Project Foundation/Requires]
 fpgaenv=FPGA Environment
 application_env=Base Hybrid Application Environment

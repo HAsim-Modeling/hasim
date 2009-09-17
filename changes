@@ -21303,3 +21303,24 @@ Directory modules/hasim/timing-partition/single-chip
   parameters to control this mapping are also model-specific.
 
 Michael P.
+
+----------
+kfleming    Date: Thu Sep 17 13:42:56 KST 2009  CSN: CSN-hasim-701
+                  Thu Sep 17 04:42:56 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          700 
+ Templates.pm              Locally Modified          700 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          700 
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hybrid_htg.apm    Locally Modified          700 
+
+Directory modules/model
+ SCons.top.template        Locally Modified          700 
+
+
+Adding support for using Synplify to synthesize models 

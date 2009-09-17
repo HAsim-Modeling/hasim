@@ -344,7 +344,8 @@ sub configure_build_tree {
     generate_makefile_sub($model);
 
     # (4) generate files needex by Xilinx tools
-    HAsim::Xilinx::generate_files($model, $builddir);
+    HAsim::Xilinx::generate_files_xilinx($model, $builddir);
+    HAsim::Xilinx::generate_files_synplify($model, $builddir);
 
     # (5) make interface files
     make_iface($model);

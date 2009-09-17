@@ -52,38 +52,188 @@ sub find_all_files_with_suffix {
 }
 
 
+
+
 ############################################################
 # package variables
 
 our $tmp_xilinx_dir = ".xilinx";
 our $xilinx_config_dir = "config";
 
+
 ############################################################
-# generate_files:
-sub generate_files {
+# generate_files_xilinx:
+# create the Xilinx-tool specific build files
+sub generate_files_xilinx {
     my $model = shift;
     my $builddir = shift;
+    my $name = HAsim::Build::get_model_name($model);
 
     my $config_dir = HAsim::Util::path_append($builddir, $xilinx_config_dir);
     system("mkdir -p $config_dir");
 
-    generate_prj_file($model, $builddir);
-    generate_xst_file($model, $builddir);
-    generate_ut_file($model, $builddir);
+    # Files need to be opened here to share code with the synplify code path
+
+    # PRJ file
+
+    my $final_prj_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".prj");
+    open(PRJFILE, "> $final_prj_file") || return undef;
+
+    my $xilinx_processfile = sub {
+        my $module = shift;
+        my $stream = shift;
+        my $dir = shift;
+        my $file = shift;
+
+        my $xilinx_printfunc = sub {
+           my $stream = shift;
+           my $type = shift;
+           my $file = shift;
+
+           print $stream "$type work $file\r\n";
+        };
+
+        my $relative_file = HAsim::Util::path_append($dir, $file);
+        
+        #crunch this down.
+        if ($relative_file =~ /\.v$/ ) {
+            $xilinx_printfunc->($stream,"verilog", $relative_file);
+        }
+
+        if ($relative_file =~ /\.vhd$/) {
+            my $vhd_lib = get_vhdl_lib($module);
+            $xilinx_printfunc->($stream,"vhdl", $relative_file);
+        }
+    };
+
+
+
+    ## XST file
+
+    my $final_xst_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".xst");
+
+    open(XSTFILE, "> $final_xst_file") || return undef;
+
+    my @model_xst_files = find_all_files_with_suffix($model->modelroot(), ".xst");
+
+    ## UT File
+
+    my $final_ut_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".ut");
+
+    open(UTFILE, "> $final_ut_file") || return undef;
+
+    #Concatenate all found .ut files
+    
+    my @model_ut_files = find_all_files_with_suffix($model->modelroot(), ".ut");
+
+    ##PRJ Files    
+
+    my @model_prj_files = find_all_files_with_suffix($model->modelroot(), ".prj");
+
+
+
+    generate_prj_file($model, $builddir, *PRJFILE{IO}, $xilinx_processfile);
+    generate_concatenation_file($model, $builddir, *PRJFILE{IO}, @model_prj_files);
+    generate_concatenation_file($model, $builddir, *XSTFILE{IO}, @model_xst_files);
+    generate_concatenation_file($model, $builddir, *UTFILE{IO}, @model_ut_files);
     generate_download_file($model, $builddir);
 
 }
 
+
 ############################################################
-# generate_xst_file:
-sub generate_xst_file {
+# generate_files_synplify:
+# create the Synplify specific build files
+sub generate_files_synplify {
     my $model = shift;
     my $builddir = shift;
-    
     my $name = HAsim::Build::get_model_name($model);
-    my $final_xst_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".xst");
 
-    open(XSTFILE, "> $final_xst_file") || return undef;
+    my $config_dir = HAsim::Util::path_append($builddir, $xilinx_config_dir);
+    system("mkdir -p $config_dir");
+
+    # to generate the synplify tcl, we follow the same path as generate prj, 
+    # but with a capability to produce different outputs.
+    my $final_sdf_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".synplify.prj");
+
+    open(SDFFILE, "> $final_sdf_file") || return undef;
+   
+    my $synplify_processfile = sub {
+        my $module = shift;
+        my $stream = shift;
+        my $dir = shift;
+        my $file = shift;
+
+        my $synplify_printfunc = sub {
+            my $stream = shift;
+            my $type = shift;
+            my $file = shift;
+            #relative paths need to be filled out at make time
+            if(File::Spec->file_name_is_absolute($file)) { 
+                print $stream "add_file -$type $file\n";
+       	    } else {
+                print $stream "add_file -$type \"\$env(BUILD_DIR)/$file\"\n";
+	    }
+        };
+
+        my $relative_file = HAsim::Util::path_append($dir, $file);
+        
+        #crunch this down.
+        if ($relative_file =~ /\.v$/ ) {
+            $synplify_printfunc->($stream,"verilog", $relative_file);
+        }
+
+        if ($relative_file =~ /\.vhd$/) {
+            my $vhd_lib = get_vhdl_lib($module);
+            $synplify_printfunc->($stream,"vhdl", $relative_file);
+        }
+
+        if ($relative_file =~ /\.ngc$/) {
+            my $vhd_lib = get_vhdl_lib($module);
+            $synplify_printfunc->($stream,"ngc", $relative_file);
+        }
+    };
+
+    
+    # User SDFs
+
+    my @model_sdf_files = find_all_files_with_suffix($model->modelroot(), ".sdf");
+
+    # User SDC
+    my $final_sdc_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".sdc");
+    my @model_sdc_files = find_all_files_with_suffix($model->modelroot(), ".sdc");
+    open(SDCFILE, "> $final_sdc_file") || return undef;
+
+    # Notice that the synplify file accumulates more things than its xilinx 
+    # counterpart.
+
+    generate_prj_file($model, $builddir, *SDFFILE{IO}, $synplify_processfile);    
+    # add target of the global constraint file to the sdf
+    print SDFFILE "add_file -constraint \"\$env(BUILD_DIR)/config/$name.sdc\"\n";
+    print SDFFILE "set_option -constraint -clear\n";
+    print SDFFILE "set_option -constraint -enable \"\$env(BUILD_DIR)/config/$name.sdc\"\n";
+
+    # gather any user sdf files
+    generate_concatenation_file($model, $builddir, *SDFFILE{IO}, @model_sdf_files);   
+ 
+    #build global sdf file
+    generate_concatenation_file($model, $builddir, *SDCFILE{IO}, @model_sdc_files);   
+
+
+}
+
+############################################################
+# generate_concatentation_file:
+# Build a single file from a group of similar files, while applying a 
+# set of common substitutions to the files.
+
+sub generate_concatenation_file {
+    my $model = shift;
+    my $builddir = shift;
+    my $file = shift;
+    my @files = shift;    
+
+    my $name = HAsim::Build::get_model_name($model);
 
     my $replacements_r = HAsim::Util::empty_hash_ref();
 
@@ -95,16 +245,13 @@ sub generate_xst_file {
     my $bdir = bluespec_dir();
     HAsim::Util::hash_set($replacements_r,'@BLUESPECDIR@', $bdir);
 
-    #Concatenate all found .xst files
+    #Concatenate all found files
 
-    my @model_xst_files = find_all_files_with_suffix($model->modelroot(), ".xst");
-
-    foreach my $model_xst_file (@model_xst_files)
+    foreach my $single_file (@files)
     {
-      HAsim::Templates::do_template_replacements($model_xst_file, *XSTFILE{IO}, $replacements_r);
+      HAsim::Templates::do_template_replacements($single_file, $file, $replacements_r);
     }
     
-    close(XSTFILE);
 }
 
 ############################################################
@@ -113,10 +260,10 @@ sub generate_prj_file {
 
     my $model = shift;
     my $builddir = shift;
+    my $file = shift;
+    my $processfile = shift;
     my $name = HAsim::Build::get_model_name($model);
     
-    my $final_prj_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".prj");
-
     # Create replacements hash
 
     my $replacements_r = HAsim::Util::empty_hash_ref();
@@ -128,25 +275,7 @@ sub generate_prj_file {
     my $bdir = bluespec_dir();
     HAsim::Util::hash_set($replacements_r,'@BLUESPECDIR@', $bdir);
 
-    # Create final prj file
-
-    open(PRJFILE, "> $final_prj_file") || return undef;
-
-    # First add all local .prj files
-    # TBD: Make sure there is a matching .sdf file for each .prj
-
-    my @model_prj_files = find_all_files_with_suffix($model->modelroot(), ".prj");
-
-    foreach my $model_prj_file (@model_prj_files)
-    {
-      HAsim::Templates::do_template_replacements($model_prj_file, *PRJFILE{IO}, $replacements_r);
-    }
-
-    #now add all bsc-generated verilog files
-
-    __generate_prj_file($model->modelroot(),"hw",*PRJFILE{IO}, $replacements_r);
-
-    close(PRJFILE);
+    __generate_prj_file($model->modelroot(),"hw",$file, $replacements_r, $processfile);
 
     return 1;
 }
@@ -158,18 +287,19 @@ sub __generate_prj_file {
     my $parent_dir = shift;
     my $file = shift;
     my $replacements_r = shift;
+    my $processfile = shift;
 
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
 
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
-	__generate_prj_file($child,$my_dir,$file,$replacements_r);
+	__generate_prj_file($child,$my_dir,$file,$replacements_r, $processfile);
     }
 
     if (HAsim::Build::is_synthesis_boundary($module)) {
-	my $v_file = HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, HAsim::Build::get_wrapper($module) . ".v");
-	print $file "verilog work \"$v_file\"\n";
+	#my $v_file = HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, HAsim::Build::get_wrapper($module) . ".v");
+        $processfile->($module,$file,$my_dir . "/" . $HAsim::Bluespec::tmp_bsc_dir, HAsim::Build::get_wrapper($module) . ".v");
     }
 
     # Add includes of public and private bsc files
@@ -177,17 +307,10 @@ sub __generate_prj_file {
     push(@l, $module->private());
 
     #Add existing verilog/vhdl primitives unless a previous .prj file overrode this.
+    #use a hash of processors to append the appropriate files
 
     foreach my $f (@l) {
-      if ($f =~ /\.v$/) {
-          my $v_file = HAsim::Util::path_append($my_dir, $f);
-          print $file "verilog work \"$v_file\"\n";
-      }
-      if ($f =~ /\.vhd$/) {
-          my $vhd_lib = get_vhdl_lib($module);
-          my $vhd_file = HAsim::Util::path_append($my_dir, $f);
-          print $file "vhdl $vhd_lib \"$vhd_file\"\n";
-      }
+        $processfile->($module,$file,$my_dir,$f);
     }
 
     # Add files from %include --type=verilog
@@ -200,42 +323,13 @@ sub __generate_prj_file {
 	foreach my $v_file (@i) {
 	    # Don't include main in an include...
 	    next if ($v_file =~ /main.v$/);
-
-	    print $file "verilog work \"$v_file\"\n";
+            next if ($v_file =~ /ConstrainedRandom.v$/);
+            $processfile->($module,$file,"",$v_file);
 	}
     }
 	    
 }
 
-############################################################
-# generate_ut_file:
-sub generate_ut_file {
-    my $model = shift;
-    my $builddir = shift;
-    my $name = HAsim::Build::get_model_name($model);
-    
-    my $final_ut_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".ut");
-
-    open(UTFILE, "> $final_ut_file") || return undef;
-
-    #Concatenate all found .ut files
-    
-    my @model_ut_files = find_all_files_with_suffix($model->modelroot(), ".ut");
-    
-    my $replacements_r = HAsim::Util::empty_hash_ref();
-    
-    HAsim::Util::common_replacements($model, $replacements_r);
-    
-    HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$name);    
-
-    foreach my $model_ut_file (@model_ut_files)
-    {
-      HAsim::Templates::do_template_replacements($model_ut_file, *UTFILE{IO}, $replacements_r);
-    }
-
-    close(UTFILE);
-
-}
 
 ############################################################
 # generate_download_file:

@@ -54,13 +54,16 @@ sub do_template_replacements {
 #    }
 #    print "================================\n" if $debug;
 
+    # need to test for input file;
+    if(defined $template && -e $template) {
 
-    CORE::open(TEMPLATE, "< $template") || return undef;
+        CORE::open(TEMPLATE, "< $template") || return undef;
 
-    while (my $line = <TEMPLATE>) {
-	print $dstfile do_line_replacements($line,$replacements_r);
+        while (my $line = <TEMPLATE>) {
+  	    print $dstfile do_line_replacements($line,$replacements_r);
+        }
+        CORE::close(TEMPLATE);
     }
-    CORE::close(TEMPLATE);
 
     return 1;
 }

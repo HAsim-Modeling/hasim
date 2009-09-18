@@ -21337,3 +21337,19 @@ Changed heartbeat to not cry deadlock for a thread that has never committed
 any instructions. This works around a problem with smt where it claimed
 an inactive thread was deadlocked.
 
+
+----------
+mcadler     Date: Fri Sep 18 13:54:51 EDT 2009  CSN: CSN-hasim-703
+                  Fri Sep 18 17:54:51 UTC 2009
+
+
+Directory tools/scripts/bmark
+ setup-bmark               Locally Modified          702 
+
+Directory config/bm/bluespec
+ demos.cfx                 Locally Modified          702 
+
+--contexts=0 passed to setup-bmark now indicates that the workload has no
+contexts.  setup-bmark doesn't write out a value for the number of contexts
+to the config/env.sh file.  The run script responds by not passing a
+--workload-contexts parameter to the model.

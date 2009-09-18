@@ -147,7 +147,9 @@ while ($context < $numContexts) {
 # Store compare rules to config
 open(ENV, '>>config/env.sh') or die("Failed to open config/env.sh");
 print ENV "ISA=\"${isa}\"\n";
-print ENV "workloadContexts=\"${numContexts}\"\n";
+if ($numContexts != 0) {
+    print ENV "workloadContexts=\"${numContexts}\"\n";
+}
 if (defined($compare)) {
     print ENV "compare=\"${compare}\"\n";
 }
@@ -168,6 +170,7 @@ exit(0);
 sub Usage() {
     print STDERR "Usage: setup-bmark [--binary <name>]\n";
     print STDERR "                   [--compare <compare commands>]\n";
+    print STDERR "                   [--contexts <num workload contexts>]\n";
     print STDERR "                   [--data <tar file>]\n";
     print STDERR "                   [--group <name>]\n";
     print STDERR "                   [--isa <name>]\n";

@@ -68,6 +68,16 @@ class LISTPARAM_SWITCH_CLASS : public COMMAND_SWITCH_VOID_CLASS
         bool ShowSwitch(char* buff);
 };
 
+class HASIM_TRACE_FLAG_CLASS : public COMMAND_SWITCH_STRING_CLASS
+{
+    public:
+        HASIM_TRACE_FLAG_CLASS();
+        ~HASIM_TRACE_FLAG_CLASS() {}
+        
+        void ProcessSwitchString(char* arg);
+        bool ShowSwitch(char* buff);
+};
+
 typedef class GLOBAL_ARGS_CLASS* GLOBAL_ARGS;
 class GLOBAL_ARGS_CLASS
 {
@@ -95,6 +105,7 @@ class GLOBAL_ARGS_CLASS
     DYN_PARAM_SWITCH_CLASS dynParamSwitch;
     LISTPARAM_SWITCH_CLASS listParamSwitch;
 
+    HASIM_TRACE_FLAG_CLASS traceFlagParser;
 };
 
 #endif

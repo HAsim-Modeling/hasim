@@ -21353,3 +21353,67 @@ Directory config/bm/bluespec
 contexts.  setup-bmark doesn't write out a value for the number of contexts
 to the config/env.sh file.  The run script responds by not passing a
 --workload-contexts parameter to the model.
+
+----------
+mcadler     Date: Thu Sep 24 17:20:50 EDT 2009  CSN: CSN-hasim-704
+                  Thu Sep 24 21:20:50 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          703 
+
+Directory tools/scripts
+ hasim-xilinx-summary      Locally Modified          703 
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          703 
+
+Directory modules/hasim/model
+ hasim-model.cpp           Locally Modified          703 
+ hasim-model.h             Locally Modified          703 
+ hasim-trace-flag.cpp      Locally Removed           703 
+ hasim-model.awb           Locally Modified          703 
+
+Directory modules/hasim/controller/command_switches
+ default-switches.h        Locally Modified          703 
+ default-switches.cpp      Locally Modified          703 
+
+Directory modules/hasim/functional-partition
+ functional-partition-default.bsv Locally Added               - 
+ functional_partition_default.bsv Locally Removed           703 
+ functional-partition-null.awb Locally Added               0 
+ isa-emulator/             Locally Removed           703 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.cpp          Locally Removed           703 
+ isa-emulator.rrr          Locally Removed           703 
+ isa-emulator-datatypes.bsv Locally Removed           703 
+ isa-emulator.h            Locally Removed           703 
+ null/                     Locally Removed           703 
+
+Directory modules/hasim/functional-partition/isa-emulator/null
+ null-isa-emulator-impl.h  Locally Removed           703 
+ null-isa-emulator-impl.awb Locally Removed           703 
+
+Directory modules/hasim/functional-partition/isa-emulator
+ isa-emulator.awb          Locally Removed           703 
+
+Directory modules/hasim/functional-partition
+ functional-partition-default.awb Locally Added               - 
+ functional-partition-null.h Locally Added               0 
+ functional_partition_default.awb Locally Removed           703 
+ functional-partition-null.bsv Locally Added               0 
+ isa/                      Locally Added               0 
+
+Directory modules/hasim/functional-partition/isa
+ null-isa/                 Locally Added               0 
+
+Directory modules/hasim/functional-partition/isa/null-isa
+ null-isa.awb              Locally Added               0 
+
+- Don't emit a .download file in the pm/config directory when no download
+  scripts are defined.  (Xilinx.pm)
+- Teach hasim-xilinx-summary about Nallatech ACP clock patterns.
+- Move parsing of --tr option to default switches since it applies to any
+  hybrid application.
+- Add NULL ISA and ISA emulator modules.

@@ -104,7 +104,7 @@ if ($onlyCompare != 0) {
 if ($m5run != 0) {
     $mType = $MODEL_NONE;
 }
-elsif (-f "$config{modelDir}/$config{model}_hw.download") {
+elsif (-f "$config{modelDir}/$config{model}_hw.errinfo") {
     $mType = $MODEL_FPGA;
 }
 elsif (-f "$config{modelDir}/$config{model}_hw.exe") {
@@ -279,10 +279,15 @@ if ($mType == $MODEL_FPGA) {
     if (! defined($printCycle)) {
         # User didn't specify a cycle printing interval.  Pick one more reasonable
         # for HW.
-        $cmd .= " --pc=10000000";
+        if ($config{workload} ne "null") {
+            ## FIXME:  Not all models support --pc.
+            $cmd .= " --pc=10000000";
+        }
     }
 
     # Load FPGA
+    $ENV{FPGA_BIT_FILE} = "$config{modelDir}/.xilinx/$config{model}_par.bit";
+
     if (! $noProgram) {
         if (! $forceLoad && -s "$config{modelDir}/$config{model}_hw.errinfo") {
             print STDERR "FPGA bit file has errors:\n\n";
@@ -295,8 +300,10 @@ if ($mType == $MODEL_FPGA) {
             Exec("hasim-fpga-ctrl --reserve", "Failed to reserve FPGA");
         }
 
+        # Does a download script exist to program the FPGA?
+        my $needProgram = (-f "$config{modelDir}/config/$config{model}.download");
+
         # Is the FPGA already programmed with the correct bit file?
-        my $needProgram = 1;
         if (exists($config{signature})) {
             my $curSignature = `hasim-fpga-ctrl --getsignature`;
             chomp($curSignature);
@@ -308,7 +315,7 @@ if ($mType == $MODEL_FPGA) {
 
         if ($needProgram) {
             Exec("hasim-fpga-ctrl --program", "Failed to enter FPGA programming mode");
-            Exec("(cd $config{modelDir}; ./$config{model}_hw.download) 2>&1 | tee FPGA_programming.log | grep -e INFO:iMPACT -e Programmed -e Error", "Failed to program FPGA");
+            Exec("(cd $config{modelDir}; ./config/$config{model}.download) 2>&1 | tee FPGA_programming.log | grep -e INFO:iMPACT -e Programmed -e Error", "Failed to program FPGA");
             if (exists($config{signature})) {
                 Exec("hasim-fpga-ctrl --setsignature=$config{signature}", "Failed to set FPGA bit image signature");
             }

@@ -347,25 +347,26 @@ sub generate_download_file {
     my $apm = HAsim::Build::get_model_name($model);
     HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$apm);
 
-    open(DWNFILE, "> $download_file") || return undef;
-
-    print DWNFILE "#!/bin/sh\n";
-    print DWNFILE "impact -batch <<EOF\n";
-
-    #Concatenate all found .download files
-
+    # Concatenate all found .download files
     my @model_dwn_files = find_all_files_with_suffix($model->modelroot(), ".download");
+    if (@model_dwn_files) {
+        open(DWNFILE, "> $download_file") || return undef;
 
-    foreach my $model_dwn_file (@model_dwn_files)
-    {
-      HAsim::Templates::do_template_replacements($model_dwn_file, *DWNFILE{IO}, $replacements_r);
-    
+        print DWNFILE "#!/bin/sh\n";
+        print DWNFILE "impact -batch <<EOF\n";
+
+        foreach my $model_dwn_file (@model_dwn_files) {
+            HAsim::Templates::do_template_replacements($model_dwn_file, *DWNFILE{IO}, $replacements_r);
+        }
+
+        print DWNFILE "EOF\n";
+
+        close(DWNFILE);
+        chmod(0755, $download_file);
     }
-    
-    print DWNFILE "EOF\n";
-
-    close(DWNFILE);
-    chmod(0755, $download_file);
+    else {
+        unlink($download_file);
+    }
 }
 
 ############################################################

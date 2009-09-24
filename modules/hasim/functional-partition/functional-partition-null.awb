@@ -1,0 +1,9 @@
+%name NULL Functional Partition
+%desc NULL Functional Partition
+
+%provides hasim_funcp
+
+%attributes hasim funcp
+
+%public functional-partition-null.bsv
+%public functional-partition-null.h

@@ -66,8 +66,11 @@ while (<PAR>)
     $clock_type = 'PCIe ' if (/\| TS_.*phys_plat_pci/);
 
     ## ACP
-    $clock_type = 'Base ' if (/\|TS_fpga1_clk100 /);
-    $clock_type = 'Model' if (/\| TS_.*phys_plat_arch/);
+    # Really need to parse multiple lines to figure these out...
+    $clock_type = 'Base ' if (/\|m_vp_llpi_phys_plat_nallatech/);
+    $clock_type = 'LVDS ' if (/\| m_vp_llpi_phys_plat_nallatech_\|     10/);
+    $clock_type = 'RAM  ' if (/\| m_vp_llpi_phys_plat_nallatech_\|      5/);
+    $clock_type = 'Model' if (/\|  m_vp_llpi_phys_plat_nallatech/);
 
     if (defined($clock_type))
     {

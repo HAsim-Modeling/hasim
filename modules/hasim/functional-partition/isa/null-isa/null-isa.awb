@@ -1,0 +1,7 @@
+%name NULL ISA Definition
+%desc NULL ISA Definition
+%provides hasim_isa
+
+%attributes hasim template
+
+%param SIMULATED_ISA "NULL"            "Modeled ISA"

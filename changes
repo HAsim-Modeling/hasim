@@ -21417,3 +21417,18 @@ Directory modules/hasim/functional-partition/isa/null-isa
 - Move parsing of --tr option to default switches since it applies to any
   hybrid application.
 - Add NULL ISA and ISA emulator modules.
+
+----------
+mcadler     Date: Thu Sep 24 17:39:25 EDT 2009  CSN: CSN-hasim-705
+                  Thu Sep 24 21:39:25 UTC 2009
+
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid_nopvt_acp.apm Locally Added               0 
+ mem_test_hybrid_acp.apm   Locally Added               0 
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_acp_nallatech.apm Locally Added               0 
+ rrrtest_hybrid_acp_arches.apm Locally Added               0 
+
+Moved here from platform-acp.

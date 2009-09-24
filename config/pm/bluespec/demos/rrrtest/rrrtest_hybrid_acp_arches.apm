@@ -1,0 +1,47 @@
+
+[Global]
+SaveParameters=0
+Description=RRR Test and Benchmarking Program for ACP M2C (Arches)
+File=rrrtest_hybrid_acp_arches
+Version=2.1
+Name=RRR Test and Benchmarking Program for ACP M2C (Arches)
+Type=HAsim
+Class=Asim::Model
+DefaultBenchmark=0
+
+[Model]
+DefaultAttributes=hybrid htg bluespec
+model=HW/SW Hybrid Project Foundation
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/hasim-fpgaenv-acp-m2c.apm
+Packagehint=platform-acp
+
+
+
+
+
+
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
+Packagehint=hasim
+
+[Base Hybrid Application Environment]
+File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
+Packagehint=platforms
+
+[Bluespec RRR Test and Benchmarking Program]
+File=modules/bluespec/system/demos/rrrtest/rrrtest.awb
+Packagehint=hasim
+
+[HW/SW Hybrid Project Foundation/Requires]
+project_common=Hybrid Project Common Utilities
+fpgaenv=FPGA Environment
+application_env=Base Hybrid Application Environment
+
+[Base Hybrid Application Environment/Requires]
+hybrid_application=Bluespec RRR Test and Benchmarking Program

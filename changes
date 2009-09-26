@@ -21432,3 +21432,13 @@ Directory config/pm/bluespec/demos/rrrtest
  rrrtest_hybrid_acp_arches.apm Locally Added               0 
 
 Moved here from platform-acp.
+
+----------
+emer        Date: Sat Sep 26 08:27:38 EDT 2009  CSN: CSN-hasim-706
+                  Sat Sep 26 12:27:38 UTC 2009
+
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_htg.apm    Locally Modified          705 
+
+Changed platform to actually be htg and fixed WAIT_FOR_HARDWARE flag.

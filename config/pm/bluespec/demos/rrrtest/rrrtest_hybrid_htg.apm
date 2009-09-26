@@ -15,7 +15,7 @@ DefaultAttributes=rrrtest unconnected hybrid project htg
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-htg-v5-pcie.apm
 Packagehint=platforms
 
 [Bluespec RRR Test and Benchmarking Program]
@@ -30,7 +30,6 @@ Packagehint=platforms
 File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
 Packagehint=platforms
 
-
 [HW/SW Hybrid Project Foundation/Requires]
 fpgaenv=FPGA Environment
 application_env=Base Hybrid Application Environment
@@ -43,5 +42,6 @@ hybrid_application=Bluespec RRR Test and Benchmarking Program
 File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim
 
-[FPGA Environment/Params]
-MAKE_ALL_TARGET=bit
+
+[HW/SW Hybrid Project Foundation/Params]
+WAIT_FOR_HARDWARE=0

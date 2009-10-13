@@ -2,9 +2,9 @@ service COMMANDS
 {
     server hw (bsv, connection) <- sw (cpp, method)
     {
-        method Run       (in UINT32[32] payload);
-        method Pause     (in UINT32[32] payload);
-        method Sync      (in UINT32[32] payload);
+        method Run       (in UINT32[32] payload, out UINT8[8] ack);
+        method Pause     (in UINT32[32] payload, out UINT8[8] ack);
+        method Sync      (in UINT32[32] payload, out UINT8[8] ack);
 
         method EnableContext(in UINT32[32] ctxId);
         method DisableContext(in UINT32[32] ctxId);

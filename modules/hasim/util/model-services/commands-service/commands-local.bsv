@@ -48,6 +48,7 @@ typedef union tagged
     void         COM_StartSyncQuery; // Start checking if you're synchronized
     void         COM_SyncQuery;      // Is the system synchronized yet?
     void         COM_Step;           // Run exactly one model CC.
+    void         COM_Pause;          // Stop running
     CONTEXT_ID   COM_EnableContext;  // Enable context
     CONTEXT_ID   COM_DisableContext; // Disable context
 }
@@ -109,6 +110,9 @@ module [HASIM_MODULE] mkLocalController
     
     // Are we checking if the ports have quiesced?
     Reg#(Bool) checkBalanced <- mkReg(False);
+
+    // Signalled DONE to the software?
+    Reg#(Bool) signalDone <- mkReg(False);
 
     Vector#(t_NUM_INSTANCES, PulseWire)    startCycleW <- replicateM(mkPulseWire());
     Vector#(t_NUM_INSTANCES, PulseWire)      endCycleW <- replicateM(mkPulseWire());
@@ -278,6 +282,11 @@ module [HASIM_MODULE] mkLocalController
                 
             end
 
+            tagged COM_Pause:
+            begin
+                state <= LC_Idle;
+            end
+
             // TODO: should this be COM_EnableInstance??
             tagged COM_EnableContext .iid:
             begin
@@ -372,8 +381,12 @@ module [HASIM_MODULE] mkLocalController
     endmethod
 
     method Action instanceDone(INSTANCE_ID#(t_NUM_INSTANCES) iid, Bool pf);
-        // XXX this should be per-instance.
-        resps.send_to_next(tagged RESP_DoneRunning pf);
+        // XXX this should be per-instance.  For now only allowed to fire once.
+        if (! signalDone)
+        begin
+            resps.send_to_next(tagged RESP_DoneRunning pf);
+            signalDone <= True;
+        end
     endmethod
     
 endmodule

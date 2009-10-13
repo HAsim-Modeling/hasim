@@ -250,7 +250,14 @@ COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
     double usec;
     double elapsed;
 
-    // stop the clock
+    // Has an end already been requested?  Ignore multiple requests.
+    static bool simEnding = false;
+    if (simEnding) return;
+    simEnding = true;
+
+    // stop the simulation
+    Pause();
+
     gettimeofday(&end_time, NULL);
     sec = double(end_time.tv_sec) - double(startTime.tv_sec);
     usec = double(end_time.tv_usec) - double(startTime.tv_usec);

@@ -21442,3 +21442,24 @@ Directory config/pm/bluespec/demos/rrrtest
  rrrtest_hybrid_htg.apm    Locally Modified          705 
 
 Changed platform to actually be htg and fixed WAIT_FOR_HARDWARE flag.
+
+----------
+mcadler     Date: Tue Oct 13 07:25:48 EDT 2009  CSN: CSN-hasim-708
+                  Tue Oct 13 11:25:48 UTC 2009
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          707 
+ commands-local.bsv        Locally Modified          707 
+ commands-service.rrr      Locally Modified          707 
+ commands-service.bsv      Locally Modified          707 
+
+Directory modules/hasim/util/modellib
+ debug-file-multiplexed.bsv Locally Modified          707 
+
+- PAUSE control request now puts local controllers in IDLE state.
+- When simulation ends due to cycle count being hit the controller now
+  sends a PAUSE command before dumping statistics instead of tring to
+  extract statistics from a running model.
+- Add a timing model debug file module for a collection of instances all
+  sharing the same cycle.

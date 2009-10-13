@@ -116,17 +116,21 @@ module [HASIM_MODULE] mkCommandsService
 
     // finishCommands
 
-    // As the end of the Command chain, we simply dequeue Commands when
-    // they make their way back to us.
+    // As the end of the Command chain, we dequeue Commands when
+    // they make their way back to us and send an ACK back to the host.
     rule finishCommands (True);
         let cmd <- link_command.receive_from_prev();
+        case (cmd)
+            COM_RunProgram: serverStub.sendResponse_Run(?);
+            COM_Pause:      serverStub.sendResponse_Pause(?);
+        endcase
     endrule
 
 
     // getResponse
 
     // Get Responses from the Local Controllers, including when the program ends.
-    rule getResponse (state == CON_Running);
+    rule getResponse (True);
         let resp <- link_response.receive_from_prev();
 
         case (resp) matches
@@ -202,10 +206,10 @@ module [HASIM_MODULE] mkCommandsService
 
 
     // pause: pause simulation
-    rule pause (state == CON_Running);
+    rule pause (True);
         let dummy <- serverStub.acceptRequest_Pause();
-        // To Do: Sync and quiesce.
-        noAction;
+        // To Do: Sync and quiesce.  For now just sends a pause request.
+        link_command.send_to_next(COM_Pause);
     endrule
 
 
@@ -213,7 +217,7 @@ module [HASIM_MODULE] mkCommandsService
     (* descending_urgency = "sync, pause, disableContext, enableContext, run" *)
     rule sync (True);
         let dummy <- serverStub.acceptRequest_Sync();
-        noAction;
+        serverStub.sendResponse_Sync(?);
     endrule
 
 

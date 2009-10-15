@@ -34,6 +34,7 @@ import Vector::*;
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/common_services.bsh"
 `include "asim/provides/scratchpad_memory_service.bsh"
+`include "asim/provides/scratchpad_memory.bsh"
 
 `include "asim/dict/STREAMID.bsh"
 `include "asim/dict/STREAMS_ALUTEST.bsh"
@@ -123,7 +124,7 @@ module [CONNECTED_MODULE] mkSystem ();
 
     rule send_load_req(state == STATE_ready && addr != `LAST_ADDR);
 
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_LOAD addr);
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_READ addr);
         state <= STATE_awaitingResponse;
 
     endrule

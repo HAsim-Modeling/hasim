@@ -22,7 +22,7 @@
 
 
 #include "asim/syntax.h"
-#include "vmh-utils.h"
+#include "asim/provides/funcp_simulated_memory.h"
 #include "asim/provides/funcp_base_types.h"
 
 

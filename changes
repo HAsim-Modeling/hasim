@@ -21463,3 +21463,18 @@ Directory modules/hasim/util/modellib
   extract statistics from a running model.
 - Add a timing model debug file module for a collection of instances all
   sharing the same cycle.
+
+----------
+kfleming    Date: Thu Oct 15 16:25:21 KST 2009  CSN: CSN-hasim-709
+                  Thu Oct 15 07:25:21 UTC 2009
+
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
+ vmh-memory.h              Locally Modified          708 
+ vmh-memory.awb            Locally Modified          708 
+
+Directory modules/system/test/alu_test
+ alu-test.bsv              Locally Modified          708 
+
+
+Reworking file dependencies to have allow top level synthesis boundaries to actually build.

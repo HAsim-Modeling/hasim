@@ -21489,3 +21489,15 @@ Directory modules/hasim/util/platform-services/common-services/assertions-servic
 
 Use an unguarded FIFO in the enq side of assertQ to make the rules on the two
 ends of the FIFO truly independent.
+
+----------
+mdk         Date: Fri Oct 16 13:40:54 KST 2009  CSN: CSN-hasim-711
+                  Fri Oct 16 04:40:54 UTC 2009
+
+
+Directory modules/hasim/util/platform-services
+ platform-services-null.awb Locally Added               0 
+ platform-services-null.bsv Locally Added               0 
+
+
+it took some serious effort to get the null modules to run

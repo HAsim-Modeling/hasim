@@ -1,0 +1,11 @@
+%name NULL Platform Services
+%desc Translates Virtual Devices into Soft Connections
+
+%provides platform_services
+
+
+%attributes hasim
+
+%public platform-services-null.bsv
+
+%requires  starter_service

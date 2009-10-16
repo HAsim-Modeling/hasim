@@ -21478,3 +21478,14 @@ Directory modules/system/test/alu_test
 
 
 Reworking file dependencies to have allow top level synthesis boundaries to actually build.
+
+----------
+mcadler     Date: Thu Oct 15 21:13:24 EDT 2009  CSN: CSN-hasim-710
+                  Fri Oct 16 01:13:24 UTC 2009
+
+
+Directory modules/hasim/util/platform-services/common-services/assertions-service
+ assertions-local.bsv      Locally Modified          709 
+
+Use an unguarded FIFO in the enq side of assertQ to make the rules on the two
+ends of the FIFO truly independent.

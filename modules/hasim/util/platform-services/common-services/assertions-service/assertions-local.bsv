@@ -77,7 +77,7 @@ module [Connected_Module] mkAssertionNode#(ASSERTIONS_DICT_TYPE baseID)
     // are held in a single register until they can be sent out.  Thus 3 firings
     // of an assertion are guaranteed. Beyond that, multiple firings may be
     // merged into a single firing.
-    FIFOF#(ASSERTION_NODE_VECTOR) assertQ <- mkSizedFIFOF(2);
+    FIFOF#(ASSERTION_NODE_VECTOR) assertQ <- mkGFIFOF(True, False);
     Reg#(ASSERTION_NODE_VECTOR) pendingAsserts <- mkReg(replicate(ASSERT_NONE));
 
     // *********** Rules ***********

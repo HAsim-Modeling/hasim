@@ -21501,3 +21501,18 @@ Directory modules/hasim/util/platform-services
 
 
 it took some serious effort to get the null modules to run
+
+----------
+mcadler     Date: Mon Oct 19 13:27:19 EDT 2009  CSN: CSN-hasim-712
+                  Mon Oct 19 17:27:19 UTC 2009
+
+
+Directory modules/hasim/controller/command_switches
+ command-switches.h        Locally Modified          711 
+
+Directory modules/hasim/util/platform-services/common-services/stats-service
+ stats-local.bsv           Locally Modified          711 
+
+- Add a floating point argument class.
+- Add incrBy() to statistics instead of only allowing increment by 1.
+  The underlying counter already supported this, so implementation was trivial.

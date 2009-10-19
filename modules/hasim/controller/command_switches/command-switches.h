@@ -71,6 +71,22 @@ class COMMAND_SWITCH_INT_CLASS : public COMMAND_SWITCH_CLASS
         virtual void ProcessSwitchInt(int arg_val) {}
 };
 
+// COMMAND_SWITCH_FP
+
+// A command switch which must be accompanied by a floating point value.
+
+class COMMAND_SWITCH_FP_CLASS : public COMMAND_SWITCH_CLASS
+{
+
+    public:
+       
+        COMMAND_SWITCH_FP_CLASS(char* switch_name) : COMMAND_SWITCH_CLASS(switch_name, required_argument) {}
+        ~COMMAND_SWITCH_FP_CLASS() {}
+        
+        void ProcessSwitch(char *arg) { ProcessSwitchFp(atof(arg)); }
+        virtual void ProcessSwitchFp(double arg_val) {}
+};
+
 // COMMAND_SWITCH_STRING
 
 // A command switch which must be accompanied by a single string.

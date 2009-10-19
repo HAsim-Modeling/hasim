@@ -38,11 +38,21 @@ import Vector::*;
 // Single statistic
 interface STAT;
     method Action incr();
+
+    // Be careful with this method.  Incrementing by values too close to
+    // the `STATS_SIZE bit counter can cause data to be lost if the counter
+    // rises faster than it can be dumped to the host.
+    method Action incrBy(Bit#(`STATS_SIZE) amount);
 endinterface: STAT
 
 // Vector of multiple instances of the same statistics ID
 interface STAT_VECTOR#(type ni);
     method Action incr(Bit#(TLog#(ni)) iid);
+
+    // Be careful with this method.  Incrementing by values too close to
+    // the `STATS_SIZE bit counter can cause data to be lost if the counter
+    // rises faster than it can be dumped to the host.
+    method Action incrBy(Bit#(TLog#(ni)) iid, Bit#(`STATS_SIZE) amount);
 endinterface
 
 //
@@ -57,6 +67,7 @@ module [Connected_Module] mkStatCounter#(STATS_DICT_TYPE statID)
     STAT_VECTOR#(1) m <- mkStatCounter_MultiEntry(statID);
     
     method Action incr() = m.incr(0);
+    method Action incrBy(Bit#(`STATS_SIZE) amount) = m.incrBy(0, amount);
 endmodule
 
 
@@ -273,6 +284,14 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
             statPool[idx].up();
         end
     endmethod
+
+
+    method Action incrBy(Bit#(TLog#(n_STATS)) idx, Bit#(`STATS_SIZE) amount);
+        if (enabled)
+        begin
+            statPool[idx].upBy(amount);
+        end
+    endmethod
 endmodule
 
 
@@ -281,6 +300,10 @@ module [Connected_Module] mkStatCounterVec_Disabled#(Vector#(n_STATS, STATS_DICT
     (STAT_VECTOR#(n_STATS));
 
     method Action incr(Bit#(TLog#(n_STATS)) idx);
+        noAction;
+    endmethod
+
+    method Action incrBy(Bit#(TLog#(n_STATS)) idx, Bit#(`STATS_SIZE) amount);
         noAction;
     endmethod
 endmodule

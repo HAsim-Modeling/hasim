@@ -131,14 +131,8 @@ sub create_surrogate {
 
     my $module = $root->find_module_providing($metatype);
 
-    my $indent = "   ";
-
     my $synth_id = HAsim::Build::get_synthesis_boundary_name($module);
-
-    my $wrap_var = "wrap_" . $metatype;
-    my $mk_wrapper = make_module_name(make_wrapper_name($metatype));
-
-    my $log_file = logfile_name($filename, $metatype);
+    my $synth_instances = HAsim::Build::synthesis_instances($module);
 
     CORE::open(SURROGATE, "> $filename") or die("Failed to open $filename for writing");
     print SURROGATE "//\n";
@@ -147,23 +141,54 @@ sub create_surrogate {
     print SURROGATE "// Surrogate for $metatype\n";
 
     print SURROGATE "\n";
-    print SURROGATE "// Sizes from wrapper\n";
-    print SURROGATE "`include \"${metatype}/${metatype}_Wrapper_con_size.bsh\"\n";
-
-    print SURROGATE "\n";
     print SURROGATE "// These are well-known/required hasim modules\n";
     print SURROGATE "import soft_connections::*;\n";
     print SURROGATE "import smart_synth_boundaries::*;\n";
     print SURROGATE "\n";
 
-    print SURROGATE "import " . make_wrapper_name($metatype) . "::*;\n";
+    print SURROGATE "// Sizes from wrapper and module imports\n";
+    if ($synth_instances == 0) {
+        print SURROGATE "`include \"${metatype}/${metatype}_Wrapper_con_size.bsh\"\n";
+        print SURROGATE "import " . make_wrapper_name($metatype) . "::*;\n\n";
+    }
+    else {
+        for (my $i = 0; $i < $synth_instances; $i++) {
+            print SURROGATE "`include \"${metatype}/${metatype}_${i}_Wrapper_con_size.bsh\"\n";
+            print SURROGATE "import " . HAsim::Build::make_instance_wrapper_name($metatype, $i) . "::*;\n\n";
+        }
+    }
 
-    print SURROGATE "module [Connected_Module] $synth_id ();\n";    
-    print SURROGATE "$indent // 1. instantiate wrapper\n";
-    print SURROGATE "$indent WithConnections#(`CON_RECV_${metatype}, `CON_SEND_${metatype}) $wrap_var <- $mk_wrapper();\n";
+    print SURROGATE "module [Connected_Module] $synth_id ();\n\n";
 
-    print SURROGATE "$indent // 2. log sends & recvs\n";
-    my @conns = parse_dangling_connections($log_file);
+    if ($synth_instances == 0) {
+        my $logfile_name = logfile_name($filename, $metatype);
+        add_connections(SURROGATE, $logfile_name, $metatype);
+    }
+    else {
+        for (my $i = 0; $i < $synth_instances; $i++) {
+            my $logfile_name = instance_logfile_name($filename, $metatype, $i);
+            add_connections(SURROGATE, $logfile_name, $metatype . "_$i");
+        }
+    }
+
+    print SURROGATE "endmodule\n";
+
+    CORE::close(SURROGATE);
+}
+
+sub add_connections {
+    my $of = shift;
+    my $logfile_name = shift;
+    my $metatype = shift;
+
+    my $wrap_var = "wrap_" . $metatype;
+    my $mk_wrapper = make_module_name(make_wrapper_name($metatype));
+
+    print $of "    // 1. instantiate wrapper\n";
+    print $of "    WithConnections#(`CON_RECV_${metatype}, `CON_SEND_${metatype}) $wrap_var <- $mk_wrapper();\n";
+
+    print $of "    // 2. log sends & recvs\n";
+    my @conns = parse_dangling_connections($logfile_name);
     my @sends_exprs = ();
     my @recvs_exprs = ();
 
@@ -185,16 +210,12 @@ sub create_surrogate {
     my $sends_cons = get_cons_expr(@sends_exprs);
     my $recvs_cons = get_cons_expr(@recvs_exprs);
 
-    print SURROGATE "$indent let $sends_var = $sends_cons;\n";
-    print SURROGATE "$indent let $recvs_var = $recvs_cons;\n";
+    print $of "    let $sends_var = $sends_cons;\n";
+    print $of "    let $recvs_var = $recvs_cons;\n";
 
-    print SURROGATE "$indent addConnections($wrap_var, $sends_var, $recvs_var);\n";
-
-    print SURROGATE "endmodule\n";
-    print SURROGATE "\n";
-
-    CORE::close(SURROGATE);
+    print $of "    addConnections($wrap_var, $sends_var, $recvs_var);\n\n";
 }
+
 
 ############################################################
 # 
@@ -205,6 +226,18 @@ sub logfile_name {
     return dirname($ofile_name) .
         "/${metatype}/.bsc/" .
         make_wrapper_name($metatype) . ".log";
+}
+
+############################################################
+# 
+sub instance_logfile_name {
+    my $ofile_name = shift;
+    my $metatype = shift;
+    my $instance = shift;
+  
+    return dirname($ofile_name) .
+        "/${metatype}/.bsc/" .
+        HAsim::Build::make_instance_wrapper_name($metatype, $instance) . ".log";
 }
 
 ############################################################

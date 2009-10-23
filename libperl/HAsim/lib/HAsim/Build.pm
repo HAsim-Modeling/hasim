@@ -172,7 +172,7 @@ sub get_module_build_dir {
 }
 
 ############################################################
-# is_synthesis_boundary: reads ab Asim module's parameters to
+# is_synthesis_boundary: reads Asim module's parameters to
 #                        see if any Bluespec module is designated
 #                        a synthesis boundary
 sub is_synthesis_boundary {
@@ -184,6 +184,27 @@ sub is_synthesis_boundary {
 	    return 1;
 	}
     }
+    return 0;
+}
+
+############################################################
+# synthesis_instances: How many copies of a synthesis boundary
+#                      should be instantiated?
+#
+#                      Returns 0 if not specified.
+sub synthesis_instances {
+    my $module = shift;
+
+    my @p = ();
+    push(@p, $module->parameters());
+
+    foreach my $p (@p) {
+        if ($p->name() eq "SYNTH_INSTANCES") {
+            return int($p->value());
+        }
+    }
+
+    # Number of instances not specified
     return 0;
 }
 
@@ -221,6 +242,13 @@ sub make_wrapper_name {
     my $name = shift;
   
     return $name . "_Wrapper";
+}
+
+sub make_instance_wrapper_name {
+    my $name = shift;
+    my $instance = shift;
+  
+    return "${name}_${instance}_Wrapper";
 }
 
 sub make_module_name {

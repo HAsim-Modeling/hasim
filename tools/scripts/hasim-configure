@@ -470,7 +470,24 @@ sub __make_wrappers {
 
     my $my_dir = HAsim::Build::get_module_build_dir($module, $parent_dir);
     if (HAsim::Build::is_synthesis_boundary($module)) {
-        generate_wrapper($module, $my_dir, $isroot);
+        my $metatype = $module->provides();
+        my $synth_id = HAsim::Build::get_synthesis_boundary_name($module);
+
+        # How many instances of the synthesis boundary?
+        my $n_instances = HAsim::Build::synthesis_instances($module);
+        if ($n_instances == 0) {
+            # Not specified.  Just one with basic interface.
+            generate_wrapper($module, $my_dir, $isroot, $metatype, $synth_id);
+        }
+        else {
+            # Multiple instances
+            for (my $i = 0; $i < $n_instances; $i++) {
+                generate_wrapper($module, $my_dir, $isroot,
+                                 $metatype . "_$i",
+                                 $synth_id . "($i, $n_instances)");
+            }
+        }
+
         $isroot = 0;
     } 
     
@@ -715,6 +732,11 @@ sub __make_bsvfiles {
       
       print BSHFILE "`define $pname $pvalue\n";
 
+      ## Make SYNTH_INSTANCES globally useful
+      if ($pname eq "SYNTH_INSTANCES") {
+          print BSHFILE "`define " . uc($provides) . "_$pname $pvalue\n";
+      }
+
       ##
       ## This hack works around a weakness in Bluespec's preprocessor.  There
       ## is an ifdef test but no comparison (e.g. `if FOO = 0).  So we can at
@@ -808,6 +830,7 @@ sub __make_bsvfiles {
         ## and not software.  It triggers redefined symbol warnings,
         ## so don't emit in .h files.
         my $isSynthBoundary = ($pname eq "SYNTH_BOUNDARY");
+        my $isSynthInstances = ($pname eq "SYNTH_INSTANCES");
 
         if (! $p->isString() && ! $p->isInt()) {
             # Unknown parameter type
@@ -830,7 +853,13 @@ sub __make_bsvfiles {
 
             if (! $p->dynamic()) {
                 if (! $isSynthBoundary) {
-                    print HFILE "#define $pname $pvalue\n";
+                    if ($isSynthInstances) {
+                        # Make a unique name for SYNTH_INSTANCES
+                        print HFILE "#define " . uc($provides) . "_$pname $pvalue\n";
+                    }
+                    else {
+                        print HFILE "#define $pname $pvalue\n";
+                    }
                 }
                 $sim_config->print("Register(\"Param_${pname}\",\"parameter ${pname}\",${type},param_${pname},${pvalue})\n");
             }
@@ -1106,24 +1135,43 @@ sub __generate_makefile_hw_top {
 
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
     if (HAsim::Build::is_synthesis_boundary($module)) {
-	# @ALL_HW_DIRS@
-	HAsim::Util::hash_append($replacements_r,":",'@ALL_HW_DIRS@',$my_dir);
+        # @ALL_HW_DIRS@
+        HAsim::Util::hash_append($replacements_r,":",'@ALL_HW_DIRS@',$my_dir);
 
-	# @GEN_VS@ - bsc generated .v files
+        my $synth_instances = HAsim::Build::synthesis_instances($module);
+        my $fileroot = HAsim::Build::get_wrapper($module);
+          
+        if ($synth_instances == 0) {
+            # Unspecified SYNTH_INSTANCES.
 
-	my $fileroot = HAsim::Build::get_wrapper($module);
-	my $v_file = "$fileroot.v";
-	HAsim::Util::hash_append($replacements_r," ",'@GEN_VS@',HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, $v_file));
+            # @GEN_VS@ - bsc generated .v files
+            my $v_file = "$fileroot.v";
+            HAsim::Util::hash_append($replacements_r," ",'@GEN_VS@',HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, $v_file));
 
-	# @GEN_BAS@
-	my $ba_file = "$fileroot.ba";
-	HAsim::Util::hash_append($replacements_r," ",'@GEN_BAS@',HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, $ba_file));
-        
-	# @GEN_CXXS@ and @GEN_HS@ are local to the toplevel directory
-	my $cxx_file = "$fileroot.cxx";
-	HAsim::Util::hash_append($replacements_r," ",'@GEN_CXXS@',HAsim::Util::path_append($cxx_file));
-	my $h_file = "$fileroot.h";
-	HAsim::Util::hash_append($replacements_r," ",'@GEN_HS@',HAsim::Util::path_append($h_file));
+            # @GEN_BAS@
+            my $ba_file = "$fileroot.ba";
+            HAsim::Util::hash_append($replacements_r," ",'@GEN_BAS@',HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, $ba_file));
+        }
+        else {
+            # Multiple SYNTH_INSTANCES
+            for (my $i = 0; $i < $synth_instances; $i++) {
+                my $name = "mk_" . HAsim::Build::make_instance_wrapper_name($module->provides, $i);
+
+                # @GEN_VS@ - bsc generated .v files
+                my $v_file = "$name.v";
+                HAsim::Util::hash_append($replacements_r," ",'@GEN_VS@',HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, $v_file));
+
+                # @GEN_BAS@
+                my $ba_file = "$name.ba";
+                HAsim::Util::hash_append($replacements_r," ",'@GEN_BAS@',HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, $ba_file));
+            }
+        }
+
+        # @GEN_CXXS@ and @GEN_HS@ are local to the toplevel directory
+        my $cxx_file = "$fileroot.cxx";
+        HAsim::Util::hash_append($replacements_r," ",'@GEN_CXXS@',HAsim::Util::path_append($cxx_file));
+        my $h_file = "$fileroot.h";
+        HAsim::Util::hash_append($replacements_r," ",'@GEN_HS@',HAsim::Util::path_append($h_file));
         
         # @GEN_O_DEPS@ makes sure generated .cxx files are compiled in the right order
         my $my_o = HAsim::Build::make_module_name(HAsim::Build::make_wrapper_name($module->provides()));
@@ -1131,7 +1179,7 @@ sub __generate_makefile_hw_top {
         $parent =~ s/.*\///;
         if (!$is_root)
         {
-	  HAsim::Util::hash_append($replacements_r," ",'@GEN_O_DEPS@',"\n\$(TMP_BSC_DIR)/$parent.o: \$(TMP_BSC_DIR)/$my_o.o\n");
+          HAsim::Util::hash_append($replacements_r," ",'@GEN_O_DEPS@',"\n\$(TMP_BSC_DIR)/$parent.o: \$(TMP_BSC_DIR)/$my_o.o\n");
         }
     }
 
@@ -1325,9 +1373,23 @@ sub __generate_makefile_sub {
 	$dots_path =~ s/([^\/])+/../g;
 	HAsim::Util::hash_set($current_replacements_r,'@DOTS_TO_MAKEFILE_INCL@',$dots_path);
         
-        
-        my $my_wrap = HAsim::Build::make_wrapper_name($module->provides());
-        my $my_bsv = "${my_wrap}.bsv";
+        my $my_bsv;
+        my $n_instances = HAsim::Build::synthesis_instances($module);
+        if ($n_instances == 0) {
+            # Number of instances not specified.  Build just one.
+            my $my_wrap = HAsim::Build::make_wrapper_name($module->provides());
+            $my_bsv = "${my_wrap}.bsv";
+        }
+        else {
+            # Multiple instances.  Build all the wrapper files.
+            for (my $i = 0; $i < $n_instances; $i++) {
+                $my_bsv .= " " if ($i != 0);
+
+                my $my_wrap = HAsim::Build::make_instance_wrapper_name($module->provides(), $i);
+                $my_bsv .= "${my_wrap}.bsv";
+            }
+        }
+
         HAsim::Util::hash_append($current_replacements_r," ",'@WRAPPER_BSVS@',$my_bsv);
     }
 
@@ -1450,12 +1512,16 @@ sub generate_wrapper {
     my $module = shift;
     my $dirname = shift;
     my $isroot = shift;
+    my $metatype = shift;
+    my $synth_id = shift;
 
     my $usesmartsynthesisboundaries = 1;
 
-    my $metatype = $module->provides();
     my $wrapper = HAsim::Build::make_wrapper_name($metatype) . ".bsv";
     
+    my $synth_name = HAsim::Build::make_wrapper_name($metatype);
+    my $module_name = HAsim::Build::make_module_name($synth_name);
+
     unlink("$dirname/$wrapper");
     open(WRAPPER, "> $dirname/$wrapper") || return undef;
 
@@ -1510,9 +1576,6 @@ sub generate_wrapper {
     }
     print WRAPPER "\n";
 
-    my $synth_name = HAsim::Build::make_wrapper_name($metatype);
-    my $module_name = HAsim::Build::make_module_name($synth_name);
-
     if ($isroot) {
         print WRAPPER "\n";
         print WRAPPER "// Get defintion of TOP_LEVEL_WIRES\n";
@@ -1537,7 +1600,6 @@ sub generate_wrapper {
     print WRAPPER "\n";
 
     my @child_info_vars = ();
-    my $synth_id = HAsim::Build::get_synthesis_boundary_name($module);
     print WRAPPER "    // instantiate own module\n";
 
     if ( ! $usesmartsynthesisboundaries ) {

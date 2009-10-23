@@ -21525,3 +21525,35 @@ kfleming    Date: Fri Oct 23 02:56:21 EDT 2009  CSN: CSN-hasim-713
 Directory libperl/HAsim/lib/HAsim
  Xilinx.pm                 Locally Modified          712 
 
+
+----------
+mcadler     Date: Fri Oct 23 15:38:30 EDT 2009  CSN: CSN-hasim-714
+                  Fri Oct 23 19:38:30 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          713 
+ Build.pm                  Locally Modified          713 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          713 
+ hasim-connect             Locally Modified          713 
+
+Directory modules/hasim/util/platform-services/common-services/stats-service
+ stats-local.bsv           Locally Modified          713 
+ stats-service.bsv         Locally Modified          713 
+
+Directory modules/bluespec/common/soft_connections
+ soft_connections.awb      Locally Modified          713 
+
+- When a synthesis boundary is created check for the special parameter
+  SYNTH_INSTANCES.  When set, hasim-configure now builds the specified number
+  of instances of the soft connection.  This is useful when a structure
+  needs to be replicated.  The top level module of such a synthesis region
+  takes two Integer parameters:  the instance ID and the total number of
+  instances.  All instances are built in a shared subdirectory.
+
+- The statistics code can now create a logical array of statistics using
+  multiple ring stops.  Each statistics object must declare to which array
+  index it corresponds.  The software side of the statistics code sorts out
+  the mess, including verifying that each index is declared at most once.

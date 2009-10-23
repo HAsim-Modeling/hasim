@@ -300,8 +300,17 @@ sub __generate_prj_file {
     }
 
     if (HAsim::Build::is_synthesis_boundary($module)) {
-	#my $v_file = HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, HAsim::Build::get_wrapper($module) . ".v");
-        $processfile->($module,$file,$my_dir . "/" . $HAsim::Bluespec::tmp_bsc_dir, HAsim::Build::get_wrapper($module) . ".v");
+        my $n_instances = HAsim::Build::synthesis_instances($module);
+        if ($n_instances == 0) {
+            # Single instance
+            $processfile->($module,$file,$my_dir . "/" . $HAsim::Bluespec::tmp_bsc_dir, HAsim::Build::get_wrapper($module) . ".v");
+        }
+        else {
+            for (my $i = 0; $i < $n_instances; $i++) {
+                my $wrapper = "mk_" . HAsim::Build::make_instance_wrapper_name($module->provides(), $i);
+                $processfile->($module,$file,$my_dir . "/" . $HAsim::Bluespec::tmp_bsc_dir, "${wrapper}.v");
+            }
+        }
     }
 
     # Add includes of public and private bsc files

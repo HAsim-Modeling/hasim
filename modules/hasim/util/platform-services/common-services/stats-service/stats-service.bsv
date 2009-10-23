@@ -64,7 +64,9 @@ module [CONNECTED_MODULE] mkStatsService#(STATS statsDevice)
                 statsDevice.reportStat(stinfo.statID, stinfo.index, stinfo.value);
 
             tagged ST_LENGTH .stinfo: // A stat vector length
-                statsDevice.setVectorLength(stinfo.statID, stinfo.length);
+                statsDevice.setVectorLength(stinfo.statID,
+                                            stinfo.length,
+                                            stinfo.buildArray);
 
             tagged ST_GET_LENGTH:  // We're done getting lengths
                 statsDevice.finishCmd(STATS_CMD_GETLENGTHS);

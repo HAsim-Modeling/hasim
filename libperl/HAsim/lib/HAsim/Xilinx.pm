@@ -188,10 +188,12 @@ sub generate_files_synplify {
             $synplify_printfunc->($stream,"vhdl", $relative_file);
         }
 
-        if ($relative_file =~ /\.ngc$/) {
-            my $vhd_lib = get_vhdl_lib($module);
-            $synplify_printfunc->($stream,"ngc", $relative_file);
-        }
+        # Commented out until kfleming figures out how to use the 
+        # syn_black_box directive
+        #if ($relative_file =~ /\.ngc$/) {
+        #    my $vhd_lib = get_vhdl_lib($module);
+        #    $synplify_printfunc->($stream,"ngc", $relative_file);
+        #}
     };
 
     

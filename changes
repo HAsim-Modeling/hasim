@@ -21557,3 +21557,14 @@ Directory modules/bluespec/common/soft_connections
   multiple ring stops.  Each statistics object must declare to which array
   index it corresponds.  The software side of the statistics code sorts out
   the mess, including verifying that each index is declared at most once.
+
+----------
+kfleming    Date: Sat Oct 24 17:40:30 KST 2009  CSN: CSN-hasim-715
+                  Sat Oct 24 08:40:30 UTC 2009
+
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_htg-synplify.apm Locally Added               0 
+
+
+Adding a new synplify fpga environment, and some other minor bug fixes

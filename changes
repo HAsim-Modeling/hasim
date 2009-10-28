@@ -21568,3 +21568,17 @@ Directory config/pm/bluespec/demos/rrrtest
 
 
 Adding a new synplify fpga environment, and some other minor bug fixes
+
+----------
+pellauer    Date: Wed Oct 28 14:08:01 EDT 2009  CSN: CSN-hasim-716
+                  Wed Oct 28 18:08:01 UTC 2009
+
+
+Directory experiments/hasim/demos
+ demos.models              Locally Modified          715 
+
+
+Removing busted alutest from regressions. This doesn't seem like it's going to
+be fixed any time soon.
+
+Michael P.

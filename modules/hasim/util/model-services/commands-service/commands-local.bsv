@@ -453,3 +453,177 @@ module mkStageControllerVoid
     endmethod
 
 endmodule
+
+typedef enum
+{
+
+    MC_idle,
+    MC_running,
+    MC_stepping
+
+}
+MC_STATE deriving (Eq, Bits);
+
+// mkMultiplexController
+
+// This acts like a Local Controller in that it sits on the ring and listens for commands.
+// However it controls simulation serially by going through the instances in a round-robin fashion.
+// The boolean it returns tells the model when they have gone through every available instance.
+
+interface MULTIPLEX_CONTROLLER#(numeric type t_NUM_INSTANCES);
+    
+    method ActionValue#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Bool)) nextReadyInstance();
+    
+    method INSTANCE_ID#(t_NUM_INSTANCES) getActiveInstances();
+    
+    method Bool running();
+
+endinterface
+
+module [HASIM_MODULE] mkMultiplexController 
+    // parameters:
+    #(
+        Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls
+    )
+    // interface:
+        (MULTIPLEX_CONTROLLER#(t_NUM_INSTANCES));
+
+    // Local-controller-like communication.
+    Connection_Chain#(HASIM_COMMAND)  cmds  <- mkConnection_Chain(`RINGID_MODULE_COMMANDS);
+    Connection_Chain#(HASIM_RESPONSE) resps <- mkConnection_Chain(`RINGID_MODULE_RESPONSES);
+
+    Reg#(MC_STATE) state <- mkReg(MC_idle);
+
+    // Dynamic number of active instances.
+    // Note: all code in this module must work when activeInstances is not a power of 2.
+    Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) activeInstances <- mkReg(~0); // NOTE: Start at -1 for now. This means we assume at least one instance is active.
+    
+    // A counter of which virtual instance should be simulated next.
+    Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) curInstance <- mkReg(0);
+  
+
+    // ******* Rules *******
+
+    // dropDisabledInstance[1..N]
+  
+    // Rules to drop the initial tokens of disabled instances, so that they
+    // are not simulated dynamically.
+  
+    for (Integer x = 0; x < valueof(t_NUM_INPORTS); x = x + 1)
+    begin
+    
+        rule dropDisabledInstance (inctrls[x].nextReadyInstance() matches tagged Valid .iid &&&
+                                   !(iid <= activeInstances) &&&
+                                   state != MC_idle);
+            inctrls[x].drop();
+                    
+        endrule
+    
+    end
+
+    // shiftCommand
+    
+    // Get a command from the ring, process it, and send it on
+    // to the next guy in the ring.
+
+    (* descending_urgency="shiftCommand, shiftResponse" *)
+    rule shiftCommand (True);
+
+        let newcmd <- cmds.receive_from_prev();
+
+        case (newcmd) matches
+            tagged COM_RunProgram:
+            begin
+                state <= MC_running;
+            end
+
+            tagged COM_Synchronize:
+            begin
+                state <= MC_running;
+            end
+
+            tagged COM_StartSyncQuery:
+            begin
+                noAction;
+            end
+
+            tagged COM_SyncQuery:
+            begin
+                resps.send_to_next(RESP_Balanced);
+            end
+
+            tagged COM_Step:
+            begin
+
+                state <= MC_stepping;
+                
+            end
+
+            // TODO: should this be COM_EnableInstance??
+            tagged COM_EnableContext .iid:
+            begin
+                activeInstances <= activeInstances + 1;
+            end
+
+            // TODO: should this be COM_DisableInstance??
+            tagged COM_DisableContext .iid:
+            begin
+                activeInstances <= activeInstances - 1;
+            end
+        endcase
+
+        // send it on
+        cmds.send_to_next(newcmd);
+    endrule
+
+
+    // shiftResponse
+    
+    // Repsonses from other controllers are just passed on.
+
+    rule shiftResponse (True);
+        let resp <- resps.receive_from_prev();
+        // Just send it on
+        resps.send_to_next(resp);
+    endrule
+
+
+    // ******** Methods *******
+
+    // ready
+
+    method INSTANCE_ID#(t_NUM_INSTANCES) getActiveInstances();
+    
+        return activeInstances;
+    
+    endmethod
+    
+    method Bool running();
+    
+        return state != MC_idle;
+    
+    endmethod
+    
+    // nextReadyInstance
+    
+    // Return the next instance in a round-robin fashion.
+    // Boolean indicates if we have simulated every possible context.
+    
+    method ActionValue#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Bool)) nextReadyInstance() if (state != MC_idle);
+
+        let done = curInstance == activeInstances;
+        
+        curInstance <= (done) ? 0 : curInstance + 1;
+        
+        if (state == MC_stepping && done)
+        begin
+
+            state <= MC_idle;
+
+        end
+        
+        return tuple2(curInstance, done);
+
+    endmethod
+
+endmodule

@@ -269,99 +269,60 @@ endmodule
 module [HASIM_MODULE] mkPortStallSend_Multiplexed#(String s)
                        (PORT_STALL_SEND_MULTIPLEXED#(ni, a))
             provisos (Bits#(a, sa),
-                      Transmittable#(Tuple2#(INSTANCE_ID#(ni), Bool)),
+                      Transmittable#(Tuple2#(INSTANCE_ID#(ni), Maybe#(VOID))),
                       Transmittable#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))));
 
-    Connection_Receive#(Tuple2#(INSTANCE_ID#(ni), Bool)) creditFromQueue <- mkConnection_Receive(s + "__cred");
+    PORT_RECV_MULTIPLEXED#(ni, VOID) creditFromQueue <- mkPortRecvL0_Multiplexed(s + "__cred");
 
-    Connection_Send#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) enqToQueue <- mkConnection_Send(s + "__portDataEnq");
+    PORT_SEND_MULTIPLEXED#(ni, a) enqToQueue <- mkPortSend_Multiplexed(s + "__portDataEnq");
 
     method Action doEnq (INSTANCE_ID#(ni) iid, a x);
 
-        enqToQueue.send(tuple2(iid, tagged Valid x));
+        enqToQueue.send(iid, tagged Valid x);
 
     endmethod
 
     method Action noEnq(INSTANCE_ID#(ni) iid);
 
-        enqToQueue.send(tuple2(iid, tagged Invalid));
+        enqToQueue.send(iid, tagged Invalid);
 
     endmethod
 
     method ActionValue#(Bool) canEnq(INSTANCE_ID#(ni) iid);
 
-        creditFromQueue.deq();        
-        match {.*, .b} = creditFromQueue.receive();
-        return b;
+        let m_cred <- creditFromQueue.receive(iid);
+        return isValid(m_cred);
 
     endmethod
 
     interface INSTANCE_CONTROL_IN_OUT ctrl;
 
-        interface INSTANCE_CONTROL_IN in;
-        
-            method Bool empty() = !creditFromQueue.notEmpty(); // This is that we have a credit token.
-            method Bool balanced() = True;
-            method Bool light() = False;
-            
-            method Maybe#(INSTANCE_ID#(ni)) nextReadyInstance();
+        // Note: we purposely don't enq into enqToQueue on a drop.
+        interface INSTANCE_CONTROL_IN in = creditFromQueue.ctrl;
 
-                if (creditFromQueue.notEmpty())
-                begin
-
-                    match {.iid, .*} = creditFromQueue.receive();
-                    return tagged Valid iid;
-
-                end
-                else
-                begin
-
-                    return tagged Invalid;
-
-                end
-
-            endmethod
-
-            method Action drop();
-
-                creditFromQueue.deq();
-
-                // Note: we purposely don't write enqToQueue here, since it's a drop.
-                
-            endmethod
-        
-        endinterface
-        
-        interface INSTANCE_CONTROL_OUT out;
-            
-            method Bool full() = !enqToQueue.notFull(); // This is if the output port is full.
-            method Bool balanced() = True;
-            method Bool heavy() = False;
-        
-        endinterface
+        interface INSTANCE_CONTROL_OUT out = enqToQueue.ctrl;
 
     endinterface
 
-
-  
 endmodule
 
 module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
         (PORT_STALL_RECV_MULTIPLEXED#(ni, a))
             provisos (Bits#(a, sa),
-                      Transmittable#(Tuple2#(INSTANCE_ID#(ni), Bool)),
+                      Transmittable#(Tuple2#(INSTANCE_ID#(ni), Maybe#(VOID))),
                       Transmittable#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))));
 
-    Connection_Send#(Tuple2#(INSTANCE_ID#(ni), Bool)) creditToProducer <- mkConnection_Send(s + "__cred");
+    PORT_SEND_MULTIPLEXED#(ni, VOID) creditToProducer <- mkPortSend_Multiplexed(s + "__cred");
 
-    Connection_Receive#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) enqFromProducer <- mkConnection_Receive(s + "__portDataEnq");
+    PORT_RECV_MULTIPLEXED#(ni, a) enqFromProducer <- mkPortRecvL0_Multiplexed(s + "__portDataEnq");
 
     // We use these like ports which are self-contained.
-    FIFOF#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) firstToConsumer <- mkFIFOF();
-    FIFOF#(Bool) deqFromConsumer <- mkFIFOF();
+    let buffering = valueof(ni) + 1;
+    FIFOF#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) firstToConsumer <- mkSizedFIFOF(buffering);
+    FIFOF#(Bool) deqFromConsumer <- mkSizedFIFOF(buffering);
 
-    FIFO#(INSTANCE_ID#(ni)) stage1Ctrl <- mkFIFO();
-    FIFO#(INSTANCE_ID#(ni)) stage2Ctrl <- mkFIFO();
+    FIFO#(INSTANCE_ID#(ni)) stage1Ctrl <- mkSizedFIFO(buffering);
+    FIFO#(INSTANCE_ID#(ni)) stage2Ctrl <- mkSizedFIFO(buffering);
 
     Vector#(ni, FIFOF#(a)) fifos <- replicateM(mkUGSizedFIFOF(2));
     
@@ -397,15 +358,16 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
         end
 
         // Send a credit if the particular FIFO is not full.
-        creditToProducer.send(tuple2(iid, (fifos[iid].notFull)));
+        let cred = (fifos[iid].notFull()) ? tagged Valid (?) : tagged Invalid;
+        creditToProducer.send(iid, cred);
         
     endrule
 
-    rule stage2_deqAndCredit (!initializing);
+    rule stage2_deqAndCredit (enqFromProducer.ctrl.nextReadyInstance() matches tagged Valid .iid &&& !initializing);
  
         // First deal with enqueues.
-        match {.iid, .m_enq} = enqFromProducer.receive();
-        enqFromProducer.deq(); // Could add an iid sanity check here.
+        let m_enq <- enqFromProducer.receive(iid);
+        // Could add an iid sanity check here.
         
         if (m_enq matches tagged Valid .val)
         begin

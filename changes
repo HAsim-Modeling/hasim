@@ -21582,3 +21582,24 @@ Removing busted alutest from regressions. This doesn't seem like it's going to
 be fixed any time soon.
 
 Michael P.
+
+----------
+pellauer    Date: Tue Nov  3 11:07:36 EST 2009  CSN: CSN-hasim-717
+                  Tue Nov  3 16:07:36 UTC 2009
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          716 
+
+Directory modules/hasim/util/modellib
+ stall-ports.bsv           Locally Modified          716 
+
+
+* Added a "multiplex controller" alternative to a local controller. This is
+  something that can be used to manage serially multiplexed things like the
+  crossbar interconnect.
+  
+* Multi-context Stallports were incorrectly sizing their connections. Buffer
+  size was fixed at 2, where as it should have been NUM_INSTANCES + 1.
+
+Michael P.

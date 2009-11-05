@@ -407,6 +407,7 @@ sub make_dirs {
 
     my $dir = HAsim::Util::path_append($builddir,$HAsim::Xilinx::tmp_xilinx_dir);
     $sys_status = system("mkdir -p " . $dir);
+    $sys_status = system("mkdir -p " . $dir . "/xst_hdp");
 
     my $bdir = HAsim::Util::path_append($builddir, $HAsim::Bluespec::tmp_bsc_dir);
     $sys_status |= system("mkdir -p " . $bdir);
@@ -1144,6 +1145,14 @@ sub __generate_makefile_hw_top {
         if ($synth_instances == 0) {
             # Unspecified SYNTH_INSTANCES.
 
+            # @SYNTH_WRAPPERS@
+            if ($is_root) {
+                HAsim::Util::hash_set($replacements_r, '@SYNTH_TOP@', $fileroot);
+            }
+            else {
+                HAsim::Util::hash_append($replacements_r," ",'@SYNTH_WRAPPERS@', $fileroot);
+            }
+
             # @GEN_VS@ - bsc generated .v files
             my $v_file = "$fileroot.v";
             HAsim::Util::hash_append($replacements_r," ",'@GEN_VS@',HAsim::Util::path_append($my_dir, $HAsim::Bluespec::tmp_bsc_dir, $v_file));
@@ -1156,6 +1165,9 @@ sub __generate_makefile_hw_top {
             # Multiple SYNTH_INSTANCES
             for (my $i = 0; $i < $synth_instances; $i++) {
                 my $name = "mk_" . HAsim::Build::make_instance_wrapper_name($module->provides, $i);
+
+                # @SYNTH_WRAPPERS@
+                HAsim::Util::hash_append($replacements_r," ",'@SYNTH_WRAPPERS@', $name);
 
                 # @GEN_VS@ - bsc generated .v files
                 my $v_file = "$name.v";

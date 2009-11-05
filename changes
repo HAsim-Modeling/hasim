@@ -21603,3 +21603,25 @@ Directory modules/hasim/util/modellib
   size was fixed at 2, where as it should have been NUM_INSTANCES + 1.
 
 Michael P.
+
+----------
+mcadler     Date: Wed Nov  4 20:25:53 EST 2009  CSN: CSN-hasim-718
+                  Thu Nov  5 01:25:53 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          717 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          717 
+ hasim-gen-black-box       Locally Added               0 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_acp_synth.apm Locally Added               0 
+
+Generate a build tree in which each region can be synthesized by Xst
+independently, treating all others as black boxes.
+
+hasim-gen-black-box takes a Bluespec generated Verilog wrapper and turns
+it into a black box Verilog wrapper.  The script is really simple.  If
+Bluespec Verilog generation changes it will have to be updated.

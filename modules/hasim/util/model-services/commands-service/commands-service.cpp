@@ -245,11 +245,6 @@ COMMANDS_SERVER_CLASS::ModelHeartbeat(
 void
 COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
 {
-    struct timeval end_time;
-    double sec;
-    double usec;
-    double elapsed;
-
     // Has an end already been requested?  Ignore multiple requests.
     static bool simEnding = false;
     if (simEnding) return;
@@ -258,10 +253,7 @@ COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
     // stop the simulation
     Pause();
 
-    gettimeofday(&end_time, NULL);
-    sec = double(end_time.tv_sec) - double(startTime.tv_sec);
-    usec = double(end_time.tv_usec) - double(startTime.tv_usec);
-    elapsed = sec + usec/1000000;
+    gettimeofday(&endTime, NULL);
 
     UINT64 allModelCycles = 0;
     UINT64 allInstrCommits = 0;
@@ -320,10 +312,28 @@ COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
     STATS_DEVICE_SERVER_CLASS::GetInstance()->EmitFile();
     cout << "done." << endl;
 
-    printf("        elapsed (wall-clock) time = %.4f seconds.\n", elapsed);
-
     CallbackExit(exitValue);
 }
+
+//
+// Called as a side-effect of calling the stats device EmitFile...
+//
+void
+COMMANDS_SERVER_CLASS::EmitStats(ofstream &statsFile)
+{
+    double sec;
+    double usec;
+    double elapsed;
+
+    sec = double(endTime.tv_sec) - double(startTime.tv_sec);
+    usec = double(endTime.tv_usec) - double(startTime.tv_usec);
+    elapsed = sec + usec/1000000;
+
+    statsFile << "\"Simulator: Wall time (sec.)\",SIM_WALL_TIME_SEC,"
+              << elapsed
+              << endl;
+}
+
 
 // ========================================================================
 //

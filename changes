@@ -21625,3 +21625,14 @@ independently, treating all others as black boxes.
 hasim-gen-black-box takes a Bluespec generated Verilog wrapper and turns
 it into a black box Verilog wrapper.  The script is really simple.  If
 Bluespec Verilog generation changes it will have to be updated.
+
+----------
+mcadler     Date: Fri Nov  6 14:34:11 EST 2009  CSN: CSN-hasim-719
+                  Fri Nov  6 19:34:11 UTC 2009
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          717 
+ commands-service.h        Locally Modified          717 
+
+Emit simulator run time to the stats file.

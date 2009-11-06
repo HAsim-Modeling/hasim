@@ -28,6 +28,7 @@
 #include "asim/provides/rrr.h"
 #include "asim/provides/command_switches.h"
 #include "asim/provides/hasim_common.h"
+#include "asim/provides/stats_device.h"
 
 #include "asim/rrr/client_stub_COMMANDS.h"
 
@@ -117,7 +118,8 @@ class HW_THREAD_HEARTBEAT_CLASS
 
 class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
                              public PLATFORMS_MODULE_CLASS,
-                             public TRACEABLE_CLASS
+                             public TRACEABLE_CLASS,
+                             public STATS_EMITTER_CLASS
 {
   private:
     // self-instantiation
@@ -150,8 +152,12 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     
     // wall-clock time tracking
     struct timeval startTime;
+    struct timeval endTime;
 
     void EndSimulation(int exitVal);
+
+    // Virtual function for STATS_EMITTER_CLASS
+    void EmitStats(ofstream &statsFile);
 
   public:
     COMMANDS_SERVER_CLASS();

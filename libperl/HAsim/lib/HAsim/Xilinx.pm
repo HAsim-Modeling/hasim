@@ -231,7 +231,7 @@ sub generate_files_synplify {
 sub generate_concatenation_file {
     my $model = shift;
     my $name = shift;
-    my $builddir = shift;
+    my $currentdir = shift;
     my $file = shift;
     my @files = shift;    
 
@@ -241,6 +241,7 @@ sub generate_concatenation_file {
     
     HAsim::Util::hash_set($replacements_r,'@APM_NAME@',$name);
     HAsim::Util::hash_set($replacements_r,'@TMP_XILINX_DIR@',$tmp_xilinx_dir);
+    HAsim::Util::hash_set($replacements_r,'@HW_BUILD_DIR@', HAsim::Util::path_append($model->build_dir(),"hw",$currentdir));
 
     my $bdir = bluespec_dir();
     HAsim::Util::hash_set($replacements_r,'@BLUESPECDIR@', $bdir);
@@ -289,8 +290,8 @@ sub __generate_prj_file {
     my $replacements_r = shift;
     my $processfile = shift;
 
-    my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
-
+    my $my_dir = HAsim::Build::get_module_build_dir($module, $parent_dir);
+   
     # recurse
     HAsim::Build::check_submodules_defined($module);
     foreach my $child ($module->submodules()) {
@@ -419,15 +420,17 @@ sub gen_xst_synth_files {
         if ($n_instances == 0) {
             # Single instance
             my $wrapper = HAsim::Build::get_wrapper($module);
+            
             open(XSTFILE, "> ${config_path}/${wrapper}.xst") || return undef;
-            generate_concatenation_file($model, $wrapper, $builddir, *XSTFILE{IO}, @model_xst_files);
+            
+            generate_concatenation_file($model, $wrapper,  HAsim::Build::get_module_build_dir_from_module($module), *XSTFILE{IO}, @model_xst_files);
             close(XSTFILE);
         }
         else {
             for (my $i = 0; $i < $n_instances; $i++) {
                 my $wrapper = "mk_" . HAsim::Build::make_instance_wrapper_name($module->provides(), $i);
                 open(XSTFILE, "> ${config_path}/${wrapper}.xst") || return undef;
-                generate_concatenation_file($model, $wrapper, $builddir, *XSTFILE{IO}, @model_xst_files);
+                generate_concatenation_file($model, $wrapper, HAsim::Build::get_module_build_dir_from_module($module), *XSTFILE{IO}, @model_xst_files);
                 close(XSTFILE);
             }
         }

@@ -94,7 +94,7 @@ sub singletype
     }
     else
     {
-        die "singletype called on arglist with != 1 argument";
+        return "void";
     }
 }
 

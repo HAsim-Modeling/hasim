@@ -172,6 +172,27 @@ sub get_module_build_dir {
 }
 
 ############################################################
+# get_module_build_dir: identify module's directory in the
+#                       build tree (given parent directory path)
+sub get_module_build_dir_from_module {
+    my $module = shift;
+    my $my_dir = "";
+
+    #recurse
+    if(!$module->isroot()) {
+      $my_dir = get_module_build_dir($module->parent());
+    }
+
+    if (is_synthesis_boundary($module)) {
+	$my_dir = HAsim::Util::path_append($my_dir, $module->provides());
+    } 
+
+    return $my_dir;
+}
+
+
+
+############################################################
 # is_synthesis_boundary: reads Asim module's parameters to
 #                        see if any Bluespec module is designated
 #                        a synthesis boundary

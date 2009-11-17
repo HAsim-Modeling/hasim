@@ -21652,3 +21652,13 @@ Directory libperl/HAsim/lib/HAsim
 
 
 Added support for client operations with no arguments.
+
+----------
+kfleming    Date: Tue Nov 17 01:52:24 EST 2009  CSN: CSN-hasim-723
+                  Tue Nov 17 06:52:24 UTC 2009
+
+
+Directory modules/model
+ SCons.top.template        Locally Modified          722 
+
+Fixed bug in SCons where top level build was not being forced in single synthesis boundary designs

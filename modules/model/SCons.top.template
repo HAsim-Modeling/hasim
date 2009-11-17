@@ -375,14 +375,14 @@ FPGA_PART_XILINX = env['DEFS']['FPGA_PART_XILINX']
 if(env['ENV'].has_key('USE_SYNPLIFY')):
     top_netlist = env.Command(
     XILINX_APM_NAME + '.edf',
-    wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' ') + ['config/' + APM_NAME + '.synplify.prj'],
+    [env['DEFS']['ROOT_DIR_HW'] + '/' + env['DEFS']['ROOT_DIR_MODEL'] + '/' + env['DEFS']['TMP_BSC_DIR'] + '/' + env['DEFS']['SYNTH_TOP'] + '.v'] + wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' ') + ['config/' + APM_NAME + '.synplify.prj'],
     [ Delete(XILINX_APM_NAME + '.srp'),
       Delete(XILINX_APM_NAME + '_xst.xrpt'),
       'synplify_pro -batch config/' + APM_NAME + '.synplify.prj' ])
 else:
     top_netlist = env.Command(
     XILINX_APM_NAME + '.ngc',
-    wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' ') + ['config/' + APM_NAME + '.xst'],
+    [env['DEFS']['ROOT_DIR_HW'] + '/' + env['DEFS']['ROOT_DIR_MODEL'] + '/' + env['DEFS']['TMP_BSC_DIR'] + '/' + env['DEFS']['SYNTH_TOP'] + '.v'] + wrapper_v + clean_split(env['DEFS']['GIVEN_VS'], sep = ' ') + ['config/' + APM_NAME + '.xst'],
     [ Delete(XILINX_APM_NAME + '.srp'),
       Delete(XILINX_APM_NAME + '_xst.xrpt'),
       'xst -ifn config/' + APM_NAME + '.xst -ofn ' + XILINX_APM_NAME + '.srp' ])

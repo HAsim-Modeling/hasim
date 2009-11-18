@@ -21662,3 +21662,18 @@ Directory modules/model
  SCons.top.template        Locally Modified          722 
 
 Fixed bug in SCons where top level build was not being forced in single synthesis boundary designs
+----------
+mcadler     Date: Wed Nov 18 11:46:26 EST 2009  CSN: CSN-hasim-724
+                  Wed Nov 18 16:46:26 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim
+ Util.pm                   Locally Modified          723 
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest.cpp               Locally Modified          723 
+ rrrtest-server.cpp        Locally Modified          723 
+ rrrtest.awb               Locally Modified          723 
+
+- Fix a warning an hasim-configure (Util.pm)
+- Make TEST_LENGTH a dynamic parameter in rrrtest

@@ -21,7 +21,7 @@ sub path_append {
 
     my $result = "";
     foreach my $part (@parts) {
-	if ($result eq "") {
+	if (! defined($result) || ($result eq "")) {
 	    $result = $part;
 	} elsif ($part eq "") {
 	    # skip this part

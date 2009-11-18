@@ -30,6 +30,7 @@
 #include <iostream>
 #include <iomanip>
 
+#include "asim/syntax.h"
 #include "asim/rrr/service_ids.h"
 #include "asim/provides/hybrid_application.h"
 #include "asim/ioformat.h"
@@ -60,7 +61,7 @@ void
 HYBRID_APPLICATION_CLASS::Main()
 {
     UINT64 cycles;
-    UINT64 test_length  = 100; // FIXME: take this from a dynamic parameter
+    UINT64 test_length  = TEST_LENGTH;
     UINT64 fpga_freq    = 50;    // FIXME: take this from a dynamic parameter
     UINT64 payload_bits = 64;    // FIXME: no idea how
 

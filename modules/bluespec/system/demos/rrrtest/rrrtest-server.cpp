@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iomanip>
 
+#include "asim/syntax.h"
 #include "asim/rrr/service_ids.h"
 #include "asim/provides/hybrid_application.h"
 

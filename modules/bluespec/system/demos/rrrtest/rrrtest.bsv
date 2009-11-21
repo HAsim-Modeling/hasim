@@ -33,7 +33,8 @@
 typedef enum 
 {
     STATE_idle, 
-    STATE_f2hOneWay,
+    STATE_f2hOneWay1,
+    STATE_f2hOneWay8,
     STATE_f2hTwoWayReq,
     STATE_f2hTwoWayResp,
     STATE_f2hTwoWayPipe
@@ -59,7 +60,7 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
     Reg#(Bit#(64)) outstandingResponses <- mkReg(0);
     
     // test payload
-    PAYLOAD payload = '1;
+    PAYLOAD payload = 'h12345678abcdef2b;
     
     // state
     Reg#(STATE) state <- mkReg(STATE_idle);
@@ -84,23 +85,35 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
     rule start_f2h_oneway_test (state == STATE_idle);
         
         // accept request from host
-        let test_length <- serverStub.acceptRequest_F2HOneWayTest();
+        let test <- serverStub.acceptRequest_F2HOneWayTest();
         
         // start the clock and let it rip
         timer      <= curTick;
-        testLength <= test_length;
-        state      <= STATE_f2hOneWay;
+        testLength <= test.length;
+        if (test.which == 0)
+            state <= STATE_f2hOneWay1;
+        else
+            state <= STATE_f2hOneWay8;
         
     endrule
     
-    rule do_f2h_oneway_test (state == STATE_f2hOneWay && testLength != 0);
+    rule do_f2h_oneway_test1 (state == STATE_f2hOneWay1 && testLength != 0);
         
-        clientStub.makeRequest_F2HOneWayMsg(payload);
+        clientStub.makeRequest_F2HOneWayMsg1(payload);
         testLength <= testLength - 1;
         
     endrule
     
-    rule finish_f2h_oneway_test (state == STATE_f2hOneWay && testLength == 0);
+    rule do_f2h_oneway_test8 (state == STATE_f2hOneWay8 && testLength != 0);
+        
+        clientStub.makeRequest_F2HOneWayMsg8(1, 2, 3, 4, 5, 6, 7, 8);
+        testLength <= testLength - 1;
+        
+    endrule
+    
+    rule finish_f2h_oneway_test (((state == STATE_f2hOneWay1) ||
+                                  (state == STATE_f2hOneWay8)) &&
+                                 testLength == 0);
         
         // stop the clock and measure the time
         Bit#(64) cycles = curTick - timer;

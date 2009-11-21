@@ -59,12 +59,25 @@ RRRTEST_SERVER_CLASS::Poll()
 
 // F2HOneWayMsg
 void
-RRRTEST_SERVER_CLASS::F2HOneWayMsg(
+RRRTEST_SERVER_CLASS::F2HOneWayMsg1(
     UINT64 payload)
 {
     // do nothing
 //    static int msg_count = 0;
 //    cout << "server: received one-way msg [" << msg_count++ << "]\t = " << hex << payload << dec << endl << flush;
+}
+
+void
+RRRTEST_SERVER_CLASS::F2HOneWayMsg8(
+    UINT64 payload0,
+    UINT64 payload1,
+    UINT64 payload2,
+    UINT64 payload3,
+    UINT64 payload4,
+    UINT64 payload5,
+    UINT64 payload6,
+    UINT64 payload7)
+{
 }
 
 // F2HTwoWayMsg

@@ -21677,3 +21677,27 @@ Directory modules/bluespec/system/demos/rrrtest
 
 - Fix a warning an hasim-configure (Util.pm)
 - Make TEST_LENGTH a dynamic parameter in rrrtest
+
+----------
+mcadler     Date: Fri Nov 20 19:45:05 EST 2009  CSN: CSN-hasim-725
+                  Sat Nov 21 00:45:05 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ BSV.pm                    Locally Modified          724 
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest-server.h          Locally Modified          724 
+ rrrtest.cpp               Locally Modified          724 
+ rrrtest.rrr               Locally Modified          724 
+ rrrtest-server.cpp        Locally Modified          724 
+ rrrtest.bsv               Locally Modified          724 
+
+- Update RRR code generation for a few new fields in the UMF header.
+
+- RRR Test:
+  - Add a new 64 byte payload test for bandwidth testing.  The previous
+    one-way test had only 8 byte packets.
+  - Fixed throughput computation and added the UMF header to the size of
+    transmitted data, since what I really care about right now is the
+    physical channel bandwidth.

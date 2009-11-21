@@ -528,8 +528,10 @@ sub print_direct_send_response_definition
                 $self->outargs()->fillstruct($self->_outtype_name()) . ";\n";
 
     # body
-    print $file $indent . "    UMF_PACKET header = tagged UMF_PACKET_header\n";
+    print $file $indent . "    UMF_PACKET header = tagged UMF_PACKET_header UMF_PACKET_HEADER\n";
     print $file $indent . "                        {\n";
+    print $file $indent . "                            filler: ?,\n";
+    print $file $indent . "                            phyChannelPvt: ?,\n";
     print $file $indent . "                            channelID: ?,\n";
     print $file $indent . "                            serviceID: `SERVICE_ID,\n";
     print $file $indent . "                            methodID : fromInteger(mid_";
@@ -571,8 +573,10 @@ sub print_proxy_send_response_definition
     print $file ";\n";
 
     # body
-    print $file $indent . "    UMF_PACKET header = tagged UMF_PACKET_header\n";
+    print $file $indent . "    UMF_PACKET header = tagged UMF_PACKET_header UMF_PACKET_HEADER\n";
     print $file $indent . "                        {\n";
+    print $file $indent . "                            filler: ?,\n";
+    print $file $indent . "                            phyChannelPvt: ?,\n";
     print $file $indent . "                            channelID: ?,\n";
     print $file $indent . "                            serviceID: `SERVICE_ID,\n";
     print $file $indent . "                            methodID : fromInteger(mid_";
@@ -815,8 +819,10 @@ sub print_direct_make_request_definition
                 $self->inargs()->fillstruct($self->_intype_name()) . ";\n";
 
     # body
-    print $file $indent . "    UMF_PACKET header = tagged UMF_PACKET_header\n";
+    print $file $indent . "    UMF_PACKET header = tagged UMF_PACKET_header UMF_PACKET_HEADER\n";
     print $file $indent . "                        {\n";
+    print $file $indent . "                            filler: ?,\n";
+    print $file $indent . "                            phyChannelPvt: ?,\n";
     print $file $indent . "                            channelID: ?,\n";
     print $file $indent . "                            serviceID: `SERVICE_ID,\n";
     print $file $indent . "                            methodID : fromInteger(mid_";
@@ -852,8 +858,10 @@ sub print_proxy_make_request_definition
     print $file ";\n";
 
     # body
-    print $file $indent . "    UMF_PACKET header = tagged UMF_PACKET_header\n";
+    print $file $indent . "    UMF_PACKET header = tagged UMF_PACKET_header UMF_PACKET_HEADER\n";
     print $file $indent . "                        {\n";
+    print $file $indent . "                            filler: ?,\n";
+    print $file $indent . "                            phyChannelPvt: ?,\n";
     print $file $indent . "                            channelID: ?,\n";
     print $file $indent . "                            serviceID: `SERVICE_ID,\n";
     print $file $indent . "                            methodID : fromInteger(mid_";
@@ -1324,9 +1332,9 @@ sub print_server_state
 
         print $file $indent . "Integer numChunks_" .
                               $self->{name}        .
-                              " = ($outsize % `UMF_CHUNK_BITS) == 0 ?\n";
-        print $file $indent . "    ($outsize / `UMF_CHUNK_BITS) :\n";
-        print $file $indent . "    ($outsize / `UMF_CHUNK_BITS) + 1;\n";
+                              " = ($outsize % valueOf(UMF_CHUNK_BITS)) == 0 ?\n";
+        print $file $indent . "    ($outsize / valueOf(UMF_CHUNK_BITS)) :\n";
+        print $file $indent . "    ($outsize / valueOf(UMF_CHUNK_BITS)) + 1;\n";
     }
 }
 
@@ -1346,9 +1354,9 @@ sub print_client_state
     
     print $file $indent . "Integer numChunks_" .
                 $self->{name}        .
-                " = ($insize % `UMF_CHUNK_BITS) == 0 ?\n";
-    print $file $indent . "    ($insize / `UMF_CHUNK_BITS) :\n";
-    print $file $indent . "    ($insize / `UMF_CHUNK_BITS) + 1;\n";
+                " = ($insize % valueOf(UMF_CHUNK_BITS)) == 0 ?\n";
+    print $file $indent . "    ($insize / valueOf(UMF_CHUNK_BITS)) :\n";
+    print $file $indent . "    ($insize / valueOf(UMF_CHUNK_BITS)) + 1;\n";
 }
 
 1;

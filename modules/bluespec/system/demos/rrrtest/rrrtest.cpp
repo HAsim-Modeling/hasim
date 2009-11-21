@@ -62,37 +62,73 @@ HYBRID_APPLICATION_CLASS::Main()
 {
     UINT64 cycles;
     UINT64 test_length  = TEST_LENGTH;
-    UINT64 fpga_freq    = 50;    // FIXME: take this from a dynamic parameter
-    UINT64 payload_bits = 64;    // FIXME: no idea how
+#ifdef MODEL_CLOCK_FREQ
+    UINT64 fpga_freq    = MODEL_CLOCK_FREQ;
+#else
+    UINT64 fpga_freq    = 0;
+#endif
+    UINT64 payload_bytes = 8;    // FIXME: no idea how
+    UINT64 header_bytes = UMF_CHUNK_BYTES;
 
-    double datasize = payload_bits / 8;
-    double latency_c;
-    double latency;
-    double bandwidth;
+    double datasize = payload_bytes + header_bytes;
+    double latency_c = 0;
+    double latency = 0;
+    double bandwidth = 0;
 
     // print banner and test parameters
     cout << "\n";
     cout << "Test Parameters\n";
     cout << "---------------\n";
     cout << "Number of Transactions  = " << dec << test_length << endl;
-    cout << "Payload Width (in bits) = " << payload_bits << endl;
     cout << "FPGA Clock Frequency    = " << fpga_freq << endl;
 
+    cout << endl << "*** Bandwidth includes internal packet headers ***" << endl << endl;
+
     //
-    // perform one-way test
+    // perform one-way test with short messages
     //
-    cycles = clientStub->F2HOneWayTest(test_length);
+    cycles = clientStub->F2HOneWayTest(0, test_length);
 
     // compute results
     latency_c = double(cycles) / test_length;
-    latency   = latency_c / fpga_freq;
-    bandwidth = datasize / latency;
+    if (fpga_freq != 0)
+    {
+        latency   = latency_c / fpga_freq;
+        bandwidth = datasize / latency;
+    }
         
     // report results
     cout << "\n";
-    cout << "One-Way Test Results\n";
+    cout << "One-Way Test Results (small messages)\n";
     cout << "--------------------\n";
     cout << "FPGA cycles       = " << cycles << endl;
+    cout << "Payload Bytes     = " << payload_bytes << endl;
+    cout << "Header Bytes      = " << header_bytes << endl;
+    cout << "Average Latency   = " << latency_c << " FPGA cycles\n" 
+         << "                  = " << latency << " usec\n";
+    cout << "Average Bandwidth = " << bandwidth << " MB/s\n";
+
+    //
+    // perform one-way test with long messages
+    //
+    cycles = clientStub->F2HOneWayTest(1, test_length);
+
+    // compute results
+    UINT64 big_payload_bytes = payload_bytes * 8;
+    latency_c = double(cycles) / test_length;
+    if (fpga_freq != 0)
+    {
+        latency   = latency_c / fpga_freq;
+        bandwidth = (big_payload_bytes + header_bytes) / latency;
+    }
+        
+    // report results
+    cout << "\n";
+    cout << "One-Way Test Results (big messages)\n";
+    cout << "--------------------\n";
+    cout << "FPGA cycles       = " << cycles << endl;
+    cout << "Payload Bytes     = " << big_payload_bytes << endl;
+    cout << "Header Bytes      = " << header_bytes << endl;
     cout << "Average Latency   = " << latency_c << " FPGA cycles\n" 
          << "                  = " << latency << " usec\n";
     cout << "Average Bandwidth = " << bandwidth << " MB/s\n";
@@ -104,8 +140,11 @@ HYBRID_APPLICATION_CLASS::Main()
 
     // compute results
     latency_c = double(cycles) / test_length;
-    latency   = latency_c / fpga_freq;
-    bandwidth = datasize / latency;
+    if (fpga_freq != 0)
+    {
+        latency   = latency_c / fpga_freq;
+        bandwidth = datasize / latency;
+    }
         
     // report results
     cout << "\n";
@@ -123,9 +162,12 @@ HYBRID_APPLICATION_CLASS::Main()
 
     // compute results
     latency_c = double(cycles) / test_length;
-    latency   = latency_c / fpga_freq;
-    bandwidth = datasize / latency;
-        
+    if (fpga_freq != 0)
+    {
+        latency   = latency_c / fpga_freq;
+        bandwidth = datasize / latency;
+    }
+
     // report results
     cout << "\n";
     cout << "Two-Way Pipelined Test Results\n";

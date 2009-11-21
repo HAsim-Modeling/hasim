@@ -36,7 +36,15 @@ class RRRTEST_SERVER_CLASS: public RRR_SERVER_CLASS,
     //
     // RRR service methods
     //
-    void   F2HOneWayMsg(UINT64 payload);
+    void   F2HOneWayMsg1(UINT64 payload);
+    void   F2HOneWayMsg8(UINT64 payload0,
+                         UINT64 payload1,
+                         UINT64 payload2,
+                         UINT64 payload3,
+                         UINT64 payload4,
+                         UINT64 payload5,
+                         UINT64 payload6,
+                         UINT64 payload7);
     UINT64 F2HTwoWayMsg(UINT64 payload);
 };
 

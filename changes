@@ -21701,3 +21701,17 @@ Directory modules/bluespec/system/demos/rrrtest
   - Fixed throughput computation and added the UMF header to the size of
     transmitted data, since what I really care about right now is the
     physical channel bandwidth.
+
+----------
+mcadler     Date: Mon Nov 23 15:09:25 EST 2009  CSN: CSN-hasim-726
+                  Mon Nov 23 20:09:25 UTC 2009
+
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest-server.h          Locally Modified          725 
+ rrrtest.cpp               Locally Modified          725 
+ rrrtest.rrr               Locally Modified          725 
+ rrrtest-server.cpp        Locally Modified          725 
+ rrrtest.bsv               Locally Modified          725 
+
+Add a 128 byte payload FPGA->host test.

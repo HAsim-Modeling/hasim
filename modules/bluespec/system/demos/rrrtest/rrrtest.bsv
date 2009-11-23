@@ -35,6 +35,7 @@ typedef enum
     STATE_idle, 
     STATE_f2hOneWay1,
     STATE_f2hOneWay8,
+    STATE_f2hOneWay16,
     STATE_f2hTwoWayReq,
     STATE_f2hTwoWayResp,
     STATE_f2hTwoWayPipe
@@ -92,8 +93,10 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
         testLength <= test.length;
         if (test.which == 0)
             state <= STATE_f2hOneWay1;
-        else
+        else if (test.which == 1)
             state <= STATE_f2hOneWay8;
+        else
+            state <= STATE_f2hOneWay16;
         
     endrule
     
@@ -111,8 +114,16 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
         
     endrule
     
+    rule do_f2h_oneway_test16 (state == STATE_f2hOneWay16 && testLength != 0);
+        
+        clientStub.makeRequest_F2HOneWayMsg16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        testLength <= testLength - 1;
+        
+    endrule
+    
     rule finish_f2h_oneway_test (((state == STATE_f2hOneWay1) ||
-                                  (state == STATE_f2hOneWay8)) &&
+                                  (state == STATE_f2hOneWay8) ||
+                                  (state == STATE_f2hOneWay16)) &&
                                  testLength == 0);
         
         // stop the clock and measure the time

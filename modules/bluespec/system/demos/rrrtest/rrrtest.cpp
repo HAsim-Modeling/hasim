@@ -134,6 +134,31 @@ HYBRID_APPLICATION_CLASS::Main()
     cout << "Average Bandwidth = " << bandwidth << " MB/s\n";
 
     //
+    // perform one-way test with longest messages
+    //
+    cycles = clientStub->F2HOneWayTest(2, test_length);
+
+    // compute results
+    big_payload_bytes = payload_bytes * 16;
+    latency_c = double(cycles) / test_length;
+    if (fpga_freq != 0)
+    {
+        latency   = latency_c / fpga_freq;
+        bandwidth = (big_payload_bytes + header_bytes) / latency;
+    }
+        
+    // report results
+    cout << "\n";
+    cout << "One-Way Test Results (big messages)\n";
+    cout << "--------------------\n";
+    cout << "FPGA cycles       = " << cycles << endl;
+    cout << "Payload Bytes     = " << big_payload_bytes << endl;
+    cout << "Header Bytes      = " << header_bytes << endl;
+    cout << "Average Latency   = " << latency_c << " FPGA cycles\n" 
+         << "                  = " << latency << " usec\n";
+    cout << "Average Bandwidth = " << bandwidth << " MB/s\n";
+
+    //
     // perform two-way test
     //
     cycles = clientStub->F2HTwoWayTest(test_length);

@@ -62,6 +62,8 @@ void
 RRRTEST_SERVER_CLASS::F2HOneWayMsg1(
     UINT64 payload)
 {
+    VERIFY(payload == 0x12345678abcdef2b,
+           "F2HOneWayMsg1 unexpected payload: " << payload);
     // do nothing
 //    static int msg_count = 0;
 //    cout << "server: received one-way msg [" << msg_count++ << "]\t = " << hex << payload << dec << endl << flush;
@@ -77,6 +79,36 @@ RRRTEST_SERVER_CLASS::F2HOneWayMsg8(
     UINT64 payload5,
     UINT64 payload6,
     UINT64 payload7)
+{
+    VERIFY((payload0 == 1) &&
+           (payload1 == 2) &&
+           (payload2 == 3) &&
+           (payload3 == 4) &&
+           (payload4 == 5) &&
+           (payload5 == 6) &&
+           (payload6 == 7) &&
+           (payload7 == 8),
+           "F2HOneWayMsg8: Unexpected payload");
+}
+
+void
+RRRTEST_SERVER_CLASS::F2HOneWayMsg16(
+    UINT64 payload0,
+    UINT64 payload1,
+    UINT64 payload2,
+    UINT64 payload3,
+    UINT64 payload4,
+    UINT64 payload5,
+    UINT64 payload6,
+    UINT64 payload7,
+    UINT64 payload8,
+    UINT64 payload9,
+    UINT64 payload10,
+    UINT64 payload11,
+    UINT64 payload12,
+    UINT64 payload13,
+    UINT64 payload14,
+    UINT64 payload15)
 {
 }
 

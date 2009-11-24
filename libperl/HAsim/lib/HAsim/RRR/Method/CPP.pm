@@ -170,7 +170,7 @@ sub print_client_definition
 
     # body
     print $file $indent . "{\n";
-    print $file $indent . "    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();\n";
+    print $file $indent . "    UMF_MESSAGE msg = new UMF_MESSAGE_CLASS;\n";
     print $file $indent . "    msg->SetLength($insize);\n";
     print $file $indent . "    msg->SetServiceID(" . $self->{servicename} . "_SERVICE_ID);\n";
     print $file $indent . "    msg->SetMethodID(METHOD_ID_" . $self->{name} . ");\n";
@@ -228,7 +228,7 @@ sub print_client_definition
         }
 
         # cleanup and return
-        print $file $indent . "    resp->Delete();\n";
+        print $file $indent . "    delete resp;\n";
         print $file $indent . "    return retval;\n";
     }
 
@@ -282,7 +282,7 @@ sub print_server_case_block
                               $self->inargs()->makecalllist() . ");\n";
 
         # de-allocate request message
-        print $file $indent . "    req->Delete();\n";
+        print $file $indent . "    delete req;\n";
     }
     else
     {
@@ -292,11 +292,11 @@ sub print_server_case_block
             $self->inargs()->makecalllist() . ");\n";
 
         # de-allocate request message
-        print $file $indent . "    req->Delete();\n";
+        print $file $indent . "    delete req;\n";
         print $file "\n";
 
         # create response message
-        print $file $indent . "    resp = UMF_MESSAGE_CLASS::New();\n";
+        print $file $indent . "    resp = new UMF_MESSAGE_CLASS;\n";
         print $file $indent . "    resp->SetLength($outsize);\n";
         print $file $indent . "    resp->SetServiceID(" . $self->{servicename} . "_SERVICE_ID);\n";
         print $file $indent . "    resp->SetMethodID(methodID);\n";

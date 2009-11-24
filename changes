@@ -21715,3 +21715,16 @@ Directory modules/bluespec/system/demos/rrrtest
  rrrtest.bsv               Locally Modified          725 
 
 Add a 128 byte payload FPGA->host test.
+
+----------
+mcadler     Date: Mon Nov 23 19:31:30 EST 2009  CSN: CSN-hasim-727
+                  Tue Nov 24 00:31:30 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ CPP.pm                    Locally Modified          726 
+
+Directory modules/hasim/functional-partition/isa/isa-emulator
+ isa-emulator.cpp          Locally Modified          726 
+
+UMF allocator now uses overloaded new/delete.

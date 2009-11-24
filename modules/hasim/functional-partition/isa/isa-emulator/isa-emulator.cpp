@@ -120,7 +120,7 @@ ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
         rVal.intReg = req->ExtractUINT(sizeof(rVal));
         rName = req->ExtractUINT(2);
         ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
-        req->Delete();
+        delete req;
 
         if (TRACING(2))
         {
@@ -159,7 +159,7 @@ ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
         pc = req->ExtractUINT(sizeof(pc));
         inst = req->ExtractUINT(4);
         ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
-        req->Delete();
+        delete req;
 
         T1("\tisa_emulator: Emulate CTX " << UINT64(ctx_id) << " PC " << fmt_regval(pc) << ", Inst " << fmt_inst(inst));
         
@@ -197,7 +197,7 @@ ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
             ASIMERROR("Unexpected result from ISA emulator implementation");
         }
 
-        resp = UMF_MESSAGE_CLASS::New();
+        resp = new UMF_MESSAGE_CLASS;
         resp->SetLength(8);
         resp->SetMethodID(CMD_EMULATE);
         resp->AppendUINT(newPC, sizeof(newPC));     // terminate
@@ -247,7 +247,7 @@ ISA_EMULATOR_SERVER_CLASS::UpdateRegister(
     //
     // Assumes integer and FP registers are the same size!
     //
-    UMF_MESSAGE msg = UMF_MESSAGE_CLASS::New();
+    UMF_MESSAGE msg = new UMF_MESSAGE_CLASS;
     msg->SetLength(sizeof(rVal) + 2 + sizeof(CONTEXT_ID_RRR));
     msg->SetServiceID(ISA_EMULATOR_SERVICE_ID);
     msg->SetMethodID(METHOD_ID_UPDATE_REG);
@@ -364,7 +364,7 @@ ISA_REGOP_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
         pc = req->ExtractUINT(sizeof(pc));
         inst = req->ExtractUINT(sizeof(inst));
         ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
-        req->Delete();
+        delete req;
 
         if (TRACING(1))
         {
@@ -384,7 +384,7 @@ ISA_REGOP_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
                << "  Resp: " << fmt_regval(dstVal.intReg));
         }
 
-        resp = UMF_MESSAGE_CLASS::New();
+        resp = new UMF_MESSAGE_CLASS;
         resp->SetLength(sizeof(dstVal));
         resp->SetMethodID(CMD_EMULATE_REGOP);
         resp->AppendUINT(dstVal.intReg, sizeof(dstVal));

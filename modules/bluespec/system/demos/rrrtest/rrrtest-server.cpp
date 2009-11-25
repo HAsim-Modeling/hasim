@@ -62,11 +62,11 @@ void
 RRRTEST_SERVER_CLASS::F2HOneWayMsg1(
     UINT64 payload)
 {
-    VERIFY(payload == 0x12345678abcdef2b,
-           "F2HOneWayMsg1 unexpected payload: " << payload);
-    // do nothing
 //    static int msg_count = 0;
 //    cout << "server: received one-way msg [" << msg_count++ << "]\t = " << hex << payload << dec << endl << flush;
+
+    VERIFY(payload == 0x12345678abcdef2b,
+           "F2HOneWayMsg1 unexpected payload: " << payload);
 }
 
 void

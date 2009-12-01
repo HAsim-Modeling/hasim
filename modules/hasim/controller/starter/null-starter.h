@@ -23,7 +23,6 @@ class STARTER_CLASS: public RRR_SERVER_CLASS,
     // required RRR service methods
     void Init(PLATFORMS_MODULE);
     UMF_MESSAGE Request(UMF_MESSAGE);
-    void Poll();
 
     // client methods
     void Run();

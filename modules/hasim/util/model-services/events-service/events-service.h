@@ -58,7 +58,6 @@ class EVENTS_SERVER_CLASS: public RRR_SERVER_CLASS,
     void Init(PLATFORMS_MODULE);
     void Uninit();
     void Cleanup();
-    void Poll();
 
     // RRR service methods
     void LogEvent(UINT32 event_id, UINT32 event_data, UINT32 model_cc);

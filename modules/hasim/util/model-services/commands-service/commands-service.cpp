@@ -93,12 +93,6 @@ COMMANDS_SERVER_CLASS::Cleanup()
     delete serverStub;
 }
 
-// poll
-void
-COMMANDS_SERVER_CLASS::Poll()
-{
-}
-
 // init
 void
 COMMANDS_SERVER_CLASS::SetNumHardwareThreads(UINT32 num)

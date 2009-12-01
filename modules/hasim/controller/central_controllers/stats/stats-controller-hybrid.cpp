@@ -160,13 +160,6 @@ STATS_SERVER_CLASS::Done(
 }
 
 
-// poll
-void
-STATS_SERVER_CLASS::Poll()
-{
-}
-
-
 //
 // EmitStatsFile --
 //    Dump the in-memory statistics to a file.

@@ -18,6 +18,4 @@
 %sources -t CPP  -v PRIVATE rrrtest.cpp rrrtest-server.cpp
 %sources -t RRR  -v PUBLIC  rrrtest.rrr
 
-%param --dynamic TEST_LENGTH 10000  "RRR test iterations"
-
 %AWB_END

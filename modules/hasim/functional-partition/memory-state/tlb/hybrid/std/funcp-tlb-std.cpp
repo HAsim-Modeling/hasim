@@ -89,14 +89,6 @@ FUNCP_TLB_SERVER_CLASS::Cleanup()
 {
 }
 
-// poll
-void
-FUNCP_TLB_SERVER_CLASS::Poll()
-{
-    // do nothing
-}
-
-
 
 //
 // RRR requests

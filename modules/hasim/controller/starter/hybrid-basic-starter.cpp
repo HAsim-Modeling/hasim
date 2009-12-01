@@ -90,11 +90,6 @@ STARTER_SERVER_CLASS::Cleanup()
     delete serverStub;
 }
 
-// poll
-void
-STARTER_SERVER_CLASS::Poll()
-{
-}
 
 //
 // RRR service requests

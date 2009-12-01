@@ -141,11 +141,3 @@ ASSERTIONS_SERVER_CLASS::Assert(
         }
     }
 }
-
-// poll
-void
-ASSERTIONS_SERVER_CLASS::Poll()
-{
-}
-
-

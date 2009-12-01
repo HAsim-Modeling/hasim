@@ -57,7 +57,6 @@ class PARAMS_SERVER_CLASS: public RRR_SERVER_CLASS,
     void Init(PLATFORMS_MODULE);
     void Uninit();
     void Cleanup();
-    void Poll()     {}
 };
 
 // PARAMS_CONTROLLER functionalities are completely implemented by the PARAMS_SERVER class

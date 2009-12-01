@@ -85,7 +85,6 @@ class ISA_EMULATOR_SERVER_CLASS: public RRR_SERVER_CLASS,
     void Init(PLATFORMS_MODULE);
     void Uninit();
     void Cleanup();
-    void Poll();
 
     //
     // RRR Service Methods
@@ -139,7 +138,6 @@ class ISA_REGOP_EMULATOR_SERVER_CLASS: public RRR_SERVER_CLASS,
     void Init(PLATFORMS_MODULE);
     void Uninit();
     void Cleanup();
-    void Poll();
 
     //
     // RRR Service Methods

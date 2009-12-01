@@ -139,13 +139,6 @@ DEBUG_SCAN_SERVER_CLASS::Done(
 }
 
 
-// poll
-void
-DEBUG_SCAN_SERVER_CLASS::Poll()
-{
-}
-
-
 //
 // DisplayMsg --
 //     Print a message for a given scan message.

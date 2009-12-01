@@ -90,13 +90,6 @@ FUNCP_MEMORY_SERVER_CLASS::Cleanup()
     delete clientStub;
 }
 
-// poll
-void
-FUNCP_MEMORY_SERVER_CLASS::Poll()
-{
-    // do nothing
-}
-
 
 //
 // Load --

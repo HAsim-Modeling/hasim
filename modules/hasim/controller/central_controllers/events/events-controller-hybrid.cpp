@@ -93,12 +93,6 @@ EVENTS_SERVER_CLASS::Cleanup()
     delete serverStub;
 }
 
-// poll
-void
-EVENTS_SERVER_CLASS::Poll()
-{
-}
-
 //
 // RRR request methods
 //

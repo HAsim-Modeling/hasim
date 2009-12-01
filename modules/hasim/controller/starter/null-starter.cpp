@@ -20,11 +20,6 @@ STARTER_CLASS::Request(UMF_MESSAGE)
 {
 }
 
-void 
-STARTER_CLASS::Poll()
-{
-}
-
 // client methods
 void 
 STARTER_CLASS::Run()

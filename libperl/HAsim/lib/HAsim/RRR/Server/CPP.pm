@@ -219,9 +219,9 @@ sub print_stub
     print $file "    }\n";
     print $file "\n";
 
-    print $file "    void Poll()\n";
+    print $file "    bool Poll()\n";
     print $file "    {\n";
-    print $file "        server->Poll();\n";
+    print $file "        return server->Poll();\n";
     print $file "    }\n";    
     print $file "\n";
 

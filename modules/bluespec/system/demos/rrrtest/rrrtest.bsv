@@ -33,12 +33,19 @@
 typedef enum 
 {
     STATE_idle, 
+
     STATE_f2hOneWay1,
     STATE_f2hOneWay8,
     STATE_f2hOneWay16,
-    STATE_f2hTwoWayReq,
-    STATE_f2hTwoWayResp,
-    STATE_f2hTwoWayPipe
+    STATE_f2hOneWay32,
+
+    STATE_f2hTwoWayReq1,
+    STATE_f2hTwoWayResp1,
+    STATE_f2hTwoWayReq16,
+    STATE_f2hTwoWayResp16,
+
+    STATE_f2hTwoWayPipe1,
+    STATE_f2hTwoWayPipe16
 } 
 STATE deriving(Bits,Eq);
 
@@ -95,8 +102,10 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
             state <= STATE_f2hOneWay1;
         else if (test.which == 1)
             state <= STATE_f2hOneWay8;
-        else
+        else if (test.which == 2)
             state <= STATE_f2hOneWay16;
+        else
+            state <= STATE_f2hOneWay32;
         
     endrule
     
@@ -121,9 +130,20 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
         
     endrule
     
+    rule do_f2h_oneway_test32 (state == STATE_f2hOneWay32 && testLength != 0);
+        
+        clientStub.makeRequest_F2HOneWayMsg32(1, 2, 3, 4, 5, 6, 7, 8,
+                                              9, 10, 11, 12, 13, 14, 15, 16,
+                                              17, 18, 19, 20, 21, 22, 23, 24,
+                                              25, 26, 27, 28, 29, 30, 31, 32);
+        testLength <= testLength - 1;
+        
+    endrule
+    
     rule finish_f2h_oneway_test (((state == STATE_f2hOneWay1) ||
                                   (state == STATE_f2hOneWay8) ||
-                                  (state == STATE_f2hOneWay16)) &&
+                                  (state == STATE_f2hOneWay16) ||
+                                  (state == STATE_f2hOneWay32)) &&
                                  testLength == 0);
         
         // stop the clock and measure the time
@@ -142,31 +162,51 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
     rule start_f2h_twoway_test (state == STATE_idle);
         
         // accept request from host
-        let test_length <- serverStub.acceptRequest_F2HTwoWayTest();
+        let test <- serverStub.acceptRequest_F2HTwoWayTest();
         
         // start the clock and let it rip
         timer      <= curTick;
-        testLength <= test_length;
-        state      <= STATE_f2hTwoWayReq;
+        testLength <= test.length;
+        if (test.which == 0)
+            state <= STATE_f2hTwoWayReq1;
+        else
+            state <= STATE_f2hTwoWayReq16;
         
     endrule
     
-    rule do_f2h_twoway_test_req (state == STATE_f2hTwoWayReq && testLength != 0);
+    rule do_f2h_twoway_test_req1 (state == STATE_f2hTwoWayReq1 && testLength != 0);
         
-        clientStub.makeRequest_F2HTwoWayMsg(payload);
-        state <= STATE_f2hTwoWayResp;
+        clientStub.makeRequest_F2HTwoWayMsg1(payload);
+        state <= STATE_f2hTwoWayResp1;
 
     endrule
 
-    rule do_f2h_twoway_test_resp (state == STATE_f2hTwoWayResp);
+    rule do_f2h_twoway_test_resp1 (state == STATE_f2hTwoWayResp1);
         
-        PAYLOAD dummy <- clientStub.getResponse_F2HTwoWayMsg();
-        state <= STATE_f2hTwoWayReq;
+        PAYLOAD dummy <- clientStub.getResponse_F2HTwoWayMsg1();
+        state <= STATE_f2hTwoWayReq1;
         testLength <= testLength - 1;
 
     endrule
     
-    rule finish_f2h_twoway_test (state == STATE_f2hTwoWayReq && testLength == 0);
+    rule do_f2h_twoway_test_req16 (state == STATE_f2hTwoWayReq16 && testLength != 0);
+        
+        clientStub.makeRequest_F2HTwoWayMsg16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        state <= STATE_f2hTwoWayResp16;
+
+    endrule
+
+    rule do_f2h_twoway_test_resp16 (state == STATE_f2hTwoWayResp16);
+        
+        let dummy <- clientStub.getResponse_F2HTwoWayMsg16();
+        state <= STATE_f2hTwoWayReq16;
+        testLength <= testLength - 1;
+
+    endrule
+    
+    rule finish_f2h_twoway_test (((state == STATE_f2hTwoWayReq1) ||
+                                  (state == STATE_f2hTwoWayReq16)) &&
+                                 (testLength == 0));
         
         // stop the clock and measure the time
         Bit#(64) cycles = curTick - timer;
@@ -184,31 +224,51 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
     rule start_f2h_twoway_pipe_test (state == STATE_idle);
         
         // accept request from host
-        let test_length <- serverStub.acceptRequest_F2HTwoWayPipeTest();
+        let test <- serverStub.acceptRequest_F2HTwoWayPipeTest();
         
         // start the clock and let it rip
         timer                 <= curTick;
-        testLength            <= test_length;
-        outstandingResponses  <= test_length;
-        state                 <= STATE_f2hTwoWayPipe;
+        testLength            <= test.length;
+        outstandingResponses  <= test.length;
+        if (test.which == 0)
+            state <= STATE_f2hTwoWayPipe1;
+        else
+            state <= STATE_f2hTwoWayPipe16;
         
     endrule
     
-    rule do_f2h_twoway_pipe_test_req (state == STATE_f2hTwoWayPipe && testLength != 0);
+    rule do_f2h_twoway_pipe_test_req1 ((state == STATE_f2hTwoWayPipe1) && (testLength != 0));
         
-        clientStub.makeRequest_F2HTwoWayMsg(payload);
+        clientStub.makeRequest_F2HTwoWayMsg1(payload);
         testLength <= testLength - 1;
 
     endrule
 
-    rule do_f2h_twoway_pipe_test_resp (state == STATE_f2hTwoWayPipe && outstandingResponses != 0);
+    rule do_f2h_twoway_pipe_test_resp1 ((state == STATE_f2hTwoWayPipe1) && (outstandingResponses != 0));
         
-        PAYLOAD dummy <- clientStub.getResponse_F2HTwoWayMsg();
+        PAYLOAD dummy <- clientStub.getResponse_F2HTwoWayMsg1();
         outstandingResponses <= outstandingResponses - 1;
 
     endrule
     
-    rule finish_f2h_twoway_pipe_test (state == STATE_f2hTwoWayPipe && outstandingResponses == 0);
+    rule do_f2h_twoway_pipe_test_req16 ((state == STATE_f2hTwoWayPipe16) && (testLength != 0));
+        
+        clientStub.makeRequest_F2HTwoWayMsg16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        testLength <= testLength - 1;
+
+    endrule
+
+    rule do_f2h_twoway_pipe_test_resp16 ((state == STATE_f2hTwoWayPipe16) && (outstandingResponses != 0));
+        
+        let dummy <- clientStub.getResponse_F2HTwoWayMsg16();
+        outstandingResponses <= outstandingResponses - 1;
+
+    endrule
+    
+    rule finish_f2h_twoway_pipe_test (((state == STATE_f2hTwoWayPipe1) ||
+                                       (state == STATE_f2hTwoWayPipe16)) &&
+                                      (testLength == 0) &&
+                                      (outstandingResponses == 0));
         
         // stop the clock and measure the time
         Bit#(64) cycles = curTick - timer;

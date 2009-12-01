@@ -55,7 +55,6 @@ class FUNCP_TLB_SERVER_CLASS: public RRR_SERVER_CLASS,
     void   Init(PLATFORMS_MODULE);
     void   Uninit();
     void   Cleanup();
-    void   Poll();
 
     // RRR request methods
     OUT_TYPE_VtoP VtoP(CONTEXT_ID ctxId, MEM_VALUE va, UINT8 reqWordIdx);

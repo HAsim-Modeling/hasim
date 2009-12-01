@@ -21738,3 +21738,78 @@ Directory modules/bluespec/system/demos/rrrtest
  rrrtest-server.cpp        Locally Modified          727 
 
 Nothing significant.
+
+----------
+mcadler     Date: Tue Dec  1 16:44:37 EST 2009  CSN: CSN-hasim-729
+                  Tue Dec  1 21:44:37 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Server
+ CPP.pm                    Locally Modified          728 
+
+Directory tools/scripts
+ hasim-gen-black-box       Locally Modified          728 
+
+Directory modules/hasim/controller/starter
+ null-starter.h            Locally Modified          728 
+ hybrid-basic-starter.cpp  Locally Modified          728 
+ hybrid-basic-starter.h    Locally Modified          728 
+ null-starter.cpp          Locally Modified          728 
+
+Directory modules/hasim/controller/central_controllers/params
+ params-controller-hybrid.h Locally Modified          728 
+
+Directory modules/hasim/controller/central_controllers/events
+ events-controller-hybrid.cpp Locally Modified          728 
+ events-controller-hybrid.h Locally Modified          728 
+
+Directory modules/hasim/controller/central_controllers/assertions
+ assertions-controller-hybrid.h Locally Modified          728 
+ assertions-controller-hybrid.cpp Locally Modified          728 
+
+Directory modules/hasim/controller/central_controllers/debug_scan
+ debug-scan-controller-hybrid.cpp Locally Modified          728 
+ debug-scan-controller-hybrid.h Locally Modified          728 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Modified          728 
+ stats-controller-hybrid.h Locally Modified          728 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.cpp         Locally Modified          728 
+ funcp-tlb-std.h           Locally Modified          728 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          728 
+ hybrid-funcp-memory.h     Locally Modified          728 
+
+Directory modules/hasim/functional-partition/isa/isa-emulator
+ isa-emulator.cpp          Locally Modified          728 
+ isa-emulator.h            Locally Modified          728 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          728 
+ commands-service.h        Locally Modified          728 
+
+Directory modules/hasim/util/model-services/events-service
+ events-service.cpp        Locally Modified          728 
+ events-service.h          Locally Modified          728 
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest-server.h          Locally Modified          728 
+ rrrtest.cpp               Locally Modified          728 
+ rrrtest.rrr               Locally Modified          728 
+ rrrtest-server.cpp        Locally Modified          728 
+ rrrtest.h                 Locally Modified          728 
+ rrrtest.awb               Locally Modified          728 
+ rrrtest.bsv               Locally Modified          728 
+
+- Add md5 sum to generated Verilog wrappers to work around SCons build
+  problems.  See the comment to the change in platforms.
+
+- Remove Poll() method from RRR servers that don't need it.  The Poll() method
+  in the base class will be used, instead, allowing for simpler interface
+  changes in the future.
+
+- Add larger rrrtest send/receive cases.  Put the big data tests under a
+  command line switch.

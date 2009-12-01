@@ -94,12 +94,6 @@ ISA_EMULATOR_SERVER_CLASS::Cleanup()
     delete serverStub;
 }
 
-// poll
-void
-ISA_EMULATOR_SERVER_CLASS::Poll()
-{
-}
-
 typedef UINT32 ISA_INSTRUCTION;
 
 // handle service request
@@ -327,12 +321,6 @@ ISA_REGOP_EMULATOR_SERVER_CLASS::Cleanup()
 
     // deallocate stubs
     delete serverStub;
-}
-
-// poll
-void
-ISA_REGOP_EMULATOR_SERVER_CLASS::Poll()
-{
 }
 
 typedef UINT32 ISA_INSTRUCTION;

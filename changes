@@ -21823,3 +21823,18 @@ Directory libperl/HAsim/lib/HAsim
  Xilinx.pm                 Locally Modified          729 
 
 Fixed Synplify build.  Still doesn't work recursively.
+
+----------
+pellauer    Date: Thu Dec  3 18:38:46 EST 2009  CSN: CSN-hasim-731
+                  Thu Dec  3 23:38:46 UTC 2009
+
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid_acp_sram.apm Locally Added               0 
+
+
+* Preliminary SRAM mem_test. Still set to use the local BRAM memory, so for now
+  it's just for testing the UCF out.
+  
+Michael P.
+

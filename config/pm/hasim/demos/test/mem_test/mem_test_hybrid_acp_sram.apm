@@ -1,0 +1,161 @@
+
+[Global]
+SaveParameters=0
+Description=Hybrid Virtual Memory Test Model with SRAM for ACP
+File=mem_test_hybrid_acp_sram
+Version=2.1
+Name=Hybrid Virtual Memory Test Model with SRAM for ACP
+Type=HAsim
+Class=Asim::Model
+DefaultBenchmark=
+DefaultRunOpts=
+
+[Model]
+DefaultAttributes=bram-test hasim hybrid
+model=HW/SW Hybrid Project Foundation
+
+[FPGA Environment]
+File=modules/bluespec/common/fpgaenv/fpga-environment.awb
+Packagehint=platforms
+
+[Soft Connections Hybrid Application Environment/Requires]
+platform_services=Platform Services
+soft_connections_lib=Soft Connections Library
+connected_application=Default Software Connected Application
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
+Packagehint=hasim
+
+[Soft Connections Library]
+File=config/pm/hasim/submodels/common/soft-connections-lib.apm
+Packagehint=hasim
+
+[Platform Services]
+File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
+Packagehint=hasim
+
+[Default Software Connected Application]
+File=modules/application-env/hybrid/soft-connections/default-sw/connected-application-default-sw.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
+
+[Default Software Connected Application/Requires]
+hardware_system=Scratchpad Memory Test System
+
+[Scratchpad Memory Test System]
+File=modules/system/test/mem_test/mem-test.awb
+Packagehint=hasim
+
+[Soft Connections Hybrid Application Environment]
+File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Project Foundation/Requires]
+project_common=Hybrid Project Common Utilities
+fpgaenv=FPGA Environment
+application_env=Soft Connections Hybrid Application Environment
+
+[Hardware FPGA Components for Virtex 5]
+File=modules/bluespec/common/fpgaenv/fpga-components/hardware-fpga-components-virtex5.awb
+Packagehint=platforms
+
+[Low Level Platform Interface Hybrid]
+File=modules/bluespec/common/fpgaenv/low-level-platform-interface/hybrid-llpi.awb
+Packagehint=platforms
+
+[RL Bluespec Library]
+File=config/pm/hasim/submodels/fpgaenv/librl-bsv.apm
+Packagehint=platforms
+
+[Low Level Platform Interface Hybrid/Requires]
+physical_platform=ACP M2 Compute Module With SRAM (Nallatech)
+remote_memory=Null Remote Memory
+channelio=Basic Virtual Channel Multiplexer
+rrr=RRR Clients and Servers
+physical_platform_debugger=Null Physical Platform Debugger
+local_mem=Local Memory Interface using BRAM
+
+[Null Clocks Device]
+File=modules/bluespec/common/fpgaenv/physical-platform/physical-devices/clocks/null/null-clocks-device.awb
+Packagehint=platforms
+
+[RRR Clients and Servers]
+File=modules/bluespec/common/fpgaenv/virtual-platform/rrr/basic/basic-rrr.awb
+Packagehint=platforms
+
+[Null Physical Platform Debugger]
+File=modules/bluespec/common/fpgaenv/physical-platform/debuggers/null/null-debugger.awb
+Packagehint=platforms
+
+[Nallatech Edge Physical Device]
+File=modules/bluespec/common/fpgaenv/physical-platform/physical-devices/nallatech-edge/nallatech-edge-device.awb
+Packagehint=platform-acp
+
+[Local Memory Interface using BRAM/Params]
+LOCAL_MEM_ADDR_BITS=16
+
+[Standard Virtual Platform/Requires]
+umf=Little-Endian Unified Message Format
+low_level_platform_interface=Low Level Platform Interface Hybrid
+virtual_devices=Standard Virtual Devices
+
+[ACP M2 Compute Module With SRAM (Nallatech)/Requires]
+clocks_device=Null Clocks Device
+physical_platform_utils=Common Physical Platform Utilities
+nallatech_edge_device=Nallatech Edge Physical Device
+ddr_sram_device=ACP DDR SRAM Device
+
+[Nallatech Edge Physical Channel]
+File=modules/bluespec/common/fpgaenv/virtual-platform/channelio/physical-channel/nallatech-edge/nallatech-edge-channel.awb
+Packagehint=platform-acp
+
+[Local Memory Interface using BRAM]
+File=modules/bluespec/common/fpgaenv/low-level-platform-interface/local-mem/local-mem-bram.awb
+Packagehint=platforms
+
+[ACP M2 Compute Module With SRAM (Nallatech)]
+File=modules/bluespec/common/fpgaenv/physical-platform/acp-m2c-with-sram/acp-m2c.awb
+Packagehint=platform-acp
+
+[Standard Virtual Devices]
+File=config/pm/hasim/submodels/fpgaenv/std-virtual-devices.apm
+Packagehint=platforms
+
+[Basic Virtual Channel Multiplexer]
+File=modules/bluespec/common/fpgaenv/virtual-platform/channelio/basic/basic-channelio.awb
+Packagehint=platforms
+
+[Standard Virtual Platform]
+File=modules/bluespec/common/fpgaenv/virtual-platform/std-virtual-platform.awb
+Packagehint=platforms
+
+[Common Physical Platform Utilities]
+File=modules/bluespec/common/fpgaenv/physical-platform/utils/utils.awb
+Packagehint=platforms
+
+[Null Remote Memory]
+File=modules/bluespec/common/fpgaenv/low-level-platform-interface/remote-memory/null/null-remote-memory.awb
+Packagehint=platforms
+
+[Little-Endian Unified Message Format/Params]
+UMF_CHUNK_BYTES=8
+
+[ACP DDR SRAM Device]
+File=modules/bluespec/common/fpgaenv/physical-platform/physical-devices/ddr-sram/ddr-sram-device.awb
+Packagehint=platform-acp
+
+[Little-Endian Unified Message Format]
+File=modules/bluespec/common/fpgaenv/virtual-platform/umf/little-endian/umf-little-endian.awb
+Packagehint=platforms
+
+[Basic Virtual Channel Multiplexer/Requires]
+physical_channel=Nallatech Edge Physical Channel
+
+[FPGA Environment/Requires]
+virtual_platform=Standard Virtual Platform
+fpga_components=Hardware FPGA Components for Virtex 5
+librl_bsv=RL Bluespec Library

@@ -9,6 +9,10 @@
 # Author:  Martha Mercaldi
 #
 
+
+
+
+
 package HAsim::Xilinx;
 
 use Asim;
@@ -153,9 +157,10 @@ sub generate_files_synplify {
 
     # to generate the synplify tcl, we follow the same path as generate prj, 
     # but with a capability to produce different outputs.
+    my $base_sdf_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".synplify.prj_base");
     my $final_sdf_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".synplify.prj");
 
-    open(SDFFILE, "> $final_sdf_file") || return undef;
+    open(SDFFILE, "> $base_sdf_file") || return undef;
    
     my $synplify_processfile = sub {
         my $module = shift;
@@ -173,7 +178,7 @@ sub generate_files_synplify {
        	    } else {
                 print $stream "add_file -$type \"\$env(BUILD_DIR)/$file\"\n";
 	    }
-        };
+        }; 
 
         my $relative_file = HAsim::Util::path_append($dir, $file);
         
@@ -189,10 +194,10 @@ sub generate_files_synplify {
 
         # Commented out until kfleming figures out how to use the 
         # syn_black_box directive
-        #if ($relative_file =~ /\.ngc$/) {
-        #    my $vhd_lib = get_vhdl_lib($module);
-        #    $synplify_printfunc->($stream,"ngc", $relative_file);
-        #}
+        if ($relative_file =~ /\.ngc$/) {
+            my $vhd_lib = get_vhdl_lib($module);
+            $synplify_printfunc->($stream,"ngc", $relative_file);
+        }
     };
 
     
@@ -209,6 +214,7 @@ sub generate_files_synplify {
     # counterpart.
 
     generate_prj_file($model, $builddir, *SDFFILE{IO}, $synplify_processfile);    
+
     # add target of the global constraint file to the sdf
     print SDFFILE "add_file -constraint \"\$env(BUILD_DIR)/config/$name.sdc\"\n";
     print SDFFILE "set_option -constraint -clear\n";
@@ -220,6 +226,13 @@ sub generate_files_synplify {
     #build global sdf file
     generate_concatenation_file($model, $name, $builddir, *SDCFILE{IO}, @model_sdc_files);   
 
+    # we must now patch the root sdf to remove the generated _stub
+    # eventually this should be done as part of a tree crawl....
+
+    my $wrapper = HAsim::Build::get_wrapper($model->modelroot());
+    prj_file_for_synth_boundary($base_sdf_file,
+                                $final_sdf_file,
+                                $wrapper);    
 
 }
 
@@ -376,6 +389,10 @@ sub replicate_prj_files {
     }
 }
 
+#########################
+#  prj_file_for_synth_boundary
+#  the synth boundary must not use its own stub function.  That stub file is 
+#  resereved for the parent module.
 sub prj_file_for_synth_boundary {
     my $src_file = shift;
     my $dst_file = shift;

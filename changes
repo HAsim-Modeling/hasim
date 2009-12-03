@@ -21813,3 +21813,13 @@ Directory modules/bluespec/system/demos/rrrtest
 
 - Add larger rrrtest send/receive cases.  Put the big data tests under a
   command line switch.
+
+----------
+kfleming    Date: Thu Dec  3 22:36:33 KST 2009  CSN: CSN-hasim-730
+                  Thu Dec  3 13:36:33 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          729 
+
+Fixed Synplify build.  Still doesn't work recursively.

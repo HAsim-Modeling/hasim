@@ -205,31 +205,26 @@ sub generate_files_synplify {
 
     my @model_sdf_files = find_all_files_with_suffix($model->modelroot(), ".sdf");
 
-    # User SDC
-    my $final_sdc_file = HAsim::Util::path_append($builddir,$xilinx_config_dir,$name . ".sdc");
-    my @model_sdc_files = find_all_files_with_suffix($model->modelroot(), ".sdc");
-    open(SDCFILE, "> $final_sdc_file") || return undef;
-
     # Notice that the synplify file accumulates more things than its xilinx 
     # counterpart.
 
     generate_prj_file($model, $builddir, *SDFFILE{IO}, $synplify_processfile);    
 
     # add target of the global constraint file to the sdf
-    print SDFFILE "add_file -constraint \"\$env(BUILD_DIR)/config/$name.sdc\"\n";
+    print SDFFILE "add_file -constraint \"\$env(BUILD_DIR)/$tmp_xilinx_dir/$name.sdc\"\n";
     print SDFFILE "set_option -constraint -clear\n";
-    print SDFFILE "set_option -constraint -enable \"\$env(BUILD_DIR)/config/$name.sdc\"\n";
+    print SDFFILE "set_option -constraint -enable \"\$env(BUILD_DIR)/$tmp_xilinx_dir/$name.sdc\"\n";
 
     # gather any user sdf files
     generate_concatenation_file($model, $name, $builddir, *SDFFILE{IO}, @model_sdf_files);   
  
-    #build global sdf file
-    generate_concatenation_file($model, $name, $builddir, *SDCFILE{IO}, @model_sdc_files);   
-
     # we must now patch the root sdf to remove the generated _stub
     # eventually this should be done as part of a tree crawl....
 
     my $wrapper = HAsim::Build::get_wrapper($model->modelroot());
+
+    #close file
+    close(SDFFILE);
     prj_file_for_synth_boundary($base_sdf_file,
                                 $final_sdf_file,
                                 $wrapper);    
@@ -246,7 +241,7 @@ sub generate_concatenation_file {
     my $name = shift;
     my $currentdir = shift;
     my $file = shift;
-    my @files = shift;    
+    my @files = @_;    
 
     my $replacements_r = HAsim::Util::empty_hash_ref();
 
@@ -260,7 +255,6 @@ sub generate_concatenation_file {
     HAsim::Util::hash_set($replacements_r,'@BLUESPECDIR@', $bdir);
 
     #Concatenate all found files
-
     foreach my $single_file (@files)
     {
       HAsim::Templates::do_template_replacements($single_file, $file, $replacements_r);
@@ -408,7 +402,6 @@ sub prj_file_for_synth_boundary {
         my $p = $_;
         my $match = $HAsim::Bluespec::tmp_bsc_dir . "/" . $wrapper;
         $p =~ s/${match}_stub.v/${match}.v/;
-
         print DST "$p\n";
     }
 

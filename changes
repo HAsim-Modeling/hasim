@@ -21838,3 +21838,16 @@ Directory config/pm/hasim/demos/test/mem_test
   
 Michael P.
 
+
+----------
+kfleming    Date: Fri Dec  4 14:03:09 KST 2009  CSN: CSN-hasim-732
+                  Fri Dec  4 05:03:09 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          731 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          731 
+
+Fixed egregious bug in Xilinx.pm related to array arguments.  Changed SDC build path.

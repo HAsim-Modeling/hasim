@@ -21851,3 +21851,26 @@ Directory tools/scripts
  hasim-configure           Locally Modified          731 
 
 Fixed egregious bug in Xilinx.pm related to array arguments.  Changed SDC build path.
+
+----------
+mcadler     Date: Mon Dec  7 18:38:07 EST 2009  CSN: CSN-hasim-733
+                  Mon Dec  7 23:38:07 UTC 2009
+
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid_acp_sram.apm Locally Modified          732 
+
+Directory modules/hasim/util/platform-services/mem-services/central-cache-service
+ platform-central-cache.bsv Locally Modified          732 
+
+Directory modules/system/test/mem_test
+ mem-test.bsv              Locally Modified          732 
+
+- Make mem-test compile with 32 bit words.
+
+- Central cache platform interface didn't compile with a NULL central cache.
+  (NULL central cache actually does something:  it routes requests directly
+  to the backing storage methods.)
+
+- Temporary version of mem test for ACP with local memory (SRAM) and no
+  central cache.

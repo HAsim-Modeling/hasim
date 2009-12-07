@@ -379,7 +379,7 @@ module [CONNECTED_MODULE] mkSystem ()
             link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MEMTEST,
                                                 stringID: msg_id,
                                                 payload0: zeroExtend(r_addr),
-                                                payload1: truncate(pack(v)) });
+                                                payload1: resize(pack(v)) });
         end
         
         if (done)

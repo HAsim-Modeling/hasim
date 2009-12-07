@@ -34,8 +34,10 @@ import SpecialFIFOs::*;
 `include "asim/dict/STATS_CENTRAL_CACHE_SERVICE.bsh"
 
 `include "asim/dict/VDEV.bsh"
-`ifndef VDEV_CACHE__BASE
-`define VDEV_CACHE__BASE 0
+`ifdef VDEV_CACHE__BASE
+`define CACHE_BASE `VDEV_CACHE__BASE
+`else
+`define CACHE_BASE 0
 `endif
 
 
@@ -142,8 +144,8 @@ CENTRAL_CACHE_BACKING_RESP
 // Ports are created dynamically using dictionaries in the VDEV.CACHE
 // name space.
 //
-function String cachePortName(Integer n) = "vdev_cache_" + integerToString(n - `VDEV_CACHE__BASE);
-function String backingPortName(Integer n) = "vdev_cache_backing_" + integerToString(n - `VDEV_CACHE__BASE);
+function String cachePortName(Integer n) = "vdev_cache_" + integerToString(n - `CACHE_BASE);
+function String backingPortName(Integer n) = "vdev_cache_backing_" + integerToString(n - `CACHE_BASE);
 
 
 // ========================================================================
@@ -189,7 +191,7 @@ module [CONNECTED_MODULE] mkCentralCacheClient#(Integer cacheID,
               Add#(t_CENTRAL_CACHE_LINE_ADDR_SZ, t_CENTRAL_CACHE_WORD_IDX_SZ, t_CENTRAL_CACHE_WORD_ADDR_SZ),
               Add#(extraAddrBits, t_ADDR_SZ, t_CENTRAL_CACHE_WORD_ADDR_SZ));
 
-    DEBUG_FILE debugLog <- mkDebugFile("memory_central_cache_" + integerToString(cacheID - `VDEV_CACHE__BASE) + ".out");
+    DEBUG_FILE debugLog <- mkDebugFile("memory_central_cache_" + integerToString(cacheID - `CACHE_BASE) + ".out");
 
     //
     // Allocate the connection between a private cache and the central cache.

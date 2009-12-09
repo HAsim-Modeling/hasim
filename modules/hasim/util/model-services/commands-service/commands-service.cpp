@@ -32,6 +32,7 @@
 #include "asim/provides/command_switches.h"
 #include "asim/provides/stats_device.h"
 #include "asim/provides/commands_service.h"
+#include "asim/provides/debug_scan_device.h"
 
 using namespace std;
 
@@ -43,9 +44,8 @@ COMMANDS_SERVER_CLASS::COMMANDS_SERVER_CLASS() :
     stopCycleSwitch(),
     messageIntervalSwitch(),
     lastStatsScanCycle(0),
-    lastFPGAClockModelCycles(0),
-    lastFPGAClockCommits(0),
-    noChangeBeats(0)
+    noChangeBeats(0),
+    running(false)
 {
     SetTraceableName("commands_server");
 
@@ -109,6 +109,8 @@ COMMANDS_SERVER_CLASS::SetNumHardwareThreads(UINT32 num)
 void
 COMMANDS_SERVER_CLASS::Run()
 {
+    // Set simulation end cycle
+    clientStub->SetEndModelCycle(stopCycleSwitch.StopCycle());
 
     // Tell the stats device to setup itself. We wait until this
     // point to do it to ensure that the RRR stack is up.
@@ -125,12 +127,16 @@ COMMANDS_SERVER_CLASS::Run()
 
     // call client stub
     clientStub->Run(0);
+
+    running = true;
+    noChangeBeats = 0;
 }
 
 // client: pause
 void
 COMMANDS_SERVER_CLASS::Pause()
 {
+    running = false;
     clientStub->Pause(0);
 }
 
@@ -161,10 +167,35 @@ COMMANDS_SERVER_CLASS::EndSim(
         cout << "        commands relay: completed with errors.  " << endl;
     }
     
+    running = false;
     EndSimulation(success == 0);
 }
 
-// Heartbeat
+
+//
+// FPGA hardware heartbeat used for deadlock detection.
+//
+void
+COMMANDS_SERVER_CLASS::FPGAHeartbeat(UINT8 dummy)
+{
+    if (running)
+    {
+        noChangeBeats += 1;
+
+        if (noChangeBeats == 100)
+        {
+            cerr << "commands relay: model deadlock!" << endl;
+
+            DEBUG_SCAN_DEVICE_SERVER_CLASS::GetInstance()->Scan();
+            EndSimulation(1);
+        }
+    }
+}
+
+
+//
+// Model heartbeat
+//
 void
 COMMANDS_SERVER_CLASS::ModelHeartbeat(
     UINT32 hwThreadId,
@@ -174,55 +205,11 @@ COMMANDS_SERVER_CLASS::ModelHeartbeat(
 {
     hwThreadHeartbeat[hwThreadId].Heartbeat(hwThreadId, fpga_cycles, model_cycles, instr_commits);
     
-
-    //
-    // HW statistics counters are smaller than full counters to save
-    // space.  Time to scan out intermediate statistics values before
-    // they wrap around?
-    //
-    UINT64 total_model_cycles = 0;
-    UINT64 total_model_commits = 0;
-    for (int c = 0; c < numThreads; c++)
-    {
-        total_model_cycles += hwThreadHeartbeat[hwThreadId].GetModelCycles();
-        total_model_commits += hwThreadHeartbeat[hwThreadId].GetInstrCommits();
-    }
-
-    //
-    // Is the current heartbeat an FPGA-clock heartbeat?  If so, just check
-    // for deadlocks.
-    //
-    /*
-    if (fpgaClockBeat)
-    {
-        // Has the model progressed since the last FPGA clock heartbeat?
-        if ((total_model_cycles == lastFPGAClockModelCycles) &&
-            (total_model_commits == lastFPGAClockCommits))
-        {
-            // No!  Possible deadlock.
-            noChangeBeats += 1;
-        }
-        else
-        {
-            lastFPGAClockModelCycles = total_model_cycles;
-            lastFPGAClockCommits = total_model_commits;
-            noChangeBeats = 0;
-        }
-
-        if (noChangeBeats == 1000)
-        {
-            cerr << "commands relay: model deadlock!" << endl;
-            DebugScan();
-            EndSimulation(1);
-        }
-
-        return;
-    }
-
-    */
+    // Reset the deadlock counter.
+    noChangeBeats = 0;
     
     //
-    // Done?
+    // Done?  Perhaps context 0 missed the command to stop.
     //
     if (stopCycleSwitch.StopCycle() &&
         (hwThreadHeartbeat[hwThreadId].GetModelCycles() >= stopCycleSwitch.StopCycle()))
@@ -450,6 +437,7 @@ HW_THREAD_HEARTBEAT_CLASS::GetModelIPS() const
 STOP_CYCLE_SWITCH_CLASS::STOP_CYCLE_SWITCH_CLASS() :
     COMMAND_SWITCH_INT_CLASS("cycles")
 {
+    stopCycle = 0;
 }
 
 STOP_CYCLE_SWITCH_CLASS::~STOP_CYCLE_SWITCH_CLASS()

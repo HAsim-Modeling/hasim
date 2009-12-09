@@ -27,6 +27,7 @@
 import Vector::*;
 import FIFO::*;
 
+
 // Project imports
 
 `include "asim/provides/hasim_common.bsh"
@@ -43,29 +44,24 @@ import FIFO::*;
 
 typedef union tagged
 {
+    // Commands from to local controllers
     void         COM_RunProgram;     // Begin running, allowed to slip
     void         COM_Synchronize;    // Start synchronizing the system
-    void         COM_StartSyncQuery; // Start checking if you're synchronized
     void         COM_SyncQuery;      // Is the system synchronized yet?
     void         COM_Step;           // Run exactly one model CC.
-    void         COM_Pause;          // Stop running
+    Bool         COM_Pause;          // Stop running (True -> send response to host)
     CONTEXT_ID   COM_EnableContext;  // Enable context
     CONTEXT_ID   COM_DisableContext; // Disable context
+
+    // Responses from local controllers
+    Bool         RESP_DoneRunning;   // Bool is run passed
+    void         RESP_Balanced;      // Response to query
+    void         RESP_UnBalanced;    // Response to query
 }
-HASIM_COMMAND 
+CONTROLLER_MSG
     deriving (Eq, Bits);
 
                 
-typedef union tagged
-{
-    Bool RESP_DoneRunning; // Bool is run passed
-    void RESP_Balanced;    // Response to query
-    void RESP_UnBalanced;  // Response to query
-}
-HASIM_RESPONSE
-    deriving (Eq, Bits);
-
-
 // t_NUM_INSTANCES is number of instances to control.
 interface LOCAL_CONTROLLER#(type t_NUM_INSTANCES);
 
@@ -104,12 +100,6 @@ module [HASIM_MODULE] mkLocalController
     Reg#(Vector#(t_NUM_INSTANCES, Bool)) instanceRunning <- mkReg(replicate(False));
     // Track stepping state.
     Reg#(Vector#(t_NUM_INSTANCES, Bool)) instanceStepped <- mkReg(replicate(False));
-    // Check balanced state.
-    Reg#(Vector#(t_NUM_INSTANCES, Bool)) instanceBalancedSinceQuery <- mkReg(replicate(False));
-    Reg#(Vector#(t_NUM_INSTANCES, Bool)) instanceCheckingBalance <- mkReg(replicate(False));
-    
-    // Are we checking if the ports have quiesced?
-    Reg#(Bool) checkBalanced <- mkReg(False);
 
     // Signalled DONE to the software?
     Reg#(Bool) signalDone <- mkReg(False);
@@ -126,9 +116,8 @@ module [HASIM_MODULE] mkLocalController
     
     COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES)) nextInstance <- mkLCounter(0);
     
-    Connection_Chain#(HASIM_COMMAND)  cmds  <- mkConnection_Chain(`RINGID_MODULE_COMMANDS);
-    Connection_Chain#(HASIM_RESPONSE) resps <- mkConnection_Chain(`RINGID_MODULE_RESPONSES);
-        
+    Connection_Chain#(CONTROLLER_MSG) link_controllers <- mkConnection_Chain(`RINGID_CONTROLLER_MESSAGES);
+
     function Bool allTrue(Vector#(k, Bool) v);
         return foldr(\&& , True, v);
     endfunction
@@ -238,10 +227,34 @@ module [HASIM_MODULE] mkLocalController
         return res;
     endfunction
 
-    (* descending_urgency="shiftCommand, shiftResponse, checkBalance" *)
-    rule shiftCommand (True);
 
-        let newcmd <- cmds.receive_from_prev();
+    // ====================================================================
+    //
+    // Process controller commands and send responses.
+    //
+    // ====================================================================
+
+    FIFO#(CONTROLLER_MSG) fwdCtrlMsg <- mkFIFO1();
+    FIFO#(CONTROLLER_MSG) newCtrlMsg <- mkFIFO1();
+    
+    rule forwardControlMsg (True);
+        let cmd = fwdCtrlMsg.first();
+        fwdCtrlMsg.deq();
+        
+        link_controllers.send_to_next(cmd);
+    endrule
+
+    rule newControlMsg (True);
+        let cmd = newCtrlMsg.first();
+        newCtrlMsg.deq();
+        
+        link_controllers.send_to_next(cmd);
+    endrule
+
+    (* descending_urgency = "newControlMsg, forwardControlMsg, nextCommand" *)
+    rule nextCommand (True);
+        let newcmd <- link_controllers.receive_from_prev();
+        CONTROLLER_MSG resp = newcmd;
 
         case (newcmd) matches
             tagged COM_RunProgram:
@@ -254,24 +267,20 @@ module [HASIM_MODULE] mkLocalController
                 state <= LC_Synchronizing;
             end
 
-            tagged COM_StartSyncQuery:
-            begin
-                checkBalanced <= True;
-                instanceBalancedSinceQuery <= replicate(True);
-            end
-
             tagged COM_SyncQuery:
             begin
-                checkBalanced <= False;
-                if (allTrue(instanceBalancedSinceQuery))
-                    resps.send_to_next(RESP_Balanced);
+                // Send the response this cycle and forward the COM_SyncQuery
+                // around the ring in the next cycle.
+                fwdCtrlMsg.enq(newcmd);
+
+                if (balanced())
+                    resp = RESP_Balanced;
                 else
-                    resps.send_to_next(RESP_UnBalanced);
+                    resp = RESP_UnBalanced;
             end
 
             tagged COM_Step:
             begin
-
                 state <= LC_Stepping;
                 Vector#(t_NUM_INSTANCES, Bool) instance_stepped = newVector();
                 for (Integer x = 0; x < valueOf(t_NUM_INSTANCES); x = x + 1)
@@ -279,10 +288,9 @@ module [HASIM_MODULE] mkLocalController
                    instance_stepped[x] = !instanceActive[x];
                 end
                 instanceStepped <= instance_stepped;
-                
             end
 
-            tagged COM_Pause:
+            tagged COM_Pause .send_response:
             begin
                 state <= LC_Idle;
             end
@@ -300,21 +308,11 @@ module [HASIM_MODULE] mkLocalController
             end
         endcase
 
-        // send it on
-        cmds.send_to_next(newcmd);
-    endrule
-  
-    rule checkBalance (checkBalanced);
-
-        instanceBalancedSinceQuery <= replicate(balanced());
-
+        // Send command or response along on the ring.
+        link_controllers.send_to_next(resp);
     endrule
 
-    rule shiftResponse (True);
-        let resp <- resps.receive_from_prev();
-        // Just send it on
-        resps.send_to_next(resp);
-    endrule
+
 
     rule ignoreDisabledInstances (state != LC_Idle && !instanceActive[nextInstance.value()]);
     
@@ -384,7 +382,7 @@ module [HASIM_MODULE] mkLocalController
         // XXX this should be per-instance.  For now only allowed to fire once.
         if (! signalDone)
         begin
-            resps.send_to_next(tagged RESP_DoneRunning pf);
+            newCtrlMsg.enq(tagged RESP_DoneRunning pf);
             signalDone <= True;
         end
     endmethod
@@ -489,8 +487,7 @@ module [HASIM_MODULE] mkMultiplexController
         (MULTIPLEX_CONTROLLER#(t_NUM_INSTANCES));
 
     // Local-controller-like communication.
-    Connection_Chain#(HASIM_COMMAND)  cmds  <- mkConnection_Chain(`RINGID_MODULE_COMMANDS);
-    Connection_Chain#(HASIM_RESPONSE) resps <- mkConnection_Chain(`RINGID_MODULE_RESPONSES);
+    Connection_Chain#(CONTROLLER_MSG) link_controllers <- mkConnection_Chain(`RINGID_CONTROLLER_MESSAGES);
 
     Reg#(MC_STATE) state <- mkReg(MC_idle);
 
@@ -521,15 +518,26 @@ module [HASIM_MODULE] mkMultiplexController
     
     end
 
-    // shiftCommand
-    
-    // Get a command from the ring, process it, and send it on
-    // to the next guy in the ring.
 
-    (* descending_urgency="shiftCommand, shiftResponse" *)
-    rule shiftCommand (True);
+    // ====================================================================
+    //
+    // Process controller commands and send responses.
+    //
+    // ====================================================================
 
-        let newcmd <- cmds.receive_from_prev();
+    FIFO#(CONTROLLER_MSG) fwdCtrlMsg <- mkFIFO1();
+
+    rule forwardControlMsg (True);
+        let cmd = fwdCtrlMsg.first();
+        fwdCtrlMsg.deq();
+        
+        link_controllers.send_to_next(cmd);
+    endrule
+
+    (* descending_urgency = "forwardControlMsg, nextCommand" *)
+    rule nextCommand (True);
+        let newcmd <- link_controllers.receive_from_prev();
+        CONTROLLER_MSG resp = newcmd;
 
         case (newcmd) matches
             tagged COM_RunProgram:
@@ -542,21 +550,17 @@ module [HASIM_MODULE] mkMultiplexController
                 state <= MC_running;
             end
 
-            tagged COM_StartSyncQuery:
-            begin
-                noAction;
-            end
-
             tagged COM_SyncQuery:
             begin
-                resps.send_to_next(RESP_Balanced);
+                // Send the response this cycle and forward the COM_SyncQuery
+                // around the ring in the next cycle.
+                fwdCtrlMsg.enq(newcmd);
+                resp = RESP_Balanced;
             end
 
             tagged COM_Step:
             begin
-
                 state <= MC_stepping;
-                
             end
 
             // TODO: should this be COM_EnableInstance??
@@ -572,19 +576,8 @@ module [HASIM_MODULE] mkMultiplexController
             end
         endcase
 
-        // send it on
-        cmds.send_to_next(newcmd);
-    endrule
-
-
-    // shiftResponse
-    
-    // Repsonses from other controllers are just passed on.
-
-    rule shiftResponse (True);
-        let resp <- resps.receive_from_prev();
-        // Just send it on
-        resps.send_to_next(resp);
+        // Send command or response along on the ring.
+        link_controllers.send_to_next(resp);
     endrule
 
 

@@ -21874,3 +21874,34 @@ Directory modules/system/test/mem_test
 
 - Temporary version of mem test for ACP with local memory (SRAM) and no
   central cache.
+
+----------
+mcadler     Date: Tue Dec  8 20:07:50 EST 2009  CSN: CSN-hasim-734
+                  Wed Dec  9 01:07:50 UTC 2009
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          733 
+ commands-local.bsv        Locally Modified          733 
+ commands-service.rrr      Locally Modified          733 
+ commands-service.h        Locally Modified          733 
+ commands-service.awb      Locally Modified          733 
+ commands-service.bsv      Locally Modified          733 
+ commands-service.dic      Locally Modified          733 
+
+- End cycle from --cycles switch is now detected in the hardware instead of
+  using heartbeats, allowing for more accurate end detection and on any cycle.
+  The model cycle of instance ID 0 is used.  Other instances could be checked,
+  though we'd have to make the model cycle counters all 64 bit counters.
+  "./run --cycles=1" now actually stops after simulated cycle 1.
+
+  On end-cycle detection the controller sends a PAUSE command around the ring
+  and sends a program ended successfully message to the software.
+
+- Combine command and response controller rings into a single ring.  Very
+  little arbitration was required and it should save a lot of wires.
+
+- Resurrect deadlock detection and debug scan out on deadlock.
+
+- Cleaning up the program end method control logic appears to have fixed
+  the deadlock at the end of OOO model runs, at least in my regression testing.

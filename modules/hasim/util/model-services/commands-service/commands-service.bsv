@@ -78,17 +78,17 @@ module [HASIM_MODULE] mkCommandsService
     // Track our internal state
     Reg#(CON_STATE) state <- mkReg(CON_Init);
 
+    // End model cycle (set by software, tests context 0's model cycle counter).
+    Reg#(Bit#(64)) endModelCycle <- mkReg(0);
+
     // =========== Submodules ===========
     
     // Stubs to communicate to SW
     let clientStub <- mkClientStub_COMMANDS();
     let serverStub <- mkServerStub_COMMANDS();
   
-    // Our way of sending Commands to the Local Controllers
-    Connection_Chain#(HASIM_COMMAND)  link_command   <- mkConnection_Chain(`RINGID_MODULE_COMMANDS);
-  
-    // Our way of receiving Responses from the Local Controllers
-    Connection_Chain#(HASIM_RESPONSE) link_response <- mkConnection_Chain(`RINGID_MODULE_RESPONSES);
+    // Our way of communicating with the local controllers
+    Connection_Chain#(CONTROLLER_MSG) link_controllers <- mkConnection_Chain(`RINGID_CONTROLLER_MESSAGES);
 
     Connection_Send#(STREAMS_REQUEST) link_streams <- mkConnection_Send("vdev_streams");
 
@@ -107,33 +107,47 @@ module [HASIM_MODULE] mkCommandsService
     // *********** Rules ***********
 
     // tick
-
-    // Count the current FPGA cycle
+    //
+    // Count the current FPGA cycle.
+    //
     rule tick (True);
         curTick <= curTick + 1;
     endrule
+
+    //
+    // fpgaHeartbeat --
+    //     Monitor ticks and send a hardware-only heartbeat, used to detect
+    //     model deadlocks.
+    //
+    Reg#(Bit#(1)) fpgaHeartBeatState <- mkReg(0);
+
+    rule fpgaHeartbeat (True);
+        let trigger = curTick[`FPGA_HEARTBEAT_TRIGGER_BIT];
+        if (trigger != fpgaHeartBeatState)
+        begin
+            fpgaHeartBeatState <= trigger;
+            clientStub.makeRequest_FPGAHeartbeat(?);
+        end
+    endrule
   
 
-    // finishCommands
-
-    // As the end of the Command chain, we dequeue Commands when
-    // they make their way back to us and send an ACK back to the host.
-    rule finishCommands (True);
-        let cmd <- link_command.receive_from_prev();
-        case (cmd)
-            COM_RunProgram: serverStub.sendResponse_Run(?);
-            COM_Pause:      serverStub.sendResponse_Pause(?);
-        endcase
-    endrule
-
-
-    // getResponse
+    // getMessage
 
     // Get Responses from the Local Controllers, including when the program ends.
-    rule getResponse (True);
-        let resp <- link_response.receive_from_prev();
+    rule getMessage (True);
+        let msg <- link_controllers.receive_from_prev();
 
-        case (resp) matches
+        case (msg) matches
+            tagged COM_RunProgram: serverStub.sendResponse_Run(?);
+
+            tagged COM_Pause .send_resp:
+            begin
+                if (send_resp)
+                begin
+                    serverStub.sendResponse_Pause(?);
+                end
+            end
+
             tagged RESP_DoneRunning .pf: // Program's done
             begin
                 if (pf)  // It passed
@@ -155,12 +169,10 @@ module [HASIM_MODULE] mkCommandsService
                 state <= CON_Finished;
             end
 
-            default: // Unexpected Response
+            default:
             begin
-                link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MESSAGE,
-                                                    stringID: `STREAMS_MESSAGE_ERROR,
-                                                    payload0: truncate(curTick),
-                                                    payload1: zeroExtend(pack(resp)) });
+                // Sink most messages
+                noAction;
             end
         endcase
     endrule
@@ -171,6 +183,7 @@ module [HASIM_MODULE] mkCommandsService
         finishing <= finishing - 1;
     endrule
 
+
     rule finishRun (state == CON_Finished && finishing == 0);
         clientStub.makeRequest_EndSim(zeroExtend(pack(passed)));
         state <= CON_Init;
@@ -178,15 +191,22 @@ module [HASIM_MODULE] mkCommandsService
         finishing <= `MODEL_COOLDOWN;
     endrule
 
+
     rule enableContext (True);
         let ctx_id <- serverStub.acceptRequest_EnableContext();
-        link_command.send_to_next(tagged COM_EnableContext truncate(ctx_id));
+        link_controllers.send_to_next(tagged COM_EnableContext truncate(ctx_id));
     endrule
 
 
     rule disableContext (True);
         let ctx_id <- serverStub.acceptRequest_DisableContext();
-        link_command.send_to_next(tagged COM_DisableContext truncate(ctx_id));
+        link_controllers.send_to_next(tagged COM_DisableContext truncate(ctx_id));
+    endrule
+
+
+    rule setEndModelCycle (True);
+        let cycle <- serverStub.acceptRequest_SetEndModelCycle();
+        endModelCycle <= cycle;
     endrule
 
 
@@ -194,7 +214,7 @@ module [HASIM_MODULE] mkCommandsService
     rule run (state == CON_Init);
         let dummy <- serverStub.acceptRequest_Run();
 
-        link_command.send_to_next(COM_RunProgram);
+        link_controllers.send_to_next(COM_RunProgram);
 
         state <= CON_Running;
 
@@ -209,20 +229,29 @@ module [HASIM_MODULE] mkCommandsService
     rule pause (True);
         let dummy <- serverStub.acceptRequest_Pause();
         // To Do: Sync and quiesce.  For now just sends a pause request.
-        link_command.send_to_next(COM_Pause);
+        link_controllers.send_to_next(tagged COM_Pause True);
     endrule
 
 
     // sync: sync ports and events
-    (* descending_urgency = "sync, pause, disableContext, enableContext, run" *)
+    (* descending_urgency = "sync, pause, setEndModelCycle, disableContext, enableContext, run" *)
     rule sync (True);
         let dummy <- serverStub.acceptRequest_Sync();
         serverStub.sendResponse_Sync(?);
     endrule
 
 
-    // Count the model cycle and send heartbeat updates
-    (* descending_urgency = "modelTick, finishRun" *)
+    //
+    // Count the model cycle and send heartbeat updates.
+    //
+
+    // Context 0 is tested for the global end model cycle, which may be requested
+    // by software.  Using a single 64 bit counter instead of making all model
+    // cycle counters 64 bits saves space with large numbers of contexts.
+    // Initializing to 1 makes the end model cycle comparison easier.
+    Reg#(Bit#(64)) ctx0ModelCycles <- mkReg(1);
+
+    (* descending_urgency = "run, modelTick, finishRun, getMessage, fpgaHeartbeat" *)
     rule modelTick (True);
 
         CONTEXT_ID ctx_id = link_model_cycle.receive();
@@ -243,6 +272,29 @@ module [HASIM_MODULE] mkCommandsService
             curModelCycle.upd(ctx_id, cur_cycle + 1);
         end
 
+        //
+        // Time to stop simulation?
+        //
+        if (ctx_id == 0)
+        begin
+            if ((ctx0ModelCycles >= endModelCycle) &&
+                (state == CON_Running))
+            begin
+                // Stop simulation
+                link_controllers.send_to_next(tagged COM_Pause False);
+
+                // Tell software we're done
+                link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MESSAGE,
+                                                    stringID: `STREAMS_MESSAGE_SUCCESS,
+                                                    payload0: truncate(curTick),
+                                                    payload1: ? });
+                passed <= True;
+                state <= CON_Finished;
+            end
+
+            ctx0ModelCycles <= ctx0ModelCycles + 1;
+        end
+
     endrule
 
     //
@@ -255,7 +307,6 @@ module [HASIM_MODULE] mkCommandsService
 
         let cur_commits = instrCommits.sub(ctx_id);
         instrCommits.upd(ctx_id, cur_commits + zeroExtend(commits));
-
     endrule
 
 endmodule

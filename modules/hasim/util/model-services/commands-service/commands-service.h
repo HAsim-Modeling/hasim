@@ -146,9 +146,8 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     UINT64 statsScanMask;
 
     // Deadlock detection
-    UINT64 lastFPGAClockModelCycles;
-    UINT64 lastFPGAClockCommits;
     UINT32 noChangeBeats;
+    bool running;
     
     // wall-clock time tracking
     struct timeval startTime;
@@ -180,11 +179,14 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
 
     // RRR service methods
     void EndSim(UINT8 success);
+
     void ModelHeartbeat(UINT32 hwThreadId,
                         UINT64 fpga_cycles,
                         UINT32 model_cycles,
                         UINT32 instr_commits);
 
+
+    void FPGAHeartbeat(UINT8 dummy);
 };
 
 // server stub

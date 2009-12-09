@@ -6,6 +6,8 @@ service COMMANDS
         method Pause     (in UINT32[32] payload, out UINT8[8] ack);
         method Sync      (in UINT32[32] payload, out UINT8[8] ack);
 
+        method SetEndModelCycle(in UINT64[64] modelCycle);
+
         method EnableContext(in UINT32[32] ctxId);
         method DisableContext(in UINT32[32] ctxId);
     };
@@ -13,9 +15,13 @@ service COMMANDS
     server sw (cpp, method) <- hw (bsv, connection)
     {
         method EndSim    (in UINT8[8] success);
-        method ModelHeartbeat (in UINT32[32] ctxId,
-                               in UINT64[64] fpga_cycles,
-                               in UINT32[32] model_cycles,
-                               in UINT32[32] instr_commits);
+
+        method ModelHeartbeat(in UINT32[32] ctxId,
+                              in UINT64[64] fpga_cycles,
+                              in UINT32[32] model_cycles,
+                              in UINT32[32] instr_commits);
+
+        // Ping from the hardware, used to detect deadlocks
+        method FPGAHeartbeat(in UINT8[8] dummy);
     };
 };

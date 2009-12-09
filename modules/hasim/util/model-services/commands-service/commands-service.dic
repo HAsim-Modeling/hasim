@@ -1,5 +1,4 @@
-def RINGID.MODULE_COMMANDS  "module commands";
-def RINGID.MODULE_RESPONSES "module responses";
+def RINGID.CONTROLLER_MESSAGES  "module commands and responses";
 
 def STREAMID.MESSAGE "message";
 

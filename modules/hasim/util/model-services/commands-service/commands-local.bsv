@@ -228,6 +228,17 @@ module [HASIM_MODULE] mkLocalController
     endfunction
 
 
+    //
+    // Compute balance every cycle to keep the calculation out of the
+    // critical path for writing the state to the controller ring.
+    //
+    Reg#(Bool) isBalanced <- mkReg(True);
+
+    rule checkBalance (True);
+        isBalanced <= balanced();
+    endrule
+
+
     // ====================================================================
     //
     // Process controller commands and send responses.
@@ -273,10 +284,7 @@ module [HASIM_MODULE] mkLocalController
                 // around the ring in the next cycle.
                 fwdCtrlMsg.enq(newcmd);
 
-                if (balanced())
-                    resp = RESP_Balanced;
-                else
-                    resp = RESP_UnBalanced;
+                resp = (isBalanced ? RESP_Balanced : RESP_UnBalanced);
             end
 
             tagged COM_Step:

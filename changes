@@ -21905,3 +21905,21 @@ Directory modules/hasim/util/model-services/commands-service
 
 - Cleaning up the program end method control logic appears to have fixed
   the deadlock at the end of OOO model runs, at least in my regression testing.
+
+----------
+mcadler     Date: Wed Dec  9 23:29:42 EST 2009  CSN: CSN-hasim-735
+                  Thu Dec 10 04:29:42 UTC 2009
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          734 
+ commands-local.bsv        Locally Modified          734 
+ commands-service.awb      Locally Modified          734 
+ commands-service.bsv      Locally Modified          734 
+
+- Move balanced computation and end cycle computation out of their current rules
+  and into separate rules to reduce critical paths.
+
+- Lengthen interval before declaring a deadlock to about a minute.
+
+- OOO models appear not to be fixed.  Maybe I was just lucky last time.

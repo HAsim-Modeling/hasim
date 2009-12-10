@@ -15,4 +15,7 @@
 %param MODEL_COOLDOWN 2 "Number of FPGA cycles to run after simulation has finished to facilitate IO draining."
 
 %param --global HEARTBEAT_TRIGGER_BIT 13 "Transitions of this bit in the model cycle counter trigger heartbeat messages"
-%param --global FPGA_HEARTBEAT_TRIGGER_BIT 16 "Transisions of this FPGA cycle counter triggers an FPGA heartbeat message"
+
+# FPGA heartbeat is used for deadlock detection.  A trigger on bit 26 is about
+# one beat a second at typical FPGA frequencies.
+%param --global FPGA_HEARTBEAT_TRIGGER_BIT 26 "Transisions of this FPGA cycle counter triggers an FPGA heartbeat message"

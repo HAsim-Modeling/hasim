@@ -79,7 +79,7 @@ module [HASIM_MODULE] mkCommandsService
     Reg#(CON_STATE) state <- mkReg(CON_Init);
 
     // End model cycle (set by software, tests context 0's model cycle counter).
-    Reg#(Bit#(64)) endModelCycle <- mkReg(0);
+    Reg#(Maybe#(Bit#(64))) endModelCycle <- mkReg(tagged Invalid);
 
     // =========== Submodules ===========
     
@@ -119,15 +119,11 @@ module [HASIM_MODULE] mkCommandsService
     //     Monitor ticks and send a hardware-only heartbeat, used to detect
     //     model deadlocks.
     //
-    Reg#(Bit#(1)) fpgaHeartBeatState <- mkReg(0);
+    Reg#(Bit#(1)) fpgaHeartbeatState <- mkReg(0);
 
-    rule fpgaHeartbeat (True);
-        let trigger = curTick[`FPGA_HEARTBEAT_TRIGGER_BIT];
-        if (trigger != fpgaHeartBeatState)
-        begin
-            fpgaHeartBeatState <= trigger;
-            clientStub.makeRequest_FPGAHeartbeat(?);
-        end
+    rule fpgaHeartbeat (fpgaHeartbeatState != curTick[`FPGA_HEARTBEAT_TRIGGER_BIT]);
+        fpgaHeartbeatState <= curTick[`FPGA_HEARTBEAT_TRIGGER_BIT];
+        clientStub.makeRequest_FPGAHeartbeat(?);
     endrule
   
 
@@ -206,7 +202,7 @@ module [HASIM_MODULE] mkCommandsService
 
     rule setEndModelCycle (True);
         let cycle <- serverStub.acceptRequest_SetEndModelCycle();
-        endModelCycle <= cycle;
+        endModelCycle <= tagged Valid cycle;
     endrule
 
 
@@ -241,26 +237,43 @@ module [HASIM_MODULE] mkCommandsService
     endrule
 
 
+    // ====================================================================
     //
     // Count the model cycle and send heartbeat updates.
     //
+    // ====================================================================
 
     // Context 0 is tested for the global end model cycle, which may be requested
     // by software.  Using a single 64 bit counter instead of making all model
     // cycle counters 64 bits saves space with large numbers of contexts.
     // Initializing to 1 makes the end model cycle comparison easier.
-    Reg#(Bit#(64)) ctx0ModelCycles <- mkReg(1);
+    Reg#(Bit#(64)) ctx0ModelCycles <- mkReg(0);
 
-    (* descending_urgency = "run, modelTick, finishRun, getMessage, fpgaHeartbeat" *)
+    (* descending_urgency = "getMessage, checkSimEnd, pause" *)
+    rule checkSimEnd (state == CON_Running &&&
+                      endModelCycle matches tagged Valid .end_cycle &&&
+                      ctx0ModelCycles >= end_cycle);
+        // Stop simulation
+        link_controllers.send_to_next(tagged COM_Pause False);
+
+        // Tell software we're done
+        link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MESSAGE,
+                                            stringID: `STREAMS_MESSAGE_SUCCESS,
+                                            payload0: truncate(curTick),
+                                            payload1: ? });
+        passed <= True;
+        state <= CON_Finished;
+    endrule
+
+
+    (* descending_urgency = "finishRun, fpgaHeartbeat, modelTick" *)
     rule modelTick (True);
-
         CONTEXT_ID ctx_id = link_model_cycle.receive();
         link_model_cycle.deq();
 
         let cur_cycle = curModelCycle.sub(ctx_id);
 
         let trigger = cur_cycle[`HEARTBEAT_TRIGGER_BIT];
-
         if (trigger == 1)
         begin
             clientStub.makeRequest_ModelHeartbeat(zeroExtend(ctx_id), curTick, zeroExtend(cur_cycle), instrCommits.sub(ctx_id));
@@ -273,28 +286,13 @@ module [HASIM_MODULE] mkCommandsService
         end
 
         //
-        // Time to stop simulation?
+        // Context 0 is used to trigger the end of simulation if a cycle limit
+        // is set.
         //
         if (ctx_id == 0)
         begin
-            if ((ctx0ModelCycles >= endModelCycle) &&
-                (state == CON_Running))
-            begin
-                // Stop simulation
-                link_controllers.send_to_next(tagged COM_Pause False);
-
-                // Tell software we're done
-                link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MESSAGE,
-                                                    stringID: `STREAMS_MESSAGE_SUCCESS,
-                                                    payload0: truncate(curTick),
-                                                    payload1: ? });
-                passed <= True;
-                state <= CON_Finished;
-            end
-
             ctx0ModelCycles <= ctx0ModelCycles + 1;
         end
-
     endrule
 
     //

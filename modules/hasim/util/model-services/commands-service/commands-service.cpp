@@ -110,7 +110,10 @@ void
 COMMANDS_SERVER_CLASS::Run()
 {
     // Set simulation end cycle
-    clientStub->SetEndModelCycle(stopCycleSwitch.StopCycle());
+    if (stopCycleSwitch.StopCycle() != 0)
+    {
+        clientStub->SetEndModelCycle(stopCycleSwitch.StopCycle());
+    }
 
     // Tell the stats device to setup itself. We wait until this
     // point to do it to ensure that the RRR stack is up.
@@ -182,7 +185,11 @@ COMMANDS_SERVER_CLASS::FPGAHeartbeat(UINT8 dummy)
     {
         noChangeBeats += 1;
 
-        if (noChangeBeats == 100)
+        //
+        // Standard heartbeat is set to trigger about once a second.  Call
+        // deadlock after a minute of no model activity.
+        //
+        if (noChangeBeats == 60)
         {
             cerr << "commands relay: model deadlock!" << endl;
 

@@ -47,16 +47,16 @@ typedef union tagged
     // Commands from to local controllers
     void         COM_RunProgram;     // Begin running, allowed to slip
     void         COM_Synchronize;    // Start synchronizing the system
-    void         COM_SyncQuery;      // Is the system synchronized yet?
+    Bool         COM_SyncQuery;      // Is the system synchronized yet?
+                                     // System is synchronized if the message
+                                     // makes it around the ring remaining True.
     void         COM_Step;           // Run exactly one model CC.
     Bool         COM_Pause;          // Stop running (True -> send response to host)
     CONTEXT_ID   COM_EnableContext;  // Enable context
     CONTEXT_ID   COM_DisableContext; // Disable context
 
-    // Responses from local controllers
-    Bool         RESP_DoneRunning;   // Bool is run passed
-    void         RESP_Balanced;      // Response to query
-    void         RESP_UnBalanced;    // Response to query
+    // Messages from local controllers
+    Bool         LC_DoneRunning;     // Bool is run passed
 }
 CONTROLLER_MSG
     deriving (Eq, Bits);
@@ -157,7 +157,7 @@ module [HASIM_MODULE] mkLocalController
             canWrite = canWrite && canWriteTo(outctrls[x]);
 
         // An instance is ready to go only if it's been enabled.
-        return instanceActive[iid] && !instanceRunning[iid]; //&& canRead && canWrite;
+        return instanceActive[iid] && !instanceRunning[iid] && canRead && canWrite;
 
     endfunction
 
@@ -228,16 +228,6 @@ module [HASIM_MODULE] mkLocalController
     endfunction
 
 
-    //
-    // Compute balance every cycle to keep the calculation out of the
-    // critical path for writing the state to the controller ring.
-    //
-    Reg#(Bool) isBalanced <- mkReg(True);
-
-    rule checkBalance (True);
-        isBalanced <= balanced();
-    endrule
-
 
     // ====================================================================
     //
@@ -245,27 +235,25 @@ module [HASIM_MODULE] mkLocalController
     //
     // ====================================================================
 
-    FIFO#(CONTROLLER_MSG) fwdCtrlMsg <- mkFIFO1();
-    FIFO#(CONTROLLER_MSG) newCtrlMsg <- mkFIFO1();
+    FIFO#(Bool) checkBalanceQ <- mkFIFO();
+    FIFO#(CONTROLLER_MSG) newCtrlMsgQ <- mkFIFO1();
     
-    rule forwardControlMsg (True);
-        let cmd = fwdCtrlMsg.first();
-        fwdCtrlMsg.deq();
-        
-        link_controllers.send_to_next(cmd);
+    rule checkBalance (True);
+        checkBalanceQ.deq();
+        link_controllers.send_to_next(tagged COM_SyncQuery balanced());
     endrule
 
     rule newControlMsg (True);
-        let cmd = newCtrlMsg.first();
-        newCtrlMsg.deq();
+        let cmd = newCtrlMsgQ.first();
+        newCtrlMsgQ.deq();
         
         link_controllers.send_to_next(cmd);
     endrule
 
-    (* descending_urgency = "newControlMsg, forwardControlMsg, nextCommand" *)
-    rule nextCommand (True);
+    (* descending_urgency = "checkBalance, newControlMsg, nextCommand" *)
+    rule nextCommand (state != LC_Stepping);
         let newcmd <- link_controllers.receive_from_prev();
-        CONTROLLER_MSG resp = newcmd;
+        Maybe#(CONTROLLER_MSG) outcmd = tagged Valid newcmd;
 
         case (newcmd) matches
             tagged COM_RunProgram:
@@ -278,13 +266,23 @@ module [HASIM_MODULE] mkLocalController
                 state <= LC_Synchronizing;
             end
 
-            tagged COM_SyncQuery:
+            tagged COM_SyncQuery .all_balanced:
             begin
-                // Send the response this cycle and forward the COM_SyncQuery
-                // around the ring in the next cycle.
-                fwdCtrlMsg.enq(newcmd);
-
-                resp = (isBalanced ? RESP_Balanced : RESP_UnBalanced);
+                // The COM_SyncQuery state will remain True if all controllers
+                // are balanced.  If a previous controller is unbalanced then
+                // just forward the unbalanced state.  If we need to check
+                // the state of this controller then queue the request.
+                //
+                // The Bluespec scheduler throws an error about being unable
+                // to break a cycle if we attempt to check balance here
+                // because it can't break the connection between setting
+                // state, startModelCycle and changes to balance() while
+                // the model runs.
+                if (all_balanced)
+                begin
+                    outcmd = tagged Invalid;
+                    checkBalanceQ.enq(?);
+                end
             end
 
             tagged COM_Step:
@@ -316,8 +314,11 @@ module [HASIM_MODULE] mkLocalController
             end
         endcase
 
-        // Send command or response along on the ring.
-        link_controllers.send_to_next(resp);
+        // Forward command around the ring
+        if (outcmd matches tagged Valid .cmd)
+        begin
+            link_controllers.send_to_next(cmd);
+        end
     endrule
 
 
@@ -358,17 +359,29 @@ module [HASIM_MODULE] mkLocalController
     
     endrule
 
+    //
+    // updateStateForStepping --
+    //     State update associated with startModelCycle, encoded in a rule
+    //     and controlled by a wire in order to set scheduling priority.
+    //
+    Wire#(Maybe#(Bit#(INSTANCE_ID_BITS#(t_NUM_INSTANCES)))) newModelCycleStarted <- mkDWire(tagged Invalid);
+
+    (* descending_urgency = "updateStateForStepping, nextCommand" *)
+    rule updateStateForStepping (state == LC_Stepping &&&
+                                 newModelCycleStarted matches tagged Valid .iid);
+        instanceStepped[iid] <= True;
+        if (allTrue(instanceStepped))
+            state <= LC_Idle;
+    endrule
+
+
     method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES)) startModelCycle() if ((state != LC_Idle) && instanceReady(nextInstance.value()));
 
         let next_iid = nextInstance.value();
 
         if (state == LC_Stepping)
         begin
-
-            instanceStepped[next_iid] <= True;
-            if (allTrue(instanceStepped))
-                state <= LC_Idle;
-
+            newModelCycleStarted <= tagged Valid next_iid;
         end
         
         // checkInstanceSanity();
@@ -390,7 +403,7 @@ module [HASIM_MODULE] mkLocalController
         // XXX this should be per-instance.  For now only allowed to fire once.
         if (! signalDone)
         begin
-            newCtrlMsg.enq(tagged RESP_DoneRunning pf);
+            newCtrlMsgQ.enq(tagged LC_DoneRunning pf);
             signalDone <= True;
         end
     endmethod
@@ -533,19 +546,9 @@ module [HASIM_MODULE] mkMultiplexController
     //
     // ====================================================================
 
-    FIFO#(CONTROLLER_MSG) fwdCtrlMsg <- mkFIFO1();
-
-    rule forwardControlMsg (True);
-        let cmd = fwdCtrlMsg.first();
-        fwdCtrlMsg.deq();
-        
-        link_controllers.send_to_next(cmd);
-    endrule
-
-    (* descending_urgency = "forwardControlMsg, nextCommand" *)
     rule nextCommand (True);
         let newcmd <- link_controllers.receive_from_prev();
-        CONTROLLER_MSG resp = newcmd;
+        CONTROLLER_MSG outcmd = newcmd;
 
         case (newcmd) matches
             tagged COM_RunProgram:
@@ -558,12 +561,11 @@ module [HASIM_MODULE] mkMultiplexController
                 state <= MC_running;
             end
 
-            tagged COM_SyncQuery:
+            tagged COM_SyncQuery .all_balanced:
             begin
-                // Send the response this cycle and forward the COM_SyncQuery
-                // around the ring in the next cycle.
-                fwdCtrlMsg.enq(newcmd);
-                resp = RESP_Balanced;
+                // This controller is always balanced and will never pull down
+                // all_balanced.
+                noAction;
             end
 
             tagged COM_Step:
@@ -584,8 +586,8 @@ module [HASIM_MODULE] mkMultiplexController
             end
         endcase
 
-        // Send command or response along on the ring.
-        link_controllers.send_to_next(resp);
+        // Forward command around the ring
+        link_controllers.send_to_next(outcmd);
     endrule
 
 

@@ -2,9 +2,11 @@ service COMMANDS
 {
     server hw (bsv, connection) <- sw (cpp, method)
     {
-        method Run       (in UINT32[32] payload, out UINT8[8] ack);
-        method Pause     (in UINT32[32] payload, out UINT8[8] ack);
-        method Sync      (in UINT32[32] payload, out UINT8[8] ack);
+        method Run(in UINT8[8] dummy, out UINT8[8] ack);
+        method Pause(in UINT8[8] dummy, out UINT8[8] ack);
+
+        method Sync(in UINT8[8] dummy, out UINT8[8] ack);
+        method IsSynced(in UINT8[8] dummy, out UINT8[8] isSynced);
 
         method SetEndModelCycle(in UINT64[64] modelCycle);
 

@@ -21923,3 +21923,22 @@ Directory modules/hasim/util/model-services/commands-service
 - Lengthen interval before declaring a deadlock to about a minute.
 
 - OOO models appear not to be fixed.  Maybe I was just lucky last time.
+
+----------
+mcadler     Date: Fri Dec 11 16:15:27 EST 2009  CSN: CSN-hasim-736
+                  Fri Dec 11 21:15:27 UTC 2009
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          735 
+ commands-local.bsv        Locally Modified          735 
+ commands-service.rrr      Locally Modified          735 
+ commands-service.bsv      Locally Modified          735 
+
+- Balance the model on exit before reading statistics.  (A-Ports claim they
+  are always balanced, so for models that use A-Ports this change has no effect.)
+
+- Simplify the SyncQuery controller command by passing a single Bool around
+  as part of the command.  If it stays True through the whole ring the
+  controllers are all balanced.  The previous version generated a packet
+  storm on the ring, adding a new message for every controller.

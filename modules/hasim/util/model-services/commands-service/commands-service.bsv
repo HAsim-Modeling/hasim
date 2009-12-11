@@ -144,7 +144,14 @@ module [HASIM_MODULE] mkCommandsService
                 end
             end
 
-            tagged RESP_DoneRunning .pf: // Program's done
+            tagged COM_Synchronize: serverStub.sendResponse_Sync(?);
+
+            tagged COM_SyncQuery .all_balanced:
+            begin
+                serverStub.sendResponse_IsSynced(zeroExtend(pack(all_balanced)));
+            end
+
+            tagged LC_DoneRunning .pf: // Program's done
             begin
                 if (pf)  // It passed
                 begin
@@ -230,10 +237,15 @@ module [HASIM_MODULE] mkCommandsService
 
 
     // sync: sync ports and events
-    (* descending_urgency = "sync, pause, setEndModelCycle, disableContext, enableContext, run" *)
     rule sync (True);
         let dummy <- serverStub.acceptRequest_Sync();
-        serverStub.sendResponse_Sync(?);
+        link_controllers.send_to_next(tagged COM_Synchronize);
+    endrule
+
+    (* descending_urgency = "sync, isSynced" *)
+    rule isSynced (True);
+        let dummy <- serverStub.acceptRequest_IsSynced();
+        link_controllers.send_to_next(tagged COM_SyncQuery True);
     endrule
 
 
@@ -249,7 +261,7 @@ module [HASIM_MODULE] mkCommandsService
     // Initializing to 1 makes the end model cycle comparison easier.
     Reg#(Bit#(64)) ctx0ModelCycles <- mkReg(0);
 
-    (* descending_urgency = "getMessage, checkSimEnd, pause" *)
+    (* descending_urgency = "getMessage, checkSimEnd, sync, isSynced, pause, setEndModelCycle, disableContext, enableContext, run" *)
     rule checkSimEnd (state == CON_Running &&&
                       endModelCycle matches tagged Valid .end_cycle &&&
                       ctx0ModelCycles >= end_cycle);

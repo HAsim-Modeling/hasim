@@ -238,7 +238,24 @@ COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
     if (simEnding) return;
     simEnding = true;
 
-    // stop the simulation
+    //
+    // Synchronize (balance) the system before retrieving the final statistcs.
+    //
+    clientStub->Sync(0);    
+
+    int max_tries = 100000;
+    bool not_balanced = true;
+    while (not_balanced && (--max_tries != 0))
+    {
+        not_balanced = (clientStub->IsSynced(0) == 0);
+    }
+
+    if (not_balanced)
+    {
+        cerr << "Failed to synchronize model!" << endl;
+    }
+
+    // Stop running
     Pause();
 
     gettimeofday(&endTime, NULL);

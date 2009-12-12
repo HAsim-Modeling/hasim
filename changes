@@ -21942,3 +21942,13 @@ Directory modules/hasim/util/model-services/commands-service
   as part of the command.  If it stays True through the whole ring the
   controllers are all balanced.  The previous version generated a packet
   storm on the ring, adding a new message for every controller.
+
+----------
+kfleming    Date: Sat Dec 12 22:39:48 KST 2009  CSN: CSN-hasim-737
+                  Sat Dec 12 13:39:48 UTC 2009
+
+
+Directory libperl/HAsim/lib/HAsim
+ Util.pm                   Locally Modified          736 
+
+Adding support for unified synplify/xst builds

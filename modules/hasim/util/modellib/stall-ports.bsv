@@ -139,12 +139,7 @@ module [HASIM_MODULE] mkPortStallSend#(String s)
             method Bool light() = False;
             
             method Maybe#(INSTANCE_ID#(1)) nextReadyInstance() = tagged Valid (?);
-            method Action drop();
-
-                creditFromQueue.deq();
-                // Note: we purposely don't write enqToQueue here, since it's a drop.
-            
-            endmethod
+            method Action setMaxRunningInstance(INSTANCE_ID#(1) iid) = noAction;
         
         endinterface
         
@@ -247,9 +242,7 @@ module [HASIM_MODULE] mkPortStallRecv#(String s)
             method Bool light() = False;
             
             method Maybe#(INSTANCE_ID#(ni)) nextReadyInstance() = tagged Valid (?);
-            method Action drop();
-                firstToConsumer.deq();
-            endmethod
+            method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid) = noAction;
         
         endinterface
     
@@ -297,7 +290,6 @@ module [HASIM_MODULE] mkPortStallSend_Multiplexed#(String s)
 
     interface INSTANCE_CONTROL_IN_OUT ctrl;
 
-        // Note: we purposely don't enq into enqToQueue on a drop.
         interface INSTANCE_CONTROL_IN in = creditFromQueue.ctrl;
 
         interface INSTANCE_CONTROL_OUT out = enqToQueue.ctrl;
@@ -305,6 +297,14 @@ module [HASIM_MODULE] mkPortStallSend_Multiplexed#(String s)
     endinterface
 
 endmodule
+
+typedef enum
+{
+    STALLP_idle,
+    STALLP_initializing,
+    STALLP_running
+}
+STALLP_STATE deriving (Eq, Bits);
 
 module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
         (PORT_STALL_RECV_MULTIPLEXED#(ni, a))
@@ -326,18 +326,19 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
 
     Vector#(ni, FIFOF#(a)) fifos <- replicateM(mkUGSizedFIFOF(2));
     
-    Reg#(Bool) initializing <- mkReg(True);
+    Reg#(STALLP_STATE) state <- mkReg(STALLP_idle);
+    Reg#(INSTANCE_ID#(ni)) maxRunningInstance <- mkRegU();
     Reg#(INSTANCE_ID#(ni)) initIID <- mkReg(0);
 
-    rule initialize (initializing);
+    rule initialize (state == STALLP_initializing);
     
         // Push every instance into stage1.
         stage1Ctrl.enq(initIID);
         initIID <= initIID + 1;
         
-        if (initIID == fromInteger(valueof(ni) - 1))
+        if (initIID == maxRunningInstance)
         begin
-            initializing <= False;
+            state <= STALLP_running;
         end
     
     endrule
@@ -363,7 +364,7 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
         
     endrule
 
-    rule stage2_deqAndCredit (enqFromProducer.ctrl.nextReadyInstance() matches tagged Valid .iid &&& !initializing);
+    rule stage2_deqAndCredit (enqFromProducer.ctrl.nextReadyInstance() matches tagged Valid .iid &&& state == STALLP_running);
  
         // First deal with enqueues.
         let m_enq <- enqFromProducer.receive(iid);
@@ -426,14 +427,10 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
             
             endmethod
             
-            method Action drop();
-            
-                // Drop the first element of the dead instance.
-                firstToConsumer.deq();
-                
-                // Note, since it's a drop we purposefully don't do an enqueue into deqFromConsumer.
-                // We have to take it on faith that the sending side has been told to drop the same instance
-                // and not added a new enqFromProducer.
+            method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid);
+
+                maxRunningInstance <= iid;
+                state <= STALLP_initializing;
 
             endmethod
         

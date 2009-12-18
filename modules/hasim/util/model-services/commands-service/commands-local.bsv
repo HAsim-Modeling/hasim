@@ -94,8 +94,9 @@ module [HASIM_MODULE] mkLocalController
 
     Reg#(LC_STATE) state <- mkReg(LC_Idle);
   
-    // Vector of active instances
-    Reg#(Vector#(t_NUM_INSTANCES, Bool)) instanceActive <- mkReg(replicate(False));
+    // Counter of active instances. 
+    // We start at -1, so we assume at least one instance is active.
+    COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES)) maxActiveInstance <- mkLCounter(~0);
     // Vector of running instances
     Reg#(Vector#(t_NUM_INSTANCES, Bool)) instanceRunning <- mkReg(replicate(False));
     // Track stepping state.
@@ -157,7 +158,7 @@ module [HASIM_MODULE] mkLocalController
             canWrite = canWrite && canWriteTo(outctrls[x]);
 
         // An instance is ready to go only if it's been enabled.
-        return instanceActive[iid] && !instanceRunning[iid] && canRead && canWrite;
+        return !instanceRunning[iid] && canRead && canWrite;
 
     endfunction
 
@@ -258,7 +259,16 @@ module [HASIM_MODULE] mkLocalController
         case (newcmd) matches
             tagged COM_RunProgram:
             begin
+    
+                for (Integer x = 0; x < valueof(t_NUM_INPORTS); x = x + 1)
+                begin
+                
+                    inctrls[x].setMaxRunningInstance(maxActiveInstance.value());
+
+                end
+
                 state <= LC_Running;
+
             end
 
             tagged COM_Synchronize:
@@ -291,7 +301,7 @@ module [HASIM_MODULE] mkLocalController
                 Vector#(t_NUM_INSTANCES, Bool) instance_stepped = newVector();
                 for (Integer x = 0; x < valueOf(t_NUM_INSTANCES); x = x + 1)
                 begin
-                   instance_stepped[x] = !instanceActive[x];
+                   instance_stepped[x] = False;
                 end
                 instanceStepped <= instance_stepped;
             end
@@ -304,13 +314,13 @@ module [HASIM_MODULE] mkLocalController
             // TODO: should this be COM_EnableInstance??
             tagged COM_EnableContext .iid:
             begin
-                instanceActive[iid] <= True;
+                maxActiveInstance.up();
             end
 
             // TODO: should this be COM_DisableInstance??
             tagged COM_DisableContext .iid:
             begin
-                instanceActive[iid] <= False;
+                maxActiveInstance.down();
             end
         endcase
 
@@ -320,26 +330,6 @@ module [HASIM_MODULE] mkLocalController
             link_controllers.send_to_next(cmd);
         end
     endrule
-
-
-
-    rule ignoreDisabledInstances (state != LC_Idle && !instanceActive[nextInstance.value()]);
-    
-        nextInstance.up();
-    
-    endrule
-    
-    for (Integer x = 0; x < valueof(t_NUM_INPORTS); x = x + 1)
-    begin
-    
-        rule dropDisabledInstance (inctrls[x].nextReadyInstance() matches tagged Valid .iid &&&
-                                   !instanceActive[iid] &&&
-                                   state != LC_Idle);
-            inctrls[x].drop();
-                    
-        endrule
-    
-    end
 
     rule updateRunning (True);
     
@@ -370,7 +360,7 @@ module [HASIM_MODULE] mkLocalController
     rule updateStateForStepping (state == LC_Stepping &&&
                                  newModelCycleStarted matches tagged Valid .iid);
         instanceStepped[iid] <= True;
-        if (allTrue(instanceStepped))
+        if (iid == maxActiveInstance.value())
             state <= LC_Idle;
     endrule
 
@@ -387,7 +377,16 @@ module [HASIM_MODULE] mkLocalController
         // checkInstanceSanity();
         
         startCycleW[next_iid].send();
-        nextInstance.up();
+        
+        if (next_iid >= maxActiveInstance.value())
+        begin
+            nextInstance.setC(0);
+        end
+        else
+        begin
+            nextInstance.up();
+        end
+
         return next_iid;
 
     endmethod
@@ -522,24 +521,6 @@ module [HASIM_MODULE] mkMultiplexController
 
     // ******* Rules *******
 
-    // dropDisabledInstance[1..N]
-  
-    // Rules to drop the initial tokens of disabled instances, so that they
-    // are not simulated dynamically.
-  
-    for (Integer x = 0; x < valueof(t_NUM_INPORTS); x = x + 1)
-    begin
-    
-        rule dropDisabledInstance (inctrls[x].nextReadyInstance() matches tagged Valid .iid &&&
-                                   !(iid <= activeInstances) &&&
-                                   state != MC_idle);
-            inctrls[x].drop();
-                    
-        endrule
-    
-    end
-
-
     // ====================================================================
     //
     // Process controller commands and send responses.
@@ -553,6 +534,14 @@ module [HASIM_MODULE] mkMultiplexController
         case (newcmd) matches
             tagged COM_RunProgram:
             begin
+
+                for (Integer x = 0; x < valueof(t_NUM_INPORTS); x = x + 1)
+                begin
+                
+                    inctrls[x].setMaxRunningInstance(activeInstances);
+
+                end
+
                 state <= MC_running;
             end
 

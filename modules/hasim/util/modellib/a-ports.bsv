@@ -42,7 +42,7 @@ interface INSTANCE_CONTROL_IN#(numeric type t_NUM_INSTANCES);
     method Bool light();
 
     method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance;
-    method Action drop();
+    method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
 
 endinterface
 
@@ -175,8 +175,8 @@ module [HASIM_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Int
         method Bool balanced() = True;
         method Bool light() = False;
         method Maybe#(INSTANCE_ID#(1)) nextReadyInstance = tagged Valid (?);
-        method Action drop;
-            tail <= overflow_incr(tail);
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+            noAction;
         endmethod
 
   endinterface
@@ -209,7 +209,9 @@ module [HASIM_MODULE] mkPortRecv_L0#(String portname)
     method Bool balanced() = True;
     method Bool light() = False;
     method Maybe#(INSTANCE_ID#(1)) nextReadyInstance() = tagged Valid (?);
-    method Action drop() = con.deq();
+    method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+        noAction;
+    endmethod
 
   endinterface
 
@@ -242,7 +244,7 @@ module [HASIM_MODULE] mkPortRecv_L1#(String portname, Maybe#(t_MSG) init_value)
     method Bool balanced() = True;
     method Bool light() = False;
     method Maybe#(INSTANCE_ID#(1)) nextReadyInstance = tagged Valid (?);
-    method Action drop() = con.deq();
+    method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction;
 
   endinterface
 
@@ -335,8 +337,9 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
     Bool fullQ  = tail.value() + 1 == head.value();
     Bool emptyQ = head.value() == tail.value();
 
+    Reg#(Bool) initialized <- mkReg(False);
 
-    rule shift (!fullQ && con.notEmpty());
+    rule shift (initialized && !fullQ && con.notEmpty());
 
         let d = con.receive();
         con.deq();
@@ -360,9 +363,12 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
         
         endmethod
         
-        method Action drop();
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
         
-            head.up();
+            Bit#(6) l = fromInteger(latency);
+            Bit#(6) k = zeroExtendNP(iid)+ 1;
+            tail.setC(k * l);
+            initialized <= True;
 
         endmethod
 
@@ -404,9 +410,9 @@ module [HASIM_MODULE] mkPortRecvL0_Multiplexed#(String portname)
         
         endmethod
         
-        method Action drop();
-        
-            con.deq();
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+
+            noAction;
 
         endmethod
 

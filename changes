@@ -21952,3 +21952,32 @@ Directory libperl/HAsim/lib/HAsim
  Util.pm                   Locally Modified          736 
 
 Adding support for unified synplify/xst builds
+
+----------
+pellauer    Date: Fri Dec 18 14:51:06 EST 2009  CSN: CSN-hasim-738
+                  Fri Dec 18 19:51:06 UTC 2009
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.bsv          Locally Modified          737 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          737 
+
+Directory modules/hasim/util/modellib
+ stall-ports.bsv           Locally Modified          737 
+ a-ports.bsv               Locally Modified          737 
+
+
+* Update rule priority - make getDependencies1 most urgent since it's currently the critical path.
+  In the long-term this should be rewritten to not conflict with other rules, but for now this 
+  helps in sequences where we hit in the functional caches.
+ 
+* Update the local controller so that it no longer has the dropDisabledInstance 
+  rules. These were a source of many conflicts and warnings. Instead A-Ports and
+  Stall Ports have a .setMaxRunningInstance() method. They are able to do this 
+  because they all have explicit tail pointers (and zero-latency ports just ignore 
+  this).
+
+
+Michael P.

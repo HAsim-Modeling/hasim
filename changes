@@ -21981,3 +21981,26 @@ Directory modules/hasim/util/modellib
 
 
 Michael P.
+
+----------
+mcadler     Date: Wed Jan 20 10:27:06 EST 2010  CSN: CSN-hasim-739
+                  Wed Jan 20 15:27:06 UTC 2010
+
+
+Directory tools/scripts
+ hasim-dict                Locally Modified          738 
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ scratchpad-memory-service.bsv Locally Modified          738 
+
+- Pass .dic input files through CPP
+- New array syntax for .dic builds a set of consecutive entries.  E.g.
+
+    def VDEV.SCRATCH.FOO[2] "FOO scratchpad memory";
+
+  builds VDEV_SCRATCH_FOO_0 and VDEV_SCRATCH_FOO_1.  The values of the
+  generated names are guaranteed to be monotonically increasing, so a program
+  may refer to the 2nd entry with the expression "VDEV_SCRATCH_FOO_0 + 1".
+
+- Add fair (round robin) arbitration to competing scratchpads using a
+  standard Bluespec arbiter.

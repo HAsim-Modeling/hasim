@@ -27,6 +27,7 @@
 use strict;
 use Getopt::Long;
 use IO::File;
+use File::Basename;
 use POSIX qw(ceil floor);
 
 use HAsim::DictBuilder;
@@ -49,6 +50,7 @@ my $help = 0;
 my $queryModules = 0;
 my $tgtHwDir = '';
 my $tgtIncDir = '';
+my $srcIncDirs = '';
 
 sub Error($) {
     my $msg = shift;
@@ -65,6 +67,7 @@ sub Usage($) {
     print STDERR "                   files and exit.\n";
     print STDERR "  --tgt-inc <dir>: Target directory for include files.\n";
     print STDERR "  --tgt-hw  <dir>: Target directory for hw (BSV) files.\n";
+    print STDERR "  --src-inc <dir>: Colon separated directory list, passed to CPP for parsing input files\n";
     exit($status);
 }
 
@@ -636,7 +639,7 @@ sub QuotedString($)
 sub ParseStdToken($) {
     my $text = shift;
 
-    $text =~ s/^([A-Za-z0-9_\.]+)//;
+    $text =~ s/^([A-Za-z0-9_\.\[\]]+)//;
     my $tok = defined($1) ? $1 : '';
     return ($tok, $text);
 }
@@ -674,7 +677,24 @@ sub ParseLine($) {
         if ($v eq '') {
             Error("Expected quoted string");
         }
-        AddDef($defModule, $v);
+
+        ## Hack: a subscript with a constant value may be present at the end
+        ## of the module name.  The parser treats "[x]" as part of a single
+        ## token.  Here we emit unique names for each of the array entries.
+        ## This gives a model a way of instantiating a constant number of
+        ## objects based on the same name.
+        if ($defModule =~ /(.*)\[([0-9]+)\]/) {
+            my $mod = $1;
+            my $cnt = $2;
+            for (my $idx = 0; $idx < $cnt; $idx++) {
+                AddDef($mod . "_$idx", $v);
+            }
+        }
+        else {
+            # Normal definition
+            AddDef($defModule, $v);
+        }
+
         $parseState = PARSE_SEMICOLON;
     }
     elsif ($parseState == PARSE_SEMICOLON) {
@@ -696,10 +716,23 @@ sub ParseLine($) {
 ##   Read text from the input file and pass it to the parser.
 ##
 sub ParseInputFile($) {
-    $fName = shift;
+    my $filename = shift;
+    $fName = $filename;
     $line = 0;
 
-    open(IF, $fName) or die("Failed to open $fName");
+    # The input file will be passed through cpp
+    my $searchpath = "";
+    if ($srcIncDirs ne "")
+    {
+        $searchpath = '-I ' . join(' -I ', split(':', $srcIncDirs));
+    }
+    my $cmd = "cpp $searchpath -D AWB_DEFS_ONLY";
+
+    # First update dependence file
+    system("$cmd -M -MT build/include/asim/rrr/service_ids.h -MF .depends-dic-" . basename($filename) . " $filename");
+
+    ## Pass the input file through cpp
+    open(IF, "$cmd $filename |") || die "Failed to open $filename";
 
     while (<IF>) {
         chomp;
@@ -709,6 +742,17 @@ sub ParseInputFile($) {
         while ($d ne '') {
             ## Strip leading white space
             $d =~ s/^\s+//;
+
+            ## Read cpp line number updates
+            if ($d =~ /^#/) {
+                my @l_info = split(' ', $d);
+                if ($#l_info >= 2) {
+                    $line = $l_info[1] - 1;
+                    $fName = $l_info[2];
+                }
+
+                $d = '';
+            }
 
             ## Strip comments
             $d =~ s/^\/\/.*//;
@@ -732,6 +776,7 @@ if (! GetOptions(
           'querymodules!' => \$queryModules,
           'tgt-hw=s'      => \$tgtHwDir,
           'tgt-inc=s'     => \$tgtIncDir,
+          'src-inc=s'     => \$srcIncDirs,
       )) {
     Usage(1);
 }

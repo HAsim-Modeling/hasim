@@ -22014,3 +22014,13 @@ Directory tools/scripts
  hasim-configure           Locally Modified          739 
 
 Arbitrary synthesis/bdpi boundaries now supported.
+
+----------
+kfleming    Date: Sat Mar  6 19:46:07 EST 2010  CSN: CSN-hasim-741
+                  Sun Mar  7 00:46:07 UTC 2010
+
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ platform-scratchpad-memory.bsv Locally Modified          740 
+
+Added debug removal support to scratchpad target that was missing it.  

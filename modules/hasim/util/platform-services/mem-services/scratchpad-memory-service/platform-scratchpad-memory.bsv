@@ -356,7 +356,10 @@ module [CONNECTED_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
               // Requested address type must be smaller than scratchpad maximum
               Add#(a__, t_MEM_ADDRESS_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
     
-    DEBUG_FILE debugLog <- mkDebugFile("memory_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE) + ".out");
+    String debugLogFilename = "memory_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE) + ".out";
+    DEBUG_FILE debugLog <- (`PLATFORM_SCRATCHPAD_DEBUG_ENABLE == 1)?
+                           mkDebugFile(debugLogFilename):
+                           mkDebugFileNull(debugLogFilename); 
 
     Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_READ_RESP) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
 

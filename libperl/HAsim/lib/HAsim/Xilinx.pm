@@ -345,6 +345,12 @@ sub __generate_prj_file {
             $processfile->($module,$file,"",$v_file);
 	}
     }
+
+    # Add files from %generated --type=verilog
+    foreach my $ff ($module->generated("VERILOG")) {
+	$processfile->($module,$file,$my_dir . "/" . $HAsim::Bluespec::tmp_bsc_dir, $ff);
+    }
+
 }
 
 

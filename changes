@@ -22024,3 +22024,17 @@ Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-se
  platform-scratchpad-memory.bsv Locally Modified          740 
 
 Added debug removal support to scratchpad target that was missing it.  
+
+----------
+mdk         Date: Thu Mar 11 11:45:16 EST 2010  CSN: CSN-hasim-742
+                  Thu Mar 11 16:45:16 UTC 2010
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          741 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          741 
+
+
+adding support for arbitrary bluespec synthesis boundaries under xst synthesis path

@@ -1,0 +1,15 @@
+service PLATFORM_DEBUGGER
+{
+    server hw (bsv, method) <- sw (cpp, method)
+    {
+        method StartDebug(in UINT8[8] input, out UINT8[8] status);
+        method ReadReq   (in UINT32[32] addr, out UINT8[8] status);
+        method ReadRsp   (in UINT8[8] dummy, out UINT32[32] data);
+        method WriteReq  (in UINT32[32] addr, out UINT8[8] status);
+        method WriteData (in UINT32[32] data, in UINT32[32] mask, out UINT8[8] status);
+    };
+};
+
+service FOOBAR
+{
+};

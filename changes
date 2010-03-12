@@ -22080,3 +22080,28 @@ the caching of a scratchpad there is now an enum with three states:
   NOTE:  This mode currently supports data types up to the size of a scratchpad
   word.  Larger types, that would require multiple requests, are not currently
   supported.
+
+----------
+aparasha    Date: Fri Mar 12 17:03:22 EST 2010  CSN: CSN-hasim-744
+                  Fri Mar 12 22:03:22 UTC 2010
+
+
+Directory config/pm/bluespec/demos
+ debugger/                 Locally Added               0 
+
+Directory config/pm/bluespec/demos/debugger
+ nallatech_sram_debugger.apm Locally Added               0 
+
+Directory modules/bluespec/system/demos
+ debuggers/                Locally Added               0 
+
+Directory modules/bluespec/system/demos/debuggers
+ platform-debugger.bsv     Locally Added               0 
+ platform-debugger.dic     Locally Added               0 
+ platform-debugger.txt     Locally Added               0 
+ platform-debugger.cpp     Locally Added               0 
+ platform-debugger.rrr     Locally Added               0 
+ platform-debugger.h       Locally Added               0 
+ platform-debugger.awb     Locally Added               0 
+
+- added new debugger application for debugging Nallatech SRAM module.

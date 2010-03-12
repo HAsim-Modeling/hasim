@@ -92,9 +92,11 @@ module [CONNECTED_MODULE] mkScratchpadMemoryService#(VIRTUAL_DEVICES vdevs)
                     didScratchpadReq <= True;
 
                     case (req) matches
-                        tagged SCRATCHPAD_MEM_INIT .allocLastWordIdx:
+                        tagged SCRATCHPAD_MEM_INIT .init:
                         begin
-                            let s <- memory.init(allocLastWordIdx, fromInteger(p));
+                            let s <- memory.init(init.allocLastWordIdx,
+                                                 fromInteger(p),
+                                                 init.cached);
                             assertScratchpadSpace(s);
                         end
 
@@ -108,6 +110,15 @@ module [CONNECTED_MODULE] mkScratchpadMemoryService#(VIRTUAL_DEVICES vdevs)
                         tagged SCRATCHPAD_MEM_WRITE .w_req:
                         begin
                             memory.write(w_req.addr, w_req.val, fromInteger(p));
+                        end
+
+                        tagged SCRATCHPAD_MEM_WRITE_MASKED .w_req:
+                        begin
+                            memory.writeMasked(w_req.addr,
+                                               w_req.val,
+                                               w_req.byteWriteMask,
+                                               fromInteger(p));
+
                         end
                     endcase
                 endrule

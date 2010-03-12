@@ -22038,3 +22038,45 @@ Directory tools/scripts
 
 
 adding support for arbitrary bluespec synthesis boundaries under xst synthesis path
+
+----------
+mcadler     Date: Thu Mar 11 20:14:31 EST 2010  CSN: CSN-hasim-743
+                  Fri Mar 12 01:14:31 UTC 2010
+
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ scratchpad-memory-service.bsv Locally Modified          742 
+ platform-scratchpad-memory.bsv Locally Modified          742 
+
+Directory modules/hasim/util/modellib
+ multiplexed-memories.bsv  Locally Modified          742 
+
+Directory modules/system/test/mem_test
+ mem-test.bsv              Locally Modified          742 
+
+Add a new category of scratchpads called "uncached."  Instead of a Bool controlling
+the caching of a scratchpad there is now an enum with three states:
+
+- SCRATCHPAD_CACHED:  The old behavior with both a private cache and data
+  stored in the central cache.
+
+- SCRATCHPAD_NO_PVT_CACHE:  The old behavior of "cached" set to false.  No
+  private cache but lines are stored in the central cache.
+
+- SCRATCHPAD_UNCACHED:  A new mode using neither private caches nor the central
+  cache.  Unlike the other two modes, this version will never use a read-modify-
+  write to update a value.  When multiple instances of the data type fit in
+  a scratchpad word, the other two modes use read-modify-write to update a
+  location.  This mode stores data on natural boundaries (power of 2 bits and
+  at least one byte per element).  It then uses byte-level masks to write
+  partial words.
+
+  Although this mode is not cached, there is a single, line-sized, store buffer
+  for each scratchpad.  Multiple writes in a row to the same line are merged
+  before being written to the host.  Each scratchpad also has a single
+  line read cache to reduce I/O during streaming reads.  Reads may hit in
+  either the streaming read buffer or the store buffer.
+
+  NOTE:  This mode currently supports data types up to the size of a scratchpad
+  word.  Larger types, that would require multiple requests, are not currently
+  supported.

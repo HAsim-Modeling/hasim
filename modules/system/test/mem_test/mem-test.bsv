@@ -91,7 +91,8 @@ module [CONNECTED_MODULE] mkSystem ()
     // Allocate scratchpads
     //
 
-    let private_caches = (`MEM_TEST_PRIVATE_CACHES != 0);
+    let private_caches = (`MEM_TEST_PRIVATE_CACHES != 0 ? SCRATCHPAD_CACHED :
+                                                          SCRATCHPAD_NO_PVT_CACHE);
 
     // Large data (multiple containers for single datum)
     MEMORY_IFC#(MEM_ADDRESS, t_MEM_DATA_LG) memoryLG <- mkScratchpad(`VDEV_SCRATCH_MEMTEST_LG, private_caches);

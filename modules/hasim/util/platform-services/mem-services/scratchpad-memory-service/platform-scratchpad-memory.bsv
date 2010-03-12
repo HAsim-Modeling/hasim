@@ -52,9 +52,40 @@ typedef MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA)
                                       numeric type n_CACHE_ENTRIES);
 
 //
+// Caching options for scratchpads.  The caching option also affects the way
+// data structures are marshalled to scratchpad containers.
+//
+typedef enum
+{
+    // Fully cached.  Elements are packed tightly in scratchpad containers.
+    SCRATCHPAD_CACHED,
+
+    // No private L1 cache, but data may be stored in a shared, central cache.
+    SCRATCHPAD_NO_PVT_CACHE,
+
+    // Raw, right to memory.  Elements are aligned to natural sizes within
+    // a scratchpad container.  (E.g. 1, 2, 4 or 8 bytes.)  Byte masks are
+    // used on writes to avoid requiring read/modify/write.  The current
+    // implementation supports object sizes up to the size of a
+    // SCRATCHPAD_MEM_VALUE.
+    SCRATCHPAD_UNCACHED
+}
+SCRATCHPAD_CACHE_MODE
+    deriving (Eq, Bits);
+
+
+//
 // Data structures flowing through soft connections between scratchpad clients
 // and the platform interface.
 //
+
+typedef struct
+{
+    SCRATCHPAD_MEM_ADDRESS allocLastWordIdx;
+    Bool cached;
+}
+SCRATCHPAD_INIT_REQ
+    deriving (Eq, Bits);
 
 typedef struct
 {
@@ -72,15 +103,25 @@ typedef struct
 SCRATCHPAD_WRITE_REQ
     deriving (Eq, Bits);
 
+typedef struct
+{
+    SCRATCHPAD_MEM_ADDRESS addr;
+    SCRATCHPAD_MEM_VALUE val;
+    SCRATCHPAD_MEM_MASK byteWriteMask;
+}
+SCRATCHPAD_WRITE_MASKED_REQ
+    deriving (Eq, Bits);
+
 //
 // Scratchpad requests (either a load or a store).
 //
 typedef union tagged 
 {
-    SCRATCHPAD_MEM_ADDRESS SCRATCHPAD_MEM_INIT;
+    SCRATCHPAD_INIT_REQ           SCRATCHPAD_MEM_INIT;
 
-    SCRATCHPAD_READ_REQ    SCRATCHPAD_MEM_READ;
-    SCRATCHPAD_WRITE_REQ   SCRATCHPAD_MEM_WRITE;
+    SCRATCHPAD_READ_REQ           SCRATCHPAD_MEM_READ;
+    SCRATCHPAD_WRITE_REQ          SCRATCHPAD_MEM_WRITE;
+    SCRATCHPAD_WRITE_MASKED_REQ   SCRATCHPAD_MEM_WRITE_MASKED;
 }
 SCRATCHPAD_MEM_REQUEST
     deriving (Eq, Bits);
@@ -125,7 +166,8 @@ function String scratchPortName(Integer n) = "vdev_memory_" + integerToString(n 
 //     Build a scratchpad of an arbitrary data type with marshalling to the
 //     global scratchpad base memory size.
 //
-module [CONNECTED_MODULE] mkScratchpad#(Integer scratchpadID, Bool cached)
+module [CONNECTED_MODULE] mkScratchpad#(Integer scratchpadID,
+                                        SCRATCHPAD_CACHE_MODE cached)
     // interface:
     (MEMORY_IFC#(t_ADDR, t_DATA))
     provisos (Bits#(t_ADDR, t_ADDR_SZ),
@@ -158,7 +200,8 @@ endmodule
 //     Requests are processed in order, with reads being scheduled before
 //     a write requested in the same cycle.
 //
-module [CONNECTED_MODULE] mkMultiReadScratchpad#(Integer scratchpadID, Bool cached)
+module [CONNECTED_MODULE] mkMultiReadScratchpad#(Integer scratchpadID,
+                                                 SCRATCHPAD_CACHE_MODE cached)
     // interface:
     (MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA))
     provisos (Bits#(t_ADDR, t_ADDR_SZ),
@@ -173,7 +216,17 @@ module [CONNECTED_MODULE] mkMultiReadScratchpad#(Integer scratchpadID, Bool cach
               Bits#(t_CONTAINER_ADDR, t_CONTAINER_ADDR_SZ),
               Add#(a__, t_CONTAINER_ADDR_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
 
-    if (cached && (valueOf(TExp#(t_CONTAINER_ADDR_SZ)) <= `SCRATCHPAD_STD_PVT_CACHE_ENTRIES))
+    if (cached == SCRATCHPAD_UNCACHED)
+    begin
+        // No caches at any level.  This access pattern uses masked writes to
+        // avoid read-modify-write loops when accessing objects smaller than
+        // a scratchpad base data size.
+        MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA) memory <- mkUncachedScratchpad(scratchpadID);
+
+        return memory;
+    end
+    else if ((cached == SCRATCHPAD_CACHED) &&
+             (valueOf(TExp#(t_CONTAINER_ADDR_SZ)) <= `SCRATCHPAD_STD_PVT_CACHE_ENTRIES))
     begin
         // A special case:  cached scratchpad requested but the container
         // is smaller than the cache would have been.  Just allocate a BRAM.
@@ -189,7 +242,7 @@ module [CONNECTED_MODULE] mkMultiReadScratchpad#(Integer scratchpadID, Bool cach
         // Container maps requested data size to the platform's scratchpad
         // word size.
         SCRATCHPAD_MEMORY_MULTI_READ_IFC#(n_READERS, t_CONTAINER_ADDR, SCRATCHPAD_MEM_VALUE, `SCRATCHPAD_STD_PVT_CACHE_ENTRIES) containerMemory;
-        if (cached)
+        if (cached == SCRATCHPAD_CACHED)
             containerMemory <- mkUnmarshalledCachedScratchpad(scratchpadID, `PARAMS_SCRATCHPAD_MEMORY_SERVICE_SCRATCHPAD_PVT_CACHE_MODE);
         else
             containerMemory <- mkUnmarshalledScratchpad(scratchpadID);
@@ -200,6 +253,7 @@ module [CONNECTED_MODULE] mkMultiReadScratchpad#(Integer scratchpadID, Bool cach
         return memory;
     end
 endmodule
+
 
 // ========================================================================
 //
@@ -212,7 +266,8 @@ endmodule
 // mkMemoryHeapUnionScratchpad --
 //     Data and free list share same storage in a scratchpad memory.
 //
-module [CONNECTED_MODULE] mkMemoryHeapUnionScratchpad#(Integer scratchpadID, Bool cached)
+module [CONNECTED_MODULE] mkMemoryHeapUnionScratchpad#(Integer scratchpadID,
+                                                       SCRATCHPAD_CACHE_MODE cached)
     // interface:
     (MEMORY_HEAP#(t_INDEX, t_DATA))
     provisos (Bits#(t_DATA, t_DATA_SZ),
@@ -242,7 +297,7 @@ endmodule
 //     stored in the same, unioned, scratchpad memory.
 //
 module [CONNECTED_MODULE] mkMemoryHeapUnionScratchpadStorage#(Integer scratchpadID,
-                                                          Bool cached)
+                                                              SCRATCHPAD_CACHE_MODE cached)
     // interface:
     (MEMORY_HEAP_DATA#(t_INDEX, t_DATA))
     provisos (Bits#(t_INDEX, t_INDEX_SZ),
@@ -385,7 +440,10 @@ module [CONNECTED_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
         initialized <= True;
 
         Bit#(t_MEM_ADDRESS_SZ) alloc = maxBound;
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT zeroExtend(alloc));
+        SCRATCHPAD_INIT_REQ r;
+        r.allocLastWordIdx = zeroExtend(alloc);
+        r.cached = True;
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT r);
     endrule
 
     //
@@ -685,7 +743,10 @@ module [CONNECTED_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
         initialized <= True;
 
         Bit#(t_CACHE_ADDR_SZ) alloc = maxBound;
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT zeroExtend(alloc));
+        SCRATCHPAD_INIT_REQ r;
+        r.allocLastWordIdx = zeroExtend(alloc);
+        r.cached = True;
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT r);
     endrule
 
     method Action readReq(t_CACHE_ADDR addr, t_CACHE_REF_INFO refInfo) if (initialized);
@@ -740,4 +801,258 @@ module [CONNECTED_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
     method Action invalOrFlushWait();
         noAction;
     endmethod
+endmodule
+
+
+
+//
+// mkUncachedScratchpad --
+//     The uncached scratchpad is connected directly to the scratchpad memory
+//     and uses neither a private nor the central cache.  To avoid read-modify-
+//     write operations on data smaller than a SCRATCHPAD_MEM_VALUE, data
+//     is tiled in containers that are one byte or larger and a size that is
+//     a power of 2.  A byte write mask is passed to the memory along with
+//     write data, thus eliminating the need to read partial values.
+//
+module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
+    // interface:
+    (MEMORY_MULTI_READ_IFC#(n_READERS, t_IN_ADDR, t_DATA))
+    provisos (Bits#(t_IN_ADDR, t_ADDR_SZ),
+              Bits#(t_DATA, t_DATA_SZ),
+
+              Alias#(Bit#(t_ADDR_SZ), t_ADDR),    
+
+              // Compute the natural size in bits.  The natural size must be
+              // a power of 2 bits that is one byte or larger.
+              Max#(8, TExp#(TLog#(t_DATA_SZ)), t_NATURAL_SZ),
+              NumAlias#(TDiv#(t_NATURAL_SZ, 8), t_NATURAL_BYTES),
+
+              // Compute scratchpad container index type (size)
+              Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
+              Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
+
+              // Index a naturally sized t_DATA within a SCRATCHPAD_MEM_VALUE
+              Alias#(Bit#(TLog#(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ, t_NATURAL_SZ))),
+                     t_NATURAL_IDX),
+
+              // Compute a non-zero size for the read port index
+              Max#(n_READERS, 2, n_SAFE_READERS),
+              NumAlias#(TLog#(n_SAFE_READERS), n_SAFE_READERS_SZ),
+
+              // Index in a reorder buffer
+              Alias#(SCOREBOARD_FIFO_ENTRY_ID#(SCRATCHPAD_PORT_ROB_SLOTS), t_REORDER_ID),
+
+              // Reference info passed to the scratchpad needed to route the response
+              Alias#(Tuple3#(Bit#(n_SAFE_READERS_SZ), t_NATURAL_IDX, t_REORDER_ID), t_REF_INFO));
+
+    String debugLogFilename = "platform_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE) + ".out";
+    DEBUG_FILE debugLog <- (`PLATFORM_SCRATCHPAD_DEBUG_ENABLE == 1)?
+                           mkDebugFile(debugLogFilename):
+                           mkDebugFileNull(debugLogFilename); 
+
+    //
+    // Elaboration time checks
+    //
+    if (valueOf(t_NATURAL_SZ) > valueOf(t_SCRATCHPAD_MEM_VALUE_SZ))
+    begin
+        //
+        // Object size is larger than SCRATCHPAD_MEM_VALUE.  The code here could
+        // support this case by issuing multiple reads and writes for every
+        // reference.  For now it does not.
+        //
+        error("Uncached scratchpad doesn't support data larger than scratchpad's base size");
+    end
+
+    if (valueOf(TDiv#(t_ADDR_SZ, TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ, t_NATURAL_SZ))) >
+        valueOf(t_SCRATCHPAD_MEM_ADDRESS_SZ))
+    begin
+        //
+        // Requested address space is larger than the maximum scratchpad size.
+        //
+        error("Address space too large.");
+    end
+
+
+    Connection_Client#(SCRATCHPAD_MEM_REQUEST,
+                       SCRATCHPAD_READ_RESP) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
+
+    // Scratchpad responses are not ordered.  Sort them with a reorder buffer.
+    // Each read port gets its own reorder buffer so that each port returns data
+    // when available, independent of the latency of requests on other ports.
+    Vector#(n_READERS,
+            SCOREBOARD_FIFOF#(SCRATCHPAD_PORT_ROB_SLOTS,
+                              t_DATA)) sortResponseQ <- replicateM(mkScoreboardFIFOF());
+
+    // Merge FIFOF combines read and write requests in temporal order,
+    // with reads from the same cycle as a write going first.  Each read port
+    // gets a slot.  The write port is always last.
+    MERGE_FIFOF#(TAdd#(n_READERS, 1), Bit#(t_ADDR_SZ)) incomingReqQ <- mkMergeBypassFIFOF();
+
+    // Write data is sent in a side port to keep the incomingReqQ smaller.
+    FIFO#(t_DATA) writeDataQ <- mkBypassFIFO();
+
+    //
+    // scratchpadAddr --
+    //     Compute scratchpad address given an object address.  Multiple objects
+    //     may be stored in a single scratchpad entry.
+    //
+    function SCRATCHPAD_MEM_ADDRESS scratchpadAddr(t_ADDR addr);
+        return zeroExtendNP(unpack(addr) /
+                            fromInteger(valueOf(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ,
+                                                      t_NATURAL_SZ))));
+    endfunction
+
+    //
+    // scratchpadAddrIdx --
+    //     Compute the index of a naturally sized object within a scratchpad's
+    //     base container size.  This is the remainder of the scratchpadAddr
+    //     computation above when multiple objects are stored in each
+    //     scratchpad container.
+    //
+    function t_NATURAL_IDX scratchpadAddrIdx(t_ADDR addr);
+        return truncateNP(unpack(addr) % fromInteger(valueOf(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ,
+                                                                   t_NATURAL_SZ))));
+    endfunction
+
+
+    //
+    // Allocate memory for this scratchpad region
+    //
+    Reg#(Bool) initialized <- mkReg(False);
+    
+    rule doInit (! initialized);
+        initialized <= True;
+
+        Bit#(t_ADDR_SZ) alloc = maxBound;
+        SCRATCHPAD_INIT_REQ r;
+        r.allocLastWordIdx = scratchpadAddr(alloc);
+        r.cached = False;
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT r);
+    endrule
+
+
+    //
+    // Forward merged requests to the memory.
+    //
+
+    // Read requests
+    rule forwardReadReq (initialized && (incomingReqQ.firstPortID() < fromInteger(valueOf(n_READERS))));
+        let port = incomingReqQ.firstPortID();
+        let addr = incomingReqQ.first();
+        incomingReqQ.deq();
+        
+        // Allocate a slot in the reorder buffer for the read request.  Each
+        // read port gets its own reorder buffer.
+        let rob_idx <- sortResponseQ[port].enq();
+
+        // The clientRefInfo for this request is the concatenation of the
+        // port ID, the offset in the scratchpad value, and the ROB index.
+        t_NATURAL_IDX addr_idx = scratchpadAddrIdx(addr);
+        t_REF_INFO ref_info = resize(tuple3(port, addr_idx, rob_idx));
+
+        let req = SCRATCHPAD_READ_REQ { addr: scratchpadAddr(addr),
+                                        clientRefInfo: resize(pack(ref_info)) };
+
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_READ req);
+
+        debugLog.record($format("read port %0d: req addr=0x%x, s_addr=0x%x, s_idx=%0d", port, addr, scratchpadAddr(addr), addr_idx));
+    endrule
+
+
+    // Write requests
+    rule forwardWriteReq (initialized && (incomingReqQ.firstPortID() == fromInteger(valueOf(n_READERS))));
+        let addr = incomingReqQ.first();
+        incomingReqQ.deq();
+        
+        let w_data = writeDataQ.first();
+        writeDataQ.deq();
+
+        // Put the data at the right place in the scratchpad word
+        t_NATURAL_IDX addr_idx = scratchpadAddrIdx(addr);
+        Vector#(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ, t_NATURAL_SZ), Bit#(t_NATURAL_SZ)) d = ?;
+        Bit#(t_NATURAL_SZ) rep = zeroExtendNP(pack(w_data));
+        d = replicate(rep);
+
+        // Build a mask of valid bytes
+        Vector#(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ,
+                      t_NATURAL_SZ),
+                Bit#(TDiv#(t_NATURAL_SZ, 8))) b_mask = replicate(0);
+        b_mask[addr_idx] = -1;
+
+        // Resizing is to avoid tautological provisos.  Sizes are actually identical.
+        let req = SCRATCHPAD_WRITE_MASKED_REQ { addr: scratchpadAddr(addr),
+                                                val: resize(pack(d)),
+                                                byteWriteMask: resize(pack(b_mask)) };
+
+        link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE_MASKED req);
+
+        debugLog.record($format("write addr=0x%x, val=0x%x, s_addr=0x%x, s_val=0x%x, s_bmask=%b", addr, w_data, scratchpadAddr(addr), pack(d), pack(b_mask)));
+    endrule
+
+
+    //
+    // receiveResp --
+    //     Push unordered read responses to the reorder buffers.  Responses will
+    //     be returned through readRsp() in order.
+    //
+    rule receiveResp (True);
+        let s = link_memory.getResp();
+        link_memory.deq();
+
+        // The clientRefInfo field holds the concatenation of the port ID and
+        // the port's reorder buffer index.
+        t_REF_INFO ref_info = unpack(truncateNP(s.clientRefInfo));
+        match {.port, .addr_idx, .rob_idx} = ref_info;
+
+        Vector#(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ, t_NATURAL_SZ), Bit#(t_NATURAL_SZ)) d;
+        // The resize here is required only to avoid a proviso asserting the
+        // tautology that Mul#() is equivalent to TMul#().
+        d = unpack(resize(s.val));
+
+        t_DATA v = unpack(truncateNP(d[addr_idx]));
+        sortResponseQ[port].setValue(rob_idx, v);
+
+        debugLog.record($format("read port %0d: resp val=0x%x, s_idx=%0d", port, v, addr_idx));
+    endrule
+
+    //
+    // Methods.  All requests are stored in the incomingReqQ to maintain their
+    // order.
+    //
+
+    Vector#(n_READERS, MEMORY_READER_IFC#(t_IN_ADDR, t_DATA)) portsLocal = newVector();
+
+    for(Integer p = 0; p < valueOf(n_READERS); p = p + 1)
+    begin
+        portsLocal[p] =
+            interface MEMORY_READER_IFC#(t_IN_ADDR, t_DATA);
+                method Action readReq(t_IN_ADDR addr);
+                    incomingReqQ.ports[p].enq(pack(addr));
+                endmethod
+
+                method ActionValue#(t_DATA) readRsp();
+                    let r = sortResponseQ[p].first();
+                    sortResponseQ[p].deq();
+
+                    return r;
+                endmethod
+
+                method t_DATA peek();
+                    return sortResponseQ[p].first();
+                endmethod
+
+                method Bool notEmpty() = sortResponseQ[p].notEmpty();
+                method Bool notFull() = incomingReqQ.ports[p].notFull();
+            endinterface;
+    end
+
+    interface readPorts = portsLocal;
+
+    method Action write(t_IN_ADDR addr, t_DATA val);
+        // The write port is last in the merge FIFO
+        incomingReqQ.ports[valueOf(n_READERS)].enq(pack(addr));
+        writeDataQ.enq(val);
+    endmethod
+
+    method Bool writeNotFull = incomingReqQ.ports[valueOf(n_READERS)].notFull();
 endmodule

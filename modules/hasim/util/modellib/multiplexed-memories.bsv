@@ -30,7 +30,7 @@ interface MEMORY_MULTI_READ_IFC_MULTIPLEXED#(numeric type t_NUM_INSTANCES, numer
     
 endinterface
 
-module [HASIM_MODULE] mkScratchpad_Multiplexed#(Integer scratchpadID, Bool cached)
+module [HASIM_MODULE] mkScratchpad_Multiplexed#(Integer scratchpadID, SCRATCHPAD_CACHE_MODE cached)
     // interface:
         (MEMORY_IFC_MULTIPLEXED#(t_NUM_INSTANCES, t_ADDR, t_DATA))
     provisos
@@ -78,7 +78,7 @@ module [HASIM_MODULE] mkScratchpad_Multiplexed#(Integer scratchpadID, Bool cache
 
 endmodule
 
-module [HASIM_MODULE] mkMultiReadScratchpad_Multiplexed#(Integer scratchpadID, Bool cached)
+module [HASIM_MODULE] mkMultiReadScratchpad_Multiplexed#(Integer scratchpadID, SCRATCHPAD_CACHE_MODE cached)
     // interface:
         (MEMORY_MULTI_READ_IFC_MULTIPLEXED#(t_NUM_INSTANCES, t_NUM_READERS, t_ADDR, t_DATA))
     provisos

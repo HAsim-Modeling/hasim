@@ -25,6 +25,8 @@ import Arbiter::*;
 `include "asim/provides/common_services.bsh"
 
 `include "asim/dict/ASSERTIONS_SCRATCHPAD_MEMORY_SERVICE.bsh"
+`include "asim/dict/DEBUG_SCAN_SCRATCHPAD_MEMORY_SERVICE.bsh"
+
 
 module [CONNECTED_MODULE] mkScratchpadMemoryService#(VIRTUAL_DEVICES vdevs)
     // interface:
@@ -48,18 +50,7 @@ module [CONNECTED_MODULE] mkScratchpadMemoryService#(VIRTUAL_DEVICES vdevs)
     Vector#(SCRATCHPAD_N_CLIENTS, Connection_Server#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_READ_RESP)) link_memory = newVector();
 
     // Only one scratchpad may send a request at a time.
-    Reg#(Bool) lockArbiterPriority <- mkReg(False);
-    Arbiter_IFC#(n_SCRATCHPAD_CLIENTS_NONZERO) arbiter <- mkArbiter(lockArbiterPriority);
-    Wire#(Bool) didScratchpadReq <- mkDWire(False);
-
-    //
-    // noteSentScratchpadReq --
-    //     Hold the arbiter should in its current priority encoding until
-    //     a request is processed.
-    //
-    rule noteSentScratchpadReq (True);
-        lockArbiterPriority <= ! didScratchpadReq;
-    endrule
+    Arbiter_IFC#(n_SCRATCHPAD_CLIENTS_NONZERO) arbiter <- mkArbiter(False);
 
     Rules mem_send_req = emptyRules;
     for (Integer p = 0; p < valueOf(SCRATCHPAD_N_CLIENTS); p = p + 1)
@@ -89,7 +80,6 @@ module [CONNECTED_MODULE] mkScratchpadMemoryService#(VIRTUAL_DEVICES vdevs)
                     let req = link_memory[p].getReq();
 
                     link_memory[p].deq();
-                    didScratchpadReq <= True;
 
                     case (req) matches
                         tagged SCRATCHPAD_MEM_INIT .init:
@@ -145,4 +135,22 @@ module [CONNECTED_MODULE] mkScratchpadMemoryService#(VIRTUAL_DEVICES vdevs)
 
     addRules(mem_send_req);
 
+
+    // ====================================================================
+    //
+    // DEBUG_SCAN state
+    //
+    // ====================================================================
+
+    //
+    // Scan data for debugging deadlocks.
+    //
+    Wire#(SCRATCHPAD_MEMORY_DEBUG_SCAN) debugScanData <- mkBypassWire();
+    DEBUG_SCAN#(SCRATCHPAD_MEMORY_DEBUG_SCAN) debugScan <- mkDebugScanNode(`DEBUG_SCAN_SCRATCHPAD_MEMORY_SERVICE_DATA, debugScanData);
+
+    (* fire_when_enabled *)
+    (* no_implicit_conditions *)
+    rule updateDebugScanState (True);
+        debugScanData <= memory.debugScanState();
+    endrule
 endmodule

@@ -31,6 +31,7 @@ import SpecialFIFOs::*;
 `include "asim/provides/fpga_components.bsh"
 
 `include "asim/dict/PARAMS_SCRATCHPAD_MEMORY_SERVICE.bsh"
+`include "asim/dict/DEBUG_SCAN_SCRATCHPAD_MEMORY_SERVICE.bsh"
 
 `include "asim/dict/VDEV.bsh"
 `ifndef VDEV_SCRATCH__BASE
@@ -143,7 +144,11 @@ SCRATCHPAD_READ_RESP
 // Number of slots in a read port's reorder buffer.  The scratchpad subsystem
 // does not guarantee to return results in order, so all clients need a ROB.
 // The ROB size limits the number of read requests in flight for a given port.
-typedef 2 SCRATCHPAD_PORT_ROB_SLOTS;
+typedef 8 SCRATCHPAD_PORT_ROB_SLOTS;
+
+// The uncached scratchpad will have more references outstanding due to latency.
+// Allow more references to be in flight.
+typedef 256 SCRATCHPAD_UNCACHED_PORT_ROB_SLOTS;
 
 //
 // Construct the name of the soft connection to a scratchpad memory port.
@@ -171,16 +176,7 @@ module [CONNECTED_MODULE] mkScratchpad#(Integer scratchpadID,
     // interface:
     (MEMORY_IFC#(t_ADDR, t_DATA))
     provisos (Bits#(t_ADDR, t_ADDR_SZ),
-              Bits#(t_DATA, t_DATA_SZ),
-
-              // Compute container index type (size)
-              Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
-              Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
-              Alias#(MEM_PACK_CONTAINER_ADDR#(t_ADDR_SZ, t_DATA_SZ, t_SCRATCHPAD_MEM_VALUE_SZ), t_CONTAINER_ADDR),
-
-              // Requested address type must be smaller than scratchpad maximum
-              Bits#(t_CONTAINER_ADDR, t_CONTAINER_ADDR_SZ),
-              Add#(a__, t_CONTAINER_ADDR_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
+              Bits#(t_DATA, t_DATA_SZ));
 
     //
     // The scratchpad implementation is all in the multi-reader interface.
@@ -211,10 +207,7 @@ module [CONNECTED_MODULE] mkMultiReadScratchpad#(Integer scratchpadID,
               Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
               Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
               Alias#(MEM_PACK_CONTAINER_ADDR#(t_ADDR_SZ, t_DATA_SZ, t_SCRATCHPAD_MEM_VALUE_SZ), t_CONTAINER_ADDR),
-
-              // Requested address type must be smaller than scratchpad maximum
-              Bits#(t_CONTAINER_ADDR, t_CONTAINER_ADDR_SZ),
-              Add#(a__, t_CONTAINER_ADDR_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
+              Bits#(t_CONTAINER_ADDR, t_CONTAINER_ADDR_SZ));
 
     if (cached == SCRATCHPAD_UNCACHED)
     begin
@@ -271,18 +264,7 @@ module [CONNECTED_MODULE] mkMemoryHeapUnionScratchpad#(Integer scratchpadID,
     // interface:
     (MEMORY_HEAP#(t_INDEX, t_DATA))
     provisos (Bits#(t_DATA, t_DATA_SZ),
-              Bits#(t_INDEX, t_INDEX_SZ),
-              Max#(t_INDEX_SZ, t_DATA_SZ, t_UNION_SZ),
-
-              // Compute container index type (size)
-              Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
-              Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
-              Alias#(MEM_PACK_CONTAINER_ADDR#(t_INDEX_SZ, t_UNION_SZ, t_SCRATCHPAD_MEM_VALUE_SZ), t_CONTAINER_INDEX),
-
-              // Assert that container index the container fits in the scratchpad
-              // address space.
-              Bits#(t_CONTAINER_INDEX, t_CONTAINER_INDEX_SZ),
-              Add#(x, t_CONTAINER_INDEX_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
+              Bits#(t_INDEX, t_INDEX_SZ));
 
     MEMORY_HEAP_DATA#(t_INDEX, t_DATA) pool <- mkMemoryHeapUnionScratchpadStorage(scratchpadID, cached);
     MEMORY_HEAP#(t_INDEX, t_DATA) heap <- mkMemoryHeap(pool);
@@ -302,17 +284,7 @@ module [CONNECTED_MODULE] mkMemoryHeapUnionScratchpadStorage#(Integer scratchpad
     (MEMORY_HEAP_DATA#(t_INDEX, t_DATA))
     provisos (Bits#(t_INDEX, t_INDEX_SZ),
               Bits#(t_DATA, t_DATA_SZ),
-              Max#(t_INDEX_SZ, t_DATA_SZ, t_UNION_SZ),
-
-              // Compute container index type (size)
-              Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
-              Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
-              Alias#(MEM_PACK_CONTAINER_ADDR#(t_INDEX_SZ, t_UNION_SZ, t_SCRATCHPAD_MEM_VALUE_SZ), t_CONTAINER_INDEX),
-
-              // Assert that container index the container fits in the scratchpad
-              // address space.
-              Bits#(t_CONTAINER_INDEX, t_CONTAINER_INDEX_SZ),
-              Add#(x, t_CONTAINER_INDEX_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
+              Max#(t_INDEX_SZ, t_DATA_SZ, t_UNION_SZ));
 
     MEMORY_MULTI_READ_IFC#(2, t_INDEX, Bit#(t_UNION_SZ)) pool <- mkMultiReadScratchpad(scratchpadID, cached);
 
@@ -406,11 +378,13 @@ module [CONNECTED_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
               Alias#(SCOREBOARD_FIFO_ENTRY_ID#(SCRATCHPAD_PORT_ROB_SLOTS), t_REORDER_ID),
 
               // Reference info passed to the scratchpad needed to route the response
-              Alias#(Tuple2#(Bit#(n_SAFE_READERS_SZ), t_REORDER_ID), t_REF_INFO),
-
-              // Requested address type must be smaller than scratchpad maximum
-              Add#(a__, t_MEM_ADDRESS_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
+              Alias#(Tuple2#(Bit#(n_SAFE_READERS_SZ), t_REORDER_ID), t_REF_INFO));
     
+    if (valueOf(t_MEM_ADDRESS_SZ) > valueOf(t_SCRATCHPAD_MEM_ADDRESS_SZ))
+    begin
+        error("Scratchpad ID " + integerToString(scratchpadID) + " address is too large: " + integerToString(valueOf(t_MEM_ADDRESS_SZ)) + " bits");
+    end
+
     String debugLogFilename = "memory_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE) + ".out";
     DEBUG_FILE debugLog <- (`PLATFORM_SCRATCHPAD_DEBUG_ENABLE == 1)?
                            mkDebugFile(debugLogFilename):
@@ -441,7 +415,7 @@ module [CONNECTED_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
 
         Bit#(t_MEM_ADDRESS_SZ) alloc = maxBound;
         SCRATCHPAD_INIT_REQ r;
-        r.allocLastWordIdx = zeroExtend(alloc);
+        r.allocLastWordIdx = zeroExtendNP(alloc);
         r.cached = True;
         link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT r);
     endrule
@@ -464,7 +438,7 @@ module [CONNECTED_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
         // port ID and the ROB index.
         t_REF_INFO ref_info = unpack(truncateNP({ port, idx }));
 
-        let req = SCRATCHPAD_READ_REQ { addr: zeroExtend(pack(addr)),
+        let req = SCRATCHPAD_READ_REQ { addr: zeroExtendNP(pack(addr)),
                                         clientRefInfo: zeroExtendNP(pack(ref_info)) };
 
         link_memory.makeReq(tagged SCRATCHPAD_MEM_READ req);
@@ -478,7 +452,7 @@ module [CONNECTED_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
         let val = writeDataQ.first();
         writeDataQ.deq();
 
-        let req = SCRATCHPAD_WRITE_REQ { addr: zeroExtend(pack(addr)),
+        let req = SCRATCHPAD_WRITE_REQ { addr: zeroExtendNP(pack(addr)),
                                          val: val };
 
         link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE req);
@@ -568,11 +542,7 @@ module [CONNECTED_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, 
               Alias#(SCOREBOARD_FIFO_ENTRY_ID#(SCRATCHPAD_PORT_ROB_SLOTS), t_REORDER_ID),
        
               // Reference info passed to the cache needed to route the response
-              Alias#(Tuple2#(Bit#(n_SAFE_READERS_SZ), t_REORDER_ID), t_REF_INFO),
-
-              // Requested address type must be smaller than scratchpad maximum.
-              Add#(a__, t_MEM_ADDRESS_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
-    
+              Alias#(Tuple2#(Bit#(n_SAFE_READERS_SZ), t_REORDER_ID), t_REF_INFO));
 
     String debugLogFilename = "platform_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE) + ".out";
     DEBUG_FILE debugLog <- (`PLATFORM_SCRATCHPAD_DEBUG_ENABLE == 1)?
@@ -727,10 +697,12 @@ module [CONNECTED_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
     provisos (Bits#(t_CACHE_ADDR, t_CACHE_ADDR_SZ),
               Bits#(t_CACHE_REF_INFO, t_CACHE_REF_INFO_SZ),
               Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
-              Alias#(RL_DM_CACHE_FILL_RESP#(t_CACHE_ADDR, SCRATCHPAD_MEM_VALUE, t_CACHE_REF_INFO), t_CACHE_FILL_RESP),
+              Alias#(RL_DM_CACHE_FILL_RESP#(t_CACHE_ADDR, SCRATCHPAD_MEM_VALUE, t_CACHE_REF_INFO), t_CACHE_FILL_RESP));
 
-              // Requested address type must be smaller than scratchpad maximum
-              Add#(a__, t_CACHE_ADDR_SZ, t_SCRATCHPAD_MEM_ADDRESS_SZ));
+    if (valueOf(t_CACHE_ADDR_SZ) > valueOf(t_SCRATCHPAD_MEM_ADDRESS_SZ))
+    begin
+        error("Scratchpad ID " + integerToString(scratchpadID) + " address is too large: " + integerToString(valueOf(t_CACHE_ADDR_SZ)) + " bits");
+    end
 
     Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_READ_RESP) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
 
@@ -744,13 +716,13 @@ module [CONNECTED_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
 
         Bit#(t_CACHE_ADDR_SZ) alloc = maxBound;
         SCRATCHPAD_INIT_REQ r;
-        r.allocLastWordIdx = zeroExtend(alloc);
+        r.allocLastWordIdx = zeroExtendNP(alloc);
         r.cached = True;
         link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT r);
     endrule
 
     method Action readReq(t_CACHE_ADDR addr, t_CACHE_REF_INFO refInfo) if (initialized);
-        let req = SCRATCHPAD_READ_REQ { addr: zeroExtend(pack(addr)),
+        let req = SCRATCHPAD_READ_REQ { addr: zeroExtendNP(pack(addr)),
                                         clientRefInfo: zeroExtendNP(pack(refInfo)) };
         link_memory.makeReq(tagged SCRATCHPAD_MEM_READ req);
     endmethod
@@ -760,7 +732,7 @@ module [CONNECTED_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
         link_memory.deq();
 
         t_CACHE_FILL_RESP r;
-        r.addr = unpack(truncate(s.addr));
+        r.addr = unpack(truncateNP(s.addr));
         r.val = s.val;
         r.refInfo = unpack(truncateNP(s.clientRefInfo));
 
@@ -771,7 +743,7 @@ module [CONNECTED_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
         let s = link_memory.getResp();
         
         t_CACHE_FILL_RESP r;
-        r.addr = unpack(truncate(s.addr));
+        r.addr = unpack(truncateNP(s.addr));
         r.val = s.val;
         r.refInfo = unpack(truncateNP(s.clientRefInfo));
 
@@ -782,7 +754,7 @@ module [CONNECTED_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
     method Action write(t_CACHE_ADDR addr,
                         SCRATCHPAD_MEM_VALUE val,
                         t_CACHE_REF_INFO refInfo) if (initialized);
-        let req = SCRATCHPAD_WRITE_REQ { addr: zeroExtend(pack(addr)),
+        let req = SCRATCHPAD_WRITE_REQ { addr: zeroExtendNP(pack(addr)),
                                          val: val };
         link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE req);
     endmethod
@@ -840,7 +812,7 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
               NumAlias#(TLog#(n_SAFE_READERS), n_SAFE_READERS_SZ),
 
               // Index in a reorder buffer
-              Alias#(SCOREBOARD_FIFO_ENTRY_ID#(SCRATCHPAD_PORT_ROB_SLOTS), t_REORDER_ID),
+              Alias#(SCOREBOARD_FIFO_ENTRY_ID#(SCRATCHPAD_UNCACHED_PORT_ROB_SLOTS), t_REORDER_ID),
 
               // Reference info passed to the scratchpad needed to route the response
               Alias#(Tuple3#(Bit#(n_SAFE_READERS_SZ), t_NATURAL_IDX, t_REORDER_ID), t_REF_INFO));
@@ -880,8 +852,8 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
     // Each read port gets its own reorder buffer so that each port returns data
     // when available, independent of the latency of requests on other ports.
     Vector#(n_READERS,
-            SCOREBOARD_FIFOF#(SCRATCHPAD_PORT_ROB_SLOTS,
-                              t_DATA)) sortResponseQ <- replicateM(mkScoreboardFIFOF());
+            SCOREBOARD_FIFOF#(SCRATCHPAD_UNCACHED_PORT_ROB_SLOTS,
+                              t_DATA)) sortResponseQ <- replicateM(mkBRAMScoreboardFIFOF());
 
     // Merge FIFOF combines read and write requests in temporal order,
     // with reads from the same cycle as a write going first.  Each read port
@@ -948,6 +920,7 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
         // The clientRefInfo for this request is the concatenation of the
         // port ID, the offset in the scratchpad value, and the ROB index.
         t_NATURAL_IDX addr_idx = scratchpadAddrIdx(addr);
+        // Resize just eliminates a proviso...
         t_REF_INFO ref_info = resize(tuple3(port, addr_idx, rob_idx));
 
         let req = SCRATCHPAD_READ_REQ { addr: scratchpadAddr(addr),
@@ -1014,6 +987,7 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
 
         debugLog.record($format("read port %0d: resp val=0x%x, s_idx=%0d", port, v, addr_idx));
     endrule
+
 
     //
     // Methods.  All requests are stored in the incomingReqQ to maintain their

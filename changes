@@ -22105,3 +22105,20 @@ Directory modules/bluespec/system/demos/debuggers
  platform-debugger.awb     Locally Added               0 
 
 - added new debugger application for debugging Nallatech SRAM module.
+
+----------
+mcadler     Date: Fri Mar 19 07:29:45 EDT 2010  CSN: CSN-hasim-745
+                  Fri Mar 19 11:29:45 UTC 2010
+
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ scratchpad-memory-service.bsv Locally Modified          744 
+ platform-scratchpad-memory.bsv Locally Modified          744 
+ scratchpad-memory-service.dic Locally Modified          744 
+
+- Grow ROB for read results to permit more reads in flight.
+- Remove messy size provisos in scratchpad memory that sometimes forced clients
+  to add incredibly complicated provisos.  Replaced with a compile-time size
+  check and NP versions of extend and truncate.
+- Remove scratchpad arbiter lock due to fears it could cause deadlock.
+  (Also simplifies the code.)

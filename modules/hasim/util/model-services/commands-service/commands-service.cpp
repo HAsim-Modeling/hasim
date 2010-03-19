@@ -448,7 +448,7 @@ HW_THREAD_HEARTBEAT_CLASS::GetModelIPS() const
     UINT64 commits = instrCommits - modelStartInstrs;
     if ((heartbeat_run_time > 0) && (commits > 0))
     {
-        return (double)commits / heartbeat_run_time;
+        return double(commits) / heartbeat_run_time;
     }
     else
     {
@@ -500,5 +500,5 @@ MESSAGE_INTERVAL_SWITCH_CLASS::ProcessSwitchInt(int arg)
 bool
 MESSAGE_INTERVAL_SWITCH_CLASS::ShowSwitch(char* buff)
 {
-    strcpy(buff, "[--pc=<interval>]       Progress message (hearbeat) interval.");
+    strcpy(buff, "[--pc=<interval>]       Progress message (heartbeat) interval.");
 }

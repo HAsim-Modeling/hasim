@@ -22122,3 +22122,15 @@ Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-se
   check and NP versions of extend and truncate.
 - Remove scratchpad arbiter lock due to fears it could cause deadlock.
   (Also simplifies the code.)
+
+----------
+mcadler     Date: Fri Mar 19 13:43:59 EDT 2010  CSN: CSN-hasim-746
+                  Fri Mar 19 17:43:59 UTC 2010
+
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ scratchpad-memory-service.bsv Locally Modified          745 
+ platform-scratchpad-memory.bsv Locally Modified          745 
+
+Add the ability to request specific bytes from a scratchpad word, allowing for
+finer grained cache lookups.

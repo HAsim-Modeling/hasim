@@ -91,6 +91,7 @@ SCRATCHPAD_INIT_REQ
 typedef struct
 {
     SCRATCHPAD_MEM_ADDRESS addr;
+    SCRATCHPAD_MEM_MASK byteReadMask;
     SCRATCHPAD_CLIENT_REF_INFO clientRefInfo;
 }
 SCRATCHPAD_READ_REQ
@@ -439,6 +440,7 @@ module [CONNECTED_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
         t_REF_INFO ref_info = unpack(truncateNP({ port, idx }));
 
         let req = SCRATCHPAD_READ_REQ { addr: zeroExtendNP(pack(addr)),
+                                        byteReadMask: replicate(True),
                                         clientRefInfo: zeroExtendNP(pack(ref_info)) };
 
         link_memory.makeReq(tagged SCRATCHPAD_MEM_READ req);
@@ -723,6 +725,7 @@ module [CONNECTED_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
 
     method Action readReq(t_CACHE_ADDR addr, t_CACHE_REF_INFO refInfo) if (initialized);
         let req = SCRATCHPAD_READ_REQ { addr: zeroExtendNP(pack(addr)),
+                                        byteReadMask: replicate(True),
                                         clientRefInfo: zeroExtendNP(pack(refInfo)) };
         link_memory.makeReq(tagged SCRATCHPAD_MEM_READ req);
     endmethod
@@ -888,6 +891,24 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
 
 
     //
+    // scratchpadByteMask --
+    //     Compute the byte mask of an object within a scratchpad word.
+    //
+    function SCRATCHPAD_MEM_MASK scratchpadByteMask(t_ADDR addr);
+        t_NATURAL_IDX addr_idx = scratchpadAddrIdx(addr);
+
+        // Build a mask of valid bytes
+        Vector#(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ,
+                      t_NATURAL_SZ),
+                Bit#(TDiv#(t_NATURAL_SZ, 8))) b_mask = replicate(0);
+        b_mask[addr_idx] = -1;
+
+        // Size should match.  Resize avoids a proviso.
+        return unpack(resize(pack(b_mask)));
+    endfunction
+
+
+    //
     // Allocate memory for this scratchpad region
     //
     Reg#(Bool) initialized <- mkReg(False);
@@ -924,6 +945,7 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
         t_REF_INFO ref_info = resize(tuple3(port, addr_idx, rob_idx));
 
         let req = SCRATCHPAD_READ_REQ { addr: scratchpadAddr(addr),
+                                        byteReadMask: scratchpadByteMask(addr),
                                         clientRefInfo: resize(pack(ref_info)) };
 
         link_memory.makeReq(tagged SCRATCHPAD_MEM_READ req);
@@ -941,21 +963,15 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
         writeDataQ.deq();
 
         // Put the data at the right place in the scratchpad word
-        t_NATURAL_IDX addr_idx = scratchpadAddrIdx(addr);
         Vector#(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ, t_NATURAL_SZ), Bit#(t_NATURAL_SZ)) d = ?;
         Bit#(t_NATURAL_SZ) rep = zeroExtendNP(pack(w_data));
         d = replicate(rep);
 
-        // Build a mask of valid bytes
-        Vector#(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ,
-                      t_NATURAL_SZ),
-                Bit#(TDiv#(t_NATURAL_SZ, 8))) b_mask = replicate(0);
-        b_mask[addr_idx] = -1;
-
         // Resizing is to avoid tautological provisos.  Sizes are actually identical.
+        let b_mask = scratchpadByteMask(addr);
         let req = SCRATCHPAD_WRITE_MASKED_REQ { addr: scratchpadAddr(addr),
                                                 val: resize(pack(d)),
-                                                byteWriteMask: resize(pack(b_mask)) };
+                                                byteWriteMask: b_mask };
 
         link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE_MASKED req);
 

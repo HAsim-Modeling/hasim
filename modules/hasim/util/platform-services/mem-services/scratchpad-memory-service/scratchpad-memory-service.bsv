@@ -94,7 +94,7 @@ module [CONNECTED_MODULE] mkScratchpadMemoryService#(VIRTUAL_DEVICES vdevs)
                         begin
                             let ref_info = SCRATCHPAD_REF_INFO { portNum: fromInteger(p),
                                                                  clientRefInfo: r_req.clientRefInfo };
-                            memory.readReq(r_req.addr, ref_info);
+                            memory.readReq(r_req.addr, r_req.byteReadMask, ref_info);
                         end
 
                         tagged SCRATCHPAD_MEM_WRITE .w_req:

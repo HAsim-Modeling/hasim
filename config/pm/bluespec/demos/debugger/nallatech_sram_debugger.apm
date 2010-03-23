@@ -149,3 +149,6 @@ Packagehint=platforms
 
 [Little-Endian Unified Message Format/Params]
 UMF_CHUNK_BYTES=8
+
+[Nallatech Edge Physical Device/Params]
+MODEL_CLOCK_FREQ=50

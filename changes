@@ -22144,3 +22144,18 @@ Directory modules/hasim/util/model-services/commands-service
  commands-service.cpp      Locally Modified          746 
 
 Cleanup
+
+----------
+aparasha    Date: Tue Mar 23 14:59:44 EDT 2010  CSN: CSN-hasim-748
+                  Tue Mar 23 18:59:44 UTC 2010
+
+
+Directory config/pm/bluespec/demos/debugger
+ nallatech_sram_debugger.apm Locally Modified          747 
+
+Directory modules/bluespec/system/demos/debuggers
+ platform-debugger.bsv     Locally Modified          747 
+ platform-debugger.cpp     Locally Modified          747 
+ platform-debugger.rrr     Locally Modified          747 
+
+Updated with Michael Pellauer's debugger updates.

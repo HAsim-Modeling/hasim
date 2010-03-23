@@ -23,6 +23,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <iomanip>
+#include <cmath>
 
 #include "asim/syntax.h"
 #include "asim/ioformat.h"
@@ -31,6 +32,70 @@
 
 using namespace std;
 
+const char*  
+getIdxName(const int idx)
+{
+    switch(idx)
+    {
+        case 0:  return "prim_device.ram1.enqueue_address_RDY()";
+        case 1:  return "prim_device.ram1.enqueue_data_RDY()";
+        case 2:  return "prim_device.ram1.dequeue_data_RDY()";
+        case 3:  return "mergeReqQ.notEmpty()";
+        case 4:  return "mergeReqQ.ports[0].notFull()";
+        case 5:  return "mergeReqQ.ports[1].notFull()";
+        case 6:  return "syncReadDataQ.notEmpty()";
+        case 7:  return "syncReadDataQ.notFull()";
+        case 8:  return "syncResetQ.notEmpty()";
+        case 9:  return "syncResetQ.notFull()";
+        case 10: return "syncRequestQ.notEmpty()";
+        case 11: return "syncRequestQ.notFull()";
+        case 12: return "syncWriteDataQ.notEmpty()";
+        case 13: return "syncWriteDataQ.notFull()";
+        case 14: return "writePending";
+        case 15: return "readPending";
+        case 16: return "nInflightReads.value() == 0";
+        case 17: return "readBurstCnt == 0";
+        case 18: return "writeBurstIdx == 0";
+        default: return "unused";
+    }
+}
+
+UINT32 
+getBit(UINT32 bvec, int idx)
+{
+    int v =  (int) pow(2, (double) idx);
+    return (bvec & v) >> idx;
+}
+
+void
+printRAMStatus(UINT32 status)
+{
+    cout << "RAM status:" << hex << status << dec << endl;
+    for (int x = 0; x < 19; x++)
+    {
+        cout << "    [" << getIdxName(x) << "]: " << getBit(status,x) << endl;
+    }
+}
+
+void
+printRAMStatusDiff(UINT32 new_status, UINT32 old_status)
+{
+    int any_change = 0;
+    for (int x = 0; x < 19; x++)
+    {
+        UINT32 b_old = getBit(old_status, x);
+        UINT32 b_new = getBit(new_status, x);
+        if (b_old != b_new)
+        {
+            cout << "    [" << getIdxName(x) << "] Now: " <<  b_new << endl;
+            any_change = 1;
+        }
+    }
+    if (!any_change)
+    {
+        cout << "No RAM change." << endl;  
+    }
+}
 // constructor
 HYBRID_APPLICATION_CLASS::HYBRID_APPLICATION_CLASS(
     VIRTUAL_PLATFORM vp)
@@ -53,7 +118,7 @@ HYBRID_APPLICATION_CLASS::Init()
 void
 HYBRID_APPLICATION_CLASS::Main()
 {
-    UINT32 sts, data;
+    UINT32 sts, oldsts, data;
     const int BURSTSIZE = 2;
 
     // print banner
@@ -63,6 +128,10 @@ HYBRID_APPLICATION_CLASS::Main()
 
     cout << endl << "Initializing hardware\n";
 
+    sts = clientStub->StatusCheck(0);
+    oldsts = sts;
+    printRAMStatus(sts);
+
     // transfer control to hardware
     sts = clientStub->StartDebug(0);
     cout << "debugging started, sts = " << sts << endl << flush;
@@ -70,26 +139,8 @@ HYBRID_APPLICATION_CLASS::Main()
     // load
     sts = clientStub->ReadReq(0);
     cout << "read req sent, sts = " << sts << endl << flush;
-    
-    for (int i = 0; i < BURSTSIZE; i++)
-    {
-        data = clientStub->ReadRsp(0);
-        cout << "read data = " << data << endl;
-    }
-
-    // store
-    sts = clientStub->WriteReq(0);
-    cout << "write req sent, sts = " << sts << endl;
-
-    for (int i = 0; i < BURSTSIZE; i++)
-    {
-        sts = clientStub->WriteData(0xDEADBEEF, 0x3);
-        cout << "write data, sts = " << sts << endl;
-    }
-    
-    // load
-    sts = clientStub->ReadReq(0);
-    cout << "read req sent, sts = " << sts << endl << flush;
+    printRAMStatusDiff(sts, oldsts);
+    oldsts = sts;
     
     for (int i = 0; i < BURSTSIZE; i++)
     {

@@ -98,4 +98,11 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
         
     endrule
     
+    rule accept_status_check (True);
+        
+        let dummy <- serverStub.acceptRequest_StatusCheck();
+        serverStub.sendResponse_StatusCheck(sram.statusCheck());
+        
+    endrule
+    
 endmodule

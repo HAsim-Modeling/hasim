@@ -35,9 +35,11 @@
 // we can put some of the code back.
 //
 
+using namespace std;
+
+
 // ASIM core
 #include "asim/syntax.h"
-
 #include "asim/config.h"
 
 ASIM_CONFIG_CLASS::ASIM_CONFIG_CLASS()
@@ -53,8 +55,7 @@ ASIM_CONFIG_CLASS::RegisterSimulatorConfiguration(void)
   // instatiate the initialization and registration of each parameter;
 #define Register(NAME,DESC,TYPE,VAR,VAL) \
   VAR = VAL;
-#define RegisterDyn(NAME,DESC,TYPE,VAR) \
-  VAR = ::VAR;
+#define RegisterDyn(NAME,DESC,TYPE,VAR)
 #define Declare(DECL)
 //  RegisterState(&VAR, NAME, DESC);
 //
@@ -66,3 +67,20 @@ ASIM_CONFIG_CLASS::RegisterSimulatorConfiguration(void)
 #undef Declare
 
 }
+
+
+void
+ASIM_CONFIG_CLASS::EmitStats(ofstream &statsFile)
+{
+#define Register(NAME,DESC,TYPE,VAR,VAL) \
+    statsFile << NAME << ",\"" << DESC << "\"," << VAR << endl;
+#define RegisterDyn(NAME,DESC,TYPE,VAR) \
+    statsFile << NAME << ",\"" << DESC << "\"," << VAR << endl;
+#define Declare(DECL)
+
+#include "asim/provides/sim_config.h"
+#undef Register
+#undef RegisterDyn
+#undef Declare
+}
+

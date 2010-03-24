@@ -22159,3 +22159,24 @@ Directory modules/bluespec/system/demos/debuggers
  platform-debugger.rrr     Locally Modified          747 
 
 Updated with Michael Pellauer's debugger updates.
+
+----------
+mcadler     Date: Wed Mar 24 17:45:56 EDT 2010  CSN: CSN-hasim-749
+                  Wed Mar 24 21:45:56 UTC 2010
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          748 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          748 
+
+Directory base
+ hasim-config.cpp          Locally Modified          748 
+ hasim-config.h            Locally Modified          748 
+
+- Add an EmitStats method to ASIM_CONFIG_CLASS so model parameters will be
+  written to the stats file automatically.
+- Reverse name and description in stats file for better sorting.
+- Use the real AWB parameter description in hasim-configure instead of the
+  bogus one currently being generated.

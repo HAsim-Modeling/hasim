@@ -851,6 +851,7 @@ sub __make_bsvfiles {
             $all_params{$pname} = $provides;
 
             my $type = $p->isInt() ? "UINT64" : "std::string";
+            my $descr = $p->description();
 
             if (! $p->dynamic()) {
                 if (! $isSynthBoundary) {
@@ -862,13 +863,13 @@ sub __make_bsvfiles {
                         print HFILE "#define $pname $pvalue\n";
                     }
                 }
-                $sim_config->print("Register(\"Param_${pname}\",\"parameter ${pname}\",${type},param_${pname},${pvalue})\n");
+                $sim_config->print("Register(\"Param_${pname}\",\"${descr}\",${type},param_${pname},${pvalue})\n");
             }
             else {
                 print HFILE "extern ${type} ${pname};\n";
 
                 $sim_config->print("Declare(extern ${type} ${pname})\n");
-                $sim_config->print("RegisterDyn(\"Param_${pname}\",\"(dynamic) parameter ${pname}\",${type},${pname})\n");
+                $sim_config->print("RegisterDyn(\"Param_${pname}\",\"${descr} (dynamic)\",${type},${pname})\n");
                 if ($p->isInt()) {
                     $sim_config->print("RegisterDynDict(${pname},PARAMS_" . uc($safe_provides) . "_" . uc($pname) . ")\n");
                 }

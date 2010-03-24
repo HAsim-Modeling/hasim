@@ -334,7 +334,7 @@ COMMANDS_SERVER_CLASS::EmitStats(ofstream &statsFile)
     usec = double(endTime.tv_usec) - double(startTime.tv_usec);
     elapsed = sec + usec/1000000;
 
-    statsFile << "\"Simulator: Wall time (sec.)\",SIM_WALL_TIME_SEC,"
+    statsFile << "SIM_WALL_TIME_SEC,\"Simulator: Wall time (sec.)\","
               << elapsed
               << endl;
 }

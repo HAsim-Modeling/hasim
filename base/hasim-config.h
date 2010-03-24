@@ -31,10 +31,12 @@
 
 // generic C++
 #include <string>
+#include <iostream>
 
 // ASIM core
 #include "asim/syntax.h"
 
+#include "asim/provides/stats_device.h"
 
 // setup extern declarations of dynamic parameters
 #define Register(NAME,DESC,TYPE,VAR,VAL)
@@ -56,13 +58,12 @@
  *
  */
 typedef class ASIM_CONFIG_CLASS *ASIM_CONFIG;
-class ASIM_CONFIG_CLASS
+class ASIM_CONFIG_CLASS : public STATS_EMITTER_CLASS
 {
   private:
 #define Register(NAME,DESC,TYPE,VAR,VAL) \
       TYPE VAR;
-#define RegisterDyn(NAME,DESC,TYPE,VAR) \
-      TYPE VAR;
+#define RegisterDyn(NAME,DESC,TYPE,VAR)
 #define Declare(DECL)
 //
 // ASIM public modules - This is OK here, since AWB guarantees that
@@ -75,7 +76,7 @@ class ASIM_CONFIG_CLASS
   public:
     ASIM_CONFIG_CLASS();
     void RegisterSimulatorConfiguration(void);
-
+    void EmitStats(ofstream &statsFile);
 };
 
 #endif

@@ -179,6 +179,8 @@ HYBRID_APPLICATION_CLASS::Main()
     // load
     sts = clientStub->ReadReq(0);
     cout << "read req sent, sts = " << sts << endl;
+
+    sts = clientStub->StatusCheck(0);
     printRAMStatusDiff(sts, oldsts);
     oldsts = sts;
     
@@ -228,6 +230,10 @@ HYBRID_APPLICATION_CLASS::Main()
     // load
     sts = clientStub->ReadReq(0);
     cout << "read req sent, sts = " << sts << endl << flush;
+    
+    sts = clientStub->StatusCheck(0);
+    printRAMStatusDiff(sts, oldsts);
+    oldsts = sts;
     
     for (int i = 0; i < BURSTSIZE; i++)
     {

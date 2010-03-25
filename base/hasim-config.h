@@ -32,11 +32,10 @@
 // generic C++
 #include <string>
 #include <iostream>
+#include <fstream>
 
 // ASIM core
 #include "asim/syntax.h"
-
-#include "asim/provides/stats_device.h"
 
 // setup extern declarations of dynamic parameters
 #define Register(NAME,DESC,TYPE,VAR,VAL)
@@ -58,7 +57,7 @@
  *
  */
 typedef class ASIM_CONFIG_CLASS *ASIM_CONFIG;
-class ASIM_CONFIG_CLASS : public STATS_EMITTER_CLASS
+class ASIM_CONFIG_CLASS
 {
   private:
 #define Register(NAME,DESC,TYPE,VAR,VAL) \
@@ -76,7 +75,13 @@ class ASIM_CONFIG_CLASS : public STATS_EMITTER_CLASS
   public:
     ASIM_CONFIG_CLASS();
     void RegisterSimulatorConfiguration(void);
-    void EmitStats(ofstream &statsFile);
+
+    // An EmitStats() method is provided here to support writing the model
+    // configuration to a statistics file.  This module is not a member
+    // of STATS_EMITTER_CLASS because it may be used in models that have
+    // no support for statistics.  The EmitStats() here will be called
+    // explicitly by a statistics emitter.    
+    void EmitStats(std::ofstream &statsFile);
 };
 
 #endif

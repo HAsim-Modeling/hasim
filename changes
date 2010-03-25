@@ -22180,3 +22180,17 @@ Directory base
 - Reverse name and description in stats file for better sorting.
 - Use the real AWB parameter description in hasim-configure instead of the
   bogus one currently being generated.
+
+----------
+mcadler     Date: Thu Mar 25 14:39:21 EDT 2010  CSN: CSN-hasim-750
+                  Thu Mar 25 18:39:21 UTC 2010
+
+
+Directory base
+ hasim-config.cpp          Locally Modified          749 
+ hasim-config.h            Locally Modified          749 
+
+hasim-config may be used in configurations that have no STATS_EMITTER_CLASS.
+Remove the requirement of STATS_EMITTER_CLASS from the class.  This disables
+automatic writing of model parameters to the statistics file.  The statistics
+class will have to call ASIM_CONFIG_CLASS's EmitStats() method explicitly.

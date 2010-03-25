@@ -22194,3 +22194,20 @@ hasim-config may be used in configurations that have no STATS_EMITTER_CLASS.
 Remove the requirement of STATS_EMITTER_CLASS from the class.  This disables
 automatic writing of model parameters to the statistics file.  The statistics
 class will have to call ASIM_CONFIG_CLASS's EmitStats() method explicitly.
+
+----------
+pellauer    Date: Thu Mar 25 15:37:35 EDT 2010  CSN: CSN-hasim-751
+                  Thu Mar 25 19:37:35 UTC 2010
+
+
+Directory config/pm/bluespec/demos/debugger
+ nallatech_fake_sram_debugger.apm Locally Added               0 
+
+Directory modules/bluespec/system/demos/debuggers
+ platform-debugger.cpp     Locally Modified          750 
+
+
+* New model for "fake" sram debugger.
+* Removing some spurious Windows newline.
+
+Michael P.

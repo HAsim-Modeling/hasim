@@ -70,7 +70,7 @@ getBit(UINT32 bvec, int idx)
 void
 printRAMStatus(UINT32 status)
 {
-    cout << "RAM status:" << hex << status << dec << endl;
+    cout << "RAM status: " << hex << status << dec << endl;
     for (int x = 0; x < 19; x++)
     {
         cout << "    [" << getIdxName(x) << "]: " << getBit(status,x) << endl;
@@ -80,6 +80,7 @@ printRAMStatus(UINT32 status)
 void
 printRAMStatusDiff(UINT32 new_status, UINT32 old_status)
 {
+    cout << "RAM status: " << hex << new_status << dec << endl;
     int any_change = 0;
     for (int x = 0; x < 19; x++)
     {
@@ -93,7 +94,7 @@ printRAMStatusDiff(UINT32 new_status, UINT32 old_status)
     }
     if (!any_change)
     {
-        cout << "No RAM change." << endl;  
+        cout << "    No RAM change." << endl;  
     }
 }
 // constructor
@@ -136,9 +137,48 @@ HYBRID_APPLICATION_CLASS::Main()
     sts = clientStub->StartDebug(0);
     cout << "debugging started, sts = " << sts << endl << flush;
 
+/*
+    for (int i = 0; i < BURSTSIZE; i++)
+    {
+        sts = clientStub->WriteData(0xDEADBEEF, 0x3);
+        cout << "write data, sts = " << sts << endl;
+    }
+    
+    sts = clientStub->StatusCheck(0);
+    printRAMStatusDiff(sts, oldsts);
+    oldsts = sts;
+
+    // store
+    sts = clientStub->WriteReq(0);
+    cout << "write req sent, sts = " << sts << endl;
+    
+    sts = clientStub->StatusCheck(0);
+    printRAMStatusDiff(sts, oldsts);
+    oldsts = sts;
+    
+    for (int i = 0; i < BURSTSIZE; i++)
+    {
+        sts = clientStub->WriteData(0xDEADBEEF, 0x3);
+        cout << "write data, sts = " << sts << endl;
+    }
+    
+    sts = clientStub->StatusCheck(0);
+    printRAMStatusDiff(sts, oldsts);
+    oldsts = sts;
+
+    for (int i = 0; i < BURSTSIZE; i++)
+    {
+        sts = clientStub->WriteData(0xDEADBEEF, 0x3);
+        cout << "write data, sts = " << sts << endl;
+    }
+    
+    sts = clientStub->StatusCheck(0);
+    printRAMStatusDiff(sts, oldsts);
+    oldsts = sts;
+*/
     // load
     sts = clientStub->ReadReq(0);
-    cout << "read req sent, sts = " << sts << endl << flush;
+    cout << "read req sent, sts = " << sts << endl;
     printRAMStatusDiff(sts, oldsts);
     oldsts = sts;
     
@@ -147,7 +187,53 @@ HYBRID_APPLICATION_CLASS::Main()
         data = clientStub->ReadRsp(0);
         cout << "read data = " << data << endl;
     }
+    for (int i = 0; i < BURSTSIZE; i++)
+    {
+        data = clientStub->ReadRsp(0);
+        cout << "read data = " << data << endl;
+    }
 
+    // store
+    sts = clientStub->WriteReq(0);
+    cout << "write req sent, sts = " << sts << endl;
+    
+    sts = clientStub->StatusCheck(0);
+    printRAMStatusDiff(sts, oldsts);
+    oldsts = sts;
+    
+    // store
+    sts = clientStub->WriteReq(0);
+    cout << "write req sent, sts = " << sts << endl;
+    
+    sts = clientStub->StatusCheck(0);
+    printRAMStatusDiff(sts, oldsts);
+    oldsts = sts;
+    
+    // store
+    sts = clientStub->WriteReq(0);
+    cout << "write req sent, sts = " << sts << endl;
+    
+    sts = clientStub->StatusCheck(0);
+    printRAMStatusDiff(sts, oldsts);
+    oldsts = sts;
+    
+    // store
+    sts = clientStub->WriteReq(0);
+    cout << "write req sent, sts = " << sts << endl;
+    
+    sts = clientStub->StatusCheck(0);
+    printRAMStatusDiff(sts, oldsts);
+    oldsts = sts;
+    
+    // load
+    sts = clientStub->ReadReq(0);
+    cout << "read req sent, sts = " << sts << endl << flush;
+    
+    for (int i = 0; i < BURSTSIZE; i++)
+    {
+        data = clientStub->ReadRsp(0);
+        cout << "read data = " << data << endl;
+    }
     // report results and exit
     cout << "\n";
 

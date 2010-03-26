@@ -32,6 +32,10 @@
 
 using namespace std;
 
+int status;
+const int BURSTSIZE = 1;
+PLATFORM_DEBUGGER_CLIENT_STUB clientStub;
+
 const char*  
 getIdxName(const int idx)
 {
@@ -51,8 +55,8 @@ getIdxName(const int idx)
         case 11: return "syncRequestQ.notFull()";
         case 12: return "syncWriteDataQ.notEmpty()";
         case 13: return "syncWriteDataQ.notFull()";
-        case 14: return "writePending";
-        case 15: return "readPending";
+        case 14: return "unused";
+        case 15: return "unused";
         case 16: return "nInflightReads.value() == 0";
         case 17: return "readBurstCnt == 0";
         case 18: return "writeBurstIdx == 0";
@@ -97,6 +101,74 @@ printRAMStatusDiff(UINT32 new_status, UINT32 old_status)
         cout << "    No RAM change." << endl;  
     }
 }
+
+void
+doLoad(UINT32 addr)
+{
+    int data;
+    clientStub->ReadReq(addr);
+
+    for (int i = 0; i < BURSTSIZE; i++)
+    {
+        data = clientStub->ReadRsp(0);
+        cout << "read data [" << hex << addr << "] (" << i+1 << " of " << BURSTSIZE << ") = " << data << dec << endl;
+    }
+}
+
+void
+doStore(UINT32 addr, UINT32 data)
+{
+    clientStub->WriteReq(addr);
+
+    for (int i = 0; i < BURSTSIZE; i++)
+    {
+        clientStub->WriteData(data+i, 0);
+    }    
+}
+
+void
+doVerboseLoad(UINT32 addr)
+{
+    int new_status;
+    int data;
+
+    clientStub->ReadReq(addr);
+    new_status = clientStub->StatusCheck(0);
+    cout << "read [" << hex << addr << dec << "] req sent" << endl << flush;
+    printRAMStatusDiff(new_status, status);
+    status = new_status;
+    
+    for (int i = 0; i < BURSTSIZE; i++)
+    {
+        data = clientStub->ReadRsp(0);
+        cout << "read data (" << i+1 << " of " << BURSTSIZE << ") = " << hex << data << dec << endl;
+        new_status = clientStub->StatusCheck(0);
+        printRAMStatusDiff(new_status, status);
+        status = new_status;
+    }
+}
+
+void
+doVerboseStore(UINT32 addr, UINT32 data)
+{
+    int new_status;
+
+    clientStub->WriteReq(addr);
+    new_status = clientStub->StatusCheck(0);
+    cout << "write [" << hex << addr << dec << "] req sent" << endl << flush;
+    printRAMStatusDiff(new_status, status);
+    status = new_status;
+
+    for (int i = 0; i < BURSTSIZE; i++)
+    {
+        clientStub->WriteData(data+i, 0);
+        new_status = clientStub->StatusCheck(0);
+        cout << "write data (" << i+1 << " of " << BURSTSIZE << ") sent" << endl << flush;
+        printRAMStatusDiff(new_status, status);
+        status = new_status;
+    }    
+}
+
 // constructor
 HYBRID_APPLICATION_CLASS::HYBRID_APPLICATION_CLASS(
     VIRTUAL_PLATFORM vp)
@@ -119,8 +191,7 @@ HYBRID_APPLICATION_CLASS::Init()
 void
 HYBRID_APPLICATION_CLASS::Main()
 {
-    UINT32 sts, oldsts, data;
-    const int BURSTSIZE = 2;
+    ::clientStub = this->clientStub;
 
     // print banner
     cout << "\n";
@@ -129,118 +200,91 @@ HYBRID_APPLICATION_CLASS::Main()
 
     cout << endl << "Initializing hardware\n";
 
-    sts = clientStub->StatusCheck(0);
-    oldsts = sts;
-    printRAMStatus(sts);
+    status = clientStub->StatusCheck(0);
+    
+    // printRAMStatus(status);
 
     // transfer control to hardware
-    sts = clientStub->StartDebug(0);
-    cout << "debugging started, sts = " << sts << endl << flush;
+    int new_status = clientStub->StartDebug(0);
+
+    // new_status = clientStub->StatusCheck(0);
+    // cout << "debugging started" << endl << flush;
+    // printRAMStatusDiff(new_status, status);
+    // status = new_status;
+
+    doLoad(0);
+    doLoad(1);
+    doLoad(2);
+    doLoad(3);
+    doLoad(4);
+    doLoad(5);
+
+    cout << endl;
+
+    doStore(0, 0xDEADBEEF);
+
+    doLoad(0);
+    doLoad(1);
+    doLoad(2);
+    doLoad(3);
+    doLoad(4);
+    doLoad(5);
+
+    cout << endl;
+
+    doStore(1, 0xCCCCCCCC);
+
+    doLoad(0);
+    doLoad(1);
+    doLoad(2);
+    doLoad(3);
+    doLoad(4);
+    doLoad(5);
+
+    cout << endl;
+
+    doStore(2, 0xABABABAB);
+
+    doLoad(0);
+    doLoad(1);
+    doLoad(2);
+    doLoad(3);
+    doLoad(4);
+    doLoad(5);
+
+    cout << endl;
+
+    doStore(3, 0xFFEEDDCC);
+
+    doLoad(0);
+    doLoad(1);
+    doLoad(2);
+    doLoad(3);
+    doLoad(4);
+    doLoad(5);    
 
 /*
-    for (int i = 0; i < BURSTSIZE; i++)
+    // stress test
+    for (int addr = 0; addr < 1000; addr++)
     {
-        sts = clientStub->WriteData(0xDEADBEEF, 0x3);
-        cout << "write data, sts = " << sts << endl;
+        clientStub->WriteReq(addr);
+        for (int i = 0; i < BURSTSIZE; i++)
+        {
+            clientStub->WriteData(addr*16, 0);
+        }
     }
-    
-    sts = clientStub->StatusCheck(0);
-    printRAMStatusDiff(sts, oldsts);
-    oldsts = sts;
 
-    // store
-    sts = clientStub->WriteReq(0);
-    cout << "write req sent, sts = " << sts << endl;
-    
-    sts = clientStub->StatusCheck(0);
-    printRAMStatusDiff(sts, oldsts);
-    oldsts = sts;
-    
-    for (int i = 0; i < BURSTSIZE; i++)
+    for (int addr = 0; addr < 1000; addr++)
     {
-        sts = clientStub->WriteData(0xDEADBEEF, 0x3);
-        cout << "write data, sts = " << sts << endl;
+        clientStub->ReadReq(addr);
+        for (int i = 0; i < BURSTSIZE; i++)
+        {
+            UINT32 data = clientStub->ReadRsp(0);
+            cout << "read [" << hex << addr << "] = " << data << dec << endl;
+        }
     }
-    
-    sts = clientStub->StatusCheck(0);
-    printRAMStatusDiff(sts, oldsts);
-    oldsts = sts;
-
-    for (int i = 0; i < BURSTSIZE; i++)
-    {
-        sts = clientStub->WriteData(0xDEADBEEF, 0x3);
-        cout << "write data, sts = " << sts << endl;
-    }
-    
-    sts = clientStub->StatusCheck(0);
-    printRAMStatusDiff(sts, oldsts);
-    oldsts = sts;
 */
-    // load
-    sts = clientStub->ReadReq(0);
-    cout << "read req sent, sts = " << sts << endl;
 
-    sts = clientStub->StatusCheck(0);
-    printRAMStatusDiff(sts, oldsts);
-    oldsts = sts;
-    
-    for (int i = 0; i < BURSTSIZE; i++)
-    {
-        data = clientStub->ReadRsp(0);
-        cout << "read data = " << data << endl;
-    }
-    for (int i = 0; i < BURSTSIZE; i++)
-    {
-        data = clientStub->ReadRsp(0);
-        cout << "read data = " << data << endl;
-    }
-
-    // store
-    sts = clientStub->WriteReq(0);
-    cout << "write req sent, sts = " << sts << endl;
-    
-    sts = clientStub->StatusCheck(0);
-    printRAMStatusDiff(sts, oldsts);
-    oldsts = sts;
-    
-    // store
-    sts = clientStub->WriteReq(0);
-    cout << "write req sent, sts = " << sts << endl;
-    
-    sts = clientStub->StatusCheck(0);
-    printRAMStatusDiff(sts, oldsts);
-    oldsts = sts;
-    
-    // store
-    sts = clientStub->WriteReq(0);
-    cout << "write req sent, sts = " << sts << endl;
-    
-    sts = clientStub->StatusCheck(0);
-    printRAMStatusDiff(sts, oldsts);
-    oldsts = sts;
-    
-    // store
-    sts = clientStub->WriteReq(0);
-    cout << "write req sent, sts = " << sts << endl;
-    
-    sts = clientStub->StatusCheck(0);
-    printRAMStatusDiff(sts, oldsts);
-    oldsts = sts;
-    
-    // load
-    sts = clientStub->ReadReq(0);
-    cout << "read req sent, sts = " << sts << endl << flush;
-    
-    sts = clientStub->StatusCheck(0);
-    printRAMStatusDiff(sts, oldsts);
-    oldsts = sts;
-    
-    for (int i = 0; i < BURSTSIZE; i++)
-    {
-        data = clientStub->ReadRsp(0);
-        cout << "read data = " << data << endl;
-    }
-    // report results and exit
+    // done
     cout << "\n";
-
 }

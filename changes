@@ -22236,3 +22236,16 @@ Directory modules/bluespec/system/demos/debuggers
  platform-debugger.cpp     Locally Modified          752 
 
 Small update to SRAM debugger
+
+----------
+kfleming    Date: Sat Mar 27 21:30:30 EDT 2010  CSN: CSN-hasim-754
+                  Sun Mar 28 01:30:30 UTC 2010
+
+
+Directory libperl/HAsim/lib/HAsim
+ Build.pm                  Locally Modified          753 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          753 
+
+Added support for python libraries in SCons.  %scons %library will create a symlink in the new site_scons directory.  This enables, among other things, a relatively easy way to break down the monolithic makefile.  It also sets the stage for Altera support.  The edit is a little rough, and I would like to investigate using a more SConsy object-oriented approach with the Builder and Node classes. 

@@ -427,6 +427,12 @@ sub make_dirs {
     $sys_status |= system("mkdir -p " . ${swdir} . "/include/asim/provides");
     $sys_status |= system("mkdir -p " . ${swdir} . "/include/asim/restricted");
 
+    # Setup directory for scons library files
+    $sys_status |= system("mkdir -p " . HAsim::Util::path_append($builddir, "site_scons"));
+    if ($sys_status) {
+      print "Could not create site_scons dir\n";
+      return 0;
+    }
 
     if ($sys_status != 0) {
       print "Directory creation failed somewhere in $builddir\n";
@@ -1107,6 +1113,19 @@ sub generate_makefile_top {
         my $scons = HAsim::Util::path_append($builddir, "SConstruct");
         HAsim::Templates::do_replacements($template, $scons, $replacements_r);
     }
+
+    # Copy scons python libraries
+    # By fiat of scons, these files live in ./site_scons directory
+    # these shouldn't have replacements, but why not let someone have them
+    # if they want
+
+    my @libraries = HAsim::Build::get_scons_library($model->modelroot());
+    foreach my $library (@libraries) {
+        # Make a symlink
+        my $buildpath = HAsim::Util::path_append($builddir, "/site_scons/" , basename($library));
+        `ln -fs $library $buildpath`;
+    }
+    
 
     ##
     ## Add a model description stub for benchmarks

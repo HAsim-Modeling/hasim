@@ -38,6 +38,21 @@ sub get_scons_hw_sub_template {
     return get_scons_template($root, 'hw');
 }
 
+# This is an ugly way to get the library files, but I guess this is the best way??
+sub get_scons_library {
+    my $module = shift;
+    
+    my @libraries = $module->scons('library');
+
+ 
+    my @resolved_library;
+    foreach my $library (@libraries) {
+      push(@resolved_library,Asim::resolve(HAsim::Util::path_append($module->base_dir(),$library)));
+    }
+ 
+    return @resolved_library;
+}
+
 sub get_scons_template($$) {
     my $module = shift;
     my $category = shift;

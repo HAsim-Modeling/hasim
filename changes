@@ -22267,3 +22267,17 @@ Directory modules/bluespec/system/demos/debuggers
 - Add more interesting patterns to test for valid read/write.
 - Test 2 banks of memory.
 - Add calibration test to find optimal read buffer size in the driver.
+
+----------
+kfleming    Date: Sun Mar 28 21:17:02 EDT 2010  CSN: CSN-hasim-756
+                  Mon Mar 29 01:17:02 UTC 2010
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          755 
+
+
+Added support for awb-style swapable python build modules.  Syntax is
+from module_name import *.  This allows multiple tools
+(XST/Synplify/Quartus/DC) to share similar build pipelines it also
+helps in sharing build code among several projects.  

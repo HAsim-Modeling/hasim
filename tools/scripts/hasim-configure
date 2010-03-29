@@ -1116,16 +1116,9 @@ sub generate_makefile_top {
 
     # Copy scons python libraries
     # By fiat of scons, these files live in ./site_scons directory
-    # these shouldn't have replacements, but why not let someone have them
-    # if they want
-
-    my @libraries = HAsim::Build::get_scons_library($model->modelroot());
-    foreach my $library (@libraries) {
-        # Make a symlink
-        my $buildpath = HAsim::Util::path_append($builddir, "/site_scons/" , basename($library));
-        `ln -fs $library $buildpath`;
-    }
+    # we have to set up the scons/python seach path here as well
     
+    __generate_build_libraries($root, HAsim::Util::path_append($builddir, "/site_scons/"));
 
     ##
     ## Add a model description stub for benchmarks
@@ -1145,6 +1138,68 @@ sub generate_makefile_top {
     
 }
 
+
+############################################################
+# __generate_build_libraries: Recursively set up python modules
+#                             for inclusion in build process
+sub __generate_build_libraries {
+    my $module = shift;
+    my $base_dir = shift;
+
+    my @libraries = HAsim::Build::get_scons_library($module);
+    # make ourselves a directory iff we have a library to link in
+    if(scalar(@libraries) > 0) {
+         my $sys_status = system("mkdir -p " . HAsim::Util::path_append($base_dir, "/" . $module->provides . "/"));
+         if ($sys_status) {
+            print "Could not create " . HAsim::Util::path_append($base_dir, "/" . $module->provides . "/") . "\n";
+            return 0;
+         }
+
+         #need to have __init__.py in the directory
+         #this must define the __all__ variable
+         open(INIT,"> " . HAsim::Util::path_append($base_dir, "/" . $module->provides . "/__init__.py"));
+	 print INIT "__all__ = [ ";
+         $sys_status = system("touch " . HAsim::Util::path_append($base_dir, "/" . $module->provides . "/__init__.py"));
+         if ($sys_status) {
+            print "Could not create " . HAsim::Util::path_append($base_dir, "/" . $module->provides . "/__init__.py") . "\n";
+            return 0;
+         }        
+    
+
+        for(my $index = 0; $index < scalar(@libraries); $index++) {
+            # Make a symlink
+            my $library = $libraries[$index];
+            my $buildpath = HAsim::Util::path_append($base_dir, "/" . $module->provides . "/" , basename($library));
+            my  @fileparts = split(/\./,basename($library));
+	    print INIT "\'$fileparts[0]\'";
+            if($index + 1 < scalar(@libraries)) {
+                print INIT ",";
+            }   
+            `ln -fs $library $buildpath`;
+        }
+
+	print INIT " ]\n";
+
+        # reloop to produce some import statements
+        for(my $index = 0; $index < scalar(@libraries); $index++) {
+            # Make a symlink
+            my $library = $libraries[$index];
+            my $buildpath = HAsim::Util::path_append($base_dir, "/" . $module->provides . "/" , basename($library));
+            my  @fileparts = split(/\./,basename($library));
+	    print INIT "from $fileparts[0] import *\n";
+        }
+
+        close(INIT);
+    }
+
+    #recurse on children, but do not change path.  
+    #this is due to the python naming scheme
+
+    HAsim::Build::check_submodules_defined($module);
+    foreach my $child ($module->submodules()) {
+        __generate_build_libraries($child,$base_dir);
+    }     
+}
 ############################################################
 # __generate_makefile_hw_top: Recursively collect replacements
 #                             for Makefile.top

@@ -22281,3 +22281,13 @@ Added support for awb-style swapable python build modules.  Syntax is
 from module_name import *.  This allows multiple tools
 (XST/Synplify/Quartus/DC) to share similar build pipelines it also
 helps in sharing build code among several projects.  
+
+----------
+kfleming    Date: Mon Mar 29 13:50:58 EDT 2010  CSN: CSN-hasim-757
+                  Mon Mar 29 17:50:58 UTC 2010
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          756 
+
+Removed __all__ from generated __init__.py . This seems to have buggy behavior in some situations.  It turns out from Package import * alone is enough.  Negotiating with python folk to understand whether this is a bug.

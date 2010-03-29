@@ -1158,8 +1158,6 @@ sub __generate_build_libraries {
          #need to have __init__.py in the directory
          #this must define the __all__ variable
          open(INIT,"> " . HAsim::Util::path_append($base_dir, "/" . $module->provides . "/__init__.py"));
-	 print INIT "__all__ = [ ";
-         $sys_status = system("touch " . HAsim::Util::path_append($base_dir, "/" . $module->provides . "/__init__.py"));
          if ($sys_status) {
             print "Could not create " . HAsim::Util::path_append($base_dir, "/" . $module->provides . "/__init__.py") . "\n";
             return 0;
@@ -1171,22 +1169,8 @@ sub __generate_build_libraries {
             my $library = $libraries[$index];
             my $buildpath = HAsim::Util::path_append($base_dir, "/" . $module->provides . "/" , basename($library));
             my  @fileparts = split(/\./,basename($library));
-	    print INIT "\'$fileparts[0]\'";
-            if($index + 1 < scalar(@libraries)) {
-                print INIT ",";
-            }   
-            `ln -fs $library $buildpath`;
-        }
-
-	print INIT " ]\n";
-
-        # reloop to produce some import statements
-        for(my $index = 0; $index < scalar(@libraries); $index++) {
-            # Make a symlink
-            my $library = $libraries[$index];
-            my $buildpath = HAsim::Util::path_append($base_dir, "/" . $module->provides . "/" , basename($library));
-            my  @fileparts = split(/\./,basename($library));
 	    print INIT "from $fileparts[0] import *\n";
+            `ln -fs $library $buildpath`;
         }
 
         close(INIT);

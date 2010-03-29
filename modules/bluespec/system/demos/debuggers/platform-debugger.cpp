@@ -29,12 +29,9 @@
 #include "asim/ioformat.h"
 #include "asim/provides/hybrid_application.h"
 #include "asim/provides/clocks_device.h"
+#include "asim/provides/ddr2_device.h"
 
 using namespace std;
-
-int status;
-const int BURSTSIZE = 1;
-PLATFORM_DEBUGGER_CLIENT_STUB clientStub;
 
 const char*  
 getIdxName(const int idx)
@@ -55,41 +52,40 @@ getIdxName(const int idx)
         case 11: return "syncRequestQ.notFull()";
         case 12: return "syncWriteDataQ.notEmpty()";
         case 13: return "syncWriteDataQ.notFull()";
-        case 14: return "unused";
-        case 15: return "unused";
+        case 14: return "writePending";
+        case 15: return "readPending";
         case 16: return "nInflightReads.value() == 0";
         case 17: return "readBurstCnt == 0";
         case 18: return "writeBurstIdx == 0";
+        case 19: return "state";
         default: return "unused";
     }
 }
 
-UINT32 
-getBit(UINT32 bvec, int idx)
+UINT64 
+getBit(UINT64 bvec, int idx, UINT64 mask)
 {
-    int v =  (int) pow(2, (double) idx);
-    return (bvec & v) >> idx;
+    return (bvec >> idx) & mask;
 }
 
 void
-printRAMStatus(UINT32 status)
+printRAMStatus(UINT64 status)
 {
-    cout << "RAM status: " << hex << status << dec << endl;
-    for (int x = 0; x < 19; x++)
+    cout << "RAM status:" << hex << status << dec << endl;
+    for (int x = 0; x < 20; x++)
     {
-        cout << "    [" << getIdxName(x) << "]: " << getBit(status,x) << endl;
+        cout << "    [" << getIdxName(x) << "]: " << getBit(status, x, 1) << endl;
     }
 }
 
 void
-printRAMStatusDiff(UINT32 new_status, UINT32 old_status)
+printRAMStatusDiff(UINT64 new_status, UINT64 old_status)
 {
-    cout << "RAM status: " << hex << new_status << dec << endl;
     int any_change = 0;
-    for (int x = 0; x < 19; x++)
+    for (int x = 0; x < 20; x++)
     {
-        UINT32 b_old = getBit(old_status, x);
-        UINT32 b_new = getBit(new_status, x);
+        UINT64 b_old = getBit(old_status, x, 1);
+        UINT64 b_new = getBit(new_status, x, 1);
         if (b_old != b_new)
         {
             cout << "    [" << getIdxName(x) << "] Now: " <<  b_new << endl;
@@ -98,77 +94,9 @@ printRAMStatusDiff(UINT32 new_status, UINT32 old_status)
     }
     if (!any_change)
     {
-        cout << "    No RAM change." << endl;  
+        cout << "No RAM change." << endl;  
     }
 }
-
-void
-doLoad(UINT32 addr)
-{
-    int data;
-    clientStub->ReadReq(addr);
-
-    for (int i = 0; i < BURSTSIZE; i++)
-    {
-        data = clientStub->ReadRsp(0);
-        cout << "read data [" << hex << addr << "] (" << i+1 << " of " << BURSTSIZE << ") = " << data << dec << endl;
-    }
-}
-
-void
-doStore(UINT32 addr, UINT32 data)
-{
-    clientStub->WriteReq(addr);
-
-    for (int i = 0; i < BURSTSIZE; i++)
-    {
-        clientStub->WriteData(data+i, 0);
-    }    
-}
-
-void
-doVerboseLoad(UINT32 addr)
-{
-    int new_status;
-    int data;
-
-    clientStub->ReadReq(addr);
-    new_status = clientStub->StatusCheck(0);
-    cout << "read [" << hex << addr << dec << "] req sent" << endl << flush;
-    printRAMStatusDiff(new_status, status);
-    status = new_status;
-    
-    for (int i = 0; i < BURSTSIZE; i++)
-    {
-        data = clientStub->ReadRsp(0);
-        cout << "read data (" << i+1 << " of " << BURSTSIZE << ") = " << hex << data << dec << endl;
-        new_status = clientStub->StatusCheck(0);
-        printRAMStatusDiff(new_status, status);
-        status = new_status;
-    }
-}
-
-void
-doVerboseStore(UINT32 addr, UINT32 data)
-{
-    int new_status;
-
-    clientStub->WriteReq(addr);
-    new_status = clientStub->StatusCheck(0);
-    cout << "write [" << hex << addr << dec << "] req sent" << endl << flush;
-    printRAMStatusDiff(new_status, status);
-    status = new_status;
-
-    for (int i = 0; i < BURSTSIZE; i++)
-    {
-        clientStub->WriteData(data+i, 0);
-        new_status = clientStub->StatusCheck(0);
-        cout << "write data (" << i+1 << " of " << BURSTSIZE << ") sent" << endl << flush;
-        printRAMStatusDiff(new_status, status);
-        status = new_status;
-    }    
-}
-
 // constructor
 HYBRID_APPLICATION_CLASS::HYBRID_APPLICATION_CLASS(
     VIRTUAL_PLATFORM vp)
@@ -191,7 +119,9 @@ HYBRID_APPLICATION_CLASS::Init()
 void
 HYBRID_APPLICATION_CLASS::Main()
 {
-    ::clientStub = this->clientStub;
+    UINT64 sts, oldsts;
+    UINT64 data;
+    const int BURSTSIZE = 1;
 
     // print banner
     cout << "\n";
@@ -200,91 +130,75 @@ HYBRID_APPLICATION_CLASS::Main()
 
     cout << endl << "Initializing hardware\n";
 
-    status = clientStub->StatusCheck(0);
-    
-    // printRAMStatus(status);
+    sts = clientStub->StatusCheck(0);
+    oldsts = sts;
+    printRAMStatus(sts);
 
     // transfer control to hardware
-    int new_status = clientStub->StartDebug(0);
+    sts = clientStub->StartDebug(0);
+    cout << "debugging started, sts = " << sts << endl << flush;
 
-    // new_status = clientStub->StatusCheck(0);
-    // cout << "debugging started" << endl << flush;
-    // printRAMStatusDiff(new_status, status);
-    // status = new_status;
-
-    doLoad(0);
-    doLoad(1);
-    doLoad(2);
-    doLoad(3);
-    doLoad(4);
-    doLoad(5);
-
-    cout << endl;
-
-    doStore(0, 0xDEADBEEF);
-
-    doLoad(0);
-    doLoad(1);
-    doLoad(2);
-    doLoad(3);
-    doLoad(4);
-    doLoad(5);
-
-    cout << endl;
-
-    doStore(1, 0xCCCCCCCC);
-
-    doLoad(0);
-    doLoad(1);
-    doLoad(2);
-    doLoad(3);
-    doLoad(4);
-    doLoad(5);
-
-    cout << endl;
-
-    doStore(2, 0xABABABAB);
-
-    doLoad(0);
-    doLoad(1);
-    doLoad(2);
-    doLoad(3);
-    doLoad(4);
-    doLoad(5);
-
-    cout << endl;
-
-    doStore(3, 0xFFEEDDCC);
-
-    doLoad(0);
-    doLoad(1);
-    doLoad(2);
-    doLoad(3);
-    doLoad(4);
-    doLoad(5);    
-
-/*
-    // stress test
-    for (int addr = 0; addr < 1000; addr++)
+    // Write a pattern to memory.  On the Bluespec side, data is written to bank 0
+    // and the inverse of data is written to bank 1.
+    for (int i = 0; i <= 1000; i += 1)
     {
-        clientStub->WriteReq(addr);
-        for (int i = 0; i < BURSTSIZE; i++)
+        int addr = i;
+        data = ((UINT64(i) + 123456) << 32) | (UINT64(i) + 1001);
+        sts = clientStub->WriteReq(addr * 2);
+        for (int b = 0; b < BURSTSIZE; b++)
         {
-            clientStub->WriteData(addr*16, 0);
+            sts = clientStub->WriteData(data, 0);
+            data = ~data;
         }
     }
 
-    for (int addr = 0; addr < 1000; addr++)
+    // Read the pattern back.  Alternate banks on each request.
+    int errors = 0;
+    for (int i = 0; i <= 1000; i += 1)
     {
-        clientStub->ReadReq(addr);
-        for (int i = 0; i < BURSTSIZE; i++)
+        int addr = i;
+        sts = (addr & 1) ? clientStub->ReadReq1(addr * 2) : clientStub->ReadReq0(addr * 2);
+    
+        UINT64 expect = ((UINT64(i) + 123456) << 32) | (UINT64(i) + 1001);
+        if (addr & 1) expect = ~expect;
+
+        for (int b = 0; b < BURSTSIZE; b++)
         {
-            UINT32 data = clientStub->ReadRsp(0);
-            cout << "read [" << hex << addr << "] = " << data << dec << endl;
+            data = (addr & 1) ? clientStub->ReadRsp1(0) : clientStub->ReadRsp0(0);
+            if (data != expect)
+            {
+                cout << hex << "error read data 0x" << addr << " = 0x" << data << dec << endl;
+                errors += 1;
+            }
+
+            expect = ~expect;
         }
     }
-*/
 
-    // done
-    cout << "\n";
+    cout << errors << " read errors" << endl << endl << flush;
+
+
+    //
+    // Optimal read buffer size calibration
+    //
+    cout << "Latencies:" << endl;
+    int min_idx = 0;
+    int min_latency = 0;
+    for (int i = 1; i <= SRAM_MAX_OUTSTANDING_READS; i++)
+    {
+        OUT_TYPE_ReadLatency r = clientStub->ReadLatency(256, i);
+        cout << i << ": first " << r.firstReadLatency << " cycles, average "
+             << r.totalLatency / 256.0 << " per load" << endl << flush;
+
+        if ((min_idx == 0) || (r.totalLatency < min_latency))
+        {
+            min_idx = i;
+            min_latency = r.totalLatency;
+        }
+    }
+
+    cout << "Optimal reads in flight: " << min_idx << endl;
+
+    // report results and exit
+    cout << "Done" << endl;
 }

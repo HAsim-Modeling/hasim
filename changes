@@ -22249,3 +22249,21 @@ Directory tools/scripts
  hasim-configure           Locally Modified          753 
 
 Added support for python libraries in SCons.  %scons %library will create a symlink in the new site_scons directory.  This enables, among other things, a relatively easy way to break down the monolithic makefile.  It also sets the stage for Altera support.  The edit is a little rough, and I would like to investigate using a more SConsy object-oriented approach with the Builder and Node classes. 
+
+----------
+mcadler     Date: Sun Mar 28 20:59:22 EDT 2010  CSN: CSN-hasim-755
+                  Mon Mar 29 00:59:22 UTC 2010
+
+
+Directory config/pm/bluespec/demos/debugger
+ nallatech_sram_debugger.apm Locally Modified          754 
+
+Directory modules/bluespec/system/demos/debuggers
+ platform-debugger.bsv     Locally Modified          754 
+ platform-debugger.cpp     Locally Modified          754 
+ platform-debugger.rrr     Locally Modified          754 
+
+- Pass 64 bit memory values to test full word.
+- Add more interesting patterns to test for valid read/write.
+- Test 2 banks of memory.
+- Add calibration test to find optimal read buffer size in the driver.

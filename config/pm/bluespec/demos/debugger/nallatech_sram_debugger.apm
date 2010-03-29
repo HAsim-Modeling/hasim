@@ -151,4 +151,8 @@ Packagehint=platforms
 UMF_CHUNK_BYTES=8
 
 [Nallatech Edge Physical Device/Params]
-MODEL_CLOCK_FREQ=50
+MODEL_CLOCK_FREQ=100
+
+[ACP DDR2 SRAM Device/Params]
+SRAM_DEBUG=1
+SRAM_MAX_OUTSTANDING_READS=32

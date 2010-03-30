@@ -20,6 +20,7 @@ import Arbiter::*;
 
 `include "asim/provides/virtual_devices.bsh"
 `include "asim/provides/scratchpad_memory.bsh"
+`include "asim/provides/scratchpad_memory_common.bsh"
 
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/common_services.bsh"

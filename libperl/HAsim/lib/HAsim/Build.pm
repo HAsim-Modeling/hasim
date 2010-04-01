@@ -12,6 +12,7 @@
 package HAsim::Build;
 
 use Asim;
+use Asim::Module;
 
 use HAsim::Util;
 
@@ -195,17 +196,57 @@ sub get_module_build_dir_from_module {
 
     #recurse
     if(!$module->isroot()) {
-      $my_dir = get_module_build_dir($module->parent());
+	$my_dir = get_module_build_dir_from_module($module->parent());
     }
 
-    if (is_synthesis_boundary($module)) {
+    if (is_synthesis_boundary($module) || $module->isroot()) {
 	$my_dir = HAsim::Util::path_append($my_dir, $module->provides());
     } 
-
+    
     return $my_dir;
 }
 
 
+############################################################
+# get_synthesis_boundary_parent: identify the synthesis boundary 
+#                                 directly above the module. 
+#                                 
+sub get_synthesis_boundary_parent {
+    my $module = shift;
+
+    if($module->isroot()) {
+	return $module;
+    }
+
+    if (is_synthesis_boundary($module->parent())) {
+	return $module->parent();
+    } 
+    
+    return get_synthesis_boundary_parent($module->parent());
+}
+
+############################################################
+# get_synthesis_boundary_children: identify the synthesis boundary 
+#                                  children of a given module.
+#                                  This only grabs direct descendents. 
+#                                 
+sub get_synthesis_boundary_children {
+    my $module = shift;
+    my @my_children = qw();
+
+    foreach my $child ($module->submodules()) {
+	if(is_synthesis_boundary($child)) {
+	    push(@my_children,$child);
+	} else {
+            my @returnedChildren = get_synthesis_boundary_children($child); 
+            foreach my $returnedChild (@returnedChildren) {
+		push(@my_children, $returnedChild);
+	    }
+	}
+    }
+
+    return @my_children;
+}
 
 ############################################################
 # is_synthesis_boundary: reads Asim module's parameters to
@@ -302,6 +343,55 @@ sub get_synthesis_boundary_name {
 	}
     }
     HAsim::Util::WARN_AND_DIE("get_synthesis_boundary_name called on non-synthesis boundary module\n");
+}
+
+
+####
+#
+# Convert module into nice string representation for python
+#
+sub pythonize_module {
+    my $module = shift;
+ 
+    # We only generate representations for synthesis boundaries
+    if (! is_synthesis_boundary($module)) {
+	return "";
+    }
+
+    my $stringRepresentation = "Module( ";
+  
+    # dump name
+   
+    $stringRepresentation = $stringRepresentation . "\'" . $module->provides() ."\', ";
+
+    # get build dir get_module_build_dir_from_module
+    $stringRepresentation = $stringRepresentation . "\'" . get_module_build_dir_from_module($module) . "\', ";
+
+    # get parent synthesis boundary 
+    if($module->isroot()) {
+	$stringRepresentation = $stringRepresentation ."\'\'" .",";
+    } 
+    else {
+	my $parent =  get_synthesis_boundary_parent($module);
+	$stringRepresentation = $stringRepresentation . "\'" . $parent->provides() ."\',";
+    }
+    $stringRepresentation = $stringRepresentation . "[ ";
+  
+    my @children = get_synthesis_boundary_children($module);
+
+    for(my $index = 0; $index < scalar(@children); $index = $index + 1) {      
+	$stringRepresentation = $stringRepresentation . "\'" . $children[$index]->provides() ."\'"; 
+	if($index + 1 < scalar(@children)) {
+	    $stringRepresentation = $stringRepresentation . ",";
+	}
+    }
+
+    $stringRepresentation = $stringRepresentation . " ] ";
+
+    $stringRepresentation = $stringRepresentation . " ), ";
+
+    return $stringRepresentation;
+
 }
 
 return 1;

@@ -22301,3 +22301,22 @@ Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-se
  scratchpad-memory-service.bsv Locally Modified          757 
 
 Refactored scratchpad to eliminate shared file
+
+----------
+kfleming    Date: Thu Apr  1 18:11:55 EDT 2010  CSN: CSN-hasim-759
+                  Thu Apr  1 22:11:55 UTC 2010
+
+
+Directory libperl/HAsim/lib/HAsim
+ Build.pm                  Locally Modified          758 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          758 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_synth.apm Locally Modified          758 
+
+
+Refactored new build pipeline codes.  Now hasim configure generates a
+module tree data structure for the python code.  Started pulling
+library code out of top template.  Resurrected Synplify code. 

@@ -12,7 +12,7 @@ DefaultRunOpts=
 
 [Model]
 DefaultAttributes=function_as_boundary traffic_light demo connected slave hybrid project xup
-model=HW/SW Hybrid Project Foundation
+model=HW/SW Hybrid Pipeline Build
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-xupv2-serial.apm
@@ -34,16 +34,8 @@ Packagehint=platforms
 [Traffic Light System with Soft Connections/Requires]
 traffic_light_function=Traffic light function w. synthesis boundary
 
-[HW/SW Hybrid Project Foundation]
-File=modules/project/project-hybrid.awb
-Packagehint=platforms
-
 [Default Software Connected Application/Requires]
 hardware_system=Traffic Light System with Soft Connections
-
-
-[HW/SW Hybrid Project Foundation/Params]
-MAKE_ALL_TARGET=bit
 
 [Traffic light function w. synthesis boundary]
 File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function_synth.awb
@@ -53,11 +45,6 @@ Packagehint=hasim
 File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
 Packagehint=platforms
 
-[HW/SW Hybrid Project Foundation/Requires]
-fpgaenv=FPGA Environment
-application_env=Soft Connections Hybrid Application Environment
-project_common=Hybrid Project Common Utilities
-
 [Soft Connections Library]
 File=config/pm/hasim/submodels/common/soft-connections-lib.apm
 Packagehint=hasim
@@ -66,9 +53,30 @@ Packagehint=hasim
 File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
 Packagehint=hasim
 
-[FPGA Environment/Params]
-MODEL_CLOCK_MULTIPLIER=2
-
 [Hybrid Project Common Utilities]
 File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim
+
+[FPGA Build Pipeline]
+File=modules/project/build-pipeline.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Pipeline Build]
+File=modules/project/project-pipeline.awb
+Packagehint=platforms
+
+[FPGA Build Pipeline/Requires]
+synthesis_tool=XST Synthesis Tool
+
+[HW/SW Hybrid Pipeline Build/Requires]
+fpga_build_pipeline=FPGA Build Pipeline
+project_common=Hybrid Project Common Utilities
+fpgaenv=FPGA Environment
+application_env=Soft Connections Hybrid Application Environment
+
+[FPGA Environment/Params]
+MODEL_CLOCK_MULTIPLIER=2
+
+[XST Synthesis Tool]
+File=modules/project/xst.awb
+Packagehint=platforms

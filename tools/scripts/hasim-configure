@@ -343,7 +343,7 @@ sub configure_build_tree {
     generate_makefile_top($model);
     generate_makefile_sub($model);
 
-    # (4) generate files needex by Xilinx tools
+    # (4) generate files needed by Xilinx tools
     HAsim::Xilinx::generate_files_xilinx($model, $builddir);
     HAsim::Xilinx::generate_files_synplify($model, $builddir);
 
@@ -1195,6 +1195,12 @@ sub __generate_makefile_hw_top {
 
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
     if (HAsim::Build::is_synthesis_boundary($module)) {
+
+        ## @SYNTH_BOUNDARIES@ 
+        ## generate data structures for use in scons python code
+        my $pythonRepresentation = HAsim::Build::pythonize_module($module);
+        HAsim::Util::hash_append($replacements_r," ",'@SYNTH_BOUNDARIES@',$pythonRepresentation);
+        
         # @ALL_HW_DIRS@
         HAsim::Util::hash_append($replacements_r,":",'@ALL_HW_DIRS@',$my_dir);
 

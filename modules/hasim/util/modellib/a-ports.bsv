@@ -455,7 +455,7 @@ module [Connected_Module] mkPortRecvDependent_Multiplexed#(String portname)
     return m;
     
 endmodule
-
+/*
 module [Connected_Module] mkConnectionSendUG#(String portname)
     // interface:
                 (Connection_Send#(t_MSG))
@@ -539,3 +539,5 @@ module [Connected_Module] mkConnectionRecvUG#(String portname)
   endmethod
 
 endmodule
+
+*/

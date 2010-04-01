@@ -22320,3 +22320,72 @@ Directory config/pm/hasim/demos/traffic_light
 Refactored new build pipeline codes.  Now hasim configure generates a
 module tree data structure for the python code.  Started pulling
 library code out of top template.  Resurrected Synplify code. 
+
+----------
+pellauer    Date: Thu Apr  1 19:37:18 EDT 2010  CSN: CSN-hasim-760
+                  Thu Apr  1 23:37:18 UTC 2010
+
+
+Directory config/pm/hasim/demos
+ context_test/             Locally Added               0 
+
+Directory config/pm/hasim/demos/context_test
+ alpha_inorder_ctx_exe.apm Locally Added               0 
+ traffic_light_synth_exe.apm Locally Added               0 
+
+Directory config/pm/hasim/submodels/common
+ soft-connections-lib-context.apm Locally Added               0 
+
+Directory modules/hasim/util/smart-synthesis-boundaries
+ module-context/           Locally Added               0 
+
+Directory modules/hasim/util/smart-synthesis-boundaries/module-context
+ with-connections.bsv      Locally Added               0 
+ bury-connections.bsv      Locally Added               0 
+ smart-synth-boundaries.awb Locally Added               0 
+ expose-connections.bsv    Locally Added               0 
+
+Directory modules/hasim/util/modellib
+ a-ports.bsv               Locally Modified          759 
+
+Directory modules/bluespec/common/soft_connections
+ module-context/           Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections/module-context
+ connection-matching.bsv   Locally Added               0 
+ transmittable.bsv         Locally Added               0 
+ alg/                      Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections/module-context/alg
+ connect-stations-tree.bsv Locally Added               0 
+ connect-top-level.bsv     Locally Added               0 
+ connect-multicasts.bsv    Locally Added               0 
+ connection-alg-module-context.awb Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections/module-context
+ connection-helper.bsv     Locally Added               0 
+ connection-shared-interconnect.bsv Locally Added               0 
+ connection-backwards-compat.bsv Locally Added               0 
+ soft-connections-module-context.awb Locally Added               0 
+ connection-context.bsv    Locally Added               0 
+ connections.bsv           Locally Added               0 
+ connected-module.bsv      Locally Added               0 
+
+Directory modules/bluespec/util/physical-interconnects/shared-tree
+ tree-routing-table.bsv    Locally Modified          759 
+ tree-helper.bsv           Locally Modified          759 
+ tree-interface.bsv        Locally Modified          759 
+ tree-station.bsv          Locally Modified          759 
+ shared-tree.awb           Locally Modified          759 
+
+
+* Added ModuleContext version of Soft Connections
+* This is not the default version until we determine what we want
+* To test it out there are two models under hasim/demos/context_test/
+* The ModuleContext version supports two new features: manytoOne/oneToMany 
+  connections, and logical point-to-point connections over shared interconnects.
+  So far no projects are making use of these features.
+* The ModuleContext code has a bunch of code to maintain backwards compatability,
+  particularly with connection chains.
+  
+Michael P.

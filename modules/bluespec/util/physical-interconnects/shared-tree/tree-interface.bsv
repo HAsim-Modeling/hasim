@@ -21,73 +21,17 @@
 
 // Interface definitions and typedefs for the tree interconnect topology.
 
+`include "asim/provides/soft_connections.bsh"
 
 // Parameters from AWB.
 typedef Bit#(`TREE_STATION_IDX_SIZE)  STATION_IDX;
-typedef Bit#(`TREE_PAYLOAD_SIZE) PHYSICAL_PAYLOAD;
-
+typedef Bit#(40) PHYSICAL_PAYLOAD;
 
 // Some handy typedefs.
 typedef STATION_IDX CHILD_IDX;
 typedef STATION_IDX LOCAL_SRC;
 typedef STATION_IDX LOCAL_DST;
 typedef STATION_IDX MULTICAST_IDX;
-
-
-// PHYSICAL_CONNECTION_IN
-
-// A physical incoming connection. Will eventually replace the soft-connection interface.
-
-interface PHYSICAL_CONNECTION_IN#(type t_MSG);
-    (* always_ready *)
-    method Action try(t_MSG payload);
-    (* always_ready *)
-    method Bool success();
-
-endinterface
-
-
-// PHYSICAL_CONNECTION_OUT
-
-// A physical outgoing connection. Will eventually replace the soft-connection interface.
-
-interface PHYSICAL_CONNECTION_OUT#(type t_MSG);
-
-    method t_MSG first();
-    method Bool notEmpty();
-    method Action deq();
-
-endinterface
-
-
-// Physical sends and receives are just incoming/outgoing connections of the physical payload
-typedef PHYSICAL_CONNECTION_IN#(PHYSICAL_PAYLOAD)  PHYSICAL_RECV;
-typedef PHYSICAL_CONNECTION_OUT#(PHYSICAL_PAYLOAD) PHYSICAL_SEND;
-
-
-// LOGICAL_{SEND,RECV}_INFO
-
-// Information about a logical send connection. 
-// This will eventually be produced by soft connections themselves.
-
-typedef struct 
-{
-    String logicalName;
-    String logicalType;
-    Bool oneToMany;
-} 
-    LOGICAL_SEND_INFO
-        deriving (Eq);
-
-typedef struct 
-{
-    String logicalName;
-    String logicalType;
-    Bool manyToOne;
-} 
-    LOGICAL_RECV_INFO
-        deriving (Eq);
-
 
 // MESSAGE_UP
 
@@ -121,6 +65,21 @@ typedef struct
     MESSAGE_DOWN
         deriving (Eq, Bits);
 
+// A physical incoming connection
+interface PHYSICAL_STATION_IN;
+
+  method Action enq(MESSAGE_DOWN d);
+
+endinterface
+
+// A physical outgoing connection
+interface PHYSICAL_STATION_OUT;
+
+  method Bool notEmpty();
+  method MESSAGE_UP first();
+  method Action deq();
+
+endinterface
 
 // PHYSICAL_STATION
 
@@ -128,8 +87,8 @@ typedef struct
 
 interface PHYSICAL_STATION;
 
-    interface PHYSICAL_CONNECTION_IN#(MESSAGE_DOWN)  incoming;
-    interface PHYSICAL_CONNECTION_OUT#(MESSAGE_UP)   outgoing;
+    interface PHYSICAL_STATION_IN  incoming;
+    interface PHYSICAL_STATION_OUT   outgoing;
 
 endinterface
 
@@ -180,7 +139,7 @@ typedef struct
     MULTICAST_INFO;
 
 
-// STATION_INFO
+// PHYSICAL_STATION_INFO
 
 // All the information about a tree station.
 //     outgoingInfo[x] shows information on MESSAGE_UP x (used by parent for receives)
@@ -192,7 +151,7 @@ typedef struct
     List#(LOGICAL_SEND_INFO) outgoingInfo;
     List#(LOGICAL_RECV_INFO) incomingInfo;
 }
-    STATION_INFO;
+    PHYSICAL_STATION_INFO;
 
 
 // LOGICAL_{SEND,RECV}_MAP

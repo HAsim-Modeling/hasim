@@ -1,0 +1,20 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Soft Connections Algorithm Using ModuleContext
+# %desc Soft Connections Algorithm Using ModuleContext
+# %provides soft_connections_alg
+#
+# %attributes bluespec
+#
+# %public connect-top-level.bsv connect-multicasts.bsv connect-stations-tree.bsv
+#
+# %AWB_END
+# */
+

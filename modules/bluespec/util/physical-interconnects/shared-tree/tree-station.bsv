@@ -35,10 +35,6 @@ module mkPhysicalStation#(List#(PHYSICAL_STATION) children,
 
     // ****** Local State ****** //
 
-    // Signal successful transmission from the parent to me.
-    RWire#(MESSAGE_DOWN)           fromParentTry <- mkRWire();
-    PulseWire                      fromParentAck <- mkPulseWire();
-
     // Queues leading from the incoming connections.
     FIFOF#(Tuple2#(ROUTING_DECISION, PHYSICAL_PAYLOAD)) fromParentQ <- mkFIFOF();
     FIFOF#(Tuple2#(ROUTING_DECISION, PHYSICAL_PAYLOAD)) fromChildQ  <- mkFIFOF();
@@ -46,25 +42,17 @@ module mkPhysicalStation#(List#(PHYSICAL_STATION) children,
     // Queues leading to the outgoing connections.
     FIFOF#(MESSAGE_UP)                           toParentQ <- mkFIFOF();
     FIFOF#(Tuple2#(CHILD_IDX, MESSAGE_DOWN))     toChildQ  <- mkFIFOF();
-
-    // Wires to signal if we're trying to transmit to a child.
-    List#(PulseWire)  childTry       = List::nil;
     
     // Multicasting scoreboarding.
     Reg#(PHYSICAL_PAYLOAD) multiPayload <- mkRegU();
     List#(Reg#(Maybe#(LOCAL_DST))) multiChildNeed = List::nil;
-    List#(PulseWire)  multiChildTry  = List::nil;
 
     // Instantiate all lists.
 
     for (Integer x = 0; x < numChildren; x = x + 1)
     begin
-        let childTryW <- mkPulseWire();
-        childTry = List::cons(childTryW, childTry);
         let multiChildNeedR <- mkReg(Invalid);
         multiChildNeed = List::cons(multiChildNeedR, multiChildNeed);
-        let multiChildTryW <- mkPulseWire();
-        multiChildTry = List::cons(multiChildTryW, multiChildTry);
     end
 
 
@@ -103,57 +91,30 @@ module mkPhysicalStation#(List#(PHYSICAL_STATION) children,
     
     endfunction
 
-    // anyChildAck
-    
-    // Returns true if we tried to send to a child and that child ack'd.
-
-    function Bool anyChildAck();
-    
-        Bool res = False;
-        for (Integer x = 0; x < numChildren; x = x + 1)
-        begin
-            res = res || (childTry[x] && children[x].incoming.success());
-        end
-        
-        return res;
-    
-    endfunction
-
 
     // ****** Rules ****** //
 
-    // toChildTry
+    // toChildMove
     
     // When:   We have something to route to a specific child. (And there's no multicast in progress.)
-    // Effect: Try to transmit the data. Note which guy we're sending to using a wire.
+    // Effect: Transmit the data.
 
-    rule toChildTry (toChildQ.first() matches {.child_idx, .msg} &&& !isValid(multiChildNeed[child_idx]));
+    rule toChildMove (toChildQ.first() matches {.child_idx, .msg} &&& !isValid(multiChildNeed[child_idx]));
 
-        children[child_idx].incoming.try(msg);
-        childTry[child_idx].send();
+        children[child_idx].incoming.enq(msg);
+        toChildQ.deq();
+
 
     endrule
 
     
-    // toChildAck
-    
-    // When:   Later in the same clock cycle after toChildTry, and we receive an Ack.
-    // Effect: Transmission was successful so we can dequeue the FIFO.
-
-    rule toChildAck (anyChildAck());
-
-       toChildQ.deq();
-
-    endrule 
-
-    
-    // toChildMultiTry
+    // toChildMultiMove
     
     // When:   We are multicasting to children. Urgency ensures that multicasts are statically favored.
-    // Effect: Try to transmit to those children which need it simultaneously.
+    // Effect: Transmit to those children which need it simultaneously.
 
-    (* descending_urgency="toChildMultiTry, toChildTry" *)
-    rule toChildMultiTry (multicasting);
+    (* descending_urgency="toChildMultiMove, toChildMove" *)
+    rule toChildMultiMove (multicasting);
 
         for (Integer x = 0; x < numChildren; x = x + 1)
         begin
@@ -166,29 +127,8 @@ module mkPhysicalStation#(List#(PHYSICAL_STATION) children,
                               payload: multiPayload
                           };
 
-                children[x].incoming.try(msg);
-                multiChildTry[x].send();
-            end
-        end
-    
-    endrule
-
-
-    // toChildMultiAck
-    
-    // When:   Later in the clock cycle after toChildMultiTry. 
-    // Effect: All successful transmissions are marked as no longer needed.
-
-    rule toChildMultiAck (multicasting);
-
-        for (Integer x = 0; x < numChildren; x = x + 1)
-        begin
-            if (multiChildTry[x])
-            begin
-                if (children[x].incoming.success())
-                begin
-                    multiChildNeed[x] <= tagged Invalid;
-                end
+                children[x].incoming.enq(msg);
+                multiChildNeed[x] <= tagged Invalid;
             end
         end
     
@@ -386,35 +326,26 @@ module mkPhysicalStation#(List#(PHYSICAL_STATION) children,
     endrule
 
 
-    // fromParent
-    
-    // When:   The parent is trying to send us a message.
-    // Effect: Do the routing, put it in the queue, and ack the message.
-
-    rule fromParent (fromParentTry.wget() matches tagged Valid .msg);
-    
-        let route_dst = routing_table.fromParent[msg.destination];
-        fromParentQ.enq(tuple2(route_dst, msg.payload));
-        fromParentAck.send();
-    
-    endrule
-
-
     // ******* Methods ******* //
     
-    // These just interact with our queues and wires.
-    
-    interface PHYSICAL_CONNECTION_IN incoming;
+    interface PHYSICAL_STATION_IN incoming;
 
-        method Action try(MESSAGE_DOWN msg);
-            fromParentTry.wset(msg);
+        method Action enq(MESSAGE_DOWN msg);
+
+            let route_dst = routing_table.fromParent[msg.destination];
+            fromParentQ.enq(tuple2(route_dst, msg.payload));
+
         endmethod
         
-        method Bool success() = fromParentAck;
 
     endinterface
 
-    interface PHYSICAL_CONNECTION_OUT outgoing;
+    // outgoing
+    
+    // When:   When we have a message to send.
+    // Effect: Just interact with the queue.
+
+    interface PHYSICAL_STATION_OUT outgoing;
 
        method MESSAGE_UP first() = toParentQ.first();
        method Bool notEmpty()  = toParentQ.notEmpty();

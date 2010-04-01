@@ -74,7 +74,7 @@ endmodule
 
 // Various functions for printing debugging information
 
-module printStationInfo#(STATION_INFO info) ();
+module printStationInfo#(PHYSICAL_STATION_INFO info) ();
 
     messageM("Outgoing Info:");
 

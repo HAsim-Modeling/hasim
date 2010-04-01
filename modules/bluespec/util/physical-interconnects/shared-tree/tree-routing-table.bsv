@@ -27,9 +27,9 @@
 
 // This is a module rather than a function so we can do messageMs for debugging or type errors.
 
-module initRoutingTable#(List#(STATION_INFO) children_infos) 
+module initRoutingTable#(List#(PHYSICAL_STATION_INFO) children_infos) 
     // interface:
-        (STATION_INFO);
+        (PHYSICAL_STATION_INFO);
 
     // Some local indices        
     LOCAL_DST cur_dst = 0;    
@@ -206,7 +206,7 @@ module initRoutingTable#(List#(STATION_INFO) children_infos)
 
     // Build the final result.
     let station_info = 
-        STATION_INFO
+        PHYSICAL_STATION_INFO
         {
             routingTable: route_table,
             outgoingInfo: outgoing_infos,
@@ -224,7 +224,7 @@ endmodule
 // Groups the logical receives of children stations together.
 // Logical receives with more than one physical receiver become multicast.
 
-module initLogicalMap#(List#(STATION_INFO) children_infos) (LOGICAL_MAP);
+module initLogicalMap#(List#(PHYSICAL_STATION_INFO) children_infos) (LOGICAL_MAP);
     
     // Start the lists at nil and build them as we go.
     LOGICAL_RECV_MAP logical_recv_map = List::nil;
@@ -316,16 +316,16 @@ endmodule
 // Then we can use our normal routing table function.
 
 module initRoutingTableLeaf#(List#(LOGICAL_RECV_INFO) recvs,
-                             List#(LOGICAL_SEND_INFO) sends) (STATION_INFO);
+                             List#(LOGICAL_SEND_INFO) sends) (PHYSICAL_STATION_INFO);
 
 
-    List#(STATION_INFO) stations = List::nil;
+    List#(PHYSICAL_STATION_INFO) stations = List::nil;
 
     for (Integer x = 0; x < length(recvs); x = x + 1)
     begin
 
         let rinfo = 
-            STATION_INFO
+            PHYSICAL_STATION_INFO
             {
                 outgoingInfo: nil,
                 incomingInfo: cons(recvs[x], nil),
@@ -338,7 +338,7 @@ module initRoutingTableLeaf#(List#(LOGICAL_RECV_INFO) recvs,
     begin
 
         let sinfo = 
-            STATION_INFO
+            PHYSICAL_STATION_INFO
             {
                 outgoingInfo: cons(sends[x], nil),
                 incomingInfo: nil,
@@ -353,6 +353,92 @@ module initRoutingTableLeaf#(List#(LOGICAL_RECV_INFO) recvs,
 
 endmodule
 
+module  mkConnStationWrappers#(List#(LOGICAL_RECV_INFO) recvs, List#(LOGICAL_SEND_INFO) sends) (List#(PHYSICAL_STATION));
+
+    List#(PHYSICAL_STATION) stations = List::nil;
+
+    for (Integer x = 0; x < length(recvs); x = x + 1)
+    begin
+        let station <- mkRecvStationWrapper(recvs[x].incoming);
+        stations = append(stations, cons(station, nil));
+    end
+
+    for (Integer x = 0; x < length(sends); x = x + 1)
+    begin
+        let station <- mkSendStationWrapper(sends[x].outgoing);
+        stations = append(stations, cons(station, nil));
+    end
+
+    return stations;
+    
+endmodule
+
+module mkSendStationWrapper#(PHYSICAL_CONNECTION_OUT physical_send)
+    // interface:
+        (PHYSICAL_STATION);
+
+    interface PHYSICAL_STATION_IN incoming;
+
+        method Action enq(MESSAGE_DOWN msg);
+            noAction;
+        endmethod
+
+    endinterface
+
+    interface PHYSICAL_STATION_OUT outgoing;
+
+       method MESSAGE_UP first();
+
+            let msg =
+                MESSAGE_UP
+                {
+                    origin: 0,
+                    payload: truncate(physical_send.first())
+                };
+
+            return msg;
+
+       endmethod
+
+       method Bool notEmpty() = physical_send.notEmpty();
+       method Action deq() = physical_send.deq();
+
+    endinterface
+
+endmodule
+
+module mkRecvStationWrapper#(PHYSICAL_CONNECTION_IN physical_recv)
+    // interface:
+        (PHYSICAL_STATION);
+
+    FIFOF#(PHYSICAL_PAYLOAD) q <- mkFIFOF();
+
+
+    rule try (q.notEmpty);
+        physical_recv.try(zeroExtend(q.first));
+    endrule
+    
+    rule success (physical_recv.success);
+        q.deq();
+    endrule
+
+    interface PHYSICAL_STATION_IN incoming;
+
+        method Action enq(MESSAGE_DOWN msg);
+            q.enq(msg.payload);
+        endmethod
+
+    endinterface
+
+    interface PHYSICAL_STATION_OUT outgoing;
+
+       method MESSAGE_UP first() if (False) = ?;
+       method Bool notEmpty() = False;
+       method Action deq() = noAction;
+
+    endinterface
+
+endmodule
 
 // lookupLogicalRecv
 

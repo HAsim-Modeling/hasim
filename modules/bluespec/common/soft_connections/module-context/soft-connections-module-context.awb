@@ -1,0 +1,25 @@
+#/********************************************************************
+# *
+# * Awb module specification
+# *
+# *******************************************************************/
+
+#/*
+# %AWB_START
+#
+# %name Soft Connections Using ModuleContext
+# %desc Soft Connections Using ModuleContext
+# %provides soft_connections
+# %requires soft_connections_alg
+# %requires physical_interconnect
+#
+# %attributes bluespec
+#
+# %public transmittable.bsv connected-module.bsv connection-context.bsv connection-matching.bsv connections.bsv connection-shared-interconnect.bsv connection-helper.bsv connection-backwards-compat.bsv
+#
+# %param --global CON_CWIDTH 320 "Maximum Connection Bit Width."
+# %param --global CON_NUMCHAINS 9 "Number of Connection Chains."
+#
+# %AWB_END
+# */
+

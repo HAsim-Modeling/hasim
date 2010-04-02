@@ -22389,3 +22389,18 @@ Directory modules/bluespec/util/physical-interconnects/shared-tree
   particularly with connection chains.
   
 Michael P.
+
+----------
+mcadler     Date: Fri Apr  2 16:42:30 EDT 2010  CSN: CSN-hasim-761
+                  Fri Apr  2 20:42:30 UTC 2010
+
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid_acp_sram.apm Locally Removed           760 
+ mem_test_hybrid_acp.apm   Locally Modified          760 
+
+Directory modules/bluespec/system/demos/debuggers
+ platform-debugger.awb     Locally Modified          760 
+
+Remove SRAM-specific ACP memory tests now that the default ACP configuration
+has SRAM.

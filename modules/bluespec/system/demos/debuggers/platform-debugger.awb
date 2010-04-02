@@ -4,8 +4,8 @@
 
 %AWB_START
 
-%name Nallatech SRAM Debugger Application
-%desc Nallatech SRAM Debugger Application
+%name SRAM Debugger Application
+%desc SRAM Debugger Application
 
 %attributes platform-debugger unconnected hybrid
 

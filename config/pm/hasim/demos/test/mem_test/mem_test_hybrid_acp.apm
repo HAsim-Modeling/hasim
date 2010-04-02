@@ -7,7 +7,8 @@ Version=2.1
 Name=Hybrid Virtual Memory Test Model with Private Caches for ACP
 Type=HAsim
 Class=Asim::Model
-DefaultBenchmark=0
+DefaultBenchmark=
+DefaultRunOpts=
 
 [Model]
 DefaultAttributes=bram-test hasim hybrid
@@ -45,7 +46,6 @@ Packagehint=platforms
 [Default Software Connected Application/Requires]
 hardware_system=Scratchpad Memory Test System
 
-
 [Scratchpad Memory Test System]
 File=modules/system/test/mem_test/mem-test.awb
 Packagehint=hasim
@@ -58,3 +58,4 @@ Packagehint=platforms
 project_common=Hybrid Project Common Utilities
 fpgaenv=FPGA Environment
 application_env=Soft Connections Hybrid Application Environment
+

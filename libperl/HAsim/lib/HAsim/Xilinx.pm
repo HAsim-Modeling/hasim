@@ -180,24 +180,9 @@ sub generate_files_synplify {
 	    }
         }; 
 
-        my $relative_file = HAsim::Util::path_append($dir, $file);
-        
         #crunch this down.
-        if ($relative_file =~ /\.v$/ ) {
-            $synplify_printfunc->($stream,"verilog", $relative_file);
-        }
-
-        if ($relative_file =~ /\.vhd$/) {
-            my $vhd_lib = get_vhdl_lib($module);
-            $synplify_printfunc->($stream,"vhdl", $relative_file);
-        }
-
-        # Commented out until kfleming figures out how to use the 
-        # syn_black_box directive
-        if ($relative_file =~ /\.ngc$/) {
-            my $vhd_lib = get_vhdl_lib($module);
-            $synplify_printfunc->($stream,"ngc", $relative_file);
-        }
+        # we now no longer append files here. This task is managed by the 
+        # build system
     };
 
     
@@ -211,9 +196,9 @@ sub generate_files_synplify {
     generate_prj_file($model, $builddir, *SDFFILE{IO}, $synplify_processfile);    
 
     # add target of the global constraint file to the sdf
-    print SDFFILE "add_file -constraint \"\$env(BUILD_DIR)/$tmp_xilinx_dir/$name.sdc\"\n";
-    print SDFFILE "set_option -constraint -clear\n";
-    print SDFFILE "set_option -constraint -enable \"\$env(BUILD_DIR)/$tmp_xilinx_dir/$name.sdc\"\n";
+    #print SDFFILE "add_file -constraint \"\$env(BUILD_DIR)/$tmp_xilinx_dir/$name.sdc\"\n";
+    #print SDFFILE "set_option -constraint -clear\n";
+    #print SDFFILE "set_option -constraint -enable \"\$env(BUILD_DIR)/$tmp_xilinx_dir/$name.sdc\"\n";
 
     # gather any user sdf files
     generate_concatenation_file($model, $name, $builddir, *SDFFILE{IO}, @model_sdf_files);   

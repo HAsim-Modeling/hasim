@@ -22404,3 +22404,13 @@ Directory modules/bluespec/system/demos/debuggers
 
 Remove SRAM-specific ACP memory tests now that the default ACP configuration
 has SRAM.
+
+----------
+kfleming    Date: Fri Apr  2 18:37:15 EDT 2010  CSN: CSN-hasim-762
+                  Fri Apr  2 22:37:15 UTC 2010
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          761 
+
+Remove file addition for synplify prj files from awb - this is now the province of the python libraries

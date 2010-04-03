@@ -22414,3 +22414,13 @@ Directory libperl/HAsim/lib/HAsim
  Xilinx.pm                 Locally Modified          761 
 
 Remove file addition for synplify prj files from awb - this is now the province of the python libraries
+
+----------
+emer        Date: Sat Apr  3 09:26:45 EDT 2010  CSN: CSN-hasim-763
+                  Sat Apr  3 13:26:45 UTC 2010
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_synth.apm Locally Modified          762 
+
+Added missing post-synthesis modules to get model to configure.

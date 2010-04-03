@@ -67,6 +67,7 @@ Packagehint=platforms
 
 [FPGA Build Pipeline/Requires]
 synthesis_tool=XST Synthesis Tool
+post_synthesis_tool=Xilinx Post-synthesis Toolchain
 
 [HW/SW Hybrid Pipeline Build/Requires]
 fpga_build_pipeline=FPGA Build Pipeline
@@ -80,3 +81,14 @@ MODEL_CLOCK_MULTIPLIER=2
 [XST Synthesis Tool]
 File=modules/project/xst.awb
 Packagehint=platforms
+
+[Xilinx UCF]
+File=modules/project/xilinx_ucf.awb
+Packagehint=platforms
+
+[Xilinx Post-synthesis Toolchain]
+File=modules/project/xilinx_post_synth.awb
+Packagehint=platforms
+
+[Xilinx Post-synthesis Toolchain/Requires]
+xilinx_ucf=Xilinx UCF

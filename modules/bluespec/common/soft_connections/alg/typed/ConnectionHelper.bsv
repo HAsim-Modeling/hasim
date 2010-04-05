@@ -1,43 +1,47 @@
+//
+// Copyright (C) 2010 Massachusetts Institute of Technology
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+
 
 //************** Helper functions **************//
 
-//Union two lists
+//
+// listDuplicates :: [a] -> [a]
+//     Return a new list containing only elements that had duplicates in the
+//     original list.
+//
+function List#(a) listDuplicates(List#(a) l)
+    provisos (Ord#(a),
+              Eq#(a));
 
-//listunion :: [a] -> [a] -> [a]
+    function isDup(List#(g) gr) = (length(gr) > 1);
 
-function List#(a) listunion(List#(a) l1, List#(a) l2)
-  provisos
-          (Eq#(a));
+    let groups = List::group(List::sort(l));
+    let dups = List::filter(isDup, groups);
 
-  List#(a) res = l1;
-  
-  for (Integer x = 0; x < length(l2); x = x + 1)
-  begin
-    let cur = l2[x];
-    res = List::elem(cur, res) ? res : List::cons(cur, res);
-  end
+    List#(a) d = Nil;
+    for (Integer x = 0; x < length(dups); x = x + 1)
+    begin
+        d = List::cons(dups[x][0], d);
+    end
 
-  return res;
-
+    return d;
 endfunction
 
-function Maybe#(CSend_Info) lookupSend(String nm, List#(CSend_Info) ls);
-
-  case (ls) matches
-    tagged Nil: return tagged Invalid;
-    default: return (List::head(ls).cname == nm) ? tagged Valid List::head(ls) : lookupSend(nm, (List::tail(ls)));
-  endcase
-
-endfunction
-
-function Maybe#(CRecv_Info) lookupRecv(String nm, List#(CRecv_Info) ls);
-
-  case (ls) matches
-    tagged Nil: return tagged Invalid;
-    default: return (List::head(ls).cname == nm) ? tagged Valid List::head(ls) : lookupRecv(nm, List::tail(ls));
-  endcase
-
-endfunction
 
 //Group connections by name. Unfound connections are dangling.
 
@@ -45,51 +49,55 @@ endfunction
 
 function Tuple3#(List#(CSend_Info),
                  List#(CRecv_Info),
-                 List#(Tuple2#(CSend_Info, CRecv_Info))) groupByName(List#(CSend_Info) sends, List#(CRecv_Info) recvs);
+                 List#(Tuple2#(CSend_Info, CRecv_Info))) groupByName(List#(CSend_Info) u_sends, List#(CRecv_Info) u_recvs);
 
-  List#(CSend_Info) dsends = Nil;
-  List#(CRecv_Info) drecvs = Nil;
-  List#(Tuple2#(CSend_Info, CRecv_Info)) found = Nil;
+    //
+    // groupBySortedName --
+    //     Variation on a recursive merge sort, taking advantage of the
+    //     requirement that the two input lists are sorted.
+    //
+    function Tuple3#(List#(CSend_Info),
+                     List#(CRecv_Info),
+                     List#(Tuple2#(CSend_Info, CRecv_Info))) groupBySortedName(List#(CSend_Info) sends, List#(CRecv_Info) recvs);
+        if (sends matches tagged Nil)
+        begin
+            return tuple3(Nil, recvs, Nil);
+        end
+        else if (recvs matches tagged Nil)
+        begin
+            return tuple3(sends, Nil, Nil);
+        end
+        else
+        begin
+            // Both lists still have elements
+            let s = List::head(sends);
+            let r = List::head(recvs);
 
-  function String getSendName(CSend_Info s);
-    return s.cname;
-  endfunction
+            if (s.cname == r.cname)
+            begin
+                // Head elements are equal.  Join them.
+                match {.s_list, .r_list, .f_list} = groupBySortedName(List::tail(sends),
+                                                                      List::tail(recvs));
+                return tuple3(s_list, r_list, List::cons(tuple2(s, r), f_list));
+            end
+            else if (s.cname < r.cname)
+            begin
+                // Send head is lexically earlier.  It has no match in recvs.
+                match {.s_list, .r_list, .f_list} = groupBySortedName(List::tail(sends),
+                                                                      recvs);
+                return tuple3(List::cons(s, s_list), r_list, f_list);
+            end
+            else
+            begin
+                // Recv head is lexically earlier.  It has no match in sends.
+                match {.s_list, .r_list, .f_list} = groupBySortedName(sends,
+                                                                      List::tail(recvs));
+                return tuple3(s_list, List::cons(r, r_list), f_list);
+            end
+        end
+    endfunction
 
-  function String getRecvName(CRecv_Info r);
-    return r.cname;
-  endfunction
-
-  let send_names = List::map(getSendName, sends);
-  let recv_names = List::map(getRecvName, recvs);
-  
-  let all_names = listunion(send_names, recv_names);
-
-  for (Integer x = 0; x < length(all_names); x = x + 1)
-  begin
-    
-    let msend = lookupSend(all_names[x], sends);
-    let mrecv = lookupRecv(all_names[x], recvs);
-    case (msend) matches
-      tagged Invalid:
-        case (mrecv) matches
-          tagged Invalid:
-            let err = error(strConcat("EXCEPTION: Soft Connections gave up on Connection ", all_names[x]));
-          tagged Valid .recv:
-            drecvs = List::cons(recv, drecvs);
-        endcase
-      tagged Valid .send:
-        case (mrecv) matches
-          tagged Invalid:
-            dsends = List::cons(send, dsends);
-          tagged Valid .recv:
-            found = List::cons(tuple2(send, recv), found);
-        endcase
-    endcase
-  end
-
-  
-  return tuple3(dsends, drecvs, found);
-
+    return groupBySortedName(List::sort(u_sends), List::sort(u_recvs));
 endfunction
 
 
@@ -115,21 +123,6 @@ function Tuple3#(List#(CSend_Info), List#(CRecv_Info), List#(CChain_Info)) split
 
 endfunction
 
-//getDuplicates :: [String] -> [String]
-
-function List#(String) getDuplicates(List#(String) l);
-
-  case (l) matches
-    tagged Nil: return Nil;
-    default:
-    begin
-      let ds = getDuplicates(List::tail(l));
-      let s  = (List::head(l));
-      return List::elem(s,ds) ? List::cons(s, ds) : ds;
-    end
-  endcase
-
-endfunction
 
 //checkDuplicateSends :: [CSend_Info] -> Module Integer
 
@@ -139,7 +132,7 @@ module checkDuplicateSends#(List#(CSend_Info) sends) (Integer);
     return s.cname;
   endfunction
   
-  let dups = getDuplicates(List::map(getSendName, sends));
+  let dups = listDuplicates(List::map(getSendName, sends));
   let nDups = length(dups);
   
   for (Integer x = 0; x < nDups; x = x + 1)
@@ -159,7 +152,7 @@ module checkDuplicateRecvs#(List#(CRecv_Info) recvs) (Integer);
     return r.cname;
   endfunction
   
-  let dups = getDuplicates(List::map(getRecvName, recvs));
+  let dups = listDuplicates(List::map(getRecvName, recvs));
   let nDups = length(dups);
   
   for (Integer x = 0; x < nDups; x = x + 1)
@@ -171,44 +164,6 @@ module checkDuplicateRecvs#(List#(CRecv_Info) recvs) (Integer);
 
 endmodule
 
-//splitWith :: (a -> Bool) -> [a] -> ([a], [a])
-
-function Tuple2#(List#(a), List#(a)) splitWith(function Bool fn(a x), List#(a) l);
-
-  case (l) matches
-    tagged Nil: return tuple2(Nil, Nil);
-    default:
-    begin
-      match {.xs, .ys} = splitWith(fn, List::tail(l));
-      let cur = List::head(l);
-      if (fn(cur))
-        return tuple2(List::cons(cur, xs), ys);
-      else
-        return tuple2(xs, List::cons(cur, ys));
-    end
-  endcase
-
-endfunction
-
-
-//groupByIndex :: (Eq a) => [(a, b)] -> [[b]]
-
-function List#(List#(b)) groupByIndex(List#(Tuple2#(a, b)) l) provisos (Eq#(a));
-
-  function Bool eqIndex(a x, Tuple2#(a, b) t) provisos (Eq#(a)) = (x == t.fst);
-
-  case (l) matches
-    tagged Nil: return Nil;
-    default:
-    begin
-      match {.idx, .val} = List::head(l);
-      match {.same, .rest} = splitWith(eqIndex(idx), List::tail(l));
-      let same2 = List::map(tpl_2, same);
-      return List::cons(List::cons(val, same2), groupByIndex(rest));
-    end
-  endcase
-
-endfunction
 
 //Group chain links by chain index
 

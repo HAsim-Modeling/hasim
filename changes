@@ -22424,3 +22424,26 @@ Directory config/pm/hasim/demos/traffic_light
  traffic_light_xup_synth.apm Locally Modified          762 
 
 Added missing post-synthesis modules to get model to configure.
+
+----------
+mcadler     Date: Mon Apr  5 13:28:16 EDT 2010  CSN: CSN-hasim-764
+                  Mon Apr  5 17:28:16 UTC 2010
+
+
+Directory modules/bluespec/common/soft_connections
+ Connected_Module.bsv      Locally Modified          763 
+
+Directory modules/bluespec/common/soft_connections/alg/typed
+ ConnectionHelper.bsv      Locally Modified          763 
+
+Remove O(n^2) operations on lists, made possible by the hack of defining
+instance Ord#(String), which should have been in the compiler in the first
+place.  The current Ord#(String) uses primStringToInteger, which doesn't
+actually give us true lexical ordering.  It does, however, give a fixed
+order.  Good enough for sorting.  Also defined Eq and Ord for lists
+of senders and receivers, using the cname field.
+
+Adding a real Ord#(String) is now on Bluespec's request list.  When
+implemented we can just remove our version with no other changes.
+
+Also removed unused functions in ConnectionHelper.bsv.

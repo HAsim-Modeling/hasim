@@ -59,3 +59,56 @@ typedef ModuleCollect#(ConnectionData) Connected_Module;
 typedef Connected_Module CONNECTED_MODULE;
 
 
+//
+// Bluespec doesn't define Ord for String, making it impossible to use sort
+// functions.  The following definition of Ord doesn't guarantee a lexical
+// order, but it does guarantee a consistent order within a compilation.
+// That is enough for our purposes.
+//
+// When Bluespec finally defines Ord for String this can be removed.
+//
+instance Ord#(String);
+    function Bool \< (String x, String y);
+        return primStringToInteger(x) < primStringToInteger(y);
+    endfunction
+
+    function Bool \> (String x, String y);
+        return primStringToInteger(x) > primStringToInteger(y);
+    endfunction
+
+    function Bool \<= (String x, String y);
+        return primStringToInteger(x) <= primStringToInteger(y);
+    endfunction
+
+    function Bool \>= (String x, String y);
+        return primStringToInteger(x) >= primStringToInteger(y);
+    endfunction
+endinstance
+
+
+//
+// Comparison of CSend_Info and CRecv_Info for sorting.
+//
+instance Eq#(CSend_Info);
+    function Bool \== (CSend_Info x, CSend_Info y) = x.cname == y.cname;
+    function Bool \/= (CSend_Info x, CSend_Info y) = x.cname != y.cname;
+endinstance
+
+instance Ord#(CSend_Info);
+    function Bool \< (CSend_Info x, CSend_Info y) = x.cname < y.cname;
+    function Bool \> (CSend_Info x, CSend_Info y) = x.cname > y.cname;
+    function Bool \<= (CSend_Info x, CSend_Info y) = x.cname <= y.cname;
+    function Bool \>= (CSend_Info x, CSend_Info y) = x.cname >= y.cname;
+endinstance
+
+instance Eq#(CRecv_Info);
+    function Bool \== (CRecv_Info x, CRecv_Info y) = x.cname == y.cname;
+    function Bool \/= (CRecv_Info x, CRecv_Info y) = x.cname != y.cname;
+endinstance
+
+instance Ord#(CRecv_Info);
+    function Bool \< (CRecv_Info x, CRecv_Info y) = x.cname < y.cname;
+    function Bool \> (CRecv_Info x, CRecv_Info y) = x.cname > y.cname;
+    function Bool \<= (CRecv_Info x, CRecv_Info y) = x.cname <= y.cname;
+    function Bool \>= (CRecv_Info x, CRecv_Info y) = x.cname >= y.cname;
+endinstance

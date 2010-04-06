@@ -15,7 +15,7 @@ DefaultAttributes=function_not_as_boundary traffic_light demo connected slave hy
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-xupv2-serial.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
 Packagehint=platforms
 
 [Soft Connections Hybrid Application Environment/Requires]
@@ -45,10 +45,6 @@ hardware_system=Traffic Light System with Soft Connections
 File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function.awb
 Packagehint=hasim
 
-
-[HW/SW Hybrid Project Foundation/Params]
-MAKE_ALL_TARGET=bit
-
 [Soft Connections Hybrid Application Environment]
 File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
 Packagehint=platforms
@@ -70,5 +66,3 @@ Packagehint=hasim
 File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim
 
-[FPGA Environment/Params]
-MODEL_CLOCK_MULTIPLIER=2

@@ -22539,3 +22539,15 @@ Directory config/pm/hasim/demos/traffic_light
 
 Fixed traffic light apm.  It was missing some modules.  This is the
 second time in a week.  I must really talk to Alfred about it.
+
+----------
+kfleming    Date: Tue Apr  6 16:38:33 EDT 2010  CSN: CSN-hasim-767
+                  Tue Apr  6 20:38:33 UTC 2010
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          766 
+ traffic_light_xup_synth.apm Locally Modified          766 
+
+
+Removed reference to mit-6.375

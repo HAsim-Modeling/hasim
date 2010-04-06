@@ -92,3 +92,33 @@ Packagehint=platforms
 
 [Xilinx Post-synthesis Toolchain/Requires]
 xilinx_ucf=Xilinx UCF
+xilinx_bmm=Xilinx BMM
+xilinx_ngd=Xilinx NGD
+xilinx_bitgen=Xilinx BITGEN
+xilinx_par=Xilinx PAR
+xilinx_map=Xilinx MAP
+xilinx_loader=Xilinx LOADER
+
+[Xilinx BITGEN]
+File=modules/project/xilinx_bitgen.awb
+Packagehint=platforms
+
+[Xilinx LOADER]
+File=modules/project/xilinx_loader.awb
+Packagehint=platforms
+
+[Xilinx NGD]
+File=modules/project/xilinx_ngd.awb
+Packagehint=platforms
+
+[Xilinx PAR]
+File=modules/project/xilinx_par.awb
+Packagehint=platforms
+
+[Xilinx BMM]
+File=modules/project/xilinx_bmm.awb
+Packagehint=platforms
+
+[Xilinx MAP]
+File=modules/project/xilinx_map.awb
+Packagehint=platforms

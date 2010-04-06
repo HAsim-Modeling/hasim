@@ -22527,3 +22527,15 @@ Directory modules/bluespec/common/soft_connections
   the simplicity of our current code.
 
 - Rename the ring methods to conform to our coding style.
+
+----------
+kfleming    Date: Tue Apr  6 15:06:35 EDT 2010  CSN: CSN-hasim-766
+                  Tue Apr  6 19:06:35 UTC 2010
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_synth.apm Locally Modified          765 
+
+
+Fixed traffic light apm.  It was missing some modules.  This is the
+second time in a week.  I must really talk to Alfred about it.

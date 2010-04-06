@@ -37,16 +37,16 @@ module [CONNECTED_MODULE] mkStatsService#(STATS statsDevice)
 
         case (cmd)
             STATS_CMD_GETLENGTHS:
-                chain.send_to_next(ST_GET_LENGTH);
+                chain.sendToNext(ST_GET_LENGTH);
 
             STATS_CMD_DUMP:
-                chain.send_to_next(ST_DUMP);
+                chain.sendToNext(ST_DUMP);
 
             STATS_CMD_RESET:
-                chain.send_to_next(ST_RESET);
+                chain.sendToNext(ST_RESET);
 
             STATS_CMD_TOGGLE:
-                chain.send_to_next(ST_TOGGLE);
+                chain.sendToNext(ST_TOGGLE);
         endcase
     endrule
 
@@ -57,7 +57,7 @@ module [CONNECTED_MODULE] mkStatsService#(STATS statsDevice)
     //     Process responses returning on the statistics ring.
     //
     rule processResp (True);
-        let st <- chain.receive_from_prev();
+        let st <- chain.recvFromPrev();
 
         case (st) matches
             tagged ST_VAL .stinfo: // A stat to dump

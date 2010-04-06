@@ -241,19 +241,19 @@ module [HASIM_MODULE] mkLocalController
     
     rule checkBalance (True);
         checkBalanceQ.deq();
-        link_controllers.send_to_next(tagged COM_SyncQuery balanced());
+        link_controllers.sendToNext(tagged COM_SyncQuery balanced());
     endrule
 
     rule newControlMsg (True);
         let cmd = newCtrlMsgQ.first();
         newCtrlMsgQ.deq();
         
-        link_controllers.send_to_next(cmd);
+        link_controllers.sendToNext(cmd);
     endrule
 
     (* descending_urgency = "checkBalance, newControlMsg, nextCommand" *)
     rule nextCommand (state != LC_Stepping);
-        let newcmd <- link_controllers.receive_from_prev();
+        let newcmd <- link_controllers.recvFromPrev();
         Maybe#(CONTROLLER_MSG) outcmd = tagged Valid newcmd;
 
         case (newcmd) matches
@@ -327,7 +327,7 @@ module [HASIM_MODULE] mkLocalController
         // Forward command around the ring
         if (outcmd matches tagged Valid .cmd)
         begin
-            link_controllers.send_to_next(cmd);
+            link_controllers.sendToNext(cmd);
         end
     endrule
 
@@ -528,7 +528,7 @@ module [HASIM_MODULE] mkMultiplexController
     // ====================================================================
 
     rule nextCommand (True);
-        let newcmd <- link_controllers.receive_from_prev();
+        let newcmd <- link_controllers.recvFromPrev();
         CONTROLLER_MSG outcmd = newcmd;
 
         case (newcmd) matches
@@ -576,7 +576,7 @@ module [HASIM_MODULE] mkMultiplexController
         endcase
 
         // Forward command around the ring
-        link_controllers.send_to_next(outcmd);
+        link_controllers.sendToNext(outcmd);
     endrule
 
 

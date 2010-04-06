@@ -1,24 +1,12 @@
-#/********************************************************************
-# *
-# * Awb module specification
-# *
-# *******************************************************************/
+%name Soft Connections
+%desc Soft Connections
+%provides soft_connections
+%requires soft_connections_alg
 
-#/*
-# %AWB_START
-#
-# %name Soft Connections
-# %desc Soft Connections
-# %provides soft_connections
-# %requires soft_connections_alg
-#
-# %attributes bluespec
-#
-# %public Connected_Module.bsv Connections.bsv
-#
-# %param --global CON_CWIDTH 256 "Maximum Connection Bit Width."
-# %param --global CON_NUMCHAINS 9 "Number of Connection Chains."
-#
-# %AWB_END
-# */
+%attributes bluespec
 
+%public Connected_Module.bsv Connections.bsv
+%public token-ring.bsv
+
+%param --global CON_CWIDTH 256 "Maximum Connection Bit Width."
+%param --global CON_NUMCHAINS 9 "Number of Connection Chains."

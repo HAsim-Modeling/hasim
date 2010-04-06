@@ -37,7 +37,7 @@ module [CONNECTED_MODULE] mkDebugScanService#(DEBUG_SCAN_DEVICE debugScan)
         let cmd <- debugScan.getCmd();
 
         // There is only one command:  start a scan
-        chain.send_to_next(tagged DS_DUMP);
+        chain.sendToNext(tagged DS_DUMP);
     endrule
 
 
@@ -47,7 +47,7 @@ module [CONNECTED_MODULE] mkDebugScanService#(DEBUG_SCAN_DEVICE debugScan)
     // Process a response from an individual scan node.
     //  
     rule processResp (True);
-        let ds <- chain.receive_from_prev();
+        let ds <- chain.recvFromPrev();
 
         case (ds) matches
             // A value to dump

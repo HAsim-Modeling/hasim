@@ -51,7 +51,7 @@ module [CONNECTED_MODULE] mkEventsService
     
     rule processResp (True);
         
-        let et <- chain.receive_from_prev();
+        let et <- chain.recvFromPrev();
     
         case (et) matches
             tagged EVT_Event .evt:  //Event Data to pass along
@@ -77,12 +77,12 @@ module [CONNECTED_MODULE] mkEventsService
         
         if (!enabled)
         begin
-            chain.send_to_next(EVT_Enable);  //XXX More must be done to get all event recorders onto the same model CC.
+            chain.sendToNext(EVT_Enable);  //XXX More must be done to get all event recorders onto the same model CC.
             enabled <= True;
         end
         else
         begin
-            chain.send_to_next(EVT_Disable);
+            chain.sendToNext(EVT_Disable);
             enabled <= False;
         end
         

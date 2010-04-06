@@ -92,7 +92,7 @@ module [Connected_Module] mkEventsController#(Connection_Send#(STREAMS_REQUEST) 
     
     rule processResp (state != EVC_Initialize);
         
-        let et <- chain.receive_from_prev();
+        let et <- chain.recvFromPrev();
     
         case (et) matches
             tagged EVT_Event .evt:  //Event Data to pass along
@@ -121,8 +121,8 @@ module [Connected_Module] mkEventsController#(Connection_Send#(STREAMS_REQUEST) 
     method Action doCommand(EVENTS_CONTROLLER_COMMAND com) if (!(state == EVC_Enabling) || (state == EVC_Disabling));
         
         case (com)
-            EVENTS_Enable:  chain.send_to_next(EVT_Enable);  //XXX More must be done to get all event recorders onto the same model CC.
-            EVENTS_Disable: chain.send_to_next(EVT_Disable);
+            EVENTS_Enable:  chain.sendToNext(EVT_Enable);  //XXX More must be done to get all event recorders onto the same model CC.
+            EVENTS_Disable: chain.sendToNext(EVT_Disable);
         endcase
         
     endmethod

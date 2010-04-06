@@ -100,8 +100,8 @@ module [Connected_Module] mkDynamicParameterNode
     //
     rule shift (! receiving);
   
-        PARAM_DATA param <- chain.receive_from_prev();
-        chain.send_to_next(param);
+        PARAM_DATA param <- chain.recvFromPrev();
+        chain.sendToNext(param);
 
         if (param matches tagged PARAM_ID .new_id)
         begin
@@ -120,11 +120,11 @@ module [Connected_Module] mkDynamicParameterNode
     //
     rule getParam (receiving);
   
-        PARAM_DATA param <- chain.receive_from_prev();
+        PARAM_DATA param <- chain.recvFromPrev();
 
         // Forward the data around the ring in case there are multiple readers
         // of the same parameter.
-        chain.send_to_next(param);
+        chain.sendToNext(param);
 
         case (param) matches
             tagged PARAM_High32 .high32:

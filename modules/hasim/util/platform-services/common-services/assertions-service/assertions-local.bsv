@@ -159,7 +159,7 @@ module [Connected_Module] mkAssertionNode#(ASSERTIONS_DICT_TYPE baseID)
         assertQ.deq();
 
         let ast = ASSERTION_DATA { assertions: a, baseID: baseID };
-        chain.send_to_next(ast);
+        chain.sendToNext(ast);
 
     endrule
 
@@ -169,8 +169,8 @@ module [Connected_Module] mkAssertionNode#(ASSERTIONS_DICT_TYPE baseID)
     //
     rule processCmd (! assertQ.notEmpty());
 
-        ASSERTION_DATA ast <- chain.receive_from_prev();
-        chain.send_to_next(ast);
+        ASSERTION_DATA ast <- chain.recvFromPrev();
+        chain.sendToNext(ast);
 
     endrule
 

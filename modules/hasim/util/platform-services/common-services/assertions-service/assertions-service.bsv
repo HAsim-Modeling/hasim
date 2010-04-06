@@ -20,7 +20,7 @@ module [CONNECTED_MODULE] mkAssertionsService#(ASSERTIONS assertionsDevice)
 
     rule processResp (True);
 
-        let ast <- chain.receive_from_prev();
+        let ast <- chain.recvFromPrev();
         assertionsDevice.assertionNodeValues(ast.baseID, ast.assertions);
 
     endrule

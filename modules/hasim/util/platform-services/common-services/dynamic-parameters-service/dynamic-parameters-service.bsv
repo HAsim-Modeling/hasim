@@ -68,7 +68,7 @@ module [CONNECTED_MODULE] mkDynamicParametersService#(DYNAMIC_PARAMETERS dynPara
         // The first message on the chain is the parameter ID
         //
         PARAM_DATA msg = tagged PARAM_ID c.paramID;
-        chain.send_to_next(msg);
+        chain.sendToNext(msg);
 
         state <= PCS_HIGH32;
     endrule
@@ -84,7 +84,7 @@ module [CONNECTED_MODULE] mkDynamicParametersService#(DYNAMIC_PARAMETERS dynPara
         // Send the high 32 bits first.
         //
         PARAM_DATA msg = tagged PARAM_High32 c.value[63:32];
-        chain.send_to_next(msg);
+        chain.sendToNext(msg);
         state <= PCS_LOW32;
     endrule
     
@@ -93,7 +93,7 @@ module [CONNECTED_MODULE] mkDynamicParametersService#(DYNAMIC_PARAMETERS dynPara
         dynParam.finishCmd();
 
         PARAM_DATA msg = tagged PARAM_Low32 c.value[31:0];
-        chain.send_to_next(msg);
+        chain.sendToNext(msg);
         state <= PCS_IDLE;
     endrule
     
@@ -102,6 +102,6 @@ module [CONNECTED_MODULE] mkDynamicParametersService#(DYNAMIC_PARAMETERS dynPara
     // Sink messages coming around the ring.
     //
     rule receive (True);
-        PARAM_DATA msg <- chain.receive_from_prev();
+        PARAM_DATA msg <- chain.recvFromPrev();
     endrule
 endmodule

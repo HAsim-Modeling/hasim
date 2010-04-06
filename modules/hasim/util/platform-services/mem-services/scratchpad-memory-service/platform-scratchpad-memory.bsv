@@ -82,6 +82,7 @@ SCRATCHPAD_CACHE_MODE
 
 typedef struct
 {
+    SCRATCHPAD_PORT_NUM port;
     SCRATCHPAD_MEM_ADDRESS allocLastWordIdx;
     Bool cached;
 }
@@ -90,6 +91,7 @@ SCRATCHPAD_INIT_REQ
 
 typedef struct
 {
+    SCRATCHPAD_PORT_NUM port;
     SCRATCHPAD_MEM_ADDRESS addr;
     SCRATCHPAD_MEM_MASK byteReadMask;
     SCRATCHPAD_CLIENT_REF_INFO clientRefInfo;
@@ -99,6 +101,7 @@ SCRATCHPAD_READ_REQ
 
 typedef struct
 {
+    SCRATCHPAD_PORT_NUM port;
     SCRATCHPAD_MEM_ADDRESS addr;
     SCRATCHPAD_MEM_VALUE val;
 }
@@ -107,6 +110,7 @@ SCRATCHPAD_WRITE_REQ
 
 typedef struct
 {
+    SCRATCHPAD_PORT_NUM port;
     SCRATCHPAD_MEM_ADDRESS addr;
     SCRATCHPAD_MEM_VALUE val;
     SCRATCHPAD_MEM_MASK byteWriteMask;
@@ -114,8 +118,10 @@ typedef struct
 SCRATCHPAD_WRITE_MASKED_REQ
     deriving (Eq, Bits);
 
+
 //
-// Scratchpad requests (either a load or a store).
+// Scratchpad requests (either a load or a store) from the client to the
+// server.
 //
 typedef union tagged 
 {
@@ -125,7 +131,7 @@ typedef union tagged
     SCRATCHPAD_WRITE_REQ          SCRATCHPAD_MEM_WRITE;
     SCRATCHPAD_WRITE_MASKED_REQ   SCRATCHPAD_MEM_WRITE_MASKED;
 }
-SCRATCHPAD_MEM_REQUEST
+SCRATCHPAD_MEM_REQ
     deriving (Eq, Bits);
 
 
@@ -138,7 +144,7 @@ typedef struct
     SCRATCHPAD_MEM_ADDRESS addr;
     SCRATCHPAD_CLIENT_REF_INFO clientRefInfo;
 }
-SCRATCHPAD_READ_RESP
+SCRATCHPAD_READ_RSP
     deriving (Eq, Bits);
 
 
@@ -152,11 +158,11 @@ typedef 8 SCRATCHPAD_PORT_ROB_SLOTS;
 typedef 256 SCRATCHPAD_UNCACHED_PORT_ROB_SLOTS;
 
 //
-// Construct the name of the soft connection to a scratchpad memory port.
-// Ports are created dynamically using dictionaries in the VDEV.SCRATCH
-// name space.
+// Scratchpad ports must be unique and non-zero.  Port 0 is the server.
 //
-function String scratchPortName(Integer n) = "vdev_memory_" + integerToString(n - `VDEV_SCRATCH__BASE);
+function SCRATCHPAD_PORT_NUM scratchpadPortId(Integer n);
+    return fromInteger(n - `VDEV_SCRATCH__BASE + 1);
+endfunction
 
 
 // ========================================================================
@@ -225,9 +231,6 @@ module [CONNECTED_MODULE] mkMultiReadScratchpad#(Integer scratchpadID,
         // A special case:  cached scratchpad requested but the container
         // is smaller than the cache would have been.  Just allocate a BRAM.
         MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA) memory <- mkBRAMBufferedPseudoMultiReadInitialized(unpack(0));
-
-        // Dummy soft connection
-        Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_READ_RESP) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
 
         return memory;
     end
@@ -386,12 +389,18 @@ module [CONNECTED_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
         error("Scratchpad ID " + integerToString(scratchpadID) + " address is too large: " + integerToString(valueOf(t_MEM_ADDRESS_SZ)) + " bits");
     end
 
-    String debugLogFilename = "memory_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE) + ".out";
+    String debugLogFilename = "memory_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE + 1) + ".out";
     DEBUG_FILE debugLog <- (`PLATFORM_SCRATCHPAD_DEBUG_ENABLE == 1)?
                            mkDebugFile(debugLogFilename):
                            mkDebugFileNull(debugLogFilename); 
 
-    Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_READ_RESP) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
+    let my_port = scratchpadPortId(scratchpadID);
+
+    Connection_TokenRing#(SCRATCHPAD_PORT_NUM, SCRATCHPAD_MEM_REQ) link_mem_req <-
+        mkConnection_TokenRingNode(`RINGID_SCRATCHPAD_MEMORY_REQ, my_port);
+
+    Connection_TokenRing#(SCRATCHPAD_PORT_NUM, SCRATCHPAD_READ_RSP) link_mem_rsp <-
+        mkConnection_TokenRingNode(`RINGID_SCRATCHPAD_MEMORY_RSP, my_port);
 
     // Scratchpad responses are not ordered.  Sort them with a reorder buffer.
     // Each read port gets its own reorder buffer so that each port returns data
@@ -418,7 +427,8 @@ module [CONNECTED_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
         SCRATCHPAD_INIT_REQ r;
         r.allocLastWordIdx = zeroExtendNP(alloc);
         r.cached = True;
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT r);
+        r.port = my_port;
+        link_mem_req.enq(0, tagged SCRATCHPAD_MEM_INIT r);
     endrule
 
     //
@@ -439,11 +449,12 @@ module [CONNECTED_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
         // port ID and the ROB index.
         t_REF_INFO ref_info = unpack(truncateNP({ port, idx }));
 
-        let req = SCRATCHPAD_READ_REQ { addr: zeroExtendNP(pack(addr)),
+        let req = SCRATCHPAD_READ_REQ { port: my_port,
+                                        addr: zeroExtendNP(pack(addr)),
                                         byteReadMask: replicate(True),
                                         clientRefInfo: zeroExtendNP(pack(ref_info)) };
 
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_READ req);
+        link_mem_req.enq(0, tagged SCRATCHPAD_MEM_READ req);
     endrule
 
     // Write requests
@@ -454,10 +465,11 @@ module [CONNECTED_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
         let val = writeDataQ.first();
         writeDataQ.deq();
 
-        let req = SCRATCHPAD_WRITE_REQ { addr: zeroExtendNP(pack(addr)),
+        let req = SCRATCHPAD_WRITE_REQ { port: my_port,
+                                         addr: zeroExtendNP(pack(addr)),
                                          val: val };
 
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE req);
+        link_mem_req.enq(0, tagged SCRATCHPAD_MEM_WRITE req);
     endrule
 
     //
@@ -466,8 +478,8 @@ module [CONNECTED_MODULE] mkUnmarshalledScratchpad#(Integer scratchpadID)
     //     be returned through readRsp() in order.
     //
     rule receiveResp (True);
-        let s = link_memory.getResp();
-        link_memory.deq();
+        let s = link_mem_rsp.first();
+        link_mem_rsp.deq();
 
         // The clientRefInfo field holds the concatenation of the port ID and
         // the port's reorder buffer index.
@@ -546,7 +558,7 @@ module [CONNECTED_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, 
               // Reference info passed to the cache needed to route the response
               Alias#(Tuple2#(Bit#(n_SAFE_READERS_SZ), t_REORDER_ID), t_REF_INFO));
 
-    String debugLogFilename = "platform_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE) + ".out";
+    String debugLogFilename = "platform_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE + 1) + ".out";
     DEBUG_FILE debugLog <- (`PLATFORM_SCRATCHPAD_DEBUG_ENABLE == 1)?
                            mkDebugFile(debugLogFilename):
                            mkDebugFileNull(debugLogFilename); 
@@ -706,7 +718,13 @@ module [CONNECTED_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
         error("Scratchpad ID " + integerToString(scratchpadID) + " address is too large: " + integerToString(valueOf(t_CACHE_ADDR_SZ)) + " bits");
     end
 
-    Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_READ_RESP) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
+    let my_port = scratchpadPortId(scratchpadID);
+
+    Connection_TokenRing#(SCRATCHPAD_PORT_NUM, SCRATCHPAD_MEM_REQ) link_mem_req <-
+        mkConnection_TokenRingNode(`RINGID_SCRATCHPAD_MEMORY_REQ, my_port);
+
+    Connection_TokenRing#(SCRATCHPAD_PORT_NUM, SCRATCHPAD_READ_RSP) link_mem_rsp <-
+        mkConnection_TokenRingNode(`RINGID_SCRATCHPAD_MEMORY_RSP, my_port);
 
     Reg#(Bool) initialized <- mkReg(False);
 
@@ -718,21 +736,23 @@ module [CONNECTED_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
 
         Bit#(t_CACHE_ADDR_SZ) alloc = maxBound;
         SCRATCHPAD_INIT_REQ r;
+        r.port = my_port;
         r.allocLastWordIdx = zeroExtendNP(alloc);
         r.cached = True;
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT r);
+        link_mem_req.enq(0, tagged SCRATCHPAD_MEM_INIT r);
     endrule
 
     method Action readReq(t_CACHE_ADDR addr, t_CACHE_REF_INFO refInfo) if (initialized);
-        let req = SCRATCHPAD_READ_REQ { addr: zeroExtendNP(pack(addr)),
+        let req = SCRATCHPAD_READ_REQ { port: my_port,
+                                        addr: zeroExtendNP(pack(addr)),
                                         byteReadMask: replicate(True),
                                         clientRefInfo: zeroExtendNP(pack(refInfo)) };
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_READ req);
+        link_mem_req.enq(0, tagged SCRATCHPAD_MEM_READ req);
     endmethod
 
     method ActionValue#(t_CACHE_FILL_RESP) readResp();
-        let s = link_memory.getResp();
-        link_memory.deq();
+        let s = link_mem_rsp.first();
+        link_mem_rsp.deq();
 
         t_CACHE_FILL_RESP r;
         r.addr = unpack(truncateNP(s.addr));
@@ -743,8 +763,8 @@ module [CONNECTED_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
     endmethod
 
     method t_CACHE_FILL_RESP peekResp();
-        let s = link_memory.getResp();
-        
+        let s = link_mem_rsp.first();
+
         t_CACHE_FILL_RESP r;
         r.addr = unpack(truncateNP(s.addr));
         r.val = s.val;
@@ -757,9 +777,10 @@ module [CONNECTED_MODULE] mkScratchpadCacheSourceData#(Integer scratchpadID)
     method Action write(t_CACHE_ADDR addr,
                         SCRATCHPAD_MEM_VALUE val,
                         t_CACHE_REF_INFO refInfo) if (initialized);
-        let req = SCRATCHPAD_WRITE_REQ { addr: zeroExtendNP(pack(addr)),
+        let req = SCRATCHPAD_WRITE_REQ { port: my_port,
+                                         addr: zeroExtendNP(pack(addr)),
                                          val: val };
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE req);
+        link_mem_req.enq(0, tagged SCRATCHPAD_MEM_WRITE req);
     endmethod
 
     //
@@ -820,7 +841,7 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
               // Reference info passed to the scratchpad needed to route the response
               Alias#(Tuple3#(Bit#(n_SAFE_READERS_SZ), t_NATURAL_IDX, t_REORDER_ID), t_REF_INFO));
 
-    String debugLogFilename = "platform_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE) + ".out";
+    String debugLogFilename = "platform_scratchpad_" + integerToString(scratchpadID - `VDEV_SCRATCH__BASE + 1) + ".out";
     DEBUG_FILE debugLog <- (`PLATFORM_SCRATCHPAD_DEBUG_ENABLE == 1)?
                            mkDebugFile(debugLogFilename):
                            mkDebugFileNull(debugLogFilename); 
@@ -848,8 +869,13 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
     end
 
 
-    Connection_Client#(SCRATCHPAD_MEM_REQUEST,
-                       SCRATCHPAD_READ_RESP) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
+    let my_port = scratchpadPortId(scratchpadID);
+
+    Connection_TokenRing#(SCRATCHPAD_PORT_NUM, SCRATCHPAD_MEM_REQ) link_mem_req <-
+        mkConnection_TokenRingNode(`RINGID_SCRATCHPAD_MEMORY_REQ, my_port);
+
+    Connection_TokenRing#(SCRATCHPAD_PORT_NUM, SCRATCHPAD_READ_RSP) link_mem_rsp <-
+        mkConnection_TokenRingNode(`RINGID_SCRATCHPAD_MEMORY_RSP, my_port);
 
     // Scratchpad responses are not ordered.  Sort them with a reorder buffer.
     // Each read port gets its own reorder buffer so that each port returns data
@@ -918,9 +944,10 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
 
         Bit#(t_ADDR_SZ) alloc = maxBound;
         SCRATCHPAD_INIT_REQ r;
+        r.port = my_port;
         r.allocLastWordIdx = scratchpadAddr(alloc);
         r.cached = False;
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_INIT r);
+        link_mem_req.enq(0, tagged SCRATCHPAD_MEM_INIT r);
     endrule
 
 
@@ -944,11 +971,12 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
         // Resize just eliminates a proviso...
         t_REF_INFO ref_info = resize(tuple3(port, addr_idx, rob_idx));
 
-        let req = SCRATCHPAD_READ_REQ { addr: scratchpadAddr(addr),
+        let req = SCRATCHPAD_READ_REQ { port: my_port,
+                                        addr: scratchpadAddr(addr),
                                         byteReadMask: scratchpadByteMask(addr),
                                         clientRefInfo: resize(pack(ref_info)) };
 
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_READ req);
+        link_mem_req.enq(0, tagged SCRATCHPAD_MEM_READ req);
 
         debugLog.record($format("read port %0d: req addr=0x%x, s_addr=0x%x, s_idx=%0d", port, addr, scratchpadAddr(addr), addr_idx));
     endrule
@@ -969,11 +997,12 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
 
         // Resizing is to avoid tautological provisos.  Sizes are actually identical.
         let b_mask = scratchpadByteMask(addr);
-        let req = SCRATCHPAD_WRITE_MASKED_REQ { addr: scratchpadAddr(addr),
+        let req = SCRATCHPAD_WRITE_MASKED_REQ { port: my_port,
+                                                addr: scratchpadAddr(addr),
                                                 val: resize(pack(d)),
                                                 byteWriteMask: b_mask };
 
-        link_memory.makeReq(tagged SCRATCHPAD_MEM_WRITE_MASKED req);
+        link_mem_req.enq(0, tagged SCRATCHPAD_MEM_WRITE_MASKED req);
 
         debugLog.record($format("write addr=0x%x, val=0x%x, s_addr=0x%x, s_val=0x%x, s_bmask=%b", addr, w_data, scratchpadAddr(addr), pack(d), pack(b_mask)));
     endrule
@@ -985,8 +1014,8 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
     //     be returned through readRsp() in order.
     //
     rule receiveResp (True);
-        let s = link_memory.getResp();
-        link_memory.deq();
+        let s = link_mem_rsp.first();
+        link_mem_rsp.deq();
 
         // The clientRefInfo field holds the concatenation of the port ID and
         // the port's reorder buffer index.

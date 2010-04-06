@@ -209,7 +209,7 @@ module [HASIM_MODULE] mkLocalController
     (* descending_urgency="shiftCommand, shiftResponse, checkBalance" *)
     rule shiftCommand (True);
 
-        let newcmd <- cmds.receive_from_prev();
+        let newcmd <- cmds.recvFromPrev();
 
         case (newcmd) matches
             tagged COM_RunProgram:
@@ -232,9 +232,9 @@ module [HASIM_MODULE] mkLocalController
             begin
                 checkBalanced <= False;
                 if (allTrue(instanceBalancedSinceQuery))
-                    resps.send_to_next(RESP_Balanced);
+                    resps.sendToNext(RESP_Balanced);
                 else
-                    resps.send_to_next(RESP_UnBalanced);
+                    resps.sendToNext(RESP_UnBalanced);
             end
 
             tagged COM_Step:
@@ -264,7 +264,7 @@ module [HASIM_MODULE] mkLocalController
         endcase
 
         // send it on
-        cmds.send_to_next(newcmd);
+        cmds.sendToNext(newcmd);
     endrule
   
     rule checkBalance (checkBalanced);
@@ -274,9 +274,9 @@ module [HASIM_MODULE] mkLocalController
     endrule
 
     rule shiftResponse (True);
-        let resp <- resps.receive_from_prev();
+        let resp <- resps.recvFromPrev();
         // Just send it on
-        resps.send_to_next(resp);
+        resps.sendToNext(resp);
     endrule
 
     rule ignoreDisabledInstances (state != LC_Idle && !instanceActive[nextInstance.value()]);
@@ -345,7 +345,7 @@ module [HASIM_MODULE] mkLocalController
 
     method Action instanceDone(INSTANCE_ID#(t_NUM_INSTANCES) iid, Bool pf);
         // XXX this should be per-instance.
-        resps.send_to_next(tagged RESP_DoneRunning pf);
+        resps.sendToNext(tagged RESP_DoneRunning pf);
     endmethod
     
 endmodule

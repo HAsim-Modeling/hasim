@@ -1,3 +1,5 @@
+def RINGID.SCRATCHPAD_MEMORY_REQ                  "Ring for scratchpad requests";
+def RINGID.SCRATCHPAD_MEMORY_RSP                  "Ring for scratchpad responses";
 
 def ASSERTIONS.SCRATCHPAD_MEMORY_SERVICE.FULL     "Platform services: Scratchpad memory is oversubscribed!";
 

@@ -73,7 +73,7 @@ module [Connected_Module] mkDebugScanController
     // Process a response from an individual scan node.
     //  
     rule processResp (state == DS_DUMPING);
-        let ds <- chain.receive_from_prev();
+        let ds <- chain.recvFromPrev();
 
         case (ds) matches
             // A value to dump
@@ -115,7 +115,7 @@ module [Connected_Module] mkDebugScanController
     // Begin a debug scan out.
     //
     method Action scanStart() if (state == DS_IDLE);
-        chain.send_to_next(tagged DS_DUMP);
+        chain.sendToNext(tagged DS_DUMP);
 
         state <= DS_DUMPING;
         dump_finished <= False;

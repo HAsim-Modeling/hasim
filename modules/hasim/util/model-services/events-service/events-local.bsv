@@ -84,7 +84,7 @@ module [CONNECTED_MODULE] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
     
   rule process (True);
   
-    EventData evt <- chain.receive_from_prev();
+    EventData evt <- chain.recvFromPrev();
 
     case (evt) matches 
       tagged EVT_Disable:     enabled   <= False;
@@ -92,7 +92,7 @@ module [CONNECTED_MODULE] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
       default:                noAction;
     endcase
 
-    chain.send_to_next(evt);
+    chain.sendToNext(evt);
   endrule
   
   method Action recordEvent(Maybe#(EventParam) mdata);
@@ -101,11 +101,11 @@ module [CONNECTED_MODULE] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
       case (mdata) matches
         tagged Invalid:
         begin
-          chain.send_to_next(tagged EVT_NoEvent eventID);
+          chain.sendToNext(tagged EVT_NoEvent eventID);
         end
         tagged Valid .data:
         begin
-          chain.send_to_next(tagged EVT_Event {event_id: eventID, event_data: data});
+          chain.sendToNext(tagged EVT_Event {event_id: eventID, event_data: data});
         end
       endcase
   
@@ -124,15 +124,15 @@ module [CONNECTED_MODULE] mkEventRecorder_Disabled#(EVENTS_DICT_TYPE eventID)
  
   rule insert (stall == eventID);
   
-    chain.send_to_next(tagged EVT_NoEvent eventID);
+    chain.sendToNext(tagged EVT_NoEvent eventID);
     stall <= unpack(pack(stall) + 1);
   
   endrule
   
   rule process (stall != eventID);
   
-    EventData evt <- chain.receive_from_prev();
-    chain.send_to_next(evt);
+    EventData evt <- chain.recvFromPrev();
+    chain.sendToNext(evt);
 
     stall <= unpack(pack(stall) + 1);
 
@@ -159,15 +159,15 @@ module [CONNECTED_MODULE] mkEventRecorder_Multiplexed#(EVENTS_DICT_TYPE eventID)
  
   rule insert (stall == eventID);
   
-    chain.send_to_next(tagged EVT_NoEvent eventID);
+    chain.sendToNext(tagged EVT_NoEvent eventID);
     stall <= unpack(pack(stall) + 1);
   
   endrule
   
   rule process (stall != eventID);
   
-    EventData evt <- chain.receive_from_prev();
-    chain.send_to_next(evt);
+    EventData evt <- chain.recvFromPrev();
+    chain.sendToNext(evt);
 
     stall <= unpack(pack(stall) + 1);
 

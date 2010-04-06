@@ -77,7 +77,7 @@ module [Connected_Module] mkAssertionsController
 
     rule processResp (True);
 
-        let ast <- chain.receive_from_prev();
+        let ast <- chain.recvFromPrev();
         clientStub.makeRequest_Assert(zeroExtend(pack(ast.baseID)),
                                       fpgaCC,
                                       zeroExtend(pack(ast.assertions)));

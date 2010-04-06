@@ -22447,3 +22447,83 @@ Adding a real Ord#(String) is now on Bluespec's request list.  When
 implemented we can just remove our version with no other changes.
 
 Also removed unused functions in ConnectionHelper.bsv.
+
+----------
+mcadler     Date: Tue Apr  6 08:43:27 EDT 2010  CSN: CSN-hasim-765
+                  Tue Apr  6 12:43:27 UTC 2010
+
+
+Directory modules/hasim/controller/local_controllers/module
+ local-controller-module-standard.bsv Locally Modified          764 
+
+Directory modules/hasim/controller/central_controllers/params
+ params-controller-hybrid.bsv Locally Modified          764 
+
+Directory modules/hasim/controller/central_controllers/events
+ events-controller-hybrid.bsv Locally Modified          764 
+
+Directory modules/hasim/controller/central_controllers/module
+ module-controller-standard.bsv Locally Modified          764 
+
+Directory modules/hasim/controller/central_controllers/assertions
+ assertions-controller-hybrid.bsv Locally Modified          764 
+
+Directory modules/hasim/controller/central_controllers/debug_scan
+ debug-scan-controller-hybrid.bsv Locally Modified          764 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.bsv Locally Modified          764 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          764 
+ commands-service.bsv      Locally Modified          764 
+
+Directory modules/hasim/util/model-services/events-service
+ events-local.bsv          Locally Modified          764 
+ events-service.bsv        Locally Modified          764 
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ scratchpad-memory-service.bsv Locally Modified          764 
+ platform-scratchpad-multi-cached-memory.bsv Locally Modified          764 
+ platform-scratchpad-memory.bsv Locally Modified          764 
+ scratchpad-memory-service.dic Locally Modified          764 
+
+Directory modules/hasim/util/platform-services/common-services/dynamic-parameters-service
+ dynamic-parameters-local.bsv Locally Modified          764 
+ dynamic-parameters-service.bsv Locally Modified          764 
+
+Directory modules/hasim/util/platform-services/common-services/debug-scan-service
+ debug-scan-service.bsv    Locally Modified          764 
+ debug-scan-local.bsv      Locally Modified          764 
+
+Directory modules/hasim/util/platform-services/common-services/assertions-service
+ assertions-service.bsv    Locally Modified          764 
+ assertions-local.bsv      Locally Modified          764 
+
+Directory modules/hasim/util/platform-services/common-services/stats-service
+ stats-local.bsv           Locally Modified          764 
+ stats-service.bsv         Locally Modified          764 
+
+Directory modules/bluespec/common/soft_connections
+ soft_connections.awb      Locally Modified          764 
+ token-ring.bsv            Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections/module-context
+ connection-backwards-compat.bsv Locally Modified          764 
+
+Directory modules/bluespec/common/soft_connections
+ Connections.bsv           Locally Modified          764 
+
+- Add a simple token ring layered on the ring primitive.  Nodes register with
+  their address, which must be unique on the ring.  The ring interface looks
+  like the two endpoints of a FIFO, with the exception that enq() adds a
+  target node ID parameter.
+
+- Use a pair of token rings for scratchpad communication with the platform
+  to avoid congestion when there are a lot of clients.  To prevent deadlocks
+  one ring is used for requests and one for responses.  This is simpler than
+  adding virtual channels to the token ring.  Extra queues and the MUXs for
+  virtual channels would probably result in at least as much hardware, given
+  the simplicity of our current code.
+
+- Rename the ring methods to conform to our coding style.

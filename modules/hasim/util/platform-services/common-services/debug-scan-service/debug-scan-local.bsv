@@ -91,7 +91,7 @@ module [CONNECTED_MODULE] mkDebugScanNode#(DEBUG_SCAN_DICT_TYPE myID,
         if ((valueOf(n_ENTRIES) == 1) || (dbgValIdx == 0))
         begin
             // Done with this node's data
-            chain.send_to_next(tagged DS_DUMP);
+            chain.sendToNext(tagged DS_DUMP);
             state <= DS_IDLE;
         end
         else
@@ -99,7 +99,7 @@ module [CONNECTED_MODULE] mkDebugScanNode#(DEBUG_SCAN_DICT_TYPE myID,
             // More data remains for this node
             let idx = dbgValIdx - 1;
             dbgValIdx <= idx;
-            chain.send_to_next(tagged DS_VAL { id: myID, value: dbgVal[idx] });
+            chain.sendToNext(tagged DS_VAL { id: myID, value: dbgVal[idx] });
         end
     endrule
 
@@ -110,7 +110,7 @@ module [CONNECTED_MODULE] mkDebugScanNode#(DEBUG_SCAN_DICT_TYPE myID,
     //
     (* conservative_implicit_conditions *)
     rule receiveCmd (state == DS_IDLE);
-        let ds <- chain.receive_from_prev();
+        let ds <- chain.recvFromPrev();
 
         case (ds) matches 
             tagged DS_DUMP:
@@ -121,11 +121,11 @@ module [CONNECTED_MODULE] mkDebugScanNode#(DEBUG_SCAN_DICT_TYPE myID,
                 dbgValIdx <= fromInteger(valueOf(n_ENTRIES) - 1);
 
                 // Send the first chunk of data on the chain
-                chain.send_to_next(tagged DS_VAL { id: myID, value: val[valueOf(n_ENTRIES) - 1] });
+                chain.sendToNext(tagged DS_VAL { id: myID, value: val[valueOf(n_ENTRIES) - 1] });
                 state <= DS_DUMPING;
             end
 
-            default: chain.send_to_next(ds);
+            default: chain.sendToNext(ds);
         endcase
     endrule
 endmodule

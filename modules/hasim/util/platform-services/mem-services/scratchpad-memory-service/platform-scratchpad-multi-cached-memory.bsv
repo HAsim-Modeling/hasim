@@ -110,9 +110,6 @@ module [CONNECTED_MODULE] mkMultiReadMultiCacheScratchpad#(
         // May want to get rid of this behavior at some point.  
         MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA) memory <- mkBRAMBufferedPseudoMultiReadInitialized(unpack(0));
 
-        // Dummy soft connection
-        Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_READ_RESP) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
-
         return memory;
     end
     else 
@@ -208,9 +205,6 @@ module [CONNECTED_MODULE] mkMultiReadMultiCacheWriteCacheScratchpad#(
         // Cache behavior is automatic, but any user cache functions will be ignored. 
         // May want to get rid of this behavior at some point.  
         MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA) memory <- mkBRAMBufferedPseudoMultiReadInitialized(unpack(0));
-
-        // Dummy soft connection
-        Connection_Client#(SCRATCHPAD_MEM_REQUEST, SCRATCHPAD_READ_RESP) link_memory <- mkConnection_Client(scratchPortName(scratchpadID));
 
         return memory;
     end

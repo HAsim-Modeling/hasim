@@ -93,7 +93,7 @@ module [Connected_Module] mkParamsController
         // The first message on the chain is the parameter ID
         //
         PARAM_DATA msg = tagged PARAM_ID p.paramID;
-        chain.send_to_next(msg);
+        chain.sendToNext(msg);
 
         state <= PCS_High32;
         value <= p.value;
@@ -123,7 +123,7 @@ module [Connected_Module] mkParamsController
             state <= PCS_Idle;
         end
   
-        chain.send_to_next(msg);
+        chain.sendToNext(msg);
   
     endrule
     
@@ -135,7 +135,7 @@ module [Connected_Module] mkParamsController
     //
     rule receive (True);
   
-        PARAM_DATA msg <- chain.receive_from_prev();
+        PARAM_DATA msg <- chain.recvFromPrev();
 
         if (msg matches tagged PARAM_ID .id)
         begin

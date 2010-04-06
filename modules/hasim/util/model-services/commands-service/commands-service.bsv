@@ -131,7 +131,7 @@ module [HASIM_MODULE] mkCommandsService
 
     // Get Responses from the Local Controllers, including when the program ends.
     rule getMessage (True);
-        let msg <- link_controllers.receive_from_prev();
+        let msg <- link_controllers.recvFromPrev();
 
         case (msg) matches
             tagged COM_RunProgram: serverStub.sendResponse_Run(?);
@@ -197,13 +197,13 @@ module [HASIM_MODULE] mkCommandsService
 
     rule enableContext (True);
         let ctx_id <- serverStub.acceptRequest_EnableContext();
-        link_controllers.send_to_next(tagged COM_EnableContext truncate(ctx_id));
+        link_controllers.sendToNext(tagged COM_EnableContext truncate(ctx_id));
     endrule
 
 
     rule disableContext (True);
         let ctx_id <- serverStub.acceptRequest_DisableContext();
-        link_controllers.send_to_next(tagged COM_DisableContext truncate(ctx_id));
+        link_controllers.sendToNext(tagged COM_DisableContext truncate(ctx_id));
     endrule
 
 
@@ -217,7 +217,7 @@ module [HASIM_MODULE] mkCommandsService
     rule run (state == CON_Init);
         let dummy <- serverStub.acceptRequest_Run();
 
-        link_controllers.send_to_next(COM_RunProgram);
+        link_controllers.sendToNext(COM_RunProgram);
 
         state <= CON_Running;
 
@@ -232,20 +232,20 @@ module [HASIM_MODULE] mkCommandsService
     rule pause (True);
         let dummy <- serverStub.acceptRequest_Pause();
         // To Do: Sync and quiesce.  For now just sends a pause request.
-        link_controllers.send_to_next(tagged COM_Pause True);
+        link_controllers.sendToNext(tagged COM_Pause True);
     endrule
 
 
     // sync: sync ports and events
     rule sync (True);
         let dummy <- serverStub.acceptRequest_Sync();
-        link_controllers.send_to_next(tagged COM_Synchronize);
+        link_controllers.sendToNext(tagged COM_Synchronize);
     endrule
 
     (* descending_urgency = "sync, isSynced" *)
     rule isSynced (True);
         let dummy <- serverStub.acceptRequest_IsSynced();
-        link_controllers.send_to_next(tagged COM_SyncQuery True);
+        link_controllers.sendToNext(tagged COM_SyncQuery True);
     endrule
 
 
@@ -266,7 +266,7 @@ module [HASIM_MODULE] mkCommandsService
                       endModelCycle matches tagged Valid .end_cycle &&&
                       ctx0ModelCycles >= end_cycle);
         // Stop simulation
-        link_controllers.send_to_next(tagged COM_Pause False);
+        link_controllers.sendToNext(tagged COM_Pause False);
 
         // Tell software we're done
         link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MESSAGE,

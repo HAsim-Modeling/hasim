@@ -101,8 +101,8 @@ endmodule
 
 interface Connection_Chain#(type msg_T);
 
-  method ActionValue#(msg_T) receive_from_prev();
-  method Action              send_to_next(msg_T data);
+  method ActionValue#(msg_T) recvFromPrev();
+  method Action              sendToNext(msg_T data);
   
 endinterface
 
@@ -163,11 +163,11 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
   registerChain(info);
 
 
-  method Action send_to_next(msg_T data);
+  method Action sendToNext(msg_T data);
     q.enq(data);
   endmethod
 
-  method ActionValue#(msg_T) receive_from_prev() if (dataW.wget() matches tagged Valid .val);
+  method ActionValue#(msg_T) recvFromPrev() if (dataW.wget() matches tagged Valid .val);
 
     enW.send();
     return val;

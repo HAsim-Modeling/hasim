@@ -249,9 +249,9 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
     //     Done one entry in the statistics vector.
     //
     rule dump (state == DUMPING);
-        chain.send_to_next(tagged ST_VAL { statID: myIDs[curDumpIdx],
-                                           index: statIdx(curDumpIdx),
-                                           value: statPool[curDumpIdx].value() });
+        chain.sendToNext(tagged ST_VAL { statID: myIDs[curDumpIdx],
+                                         index: statIdx(curDumpIdx),
+                                         value: statPool[curDumpIdx].value() });
 
         statPool[curDumpIdx].setC(0);
 
@@ -267,7 +267,7 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
     //     Done dumping all entries in the statistics vector.
     //
     rule finishDump (state == FINISHING_DUMP);
-        chain.send_to_next(tagged ST_DUMP);
+        chain.sendToNext(tagged ST_DUMP);
         state <= RECORDING;
     endrule
 
@@ -277,7 +277,7 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
     //     Done reporting the length of the vector.
     //
     rule finishGetLength (state == FINISHING_LENGTH);
-        chain.send_to_next(tagged ST_GET_LENGTH);
+        chain.sendToNext(tagged ST_GET_LENGTH);
         state <= RECORDING;
     endrule
 
@@ -298,9 +298,9 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
     rule buildArrayLengths (state == BUILD_ARRAY_LENGTH);
         if (statType matches tagged STATS_BUILD_ARRAY .v_idx)
         begin
-            chain.send_to_next(tagged ST_LENGTH { statID: myIDs[buildArrayIdx],
-                                                  length: v_idx + 1,
-                                                  buildArray: True });
+            chain.sendToNext(tagged ST_LENGTH { statID: myIDs[buildArrayIdx],
+                                                length: v_idx + 1,
+                                                buildArray: True });
         end
 
         if (buildArrayIdx == fromInteger(valueOf(n_STATS) - 1))
@@ -321,7 +321,7 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
     //
     (* conservative_implicit_conditions *)
     rule receiveCmd (state == RECORDING);
-        STAT_DATA st <- chain.receive_from_prev();
+        STAT_DATA st <- chain.recvFromPrev();
 
         case (st) matches 
             tagged ST_GET_LENGTH:
@@ -334,15 +334,15 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
                     // Non-vector collectors
                     tagged STATS_UNIQUE_INSTANCE:
                     begin
-                        chain.send_to_next(st);
+                        chain.sendToNext(st);
                     end
 
                     // Normal vector
                     tagged STATS_VECTOR_INSTANCE:
                     begin
-                        chain.send_to_next(tagged ST_LENGTH { statID: myIDs[0],
-                                                              length: fromInteger(valueOf(n_STATS)),
-                                                              buildArray: False });
+                        chain.sendToNext(tagged ST_LENGTH { statID: myIDs[0],
+                                                            length: fromInteger(valueOf(n_STATS)),
+                                                            buildArray: False });
                         state <= FINISHING_LENGTH;
                     end
 
@@ -362,18 +362,18 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
 
             tagged ST_RESET: 
             begin
-                chain.send_to_next(st);
+                chain.sendToNext(st);
                 for (Integer s = 0; s < valueOf(n_STATS); s = s + 1)
                     statPool[s].setC(0);
             end
 
             tagged ST_TOGGLE: 
             begin
-                chain.send_to_next(st);
+                chain.sendToNext(st);
                 enabled <= !enabled;
             end
 
-            default: chain.send_to_next(st);
+            default: chain.sendToNext(st);
         endcase
     endrule
 
@@ -390,9 +390,9 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
         // Is the most significant bit set?
         if (msb(statPool[curDumpPartialIdx].value()) == 1)
         begin
-            chain.send_to_next(tagged ST_VAL { statID: myIDs[curDumpPartialIdx],
-                                               index: statIdx(curDumpPartialIdx),
-                                               value: statPool[curDumpPartialIdx].value() });
+            chain.sendToNext(tagged ST_VAL { statID: myIDs[curDumpPartialIdx],
+                                             index: statIdx(curDumpPartialIdx),
+                                             value: statPool[curDumpPartialIdx].value() });
 
             statPool[curDumpPartialIdx].setC(0);
         end

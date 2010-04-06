@@ -115,7 +115,7 @@ module [Connected_Module] mkStatsController
                        default:                return tagged ST_DUMP;
                      endcase;
   
-    chain.send_to_next(nextCommand);
+    chain.sendToNext(nextCommand);
     state <= SC_Idle;
   
   endrule
@@ -127,7 +127,7 @@ module [Connected_Module] mkStatsController
   
   rule processResp (state != SC_Initializing);
   
-    let st <- chain.receive_from_prev();
+    let st <- chain.recvFromPrev();
     
     case (st) matches
       tagged ST_VAL .stinfo: //A stat to dump

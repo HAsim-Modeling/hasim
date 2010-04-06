@@ -114,7 +114,7 @@ module [HASIM_MODULE] mkModuleController#(Connection_Send#(STREAMS_REQUEST) link
     // As the end of the Command chain, we simply dequeue Commands when
     // they make their way back to us.
     rule finishCommands (True);
-        let cmd <- link_command.receive_from_prev();
+        let cmd <- link_command.recvFromPrev();
     endrule
 
 
@@ -122,7 +122,7 @@ module [HASIM_MODULE] mkModuleController#(Connection_Send#(STREAMS_REQUEST) link
 
     // Get Responses from the Local Controllers, including when the program ends.
     rule getResponse (state == CON_Running);
-        let resp <- link_response.receive_from_prev();
+        let resp <- link_response.recvFromPrev();
 
         case (resp) matches
             tagged RESP_DoneRunning .pf: // Program's done
@@ -166,19 +166,19 @@ module [HASIM_MODULE] mkModuleController#(Connection_Send#(STREAMS_REQUEST) link
 
 
     method Action enableContext(CONTEXT_ID ctx_id);
-        link_command.send_to_next(tagged COM_EnableContext ctx_id);
+        link_command.sendToNext(tagged COM_EnableContext ctx_id);
     endmethod
 
 
     method Action disableContext(CONTEXT_ID ctx_id);
-        link_command.send_to_next(tagged COM_DisableContext ctx_id);
+        link_command.sendToNext(tagged COM_DisableContext ctx_id);
     endmethod
 
 
     // run: begin/continue simulation when the main controller tells us to
     // TEMPORARY: we only start running from CON_Init state
     method Action run() if (state == CON_Init);
-        link_command.send_to_next(COM_RunProgram);
+        link_command.sendToNext(COM_RunProgram);
 
         state <= CON_Running;
         link_leds.send(FRONTP_MASKED_LEDS {state: zeroExtend(4'b0011), mask: zeroExtend(4'b1111)});

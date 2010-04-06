@@ -26,7 +26,7 @@ endinterface
 //The basic receiving connection.
 
 interface Connection_Receive#(type msg_T);
-  
+
   method Bool notEmpty(); 
   method Action deq();
   method msg_T  receive();
@@ -69,8 +69,12 @@ endinterface
 
 interface Connection_Chain#(type msg_T);
 
-  method ActionValue#(msg_T) receive_from_prev();
-  method Action              send_to_next(msg_T data);
+  method ActionValue#(msg_T) recvFromPrev();
+  method msg_T               peekFromPrev();
+  method Bool                recvNotEmpty();
+
+  method Action              sendToNext(msg_T data);
+  method Bool                sendNotFull();
   
 endinterface
 
@@ -505,16 +509,23 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
   addToCollection(tagged LChain info);
 
 
-  method Action send_to_next(msg_T data);
+  method Action sendToNext(msg_T data);
     q.enq(data);
   endmethod
 
-  method ActionValue#(msg_T) receive_from_prev() if (data_w.wget() matches tagged Valid .val);
+  method Bool sendNotFull = q.notFull();
 
+
+  method ActionValue#(msg_T) recvFromPrev() if (data_w.wget() matches tagged Valid .val);
     en_w.send();
     return val;
-
   endmethod
+
+  method msg_T peekFromPrev() if (data_w.wget() matches tagged Valid .val);
+    return val;
+  endmethod
+
+  method Bool recvNotEmpty() = isValid(data_w.wget());
 
 endmodule
 

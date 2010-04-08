@@ -22590,3 +22590,30 @@ old "remote" stubs, symbolic links called "remote_xxx" are created
 to the real stubs when necessary. Future user modules should
 directly import "asim/rrr/client_stub_xxx" irrespective of the
 requested interface (method/connection).
+
+----------
+kfleming    Date: Thu Apr  8 12:40:31 EDT 2010  CSN: CSN-hasim-769
+                  Thu Apr  8 16:40:31 UTC 2010
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          768 
+
+
+Generalized support for %generated flag as a pilot for generalizing
+support for %sources flag.  The objective with this modification is to
+provide a path from .awb files to the build environment in a
+programmatic way such that arbitrary file types can be included by end
+users, enabling the integration of new and unforseen target types
+without forcing end users to touch the awb internals.
+
+example: %generated -t FOOBAR baz.foobar
+
+goes to the GIVEN_FOOBARS field in the build environment.  
+
+Tools may or may not make use of the GIVEN_FOOBARS field.
+
+Some rearchitecting around the concept of synthesis boundaries may be
+needed in the future.
+
+

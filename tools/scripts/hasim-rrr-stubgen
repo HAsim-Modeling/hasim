@@ -110,7 +110,7 @@ else
 if ($mode eq "stub")
 {
     ##
-    ## Generate individual stubs
+    ## Generate individual BSV stubs
     ##
     foreach my $service (@serviceTable)
     {
@@ -120,11 +120,14 @@ if ($mode eq "stub")
         print_server_stub($ohandle, "hw", $service);
         close($ohandle);
 
-        # remote-server
-        $ofile = $odir . "/remote_server_stub_" . $service->name() . ".bsh";
-        open($ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
-        print_remote_server_stub($ohandle, "hw", $service);
-        close($ohandle);
+        # remote-server (only exists for compatibility): create symlink to client stub file
+        if ($service->needs_server_connections("hw"))
+        {
+            my $lfile = $odir . "/remote_server_stub_" . $service->name() . ".bsh";
+            $ofile = "server_stub_" . $service->name() . ".bsh";
+            unlink($lfile);
+            symlink($ofile, $lfile) || die "stubgen: unable to create symbolic link $lfile to file $ofile";
+        }
 
         # client
         $ofile = $odir . "/client_stub_" . $service->name() . ".bsh";
@@ -132,11 +135,14 @@ if ($mode eq "stub")
         print_client_stub($ohandle, "hw", $service);
         close($ohandle);
 
-        # remote-client
-        $ofile = $odir . "/remote_client_stub_" . $service->name() . ".bsh";
-        open($ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
-        print_remote_client_stub($ohandle, "hw", $service);
-        close($ohandle);
+        # remote-client (only exists for compatibility): create symlink to client stub file
+        if ($service->needs_client_connections("hw"))
+        {
+            my $lfile = $odir . "/remote_client_stub_" . $service->name() . ".bsh";
+            $ofile = "client_stub_" . $service->name() . ".bsh";
+            unlink($lfile);
+            symlink($ofile, $lfile) || die "stubgen: unable to create symbolic link $lfile to file $ofile";
+        }
     }
 
     ##
@@ -155,11 +161,11 @@ if ($mode eq "stub")
     print_client_connections($ohandle, "hw", @serviceTable);
     close($ohandle);
 
-    # client control IDs *** SLIGHTLY HACKY *** see method definition
-    $ofile = $odir . "/client_control_ids.bsh";
-    open($ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
-    print_client_control_ids($ohandle, "hw", @serviceTable);
-    close($ohandle);
+    # DELETEME: client control IDs *** SLIGHTLY HACKY *** see method definition
+    # $ofile = $odir . "/client_control_ids.bsh";
+    # open($ohandle, "> $ofile") || die "stubgen: unable to open output file $ofile";
+    # print_client_control_ids($ohandle, "hw", @serviceTable);
+    # close($ohandle);
 
     ##
     ## Generate individual CPP stubs
@@ -327,47 +333,6 @@ sub print_service_ids
     print $ofile_bsh "\`endif // __RRR_SERVICE_IDS__\n";
 }
 
-###############################################################################
-# print_client_control_ids: *** SLIGHTLY HACKY ***
-#                           given a parsed service table, print per-method
-#                           controlIDs for BSV client-connections. These method
-#                           IDs are the same numerals as the actual RRR method
-#                           IDs, so we should unify them. We could also print
-#                           them into one or more separate files. Note that the
-#                           method identifier namespace will still have to be
-#                           global because client_connections.bsh is global
-#                           across all RRR services.
-
-sub print_client_control_ids
-{
-    my $file = shift;
-    my $target = shift;
-    my @serviceTable = @_;
-
-    # generate common header
-    print $file "//\n";
-    print $file "// Synthesized header file created by hasim-rrr-stubgen\n";
-    print $file "//\n\n";
-    print $file "`ifndef _RRR_CLIENT_CONTROL_IDS_\n";
-    print $file "`define _RRR_CLIENT_CONTROL_IDS_\n";
-    print $file "\n";
-
-    # for each service
-    foreach my $service (@serviceTable)
-    {
-        # print module and connection instantiations
-        if ($service->needs_client_connections($target))
-        {
-            $service->print_client_control_ids($file, $target);
-            print $file "\n";
-        }
-    }
-
-    # end file
-    print $file "`endif\n";
-    print $file "\n";
-}
-
 ################################################################
 # print_server_stub: given a parsed service table, print out a
 #                    full server stub for a given target
@@ -379,26 +344,6 @@ sub print_server_stub
 
     # ask the service to print the actual module
     $service->print_server_stub($file, $target);
-}
-
-################################################################
-# print_remote_server_stub: given a parsed service table, print
-#                           remote server stub for given target
-sub print_remote_server_stub
-{
-    my $file    = shift;
-    my $target  = shift;
-    my $service = shift;
-
-    # determine if we should write stub at all, and use connection
-    # test to find out if we need to print this stub
-    if ($service->needs_server_connections($target) == 0)
-    {
-        return;
-    }
-
-    # ask the service to print the actual module
-    $service->print_remote_server_stub($file, $target);
 }
 
 ############################################################
@@ -430,16 +375,17 @@ sub print_server_connections
     print $file "`include \"asim/rrr/service_ids.bsh\"\n";
     print $file "\n";
 
+    # DELETEME: we don't talk to stubs any more, we talk directly to the RRR client manager
     # import header files for generated stubs
-    foreach my $service (@serviceTable)
-    {
-        my $servicename = $service->name();
-        if ($service->needs_server_connections($target))
-        {
-            print $file "`include \"asim/rrr/server_stub_$servicename.bsh\"\n";
-        }
-    }
-    print $file "\n";
+    # foreach my $service (@serviceTable)
+    # {
+    #     my $servicename = $service->name();
+    #     if ($service->needs_server_connections($target))
+    #     {
+    #         print $file "`include \"asim/rrr/server_stub_$servicename.bsh\"\n";
+    #     }
+    # }
+    # print $file "\n";
 
     # main module definition
     print $file "module [CONNECTED_MODULE] mkServerConnections#(RRR_SERVER server) ();\n";
@@ -488,26 +434,6 @@ sub print_client_stub
     $service->print_client_stub($file, $target);
 }
 
-################################################################
-# print_remote_client_stub: given a parsed service table, print
-#                           remote client stub for given target
-sub print_remote_client_stub
-{
-    my $file    = shift;
-    my $target  = shift;
-    my $service = shift;
-
-    # determine if we should write stub at all, and for remote
-    # stubs, use connection test
-    if ($service->needs_client_connections($target) == 0)
-    {
-        return;
-    }
-
-    # ask the service to print the actual module
-    $service->print_remote_client_stub($file, $target);
-}
-
 ############################################################
 # print_client_connections: given a parsed service table,
 #                           print out a wrapper module that
@@ -535,19 +461,20 @@ sub print_client_connections
     print $file "`include \"channelio.bsh\"\n";
     print $file "`include \"umf.bsh\"\n";
     print $file "`include \"asim/rrr/service_ids.bsh\"\n";
-    print $file "`include \"asim/rrr/client_control_ids.bsh\"\n";
+    # DELETEME print $file "`include \"asim/rrr/client_control_ids.bsh\"\n";
     print $file "\n";
 
+    # DELETEME: we don't talk to stubs any more, we talk directly to the RRR client manager
     # import header files for generated stubs
-    foreach my $service (@serviceTable)
-    {
-        my $servicename = $service->name();
-        if ($service->needs_client_connections($target))
-        {
-            print $file "`include \"asim/rrr/client_stub_$servicename.bsh\"\n";
-        }
-    }
-    print $file "\n";
+    # foreach my $service (@serviceTable)
+    # {
+    #     my $servicename = $service->name();
+    #     if ($service->needs_client_connections($target))
+    #     {
+    #         print $file "`include \"asim/rrr/client_stub_$servicename.bsh\"\n";
+    #     }
+    # }
+    # print $file "\n";
 
     # main module definition
     print $file "module [CONNECTED_MODULE] mkClientConnections#(RRR_CLIENT client) ();\n";

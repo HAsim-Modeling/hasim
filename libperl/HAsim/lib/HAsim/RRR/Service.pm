@@ -269,32 +269,6 @@ sub print_server_link_rules
     }
 }
 
-##
-## print remote server stub for a given target into a given file
-##
-sub print_remote_server_stub
-{
-    # capture params
-    my $self   = shift;
-    my $file   = shift;
-    my $target = shift;
-
-    # for each entry in my list of servers...
-    foreach my $server (@{ $self->{serverlist} })
-    {
-        # look for the specified target name. It is guaranteed that
-        # each server in this list will have a unique target name.
-        if ($server->target() eq $target && $server->interface() eq "connection")
-        {
-            # ask the server to print out a stub
-            $server->print_remote_stub($file);
-        }
-
-        # NOTE: we are guaranteed to only print one stub
-        # for a given target
-    }
-}
-
 ######################################
 #       CLIENT STUB GENERATION       #
 ######################################
@@ -408,58 +382,6 @@ sub print_client_link_rules
         }
 
         # NOTE: we are guaranteed to only print one rule
-        # for a given target
-    }
-}
-
-##
-## print remote client stub for a given target into a given file
-##
-sub print_remote_client_stub
-{
-    # capture params
-    my $self   = shift;
-    my $file   = shift;
-    my $target = shift;
-
-    # for each entry in my list of clients...
-    foreach my $client (@{ $self->{clientlist} })
-    {
-        # look for the specified target name. It is guaranteed that
-        # each client in this list will have a unique target name.
-        if ($client->target() eq $target && $client->interface() eq "connection")
-        {
-            # ask the client to print out a stub
-            $client->print_remote_stub($file);
-        }
-
-        # NOTE: we are guaranteed to only print one stub
-        # for a given target
-    }
-}
-
-##
-## print client control IDs for a given target into a given file *** SLIGHTLY HACKY ***
-##
-sub print_client_control_ids
-{
-    # capture params
-    my $self   = shift;
-    my $file   = shift;
-    my $target = shift;
-
-    # for each entry in my list of clients...
-    foreach my $client (@{ $self->{clientlist} })
-    {
-        # look for the specified target name. It is guaranteed that
-        # each client in this list will have a unique target name.
-        if ($client->target() eq $target && $client->interface() eq "connection")
-        {
-            # ask the client to print out its control IDs
-            $client->print_control_ids($file);
-        }
-
-        # NOTE: we are guaranteed to only print one set of IDs
         # for a given target
     }
 }

@@ -200,9 +200,9 @@ sub _make_put_header
 ##### ACCEPT_REQUEST STUB PRINTING #####
 
 ##
-## print direct accept_request declaration
+## print accept_request declaration
 ##
-sub print_direct_accept_request_declaration
+sub print_accept_request_declaration
 {
     my $self   = shift;
     my $file   = shift;
@@ -219,53 +219,14 @@ sub print_direct_accept_request_declaration
 }
 
 ##
-## print proxy accept_request declaration
+## print accept_request definition
 ##
-sub print_proxy_accept_request_declaration
+sub print_accept_request_definition
 {
     my $self   = shift;
     my $file   = shift;
     my $indent = shift;
-
-    print $file $indent                                      .
-                $self->_make_get_header("acceptRequest",
-                                        $self->inargs()->makebitvector()) .
-                ";\n";
-
-    print $file $indent                                      .
-                $self->_make_get_noaction_header("peekRequest",
-                                        $self->inargs()->makebitvector()) .
-                ";\n";
-}
-
-##
-## print remote accept_request declaration
-##
-sub print_remote_accept_request_declaration
-{
-    my $self   = shift;
-    my $file   = shift;
-    my $indent = shift;
-
-    print $file $indent                                      .
-                $self->_make_get_header("acceptRequest",
-                                        $self->_intype_name()) .
-                ";\n";
-
-    print $file $indent                                      .
-                $self->_make_get_noaction_header("peekRequest",
-                                        $self->_intype_name()) .
-                ";\n";
-}
-
-##
-## print direct accept_request definition
-##
-sub print_direct_accept_request_definition
-{
-    my $self   = shift;
-    my $file   = shift;
-    my $indent = shift;
+    my $ifc    = shift;
 
     # header
     print $file $indent                             .
@@ -311,131 +272,13 @@ sub print_direct_accept_request_definition
     # endmethod
     print $file $indent . "endmethod\n\n";
 }
-
-##
-## print proxy accept_request definition
-##
-sub print_proxy_accept_request_definition
-{
-    my $self   = shift;
-    my $file   = shift;
-    my $indent = shift;
-
-    # header
-    print $file $indent                             .
-                $self->_make_get_header("acceptRequest",
-                                        $self->inargs()->makebitvector());
-
-    # conditions
-    print $file " if (mid == fromInteger(mid_";
-    print $file $self->{name};
-    print $file "));\n";
-
-    # body
-    print $file $indent . "    let a <- dem.readAndDelete();\n";
-    print $file $indent . "    ";
-
-    # acceptRequest()s always return a struct/bitvector
-    print $file $self->inargs()->makebitvector();
-    print $file " retval = unpack(truncate(a));\n";
-    print $file $indent . "    return retval;\n";
-
-    # endmethod
-    print $file $indent . "endmethod\n\n";
-
-    # header
-    print $file $indent                             .
-                $self->_make_get_noaction_header("peekRequest",
-                                        $self->inargs()->makebitvector());
-
-    # conditions
-    print $file " if (mid == fromInteger(mid_";
-    print $file $self->{name};
-    print $file "));\n";
-
-    # body
-    print $file $indent . "    let a = dem.peek();\n";
-    print $file $indent . "    ";
-
-    # acceptRequest()s always return a struct/bitvector
-    print $file $self->inargs()->makebitvector();
-    print $file " retval = unpack(truncate(a));\n";
-    print $file $indent . "    return retval;\n";
-
-    # endmethod
-    print $file $indent . "endmethod\n\n";
-}
-
-##
-## print remote accept_request definition that wraps the remote
-## (module) end of a connection
-##
-sub print_remote_accept_request_definition
-{
-    my $self   = shift;
-    my $file   = shift;
-    my $indent = shift;
-
-    # header
-    print $file $indent                             .
-                $self->_make_get_header("acceptRequest",
-                                        $self->_intype_name());
-
-    # no conditions
-    print $file ";\n";
-
-    # body
-    if ($self->outargs()->num() != 0)
-    {
-        # server-type connection
-        print $file $indent . "    let a = link_" . $self->{name} . ".getReq();\n";
-        print $file $indent . "    link_" . $self->{name} . ".deq();\n";
-        print $file $indent . "    return unpack(a);\n";
-    }
-    else
-    {
-        # receive-type connection
-        print $file $indent . "    let a = link_" . $self->{name} . ".receive();\n";
-        print $file $indent . "    link_" . $self->{name} . ".deq();\n";
-        print $file $indent . "    return unpack(a);\n";
-    }
-
-    # endmethod
-    print $file $indent . "endmethod\n\n";
-
-    # header
-    print $file $indent                             .
-                $self->_make_get_noaction_header("peekRequest",
-                                        $self->_intype_name());
-
-    # no conditions
-    print $file ";\n";
-
-    # body
-    if ($self->outargs()->num() != 0)
-    {
-        # server-type connection
-        print $file $indent . "    let a = link_" . $self->{name} . ".getReq();\n";
-        print $file $indent . "    return unpack(a);\n";
-    }
-    else
-    {
-        # receive-type connection
-        print $file $indent . "    let a = link_" . $self->{name} . ".receive();\n";
-        print $file $indent . "    return unpack(a);\n";
-    }
-
-    # endmethod
-    print $file $indent . "endmethod\n\n";
-}
-
 
 ##### SEND_RESPONSE STUB PRINTING #####
 
 ##
-## print direct send_response declaration
+## print send_response declaration
 ##
-sub print_direct_send_response_declaration
+sub print_send_response_declaration
 {
     my $self   = shift;
     my $file   = shift;
@@ -456,59 +299,14 @@ sub print_direct_send_response_declaration
 }
 
 ##
-## print proxy send_response declaration
+## print send_response definition
 ##
-sub print_proxy_send_response_declaration
-{
-    my $self   = shift;
-    my $file   = shift;
-    my $indent = shift;
-
-    # return if we don't need a response
-    if ($self->outargs()->num() == 0)
-    {
-        return;
-    }
-
-    # header
-    print $file $indent                             .
-                $self->_make_put_header("sendResponse",
-                                        $self->outargs()->makebitvector() . " resp");
-
-    print $file ";\n";
-}
-
-##
-## print remote send_response declaration
-##
-sub print_remote_send_response_declaration
-{
-    my $self   = shift;
-    my $file   = shift;
-    my $indent = shift;
-
-    # return if we don't need a response
-    if ($self->outargs()->num() == 0)
-    {
-        return;
-    }
-
-    # header
-    print $file $indent                             .
-                $self->_make_put_header("sendResponse",
-                                        $self->outargs()->makelist());
-
-    print $file ";\n";
-}
-
-##
-## print direct send_response definition
-##
-sub print_direct_send_response_definition
+sub print_send_response_definition
 {
     my $self = shift;
     my $file = shift;
     my $indent = shift;
+    my $ifc = shift;
 
     # return if we don't need a response
     if ($self->outargs()->num() == 0)
@@ -541,207 +339,20 @@ sub print_direct_send_response_definition
     print $file $self->{name};
     print $file ")\n";
     print $file $indent . "                        };\n";
-    print $file $indent . "    server.responsePorts[`SERVICE_ID].write(header);\n";
+    if ($ifc eq "connection")
+    {
+        print $file $indent . "    link_resp.send(header);\n";
+    }
+    else
+    {
+        print $file $indent . "    server.responsePorts[`SERVICE_ID].write(header);\n";
+    }
     print $file $indent . "    mar.enq(zeroExtend(pack(resp)), fromInteger(numChunks_";
     print $file $self->{name};
     print $file "));\n";
 
     # endmethod
     print $file $indent . "endmethod\n\n";
-}
-
-##
-## print proxy send_response definition
-##
-sub print_proxy_send_response_definition
-{
-    my $self = shift;
-    my $file = shift;
-    my $indent = shift;
-
-    # return if we don't need a response
-    if ($self->outargs()->num() == 0)
-    {
-        return;
-    }
-
-    # header
-    print $file $indent                             .
-                $self->_make_put_header("sendResponse",
-                                        $self->outargs()->makebitvector() . " resp");
-
-    print $file ";\n";
-
-    # body
-    print $file $indent . "    UMF_PACKET header = tagged UMF_PACKET_header UMF_PACKET_HEADER\n";
-    print $file $indent . "                        {\n";
-    print $file $indent . "                            filler: ?,\n";
-    print $file $indent . "                            phyChannelPvt: ?,\n";
-    print $file $indent . "                            channelID: ?,\n";
-    print $file $indent . "                            serviceID: `SERVICE_ID,\n";
-    print $file $indent . "                            methodID : fromInteger(mid_";
-    print $file $self->{name};
-    print $file "),\n";
-    print $file $indent . "                            numChunks: fromInteger(numChunks_";
-    print $file $self->{name};
-    print $file ")\n";
-    print $file $indent . "                        };\n";
-    print $file $indent . "    server.responsePorts[`SERVICE_ID].write(header);\n";
-    print $file $indent . "    mar.enq(zeroExtend(pack(resp)), fromInteger(numChunks_";
-    print $file $self->{name};
-    print $file "));\n";
-
-    # endmethod
-    print $file $indent . "endmethod\n\n";
-}
-
-##
-## print remote send_response definition that wraps the remote
-## (module) end of a connection
-##
-sub print_remote_send_response_definition
-{
-    my $self = shift;
-    my $file = shift;
-    my $indent = shift;
-
-    # return if we don't need a response
-    if ($self->outargs()->num() == 0)
-    {
-        return;
-    }
-
-    # header
-    print $file $indent                             .
-                $self->_make_put_header("sendResponse",
-                                        $self->outargs()->makelist());
-
-    print $file ";\n";
-
-    # pack all elements into a struct
-    print $file $indent . "    let resp = " .
-                $self->outargs()->fillstruct($self->_outtype_name()) . ";\n";
-
-    # body
-    print $file $indent . "    link_" . $self->{name} . ".makeResp(pack(resp));\n";
-
-    # endmethod
-    print $file $indent . "endmethod\n\n";
-}
-
-##### CONNECTION RULES #####
-
-##
-## print connection instantiation
-##
-sub print_server_connection
-{
-    my $self        = shift;
-    my $file        = shift;
-    my $indent      = shift;
-    my $servicename = shift;
-
-    # print connection definitions
-    if ($self->outargs()->num() == 0)
-    {
-        # no return: create Send-type connection
-        print $file $indent . "Connection_Send#("        .
-                    $self->inargs()->makebitvector()     .
-                    ") link_server_$servicename" . "_"   .
-                    $self->{name}                        .
-                    " <- mkConnection_Send(\"rrr_server_$servicename\_" .
-                    $self->{name} . "\");\n";
-    }
-    else
-    {
-        # need return: create Client-type connection
-        print $file $indent . "Connection_Client#("      .
-                    $self->inargs()->makebitvector()     .
-                    ", "                                 .
-                    $self->outargs()->makebitvector()    .
-                    ") link_server_$servicename" . "_"   .
-                    $self->{name}                        .
-                    " <- mkConnection_Client(\"rrr_server_$servicename\_" .
-                    $self->{name} . "\");\n";
-    }
-}
-
-##
-## print rules to link method calls to a connection
-##
-sub print_server_link_rules
-{
-    my $self        = shift;
-    my $file        = shift;
-    my $indent      = shift;
-    my $servicename = shift;
-
-    my $methodname = $self->{name};
-    my $intype     = $self->inargs()->makebitvector();
-    
-    # print rules to transfer request and response to the connection
-    if ($self->outargs()->num() == 0)
-    {
-        # no return: create only request rule, use send()
-        print $file $indent . "rule server_acceptRequest_$servicename\_$methodname (True);\n";
-        print $file $indent . "    $intype req <- stub_server_$servicename.acceptRequest\_$methodname();\n";
-        print $file $indent . "    link_server_$servicename\_$methodname.send(req);\n";
-        print $file $indent . "endrule\n";
-        print $file $indent . "\n";
-    }
-    else
-    {
-        my $outtype = $self->outargs()->makebitvector();
-
-        # need return: create request and response rules, use makeReq()
-        print $file $indent . "rule server_acceptRequest_$servicename\_$methodname (True);\n";
-        print $file $indent . "    $intype req <- stub_server_$servicename.acceptRequest\_$methodname();\n";
-        print $file $indent . "    link_server_$servicename\_$methodname.makeReq(req);\n";
-        print $file $indent . "endrule\n";
-        print $file $indent . "\n";
-        
-        print $file $indent . "rule server_sendResponse_$servicename\_$methodname (True);\n";
-        print $file $indent . "    $outtype resp = link_server_$servicename\_$methodname.getResp();\n";
-        print $file $indent . "    link_server_$servicename\_$methodname.deq();\n";
-        print $file $indent . "    stub_server_$servicename.sendResponse\_$methodname(resp);\n";
-        print $file $indent . "endrule\n";
-        print $file $indent . "\n";
-    }
-}
-
-##
-## print remote server connection wrapper instantiation
-##
-sub print_remote_server_connection
-{
-    my $self        = shift;
-    my $file        = shift;
-    my $indent      = shift;
-    my $servicename = shift;
-
-    # print connection definitions
-    if ($self->outargs()->num() == 0)
-    {
-        # no return: create receive-type connection
-        print $file $indent . "Connection_Receive#("  .
-                    $self->inargs()->makebitvector()  .
-                    ") link_"                         .
-                    $self->{name}                     .
-                    " <- mkConnection_Receive(\"rrr_server_$servicename\_" .
-                    $self->{name} . "\");\n";
-    }
-    else
-    {
-        # need return: create server-type connection
-        print $file $indent . "Connection_Server#("   .
-                    $self->inargs()->makebitvector()  .
-                    ", "                              .
-                    $self->outargs()->makebitvector() .
-                    ") link_"                         .
-                    $self->{name}                     .
-                    " <- mkConnection_Server(\"rrr_server_$servicename\_" .
-                    $self->{name} . "\");\n";
-    }
 }
 
 ######################################
@@ -751,13 +362,14 @@ sub print_remote_server_connection
 ##### MAKE_REQUEST STUB PRINTING #####
 
 ##
-## print direct make_request declaration
+## print make_request declaration
 ##
-sub print_direct_make_request_declaration
+sub print_make_request_declaration
 {
     my $self = shift;
     my $file = shift;
     my $indent = shift;
+    my $ifc = shift;
 
     print $file $indent                             .
                 $self->_make_put_header("makeRequest",
@@ -767,45 +379,14 @@ sub print_direct_make_request_declaration
 }
 
 ##
-## print proxy make_request declaration
+## print make_request definition
 ##
-sub print_proxy_make_request_declaration
+sub print_make_request_definition
 {
     my $self = shift;
     my $file = shift;
     my $indent = shift;
-
-    print $file $indent                             .
-                $self->_make_put_header("makeRequest",
-                                        $self->inargs()->makebitvector() . " req");
-
-    print $file ";\n";
-}
-
-##
-## print remote make_request declaration
-##
-sub print_remote_make_request_declaration
-{
-    my $self = shift;
-    my $file = shift;
-    my $indent = shift;
-
-    print $file $indent                             .
-                $self->_make_put_header("makeRequest",
-                                        $self->inargs()->makelist());
-
-    print $file ";\n";
-}
-
-##
-## print direct make_request definition
-##
-sub print_direct_make_request_definition
-{
-    my $self = shift;
-    my $file = shift;
-    my $indent = shift;
+    my $ifc = shift;
 
     # header
     print $file $indent                             .
@@ -832,91 +413,17 @@ sub print_direct_make_request_definition
     print $file $self->{name};
     print $file ")\n";
     print $file $indent . "                        };\n";
-    print $file $indent . "    client.requestPorts[`SERVICE_ID].write(header);\n";
-    print $file $indent . "    mar.enq(zeroExtend(pack(req)), fromInteger(numChunks_";
-    print $file $self->{name};
-    print $file "));\n";
-
-    # endmethod
-    print $file $indent . "endmethod\n\n";
-}
-
-##
-## print proxy make_request definition
-##
-sub print_proxy_make_request_definition
-{
-    my $self = shift;
-    my $file = shift;
-    my $indent = shift;
-
-    # header
-    print $file $indent                             .
-                $self->_make_put_header("makeRequest",
-                                        $self->inargs()->makebitvector() . " req");
-
-    print $file ";\n";
-
-    # body
-    print $file $indent . "    UMF_PACKET header = tagged UMF_PACKET_header UMF_PACKET_HEADER\n";
-    print $file $indent . "                        {\n";
-    print $file $indent . "                            filler: ?,\n";
-    print $file $indent . "                            phyChannelPvt: ?,\n";
-    print $file $indent . "                            channelID: ?,\n";
-    print $file $indent . "                            serviceID: `SERVICE_ID,\n";
-    print $file $indent . "                            methodID : fromInteger(mid_";
-    print $file $self->{name};
-    print $file "),\n";
-    print $file $indent . "                            numChunks: fromInteger(numChunks_";
-    print $file $self->{name};
-    print $file ")\n";
-    print $file $indent . "                        };\n";
-    print $file $indent . "    client.requestPorts[`SERVICE_ID].write(header);\n";
-    print $file $indent . "    mar.enq(zeroExtend(pack(req)), fromInteger(numChunks_";
-    print $file $self->{name};
-    print $file "));\n";
-
-    # endmethod
-    print $file $indent . "endmethod\n\n";
-}
-
-##
-## print remote make_request definition that wraps the remote
-## (module) end of a connection
-##
-sub print_remote_make_request_definition
-{
-    my $self        = shift;
-    my $file        = shift;
-    my $indent      = shift;
-    my $servicename = shift;
-
-    # header
-    print $file $indent                             .
-                $self->_make_put_header("makeRequest",
-                                        $self->inargs()->makelist());
-
-    print $file ";\n";
-
-    # pack all elements into a struct
-    print $file $indent . "    let req = " .
-                $self->inargs()->fillstruct($self->_intype_name()) . ";\n";
-
-    # body
-    if ($self->outargs()->num() != 0)
+    if ($ifc eq "connection")
     {
-        # client-type connection
-        print $file $indent . "    link_" . $self->{name} . ".makeReq(pack(req));\n";
+        print $file $indent . "    link_req.send(header);\n";
     }
     else
     {
-        # send-type connection
-        print $file $indent . "    link_" . $self->{name} . ".send(pack(req));\n";
+        print $file $indent . "    client.requestPorts[`SERVICE_ID].write(header);\n";
     }
-
-    # send control ID
-    print $file $indent .
-        "    control.send(\`$servicename\_" . $self->{name} . "_CONTROL_ID);\n";    
+    print $file $indent . "    mar.enq(zeroExtend(pack(req)), fromInteger(numChunks_";
+    print $file $self->{name};
+    print $file "));\n";
 
     # endmethod
     print $file $indent . "endmethod\n\n";
@@ -925,13 +432,14 @@ sub print_remote_make_request_definition
 ##### GET_RESPONSE STUB PRINTING #####
 
 ##
-## print direct get_response declaration
+## print get_response declaration
 ##
-sub print_direct_get_response_declaration
+sub print_get_response_declaration
 {
     my $self = shift;
     my $file = shift;
     my $indent = shift;
+    my $ifc = shift;
 
     # return if we don't need a response
     if ($self->outargs()->num() == 0)
@@ -951,65 +459,14 @@ sub print_direct_get_response_declaration
 }
 
 ##
-## print proxy get_response declaration
+## print get_response definition
 ##
-sub print_proxy_get_response_declaration
+sub print_get_response_definition
 {
     my $self = shift;
     my $file = shift;
     my $indent = shift;
-
-    # return if we don't need a response
-    if ($self->outargs()->num() == 0)
-    {
-        return;
-    }
-
-    print $file $indent                                      .
-                $self->_make_get_header("getResponse",
-                                        $self->outargs()->makebitvector()) .
-                ";\n";
-
-    print $file $indent                                      .
-                $self->_make_get_noaction_header("peekResponse",
-                                                 $self->outargs()->makebitvector()) .
-                ";\n";
-}
-
-##
-## print remote get_response declaration
-##
-sub print_remote_get_response_declaration
-{
-    my $self = shift;
-    my $file = shift;
-    my $indent = shift;
-
-    # return if we don't need a response
-    if ($self->outargs()->num() == 0)
-    {
-        return;
-    }
-
-    print $file $indent                                      .
-                $self->_make_get_header("getResponse",
-                                        $self->_outtype_name()) .
-                ";\n";
-
-    print $file $indent                                      .
-                $self->_make_get_noaction_header("peekResponse",
-                                                 $self->_outtype_name()) .
-                ";\n";
-}
-
-##
-## print direct get_response definition
-##
-sub print_direct_get_response_definition
-{
-    my $self = shift;
-    my $file = shift;
-    my $indent = shift;
+    my $ifc = shift;
 
     # return if we don't need a response
     if ($self->outargs()->num() == 0)
@@ -1058,256 +515,6 @@ sub print_direct_get_response_definition
 
     # endmethod
     print $file $indent . "endmethod\n\n";
-}
-
-##
-## print proxy get_response definition
-##
-sub print_proxy_get_response_definition
-{
-    my $self = shift;
-    my $file = shift;
-    my $indent = shift;
-
-    # return if we don't need a response
-    if ($self->outargs()->num() == 0)
-    {
-        return;
-    }
-
-    # header
-    print $file $indent                                      .
-                $self->_make_get_header("getResponse",
-                                        $self->outargs()->makebitvector());
-
-    # conditions
-    print $file " if (mid == fromInteger(mid_";
-    print $file $self->{name};
-    print $file "));\n";
-
-    # body
-    print $file $indent . "    let a <- dem.readAndDelete();\n";
-    print $file $indent . "    ";
-    print $file $self->outargs()->makebitvector();
-    print $file " retval = unpack(truncate(a));\n";
-    print $file $indent . "    return retval;\n";
-
-    # endmethod
-    print $file $indent . "endmethod\n\n";
-
-    ##
-    ## Equivalent peekResponse method (everything but the deq)
-    ##
-
-    # header
-    print $file $indent                                      .
-                $self->_make_get_noaction_header("peekResponse",
-                                                 $self->outargs()->makebitvector());
-
-    # no conditions
-    print $file ";\n";
-
-    # body
-    print $file $indent . "    let a = dem.peek();\n";
-    print $file $indent . "    ";
-    print $file $self->outargs()->makebitvector();
-    print $file " retval = unpack(truncate(a));\n";
-    print $file $indent . "    return retval;\n";
-
-    # endmethod
-    print $file $indent . "endmethod\n\n";
-}
-
-##
-## print remote get_response definition that wraps the remote
-## (module) end of a connection
-##
-sub print_remote_get_response_definition
-{
-    my $self = shift;
-    my $file = shift;
-    my $indent = shift;
-
-    # return if we don't need a response
-    if ($self->outargs()->num() == 0)
-    {
-        return;
-    }
-
-    # header
-    print $file $indent                                      .
-                $self->_make_get_header("getResponse",
-                                        $self->_outtype_name());
-
-    # no conditions
-    print $file ";\n";
-
-    # body
-    print $file $indent . "    let a = link_" . $self->{name} . ".getResp();\n";
-    print $file $indent . "    link_" . $self->{name} . ".deq();\n";
-    print $file $indent . "    return unpack(a);\n";
-
-    # endmethod
-    print $file $indent . "endmethod\n\n";
-
-
-    ##
-    ## Equivalent peekResponse method (everything but the deq)
-    ##
-
-    # header
-    print $file $indent                                      .
-                $self->_make_get_noaction_header("peekResponse",
-                                                 $self->_outtype_name());
-
-    # no conditions
-    print $file ";\n";
-
-    # body
-    print $file $indent . "    let a = link_" . $self->{name} . ".getResp();\n";
-    print $file $indent . "    return unpack(a);\n";
-
-    # endmethod
-    print $file $indent . "endmethod\n\n";
-}
-
-##### CONNECTION RULES #####
-
-##
-## print connection instantiation
-##
-sub print_client_connection
-{
-    my $self        = shift;
-    my $file        = shift;
-    my $indent      = shift;
-    my $servicename = shift;
-
-    # print connection definitions
-    if ($self->outargs()->num() == 0)
-    {
-        # no return: create Receive-type connection
-        print $file $indent . "Connection_Receive#("    .
-                    $self->inargs()->makebitvector()    .
-                    ") link_client_$servicename" . "_"  .
-                    $self->{name}                       .
-                    " <- mkConnection_Receive(\"rrr_client_$servicename\_" .
-                    $self->{name} . "\");\n";
-    }
-    else
-    {
-        # need return: create Server-type connection
-        print $file $indent . "Connection_Server#("     .
-                    $self->inargs()->makebitvector()    .
-                    ", "                                .
-                    $self->outargs()->makebitvector()   .
-                    ") link_client_$servicename" . "_"  .
-                    $self->{name}                       .
-                    " <- mkConnection_Server(\"rrr_client_$servicename\_" .
-                    $self->{name} . "\");\n";
-    }
-}
-
-##
-## return an array of names that will be emitted for client rules
-##
-sub client_link_rule_names
-{
-    my $self        = shift;
-    my $servicename = shift;
-
-    my $methodname = $self->{name};
-    
-    if ($self->outargs()->num() == 0)
-    {
-        return ( "client_makeRequest_$servicename\_$methodname" );
-    }
-    else
-    {
-        return ( "client_makeRequest_$servicename\_$methodname",
-                 "client_getResponse_$servicename\_$methodname" );
-    }
-}
-
-##
-## print rules to link method calls to a connection
-##
-sub print_client_link_rules
-{
-    my $self        = shift;
-    my $file        = shift;
-    my $indent      = shift;
-    my $servicename = shift;
-
-    my $methodname = $self->{name};
-    my $intype     = $self->inargs()->makebitvector();
-    
-    # print rules to transfer request and response to the connection
-    if ($self->outargs()->num() == 0)
-    {
-        # no return: create only request rule, use receive()
-        print $file $indent . "rule client_makeRequest_$servicename\_$methodname (controlID_$servicename == \`$servicename\_$methodname\_CONTROL_ID);\n";
-        print $file $indent . "    control_client_$servicename.deq();\n";
-        print $file $indent . "    $intype req = link_client_$servicename\_$methodname.receive();\n";
-        print $file $indent . "    link_client_$servicename\_$methodname.deq();\n";
-        print $file $indent . "    stub_client_$servicename.makeRequest\_$methodname(req);\n";
-        print $file $indent . "endrule\n";
-        print $file $indent . "\n";
-    }
-    else
-    {
-        my $outtype = $self->outargs()->makebitvector();
-
-        # need return: create request and response rules, use getReq()
-        print $file $indent . "rule client_makeRequest_$servicename\_$methodname (controlID_$servicename == \`$servicename\_$methodname\_CONTROL_ID);\n";
-        print $file $indent . "    control_client_$servicename.deq();\n";
-        print $file $indent . "    $intype req = link_client_$servicename\_$methodname.getReq();\n";
-        print $file $indent . "    link_client_$servicename\_$methodname.deq();\n";
-        print $file $indent . "    stub_client_$servicename.makeRequest\_$methodname(req);\n";
-        print $file $indent . "endrule\n";
-        print $file $indent . "\n";
-
-        print $file $indent . "rule client_getResponse_$servicename\_$methodname (True);\n";
-        print $file $indent . "    $outtype resp <- stub_client_$servicename.getResponse\_$methodname();\n";
-        print $file $indent . "    link_client_$servicename\_$methodname.makeResp(resp);\n";
-        print $file $indent . "endrule\n";
-        print $file $indent . "\n";
-    }
-}
-
-##
-## print remote client connection wrapper instantiation
-##
-sub print_remote_client_connection
-{
-    my $self        = shift;
-    my $file        = shift;
-    my $indent      = shift;
-    my $servicename = shift;
-
-    # print connection definitions
-    if ($self->outargs()->num() == 0)
-    {
-        # no return: create send-type connection
-        print $file $indent . "Connection_Send#("             .
-                    $self->inargs()->makebitvector()          .
-                    ") link_"                                 .
-                    $self->{name}                             .
-                    " <- mkConnection_Send(\"rrr_client_$servicename\_" .
-                    $self->{name} . "\");\n";
-    }
-    else
-    {
-        # need return: create client-type connection
-        print $file $indent . "Connection_Client#("           .
-                    $self->inargs()->makebitvector()          .
-                    ", "                                      .
-                    $self->outargs()->makebitvector()         .
-                    ") link_"                                 .
-                    $self->{name}                             .
-                    " <- mkConnection_Client(\"rrr_client_$servicename\_" .
-                    $self->{name} . "\");\n";
-    }
 }
 
 ######################################

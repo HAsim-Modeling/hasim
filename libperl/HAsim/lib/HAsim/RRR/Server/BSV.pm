@@ -85,7 +85,6 @@ sub _addmethods
 
 ##
 ## print stub into a given file in bsv
-## this method prints direct and proxy stubs
 ##
 sub print_stub
 {
@@ -115,273 +114,11 @@ sub print_stub
     print $file "`define _" . $self->{name} . "_SERVER_STUB_\n";
     print $file "\n";
 
-    print $file "`include \"asim/provides/rrr.bsh\"\n";
-    print $file "`include \"asim/provides/channelio.bsh\"\n";
-    print $file "`include \"asim/provides/umf.bsh\"\n";
-    print $file "\n";
-    print $file "`include \"asim/rrr/service_ids.bsh\"\n";
-    print $file "\n";
-
-    # compute max request and response bitwidths
-    my $maxinsize = 0;
-    my $maxoutsize = 0;
-    my @list = @{ $self->{methodlist} };
-    foreach my $method (@list)
-    {
-        if ($method->inargs()->size() > $maxinsize)
-        {
-            $maxinsize = $method->inargs()->size();
-        }
-        
-        if ($method->outargs()->size() > $maxoutsize)
-        {
-            $maxoutsize = $method->outargs()->size();
-        }
-    }
-
-    # helper definition for service ID
-    print $file "`define SERVICE_ID `" . $self->{name} ."_SERVICE_ID\n";
-    print $file "\n";
-
-    # types for each method: only print for direct stubs
-    if ($self->{ifc} eq "method")
-    {
-        foreach my $method (@{ $self->{methodlist} })
-        {
-            $method->print_types($file);
-        }
-    }
-
-    # interface ...
-    print $file "interface ServerStub_" . $self->{name} . ";\n";
-
-    # indent
-    my $indent = "    ";
-
-    # interface entry for each method
-    foreach my $method (@{ $self->{methodlist} })
-    {
-        if ($self->{ifc} eq "connection")
-        {
-            $method->print_proxy_accept_request_declaration($file, $indent);
-            $method->print_proxy_send_response_declaration($file, $indent);
-        }
-        else
-        {
-            $method->print_direct_accept_request_declaration($file, $indent);
-            $method->print_direct_send_response_declaration($file, $indent);
-        }
-    }
-    
-    # endinterface
-    print $file "endinterface\n";
-    print $file "\n";
-    
-    # module mk...
-    print $file "module mkServerStub_" . $self->{name} . "#(RRR_SERVER server)";
-    print $file " (ServerStub_" . $self->{name} . ");\n";
-    print $file "\n";
-    
-    # global state
-    $self->_print_state($file, $maxinsize, $maxoutsize);
-    
-    # per-method state and definitions
-    my $methodID = 0;
-    foreach my $method (@{ $self->{methodlist} })
-    {
-        $method->print_server_state($file, $indent, $methodID);
-        $methodID = $methodID + 1;
-    }
-    print $file "\n";    
-
-    # global (i.e., not RRR-method-specific) rules
-    $self->_print_request_rules($file);
-    if ($maxoutsize != 0)
-    {
-        $self->_print_response_rules($file);
-    }
-
-    # method definitions
-    foreach my $method (@{ $self->{methodlist} })
-    {
-        if ($self->{ifc} eq "connection")
-        {
-            $method->print_proxy_accept_request_definition($file, $indent);
-            $method->print_proxy_send_response_definition($file, $indent);
-        }
-        else
-        {
-            $method->print_direct_accept_request_definition($file, $indent);
-            $method->print_direct_send_response_definition($file, $indent);
-        }
-    }
-    
-    # endmodule
-    print $file "endmodule\n";
-    print $file "\n";
-
-    # closing stamements
-    print $file "`endif\n";
-    print $file "\n";
-}
-
-#
-# print global stub module state
-#
-sub _print_state
-{
-    my $self = shift;
-    my $file = shift;
-
-    my $maxinsize  = shift;
-    my $maxoutsize = shift;
-
-    print $file "    DEMARSHALLER#(UMF_CHUNK, Bit#($maxinsize)) dem <- mkDeMarshaller();\n";
-    print $file "    Reg#(UMF_METHOD_ID) mid <- mkReg(0);\n";
-    print $file "\n";
-    if ($maxoutsize != 0)
-    {
-        print $file "    MARSHALLER#(Bit#($maxoutsize), UMF_CHUNK) mar <- mkMarshaller();\n";
-        print $file "\n";
-    }
-}
-
-#
-# print global request rules for a service module
-#
-sub _print_request_rules
-{
-    my $self = shift;
-    my $file = shift;
-
-    print $file "    rule startRequest (True);\n";
-    print $file "        UMF_PACKET packet <- server.requestPorts[`SERVICE_ID].read();\n";
-    print $file "        mid <= packet.UMF_PACKET_header.methodID;\n";
-    print $file "        dem.start(packet.UMF_PACKET_header.numChunks);\n";
-    print $file "    endrule\n";
-    print $file "\n";
-    
-    print $file "    rule continueRequest (True);\n";
-    print $file "        UMF_PACKET packet <- server.requestPorts[`SERVICE_ID].read();\n";
-    print $file "        dem.insert(packet.UMF_PACKET_dataChunk);\n";
-    print $file "    endrule\n";
-    print $file "\n";
-}
-
-#
-# print global response rules for a service module
-#
-sub _print_response_rules
-{
-    my $self = shift;
-    my $file = shift;
-
-    print $file "    rule continueResponse (True);\n";
-    print $file "        UMF_CHUNK chunk = mar.first();\n";
-    print $file "        mar.deq();\n";
-    print $file "        server.responsePorts[`SERVICE_ID].write(tagged UMF_PACKET_dataChunk chunk);\n";
-    print $file "    endrule\n";
-    print $file "\n";
-}
-
-#
-# print connection instantiations
-#
-sub print_connections
-{
-    my $self   = shift;
-    my $file   = shift;
-    my $indent = shift;
-
-    # verify that RRR file requested a connection for this server
     if ($self->{ifc} eq "connection")
     {
-        # first instantiate server stub module
-        print $file $indent                            .
-                    "let stub_server_" . $self->{name} .
-                    " <- mkServerStub_"                .
-                    $self->{name} . "(server);\n"      .
-                    "\n";
-
-        # for each method
-        foreach my $method (@{ $self->{methodlist} })
-        {
-            # ask method to print out a connection instantiation
-            $method->print_server_connection($file, $indent, $self->{name});
-        }
+        print $file "`include \"asim/provides/soft_connections.bsh\"\n";
     }
-    else
-    {
-        # error
-        die "cannot print connections for \"method\" type servers";
-    }
-}
-
-#
-# print link rules
-#
-sub print_link_rules
-{
-    my $self   = shift;
-    my $file   = shift;
-    my $indent = shift;
-
-    # check if RRR file requested a connection for this server
-    if ($self->{ifc} eq "connection")
-    {
-        # for each method
-        foreach my $method (@{ $self->{methodlist} })
-        {
-            # ask method to print out a set of link rules
-            $method->print_server_link_rules($file, $indent, $self->{name});
-        }
-    }
-}
-
-######################################
-#           REMOTE STUBS             #
-######################################
-
-##
-## print remote stub into a given file in bsv
-##
-sub print_remote_stub
-{
-    # capture params
-    my $self   = shift;
-    my $file   = shift;
-
-    # make sure it's a Bluespec target
-    if ($self->{lang} ne "bsv")
-    {
-        return;
-    }    
-
-    # determine if we should write stub at all
-    if ($#{ $self->{methodlist} } == -1)
-    {
-        return;
-    }
-
-    # interface should be connection
-    if ($self->{ifc} ne "connection")
-    {
-        die "remote stubs are valid only for connection-type interfaces";
-    }
-
-    # generate header
-    print $file "//\n";
-    print $file "// Synthesized remote server stub file\n";
-    print $file "//\n";
-    print $file "\n";
-
-    print $file "`ifndef _" . $self->{name} . "_REMOTE_SERVER_STUB_\n";
-    print $file "`define _" . $self->{name} . "_REMOTE_SERVER_STUB_\n";
-    print $file "\n";
-
-    print $file "`include \"asim/provides/soft_connections.bsh\"\n";
     print $file "`include \"asim/provides/rrr.bsh\"\n";
-    print $file "`include \"asim/provides/channelio.bsh\"\n";
     print $file "`include \"asim/provides/umf.bsh\"\n";
     print $file "\n";
     print $file "`include \"asim/rrr/service_ids.bsh\"\n";
@@ -423,9 +160,8 @@ sub print_remote_stub
     # interface entry for each method
     foreach my $method (@{ $self->{methodlist} })
     {
-        # use same methods as non-remote declarations
-        $method->print_remote_accept_request_declaration($file, $indent);
-        $method->print_remote_send_response_declaration($file, $indent);
+        $method->print_accept_request_declaration($file, $indent, $self->{ifc});
+        $method->print_send_response_declaration($file, $indent, $self->{ifc});
     }
     
     # endinterface
@@ -433,23 +169,41 @@ sub print_remote_stub
     print $file "\n";
     
     # module mk...
-    print $file "module [CONNECTED_MODULE] mkServerStub_" . $self->{name};
+    if ($self->{ifc} eq "connection")
+    {
+        print $file "module [CONNECTED_MODULE] mkServerStub_" . $self->{name};
+    }
+    else
+    {
+        print $file "module mkServerStub_" . $self->{name} . "#(RRR_SERVER server)";
+    }
     print $file " (ServerStub_" . $self->{name} . ");\n";
     print $file "\n";
     
-    # instantiate connections
+    # global state
+    $self->_print_state($file, $maxinsize, $maxoutsize);
+    
+    # per-method state and definitions
+    my $methodID = 0;
     foreach my $method (@{ $self->{methodlist} })
     {
-        # ask method to print out a connection instantiation
-        $method->print_remote_server_connection($file, $indent, $self->{name});
+        $method->print_server_state($file, $indent, $methodID);
+        $methodID = $methodID + 1;
     }
-    print $file "\n";
-    
+    print $file "\n";    
+
+    # global (i.e., not RRR-method-specific) rules
+    $self->_print_request_rules($file);
+    if ($maxoutsize != 0)
+    {
+        $self->_print_response_rules($file);
+    }
+
     # method definitions
     foreach my $method (@{ $self->{methodlist} })
     {
-        $method->print_remote_accept_request_definition($file, $indent);
-        $method->print_remote_send_response_definition($file, $indent);
+        $method->print_accept_request_definition($file, $indent, $self->{ifc});
+        $method->print_send_response_definition($file, $indent, $self->{ifc});
     }
     
     # endmodule
@@ -459,6 +213,154 @@ sub print_remote_stub
     # closing stamements
     print $file "`endif\n";
     print $file "\n";
+}
+
+#
+# print global stub module state
+#
+sub _print_state
+{
+    my $self = shift;
+    my $file = shift;
+
+    my $maxinsize  = shift;
+    my $maxoutsize = shift;
+
+    if ($self->{ifc} eq "connection")
+    {
+        print $file "    Connection_Receive#(UMF_PACKET) link_req  <- mkConnection_Receive(\"rrr_server_" .
+            $self->{name} . "_req\");\n";
+        print $file "    Connection_Send#(UMF_PACKET)    link_resp <- mkConnection_Send(\"rrr_server_" .
+            $self->{name} . "_resp\");\n";
+        print $file "\n";
+    }
+
+    print $file "    DEMARSHALLER#(UMF_CHUNK, Bit#($maxinsize)) dem <- mkDeMarshaller();\n";
+    if ($maxoutsize != 0)
+    {
+        print $file "    MARSHALLER#(Bit#($maxoutsize), UMF_CHUNK) mar <- mkMarshaller();\n";
+    }
+    print $file "\n";
+    print $file "    Reg#(UMF_METHOD_ID) mid <- mkReg(0);\n";
+}
+
+#
+# print global request rules for a service module
+#
+sub _print_request_rules
+{
+    my $self = shift;
+    my $file = shift;
+
+    print $file "    rule startRequest (True);\n";
+    if ($self->{ifc} eq "connection")
+    {
+        print $file "        UMF_PACKET packet = link_req.receive();\n";
+        print $file "        link_req.deq();\n";
+    }
+    else
+    {
+        print $file "        UMF_PACKET packet <- server.requestPorts[`SERVICE_ID].read();\n";
+    }
+    print $file "        mid <= packet.UMF_PACKET_header.methodID;\n";
+    print $file "        dem.start(packet.UMF_PACKET_header.numChunks);\n";
+    print $file "    endrule\n";
+    print $file "\n";
+    
+    print $file "    rule continueRequest (True);\n";
+    if ($self->{ifc} eq "connection")
+    {
+        print $file "        UMF_PACKET packet = link_req.receive();\n";
+        print $file "        link_req.deq();\n";        
+    }
+    else
+    {
+        print $file "        UMF_PACKET packet <- server.requestPorts[`SERVICE_ID].read();\n";
+    }
+    print $file "        dem.insert(packet.UMF_PACKET_dataChunk);\n";
+    print $file "    endrule\n";
+    print $file "\n";
+}
+
+#
+# print global response rules for a service module
+#
+sub _print_response_rules
+{
+    my $self = shift;
+    my $file = shift;
+
+    print $file "    rule continueResponse (True);\n";
+    print $file "        UMF_CHUNK chunk = mar.first();\n";
+    print $file "        mar.deq();\n";
+    if ($self->{ifc} eq "connection")
+    {
+        print $file "        link_resp.send(tagged UMF_PACKET_dataChunk chunk);\n";
+    }
+    else
+    {
+        print $file "        server.responsePorts[`SERVICE_ID].write(tagged UMF_PACKET_dataChunk chunk);\n";
+    }
+    print $file "    endrule\n";
+    print $file "\n";
+}
+
+#
+# print connection instantiations for wrapper server_connections module
+# in platform interface
+#
+sub print_connections
+{
+    my $self   = shift;
+    my $file   = shift;
+    my $indent = shift;
+
+    # verify that RRR file requested a connection for this server
+    if ($self->{ifc} eq "connection")
+    {
+        my $name = $self->{name};
+
+        # request connection
+        print $file "$indent Connection_Send#(UMF_PACKET)    link_server_$name\_req  <- " .
+                    "mkConnection_Send(\"rrr_server_$name\_req\");\n";
+
+        # response connection
+        print $file "$indent Connection_Receive#(UMF_PACKET) link_server_$name\_resp <- " .
+                    "mkConnection_Receive(\"rrr_server_$name\_resp\");\n";
+    }
+    else
+    {
+        # error
+        die "cannot print connections for \"method\" type servers";
+    }
+}
+
+#
+# print link rules
+#
+sub print_link_rules
+{
+    my $self   = shift;
+    my $file   = shift;
+    my $indent = shift;
+
+    # check if RRR file requested a connection for this server
+    if ($self->{ifc} eq "connection")
+    {
+        my $name = $self->{name};
+
+        print $file "$indent rule server_$name\_req (True);\n";
+        print $file "$indent     let chunk <- server.requestPorts[`$name\_SERVICE_ID].read();\n";
+        print $file "$indent     link_server_$name\_req.send(chunk);\n";
+        print $file "$indent endrule\n";
+        print $file "\n";
+
+        print $file "$indent rule server_$name\_resp (True);\n";
+        print $file "$indent     server.responsePorts[`$name\_SERVICE_ID].write(link_server_$name\_resp.receive());\n";
+        print $file "$indent     link_server_$name\_resp.deq();\n";
+        print $file "$indent endrule\n";
+        print $file "\n";
+    }
 }
 
 1;

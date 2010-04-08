@@ -22551,3 +22551,42 @@ Directory config/pm/hasim/demos/traffic_light
 
 
 Removed reference to mit-6.375
+
+----------
+aparasha    Date: Thu Apr  8 02:46:48 EDT 2010  CSN: CSN-hasim-768
+                  Thu Apr  8 06:46:48 UTC 2010
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ BSV.pm                    Locally Modified          767 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Server
+ BSV.pm                    Locally Modified          767 
+
+Directory libperl/HAsim/lib/HAsim/RRR
+ Service.pm                Locally Modified          767 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Client
+ BSV.pm                    Locally Modified          767 
+
+Directory tools/scripts
+ hasim-rrr-stubgen         Locally Modified          767 
+
+"Connected" RRR stubs now use a single pair of narrow connections
+per service instead of the old implementation that used multiple
+wide per-method connections. The marshallers now live on the "model"
+end of the connection.
+
+The three different styles of RRR stubs - "direct", "proxy" and
+"remote" are now obsolete. There is only one RRR stub generated for
+a user client or server, with code that talks either to the bridge
+connection or directly to the RRR subsystem depending on the user-
+requested interface. The wrapper modules "client_connections" and
+"server_connections" now talk directly to the RRR subsystem instead
+of using a (now trivial) proxy stub.
+
+For backwards compatibility with modules that used to import the
+old "remote" stubs, symbolic links called "remote_xxx" are created
+to the real stubs when necessary. Future user modules should
+directly import "asim/rrr/client_stub_xxx" irrespective of the
+requested interface (method/connection).

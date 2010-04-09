@@ -301,7 +301,8 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed#(String portname, Integer latency)
                    Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
 
     let p <- case (latency)
-               0: mkPortRecvL0_Multiplexed(portname);
+               //0: mkPortRecvL0_Multiplexed(portname);
+               0: mkPortRecvBuffered_Multiplexed(portname, latency);
                default: mkPortRecvBuffered_Multiplexed(portname, latency);
              endcase;
 
@@ -359,7 +360,7 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
         method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
         
             match {.iid, .m} = rs.sub(head.value());
-            return (emptyQ) ? tagged Invalid : tagged Valid iid;
+            return (emptyQ || !initialized) ? tagged Invalid : tagged Valid iid;
         
         endmethod
         

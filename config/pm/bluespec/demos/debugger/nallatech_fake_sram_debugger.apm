@@ -35,7 +35,7 @@ application_env=Base Hybrid Application Environment
 project_common=Hybrid Project Common Utilities
 
 [Base Hybrid Application Environment/Requires]
-hybrid_application=Nallatech SRAM Debugger Application
+hybrid_application=SRAM Debugger Application
 
 [Hybrid Project Common Utilities]
 File=config/pm/hasim/submodels/common/project-common-default.apm
@@ -60,7 +60,6 @@ channelio=Basic Virtual Channel Multiplexer
 rrr=RRR Clients and Servers
 physical_platform_debugger=Null Physical Platform Debugger
 local_mem=NULL Local Memory Interface
-
 
 [Null Clocks Device]
 File=modules/bluespec/common/fpgaenv/physical-platform/physical-devices/clocks/null/null-clocks-device.awb
@@ -93,9 +92,6 @@ nallatech_edge_device=Nallatech Edge Physical Device
 File=modules/bluespec/common/fpgaenv/virtual-platform/channelio/physical-channel/nallatech-edge/nallatech-edge-channel.awb
 Packagehint=platform-acp
 
-[Nallatech SRAM Debugger Application]
-File=modules/bluespec/system/demos/debuggers/platform-debugger.awb
-Packagehint=hasim
 
 [ACP M2 Compute Module With SRAM (Nallatech)]
 File=modules/bluespec/common/fpgaenv/physical-platform/acp-m2c-with-sram/acp-m2c.awb
@@ -153,3 +149,14 @@ MODEL_CLOCK_FREQ=50
 [ACP Fake DDR2 SRAM Device]
 File=modules/bluespec/common/fpgaenv/physical-platform/physical-devices/ddr-sram/ddr-sram-device-fake.awb
 Packagehint=platform-acp
+
+[RRR Common Module]
+File=modules/bluespec/common/fpgaenv/virtual-platform/rrr/rrr_common/rrr_common.awb
+Packagehint=platforms
+
+[RRR Clients and Servers/Requires]
+rrr_common=RRR Common Module
+
+[SRAM Debugger Application]
+File=modules/bluespec/system/demos/debuggers/platform-debugger.awb
+Packagehint=hasim

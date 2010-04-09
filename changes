@@ -22617,3 +22617,51 @@ Some rearchitecting around the concept of synthesis boundaries may be
 needed in the future.
 
 
+
+----------
+pellauer    Date: Fri Apr  9 17:19:20 EDT 2010  CSN: CSN-hasim-771
+                  Fri Apr  9 21:19:20 UTC 2010
+
+
+Directory config/pm/bluespec/demos/debugger
+ nallatech_fake_sram_debugger.apm Locally Modified          770 
+ nallatech_sram_debugger.apm Locally Modified          770 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          770 
+ commands-service.awb      Locally Modified          770 
+ commands-misc-controllers.bsv Locally Added               0 
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          770 
+ a-ports.bsv               Locally Modified          770 
+
+
+
+* Fix a couple more broken models.
+
+* Major new multiplexing primitive: MULTIPLEXED_REG, looks like a multiplexed 
+  register but implemented in LUTRAM rather than registers.
+  
+* Another new primitive: MULTIPLEXED_REG_MULTI_WRITE, is an expensive register
+  that is implemented in registers, but allows simultaneous writes by different
+  contexts to different indices.
+  
+* These two primitives remove most of the pipeline scheduling warnings from the
+  timing model, as well as improving concurrency by reducing conflicts.
+  
+* Default buffering for a multi-context zero-latency A-Port is now N+1, where
+  N is the number of contexts. This can help us overlap more cache misses
+  between contexts.
+
+* Added a new local controller variant: local controller with addditional 
+  "uncontrolled" ports. These ports get important messages like 
+  setActiveContexts(), but are not used when deciding if we can start
+  each model cycle. Many permutation ports are uncontrolled ports.
+
+* Added a new pipeline stage controller: DEPENDENCE_CONTROLLER, which
+  can track dependences between pipelines that have stages that execute
+  in parallel. The old PIPELINE_CONTROLLER is still best for straight-line
+  pipelines.
+  
+Michael P.

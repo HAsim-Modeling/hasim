@@ -5,6 +5,7 @@
 %attributes hasim hybrid
 
 %sources -t BSV -v PUBLIC  commands-local.bsv
+%sources -t BSV -v PUBLIC  commands-misc-controllers.bsv
 %sources -t BSV -v PUBLIC  commands-service.bsv
 %sources -t H   -v PUBLIC  commands-service.h
 %sources -t CPP -v PRIVATE commands-service.cpp

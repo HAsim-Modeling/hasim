@@ -35,7 +35,7 @@ application_env=Base Hybrid Application Environment
 project_common=Hybrid Project Common Utilities
 
 [Base Hybrid Application Environment/Requires]
-hybrid_application=Nallatech SRAM Debugger Application
+hybrid_application=SRAM Debugger Application
 
 [Hybrid Project Common Utilities]
 File=config/pm/hasim/submodels/common/project-common-default.apm
@@ -96,9 +96,6 @@ nallatech_edge_device=Nallatech Edge Physical Device
 File=modules/bluespec/common/fpgaenv/virtual-platform/channelio/physical-channel/nallatech-edge/nallatech-edge-channel.awb
 Packagehint=platform-acp
 
-[Nallatech SRAM Debugger Application]
-File=modules/bluespec/system/demos/debuggers/platform-debugger.awb
-Packagehint=hasim
 
 [ACP M2 Compute Module With SRAM (Nallatech)]
 File=modules/bluespec/common/fpgaenv/physical-platform/acp-m2c-with-sram/acp-m2c.awb
@@ -156,3 +153,14 @@ MODEL_CLOCK_FREQ=100
 [ACP DDR2 SRAM Device/Params]
 SRAM_DEBUG=1
 SRAM_MAX_OUTSTANDING_READS=32
+
+[RRR Common Module]
+File=modules/bluespec/common/fpgaenv/virtual-platform/rrr/rrr_common/rrr_common.awb
+Packagehint=platforms
+
+[RRR Clients and Servers/Requires]
+rrr_common=RRR Common Module
+
+[SRAM Debugger Application]
+File=modules/bluespec/system/demos/debuggers/platform-debugger.awb
+Packagehint=hasim

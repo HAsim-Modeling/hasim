@@ -22665,3 +22665,17 @@ Directory modules/hasim/util/modellib
   pipelines.
   
 Michael P.
+
+----------
+kfleming    Date: Fri Apr  9 19:17:12 EDT 2010  CSN: CSN-hasim-772
+                  Fri Apr  9 23:17:12 UTC 2010
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          771 
+
+Generalized support for sources. Writing 
+
+%source -t FOO -v PUBLIC foo.foo
+
+Will result in a symlink in the build tree and an environmental variable GIVEN_FOOS in the SCons.

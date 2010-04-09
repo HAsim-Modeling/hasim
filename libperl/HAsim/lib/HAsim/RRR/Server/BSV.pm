@@ -119,6 +119,7 @@ sub print_stub
         print $file "`include \"asim/provides/soft_connections.bsh\"\n";
     }
     print $file "`include \"asim/provides/rrr.bsh\"\n";
+    print $file "`include \"asim/provides/rrr_common.bsh\"\n";
     print $file "`include \"asim/provides/umf.bsh\"\n";
     print $file "\n";
     print $file "`include \"asim/rrr/service_ids.bsh\"\n";

@@ -58,3 +58,7 @@ application_env=Base Hybrid Application Environment
 [Altera Post-synthesis Toolchain]
 File=modules/project/altera_post_synth.awb
 Packagehint=platforms
+
+[FPGA Environment/Params]
+MODEL_CLOCK_DIVIDER=1
+MODEL_CLOCK_MULTIPLIER=1

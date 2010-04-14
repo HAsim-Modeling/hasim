@@ -1,0 +1,70 @@
+
+[Global]
+SaveParameters=0
+Description=Collection of Services Corresponding to Standard Virtual Devices
+File=standard-platform-null-mem
+Version=2.1
+Name=Standard Platform Service (No Memory Service)
+DefaultBenchmark=
+Type=HAsim
+Class=Asim::Model
+DefaultRunOpts=
+
+[Model]
+DefaultAttributes=connected hybrid
+model=Platform Services with No Memory Service
+
+
+
+
+[Common Services]
+File=modules/hasim/util/platform-services/common-services/common-services-standard.awb
+Packagehint=hasim
+
+
+[Front Panel Service]
+File=modules/hasim/util/platform-services/front-panel-service/front-panel-service.awb
+Packagehint=hasim
+
+
+
+[Starter Service]
+File=modules/hasim/util/platform-services/starter-service/starter-service.awb
+Packagehint=hasim
+
+
+[Stats Service]
+File=modules/hasim/util/platform-services/common-services/stats-service/stats-service.awb
+Packagehint=hasim
+
+[Common Services/Requires]
+stats_service=Stats Service
+assertions_service=Assertions Service
+debug_scan_service=Debug Scan Services
+streams_service=Streams Service
+dynamic_parameters_service=Dynamic Parameter Service
+
+[Debug Scan Services]
+File=modules/hasim/util/platform-services/common-services/debug-scan-service/debug-scan-service.awb
+Packagehint=hasim
+
+[Dynamic Parameter Service]
+File=modules/hasim/util/platform-services/common-services/dynamic-parameters-service/dynamic-parameters-service.awb
+Packagehint=hasim
+
+[Assertions Service]
+File=modules/hasim/util/platform-services/common-services/assertions-service/assertions-service.awb
+Packagehint=hasim
+
+[Streams Service]
+File=modules/hasim/util/platform-services/common-services/streams-service/streams-service.awb
+Packagehint=hasim
+
+[Platform Services with No Memory Service]
+File=modules/hasim/util/platform-services/platform-services-null-mem.awb
+Packagehint=hasim
+
+[Platform Services with No Memory Service/Requires]
+common_services=Common Services
+front_panel_service=Front Panel Service
+starter_service=Starter Service

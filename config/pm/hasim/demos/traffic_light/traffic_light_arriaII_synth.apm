@@ -1,0 +1,84 @@
+
+[Global]
+SaveParameters=0
+Description=Traffic Light from Bluespec Tutorial for XUP w. synthesis boundary
+File=traffic_light_arriaII_synth
+Version=2.1
+Name=Traffic Light Model - XUP with synthesis boundary
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
+Type=HAsim
+Class=Asim::Model
+DefaultRunOpts=
+
+[Model]
+DefaultAttributes=function_as_boundary traffic_light demo connected slave hybrid project xup
+model=HW/SW Hybrid Pipeline Build
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-evaluation-arriaII-jtag.apm
+Packagehint=platforms
+
+[Soft Connections Hybrid Application Environment/Requires]
+connected_application=Default Software Connected Application
+platform_services=Platform Services
+soft_connections_lib=Soft Connections Library
+
+[Traffic Light System with Soft Connections]
+File=modules/system/traffic_light_system/traffic_light_system.awb
+Packagehint=hasim
+
+[Default Software Connected Application]
+File=modules/application-env/hybrid/soft-connections/default-sw/connected-application-default-sw.awb
+Packagehint=platforms
+
+[Traffic Light System with Soft Connections/Requires]
+traffic_light_function=Traffic light function w. synthesis boundary
+
+[Default Software Connected Application/Requires]
+hardware_system=Traffic Light System with Soft Connections
+
+[Traffic light function w. synthesis boundary]
+File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function_synth.awb
+Packagehint=hasim
+
+[Soft Connections Hybrid Application Environment]
+File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
+Packagehint=platforms
+
+[Soft Connections Library]
+File=config/pm/hasim/submodels/common/soft-connections-lib.apm
+Packagehint=hasim
+
+[Platform Services]
+File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
+Packagehint=hasim
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
+Packagehint=hasim
+
+[FPGA Build Pipeline]
+File=modules/project/build-pipeline.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Pipeline Build]
+File=modules/project/project-pipeline.awb
+Packagehint=platforms
+
+[Synplify Synthesis Tool]
+File=modules/project/synplify.awb
+Packagehint=platforms
+
+[FPGA Build Pipeline/Requires]
+post_synthesis_tool=Altera Post-synthesis Toolchain
+synthesis_tool=Synplify Synthesis Tool
+
+[HW/SW Hybrid Pipeline Build/Requires]
+fpga_build_pipeline=FPGA Build Pipeline
+project_common=Hybrid Project Common Utilities
+fpgaenv=FPGA Environment
+application_env=Soft Connections Hybrid Application Environment
+
+[Altera Post-synthesis Toolchain]
+File=modules/project/altera_post_synth.awb
+Packagehint=platforms

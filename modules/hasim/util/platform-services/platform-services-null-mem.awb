@@ -1,0 +1,10 @@
+%name Platform Services with No Memory Service
+%desc Translates Virtual Devices into Soft Connections
+
+%provides platform_services
+
+%attributes hasim
+
+%public platform-services-null-mem.bsv
+
+%requires  starter_service front_panel_service common_services

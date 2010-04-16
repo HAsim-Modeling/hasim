@@ -22689,3 +22689,13 @@ Directory tools/scripts/bmark
  run.bmark                 Locally Modified          774 
 
 The default benchmark now no longer has a spurious showfp flag.  
+
+----------
+kfleming    Date: Fri Apr 16 18:12:00 EDT 2010  CSN: CSN-hasim-776
+                  Fri Apr 16 22:12:00 UTC 2010
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_arriaII_synth.apm Locally Modified          775 
+
+Changed arriaII targets to use new librl 

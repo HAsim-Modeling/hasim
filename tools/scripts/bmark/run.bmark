@@ -157,19 +157,19 @@ if ($help || ! $status) {
 
 # Show front panel?
 if ($noshowfp) {
-    $showfp = 'none';
+    $showfp = '';
 }
 elsif (defined($showfp)) {
     # Specified on the run command line
-    $showfp = 'gui' if ($showfp eq '');
+    $showfp = '--showfp=gui' if ($showfp eq '');
 }
 elsif ($config{feeder} eq 'none') {
     # For null feeder default to showing LEDs on stdout
-    $showfp = 'stdout';
+    $showfp = '';
 }
 else {
     # Other models have heartbeats
-    $showfp = 'none';
+    $showfp = '';
 }
 
 my $feedFlags = "${funcpPrefix} $config{feedFlags} ${funcpSuffix}";
@@ -190,7 +190,7 @@ my $cmd;
 
 if ($m5run == 0) {
     # Normal run
-    $cmd = "$config{modelDir}/$config{model} --modeldir=$config{modelDir} --workload=$config{workload} --showfp=${showfp} --funcp=\"${feedFlags}\" $config{genFlags} ${ctxFlag}";
+    $cmd = "$config{modelDir}/$config{model} --modeldir=$config{modelDir} --workload=$config{workload} ${showfp} --funcp=\"${feedFlags}\" $config{genFlags} ${ctxFlag}";
     foreach my $c (@ARGV) {
         $cmd .= " $c";
     }

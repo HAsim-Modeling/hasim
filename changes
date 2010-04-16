@@ -22679,3 +22679,13 @@ Generalized support for sources. Writing
 %source -t FOO -v PUBLIC foo.foo
 
 Will result in a symlink in the build tree and an environmental variable GIVEN_FOOS in the SCons.
+
+----------
+kfleming    Date: Fri Apr 16 01:45:01 EDT 2010  CSN: CSN-hasim-775
+                  Fri Apr 16 05:45:01 UTC 2010
+
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          774 
+
+The default benchmark now no longer has a spurious showfp flag.  

@@ -22699,3 +22699,23 @@ Directory config/pm/hasim/demos/traffic_light
  traffic_light_arriaII_synth.apm Locally Modified          775 
 
 Changed arriaII targets to use new librl 
+
+----------
+kfleming    Date: Sat Apr 17 15:44:37 EDT 2010  CSN: CSN-hasim-777
+                  Sat Apr 17 19:44:37 UTC 2010
+
+
+Directory libperl/HAsim/lib/HAsim
+ Xilinx.pm                 Locally Modified          776 
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Modified          776 
+
+Directory config/pm/hasim/submodels/platform-services
+ standard-platform-null-mem.apm Locally Modified          776 
+
+
+Generalized the concept of download script.  Previously the run bmarks
+had express knowledge of Xilinx.  That knowledge has been pushed into
+the download script itself.  This enables Altera tools to use the same
+script infrastructure that existing Xilinx builds use. 

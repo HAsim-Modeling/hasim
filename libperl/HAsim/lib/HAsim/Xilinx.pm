@@ -460,14 +460,22 @@ sub generate_download_file {
     if (@model_dwn_files) {
         open(DWNFILE, "> $download_file") || return undef;
 
-        print DWNFILE "#!/bin/sh\n";
-        print DWNFILE "impact -batch <<EOF\n";
+        print DWNFILE "#!/usr/bin/perl\n";
+   
+        print DWNFILE "open (BATCH,\">batch.opt\");\n";
 
+        print DWNFILE "print BATCH \"";
         foreach my $model_dwn_file (@model_dwn_files) {
             HAsim::Templates::do_template_replacements($model_dwn_file, *DWNFILE{IO}, $replacements_r);
         }
+        print DWNFILE "\nEOF\";\n";
+        print DWNFILE "close(BATCH);\n";
+        print DWNFILE "open (PIPE, \"impact -batch batch.opt 2>&1 | tee \$ARGV[0] |\");\n";
 
-        print DWNFILE "EOF\n";
+        print DWNFILE "while(<PIPE>) {\n";
+        print DWNFILE "if(\$_ =~ /ERROR:iMPACT/){exit(257);}\n";
+        print DWNFILE "if(\$_ =~ /autodetection failed/){exit(257);}\n";
+        print DWNFILE "}\nexit(0);\n";
 
         close(DWNFILE);
         chmod(0755, $download_file);

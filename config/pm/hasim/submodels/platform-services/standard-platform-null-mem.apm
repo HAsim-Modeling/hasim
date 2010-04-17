@@ -14,24 +14,17 @@ DefaultRunOpts=
 DefaultAttributes=connected hybrid
 model=Platform Services with No Memory Service
 
-
-
-
 [Common Services]
 File=modules/hasim/util/platform-services/common-services/common-services-standard.awb
 Packagehint=hasim
-
 
 [Front Panel Service]
 File=modules/hasim/util/platform-services/front-panel-service/front-panel-service.awb
 Packagehint=hasim
 
-
-
 [Starter Service]
 File=modules/hasim/util/platform-services/starter-service/starter-service.awb
 Packagehint=hasim
-
 
 [Stats Service]
 File=modules/hasim/util/platform-services/common-services/stats-service/stats-service.awb

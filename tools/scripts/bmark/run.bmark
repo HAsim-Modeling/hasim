@@ -315,7 +315,9 @@ if ($mType == $MODEL_FPGA) {
 
         if ($needProgram) {
             Exec("hasim-fpga-ctrl --program", "Failed to enter FPGA programming mode");
-            Exec("(cd $config{modelDir}; ./config/$config{model}.download) 2>&1 | tee FPGA_programming.log | grep -e INFO:iMPACT -e Programmed -e Error", "Failed to program FPGA");
+            my $dir = `pwd`;
+            chomp($dir);
+            Exec("(cd $config{modelDir}; ./config/$config{model}.download ${dir}/FPGA_programming.log)", "Failed to program FPGA");
             if (exists($config{signature})) {
                 Exec("hasim-fpga-ctrl --setsignature=$config{signature}", "Failed to set FPGA bit image signature");
             }
@@ -457,7 +459,7 @@ sub ExecModel($) {
 sub Exec($$) {
     my $cmd = shift;
     my $errmsg = shift;
-
+    
     system($cmd);
     if ($? == -1) {
         ErrorExit("Failed to execute $cmd: $!");

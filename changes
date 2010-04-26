@@ -22719,3 +22719,19 @@ Generalized the concept of download script.  Previously the run bmarks
 had express knowledge of Xilinx.  That knowledge has been pushed into
 the download script itself.  This enables Altera tools to use the same
 script infrastructure that existing Xilinx builds use. 
+
+----------
+kfleming    Date: Mon Apr 26 16:10:08 EDT 2010  CSN: CSN-hasim-779
+                  Mon Apr 26 20:10:08 UTC 2010
+
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_arriaII.apm Locally Added               0 
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest.cpp               Locally Modified          778 
+
+Directory modules/bluespec/common/soft_connections
+ Connections.bsv           Locally Modified          778 
+
+Added RRR test for altera jtag.  Added some typeclass instances to connected application.

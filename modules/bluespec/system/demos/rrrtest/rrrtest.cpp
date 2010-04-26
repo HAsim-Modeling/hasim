@@ -297,4 +297,5 @@ HYBRID_APPLICATION_CLASS::Main()
 
     // done!
     cout << "\n";
+    cout << "Tests Complete!\n";
 }

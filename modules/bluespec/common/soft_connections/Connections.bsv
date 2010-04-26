@@ -1,4 +1,6 @@
 import FIFOF::*;
+import Connectable::*;
+import GetPut::*;
 
 //------------------------- Connections --------------------------//
 //                                                                //
@@ -555,3 +557,29 @@ instance Transmittable#(any_T)
   endfunction
   
 endinstance
+
+
+instance Connectable#(Get#(data_t),Connection_Send#(data_t));
+  module mkConnection#(Get#(data_t) server,
+                       Connection_Send#(data_t) client) (Empty);
+  
+    rule connect;
+      let data <- server.get();
+      client.send(data);
+    endrule
+
+  endmodule
+endinstance
+
+instance Connectable#(Connection_Receive#(data_t),Put#(data_t));
+  module mkConnection#(Connection_Receive#(data_t) server,
+                       Put#(data_t) client) (Empty);
+  
+    rule connect;
+      server.deq();
+      client.put(server.receive());
+    endrule
+
+  endmodule
+endinstance
+

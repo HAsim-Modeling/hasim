@@ -155,7 +155,7 @@ typedef 8 SCRATCHPAD_PORT_ROB_SLOTS;
 
 // The uncached scratchpad will have more references outstanding due to latency.
 // Allow more references to be in flight.
-typedef 256 SCRATCHPAD_UNCACHED_PORT_ROB_SLOTS;
+typedef 128 SCRATCHPAD_UNCACHED_PORT_ROB_SLOTS;
 
 //
 // Scratchpad ports must be unique and non-zero.  Port 0 is the server.

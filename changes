@@ -22735,3 +22735,16 @@ Directory modules/bluespec/common/soft_connections
  Connections.bsv           Locally Modified          778 
 
 Added RRR test for altera jtag.  Added some typeclass instances to connected application.
+
+----------
+mcadler     Date: Wed Apr 28 22:49:34 EDT 2010  CSN: CSN-hasim-780
+                  Thu Apr 29 02:49:34 UTC 2010
+
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ platform-scratchpad-memory.bsv Locally Modified          779 
+
+Reduce the maximum number of outstanding requests permitted per uncached
+scratchpad to save memory space.  I haven't done the work to pick an
+optimal value.  The value will change as we reduce the latency of the
+host memory read pipeline.

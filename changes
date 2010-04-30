@@ -22758,3 +22758,16 @@ Directory config/pm/bluespec/demos/rrrtest
  rrrtest_hybrid_xup.apm    Locally Added               0 
 
 added light-weight uart device
+
+----------
+mcadler     Date: Fri Apr 30 08:46:18 EDT 2010  CSN: CSN-hasim-782
+                  Fri Apr 30 12:46:18 UTC 2010
+
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ platform-scratchpad-memory.bsv Locally Modified          781 
+
+Add a merge buffer for writes and merge sequential read misses for accesses
+to the same uncached scratchpad word.  This reduces traffic on the scratchpad
+ring.  The scratchpad virtual device in the platform already has similar buffers
+for each uncached scratchpad at the line level to reduce I/O to the host.

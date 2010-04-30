@@ -892,6 +892,27 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
     // Write data is sent in a side port to keep the incomingReqQ smaller.
     FIFO#(t_DATA) writeDataQ <- mkBypassFIFO();
 
+    // Most recent writes are collected in a buffer in order to group
+    // streaming writes sharing a container into a single transaction.
+    Reg#(Maybe#(SCRATCHPAD_MEM_ADDRESS)) lastWriteAddr <- mkReg(tagged Invalid);
+    Reg#(SCRATCHPAD_MEM_VALUE) lastWriteVal <- mkRegU();
+    Reg#(SCRATCHPAD_MEM_MASK) lastWriteMask <- mkRegU();
+
+    // The most recent read address is recorded.  Multiple read requests
+    // to the same address are collapsed into a single request from the backing
+    // storage.
+    Reg#(Maybe#(SCRATCHPAD_MEM_ADDRESS)) lastReadAddr <- mkReg(tagged Invalid);
+    Reg#(SCRATCHPAD_MEM_VALUE) lastReadVal <- mkRegU();
+
+    // Record the source of the next read response (either backing storage
+    // or a repeat of the last read's location.
+    FIFO#(Tuple4#(Bool,
+                  Bit#(n_SAFE_READERS_SZ),
+                  t_NATURAL_IDX,
+                  t_REORDER_ID))
+        readRspSourceQ <- mkSizedFIFO(valueOf(SCRATCHPAD_UNCACHED_PORT_ROB_SLOTS));
+
+
     //
     // scratchpadAddr --
     //     Compute scratchpad address given an object address.  Multiple objects
@@ -959,26 +980,68 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
     rule forwardReadReq (initialized && (incomingReqQ.firstPortID() < fromInteger(valueOf(n_READERS))));
         let port = incomingReqQ.firstPortID();
         let addr = incomingReqQ.first();
-        incomingReqQ.deq();
-        
-        // Allocate a slot in the reorder buffer for the read request.  Each
-        // read port gets its own reorder buffer.
-        let rob_idx <- sortResponseQ[port].enq();
 
-        // The clientRefInfo for this request is the concatenation of the
-        // port ID, the offset in the scratchpad value, and the ROB index.
-        t_NATURAL_IDX addr_idx = scratchpadAddrIdx(addr);
-        // Resize just eliminates a proviso...
-        t_REF_INFO ref_info = resize(tuple3(port, addr_idx, rob_idx));
+        let s_addr = scratchpadAddr(addr);
 
-        let req = SCRATCHPAD_READ_REQ { port: my_port,
-                                        addr: scratchpadAddr(addr),
-                                        byteReadMask: scratchpadByteMask(addr),
-                                        clientRefInfo: resize(pack(ref_info)) };
+        if (lastWriteAddr matches tagged Valid .lw_addr &&&
+            s_addr == lw_addr)
+        begin
+            //
+            // Conflict with last write.  Flush the last write first.  The
+            // read will be retried next cycle.
+            //
+            let req = SCRATCHPAD_WRITE_MASKED_REQ { port: my_port,
+                                                    addr: lw_addr,
+                                                    val: lastWriteVal,
+                                                    byteWriteMask: lastWriteMask };
+            link_mem_req.enq(0, tagged SCRATCHPAD_MEM_WRITE_MASKED req);
 
-        link_mem_req.enq(0, tagged SCRATCHPAD_MEM_READ req);
+            lastWriteAddr <= tagged Invalid;
 
-        debugLog.record($format("read port %0d: req addr=0x%x, s_addr=0x%x, s_idx=%0d", port, addr, scratchpadAddr(addr), addr_idx));
+            debugLog.record($format("port %0d: flush write for read conflict s_addr=0x%x", port, s_addr));
+        end
+        else
+        begin
+            //
+            // Do the read...
+            //
+            incomingReqQ.deq();
+
+            // Allocate a slot in the reorder buffer for the read request.  Each
+            // read port gets its own reorder buffer.
+            let rob_idx <- sortResponseQ[port].enq();
+
+            t_NATURAL_IDX addr_idx = scratchpadAddrIdx(addr);
+
+            if (lastReadAddr matches tagged Valid .lr_addr &&&
+                s_addr == lr_addr)
+            begin
+                // Reading the same address as the last request.  Reuse the response.
+                readRspSourceQ.enq(tuple4(True, zeroExtendNP(port), addr_idx, rob_idx));
+
+                debugLog.record($format("read port %0d: reuse addr=0x%x, s_addr=0x%x, s_idx=%0d", port, addr, s_addr, addr_idx));
+            end
+            else
+            begin
+                // The clientRefInfo for this request is the concatenation of the
+                // port ID, the offset in the scratchpad value, and the ROB index.
+                // Resize just eliminates a proviso...
+                t_REF_INFO ref_info = resize(tuple3(port, addr_idx, rob_idx));
+
+                let req = SCRATCHPAD_READ_REQ { port: my_port,
+                                                addr: s_addr,
+                                                byteReadMask: scratchpadByteMask(addr),
+                                                clientRefInfo: resize(pack(ref_info)) };
+
+                link_mem_req.enq(0, tagged SCRATCHPAD_MEM_READ req);
+
+                // Record the source of the read value (scratchpad)
+                lastReadAddr <= tagged Valid s_addr;
+                readRspSourceQ.enq(tuple4(False, ?, ?, ?));
+
+                debugLog.record($format("read port %0d: req addr=0x%x, s_addr=0x%x, s_idx=%0d", port, addr, s_addr, addr_idx));
+            end
+        end
     endrule
 
 
@@ -991,18 +1054,45 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
         writeDataQ.deq();
 
         // Put the data at the right place in the scratchpad word
-        Vector#(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ, t_NATURAL_SZ), Bit#(t_NATURAL_SZ)) d = ?;
-        Bit#(t_NATURAL_SZ) rep = zeroExtendNP(pack(w_data));
-        d = replicate(rep);
+        Vector#(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ, t_NATURAL_SZ), Bit#(t_NATURAL_SZ)) d = unpack(0);
+        d[scratchpadAddrIdx(addr)] = zeroExtendNP(pack(w_data));
 
-        // Resizing is to avoid tautological provisos.  Sizes are actually identical.
+        let s_addr = scratchpadAddr(addr);
         let b_mask = scratchpadByteMask(addr);
-        let req = SCRATCHPAD_WRITE_MASKED_REQ { port: my_port,
-                                                addr: scratchpadAddr(addr),
-                                                val: resize(pack(d)),
-                                                byteWriteMask: b_mask };
 
-        link_mem_req.enq(0, tagged SCRATCHPAD_MEM_WRITE_MASKED req);
+        if (lastWriteAddr matches tagged Valid .lw_addr &&&
+            s_addr == lw_addr)
+        begin
+            // Write to same address as previous write.  Merge writes.
+            // Resizing is to avoid tautological provisos.  Sizes are actually
+            // identical.
+            lastWriteVal <= lastWriteVal | resize(pack(d));
+            lastWriteMask <= unpack(pack(lastWriteMask) | pack(b_mask));
+        end
+        else
+        begin
+            // Write to a new address.  Flush the previous write buffer.
+            if (lastWriteAddr matches tagged Valid .lw_addr)
+            begin
+                let req = SCRATCHPAD_WRITE_MASKED_REQ { port: my_port,
+                                                        addr: lw_addr,
+                                                        val: lastWriteVal,
+                                                        byteWriteMask: lastWriteMask };
+                link_mem_req.enq(0, tagged SCRATCHPAD_MEM_WRITE_MASKED req);
+            end
+
+            // Record the latest write in the buffer.
+            lastWriteAddr <= tagged Valid s_addr;
+            lastWriteVal <= resize(pack(d));
+            lastWriteMask <= b_mask;
+
+            // Need to invalidate the read history due to conflicting address?
+        end
+
+        if (validValue(lastReadAddr) == s_addr)
+        begin
+            lastReadAddr <= tagged Invalid;
+        end
 
         debugLog.record($format("write addr=0x%x, val=0x%x, s_addr=0x%x, s_val=0x%x, s_bmask=%b", addr, w_data, scratchpadAddr(addr), pack(d), pack(b_mask)));
     endrule
@@ -1013,7 +1103,9 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
     //     Push unordered read responses to the reorder buffers.  Responses will
     //     be returned through readRsp() in order.
     //
-    rule receiveResp (True);
+    rule receiveResp (! tpl_1(readRspSourceQ.first()));
+        readRspSourceQ.deq();
+
         let s = link_mem_rsp.first();
         link_mem_rsp.deq();
 
@@ -1030,7 +1122,30 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
         t_DATA v = unpack(truncateNP(d[addr_idx]));
         sortResponseQ[port].setValue(rob_idx, v);
 
+        // Record the value in case it is used by reuseResp
+        lastReadVal <= s.val;
+
         debugLog.record($format("read port %0d: resp val=0x%x, s_idx=%0d", port, v, addr_idx));
+    endrule
+
+
+    //
+    // reuseResp --
+    //     Re-use the same word as the response for the next read request.    
+    //
+    rule reuseResp (tpl_1(readRspSourceQ.first()));
+        match {.reuse, .port, .addr_idx, .rob_idx} = readRspSourceQ.first();
+        readRspSourceQ.deq();
+
+        Vector#(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ, t_NATURAL_SZ), Bit#(t_NATURAL_SZ)) d;
+        // The resize here is required only to avoid a proviso asserting the
+        // tautology that Mul#() is equivalent to TMul#().
+        d = unpack(resize(lastReadVal));
+
+        t_DATA v = unpack(truncateNP(d[addr_idx]));
+        sortResponseQ[port].setValue(rob_idx, v);
+
+        debugLog.record($format("read port %0d: reuse val=0x%x, s_idx=%0d", port, v, addr_idx));
     endrule
 
 

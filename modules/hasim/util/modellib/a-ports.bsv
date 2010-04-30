@@ -240,7 +240,7 @@ module [HASIM_MODULE] mkPortRecv_L1#(String portname, Maybe#(t_MSG) init_value)
   // A temporary set of control info
   interface INSTANCE_CONTROL_IN ctrl;
 
-    method Bool empty() = con.notEmpty;
+    method Bool empty() = !con.notEmpty;
     method Bool balanced() = True;
     method Bool light() = False;
     method Maybe#(INSTANCE_ID#(1)) nextReadyInstance = tagged Valid (?);

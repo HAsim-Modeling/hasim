@@ -242,8 +242,8 @@ module mkDependenceController
     // interface:
         (DEPENDENCE_CONTROLLER#(t_NUM_INSTANCES));
 
-    COUNTER#(TAdd#(1, t_NUM_INSTANCES)) producerCredits <- mkLCounter(fromInteger(valueof(t_NUM_INSTANCES)));
-    COUNTER#(TAdd#(1, t_NUM_INSTANCES)) consumerCredits <- mkLCounter(0);
+    COUNTER#(TLog#(TAdd#(1, t_NUM_INSTANCES))) producerCredits <- mkLCounter(fromInteger(valueof(t_NUM_INSTANCES)));
+    COUNTER#(TLog#(TAdd#(1, t_NUM_INSTANCES))) consumerCredits <- mkLCounter(0);
     
     method Bool   producerCanStart() = producerCredits.value() != 0;
     method Action producerStart()    = producerCredits.down();

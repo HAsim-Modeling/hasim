@@ -22771,3 +22771,23 @@ Add a merge buffer for writes and merge sequential read misses for accesses
 to the same uncached scratchpad word.  This reduces traffic on the scratchpad
 ring.  The scratchpad virtual device in the platform already has similar buffers
 for each uncached scratchpad at the line level to reduce I/O to the host.
+
+----------
+pellauer    Date: Fri Apr 30 18:03:20 EDT 2010  CSN: CSN-hasim-783
+                  Fri Apr 30 22:03:20 UTC 2010
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-misc-controllers.bsv Locally Modified          782 
+
+Directory modules/hasim/util/modellib
+ a-ports.bsv               Locally Modified          782 
+
+
+Bugfixes:
+
+* Controller counter was using SIZE rather than Log#(SIZE).
+
+* Add a missing negation that has been latent for a while.
+
+Michael P.

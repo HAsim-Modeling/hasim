@@ -12,7 +12,7 @@ DefaultRunOpts=
 
 [Model]
 DefaultAttributes=hello unconnected hybrid project xup
-model=HW/SW Hybrid Project Foundation
+model=HW/SW Hybrid Pipeline Build
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-xupv2-serial.apm
@@ -25,22 +25,9 @@ Packagehint=platforms
 [Base Hybrid Application Environment/Requires]
 hybrid_application=Hello World
 
-[HW/SW Hybrid Project Foundation]
-File=modules/project/project-hybrid.awb
-Packagehint=platforms
-
 [Hello World]
 File=modules/bluespec/system/demos/hello/hello.awb
 Packagehint=hasim
-
-
-[HW/SW Hybrid Project Foundation/Params]
-MAKE_ALL_TARGET=bit
-
-[HW/SW Hybrid Project Foundation/Requires]
-fpgaenv=FPGA Environment
-application_env=Base Hybrid Application Environment
-project_common=Hybrid Project Common Utilities
 
 [FPGA Environment/Params]
 MODEL_CLOCK_MULTIPLIER=2
@@ -48,3 +35,56 @@ MODEL_CLOCK_MULTIPLIER=2
 [Hybrid Project Common Utilities]
 File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim
+
+[HW/SW Hybrid Pipeline Build/Requires]
+project_common=Hybrid Project Common Utilities
+fpgaenv=FPGA Environment
+application_env=Base Hybrid Application Environment
+fpga_build_pipeline=FPGA Build Pipeline
+
+[HW/SW Hybrid Pipeline Build]
+File=modules/project/project-pipeline.awb
+Packagehint=platforms
+
+[FPGA Build Pipeline]
+File=modules/project/build-pipeline.awb
+Packagehint=platforms
+
+[Xilinx BITGEN]
+File=modules/project/xilinx/xilinx_bitgen.awb
+Packagehint=platforms
+
+[Synplify Synthesis Tool]
+File=modules/project/synopsis/synplify.awb
+Packagehint=platforms
+
+[Xilinx LOADER]
+File=modules/project/xilinx/xilinx_loader.awb
+Packagehint=platforms
+
+[Xilinx Post-synthesis Toolchain]
+File=modules/project/xilinx/xilinx_post_synth.awb
+Packagehint=platforms
+
+[Xilinx NGD]
+File=modules/project/xilinx/xilinx_ngd.awb
+Packagehint=platforms
+
+[Xilinx PAR]
+File=modules/project/xilinx/xilinx_par.awb
+Packagehint=platforms
+
+[FPGA Build Pipeline/Requires]
+post_synthesis_tool=Xilinx Post-synthesis Toolchain
+synthesis_tool=Synplify Synthesis Tool
+
+[Xilinx Post-synthesis Toolchain/Requires]
+xilinx_ngd=Xilinx NGD
+xilinx_bitgen=Xilinx BITGEN
+xilinx_par=Xilinx PAR
+xilinx_map=Xilinx MAP
+xilinx_loader=Xilinx LOADER
+
+[Xilinx MAP]
+File=modules/project/xilinx/xilinx_map.awb
+Packagehint=platforms

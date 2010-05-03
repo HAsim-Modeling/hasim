@@ -22791,3 +22791,13 @@ Bugfixes:
 * Add a missing negation that has been latent for a while.
 
 Michael P.
+
+----------
+kfleming    Date: Mon May  3 12:10:17 EDT 2010  CSN: CSN-hasim-784
+                  Mon May  3 16:10:17 UTC 2010
+
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_xup2.apm     Locally Modified          783 
+
+Changed hello world to use small physical serial phy, rather than the old microblaze phy.

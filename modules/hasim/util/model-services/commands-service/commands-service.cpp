@@ -407,7 +407,7 @@ HW_THREAD_HEARTBEAT_CLASS::Heartbeat(
     //
     // Is model broken?
     //
-    if (instr_commits == 0 && instrCommits > 0)
+    if (hwThreadId == 0 && instr_commits == 0 && instrCommits > 0)
     {
         ASIMERROR("No instructions committed for entire heartbeat interval (" <<
                   model_cycles << " cycles)");

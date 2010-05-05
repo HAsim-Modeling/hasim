@@ -22801,3 +22801,19 @@ Directory config/pm/bluespec/demos/hello
  hello_hybrid_xup2.apm     Locally Modified          783 
 
 Changed hello world to use small physical serial phy, rather than the old microblaze phy.
+
+----------
+pellauer    Date: Wed May  5 10:24:50 EDT 2010  CSN: CSN-hasim-785
+                  Wed May  5 14:24:50 UTC 2010
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          784 
+
+
+* Only detect a model deadlock based on Context 0 not committing any 
+  instructions. Extremely unfair models like the crossbar are starving
+  low-numbered contexts as we scale up.
+  
+Michael P.
+

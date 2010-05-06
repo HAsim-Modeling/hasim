@@ -22817,3 +22817,27 @@ Directory modules/hasim/util/model-services/commands-service
   
 Michael P.
 
+
+----------
+pellauer    Date: Thu May  6 18:22:14 EDT 2010  CSN: CSN-hasim-786
+                  Thu May  6 22:22:14 UTC 2010
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          785 
+ commands-misc-controllers.bsv Locally Modified          785 
+
+Directory modules/hasim/util/modellib
+ permutation-ports.bsv     Locally Added               0 
+ stall-ports.bsv           Locally Modified          785 
+ a-ports.bsv               Locally Modified          785 
+ hasim-modellib.awb        Locally Modified          785 
+
+
+* Clean up "permutation" ports and refactor them into their own file.
+
+* Certain "Split" ports now need to know the number of maxRunningInstances.
+  Local controllers have been adjusted accordingly. Existing "send" ports 
+  just ignore this method.
+  
+Michael P.

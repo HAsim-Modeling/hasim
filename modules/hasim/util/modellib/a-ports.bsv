@@ -32,6 +32,7 @@ interface INSTANCE_CONTROL_OUT#(numeric type t_NUM_INSTANCES);
   method Bool full();
   method Bool balanced();
   method Bool heavy();
+  method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
 
 endinterface
 
@@ -97,6 +98,7 @@ module [HASIM_MODULE] mkPortSend#(String portname)
         method Bool full() = !con.notFull;
         method Bool balanced() = True;
         method Bool heavy() = False;
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction;
 
     endinterface
 
@@ -281,6 +283,7 @@ module [HASIM_MODULE] mkPortSend_Multiplexed#(String portname)
         method Bool full() = !con.notFull();
         method Bool balanced() = True;
         method Bool heavy() = False;
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction; // Handled on the receive side only.
 
     endinterface
 

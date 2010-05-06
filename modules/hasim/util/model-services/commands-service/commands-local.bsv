@@ -298,6 +298,13 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
 
                 end
 
+                for (Integer x = 0; x < valueof(t_NUM_OUTPORTS); x = x + 1)
+                begin
+                
+                    outctrls[x].setMaxRunningInstance(maxActiveInstance.value());
+
+                end
+
                 state <= LC_Running;
 
             end

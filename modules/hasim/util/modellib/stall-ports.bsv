@@ -148,6 +148,7 @@ module [HASIM_MODULE] mkPortStallSend#(String s)
             method Bool full() = enqToQueue.ctrl.full(); // This is if the output port is full.
             method Bool balanced() = True;
             method Bool heavy() = False;
+            method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction;
         
         endinterface
 
@@ -251,6 +252,7 @@ module [HASIM_MODULE] mkPortStallRecv#(String s)
             method Bool full() = !deqFromConsumer.notFull();
             method Bool balanced() = True;
             method Bool heavy() = False;
+            method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid) = noAction;
         
         endinterface
 
@@ -441,6 +443,7 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
             method Bool full() = !deqFromConsumer.notFull();
             method Bool balanced() = True;
             method Bool heavy() = False;
+            method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction; // Handled by the inctrl, above.
         
         endinterface
 

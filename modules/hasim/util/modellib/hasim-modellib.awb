@@ -15,7 +15,7 @@
 #
 # %attributes hasim
 #
-# %public a-ports.bsv stall-ports.bsv credit-ports.bsv multiplexed.bsv multiplexed-memories.bsv stats-multiplexed.bsh stats-multiplexed.bsv debug-file-multiplexed.bsv
+# %public a-ports.bsv stall-ports.bsv credit-ports.bsv permutation-ports.bsv multiplexed.bsv multiplexed-memories.bsv stats-multiplexed.bsh stats-multiplexed.bsv debug-file-multiplexed.bsv
 #
 #
 #

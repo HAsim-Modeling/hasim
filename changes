@@ -22841,3 +22841,26 @@ Directory modules/hasim/util/modellib
   just ignore this method.
   
 Michael P.
+
+----------
+pellauer    Date: Fri May  7 18:49:31 EDT 2010  CSN: CSN-hasim-787
+                  Fri May  7 22:49:31 UTC 2010
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-misc-controllers.bsv Locally Modified          786 
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ platform-scratchpad-memory.bsv Locally Modified          786 
+
+
+* Changing scracthpad direct-mapped caches to used hashed addressing by default.
+  This should result in many fewer misses for those multiplexing scratchpads.
+
+* Setting default buffering in mkStageController to be NUM_INSTANCES + 1, 
+  up from 2. It turns out that FIFOs of Size 2 are nearly as bad as rule 
+  conflicts in terms of effects on performance. 
+  This issue will need some further investigation.
+  
+Michael P.
+

@@ -579,7 +579,7 @@ module [CONNECTED_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, 
                        SCRATCHPAD_MEM_VALUE,
                        t_REF_INFO) cache <- mkCacheDirectMapped(sourceData,
                                                                 num_cache_entries,
-                                                                False,
+                                                                True,
                                                                 debugLog);
 
     // Merge FIFOF combines read and write requests in temporal order,

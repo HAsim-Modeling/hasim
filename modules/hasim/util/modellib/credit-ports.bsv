@@ -21,10 +21,7 @@ endinterface
 
 module [HASIM_MODULE] mkPortCreditSend#(String str)
     (PORT_CREDIT_SEND#(dataT, bandwidth, logCredit))
-    provisos(Transmittable#(dataT),
-             Transmittable#(Bit#(logCredit)),
-             Transmittable#(Bit#(logBandwidth)),
-             Add#(TLog#(TAdd#(1, bandwidth)), 0, logBandwidth),
+    provisos(Add#(TLog#(TAdd#(1, bandwidth)), 0, logBandwidth),
              Bits#(dataT, dataSz));
 
     Connection_Send#(dataT)   dataConnection <- mkConnection_Send(str + ":data");
@@ -107,10 +104,7 @@ endmodule
 
 module [HASIM_MODULE] mkPortCreditReceive#(String str)
     (PORT_CREDIT_RECEIVE#(dataT, bandwidth, logCredit))
-    provisos(Transmittable#(dataT),
-             Transmittable#(Bit#(logCredit)),
-             Transmittable#(Bit#(logBandwidth)),
-             Add#(TLog#(TAdd#(1, bandwidth)), 0, logBandwidth),
+    provisos(Add#(TLog#(TAdd#(1, bandwidth)), 0, logBandwidth),
              Bits#(dataT, dataSz));
 
     Connection_Receive#(dataT) dataFifo <- mkConnection_Receive(str + ":data");
@@ -160,9 +154,7 @@ endinterface
 
 module [HASIM_MODULE] mkPortNoStallReceive#(String str)
     (PORT_NO_STALL_RECEIVE#(dataT, bandwidth))
-    provisos(Transmittable#(dataT),
-             Transmittable#(Bit#(logBandwidth)),
-             Add#(TLog#(TAdd#(1, bandwidth)), 0, logBandwidth),
+    provisos(Add#(TLog#(TAdd#(1, bandwidth)), 0, logBandwidth),
              Add#(logBandwidth, 0, logCredit),
              Bits#(dataT, dataSz));
 
@@ -204,10 +196,7 @@ endinterface
 
 module [HASIM_MODULE] mkPortFifoReceive#(String str, Bool bufferedCredit, Integer credit)
     (PORT_FIFO_RECEIVE#(dataT, bandwidth, logCredit))
-    provisos(Transmittable#(dataT),
-             Transmittable#(Bit#(logCredit)),
-             Transmittable#(Bit#(logBandwidth)),
-             Add#(TLog#(TAdd#(1, bandwidth)), 0, logBandwidth),
+    provisos(Add#(TLog#(TAdd#(1, bandwidth)), 0, logBandwidth),
              Bits#(dataT, dataSz));
 
     PORT_CREDIT_RECEIVE#(dataT, bandwidth, logCredit) conn <- mkPortCreditReceive(str);

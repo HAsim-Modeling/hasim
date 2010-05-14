@@ -13,8 +13,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6),
-         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
 
     Connection_Receive#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) con <- mkConnection_Receive(portname);
     
@@ -154,8 +153,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLast#(String portname
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6),
-         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
          
     function Bool enqToSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid);
         return cur_enq == 0;
@@ -184,8 +182,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirst#(String portname
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6),
-         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
          
     function Bool enqToSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid);
         return cur_enq == max_iid;
@@ -213,8 +210,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLastEveryN#(String po
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6),
-         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
          
     function Bool enqToSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid);
         return cur_enq == 0;
@@ -243,8 +239,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirstEveryN#(String po
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6),
-         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
          
     function Bool enqToSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid);
         return cur_enq == period - 1;
@@ -273,8 +268,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderFirstNToLastN#(String portna
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6),
-         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
          
     function Bool enqToSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid);
         return cur_enq < period;
@@ -303,8 +297,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderLastNToFirstN#(String portna
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6),
-         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
 
          
     function Bool enqToSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid);
@@ -334,8 +327,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_Join#(PORT_RECV_MULTIPLEXED#(t_NUM_
         (PORT_RECV_MULTIPLEXED#(TAdd#(t_NUM_INSTANCES, 1), t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, TLog#(TAdd#(t_NUM_INSTANCES, 1))),
-         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+         Add#(TLog#(t_NUM_INSTANCES), t_TMP, TLog#(TAdd#(t_NUM_INSTANCES, 1))));
 
 
     COUNTER#(TLog#(TAdd#(t_NUM_INSTANCES, 1))) cur <- mkLCounter(0);
@@ -395,8 +387,7 @@ module [HASIM_MODULE] mkPortSend_Multiplexed_Split#(PORT_SEND_MULTIPLEXED#(t_NUM
         (PORT_SEND_MULTIPLEXED#(TAdd#(t_NUM_INSTANCES, 1), t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, TLog#(TAdd#(t_NUM_INSTANCES, 1))),
-         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+         Add#(TLog#(t_NUM_INSTANCES), t_TMP, TLog#(TAdd#(t_NUM_INSTANCES, 1))));
 
 
     COUNTER#(TLog#(TAdd#(t_NUM_INSTANCES, 1))) cur <- mkLCounter(0);

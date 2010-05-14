@@ -186,9 +186,9 @@ endfunction
 
 //Connections can be hooked up using the standard mkConnection function
 
-instance Connectable#(CON_Out, CON_In);
+instance Connectable#(PHYSICAL_CON_Out#(t_MSG), PHYSICAL_CON_In#(t_MSG));
 
-  function m#(Empty) mkConnection(CON_Out cout, CON_In cin)
+  function m#(Empty) mkConnection(PHYSICAL_CON_Out#(t_MSG) cout, PHYSICAL_CON_In#(t_MSG) cin)
     provisos (IsModule#(m, c));
   
     return connectOutToIn(cout, cin);
@@ -197,9 +197,9 @@ instance Connectable#(CON_Out, CON_In);
 
 endinstance
 
-instance Connectable#(CON_In, CON_Out);
+instance Connectable#(PHYSICAL_CON_In#(t_MSG), PHYSICAL_CON_Out#(t_MSG));
 
-  function m#(Empty) mkConnection(CON_In cin, CON_Out cout)
+  function m#(Empty) mkConnection(PHYSICAL_CON_In#(t_MSG) cin, PHYSICAL_CON_Out#(t_MSG) cout)
     provisos (IsModule#(m, c));
   
     return connectOutToIn(cout, cin);
@@ -208,7 +208,7 @@ instance Connectable#(CON_In, CON_Out);
 
 endinstance
 
-module connectOutToIn#(CON_Out cout, CON_In cin) ();
+module connectOutToIn#(PHYSICAL_CON_Out#(t_MSG) cout, PHYSICAL_CON_In#(t_MSG) cin) ();
 
   rule trySend (True);
     //Try to move the data

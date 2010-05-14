@@ -200,12 +200,12 @@ module mkPassThrough#(Integer chainNum)
                 (CON_Chain);
 
   messageM(strConcat(strConcat("Making Pass-Through Chain [", integerToString(chainNum)), "]"));
-  FIFO#(CON_Data) passQ <- mkFIFO();
+  FIFO#(CON_CHAIN_Data) passQ <- mkFIFO();
   PulseWire en_w <- mkPulseWire();
 
-  interface CON_In incoming;
+  interface CON_CHAIN_In incoming;
 
-    method Action get_TRY(CON_Data x);
+    method Action get_TRY(CON_CHAIN_Data x);
       passQ.enq(x);
       en_w.send();
     endmethod
@@ -216,9 +216,9 @@ module mkPassThrough#(Integer chainNum)
 
   endinterface
 
-  interface CON_Out outgoing;
+  interface CON_CHAIN_Out outgoing;
 
-    method CON_Data try() = passQ.first();
+    method CON_CHAIN_Data try() = passQ.first();
 
     method Action success = passQ.deq();
 

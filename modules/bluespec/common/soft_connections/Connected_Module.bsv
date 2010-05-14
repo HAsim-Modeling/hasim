@@ -9,31 +9,41 @@ import ModuleCollect::*;
 //----------------------------------------------------------------//
 
 //The data type that is sent in connections
-typedef Bit#(`CON_CWIDTH) CON_Data;
+typedef `CON_CWIDTH PHYSICAL_CONNECTION_SIZE;
+typedef Bit#(PHYSICAL_CONNECTION_SIZE) CON_Data;
+
+typedef `CON_CHAIN_CWIDTH CON_CHAIN_DATA_SZ;
+typedef Bit#(CON_CHAIN_DATA_SZ) CON_CHAIN_Data;
 
 typedef `CON_NUMCHAINS CON_NumChains;
 
 //An incoming connection
-interface CON_In;
+interface PHYSICAL_CON_In#(parameter type t_MSG);
 
-  method Action get_TRY(CON_Data x);
+  method Action get_TRY(t_MSG x);
   method Bool   get_SUCCESS();
 
 endinterface
 
 //An outgoing connection
-interface CON_Out;
+interface PHYSICAL_CON_Out#(parameter type t_MSG);
 
-  method CON_Data try();
+  method t_MSG try();
   method Action success();
 
 endinterface
 
+typedef PHYSICAL_CON_In#(CON_Data) CON_In;
+typedef PHYSICAL_CON_Out#(CON_Data) CON_Out;
+
+typedef PHYSICAL_CON_In#(CON_CHAIN_Data) CON_CHAIN_In;
+typedef PHYSICAL_CON_Out#(CON_CHAIN_Data) CON_CHAIN_Out;
+
 //A scanchain has incoming and outgoing connections
 interface CON_Chain;
 
-  interface CON_In incoming;
-  interface CON_Out outgoing;
+  interface CON_CHAIN_In incoming;
+  interface CON_CHAIN_Out outgoing;
 
 endinterface
 

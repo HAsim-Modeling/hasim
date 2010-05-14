@@ -87,8 +87,7 @@ module [HASIM_MODULE] mkPortSend#(String portname)
     //interface:
         (PORT_SEND#(t_MSG))
     provisos
-        (Bits#(t_MSG, t_MSG_SZ),
-         Transmittable#(Maybe#(t_MSG)));
+        (Bits#(t_MSG, t_MSG_SZ));
         
     Connection_Send#(Maybe#(t_MSG)) con <- mkConnection_Send(portname);
 
@@ -114,8 +113,7 @@ module [HASIM_MODULE] mkPortRecv#(String portname, Integer latency)
   //interface:
               (PORT_RECV#(t_MSG))
       provisos
-                (Bits#(t_MSG, t_MSG_SZ),
-                 Transmittable#(Maybe#(t_MSG)));
+                (Bits#(t_MSG, t_MSG_SZ));
   
   let p <- case (latency)
              0: mkPortRecv_L0(portname);
@@ -131,8 +129,7 @@ module [HASIM_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Int
     //interface:
                 (PORT_RECV#(t_MSG))
       provisos
-                (Bits#(t_MSG, t_MSG_SZ),
-                 Transmittable#(Maybe#(t_MSG)));
+                (Bits#(t_MSG, t_MSG_SZ));
 
   Connection_Receive#(Maybe#(t_MSG)) con <- mkConnection_Receive(portname);
    
@@ -199,8 +196,7 @@ module [HASIM_MODULE] mkPortRecv_L0#(String portname)
     //interface:
                 (PORT_RECV#(t_MSG))
       provisos
-                (Bits#(t_MSG, t_MSG_SZ),
-                 Transmittable#(Maybe#(t_MSG)));
+                (Bits#(t_MSG, t_MSG_SZ));
 
   Connection_Receive#(Maybe#(t_MSG)) con <- mkConnection_Receive(portname);
      
@@ -232,8 +228,7 @@ module [HASIM_MODULE] mkPortRecv_L1#(String portname, Maybe#(t_MSG) init_value)
     //interface:
                 (PORT_RECV#(t_MSG))
       provisos
-                (Bits#(t_MSG, t_MSG_SZ),
-                 Transmittable#(Maybe#(t_MSG)));
+                (Bits#(t_MSG, t_MSG_SZ));
 
   Connection_Receive#(Maybe#(t_MSG)) con <- mkConnection_Receive(portname);
   Reg#(Bool) initializing <- mkReg(True);
@@ -273,8 +268,7 @@ module [HASIM_MODULE] mkPortSend_Multiplexed#(String portname)
     //interface:
         (PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
-        (Bits#(t_MSG, t_MSG_SZ),
-         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+        (Bits#(t_MSG, t_MSG_SZ));
 
     Connection_Send#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) con <- mkConnection_Send(portname);
 
@@ -300,8 +294,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed#(String portname, Integer latency)
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
         provisos
                   (Bits#(t_MSG, t_MSG_SZ),
-                   Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6),
-                   Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+                   Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
 
     let p <- case (latency)
                //0: mkPortRecvL0_Multiplexed(portname);
@@ -318,8 +311,7 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6),
-         Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
 
     Connection_Receive#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) con <- mkConnection_Receive(portname);
 
@@ -396,8 +388,7 @@ module [HASIM_MODULE] mkPortRecvL0_Multiplexed#(String portname)
     //interface:
                 (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
       provisos
-                (Bits#(t_MSG, t_MSG_SZ),
-                 Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+                (Bits#(t_MSG, t_MSG_SZ));
 
     Connection_Receive#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) con <- mkConnection_Receive(portname);
      
@@ -440,8 +431,7 @@ module [Connected_Module] mkPortRecvDependent#(String portname)
     // interface:
                 (PORT_RECV#(t_MSG))
       provisos
-                (Bits#(t_MSG, t_MSG_SZ),
-                 Transmittable#(Maybe#(t_MSG)));
+                (Bits#(t_MSG, t_MSG_SZ));
     
     let m <- mkPortRecv_L0(portname);
     return m;
@@ -452,96 +442,9 @@ module [Connected_Module] mkPortRecvDependent_Multiplexed#(String portname)
     // interface:
                 (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
       provisos
-                (Bits#(t_MSG, t_MSG_SZ),
-                 Transmittable#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))));
+                (Bits#(t_MSG, t_MSG_SZ));
     
     let m <- mkPortRecvL0_Multiplexed(portname);
     return m;
     
 endmodule
-/*
-module [Connected_Module] mkConnectionSendUG#(String portname)
-    // interface:
-                (Connection_Send#(t_MSG))
-    provisos
-            (Bits#(t_MSG, t_MSG_SZ),
-	     Transmittable#(t_MSG));
-
-  //This queue is here for correctness until the system is confirmed to work
-  //Later it could be removed or turned into a BypassFIFO to reduce latency.
-  
-  FIFOF#(t_MSG) q <- mkUGFIFOF();
-  
-  //Bind the interface to a name for convenience
-  let outg = (interface CON_Out;
-  
-	       method CON_Data try() if (q.notEmpty) = marshall(q.first());
-	       
-	       method Action success = q.deq();
-
-	     endinterface);
-
-  //Figure out my type for typechecking
-  t_MSG msg = ?;
-  String mytype = printType(typeOf(msg));
-
-  //Add our interface to the ModuleCollect collection
-  let info = CSend_Info {cname: portname, ctype: mytype, optional: False, conn: outg};
-  addToCollection(tagged LSend info);
-
-  method Bool notFull();
-    return q.notFull();
-  endmethod
-  
-  method Action send(t_MSG data);
-    q.enq(data);
-  endmethod
-
-endmodule
-
-module [Connected_Module] mkConnectionRecvUG#(String portname)
-    //interface:
-                (Connection_Receive#(t_MSG))
-    provisos
-            (Bits#(t_MSG, t_MSG_SZ),
-	     Transmittable#(t_MSG));
-
-  PulseWire      en_w    <- mkPulseWire();
-  RWire#(t_MSG)  data_w  <- mkRWire();
-  
-  //Bind the interface to a name for convenience
-  let inc = (interface CON_In;
-  
-	       method Action get_TRY(CON_Data x);
-	         data_w.wset(unmarshall(x));
-	       endmethod
-	       
-	       method Bool get_SUCCESS();
-	         return en_w;
-	       endmethod
-
-	     endinterface);
-
-  //Figure out my type for typechecking
-  t_MSG msg = ?;
-  String mytype = printType(typeOf(msg));
-
-  //Add our interface to the ModuleCollect collection
-  let info = CRecv_Info {cname: portname, ctype: mytype, optional: False, conn: inc};
-  addToCollection(tagged LRecv info);
-  
-  method t_MSG receive();
-    return validValue(data_w.wget());
-  endmethod
-
-  method Bool notEmpty();
-    return isValid(data_w.wget());
-  endmethod
-
-  method Action deq();
-    en_w.send();
-  endmethod
-
-endmodule
-
-*/

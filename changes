@@ -22864,3 +22864,46 @@ Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-se
   
 Michael P.
 
+
+----------
+pellauer    Date: Fri May 14 12:22:27 EDT 2010  CSN: CSN-hasim-788
+                  Fri May 14 16:22:27 UTC 2010
+
+
+Directory config/pm/hasim/demos/context_test
+ alpha_inorder_ctx_exe.apm Locally Modified          787 
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Modified          787 
+
+Directory modules/hasim/util/modellib
+ permutation-ports.bsv     Locally Modified          787 
+ credit-ports.bsv          Locally Modified          787 
+ stall-ports.bsv           Locally Modified          787 
+ a-ports.bsv               Locally Modified          787 
+
+Directory modules/bluespec/common/soft_connections
+ Connected_Module.bsv      Locally Modified          787 
+
+Directory modules/bluespec/common/soft_connections/alg/typed
+ ConnectionHelper.bsv      Locally Modified          787 
+ ConnectionAlg.bsv         Locally Modified          787 
+
+Directory modules/bluespec/common/soft_connections
+ soft_connections.awb      Locally Modified          787 
+ token-ring.bsv            Locally Modified          787 
+ Connections.bsv           Locally Modified          787 
+
+
+* Soft Connections now use "chunking" to break connections that are larger than 
+  the AWB CON_CWIDTH parameter into multiple FIFOS of width CON_CWIDTH.
+
+* The default CON_CWIDTH value is 64. This is a global parameter so it can
+  be overridden in the soft_connections_lib.
+
+* The obsolete Transmittable typeclass is removed. This means there is no limit
+  on the width of soft connections! (The only limitation is the number of 
+  connections that can be exposed at a synthesis boundary, which is also a 
+  parameter.)
+  
+Michael P.

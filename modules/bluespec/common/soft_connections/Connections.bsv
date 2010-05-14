@@ -1,4 +1,5 @@
 import FIFOF::*;
+import Vector::*;
 import Connectable::*;
 import GetPut::*;
 
@@ -82,45 +83,16 @@ endinterface
 
 //Connection Implementations
 
-//Change Connection FIFO to BypassFIFO if desired:
-function m#(FIFOF#(a)) mkCON_FIFOF() provisos (Bits#(a, a_SZ), IsModule#(m, m2)) = mkFIFOF();
-//function m#(FIFO#(a)) mkCON_FIFO() provisos (Bits#(a, a_SZ), IsModule#(m, m2)) = mkBypassFIFO();
-
 
 module [Connected_Module] mkConnection_Send#(String portname)
     //interface:
                 (Connection_Send#(msg_T))
     provisos
-            (Bits#(msg_T, msg_SZ),
-	     Transmittable#(msg_T));
+            (Bits#(msg_T, msg_SZ));
 
-  //This queue is here for correctness until the system is confirmed to work
-  //Later it could be removed or turned into a BypassFIFO to reduce latency.
-  
-  FIFOF#(msg_T) q <- mkCON_FIFOF();
-  
-  //Bind the interface to a name for convenience
-  let outg = (interface CON_Out;
-  
-	       method CON_Data try() = marshall(q.first());
-	       
-	       method Action success = q.deq();
-
-	     endinterface);
-
-  //Figure out my type for typechecking
-  msg_T msg = ?;
-  String mytype = printType(typeOf(msg));
-
-  //Add our interface to the ModuleCollect collection
-  let info = CSend_Info {cname: portname, ctype: mytype, optional: False, conn: outg};
-  addToCollection(tagged LSend info);
-
-  method Action send(msg_T data);
-    q.enq(data);
-  endmethod
-  
-  method Bool notFull() = q.notFull();
+    let c <- mkConnection_SendDispatch(portname, False);
+    
+    return c;
 
 endmodule
 
@@ -128,29 +100,65 @@ module [Connected_Module] mkConnectionSendOptional#(String portname)
     //interface:
                 (Connection_Send#(msg_T))
     provisos
+            (Bits#(msg_T, msg_SZ));
+
+    let c <- mkConnection_SendDispatch(portname, True);
+    
+    return c;
+
+endmodule
+
+module [Connected_Module] mkConnection_SendDispatch#(String portname, Bool optional)
+    //interface:
+                (Connection_Send#(msg_T))
+    provisos
             (Bits#(msg_T, msg_SZ),
-	     Transmittable#(msg_T));
+	     Div#(msg_SZ, PHYSICAL_CONNECTION_SIZE, t_NUM_PHYSICAL_CONNS));
+
+
+    //Figure out my type for typechecking
+    msg_T msg = ?;
+    String conntype = printType(typeOf(msg));
+    
+    let c <- case (valueof(t_NUM_PHYSICAL_CONNS))
+                0: mkConnectionSendPhysical(portname, optional, conntype);
+                1: mkConnectionSendPhysical(portname, optional, conntype);
+                default: mkConnectionSendVector(portname, optional, conntype);
+            endcase;
+
+  method Action send(msg_T data) if (c.notFull);
+    c.send(data);
+  endmethod
+  
+  method Bool notFull() = c.notFull();
+
+endmodule
+
+module [Connected_Module] mkConnectionSendPhysical#(String portname, Bool optional, String mytype)
+    //interface:
+                (Connection_Send#(msg_T))
+    provisos
+            (Bits#(msg_T, msg_SZ));
 
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-  FIFOF#(msg_T) q <- mkCON_FIFOF();
+  FIFOF#(msg_T) q <- mkUGSizedFIFOF(`CON_BUFFERING);
   
   //Bind the interface to a name for convenience
   let outg = (interface CON_Out;
   
-	       method CON_Data try() = marshall(q.first());
+	       method CON_Data try() if (q.notEmpty());
+                 Bit#(msg_SZ) tmp = pack(q.first());
+                 return zeroExtendNP(tmp);
+               endmethod
 	       
 	       method Action success = q.deq();
 
 	     endinterface);
 
-  //Figure out my type for typechecking
-  msg_T msg = ?;
-  String mytype = printType(typeOf(msg));
-
   //Add our interface to the ModuleCollect collection
-  let info = CSend_Info {cname: portname, ctype: mytype, optional: True, conn: outg};
+  let info = CSend_Info {cname: portname, ctype: mytype, optional: optional, conn: outg};
   addToCollection(tagged LSend info);
 
   method Action send(msg_T data);
@@ -160,85 +168,55 @@ module [Connected_Module] mkConnectionSendOptional#(String portname)
   method Bool notFull() = q.notFull();
 
 endmodule
-/*
-module [Connected_Module] mkConnection_Send_Bypassed#(String portname)
+
+module [Connected_Module] mkConnectionSendVector#(String portname, Bool optional, String origtype)
     //interface:
                 (Connection_Send#(msg_T))
     provisos
             (Bits#(msg_T, msg_SZ),
-	     Transmittable#(msg_T));
+	     Div#(msg_SZ, PHYSICAL_CONNECTION_SIZE, t_NUM_PHYSICAL_CONNS));
 
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
-  FIFO#(msg_T) q <- mkBypassFIFO();
+  Vector#(t_NUM_PHYSICAL_CONNS, Connection_Send#(Bit#(PHYSICAL_CONNECTION_SIZE))) v = newVector();
   
-  //Bind the interface to a name for convenience
-  let outg = (interface CON_Out;
+  for (Integer x = 0; x < valueof(t_NUM_PHYSICAL_CONNS); x = x + 1)
+  begin
+    v[x] <- mkConnectionSendPhysical(portname + "_chunk_" + integerToString(x), optional, origtype);
+  end
   
-	       method CON_Data try() = marshall(q.first());
-	       
-	       method Action success = q.deq();
-
-	     endinterface);
-
-  //Figure out my type for typechecking
-  msg_T msg = ?;
-  String mytype = printType(typeOf(msg));
-
-  //Add our interface to the ModuleCollect collection
-  let info = CSend_Info {cname: portname, ctype: mytype, conn: outg};
-  addToCollection(tagged LSend info);
-
   method Action send(msg_T data);
-    q.enq(data);
+  
+      Bit#(msg_SZ) p = pack(data);
+      Bit#(TMul#(t_NUM_PHYSICAL_CONNS, PHYSICAL_CONNECTION_SIZE)) p2 = zeroExtendNP(p);
+      Vector#(t_NUM_PHYSICAL_CONNS, Bit#(PHYSICAL_CONNECTION_SIZE)) tmp = unpack(p2);
+  
+      for (Integer x = 0; x < valueof(t_NUM_PHYSICAL_CONNS); x = x + 1)
+      begin
+        v[x].send(tmp[x]);
+      end
+
+  endmethod
+  
+  method Bool notFull();
+  
+    return v[0].notFull();
+  
   endmethod
 
 endmodule
-*/
+
 
 module [Connected_Module] mkConnection_Receive#(String portname)
     //interface:
                 (Connection_Receive#(msg_T))
     provisos
-            (Bits#(msg_T, msg_SZ),
-	     Transmittable#(msg_T));
+            (Bits#(msg_T, msg_SZ));
 
-  PulseWire      en_w    <- mkPulseWire();
-  RWire#(msg_T)  data_w  <- mkRWire();
-  
-  //Bind the interface to a name for convenience
-  let inc = (interface CON_In;
-  
-	       method Action get_TRY(CON_Data x);
-	         data_w.wset(unmarshall(x));
-	       endmethod
-	       
-	       method Bool get_SUCCESS();
-	         return en_w;
-	       endmethod
-
-	     endinterface);
-
-  //Figure out my type for typechecking
-  msg_T msg = ?;
-  String mytype = printType(typeOf(msg));
-
-  //Add our interface to the ModuleCollect collection
-  let info = CRecv_Info {cname: portname, ctype: mytype, optional: False, conn: inc};
-  addToCollection(tagged LRecv info);
-  
-  method msg_T receive() if (data_w.wget() matches tagged Valid .val);
-    return val;
-  endmethod
-
-  method Bool notEmpty();
-    return isValid(data_w.wget());
-  endmethod
-
-  method Action deq() if (data_w.wget() matches tagged Valid .val);
-    en_w.send();
-  endmethod
+    let c <- mkConnection_ReceiveDispatch(portname, False);
+    
+    return c;
 
 endmodule
 
@@ -246,8 +224,50 @@ module [Connected_Module] mkConnectionRecvOptional#(String portname)
     //interface:
                 (Connection_Receive#(msg_T))
     provisos
+            (Bits#(msg_T, msg_SZ));
+
+    let c <- mkConnection_ReceiveDispatch(portname, True);
+    
+    return c;
+
+endmodule
+
+module [Connected_Module] mkConnection_ReceiveDispatch#(String portname, Bool optional)
+    //interface:
+                (Connection_Receive#(msg_T))
+    provisos
             (Bits#(msg_T, msg_SZ),
-	     Transmittable#(msg_T));
+	     Div#(msg_SZ, PHYSICAL_CONNECTION_SIZE, t_NUM_PHYSICAL_CONNS));
+
+  //Figure out my type for typechecking
+  msg_T msg = ?;
+  String conntype = printType(typeOf(msg));
+
+  let c <- case (valueof(t_NUM_PHYSICAL_CONNS))
+            0: mkConnectionRecvPhysical(portname, optional, conntype);
+            1: mkConnectionRecvPhysical(portname, optional, conntype);
+            default: mkConnectionRecvVector(portname, optional, conntype);
+           endcase;
+
+  method msg_T receive() if (c.notEmpty());
+    return c.receive();
+  endmethod
+
+  method Bool notEmpty();
+    return c.notEmpty();
+  endmethod
+
+  method Action deq() if (c.notEmpty());
+    c.deq();
+  endmethod
+
+endmodule
+
+module [Connected_Module] mkConnectionRecvPhysical#(String portname, Bool optional, String mytype)
+    //interface:
+                (Connection_Receive#(msg_T))
+    provisos
+            (Bits#(msg_T, msg_SZ));
 
   PulseWire      en_w    <- mkPulseWire();
   RWire#(msg_T)  data_w  <- mkRWire();
@@ -256,7 +276,8 @@ module [Connected_Module] mkConnectionRecvOptional#(String portname)
   let inc = (interface CON_In;
   
 	       method Action get_TRY(CON_Data x);
-	         data_w.wset(unmarshall(x));
+                 Bit#(msg_SZ) tmp = truncateNP(x);
+	         data_w.wset(unpack(tmp));
 	       endmethod
 	       
 	       method Bool get_SUCCESS();
@@ -265,24 +286,65 @@ module [Connected_Module] mkConnectionRecvOptional#(String portname)
 
 	     endinterface);
 
-  //Figure out my type for typechecking
-  msg_T msg = ?;
-  String mytype = printType(typeOf(msg));
 
   //Add our interface to the ModuleCollect collection
-  let info = CRecv_Info {cname: portname, ctype: mytype, optional: True, conn: inc};
+  let info = CRecv_Info {cname: portname, ctype: mytype, optional: optional, conn: inc};
   addToCollection(tagged LRecv info);
   
-  method msg_T receive() if (data_w.wget() matches tagged Valid .val);
-    return val;
+  method msg_T receive();
+    return validValue(data_w.wget());
   endmethod
 
   method Bool notEmpty();
     return isValid(data_w.wget());
   endmethod
 
-  method Action deq() if (data_w.wget() matches tagged Valid .val);
+  method Action deq();
     en_w.send();
+  endmethod
+
+endmodule
+
+module [Connected_Module] mkConnectionRecvVector#(String portname, Bool optional, String origtype)
+    //interface:
+                (Connection_Receive#(msg_T))
+    provisos
+            (Bits#(msg_T, msg_SZ),
+	     Div#(msg_SZ, PHYSICAL_CONNECTION_SIZE, t_NUM_PHYSICAL_CONNS));
+
+  Vector#(t_NUM_PHYSICAL_CONNS, Connection_Receive#(Bit#(PHYSICAL_CONNECTION_SIZE))) v = newVector();
+  
+  for (Integer x = 0; x < valueof(t_NUM_PHYSICAL_CONNS); x = x + 1)
+  begin
+    v[x] <- mkConnectionRecvPhysical(portname + "_chunk_" + integerToString(x), optional, origtype);
+  end
+  
+  method msg_T receive();
+
+      Vector#(t_NUM_PHYSICAL_CONNS, Bit#(PHYSICAL_CONNECTION_SIZE)) tmp = newVector();
+  
+      for (Integer x = 0; x < valueof(t_NUM_PHYSICAL_CONNS); x = x + 1)
+      begin
+        tmp[x] = v[x].receive();
+      end
+
+      Bit#(TMul#(t_NUM_PHYSICAL_CONNS, PHYSICAL_CONNECTION_SIZE)) p = pack(tmp);
+      Bit#(msg_SZ) p2 = truncateNP(p);
+      return unpack(p2);
+
+  endmethod
+
+  method Bool notEmpty();
+    return v[0].notEmpty();
+  endmethod
+
+  method Action deq();
+
+      for (Integer x = 0; x < valueof(t_NUM_PHYSICAL_CONNS); x = x + 1)
+      begin
+        v[x].deq();
+      end
+
   endmethod
 
 endmodule
@@ -312,9 +374,7 @@ module [Connected_Module] mkConnection_Client#(String portname)
                 (Connection_Client#(req_T, resp_T))
     provisos
             (Bits#(req_T,  req_SZ),
-	     Bits#(resp_T, resp_SZ),
-	     Transmittable#(req_T),
-	     Transmittable#(resp_T));
+	     Bits#(resp_T, resp_SZ));
 
   let sendname = genConnectionClientSendName(portname);
   let recvname = genConnectionClientReceiveName(portname);
@@ -349,9 +409,7 @@ module [Connected_Module] mkConnectionClientOptional#(String portname)
                 (Connection_Client#(req_T, resp_T))
     provisos
             (Bits#(req_T,  req_SZ),
-	     Bits#(resp_T, resp_SZ),
-	     Transmittable#(req_T),
-	     Transmittable#(resp_T));
+	     Bits#(resp_T, resp_SZ));
 
   let sendname = genConnectionClientSendName(portname);
   let recvname = genConnectionClientReceiveName(portname);
@@ -386,9 +444,7 @@ module [Connected_Module] mkConnection_Server#(String portname)
                 (Connection_Server#(req_T, resp_T))
     provisos
             (Bits#(req_T,  req_SZ),
-	     Bits#(resp_T, resp_SZ),
-	     Transmittable#(req_T),
-	     Transmittable#(resp_T));
+	     Bits#(resp_T, resp_SZ));
 
   let sendname = genConnectionClientReceiveName(portname);
   let recvname = genConnectionClientSendName(portname);
@@ -423,9 +479,7 @@ module [Connected_Module] mkConnectionServerOptional#(String portname)
                 (Connection_Server#(req_T, resp_T))
     provisos
             (Bits#(req_T,  req_SZ),
-	     Bits#(resp_T, resp_SZ),
-	     Transmittable#(req_T),
-	     Transmittable#(resp_T));
+	     Bits#(resp_T, resp_SZ));
 
   let sendname = genConnectionClientReceiveName(portname);
   let recvname = genConnectionClientSendName(portname);
@@ -462,24 +516,33 @@ endmodule
 //
 // ========================================================================
 
+
 module [Connected_Module] mkConnection_Chain#(Integer chain_num)
     //interface:
 		(Connection_Chain#(msg_T))
     provisos
 	    (Bits#(msg_T, msg_SZ),
-	   Transmittable#(msg_T));
+             Add#(msg_SZ, t_TMP, CON_CHAIN_DATA_SZ));
 
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
 
   RWire#(msg_T)  data_w  <- mkRWire();
   PulseWire      en_w    <- mkPulseWire();
-  FIFOF#(msg_T)  q       <- mkCON_FIFOF();
+  FIFOF#(msg_T)  q       <- mkUGSizedFIFOF(`CON_BUFFERING);
 
-  let inc = (interface CON_In;
+  if (valueof(msg_SZ) > valueof(CON_CHAIN_DATA_SZ))
+    error("Connection Chain Error: Message size " + 
+    integerToString(valueof(msg_SZ)) + 
+    " does not fit into chain width of " +
+    integerToString(valueof(CON_CHAIN_DATA_SZ)) +
+    ". Please increase chain width."); 
+
+  let inc = (interface CON_CHAIN_In;
   
-	       method Action get_TRY(CON_Data x);
-	         data_w.wset(unmarshall(x));
+	       method Action get_TRY(CON_CHAIN_Data x);
+                 Bit#(msg_SZ) tmp = truncate(x);
+	         data_w.wset(unpack(tmp));
 	       endmethod
 	       
 	       method Bool get_SUCCESS();
@@ -488,9 +551,12 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
 
 	     endinterface);
 
-  let outg = (interface CON_Out;
+  let outg = (interface CON_CHAIN_Out;
   
-	       method CON_Data try() = marshall(q.first());
+	       method CON_CHAIN_Data try() if (q.notEmpty());
+                 Bit#(msg_SZ) tmp = pack(q.first());
+                 return zeroExtend(tmp);
+               endmethod
 	       
 	       method Action success = q.deq();
 
@@ -511,7 +577,7 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
   addToCollection(tagged LChain info);
 
 
-  method Action sendToNext(msg_T data);
+  method Action sendToNext(msg_T data) if (q.notFull());
     q.enq(data);
   endmethod
 
@@ -532,32 +598,6 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
 endmodule
 
 //Helper functions
-
-
-typeclass Transmittable#(type any_T);
-
-  function CON_Data marshall(any_T data);
-  
-  function any_T unmarshall(CON_Data data);
-  
-endtypeclass
-
-instance Transmittable#(any_T)
-      provisos
-              (Bits#(any_T, any_SZ),
-               Bits#(CON_Data, con_SZ),
-	       Add#(any_SZ, k_TMP, con_SZ));
-
-  function CON_Data marshall(any_T data);
-    return zeroExtend(pack(data));
-  endfunction
-  
-  function any_T unmarshall(CON_Data data);
-    return unpack(truncate(data));
-  endfunction
-  
-endinstance
-
 
 instance Connectable#(Get#(data_t),Connection_Send#(data_t));
   module mkConnection#(Get#(data_t) server,

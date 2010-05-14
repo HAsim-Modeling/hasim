@@ -72,7 +72,7 @@ module [Connected_Module] mkConnection_TokenRingNode#(Integer chainNum,
 
               // Message fits in a ring?
               Bits#(t_RING_MSG, t_RING_MSG_SZ),
-              Add#(t_RING_MSG_SZ, m__, `CON_CWIDTH));
+              Add#(t_RING_MSG_SZ, m__, CON_CHAIN_DATA_SZ));
 
     // Allocate a node on the physical chain
     Connection_Chain#(t_RING_MSG) chain <- mkConnection_Chain(chainNum);

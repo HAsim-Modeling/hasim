@@ -135,4 +135,4 @@ File=modules/hasim/timing-models/memory/base-types/memory-base-types.awb
 Packagehint=hasim-models
 
 [Soft Connections Library/Params]
-CON_CWIDTH=350
+CON_CWIDTH=64

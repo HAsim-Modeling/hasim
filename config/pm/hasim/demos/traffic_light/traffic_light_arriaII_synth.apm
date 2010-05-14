@@ -20,7 +20,7 @@ Packagehint=platforms
 
 [Soft Connections Hybrid Application Environment/Requires]
 connected_application=Default Software Connected Application
-platform_services=Platform Services
+platform_services=Platform Services with No Memory Service
 soft_connections_lib=Soft Connections Library
 
 [Traffic Light System with Soft Connections]
@@ -49,10 +49,6 @@ Packagehint=platforms
 File=config/pm/hasim/submodels/common/soft-connections-lib.apm
 Packagehint=hasim
 
-[Platform Services]
-File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
-Packagehint=hasim
-
 [Hybrid Project Common Utilities]
 File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim
@@ -65,10 +61,6 @@ Packagehint=platforms
 File=modules/project/project-pipeline.awb
 Packagehint=platforms
 
-[Synplify Synthesis Tool]
-File=modules/project/synplify.awb
-Packagehint=platforms
-
 [FPGA Build Pipeline/Requires]
 post_synthesis_tool=Altera Post-synthesis Toolchain
 synthesis_tool=Synplify Synthesis Tool
@@ -79,10 +71,19 @@ project_common=Hybrid Project Common Utilities
 fpgaenv=FPGA Environment
 application_env=Soft Connections Hybrid Application Environment
 
-[Altera Post-synthesis Toolchain]
-File=modules/project/altera_post_synth.awb
-Packagehint=platforms
-
 [FPGA Environment/Params]
 MODEL_CLOCK_DIVIDER=5
 MODEL_CLOCK_MULTIPLIER=2
+
+
+[Platform Services with No Memory Service]
+File=config/pm/hasim/submodels/platform-services/standard-platform-null-mem.apm
+Packagehint=hasim
+
+[Synplify Synthesis Tool]
+File=modules/project/synopsis/synplify.awb
+Packagehint=platforms
+
+[Altera Post-synthesis Toolchain]
+File=modules/project/altera/altera_post_synth.awb
+Packagehint=platforms

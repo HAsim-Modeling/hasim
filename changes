@@ -22923,3 +22923,25 @@ Directory modules/hasim/util/modellib
 * Multiplexed LUTRAM no longer has ambiguous scheduling relationships.
 
 Michael P.
+
+----------
+mcadler     Date: Wed May 19 11:23:15 EDT 2010  CSN: CSN-hasim-791
+                  Wed May 19 15:23:15 UTC 2010
+
+
+Directory libperl/HAsim/lib/HAsim
+ Util.pm                   Locally Modified          790 
+
+Directory modules/hasim/util/model-services/events-service
+ events-service.cpp        Locally Modified          790 
+ events-local.bsv          Locally Modified          790 
+ events-service.rrr        Locally Modified          790 
+ events-service.h          Locally Modified          790 
+ events-service.bsv        Locally Modified          790 
+
+- Make events easier to parse with a script.
+- Events code had only 8 bit counters, causing incorrect ordering when events
+  are recorded for more than 256 cycles.  Raised counters to 32 bits.  For
+  now the full counters are in hardware.  It would be easy to amend the protocol
+  to keep them mostly in software using spilling similar to statistics.
+- Allow more compiler iteration steps.

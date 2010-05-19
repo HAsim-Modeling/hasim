@@ -30,7 +30,7 @@ module [CONNECTED_MODULE] mkEventsService
     // ***** State Elements *****  
     
     // Communication link to the rest of the Events
-    Connection_Chain#(EventData) chain <- mkConnection_Chain(`RINGID_EVENTS);
+    Connection_Chain#(EVENT_DATA) chain <- mkConnection_Chain(`RINGID_EVENTS);
     
     // instantiate stubs
     ClientStub_EVENTS clientStub <- mkClientStub_EVENTS();
@@ -40,7 +40,7 @@ module [CONNECTED_MODULE] mkEventsService
     Reg#(Bool)   enabled <- mkReg(False);
   
     // Internal tick counts
-    Vector#(TExp#(`EVENTS_DICT_BITS), COUNTER#(8)) ticks <- replicateM(mkLCounter(0));
+    Vector#(TExp#(`EVENTS_DICT_BITS), COUNTER#(32)) ticks <- replicateM(mkLCounter(0));
 
     // ***** Rules *****
     

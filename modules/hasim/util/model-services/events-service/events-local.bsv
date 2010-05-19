@@ -22,6 +22,7 @@
 // BSV library imports
 
 import FIFO::*;
+import SpecialFIFOs::*;
 
 // Project imports
 
@@ -45,15 +46,15 @@ import FIFO::*;
 `define HASIM_EVENTS_ENABLED False
 `endif
 
-typedef Bit#(`HASIM_EVENTS_SIZE) EventParam;
+typedef Bit#(`HASIM_EVENTS_SIZE) EVENT_PARAM;
 
-interface EventRecorder;
-  method Action recordEvent(Maybe#(EventParam) mdata);
+interface EVENT_RECORDER;
+  method Action recordEvent(Maybe#(EVENT_PARAM) mdata);
 endinterface
 
 module [CONNECTED_MODULE] mkEventRecorder#(EVENTS_DICT_TYPE eventID)
     //interface:
-                (EventRecorder);
+                (EVENT_RECORDER);
 
     let m <- (`HASIM_EVENTS_ENABLED) ? mkEventRecorder_Enabled(eventID) : mkEventRecorder_Disabled(eventID);
     return m;
@@ -64,117 +65,118 @@ endmodule
 
 typedef union tagged
 {
-  EVENTS_DICT_TYPE EVT_NoEvent;
-  struct {EVENTS_DICT_TYPE event_id; EventParam event_data;} EVT_Event;
+    EVENTS_DICT_TYPE EVT_NoEvent;
+    struct {EVENTS_DICT_TYPE event_id; EVENT_PARAM event_data;} EVT_Event;
 
-  void       EVT_Disable;
-  void       EVT_Enable;
+    void       EVT_Disable;
+    void       EVT_Enable;
 }
-  EventData deriving (Eq, Bits);
+EVENT_DATA
+    deriving (Eq, Bits);
 
 
 
 module [CONNECTED_MODULE] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
     //interface:
-                (EventRecorder);
+    (EVENT_RECORDER);
 
-  Connection_Chain#(EventData)  chain  <- mkConnection_Chain(`RINGID_EVENTS);
+    Connection_Chain#(EVENT_DATA) chain  <- mkConnection_Chain(`RINGID_EVENTS);
   
-  Reg#(Bool)       enabled <- mkReg(True);
+    Reg#(Bool) enabled <- mkReg(True);
+    FIFO#(Maybe#(EVENT_PARAM)) newEventQ <- mkBypassFIFO();
     
-  rule process (True);
-  
-    EventData evt <- chain.recvFromPrev();
+    rule process (True);
+        EVENT_DATA evt <- chain.recvFromPrev();
+        case (evt) matches 
+            tagged EVT_Disable:     enabled   <= False;
+            tagged EVT_Enable:      enabled   <= True;
+            default:                noAction;
+        endcase
 
-    case (evt) matches 
-      tagged EVT_Disable:     enabled   <= False;
-      tagged EVT_Enable:      enabled   <= True;
-      default:                noAction;
-    endcase
+        chain.sendToNext(evt);
+    endrule
 
-    chain.sendToNext(evt);
-  endrule
-  
-  method Action recordEvent(Maybe#(EventParam) mdata);
-  
-    if (enabled)
-      case (mdata) matches
-        tagged Invalid:
+    (* descending_urgency = "process, newEvent" *)
+    rule newEvent (True);
+        let evt = newEventQ.first();
+        newEventQ.deq();
+
+        case (evt) matches
+            tagged Invalid:
+            begin
+                chain.sendToNext(tagged EVT_NoEvent eventID);
+            end
+
+            tagged Valid .data:
+            begin
+                chain.sendToNext(tagged EVT_Event {event_id: eventID, event_data: data});
+            end
+        endcase
+    endrule
+
+    method Action recordEvent(Maybe#(EVENT_PARAM) mdata);
+        if (enabled)
         begin
-          chain.sendToNext(tagged EVT_NoEvent eventID);
+            newEventQ.enq(mdata);
         end
-        tagged Valid .data:
-        begin
-          chain.sendToNext(tagged EVT_Event {event_id: eventID, event_data: data});
-        end
-      endcase
-  
-  endmethod
-
+    endmethod
 endmodule
+
 
 module [CONNECTED_MODULE] mkEventRecorder_Disabled#(EVENTS_DICT_TYPE eventID)
     //interface:
-                (EventRecorder);
+    (EVENT_RECORDER);
 
-  Bit#(8) eventNum = zeroExtend(pack(eventID));
+    Bit#(8) eventNum = zeroExtend(pack(eventID));
 
-  Connection_Chain#(EventData) chain <- mkConnection_Chain(`RINGID_EVENTS);
-  Reg#(EVENTS_DICT_TYPE)         stall <- mkReg(minBound);
+    Connection_Chain#(EVENT_DATA) chain <- mkConnection_Chain(`RINGID_EVENTS);
+    Reg#(EVENTS_DICT_TYPE) stall <- mkReg(minBound);
  
-  rule insert (stall == eventID);
-  
-    chain.sendToNext(tagged EVT_NoEvent eventID);
-    stall <= unpack(pack(stall) + 1);
-  
-  endrule
-  
-  rule process (stall != eventID);
-  
-    EventData evt <- chain.recvFromPrev();
-    chain.sendToNext(evt);
+    rule insert (stall == eventID);
+        chain.sendToNext(tagged EVT_NoEvent eventID);
+        stall <= unpack(pack(stall) + 1);
+    endrule
 
-    stall <= unpack(pack(stall) + 1);
+    rule process (stall != eventID);
+        EVENT_DATA evt <- chain.recvFromPrev();
+        chain.sendToNext(evt);
 
-  endrule
+        stall <= unpack(pack(stall) + 1);
+    endrule
 
-  method Action recordEvent(Maybe#(EventParam) mdata);
-    noAction;
-  endmethod
-
+    method Action recordEvent(Maybe#(EVENT_PARAM) mdata);
+        noAction;
+    endmethod
 endmodule
 
+
 interface EVENT_RECORDER_MULTIPLEXED#(type ni);
-  method Action recordEvent(INSTANCE_ID#(ni) iid, Maybe#(EventParam) mdata);
+    method Action recordEvent(INSTANCE_ID#(ni) iid, Maybe#(EVENT_PARAM) mdata);
 endinterface
+
 
 module [CONNECTED_MODULE] mkEventRecorder_Multiplexed#(EVENTS_DICT_TYPE eventID)
     //interface:
-                (EVENT_RECORDER_MULTIPLEXED#(ni));
+    (EVENT_RECORDER_MULTIPLEXED#(ni));
 
-  Bit#(8) eventNum = zeroExtend(pack(eventID));
+    Bit#(8) eventNum = zeroExtend(pack(eventID));
 
-  Connection_Chain#(EventData) chain <- mkConnection_Chain(`RINGID_EVENTS);
-  Reg#(EVENTS_DICT_TYPE)       stall <- mkReg(minBound);
+    Connection_Chain#(EVENT_DATA) chain <- mkConnection_Chain(`RINGID_EVENTS);
+    Reg#(EVENTS_DICT_TYPE) stall <- mkReg(minBound);
  
-  rule insert (stall == eventID);
-  
-    chain.sendToNext(tagged EVT_NoEvent eventID);
-    stall <= unpack(pack(stall) + 1);
-  
-  endrule
-  
-  rule process (stall != eventID);
-  
-    EventData evt <- chain.recvFromPrev();
-    chain.sendToNext(evt);
+    rule insert (stall == eventID);
+        chain.sendToNext(tagged EVT_NoEvent eventID);
+        stall <= unpack(pack(stall) + 1);
+    endrule
 
-    stall <= unpack(pack(stall) + 1);
+    rule process (stall != eventID);
+        EVENT_DATA evt <- chain.recvFromPrev();
+        chain.sendToNext(evt);
 
-  endrule
+        stall <= unpack(pack(stall) + 1);
+    endrule
 
-  method Action recordEvent(INSTANCE_ID#(ni) iid, Maybe#(EventParam) mdata);
-    noAction;
-  endmethod
-
+    method Action recordEvent(INSTANCE_ID#(ni) iid, Maybe#(EVENT_PARAM) mdata);
+        noAction;
+    endmethod
 endmodule

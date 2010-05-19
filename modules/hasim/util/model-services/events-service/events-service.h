@@ -19,7 +19,7 @@
 #ifndef _EVENTS_CONTROLLER_
 #define _EVENTS_CONTROLLER_
 
-#include <stdio.h>
+#include <iostream>
 
 #include "platforms-module.h"
 #include "asim/provides/rrr.h"
@@ -42,7 +42,7 @@ class EVENTS_SERVER_CLASS: public RRR_SERVER_CLASS,
     RRR_SERVER_STUB serverStub;
 
     // File for output until we use DRAL.
-    FILE* eventFile;
+    ofstream eventFile;
     
   public:
     EVENTS_SERVER_CLASS();

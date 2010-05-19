@@ -42,9 +42,16 @@ EVENTS_SERVER_CLASS EVENTS_SERVER_CLASS::instance;
 
 // constructor
 EVENTS_SERVER_CLASS::EVENTS_SERVER_CLASS()
+#ifdef HASIM_EVENTS_ENABLED
+    : eventFile("hasim_events.out")
+#endif
 {
     // instantiate stubs
     serverStub = new EVENTS_SERVER_STUB_CLASS(this);
+
+#ifdef HASIM_EVENTS_ENABLED
+    eventFile.fill('0');
+#endif
 }
 
 // destructor
@@ -60,13 +67,6 @@ EVENTS_SERVER_CLASS::Init(
 {
     // set parent pointer
     parent = p;
-    
-    // Open the output file
-#ifdef HASIM_EVENTS_ENABLED
-    eventFile = fopen("hasim_events.out", "w+");
-#else
-    eventFile = NULL;
-#endif    
 }
 
 // uninit: we have to write this explicitly
@@ -83,11 +83,6 @@ EVENTS_SERVER_CLASS::Uninit()
 void
 EVENTS_SERVER_CLASS::Cleanup()
 {
-    if (eventFile != NULL)
-    {
-        fclose(eventFile);
-    }
-
     // kill stubs
     delete serverStub;
 }
@@ -109,7 +104,8 @@ EVENTS_SERVER_CLASS::LogEvent(
     UINT32 model_cc)
 {
     // lookup event name from dictionary
-    const char *event_name = EVENTS_DICT::Str(event_id);
+    const char *event_name = EVENTS_DICT::Name(event_id);
+    const char *event_msg  = EVENTS_DICT::Str(event_id);
     if (event_name == NULL)
     {
         cerr << "streams: invalid event_id: " << event_id << endl;
@@ -117,11 +113,17 @@ EVENTS_SERVER_CLASS::LogEvent(
     }
 
 #ifndef HASIM_EVENTS_ENABLED
-    ASIMERROR("Event id " << event_id << " (" << event_name << ") received but events are disabled");
+    ASIMERROR("Event " << event_name << " (" << event_msg << ") received but events are disabled");
 #endif
-    ASSERTX(eventFile != NULL);
 
     // write to file
     // eventually this will be replaced with calls to DRAL.
-    fprintf(eventFile, "[%010u]: %s: %u\n", model_cc, event_name, event_data);
+    eventFile.width(10);
+    eventFile << model_cc;
+
+    eventFile.width(0);
+    eventFile << "," << event_name
+              << ",\"" << event_msg << "\""
+              << "," << event_data
+              << endl;
 }

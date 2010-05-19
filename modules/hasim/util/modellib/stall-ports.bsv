@@ -261,9 +261,9 @@ endmodule
 
 module [HASIM_MODULE] mkPortStallSend_Multiplexed#(String s)
                        (PORT_STALL_SEND_MULTIPLEXED#(ni, a))
-            provisos (Bits#(a, sa));
+            provisos (Bits#(a, sa), Add#(TLog#(ni), t_TMP, 6));
 
-    PORT_RECV_MULTIPLEXED#(ni, VOID) creditFromQueue <- mkPortRecvL0_Multiplexed(s + "__cred");
+    PORT_RECV_MULTIPLEXED#(ni, VOID) creditFromQueue <- mkPortRecvBuffered_Multiplexed(s + "__cred", 0);
 
     PORT_SEND_MULTIPLEXED#(ni, a) enqToQueue <- mkPortSend_Multiplexed(s + "__portDataEnq");
 
@@ -306,11 +306,11 @@ STALLP_STATE deriving (Eq, Bits);
 
 module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
         (PORT_STALL_RECV_MULTIPLEXED#(ni, a))
-            provisos (Bits#(a, sa));
+            provisos (Bits#(a, sa), Add#(TLog#(ni), t_TMP, 6));
 
     PORT_SEND_MULTIPLEXED#(ni, VOID) creditToProducer <- mkPortSend_Multiplexed(s + "__cred");
 
-    PORT_RECV_MULTIPLEXED#(ni, a) enqFromProducer <- mkPortRecvL0_Multiplexed(s + "__portDataEnq");
+    PORT_RECV_MULTIPLEXED#(ni, a) enqFromProducer <- mkPortRecvBuffered_Multiplexed(s + "__portDataEnq", 0);
 
     // We use these like ports which are self-contained.
     let buffering = valueof(ni) + 1;
@@ -339,7 +339,7 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
     
     endrule
 
-    rule stage1_creditAndFirst (True);
+    rule stage1_creditAndFirst (state == STALLP_running);
 
         let iid = stage1Ctrl.first();
         stage1Ctrl.deq();
@@ -427,6 +427,7 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
 
                 maxRunningInstance <= iid;
                 state <= STALLP_initializing;
+                enqFromProducer.ctrl.setMaxRunningInstance(iid);
 
             endmethod
         

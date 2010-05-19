@@ -301,7 +301,13 @@ module [m] mkMultiplexedLUTRAMMultiWrite#(t_DATA initval)
 
     // The vector of LUTRAMs.
     Vector#(t_NUM_INSTANCES, LUTRAM#(t_ADDR, t_DATA)) ramvec <- replicateM(mkLUTRAM(initval));
-    
+
+    Bool ramsInitialized = True;    
+    for (Integer x = 0; x < valueof(t_NUM_INSTANCES); x = x + 1)
+    begin
+        ramsInitialized = ramsInitialized && ramvec[x].initialized();
+    end
+
     // A group of wires to record all writes across all writeports.
     // Using wires ensure writes will be conflict-free.
     Vector#(t_NUM_PORTS, Vector#(t_NUM_INSTANCES, RWire#(Tuple2#(t_ADDR, t_DATA)))) writeWires = newVector();
@@ -315,7 +321,7 @@ module [m] mkMultiplexedLUTRAMMultiWrite#(t_DATA initval)
     // although really it's probably an error if two of the index are valid at the same time
     // across write ports.
 
-    rule updateRAMs (True);
+    rule updateRAMs (ramsInitialized);
         
         for (Integer x = 0; x < valueof(t_NUM_INSTANCES); x = x + 1)
         begin

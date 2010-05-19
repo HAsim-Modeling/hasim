@@ -22907,3 +22907,19 @@ Directory modules/bluespec/common/soft_connections
   parameter.)
   
 Michael P.
+
+----------
+pellauer    Date: Wed May 19 00:25:16 EDT 2010  CSN: CSN-hasim-790
+                  Wed May 19 04:25:16 UTC 2010
+
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          789 
+ stall-ports.bsv           Locally Modified          789 
+
+
+* Stall ports still had two FIFOs that were not scaling buffering properly.
+
+* Multiplexed LUTRAM no longer has ambiguous scheduling relationships.
+
+Michael P.

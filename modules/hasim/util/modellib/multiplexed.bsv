@@ -266,6 +266,7 @@ module mkMultiplexedLUTRAMInitializedWith#(function t_DATA getInitVal(t_INDEX i)
         return interface LUTRAM#(t_INDEX, t_DATA);
                     method t_DATA sub(t_INDEX a) = mergedData.sub(tuple2(iid, a));
                     method Action upd(t_INDEX a, t_DATA d) = mergedData.upd(tuple2(iid, a), d);
+                    method initialized = mergedData.initialized;
                endinterface;
     endmethod
 
@@ -354,6 +355,7 @@ module [m] mkMultiplexedLUTRAMMultiWrite#(t_DATA initval)
         return interface LUTRAM#(t_ADDR, t_DATA);
                    method t_DATA sub(t_ADDR a) = ramvec[iid].sub(a);
                    method Action upd(t_ADDR a, t_DATA d) = writeWires[portnum][iid].wset(tuple2(a, d));
+                   method initialized = ramvec[iid].initialized;
                endinterface;
 
     endmethod

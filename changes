@@ -22945,3 +22945,16 @@ Directory modules/hasim/util/model-services/events-service
   now the full counters are in hardware.  It would be easy to amend the protocol
   to keep them mostly in software using spilling similar to statistics.
 - Allow more compiler iteration steps.
+
+----------
+mcadler     Date: Thu May 20 07:41:02 EDT 2010  CSN: CSN-hasim-792
+                  Thu May 20 11:41:02 UTC 2010
+
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          791 
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          791 
+
+Add the "initialized" method to LUTRAM wrappers.

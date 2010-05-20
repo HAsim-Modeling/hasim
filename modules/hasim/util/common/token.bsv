@@ -445,6 +445,7 @@ module mkLiveTokenLUTRAM#(data_t init)
         return mem.sub(liveTokenIdx(addr));
     endmethod
 
+    method initialized = mem.initialized;
 endmodule
 
 
@@ -463,6 +464,7 @@ module mkLiveTokenLUTRAMU
         return mem.sub(liveTokenIdx(addr));
     endmethod
 
+    method initialized = mem.initialized;
 endmodule
 
 

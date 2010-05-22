@@ -22958,3 +22958,17 @@ Directory modules/hasim/util/common
  token.bsv                 Locally Modified          791 
 
 Add the "initialized" method to LUTRAM wrappers.
+
+----------
+pellauer    Date: Sat May 22 13:56:19 EDT 2010  CSN: CSN-hasim-793
+                  Sat May 22 17:56:19 UTC 2010
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-doStores.bsv Locally Modified          792 
+
+
+* Add pathQ to doStores pipeline to remove a latent bug where responses could
+  be matched up with incorrect requests.
+  
+Michael P.

@@ -58,6 +58,16 @@ typedef union tagged
 STATE_STORES2
     deriving (Eq, Bits);
 
+typedef enum
+{
+    PATH_FINISH,
+    PATH_RMW_LOAD,
+    PATH_SPAN_LOAD1,
+    PATH_SPAN_LOAD2,
+    PATH_SPAN_STORE1
+}
+PATH_STORE deriving (Eq, Bits);
+
 
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     REGMGR_GLOBAL_DATA glob,
@@ -103,8 +113,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // ====================================================================
 
     FIFO#(FUNCP_REQ_DO_STORES) storesSQ <- mkFIFO();
-    FIFO#(Tuple2#(TOKEN, ISA_MEMOP_TYPE)) stores1Q <- mkFIFO();
-    FIFO#(TOKEN) stores3Q <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN, ISA_MEMOP_TYPE)) stores1Q <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
+    FIFO#(TOKEN) stores3Q <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
+    FIFO#(PATH_STORE) pathQ <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
 
     Reg#(STATE_STORES2) stateStores2 <- mkReg(STORES2_NORMAL);
 
@@ -237,6 +248,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                     // We're doing read-modify-write. Request a load.
                     let m_req = memStateReqLoad(tok, p_addr, False);
                     linkToMem.makeReq(tagged REQ_LOAD m_req);
+                    pathQ.enq(PATH_RMW_LOAD);
 
                     // Log it.
                     debugLog.record(fshow(tok.index) + $format(": DoStores2: Load Req for Read-Modify-Write. (PA: 0x%h).", p_addr)); 
@@ -266,6 +278,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                     // Make the request to the memory state.
                     let m_req = memStateReqStore(tok, p_addr, mem_store_value);
                     linkToMem.makeReq(tagged REQ_STORE m_req);
+                    pathQ.enq(PATH_FINISH);
 
                     // Log it.
                     debugLog.record(fshow(tok.index) + $format(": DoStores2: Sending Store to Memory (PA: 0x%h, V: 0x%h).", p_addr, mem_store_value)); 
@@ -282,6 +295,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                 // Make the first load now.
                 let m_req = memStateReqLoad(tok, p_addr1, False);
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
+                pathQ.enq(PATH_SPAN_LOAD1);
 
                 // Log it.
                 debugLog.record(fshow(tok.index) + $format(": DoStores2: Spanning Store Load Req 1 (PA1: 0x%h, PA2: 0x%h).", p_addr1, p_addr2)); 
@@ -309,7 +323,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // When:   After a store has stalled to do a read-modify-write and the load has come back.
     // Effect: Do the "modify-write" portion. Unstall the pipeline.
     
-    rule doStores2RMW (state.readyToContinue() &&& stateStores2 matches tagged STORES2_RMW_RSP .store_info);
+    rule doStores2RMW (state.readyToContinue() &&& stateStores2 matches tagged STORES2_RMW_RSP .store_info &&& pathQ.first() == PATH_RMW_LOAD);
     
         // Get the info from the previous stage.
         match {.tok, .st_type} = stores1Q.first();
@@ -317,6 +331,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         // Get the load from memory.
         MEM_VALUE existing_val = linkToMem.getResp();
         linkToMem.deq();
+        pathQ.deq();
 
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": DoStores2: Got RMW Load Rsp (V: 0x%h).", existing_val)); 
@@ -329,6 +344,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         let mem_addr = getFirst(store_info.memAddrs);
         let m_req = memStateReqStore(tok, mem_addr, new_mem_val);
         linkToMem.makeReq(tagged REQ_STORE m_req);
+        pathQ.enq(PATH_FINISH);
 
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": DoStores2: Sending RMW Store to Memory (PA: 0x%h, V: 0x%h).", mem_addr, new_mem_val)); 
@@ -356,6 +372,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         let p_addr2 = getSecondOfTwo(store_info.memAddrs);
         let m_req = memStateReqLoad(tok, p_addr2, False);
         linkToMem.makeReq(tagged REQ_LOAD m_req);
+        pathQ.enq(PATH_SPAN_LOAD2);
         
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": DoStores2: Spanning Store Load Req 2 (PA2: 0x%h).", p_addr2));
@@ -370,7 +387,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // When:   After the first load comes back from a spanning store.
     // Effect: Record the intermediate value, wait for the final response.
     
-    rule doStores2SpanRsp1 (state.readyToContinue() &&& stateStores2 matches tagged STORES2_SPAN_RSP1 .store_info);
+    rule doStores2SpanRsp1 (state.readyToContinue() &&& stateStores2 matches tagged STORES2_SPAN_RSP1 .store_info &&& pathQ.first() == PATH_SPAN_LOAD1);
     
         // Get the value from the previous stage.
         match {.tok, .st_type} = stores1Q.first();
@@ -378,6 +395,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         // Get the first value from memory.
         MEM_VALUE existing_val1 = linkToMem.getResp();
         linkToMem.deq();
+        pathQ.deq();
         
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": DoStores2: Spanning Store Load Rsp 1 (V: 0x%h).", existing_val1));
@@ -392,7 +410,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // When:   After the second load comes back from a spanning store.
     // Effect: Figure out the values and make the first store request.
     
-    rule doStores2SpanRsp2 (state.readyToContinue() &&& stateStores2 matches tagged STORES2_SPAN_RSP2 {.store_info, .existing_val1});
+    rule doStores2SpanRsp2 (state.readyToContinue() &&& stateStores2 matches tagged STORES2_SPAN_RSP2 {.store_info, .existing_val1} &&& pathQ.first() == PATH_SPAN_LOAD2);
     
         // Get the value from the previous stage.
         match {.tok, .st_type} = stores1Q.first();
@@ -400,6 +418,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         // Get the second value from memory.
         MEM_VALUE existing_val2 = linkToMem.getResp();
         linkToMem.deq();
+        pathQ.deq();
         
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": DoStores2: Spanning Store Load Rsp 2 (V: 0x%h).", existing_val2));
@@ -412,6 +431,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         MEM_ADDRESS p_addr1 = getFirst(store_info.memAddrs);
         let m_req = memStateReqStore(tok, p_addr1, new_val1);
         linkToMem.makeReq(tagged REQ_STORE m_req);
+        pathQ.enq(PATH_SPAN_STORE1);
 
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": DoStores2: Spanning Store Req 1 (PA1: V1: 0x%h).", p_addr1, new_val1));
@@ -426,17 +446,19 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // When:   After making the first store request for a spanning store.
     // Effect: Make the second store request. Unstall the pipeline.
 
-    rule doStores2SpanEnd (state.readyToContinue() &&& stateStores2 matches tagged STORES2_SPAN_END {.store_info, .new_val2});
+    rule doStores2SpanEnd (state.readyToContinue() &&& stateStores2 matches tagged STORES2_SPAN_END {.store_info, .new_val2} &&& pathQ.first() == PATH_SPAN_STORE1);
     
         let tok = store_info.token;
     
         // First store queued?
         linkToMem.deq();
+        pathQ.deq();
 
         // Make the second store.
         let p_addr2 = getSecondOfTwo(store_info.memAddrs);
         let m_req = memStateReqStore(tok, p_addr2, new_val2);
         linkToMem.makeReq(tagged REQ_STORE m_req);
+        pathQ.enq(PATH_FINISH);
         
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": DoStores2: Spanning Store Req 2 (PA2: V2: 0x%h).", p_addr2, new_val2));
@@ -455,13 +477,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     //     Wait for response from memory that store was queued and return
     //     message to timing model.
     //
-    rule doStores3 (state.readyToContinue());
+    // The following urgency is necessary for functional correctness.
+
+    rule doStores3 (state.readyToContinue() &&& pathQ.first() == PATH_FINISH);
         
         let tok = stores3Q.first();
         stores3Q.deq();
 
         // Wait for memory
         linkToMem.deq();
+        pathQ.deq();
 
         // Update the scoreboard.
         tokScoreboard.storeFinish(tok.index);

@@ -22972,3 +22972,16 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
   be matched up with incorrect requests.
   
 Michael P.
+
+----------
+pellauer    Date: Tue May 25 23:18:00 EDT 2010  CSN: CSN-hasim-794
+                  Wed May 26 03:18:00 UTC 2010
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-misc-controllers.bsv Locally Modified          793 
+
+
+* Dependence controller no can take the number of instances running dynamically.
+
+Michael P.

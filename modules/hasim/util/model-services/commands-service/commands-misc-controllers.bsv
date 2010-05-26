@@ -235,6 +235,8 @@ interface DEPENDENCE_CONTROLLER#(parameter numeric type t_NUM_INSTANCES);
     method Bool consumerCanStart();
     method Action consumerStart();
     method Action consumerDone();
+    
+    interface INSTANCE_CONTROL_IN#(t_NUM_INSTANCES) ctrl;
 
 endinterface
 
@@ -244,14 +246,33 @@ module mkDependenceController
 
     COUNTER#(TLog#(TAdd#(1, t_NUM_INSTANCES))) producerCredits <- mkLCounter(fromInteger(valueof(t_NUM_INSTANCES)));
     COUNTER#(TLog#(TAdd#(1, t_NUM_INSTANCES))) consumerCredits <- mkLCounter(0);
+    Reg#(Bool) initialized <- mkReg(False);
     
-    method Bool   producerCanStart() = producerCredits.value() != 0;
+    method Bool   producerCanStart() = initialized && (producerCredits.value() != 0);
     method Action producerStart()    = producerCredits.down();
     method Action producerDone()     = consumerCredits.up();
     
-    method Bool   consumerCanStart() = consumerCredits.value() != 0;
+    method Bool   consumerCanStart() = initialized && (consumerCredits.value() != 0);
     method Action consumerStart()    = consumerCredits.down();
     method Action consumerDone()     = producerCredits.up();
+
+    interface INSTANCE_CONTROL_IN ctrl;
+
+        method Bool empty() = producerCredits.value() == 0;
+        method Bool balanced() = False;
+        method Bool light() = False;
+
+        method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
+            return tagged Invalid;
+        endmethod
+
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+            initialized <= True;
+            Bit#(TLog#(TAdd#(1, t_NUM_INSTANCES))) tmp = zeroExtendNP(iid) + 1;
+            producerCredits.setC(tmp);
+        endmethod
+    
+    endinterface
 
 endmodule
 

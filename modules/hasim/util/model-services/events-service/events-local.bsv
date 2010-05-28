@@ -65,11 +65,13 @@ endmodule
 
 typedef union tagged
 {
-    EVENTS_DICT_TYPE EVT_NoEvent;
-    struct {EVENTS_DICT_TYPE event_id; EVENT_PARAM event_data;} EVT_Event;
+    struct { EVENTS_DICT_TYPE eventId;
+             Bit#(8) cycles; }          EVT_NoteCycles;
+    struct { EVENTS_DICT_TYPE eventId;
+             EVENT_PARAM eventData;
+             Bit#(8) cycles; }          EVT_Event;
 
-    void       EVT_Disable;
-    void       EVT_Enable;
+    Bool                                EVT_Enable;
 }
 EVENT_DATA
     deriving (Eq, Bits);
@@ -80,16 +82,16 @@ module [CONNECTED_MODULE] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
     //interface:
     (EVENT_RECORDER);
 
-    Connection_Chain#(EVENT_DATA) chain  <- mkConnection_Chain(`RINGID_EVENTS);
+    Connection_Chain#(EVENT_DATA) chain <- mkConnection_Chain(`RINGID_EVENTS);
   
-    Reg#(Bool) enabled <- mkReg(True);
+    Reg#(Bit#(8)) cycles <- mkReg(0);
+    Reg#(Bool) enabled <- mkReg(False);
     FIFO#(Maybe#(EVENT_PARAM)) newEventQ <- mkBypassFIFO();
     
     rule process (True);
         EVENT_DATA evt <- chain.recvFromPrev();
         case (evt) matches 
-            tagged EVT_Disable:     enabled   <= False;
-            tagged EVT_Enable:      enabled   <= True;
+            tagged EVT_Enable .en:  enabled   <= en;
             default:                noAction;
         endcase
 
@@ -104,12 +106,29 @@ module [CONNECTED_MODULE] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
         case (evt) matches
             tagged Invalid:
             begin
-                chain.sendToNext(tagged EVT_NoEvent eventID);
+                // Update the cycle count.  If it overflows then send the
+                // overflow to the host.
+                //
+                // The host always adds 1 to the cycle count it receives.
+                // This avoids an adder in the hardware.
+                if (cycles == maxBound)
+                begin
+                    chain.sendToNext(tagged EVT_NoteCycles { eventId: eventID,
+                                                             cycles: maxBound });
+                    cycles <= 0;
+                end
+                else
+                begin
+                    cycles <= cycles + 1;
+                end
             end
 
             tagged Valid .data:
             begin
-                chain.sendToNext(tagged EVT_Event {event_id: eventID, event_data: data});
+                chain.sendToNext(tagged EVT_Event { eventId: eventID,
+                                                    eventData: data,
+                                                    cycles: cycles });
+                cycles <= 0;
             end
         endcase
     endrule
@@ -127,23 +146,6 @@ module [CONNECTED_MODULE] mkEventRecorder_Disabled#(EVENTS_DICT_TYPE eventID)
     //interface:
     (EVENT_RECORDER);
 
-    Bit#(8) eventNum = zeroExtend(pack(eventID));
-
-    Connection_Chain#(EVENT_DATA) chain <- mkConnection_Chain(`RINGID_EVENTS);
-    Reg#(EVENTS_DICT_TYPE) stall <- mkReg(minBound);
- 
-    rule insert (stall == eventID);
-        chain.sendToNext(tagged EVT_NoEvent eventID);
-        stall <= unpack(pack(stall) + 1);
-    endrule
-
-    rule process (stall != eventID);
-        EVENT_DATA evt <- chain.recvFromPrev();
-        chain.sendToNext(evt);
-
-        stall <= unpack(pack(stall) + 1);
-    endrule
-
     method Action recordEvent(Maybe#(EVENT_PARAM) mdata);
         noAction;
     endmethod
@@ -159,21 +161,11 @@ module [CONNECTED_MODULE] mkEventRecorder_Multiplexed#(EVENTS_DICT_TYPE eventID)
     //interface:
     (EVENT_RECORDER_MULTIPLEXED#(ni));
 
-    Bit#(8) eventNum = zeroExtend(pack(eventID));
-
     Connection_Chain#(EVENT_DATA) chain <- mkConnection_Chain(`RINGID_EVENTS);
-    Reg#(EVENTS_DICT_TYPE) stall <- mkReg(minBound);
- 
-    rule insert (stall == eventID);
-        chain.sendToNext(tagged EVT_NoEvent eventID);
-        stall <= unpack(pack(stall) + 1);
-    endrule
 
-    rule process (stall != eventID);
+    rule process (True);
         EVENT_DATA evt <- chain.recvFromPrev();
         chain.sendToNext(evt);
-
-        stall <= unpack(pack(stall) + 1);
     endrule
 
     method Action recordEvent(INSTANCE_ID#(ni) iid, Maybe#(EVENT_PARAM) mdata);

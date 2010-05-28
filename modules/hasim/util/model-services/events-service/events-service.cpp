@@ -48,6 +48,7 @@ EVENTS_SERVER_CLASS::EVENTS_SERVER_CLASS()
 {
     // instantiate stubs
     serverStub = new EVENTS_SERVER_STUB_CLASS(this);
+    clientStub = new EVENTS_CLIENT_STUB_CLASS(this);
 
 #ifdef HASIM_EVENTS_ENABLED
     eventFile.fill('0');
@@ -67,6 +68,44 @@ EVENTS_SERVER_CLASS::Init(
 {
     // set parent pointer
     parent = p;
+
+    cycles = new UINT64[EVENTS_DICT_ENTRIES];
+    for (int i = 0; i < EVENTS_DICT_ENTRIES; i++)
+    {
+        // Event cycle numbers always come with 1 added to them, so start cycle
+        // counter at -1.
+        cycles[i] = ~0;
+    }
+
+    //
+    // Emit all the event name mappings as a header so that the event records
+    // can be encoded smaller.
+    //
+    eventFile << "# Key format:         +,<name>,<description>,<event id>" << endl;
+    eventFile << "# Key model specifc:  -,<name>,<description>,<event id>" << endl;
+    eventFile << "# Log format:         <cycle>,<event id>,<data>" << endl;
+
+    for (int i = 0; i < EVENTS_DICT_ENTRIES; i++)
+    {
+        const char *event_name = EVENTS_DICT::Name(i);
+        const char *event_msg  = EVENTS_DICT::Str(i);
+        if (event_name != NULL)
+        {
+            eventFile << "+," << event_name
+                      << ",\"" << event_msg << "\""
+                      << "," << i
+                      << endl;
+        }
+    }
+
+    if (ENABLE_EVENTS)
+    {
+        EnableEvents();
+    }
+    else
+    {
+        DisableEvents();
+    }
 }
 
 // uninit: we have to write this explicitly
@@ -74,6 +113,7 @@ void
 EVENTS_SERVER_CLASS::Uninit()
 {
     Cleanup();
+    delete[] cycles;
 
     // chain
     PLATFORMS_MODULE_CLASS::Uninit();
@@ -87,43 +127,101 @@ EVENTS_SERVER_CLASS::Cleanup()
     delete serverStub;
 }
 
-// toggleEvents
+// EnableEvents
 void
-EVENTS_SERVER_CLASS::ToggleEvents()
+EVENTS_SERVER_CLASS::EnableEvents()
 {
-    int dummy = clientStub->ToggleEvents(0);
+    clientStub->EnableEvents(1);
 }
+
+// DisableEvents
+void
+EVENTS_SERVER_CLASS::DisableEvents()
+{
+    clientStub->EnableEvents(0);
+}
+
+
+// Annotate file with model-specific metadata
+void
+EVENTS_SERVER_CLASS::ModelSpecific(
+    const char *name,
+    const char *descr,
+    UINT64 val)
+{
+    eventFile << "-," << name
+              << ",\"" << descr << "\""
+              << "," << val
+              << endl;
+}
+
+void
+EVENTS_SERVER_CLASS::ModelSpecific(
+    const char *name,
+    const char *descr,
+    UINT32 nEntries,
+    UINT32 *val)
+{
+    eventFile << "-," << name
+              << ",\"" << descr << "\"";
+    for (UINT32 i = 0; i < nEntries; i++)
+    {
+        eventFile << "," << val[i];
+    }
+    eventFile << endl;
+}
+
+void
+EVENTS_SERVER_CLASS::ModelSpecific(
+    const char *name,
+    const char *descr,
+    UINT32 nEntries,
+    UINT64 *val)
+{
+    eventFile << "-," << name
+              << ",\"" << descr << "\"";
+    for (UINT32 i = 0; i < nEntries; i++)
+    {
+        eventFile << "," << val[i];
+    }
+    eventFile << endl;
+}
+
+
 
 //
 // RRR request methods
 //
+inline void
+EVENTS_SERVER_CLASS::LogCycles(
+    UINT32 event_id,
+    UINT32 model_cc)
+{
+    ASSERTX(event_id < EVENTS_DICT_ENTRIES);
+    cycles[event_id] += (model_cc + 1);
+}
+
+
 void
 EVENTS_SERVER_CLASS::LogEvent(
     UINT32 event_id,
     UINT32 event_data,
     UINT32 model_cc)
 {
-    // lookup event name from dictionary
-    const char *event_name = EVENTS_DICT::Name(event_id);
-    const char *event_msg  = EVENTS_DICT::Str(event_id);
-    if (event_name == NULL)
-    {
-        cerr << "streams: invalid event_id: " << event_id << endl;
-        CallbackExit(1);
-    }
+    ASSERTX(event_id < EVENTS_DICT_ENTRIES);
+    cycles[event_id] += (model_cc + 1);
 
 #ifndef HASIM_EVENTS_ENABLED
-    ASIMERROR("Event " << event_name << " (" << event_msg << ") received but events are disabled");
+    ASIMERROR("Event " << EVENTS_DICT::Name(event_id) << " (" << EVENTS_DICT::Str(event_id) << ") received but events are disabled");
 #endif
 
     // write to file
     // eventually this will be replaced with calls to DRAL.
     eventFile.width(10);
-    eventFile << model_cc;
+    eventFile << cycles[event_id];
 
     eventFile.width(0);
-    eventFile << "," << event_name
-              << ",\"" << event_msg << "\""
+    eventFile << "," << event_id
               << "," << event_data
               << endl;
 }

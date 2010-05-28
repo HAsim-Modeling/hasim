@@ -2,11 +2,15 @@ service EVENTS
 {
     server hw (bsv, connection) <- sw (cpp, method)
     {
-        method ToggleEvents(in UINT8[8] payload, out UINT8[8] dummy);
+        // 0 to disable, 1 to enable
+        method EnableEvents(in UINT8[8] enable);
     };
 
     server sw (cpp, method) <- hw (bsv, connection)
     {
-        method LogEvent(in UINT8[8] event_id, in UINT32[32] event_data, in UINT32[32] model_cc);
+        method LogEvent(in UINT16[16] event_id, in UINT32[32] event_data, in UINT8[8] model_cc_delta);
+
+        // Note cycles passing with no event
+        method LogCycles(in UINT16[16] event_id, in UINT8[8] model_cc_delta);
     };
 };

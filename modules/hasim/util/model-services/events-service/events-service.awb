@@ -12,3 +12,4 @@
 %sources -t DICT -v PRIVATE events-service.dic
 
 %param HASIM_EVENTS_SIZE 32 "Number of bits for Event parameter."
+%param %dynamic ENABLE_EVENTS      0 "Starting state of events (0 disable / 1 enable)."

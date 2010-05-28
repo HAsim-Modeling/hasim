@@ -36,12 +36,6 @@ module [CONNECTED_MODULE] mkEventsService
     ClientStub_EVENTS clientStub <- mkClientStub_EVENTS();
     ServerStub_EVENTS serverStub <- mkServerStub_EVENTS();
 
-    // Track our internal state
-    Reg#(Bool)   enabled <- mkReg(False);
-  
-    // Internal tick counts
-    Vector#(TExp#(`EVENTS_DICT_BITS), COUNTER#(32)) ticks <- replicateM(mkLCounter(0));
-
     // ***** Rules *****
     
     // processResp
@@ -56,37 +50,30 @@ module [CONNECTED_MODULE] mkEventsService
         case (et) matches
             tagged EVT_Event .evt:  //Event Data to pass along
             begin
-                clientStub.makeRequest_LogEvent(zeroExtend(pack(evt.event_id)),
-                                                zeroExtend(pack(evt.event_data)),
-                                                ticks[pack(evt.event_id)].value());
-                
-                ticks[pack(evt.event_id)].up();
+                clientStub.makeRequest_LogEvent(zeroExtend(pack(evt.eventId)),
+                                                zeroExtend(pack(evt.eventData)),
+                                                evt.cycles);
             end
-            tagged EVT_NoEvent .event_id:  //No event, just tick.
+
+            tagged EVT_NoteCycles .evt:
             begin
-                ticks[pack(event_id)].up();
+                clientStub.makeRequest_LogCycles(zeroExtend(pack(evt.eventId)),
+                                                 evt.cycles);
             end
+
             default: noAction;
         endcase
         
     endrule
     
-    rule toggleEvents (True);
+    rule enableEvents (True);
     
-        let req <- serverStub.acceptRequest_ToggleEvents();
+        let req <- serverStub.acceptRequest_EnableEvents();
         
-        if (!enabled)
-        begin
-            chain.sendToNext(EVT_Enable);  //XXX More must be done to get all event recorders onto the same model CC.
-            enabled <= True;
-        end
-        else
-        begin
-            chain.sendToNext(EVT_Disable);
-            enabled <= False;
-        end
-        
-    
+        Bool want_enabled = (req[0] == 1);
+
+        //XXX More must be done to get all event recorders onto the same model CC.
+        chain.sendToNext(tagged EVT_Enable want_enabled);
     endrule
     
 endmodule

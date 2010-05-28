@@ -1,0 +1,1 @@
+Check for transmissions errors in a channel.

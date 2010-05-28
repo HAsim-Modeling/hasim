@@ -44,6 +44,8 @@ class EVENTS_SERVER_CLASS: public RRR_SERVER_CLASS,
     // File for output until we use DRAL.
     ofstream eventFile;
     
+    UINT64 *cycles;
+
   public:
     EVENTS_SERVER_CLASS();
     ~EVENTS_SERVER_CLASS();
@@ -52,7 +54,21 @@ class EVENTS_SERVER_CLASS: public RRR_SERVER_CLASS,
     static EVENTS_SERVER GetInstance() { return &instance; }
 
     // Client methods
-    void ToggleEvents();
+    void EnableEvents();
+    void DisableEvents();
+
+    // Annotate file with model-specific metadata
+    void ModelSpecific(const char *name,
+                       const char *descr,
+                       UINT64 val);
+    void ModelSpecific(const char *name,
+                       const char *descr,
+                       UINT32 nEntries,
+                       UINT32 *val);
+    void ModelSpecific(const char *name,
+                       const char *descr,
+                       UINT32 nEntries,
+                       UINT64 *val);
 
     // required RRR methods
     void Init(PLATFORMS_MODULE);
@@ -61,6 +77,7 @@ class EVENTS_SERVER_CLASS: public RRR_SERVER_CLASS,
 
     // RRR service methods
     void LogEvent(UINT32 event_id, UINT32 event_data, UINT32 model_cc);
+    void LogCycles(UINT32 event_id, UINT32 model_cc);
 };
 
 // server stub

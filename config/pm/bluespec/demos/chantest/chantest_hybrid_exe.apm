@@ -1,0 +1,46 @@
+
+[Global]
+SaveParameters=0
+Description=Channel Integrity Test and Benchmarking Program (Bluesim)
+File=chantest_hybrid_exe
+Version=2.1
+Name=Channel Integrity Test and Benchmarking Program (Bluesim)
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
+Type=HAsim
+Class=Asim::Model
+DefaultRunOpts=
+
+[Model]
+DefaultAttributes=rrrtest unconnected hybrid project exe
+model=HW/SW Hybrid Project Foundation
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
+Packagehint=platforms
+
+[HW/SW Hybrid Project Foundation]
+File=modules/project/project-hybrid.awb
+Packagehint=platforms
+
+[Base Hybrid Application Environment]
+File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Project Foundation/Requires]
+fpgaenv=FPGA Environment
+application_env=Base Hybrid Application Environment
+project_common=Hybrid Project Common Utilities
+
+[Base Hybrid Application Environment/Requires]
+hybrid_application=Bluespec Channel Integrity Test
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
+Packagehint=hasim
+
+[Bluespec Channel Integrity Test]
+File=modules/bluespec/system/demos/channel-integrity-test/chan-test.awb
+Packagehint=hasim
+
+[HW/SW Hybrid Project Foundation/Params]
+WAIT_FOR_HARDWARE=0

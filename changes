@@ -22985,3 +22985,49 @@ Directory modules/hasim/util/model-services/commands-service
 * Dependence controller no can take the number of instances running dynamically.
 
 Michael P.
+
+----------
+mcadler     Date: Fri May 28 16:33:51 EDT 2010  CSN: CSN-hasim-795
+                  Fri May 28 20:33:51 UTC 2010
+
+
+Directory config/pm/bluespec/demos
+ chantest/                 Locally Added               0 
+
+Directory config/pm/bluespec/demos/chantest
+ chantest_hybrid_acp_nallatech.apm Locally Added               0 
+ chantest_hybrid_exe.apm   Locally Added               0 
+
+Directory modules/hasim/util/model-services/events-service
+ events-service.cpp        Locally Modified          794 
+ events-local.bsv          Locally Modified          794 
+ events-service.rrr        Locally Modified          794 
+ events-service.h          Locally Modified          794 
+ events-service.awb        Locally Modified          794 
+ events-service.bsv        Locally Modified          794 
+
+Directory modules/bluespec/system/demos
+ channel-integrity-test/   Locally Added               0 
+
+Directory modules/bluespec/system/demos/channel-integrity-test
+ chan-test.bsv             Locally Added               0 
+ chan-test-server.h        Locally Added               0 
+ chan-test.txt             Locally Added               0 
+ chan-test.cpp             Locally Added               0 
+ chan-test.rrr             Locally Added               0 
+ chan-test-server.cpp      Locally Added               0 
+ chan-test.h               Locally Added               0 
+ chan-test.awb             Locally Added               0 
+
+- Add a new channel integrity test (uses RRR messages):
+    Send parallel (independent) host to FPGA and FPGA to host data streams.
+    Each stream is a message and its inverse.  Watch for bit flips.
+
+- Upgrade the events service.
+  - Cycle counts are now kept locally with an event in hardware.  The
+    counters are small and send a message to the host when the counter
+    overlows.
+  - Reduce the sizes of event records by emitting only the event ID as a
+    number, not a string.  A key is written to the top of the file.
+  - Add a hook for model specific meta-data that may be used to interpret
+    event data.

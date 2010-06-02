@@ -96,21 +96,43 @@ CHANTEST_SERVER_CLASS::F2HOneWayMsg8(
 void
 CHANTEST_SERVER_CLASS::H2FNoteError(
     UINT32 numBitsFlipped,
-    UINT64 flipMask0,
-    UINT64 flipMask1,
-    UINT64 flipMask2,
-    UINT64 flipMask3)
+    UINT32 chunkIdx,
+    UINT64 payload0,
+    UINT64 payload1,
+    UINT64 payload2,
+    UINT64 payload3,
+    UINT64 payload4,
+    UINT64 payload5,
+    UINT64 payload6,
+    UINT64 payload7)
 {
     h2fRecvErrors += 1;
     h2fRecvBitErrors += numBitsFlipped;
-    cout << "H2F Error (" << numBitsFlipped << " bits)" << endl;
+    cout << "H2F Error (" << numBitsFlipped << " bits, idx " << chunkIdx << ")" << endl;
     cout.fill('0');
-    cout << hex
-         << "    0x" << std::setw(16) << flipMask0 << endl
-         << "    0x" << std::setw(16) << flipMask1 << endl
-         << "    0x" << std::setw(16) << flipMask2 << endl
-         << "    0x" << std::setw(16) << flipMask3 << endl
-         << dec;
+    cout << hex;
+
+    cout << "  0x" << std::setw(16) << payload0
+         << "  0x" << std::setw(16) << payload4
+         << "  0x" << std::setw(16) << ~(payload0 ^ payload4)
+         << endl;
+
+    cout << "  0x" << std::setw(16) << payload1
+         << "  0x" << std::setw(16) << payload5
+         << "  0x" << std::setw(16) << ~(payload1 ^ payload5)
+         << endl;
+
+    cout << "  0x" << std::setw(16) << payload2
+         << "  0x" << std::setw(16) << payload6
+         << "  0x" << std::setw(16) << ~(payload2 ^ payload6)
+         << endl;
+
+    cout << "  0x" << std::setw(16) << payload3
+         << "  0x" << std::setw(16) << payload7
+         << "  0x" << std::setw(16) << ~(payload3 ^ payload7)
+         << endl;
+
+    cout << dec;
     cout.fill(' ');
 }
 

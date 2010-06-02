@@ -53,9 +53,14 @@ service CHANTEST
                              in UINT64[64] payload7);
 
         method H2FNoteError(in UINT16[16] numBitsFlipped,
-                            in UINT64[64] flipMask0,
-                            in UINT64[64] flipMask1,
-                            in UINT64[64] flipMask2,
-                            in UINT64[64] flipMask3);
+                            in UINT16[16] chunkIdx,
+                            in UINT64[64] payload0,
+                            in UINT64[64] payload1,
+                            in UINT64[64] payload2,
+                            in UINT64[64] payload3,
+                            in UINT64[64] payload4,
+                            in UINT64[64] payload5,
+                            in UINT64[64] payload6,
+                            in UINT64[64] payload7);
     };
 };

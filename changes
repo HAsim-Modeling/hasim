@@ -23044,3 +23044,21 @@ Directory tools/scripts/bmark/m5_configs
 * Add SMT M5 setup script for use with splash benchmarks.
 
 Michael P.
+
+----------
+mcadler     Date: Wed Jun  2 09:11:51 EDT 2010  CSN: CSN-hasim-797
+                  Wed Jun  2 13:11:51 UTC 2010
+
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_acp_nallatech.apm Locally Modified          796 
+
+Directory modules/bluespec/system/demos/channel-integrity-test
+ chan-test.bsv             Locally Modified          796 
+ chan-test-server.h        Locally Modified          796 
+ chan-test.cpp             Locally Modified          796 
+ chan-test.rrr             Locally Modified          796 
+ chan-test-server.cpp      Locally Modified          796 
+
+Channel test sends more state back from the FPGA to the host when failures
+are detected.

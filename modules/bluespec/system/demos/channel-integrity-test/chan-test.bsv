@@ -122,15 +122,34 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
     //
     // Host -> FPGA test
     //
-    FIFO#(Tuple5#(UInt#(16),
-                  Bit#(64),
-                  Bit#(64),
-                  Bit#(64),
-                  Bit#(64))) h2fErrorQ <- mkFIFO();
+    FIFO#(Tuple3#(UInt#(16), Bit#(16), IN_TYPE_H2FOneWayMsg8)) h2fErrorQ <- mkFIFO();
+
+    Reg#(Bit#(64)) lastMsgCycle <- mkReg(0);
+    Reg#(Bit#(16)) chunkIdx <- mkReg(0);
 
     (* conservative_implicit_conditions *)
     rule checkH2FMessage (True);
-        let msg <- serverStub.acceptRequest_H2FOneWayMsg8();
+        IN_TYPE_H2FOneWayMsg8 msg <- serverStub.acceptRequest_H2FOneWayMsg8();
+
+        //
+        // This code is more relevant to the ACP than many other channels.
+        // On ACP, messages are grouped into chunks.  This code tries to
+        // figure out the index of this message in the chunk by looking
+        // for a time gap between chunks.
+        //
+        Bit#(16) chunk_idx;
+        if (cycle > (lastMsgCycle + 20))
+        begin
+            // New chunk
+            chunk_idx = 0;
+        end
+        else
+        begin
+            chunk_idx = chunkIdx + 1;
+        end
+
+        lastMsgCycle <= cycle;
+        chunkIdx <= chunk_idx;
 
         //
         // 4-7 are complements of 0-3.
@@ -154,11 +173,7 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
                 zeroExtend(countOnes(mask2)) +
                 zeroExtend(countOnes(mask3));
 
-            h2fErrorQ.enq(tuple5(bit_errors,
-                                 mask0,
-                                 mask1,
-                                 mask2,
-                                 mask3));
+            h2fErrorQ.enq(tuple3(bit_errors, chunk_idx, msg));
         end
 
         h2fPackets <= h2fPackets + 1;
@@ -167,11 +182,20 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
 
     (* descending_urgency = "h2fError, sendF2HMessage" *)
     rule h2fError (True);
-        match {.bits, .mask0, .mask1, .mask2, .mask3} = h2fErrorQ.first();
+        match {.bits, .chunk_idx, .msg} = h2fErrorQ.first();
         h2fErrorQ.deq();
         
         h2fBitsFlipped <= h2fBitsFlipped + zeroExtend(pack(bits));
-        clientStub.makeRequest_H2FNoteError(pack(bits), mask0, mask1, mask2, mask3);
+        clientStub.makeRequest_H2FNoteError(pack(bits),
+                                            chunk_idx,
+                                            msg.payload0,
+                                            msg.payload1,
+                                            msg.payload2,
+                                            msg.payload3,
+                                            msg.payload4,
+                                            msg.payload5,
+                                            msg.payload6,
+                                            msg.payload7);
     endrule
 
     rule getH2FErrorCount (state == STATE_IDLE);

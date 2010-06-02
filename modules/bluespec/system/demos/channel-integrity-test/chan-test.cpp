@@ -27,6 +27,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <iomanip>
+#include <time.h>
 
 #include "asim/syntax.h"
 #include "asim/ioformat.h"
@@ -43,6 +44,8 @@ HYBRID_APPLICATION_CLASS::HYBRID_APPLICATION_CLASS(
     // instantiate client stub
     clientStub = new CHANTEST_CLIENT_STUB_CLASS(NULL);
     server = CHANTEST_SERVER_CLASS::GetInstance();
+
+    srandom(time(NULL));
 }
 
 // destructor
@@ -59,18 +62,27 @@ HYBRID_APPLICATION_CLASS::Init()
 void
 HYBRID_APPLICATION_CLASS::SendH2FMsg()
 {
-    //
-    // Generate 4 random 64 bit values
-    //
     UINT64 v[4];
+
     for (int i = 0; i < 4; i++)
     {
+        // Make pairs of values identical so it is possible to figure out
+        // what value was sent.
         UINT64 r0 = random();
         UINT64 r1 = random();
         UINT64 r2 = random();
         v[i] = (r2 << 38) ^ (r1 << 20) ^ r0;
     }
 
+#ifdef FAILURE_PATTERN
+    // This pattern has high probability of triggering a failure when
+    // error checking is disabled in the Nallatech/ACP v2.0.1 channel.
+    v[0] = 0x32757fff41a6f659;
+    v[1] = 0xfb1c2be8434701de;
+    v[2] = 0xea5fc471bbe63998;
+    v[3] = 0x18f8bad18307d8db;
+#endif
+    
     // Send the 4 values and their complements
     clientStub->H2FOneWayMsg8(v[0], v[1], v[2], v[3],
                               ~v[0], ~v[1], ~v[2], ~v[3]);
@@ -108,7 +120,8 @@ HYBRID_APPLICATION_CLASS::Main()
     }
 
     // Get count of host -> FPGA errors
-    OUT_TYPE_H2FGetStats stats = clientStub->H2FGetStats(0);
+    OUT_TYPE_H2FGetStats stats;
+    stats = clientStub->H2FGetStats(0);
     cout << endl
          << "Test Results" << endl
          << "---------------" << endl;

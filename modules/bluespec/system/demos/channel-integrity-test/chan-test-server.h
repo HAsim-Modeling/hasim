@@ -81,10 +81,15 @@ class CHANTEST_SERVER_CLASS: public RRR_SERVER_CLASS,
                        UINT64 payload7);
 
     void H2FNoteError(UINT32 numBitsFlipped,
-                      UINT64 flipMask0,
-                      UINT64 flipMask1,
-                      UINT64 flipMask2,
-                      UINT64 flipMask3);
+                      UINT32 chunkIdx,
+                      UINT64 payload0,
+                      UINT64 payload1,
+                      UINT64 payload2,
+                      UINT64 payload3,
+                      UINT64 payload4,
+                      UINT64 payload5,
+                      UINT64 payload6,
+                      UINT64 payload7);
 };
 
 

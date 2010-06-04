@@ -23062,3 +23062,15 @@ Directory modules/bluespec/system/demos/channel-integrity-test
 
 Channel test sends more state back from the FPGA to the host when failures
 are detected.
+
+----------
+keflemin    Date: Thu Jun  3 20:34:22 EDT 2010  CSN: CSN-hasim-798
+                  Fri Jun  4 00:34:22 UTC 2010
+
+
+Directory config/pm/bluespec/demos/debugger
+ jtag_htg_debugger.apm     Locally Added               0 
+
+
+
+Added jtag debugger targeting the htg platform.

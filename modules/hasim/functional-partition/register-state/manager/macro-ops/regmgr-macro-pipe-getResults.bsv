@@ -41,7 +41,7 @@ import Vector::*;
 `include "asim/provides/isa_emulator.bsh"
 `include "asim/rrr/remote_client_stub_ISA_EMULATOR.bsh"
 `include "asim/rrr/remote_server_stub_ISA_EMULATOR.bsh"
-
+`include "asim/dict/PARAMS_FUNCP_REGSTATE_MANAGER.bsh"
 
 // ========================================================================
 //
@@ -86,7 +86,7 @@ module mkEmulationRegMap
     
     // Separate valid bits so they can be cleared in a single operation
     Reg#(Vector#(ISA_NUM_REGS, Bool)) emulMapValid <- mkRegU();
-    
+ 
     // Main architectural to physical register map table
     BRAM#(Bit#(TLog#(ISA_NUM_REGS)), FUNCP_PHYSICAL_REG_INDEX) emulMapTable <- mkBRAM();
     
@@ -235,11 +235,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     //   Local state
     //
     // ====================================================================
+   
+    // Counters to track when contexts should be sleeping.
+    LUTRAM#(CONTEXT_ID, Bit#(32)) contextSleeping <- mkLUTRAM(0);
+    
+    // Dynamic parameter with the sleep interval.
+    PARAMETER_NODE paramNode <- mkDynamicParameterNode();
+    Param#(32) paramSleepInterval <- mkDynamicParameter(`PARAMS_FUNCP_REGSTATE_MANAGER_SLEEP_INTERVAL, paramNode);
 
-    // Intermediate state between pipeline stages
-    FIFO#(TOKEN) res1Q <- mkFIFO();
-    FIFO#(TOKEN) res2Q <- mkFIFO();
-    FIFO#(Tuple2#(TOKEN, ISA_ADDRESS)) res3Q   <- mkFIFO();
+    // Intermediate state between pipeline stages. Bool indicates if there's a bubble.
+    FIFO#(Tuple2#(TOKEN, Bool)) res1Q <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN, Bool)) res2Q <- mkFIFO();
+    FIFO#(Tuple3#(TOKEN, Bool, ISA_ADDRESS)) res3Q   <- mkFIFO();
     FIFO#(ISA_REG_INDEX) syncPRFReqQ <- mkFIFO();
     FIFO#(Tuple2#(Bool, ISA_REG_INDEX)) syncQ <- mkFIFO();
     FIFOF#(Tuple2#(ISA_REG_INDEX, ISA_VALUE)) updateRegQ <- mkFIFOF();
@@ -291,17 +298,38 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         if (tokScoreboard.emulateInstruction(tok.index) && tok_active)
         begin
+            // If we were sleeping, we just decrement the counter.
+            // Otherwise we actually emulate the instruction.
+            
+            let sleep_val = contextSleeping.sub(tokContextId(tok));
+            
+            if (sleep_val != 0)
+            begin
+                // Just sleeping.
+                contextSleeping.upd(tokContextId(tok), sleep_val - 1);
+                
+                // Update the scoreboard.
+                tokScoreboard.exeStart(tok.index);
 
-            state.setEmulate(tokContextId(tok));
+                res1Q.enq(tuple2(tok, False));
+                
+            end
+            else
+            begin
 
-            // Record that we're emulating an instruction.
-            state_res <= RSM_RES_DrainingForEmulate;
+                // Emulate the instruction.
+                state.setEmulate(tokContextId(tok));
 
-            // Record which token is being emulated.
-            emulatingToken <= tok;
+                // Record that we're emulating an instruction.
+                state_res <= RSM_RES_DrainingForEmulate;
 
-             // Log it.
-            debugLog.record(fshow(tok.index) + $format(": GetResults1: Beginning Instruction Emulation."));
+                // Record which token is being emulated.
+                emulatingToken <= tok;
+
+                 // Log it.
+                debugLog.record(fshow(tok.index) + $format(": GetResults1: Beginning Instruction Emulation."));
+
+            end
 
         end
         else
@@ -314,7 +342,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             tokWriters.readReq(tok.index);
 
             // Pass it along to the next stage.
-            res1Q.enq(tok);
+            res1Q.enq(tuple2(tok, True));
         
         end
 
@@ -326,10 +354,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     //         Also retreive the instruction itself and the PC.
     //         If the writers are not all ready then a stall can occur.
 
-    rule getResults2 (state.readyToContinue());
+    rule getResults2 (res1Q.first() matches {.tok, .need_res} &&& need_res &&& state.readyToContinue());
 
         // Get input from getResults1.
-        let tok = res1Q.first();
         res1Q.deq();
         let tok_active = !tokIsDummy(tok);
 
@@ -355,19 +382,25 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         tokInst.readReq(tok.index);
         tokDsts.readReq(tok.index);
 
-        res2Q.enq(tok);
+        res2Q.enq(tuple2(tok, True));
 
     endrule
 
+    rule getResults2Bubble (res1Q.first() matches {.tok, .need_res} &&& !need_res &&& state.readyToContinue());
+    
+        res1Q.deq();
+        tokAddr.readReq(tok.index);
+        res2Q.enq(tuple2(tok, False));
+        
+    endrule
     
     // getResults3
     // When:    After getResults2 or alternatively getResults2StallEnd
     // Effect:  Send all the data to the datapath.
 
-    rule getResults3 (state.readyToContinue());
+    rule getResults3 (res2Q.first() matches {.tok, .need_rsp} &&& need_rsp &&& state.readyToContinue());
 
         // Get input from the previous stage.
-        let tok = res2Q.first();
         res2Q.deq();
 
         // Get all the data the previous stage kicked off.
@@ -382,8 +415,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         linkToDatapath.makeReq(initISADatapathReq(tok, inst, addr, dsts.pr));
 
         // Pass it to the next stage.
-        res3Q.enq(tuple2(tok, addr));
+        res3Q.enq(tuple3(tok, True, addr));
 
+    endrule
+
+    rule getResults3Bubble (res2Q.first() matches {.tok, .need_res} &&& !need_res &&& state.readyToContinue());
+    
+        res2Q.deq();
+        let addr <- tokAddr.readRsp();
+        res3Q.enq(tuple3(tok, False, addr));
+        
     endrule
     
     // getResults4
@@ -397,9 +438,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     //         that depenend on the register values will block until a
     //         register's valid bit is set in getResultsWritebacks.
     //
-    rule getResults4 (state.readyToContinue());
+    rule getResults4 (res3Q.first() matches {.tok, .need_rsp, .addr} &&& need_rsp &&& state.readyToContinue());
+
         // Get the token from the previous stage.
-        match {.tok, .addr} = res3Q.first();
         res3Q.deq();
 
         // Get the response from the datapath.
@@ -425,6 +466,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         debugLog.record(fshow(tok.index) + $format(": GetResults: End (path 1)."));
     endrule
 
+    rule getResults4Bubble (res3Q.first() matches {.tok, .need_res, .addr} &&& !need_res &&& state.readyToContinue());
+    
+        res3Q.deq();
+
+        // Update scoreboard.
+        tokScoreboard.setAllDestsValid(tok.index);
+        tokScoreboard.exeFinish(tok.index);
+
+        // Return timing model. End of macro-operation (path 2).
+        linkGetResults.makeResp(initFuncpRspGetResults(tok, addr, tagged RBranchTaken addr));
+        
+    endrule
 
     //
     // getResultsWritebacks --
@@ -807,12 +860,26 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         // work for x86.
         let tgtFlags = newPc[1:0];
         newPc[1:0] = 0;                         // Clear the flags
-        let resp = case(tgtFlags)
-                       0: tagged RNop;
-                       1: tagged RBranchTaken newPc;
-                       2: tagged RNop;          // Unused
-                       3: tagged RTerminate (newPc[2] == 1); // Bit 2 is 1 for pass
-                   endcase;
+        FUNCP_ISA_EXECUTION_RESULT resp = tagged RNop; 
+        case (tgtFlags)
+            0: 
+            begin
+                resp = tagged RNop;
+            end
+            1: 
+            begin
+                resp = tagged RBranchTaken newPc;
+            end
+            2: 
+            begin
+                resp = tagged RBranchTaken emulatingPC;         // Sleep
+                contextSleeping.upd(tokContextId(emulatingToken), paramSleepInterval);
+            end
+            3:
+            begin
+                resp = tagged RTerminate (newPc[2] == 1); // Bit 2 is 1 for pass
+            end
+        endcase
 
         //Log it
         debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction3: Emulation finished."));

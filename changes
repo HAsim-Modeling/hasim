@@ -23074,3 +23074,22 @@ Directory config/pm/bluespec/demos/debugger
 
 
 Added jtag debugger targeting the htg platform.
+
+----------
+pellauer    Date: Thu Jun  3 22:58:15 EDT 2010  CSN: CSN-hasim-799
+                  Fri Jun  4 02:58:15 UTC 2010
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.awb          Locally Modified          798 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          798 
+
+Directory modules/hasim/functional-partition/isa/isa-emulator
+ isa-emulator.cpp          Locally Modified          798 
+ isa-emulator.h            Locally Modified          798 
+
+
+* New thread polling/skew interface.
+* A new dynamic parameter, SLEEP_INTERAL, can set the polling frequency.
+
+Michael P.

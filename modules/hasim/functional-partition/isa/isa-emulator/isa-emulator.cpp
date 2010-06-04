@@ -177,6 +177,11 @@ ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
             newPC |= 1;
             break;
 
+          case ISA_EMULATOR_SLEEP:
+            T1("\tisa_emulator: Done with emulation, SLEEP");
+            newPC |= 2;
+            break;
+
           case ISA_EMULATOR_EXIT_OK:
             T1("\tisa_emulator: Emulation forcing normal exit");
             newPC = 7;

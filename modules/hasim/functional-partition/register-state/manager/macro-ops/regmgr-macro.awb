@@ -29,3 +29,5 @@
 %public regmgr-macro.dic
 
 %param REGSTATE_LOGFILE_PREFIX "hasim_funcp_regstate" "Prefix of logfile names for register state."
+
+%param --dynamic SLEEP_INTERVAL 1000 "Number of instructions to execute before a sleeping thread polls. (32-bit number)"

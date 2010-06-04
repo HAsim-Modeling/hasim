@@ -46,6 +46,7 @@ typedef enum
 {
     ISA_EMULATOR_NORMAL,        // Standard instruction, next PC returned as a hint
     ISA_EMULATOR_BRANCH,        // Branch to new PC
+    ISA_EMULATOR_SLEEP,         // Busy-loop the core for a pre-determined amount, then try again.
     ISA_EMULATOR_EXIT_OK,       // Program done, success
     ISA_EMULATOR_EXIT_FAIL      // Program done, failure
 }

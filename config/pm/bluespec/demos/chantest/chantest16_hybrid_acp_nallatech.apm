@@ -1,22 +1,22 @@
 
 [Global]
 SaveParameters=0
-Description=Channel Integrity Test and Benchmarking Program (Bluesim)
-File=chantest_hybrid_exe
+Description=Channel Integrity Test and Benchmarking Program for ACP (Nallatech)
+File=chantest16_hybrid_acp_nallatech
 Version=2.1
-Name=Channel Integrity Test and Benchmarking Program (Bluesim)
+Name=Channel Integrity Test and Benchmarking Program for ACP (Nallatech)
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
 Type=HAsim
 Class=Asim::Model
 DefaultRunOpts=
 
 [Model]
-DefaultAttributes=rrrtest unconnected hybrid project exe
+DefaultAttributes=hybrid acp bluespec
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
-Packagehint=platforms
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-acp-m2c-nallatech.apm
+Packagehint=platform-acp
 
 [HW/SW Hybrid Project Foundation]
 File=modules/project/project-hybrid.awb
@@ -32,15 +32,15 @@ application_env=Base Hybrid Application Environment
 project_common=Hybrid Project Common Utilities
 
 [Base Hybrid Application Environment/Requires]
-hybrid_application=Bluespec Channel Integrity Test
+hybrid_application=Bluespec Channel Integrity Test (16-wide)
 
 [Hybrid Project Common Utilities]
 File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim
 
-[Bluespec Channel Integrity Test]
-File=modules/bluespec/system/demos/channel-integrity-test/chan-test.awb
-Packagehint=hasim
-
 [HW/SW Hybrid Project Foundation/Params]
 WAIT_FOR_HARDWARE=0
+
+[Bluespec Channel Integrity Test (16-wide)]
+File=modules/bluespec/system/demos/channel-integrity-test/chan-test-16.awb
+Packagehint=hasim

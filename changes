@@ -23093,3 +23093,34 @@ Directory modules/hasim/functional-partition/isa/isa-emulator
 * A new dynamic parameter, SLEEP_INTERAL, can set the polling frequency.
 
 Michael P.
+
+----------
+mcadler     Date: Mon Jun  7 14:06:51 EDT 2010  CSN: CSN-hasim-800
+                  Mon Jun  7 18:06:51 UTC 2010
+
+
+Directory config/pm/bluespec/demos/chantest
+ chantest08_hybrid_exe.apm Locally Added               0 
+ chantest_hybrid_acp_nallatech.apm Locally Removed           799 
+ chantest_hybrid_exe.apm   Locally Removed           799 
+ chantest16_hybrid_acp_nallatech.apm Locally Added               0 
+ chantest08_hybrid_acp_nallatech.apm Locally Added               0 
+ chantest16_hybrid_exe.apm Locally Added               0 
+
+Directory modules/bluespec/system/demos/channel-integrity-test
+ chan-test-16.awb          Locally Added               0 
+ chan-test-16.cpp          Locally Added               0 
+ chan-test.awb             Locally Modified          799 
+ chan-test-server-16.cpp   Locally Added               0 
+ chan-test-16.h            Locally Added               0 
+ chan-test-16.bsv          Locally Added               0 
+ chan-test-server-16.h     Locally Added               0 
+ chan-test.txt             Locally Modified          799 
+ chan-test-16.rrr          Locally Added               0 
+
+Add a 16-wide version of the channel integrity test with 8 random values followed
+by 8 complements.  This gives more freedom for patterns on ACP, since the ACP
+data-path is 256 bits wide.
+
+The 16-wide test is a separate set of sources because of the lack of
+support for vector types in RRR.

@@ -4,8 +4,8 @@
 
 %AWB_START
 
-%name Bluespec Channel Integrity Test
-%desc Bluespec Channel Integrity Test
+%name Bluespec Channel Integrity Test (8-wide)
+%desc Bluespec Channel Integrity Test (8-wide)
 
 %attributes hybrid
 

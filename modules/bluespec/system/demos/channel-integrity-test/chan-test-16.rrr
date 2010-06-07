@@ -1,0 +1,90 @@
+//
+// Copyright (C) 2010 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+
+service CHANTEST
+{
+    server hw (bsv, method) <- sw (cpp, method)
+    {
+        // Start an FPGA -> host message stream, sending "iter" iterations of
+        // an F2HOneWayMsg16.
+        method F2HStartOneWayTest(in UINT64[64] iter);
+
+        // Send a message from host to FPGA.  The FPGA will check for errors.
+        method H2FOneWayMsg16(in UINT64[64] payload0,
+                              in UINT64[64] payload1,
+                              in UINT64[64] payload2,
+                              in UINT64[64] payload3,
+                              in UINT64[64] payload4,
+                              in UINT64[64] payload5,
+                              in UINT64[64] payload6,
+                              in UINT64[64] payload7,
+                              in UINT64[64] payload8,
+                              in UINT64[64] payload9,
+                              in UINT64[64] payload10,
+                              in UINT64[64] payload11,
+                              in UINT64[64] payload12,
+                              in UINT64[64] payload13,
+                              in UINT64[64] payload14,
+                              in UINT64[64] payload15);
+
+        // Ask FPGA how many errors have been seen in H2FOneWayMsg8
+        method H2FGetStats(in UINT8[8] dummy,
+                           out UINT64[64] recvPackets,
+                           out UINT64[64] packetErrors,
+                           out UINT64[64] totalBitsFlipped);
+    };
+
+    server sw (cpp, method) <- hw (bsv, method)
+    {
+        method F2HOneWayMsg16(in UINT64[64] payload0,
+                              in UINT64[64] payload1,
+                              in UINT64[64] payload2,
+                              in UINT64[64] payload3,
+                              in UINT64[64] payload4,
+                              in UINT64[64] payload5,
+                              in UINT64[64] payload6,
+                              in UINT64[64] payload7,
+                              in UINT64[64] payload8,
+                              in UINT64[64] payload9,
+                              in UINT64[64] payload10,
+                              in UINT64[64] payload11,
+                              in UINT64[64] payload12,
+                              in UINT64[64] payload13,
+                              in UINT64[64] payload14,
+                              in UINT64[64] payload15);
+
+        method H2FNoteError(in UINT16[16] numBitsFlipped,
+                            in UINT16[16] chunkIdx,
+                            in UINT64[64] payload0,
+                            in UINT64[64] payload1,
+                            in UINT64[64] payload2,
+                            in UINT64[64] payload3,
+                            in UINT64[64] payload4,
+                            in UINT64[64] payload5,
+                            in UINT64[64] payload6,
+                            in UINT64[64] payload7,
+                            in UINT64[64] payload8,
+                            in UINT64[64] payload9,
+                            in UINT64[64] payload10,
+                            in UINT64[64] payload11,
+                            in UINT64[64] payload12,
+                            in UINT64[64] payload13,
+                            in UINT64[64] payload14,
+                            in UINT64[64] payload15);
+    };
+};

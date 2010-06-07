@@ -1,0 +1,21 @@
+********************************************************************
+* Awb module specification
+********************************************************************
+
+%AWB_START
+
+%name Bluespec Channel Integrity Test (16-wide)
+%desc Bluespec Channel Integrity Test (16-wide)
+
+%attributes hybrid
+
+%provides hybrid_application
+
+%notes chan-test.txt
+
+%sources -t BSV  -v PUBLIC  chan-test-16.bsv
+%sources -t H    -v PUBLIC  chan-test-16.h   chan-test-server-16.h
+%sources -t CPP  -v PRIVATE chan-test-16.cpp chan-test-server-16.cpp
+%sources -t RRR  -v PUBLIC  chan-test-16.rrr
+
+%AWB_END

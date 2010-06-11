@@ -23124,3 +23124,14 @@ data-path is 256 bits wide.
 
 The 16-wide test is a separate set of sources because of the lack of
 support for vector types in RRR.
+
+----------
+keflemin    Date: Fri Jun 11 18:30:41 EDT 2010  CSN: CSN-hasim-801
+                  Fri Jun 11 22:30:41 UTC 2010
+
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_htg_jtag.apm Locally Added               0 
+
+
+RRR test using JTAG on HTG board.

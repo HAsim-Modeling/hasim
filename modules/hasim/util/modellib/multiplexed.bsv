@@ -362,3 +362,73 @@ module [m] mkMultiplexedLUTRAMMultiWrite#(t_DATA initval)
 
 endmodule
 
+// Generalized state pool, implemented as a fifo. A cheaper alternative to the Multi-Write structures above
+
+interface MULTIPLEXED_STATE_POOL#(parameter numeric type t_NUM_INSTANCES, parameter type t_DATA);
+
+    method Action insertState(INSTANCE_ID#(t_NUM_INSTANCES) iid, t_DATA d);
+    method ActionValue#(t_DATA) extractState(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+    interface INSTANCE_CONTROL_IN#(t_NUM_INSTANCES) ctrl;
+
+endinterface
+
+module mkMultiplexedStatePool#(t_DATA initval) 
+    // interface: 
+        (MULTIPLEXED_STATE_POOL#(t_NUM_INSTANCES, t_DATA))
+    provisos
+        (Bits#(t_DATA, t_DATA_SZ));
+
+    NumTypeParam#(TAdd#(t_NUM_INSTANCES, 1)) buffering = ?;
+    FIFOF#(t_DATA) q <- mkSizedFIFOF_DRAM(buffering);
+    COUNTER#(TLog#(t_NUM_INSTANCES)) curIID <- mkLCounter(0);
+    Reg#(Bool) initialized <- mkReg(False);
+    Reg#(Bool) initializing <- mkReg(False);
+    Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) maxRunningInstance <- mkRegU();
+    
+    rule initialize (initializing && !initialized);
+
+        q.enq(initval);
+        
+        if (curIID.value() == maxRunningInstance)
+        begin
+            initialized <= True;
+            curIID.setC(0);
+        end
+        else
+        begin
+            curIID.up();
+        end
+
+    endrule
+    
+    method Action insertState(INSTANCE_ID#(t_NUM_INSTANCES) iid, t_DATA d);
+        q.enq(d);
+    endmethod
+    
+    method ActionValue#(t_DATA) extractState(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+        let t = q.first();
+        q.deq();
+        curIID.up();
+        return t;
+    endmethod
+
+    interface INSTANCE_CONTROL_IN ctrl;
+
+        method Bool empty() = initialized ? !q.notEmpty : True;
+        method Bool balanced() = True;
+        method Bool light() = False;
+
+        method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
+            return (initialized && q.notEmpty()) ? tagged Valid curIID.value() : Invalid ;
+        endmethod
+
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+            initializing <= True;
+            maxRunningInstance <= iid;
+        endmethod
+    
+    endinterface
+
+
+endmodule
+

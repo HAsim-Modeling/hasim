@@ -241,6 +241,7 @@ COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
     //
     // Synchronize (balance) the system before retrieving the final statistcs.
     //
+    cout << "        syncing... ";
     clientStub->Sync(0);    
 
     int max_tries = 100000;
@@ -254,6 +255,8 @@ COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
     {
         cerr << "Failed to synchronize model!" << endl;
     }
+
+    cout << "sunk." << endl;
 
     // Stop running
     Pause();
@@ -308,9 +311,6 @@ COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
     }
     cout << endl;
 
-    cout << "        syncing... ";
-    //Sync();
-    cout << "sunk." << endl;
 
     cout << "        starting stats dump... ";
     STATS_DEVICE_SERVER_CLASS::GetInstance()->DumpStats();

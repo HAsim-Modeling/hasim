@@ -23135,3 +23135,34 @@ Directory config/pm/bluespec/demos/rrrtest
 
 
 RRR test using JTAG on HTG board.
+
+----------
+pellauer    Date: Wed Jun 16 14:32:23 EDT 2010  CSN: CSN-hasim-802
+                  Wed Jun 16 18:32:23 UTC 2010
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          801 
+ commands-misc-controllers.bsv Locally Modified          801 
+
+Directory modules/hasim/util/platform-services/common-services/stats-service
+ stats-local.bsv           Locally Modified          801 
+
+Directory modules/hasim/util/modellib
+ stats-multiplexed.bsv     Locally Modified          801 
+ multiplexed.bsv           Locally Modified          801 
+ stall-ports.bsv           Locally Modified          801 
+
+
+* Add STATE_POOL_MULTIPLEXED, an alternative to a multi-write MULTIPLEXED
+  structure that requires no multiplexors, as it just uses a FIFO.
+  
+* STAT_MULTIPLEXED now uses a more efficient LUTRAM implementation. Other stats
+  are unchanged, beyond some typename cleanup.
+  
+* Stall ports use the STATE_POOL approach combined with Michael A.'s functional
+  FIFOs to avoid all multiplexors.
+
+* Cleanup syncing printout in commands service.
+
+Michael P.

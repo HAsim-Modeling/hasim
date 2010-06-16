@@ -27,7 +27,9 @@ module mkStageController
     provisos
         (Bits#(t_PIPE_STATE, t_PIPE_STATE_SZ));
 
-    FIFO#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE)) q <- mkSizedFIFO(valueof(t_NUM_INSTANCES) + 1);
+    //NumTypeParam#(TAdd#(t_NUM_INSTANCES, 1)) buffering = ?;
+    //FIFO#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE)) q <- mkSizedLUTRAMFIFO(buffering);
+    FIFO#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE)) q <- mkFIFO();
 
     
     method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid, t_PIPE_STATE st);

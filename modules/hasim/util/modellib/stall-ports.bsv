@@ -313,15 +313,13 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
     PORT_RECV_MULTIPLEXED#(ni, a) enqFromProducer <- mkPortRecvBuffered_Multiplexed(s + "__portDataEnq", 0);
 
     // We use these like ports which are self-contained.
-    let buffering = valueof(ni) + 1;
-    FIFOF#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) firstToConsumer <- mkSizedFIFOF(buffering);
-    FIFOF#(Bool) deqFromConsumer <- mkSizedFIFOF(buffering);
+    NumTypeParam#(TAdd#(ni, 1)) buffering = ?;
+    FIFOF#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) firstToConsumer <- mkSizedLUTRAMFIFOF(buffering);
+    FIFOF#(Bool) deqFromConsumer <- mkSizedFIFOF_DRAM(buffering);
 
-    FIFO#(INSTANCE_ID#(ni)) stage1Ctrl <- mkSizedFIFO(buffering);
-    FIFO#(INSTANCE_ID#(ni)) stage2Ctrl <- mkSizedFIFO(buffering);
+    FIFO#(Tuple2#(INSTANCE_ID#(ni), FUNC_FIFO#(a, 2))) stage1Ctrl <- mkSizedLUTRAMFIFO(buffering);
+    FIFO#(FUNC_FIFO#(a, 2)) stage2Ctrl <- mkSizedLUTRAMFIFO(buffering);
 
-    Vector#(ni, FIFOF#(a)) fifos <- replicateM(mkUGSizedFIFOF(2));
-    
     Reg#(STALLP_STATE) state <- mkReg(STALLP_idle);
     Reg#(INSTANCE_ID#(ni)) maxRunningInstance <- mkRegU();
     Reg#(INSTANCE_ID#(ni)) initIID <- mkReg(0);
@@ -329,7 +327,7 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
     rule initialize (state == STALLP_initializing);
     
         // Push every instance into stage1.
-        stage1Ctrl.enq(initIID);
+        stage1Ctrl.enq(tuple2(initIID, funcFIFO_Init));
         initIID <= initIID + 1;
         
         if (initIID == maxRunningInstance)
@@ -341,13 +339,13 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
 
     rule stage1_creditAndFirst (state == STALLP_running);
 
-        let iid = stage1Ctrl.first();
+        match {.iid, .fifo_state} = stage1Ctrl.first();
         stage1Ctrl.deq();
 
         // Send the first element on, if any.
-        if (fifos[iid].notEmpty())
+        if (funcFIFO_notEmpty(fifo_state))
         begin
-            firstToConsumer.enq(tuple2(iid, tagged Valid fifos[iid].first()));
+            firstToConsumer.enq(tuple2(iid, tagged Valid funcFIFO_UGfirst(fifo_state)));
         end
         else
         begin
@@ -355,8 +353,10 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
         end
 
         // Send a credit if the particular FIFO is not full.
-        let cred = (fifos[iid].notFull()) ? tagged Valid (?) : tagged Invalid;
+        let cred = (funcFIFO_notFull(fifo_state)) ? tagged Valid (?) : tagged Invalid;
         creditToProducer.send(iid, cred);
+        
+        stage2Ctrl.enq(fifo_state);
         
     endrule
 
@@ -366,19 +366,22 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
         let m_enq <- enqFromProducer.receive(iid);
         // Could add an iid sanity check here.
         
+        let fifo_state = stage2Ctrl.first();
+        stage2Ctrl.deq();
+        
         if (m_enq matches tagged Valid .val)
         begin
-            fifos[iid].enq(val);
+            fifo_state = funcFIFO_UGenq(fifo_state, val);
         end
 
         // Now deal with dequeues.
         if (deqFromConsumer.first())
         begin
-            fifos[iid].deq();
+            fifo_state = funcFIFO_UGdeq(fifo_state);
         end
         deqFromConsumer.deq(); // Could add an iid sanity check here, if deqFromConsumer carried iid along.
         
-        stage1Ctrl.enq(iid);
+        stage1Ctrl.enq(tuple2(iid, fifo_state));
 
     endrule
     

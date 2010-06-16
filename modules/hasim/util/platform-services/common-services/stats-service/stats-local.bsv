@@ -35,6 +35,8 @@ import Vector::*;
 // Various statistics interfaces:
 //
 
+typedef Bit#(`STATS_SIZE) STAT_VALUE;
+
 // Single statistic
 interface STAT;
     method Action incr();
@@ -42,7 +44,7 @@ interface STAT;
     // Be careful with this method.  Incrementing by values too close to
     // the `STATS_SIZE bit counter can cause data to be lost if the counter
     // rises faster than it can be dumped to the host.
-    method Action incrBy(Bit#(`STATS_SIZE) amount);
+    method Action incrBy(STAT_VALUE amount);
 endinterface: STAT
 
 // Vector of multiple instances of the same statistics ID
@@ -52,7 +54,7 @@ interface STAT_VECTOR#(type ni);
     // Be careful with this method.  Incrementing by values too close to
     // the `STATS_SIZE bit counter can cause data to be lost if the counter
     // rises faster than it can be dumped to the host.
-    method Action incrBy(Bit#(TLog#(ni)) iid, Bit#(`STATS_SIZE) amount);
+    method Action incrBy(Bit#(TLog#(ni)) iid, STAT_VALUE amount);
 endinterface
 
 //
@@ -68,7 +70,7 @@ module [Connected_Module] mkStatCounter#(STATS_DICT_TYPE statID)
     STAT_VECTOR#(1) m <- mkStatCounter_Vector(id_vec);
     
     method Action incr() = m.incr(0);
-    method Action incrBy(Bit#(`STATS_SIZE) amount) = m.incrBy(0, amount);
+    method Action incrBy(STAT_VALUE amount) = m.incrBy(0, amount);
 endmodule
 
 //
@@ -87,7 +89,7 @@ module [Connected_Module] mkStatCounterArrayElement#(STATS_DICT_TYPE statID,
     STAT_VECTOR#(1) m <- mkStatCounterArray_Vector(id_vec, arrayIdx);
     
     method Action incr() = m.incr(0);
-    method Action incrBy(Bit#(`STATS_SIZE) amount) = m.incrBy(0, amount);
+    method Action incrBy(STAT_VALUE amount) = m.incrBy(0, amount);
 endmodule
 
 
@@ -173,7 +175,7 @@ STAT_DATA
 
 typedef enum
 {
-    RECORDING, BUILD_ARRAY_LENGTH, FINISHING_LENGTH, DUMPING, FINISHING_DUMP
+    RECORDING, BUILD_ARRAY_LENGTH, FINISHING_LENGTH, DUMPING, FINISHING_DUMP, RESETING
 }
 STAT_STATE
     deriving (Eq, Bits);
@@ -412,7 +414,7 @@ module [Connected_Module] mkStatCounterVec_Enabled#(Vector#(n_STATS, STATS_DICT_
     endmethod
 
 
-    method Action incrBy(Bit#(TLog#(n_STATS)) idx, Bit#(`STATS_SIZE) amount);
+    method Action incrBy(Bit#(TLog#(n_STATS)) idx, STAT_VALUE amount);
         if (enabled)
         begin
             statPool[idx].upBy(amount);
@@ -429,7 +431,7 @@ module [Connected_Module] mkStatCounterVec_Disabled#(Vector#(n_STATS, STATS_DICT
         noAction;
     endmethod
 
-    method Action incrBy(Bit#(TLog#(n_STATS)) idx, Bit#(`STATS_SIZE) amount);
+    method Action incrBy(Bit#(TLog#(n_STATS)) idx, STAT_VALUE amount);
         noAction;
     endmethod
 endmodule

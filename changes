@@ -23166,3 +23166,18 @@ Directory modules/hasim/util/modellib
 * Cleanup syncing printout in commands service.
 
 Michael P.
+
+----------
+pellauer    Date: Thu Jun 17 12:34:54 EDT 2010  CSN: CSN-hasim-803
+                  Thu Jun 17 16:34:54 UTC 2010
+
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          802 
+ stall-ports.bsv           Locally Modified          802 
+
+
+* Some erroneous references to the deleted code made it through. This just shows
+  how hard it is to delete old code.
+  
+Michael P.

@@ -379,7 +379,7 @@ module mkMultiplexedStatePool#(t_DATA initval)
         (Bits#(t_DATA, t_DATA_SZ));
 
     NumTypeParam#(TAdd#(t_NUM_INSTANCES, 1)) buffering = ?;
-    FIFOF#(t_DATA) q <- mkSizedFIFOF_DRAM(buffering);
+    FIFOF#(t_DATA) q <- mkSizedLUTRAMFIFOF(buffering);
     COUNTER#(TLog#(t_NUM_INSTANCES)) curIID <- mkLCounter(0);
     Reg#(Bool) initialized <- mkReg(False);
     Reg#(Bool) initializing <- mkReg(False);

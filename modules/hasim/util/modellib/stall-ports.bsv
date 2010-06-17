@@ -315,7 +315,7 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
     // We use these like ports which are self-contained.
     NumTypeParam#(TAdd#(ni, 1)) buffering = ?;
     FIFOF#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) firstToConsumer <- mkSizedLUTRAMFIFOF(buffering);
-    FIFOF#(Bool) deqFromConsumer <- mkSizedFIFOF_DRAM(buffering);
+    FIFOF#(Bool) deqFromConsumer <- mkSizedLUTRAMFIFOF(buffering);
 
     FIFO#(Tuple2#(INSTANCE_ID#(ni), FUNC_FIFO#(a, 2))) stage1Ctrl <- mkSizedLUTRAMFIFO(buffering);
     FIFO#(FUNC_FIFO#(a, 2)) stage2Ctrl <- mkSizedLUTRAMFIFO(buffering);

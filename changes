@@ -23181,3 +23181,27 @@ Directory modules/hasim/util/modellib
   how hard it is to delete old code.
   
 Michael P.
+
+----------
+pellauer    Date: Fri Jun 18 17:18:17 EDT 2010  CSN: CSN-hasim-804
+                  Fri Jun 18 21:18:17 UTC 2010
+
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          803 
+ stall-ports.bsv           Locally Modified          803 
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          803 
+
+
+* Scheduling fix-up. The Bluespec scheduler stopped noticing that things were
+  mutually exclusive again, particularly with regards to "initialization" 
+  events. So now we use a method that writes a wire that feeds a rule. We
+  can put whatever attributes we want on the rule, so everything is happy
+  and the hardware is unchanged. MANY fewer warnings are issued though.
+
+* Remove the "initialized" field from LUTRAMs. This was my last attempt at a fix 
+  and it wasn't as succesful as the Wire approach.
+  
+Michael P.

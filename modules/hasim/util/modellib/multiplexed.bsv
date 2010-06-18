@@ -265,8 +265,7 @@ module mkMultiplexedLUTRAMInitializedWith#(function t_DATA getInitVal(t_INDEX i)
         
         return interface LUTRAM#(t_INDEX, t_DATA);
                     method t_DATA sub(t_INDEX a) = mergedData.sub(tuple2(iid, a));
-                    method Action upd(t_INDEX a, t_DATA d) = mergedData.upd(tuple2(iid, a), d);
-                    method initialized = mergedData.initialized;
+                    method Action upd(t_INDEX a, t_DATA d)  = mergedData.upd(tuple2(iid, a), d);
                endinterface;
     endmethod
 
@@ -303,12 +302,6 @@ module [m] mkMultiplexedLUTRAMMultiWrite#(t_DATA initval)
     // The vector of LUTRAMs.
     Vector#(t_NUM_INSTANCES, LUTRAM#(t_ADDR, t_DATA)) ramvec <- replicateM(mkLUTRAM(initval));
 
-    Bool ramsInitialized = True;    
-    for (Integer x = 0; x < valueof(t_NUM_INSTANCES); x = x + 1)
-    begin
-        ramsInitialized = ramsInitialized && ramvec[x].initialized();
-    end
-
     // A group of wires to record all writes across all writeports.
     // Using wires ensure writes will be conflict-free.
     Vector#(t_NUM_PORTS, Vector#(t_NUM_INSTANCES, RWire#(Tuple2#(t_ADDR, t_DATA)))) writeWires = newVector();
@@ -322,7 +315,7 @@ module [m] mkMultiplexedLUTRAMMultiWrite#(t_DATA initval)
     // although really it's probably an error if two of the index are valid at the same time
     // across write ports.
 
-    rule updateRAMs (ramsInitialized);
+    rule updateRAMs (True);
         
         for (Integer x = 0; x < valueof(t_NUM_INSTANCES); x = x + 1)
         begin
@@ -355,7 +348,6 @@ module [m] mkMultiplexedLUTRAMMultiWrite#(t_DATA initval)
         return interface LUTRAM#(t_ADDR, t_DATA);
                    method t_DATA sub(t_ADDR a) = ramvec[iid].sub(a);
                    method Action upd(t_ADDR a, t_DATA d) = writeWires[portnum][iid].wset(tuple2(a, d));
-                   method initialized = ramvec[iid].initialized;
                endinterface;
 
     endmethod
@@ -401,11 +393,11 @@ module mkMultiplexedStatePool#(t_DATA initval)
 
     endrule
     
-    method Action insertState(INSTANCE_ID#(t_NUM_INSTANCES) iid, t_DATA d);
+    method Action insertState(INSTANCE_ID#(t_NUM_INSTANCES) iid, t_DATA d) if (initialized);
         q.enq(d);
     endmethod
     
-    method ActionValue#(t_DATA) extractState(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+    method ActionValue#(t_DATA) extractState(INSTANCE_ID#(t_NUM_INSTANCES) iid) if (initialized);
         let t = q.first();
         q.deq();
         curIID.up();

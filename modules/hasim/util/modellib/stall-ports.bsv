@@ -323,6 +323,16 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
     Reg#(STALLP_STATE) state <- mkReg(STALLP_idle);
     Reg#(INSTANCE_ID#(ni)) maxRunningInstance <- mkRegU();
     Reg#(INSTANCE_ID#(ni)) initIID <- mkReg(0);
+    Wire#(INSTANCE_ID#(ni)) instanceW <- mkWire();
+
+    rule beginInit (state == STALLP_idle);
+
+        let iid = instanceW;
+        maxRunningInstance <= iid;
+        state <= STALLP_initializing;
+        enqFromProducer.ctrl.setMaxRunningInstance(iid);
+
+    endrule
 
     rule initialize (state == STALLP_initializing);
     
@@ -427,10 +437,10 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
             endmethod
             
             method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid);
-
-                maxRunningInstance <= iid;
-                state <= STALLP_initializing;
-                enqFromProducer.ctrl.setMaxRunningInstance(iid);
+            
+                // The Bluespec scheduler was having problems with spurious warnings.
+                // So we use a wire in order to save it the confusion.
+                instanceW <= iid;
 
             endmethod
         

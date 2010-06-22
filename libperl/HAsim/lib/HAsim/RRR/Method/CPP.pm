@@ -173,7 +173,7 @@ sub print_client_definition
     print $file $indent . "    UMF_MESSAGE msg = new UMF_MESSAGE_CLASS;\n";
     print $file $indent . "    msg->SetLength($insize);\n";
     print $file $indent . "    msg->SetServiceID(" . $self->{servicename} . "_SERVICE_ID);\n";
-    print $file $indent . "    msg->SetMethodID(METHOD_ID_" . $self->{name} . ");\n";
+    print $file $indent . "    msg->SetMethodID(" . $self->{servicename} . "_METHOD_ID_" . $self->{name} . ");\n";
 
     # marshall args, BUT use reverse order!
     my @reverseinlist = reverse(@{ $self->inargs()->args() });
@@ -254,7 +254,7 @@ sub print_server_case_block
     my $outsize = $self->outargs()->size();
     
     # start printing case statement
-    print $file $indent . "case METHOD_ID_" . $self->name() . ":\n";
+    print $file $indent . "case " . $self->{servicename} . "_METHOD_ID_" . $self->name() . ":\n";
     print $file $indent . "{\n";
 
     # some versions of GCC aren't very happy if the first statement

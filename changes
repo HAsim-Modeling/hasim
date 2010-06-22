@@ -23205,3 +23205,20 @@ Directory modules/hasim/util/common
   and it wasn't as succesful as the Wire approach.
   
 Michael P.
+
+----------
+aparasha    Date: Tue Jun 22 15:21:58 EDT 2010  CSN: CSN-hasim-805
+                  Tue Jun 22 19:21:58 UTC 2010
+
+
+Directory libperl/HAsim/lib/HAsim/RRR/Method
+ CPP.pm                    Locally Modified          804 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Server
+ CPP.pm                    Locally Modified          804 
+
+Directory libperl/HAsim/lib/HAsim/RRR/Client
+ CPP.pm                    Locally Modified          804 
+
+Fixed an RRR C++ stub generation bug that was preventing the use of the
+same method name in different services.

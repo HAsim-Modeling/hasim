@@ -117,7 +117,7 @@ sub print_stub
     my $methodID = 0;
     foreach my $method (@{ $self->{methodlist} })
     {
-        print $file "#define METHOD_ID_" . $method->name() . " $methodID\n";
+        print $file "#define " . $self->name() . "_METHOD_ID_" . $method->name() . " $methodID\n";
         $methodID = $methodID + 1;
     }
     print $file "\n";

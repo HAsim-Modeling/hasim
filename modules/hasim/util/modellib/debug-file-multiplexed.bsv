@@ -85,6 +85,21 @@ endinterface
 // ========================================================================
 
 //
+// Null implementation
+//
+module mkTIMEPDebugFileNull_Multiplexed
+    // interface:
+    (TIMEP_DEBUG_FILE_MULTIPLEXED#(ni));
+
+    method Action record(INSTANCE_ID#(ni) iid, Fmt fmt) = ?;
+    method Action record_next_cycle(INSTANCE_ID#(ni) iid, Fmt fmt) = ?;
+    method Action record_simple(Fmt fmt) = ?;
+    method Action record_all(Fmt fmt) = ?;
+    method Action nextModelCycle(INSTANCE_ID#(ni) iid) = ?;
+endmodule
+
+
+//
 // mkTIMEPDebugFile_Multiplexed
 //
 // Standard simulation debugging file for the timing partition where
@@ -93,6 +108,8 @@ endinterface
 module mkTIMEPDebugFile_Multiplexed#(String fname)
     // interface:
     (TIMEP_DEBUG_FILE_MULTIPLEXED#(ni));
+
+`ifndef SYNTH
 
     COUNTER#(32) fpga_cycle  <- mkLCounter(0);
 
@@ -145,6 +162,15 @@ module mkTIMEPDebugFile_Multiplexed#(String fname)
         model_cycle[iid].up();
     endmethod
 
+`else
+
+    // No point in wasting space on debug file for synthesized build.  Xst
+    // doesn't get rid of it all.
+    TIMEP_DEBUG_FILE_MULTIPLEXED#(ni) n <- mkTIMEPDebugFileNull_Multiplexed();
+    return n;
+
+`endif
+
 endmodule
 
 
@@ -164,7 +190,7 @@ typedef TIMEP_DEBUG_FILE_MULTIPLEXED#(NUM_CONTEXTS) TIMEP_DEBUG_FILE_MULTICTX;
 // Special case of Multiplexed where the number of instances is NUM_CONTEXTS
 module mkTIMEPDebugFile_MultiCtx#(String fname)
     // interface:
-        (TIMEP_DEBUG_FILE_MULTICTX);
+    (TIMEP_DEBUG_FILE_MULTICTX);
 
     TIMEP_DEBUG_FILE_MULTICTX ifc <- mkTIMEPDebugFile_Multiplexed(fname);
     return ifc;
@@ -179,6 +205,22 @@ endmodule
 // ========================================================================
 
 //
+// Null implementation
+//
+module mkTIMEPDebugFileNull_SharedCycle_Multiplexed
+    // interface:
+    (TIMEP_DEBUG_FILE_SHARED_CYCLE_MULTIPLEXED#(ni));
+
+    method Action record(INSTANCE_ID#(ni) iid, Fmt fmt) = ?;
+    method Action record_next_cycle(INSTANCE_ID#(ni) iid, Fmt fmt) = ?;
+    method Action record_simple(Fmt fmt) = ?;
+    method Action record_all(Fmt fmt) = ?;
+    method Action record_all_next_cycle(Fmt fmt) = ?;
+    method Action nextModelCycle() = ?;
+endmodule
+
+
+//
 // mkTIMEPDebugFile_SharedCycle_MultiCtx --
 //     All contexts are locked to the same cycle.  Basically the same code
 //     as above, but only keep one copy of the model cycle.
@@ -186,6 +228,8 @@ endmodule
 module mkTIMEPDebugFile_SharedCycle_Multiplexed#(String fname)
     // interface:
     (TIMEP_DEBUG_FILE_SHARED_CYCLE_MULTIPLEXED#(ni));
+
+`ifndef SYNTH
 
     COUNTER#(32) fpga_cycle  <- mkLCounter(0);
     COUNTER#(32) model_cycle <- mkLCounter(~0);
@@ -232,20 +276,15 @@ module mkTIMEPDebugFile_SharedCycle_Multiplexed#(String fname)
     method Action nextModelCycle() if (initialized);
         model_cycle.up();
     endmethod
-endmodule
 
+`else
 
-//
-// Null implementation
-//
-module mkTIMEPDebugFileNull_SharedCycle_Multiplexed
-    // interface:
-    (TIMEP_DEBUG_FILE_SHARED_CYCLE_MULTIPLEXED#(ni));
+    // No point in wasting space on debug file for synthesized build.  Xst
+    // doesn't get rid of it all.
+    TIMEP_DEBUG_FILE_SHARED_CYCLE_MULTIPLEXED#(ni) n <-
+        mkTIMEPDebugFileNull_SharedCycle_Multiplexed();
+     return n;
 
-    method Action record(INSTANCE_ID#(ni) iid, Fmt fmt) = ?;
-    method Action record_next_cycle(INSTANCE_ID#(ni) iid, Fmt fmt) = ?;
-    method Action record_simple(Fmt fmt) = ?;
-    method Action record_all(Fmt fmt) = ?;
-    method Action record_all_next_cycle(Fmt fmt) = ?;
-    method Action nextModelCycle() = ?;
+`endif
+
 endmodule

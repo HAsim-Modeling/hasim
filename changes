@@ -23222,3 +23222,18 @@ Directory libperl/HAsim/lib/HAsim/RRR/Client
 
 Fixed an RRR C++ stub generation bug that was preventing the use of the
 same method name in different services.
+
+----------
+mcadler     Date: Wed Jun 23 07:52:42 EDT 2010  CSN: CSN-hasim-806
+                  Wed Jun 23 11:52:42 UTC 2010
+
+
+Directory modules/hasim/util/modellib
+ debug-file-multiplexed.bsv Locally Modified          805 
+
+Directory modules/hasim/util/common
+ hasim-debug-file.bsv      Locally Modified          805 
+
+For synthesized builds always use the null implementation of debug files.
+Xst was not eliminating the whole thing and fan-out of the initialized
+flag was a timing problem.

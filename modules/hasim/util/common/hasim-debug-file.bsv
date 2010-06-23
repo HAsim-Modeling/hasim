@@ -50,13 +50,30 @@ interface TIMEP_DEBUG_FILE;
 endinterface
 
 
-// mkTIMEPDebugFile
+//
+// mkTIMEPDebugFileNull --
+//     Null debug file, will drop everything on the floor. 
+//
+module mkTIMEPDebugFileNull#(String fname)
+    // interface:
+    (TIMEP_DEBUG_FILE);
 
-// Standard simulation debugging file for the timing partition.
+    method record = ?;
+    method record_next_cycle = ?;
+    method nextModelCycle = ?;
+endmodule
 
+
+//
+// mkTIMEPDebugFile --
+//
+//     Standard simulation debugging file for the timing partition.
+//
 module mkTIMEPDebugFile#(String fname)
     // interface:
-        (TIMEP_DEBUG_FILE);
+    (TIMEP_DEBUG_FILE);
+
+`ifndef SYNTH
 
     COUNTER#(32) fpga_cycle  <- mkLCounter(0);
     COUNTER#(32) model_cycle <- mkLCounter(~0);
@@ -91,8 +108,14 @@ module mkTIMEPDebugFile#(String fname)
     method Action nextModelCycle() if (initialized);
         model_cycle.up();
     endmethod
+    
+`else
+
+    // No point in wasting space on debug file for synthesized build.  Xst
+    // doesn't get rid of it all.
+    TIMEP_DEBUG_FILE n <- mkTIMEPDebugFileNull(fname);
+    return n;
+
+`endif
 
 endmodule
-    
-
-    

@@ -23237,3 +23237,18 @@ Directory modules/hasim/util/common
 For synthesized builds always use the null implementation of debug files.
 Xst was not eliminating the whole thing and fan-out of the initialized
 flag was a timing problem.
+
+----------
+mcadler     Date: Mon Jun 28 10:36:46 EDT 2010  CSN: CSN-hasim-807
+                  Mon Jun 28 14:36:46 UTC 2010
+
+
+Directory tools/scripts
+ hasim-connect             Locally Modified          806 
+
+SCons 1.2 isn't building synthesis boundary wrappers after running hasim-connect
+if the wrapper is unchanged.  That is probably correct, but Bluespec complains
+due to dependence timestamp problems.  For now, force the generated wrapper to
+be different whenever it is built by adding the current time.  This only
+happens when the wrapper is rebuilt due to other source changes, so it
+shouldn't force extra builds.

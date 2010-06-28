@@ -173,6 +173,16 @@ sub create_surrogate {
 
     print SURROGATE "endmodule\n";
 
+    ##
+    ## Recent versions of SCons are too clever.  They don't rebuild the wrapper
+    ## generated here if the wrapper doesn't change, even when the underlying
+    ## code changes.  This is technically fine, but Bluespec notes the timestamps
+    ## and complains.  Force a rebuild when hasim-connect is run by adding a
+    ## timestamp.  We could try to be more clever and use MD5 sums of the
+    ## lower level compiled files, but they appear to have timestamps too.
+    ##
+    print SURROGATE "\n//" . localtime() . "\n";
+
     CORE::close(SURROGATE);
 }
 

@@ -121,7 +121,6 @@ HYBRID_APPLICATION_CLASS::Main()
 {
     UINT64 sts, oldsts;
     UINT64 data;
-    const int BURSTSIZE = 1;
 
     // print banner
     cout << "\n";
@@ -144,30 +143,33 @@ HYBRID_APPLICATION_CLASS::Main()
     {
         int addr = i;
         data = ((UINT64(i) + 123456) << 32) | (UINT64(i) + 1001);
-        sts = clientStub->WriteReq(addr * 2);
-        for (int b = 0; b < BURSTSIZE; b++)
+        sts = clientStub->WriteReq(addr * 4);
+        for (int b = 0; b < MEM_BURST_COUNT; b++)
         {
             sts = clientStub->WriteData(data, 0);
             data = ~data;
         }
     }
 
+    cout << "writes done" << endl;
+
     // Read the pattern back.  Alternate banks on each request.
     int errors = 0;
-    for (int i = 0; i <= 1000; i += 1)
+    int incr = (MEM_BANKS > 1) ? 1 : 2;
+    for (int i = 0; i <= 1000; i += incr)
     {
         int addr = i;
-        sts = (addr & 1) ? clientStub->ReadReq1(addr * 2) : clientStub->ReadReq0(addr * 2);
+        sts = (addr & 1) ? clientStub->ReadReq1(addr * 4) : clientStub->ReadReq0(addr * 4);
     
         UINT64 expect = ((UINT64(i) + 123456) << 32) | (UINT64(i) + 1001);
         if (addr & 1) expect = ~expect;
 
-        for (int b = 0; b < BURSTSIZE; b++)
+        for (int b = 0; b < MEM_BURST_COUNT; b++)
         {
             data = (addr & 1) ? clientStub->ReadRsp1(0) : clientStub->ReadRsp0(0);
             if (data != expect)
             {
-                cout << hex << "error read data 0x" << addr << " = 0x" << data << dec << endl;
+                cout << hex << "error read data 0x" << addr << " = 0x" << data << " expect 0x" << expect << dec << endl;
                 errors += 1;
             }
 
@@ -177,10 +179,10 @@ HYBRID_APPLICATION_CLASS::Main()
 
     cout << errors << " read errors" << endl << endl << flush;
 
-
     //
     // Optimal read buffer size calibration
     //
+#if (MEM_CHECK_LATENCY != 0)
     cout << "Latencies:" << endl;
     int min_idx = 0;
     int min_latency = 0;
@@ -197,7 +199,39 @@ HYBRID_APPLICATION_CLASS::Main()
         }
     }
 
-    cout << "Optimal reads in flight: " << min_idx << endl;
+    cout << "Optimal reads in flight: " << min_idx << endl << endl << flush;
+#endif
+
+    errors = 0;
+    for (int m = 0; m < 8; m++)
+    {
+        clientStub->WriteReq(0);
+        for (int b = 0; b < MEM_BURST_COUNT; b++)
+        {
+            clientStub->WriteData(0xffffffffffffffff, 0);
+        }
+
+        clientStub->WriteReq(0);
+        for (int b = 0; b < MEM_BURST_COUNT; b++)
+        {
+            clientStub->WriteData(0, 1 << m);
+        }
+
+        clientStub->ReadReq0(0);
+        for (int b = 0; b < MEM_BURST_COUNT; b++)
+        {
+            UINT64 data = clientStub->ReadRsp0(0);
+            UINT64 expect = 0xffL << (m * 8);
+
+            if (data != expect)
+            {
+                printf("Mask error %d:  0x%016llx, expect 0x%016llx\n", m, data, expect);
+                errors += 1;
+            }
+        }
+    }
+
+    cout << errors << " mask errors" << endl << endl << flush;
 
     // report results and exit
     cout << "Done" << endl;

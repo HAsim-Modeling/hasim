@@ -2,7 +2,7 @@
 [Global]
 SaveParameters=0
 Description=ACP Nallatech SRAM Debugger
-File=nallatech_sram_debugger
+File=sram_debugger_nallatech_acp
 Version=2.1
 Name=ACP Nallatech SRAM Debugger
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
@@ -96,7 +96,6 @@ nallatech_edge_device=Nallatech Edge Physical Device
 File=modules/bluespec/common/fpgaenv/virtual-platform/channelio/physical-channel/nallatech-edge/nallatech-edge-channel.awb
 Packagehint=platform-acp
 
-
 [ACP M2 Compute Module With SRAM (Nallatech)]
 File=modules/bluespec/common/fpgaenv/physical-platform/acp-m2c-with-sram/acp-m2c.awb
 Packagehint=platform-acp
@@ -139,10 +138,7 @@ Packagehint=platforms
 virtual_platform=Standard Virtual Platform
 fpga_components=Hardware FPGA Components for Virtex 5
 librl_bsv=RL Bluespec Library
-
-[NULL Local Memory Interface]
-File=modules/bluespec/common/fpgaenv/low-level-platform-interface/local-mem/local-mem-null.awb
-Packagehint=platforms
+build_pipeline=FPGA Build Pipeline
 
 [Little-Endian Unified Message Format/Params]
 UMF_CHUNK_BYTES=8
@@ -164,3 +160,53 @@ rrr_common=RRR Common Module
 [SRAM Debugger Application]
 File=modules/bluespec/system/demos/debuggers/platform-debugger.awb
 Packagehint=hasim
+
+[FPGA Build Pipeline]
+File=modules/project/pipelines/fpga-build-pipeline.awb
+Packagehint=platforms
+
+[Xilinx BITGEN]
+File=modules/project/xilinx/xilinx_bitgen.awb
+Packagehint=platforms
+
+[Xilinx LOADER]
+File=modules/project/xilinx/xilinx_loader.awb
+Packagehint=platforms
+
+[Xilinx NGD]
+File=modules/project/xilinx/xilinx_ngd.awb
+Packagehint=platforms
+
+[FPGA Build Pipeline/Requires]
+post_synthesis_tool=Xilinx Post-synthesis Toolchain
+synthesis_tool=XST Synthesis Tool
+
+[XST Synthesis Tool]
+File=modules/project/xilinx/xst.awb
+Packagehint=platforms
+
+[Xilinx Post-synthesis Toolchain]
+File=modules/project/xilinx/xilinx_post_synth.awb
+Packagehint=platforms
+
+[Xilinx PAR]
+File=modules/project/xilinx/xilinx_par.awb
+Packagehint=platforms
+
+[Xilinx Post-synthesis Toolchain/Requires]
+xilinx_ngd=Xilinx NGD
+xilinx_bitgen=Xilinx BITGEN
+xilinx_par=Xilinx PAR
+xilinx_map=Xilinx MAP
+xilinx_loader=Xilinx LOADER
+
+[Xilinx MAP]
+File=modules/project/xilinx/xilinx_map.awb
+Packagehint=platforms
+
+[NULL Local Memory Interface]
+File=modules/bluespec/common/fpgaenv/low-level-platform-interface/local-mem/local-mem-null.awb
+Packagehint=platforms
+
+[SRAM Debugger Application/Params]
+MEM_CHECK_LATENCY=1

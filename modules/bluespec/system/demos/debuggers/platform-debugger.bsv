@@ -96,14 +96,14 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
         let addr <- serverStub.acceptRequest_ReadReq1();        
         serverStub.sendResponse_ReadReq1(0);
 
-        sram[1].readReq(truncate(addr));
+        sram[valueOf(TSub#(FPGA_DDR_BANKS, 1))].readReq(truncate(addr));
 
     endrule
     
     rule accept_load_rsp1 (state == STATE_running);
         
         let dummy <- serverStub.acceptRequest_ReadRsp1();
-        let data  <- sram[1].readRsp();
+        let data  <- sram[valueOf(TSub#(FPGA_DDR_BANKS, 1))].readRsp();
         serverStub.sendResponse_ReadRsp1(truncate(data));
         
     endrule
@@ -114,7 +114,8 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
         serverStub.sendResponse_WriteReq(0);
 
         sram[0].writeReq(truncate(addr));
-        sram[1].writeReq(truncate(addr));
+        if (valueOf(FPGA_DDR_BANKS) > 1)
+            sram[1].writeReq(truncate(addr));
         
     endrule
     
@@ -122,7 +123,8 @@ module mkApplication#(VIRTUAL_PLATFORM vp)();
         
         let resp <- serverStub.acceptRequest_WriteData();
         sram[0].writeData(zeroExtend(resp.data), truncate(resp.mask));
-        sram[1].writeData(~zeroExtend(resp.data), truncate(resp.mask));
+        if (valueOf(FPGA_DDR_BANKS) > 1)
+            sram[1].writeData(~zeroExtend(resp.data), truncate(resp.mask));
 
         serverStub.sendResponse_WriteData(0);
         

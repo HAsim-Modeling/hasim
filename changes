@@ -23252,3 +23252,22 @@ due to dependence timestamp problems.  For now, force the generated wrapper to
 be different whenever it is built by adding the current time.  This only
 happens when the wrapper is rebuilt due to other source changes, so it
 shouldn't force extra builds.
+
+----------
+mcadler     Date: Wed Jun 30 21:33:31 EDT 2010  CSN: CSN-hasim-808
+                  Thu Jul  1 01:33:31 UTC 2010
+
+
+Directory config/pm/bluespec/demos/debugger
+ sram_debugger_nallatech_acp.apm Locally Added               0 
+ sram_debugger_htg.apm     Locally Added               0 
+ nallatech_sram_debugger.apm Locally Removed           807 
+
+Directory modules/bluespec/system/demos/debuggers
+ platform-debugger.bsv     Locally Modified          807 
+ platform-debugger.cpp     Locally Modified          807 
+ platform-debugger.awb     Locally Modified          807 
+
+- Make primitive memory debugger work with HTG PCIe environment
+- Add masked write tests.  (ACP masked writes were broken in multiple ways.)
+- Rename to standard naming.

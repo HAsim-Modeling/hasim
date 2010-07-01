@@ -18,4 +18,8 @@
 %sources -t CPP  -v PRIVATE platform-debugger.cpp
 %sources -t RRR  -v PUBLIC  platform-debugger.rrr
 
+%param MEM_BURST_COUNT   1   "DDR burst count"
+%param MEM_BANKS         1   "DDR banks"
+%param MEM_CHECK_LATENCY 0   "Test DDR latency"
+
 %AWB_END

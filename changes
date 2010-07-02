@@ -23271,3 +23271,14 @@ Directory modules/bluespec/system/demos/debuggers
 - Make primitive memory debugger work with HTG PCIe environment
 - Add masked write tests.  (ACP masked writes were broken in multiple ways.)
 - Rename to standard naming.
+
+----------
+kfleming    Date: Thu Jul  1 22:57:58 EDT 2010  CSN: CSN-hasim-809
+                  Fri Jul  2 02:57:58 UTC 2010
+
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_acp_jtag.apm Locally Added               0 
+
+
+A jtag based rrrtest for the acp module

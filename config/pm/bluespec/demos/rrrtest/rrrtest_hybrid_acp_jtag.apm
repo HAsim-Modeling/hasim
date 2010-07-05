@@ -12,7 +12,7 @@ DefaultRunOpts=
 
 [Model]
 DefaultAttributes=hybrid acp bluespec
-model=HW/SW Hybrid Project Foundation
+model=HW/SW Hybrid Pipeline Build
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/fpgaenv-acp-m2c-nallatech-jtag-no-cache.apm
@@ -22,21 +22,9 @@ Packagehint=platform-acp
 File=modules/bluespec/system/demos/rrrtest/rrrtest.awb
 Packagehint=hasim
 
-[HW/SW Hybrid Project Foundation]
-File=modules/project/project-hybrid.awb
-Packagehint=platforms
-
 [Base Hybrid Application Environment]
 File=modules/application-env/hybrid/base/application-env-hybrid-base.awb
 Packagehint=platforms
-
-[HW/SW Hybrid Project Foundation/Params]
-WAIT_FOR_HARDWARE=0
-
-[HW/SW Hybrid Project Foundation/Requires]
-fpgaenv=FPGA Environment
-application_env=Base Hybrid Application Environment
-project_common=Hybrid Project Common Utilities
 
 [Base Hybrid Application Environment/Requires]
 hybrid_application=Bluespec RRR Test and Benchmarking Program
@@ -44,3 +32,12 @@ hybrid_application=Bluespec RRR Test and Benchmarking Program
 [Hybrid Project Common Utilities]
 File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim
+
+[HW/SW Hybrid Pipeline Build/Requires]
+project_common=Hybrid Project Common Utilities
+fpgaenv=FPGA Environment
+application_env=Base Hybrid Application Environment
+
+[HW/SW Hybrid Pipeline Build]
+File=modules/project/project-pipeline.awb
+Packagehint=platforms

@@ -23282,3 +23282,14 @@ Directory config/pm/bluespec/demos/rrrtest
 
 
 A jtag based rrrtest for the acp module
+
+----------
+kfleming    Date: Mon Jul  5 16:06:38 EDT 2010  CSN: CSN-hasim-810
+                  Mon Jul  5 20:06:38 UTC 2010
+
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_acp_jtag.apm Locally Modified          809 
+
+
+Modified jtag apm 

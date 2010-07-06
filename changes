@@ -23293,3 +23293,17 @@ Directory config/pm/bluespec/demos/rrrtest
 
 
 Modified jtag apm 
+
+----------
+pellauer    Date: Tue Jul  6 15:55:03 EDT 2010  CSN: CSN-hasim-811
+                  Tue Jul  6 19:55:03 UTC 2010
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.cpp         Locally Modified          810 
+
+
+* Small change in tracing messages to clarify speculative page accesses from
+  actual page faults.
+  
+Michael P.

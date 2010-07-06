@@ -129,12 +129,12 @@ FUNCP_TLB_SERVER_CLASS::VtoP(CONTEXT_ID ctxId, MEM_VALUE va, UINT8 reqWordIdx)
         bool do_alloc = alloc_on_fault && (reqWordIdx == i);
         MEM_VALUE xlate_va = va + (1 << FUNCP_ISA_PAGE_SHIFT) * i;
 
-        FUNCP_MEM_VTOP_RESP vtop = memory->VtoP(ctxId, xlate_va, do_alloc);
-
         if (do_alloc)
         {
             T1("\tfuncp_memory: VtoP VA " << fmt_data(xlate_va) << " -- allocate on fault");
         }
+
+        FUNCP_MEM_VTOP_RESP vtop = memory->VtoP(ctxId, xlate_va, do_alloc);
 
         T1("\tfuncp_memory: VtoP CTX " << UINT64(ctxId) << " VA " << fmt_data(xlate_va) << " -> PA " << fmt_addr(vtop.pa) <<
            (vtop.ioSpace ? " [I/O SPACE]" : "") <<

@@ -22,6 +22,8 @@ interface PHYSICAL_CON_In#(parameter type t_MSG);
 
   method Action get_TRY(t_MSG x);
   method Bool   get_SUCCESS();
+  interface Clock clk;
+  interface Reset rst;
 
 endinterface
 
@@ -30,6 +32,8 @@ interface PHYSICAL_CON_Out#(parameter type t_MSG);
 
   method t_MSG try();
   method Action success();
+  interface Clock clk;
+  interface Reset rst;
 
 endinterface
 

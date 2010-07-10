@@ -23307,3 +23307,32 @@ Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
   actual page faults.
   
 Michael P.
+
+----------
+kfleming    Date: Sat Jul 10 17:49:40 EDT 2010  CSN: CSN-hasim-812
+                  Sat Jul 10 21:49:40 UTC 2010
+
+
+Directory modules/hasim/util/smart-synthesis-boundaries
+ expose-connections.bsv    Locally Modified          811 
+
+Directory modules/bluespec/common/soft_connections
+ Connected_Module.bsv      Locally Modified          811 
+
+Directory modules/bluespec/common/soft_connections/alg/typed
+ ConnectionHelper.bsv      Locally Modified          811 
+ ConnectionAlg.bsv         Locally Modified          811 
+
+Directory modules/bluespec/common/soft_connections
+ Connections.bsv           Locally Modified          811 
+
+
+
+Added support for multiple clock domains in the connections library.
+The idea is that modules may composibly have their own clock domain,
+with domain crossing primitives inferred as necessary.  Currently this
+code produces working bit files for clocks which are whole multiples
+of each other, but not for fractional multiples because I haven't yet
+got the automatic generation of clock constraints completed. I also
+haven't attempted a port to ModuleContext, although this doesn't seem
+difficult.

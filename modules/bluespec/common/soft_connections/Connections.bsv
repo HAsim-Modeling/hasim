@@ -140,6 +140,9 @@ module [Connected_Module] mkConnectionSendPhysical#(String portname, Bool option
     provisos
             (Bits#(msg_T, msg_SZ));
 
+  Clock clock <- exposeCurrentClock();
+  Reset reset <- exposeCurrentReset();
+
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
   
@@ -154,6 +157,10 @@ module [Connected_Module] mkConnectionSendPhysical#(String portname, Bool option
                endmethod
 	       
 	       method Action success = q.deq();
+
+               interface clk = clock;
+
+               interface rst = reset;
 
 	     endinterface);
 
@@ -269,6 +276,9 @@ module [Connected_Module] mkConnectionRecvPhysical#(String portname, Bool option
     provisos
             (Bits#(msg_T, msg_SZ));
 
+  Clock clock <- exposeCurrentClock();
+  Reset reset <- exposeCurrentReset();
+
   PulseWire      en_w    <- mkPulseWire();
   RWire#(msg_T)  data_w  <- mkRWire();
   
@@ -283,6 +293,10 @@ module [Connected_Module] mkConnectionRecvPhysical#(String portname, Bool option
 	       method Bool get_SUCCESS();
 	         return en_w;
 	       endmethod
+
+               interface clk = clock;
+  
+               interface rst = reset;
 
 	     endinterface);
 
@@ -524,6 +538,9 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
 	    (Bits#(msg_T, msg_SZ),
              Add#(msg_SZ, t_TMP, CON_CHAIN_DATA_SZ));
 
+  Clock clock <- exposeCurrentClock();
+  Reset reset <- exposeCurrentReset();
+
   //This queue is here for correctness until the system is confirmed to work
   //Later it could be removed or turned into a BypassFIFO to reduce latency.
 
@@ -549,6 +566,10 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
 	         return en_w;
 	       endmethod
 
+               interface clk = clock;
+  
+               interface rst = reset;
+
 	     endinterface);
 
   let outg = (interface CON_CHAIN_Out;
@@ -559,6 +580,10 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
                endmethod
 	       
 	       method Action success = q.deq();
+
+               interface clk = clock;
+  
+               interface rst = reset;
 
 	     endinterface);
 

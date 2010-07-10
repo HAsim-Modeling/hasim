@@ -63,6 +63,10 @@ module connectTopLevel#(List#(ConnectionData) ld, inter_T i) ();
   //Close the chains
   for (Integer x = 0; x < valueof(CON_NumChains); x = x + 1)
   begin
+    if(!sameFamily(mychains[x].incoming.clk,mychains[x].outgoing.clk))
+    begin
+      messageM("CrossDomain@Top");
+    end
     mkConnection(mychains[x], mychains[x]);
   end
 
@@ -110,7 +114,15 @@ module connect#(List#(CSend_Info) sends, List#(CRecv_Info) recvs) (Tuple2#(List#
     end
     else
     begin  //Actually do the connection
-      messageM(strConcat("Connecting dangling port: ", cin.cname));
+      if(sameFamily(cin.conn.clk,cout.conn.clk))
+      begin
+        messageM(strConcat("Connecting dangling port: ", cin.cname));
+      end
+      else
+      begin
+        messageM(strConcat("CrossDomain@", cin.cname));
+      end
+
       mkConnection(cout.conn, cin.conn);
     end
   
@@ -137,6 +149,7 @@ module connectChains#(List#(CChain_Info) chns) (Vector#(CON_NumChains, CON_Chain
   begin
   
     Integer nLinks = length(cs[x]);
+  
     CON_Chain tmp <- (nLinks == 0) ? mkPassThrough(x) : connectLocalChain(cs[x]);
 
     mychains[x] = tmp;
@@ -175,8 +188,17 @@ module connectLocalChain#(List#(CChain_Info) l) (CON_Chain);
         end
         else  //Connect 'em up
         begin
+          if(sameFamily(c.conn.incoming.clk,c2.conn.outgoing.clk))
+          begin
+            messageM(strConcat(strConcat("Adding Chain Link [", integerToString(c.cnum)), "]"));
+          end
+          else
+          begin
+            messageM(strConcat("CrossDomain@Chain",integerToString(c.cnum)));
+          end
+
           mkConnection(c.conn, c2.conn);
-          messageM(strConcat(strConcat("Adding Chain Link [", integerToString(c.cnum)), "]"));
+
           c = c2;
         end
       end
@@ -200,9 +222,13 @@ module mkPassThrough#(Integer chainNum)
                 (CON_Chain);
 
   messageM(strConcat(strConcat("Making Pass-Through Chain [", integerToString(chainNum)), "]"));
+
+  Clock clock <- exposeCurrentClock;
+  Reset reset <- exposeCurrentReset;
+
   FIFO#(CON_CHAIN_Data) passQ <- mkFIFO();
   PulseWire en_w <- mkPulseWire();
-
+  
   interface CON_CHAIN_In incoming;
 
     method Action get_TRY(CON_CHAIN_Data x);
@@ -214,6 +240,10 @@ module mkPassThrough#(Integer chainNum)
       return en_w;
     endmethod
 
+    interface clk = clock;
+    
+    interface rst = reset;
+
   endinterface
 
   interface CON_CHAIN_Out outgoing;
@@ -221,6 +251,10 @@ module mkPassThrough#(Integer chainNum)
     method CON_CHAIN_Data try() = passQ.first();
 
     method Action success = passQ.deq();
+
+    interface clk = clock;
+    
+    interface rst = reset;
 
   endinterface
 endmodule

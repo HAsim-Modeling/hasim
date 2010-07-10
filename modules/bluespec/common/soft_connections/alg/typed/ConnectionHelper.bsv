@@ -16,6 +16,7 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
+import Clocks::*;
 
 //************** Helper functions **************//
 
@@ -186,7 +187,8 @@ endfunction
 
 //Connections can be hooked up using the standard mkConnection function
 
-instance Connectable#(PHYSICAL_CON_Out#(t_MSG), PHYSICAL_CON_In#(t_MSG));
+instance Connectable#(PHYSICAL_CON_Out#(t_MSG), PHYSICAL_CON_In#(t_MSG))
+  provisos(Bits#(t_MSG, t_MSG_Sz));
 
   function m#(Empty) mkConnection(PHYSICAL_CON_Out#(t_MSG) cout, PHYSICAL_CON_In#(t_MSG) cin)
     provisos (IsModule#(m, c));
@@ -197,7 +199,8 @@ instance Connectable#(PHYSICAL_CON_Out#(t_MSG), PHYSICAL_CON_In#(t_MSG));
 
 endinstance
 
-instance Connectable#(PHYSICAL_CON_In#(t_MSG), PHYSICAL_CON_Out#(t_MSG));
+instance Connectable#(PHYSICAL_CON_In#(t_MSG), PHYSICAL_CON_Out#(t_MSG))
+  provisos(Bits#(t_MSG, t_MSG_Sz));
 
   function m#(Empty) mkConnection(PHYSICAL_CON_In#(t_MSG) cin, PHYSICAL_CON_Out#(t_MSG) cout)
     provisos (IsModule#(m, c));
@@ -208,21 +211,46 @@ instance Connectable#(PHYSICAL_CON_In#(t_MSG), PHYSICAL_CON_Out#(t_MSG));
 
 endinstance
 
-module connectOutToIn#(PHYSICAL_CON_Out#(t_MSG) cout, PHYSICAL_CON_In#(t_MSG) cin) ();
+module connectOutToIn#(PHYSICAL_CON_Out#(t_MSG) cout, PHYSICAL_CON_In#(t_MSG) cin) ()
+  provisos(Bits#(t_MSG, t_MSG_Sz));
 
-  rule trySend (True);
-    //Try to move the data
-    let x = cout.try();
-    cin.get_TRY(x);
+
+  if(sameFamily(cin.clk,cout.clk))
+  begin
+      rule trySend (True);
+          //Try to move the data
+          let x = cout.try();
+          cin.get_TRY(x);
+      endrule
+
+      rule success (cin.get_SUCCESS());
+          //We succeeded in moving the data
+          cout.success();
+      endrule
+  end
+  else
+  begin
+      // choose a size large enough to cover latency of fifo
+      let domainFIFO <- mkSyncFIFO(8,
+                                   cout.clk, 
+                                   cout.rst,
+                                   cin.clk);
+
+      rule receive;
+          let x = cout.try();
+          domainFIFO.enq(x);
+          cout.success();
+      endrule
   
-  endrule
+      rule trySend;
+          cin.get_TRY(domainFIFO.first);
+      endrule
 
-  rule success (cin.get_SUCCESS());
-    //We succeeded in moving the data
-    cout.success();
-    
-  endrule
+      rule succeedSend(cin.get_SUCCESS());
+          domainFIFO.deq;
+      endrule
 
+  end
 endmodule
 
 //Chains can also be hooked up with mkConnection

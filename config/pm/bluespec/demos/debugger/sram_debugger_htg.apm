@@ -144,6 +144,7 @@ Packagehint=platforms
 [FPGA Build Pipeline/Requires]
 post_synthesis_tool=Xilinx Post-synthesis Toolchain
 synthesis_tool=XST Synthesis Tool
+mcd_tool=Simple MCD Tool
 
 [XST Synthesis Tool]
 File=modules/project/xilinx/xst.awb
@@ -224,3 +225,7 @@ MEM_BURST_COUNT=2
 [Single-Ended Crystal Clocks Device/Params]
 MODEL_CLOCK_DIVIDER=1
 MODEL_CLOCK_MULTIPLIER=1
+
+[Simple MCD Tool]
+File=modules/project/bluespec/mcd.awb
+Packagehint=platforms

@@ -143,9 +143,6 @@ build_pipeline=FPGA Build Pipeline
 [Little-Endian Unified Message Format/Params]
 UMF_CHUNK_BYTES=8
 
-[Nallatech Edge Physical Device/Params]
-MODEL_CLOCK_FREQ=100
-
 [ACP DDR2 SRAM Device/Params]
 SRAM_DEBUG=1
 SRAM_MAX_OUTSTANDING_READS=32
@@ -180,6 +177,7 @@ Packagehint=platforms
 [FPGA Build Pipeline/Requires]
 post_synthesis_tool=Xilinx Post-synthesis Toolchain
 synthesis_tool=XST Synthesis Tool
+mcd_tool=Simple MCD Tool
 
 [XST Synthesis Tool]
 File=modules/project/xilinx/xst.awb
@@ -210,3 +208,11 @@ Packagehint=platforms
 
 [SRAM Debugger Application/Params]
 MEM_CHECK_LATENCY=1
+
+[Simple MCD Tool]
+File=modules/project/bluespec/mcd.awb
+Packagehint=platforms
+
+[Null Clocks Device/Params]
+CRYSTAL_CLOCK_FREQ=200
+MODEL_CLOCK_FREQ=100

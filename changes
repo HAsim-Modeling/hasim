@@ -23336,3 +23336,21 @@ of each other, but not for fractional multiples because I haven't yet
 got the automatic generation of clock constraints completed. I also
 haven't attempted a port to ModuleContext, although this doesn't seem
 difficult.
+
+----------
+kfleming    Date: Fri Jul 16 11:08:20 EDT 2010  CSN: CSN-hasim-813
+                  Fri Jul 16 15:08:20 UTC 2010
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_htg_v5_pcie_synth.apm Locally Modified          812 
+ traffic_light_acp_synth.apm Locally Modified          812 
+
+Directory config/pm/bluespec/demos/debugger
+ sram_debugger_nallatech_acp.apm Locally Modified          812 
+ nallatech_fake_sram_debugger.apm Locally Modified          812 
+ sram_debugger_htg.apm     Locally Modified          812 
+
+
+
+Modified apms to contain mcd tool.

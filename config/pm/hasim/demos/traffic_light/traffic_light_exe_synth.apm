@@ -27,7 +27,6 @@ soft_connections_lib=Soft Connections Library
 File=modules/project/project-hybrid.awb
 Packagehint=platforms
 
-
 [Soft Connections Hybrid Application Environment]
 File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
 Packagehint=platforms
@@ -63,9 +62,8 @@ File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
 Packagehint=hasim
 
 [Soft Connections Library]
-File=config/pm/hasim/submodels/common/soft-connections-lib.apm
+File=config/pm/hasim/submodels/common/soft-connections-lib-context.apm
 Packagehint=hasim
-
 
 [Hybrid Project Common Utilities]
 File=config/pm/hasim/submodels/common/project-common-default.apm

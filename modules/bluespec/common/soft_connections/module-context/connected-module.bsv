@@ -20,6 +20,8 @@ interface PHYSICAL_CONNECTION_IN;
 
   method Action try(PHYSICAL_CONNECTION_DATA d);
   method Bool   success();
+  interface Clock clock;
+  interface Reset reset;
 
 endinterface
 
@@ -29,6 +31,8 @@ interface PHYSICAL_CONNECTION_OUT;
   method Bool notEmpty();
   method PHYSICAL_CONNECTION_DATA first();
   method Action deq();
+  interface Clock clock;
+  interface Reset reset;
 
 endinterface
 

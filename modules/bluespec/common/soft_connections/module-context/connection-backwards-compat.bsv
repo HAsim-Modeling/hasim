@@ -13,6 +13,15 @@
 typedef ConnectedModule Connected_Module;
 typedef Connected_Module CONNECTED_MODULE;
 
+//The data type that is sent in connections
+typedef `CON_CWIDTH PHYSICAL_CONNECTION_SIZE;
+typedef Bit#(PHYSICAL_CONNECTION_SIZE) CON_Data;
+
+typedef `CON_CHAIN_CWIDTH CON_CHAIN_DATA_SZ;
+typedef Bit#(CON_CHAIN_DATA_SZ) CON_CHAIN_Data;
+
+typedef `CON_NUMCHAINS CON_NumChains;
+
 // Legacy naming conventions
 
 module [ConnectedModule] mkConnection_Send#(String name) (Connection_Send#(t_MSG))
@@ -102,7 +111,11 @@ endmodule
 interface Connection_Chain#(type msg_T);
 
   method ActionValue#(msg_T) recvFromPrev();
+  method msg_T               peekFromPrev();
+  method Bool                recvNotEmpty();
+
   method Action              sendToNext(msg_T data);
+  method Bool                sendNotFull();
   
 endinterface
 
@@ -113,6 +126,10 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
     provisos
 	    (Bits#(msg_T, msg_SZ),
 	   Transmittable#(msg_T));
+
+  // Local Clock and reset
+  Clock localClock <- exposeCurrentClock();
+  Reset localReset <- exposeCurrentReset();
 
   RWire#(msg_T)  dataW  <- mkRWire();
   PulseWire      enW    <- mkPulseWire();
@@ -130,7 +147,10 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
                  return enW;
                endmethod
 
-	     endinterface);
+               interface Clock clock = localClock;
+               interface Reset reset = localReset;               
+              
+     	     endinterface);
 
   let outg = (interface PHYSICAL_CONNECTION_OUT;
 
@@ -142,6 +162,9 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
 
                // If we were successful we can dequeue.
 	       method Action deq() = q.deq();
+
+               interface Clock clock = localClock;
+               interface Reset reset = localReset;
 
 	     endinterface);
 
@@ -162,6 +185,20 @@ module [Connected_Module] mkConnection_Chain#(Integer chain_num)
   // Register the chain
   registerChain(info);
 
+  method msg_T peekFromPrev() if (dataW.wget() matches tagged Valid .val);
+    return val;
+  endmethod 
+
+  method Bool recvNotEmpty();
+    Bool retVal = False;
+    if(dataW.wget() matches tagged Valid .val)
+      begin
+        retVal = True;
+      end
+    return retVal;
+  endmethod 
+
+  method sendNotFull = q.notFull;
 
   method Action sendToNext(msg_T data);
     q.enq(data);

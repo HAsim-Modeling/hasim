@@ -23354,3 +23354,33 @@ Directory config/pm/bluespec/demos/debugger
 
 
 Modified apms to contain mcd tool.
+
+----------
+keflemin    Date: Tue Jul 20 19:20:53 EDT 2010  CSN: CSN-hasim-814
+                  Tue Jul 20 23:20:53 UTC 2010
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_htg_v5_pcie_synth.apm Locally Modified          813 
+ traffic_light_exe_synth.apm Locally Modified          813 
+ traffic_light_acp_synth.apm Locally Modified          813 
+
+Directory modules/hasim/util/smart-synthesis-boundaries/module-context
+ expose-connections.bsv    Locally Modified          813 
+
+Directory modules/bluespec/common/soft_connections/module-context
+ connection-matching.bsv   Locally Modified          813 
+ token-ring.bsv            Locally Added               0 
+ connection-backwards-compat.bsv Locally Modified          813 
+ soft-connections-module-context.awb Locally Modified          813 
+ connections.bsv           Locally Modified          813 
+ connected-module.bsv      Locally Modified          813 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          813 
+
+
+Resurrected ModuleContext SoftConnection in anticipation of new
+clocking context.  Also added some coverage in the baseline hasim
+regression to ensure that bit rot does not occur again.
+

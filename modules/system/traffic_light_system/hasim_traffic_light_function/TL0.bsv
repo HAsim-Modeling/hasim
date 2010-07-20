@@ -2,6 +2,8 @@
 
 `include "soft_connections.bsh"
 `include "front_panel_service.bsh"
+`include "clocks_device.bsh"
+`include "fpga_components.bsh"
 
 // Simple model of a traffic light
 // (modeled after the light at the intersection of Rte 16 and Broadway
@@ -15,6 +17,11 @@ typedef enum {
    GreenW, AmberW, RedAfterW} TLstates deriving (Eq, Bits);
 
 module [CONNECTED_MODULE] mk_traffic_light();
+  UserClock domain <- mkUserClock_Ratio(`MODEL_CLOCK_FREQ,4,3);
+  let tl0 <- mk_traffic_light_domain(clocked_by domain.clk, reset_by domain.rst);
+endmodule
+
+module [CONNECTED_MODULE] mk_traffic_light_domain();
    Reg#(TLstates) state <- mkReg(RedAfterW);
    
    Connection_Send#(FRONTP_MASKED_LEDS) link_leds <- mkConnection_Send("fpga_leds");

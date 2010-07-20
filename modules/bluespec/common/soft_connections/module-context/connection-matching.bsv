@@ -1,4 +1,4 @@
-
+import Clocks::*;
 // ****** Connection Functions ******
 
 
@@ -379,18 +379,43 @@ endmodule
 // physical endpoints. This is for 1-to-1 communication only.
 
 module connectOutToIn#(PHYSICAL_CONNECTION_OUT cout, PHYSICAL_CONNECTION_IN cin) ();
-
-  rule trySend (True);
-    // Try to move the data
-    let x = cout.first();
-    cin.try(x);
   
-  endrule
+  if(sameFamily(cin.clock,cout.clock))
+  begin
+      rule trySend (True);
+          // Try to move the data
+          let x = cout.first();
+          cin.try(x);
+      endrule
 
-  rule success (cin.success());
-    // We succeeded in moving the data
-    cout.deq();
+      rule success (cin.success());
+          // We succeeded in moving the data
+          cout.deq();
     
-  endrule
+      endrule
+  end
+  else
+  begin
+      messageM("CrossDomain@ Found");
 
+      // choose a size large enough to cover latency of fifo
+      let domainFIFO <- mkSyncFIFO(8,
+                                   cout.clock, 
+                                   cout.reset,
+                                   cin.clock);
+
+      rule receive;
+          let x = cout.first();
+          domainFIFO.enq(x);
+          cout.deq();
+      endrule
+  
+      rule trySend;
+          cin.try(domainFIFO.first());
+      endrule
+
+      rule succeedSend(cin.success());
+          domainFIFO.deq;
+      endrule
+  end
 endmodule

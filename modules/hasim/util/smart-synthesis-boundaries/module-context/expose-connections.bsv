@@ -132,7 +132,7 @@ module exposeDanglingSends#(List#(LOGICAL_SEND_INFO) dsends) (Vector#(n, PHYSICA
   
   // Zero out unused dangling sends
   for (Integer x = cur_out; x < valueOf(n); x = x + 1)
-    res[x] = ?;
+    res[x] = PHYSICAL_CONNECTION_OUT{clock:noClock,reset:noReset};
   
   return res;
   
@@ -161,7 +161,7 @@ module exposeDanglingRecvs#(List#(LOGICAL_RECV_INFO) drecvs) (Vector#(n, PHYSICA
   
   //Zero out unused dangling recvs
   for (Integer x = cur_in; x < valueOf(n); x = x + 1)
-    res[x] = ?;
+    res[x] = PHYSICAL_CONNECTION_IN{clock:noClock,reset:noReset};
   
   return res;
 
@@ -174,6 +174,10 @@ endmodule
 module mkPassThrough
     //interface:
                 (PHYSICAL_CONNECTION_INOUT);
+
+  // Local Clock and reset
+  Clock localClock <- exposeCurrentClock();
+  Reset localReset <- exposeCurrentReset();
 
   FIFOF#(PHYSICAL_CONNECTION_DATA) passQ <- mkFIFOF();
   PulseWire enW <- mkPulseWire();
@@ -189,6 +193,9 @@ module mkPassThrough
       return enW;
     endmethod
 
+    interface Clock clock = localClock;
+    interface Reset reset = localReset; 
+
   endinterface
 
   // A physical outgoing connection
@@ -197,6 +204,9 @@ module mkPassThrough
     method Bool notEmpty() = passQ.notEmpty();
     method PHYSICAL_CONNECTION_DATA first() = passQ.first();
     method Action deq() = passQ.deq();
+
+    interface Clock clock = localClock;
+    interface Reset reset = localReset; 
 
   endinterface
 

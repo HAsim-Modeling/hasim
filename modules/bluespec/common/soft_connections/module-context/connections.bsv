@@ -218,6 +218,9 @@ module [ConnectedModule] mkPhysicalConnectionSend#(String send_name, Maybe#(STAT
             (Bits#(t_MSG, t_MSG_SIZE),
 	     Transmittable#(t_MSG));
 
+    // Local Clock and reset
+    Clock localClock <- exposeCurrentClock();
+    Reset localReset <- exposeCurrentReset();
 
     // ****** Local State ****** //
 
@@ -235,6 +238,9 @@ module [ConnectedModule] mkPhysicalConnectionSend#(String send_name, Maybe#(STAT
                  
                  // If we were successful we can dequeue.
 	         method Action deq() = q.deq();
+
+                 interface Clock clock = localClock;
+                 interface Reset reset = localReset;
 
 	       endinterface);
 
@@ -296,6 +302,9 @@ module [ConnectedModule] mkPhysicalConnectionRecv#(String recv_name, Maybe#(STAT
             (Bits#(t_MSG, t_MSG_SIZE),
 	     Transmittable#(t_MSG));
 
+    // Local Clock and reset
+    Clock localClock <- exposeCurrentClock();
+    Reset localReset <- exposeCurrentReset();
 
     // ****** Local State ****** //
 
@@ -315,6 +324,9 @@ module [ConnectedModule] mkPhysicalConnectionRecv#(String recv_name, Maybe#(STAT
                  method Bool success();
 	           return enW;
 	         endmethod
+
+                 interface Clock clock = localClock;
+                 interface Reset reset = localReset;
 
 	       endinterface);
 

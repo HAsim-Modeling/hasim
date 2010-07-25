@@ -15,7 +15,7 @@ DefaultAttributes=hybrid acp bluespec
 model=HW/SW Hybrid Project Foundation
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/fpgaenv-acp-m2c-nallatech-no-cache.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-acp-m2c-nallatech-no-cache-fpga0.apm
 Packagehint=platform-acp
 
 [Bluespec RRR Test and Benchmarking Program]

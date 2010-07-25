@@ -23384,3 +23384,21 @@ Resurrected ModuleContext SoftConnection in anticipation of new
 clocking context.  Also added some coverage in the baseline hasim
 regression to ensure that bit rot does not occur again.
 
+
+----------
+keflemin    Date: Sun Jul 25 15:00:01 EDT 2010  CSN: CSN-hasim-815
+                  Sun Jul 25 19:00:01 UTC 2010
+
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_acp_synth.apm Locally Modified          814 
+
+Directory config/pm/bluespec/demos/debugger
+ sram_debugger_nallatech_acp.apm Locally Modified          814 
+ nallatech_fake_sram_debugger.apm Locally Modified          814 
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_acp_nallatech.apm Locally Modified          814 
+
+
+Updated apms to use the new leds.

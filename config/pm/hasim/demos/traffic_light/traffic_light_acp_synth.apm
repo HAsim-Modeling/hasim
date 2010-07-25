@@ -15,7 +15,7 @@ DefaultAttributes=function_as_boundary traffic_light demo connected slave hybrid
 model=HW/SW Hybrid Pipeline Build
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/fpgaenv-acp-m2c-nallatech.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-acp-m2c-nallatech-no-cache.apm
 Packagehint=platform-acp
 
 [Soft Connections Hybrid Application Environment/Requires]

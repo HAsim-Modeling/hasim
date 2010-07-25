@@ -77,10 +77,6 @@ Packagehint=platforms
 File=modules/bluespec/common/fpgaenv/physical-platform/debuggers/null/null-debugger.awb
 Packagehint=platforms
 
-[Nallatech Edge Physical Device]
-File=modules/bluespec/common/fpgaenv/physical-platform/physical-devices/nallatech-edge/nallatech-edge-device.awb
-Packagehint=platform-acp
-
 [Standard Virtual Platform/Requires]
 umf=Little-Endian Unified Message Format
 low_level_platform_interface=Low Level Platform Interface Hybrid
@@ -90,7 +86,8 @@ virtual_devices=NULL Virtual Devices
 clocks_device=Null Clocks Device
 physical_platform_utils=Common Physical Platform Utilities
 ddr2_device=ACP DDR2 SRAM Device
-nallatech_edge_device=Nallatech Edge Physical Device
+nallatech_edge_device=Nallatech Edge Physical Device v2
+led_device=General LED Device
 
 [Nallatech Edge Physical Channel]
 File=modules/bluespec/common/fpgaenv/virtual-platform/channelio/physical-channel/nallatech-edge/nallatech-edge-channel.awb
@@ -216,3 +213,11 @@ Packagehint=platforms
 [Null Clocks Device/Params]
 CRYSTAL_CLOCK_FREQ=200
 MODEL_CLOCK_FREQ=100
+
+[General LED Device]
+File=modules/bluespec/common/fpgaenv/physical-platform/physical-devices/leds/general-led-device.awb
+Packagehint=platforms
+
+[Nallatech Edge Physical Device v2]
+File=modules/bluespec/common/fpgaenv/physical-platform/physical-devices/nallatech-edge/nallatech-edge-device.awb
+Packagehint=platform-acp

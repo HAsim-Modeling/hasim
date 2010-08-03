@@ -77,7 +77,7 @@ module exposeDanglingSends#(List#(CSend_Info) dsends) (Vector#(n, CON_Out));
   
   //Zero out unused dangling sends
   for (Integer x = cur_out; x < valueOf(n); x = x + 1)
-    res[x] = CON_Out{clk: noClock, rst: noReset};
+    res[x] = CON_Out{clk: noClock, rst: noReset, success: ?, try: ?};
   
   return res;
   
@@ -106,7 +106,7 @@ module exposeDanglingRecvs#(List#(CRecv_Info) drecvs) (Vector#(n, CON_In));
   
   //Zero out unused dangling recvs
   for (Integer x = cur_in; x < valueOf(n); x = x + 1)
-    res[x] = CON_In{clk: noClock, rst: noReset};
+    res[x] = CON_In{clk: noClock, rst: noReset, get_SUCCESS: ?, get_TRY: ?};
   
   return res;
 

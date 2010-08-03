@@ -1,0 +1,19 @@
+/********************************************************************
+ *
+ * Awb module specification
+ *
+ *******************************************************************/
+
+
+%AWB_START
+%name Soft Services Dependencies(Soft Conn Only)
+%desc A means for dependent modules to include all soft service implementation files
+
+%provides soft_services_deps
+
+%sources --t BSH --v PUBLIC soft_service_lib_deps.bsh
+%sources --t BSH --v PUBLIC soft_service_impl_deps.bsh
+
+%AWB_END
+
+

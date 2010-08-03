@@ -23402,3 +23402,84 @@ Directory config/pm/bluespec/demos/rrrtest
 
 
 Updated apms to use the new leds.
+
+----------
+keflemin    Date: Mon Aug  2 21:09:57 EDT 2010  CSN: CSN-hasim-816
+                  Tue Aug  3 01:09:57 UTC 2010
+
+
+Directory modules/hasim/util/smart-synthesis-boundaries
+ expose-connections.bsv    Locally Modified          815 
+
+Directory modules/bluespec/common
+ soft_clock/               Locally Added               0 
+
+Directory modules/bluespec/common/soft_clock
+ basic-clock.awb           Locally Added               0 
+ basic-clock.bsv           Locally Added               0 
+ basic-clock-lib.bsv       Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections
+ soft-service/             Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections/soft-service
+ connection-matching.bsv   Locally Added               0 
+ connected-common.bsv      Locally Added               0 
+ connection-shared-interconnect.bsv Locally Added               0 
+ bury-connections.bsv      Locally Added               0 
+ soft-connections-common-module-context.awb Locally Added               0 
+ transmittable.bsv         Locally Added               0 
+ alg/                      Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections/soft-service/alg
+ connect_stations_tree.bsv Locally Added               0 
+ connect_multicasts.bsv    Locally Added               0 
+ connect_top_level.bsv     Locally Added               0 
+ connection-alg-module-context.awb Locally Added               0 
+ expose_connections.bsv    Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections/soft-service
+ connection-helper.bsv     Locally Added               0 
+ with_connections.bsv      Locally Added               0 
+ token-ring.bsv            Locally Added               0 
+ soft-connections-module-context.awb Locally Added               0 
+ connection-backwards-compat.bsv Locally Added               0 
+ connection-context.bsv    Locally Added               0 
+ connections.bsv           Locally Added               0 
+ connected-module.bsv      Locally Added               0 
+
+Directory modules/bluespec/common
+ soft_services/            Locally Added               0 
+
+Directory modules/bluespec/common/soft_services
+ smart_synth_boundaries.bsv Locally Added               0 
+ softServicesLib.bsv       Locally Added               0 
+ soft_services_deps.awb    Locally Added               0 
+ smart_synthesis_boundaries.bsv Locally Added               0 
+ soft_services_deps.bsh    Locally Added               0 
+ soft_services_SConn_SClock/ Locally Added               0 
+
+Directory modules/bluespec/common/soft_services/soft_services_SConn_SClock
+ soft_services_deps.awb    Locally Added               0 
+ soft_services.awb         Locally Added               0 
+ soft_services.bsv         Locally Added               0 
+ soft_services_deps_small.awb Locally Added               0 
+ soft_services_lib_deps.bsh Locally Added               0 
+
+Directory modules/bluespec/common/soft_services
+ soft_services_lib.awb     Locally Added               0 
+ soft_services_SConn/      Locally Added               0 
+
+Directory modules/bluespec/common/soft_services/soft_services_SConn
+ soft_services_soft_conn.bsv Locally Added               0 
+ soft_service_impl_deps.bsh Locally Added               0 
+ soft_service_lib_deps.bsh Locally Added               0 
+ soft_services_deps_small.awb Locally Added               0 
+ soft_services_small.awb   Locally Added               0 
+
+
+
+Added soft services infrastructure plus ports of soft-connections and soft-clocks.  Currently, building requires some modification of hasim-connect, but that should be eliminated soon. 
+
+Eliminated some warnings in the legacy smart synthesis boundary.
+

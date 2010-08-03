@@ -1,0 +1,21 @@
+/********************************************************************
+*
+* Awb module specification
+*
+*******************************************************************/
+
+
+%AWB_START
+
+%name Basic Soft Clock Algorithm
+%desc Simply stamps out a new clock for each requested clock
+%provides soft_clocks
+%requires soft_clocks_lib
+
+%attributes bluespec
+
+%public basic-clock.bsv 
+
+%AWB_END
+
+

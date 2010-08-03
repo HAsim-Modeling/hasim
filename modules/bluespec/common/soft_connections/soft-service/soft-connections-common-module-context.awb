@@ -1,0 +1,24 @@
+/********************************************************************
+*
+* Awb module specification
+*
+*******************************************************************/
+
+
+%AWB_START
+
+%name Soft Service Soft Connections Common 
+%desc Soft Service Soft Connections Common
+%provides soft_connections_common
+
+%attributes bluespec
+
+%public connected-common.bsv connection-helper.bsv with_connections.bsv
+
+%param --global CON_CWIDTH 320 "Phyisical Connection Bit Width after splitting."
+%param --global CON_CHAIN_CWIDTH 320 "Phyisical Chain Connection Bit Width, which is not split."
+%param --global CON_BUFFERING 2 "Amount of Buffering Slots per Connection."
+%param --global CON_NUMCHAINS 9 "Number of Connection Chains."
+
+%AWB_END
+

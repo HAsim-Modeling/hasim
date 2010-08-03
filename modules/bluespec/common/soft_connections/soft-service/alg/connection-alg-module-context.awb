@@ -1,0 +1,16 @@
+********************************************************************
+*
+* Awb module specification
+*
+*******************************************************************/
+
+
+%AWB_START
+
+%name SoftService Soft Connections Algorithm 
+%desc SoftService Soft Connections Algorithm 
+%provides soft_connections_alg
+%attributes bluespec
+%public connect_top_level.bsv connect_multicasts.bsv connect_stations_tree.bsv expose_connections.bsv 
+%AWB_END
+

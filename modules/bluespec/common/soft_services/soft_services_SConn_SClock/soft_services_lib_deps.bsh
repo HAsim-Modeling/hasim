@@ -1,0 +1,6 @@
+// this file hacks around the problem of subsidiary modules 
+// needing to include all the soft services
+
+`include "asim/provides/soft_connections_common.bsh"
+`include "asim/provides/soft_clocks_lib.bsh"
+

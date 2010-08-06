@@ -23483,3 +23483,18 @@ Added soft services infrastructure plus ports of soft-connections and soft-clock
 
 Eliminated some warnings in the legacy smart synthesis boundary.
 
+
+----------
+keflemin    Date: Fri Aug  6 18:46:03 EDT 2010  CSN: CSN-hasim-817
+                  Fri Aug  6 22:46:03 UTC 2010
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          816 
+
+
+Modified hasim-configure handling of %library.  Hasim-configure will
+now examine the LIBRARY_PATH environmental variable (shared with, but
+not dependent on gcc) to look for specified libraries.  This makes
+accomodating odd library installations, like intel's fairly
+straightforward.

@@ -1301,6 +1301,19 @@ sub __generate_makefile_hw_top {
             HAsim::Util::hash_append($replacements_r," ",'@SW_INC_DIRS@',HAsim::Util::path_append(dirname($f),'include'));
         }
         else {
+            my $found_in_env = 0; 
+            #See if the user library path will resolve the library
+            #this assumes that the C code will use gcc.
+            my $env_library_path = $ENV{"LIBRARY_PATH"};
+            foreach my $path (split(/:/,$env_library_path)) {
+                chomp($path);
+                my $f = $path. "/" . basename($lib);
+                if( -e $f){
+                    $found_in_env = 1;
+                    HAsim::Util::hash_append($replacements_r," ",'@SW_LIBS@', $f);
+                }  
+	    }
+
             # Try for one last location in the installed $libdir
             $f = Asim::Libdir() . "/" . basename($lib);
             if (-e $f) {
@@ -1309,8 +1322,8 @@ sub __generate_makefile_hw_top {
                 HAsim::Util::hash_append($replacements_r," ",'@SW_LIBS@',$f);
                 $need_global_includes = 1;
             }
-            else {
-                print "AWB resolver did not find library $lib.\n";
+            elsif(!$found_in_env) {
+                print "AWB resolver did not find library $lib nor was it in the scope of LIBRARY_PATH.\n";
             }
             
         }

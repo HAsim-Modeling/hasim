@@ -23,8 +23,8 @@ endinstance
 
 //Add the parsed information back is as normal connections
 
-module [ConnectedModule]  addConnections#(WithConnections#(numIn, numOut) mod, List#(ConMap) sends, List#(ConMap) recs) ();
-  liftSCM(addConnectionsSC(mod,sends,recs));
+module [ConnectedModule]  addConnections#(SoftServicesSynthesisInterface#(numIn, numOut) mod, List#(ConMap) sends, List#(ConMap) recs) ();
+  liftSCM(addConnectionsSC(extractWithConnections(mod),sends,recs));
 endmodule
 
 

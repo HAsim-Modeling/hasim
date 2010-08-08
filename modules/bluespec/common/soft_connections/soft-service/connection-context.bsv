@@ -1,8 +1,9 @@
 import ModuleContext::*;
 import HList::*;
 
-`include "asim/provides/soft_services_lib.bsh"
+//`include "asim/provides/soft_services_deps.bsh"
 `include "asim/provides/soft_services.bsh"
+`include "asim/provides/soft_services_lib.bsh"
 `include "asim/provides/soft_connections_common.bsh"
 
 // ****** Connection Context Support Functions ******

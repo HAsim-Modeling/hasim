@@ -1,0 +1,17 @@
+import ModuleContext::*;
+import HList::*; 
+`include "asim/provides/soft_connections_alg.bsh"
+`include "asim/provides/soft_connections.bsh"
+`include "asim/provides/soft_connections_common.bsh"
+`include "asim/provides/soft_services_lib.bsh"
+`include "asim/provides/soft_services.bsh"
+`include "asim/provides/soft_services_deps.bsh"
+`include "asim/provides/fpga_components.bsh"
+`include "asim/provides/clocks_device.bsh"
+
+//import soft_services::*;
+//import soft_services_lib::*;
+//import soft_connections_alg::*;
+//import soft_connections::*;
+//import soft_connections_common::*;
+

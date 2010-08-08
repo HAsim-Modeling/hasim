@@ -1620,8 +1620,8 @@ sub generate_wrapper {
     if ($usesmartsynthesisboundaries) {
       if ($isroot) {
         print WRAPPER "import soft_connections_alg::*;\n";
-      } else {
-        print WRAPPER "import smart_synth_boundaries::*;\n";
+      } else { 
+        print WRAPPER "`include \"asim/provides/smart_synth_boundaries.bsh\"\n";
       }
       print WRAPPER "\n";
     }
@@ -1663,7 +1663,7 @@ sub generate_wrapper {
         print WRAPPER "`endif\n";
         print WRAPPER "\n";
         print WRAPPER "(* synthesize *)\n";
-	print WRAPPER "module ${module_name} (WithConnections#(`CON_RECV_${metatype}, `CON_SEND_${metatype}));\n";    
+	print WRAPPER "module ${module_name} (SoftServicesSynthesisInterface#(`CON_RECV_${metatype}, `CON_SEND_${metatype}));\n";    
     }
     print WRAPPER "\n";
 

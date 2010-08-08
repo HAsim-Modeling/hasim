@@ -8,7 +8,7 @@ import HList::*;
 `include "asim/provides/soft_connections_common.bsh"
 `include "asim/provides/soft_services.bsh"
 `include "asim/provides/soft_services_lib.bsh"
-`include "soft_services.bsh"
+
 
 // instatiateWithConnections
 // Connect all remaining connections at the top-level. 

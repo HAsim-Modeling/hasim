@@ -3,6 +3,7 @@
 `include "soft_connections.bsh"
 `include "front_panel_service.bsh"
 `include "clocks_device.bsh"
+`include "soft_clocks.bsh"
 `include "fpga_components.bsh"
 
 // Simple model of a traffic light
@@ -17,7 +18,7 @@ typedef enum {
    GreenW, AmberW, RedAfterW} TLstates deriving (Eq, Bits);
 
 module [CONNECTED_MODULE] mk_traffic_light();
-  UserClock domain <- mkUserClock_Ratio(`MODEL_CLOCK_FREQ,4,3);
+  UserClock domain <- mkSoftClock(40);
   let tl0 <- mk_traffic_light_domain(clocked_by domain.clk, reset_by domain.rst);
 endmodule
 

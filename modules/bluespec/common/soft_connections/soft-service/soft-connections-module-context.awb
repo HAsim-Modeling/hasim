@@ -18,6 +18,8 @@
 
 %public transmittable.bsv connection-context.bsv connection-matching.bsv connections.bsv connection-shared-interconnect.bsv connection-backwards-compat.bsv token-ring.bsv connected-module.bsv bury-connections.bsv
 
+%sources --t BSH --v PUBLIC soft_connections_backward_deps.bsh
+
 %AWB_END
 
 

@@ -23498,3 +23498,83 @@ now examine the LIBRARY_PATH environmental variable (shared with, but
 not dependent on gcc) to look for specified libraries.  This makes
 accomodating odd library installations, like intel's fairly
 straightforward.
+
+----------
+keflemin    Date: Sun Aug  8 18:14:34 EDT 2010  CSN: CSN-hasim-818
+                  Sun Aug  8 22:14:34 UTC 2010
+
+
+Directory modules/bluespec/common/soft_services
+ soft_services_deps.awb    Locally Modified          817 
+ soft_services_deps.bsh    Locally Removed           817 
+ soft_services_sc_deps.bsh Locally Added               - 
+
+Directory modules/bluespec/common/soft_services/soft_services_SConn_SClock
+ soft_services_deps.awb    Locally Removed           817 
+ soft_service_impl_deps.bsh Locally Added               0 
+ soft_services.awb         Locally Modified          817 
+ soft_services.bsv         Locally Removed           817 
+ soft_service_lib_deps.bsh Locally Added               0 
+ soft_services_defs.bsv    Locally Added               0 
+ soft_services_deps_small.awb Locally Modified          817 
+
+Directory modules/bluespec/common/soft_services
+ soft_services_lib.awb     Locally Modified          817 
+
+Directory modules/bluespec/common/soft_services/soft_services_SConn
+ soft_services_soft_conn.bsv Locally Modified          817 
+
+Directory modules/bluespec/common/soft_connections/soft-service
+ bury-connections.bsv      Locally Modified          817 
+ soft_connections_backward_deps.bsh Locally Added               0 
+
+Directory modules/bluespec/common/soft_connections/soft-service/alg
+ connect_stations_tree.bsv Locally Modified          817 
+ connect_multicasts.bsv    Locally Modified          817 
+ connect_top_level.bsv     Locally Modified          817 
+ expose_connections.bsv    Locally Modified          817 
+
+Directory modules/bluespec/common/soft_connections/soft-service
+ soft-connections-module-context.awb Locally Modified          817 
+ connection-context.bsv    Locally Modified          817 
+
+Directory modules/bluespec/common/soft_clock
+ basic-clock.bsv           Locally Modified          817 
+ basic-clock-lib.awb       Locally Added               0 
+ basic-clock-lib.bsv       Locally Modified          817 
+
+Directory modules/hasim/util/smart-synthesis-boundaries
+ with-connections.bsv      Locally Modified          817 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ TL0.bsv                   Locally Modified          817 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          817 
+ hasim-connect             Locally Modified          817 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          817 
+ traffic_light_htg_v5_pcie_synth.apm Locally Modified          817 
+ traffic_light_xup_synth.apm Locally Modified          817 
+ traffic_light_arriaII_nosynth.apm Locally Modified          817 
+ traffic_light_exe_nosynth.apm Locally Modified          817 
+ traffic_light_arriaII_synth.apm Locally Modified          817 
+ traffic_light_exe_synth.apm Locally Modified          817 
+ traffic_light_acp_synth.apm Locally Modified          817 
+
+Directory config/pm/hasim/submodels/common
+ soft-services.apm         Locally Added               0 
+
+
+The following large checkin integrates soft services into hasim
+connect while maintaining support for existing hasim connect based
+applications.  To use the sofft services, an application must be
+switched to the soft services type, use the soft service apm, and be a
+pipeline build application.  Otherwise, things won't compile.  Most of
+the reason for this non-compilation is to protect existing builds from
+the new code.  
+
+To prevent bit rot, the traffic light codes now use the
+build pipeline and soft services.  I have tested this to ensure that a
+functional bit-file is produced on the ACP.  

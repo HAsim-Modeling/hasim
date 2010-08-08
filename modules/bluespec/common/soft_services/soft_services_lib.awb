@@ -9,7 +9,7 @@
 %name Soft Services Library
 %desc Toplevel for connected module alone
 %provides soft_services_lib
-%requires soft_connections_lib
+%requires smart_synth_boundaries
 
 %sources --t BSV --v PUBLIC softServicesLib.bsv
 

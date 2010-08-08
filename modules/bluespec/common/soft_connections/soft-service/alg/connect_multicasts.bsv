@@ -9,7 +9,7 @@ import FIFOF::*;
 `include "asim/provides/soft_connections_common.bsh"
 `include "asim/provides/soft_services.bsh"
 `include "asim/provides/soft_services_lib.bsh"
-`include "soft_services.bsh"
+
 
 // connectMulticasts
 

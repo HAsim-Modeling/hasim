@@ -38,6 +38,7 @@ my $dynsize = 0;
 
 $status = GetOptions( "debug!"     => \$debug,
                       "help!"      => \$help,
+                      "softservices!" => \$softservices,
                       "dynsize!"   => \$dynsize,
 		      );
 
@@ -142,8 +143,8 @@ sub create_surrogate {
 
     print SURROGATE "\n";
     print SURROGATE "// These are well-known/required hasim modules\n";
-    print SURROGATE "import soft_connections::*;\n";
-    print SURROGATE "import smart_synth_boundaries::*;\n";
+    print SURROGATE "`include \"asim/provides/smart_synth_boundaries.bsh\"\n";
+    print SURROGATE "`include \"asim/provides/soft_connections.bsh\"\n";
     print SURROGATE "\n";
 
     print SURROGATE "// Sizes from wrapper and module imports\n";
@@ -194,9 +195,19 @@ sub add_connections {
     my $wrap_var = "wrap_" . $metatype;
     my $mk_wrapper = make_module_name(make_wrapper_name($metatype));
 
-    print $of "    // 1. instantiate wrapper\n";
-    print $of "    WithConnections#(`CON_RECV_${metatype}, `CON_SEND_${metatype}) $wrap_var <- $mk_wrapper();\n";
+    # Soft services must route through the model clock...
+    if($softservices) {
+	print $of "    // 1.  obtain model clock from context\n";
+        print $of "    SoftServicesContext ctxt <- getContext();\n";
+        print $of "    LOGICAL_CLOCK_INFO model_clock = getIt(ctxt);\n";
+       	print $of "    // 2. instantiate wrapper\n";
+	print $of "    SoftServicesSynthesisInterface#(`CON_RECV_${metatype}, `CON_SEND_${metatype}) $wrap_var <- $mk_wrapper(clocked_by model_clock.clk, reset_by model_clock.rst);\n";
 
+    } 
+    else {
+	print $of "    // 1. instantiate wrapper\n";
+	print $of "    WithConnections#(`CON_RECV_${metatype}, `CON_SEND_${metatype}) $wrap_var <- $mk_wrapper();\n";
+   }
     print $of "    // 2. log sends & recvs\n";
     my @conns = parse_dangling_connections($logfile_name);
     my @sends_exprs = ();

@@ -18,11 +18,6 @@ model=HW/SW Hybrid Project Foundation
 File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
 Packagehint=platforms
 
-[Soft Connections Hybrid Application Environment/Requires]
-connected_application=Default Software Connected Application
-platform_services=Platform Services
-soft_connections_lib=Soft Connections Library
-
 [Traffic Light System with Soft Connections]
 File=modules/system/traffic_light_system/traffic_light_system.awb
 Packagehint=hasim
@@ -45,18 +40,10 @@ hardware_system=Traffic Light System with Soft Connections
 File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function.awb
 Packagehint=hasim
 
-[Soft Connections Hybrid Application Environment]
-File=modules/application-env/hybrid/soft-connections/application-env-hybrid-soft-conn.awb
-Packagehint=platforms
-
 [HW/SW Hybrid Project Foundation/Requires]
 fpgaenv=FPGA Environment
-application_env=Soft Connections Hybrid Application Environment
+application_env=Soft Services Hybrid Application Environment
 project_common=Hybrid Project Common Utilities
-
-[Soft Connections Library]
-File=config/pm/hasim/submodels/common/soft-connections-lib.apm
-Packagehint=hasim
 
 [Platform Services]
 File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
@@ -66,3 +53,18 @@ Packagehint=hasim
 File=config/pm/hasim/submodels/common/project-common-default.apm
 Packagehint=hasim
 
+[Soft Services Hybrid Application Environment]
+File=modules/application-env/hybrid/soft-services/application-env-hybrid-soft-service.awb
+Packagehint=platforms
+
+[Soft Services Hybrid Application Environment/Requires]
+platform_services=Platform Services
+soft_services=Soft Services
+connected_application=Default Software Connected Application
+
+[Soft Services]
+File=config/pm/hasim/submodels/common/soft-services.apm
+Packagehint=hasim
+
+[Traffic light function w.o synthesis boundary/Params]
+MAX_WAIT='d10000

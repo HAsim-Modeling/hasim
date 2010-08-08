@@ -14,3 +14,8 @@ typedef WITH_CONNECTIONS#(nI,nO) SoftServicesSynthesisInterface#(parameter numer
 // by many other modules
 
 
+function WITH_CONNECTIONS#(nI,nO) extractWithConnections(SoftServicesSynthesisInterface#(nI,nO) ifc);
+
+  return ifc;
+
+endfunction

@@ -36,3 +36,5 @@ interface WithConnections#(parameter numeric type numIn,
   interface Vector#(CON_NumChains, CON_Chain) chains;
 
 endinterface
+
+typedef WithConnections#(nI,nO) SoftServicesSynthesisInterface#(parameter numeric type nI, parameter numeric type nO);

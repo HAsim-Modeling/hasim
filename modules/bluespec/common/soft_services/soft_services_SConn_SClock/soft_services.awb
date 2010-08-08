@@ -12,9 +12,10 @@
 %requires soft_services_lib
 %requires soft_connections
 %requires soft_clocks
-%requires smart_synth_boundaries
+%requires soft_services_deps
 
-%sources --t BSV --v PUBLIC soft_services.bsv
+
+%sources --t BSV --v PUBLIC soft_services_defs.bsv
 
 %AWB_END
 

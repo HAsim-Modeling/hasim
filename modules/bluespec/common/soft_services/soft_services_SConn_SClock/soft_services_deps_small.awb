@@ -6,7 +6,7 @@
 
 
 %AWB_START
-%name Soft Services Dependencies(Soft Conn Only)
+%name Soft Services Dependencies
 %desc A means for dependent modules to include all soft service implementation files
 
 %provides soft_services_deps

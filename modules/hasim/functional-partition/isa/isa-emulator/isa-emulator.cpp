@@ -130,6 +130,10 @@ ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
             {
                 T2("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " ControlReg:  " << fmt_regval(rVal.intReg));
             }
+            else if (rName.IsFPControlReg())
+            {
+                T2("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " FPControlReg:  " << fmt_regval(rVal.intReg));
+            }
             else if (rName.IsLockReg())
             {
                 T2("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " LockReg:     " << fmt_regval(rVal.intReg));
@@ -226,6 +230,10 @@ ISA_EMULATOR_SERVER_CLASS::UpdateRegister(
         else if (rName.IsControlReg())
         {
             T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " ControlReg: " << fmt_regval(rVal.intReg));
+        }
+        else if (rName.IsFPControlReg())
+        {
+            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " FPControlReg: " << fmt_regval(rVal.intReg));
         }
         else if (rName.IsLockReg())
         {
@@ -361,10 +369,7 @@ ISA_REGOP_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
 
         if (TRACING(1))
         {
-            T1("\tisa_regop_emulator: CTX " << UINT64(ctx_id) << ": " << fmt_regval(pc)
-               << "  F" << fmt_regnum(rNameDst.FPRegNum())
-               << " <- F" << fmt_regnum(rNameSrc0.FPRegNum()) << " (" << fmt_regval(srcVal0.intReg) << ")"
-               << " op F" << fmt_regnum(rNameSrc1.FPRegNum()) << " (" << fmt_regval(srcVal1.intReg) << ")");
+            T1("\tisa_regop_emulator: CTX " << UINT64(ctx_id) << ": " << fmt_regval(pc) << " " << fmt_inst(inst));
         }
 
         dstVal = emulator->EmulateRegOp(ctx_id, pc, inst,

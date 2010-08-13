@@ -23578,3 +23578,30 @@ the new code.
 To prevent bit rot, the traffic light codes now use the
 build pipeline and soft services.  I have tested this to ensure that a
 functional bit-file is produced on the ACP.  
+
+----------
+pellauer    Date: Fri Aug 13 14:06:32 EDT 2010  CSN: CSN-hasim-819
+                  Fri Aug 13 18:06:32 UTC 2010
+
+
+Directory config/pm/hasim/demos/test
+ fp_test/                  Locally Added               0 
+
+Directory config/pm/hasim/demos/test/fp_test
+ fp_test_cvt_i_to_s.apm    Locally Added               0 
+
+Directory modules/hasim/functional-partition/isa/isa-emulator
+ isa-emulator.cpp          Locally Modified          818 
+
+Directory modules/system/test
+ fp_test/                  Locally Added               0 
+
+Directory modules/system/test/fp_test
+ fp-test-streamid.dic      Locally Added               0 
+ fp-test.awb               Locally Added               0 
+ fp-test.bsv               Locally Added               0 
+ fp-test-streams.dic       Locally Added               0 
+
+
+* Add floating-point support to isa-emulator. 
+* Add generic floating-point unit test APM.

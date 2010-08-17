@@ -73,7 +73,6 @@ Packagehint=platforms
 File=modules/bluespec/common/fpgaenv/physical-platform/debuggers/null/null-debugger.awb
 Packagehint=platforms
 
-
 [Standard Virtual Platform/Requires]
 umf=Little-Endian Unified Message Format
 low_level_platform_interface=Low Level Platform Interface Hybrid
@@ -157,52 +156,18 @@ File=modules/bluespec/system/demos/debuggers/platform-debugger.awb
 Packagehint=hasim
 
 [FPGA Build Pipeline]
-File=modules/project/pipelines/fpga-build-pipeline.awb
+File=config/pm/hasim/submodels/pipelines/build-pipeline-xilinx.apm
 Packagehint=platforms
 
-[Simple MCD Tool]
-File=modules/project/bluespec/mcd.awb
-Packagehint=platforms
 
-[Xilinx BITGEN]
-File=modules/project/xilinx/xilinx_bitgen.awb
-Packagehint=platforms
 
-[Xilinx LOADER]
-File=modules/project/xilinx/xilinx_loader.awb
-Packagehint=platforms
 
-[Xilinx NGD]
-File=modules/project/xilinx/xilinx_ngd.awb
-Packagehint=platforms
 
-[FPGA Build Pipeline/Requires]
-post_synthesis_tool=Xilinx Post-synthesis Toolchain
-mcd_tool=Simple MCD Tool
-synthesis_tool=XST Synthesis Tool - no basicio run
 
-[XST Synthesis Tool - no basicio run]
-File=modules/project/xilinx/xst-nobasicio.awb
-Packagehint=platforms
 
-[Xilinx Post-synthesis Toolchain]
-File=modules/project/xilinx/xilinx_post_synth.awb
-Packagehint=platforms
 
-[Xilinx PAR]
-File=modules/project/xilinx/xilinx_par.awb
-Packagehint=platforms
 
-[Xilinx Post-synthesis Toolchain/Requires]
-xilinx_ngd=Xilinx NGD
-xilinx_bitgen=Xilinx BITGEN
-xilinx_par=Xilinx PAR
-xilinx_map=Xilinx MAP
-xilinx_loader=Xilinx LOADER
 
-[Xilinx MAP]
-File=modules/project/xilinx/xilinx_map.awb
-Packagehint=platforms
 
 [General LED Device]
 File=modules/bluespec/common/fpgaenv/physical-platform/physical-devices/leds/general-led-device.awb

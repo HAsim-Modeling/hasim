@@ -1304,14 +1304,16 @@ sub __generate_makefile_hw_top {
             my $found_in_env = 0; 
             #See if the user library path will resolve the library
             #this assumes that the C code will use gcc.
-            my $env_library_path = $ENV{"LIBRARY_PATH"};
-            foreach my $path (split(/:/,$env_library_path)) {
-                chomp($path);
-                my $f = $path. "/" . basename($lib);
-                if( -e $f){
-                    $found_in_env = 1;
-                    HAsim::Util::hash_append($replacements_r," ",'@SW_LIBS@', $f);
-                }  
+            if (exists $ENV{"LIBRARY_PATH"}) {
+                my $env_library_path = $ENV{"LIBRARY_PATH"};
+                foreach my $path (split(/:/,$env_library_path)) {
+                    chomp($path);
+                    my $f = $path. "/" . basename($lib);
+                    if( -e $f){
+                        $found_in_env = 1;
+                        HAsim::Util::hash_append($replacements_r," ",'@SW_LIBS@', $f);
+                    } 
+		} 
 	    }
 
             # Try for one last location in the installed $libdir

@@ -12,7 +12,7 @@ DefaultRunOpts=
 
 [Model]
 DefaultAttributes=function_not_as_boundary traffic_light demo connected slave hybrid project xup
-model=HW/SW Hybrid Project Foundation
+model=HW/SW Hybrid Pipeline Build
 
 [FPGA Environment]
 File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
@@ -29,9 +29,6 @@ Packagehint=platforms
 [Traffic Light System with Soft Connections/Requires]
 traffic_light_function=Traffic light function w.o synthesis boundary
 
-[HW/SW Hybrid Project Foundation]
-File=modules/project/project-hybrid.awb
-Packagehint=platforms
 
 [Default Software Connected Application/Requires]
 hardware_system=Traffic Light System with Soft Connections
@@ -40,10 +37,6 @@ hardware_system=Traffic Light System with Soft Connections
 File=modules/system/traffic_light_system/hasim_traffic_light_function/hasim_traffic_light_function.awb
 Packagehint=hasim
 
-[HW/SW Hybrid Project Foundation/Requires]
-fpgaenv=FPGA Environment
-application_env=Soft Services Hybrid Application Environment
-project_common=Hybrid Project Common Utilities
 
 [Platform Services]
 File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
@@ -66,5 +59,12 @@ connected_application=Default Software Connected Application
 File=config/pm/hasim/submodels/common/soft-services.apm
 Packagehint=hasim
 
-[Traffic light function w.o synthesis boundary/Params]
-MAX_WAIT='d10000
+
+[HW/SW Hybrid Pipeline Build]
+File=modules/project/project-pipeline.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Pipeline Build/Requires]
+project_common=Hybrid Project Common Utilities
+fpgaenv=FPGA Environment
+application_env=Soft Services Hybrid Application Environment

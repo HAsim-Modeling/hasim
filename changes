@@ -23605,3 +23605,23 @@ Directory modules/system/test/fp_test
 
 * Add floating-point support to isa-emulator. 
 * Add generic floating-point unit test APM.
+
+----------
+keflemin    Date: Tue Aug 17 14:20:42 EDT 2010  CSN: CSN-hasim-820
+                  Tue Aug 17 18:20:42 UTC 2010
+
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          819 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Modified          819 
+ traffic_light_exe_nosynth.apm Locally Modified          819 
+
+Directory config/pm/bluespec/demos/debugger
+ sram_debugger_nallatech_acp.apm Locally Modified          819 
+ nallatech_fake_sram_debugger.apm Locally Modified          819 
+ sram_debugger_htg.apm     Locally Modified          819 
+
+
+Fixed broken apms from yesterday's check ins.

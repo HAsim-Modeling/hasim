@@ -23625,3 +23625,35 @@ Directory config/pm/bluespec/demos/debugger
 
 
 Fixed broken apms from yesterday's check ins.
+
+----------
+mcadler     Date: Sun Sep  5 09:34:22 EDT 2010  CSN: CSN-hasim-821
+                  Sun Sep  5 13:34:22 UTC 2010
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.awb         Locally Modified          820 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.awb   Locally Modified          820 
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ scratchpad-memory-service.awb Locally Modified          820 
+ platform-scratchpad-memory.bsv Locally Modified          820 
+
+Directory modules/hasim/util/modellib
+ multiplexed-memories.bsv  Locally Modified          820 
+ permutation-ports.bsv     Locally Modified          820 
+ a-ports.bsv               Locally Modified          820 
+ hasim-modellib.awb        Locally Modified          820 
+
+- Clean up multiplexed ports to stop using a random constant for maximum number
+  of buffer entries.  Remove lots of provisos.  Buffer sizing is now computed
+  with a maximum latency, with buffers now sized dynamically by max. latency
+  and max. contexts.  Compile time errors should be easier to interpret.
+
+- Add global configuration to multiplexed memories to use either scratchpads or
+  BRAM.
+- Make functional partition TLB and memory cache size configuration global params.
+- Make scratchpad cache size configuration global param.
+- Add buffering to uncached scratchpad.

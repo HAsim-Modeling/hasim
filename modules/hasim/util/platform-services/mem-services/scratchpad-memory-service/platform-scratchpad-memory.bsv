@@ -884,6 +884,10 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
             SCOREBOARD_FIFOF#(SCRATCHPAD_UNCACHED_PORT_ROB_SLOTS,
                               t_DATA)) sortResponseQ <- replicateM(mkBRAMScoreboardFIFOF());
 
+    // Buffer between reorder buffer (sortResponseQ) and output methods to
+    // reduce timing pressure.
+    Vector#(n_READERS, FIFOF#(t_DATA)) responseQ <- replicateM(mkFIFOF());
+
     // Merge FIFOF combines read and write requests in temporal order,
     // with reads from the same cycle as a write going first.  Each read port
     // gets a slot.  The write port is always last.
@@ -1150,6 +1154,22 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
 
 
     //
+    // forwardResp --
+    //     Forward the next response to the output FIFO.  This stage exists
+    //     solely to reduce FPGA timing pressure.
+    //
+    for (Integer r = 0; r < valueOf(n_READERS); r = r + 1)
+    begin
+        rule forwardResp (True);
+            let d = sortResponseQ[r].first();
+            sortResponseQ[r].deq();
+            
+            responseQ[r].enq(d);
+        endrule
+    end
+
+
+    //
     // Methods.  All requests are stored in the incomingReqQ to maintain their
     // order.
     //
@@ -1165,17 +1185,17 @@ module [CONNECTED_MODULE] mkUncachedScratchpad#(Integer scratchpadID)
                 endmethod
 
                 method ActionValue#(t_DATA) readRsp();
-                    let r = sortResponseQ[p].first();
-                    sortResponseQ[p].deq();
+                    let r = responseQ[p].first();
+                    responseQ[p].deq();
 
                     return r;
                 endmethod
 
                 method t_DATA peek();
-                    return sortResponseQ[p].first();
+                    return responseQ[p].first();
                 endmethod
 
-                method Bool notEmpty() = sortResponseQ[p].notEmpty();
+                method Bool notEmpty() = responseQ[p].notEmpty();
                 method Bool notFull() = incomingReqQ.ports[p].notFull();
             endinterface;
     end

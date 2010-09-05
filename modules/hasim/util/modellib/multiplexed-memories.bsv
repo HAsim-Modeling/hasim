@@ -38,12 +38,16 @@ module [HASIM_MODULE] mkScratchpad_Multiplexed#(Integer scratchpadID, SCRATCHPAD
          Bits#(t_DATA, t_DATA_SZ),
          Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
          Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
-         Add#(t_TMP, TAdd#(TSub#(t_EXTENDED_ADDR_SZ, TLog#(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ, TExp#(TLog#(t_DATA_SZ))))), TLog#(TDiv#(TExp#(TLog#(t_DATA_SZ)), t_SCRATCHPAD_MEM_VALUE_SZ))), t_SCRATCHPAD_MEM_ADDRESS_SZ), 
          Add#(TLog#(t_NUM_INSTANCES), t_ADDR_SZ, t_EXTENDED_ADDR_SZ)); // Introduce an extended address space indexed by the number of contexts.
 
 
-    // Instantiate a scratchpad with the extended address range.
-    MEMORY_IFC#(Bit#(t_EXTENDED_ADDR_SZ), t_DATA) scratchpad <- mkScratchpad(scratchpadID, cached);
+    // Instantiate either a scratchpad or BRAM with the extended address range.
+    MEMORY_IFC#(Bit#(t_EXTENDED_ADDR_SZ), t_DATA) scratchpad <-
+`ifdef MULTIPLEXED_MEM_USE_SCRATCHPAD_Z
+        mkBRAMInitialized(unpack(0));
+`else
+        mkScratchpad(scratchpadID, cached);
+`endif
     
     function Bit#(t_EXTENDED_ADDR_SZ) extendAddress(INSTANCE_ID#(t_NUM_INSTANCES) iid, t_ADDR addr);
     
@@ -86,12 +90,16 @@ module [HASIM_MODULE] mkMultiReadScratchpad_Multiplexed#(Integer scratchpadID, S
          Bits#(t_DATA, t_DATA_SZ),
          Bits#(SCRATCHPAD_MEM_ADDRESS, t_SCRATCHPAD_MEM_ADDRESS_SZ),
          Bits#(SCRATCHPAD_MEM_VALUE, t_SCRATCHPAD_MEM_VALUE_SZ),
-         Add#(t_TMP, TAdd#(TSub#(t_EXTENDED_ADDR_SZ, TLog#(TDiv#(t_SCRATCHPAD_MEM_VALUE_SZ, TExp#(TLog#(t_DATA_SZ))))), TLog#(TDiv#(TExp#(TLog#(t_DATA_SZ)), t_SCRATCHPAD_MEM_VALUE_SZ))), t_SCRATCHPAD_MEM_ADDRESS_SZ), 
          Add#(TLog#(t_NUM_INSTANCES), t_ADDR_SZ, t_EXTENDED_ADDR_SZ)); // Introduce an extended address space indexed by the number of contexts.
 
 
     // Instantiate a scratchpad with the extended address range.
-    MEMORY_MULTI_READ_IFC#(t_NUM_READERS, Bit#(t_EXTENDED_ADDR_SZ), t_DATA) scratchpad <- mkMultiReadScratchpad(scratchpadID, cached);
+    MEMORY_MULTI_READ_IFC#(t_NUM_READERS, Bit#(t_EXTENDED_ADDR_SZ), t_DATA) scratchpad <-
+`ifdef MULTIPLEXED_MEM_USE_SCRATCHPAD_Z
+        mkBRAMBufferedPseudoMultiReadInitialized(unpack(0));
+`else
+        mkMultiReadScratchpad(scratchpadID, cached);
+`endif
     
     Vector#(t_NUM_READERS, MEMORY_READER_IFC_MULTIPLEXED#(t_NUM_INSTANCES, t_ADDR, t_DATA)) localPorts = newVector();
 

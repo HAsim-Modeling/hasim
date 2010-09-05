@@ -1,3 +1,28 @@
+//
+// Copyright (C) 2010 Massachusetts Institute of Technology
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+// Tokens are the main way for HAsim to track data across simulator      
+// partitions. The token type includes an index for token tables, epochs,
+// and scratchpads which partitions can use as they see fit.             
+
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/soft_connections.bsh"
+`include "asim/provides/fpga_components.bsh"
+`include "asim/provides/hasim_modellib.bsh"
 
 module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
     #(
@@ -13,7 +38,9 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
+         NumAlias#(TMul#(t_NUM_INSTANCES, PORT_MAX_LATENCY), n_SLOTS),
+         Alias#(Bit#(TLog#(n_SLOTS)), t_SLOT_IDX),
+         Bits#(t_SLOT_IDX, t_SLOT_IDX_SZ));
 
     Connection_Receive#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) con <- mkConnection_Receive(portname);
     
@@ -21,21 +48,23 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
 
     Integer rMax = (latency * valueof(t_NUM_INSTANCES)) + 1;
 
-    if (rMax > 64)
-        error("Total Port buffering cannot currently exceed 64. Port: " + portname);
+    if (latency > valueOf(PORT_MAX_LATENCY))
+    begin
+        error("Latency exceeds current maximum. Port: " + portname);
+    end
 
-    function Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG)) initfunc(Bit#(6) idx);
-        INSTANCE_ID#(t_NUM_INSTANCES) iid = truncate(idx);
+    function Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG)) initfunc(t_SLOT_IDX idx);
+        INSTANCE_ID#(t_NUM_INSTANCES) iid = truncateNP(idx);
         return tuple2(iid, tagged Invalid);
     endfunction
 
-    LUTRAM#(Bit#(6), Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) rs <- mkLUTRAMWith(initfunc);
-    LUTRAM#(Bit#(6), Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) sideBuffer <- mkLUTRAMWith(initfunc);
+    LUTRAM#(t_SLOT_IDX, Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) rs <- mkLUTRAMWith(initfunc);
+    LUTRAM#(t_SLOT_IDX, Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) sideBuffer <- mkLUTRAMWith(initfunc);
 
-    COUNTER#(6) head <- mkLCounter(0);
-    COUNTER#(6) tail <- mkLCounter((fromInteger(latency * (valueof(t_NUM_INSTANCES) - 1))));
-    COUNTER#(6) sideHead <- mkLCounter(0);
-    COUNTER#(6) sideTail <- mkLCounter((fromInteger(latency)));
+    COUNTER#(t_SLOT_IDX_SZ) head <- mkLCounter(0);
+    COUNTER#(t_SLOT_IDX_SZ) tail <- mkLCounter((fromInteger(latency * (valueof(t_NUM_INSTANCES) - 1))));
+    COUNTER#(t_SLOT_IDX_SZ) sideHead <- mkLCounter(0);
+    COUNTER#(t_SLOT_IDX_SZ) sideTail <- mkLCounter((fromInteger(latency)));
     Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) curEnq <- mkReg(0);
     Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) curDeq <- mkReg(0);
 
@@ -98,9 +127,9 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
         
         method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
         
-            Bit#(6) l = fromInteger(latency);
-            Bit#(6) k = zeroExtendNP(iid) + 1;
-            Bit#(6) n = zeroExtendNP(period);
+            t_SLOT_IDX l = fromInteger(latency);
+            t_SLOT_IDX k = zeroExtendNP(iid) + 1;
+            t_SLOT_IDX n = zeroExtendNP(period);
             tail.setC((k-n) * l);
             sideTail.setC(n * l);
             maxInstance <= iid;
@@ -152,8 +181,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLast#(String portname
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
-        (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
+        (Bits#(t_MSG, t_MSG_SZ));
          
     function Bool enqToSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid);
         return cur_enq == 0;
@@ -181,8 +209,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirst#(String portname
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
-        (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
+        (Bits#(t_MSG, t_MSG_SZ));
          
     function Bool enqToSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid);
         return cur_enq == max_iid;
@@ -209,8 +236,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLastEveryN#(String po
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
-        (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
+        (Bits#(t_MSG, t_MSG_SZ));
          
     function Bool enqToSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid);
         return cur_enq == 0;
@@ -238,8 +264,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirstEveryN#(String po
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
-        (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
+        (Bits#(t_MSG, t_MSG_SZ));
          
     function Bool enqToSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid);
         return cur_enq == period - 1;
@@ -267,8 +292,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderFirstNToLastN#(String portna
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
-        (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
+        (Bits#(t_MSG, t_MSG_SZ));
          
     function Bool enqToSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid);
         return cur_enq < period;
@@ -296,9 +320,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderLastNToFirstN#(String portna
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
-        (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
-
+        (Bits#(t_MSG, t_MSG_SZ));
          
     function Bool enqToSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid);
         return cur_enq > (max_iid - period);

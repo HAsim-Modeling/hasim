@@ -1,24 +1,15 @@
-#/********************************************************************
-# *
-# * Awb module specification
-# *
-# *******************************************************************/
+%name HAsim Modeling Library
+%desc HAsim Modeling Library
+%provides hasim_modellib
 
-#/*
-# %AWB_START
-#
-# %name HAsim Modeling Library
-# %desc HAsim Modeling Library
-# %provides hasim_modellib
-#
-# %requires hasim_cache_algorithms
-#
-# %attributes hasim
-#
-# %public a-ports.bsv stall-ports.bsv credit-ports.bsv permutation-ports.bsv multiplexed.bsv multiplexed-memories.bsv stats-multiplexed.bsh stats-multiplexed.bsv debug-file-multiplexed.bsv
-#
-#
-#
-# %AWB_END
-# */
+%requires hasim_cache_algorithms
 
+%attributes hasim
+
+%public a-ports.bsv stall-ports.bsv credit-ports.bsv permutation-ports.bsv
+%public multiplexed.bsv multiplexed-memories.bsv
+%public stats-multiplexed.bsh stats-multiplexed.bsv
+%public debug-file-multiplexed.bsv
+
+%param --global PORT_MAX_LATENCY        4   "Maximum latency, used for computing buffer sizes"
+%param MULTIPLEXED_MEM_USE_SCRATCHPAD   1   "0: use BRAM, otherwise use a scratchpad"

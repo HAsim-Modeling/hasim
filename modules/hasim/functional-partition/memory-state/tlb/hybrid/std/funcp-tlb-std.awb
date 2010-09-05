@@ -13,6 +13,6 @@
 
 %param FUNCP_TLB_LOGFILE_NAME "hasim_funcp_tlb.out" "Name of logfile for functional TLB cache"
 
-%param FUNCP_PVT_TLB_ENTRIES 1024 "Number of entries in functional private TLB cache"
+%param --global FUNCP_PVT_TLB_ENTRIES 1024 "Number of entries in functional private TLB cache"
 
 %param SYNTH_BOUNDARY mkFUNCP_CPU_TLBS "Name of synthesis boundary"

@@ -12,6 +12,6 @@
 %public   hybrid-funcp-memory.dic
 
 %param FUNCP_CACHELINE_BITS     256 "Cache line size in bits"
-%param FUNCP_PVT_CACHE_ENTRIES 4096 "Number of entries in functional private cache"
+%param --global  FUNCP_PVT_CACHE_ENTRIES 4096 "Number of entries in functional private cache"
 
 %param --dynamic FUNCP_MEM_PVT_CACHE_MODE  0  "0: write-back, 1: write-through, 2: write-no-allocate, 3: disabled"

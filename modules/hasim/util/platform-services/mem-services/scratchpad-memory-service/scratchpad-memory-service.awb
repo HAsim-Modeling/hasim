@@ -15,6 +15,6 @@
 
 // 1K entries as the base size of scratchpad makes sense because of Xilinx
 // block RAM layout.  Scratchpads will use mainly 1K x 18 bit BRAMs.
-%param SCRATCHPAD_STD_PVT_CACHE_ENTRIES  1024  "Scratchpad private cache entries (must be a power of 2)"
+%param --global SCRATCHPAD_STD_PVT_CACHE_ENTRIES  1024  "Scratchpad private cache entries (must be a power of 2)"
 
 %param --global PLATFORM_SCRATCHPAD_DEBUG_ENABLE 1 "Enable Platform Scratchpad Debug Log"

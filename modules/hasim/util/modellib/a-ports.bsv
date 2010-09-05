@@ -22,10 +22,13 @@
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/fpga_components.bsh"
+`include "asim/provides/hasim_modellib.bsh"
 
 import FIFOF::*;
 import Vector::*;
 import ModuleCollect::*;
+
+typedef `PORT_MAX_LATENCY PORT_MAX_LATENCY;
 
 interface INSTANCE_CONTROL_OUT#(numeric type t_NUM_INSTANCES);
 
@@ -311,24 +314,28 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
+         NumAlias#(TMul#(t_NUM_INSTANCES, PORT_MAX_LATENCY), n_SLOTS),
+         Alias#(Bit#(TLog#(n_SLOTS)), t_SLOT_IDX),
+         Bits#(t_SLOT_IDX, t_SLOT_IDX_SZ));
 
     Connection_Receive#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) con <- mkConnection_Receive(portname);
 
     Integer rMax = (latency * valueof(t_NUM_INSTANCES)) + 1;
 
-    if (rMax > 64)
-        error("Total Port buffering cannot currently exceed 64. Port: " + portname);
+    if (latency > valueOf(PORT_MAX_LATENCY))
+    begin
+        error("Latency exceeds current maximum. Port: " + portname);
+    end
 
-    function Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG)) initfunc(Bit#(6) idx);
-        INSTANCE_ID#(t_NUM_INSTANCES) iid = truncate(idx);
+    function Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG)) initfunc(t_SLOT_IDX idx);
+        INSTANCE_ID#(t_NUM_INSTANCES) iid = truncateNP(idx);
         return tuple2(iid, tagged Invalid);
     endfunction
 
-    LUTRAM#(Bit#(6), Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) rs <- mkLUTRAMWith(initfunc);
+    LUTRAM#(t_SLOT_IDX, Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) rs <- mkLUTRAMWith(initfunc);
 
-    COUNTER#(6) head <- mkLCounter(0);
-    COUNTER#(6) tail <- mkLCounter((fromInteger(latency * valueof(t_NUM_INSTANCES))));
+    COUNTER#(t_SLOT_IDX_SZ) head <- mkLCounter(0);
+    COUNTER#(t_SLOT_IDX_SZ) tail <- mkLCounter((fromInteger(latency * valueof(t_NUM_INSTANCES))));
 
     Bool fullQ  = tail.value() + 1 == head.value();
     Bool emptyQ = head.value() == tail.value();
@@ -361,8 +368,8 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
         
         method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
         
-            Bit#(6) l = fromInteger(latency);
-            Bit#(6) k = zeroExtendNP(iid)+ 1;
+            t_SLOT_IDX l = fromInteger(latency);
+            t_SLOT_IDX k = zeroExtendNP(iid)+ 1;
             tail.setC(k * l);
             initialized <= True;
 

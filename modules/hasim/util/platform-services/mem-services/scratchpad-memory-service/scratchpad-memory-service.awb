@@ -8,6 +8,7 @@
 %public scratchpad-memory-service.bsh
 %public scratchpad-memory-service.bsv
 %public platform-scratchpad-memory.bsv
+%public platform-scratchpad-memory-utils.bsv
 %public platform-scratchpad-multi-cached-memory.bsv
 %private scratchpad-memory-service.dic
 
@@ -16,5 +17,7 @@
 // 1K entries as the base size of scratchpad makes sense because of Xilinx
 // block RAM layout.  Scratchpads will use mainly 1K x 18 bit BRAMs.
 %param --global SCRATCHPAD_STD_PVT_CACHE_ENTRIES  1024  "Scratchpad private cache entries (must be a power of 2)"
+
+%param SCRATCHPAD_STD_PVT_SKEW  False  "Skew cache indices"
 
 %param --global PLATFORM_SCRATCHPAD_DEBUG_ENABLE 1 "Enable Platform Scratchpad Debug Log"

@@ -196,15 +196,31 @@ module [CONNECTED_MODULE] mkScratchpad#(Integer scratchpadID,
     return scratch;
 endmodule
 
-
 //
 // mkMultiReadScratchpad --
+//     The same as mkMultiReadStatScratchpad but we have null stats in this case
+//
+module [CONNECTED_MODULE] mkMultiReadScratchpad#(Integer scratchpadID,
+                                                 SCRATCHPAD_CACHE_MODE cached)
+    // interface:
+    (MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA))
+    provisos (Bits#(t_ADDR, t_ADDR_SZ),
+              Bits#(t_DATA, t_DATA_SZ));
+
+    let m <- mkMultiReadStatsScratchpad(scratchpadID, cached, mkNullScratchpadCacheStats);
+    return m;
+endmodule
+
+//
+// mkMultiReadStatsScratchpad --
 //     The same as a normal mkScratchpad but with multiple read ports.
 //     Requests are processed in order, with reads being scheduled before
 //     a write requested in the same cycle.
 //
-module [CONNECTED_MODULE] mkMultiReadScratchpad#(Integer scratchpadID,
-                                                 SCRATCHPAD_CACHE_MODE cached)
+module [CONNECTED_MODULE] mkMultiReadStatsScratchpad#(Integer scratchpadID,
+                                                      SCRATCHPAD_CACHE_MODE cached,
+                                                      SCRATCHPAD_STATS_CONSTRUCTOR statsConstructor
+)
     // interface:
     (MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA))
     provisos (Bits#(t_ADDR, t_ADDR_SZ),
@@ -231,7 +247,6 @@ module [CONNECTED_MODULE] mkMultiReadScratchpad#(Integer scratchpadID,
         // A special case:  cached scratchpad requested but the container
         // is smaller than the cache would have been.  Just allocate a BRAM.
         MEMORY_MULTI_READ_IFC#(n_READERS, t_ADDR, t_DATA) memory <- mkBRAMBufferedPseudoMultiReadInitialized(unpack(0));
-
         return memory;
     end
     else
@@ -240,10 +255,10 @@ module [CONNECTED_MODULE] mkMultiReadScratchpad#(Integer scratchpadID,
         // word size.
         SCRATCHPAD_MEMORY_MULTI_READ_IFC#(n_READERS, t_CONTAINER_ADDR, SCRATCHPAD_MEM_VALUE, `SCRATCHPAD_STD_PVT_CACHE_ENTRIES) containerMemory;
         if (cached == SCRATCHPAD_CACHED)
-            containerMemory <- mkUnmarshalledCachedScratchpad(scratchpadID, `PARAMS_SCRATCHPAD_MEMORY_SERVICE_SCRATCHPAD_PVT_CACHE_MODE);
+            containerMemory <- mkUnmarshalledCachedScratchpad(scratchpadID, `PARAMS_SCRATCHPAD_MEMORY_SERVICE_SCRATCHPAD_PVT_CACHE_MODE, statsConstructor);
         else
             containerMemory <- mkUnmarshalledScratchpad(scratchpadID);
-    
+        
         // Wrap the container with a marshaller.
         let memory <- mkMemPackMultiRead(containerMemory);
 
@@ -542,7 +557,9 @@ endmodule
 //     a single scratchpad region.  This module does no marshalling of
 //     data sizes.
 //
-module [CONNECTED_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, Integer cacheModeParam)
+module [CONNECTED_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, 
+                                                          Integer cacheModeParam, 
+                                                          SCRATCHPAD_STATS_CONSTRUCTOR statsConstructor)
     // interface:
     (SCRATCHPAD_MEMORY_MULTI_READ_IFC#(n_READERS, t_MEM_ADDRESS, SCRATCHPAD_MEM_VALUE, n_CACHE_ENTRIES))
     provisos (Bits#(t_MEM_ADDRESS, t_MEM_ADDRESS_SZ),
@@ -582,6 +599,8 @@ module [CONNECTED_MODULE] mkUnmarshalledCachedScratchpad#(Integer scratchpadID, 
                                                                 True,
                                                                 debugLog);
 
+    // Hook up stats
+    let cacheStats <- statsConstructor(cache.stats);
     // Merge FIFOF combines read and write requests in temporal order,
     // with reads from the same cycle as a write going first.  Each read port
     // gets a slot.  The write port is always last.

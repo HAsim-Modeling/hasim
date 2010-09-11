@@ -23657,3 +23657,28 @@ Directory modules/hasim/util/modellib
 - Make functional partition TLB and memory cache size configuration global params.
 - Make scratchpad cache size configuration global param.
 - Add buffering to uncached scratchpad.
+
+----------
+kfleming    Date: Sat Sep 11 15:57:48 EDT 2010  CSN: CSN-hasim-822
+                  Sat Sep 11 19:57:48 UTC 2010
+
+
+Directory modules/hasim/util
+ platform-interface/       Locally Removed           821 
+
+Directory modules/hasim/util/platform-interface
+ platform-interface.dic    Locally Removed           821 
+ platform-central-cache.bsv Locally Removed           821 
+ platform-interface.awb    Locally Removed           821 
+ platform-scratchpad-multi-cached-memory.bsv Locally Removed           821 
+ platform-interface.bsv    Locally Removed           821 
+ platform-scratchpad-memory.bsv Locally Removed           821 
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ scratchpad-memory-service.awb Locally Modified          821 
+ platform-scratchpad-multi-cached-memory.bsv Locally Modified          821 
+ platform-scratchpad-memory.bsv Locally Modified          821 
+
+
+Added a scratchpad constructor capable of taking a stats gathering
+module.  Again, needed for H.264.  All existing interfaces/constructors are maintained. 

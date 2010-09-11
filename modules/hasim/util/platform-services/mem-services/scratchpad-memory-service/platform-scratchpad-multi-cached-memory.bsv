@@ -38,29 +38,6 @@ import Vector::*;
 `define VDEV_SCRATCH__BASE 0
 `endif
 
-// SCRATCHPAD_CACHE_CONSTRUCTOR
-
-// A function to instantiate an RL_DM_CACHE, given an RL_DM_CACHE_SOURCE_DATA
-// of the appropriate types.
-
-// Passed to the multi-cached-memory modules below.
-
-typedef function CONNECTED_MODULE#(RL_DM_CACHE#(Bit#(t_CONTAINER_ADDR_SZ), 
-                                                SCRATCHPAD_MEM_VALUE, 
-                                                t_REF_INFO)) 
-                       f(RL_DM_CACHE_SOURCE_DATA#(Bit#(t_CONTAINER_ADDR_SZ), 
-                                                  SCRATCHPAD_MEM_VALUE, 
-                                                  t_REF_INFO) source) 
-                            SCRATCHPAD_CACHE_CONSTRUCTOR#(type t_CONTAINER_ADDR_SZ,
-                                                          type t_REF_INFO);
-
-// SCRATCHPAD_STATS_CONSTRUCTOR
-
-// A function to instantiate a stat tracker. Passed to the multi-cached-memory
-// modules below.
-
-typedef function CONNECTED_MODULE#(Empty) f(RL_CACHE_STATS stats) SCRATCHPAD_STATS_CONSTRUCTOR;
-
 //
 // mkMultiReadMultiCacheScratchpad --
 //     The same as a normal mkScratchpad but with multiple read ports.

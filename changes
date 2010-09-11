@@ -23682,3 +23682,14 @@ Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-se
 
 Added a scratchpad constructor capable of taking a stats gathering
 module.  Again, needed for H.264.  All existing interfaces/constructors are maintained. 
+
+----------
+kfleming    Date: Sat Sep 11 16:06:26 EDT 2010  CSN: CSN-hasim-823
+                  Sat Sep 11 20:06:26 UTC 2010
+
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ platform-scratchpad-memory-utils.bsv Locally Added               0 
+
+
+Forgot this needed file.

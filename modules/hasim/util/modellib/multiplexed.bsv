@@ -45,7 +45,7 @@
 // INSTANCE_ID#(ni) is an instance ID to distinguish between ni different
 // instances.
 // TODO: is it okay to have n not be a power of 2?
-typedef TLog#(ni) INSTANCE_ID_BITS#(type ni);
+typedef TMax#(TLog#(ni), 1) INSTANCE_ID_BITS#(type ni);
 typedef Bit#(INSTANCE_ID_BITS#(ni)) INSTANCE_ID#(type ni);
 
 typedef Vector#(ni, t) MULTIPLEXED#(type ni, parameter type t);
@@ -372,7 +372,7 @@ module mkMultiplexedStatePool#(t_DATA initval)
 
     NumTypeParam#(TAdd#(t_NUM_INSTANCES, 1)) buffering = ?;
     FIFOF#(t_DATA) q <- mkSizedLUTRAMFIFOF(buffering);
-    COUNTER#(TLog#(t_NUM_INSTANCES)) curIID <- mkLCounter(0);
+    COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES)) curIID <- mkLCounter(0);
     Reg#(Bool) initialized <- mkReg(False);
     Reg#(Bool) initializing <- mkReg(False);
     Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) maxRunningInstance <- mkRegU();

@@ -28,9 +28,14 @@ import FShow::*;
 // within a context.
 //
 
-typedef `CONTEXT_ID_BITS        CONTEXT_ID_SIZE;
-typedef TExp#(CONTEXT_ID_SIZE)  NUM_CONTEXTS;
-typedef Bit#(CONTEXT_ID_SIZE)   CONTEXT_ID;
+// ****
+// Bluespec doesn't deal well with 0 sized indices for some structures.
+// For IDs to be at least one bit.
+// ***
+
+typedef TMax#(`CONTEXT_ID_BITS, 1)        CONTEXT_ID_SIZE;
+typedef TMax#(TExp#(`CONTEXT_ID_BITS), 1) NUM_CONTEXTS;
+typedef Bit#(CONTEXT_ID_SIZE)             CONTEXT_ID;
 
 // Hack for RRR because it needs natural sized data
 typedef `CONTEXT_ID_BITS_RRR      CONTEXT_ID_SIZE_RRR;
@@ -38,9 +43,9 @@ typedef Bit#(CONTEXT_ID_SIZE_RRR) CONTEXT_ID_RRR;
 function CONTEXT_ID_RRR contextIdToRRR(CONTEXT_ID ctxId) = zeroExtend(ctxId);
 function CONTEXT_ID contextIdFromRRR(CONTEXT_ID_RRR ctxId) = truncate(ctxId);
 
-typedef `TOKEN_ID_BITS          TOKEN_ID_SIZE;
-typedef TExp#(TOKEN_ID_SIZE)    NUM_TOKENS_PER_CONTEXT;
-typedef Bit#(TOKEN_ID_SIZE)     TOKEN_ID;
+typedef TMax#(`TOKEN_ID_BITS, 1)          TOKEN_ID_SIZE;
+typedef TMax#(TExp#(`TOKEN_ID_BITS), 1)   NUM_TOKENS_PER_CONTEXT;
+typedef Bit#(TOKEN_ID_SIZE)               TOKEN_ID;
 
 typedef struct
 {
@@ -139,9 +144,9 @@ endinstance
 // the high TOKEN_INDEX bit dropped LIVE_TOKEN_INDEX.
 //
 
-typedef TSub#(TOKEN_INDEX_SIZE, 1)   LIVE_TOKEN_INDEX_SIZE;
-typedef TExp#(LIVE_TOKEN_INDEX_SIZE) NUM_LIVE_TOKENS;
-typedef Bit#(LIVE_TOKEN_INDEX_SIZE)  LIVE_TOKEN_INDEX;
+typedef TMax#(TSub#(TOKEN_INDEX_SIZE, 1), 1)   LIVE_TOKEN_INDEX_SIZE;
+typedef TMax#(TExp#(LIVE_TOKEN_INDEX_SIZE), 1) NUM_LIVE_TOKENS;
+typedef Bit#(LIVE_TOKEN_INDEX_SIZE)            LIVE_TOKEN_INDEX;
 
 
 function LIVE_TOKEN_INDEX liveTokenIdx(TOKEN_INDEX idx);
@@ -494,7 +499,7 @@ STORE_TOKEN_INDEX
     deriving (Eq, Bits);
 
 typedef TAdd#(CONTEXT_ID_SIZE, STORE_TOKEN_ID_SIZE) STORE_TOKEN_INDEX_SIZE;
-typedef TExp#(STORE_TOKEN_INDEX_SIZE) NUM_STORE_TOKENS;
+typedef TMax#(TExp#(STORE_TOKEN_INDEX_SIZE), 1) NUM_STORE_TOKENS;
 
 
 //

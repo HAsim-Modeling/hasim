@@ -26,14 +26,23 @@
 //
 
 
-typedef STAT_VECTOR#(n_STATS) STAT_RECORDER_MULTIPLEXED#(numeric type n_STATS);
+//
+// Same interface as a STAT_VECTOR except the index size is guaranteed not
+// to be zero bits.  This is needed because the CPU ID is also guaranteed
+// to be zero bits, even when the max. number of CPUs is 1.
+//
+interface STAT_RECORDER_MULTIPLEXED#(type ni);
+    method Action incr(Bit#(TMax#(TLog#(ni), 1)) iid);
+    method Action incrBy(Bit#(TMax#(TLog#(ni), 1)) iid, STAT_VALUE amount);
+endinterface
 
 
 module [Connected_Module] mkStatCounter_Multiplexed#(STATS_DICT_TYPE myID)
     // interface:
     (STAT_RECORDER_MULTIPLEXED#(n_STATS))
     provisos
-        (Add#(TLog#(n_STATS), k, STAT_VECTOR_INDEX_SZ));
+        (Alias#(Bit#(TMax#(TLog#(n_STATS), 1)), t_STAT_IDX),
+         Add#(TLog#(n_STATS), k, STAT_VECTOR_INDEX_SZ));
 
     Connection_Chain#(STAT_DATA) chain <- mkConnection_Chain(`RINGID_STATS);
 
@@ -44,7 +53,7 @@ module [Connected_Module] mkStatCounter_Multiplexed#(STATS_DICT_TYPE myID)
 
     Reg#(INSTANCE_ID#(n_STATS)) curIdx <- mkRegU();
     
-    Wire#(Tuple2#(INSTANCE_ID#(n_STATS), STAT_VALUE)) incrW <- mkWire();
+    Wire#(Tuple2#(t_STAT_IDX, STAT_VALUE)) incrW <- mkWire();
 
     //
     // dump --
@@ -109,7 +118,10 @@ module [Connected_Module] mkStatCounter_Multiplexed#(STATS_DICT_TYPE myID)
     (* fire_when_enabled *)
     rule updateStat (state == RECORDING && enabled);
         match {.idx, .amount} = incrW;
-        Reg#(STAT_VALUE) stat = statPool.getReg(idx);
+        // Zero extend here only for a corner case when the max. number of
+        // CPUs is 1.  In that case, INSTANCE_ID is forced to 1 bit, even
+        // though the true STAT_IDX size is 0.
+        Reg#(STAT_VALUE) stat = statPool.getReg(zeroExtend(idx));
         stat <= stat + amount;
     endrule
 
@@ -184,12 +196,12 @@ module [Connected_Module] mkStatCounter_Multiplexed#(STATS_DICT_TYPE myID)
     endrule
 
 
-    method Action incr(Bit#(TLog#(n_STATS)) idx);
+    method Action incr(t_STAT_IDX idx);
         incrW <= tuple2(idx, 1);
     endmethod
 
 
-    method Action incrBy(Bit#(TLog#(n_STATS)) idx, STAT_VALUE amount);
+    method Action incrBy(t_STAT_IDX idx, STAT_VALUE amount);
         incrW <= tuple2(idx, amount);
     endmethod
 

@@ -176,7 +176,7 @@ module [HASIM_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Int
         method Bool empty() = emptyQ;
         method Bool balanced() = True;
         method Bool light() = False;
-        method Maybe#(INSTANCE_ID#(1)) nextReadyInstance = tagged Valid (?);
+        method Maybe#(INSTANCE_ID#(1)) nextReadyInstance = tagged Valid 0;
         method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
             noAction;
         endmethod
@@ -209,7 +209,7 @@ module [HASIM_MODULE] mkPortRecv_L0#(String portname)
     method Bool empty() = !con.notEmpty();
     method Bool balanced() = True;
     method Bool light() = False;
-    method Maybe#(INSTANCE_ID#(1)) nextReadyInstance() = tagged Valid (?);
+    method Maybe#(INSTANCE_ID#(1)) nextReadyInstance() = tagged Valid 0;
     method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
         noAction;
     endmethod
@@ -243,7 +243,7 @@ module [HASIM_MODULE] mkPortRecv_L1#(String portname, Maybe#(t_MSG) init_value)
     method Bool empty() = !con.notEmpty;
     method Bool balanced() = True;
     method Bool light() = False;
-    method Maybe#(INSTANCE_ID#(1)) nextReadyInstance = tagged Valid (?);
+    method Maybe#(INSTANCE_ID#(1)) nextReadyInstance = tagged Valid 0;
     method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction;
 
   endinterface
@@ -314,7 +314,7 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         NumAlias#(TMul#(t_NUM_INSTANCES, PORT_MAX_LATENCY), n_SLOTS),
+         NumAlias#(TMul#(TMax#(t_NUM_INSTANCES, 1), PORT_MAX_LATENCY), n_SLOTS),
          Alias#(Bit#(TLog#(n_SLOTS)), t_SLOT_IDX),
          Bits#(t_SLOT_IDX, t_SLOT_IDX_SZ));
 
@@ -327,7 +327,7 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
         error("Latency exceeds current maximum. Port: " + portname);
     end
 
-    function Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG)) initfunc(t_SLOT_IDX idx);
+     function Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG)) initfunc(t_SLOT_IDX idx);
         INSTANCE_ID#(t_NUM_INSTANCES) iid = truncateNP(idx);
         return tuple2(iid, tagged Invalid);
     endfunction

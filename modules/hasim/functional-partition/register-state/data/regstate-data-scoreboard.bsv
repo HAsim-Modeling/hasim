@@ -259,7 +259,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     (* fire_when_enabled *)
     rule computeCanRewind (True);
-        Bit#(NUM_CONTEXTS) can_rew;
+        Bit#(NUM_CONTEXTS) can_rew = ?;
 
         for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
         begin

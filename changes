@@ -23693,3 +23693,26 @@ Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-se
 
 
 Forgot this needed file.
+
+----------
+mcadler     Date: Sun Sep 19 20:11:26 EDT 2010  CSN: CSN-hasim-824
+                  Mon Sep 20 00:11:26 UTC 2010
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          823 
+
+Directory modules/hasim/util/modellib
+ stats-multiplexed.bsv     Locally Modified          823 
+ multiplexed-memories.bsv  Locally Modified          823 
+ multiplexed.bsv           Locally Modified          823 
+ permutation-ports.bsv     Locally Modified          823 
+ a-ports.bsv               Locally Modified          823 
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          823 
+
+Support multiplexed ports where the number of instances is 1.  I'm not quite sure
+why this is a good idea, but we ought to support full generality.  The fundamental
+problem is a single instance caused the instance ID datatype to require 0 bits.
+0 bit objects can't address storage.

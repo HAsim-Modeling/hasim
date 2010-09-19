@@ -344,16 +344,19 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderLastNToFirstN#(String portna
 endmodule
 
 
-module [HASIM_MODULE] mkPortRecv_Multiplexed_Join#(PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG) p1, PORT_RECV#(t_MSG) p2, Bit#(TLog#(TAdd#(t_NUM_INSTANCES, 1))) insertion_point)
+module [HASIM_MODULE] mkPortRecv_Multiplexed_Join#(
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG) p1,
+        PORT_RECV#(t_MSG) p2,
+        t_JOIN_ID insertion_point)
     // interface:
-        (PORT_RECV_MULTIPLEXED#(TAdd#(t_NUM_INSTANCES, 1), t_MSG))
+    (PORT_RECV_MULTIPLEXED#(TAdd#(t_NUM_INSTANCES, 1), t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, TLog#(TAdd#(t_NUM_INSTANCES, 1))));
+         NumAlias#(INSTANCE_ID_BITS#(TAdd#(t_NUM_INSTANCES, 1)), n_JOIN_ID_BITS),
+         Alias#(INSTANCE_ID#(TAdd#(t_NUM_INSTANCES, 1)), t_JOIN_ID));
 
-
-    COUNTER#(TLog#(TAdd#(t_NUM_INSTANCES, 1))) cur <- mkLCounter(0);
-    Reg#(INSTANCE_ID#(TAdd#(t_NUM_INSTANCES, 1))) maxInstance <- mkReg(0);
+    COUNTER#(n_JOIN_ID_BITS) cur <- mkLCounter(0);
+    Reg#(t_JOIN_ID) maxInstance <- mkReg(0);
     Reg#(Bool) initialized <- mkReg(False);
     
     Bool canDeq = (cur.value() == insertion_point) ? !p2.ctrl.empty() : !p1.ctrl.empty();
@@ -365,20 +368,20 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_Join#(PORT_RECV_MULTIPLEXED#(t_NUM_
         method Bool balanced() = True;
         method Bool light() = False;
         
-        method Maybe#(INSTANCE_ID#(TAdd#(t_NUM_INSTANCES, 1))) nextReadyInstance();
+        method Maybe#(t_JOIN_ID) nextReadyInstance();
         
             return (!canDeq || !initialized) ? tagged Invalid : tagged Valid cur.value();
         
         endmethod
         
-        method Action setMaxRunningInstance(INSTANCE_ID#(TAdd#(t_NUM_INSTANCES, 1)) iid);
+        method Action setMaxRunningInstance(t_JOIN_ID iid);
             maxInstance <= iid; // Local Controller has already added 1 to this number.
             initialized <= True;
         endmethod
         
     endinterface
 
-    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(TAdd#(t_NUM_INSTANCES, 1)) dummy) if (canDeq);
+    method ActionValue#(Maybe#(t_MSG)) receive(t_JOIN_ID dummy) if (canDeq);
         
         if (cur.value() == maxInstance)
         begin
@@ -396,7 +399,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_Join#(PORT_RECV_MULTIPLEXED#(t_NUM_
         end
         else
         begin
-            let msg <- p1.receive(truncate(dummy));
+            let msg <- p1.receive(truncateNP(dummy));
             return msg;
         end
         
@@ -404,16 +407,20 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_Join#(PORT_RECV_MULTIPLEXED#(t_NUM_
 
 endmodule
 
-module [HASIM_MODULE] mkPortSend_Multiplexed_Split#(PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG) p1, PORT_SEND#(t_MSG) p2, Bit#(TLog#(TAdd#(t_NUM_INSTANCES, 1))) split_point)
+module [HASIM_MODULE] mkPortSend_Multiplexed_Split#(
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG) p1,
+        PORT_SEND#(t_MSG) p2,
+        t_SPLIT_ID split_point)
     // interface:
         (PORT_SEND_MULTIPLEXED#(TAdd#(t_NUM_INSTANCES, 1), t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
-         Add#(TLog#(t_NUM_INSTANCES), t_TMP, TLog#(TAdd#(t_NUM_INSTANCES, 1))));
+         NumAlias#(INSTANCE_ID_BITS#(TAdd#(t_NUM_INSTANCES, 1)), n_SPLIT_ID_BITS),
+         Alias#(INSTANCE_ID#(TAdd#(t_NUM_INSTANCES, 1)), t_SPLIT_ID));
 
 
-    COUNTER#(TLog#(TAdd#(t_NUM_INSTANCES, 1))) cur <- mkLCounter(0);
-    Reg#(INSTANCE_ID#(TAdd#(t_NUM_INSTANCES, 1))) maxRunningInstance <- mkReg(0);
+    COUNTER#(n_SPLIT_ID_BITS) cur <- mkLCounter(0);
+    Reg#(t_SPLIT_ID) maxRunningInstance <- mkReg(0);
     Reg#(Bool) initialized <- mkReg(False);
     
     Bool canEnq = (cur.value() == split_point) ? !p2.ctrl.full() : !p1.ctrl.full();
@@ -423,14 +430,14 @@ module [HASIM_MODULE] mkPortSend_Multiplexed_Split#(PORT_SEND_MULTIPLEXED#(t_NUM
         method Bool full() = !canEnq;
         method Bool balanced() = True;
         method Bool heavy() = False;
-        method Action setMaxRunningInstance(INSTANCE_ID#(TAdd#(t_NUM_INSTANCES, 1)) iid);
+        method Action setMaxRunningInstance(t_SPLIT_ID iid);
             maxRunningInstance <= iid; // Local controller has already added one to this number
             initialized <= True;
         endmethod
 
     endinterface
 
-    method Action send(INSTANCE_ID#(TAdd#(t_NUM_INSTANCES, 1)) dummy, Maybe#(t_MSG) msg) if (initialized && canEnq);
+    method Action send(t_SPLIT_ID dummy, Maybe#(t_MSG) msg) if (initialized && canEnq);
         
         if (cur.value() == maxRunningInstance)
         begin
@@ -447,7 +454,7 @@ module [HASIM_MODULE] mkPortSend_Multiplexed_Split#(PORT_SEND_MULTIPLEXED#(t_NUM
         end
         else
         begin
-            p1.send(truncate(dummy), msg);
+            p1.send(truncateNP(dummy), msg);
         end
         
     endmethod

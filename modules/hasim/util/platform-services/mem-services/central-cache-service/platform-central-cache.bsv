@@ -417,9 +417,8 @@ module [CONNECTED_MODULE] mkCentralCacheStats#(CENTRAL_CACHE_STATS statBundle)
     ();
     
     let cacheStats = statBundle.cacheStats;
-    let recentLineStats = statBundle.recentLineStats;
     
-    Vector#(9, STATS_DICT_TYPE) statIDs = newVector();
+    Vector#(8, STATS_DICT_TYPE) statIDs = newVector();
 
     statIDs[0] = `STATS_CENTRAL_CACHE_SERVICE_CACHE_LOAD_HIT;
     let statLoadHit = 0;
@@ -442,11 +441,8 @@ module [CONNECTED_MODULE] mkCentralCacheStats#(CENTRAL_CACHE_STATS statBundle)
     statIDs[6] = `STATS_CENTRAL_CACHE_SERVICE_CACHE_FORCE_INVAL_LINE;
     let statForceInvalLine = 6;
 
-    statIDs[7] = `STATS_CENTRAL_CACHE_SERVICE_CACHE_RECENT_LINE_HIT;
-    let statRecentLineHit = 7;
-
-    statIDs[8] = `STATS_CENTRAL_CACHE_SERVICE_CACHE_RECENT_LINE_MISS;
-    let statRecentLineMiss = 8;
+    statIDs[7] = `STATS_CENTRAL_CACHE_SERVICE_CACHE_LOAD_RECENT_LINE_HIT;
+    let statLoadRecentLineHit = 7;
 
     let stats <- mkStatCounter_Vector(statIDs);
 
@@ -500,15 +496,8 @@ module [CONNECTED_MODULE] mkCentralCacheStats#(CENTRAL_CACHE_STATS statBundle)
 
     (* fire_when_enabled *)
     (* no_implicit_conditions *)
-    rule recentLineReadHit (recentLineStats.readHit());
-        stats.incr(statRecentLineHit);
-    endrule
-
-    (* fire_when_enabled *)
-    (* no_implicit_conditions *)
-    rule recentLineReadMiss (recentLineStats.readMiss());
-        stats.incr(statRecentLineMiss);
+    rule recentLineReadHit (cacheStats.readRecentLineHit());
+        stats.incr(statLoadRecentLineHit);
     endrule
 
 endmodule
-

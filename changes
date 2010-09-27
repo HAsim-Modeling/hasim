@@ -23716,3 +23716,14 @@ Support multiplexed ports where the number of instances is 1.  I'm not quite sur
 why this is a good idea, but we ought to support full generality.  The fundamental
 problem is a single instance caused the instance ID datatype to require 0 bits.
 0 bit objects can't address storage.
+
+----------
+mcadler     Date: Mon Sep 27 16:03:00 EDT 2010  CSN: CSN-hasim-825
+                  Mon Sep 27 20:03:00 UTC 2010
+
+
+Directory modules/hasim/util/platform-services/mem-services/central-cache-service
+ platform-central-cache.bsv Locally Modified          824 
+ central-cache-service.dic Locally Modified          824 
+
+Statistics changes due to changes in the central cache recent line read buffer.

@@ -23727,3 +23727,36 @@ Directory modules/hasim/util/platform-services/mem-services/central-cache-servic
  central-cache-service.dic Locally Modified          824 
 
 Statistics changes due to changes in the central cache recent line read buffer.
+
+----------
+kfleming    Date: Tue Oct  5 14:34:01 EDT 2010  CSN: CSN-hasim-826
+                  Tue Oct  5 18:34:01 UTC 2010
+
+
+Directory config/pm/hasim/demos/test
+ clock_test/               Locally Added               0 
+
+Directory config/pm/hasim/demos/test/clock_test
+ clock_test_acp.apm        Locally Added               0 
+
+Directory modules/system/test
+ clock_test/               Locally Added               0 
+
+Directory modules/system/test/clock_test
+ clock.rrr                 Locally Added               0 
+ clock_test.h              Locally Added               0 
+ clock_function_pipeline/  Locally Added               0 
+
+Directory modules/system/test/clock_test/clock_function_pipeline
+ clock_test.awb            Locally Added               0 
+ pipeline.awb              Locally Added               0 
+ pipeline.bsv              Locally Added               0 
+
+Directory modules/system/test/clock_test
+ clock_test_system.awb     Locally Added               0 
+ clock_test.cpp            Locally Added               0 
+ System.bsv                Locally Added               0 
+
+
+
+Added a more general test for MCD designs.

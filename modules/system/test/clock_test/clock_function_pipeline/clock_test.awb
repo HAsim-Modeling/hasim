@@ -1,0 +1,16 @@
+/********************************************************************
+ *
+ * Awb module specification
+ *
+ *******************************************************************/
+
+%AWB_START
+
+%name Clock Test SW
+%desc Clock Test SW
+
+%provides clock_test
+
+%public clock_test.cpp clock_test.h
+
+%AWB_END

@@ -1,0 +1,20 @@
+/********************************************************************
+ *
+ * Awb module specification
+ *
+ *******************************************************************/
+
+
+%AWB_START
+
+%name Clock Domains Test System with Soft Connections
+%desc Clock Domains Test System with Soft Connections
+
+%attributes clock_test test
+
+%provides connected_application
+%requires clock_test 
+
+%public System.bsv clock_test.h clock_test.cpp clock.rrr
+
+%AWB_END

@@ -48,9 +48,16 @@ module [CONNECTED_MODULE] mkEventsService
         let et <- chain.recvFromPrev();
     
         case (et) matches
+            tagged EVT_Init .evt:
+            begin
+                clientStub.makeRequest_LogInit(zeroExtend(pack(evt.eventId)),
+                                               evt.max_iid);
+            end
+
             tagged EVT_Event .evt:  //Event Data to pass along
             begin
                 clientStub.makeRequest_LogEvent(zeroExtend(pack(evt.eventId)),
+                                                evt.iid,
                                                 zeroExtend(pack(evt.eventData)),
                                                 evt.cycles);
             end
@@ -58,6 +65,7 @@ module [CONNECTED_MODULE] mkEventsService
             tagged EVT_NoteCycles .evt:
             begin
                 clientStub.makeRequest_LogCycles(zeroExtend(pack(evt.eventId)),
+                                                 evt.iid,
                                                  evt.cycles);
             end
 

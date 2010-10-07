@@ -69,12 +69,12 @@ EVENTS_SERVER_CLASS::Init(
     // set parent pointer
     parent = p;
 
-    cycles = new UINT64[EVENTS_DICT_ENTRIES];
+    // Allocate buckets for all event IDs.  Each event ID may have a vector
+    // of buckets corresponding to instance IDs.
+    cycles = new UINT64*[EVENTS_DICT_ENTRIES];
     for (int i = 0; i < EVENTS_DICT_ENTRIES; i++)
     {
-        // Event cycle numbers always come with 1 added to them, so start cycle
-        // counter at -1.
-        cycles[i] = ~0;
+        cycles[i] = NULL;
     }
 
     //
@@ -83,7 +83,7 @@ EVENTS_SERVER_CLASS::Init(
     //
     eventFile << "# Key format:         +,<name>,<description>,<event id>" << endl;
     eventFile << "# Key model specifc:  -,<name>,<description>,<event id>" << endl;
-    eventFile << "# Log format:         <cycle>,<event id>,<data>" << endl;
+    eventFile << "# Log format:         <cycle>,<event id>,<iid>,<data>" << endl;
 
     for (int i = 0; i < EVENTS_DICT_ENTRIES; i++)
     {
@@ -113,6 +113,14 @@ void
 EVENTS_SERVER_CLASS::Uninit()
 {
     Cleanup();
+
+    for (int i = 0; i < EVENTS_DICT_ENTRIES; i++)
+    {
+        if (cycles[i] != NULL)
+        {
+            delete[] cycles[i];
+        }
+    }
     delete[] cycles;
 
     // chain
@@ -192,24 +200,43 @@ EVENTS_SERVER_CLASS::ModelSpecific(
 //
 // RRR request methods
 //
+void
+EVENTS_SERVER_CLASS::LogInit(
+    UINT32 event_id,
+    UINT32 max_event_iid)
+{
+    ASSERTX((cycles != NULL) && (cycles[event_id] == NULL));
+
+    cycles[event_id] = new UINT64[max_event_iid + 1];
+    for (int i = 0; i <= max_event_iid; i++)
+    {
+        // Event cycle numbers always come with 1 added to them, so start cycle
+        // counter at -1.
+        cycles[event_id][i] = ~0;
+    }
+}
+
+
 inline void
 EVENTS_SERVER_CLASS::LogCycles(
     UINT32 event_id,
+    UINT32 event_iid,
     UINT32 model_cc)
 {
-    ASSERTX(event_id < EVENTS_DICT_ENTRIES);
-    cycles[event_id] += (model_cc + 1);
+    ASSERTX((event_id < EVENTS_DICT_ENTRIES) && (cycles[event_id] != NULL));
+    cycles[event_id][event_iid] += (model_cc + 1);
 }
 
 
 void
 EVENTS_SERVER_CLASS::LogEvent(
     UINT32 event_id,
+    UINT32 event_iid,
     UINT32 event_data,
     UINT32 model_cc)
 {
-    ASSERTX(event_id < EVENTS_DICT_ENTRIES);
-    cycles[event_id] += (model_cc + 1);
+    ASSERTX((event_id < EVENTS_DICT_ENTRIES) && (cycles[event_id] != NULL));
+    cycles[event_id][event_iid] += (model_cc + 1);
 
 #ifndef HASIM_EVENTS_ENABLED
     ASIMERROR("Event " << EVENTS_DICT::Name(event_id) << " (" << EVENTS_DICT::Str(event_id) << ") received but events are disabled");
@@ -218,10 +245,11 @@ EVENTS_SERVER_CLASS::LogEvent(
     // write to file
     // eventually this will be replaced with calls to DRAL.
     eventFile.width(10);
-    eventFile << cycles[event_id];
+    eventFile << cycles[event_id][event_iid];
 
     eventFile.width(0);
     eventFile << "," << event_id
+              << "," << event_iid
               << "," << event_data
               << endl;
 }

@@ -44,7 +44,7 @@ class EVENTS_SERVER_CLASS: public RRR_SERVER_CLASS,
     // File for output until we use DRAL.
     ofstream eventFile;
     
-    UINT64 *cycles;
+    UINT64 **cycles;
 
   public:
     EVENTS_SERVER_CLASS();
@@ -76,8 +76,16 @@ class EVENTS_SERVER_CLASS: public RRR_SERVER_CLASS,
     void Cleanup();
 
     // RRR service methods
-    void LogEvent(UINT32 event_id, UINT32 event_data, UINT32 model_cc);
-    void LogCycles(UINT32 event_id, UINT32 model_cc);
+    void LogInit(UINT32 event_id, UINT32 max_event_iid);
+
+    void LogEvent(UINT32 event_id,
+                  UINT32 event_iid,
+                  UINT32 event_data,
+                  UINT32 model_cc);
+
+    void LogCycles(UINT32 event_id,
+                   UINT32 event_iid,
+                   UINT32 model_cc);
 };
 
 // server stub

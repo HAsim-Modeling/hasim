@@ -23760,3 +23760,20 @@ Directory modules/system/test/clock_test
 
 
 Added a more general test for MCD designs.
+
+----------
+mcadler     Date: Thu Oct  7 07:11:08 EDT 2010  CSN: CSN-hasim-827
+                  Thu Oct  7 11:11:08 UTC 2010
+
+
+Directory modules/hasim/util/model-services/events-service
+ events-service.cpp        Locally Modified          826 
+ events-local.bsv          Locally Modified          826 
+ events-service.rrr        Locally Modified          826 
+ events-service.h          Locally Modified          826 
+ events-service.bsv        Locally Modified          826 
+
+Add support for multiplexed events.  The previous code had a stub but it did
+nothing.  All event records are now tagged with an event ID and an instance
+ID.  The data structures support instance IDs up to 256, set as a typedef
+in events-local.bsv.

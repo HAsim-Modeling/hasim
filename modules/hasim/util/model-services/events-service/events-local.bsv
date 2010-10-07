@@ -48,34 +48,58 @@ import SpecialFIFOs::*;
 
 typedef Bit#(`HASIM_EVENTS_SIZE) EVENT_PARAM;
 
-interface EVENT_RECORDER;
-  method Action recordEvent(Maybe#(EVENT_PARAM) mdata);
-endinterface
 
-module [CONNECTED_MODULE] mkEventRecorder#(EVENTS_DICT_TYPE eventID)
-    //interface:
-                (EVENT_RECORDER);
+// Local counter for noting passing cycles without sending a message
+typedef Bit#(8) EVENT_CYCLE_COUNTER;
 
-    let m <- (`HASIM_EVENTS_ENABLED) ? mkEventRecorder_Enabled(eventID) : mkEventRecorder_Disabled(eventID);
-    return m;
-
-endmodule
-
-
+// Internal instance ID bucket
+typedef Bit#(8) EVENT_INSTANCE_ID;
 
 typedef union tagged
 {
+    // Initialization step tells the software how many instances to expect.
     struct { EVENTS_DICT_TYPE eventId;
-             Bit#(8) cycles; }          EVT_NoteCycles;
+             EVENT_INSTANCE_ID max_iid;  } EVT_Init;
     struct { EVENTS_DICT_TYPE eventId;
+             EVENT_INSTANCE_ID iid;
+             EVENT_CYCLE_COUNTER cycles; } EVT_NoteCycles;
+    struct { EVENTS_DICT_TYPE eventId;
+             EVENT_INSTANCE_ID iid;
              EVENT_PARAM eventData;
-             Bit#(8) cycles; }          EVT_Event;
+             EVENT_CYCLE_COUNTER cycles; } EVT_Event;
 
-    Bool                                EVT_Enable;
+    Bool                                   EVT_Enable;
 }
 EVENT_DATA
     deriving (Eq, Bits);
 
+
+
+// ========================================================================
+//
+// Single context event recorders.
+//
+// ========================================================================
+
+
+interface EVENT_RECORDER;
+  method Action recordEvent(Maybe#(EVENT_PARAM) mdata);
+endinterface
+
+//
+// mkEventRecorder --
+//     Either allocate a real recorder if events are enabled or, if disabled,
+//     allocated a dummy instance.
+//
+module [CONNECTED_MODULE] mkEventRecorder#(EVENTS_DICT_TYPE eventID)
+    //interface:
+    (EVENT_RECORDER);
+
+    let m <- (`HASIM_EVENTS_ENABLED) ?
+        mkEventRecorder_Enabled(eventID) :
+        mkEventRecorder_Disabled(eventID);
+    return m;
+endmodule
 
 
 module [CONNECTED_MODULE] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
@@ -84,10 +108,12 @@ module [CONNECTED_MODULE] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
 
     Connection_Chain#(EVENT_DATA) chain <- mkConnection_Chain(`RINGID_EVENTS);
   
-    Reg#(Bit#(8)) cycles <- mkReg(0);
+    Reg#(EVENT_CYCLE_COUNTER) cycles <- mkReg(0);
     Reg#(Bool) enabled <- mkReg(False);
     FIFO#(Maybe#(EVENT_PARAM)) newEventQ <- mkBypassFIFO();
     
+    Reg#(Bool) initialized <- mkReg(False);
+
     rule process (True);
         EVENT_DATA evt <- chain.recvFromPrev();
         case (evt) matches 
@@ -98,8 +124,15 @@ module [CONNECTED_MODULE] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
         chain.sendToNext(evt);
     endrule
 
-    (* descending_urgency = "process, newEvent" *)
-    rule newEvent (True);
+
+    rule doInit (! initialized);
+        chain.sendToNext(tagged EVT_Init { eventId: eventID, max_iid: 0 });
+        initialized <= True;
+    endrule
+
+
+    (* descending_urgency = "process, doInit, newEvent" *)
+    rule newEvent (initialized);
         let evt = newEventQ.first();
         newEventQ.deq();
 
@@ -114,6 +147,7 @@ module [CONNECTED_MODULE] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
                 if (cycles == maxBound)
                 begin
                     chain.sendToNext(tagged EVT_NoteCycles { eventId: eventID,
+                                                             iid: 0,
                                                              cycles: maxBound });
                     cycles <= 0;
                 end
@@ -126,6 +160,7 @@ module [CONNECTED_MODULE] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
             tagged Valid .data:
             begin
                 chain.sendToNext(tagged EVT_Event { eventId: eventID,
+                                                    iid: 0,
                                                     eventData: data,
                                                     cycles: cycles });
                 cycles <= 0;
@@ -152,21 +187,126 @@ module [CONNECTED_MODULE] mkEventRecorder_Disabled#(EVENTS_DICT_TYPE eventID)
 endmodule
 
 
+
+// ========================================================================
+//
+// Multiplexed event recorders.
+//
+// ========================================================================
+
 interface EVENT_RECORDER_MULTIPLEXED#(type ni);
     method Action recordEvent(INSTANCE_ID#(ni) iid, Maybe#(EVENT_PARAM) mdata);
 endinterface
-
 
 module [CONNECTED_MODULE] mkEventRecorder_Multiplexed#(EVENTS_DICT_TYPE eventID)
     //interface:
     (EVENT_RECORDER_MULTIPLEXED#(ni));
 
+    let m <- (`HASIM_EVENTS_ENABLED) ?
+        mkEventRecorder_Multiplexed_Enabled(eventID) :
+        mkEventRecorder_Multiplexed_Disabled(eventID);
+    return m;
+endmodule
+
+
+//
+// mkEventRecorder_Multiplexed_Enabled --
+//      Almost the same as a non-multiplexed event recorder.  The only major
+//      difference is the cycles bucket is a pool, indexed by instance ID.
+//
+module [CONNECTED_MODULE] mkEventRecorder_Multiplexed_Enabled#(EVENTS_DICT_TYPE eventID)
+    //interface:
+    (EVENT_RECORDER_MULTIPLEXED#(ni));
+
+    // Does the instance ID fit in the event data structure?  This test lets
+    // us avoid a proviso and use resize() below, which would hide truncation.
+    if (valueOf(SizeOf#(EVENT_INSTANCE_ID)) < valueOf(SizeOf#(INSTANCE_ID#(ni))))
+    begin
+        error("EVENT_INSTANCE_ID too small for " + integerToString(valueOf(ni)) + " instances");
+    end
+
     Connection_Chain#(EVENT_DATA) chain <- mkConnection_Chain(`RINGID_EVENTS);
+  
+    MULTIPLEXED_REG#(ni, EVENT_CYCLE_COUNTER) cyclesPool <- mkMultiplexedReg(0);
+    Reg#(Bool) enabled <- mkReg(False);
+    FIFO#(Tuple2#(INSTANCE_ID#(ni), Maybe#(EVENT_PARAM))) newEventQ <- mkBypassFIFO();
+    
+    Reg#(Bool) initialized <- mkReg(False);
 
     rule process (True);
         EVENT_DATA evt <- chain.recvFromPrev();
+        case (evt) matches 
+            tagged EVT_Enable .en:  enabled   <= en;
+            default:                noAction;
+        endcase
+
         chain.sendToNext(evt);
     endrule
+
+
+    rule doInit (! initialized);
+        EVENT_INSTANCE_ID max_iid = 0;
+        if (valueOf(ni) != 0)
+        begin
+            max_iid = fromInteger(valueOf(TSub#(ni, 1)));
+        end
+
+        chain.sendToNext(tagged EVT_Init { eventId: eventID, max_iid: max_iid });
+        initialized <= True;
+    endrule
+
+
+    (* descending_urgency = "process, doInit, newEvent" *)
+    rule newEvent (initialized);
+        match {.iid, .evt} = newEventQ.first();
+        newEventQ.deq();
+
+        Reg#(EVENT_CYCLE_COUNTER) cycles = cyclesPool.getReg(iid);
+
+        case (evt) matches
+            tagged Invalid:
+            begin
+                // Update the cycle count.  If it overflows then send the
+                // overflow to the host.
+                //
+                // The host always adds 1 to the cycle count it receives.
+                // This avoids an adder in the hardware.
+                if (cycles == maxBound)
+                begin
+                    chain.sendToNext(tagged EVT_NoteCycles { eventId: eventID,
+                                                             iid: resize(iid),
+                                                             cycles: maxBound });
+                    cycles <= 0;
+                end
+                else
+                begin
+                    cycles <= cycles + 1;
+                end
+            end
+
+            tagged Valid .data:
+            begin
+                chain.sendToNext(tagged EVT_Event { eventId: eventID,
+                                                    iid: resize(iid),
+                                                    eventData: data,
+                                                    cycles: cycles });
+                cycles <= 0;
+            end
+        endcase
+    endrule
+
+    method Action recordEvent(INSTANCE_ID#(ni) iid, Maybe#(EVENT_PARAM) mdata);
+        if (enabled)
+        begin
+            newEventQ.enq(tuple2(iid, mdata));
+        end
+    endmethod
+endmodule
+
+
+module [CONNECTED_MODULE] mkEventRecorder_Multiplexed_Disabled#(EVENTS_DICT_TYPE eventID)
+    //interface:
+    (EVENT_RECORDER_MULTIPLEXED#(ni));
 
     method Action recordEvent(INSTANCE_ID#(ni) iid, Maybe#(EVENT_PARAM) mdata);
         noAction;

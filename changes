@@ -23777,3 +23777,14 @@ Add support for multiplexed events.  The previous code had a stub but it did
 nothing.  All event records are now tagged with an event ID and an instance
 ID.  The data structures support instance IDs up to 256, set as a typedef
 in events-local.bsv.
+
+----------
+kfleming    Date: Fri Oct  8 17:24:43 EDT 2010  CSN: CSN-hasim-828
+                  Fri Oct  8 21:24:43 UTC 2010
+
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_xupV5.apm    Locally Added               0 
+
+
+Basic test case for XUPV5 JTAG platform.

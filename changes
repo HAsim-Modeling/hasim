@@ -23788,3 +23788,39 @@ Directory config/pm/bluespec/demos/hello
 
 
 Basic test case for XUPV5 JTAG platform.
+
+----------
+kfleming    Date: Sat Oct  9 18:36:10 EDT 2010  CSN: CSN-hasim-829
+                  Sat Oct  9 22:36:10 UTC 2010
+
+
+Directory config/pm/hasim/demos/test/clock_test
+ clock_test_mem_exe.apm    Locally Added               0 
+ clock_test_mem_acp.apm    Locally Added               0 
+ clock_test_exe.apm        Locally Added               0 
+ clock_test_acp.apm        Locally Modified          828 
+
+Directory modules/hasim/util/platform-services
+ platform-services-null.bsv Locally Modified          828 
+
+Directory modules/bluespec/common/soft_connections/soft-service/alg
+ expose_connections.bsv    Locally Modified          828 
+
+Directory modules/system/test/clock_test/clock_function_pipeline
+ clock_test.awb            Locally Removed           828 
+ PipelineMem.dic           Locally Added               0 
+ pipeline_mem.awb          Locally Added               - 
+ pipeline_mem.bsv          Locally Added               - 
+ pipeline.bsv              Locally Modified          828 
+
+Directory modules/system/test/clock_test
+ clock_test.cpp            Locally Modified          828 
+
+
+
+A few minor changes:
+
+  1) Added MCD testbench involving a scratchpad
+  2) Filled in MCD struct, silencing some (but not all) MCD-related warnings
+  3) Added RRR instantiation to Null Services - I believe that this is what was meant in the code (given that it already included rrr.bsh)
+

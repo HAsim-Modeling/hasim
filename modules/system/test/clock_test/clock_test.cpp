@@ -63,12 +63,20 @@ CONNECTED_APPLICATION_CLASS::Init()
 void
 CONNECTED_APPLICATION_CLASS::Main()
 {
-
+    printf("Beginning Clock test.\n");
+    fflush(stdout);
     for(int i = 0; i < (1<<20); i++) { 
       int result  = clientStub->test(i);
+      if(i%1000 == 0) {
+        printf("Clock Test @ %d\n", i);
+	fflush(stdout);
+      }
       if(i != result) {
         printf("Got %x, expected %x\n", result, i);
+	fflush(stdout);
       }
     }
 
+    printf("Finishing Clock test.\n");
+    fflush(stdout);
 }

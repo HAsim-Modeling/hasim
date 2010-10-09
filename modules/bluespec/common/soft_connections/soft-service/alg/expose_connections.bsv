@@ -119,7 +119,12 @@ module exposeDanglingSends#(List#(LOGICAL_SEND_INFO) dsends) (Vector#(n, PHYSICA
   
   // Zero out unused dangling sends
   for (Integer x = cur_out; x < valueOf(n); x = x + 1)
-    res[x] = PHYSICAL_CONNECTION_OUT{clock:noClock,reset:noReset};
+    res[x] = PHYSICAL_CONNECTION_OUT{clock:noClock,
+                                     reset:noReset,
+                                     deq:?,
+                                     first:?,
+                                     notEmpty:?
+                                    };
   
   return res;
   
@@ -148,7 +153,10 @@ module exposeDanglingRecvs#(List#(LOGICAL_RECV_INFO) drecvs) (Vector#(n, PHYSICA
   
   //Zero out unused dangling recvs
   for (Integer x = cur_in; x < valueOf(n); x = x + 1)
-    res[x] = PHYSICAL_CONNECTION_IN{clock:noClock,reset:noReset};
+    res[x] = PHYSICAL_CONNECTION_IN{clock:noClock,
+                                    reset:noReset,
+                                    success: ?,
+                                    try: ? };
   
   return res;
 
@@ -157,7 +165,6 @@ endmodule
   
 
 //If there are no links then it's just a pass-through queue
-
 module mkPassThrough
     //interface:
                 (PHYSICAL_CONNECTION_INOUT);

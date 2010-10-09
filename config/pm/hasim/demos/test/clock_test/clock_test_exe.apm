@@ -2,7 +2,7 @@
 [Global]
 SaveParameters=0
 Description=Traffic Light from Bluespec Tutorial for ACP w. synthesis boundary
-File=clock_test_acp
+File=clock_test_exe
 Version=2.1
 Name=Traffic Light Model - ACP with synthesis boundary
 DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
@@ -15,8 +15,8 @@ DefaultAttributes=function_as_boundary traffic_light demo connected slave hybrid
 model=HW/SW Hybrid Pipeline Build
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/fpgaenv-acp-m2c-nallatech-no-cache.apm
-Packagehint=platform-acp
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
+Packagehint=platforms
 
 [Hybrid Project Common Utilities]
 File=config/pm/hasim/submodels/common/project-common-default.apm
@@ -43,9 +43,6 @@ connected_application=Clock Domains Test System with Soft Connections
 [Soft Services]
 File=config/pm/hasim/submodels/common/soft-services.apm
 Packagehint=hasim
-
-[FPGA Environment/Params]
-MODEL_CLOCK_DIVIDER=8
 
 [clock test pipeline]
 File=modules/system/test/clock_test/clock_function_pipeline/pipeline.awb

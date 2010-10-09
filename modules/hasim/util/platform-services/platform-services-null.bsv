@@ -22,7 +22,9 @@ import Vector::*;
 `include "asim/provides/virtual_devices.bsh"
 `include "asim/provides/low_level_platform_interface.bsh"
 `include "asim/provides/soft_connections.bsh"
-
+`include "asim/provides/rrr.bsh"
+`include "asim/rrr/server_connections.bsh"
+`include "asim/rrr/client_connections.bsh"
 
 //
 // mkPlatformInterface: Wrap the LLPI and virtual devices in soft connections.
@@ -32,4 +34,8 @@ module [CONNECTED_MODULE] mkPlatformServices#(VIRTUAL_PLATFORM virtualPlatform)
     // interface
         ();
 
+    // auto-generated submodules for RRR connections
+    let rrrServerLinks <- mkServerConnections(virtualPlatform.llpint.rrrServer);
+    let rrrClientLinks <- mkClientConnections(virtualPlatform.llpint.rrrClient);
+    
 endmodule

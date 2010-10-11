@@ -1,0 +1,23 @@
+/********************************************************************
+ *
+ * Awb module specification
+ *
+ *******************************************************************/
+
+%AWB_START
+
+%name clock test pipeline with synthesis boundaries
+%desc 2-stage clock test
+
+%attributes function_as_boundary traffic_light
+
+%provides clock_test
+%requires clock_test_stage_1
+%requires clock_test_stage_2
+
+
+%public pipeline.bsv
+
+%param SYNTH_BOUNDARY mkClockTest "name of synthesis boundary"
+
+%AWB_END

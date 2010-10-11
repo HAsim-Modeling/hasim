@@ -1,0 +1,18 @@
+/********************************************************************
+ *
+ * Awb module specification
+ *
+ *******************************************************************/
+
+%AWB_START
+
+%name clock test stage 2
+%desc stage 2 of clock test
+
+%provides clock_test_stage_2
+
+%public stage2.bsv
+
+%param SYNTH_BOUNDARY mkClockTestStage2 "name of synthesis boundary"
+
+%AWB_END

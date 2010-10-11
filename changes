@@ -23824,3 +23824,31 @@ A few minor changes:
   2) Filled in MCD struct, silencing some (but not all) MCD-related warnings
   3) Added RRR instantiation to Null Services - I believe that this is what was meant in the code (given that it already included rrr.bsh)
 
+
+----------
+kfleming    Date: Mon Oct 11 15:52:22 EDT 2010  CSN: CSN-hasim-830
+                  Mon Oct 11 19:52:22 UTC 2010
+
+
+Directory config/pm/hasim/demos/test/clock_test
+ clock_test_mem_synth_exe.apm Locally Added               0 
+ clock_test_mem_synth_acp.apm Locally Added               0 
+ clock_test_synth_exe.apm  Locally Added               0 
+ clock_test_synth_acp.apm  Locally Added               0 
+
+Directory modules/system/test/clock_test/clock_function_pipeline
+ synth_pipeline/           Locally Added               0 
+
+Directory modules/system/test/clock_test/clock_function_pipeline/synth_pipeline
+ PipelineMem.dic           Locally Added               0 
+ stage1_mem.awb            Locally Added               0 
+ stage1_mem.bsv            Locally Added               0 
+ stage1.awb                Locally Added               0 
+ stage2.awb                Locally Added               0 
+ pipeline.awb              Locally Added               - 
+ stage1.bsv                Locally Added               0 
+ pipeline.bsv              Locally Added               - 
+ stage2.bsv                Locally Added               0 
+
+
+Adding more test benches for MCD.

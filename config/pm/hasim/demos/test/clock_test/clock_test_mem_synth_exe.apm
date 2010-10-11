@@ -1,0 +1,75 @@
+
+[Global]
+SaveParameters=0
+Description=Clock Test with Scratchpad
+File=clock_test_mem_synth_exe
+Version=2.1
+Name=Clock Test with Scratchpad
+DefaultBenchmark=config/bm/bluespec/demos.cfx/benchmarks/null.cfg
+Type=HAsim
+Class=Asim::Model
+DefaultRunOpts=
+
+[Model]
+DefaultAttributes=function_as_boundary traffic_light demo connected slave hybrid project
+model=HW/SW Hybrid Pipeline Build
+
+[FPGA Environment]
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-exe.apm
+Packagehint=platforms
+
+[Hybrid Project Common Utilities]
+File=config/pm/hasim/submodels/common/project-common-default.apm
+Packagehint=hasim
+
+[HW/SW Hybrid Pipeline Build]
+File=modules/project/project-pipeline.awb
+Packagehint=platforms
+
+[HW/SW Hybrid Pipeline Build/Requires]
+project_common=Hybrid Project Common Utilities
+fpgaenv=FPGA Environment
+application_env=Soft Services Hybrid Application Environment
+
+[Soft Services Hybrid Application Environment]
+File=modules/application-env/hybrid/soft-services/application-env-hybrid-soft-service.awb
+Packagehint=platforms
+
+[Soft Services Hybrid Application Environment/Requires]
+platform_services=Platform Services
+soft_services=Soft Services
+connected_application=Clock Domains Test System with Soft Connections
+
+[Soft Services]
+File=config/pm/hasim/submodels/common/soft-services.apm
+Packagehint=hasim
+
+[Clock Domains Test System with Soft Connections]
+File=modules/system/test/clock_test/clock_test_system.awb
+Packagehint=hasim
+
+[Clock Domains Test System with Soft Connections/Requires]
+clock_test=clock test pipeline with synthesis boundaries
+
+[HW/SW Hybrid Pipeline Build/Params]
+WAIT_FOR_HARDWARE=0
+
+[Platform Services]
+File=config/pm/hasim/submodels/platform-services/standard-platform-services.apm
+Packagehint=hasim
+
+[clock test pipeline with synthesis boundaries/Requires]
+clock_test_stage_1=clock test stage 1 with memory
+clock_test_stage_2=clock test stage 2
+
+[clock test stage 2]
+File=modules/system/test/clock_test/clock_function_pipeline/synth_pipeline/stage2.awb
+Packagehint=hasim
+
+[clock test pipeline with synthesis boundaries]
+File=modules/system/test/clock_test/clock_function_pipeline/synth_pipeline/pipeline.awb
+Packagehint=hasim
+
+[clock test stage 1 with memory]
+File=modules/system/test/clock_test/clock_function_pipeline/synth_pipeline/stage1_mem.awb
+Packagehint=hasim

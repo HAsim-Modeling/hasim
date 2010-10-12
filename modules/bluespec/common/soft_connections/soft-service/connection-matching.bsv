@@ -16,7 +16,7 @@ module [SoftConnectionModule] registerSend#(LOGICAL_SEND_INFO new_send) ();
     begin
         // See if we can find our partner.
         let recvs <- getUnmatchedRecvs();
-        let m_match <- findMatchingRecv(new_send.logicalName, recvs);
+        let m_match <- findMatchingRecv(new_send, recvs);
 
         case (m_match) matches
             tagged Invalid:   
@@ -35,7 +35,7 @@ module [SoftConnectionModule] registerSend#(LOGICAL_SEND_INFO new_send) ();
                     connect(new_send, recv);
 
                     // The receive is no longer unmatched, so remove it from the list.
-                    removeUnmatchedRecv(recv.logicalName);
+                    removeUnmatchedRecv(recv);
                 end
                 else
                 begin
@@ -60,7 +60,7 @@ module [SoftConnectionModule] registerRecv#(LOGICAL_RECV_INFO new_recv) ();
     begin
         // See if we can find our partner.
         let sends <- getUnmatchedSends();
-        let m_match <- findMatchingSend(new_recv.logicalName, sends);
+        let m_match <- findMatchingSend(new_recv, sends);
 
         case (m_match) matches
             tagged Invalid:   
@@ -78,7 +78,7 @@ module [SoftConnectionModule] registerRecv#(LOGICAL_RECV_INFO new_recv) ();
                     connect(send, new_recv);
 
                     // The send is no longer unmatched, so remove it from the list.
-                    removeUnmatchedSend(send.logicalName);
+                    removeUnmatchedSend(send);
                 end
                 else
                 begin
@@ -161,7 +161,7 @@ module [SoftConnectionModule] registerSendToStation#(LOGICAL_SEND_INFO new_send,
     // Check to see if the counterpart recv is already at this station.
     // If so let's just make them point-to-point.
 
-    let m_match <- findMatchingRecv(new_send.logicalName, st_info.registeredRecvs);
+    let m_match <- findMatchingRecv(new_send, st_info.registeredRecvs);
     
     if (m_match matches tagged Valid .recv &&& !new_send.oneToMany &&& !recv.manyToOne)
     begin
@@ -170,7 +170,7 @@ module [SoftConnectionModule] registerSendToStation#(LOGICAL_SEND_INFO new_send,
         connect(new_send, recv);
         
         // The send is no longer unmatched, so remove it from the list.
-        removeUnmatchedRecv(new_send.logicalName);
+        removeUnmatchedRecv(recv);
         
     end
     else
@@ -194,7 +194,7 @@ module [SoftConnectionModule] registerRecvToStation#(LOGICAL_RECV_INFO new_recv,
     // Check to see if the counterpart recv is already at this station.
     // If so let's just make them point-to-point.
 
-    let m_match <- findMatchingSend(new_recv.logicalName, st_info.registeredSends);
+    let m_match <- findMatchingSend(new_recv, st_info.registeredSends);
     
     if (m_match matches tagged Valid .send &&& !send.oneToMany &&& !new_recv.manyToOne)
     begin
@@ -203,7 +203,7 @@ module [SoftConnectionModule] registerRecvToStation#(LOGICAL_RECV_INFO new_recv,
         connect(send, new_recv);
         
         // The send is no longer unmatched, so remove it from the list.
-        removeUnmatchedSend(new_recv.logicalName);
+        removeUnmatchedSend(send);
     
     end
     else
@@ -258,30 +258,30 @@ endmodule
 // Find the match for the given name. If there's more than one match 
 // then this is a serious error that should end the world.
 
-module [SoftConnectionModule] findMatchingRecv#(String sname, List#(LOGICAL_RECV_INFO) recvs) (Maybe#(LOGICAL_RECV_INFO));
+module [SoftConnectionModule] findMatchingRecv#(LOGICAL_SEND_INFO send, List#(LOGICAL_RECV_INFO) recvs) (Maybe#(LOGICAL_RECV_INFO));
 
-  let recv_matches = List::filter(recvNameMatches(sname), recvs);
+  let recv_matches = List::filter(nameMatches(send), recvs);
   
-
+  
   // The list should have exactly zero or one element in it....
 
   case (List::length(recv_matches))
       0:
       begin
-
+          messageM("Found No ConnectionRecv named: " + send.logicalName);
           return tagged Invalid;
 
       end
       1:
       begin
-
+          messageM("Found ConnectionRecv named: " + send.logicalName);
           return tagged Valid List::head(recv_matches);
 
       end
       default:
       begin
 
-          error("ERROR: Found multiple ConnectionRecv named: " + sname);
+          error("ERROR: Found multiple ConnectionRecv named: " + send.logicalName);
           return tagged Invalid;
 
       end
@@ -289,9 +289,9 @@ module [SoftConnectionModule] findMatchingRecv#(String sname, List#(LOGICAL_RECV
 
 endmodule
 
-module [SoftConnectionModule] findMatchingSend#(String rname, List#(LOGICAL_SEND_INFO) sends) (Maybe#(LOGICAL_SEND_INFO));
+module [SoftConnectionModule] findMatchingSend#(LOGICAL_RECV_INFO recv, List#(LOGICAL_SEND_INFO) sends) (Maybe#(LOGICAL_SEND_INFO));
 
-  let send_matches = List::filter(sendNameMatches(rname), sends);
+  let send_matches = List::filter(nameMatches(recv), sends);
   
   // The list should have exactly zero or one element in it....
 
@@ -311,7 +311,7 @@ module [SoftConnectionModule] findMatchingSend#(String rname, List#(LOGICAL_SEND
       default:
       begin
 
-          error("ERROR: Found multiple ConnectionSend named: " + rname);
+          error("ERROR: Found multiple ConnectionSend named: " + recv.logicalName);
           return tagged Invalid;
 
       end
@@ -324,24 +324,24 @@ endmodule
 // Find all matches for the given name and remove them from the list.
 // Useful for manyToOne/oneToMany connections.
 
-module [SoftConnectionModule] findAllMatchingRecvs#(String sname) (List#(LOGICAL_RECV_INFO));
+module [SoftConnectionModule] findAllMatchingRecvs#(LOGICAL_SEND_INFO send) (List#(LOGICAL_RECV_INFO));
 
   let recvs <- getUnmatchedRecvs();
 
-  let recv_matches = List::filter(recvNameMatches(sname), recvs);
-  let remaining = List::filter(recvNameDoesNotMatch(sname), recvs);
+  let recv_matches = List::filter(nameMatches(send), recvs);
+  let remaining = List::filter(nameDoesNotMatch(send), recvs);
   putUnmatchedRecvs(remaining);
 
   return recv_matches;
 
 endmodule
 
-module [SoftConnectionModule] findAllMatchingSends#(String rname) (List#(LOGICAL_SEND_INFO));
+module [SoftConnectionModule] findAllMatchingSends#(LOGICAL_RECV_INFO recv) (List#(LOGICAL_SEND_INFO));
 
   let sends <- getUnmatchedSends();
 
-  let send_matches = List::filter(sendNameMatches(rname), sends);
-  let remaining = List::filter(sendNameDoesNotMatch(rname), sends);
+  let send_matches = List::filter(nameMatches(recv), sends);
+  let remaining = List::filter(nameDoesNotMatch(recv), sends);
   putUnmatchedSends(remaining);
 
   return send_matches;

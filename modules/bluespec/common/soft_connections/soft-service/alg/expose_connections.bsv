@@ -112,7 +112,7 @@ module exposeDanglingSends#(List#(LOGICAL_SEND_INFO) dsends) (Vector#(n, PHYSICA
       error("ERROR: Too many dangling Send Connections (max " + integerToString(valueof(n)) + "). Increase the numOut parameter to WithConnections.");
 
     let cur = dsends[x];
-    messageM("Dangling Send {" + cur.logicalType + "} [" + integerToString(cur_out) +  "]: " + cur.logicalName);
+    messageM("Dangling Send {" + cur.logicalType + "} [" + integerToString(cur_out) +  "]:" + cur.logicalName + ":" + cur.computePlatform);
     res[cur_out] = cur.outgoing;
     cur_out = cur_out + 1;
   end
@@ -146,7 +146,7 @@ module exposeDanglingRecvs#(List#(LOGICAL_RECV_INFO) drecvs) (Vector#(n, PHYSICA
       error("ERROR: Too many dangling Receive Connections (max " + integerToString(valueof(n)) + "). Increase the numIn parameter to WithConnections.");
 
     let cur = drecvs[x];
-    messageM("Dangling Rec {" + cur.logicalType + "} [" + integerToString(cur_in) + "]: " + cur.logicalName);
+    messageM("Dangling Rec {" + cur.logicalType + "} [" + integerToString(cur_in) + "]:" + cur.logicalName+ ":" + cur.computePlatform);
     res[cur_in] = cur.incoming;
     cur_in = cur_in + 1;
   end

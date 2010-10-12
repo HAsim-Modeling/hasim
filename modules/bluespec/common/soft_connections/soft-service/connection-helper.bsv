@@ -49,31 +49,49 @@ endmodule
 
 // {send,recv}NameMatches
 
-// Does the send/recv's name match the param?
+// Does the send/recv's name match the param
+// In this world, not matching a logical platform is also a non-match
+// and must be handled at the top level
 
-function Bool sendNameMatches(String rname, LOGICAL_SEND_INFO sinfo);
+typeclass Matchable#(type t);
+  function String getLogicalName(t val);
+  function String getComputePlatform(t val);
+endtypeclass
 
-  return (sinfo.logicalName == rname);
+instance Matchable#(LOGICAL_RECV_INFO);
+  function String getLogicalName(LOGICAL_RECV_INFO rinfo);
+    return rinfo.logicalName;
+  endfunction
 
+  function String getComputePlatform(LOGICAL_RECV_INFO rinfo);
+    return rinfo.computePlatform;
+  endfunction
+endinstance
+
+instance Matchable#(LOGICAL_SEND_INFO);
+  function String getLogicalName(LOGICAL_SEND_INFO sinfo);
+    return sinfo.logicalName;
+  endfunction
+
+  function String getComputePlatform(LOGICAL_SEND_INFO sinfo);
+    return sinfo.computePlatform;
+  endfunction
+endinstance
+
+function Bool nameMatches(r rinfo, s sinfo)
+  provisos(Matchable#(r),
+           Matchable#(s));
+  
+  return (getLogicalName(sinfo) == getLogicalName(rinfo)) && 
+         (getComputePlatform(sinfo) == getComputePlatform(rinfo));
+ 
 endfunction
 
-function Bool recvNameMatches(String sname, LOGICAL_RECV_INFO rinfo);
-
-  return (rinfo.logicalName == sname);
-
-endfunction
-
-
-function Bool sendNameDoesNotMatch(String rname, LOGICAL_SEND_INFO sinfo);
-
-  return (sinfo.logicalName != rname);
-
-endfunction
-
-function Bool recvNameDoesNotMatch(String sname, LOGICAL_RECV_INFO rinfo);
-
-  return (rinfo.logicalName != sname);
-
+function Bool nameDoesNotMatch(r rinfo, s sinfo)
+  provisos(Matchable#(r),
+           Matchable#(s));
+  
+  return !nameMatches(rinfo,sinfo);
 endfunction
 
 instance Eq#(PHYSICAL_CONNECTION_OUT);
@@ -169,3 +187,26 @@ module connectOutToIn#(PHYSICAL_CONNECTION_OUT cout, PHYSICAL_CONNECTION_IN cin)
       endrule
   end
 endmodule
+
+module printSend#(LOGICAL_SEND_INFO send) (Empty);
+  messageM("Send: " + send.logicalName + " " + send.computePlatform);
+endmodule
+
+module printSends#(List#(LOGICAL_SEND_INFO) sends) (Empty);
+  for (Integer x = 0; x < length(sends); x = x + 1)
+    begin
+      printSend(sends[x]);
+    end
+endmodule
+
+module printRecv#(LOGICAL_RECV_INFO recv) (Empty);
+  messageM("Recv: " + recv.logicalName + " " + recv.computePlatform);
+endmodule
+
+module printRecvs#(List#(LOGICAL_RECV_INFO) recvs) (Empty);
+  for (Integer x = 0; x < length(recvs); x = x + 1)
+    begin
+      printRecv(recvs[x]);
+    end
+endmodule
+

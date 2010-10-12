@@ -25,7 +25,7 @@ module [SoftConnectionModule] connectMulticasts#(Clock c) ();
         let cur_send = List::head(multi_sends);
         multi_sends = List::tail(multi_sends);
         
-        let matching_recvs <- findAllMatchingRecvs(cur_send.logicalName);
+        let matching_recvs <- findAllMatchingRecvs(cur_send);
 
         if (List::length(matching_recvs) == 0 && !cur_send.optional)
         begin
@@ -43,7 +43,7 @@ module [SoftConnectionModule] connectMulticasts#(Clock c) ();
         let cur_recv = List::head(multi_recvs);
         multi_recvs = List::tail(multi_recvs);
         
-        let matching_sends <- findAllMatchingSends(cur_recv.logicalName);
+        let matching_sends <- findAllMatchingSends(cur_recv);
 
         if (List::length(matching_sends) == 0 && !cur_recv.optional)
         begin

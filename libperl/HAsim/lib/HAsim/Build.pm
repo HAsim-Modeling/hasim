@@ -265,6 +265,30 @@ sub is_synthesis_boundary {
 }
 
 ############################################################
+# get_compute_platform: reads Asim module's parameters to
+#                       determine what synthesis boundary it belongs 
+sub get_compute_platform {
+    my $module = shift;
+    
+    if(!is_synthesis_boundary($module)) {
+      HAsim::Util::WARN_AND_DIE("get_compute_platform called on non-synthesis boundary module\n");
+    }
+    
+    # Should default be used here?
+    foreach my $param_r ($module->parameters()) {
+        my %param = %{$param_r};
+        if ($param{'name'} eq "COMPUTE_PLATFORM") {
+            return $param{'default'};
+        }
+    }
+
+    # otherwise return a special default value!
+    return "Unknown";
+}
+
+
+
+############################################################
 # synthesis_instances: How many copies of a synthesis boundary
 #                      should be instantiated?
 #
@@ -349,35 +373,84 @@ sub get_synthesis_boundary_name {
 ####
 #
 # Convert module into nice string representation for python
+# Unfortunately, I need to duplicate the code here due to the 
+# generated/source differentiation.
 #
+
+sub pythonize_sources {
+    my $module = shift;
+    my $output = "{";
+
+    # should I grab all the source?  I guess?
+    # good target for refactoring
+    foreach my $source_type ($module->sourcetypes()) {
+        $output = $output . "\'GIVEN_${source_type}S\': [";
+	my @sources = $module->sources($source_type,"*");
+        # dress up sources in quotes 
+        my @sources_new = qw();
+        for my $source (@sources) {
+	    push(@sources_new, "\'".$source."\'");
+        } 
+        $output = $output . join(", ", @sources_new) . '],'; 
+    }
+
+    foreach my $source_type ($module->generatedtypes()) {
+        $output = $output . "\'GEN_${source_type}S\': [";
+	my @sources = $module->generated($source_type,"*");
+        # dress up sources in quotes 
+        my @sources_new = qw();
+        for my $source (@sources) {
+	    push(@sources_new, "\'".$source."\'");
+        } 
+        $output = $output . join(", ", @sources_new) . '],'; 
+    }
+    $output = $output . '}';
+
+    return $output;
+}
+
 sub pythonize_module {
     my $module = shift;
  
-    # We only generate representations for synthesis boundaries
-    if (! is_synthesis_boundary($module)) {
-	return "";
-    }
-
     my $stringRepresentation = "Module( ";
   
     # dump name
    
     $stringRepresentation = $stringRepresentation . "\'" . $module->provides() ."\', ";
 
+    # Is it a synthesis boundary?
+
+    if( is_synthesis_boundary($module)) {
+	$stringRepresentation = $stringRepresentation . "True, ";
+    } else {
+	$stringRepresentation = $stringRepresentation . "False, ";
+    }
+
     # get build dir get_module_build_dir_from_module
     $stringRepresentation = $stringRepresentation . "\'" . get_module_build_dir_from_module($module) . "\', ";
 
+    # get compute platform
+    if(is_synthesis_boundary($module)) {
+	$stringRepresentation = $stringRepresentation . "\'" . get_compute_platform($module) . "\', ";
+    } else {
+        $stringRepresentation = $stringRepresentation . "\'" . get_compute_platform( get_synthesis_boundary_parent($module)) . "\', "
+    }
+
+    # all modules have parents/children.  We'll preserve this structure
+    # because it will make life easier in the python
     # get parent synthesis boundary 
     if($module->isroot()) {
 	$stringRepresentation = $stringRepresentation ."\'\'" .",";
     } 
     else {
-	my $parent =  get_synthesis_boundary_parent($module);
+	my $parent =  $module->parent();
 	$stringRepresentation = $stringRepresentation . "\'" . $parent->provides() ."\',";
     }
+
+
     $stringRepresentation = $stringRepresentation . "[ ";
-  
-    my @children = get_synthesis_boundary_children($module);
+
+    my @children = $module->submodules();
 
     for(my $index = 0; $index < scalar(@children); $index = $index + 1) {      
 	$stringRepresentation = $stringRepresentation . "\'" . $children[$index]->provides() ."\'"; 
@@ -385,8 +458,38 @@ sub pythonize_module {
 	    $stringRepresentation = $stringRepresentation . ",";
 	}
     }
+    $stringRepresentation = $stringRepresentation . " ], ";
 
-    $stringRepresentation = $stringRepresentation . " ] ";
+    #synthesis boundaries are special
+
+    if(is_synthesis_boundary($module)) {
+	# get parent synthesis boundary 
+	if($module->isroot()) {
+	    $stringRepresentation = $stringRepresentation ."\'\'" .",";
+	} 
+	else {
+	    my $parent =  get_synthesis_boundary_parent($module);
+	    $stringRepresentation = $stringRepresentation . "\'" . $parent->provides() ."\',";
+	}
+	$stringRepresentation = $stringRepresentation . "[ ";
+	
+	my @children = get_synthesis_boundary_children($module);
+	
+	for(my $index = 0; $index < scalar(@children); $index = $index + 1) {      
+	    $stringRepresentation = $stringRepresentation . "\'" . $children[$index]->provides() ."\'"; 
+	    if($index + 1 < scalar(@children)) {
+		$stringRepresentation = $stringRepresentation . ",";
+	    }
+	}
+    
+	$stringRepresentation = $stringRepresentation . " ] ";
+    } else {
+	$stringRepresentation = $stringRepresentation . "\'null\', []";
+    }
+
+    # now for the hard part  we must represent the source and generated files for the 
+    # given module.  
+    $stringRepresentation = $stringRepresentation . ", " . pythonize_sources($module);
 
     $stringRepresentation = $stringRepresentation . " ), ";
 

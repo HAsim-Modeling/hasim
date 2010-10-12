@@ -254,6 +254,7 @@ module [SoftConnectionModule] mkPhysicalConnectionSend#(String send_name, Maybe#
         {
             logicalName: send_name, 
             logicalType: my_type, 
+            computePlatform: "Unknown", 
             oneToMany: oneToMany, 
             optional: optional, 
             outgoing: outg
@@ -339,7 +340,8 @@ module [SoftConnectionModule] mkPhysicalConnectionRecv#(String recv_name, Maybe#
         LOGICAL_RECV_INFO 
         {
             logicalName: recv_name, 
-            logicalType: my_type, 
+            logicalType: my_type,
+            computePlatform: "Unknown", 
             manyToOne: manyToOne, 
             optional: optional, 
             incoming: inc

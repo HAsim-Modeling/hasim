@@ -221,18 +221,22 @@ endmodule
 
 // Remove an unmatched send/recv (usually because it's been matched). 
 
-module [SoftConnectionModule] removeUnmatchedSend#(String sname) ();
+// Use strong == here.  
 
+module [SoftConnectionModule] removeUnmatchedSend#(LOGICAL_SEND_INFO send) ();
+
+  messageM("Try to remove send" + send.logicalName);
   let sends <- getUnmatchedSends();
-  let new_sends = List::filter(sendNameDoesNotMatch(sname), sends);
+  let new_sends = List::filter( nameDoesNotMatch (send), sends);
   putUnmatchedSends(new_sends);
 
 endmodule
 
-module [SoftConnectionModule] removeUnmatchedRecv#(String rname) ();
+module [SoftConnectionModule] removeUnmatchedRecv#(LOGICAL_RECV_INFO recv) ();
 
+  messageM("Try to remove recv " + recv.logicalName);
   let recvs <- getUnmatchedRecvs();
-  let new_recvs = List::filter(recvNameDoesNotMatch(rname), recvs);
+  let new_recvs = List::filter( nameDoesNotMatch (recv), recvs);
   putUnmatchedRecvs(new_recvs);
 
 endmodule

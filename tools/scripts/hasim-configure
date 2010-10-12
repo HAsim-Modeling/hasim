@@ -836,12 +836,14 @@ sub __make_bsvfiles {
         ## SYNTH_BOUNDARY is a special value meaningful for hardware
         ## and not software.  It triggers redefined symbol warnings,
         ## so don't emit in .h files.
+        ## COMPUTE_PLATFORM also falls in this category
         my $isSynthBoundary = ($pname eq "SYNTH_BOUNDARY");
+        my $isComputePlatform = ($pname eq "COMPUTE_PLATFORM");
         my $isSynthInstances = ($pname eq "SYNTH_INSTANCES");
 
         if (! $p->isString() && ! $p->isInt()) {
             # Unknown parameter type
-            if (! $isSynthBoundary) {
+            if (! $isSynthBoundary && ! $isComputePlatform) {
                 print HFILE "#define $pname $pvalue\n";
             }
             if ($p->dynamic()) {
@@ -1194,13 +1196,15 @@ sub __generate_makefile_hw_top {
     my $is_root = shift;
 
     my $my_dir = HAsim::Build::get_module_build_dir($module,$parent_dir);
+        
+    if ($module->sources("BSV", "PUBLIC")) {
+        # stick these GEN_BSVS in the generated list
+        my $mod_bsv = $module->provides() . ".bsv";
+        $module->addgenerated("BSV",$mod_bsv);
+    }
+
     if (HAsim::Build::is_synthesis_boundary($module)) {
 
-        ## @SYNTH_BOUNDARIES@ 
-        ## generate data structures for use in scons python code
-        my $pythonRepresentation = HAsim::Build::pythonize_module($module);
-        HAsim::Util::hash_append($replacements_r," ",'@SYNTH_BOUNDARIES@',$pythonRepresentation);
-        
         # @ALL_HW_DIRS@
         HAsim::Util::hash_append($replacements_r,":",'@ALL_HW_DIRS@',$my_dir);
 
@@ -1352,6 +1356,13 @@ sub __generate_makefile_hw_top {
     foreach my $child ($module->submodules()) {
         __generate_makefile_hw_top($child,$my_dir,$replacements_r, 0);
     }
+
+
+    ## @SYNTH_BOUNDARIES@ 
+    ## generate data structures for use in scons python code
+    ## we do this last so as to collect the GENerated files uttered above.
+    my $pythonRepresentation = HAsim::Build::pythonize_module($module);
+    HAsim::Util::hash_append($replacements_r," ",'@SYNTH_BOUNDARIES@',$pythonRepresentation);
 
 }
 
@@ -1517,6 +1528,7 @@ sub __generate_makefile_sub {
 
     # Add module to build list if it has sources that need to be built
     if ($module->sources("BSV", "PUBLIC")) {
+        # stick these GEN_BSVS in the generated list
         HAsim::Util::hash_append($current_replacements_r, " ", '@GEN_BSVS@', $mod_bsv);
     }
 
@@ -1616,6 +1628,7 @@ sub generate_wrapper {
 
       print WRAPPER "`define $pname $pvalue\n";
     }
+
     print WRAPPER "\n";
     print WRAPPER "// These are well-known/required hasim modules\n";
 

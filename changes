@@ -23852,3 +23852,45 @@ Directory modules/system/test/clock_test/clock_function_pipeline/synth_pipeline
 
 
 Adding more test benches for MCD.
+
+----------
+kfleming    Date: Tue Oct 12 19:16:21 EDT 2010  CSN: CSN-hasim-831
+                  Tue Oct 12 23:16:21 UTC 2010
+
+
+Directory libperl/HAsim/lib/HAsim
+ Build.pm                  Locally Modified          830 
+
+Directory tools/scripts
+ hasim-configure           Locally Modified          830 
+ hasim-connect             Locally Modified          830 
+ hasim-gen-black-box       Locally Modified          830 
+ hasim-bsc-mkdepend        Locally Modified          830 
+
+Directory modules/bluespec/common/soft_connections/soft-service
+ connection-matching.bsv   Locally Modified          830 
+ connected-common.bsv      Locally Modified          830 
+ bury-connections.bsv      Locally Modified          830 
+
+Directory modules/bluespec/common/soft_connections/soft-service/alg
+ connect_multicasts.bsv    Locally Modified          830 
+ connect_top_level.bsv     Locally Modified          830 
+ expose_connections.bsv    Locally Modified          830 
+
+Directory modules/bluespec/common/soft_connections/soft-service
+ connection-helper.bsv     Locally Modified          830 
+ connection-context.bsv    Locally Modified          830 
+ connections.bsv           Locally Modified          830 
+
+
+
+Two sets of modifications - some inexorable groundwork for multifpga
+builds (in the sense that I couldn't unedit the files).  However,
+these changes are ignored by downstream tools, and do not affect code
+paths using the non-pipelined build.  There are some minor changes to
+the hasim scripts.  Most of these are generalizations of code which
+broke once I started building things from the root of the source tree,
+as opposed to intervening nodes.  I also add an option for inserting a
+hash into the generated verilog stub files.  This prevents unecessary
+rebuilds when the corresponding wrappers change, but do not modify
+thier interface.  

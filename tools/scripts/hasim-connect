@@ -213,9 +213,14 @@ sub add_connections {
     my @sends_exprs = ();
     my @recvs_exprs = ();
 
-    foreach my $conn_r (@conns) {
-        my $expr = "tuple3(\"" . $conn_r->[3] . "\", \"" . $conn_r->[1] . "\", " . $conn_r->[2] . ")";
-
+    
+     foreach my $conn_r (@conns) {
+	my $expr = "";
+        if($softservices) {
+            $expr = "tuple4(\"" . $conn_r->[3] . "\", \"" . $conn_r->[1] . "\", \"" . $conn_r->[4] . "\", "  . $conn_r->[2] . ")";
+	} else {
+	    $expr = "tuple3(\"" . $conn_r->[3] . "\", \"" . $conn_r->[1] . "\", " . $conn_r->[2] . ")";
+	}
         if ($conn_r->[0] eq "Send") {
             push (@sends_exprs, $expr);
         } elsif ($conn_r->[0] eq "Rec") {
@@ -337,13 +342,23 @@ sub parse_dangling_connections {
     CORE::open(LOG, "< $log_file") || return undef;
     while (my $line = <LOG>) {
         if ($line =~ /^Compilation message: .*: Dangling /) {
-            if ($line =~ /.*Dangling (\w+) {(.*)} \[(\d+)\]: (\w+)/) {
-                my @connection = ($1,$2,$3,$4);
-                push(@conns, [@connection]);
-            }
-            else {
-                DIE("Malformed dangling connection message");
-            }
+            if($softservices) {
+	        if ($line =~ /.*Dangling (\w+) {(.*)} \[(\d+)\]:(\w+):(\w+)/) {                   
+		    my @connection = ($1,$2,$3,$4,$5);
+		    push(@conns, [@connection]);
+		}
+		else {
+		    DIE("SoftServices: Malformed dangling connection message");
+		}
+	    } else { #Backwards compatibility
+	        if ($line =~ /.*Dangling (\w+) {(.*)} \[(\d+)\]: (\w+)/) {
+		    my @connection = ($1,$2,$3,$4);
+		    push(@conns, [@connection]);
+		}
+		else {
+		    DIE("Malformed dangling connection message");
+		}
+	    }
         }
     }
     CORE::close(LOG);

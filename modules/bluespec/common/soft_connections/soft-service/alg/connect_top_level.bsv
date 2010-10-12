@@ -34,15 +34,18 @@ module [Module] finalizeSoftConnection#(LOGICAL_CONNECTION_INFO m) (Empty);
   Clock clk <- exposeCurrentClock();
 
   // Backwards compatability: Connect all chains in the resulting context.
-  match {.new_context2, .m3} <- runWithContext(m, connectChains(clk));
-
+  match {.new_context2, .m3} <- runWithContext(m, connectChains(clk)); 
+  printRecvs(new_context2.unmatchedRecvs);
+  printSends(new_context2.unmatchedSends);
   // Connect all broadcasts in the resulting context.
   match {.new_context3, .m4} <- runWithContext(new_context2, connectMulticasts(clk));
-
+  printRecvs(new_context2.unmatchedRecvs);
+  printSends(new_context2.unmatchedSends);
   // Connect all trees in the resulting context.
   // Eventually more physical interconnects will be supported.
   match {.final_context, .m5} <- runWithContext(new_context3, connectStationsTree(clk));
-  
+  printRecvs(new_context2.unmatchedRecvs);
+  printSends(new_context2.unmatchedSends);
   // Error out if there are dangling connections
   Bool error_occurred = False;
   // Final Dangling sends
@@ -50,10 +53,10 @@ module [Module] finalizeSoftConnection#(LOGICAL_CONNECTION_INFO m) (Empty);
   begin
     let cur = final_context.unmatchedSends[x];
     if (!cur.optional)
-    begin
+      begin
         messageM("ERROR: Unmatched logical send: " +  cur.logicalName);
         error_occurred = True;
-    end
+      end
   end
 
   // Final Dangling recvs
@@ -61,10 +64,10 @@ module [Module] finalizeSoftConnection#(LOGICAL_CONNECTION_INFO m) (Empty);
   begin
     let cur = final_context.unmatchedRecvs[x];
     if (!cur.optional)
-    begin
+      begin
         messageM("ERROR: Unmatched logical receive: " + cur.logicalName);
         error_occurred = True;
-    end
+      end
   end
 
   if (error_occurred)

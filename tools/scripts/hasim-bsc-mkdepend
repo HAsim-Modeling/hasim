@@ -188,8 +188,9 @@ sub FindBSVFile($)
     my ($f) = @_;
 
     ## Is file a generated file for a subdirectory?
+    ## the derived files may have path names, which is not expected
     if (exists($derivedBSV{$f})) {
-        return "./$f";
+        return "./$derivedBSV{$f}";
     }
 
     foreach my $s (@bscPath)
@@ -335,8 +336,8 @@ sub ParseBSVFile($$)
     # dependence is captured through other paths.
     #
     # Start by stripping any leading local directory specifier.
-    my $fn = $fName;
-    $fn =~ s/^\.\///;
+    my $fn = basename($fName);
+
     return if (exists($derivedBSV{$fn}));
 
     ErrorExit("Can't find file $fName") if (! -f $fName);
@@ -444,7 +445,9 @@ if (defined($derived))
 {
     foreach my $d (split(' ', $derived))
     {
-        $derivedBSV{$d} = 1;
+        my $filename = basename($d);
+        print STDERR "derived $filename $d\n" if($debug);
+        $derivedBSV{$filename} = $d;
     }
 }
 
@@ -468,7 +471,7 @@ foreach my $bsv (keys %bsvFiles)
     $bo =~ s/(.*)\///g;
     my $bdir = $1;
     $bdir = defined($bdir) ? $bdir . '/' : '';
-        
+
     my $localBsv = $bsv;
     $localBsv =~ s/^\.\///;
     if (! exists($derivedBSV{$localBsv})) {

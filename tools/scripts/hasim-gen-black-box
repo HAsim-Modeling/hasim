@@ -25,10 +25,23 @@
 ## allows us to run each synthesis boundary separately through xst.
 ##
 
-if ($#ARGV != 0) {
+use Getopt::Long;
+
+my $nohash;
+
+sub Usage() {
     print STDERR "Usage:  hasim-gen-black-fox <input verilog>\n";
     exit(1);
 }
+
+if (! GetOptions('nohash!' => \$nohash
+                ))
+{
+    Usage();
+}
+Usage() if ($#ARGV < 0);
+
+
 
 open(V, "< $ARGV[0]") or die("Failed to open input file $ARGV[0]");
 
@@ -55,13 +68,15 @@ print "endmodule\n";
 
 close(V);
 
-print "\n";
-print "//\n";
-print "// Work around a SCons bug in which it looks only at the nearest child to decide\n";
-print "// whether to rebuild a parent.  Make sure the generated file changes if the\n";
-print "// base Verilog file changes.\n";
-print "//\n";
-
-my $md5 = `md5sum $ARGV[0]`;
-chomp($md5);
-print "// ${md5}\n";
+if(! defined($nohash)) {
+    print "\n";
+    print "//\n";
+    print "// Work around a SCons bug in which it looks only at the nearest child to decide\n";
+    print "// whether to rebuild a parent.  Make sure the generated file changes if the\n";
+    print "// base Verilog file changes.\n";
+    print "//\n";
+    
+    my $md5 = `md5sum $ARGV[0]`;
+    chomp($md5);
+    print "// ${md5}\n";
+}

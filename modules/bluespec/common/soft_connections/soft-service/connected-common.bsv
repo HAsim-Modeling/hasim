@@ -58,17 +58,6 @@ interface STATION;
     method String name();
 
 endinterface
-/*
-instance Eq #(STATION);
-  function Bool \== (STATION x, STATION y);
-    return (x.name() == y.name());
-  endfunction
-
-  function Bool \/= (STATION x, STATION y);
-    return !(x == y);
-  endfunction
-endinstance
-*/
 
 // A physical station just looks like two FIFOFs.
 interface PHYSICAL_STATION;
@@ -86,51 +75,27 @@ typedef struct
 {
     String logicalName;
     String logicalType;
+    String computePlatform;
     Bool oneToMany;
     Bool optional;
     PHYSICAL_CONNECTION_OUT outgoing;
 } 
     LOGICAL_SEND_INFO
       deriving(Eq);
-/*
-instance Eq#(LOGICAL_SEND_INFO);
-  function Bool \== (LOGICAL_SEND_INFO x, LOGICAL_SEND_INFO y);
-    return (x.logicalName == y.logicalName) &&
-           (x.logicalType == y.logicalType) &&
-           (x.oneToMany == y.oneToMany) &&
-           (x.optional == y.optional);
-  endfunction
 
-  function Bool \/= (LOGICAL_SEND_INFO x, LOGICAL_SEND_INFO y);
-    return !(x == y);
-  endfunction
-endinstance
-*/
 // Data about unmatched logical receive connections
 typedef struct 
 {
     String logicalName;
     String logicalType;
+    String computePlatform;
     Bool manyToOne;
     Bool optional;
     PHYSICAL_CONNECTION_IN incoming;
 } 
     LOGICAL_RECV_INFO
       deriving(Eq);
-/*
-instance Eq#(LOGICAL_RECV_INFO);
-  function Bool \== (LOGICAL_RECV_INFO x, LOGICAL_RECV_INFO y);
-    return (x.logicalName == y.logicalName) &&
-           (x.logicalType == y.logicalType) &&
-           (x.manyToOne == y.manyToOne) &&
-           (x.optional == y.optional);
-  endfunction
 
-  function Bool \/= (LOGICAL_RECV_INFO x, LOGICAL_RECV_INFO y);
-    return !(x == y);
-  endfunction
-endinstance
-*/
 // Data about stations.
 typedef struct
 {
@@ -155,18 +120,6 @@ typedef struct
     PHYSICAL_CONNECTION_OUT outgoing;
 } 
     LOGICAL_CHAIN_INFO deriving(Eq);
-/*
-instance Eq #(LOGICAL_CHAIN_INFO);
-  function Bool \== (LOGICAL_CHAIN_INFO x, LOGICAL_CHAIN_INFO y);
-    return (x.logicalIdx == y.logicalIdx) &&
-           (x.logicalType == y.logicalType);
-  endfunction
-
-  function Bool \/= (LOGICAL_CHAIN_INFO x, LOGICAL_CHAIN_INFO y);
-    return !(x == y);
-  endfunction
-endinstance
-*/
 // The context our connected modules operate on.
 typedef struct
 {

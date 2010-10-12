@@ -7,7 +7,7 @@ import ModuleContext::*;
 
 // Forwards-compatability
 
-typedef Tuple3#(String, String, Integer) ConMap;
+typedef Tuple4#(String, String, String, Integer) ConMap;
 
 //Add the parsed information back is as normal connections
 
@@ -35,8 +35,8 @@ module [SoftConnectionModule] addConnectionsSC#(WithConnections#(numIn, numOut) 
    let nSends = length(sends);
    for (Integer x = 0; x < nSends; x = x + 1)
    begin
-     match {.nm, .contype, .idx} = sends[x];
-     let inf = LOGICAL_SEND_INFO {logicalName: nm, logicalType: contype, optional: False, oneToMany: False, outgoing: mod.outgoing[idx]};
+     match {.nm, .contype, .platform, .idx} = sends[x];
+     let inf = LOGICAL_SEND_INFO {logicalName: nm, logicalType: contype, optional: False, oneToMany: False, outgoing: mod.outgoing[idx], computePlatform: platform};
      registerSend(inf);
    end
 
@@ -44,9 +44,9 @@ module [SoftConnectionModule] addConnectionsSC#(WithConnections#(numIn, numOut) 
 
    let nRecs = length(recs);
    for (Integer x = 0; x < nRecs; x = x + 1)
-   begin
-     match {.nm, .contype, .idx} = recs[x];
-     let inf = LOGICAL_RECV_INFO {logicalName:nm, logicalType: contype, optional: False, manyToOne: False, incoming: mod.incoming[idx]};
+   begin 
+     match {.nm, .contype, .platform, .idx} = recs[x];
+     let inf = LOGICAL_RECV_INFO{logicalName:nm, logicalType: contype, optional: False, manyToOne: False, incoming: mod.incoming[idx], computePlatform: platform};
      registerRecv(inf);
    end
    

@@ -12,10 +12,10 @@ DefaultRunOpts=
 
 [Model]
 DefaultAttributes=hello unconnected hybrid project htg
-model=HW/SW Hybrid Project Foundation
+model=HW/SW Hybrid Pipeline Build
 
 [FPGA Environment]
-File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-xup-v5-jtag.apm
+File=config/pm/hasim/submodels/fpgaenv/fpgaenv-hybrid-xup-v5-pcie.apm
 Packagehint=platforms
 
 [Base Hybrid Application Environment]
@@ -25,18 +25,9 @@ Packagehint=platforms
 [Base Hybrid Application Environment/Requires]
 hybrid_application=Hello World
 
-[HW/SW Hybrid Project Foundation]
-File=modules/project/project-hybrid.awb
-Packagehint=platforms
-
 [Hello World]
 File=modules/bluespec/system/demos/hello/hello.awb
 Packagehint=hasim
-
-[HW/SW Hybrid Project Foundation/Requires]
-fpgaenv=FPGA Environment
-application_env=Base Hybrid Application Environment
-project_common=Hybrid Project Common Utilities
 
 [Hybrid Project Common Utilities]
 File=config/pm/hasim/submodels/common/project-common-default.apm
@@ -44,5 +35,12 @@ Packagehint=hasim
 
 [FPGA Environment/Params]
 MODEL_CLOCK_DIVIDER=4
-MODEL_CLOCK_MULTIPLIER=4
-MODEL_CLOCK_FREQ=100
+
+[HW/SW Hybrid Pipeline Build/Requires]
+project_common=Hybrid Project Common Utilities
+fpgaenv=FPGA Environment
+application_env=Base Hybrid Application Environment
+
+[HW/SW Hybrid Pipeline Build]
+File=modules/project/project-pipeline.awb
+Packagehint=platforms

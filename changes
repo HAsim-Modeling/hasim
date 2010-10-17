@@ -23894,3 +23894,14 @@ as opposed to intervening nodes.  I also add an option for inserting a
 hash into the generated verilog stub files.  This prevents unecessary
 rebuilds when the corresponding wrappers change, but do not modify
 thier interface.  
+
+----------
+kfleming    Date: Sun Oct 17 15:06:58 EDT 2010  CSN: CSN-hasim-832
+                  Sun Oct 17 19:06:58 UTC 2010
+
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_xupV5.apm    Locally Modified          831 
+
+
+Changed hello for XUPV5 to use the pcie channel. 

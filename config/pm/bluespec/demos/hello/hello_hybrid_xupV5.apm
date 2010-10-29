@@ -35,6 +35,8 @@ Packagehint=hasim
 
 [FPGA Environment/Params]
 MODEL_CLOCK_DIVIDER=4
+MODEL_CLOCK_MULTIPLIER=4
+MODEL_CLOCK_FREQ=100
 
 [HW/SW Hybrid Pipeline Build/Requires]
 project_common=Hybrid Project Common Utilities

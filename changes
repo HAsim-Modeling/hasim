@@ -23905,3 +23905,18 @@ Directory config/pm/bluespec/demos/hello
 
 
 Changed hello for XUPV5 to use the pcie channel. 
+
+----------
+kfleming    Date: Fri Oct 29 18:00:24 EDT 2010  CSN: CSN-hasim-833
+                  Fri Oct 29 22:00:24 UTC 2010
+
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_xupV5.apm    Locally Modified          832 
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_xup_v5_pcie.apm Locally Added               0 
+
+
+
+Some XUPV5 test apm.

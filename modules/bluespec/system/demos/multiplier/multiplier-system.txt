@@ -1,9 +1,0 @@
-Multiplier System
-
-This is a simple demo that uses the front panel services
-without soft connections. It allows the user to enter two
-2-bit values into the front panel switches and then
-when the center button is pressed multiplies those two
-numbers together. The multiplication is done with via
-serial additions and the result is presented in the
-front panel LEDs.

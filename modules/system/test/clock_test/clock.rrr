@@ -1,8 +1,0 @@
-service CLOCKTEST
-{
-    server hw (bsv, connection) <- sw (cpp, method)
-    {
-        method  test(in UINT32[32] length, out UINT32[32] cycles);
-    };
-
-};

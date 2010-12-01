@@ -1,7 +1,0 @@
-service EVENTS
-{
-    server sw (cpp, method) <- hw (bsv, connection)
-    {
-        method LogEvent(in UINT32[32] event_id, in UINT32[32] event_data, in UINT32[32] model_cc);
-    };
-};

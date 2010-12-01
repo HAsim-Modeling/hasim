@@ -1,9 +1,0 @@
-%name Starter Service
-%desc Wrarp Starter Device in Soft Connections
-
-%provides starter_service
-
-%attributes hybrid connected
-
-%public starter-service.bsh
-%public starter-service.bsv

@@ -1,3 +1,0 @@
-
-// Include base device
-`include "asim/provides/dynamic_parameters_device.bsh"

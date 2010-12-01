@@ -1,3 +1,0 @@
-def STREAMS.ALUTEST.NUM64_SP  "0x%08x%08x ";
-def STREAMS.ALUTEST.NUM64_CR  "0x%08x%08x\n";
-def STREAMS.ALUTEST.DONE  "alu-test: done\n";

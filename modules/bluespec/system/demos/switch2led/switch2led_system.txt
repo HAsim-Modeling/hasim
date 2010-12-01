@@ -1,8 +1,0 @@
-Switch2led System
-
-This is a simple demo that uses the front panel services
-without soft connections. It nominally computes a 
-function with the switches as an input and displays the
-result on the LEDs. Currently, the function is just the
-identity function.
-

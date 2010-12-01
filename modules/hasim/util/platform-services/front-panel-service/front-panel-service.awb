@@ -1,9 +1,0 @@
-%name Front Panel Service 
-%desc Wrapt the Front Panel Device in Soft Connections
-
-%provides front_panel_service
-
-%attributes hybrid connected
-
-%public front-panel-service.bsh
-%public front-panel-service.bsv

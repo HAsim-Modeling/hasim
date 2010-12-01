@@ -1,5 +1,0 @@
-def STREAMID.DEBUGGER "debugger";
-
-def STREAMS.DEBUGGER.HELLO "Debugger hardware locked and loaded.\n";
-def STREAMS.DEBUGGER.LOAD  "Making Load request for addr = %d.\n";
-def STREAMS.DEBUGGER.STORE "Making Store request for addr = %d data = %d.\n";

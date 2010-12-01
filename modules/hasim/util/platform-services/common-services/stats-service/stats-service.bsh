@@ -1,3 +1,0 @@
-
-// Include base device
-`include "asim/provides/stats_device.bsh"

@@ -1,2 +1,0 @@
-def STREAMS.FPTEST.RESULT  "Result: 0x%08x%08x\n";
-

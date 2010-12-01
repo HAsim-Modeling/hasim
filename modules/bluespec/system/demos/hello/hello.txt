@@ -1,6 +1,0 @@
-Hello
-
-This is a simple hybrid application thate uses
-the streams device (without soft connections) to
-say 'hello'.
-

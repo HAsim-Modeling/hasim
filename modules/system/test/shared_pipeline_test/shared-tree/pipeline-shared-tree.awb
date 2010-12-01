@@ -1,7 +1,0 @@
-%name Shared Mux-Tree Pipeline Test
-%desc One rule controls a stage, with a mux-tree and a dynamic index.
-%provides pipeline_test
-
-%attributes hybrid pipetest
-
-%public pipeline-shared-tree.bsv

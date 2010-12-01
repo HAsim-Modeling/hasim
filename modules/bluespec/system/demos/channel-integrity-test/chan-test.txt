@@ -1,5 +1,0 @@
-Check for transmissions errors in a channel.
-
-There is an 8-wide (4 64-bit values and their complements) and a 16-wide
-version.  The 16-wide version provides better coverage for wide channels
-but takes longer to synthesize.

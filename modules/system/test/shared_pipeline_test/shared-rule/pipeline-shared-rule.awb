@@ -1,7 +1,0 @@
-%name Shared Rule Pipeline Test
-%desc Shared pipeline where one rule controls an entire stage.
-%provides pipeline_test
-
-%attributes hybrid pipetest
-
-%public pipeline-shared-rule.bsv

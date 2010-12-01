@@ -1,7 +1,0 @@
-service SHMEM_TEST
-{
-    server hw (bsv, method) <- sw (cpp, method)
-    {
-        method OneWayTest(in UINT32[32] burst_length, out UINT64[64] cycles);
-    };
-};

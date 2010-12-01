@@ -23920,3 +23920,1059 @@ Directory config/pm/bluespec/demos/rrrtest
 
 
 Some XUPV5 test apm.
+
+----------
+mpellaue    Date: Wed Dec  1 14:44:02 EST 2010  CSN: CSN-hasim-834
+                  Wed Dec  1 19:44:02 UTC 2010
+
+
+Directory config/pm
+ hasim/                    Locally Removed           833 
+
+Directory config/pm/hasim
+ demos/                    Locally Removed           833 
+
+Directory config/pm/hasim/demos
+ test/                     Locally Removed           833 
+
+Directory config/pm/hasim/demos/test
+ alu_test/                 Locally Removed           833 
+
+Directory config/pm/hasim/demos/test/alu_test
+ alu_test_hybrid_htg.apm   Locally Removed           833 
+ alu_test_hybrid_exe.apm   Locally Removed           833 
+
+Directory config/pm/hasim/demos/test
+ bram_test/                Locally Removed           833 
+
+Directory config/pm/hasim/demos/test/bram_test
+ bram_test_hybrid_htg.apm  Locally Removed           833 
+ bram_test_hybrid_exe.apm  Locally Removed           833 
+
+Directory config/pm/hasim/demos/test
+ fp_test/                  Locally Removed           833 
+
+Directory config/pm/hasim/demos/test/fp_test
+ fp_test_cvt_i_to_s.apm    Locally Removed           833 
+
+Directory config/pm/hasim/demos/test
+ pipeline_test/            Locally Removed           833 
+
+Directory config/pm/hasim/demos/test/pipeline_test
+ pipeline_test_shared_rule_htg.apm Locally Removed           833 
+ pipeline_test_shared_rule_routed_exe.apm Locally Removed           833 
+ pipeline_test_shared_rule_routed_htg.apm Locally Removed           833 
+ pipeline_test_private_rule_exe.apm Locally Removed           833 
+ pipeline_test_duplicate_modules_exe.apm Locally Removed           833 
+ pipeline_test_private_rule_htg.apm Locally Removed           833 
+ pipeline_test_duplicate_modules_htg.apm Locally Removed           833 
+ pipeline_test_stage_ctrl_unguarded_exe.apm Locally Removed           833 
+ pipeline_test_stage_ctrl_unguarded_htg.apm Locally Removed           833 
+ pipeline_test_stage_ctrl_exe.apm Locally Removed           833 
+ pipeline_test_stage_ctrl_htg.apm Locally Removed           833 
+ pipeline_test_shared_rule_exe.apm Locally Removed           833 
+
+Directory config/pm/hasim/demos/test
+ clock_test/               Locally Removed           833 
+
+Directory config/pm/hasim/demos/test/clock_test
+ clock_test_mem_exe.apm    Locally Removed           833 
+ clock_test_exe.apm        Locally Removed           833 
+ clock_test_mem_acp.apm    Locally Removed           833 
+ clock_test_acp.apm        Locally Removed           833 
+ clock_test_mem_synth_exe.apm Locally Removed           833 
+ clock_test_mem_synth_acp.apm Locally Removed           833 
+ clock_test_synth_exe.apm  Locally Removed           833 
+ clock_test_synth_acp.apm  Locally Removed           833 
+
+Directory config/pm/hasim/demos/test
+ interconnect_test/        Locally Removed           833 
+
+Directory config/pm/hasim/demos/test/interconnect_test
+ interconnect_test_hybrid_exe.apm Locally Removed           833 
+
+Directory config/pm/hasim/demos/test
+ mem_test/                 Locally Removed           833 
+
+Directory config/pm/hasim/demos/test/mem_test
+ mem_test_hybrid_nopvt_exe.apm Locally Removed           833 
+ mem_test_hybrid_nopvt_htg.apm Locally Removed           833 
+ mem_test_hybrid_nopvt_acp.apm Locally Removed           833 
+ mem_test_hybrid_exe.apm   Locally Removed           833 
+ mem_test_hybrid_htg.apm   Locally Removed           833 
+ mem_test_hybrid_acp.apm   Locally Removed           833 
+
+Directory config/pm/hasim/demos
+ context_test/             Locally Removed           833 
+
+Directory config/pm/hasim/demos/context_test
+ alpha_inorder_ctx_exe.apm Locally Removed           833 
+ traffic_light_synth_exe.apm Locally Removed           833 
+
+Directory config/pm/hasim/demos
+ traffic_light/            Locally Removed           833 
+
+Directory config/pm/hasim/demos/traffic_light
+ traffic_light_xup_nosynth.apm Locally Removed           833 
+ traffic_light_htg_v5_pcie_synth.apm Locally Removed           833 
+ traffic_light_xup_synth.apm Locally Removed           833 
+ traffic_light_arriaII_nosynth.apm Locally Removed           833 
+ traffic_light_exe_nosynth.apm Locally Removed           833 
+ traffic_light_arriaII_synth.apm Locally Removed           833 
+ traffic_light_exe_synth.apm Locally Removed           833 
+ traffic_light_acp_synth.apm Locally Removed           833 
+
+Directory config/pm/hasim/demos
+ multiplier/               Locally Removed           833 
+
+Directory config/pm/hasim/demos/multiplier
+ multiplier_exe.apm        Locally Removed           833 
+
+Directory config/pm/hasim/demos
+ switch_to_led/            Locally Removed           833 
+
+Directory config/pm/hasim/demos/switch_to_led
+ multiplier4x4_exe.apm     Locally Removed           833 
+ echo4x4_xup.apm           Locally Removed           833 
+ adder4x4_xup.apm          Locally Removed           833 
+ square4x4_xup.apm         Locally Removed           833 
+ echo4x4_exe.apm           Locally Removed           833 
+ adder4x4_exe.apm          Locally Removed           833 
+ echo4x4_htg.apm           Locally Removed           833 
+ square4x4_exe.apm         Locally Removed           833 
+ multiplier4x4_xup.apm     Locally Removed           833 
+
+Directory config/pm/hasim/submodels
+ controller/               Locally Removed           833 
+
+Directory config/pm/hasim/submodels/controller
+ hybrid_standard_controller.apm Locally Removed           833 
+ hybrid_basic_controller.apm Locally Removed           833 
+ hardware_null_controller.apm Locally Removed           833 
+ hybrid_pure_bluespec_controller.apm Locally Removed           833 
+
+Directory config/pm/hasim/submodels
+ platform-services/        Locally Removed           833 
+
+Directory config/pm/hasim/submodels/platform-services
+ standard-platform-services.apm Locally Removed           833 
+ standard-platform-null-mem.apm Locally Removed           833 
+
+Directory config/pm/hasim/submodels
+ fpgaenv/                  Locally Removed           833 
+
+Directory config/pm/hasim/submodels/common
+ soft-services.apm         Locally Removed           833 
+ project-common-default.apm Locally Removed           833 
+ soft-connections-lib.apm  Locally Removed           833 
+ soft-connections-lib-context.apm Locally Removed           833 
+
+Directory config/pm
+ bluespec/                 Locally Removed           833 
+
+Directory config/pm/bluespec
+ demos/                    Locally Removed           833 
+
+Directory config/pm/bluespec/demos
+ hello/                    Locally Removed           833 
+
+Directory config/pm/bluespec/demos/hello
+ hello_hybrid_arriaII.apm  Locally Removed           833 
+ hello_hybrid_exe.apm      Locally Removed           833 
+ hello_hybrid_htg.apm      Locally Removed           833 
+ hello_hybrid_cyloneIII.apm Locally Removed           833 
+ hello_hybrid_xupV5.apm    Locally Removed           833 
+ hello_hybrid_xup2.apm     Locally Removed           833 
+
+Directory config/pm/bluespec/demos
+ debugger/                 Locally Removed           833 
+
+Directory config/pm/bluespec/demos/debugger
+ sram_debugger_nallatech_acp.apm Locally Removed           833 
+ nallatech_fake_sram_debugger.apm Locally Removed           833 
+ sram_debugger_htg.apm     Locally Removed           833 
+ jtag_htg_debugger.apm     Locally Removed           833 
+
+Directory config/pm/bluespec/demos
+ fir_filter/               Locally Removed           833 
+
+Directory config/pm/bluespec/demos/fir_filter
+ fir_filter_hw_exe.apm     Locally Removed           833 
+ fir_filter_sw.apm         Locally Removed           833 
+
+Directory config/pm/bluespec/demos
+ rrrtest/                  Locally Removed           833 
+
+Directory config/pm/bluespec/demos/rrrtest
+ rrrtest_hybrid_htg-synplify.apm Locally Removed           833 
+ rrrtest_hybrid_acp_nallatech.apm Locally Removed           833 
+ rrrtest_hybrid_arriaII.apm Locally Removed           833 
+ rrrtest_hybrid_exe.apm    Locally Removed           833 
+ rrrtest_hybrid_htg.apm    Locally Removed           833 
+ rrrtest_hybrid_xup_v5_pcie.apm Locally Removed           833 
+ rrrtest_hybrid_htg_jtag.apm Locally Removed           833 
+ rrrtest_hybrid_acp_arches.apm Locally Removed           833 
+ rrrtest_hybrid_acp_jtag.apm Locally Removed           833 
+ rrrtest_hybrid_xup.apm    Locally Removed           833 
+
+Directory config/pm/bluespec/demos
+ chantest/                 Locally Removed           833 
+
+Directory config/pm/bluespec/demos/chantest
+ chantest08_hybrid_exe.apm Locally Removed           833 
+ chantest16_hybrid_acp_nallatech.apm Locally Removed           833 
+ chantest08_hybrid_acp_nallatech.apm Locally Removed           833 
+ chantest16_hybrid_exe.apm Locally Removed           833 
+
+Directory config/pm/bluespec/demos
+ shmem/                    Locally Removed           833 
+
+Directory config/pm/bluespec/demos/shmem
+ shmem_hybrid_htg.apm      Locally Removed           833 
+
+Directory config/pm/bluespec/demos
+ simple/                   Locally Removed           833 
+
+Directory config/pm/bluespec/demos/simple
+ multiplier_exe.apm        Locally Removed           833 
+ switch2led_exe.apm        Locally Removed           833 
+ echo_exe.apm              Locally Removed           833 
+
+Directory config/pm/bluespec/demos
+ devtest/                  Locally Removed           833 
+
+Directory config/pm/bluespec/demos/devtest
+ devtest_hybrid_exe.apm    Locally Removed           833 
+ devtest_hybrid_htg.apm    Locally Removed           833 
+
+Directory config/bm
+ bluespec/                 Locally Removed           833 
+
+Directory config/bm/bluespec
+ demos.cfx                 Locally Removed           833 
+
+Directory modules
+ model/                    Locally Removed           833 
+
+Directory modules/model
+ Makefile.sub.template     Locally Removed           833 
+ SCons.dict.template       Locally Removed           833 
+ pure_bluespec_main.cpp    Locally Removed           833 
+ pure_bluespec_model.awb   Locally Removed           833 
+ pure_bluespec_hybrid_model.awb Locally Removed           833 
+ SCons.sw.template         Locally Removed           833 
+ pure_bluespec_main.h      Locally Removed           833 
+ default_software_system.h Locally Removed           833 
+ Makefile.top.template     Locally Removed           833 
+ hasim_model.awb           Locally Removed           833 
+ hasim_hwonly_model.awb    Locally Removed           833 
+ hybrid_system.awb         Locally Removed           833 
+ SCons.top.template        Locally Removed           833 
+ main.cpp                  Locally Removed           833 
+ SCons.iface.template      Locally Removed           833 
+ hardware-done.h           Locally Removed           833 
+ pure_bluespec_model.bsv   Locally Removed           833 
+ Makefile.include.template Locally Removed           833 
+ hasim_model.bsv           Locally Removed           833 
+ default_software_system.awb Locally Removed           833 
+ main.h                    Locally Removed           833 
+ SCons.hw.template         Locally Removed           833 
+
+Directory modules/hasim
+ controller/               Locally Removed           833 
+
+Directory modules/hasim/controller
+ local_controllers/        Locally Removed           833 
+
+Directory modules/hasim/controller/local_controllers
+ local-controllers-standard.awb Locally Removed           833 
+ module/                   Locally Removed           833 
+
+Directory modules/hasim/controller/local_controllers/module
+ local-controller-module-standard.awb Locally Removed           833 
+ local-controller-module-standard.bsv Locally Removed           833 
+ local-controller-module.dic Locally Removed           833 
+
+Directory modules/hasim/controller
+ controller-pure.h         Locally Removed           833 
+ controller-pure-hybrid.awb Locally Removed           833 
+ controller-basic.cpp      Locally Removed           833 
+ controller-null.bsv       Locally Removed           833 
+ starter/                  Locally Removed           833 
+
+Directory modules/hasim/controller/starter
+ null-starter.h            Locally Removed           833 
+ hybrid-basic-starter.cpp  Locally Removed           833 
+ hybrid-null-starter.awb   Locally Removed           833 
+ null-starter.awb          Locally Removed           833 
+ hybrid-basic-starter-services.rrr Locally Removed           833 
+ hybrid-basic-starter.h    Locally Removed           833 
+ hybrid-basic-starter.awb  Locally Removed           833 
+ hybrid-basic-starter.bsv  Locally Removed           833 
+ null-starter.cpp          Locally Removed           833 
+
+Directory modules/hasim/controller
+ controller-pure.bsv       Locally Removed           833 
+ command_switches/         Locally Removed           833 
+
+Directory modules/hasim/controller/command_switches
+ command-switch-processor.h Locally Removed           833 
+ default-switches.h        Locally Removed           833 
+ command-switches.cpp      Locally Removed           833 
+ command-switch-processor.cpp Locally Removed           833 
+ command-switches.h        Locally Removed           833 
+ standard-command-switches.awb Locally Removed           833 
+ default-switches.cpp      Locally Removed           833 
+
+Directory modules/hasim/controller
+ controller-basic.h        Locally Removed           833 
+ controller-standard.awb   Locally Removed           833 
+ controller-basic-hybrid.awb Locally Removed           833 
+ controller-basic.bsv      Locally Removed           833 
+ controller-standard.cpp   Locally Removed           833 
+ controller-standard.h     Locally Removed           833 
+ controller-standard.bsv   Locally Removed           833 
+ controller-pure.cpp       Locally Removed           833 
+ controller-null-hardware-only.awb Locally Removed           833 
+ central_controllers/      Locally Removed           833 
+
+Directory modules/hasim/controller/central_controllers
+ central-controllers-standard.h Locally Removed           833 
+ central-controllers-standard.awb Locally Removed           833 
+ params/                   Locally Removed           833 
+
+Directory modules/hasim/controller/central_controllers/params
+ params-controller-hybrid.cpp Locally Removed           833 
+ params-controller-hybrid.rrr Locally Removed           833 
+ params-controller-hybrid.h Locally Removed           833 
+ params-controller-hybrid.awb Locally Removed           833 
+ params-controller-hybrid.bsv Locally Removed           833 
+
+Directory modules/hasim/controller/central_controllers
+ central-controllers-basic.awb Locally Removed           833 
+ central-controllers-standard.bsv Locally Removed           833 
+ events/                   Locally Removed           833 
+
+Directory modules/hasim/controller/central_controllers/events
+ events-controller-hybrid.cpp Locally Removed           833 
+ events-controller.rrr     Locally Removed           833 
+ events-controller-hybrid.h Locally Removed           833 
+ events-controller-hybrid.awb Locally Removed           833 
+ events-controller-hybrid.bsv Locally Removed           833 
+
+Directory modules/hasim/controller/central_controllers
+ central-controllers-basic.bsv Locally Removed           833 
+ module/                   Locally Removed           833 
+
+Directory modules/hasim/controller/central_controllers/module
+ module-controller-streams.dic Locally Removed           833 
+ module-controller-streamid.dic Locally Removed           833 
+ module-controller-standard.awb Locally Removed           833 
+ module-controller-standard.bsv Locally Removed           833 
+
+Directory modules/hasim/controller/central_controllers
+ assertions/               Locally Removed           833 
+
+Directory modules/hasim/controller/central_controllers/assertions
+ assertions-controller.rrr Locally Removed           833 
+ assertions-controller-hybrid.h Locally Removed           833 
+ assertions-controller-hybrid.awb Locally Removed           833 
+ assertions-controller-hybrid.bsv Locally Removed           833 
+ assertions-controller-hybrid.cpp Locally Removed           833 
+
+Directory modules/hasim/controller/central_controllers
+ debug_scan/               Locally Removed           833 
+
+Directory modules/hasim/controller/central_controllers/debug_scan
+ debug-scan-controller-hybrid.awb Locally Removed           833 
+ debug-scan-controller-hybrid.bsv Locally Removed           833 
+ debug-scan-controller-hybrid.cpp Locally Removed           833 
+ debug-scan-controller.rrr Locally Removed           833 
+ debug-scan-controller-hybrid.h Locally Removed           833 
+
+Directory modules/hasim/controller/central_controllers
+ central-controllers-standard.cpp Locally Removed           833 
+ stats/                    Locally Removed           833 
+
+Directory modules/hasim/controller/central_controllers/stats
+ stats-controller-hybrid.cpp Locally Removed           833 
+ stats-controller.rrr      Locally Removed           833 
+ stats-controller-hybrid.h Locally Removed           833 
+ stats-controller-hybrid.awb Locally Removed           833 
+ stats-controller-hybrid.bsv Locally Removed           833 
+
+Directory modules/hasim/util
+ platform-services/        Locally Removed           833 
+
+Directory modules/hasim/util/platform-services
+ mem-services/             Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/mem-services
+ scratchpad-memory-service/ Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/mem-services/scratchpad-memory-service
+ scratchpad-memory-service.awb Locally Removed           833 
+ scratchpad-memory-service.bsv Locally Removed           833 
+ platform-scratchpad-multi-cached-memory.bsv Locally Removed           833 
+ platform-scratchpad-memory-utils.bsv Locally Removed           833 
+ scratchpad-memory-service.bsh Locally Removed           833 
+ platform-scratchpad-memory.bsv Locally Removed           833 
+ scratchpad-memory-service.dic Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/mem-services
+ mem-services-standard.awb Locally Removed           833 
+ mem-services-standard.bsv Locally Removed           833 
+ central-cache-service/    Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/mem-services/central-cache-service
+ central-cache-service.awb Locally Removed           833 
+ central-cache-service.bsv Locally Removed           833 
+ central-cache-service.bsh Locally Removed           833 
+ platform-central-cache.bsv Locally Removed           833 
+ central-cache-service.dic Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/mem-services
+ mem-services-standard.bsh Locally Removed           833 
+ shared-memory-service/    Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/mem-services/shared-memory-service
+ shared-memory-service.awb Locally Removed           833 
+ shared-memory-service.bsv Locally Removed           833 
+ shared-memory-service.bsh Locally Removed           833 
+
+Directory modules/hasim/util/platform-services
+ platform-services-null-mem.awb Locally Removed           833 
+ starter-service/          Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/starter-service
+ starter-service.awb       Locally Removed           833 
+ starter-service.bsv       Locally Removed           833 
+ starter-service.bsh       Locally Removed           833 
+
+Directory modules/hasim/util/platform-services
+ platform-services-null-mem.bsv Locally Removed           833 
+ front-panel-service/      Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/front-panel-service
+ front-panel-service.awb   Locally Removed           833 
+ front-panel-service.bsv   Locally Removed           833 
+ front-panel-service.bsh   Locally Removed           833 
+
+Directory modules/hasim/util/platform-services
+ platform-services-null.awb Locally Removed           833 
+ platform-services-null.bsv Locally Removed           833 
+ common-services/          Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/common-services
+ common-services-standard.awb Locally Removed           833 
+ common-services-standard.bsv Locally Removed           833 
+ common-services-standard.bsh Locally Removed           833 
+ dynamic-parameters-service/ Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/common-services/dynamic-parameters-service
+ dynamic-parameters-local.bsv Locally Removed           833 
+ dynamic-parameters-service.awb Locally Removed           833 
+ dynamic-parameters-service.bsv Locally Removed           833 
+ dynamic-parameters-service.bsh Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/common-services
+ common-services-standard.dic Locally Removed           833 
+ debug-scan-service/       Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/common-services/debug-scan-service
+ debug-scan-service.bsv    Locally Removed           833 
+ debug-scan-service.bsh    Locally Removed           833 
+ debug-scan-local.bsv      Locally Removed           833 
+ debug-scan-service.awb    Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/common-services
+ assertions-service/       Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/common-services/assertions-service
+ assertions-service.awb    Locally Removed           833 
+ assertions-service.bsv    Locally Removed           833 
+ assertions-service.bsh    Locally Removed           833 
+ assertions-local.bsv      Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/common-services
+ stats-service/            Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/common-services/stats-service
+ stats-local.bsv           Locally Removed           833 
+ stats-service.awb         Locally Removed           833 
+ stats-service.bsv         Locally Removed           833 
+ stats-service.bsh         Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/common-services
+ streams-service/          Locally Removed           833 
+
+Directory modules/hasim/util/platform-services/common-services/streams-service
+ streams-service.awb       Locally Removed           833 
+ streams-service.bsv       Locally Removed           833 
+ streams-service.bsh       Locally Removed           833 
+
+Directory modules/hasim/util/platform-services
+ platform-services-standard.awb Locally Removed           833 
+ platform-services-standard.bsv Locally Removed           833 
+
+Directory modules/hasim/util
+ smart-synthesis-boundaries/ Locally Removed           833 
+
+Directory modules/hasim/util/smart-synthesis-boundaries
+ with-connections.bsv      Locally Removed           833 
+ module-context/           Locally Removed           833 
+
+Directory modules/hasim/util/smart-synthesis-boundaries/module-context
+ with-connections.bsv      Locally Removed           833 
+ bury-connections.bsv      Locally Removed           833 
+ smart-synth-boundaries.awb Locally Removed           833 
+ expose-connections.bsv    Locally Removed           833 
+
+Directory modules/hasim/util/smart-synthesis-boundaries
+ bury-connections.bsv      Locally Removed           833 
+ smart-synth-boundaries.awb Locally Removed           833 
+ expose-connections.bsv    Locally Removed           833 
+
+Directory modules/bluespec
+ system/                   Locally Removed           833 
+
+Directory modules/bluespec/system
+ demos/                    Locally Removed           833 
+
+Directory modules/bluespec/system/demos
+ counter/                  Locally Removed           833 
+
+Directory modules/bluespec/system/demos/counter
+ mkCounter.bsv             Locally Removed           833 
+ counter_system.txt        Locally Removed           833 
+ counter-system.cpp        Locally Removed           833 
+ counter-system.h          Locally Removed           833 
+ counter_system.awb        Locally Removed           833 
+ System.bsv                Locally Removed           833 
+
+Directory modules/bluespec/system/demos
+ channel-integrity-test/   Locally Removed           833 
+
+Directory modules/bluespec/system/demos/channel-integrity-test
+ chan-test.bsv             Locally Removed           833 
+ chan-test-server.h        Locally Removed           833 
+ chan-test-16.awb          Locally Removed           833 
+ chan-test.rrr             Locally Removed           833 
+ chan-test-16.cpp          Locally Removed           833 
+ chan-test.awb             Locally Removed           833 
+ chan-test-server-16.cpp   Locally Removed           833 
+ chan-test-16.h            Locally Removed           833 
+ chan-test-16.bsv          Locally Removed           833 
+ chan-test-server-16.h     Locally Removed           833 
+ chan-test.txt             Locally Removed           833 
+ chan-test.cpp             Locally Removed           833 
+ chan-test-server.cpp      Locally Removed           833 
+ chan-test.h               Locally Removed           833 
+ chan-test-16.rrr          Locally Removed           833 
+
+Directory modules/bluespec/system/demos
+ fir-filter/               Locally Removed           833 
+
+Directory modules/bluespec/system/demos/fir-filter
+ sw-only/                  Locally Removed           833 
+
+Directory modules/bluespec/system/demos/fir-filter/sw-only
+ fixed.h                   Locally Removed           833 
+ fir-filter-system.cpp     Locally Removed           833 
+ fir-filter-system.h       Locally Removed           833 
+ fir-filter-system.awb     Locally Removed           833 
+ fir-filter-system.bsv     Locally Removed           833 
+
+Directory modules/bluespec/system/demos/fir-filter
+ hw-only/                  Locally Removed           833 
+
+Directory modules/bluespec/system/demos/fir-filter/hw-only
+ fir.in                    Locally Removed           833 
+ fir-filter-system.cpp     Locally Removed           833 
+ fir-filter-system.h       Locally Removed           833 
+ fir-filter-system.awb     Locally Removed           833 
+ fir-filter-system.bsv     Locally Removed           833 
+
+Directory modules/bluespec/system/demos
+ hello/                    Locally Removed           833 
+
+Directory modules/bluespec/system/demos/hello
+ hello.txt                 Locally Removed           833 
+ hello.cpp                 Locally Removed           833 
+ hello_streams_messages.dic Locally Removed           833 
+ hello.h                   Locally Removed           833 
+ hello.awb                 Locally Removed           833 
+ hello_streams_id.dic      Locally Removed           833 
+ hello.bsv                 Locally Removed           833 
+
+Directory modules/bluespec/system/demos
+ rrrtest/                  Locally Removed           833 
+
+Directory modules/bluespec/system/demos/rrrtest
+ rrrtest-server.h          Locally Removed           833 
+ rrrtest.txt               Locally Removed           833 
+ rrrtest.cpp               Locally Removed           833 
+ rrrtest.rrr               Locally Removed           833 
+ rrrtest-server.cpp        Locally Removed           833 
+ rrrtest.h                 Locally Removed           833 
+ rrrtest.awb               Locally Removed           833 
+ rrrtest.bsv               Locally Removed           833 
+
+Directory modules/bluespec/system/demos
+ multiplier/               Locally Removed           833 
+
+Directory modules/bluespec/system/demos/multiplier
+ Multiplier.bsv            Locally Removed           833 
+ multiplier-system.txt     Locally Removed           833 
+ multiplier-system.cpp     Locally Removed           833 
+ System.bsv                Locally Removed           833 
+ mult_system.awb           Locally Removed           833 
+ multiplier-system.h       Locally Removed           833 
+
+Directory modules/bluespec/system/demos
+ shmem-test/               Locally Removed           833 
+
+Directory modules/bluespec/system/demos/shmem-test
+ shmem-test.bsv            Locally Removed           833 
+ shmem-test.cpp            Locally Removed           833 
+ shmem-test.rrr            Locally Removed           833 
+ shmem-test.h              Locally Removed           833 
+ shmem-test.awb            Locally Removed           833 
+
+Directory modules/bluespec/system/demos
+ debuggers/                Locally Removed           833 
+
+Directory modules/bluespec/system/demos/debuggers
+ platform-debugger.bsv     Locally Removed           833 
+ platform-debugger.dic     Locally Removed           833 
+ platform-debugger.txt     Locally Removed           833 
+ platform-debugger.cpp     Locally Removed           833 
+ platform-debugger.rrr     Locally Removed           833 
+ platform-debugger.h       Locally Removed           833 
+ platform-debugger.awb     Locally Removed           833 
+
+Directory modules/bluespec/system/demos
+ switch2led/               Locally Removed           833 
+
+Directory modules/bluespec/system/demos/switch2led
+ switch2led-system.h       Locally Removed           833 
+ switch2led_system.awb     Locally Removed           833 
+ switch2led_system.txt     Locally Removed           833 
+ switch2led-system.cpp     Locally Removed           833 
+ System.bsv                Locally Removed           833 
+
+Directory modules/bluespec/system/demos
+ template/                 Locally Removed           833 
+
+Directory modules/bluespec/system/demos/template
+ hybrid_application.txt    Locally Removed           833 
+ hybrid_application.cpp    Locally Removed           833 
+ hybrid_application_streams_messages.dic Locally Removed           833 
+ hybrid_application.h      Locally Removed           833 
+ hybrid_application.awb    Locally Removed           833 
+ hybrid_application_streams_id.dic Locally Removed           833 
+ hybrid_application.bsv    Locally Removed           833 
+
+Directory modules/bluespec/system/demos
+ devtest/                  Locally Removed           833 
+
+Directory modules/bluespec/system/demos/devtest
+ devtest.cpp               Locally Removed           833 
+ devtest-streams-id.dic    Locally Removed           833 
+ devtest.h                 Locally Removed           833 
+ devtest.awb               Locally Removed           833 
+ devtest.bsv               Locally Removed           833 
+ devtest.txt               Locally Removed           833 
+ devtest-streams-messages.dic Locally Removed           833 
+
+Directory modules/bluespec
+ common/                   Locally Removed           833 
+
+Directory modules/bluespec/common
+ project-common-hybrid.awb Locally Removed           833 
+ soft_clock/               Locally Removed           833 
+
+Directory modules/bluespec/common/soft_clock
+ basic-clock.awb           Locally Removed           833 
+ basic-clock.bsv           Locally Removed           833 
+ basic-clock-lib.awb       Locally Removed           833 
+ basic-clock-lib.bsv       Locally Removed           833 
+
+Directory modules/bluespec/common
+ base/                     Locally Removed           833 
+
+Directory modules/bluespec/common/base
+ bluespec_base.awb         Locally Removed           833 
+ bluespec_common.prj       Locally Removed           833 
+
+Directory modules/bluespec/common
+ null/                     Locally Removed           833 
+
+Directory modules/bluespec/common/null
+ bluespec_null.awb         Locally Removed           833 
+
+Directory modules/bluespec/common
+ soft_connections/         Locally Removed           833 
+
+Directory modules/bluespec/common/soft_connections
+ Connected_Module.bsv      Locally Removed           833 
+ alg/                      Locally Removed           833 
+
+Directory modules/bluespec/common/soft_connections/alg
+ typed/                    Locally Removed           833 
+
+Directory modules/bluespec/common/soft_connections/alg/typed
+ ConnectionHelper.bsv      Locally Removed           833 
+ soft_connections_alg.awb  Locally Removed           833 
+ ConnectionAlg.bsv         Locally Removed           833 
+
+Directory modules/bluespec/common/soft_connections
+ soft_connections.awb      Locally Removed           833 
+ token-ring.bsv            Locally Removed           833 
+ module-context/           Locally Removed           833 
+
+Directory modules/bluespec/common/soft_connections/module-context
+ connection-matching.bsv   Locally Removed           833 
+ transmittable.bsv         Locally Removed           833 
+ alg/                      Locally Removed           833 
+
+Directory modules/bluespec/common/soft_connections/module-context/alg
+ connect-stations-tree.bsv Locally Removed           833 
+ connect-top-level.bsv     Locally Removed           833 
+ connect-multicasts.bsv    Locally Removed           833 
+ connection-alg-module-context.awb Locally Removed           833 
+
+Directory modules/bluespec/common/soft_connections/module-context
+ connection-helper.bsv     Locally Removed           833 
+ connection-shared-interconnect.bsv Locally Removed           833 
+ token-ring.bsv            Locally Removed           833 
+ connection-backwards-compat.bsv Locally Removed           833 
+ soft-connections-module-context.awb Locally Removed           833 
+ connection-context.bsv    Locally Removed           833 
+ connections.bsv           Locally Removed           833 
+ connected-module.bsv      Locally Removed           833 
+
+Directory modules/bluespec/common/soft_connections
+ soft-service/             Locally Removed           833 
+
+Directory modules/bluespec/common/soft_connections/soft-service
+ connection-matching.bsv   Locally Removed           833 
+ connected-common.bsv      Locally Removed           833 
+ connection-shared-interconnect.bsv Locally Removed           833 
+ bury-connections.bsv      Locally Removed           833 
+ soft-connections-common-module-context.awb Locally Removed           833 
+ soft_connections_backward_deps.bsh Locally Removed           833 
+ transmittable.bsv         Locally Removed           833 
+ alg/                      Locally Removed           833 
+
+Directory modules/bluespec/common/soft_connections/soft-service/alg
+ connect_stations_tree.bsv Locally Removed           833 
+ connect_multicasts.bsv    Locally Removed           833 
+ connect_top_level.bsv     Locally Removed           833 
+ connection-alg-module-context.awb Locally Removed           833 
+ expose_connections.bsv    Locally Removed           833 
+
+Directory modules/bluespec/common/soft_connections/soft-service
+ connection-helper.bsv     Locally Removed           833 
+ with_connections.bsv      Locally Removed           833 
+ token-ring.bsv            Locally Removed           833 
+ soft-connections-module-context.awb Locally Removed           833 
+ connection-backwards-compat.bsv Locally Removed           833 
+ connection-context.bsv    Locally Removed           833 
+ connections.bsv           Locally Removed           833 
+ connected-module.bsv      Locally Removed           833 
+
+Directory modules/bluespec/common/soft_connections
+ Connections.bsv           Locally Removed           833 
+ soft_connections_lib.awb  Locally Removed           833 
+
+Directory modules/bluespec/common
+ soft_services/            Locally Removed           833 
+
+Directory modules/bluespec/common/soft_services
+ smart_synth_boundaries.bsv Locally Removed           833 
+ softServicesLib.bsv       Locally Removed           833 
+ soft_services_deps.awb    Locally Removed           833 
+ smart_synthesis_boundaries.bsv Locally Removed           833 
+ soft_services_sc_deps.bsh Locally Removed           833 
+ soft_services_SConn_SClock/ Locally Removed           833 
+
+Directory modules/bluespec/common/soft_services/soft_services_SConn_SClock
+ soft_service_impl_deps.bsh Locally Removed           833 
+ soft_services.awb         Locally Removed           833 
+ soft_service_lib_deps.bsh Locally Removed           833 
+ soft_services_defs.bsv    Locally Removed           833 
+ soft_services_deps_small.awb Locally Removed           833 
+ soft_services_lib_deps.bsh Locally Removed           833 
+
+Directory modules/bluespec/common/soft_services
+ soft_services_lib.awb     Locally Removed           833 
+ soft_services_SConn/      Locally Removed           833 
+
+Directory modules/bluespec/common/soft_services/soft_services_SConn
+ soft_services_soft_conn.bsv Locally Removed           833 
+ soft_service_impl_deps.bsh Locally Removed           833 
+ soft_service_lib_deps.bsh Locally Removed           833 
+ soft_services_deps_small.awb Locally Removed           833 
+ soft_services_small.awb   Locally Removed           833 
+
+Directory modules/bluespec
+ util/                     Locally Removed           833 
+
+Directory modules/bluespec/util
+ physical-interconnects/   Locally Removed           833 
+
+Directory modules/bluespec/util/physical-interconnects
+ shared-tree/              Locally Removed           833 
+
+Directory modules/bluespec/util/physical-interconnects/shared-tree
+ tree-routing-table.bsv    Locally Removed           833 
+ tree-helper.bsv           Locally Removed           833 
+ tree-interface.bsv        Locally Removed           833 
+ tree-station.bsv          Locally Removed           833 
+ shared-tree.awb           Locally Removed           833 
+
+Directory modules
+ system/                   Locally Removed           833 
+
+Directory modules/system
+ afu_system/               Locally Removed           833 
+
+Directory modules/system/afu_system
+ pass-through/             Locally Removed           833 
+
+Directory modules/system/afu_system/pass-through
+ afu_pass_through_alg.awb  Locally Removed           833 
+ afu_pass_through_alg.bsv  Locally Removed           833 
+
+Directory modules/system/afu_system
+ afu_system.awb            Locally Removed           833 
+ afu_system.bsv            Locally Removed           833 
+ add1/                     Locally Removed           833 
+
+Directory modules/system/afu_system/add1
+ afu_add1_alg.awb          Locally Removed           833 
+ afu_add1_alg.bsv          Locally Removed           833 
+
+Directory modules/system
+ test/                     Locally Removed           833 
+
+Directory modules/system/test
+ alu_test/                 Locally Removed           833 
+
+Directory modules/system/test/alu_test
+ alu-test-streamid.dic     Locally Removed           833 
+ alu-test.awb              Locally Removed           833 
+ alu-test.bsv              Locally Removed           833 
+ alu-test-streams.dic      Locally Removed           833 
+
+Directory modules/system/test
+ bram_test/                Locally Removed           833 
+
+Directory modules/system/test/bram_test
+ bram-test.awb             Locally Removed           833 
+ bram-test.bsv             Locally Removed           833 
+ bram-test.dic             Locally Removed           833 
+
+Directory modules/system/test
+ fp_test/                  Locally Removed           833 
+
+Directory modules/system/test/fp_test
+ fp-test-streamid.dic      Locally Removed           833 
+ fp-test.awb               Locally Removed           833 
+ fp-test.bsv               Locally Removed           833 
+ fp-test-streams.dic       Locally Removed           833 
+
+Directory modules/system/test
+ clock_test/               Locally Removed           833 
+
+Directory modules/system/test/clock_test
+ clock.rrr                 Locally Removed           833 
+ clock_test.h              Locally Removed           833 
+ clock_function_pipeline/  Locally Removed           833 
+
+Directory modules/system/test/clock_test/clock_function_pipeline
+ PipelineMem.dic           Locally Removed           833 
+ synth_pipeline/           Locally Removed           833 
+
+Directory modules/system/test/clock_test/clock_function_pipeline/synth_pipeline
+ PipelineMem.dic           Locally Removed           833 
+ stage1_mem.awb            Locally Removed           833 
+ stage1_mem.bsv            Locally Removed           833 
+ stage1.awb                Locally Removed           833 
+ pipeline.awb              Locally Removed           833 
+ stage1.bsv                Locally Removed           833 
+ stage2.awb                Locally Removed           833 
+ pipeline.bsv              Locally Removed           833 
+ stage2.bsv                Locally Removed           833 
+
+Directory modules/system/test/clock_test/clock_function_pipeline
+ pipeline_mem.awb          Locally Removed           833 
+ pipeline_mem.bsv          Locally Removed           833 
+ pipeline.awb              Locally Removed           833 
+ pipeline.bsv              Locally Removed           833 
+
+Directory modules/system/test/clock_test
+ clock_test_system.awb     Locally Removed           833 
+ clock_test.cpp            Locally Removed           833 
+ System.bsv                Locally Removed           833 
+
+Directory modules/system/test
+ interconnect_test/        Locally Removed           833 
+
+Directory modules/system/test/interconnect_test
+ interconnect-test.awb     Locally Removed           833 
+ interconnect-test.bsv     Locally Removed           833 
+ interconnect-test-streams.dic Locally Removed           833 
+ interconnect-test-streamid.dic Locally Removed           833 
+
+Directory modules/system/test
+ shared_pipeline_test/     Locally Removed           833 
+
+Directory modules/system/test/shared_pipeline_test
+ private-rule/             Locally Removed           833 
+
+Directory modules/system/test/shared_pipeline_test/private-rule
+ pipeline-private-rule.awb Locally Removed           833 
+ pipeline-private-rule.bsv Locally Removed           833 
+
+Directory modules/system/test/shared_pipeline_test
+ shared-pipeline-test.bsv  Locally Removed           833 
+ duplicate-modules/        Locally Removed           833 
+
+Directory modules/system/test/shared_pipeline_test/duplicate-modules
+ pipeline-duplicate-modules.awb Locally Removed           833 
+ pipeline-duplicate-modules.bsv Locally Removed           833 
+
+Directory modules/system/test/shared_pipeline_test
+ shared-tree/              Locally Removed           833 
+
+Directory modules/system/test/shared_pipeline_test/shared-tree
+ pipeline-shared-tree.bsv  Locally Removed           833 
+ pipeline-shared-tree.awb  Locally Removed           833 
+
+Directory modules/system/test/shared_pipeline_test
+ shared-pipeline-test.dic  Locally Removed           833 
+ stage-ctrl/               Locally Removed           833 
+
+Directory modules/system/test/shared_pipeline_test/stage-ctrl
+ pipeline-stage-ctrl.awb   Locally Removed           833 
+ pipeline-stage-ctrl.bsv   Locally Removed           833 
+ stage-controller.bsv      Locally Removed           833 
+
+Directory modules/system/test/shared_pipeline_test
+ common/                   Locally Removed           833 
+
+Directory modules/system/test/shared_pipeline_test/common
+ pipetest-common.awb       Locally Removed           833 
+ pipetest-common.bsv       Locally Removed           833 
+
+Directory modules/system/test/shared_pipeline_test
+ shared-rule/              Locally Removed           833 
+
+Directory modules/system/test/shared_pipeline_test/shared-rule
+ pipeline-shared-rule.awb  Locally Removed           833 
+ pipeline-shared-rule.bsv  Locally Removed           833 
+
+Directory modules/system/test/shared_pipeline_test
+ shared-pipeline-test.awb  Locally Removed           833 
+
+Directory modules/system/test
+ mem_test/                 Locally Removed           833 
+
+Directory modules/system/test/mem_test
+ mem-test.awb              Locally Removed           833 
+ mem-test.bsv              Locally Removed           833 
+ mem-test.dic              Locally Removed           833 
+
+Directory modules/system
+ dme_system/               Locally Removed           833 
+
+Directory modules/system/dme_system
+ dme_system.awb            Locally Removed           833 
+ dme_system.bsv            Locally Removed           833 
+ no-afu/                   Locally Removed           833 
+
+Directory modules/system/dme_system/no-afu
+ dme_no_afu.awb            Locally Removed           833 
+ dme_no_afu.bsv            Locally Removed           833 
+
+Directory modules/system
+ traffic_light_system/     Locally Removed           833 
+
+Directory modules/system/traffic_light_system
+ traffic_light_system.awb  Locally Removed           833 
+ traffic_light_system.txt  Locally Removed           833 
+ hasim_traffic_light_function/ Locally Removed           833 
+
+Directory modules/system/traffic_light_system/hasim_traffic_light_function
+ hasim_traffic_light_function.awb Locally Removed           833 
+ TL0.bsv                   Locally Removed           833 
+ hasim_traffic_light_function_synth.awb Locally Removed           833 
+
+Directory modules/system/traffic_light_system
+ System.bsv                Locally Removed           833 
+
+Directory modules/system
+ mulitplier_system/        Locally Removed           833 
+
+Directory modules/system/mulitplier_system
+ multiplier_system.awb     Locally Removed           833 
+ multiplier_system.bsv     Locally Removed           833 
+ multiplier_system.txt     Locally Removed           833 
+
+Directory modules/system
+ cpu_system/               Locally Removed           833 
+
+Directory modules/system/cpu_system
+ System.h                  Locally Removed           833 
+ System.bsv                Locally Removed           833 
+ hasim_system.awb          Locally Removed           833 
+
+Directory modules/system
+ switch_to_led_system/     Locally Removed           833 
+
+Directory modules/system/switch_to_led_system
+ switch_to_led_system.awb  Locally Removed           833 
+ switch_to_led_system.bsv  Locally Removed           833 
+ switch_to_led_system.txt  Locally Removed           833 
+ calculation4x4/           Locally Removed           833 
+
+Directory modules/system/switch_to_led_system/calculation4x4
+ adder/                    Locally Removed           833 
+
+Directory modules/system/switch_to_led_system/calculation4x4/adder
+ adder4x4.awb              Locally Removed           833 
+ adder4x4.bsv              Locally Removed           833 
+
+Directory modules/system/switch_to_led_system/calculation4x4
+ square/                   Locally Removed           833 
+
+Directory modules/system/switch_to_led_system/calculation4x4/square
+ square4x4.awb             Locally Removed           833 
+ square4x4.bsv             Locally Removed           833 
+
+Directory modules/system/switch_to_led_system/calculation4x4
+ multiplier/               Locally Removed           833 
+
+Directory modules/system/switch_to_led_system/calculation4x4/multiplier
+ multiplier4x4.bsv         Locally Removed           833 
+ multiplier4x4.awb         Locally Removed           833 
+
+Directory modules/system/switch_to_led_system/calculation4x4
+ echo/                     Locally Removed           833 
+
+Directory modules/system/switch_to_led_system/calculation4x4/echo
+ echo4x4.awb               Locally Removed           833 
+ echo4x4.bsv               Locally Removed           833 
+
+
+* Removing modules and APMs from hasim that now live in leap, leap-debug, or
+leap-examples.
+* At this stage, file names and UnionDir paths are unchanged for modules. Some
+top-level APMs in leap-examples live in a cleaner directory structure, but it is
+always safe to move top-level APMs.
+* If this stage causes no problems then the next stage is to remove
+hasim-configure and friends and make HAsim-type models invoke leap-configure.
+
+Michael P.

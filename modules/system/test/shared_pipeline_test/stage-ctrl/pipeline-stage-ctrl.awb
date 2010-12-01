@@ -1,8 +1,0 @@
-%name Stage Controller Pipeline Test
-%desc A realistic pipeline stage controller for each stage.
-%provides pipeline_test
-
-%attributes hybrid pipetest
-
-%public stage-controller.bsv
-%public pipeline-stage-ctrl.bsv

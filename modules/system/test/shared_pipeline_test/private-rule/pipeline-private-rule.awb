@@ -1,7 +1,0 @@
-%name Private Rule Pipeline Test
-%desc Shared pipeline where each stage has its own rule.
-%provides pipeline_test
-
-%attributes hybrid pipetest
-
-%public pipeline-private-rule.bsv

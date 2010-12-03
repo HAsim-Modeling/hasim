@@ -73,7 +73,7 @@ if (! defined($group)) {
 
 chdir($dstdir) or ErrorExit("Failed to cd to $dstdir");
 
-mkdir('hasim_debug') or ErrorExit("Failed to make 'hasim_debug' directory");
+mkdir('leap_debug') or ErrorExit("Failed to make 'leap_debug' directory");
 
 # Set up benchmark for non-null feeders
 my $context = 0;
@@ -160,7 +160,7 @@ if ($feeder eq 'm5') {
     system("(cd $srcdir; tar cf - ./m5_configs) | tar xf -");
 }
 
-system("cp -f ${srcdir}/run.bmark run");
+system("cp -f ${srcdir}/run-hasim.bmark run");
 chmod(0755, "run");
 
 exit(0);

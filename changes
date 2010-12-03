@@ -25000,3 +25000,19 @@ Directory config/pm/hasim/submodels/common
 * Apparently these files were not set for deletion, but the directory they were in was still set for deletion.
 
 Michael P.
+
+----------
+mpellaue    Date: Fri Dec  3 15:13:44 EST 2010  CSN: CSN-hasim-836
+                  Fri Dec  3 20:13:44 UTC 2010
+
+
+Directory tools/scripts/bmark
+ run.bmark                 Locally Removed           835 
+ setup-hasim-bmark         Locally Added               - 
+ setup-bmark               Locally Removed           835 
+ run-hasim.bmark           Locally Added               - 
+
+
+Rename HAsim benchmark setup/run files to be HAsim specific.
+
+Michael P.

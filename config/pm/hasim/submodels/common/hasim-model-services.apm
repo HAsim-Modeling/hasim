@@ -3,11 +3,14 @@
 SaveParameters=0
 Description=Services useful for every HAsim model.
 File=hasim-model-services
-Version=2.1
+Version=2.2
 Name=Default HAsim Model Services
 Type=HAsim
 Class=Asim::Model
-DefaultBenchmark=0
+DefaultBenchmark=
+RootName=Model Services
+RootProvides=hasim_model_services
+DefaultRunOpts=
 
 [Model]
 DefaultAttributes=hasim
@@ -24,7 +27,6 @@ Packagehint=hasim
 [Model Services/Requires]
 events_service=RRR-based Events Service
 commands_service=RRR-based Commands Service
-
 
 [RRR-based Commands Service]
 File=modules/hasim/util/model-services/commands-service/commands-service.awb

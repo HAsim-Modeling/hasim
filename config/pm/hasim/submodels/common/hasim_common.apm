@@ -3,67 +3,35 @@
 SaveParameters=0
 Description=HAsim Common Library as a submodel
 File=hasim_common
-Version=2.1
+Version=2.2
 Name=HAsim Common Default Configuration
 Type=HAsim
 Class=Asim::Model
+DefaultBenchmark=
+RootName=Default HAsim Common Library
+RootProvides=hasim_common
+DefaultRunOpts=
 
 [Model]
 DefaultAttributes=hasim
-model=Hasim Common Library
+model=Default HAsim Common Library
+
+
+
+
+
+
+
 
 [Hasim Common Library]
-File=modules/hasim/util/common/hasim-common.awb
-Packagehint=hasim
 
 [Hasim Common Library/Requires]
-smart_synth_boundaries=Smart Synthesis Boundaries
-soft_connections=Soft Connections
-platform_interface=Hasim Platform Interface
-hasim_modellib=HAsim Modeling Library
 
-[Smart Synthesis Boundaries]
-File=modules/hasim/util/smart-synthesis-boundaries/smart-synth-boundaries.awb
-Packagehint=hasim
 
-[Soft Connections]
-File=modules/bluespec/common/soft_connections/soft_connections.awb
-Packagehint=hasim
 
-[Soft Connections/Requires]
-soft_connections_alg=Soft Connection Algorithm
 
-[Soft Connection Algorithm]
-File=modules/bluespec/common/soft_connections/alg/typed/soft_connections_alg.awb
-Packagehint=hasim
 
-[Hasim Platform Interface]
-File=modules/hasim/util/platform-interface/platform-interface.awb
-Packagehint=hasim
 
-[Hasim Common Library]
+[Default HAsim Common Library]
 File=modules/hasim/util/common/hasim-common.awb
 Packagehint=hasim
-
-[Hasim Common Library/Requires]
-smart_synth_boundaries=Smart Synthesis Boundaries
-soft_connections=Soft Connections
-platform_interface=Hasim Platform Interface
-hasim_modellib=HAsim Modeling Library
-
-[Soft Connections/Params]
-CON_CWIDTH=64
-
-[HAsim Modeling Library]
-File=modules/hasim/util/modellib/hasim-modellib.awb
-Packagehint=hasim
-
-[Hasim Platform Interface/Params]
-SCRATCHPAD_STD_PVT_CACHE_ENTRIES=8192
-
-[Cache Modeling Algorithms]
-File=modules/hasim/timing-models/caches/cache-algorithms/cache-algorithms.awb
-Packagehint=hasim-models
-
-[HAsim Modeling Library/Requires]
-hasim_cache_algorithms=Cache Modeling Algorithms

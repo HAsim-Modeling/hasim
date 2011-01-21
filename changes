@@ -25016,3 +25016,15 @@ Directory tools/scripts/bmark
 Rename HAsim benchmark setup/run files to be HAsim specific.
 
 Michael P.
+
+----------
+mpellaue    Date: Fri Jan 21 12:43:46 EST 2011  CSN: CSN-hasim-837
+                  Fri Jan 21 17:43:46 UTC 2011
+
+
+Directory config/pm/hasim/submodels/common
+ hasim_common.apm          Locally Modified          836 
+ hasim-model-services.apm  Locally Modified          836 
+
+
+* Update .apm files to v2.2 using "awb-shell update model"

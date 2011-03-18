@@ -1,3 +1,0 @@
-hello                    config/pm/bluespec/demos/hello/hello_hybrid_exe.apm
-traffic_light_nosynth    config/pm/hasim/demos/traffic_light/traffic_light_exe_nosynth.apm    --bluesim="-m 50000"
-traffic_light_synth      config/pm/hasim/demos/traffic_light/traffic_light_exe_synth.apm      --bluesim="-m 50000"

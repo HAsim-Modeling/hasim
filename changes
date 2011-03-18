@@ -25028,3 +25028,38 @@ Directory config/pm/hasim/submodels/common
 
 
 * Update .apm files to v2.2 using "awb-shell update model"
+
+----------
+mcadler     Date: Thu Mar 17 20:37:21 EDT 2011  CSN: CSN-hasim-838
+                  Fri Mar 18 00:37:21 UTC 2011
+
+
+Directory experiments/hasim
+ regression/               Locally Removed           837 
+
+Directory experiments/hasim/regression
+ regression.models         Locally Removed           837 
+ regression.benchmarks     Locally Removed           837 
+
+Directory experiments/hasim
+ demos/                    Locally Removed           837 
+
+Directory experiments/hasim/demos
+ demos.benchmarks          Locally Removed           837 
+ demos.models              Locally Removed           837 
+
+Directory experiments/hasim
+ quick/                    Locally Removed           837 
+
+Directory experiments/hasim/quick
+ quick.benchmarks          Locally Removed           837 
+ quick.models              Locally Removed           837 
+
+Directory experiments/hasim
+ nightly/                  Locally Removed           837 
+
+Directory experiments/hasim/nightly
+ nightly.models            Locally Removed           837 
+ nightly.benchmarks        Locally Removed           837 
+
+Remove experiments for models moved to leap package.

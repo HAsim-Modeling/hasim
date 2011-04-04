@@ -2,12 +2,18 @@
 #
 # "m5 test.py"
 
+import os
+import optparse
+import sys
+from os.path import join as joinpath
+
 import m5
+from m5.defines import buildEnv
 from m5.objects import *
-import os, optparse, sys
-m5.AddToPath('./common')
+from m5.util import addToPath, fatal
+
+addToPath('./common')
 import Simulation
-from Caches import *
 
 # Get paths we might need.
 config_root = os.path.dirname(os.path.abspath(__file__))
@@ -21,18 +27,10 @@ parser.add_option("-c", "--cmd",
                   default="",
                   help="The binary to run in syscall emulation mode.")
 parser.add_option("-o", "--options", default="",
-                  help="The options to pass to the binary, use \" \" around the entire\
-                        string.")
-parser.add_option("-i", "--input", default="",
-                  help="Read stdin from a file.")
-parser.add_option("--output", default="",
-                  help="Redirect stdout to a file.")
-parser.add_option("--errout", default="",
-                  help="Redirect stdout to a file.")
-parser.add_option("-S", "--simpoint", action="store_true", default=False,
-                   help="""Use workload simpoints as an instruction offset for
---checkpoint-restore or --take-checkpoint.""")
-
+                  help='The options to pass to the binary, use " " around the entire string')
+parser.add_option("-i", "--input", default="", help="Read stdin from a file.")
+parser.add_option("--output", default="", help="Redirect stdout to a file.")
+parser.add_option("--errout", default="", help="Redirect stderr to a file.")
 
 execfile(os.path.join(config_root, "common", "Options.py"))
 
@@ -42,7 +40,7 @@ if args:
     print "Error: script doesn't take any positional arguments"
     sys.exit(1)
 
-if options.detailed:
+if options.detailed or options.inorder:
     #check for SMT workload
     workloads = options.cmd.split(';')
     if len(workloads) > 1:
@@ -74,9 +72,10 @@ if options.detailed:
 
 (CPUClass, test_mem_mode, FutureClass) = Simulation.setCPUClass(options)
 
-CPUClass.clock = '2GHz'
-
 np = options.num_cpus
+
+CPUClass.clock = '2GHz'
+CPUClass.numThreads = np
 
 system = System(cpu = [CPUClass(cpu_id=i) for i in xrange(np)],
                 physmem = PhysicalMemory(range=AddrRange(options.physmem)),

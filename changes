@@ -25081,3 +25081,13 @@ Directory tools/scripts/bmark/m5_configs
  se.py                     Locally Modified          838 
 
 Update workload control scripts for latest m5.
+
+----------
+mcadler     Date: Mon Apr  4 18:33:17 EDT 2011  CSN: CSN-hasim-840
+                  Mon Apr  4 22:33:17 UTC 2011
+
+
+Directory admin/packages
+ hasim                     Locally Modified          839 
+
+hasim depends on leap

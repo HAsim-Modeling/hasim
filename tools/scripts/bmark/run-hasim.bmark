@@ -17,6 +17,7 @@ $^W = 1;
 
 sub ExecModel($);
 sub Exec($$);
+sub ExecRead($$);
 sub CompareOutput();
 sub ReadConfig($$);
 
@@ -33,6 +34,7 @@ my %config;
 
 ReadConfig("config/env.sh", 1);
 ReadConfig("$config{modelDir}/config/env.sh", 1);
+ReadConfig("$config{modelDir}/config/fpga.sh", 0);
 ReadConfig("$config{modelDir}/config/signature.sh", 0);
 
 ##
@@ -275,6 +277,9 @@ if (-f "$config{workload}.stats") {
     rename("$config{workload}.stats", "$config{workload}.stats.old");
 }
 
+my $fpga_dev_id = undef;
+my $fpga_dev = undef;
+
 if ($mType == $MODEL_FPGA) {
     if (! defined($printCycle)) {
         # User didn't specify a cycle printing interval.  Pick one more reasonable
@@ -297,7 +302,9 @@ if ($mType == $MODEL_FPGA) {
         }
 
         if (! $noReserve) {
-            Exec("hasim-fpga-ctrl --reserve", "Failed to reserve FPGA");
+            my $res = "--reserve";
+            $res .= "=$config{FPGA}" if (exists($config{FPGA}));
+            $fpga_dev_id = ExecRead("leap-fpga-ctrl ${res}", "Failed to reserve FPGA");
         }
 
         # Does a download script exist to program the FPGA?
@@ -305,8 +312,8 @@ if ($mType == $MODEL_FPGA) {
 
         # Is the FPGA already programmed with the correct bit file?
         if (exists($config{signature})) {
-            my $curSignature = `hasim-fpga-ctrl --getsignature`;
-            chomp($curSignature);
+            my $curSignature = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getsignature",
+                                        "Failed to read code signature");
             if ($curSignature eq $config{signature}) {
                 print "FPGA is already programmed (signature match)...\n";
                 $needProgram = 0;
@@ -314,16 +321,22 @@ if ($mType == $MODEL_FPGA) {
         }
 
         if ($needProgram) {
-            Exec("hasim-fpga-ctrl --program", "Failed to enter FPGA programming mode");
+            Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --program", "Failed to enter FPGA programming mode");
             my $dir = `pwd`;
             chomp($dir);
             Exec("(cd $config{modelDir}; ./config/$config{model}.download ${dir}/FPGA_programming.log)", "Failed to program FPGA");
             if (exists($config{signature})) {
-                Exec("hasim-fpga-ctrl --setsignature=$config{signature}", "Failed to set FPGA bit image signature");
+                Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --setsignature=$config{signature}", "Failed to set FPGA bit image signature");
             }
         }
 
-        Exec("hasim-fpga-ctrl --activate", "Failed to activate FPGA or driver");
+        # Activate the FPGA.
+        Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --activate", "Failed to activate FPGA or driver");
+
+        # Get the name of the device allocated by leap-fpga-ctrl and pass it
+        # to the model.
+        $fpga_dev = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getconfig=dev", "Failed to query FPGA device configuration");
+        $cmd .= " --param FPGA_DEV_PATH=\"${fpga_dev}\"";
     }
 }
 
@@ -346,7 +359,7 @@ if (-f "$config{workload}.stats") {
 }
 
 if (($mType == $MODEL_FPGA) && ! $noProgram && ! $noReserve) {
-    Exec("hasim-fpga-ctrl --drop-reservation", "Failed to drop FPGA reservation");
+    Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --drop-reservation", "Failed to drop FPGA reservation");
 }
 
 if ($run_status != 0) {
@@ -362,8 +375,8 @@ sub ErrorExit($) {
 
     print STDERR "${msg}\n";
 
-    if (($mType == $MODEL_FPGA) && ! $noProgram && ! $noReserve) {
-        system("hasim-fpga-ctrl --drop-reservation");
+    if (($mType == $MODEL_FPGA) && ! $noProgram && ! $noReserve && defined($fpga_dev_id)) {
+        system("leap-fpga-ctrl --device-id=${fpga_dev_id} --drop-reservation");
     }
 
     exit(1);
@@ -470,6 +483,30 @@ sub Exec($$) {
     elsif (($? >> 8) != 0) {
         ErrorExit("${errmsg}");
     }
+}
+
+
+##
+## ExecRead --
+##   Same as Exec() but returns the output from stdout.
+##
+sub ExecRead($$) {
+    my $cmd = shift;
+    my $errmsg = shift;
+    
+    my $r = `$cmd`;
+    if ($? == -1) {
+        ErrorExit("Failed to execute $cmd: $!");
+    }
+    elsif ($? & 127) {
+        ErrorExit("Child died with signal " . ($? & 127) . ", " . (($? & 128) ? 'with' : 'without') . " coredump");
+    }
+    elsif (($? >> 8) != 0) {
+        ErrorExit("${errmsg}");
+    }
+
+    chomp($r);
+    return $r;
 }
 
 

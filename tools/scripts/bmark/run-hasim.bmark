@@ -303,7 +303,9 @@ if ($mType == $MODEL_FPGA) {
 
         if (! $noReserve) {
             my $res = "--reserve";
-            $res .= "=$config{FPGA}" if (exists($config{FPGA}));
+            if (exists($config{FPGA}) && ($config{FPGA} ne "DEFAULT")) {
+                $res .= "=$config{FPGA}";
+            }
             $fpga_dev_id = ExecRead("leap-fpga-ctrl ${res}", "Failed to reserve FPGA");
         }
 

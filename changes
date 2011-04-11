@@ -25102,3 +25102,13 @@ Directory tools/scripts/bmark
 
 Run script uses the new leap-fpga-ctrl interface that supports allocation
 among multiple FPGAs on a single host.
+
+----------
+mcadler     Date: Mon Apr 11 07:16:43 EDT 2011  CSN: CSN-hasim-842
+                  Mon Apr 11 11:16:43 UTC 2011
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          841 
+
+Note DEFAULT FPGA class.

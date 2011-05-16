@@ -12,7 +12,8 @@
 %private funcp-tlb-std.cpp
 
 %param FUNCP_TLB_LOGFILE_NAME "hasim_funcp_tlb.out" "Name of logfile for functional TLB cache"
+%param --global FUNCP_TLB_PVT_ENTRIES 1024 "Number of entries in functional private TLB cache"
 
-%param --global FUNCP_PVT_TLB_ENTRIES 1024 "Number of entries in functional private TLB cache"
+%param --dynamic FUNCP_TLB_PVT_CACHE_MODE  0  "0: write-back, 1: write-through, 2: write-no-allocate, 3: disabled"
 
 %param SYNTH_BOUNDARY mkFUNCP_CPU_TLBS "Name of synthesis boundary"

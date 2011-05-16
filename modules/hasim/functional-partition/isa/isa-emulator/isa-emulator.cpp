@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <fstream>
 
 #include "asim/syntax.h"
 #include "asim/mesg.h"
@@ -387,6 +388,105 @@ ISA_REGOP_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
         resp->SetMethodID(CMD_EMULATE_REGOP);
         resp->AppendUINT(dstVal.intReg, sizeof(dstVal));
         return resp;
+
+      default:
+        ASIMERROR("Unexpected command to ISA REGOP emulator");
+    }
+}
+
+
+// ========================================================================
+//
+// Debug logger.
+//
+// ========================================================================
+
+
+// TEMPORARY: cheat and assign client method IDs
+#define CMD_NOTE_INSTR 0
+
+// ===== service instantiation =====
+ISA_DP_DEBUG_SERVER_CLASS ISA_DP_DEBUG_SERVER_CLASS::instance;
+
+// constructor
+ISA_DP_DEBUG_SERVER_CLASS::ISA_DP_DEBUG_SERVER_CLASS()
+{
+    SetTraceableName("isa_dp_debug");
+
+    // instantiate stubs
+    serverStub = new ISA_DP_DEBUG_SERVER_STUB_CLASS(this);
+
+    char fmt[16];
+    sprintf(fmt, "0%dx", sizeof(ISA_VALUE) * 2);
+    fmt_regval = Format("0x", fmt);
+    fmt_inst = Format("0x", "08x");
+}
+
+// destructor
+ISA_DP_DEBUG_SERVER_CLASS::~ISA_DP_DEBUG_SERVER_CLASS()
+{
+    Cleanup();
+}
+
+// init
+void
+ISA_DP_DEBUG_SERVER_CLASS::Init(
+    PLATFORMS_MODULE p)
+{
+    parent = p;
+
+    logFile.open("leap_debug/hasim_isa_dp_rrr.out", ios::out | ios::trunc);
+}
+
+// uninit: override
+void
+ISA_DP_DEBUG_SERVER_CLASS::Uninit()
+{
+    logFile.close();
+
+    // cleanup
+    Cleanup();
+    
+    // chain
+    PLATFORMS_MODULE_CLASS::Uninit();
+}
+
+// cleanup
+void
+ISA_DP_DEBUG_SERVER_CLASS::Cleanup()
+{
+    // deallocate stubs
+    delete serverStub;
+}
+
+typedef UINT32 ISA_INSTRUCTION;
+
+// handle service request
+UMF_MESSAGE
+ISA_DP_DEBUG_SERVER_CLASS::Request(UMF_MESSAGE req)
+{
+    CONTEXT_ID ctx_id;
+    ISA_INSTRUCTION inst;
+    FUNCP_VADDR pc;
+    FUNCP_REG srcVal0;
+    FUNCP_REG srcVal1;
+
+    switch(req->GetMethodID())
+    {
+      case CMD_NOTE_INSTR:
+        srcVal1.intReg = req->ExtractUINT(sizeof(FUNCP_REG));
+        srcVal0.intReg = req->ExtractUINT(sizeof(FUNCP_REG));
+        pc = req->ExtractUINT(sizeof(pc));
+        inst = req->ExtractUINT(sizeof(inst));
+        ctx_id = CONTEXT_ID(req->ExtractUINT(sizeof(ctx_id)));
+        delete req;
+
+        logFile << UINT64(ctx_id) << ": "
+                << fmt_regval(pc) << " " << fmt_inst(inst) << " <- "
+                << fmt_regval(srcVal0.intReg) << " "
+                << fmt_regval(srcVal1.intReg) << endl;
+        logFile.flush();
+        return NULL;
 
       default:
         ASIMERROR("Unexpected command to ISA REGOP emulator");

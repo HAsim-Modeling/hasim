@@ -150,10 +150,51 @@ class ISA_REGOP_EMULATOR_SERVER_CLASS: public RRR_SERVER_CLASS,
 };
 
 
+// ========================================================================
+//
+// Debugging server for streaming data from the FPGA.
+//
+// ========================================================================
+
+class ISA_DP_DEBUG_SERVER_CLASS: public RRR_SERVER_CLASS,
+                                 public PLATFORMS_MODULE_CLASS,
+                                 public TRACEABLE_CLASS
+{
+  private:
+    // self-instantiation
+    static ISA_DP_DEBUG_SERVER_CLASS instance;
+        
+    // stubs
+    RRR_SERVER_STUB serverStub;
+
+    Format fmt_regval;
+    Format fmt_inst;
+
+    ofstream logFile;
+
+  public:
+    ISA_DP_DEBUG_SERVER_CLASS();
+    ~ISA_DP_DEBUG_SERVER_CLASS();
+
+    // required RRR methods
+    void Init(PLATFORMS_MODULE);
+    void Uninit();
+    void Cleanup();
+
+    //
+    // RRR Service Methods
+    //
+    UMF_MESSAGE Request(UMF_MESSAGE req);    
+};
+
+typedef ISA_DP_DEBUG_SERVER_CLASS* ISA_DP_DEBUG_SERVER;
+
+
 // server stub
 #define BYPASS_SERVER_STUB
 #include "asim/rrr/server_stub_ISA_EMULATOR.h"
 #include "asim/rrr/server_stub_ISA_REGOP_EMULATOR.h"
+#include "asim/rrr/server_stub_ISA_DP_DEBUG.h"
 #undef  BYPASS_SERVER_STUB
 
 //

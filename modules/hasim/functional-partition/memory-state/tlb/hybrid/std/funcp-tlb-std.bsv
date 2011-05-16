@@ -42,6 +42,7 @@ import FShow::*;
 `include "asim/provides/funcp_memory.bsh"
 
 `include "asim/dict/VDEV_CACHE.bsh"
+`include "asim/dict/PARAMS_FUNCP_MEMSTATE_TLB.bsh"
 `include "asim/dict/STATS_FUNCP_TLB.bsh"
 `include "asim/rrr/remote_client_stub_FUNCP_TLB.bsh"
 
@@ -188,7 +189,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     Reg#(Bool) dtlbReadyForAlloc <- mkReg(False);
 
     // Translation cache
-    NumTypeParam#(`FUNCP_PVT_TLB_ENTRIES) num_pvt_entries = ?;
+    NumTypeParam#(`FUNCP_TLB_PVT_ENTRIES) num_pvt_entries = ?;
     CENTRAL_CACHE_CLIENT#(FUNCP_TLB_IDX,      // Cache address type
                           FUNCP_TLB_ENTRY,    // Cache word
                           FUNCP_TLB_REFINFO)
@@ -198,6 +199,23 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
                                       vtopIfc);
 
     let statIfc <- mkTLBCacheStats(cache.stats);
+
+    // Dynamic parameters
+    PARAMETER_NODE paramNode <- mkDynamicParameterNode();
+    Param#(2) cacheMode <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PVT_CACHE_MODE, paramNode);
+
+
+    // ====================================================================
+    //
+    // Initialization
+    //
+    // ====================================================================
+
+    Reg#(Bool) initialized <- mkReg(False);
+    rule doInit (! initialized);
+        cache.setCacheMode(unpack(cacheMode));
+        initialized <= True;
+    endrule
 
 
     //

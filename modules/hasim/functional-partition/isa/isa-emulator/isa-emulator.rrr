@@ -46,3 +46,23 @@ service ISA_REGOP_EMULATOR
                             out ISA_VALUE[FUNCP_ISA_INT_REG_SIZE] dstVal);
     };
 };
+
+
+//
+// Not emulation, but a convenient place for a debug stream coming from the
+// hardware.
+//
+service ISA_DP_DEBUG
+{
+    server sw (cpp, method) <- hw (bsv, connection)
+    {
+        //
+        // Pass instruction and input state to host.
+        //
+        method noteInstr(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                         in INSTRUCTION_RRR[32] instr,
+                         in ISA_ADDRESS[FUNCP_ISA_V_ADDR_SIZE] pc,
+                         in ISA_VALUE[FUNCP_ISA_INT_REG_SIZE] srcVal0,
+                         in ISA_VALUE[FUNCP_ISA_INT_REG_SIZE] srcVal1);
+    };
+};

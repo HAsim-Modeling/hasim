@@ -25112,3 +25112,22 @@ Directory tools/scripts/bmark
  run-hasim.bmark           Locally Modified          841 
 
 Note DEFAULT FPGA class.
+
+----------
+mcadler     Date: Mon May 16 15:32:12 EDT 2011  CSN: CSN-hasim-843
+                  Mon May 16 19:32:12 UTC 2011
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.awb         Locally Modified          842 
+ funcp-tlb-std.bsv         Locally Modified          842 
+
+Directory modules/hasim/functional-partition/isa/isa-emulator
+ isa-emulator.cpp          Locally Modified          842 
+ isa-emulator.rrr          Locally Modified          842 
+ isa-emulator.h            Locally Modified          842 
+
+- Add a dynamic parameter for turning off the TLB private cache.
+- Add an RRR debug method with which the FPGA datapath may dump a stream of
+  executed instructions and inputs.  This is primarily useful for debugging
+  on FPGAs, where debug files aren't available.

@@ -25131,3 +25131,13 @@ Directory modules/hasim/functional-partition/isa/isa-emulator
 - Add an RRR debug method with which the FPGA datapath may dump a stream of
   executed instructions and inputs.  This is primarily useful for debugging
   on FPGAs, where debug files aren't available.
+
+----------
+mcadler     Date: Wed May 18 17:33:58 EDT 2011  CSN: CSN-hasim-844
+                  Wed May 18 21:33:58 UTC 2011
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.bsv      Locally Modified          843 
+
+The streams service is now a ring, supporting multiple clients.

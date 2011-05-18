@@ -90,7 +90,7 @@ module [HASIM_MODULE] mkCommandsService
     // Our way of communicating with the local controllers
     Connection_Chain#(CONTROLLER_MSG) link_controllers <- mkConnection_Chain(`RINGID_CONTROLLER_MESSAGES);
 
-    Connection_Send#(STREAMS_REQUEST) link_streams <- mkConnection_Send("vdev_streams");
+    STREAMS_CLIENT link_streams <- mkStreamsClient(`STREAMID_MESSAGE);
 
     // The timing model must tell us the current model cycle.  By convention,
     // it is the token request stage at the head of the pipeline.
@@ -155,18 +155,12 @@ module [HASIM_MODULE] mkCommandsService
             begin
                 if (pf)  // It passed
                 begin
-                    link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MESSAGE,
-                                                        stringID: `STREAMS_MESSAGE_SUCCESS,
-                                                        payload0: truncate(curTick),
-                                                        payload1: ? });
+                    link_streams.send(`STREAMS_MESSAGE_SUCCESS, truncate(curTick), ?);
                     passed <= True;
                 end
                 else  // It failed
                 begin
-                    link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MESSAGE,
-                                                        stringID: `STREAMS_MESSAGE_FAILURE,
-                                                        payload0: truncate(curTick),
-                                                        payload1: ? });
+                    link_streams.send(`STREAMS_MESSAGE_FAILURE, truncate(curTick), ?);
                 end
                 // Either way we are done
                 state <= CON_Finished;
@@ -221,10 +215,8 @@ module [HASIM_MODULE] mkCommandsService
 
         state <= CON_Running;
 
-        link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MESSAGE,
-                                            stringID: `STREAMS_MESSAGE_START,
-                                            payload0: truncate(curTick), // Program Started
-                                            payload1: ? });
+        // Program Started
+        link_streams.send(`STREAMS_MESSAGE_START, truncate(curTick), ?);
     endrule
 
 
@@ -269,10 +261,7 @@ module [HASIM_MODULE] mkCommandsService
         link_controllers.sendToNext(tagged COM_Pause False);
 
         // Tell software we're done
-        link_streams.send(STREAMS_REQUEST { streamID: `STREAMID_MESSAGE,
-                                            stringID: `STREAMS_MESSAGE_SUCCESS,
-                                            payload0: truncate(curTick),
-                                            payload1: ? });
+        link_streams.send(`STREAMS_MESSAGE_SUCCESS, truncate(curTick), ?);
         passed <= True;
         state <= CON_Finished;
     endrule

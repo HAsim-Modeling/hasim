@@ -126,6 +126,21 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // ====================================================================
 
 
+    //
+    // Sigh --
+    //     For reasons unknown, XST 12 and later fail to initialize stateStores2
+    //     correctly.  Putting this rule here fixes it.
+    //
+    Reg#(Bool) xstFirstTimeBugFix <- mkReg(False);
+
+    rule xstBugFix (! xstFirstTimeBugFix);
+        // Xilinx XST bug fails to initialize stateStores2 correctly
+        xstFirstTimeBugFix <= True;
+
+        stateStores2 <= tagged STORES2_NORMAL;
+    endrule
+
+
     // ******* doStores ******* //
 
     // 2-stage macro operation. Stage 2 can stall in two different ways.
@@ -222,7 +237,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // When:   After we get a response from the address RAM.
     // Effect: Read the physical register file and the effective address. 
 
-    rule doStores2 (state.readyToContinue() &&& stateStores2 matches tagged STORES2_NORMAL);
+    rule doStores2 (state.readyToContinue() &&&
+                    xstFirstTimeBugFix &&&
+                    stateStores2 matches tagged STORES2_NORMAL);
 
         // Read the parameters from the previous stage.
         match {.tok, .st_type} = stores1Q.first();
@@ -323,7 +340,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // When:   After a store has stalled to do a read-modify-write and the load has come back.
     // Effect: Do the "modify-write" portion. Unstall the pipeline.
     
-    rule doStores2RMW (state.readyToContinue() &&& stateStores2 matches tagged STORES2_RMW_RSP .store_info &&& pathQ.first() == PATH_RMW_LOAD);
+    rule doStores2RMW (state.readyToContinue() &&&
+                       xstFirstTimeBugFix &&&
+                       stateStores2 matches tagged STORES2_RMW_RSP .store_info &&&
+                       pathQ.first() == PATH_RMW_LOAD);
     
         // Get the info from the previous stage.
         match {.tok, .st_type} = stores1Q.first();
@@ -363,7 +383,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // When:   After a store has stalled to do a spanning load.
     // Effect: Make the second request, then start to wait for responses.
     
-    rule doStores2SpanReq (state.readyToContinue() &&& stateStores2 matches tagged STORES2_SPAN_REQ .store_info);
+    rule doStores2SpanReq (state.readyToContinue() &&
+                           xstFirstTimeBugFix &&&
+                           stateStores2 matches tagged STORES2_SPAN_REQ .store_info);
     
         // Get the data from the previous stage.
         match {.tok, .st_type} = stores1Q.first();
@@ -387,7 +409,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // When:   After the first load comes back from a spanning store.
     // Effect: Record the intermediate value, wait for the final response.
     
-    rule doStores2SpanRsp1 (state.readyToContinue() &&& stateStores2 matches tagged STORES2_SPAN_RSP1 .store_info &&& pathQ.first() == PATH_SPAN_LOAD1);
+    rule doStores2SpanRsp1 (state.readyToContinue() &&&
+                            xstFirstTimeBugFix &&&
+                            stateStores2 matches tagged STORES2_SPAN_RSP1 .store_info &&&
+                            pathQ.first() == PATH_SPAN_LOAD1);
     
         // Get the value from the previous stage.
         match {.tok, .st_type} = stores1Q.first();
@@ -410,7 +435,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // When:   After the second load comes back from a spanning store.
     // Effect: Figure out the values and make the first store request.
     
-    rule doStores2SpanRsp2 (state.readyToContinue() &&& stateStores2 matches tagged STORES2_SPAN_RSP2 {.store_info, .existing_val1} &&& pathQ.first() == PATH_SPAN_LOAD2);
+    rule doStores2SpanRsp2 (state.readyToContinue() &&&
+                            xstFirstTimeBugFix &&&
+                            stateStores2 matches tagged STORES2_SPAN_RSP2 {.store_info, .existing_val1} &&&
+                            pathQ.first() == PATH_SPAN_LOAD2);
     
         // Get the value from the previous stage.
         match {.tok, .st_type} = stores1Q.first();
@@ -446,7 +474,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // When:   After making the first store request for a spanning store.
     // Effect: Make the second store request. Unstall the pipeline.
 
-    rule doStores2SpanEnd (state.readyToContinue() &&& stateStores2 matches tagged STORES2_SPAN_END {.store_info, .new_val2} &&& pathQ.first() == PATH_SPAN_STORE1);
+    rule doStores2SpanEnd (state.readyToContinue() &&&
+                           xstFirstTimeBugFix &&&
+                           stateStores2 matches tagged STORES2_SPAN_END {.store_info, .new_val2} &&&
+                           pathQ.first() == PATH_SPAN_STORE1);
     
         let tok = store_info.token;
     

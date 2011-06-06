@@ -25141,3 +25141,16 @@ Directory modules/hasim/util/model-services/commands-service
  commands-service.bsv      Locally Modified          843 
 
 The streams service is now a ring, supporting multiple clients.
+
+----------
+mcadler     Date: Mon Jun  6 17:16:08 EDT 2011  CSN: CSN-hasim-845
+                  Mon Jun  6 21:16:08 UTC 2011
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-doStores.bsv Locally Modified          844 
+
+Xst 12 and later has a bug that fails to initialize the state machine control
+variable, stateStores2.  Adding explicit initialization works, which really
+makes no sense when reading the Verilog.  Without the new rule, the
+value of stateStores2 is the usual Bluespec alternating 0/1 pattern.

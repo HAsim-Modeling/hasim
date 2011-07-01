@@ -13,3 +13,7 @@
 %public  hasim-model.bsv
 %public  hasim-model.h
 %private hasim-model.cpp
+
+
+%param SYNTH_BOUNDARY mkConnectedApplication "name of synthesis boundary"
+

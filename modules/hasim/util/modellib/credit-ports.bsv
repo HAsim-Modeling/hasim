@@ -24,9 +24,9 @@ module [HASIM_MODULE] mkPortCreditSend#(String str)
     provisos(Add#(TLog#(TAdd#(1, bandwidth)), 0, logBandwidth),
              Bits#(dataT, dataSz));
 
-    Connection_Send#(dataT)   dataConnection <- mkConnection_Send(str + ":data");
-    Connection_Send#(Bit#(logBandwidth)) dataCountFifo <- mkConnection_Send(str + ":dataConnection");
-    Connection_Receive#(Bit#(logCredit)) creditsConnection <- mkConnection_Receive(str + ":credits");
+    Connection_Send#(dataT)   dataConnection <- mkConnection_Send(str + "_data");
+    Connection_Send#(Bit#(logBandwidth)) dataCountFifo <- mkConnection_Send(str + "_dataCount");
+    Connection_Receive#(Bit#(logCredit)) creditsConnection <- mkConnection_Receive(str + "_credits");
 
     FIFOF#(dataT)                   dataFifo <- mkSizedFIFOF(valueOf(bandwidth));
     Reg#(Bit#(logCredit))            credits <- mkRegU;
@@ -107,9 +107,9 @@ module [HASIM_MODULE] mkPortCreditReceive#(String str)
     provisos(Add#(TLog#(TAdd#(1, bandwidth)), 0, logBandwidth),
              Bits#(dataT, dataSz));
 
-    Connection_Receive#(dataT) dataFifo <- mkConnection_Receive(str + ":data");
-    Connection_Receive#(Bit#(logBandwidth)) dataCountFifo <- mkConnection_Receive(str + ":dataCount");
-    Connection_Send#(Bit#(logCredit)) creditsFifo <- mkConnection_Send(str + ":credits");
+    Connection_Receive#(dataT) dataFifo <- mkConnection_Receive(str + "_data");
+    Connection_Receive#(Bit#(logBandwidth)) dataCountFifo <- mkConnection_Receive(str + "_dataCount");
+    Connection_Send#(Bit#(logCredit)) creditsFifo <- mkConnection_Send(str + "_credits");
 
     Reg#(Bit#(logBandwidth))       dataCount <- mkReg(0);
     PulseWire                          popEn <- mkPulseWire;

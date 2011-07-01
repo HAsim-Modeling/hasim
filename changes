@@ -25154,3 +25154,17 @@ Xst 12 and later has a bug that fails to initialize the state machine control
 variable, stateStores2.  Adding explicit initialization works, which really
 makes no sense when reading the Verilog.  Without the new rule, the
 value of stateStores2 is the usual Bluespec alternating 0/1 pattern.
+
+----------
+kfleming    Date: Fri Jul  1 15:17:00 EDT 2011  CSN: CSN-hasim-846
+                  Fri Jul  1 19:17:00 UTC 2011
+
+
+Directory modules/hasim/model
+ hasim-model.awb           Locally Modified          845 
+
+Directory modules/hasim/util/modellib
+ credit-ports.bsv          Locally Modified          845 
+
+
+Made hasim-model be a synthesis boundary, a requirement for multiple FPGA compilation.  Removed ":" disambiguation from the credit-ports.  leap-connect doesn't like spurious ":".

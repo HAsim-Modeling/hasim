@@ -25168,3 +25168,13 @@ Directory modules/hasim/util/modellib
 
 
 Made hasim-model be a synthesis boundary, a requirement for multiple FPGA compilation.  Removed ":" disambiguation from the credit-ports.  leap-connect doesn't like spurious ":".
+
+----------
+mcadler     Date: Tue Jul 26 19:40:15 EDT 2011  CSN: CSN-hasim-847
+                  Tue Jul 26 23:40:15 UTC 2011
+
+
+Directory modules/hasim/util/modellib
+ credit-ports.bsv          Locally Modified          846 
+
+Fix scheduling race between cycle and initialize rules in mkPortCreditSend().

@@ -51,7 +51,7 @@ module [HASIM_MODULE] mkPortCreditSend#(String str)
         start <= True;
     endrule
 
-    rule cycle;
+    rule cycle(initialized);
         if(doneEn)
         begin
             dataCountFifo.send(reserveEn? dataCount + 1: dataCount);
@@ -114,8 +114,6 @@ module [HASIM_MODULE] mkPortCreditReceive#(String str)
     Reg#(Bit#(logBandwidth))       dataCount <- mkReg(0);
     PulseWire                          popEn <- mkPulseWire;
     PulseWire                         doneEn <- mkPulseWire;
-
-    let _canReceive = dataCount != dataCountFifo.receive;
 
     rule cycle;
         if(doneEn)
@@ -235,7 +233,7 @@ module [HASIM_MODULE] mkPortFifoReceive#(String str, Bool bufferedCredit, Intege
             dataCount <= dataCount + 1;
     endrule
 
-    method Bool canReceive() if(start || fifo.notEmpty);
+    method Bool canReceive();
         return _canReceive;
     endmethod
 

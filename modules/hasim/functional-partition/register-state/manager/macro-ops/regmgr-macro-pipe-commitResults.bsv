@@ -34,6 +34,20 @@
 // ========================================================================
 
 
+//
+// Read state controls access to register file BRAM
+//
+typedef enum
+{
+    COMMIT_STATE_READY,
+    COMMIT_STATE_FAULT_START,
+    COMMIT_STATE_FAULT_FIX_REGS,
+    COMMIT_STATE_FAULT_END
+}
+COMMIT_STATE
+    deriving (Eq, Bits);
+
+
 // Which path are we sending the next response from?
 
 typedef union tagged
@@ -48,11 +62,13 @@ COMMIT2_PATH deriving (Eq, Bits);
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     REGMGR_GLOBAL_DATA glob,
     REGSTATE_REG_MAPPING_COMMITRESULTS regMapping,
+    REGSTATE_PHYSICAL_REGS_RW_REG prf,
     FUNCP_FREELIST freelist,
     REGSTATE_MEMORY_QUEUE linkToMem,
     BROM#(TOKEN_INDEX, REGMGR_DST_REGS) tokDsts)
     //interface:
-                ();
+    ()
+    provisos (Alias#(UInt#(TLog#(TAdd#(1, ISA_MAX_DSTS))), t_REG_IDX));
 
     // ====================================================================
     //
@@ -93,7 +109,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     //
     // ====================================================================
 
-    FIFO#(COMMIT2_PATH) commQ   <- mkFIFO();
+    Reg#(COMMIT_STATE) commitState <- mkReg(COMMIT_STATE_READY);
+    FIFO#(COMMIT2_PATH) commQ <- mkFIFO();
+    FIFO#(Tuple2#(t_REG_IDX, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) fixFaultRegsQ <- mkFIFO();
+    Reg#(t_REG_IDX) faultRegIdx <- mkRegU();
+    Reg#(REGMGR_DST_REGS) faultDstMap <- mkRegU();
+    Reg#(REGSTATE_REWIND_INFO) faultRewindInfo <- mkRegU();
+    
 
     // ====================================================================
     //
@@ -118,7 +140,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     // When:   When the timing model starts a commitResults().
     // Effect: Lookup the destinations of this token, and the registers to free.
 
-    rule commitResults1 (linkCommitResults.getReq().token matches .tok &&&
+    rule commitResults1 (commitState == COMMIT_STATE_READY &&&
+                         linkCommitResults.getReq().token matches .tok &&&
                          state.readyToBegin(tokContextId(tok)) &&&
                          tokScoreboard.canStartCommit(tok.index));
 
@@ -145,6 +168,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
             // Request the registers to be freed.
             regMapping.readRewindReq(tok);
             tokDsts.readReq(tok.index);
+
+            commitState <= COMMIT_STATE_FAULT_START;
 
             // Drop any stores associated with this token.
             if (tokScoreboard.isStore(tok.index))
@@ -235,13 +260,23 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
 
     endrule
 
-    rule commitFaultRsp (commQ.first() matches tagged COMMIT2_faultRsp .is_store);
+
+    //
+    // commitFaultStart --
+    //     The beginning of the fault handling path for poisoned instructions.
+    //     During this path, the instruction will be turned into a NOP by
+    //     copying the previous AR value of each output register of the
+    //     instruction to the PR now mapped to those registers.  We used to
+    //     do a rewind-style remapping of registers, as though the faulting
+    //     instruction was killed.  This suffered from a race with younger
+    //     instructions that will eventually be killed.  If those younger
+    //     instructions modify ARs written by this instruction, the mapping
+    //     table would be updated incorrectly.
+    //
+    rule commitFaultStart (commitState == COMMIT_STATE_FAULT_START &&&
+                           commQ.first() matches tagged COMMIT2_faultRsp .is_store);
         commQ.deq();
     
-        // Get the response from the fault handler to pass it on to the timing model.
-        let rsp = linkHandleFault.getResp();
-        linkHandleFault.deq();
-
         if (is_store)
         begin
             linkToMem.deq();
@@ -249,62 +284,104 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
 
         // Retrieve the registers to be freed.
         let rewind_info <- regMapping.readRewindRsp();
+        faultRewindInfo <= validValue(rewind_info);
         
         // Get the current mapping.
         let dsts <- tokDsts.readRsp();
+        faultDstMap <= dsts;
 
-        let ctx_id = tokContextId(rsp.token);
+        faultRegIdx <= 0;
 
-        // Undo this token's mappings, similar to a one-time rewindToToken.
-
-        if (rewind_info matches tagged Valid .rw)
+        if (isValid(rewind_info))
         begin
-
-            REGSTATE_NEW_MAPPINGS new_map = ?;
-            new_map.context_id = ctx_id;
-
-            ISA_INST_DSTS dead_pregs = newVector();
-
-            for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)
-            begin
-                if (dsts.ar[x] matches tagged Valid .ar &&&
-                    rw.regsToFree[x] matches tagged Valid .pr_free)
-                begin
-                    // Set the mapping back
-                    new_map.mappings[x] = tagged Valid tuple2(ar, pr_free);
-                    debugLog.record($format("commitResults: ") + fshow(rsp.token) + $format(": Remapping (%0d/%0d)", ar, pr_free));
-                end
-                else
-                begin
-                    new_map.mappings[x] = tagged Invalid;
-                end
-
-                if (dsts.pr[x] matches tagged Valid .pr)
-                begin
-                    // The current destination must be freed.
-                    dead_pregs[x] = tagged Valid pr;
-                    debugLog.record($format("commitResults: ") + fshow(rsp.token) + $format(": Telling Free list to free PR ", pr));
-                end
-                else
-                begin
-                    dead_pregs[x] = tagged Invalid;
-                end
-            end
-
-            // Re-map the registers to the registers which used to be mapped to those registers.
-            regMapping.updateMap(new_map);
-
-            // Free the current destinations for re-use.
-            freelist.freeRegs(dead_pregs);
-
+            commitState <= COMMIT_STATE_FAULT_FIX_REGS;
+            debugLog.record($format("CommitResults: FAULT start reg fixup"));
         end
+        else
+        begin
+            // No register bindings to fix.
+            commitState <= COMMIT_STATE_FAULT_END;
+            debugLog.record($format("CommitResults: FAULT no dst regs"));
+        end
+    endrule
+
+
+    //
+    // commitFaultReadOldRegs --
+    //     Read the old values of the registers written by the faulting
+    //     instruction.
+    //
+    rule commitFaultReadOldRegs ((commitState == COMMIT_STATE_FAULT_FIX_REGS) &&
+                                 (faultRegIdx < fromInteger(valueOf(ISA_MAX_DSTS))));
+        //
+        // Find the old mapping.
+        //
+        if (faultDstMap.ar[faultRegIdx] matches tagged Valid .ar &&&
+            faultDstMap.pr[faultRegIdx] matches tagged Valid .pr &&&
+            faultRewindInfo.regsToFree[faultRegIdx] matches tagged Valid .pr_prev)
+        begin
+            // Read the old value
+            prf.readReq(pr_prev);
+            debugLog.record($format("CommitResults: FAULT read old PR%0d", pr_prev));
+
+            fixFaultRegsQ.enq(tuple2(faultRegIdx, tagged Valid pr));
+        end
+        else
+        begin
+            fixFaultRegsQ.enq(tuple2(faultRegIdx, tagged Invalid));
+        end
+
+        faultRegIdx <= faultRegIdx + 1;
+    endrule
+
+
+    //
+    // commitFaultWriteNewRegs --
+    //     Receive old register values requested by commitFaultReadOldRegs and
+    //     copy the values to the corresponding output physical register of
+    //     the faulting instruction.  This effectively turns the faulting
+    //     instruction into a NOP with no register side effects.
+    //
+    rule commitFaultWriteNewRegs (commitState == COMMIT_STATE_FAULT_FIX_REGS);
+        match {.r_idx, .fix_pr} = fixFaultRegsQ.first();
+        fixFaultRegsQ.deq();
         
+        if (fix_pr matches tagged Valid .pr)
+        begin
+            let old_val <- prf.readRsp();
+            prf.write(pr, old_val);
+
+            debugLog.record($format("CommitResults: FAULT write PR%0d <- 0x%0x", pr, old_val)); 
+        end
+
+        if (r_idx == fromInteger(valueOf(ISA_MAX_DSTS) - 1))
+        begin
+            commitState <= COMMIT_STATE_FAULT_END;
+        end
+    endrule
+
+
+    //
+    // commitFaultEnd --
+    //     Done with fault processing.  Return result to timing model.
+    //
+    rule commitFaultEnd (commitState == COMMIT_STATE_FAULT_END);
+        // Get the response from the fault handler to pass it on to the timing model.
+        let rsp = linkHandleFault.getResp();
+        linkHandleFault.deq();
+
+        // Free the registers which used to be mapped to the destination registers.
+        freelist.freeRegs(faultRewindInfo.regsToFree);
+
         // Update the scoreboard so the token can be reused.
         tokScoreboard.deallocate(rsp.token.index);
 
         // Respond to the timing model.
         linkCommitResults.makeResp(initFuncpRspCommitResults(rsp.token, tagged Invalid, tagged Valid rsp.nextInstructionAddress));
     
+        commitState <= COMMIT_STATE_READY;
+
+        debugLog.record(fshow(rsp.token.index) + $format(": CommitResults: FAULT End")); 
     endrule
 
 endmodule

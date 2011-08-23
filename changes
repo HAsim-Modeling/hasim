@@ -25178,3 +25178,43 @@ Directory modules/hasim/util/modellib
  credit-ports.bsv          Locally Modified          846 
 
 Fix scheduling race between cycle and initialize rules in mkPortCreditSend().
+
+----------
+mcadler     Date: Tue Aug 23 08:28:43 EDT 2011  CSN: CSN-hasim-848
+                  Tue Aug 23 12:28:43 UTC 2011
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-physical-regs.bsv Locally Modified          847 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.bsv          Locally Modified          847 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          847 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.dic         Locally Modified          847 
+ funcp-tlb-std.bsv         Locally Modified          847 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          847 
+ hybrid-funcp-memory.dic   Locally Modified          847 
+
+- Add stream-based debugging code to the functional TLB and memory paths.
+  This can be useful for getting a clue about functional activity when
+  running on FPGAs.
+
+- Fix a messy bug in the handling of faulting instructions.  In the previous
+  implementation, a faulting instruction was killed in the commit flow by
+  removing the faulting instruction's output registers from the architectural
+  register mapping table.  The problem comes when there are younger instructions
+  live that will be killed by unwinding.  If any younger instructions claim
+  to write the same AR as the faulting instruction, the mapping table will
+  wind up restored to the physical registers that were to be written by
+  the faulting instruction!  The result was anything from double freeing of
+  physical registers to incorrect register values on read -- even cross
+  simulated CPU.
+
+  I fixed the problem by no longer unmapping instructions written by the
+  faulting instruction.  Instead, the instruction is treated more like a NOP.
+  On commit, values from the old PRs mapped to output ARs are copied to the
+  new PRs.  Since the register map table is no longer updated there is no race.

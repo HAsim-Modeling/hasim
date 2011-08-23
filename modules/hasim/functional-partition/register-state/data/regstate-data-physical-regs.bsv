@@ -68,6 +68,19 @@ interface REGSTATE_PHYSICAL_REGS_WRITE_REG;
 endinterface
 
 //
+// REGSTATE_PHYSICAL_REGS_RW_REG --
+//   Interface that allows reading and writing to one register per cycle.
+//
+interface REGSTATE_PHYSICAL_REGS_RW_REG;
+    // Single register read interface
+    method Action readReq(FUNCP_PHYSICAL_REG_INDEX r);
+    method ActionValue#(ISA_VALUE) readRsp();
+
+    // Write a single register
+    method Action write(FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
+endinterface
+
+//
 // REGSTATE_PHYSICAL_REGS_RW_REGS --
 //   Interfaces with multiple read ports and one write port.
 //
@@ -90,6 +103,7 @@ interface REGSTATE_PHYSICAL_REGS#(numeric type numPrfReadPorts);
     interface REGSTATE_PHYSICAL_REGS_INVAL_REGS getDependencies;
     interface REGSTATE_PHYSICAL_REGS_RW_REGS    getResults;
     interface REGSTATE_PHYSICAL_REGS_WRITE_REG  doLoads;
+    interface REGSTATE_PHYSICAL_REGS_RW_REG     commitResults;
 endinterface
 
 
@@ -106,7 +120,8 @@ typedef enum
 {
     REGSTATE_PRF_READ_READY,
     REGSTATE_PRF_READ_GETRESULTS_SINGLE,
-    REGSTATE_PRF_READ_GETRESULTS_VEC
+    REGSTATE_PRF_READ_GETRESULTS_VEC,
+    REGSTATE_PRF_READ_COMMITRESULTS
 }
 REGSTATE_PRF_READ_STATE
     deriving (Eq, Bits);
@@ -194,11 +209,14 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     FIFOF#(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) rqGetDepInval <- mkFIFOF();
     FIFO#(Bool) rqGetDepInvalDone <- mkFIFO();
 
-    FIFO#(FUNCP_PHYSICAL_REG_INDEX)                      rqGetResRead    <- mkFIFO();
+    FIFOF#(FUNCP_PHYSICAL_REG_INDEX)                     rqGetResRead    <- mkFIFOF();
     FIFO#(ISA_INST_SRCS)                                 rqGetResReadVec <- mkFIFO();
     FIFOF#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE)) rqGetResWrite   <- mkFIFOF();
 
     FIFOF#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE)) rqDoLoadsWrite  <- mkFIFOF();
+
+    FIFOF#(FUNCP_PHYSICAL_REG_INDEX)                     rqCommitResRead  <- mkFIFOF();
+    FIFOF#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE)) rqCommitResWrite <- mkFIFOF();
 
 
     // ====================================================================
@@ -314,14 +332,21 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
             // Done?
             sendInvalResponseWhenDone(rVec);
         end
-        else if (rqDoLoadsWrite.notEmpty() || rqGetResWrite.notEmpty())
+        else if (rqCommitResWrite.notEmpty() ||
+                 rqDoLoadsWrite.notEmpty() ||
+                 rqGetResWrite.notEmpty())
         begin
             //
             // No invalidates pending.  Handle register writes...
             //
             Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE) rq;
 
-            if (rqDoLoadsWrite.notEmpty())
+            if (rqCommitResWrite.notEmpty())
+            begin
+                rq = rqCommitResWrite.first();
+                rqCommitResWrite.deq();
+            end
+            else if (rqDoLoadsWrite.notEmpty())
             begin
                 rq = rqDoLoadsWrite.first();
                 rqDoLoadsWrite.deq();
@@ -345,26 +370,49 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     // startReadPrf --
     //     Read a single register.
     //
-    rule startReadPrf (initialized && readState == REGSTATE_PRF_READ_READY);
+    rule startReadPrf (initialized && readState == REGSTATE_PRF_READ_READY &&
+                       (rqCommitResRead.notEmpty() || rqGetResRead.notEmpty()));
         //
         // Single register read.  When the register is valid do the read.
         // If not valid do nothing and the same test will be done next
         // FPGA cycle.
         //
+        // We use the simplest implementation:  change the state and block
+        // until the result is read.  This interface is used for forwarding the
+        // register state over RRR for emulation and handling faulting
+        // instructions.  Speed is not important.
+        //
 
-        let r = rqGetResRead.first();
-        if (prfValids.sub(r))
+        if (rqCommitResRead.notEmpty())
         begin
             //
-            // Simplest implementation:  change the state and block until the
-            // result is read.  This interface is used for forwarding the
-            // register state over RRR for emulation, so speed is not important.
+            // For the commit results path we assume that the register being
+            // read is valid, since commits are in order.  This saves a read
+            // port on prfValids (and we are already using the maximum for
+            // a LUTRAM.)
             //
-            rqGetResRead.deq();
-            readState <= REGSTATE_PRF_READ_GETRESULTS_SINGLE;
+            let r = rqCommitResRead.first();
+            rqCommitResRead.deq();
+
+            readState <= REGSTATE_PRF_READ_COMMITRESULTS;
             prf.readPorts[0].readReq(r);
             quickReadPrfQ.enq(tagged Invalid);
-            debugLog.record($format("PRF: Start Read: Single reg %0d ready", r));
+            debugLog.record($format("PRF: Start Read (CR): Single reg %0d ready", r));
+        end
+
+        else if (rqGetResRead.notEmpty())
+        begin
+            // GetResults wants a read and the register is ready.
+            let r = rqGetResRead.first();
+            if (prfValids.sub(r))
+            begin
+                rqGetResRead.deq();
+
+                readState <= REGSTATE_PRF_READ_GETRESULTS_SINGLE;
+                prf.readPorts[0].readReq(r);
+                quickReadPrfQ.enq(tagged Invalid);
+                debugLog.record($format("PRF: Start Read (GR): Single reg %0d ready", r));
+            end
         end
     endrule
 
@@ -642,6 +690,35 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
 
         method Action write(FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
             rqDoLoadsWrite.enq(tuple2(r, v));
+        endmethod
+
+    endinterface
+
+    interface REGSTATE_PHYSICAL_REGS_RW_REG commitResults;
+
+        //
+        // Single register read interface
+        //
+        method Action readReq(FUNCP_PHYSICAL_REG_INDEX r);
+            rqCommitResRead.enq(r);
+            debugLog.record($format("PRF: Commit Results Read Req: %0d", r));
+        endmethod
+
+        method ActionValue#(ISA_VALUE) readRsp() if (readState == REGSTATE_PRF_READ_COMMITRESULTS &&&
+                                                     quickReadPrfQ.first() matches tagged Invalid);
+            quickReadPrfQ.deq();
+
+            let v <- prf.readPorts[0].readRsp();
+            readState <= REGSTATE_PRF_READ_READY;
+
+            debugLog.record($format("PRF: Commit Results Read: 0x%x", v));
+
+            return v;
+        endmethod
+
+
+        method Action write(FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
+            rqCommitResWrite.enq(tuple2(r, v));
         endmethod
 
     endinterface

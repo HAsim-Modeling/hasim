@@ -29,6 +29,8 @@ import FIFOF::*;
 `include "asim/rrr/remote_client_stub_FUNCP_MEMORY.bsh"
 `include "asim/rrr/remote_server_stub_FUNCP_MEMORY.bsh"
 
+`include "asim/dict/STREAMID.bsh"
+`include "asim/dict/STREAMS_FUNCP_MEMORY.bsh"
 `include "asim/dict/VDEV_CACHE.bsh"
 `include "asim/dict/PARAMS_FUNCP_MEMORY.bsh"
 `include "asim/dict/STATS_FUNCP_MEMORY.bsh"
@@ -110,6 +112,10 @@ module [HASIM_MODULE] mkFUNCP_Memory
     // ***** Local State *****
     
     DEBUG_FILE debugLog <- mkDebugFile("hasim_funcp_memory.out");
+
+    // Debugging output stream, useful for getting a stream of status messages
+    // when running on an FPGA.
+    STREAMS_CLIENT link_streams <- mkStreamsClient_Debug(`STREAMID_FUNCP_MEMORY);
 
     // Links that we expose to the outside world
     Connection_Server#(MEM_REQUEST, MEMSTATE_RESP) linkMemory <- mkConnection_Server("funcp_memory");
@@ -200,6 +206,12 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
                 loadsInFlight.up();
                 debugLog.record($format("cache readReq: ctx=%0d, addr=0x%x, w_addr=0x%x", ldinfo.contextId, ldinfo.addr, w_addr));
+
+                // Pack state into 64 bits as best we can
+                Bit#(8) dbg_ctx = zeroExtend(ldinfo.contextId);
+                Bit#(8) dbg_tok = zeroExtend(pack(ldinfo.memRefToken));
+                Bit#(48) dbg_pa = resize(ldinfo.addr);
+                link_streams.send(`STREAMS_FUNCP_MEMORY_LD_REQ, {dbg_ctx, dbg_tok, dbg_pa[47:32]}, dbg_pa[31:0]);
             end
             
             tagged MEM_STORE .stinfo:
@@ -209,6 +221,11 @@ module [HASIM_MODULE] mkFUNCP_Memory
                 let w_addr = wordAddrFromByteAddr(stinfo.addr);
                 cache.write(w_addr, stinfo.val, ref_info);
                 debugLog.record($format("cache write: ctx=%0d, addr=0x%x, w_addr=0x%x, val=0x%x", stinfo.contextId, stinfo.addr, w_addr, stinfo.val));
+
+                // Pack state into 64 bits as best we can
+                Bit#(8) dbg_ctx = zeroExtend(stinfo.contextId);
+                Bit#(56) dbg_pa = resize(stinfo.addr);
+                link_streams.send(`STREAMS_FUNCP_MEMORY_ST_ADDR, {dbg_ctx, dbg_pa[55:32]}, dbg_pa[31:0]);
             end
         endcase
 
@@ -224,6 +241,11 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
         loadsInFlight.down();
         debugLog.record($format("cache readResp: val=0x%x", r.val));
+
+        // Pack state into 64 bits as best we can
+        Bit#(8) dbg_tok = zeroExtend(pack(r.refInfo.memRefToken));
+        Bit#(56) dbg_val = resize(r.val);
+        link_streams.send(`STREAMS_FUNCP_MEMORY_LD_RSP, {dbg_tok, dbg_val[55:32]}, dbg_val[31:0]);
     endrule
 
 

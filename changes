@@ -25218,3 +25218,25 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
   faulting instruction.  Instead, the instruction is treated more like a NOP.
   On commit, values from the old PRs mapped to output ARs are copied to the
   new PRs.  Since the register map table is no longer updated there is no race.
+
+----------
+mcadler     Date: Thu Aug 25 14:24:56 EDT 2011  CSN: CSN-hasim-849
+                  Thu Aug 25 18:24:56 UTC 2011
+
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          848 
+
+- Coding of multi-write port registers and LUTRAM didn't scale with instances.
+  The old code had a set of write wires for every IID and every port.  The new
+  code has a single set of write wires for each port and fans the wires out
+  to every IID's memory.  A MUX remains for each IID's storage, selecting among
+  write ports.
+
+- Fix a timing race between initialization and first client use of the multi-
+  write port LUTRAM.  Write requests before the LUTRAM is initialized were
+  dropped.
+
+- The new code gives priority to LOW port IDs.  The old code gave priority to
+  HIGH port IDs.  You shouldn't be writing to the same IID on multiple ports
+  anyway.

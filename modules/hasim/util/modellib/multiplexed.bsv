@@ -129,50 +129,49 @@ module [m] mkMultiplexedRegMultiWrite#(t_DATA initval)
         (MULTIPLEXED_REG_MULTI_WRITE#(t_NUM_INSTANCES, t_NUM_PORTS, t_DATA))
     provisos 
         (Bits#(t_DATA, t_DATA_SZ),
-         IsModule#(m, a));
+         IsModule#(m, a),
+         Alias#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_DATA), t_WRITE_MSG));
 
     // A register storing the vector of values.
     Reg#(Vector#(t_NUM_INSTANCES, t_DATA)) regvec <- mkReg(replicate(initval));
     
     // A group of wires to record all writes across all writeports.
     // Using wires ensure writes will be conflict-free.
-    Vector#(t_NUM_PORTS, Vector#(t_NUM_INSTANCES, RWire#(t_DATA))) writeWires = newVector();
+    Vector#(t_NUM_PORTS, RWire#(t_WRITE_MSG)) writeWires <- replicateM(mkRWire);
 
-    for (Integer x = 0; x < valueof(t_NUM_PORTS); x = x + 1)
-    begin
-        writeWires[x] <- replicateM(mkRWire);
-    end
-
-    // Update each register. Favor larger-numbered write ports,
-    // although really it's probably an error if two of the index are valid at the same time
+    // Update each register. Favor smaller-numbered write ports, although really
+    // it's probably an error if two of the index are valid at the same time
     // across write ports.
 
+    (* fire_when_enabled *)
+    (* no_implicit_conditions *)
     rule updateRegs (True);
-        
-        Vector#(t_NUM_INSTANCES, t_DATA) new_regs = regvec;
+        // iidMatch() will be used as a predicate to a find() to detect messages
+        // bound for a specific instance ID.
+        function Bool iidMatch(Integer tgtIID, RWire#(t_WRITE_MSG) msg);
+            let m = msg.wget();
+            return isValid(m) && (fromInteger(tgtIID) == tpl_1(validValue(m)));
+        endfunction
 
-        for (Integer x = 0; x < valueof(t_NUM_INSTANCES); x = x + 1)
-        begin
-            
-            Maybe#(t_DATA) mNewVal = tagged Invalid;
-            
-            for (Integer y = 0; y < valueof(t_NUM_PORTS); y = y + 1)
+        // updateElem() returns either the current register or, if a write exists,
+        // the new register value.
+        function t_DATA updateElem(Vector#(t_NUM_PORTS, RWire#(t_WRITE_MSG)) newWrites,
+                                   Tuple2#(Integer, t_DATA) curValue);
+            match {.iid, .cur_val} = curValue;
+            if (find(iidMatch(iid), newWrites) matches tagged Valid {.msg})
             begin
-                if (writeWires[y][x].wget() matches tagged Valid .val)
-                begin
-                    mNewVal = tagged Valid val;
-                end
+                // There is a write for this IID
+                return tpl_2(validValue(msg.wget()));
             end
-            
-            if (mNewVal matches tagged Valid .new_val)
+            else
             begin
-                new_regs[x] = new_val;
+                // No write.  Return current value.
+                return cur_val;
             end
+        endfunction
 
-        end
-        
-        regvec <= new_regs;
-    
+        // Do the work
+        regvec <= map(updateElem(writeWires), zip(genVector(), regvec));
     endrule
 
     method Reg#(t_DATA) getRegWithWritePort(INSTANCE_ID#(t_NUM_INSTANCES) iid, Integer portnum);
@@ -183,7 +182,7 @@ module [m] mkMultiplexedRegMultiWrite#(t_DATA initval)
         
         return interface Reg#(t_DATA);
                    method t_DATA _read() = regvec[iid];
-                   method Action _write(t_DATA d) = writeWires[portnum][iid].wset(d);
+                   method Action _write(t_DATA d) = writeWires[portnum].wset(tuple2(iid, d));
                endinterface;
 
     endmethod
@@ -297,57 +296,79 @@ module [m] mkMultiplexedLUTRAMMultiWrite#(t_DATA initval)
         (Bits#(t_DATA, t_DATA_SZ),
          Bits#(t_ADDR, t_ADDR_SZ),
          Bounded#(t_ADDR),
-         IsModule#(m, a));
+         IsModule#(m, a),
+         Alias#(Tuple3#(INSTANCE_ID#(t_NUM_INSTANCES), t_ADDR, t_DATA), t_WRITE_MSG));
 
     // The vector of LUTRAMs.
-    Vector#(t_NUM_INSTANCES, LUTRAM#(t_ADDR, t_DATA)) ramvec <- replicateM(mkLUTRAM(initval));
+    Vector#(t_NUM_INSTANCES, LUTRAM#(t_ADDR, t_DATA)) ramvec <- replicateM(mkLUTRAMU());
 
     // A group of wires to record all writes across all writeports.
     // Using wires ensure writes will be conflict-free.
-    Vector#(t_NUM_PORTS, Vector#(t_NUM_INSTANCES, RWire#(Tuple2#(t_ADDR, t_DATA)))) writeWires = newVector();
+    Vector#(t_NUM_PORTS, RWire#(t_WRITE_MSG)) writeWires <- replicateM(mkRWire);
 
-    for (Integer x = 0; x < valueof(t_NUM_PORTS); x = x + 1)
-    begin
-        writeWires[x] <- replicateM(mkRWire);
-    end
-
-    // Update each RAM. Favor larger-numbered write ports,
-    // although really it's probably an error if two of the index are valid at the same time
+    // Update each RAM. Favor smaller-numbered write ports, although really
+    // it's probably an error if two of the index are valid at the same time
     // across write ports.
 
-    rule updateRAMs (True);
-        
+    //
+    // Initialize storage.  We can't use standard initialized LUTRAMs because
+    // that would leave a race between the initialization loop and write
+    // requests flowing to updateRAMs below.
+    //
+
+    Reg#(Bool) initialized_m <- mkReg(False);
+    Reg#(t_ADDR) init_idx <- mkReg(minBound);
+
+    rule initializing (! initialized_m);
         for (Integer x = 0; x < valueof(t_NUM_INSTANCES); x = x + 1)
         begin
-            
-            Maybe#(Tuple2#(t_ADDR, t_DATA)) mNewVal = tagged Invalid;
-            
-            for (Integer y = 0; y < valueof(t_NUM_PORTS); y = y + 1)
+            ramvec[x].upd(init_idx, initval);
+        end
+
+        // Hack to avoid needing Eq proviso for comparison
+        t_ADDR max = maxBound;
+        initialized_m <= (pack(init_idx) == pack(max));
+
+        // Hack to avoid needing Arith proviso
+        init_idx <= unpack(pack(init_idx) + 1);
+    endrule
+
+    (* fire_when_enabled *)
+    (* no_implicit_conditions *)
+    rule updateRAMs (initialized_m);
+        // iidMatch() will be used as a predicate to a find() to detect messages
+        // bound for a specific instance ID.
+        function Bool iidMatch(Integer tgtIID, RWire#(t_WRITE_MSG) msg);
+            let m = msg.wget();
+            return isValid(m) && (fromInteger(tgtIID) == tpl_1(validValue(m)));
+        endfunction
+
+        for (Integer x = 0; x < valueof(t_NUM_INSTANCES); x = x + 1)
+        begin
+            // Is there a write for this instance ID?
+            if (find(iidMatch(x), writeWires) matches tagged Valid {.msg})
             begin
-                if (writeWires[y][x].wget() matches tagged Valid .tup)
-                begin
-                    mNewVal = tagged Valid tup;
-                end
-            end
-            
-            if (mNewVal matches tagged Valid {.addr, .val})
-            begin
+                match {.iid, .addr, .val} = validValue(msg.wget());
                 ramvec[x].upd(addr, val);
             end
-
         end
-    
     endrule
 
     method LUTRAM#(t_ADDR, t_DATA) getRAMWithWritePort(INSTANCE_ID#(t_NUM_INSTANCES) iid, Integer portnum);
-    
-        // Some Bluespec trickery. Make a LUTRAM interface which wraps the Vector and RWires and
-        // makes them look like a RAM. As long as different pipeline stages use different integer
-        // indices, then the scheduler will not make them conflict.
-        
+
+        // Some Bluespec trickery. Make a LUTRAM interface which wraps the Vector
+        // and RWires and makes them look like a RAM. As long as different pipeline
+        // stages use different integer indices, then the scheduler will not make
+        // them conflict.
+
         return interface LUTRAM#(t_ADDR, t_DATA);
-                   method t_DATA sub(t_ADDR a) = ramvec[iid].sub(a);
-                   method Action upd(t_ADDR a, t_DATA d) = writeWires[portnum][iid].wset(tuple2(a, d));
+                   method t_DATA sub(t_ADDR a) if (initialized_m);
+                       return ramvec[iid].sub(a);
+                   endmethod
+
+                   method Action upd(t_ADDR a, t_DATA d) if (initialized_m);
+                       writeWires[portnum].wset(tuple3(iid, a, d));
+                   endmethod
                endinterface;
 
     endmethod

@@ -25240,3 +25240,15 @@ Directory modules/hasim/util/modellib
 - The new code gives priority to LOW port IDs.  The old code gave priority to
   HIGH port IDs.  You shouldn't be writing to the same IID on multiple ports
   anyway.
+
+----------
+mcadler     Date: Thu Sep  1 07:40:53 EDT 2011  CSN: CSN-hasim-850
+                  Thu Sep  1 11:40:53 UTC 2011
+
+
+Directory modules/hasim/util/modellib
+ multiplexed-memories.bsv  Locally Modified          849 
+
+Restructure the base modules so a function implementing the underlying storage
+is passed as an argument.  Now we can use the multiplexed modules with any storage
+desired that conforms to the appropriate interfaces.

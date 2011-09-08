@@ -59,7 +59,8 @@ typedef enum
     RSM_RES_EmulateGenRegMap,
     RSM_RES_SyncingRegisters,
     RSM_RES_RequestingEmulation,
-    RSM_RES_UpdatingRegisters
+    RSM_RES_UpdatingRegisters,
+    RSM_RES_FinishingEmulation
 }
 REGMGR_RES_STATE_ENUM
     deriving (Eq, Bits);
@@ -249,7 +250,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     FIFO#(Tuple3#(TOKEN, Bool, ISA_ADDRESS)) res3Q   <- mkFIFO();
     FIFO#(ISA_REG_INDEX) syncPRFReqQ <- mkFIFO();
     FIFO#(Tuple2#(Bool, ISA_REG_INDEX)) syncQ <- mkFIFO();
-    FIFOF#(Tuple2#(ISA_REG_INDEX, ISA_VALUE)) updateRegQ <- mkFIFOF();
+    FIFO#(Tuple2#(ISA_REG_INDEX, ISA_VALUE)) updateRegQ <- mkFIFO();
 
     // Which token's instruction are we emulating?
     Reg#(TOKEN) emulatingToken <- mkRegU();
@@ -793,9 +794,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         ISA_REG_INDEX ar = unpack(truncate(upd.rName));
         ISA_VALUE v = upd.rValue;
         
-        // Assert that we're in the state we expected to be in.
-        assertion.regUpdateAtExpectedTime(state_res == RSM_RES_UpdatingRegisters);
-
         // Request architectural to physical register mapping
         emulateRegMap.mapReq(ar);
         regMapping.readMapReq(tokContextId(emulatingToken), ar);
@@ -828,6 +826,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         // Update the regfile.
         prf.write(pr, v);
 
+        // Assert that we're in the state we expected to be in.
+        assertion.regUpdateAtExpectedTime(state_res == RSM_RES_UpdatingRegisters);
+
+        // Protocol requires that the host send AR 0 last so all registers are
+        // guaranteed updated before emulation finishes.
+        if (ar == 0)
+        begin
+            state_res <= RSM_RES_FinishingEmulation;
+        end
+
         // Log it.
         debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction3: Writing ((%0d/PR%0d) <= 0x%h)", ar, pr, v));
     
@@ -839,8 +847,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // Effect: This means the emulation is complete. Resume normal operations.
     //         Return a NOP to the timing model.
 
-    rule emulateInstruction4 ((state_res == RSM_RES_UpdatingRegisters) &&
-                              ! updateRegQ.notEmpty());
+    rule emulateInstruction4 (state_res == RSM_RES_FinishingEmulation);
         
         // Get the ACK from software that they're complete.
         ISA_ADDRESS newPc <- emul_client_stub.getResponse_emulate();

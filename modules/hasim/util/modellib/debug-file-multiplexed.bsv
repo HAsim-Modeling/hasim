@@ -44,6 +44,9 @@ interface TIMEP_DEBUG_FILE_MULTIPLEXED#(type ni);
     // Simple message (no context or model cycle)
     method Action record_simple(Fmt fmt);
 
+    // Simple message (no model cycle)
+    method Action record_simple_ctx(INSTANCE_ID#(ni) iid, Fmt fmt);
+
     // Emit message for all contexts
     method Action record_all(Fmt fmt);
 
@@ -70,6 +73,9 @@ interface TIMEP_DEBUG_FILE_SHARED_CYCLE_MULTIPLEXED#(type ni);
     // Simple message (no context or model cycle)
     method Action record_simple(Fmt fmt);
 
+    // Simple message (no model cycle)
+    method Action record_simple_ctx(INSTANCE_ID#(ni) iid, Fmt fmt);
+
     // Emit message for all contexts
     method Action record_all(Fmt fmt);
     method Action record_all_next_cycle(Fmt fmt);
@@ -94,6 +100,7 @@ module mkTIMEPDebugFileNull_Multiplexed
     method Action record(INSTANCE_ID#(ni) iid, Fmt fmt) = ?;
     method Action record_next_cycle(INSTANCE_ID#(ni) iid, Fmt fmt) = ?;
     method Action record_simple(Fmt fmt) = ?;
+    method Action record_simple_ctx(INSTANCE_ID#(ni) iid, Fmt fmt) = ?;
     method Action record_all(Fmt fmt) = ?;
     method Action nextModelCycle(INSTANCE_ID#(ni) iid) = ?;
 endmodule
@@ -148,6 +155,10 @@ module mkTIMEPDebugFile_Multiplexed#(String fname)
 
     method Action record_simple(Fmt fmt);
         $fdisplay(debugLog, $format("[%d]: ", fpga_cycle.value()) + fmt);
+    endmethod
+
+    method Action record_simple_ctx(INSTANCE_ID#(ni) iid, Fmt fmt);
+        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpga_cycle.value(), iid) + fmt);
     endmethod
 
     method Action record_all(Fmt fmt);
@@ -214,6 +225,7 @@ module mkTIMEPDebugFileNull_SharedCycle_Multiplexed
     method Action record(INSTANCE_ID#(ni) iid, Fmt fmt) = ?;
     method Action record_next_cycle(INSTANCE_ID#(ni) iid, Fmt fmt) = ?;
     method Action record_simple(Fmt fmt) = ?;
+    method Action record_simple_ctx(INSTANCE_ID#(ni) iid, Fmt fmt) = ?;
     method Action record_all(Fmt fmt) = ?;
     method Action record_all_next_cycle(Fmt fmt) = ?;
     method Action nextModelCycle() = ?;
@@ -263,6 +275,10 @@ module mkTIMEPDebugFile_SharedCycle_Multiplexed#(String fname)
 
     method Action record_simple(Fmt fmt);
         $fdisplay(debugLog, $format("[%d]: ", fpga_cycle.value()) + fmt);
+    endmethod
+
+    method Action record_simple_ctx(INSTANCE_ID#(ni) iid, Fmt fmt);
+        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpga_cycle.value(), iid) + fmt);
     endmethod
 
     method Action record_all(Fmt fmt);

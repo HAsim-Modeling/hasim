@@ -25252,3 +25252,18 @@ Directory modules/hasim/util/modellib
 Restructure the base modules so a function implementing the underlying storage
 is passed as an argument.  Now we can use the multiplexed modules with any storage
 desired that conforms to the appropriate interfaces.
+
+----------
+mcadler     Date: Thu Sep  8 17:15:14 EDT 2011  CSN: CSN-hasim-851
+                  Thu Sep  8 21:15:14 UTC 2011
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getResults.bsv Locally Modified          850 
+
+Directory modules/hasim/util/modellib
+ debug-file-multiplexed.bsv Locally Modified          850 
+
+- Tweak the instruction emulation protocol to resolve a race.
+- Add debug log record methods for multiplexed clients that don't know the
+  current model cycle.

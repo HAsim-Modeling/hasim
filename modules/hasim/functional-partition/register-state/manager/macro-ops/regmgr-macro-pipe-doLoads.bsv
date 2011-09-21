@@ -109,8 +109,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     //
     // ====================================================================
 
-    FIFO#(TOKEN) loads1Q  <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
-    FIFO#(LOADS_INFO) loads2Q  <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
+    FIFO#(Tuple2#(TOKEN, Bool)) loads1Q  <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
+    FIFO#(Tuple2#(LOADS_INFO, Bool)) loads2Q  <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
 
     Reg#(STATE_LOADS2) stateLoads2 <- mkReg(LOADS2_NORMAL);
     Reg#(STATE_LOADS3) stateLoads3 <- mkReg(LOADS3_NORMAL);
@@ -160,8 +160,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
             // Log it.
             debugLog.record(fshow(tok.index) + $format(": DoLoads1: Ignoring junk token or emulated instruction."));
 
-            // Respond to the timing model. End of macro-operation.
-            linkDoLoads.makeResp(initFuncpRspDoLoads(tok));
+            loads1Q.enq(tuple2(tok, False));
         end
         else // Everything's okay.
         begin
@@ -175,7 +174,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
             tokPhysicalMemAddrs.readReq(tok.index);
 
             // Pass to the next stage.
-            loads1Q.enq(tok);
+            loads1Q.enq(tuple2(tok, True));
         end
 
     endrule
@@ -185,10 +184,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     // When:   After doLoads1 occurs
     // Effect: Make the request to the memory state.
 
-    rule doLoads2 (state.readyToContinue() &&& stateLoads2 matches tagged LOADS2_NORMAL);
+    rule doLoads2 (state.readyToContinue() &&&
+                   tpl_2(loads1Q.first()) &&&
+                   stateLoads2 matches tagged LOADS2_NORMAL);
 
         // Read the parameters from the previous stage.
-        let tok = loads1Q.first();
+        let tok = tpl_1(loads1Q.first());
 
         // Get the address(es).
         let p_addrs <- tokPhysicalMemAddrs.readRsp();
@@ -218,7 +219,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
 
                 // Pass it on to the final stage.
                 let load_info = LOADS_INFO {token: tok, memAddrs: p_addrs, offset: offset, opType: l_type};
-                loads2Q.enq(load_info);
+                loads2Q.enq(tuple2(load_info, True));
 
             end
             tagged TWO {.p_addr1, .p_addr2}:
@@ -258,7 +259,26 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         stateLoads2 <= tagged LOADS2_NORMAL;
 
         // Pass it on to the final stage.
-        loads2Q.enq(load_info);
+        loads2Q.enq(tuple2(load_info, True));
+
+    endrule
+
+    // doLoads2_dummy
+
+    // When:   After doLoads1 when passing a dynamically dead junk token
+    // Effect: Pass token to next stage.
+
+    rule doLoads2_dummy (state.readyToContinue() &&&
+                         ! tpl_2(loads1Q.first()) &&&
+                         stateLoads2 matches tagged LOADS2_NORMAL);
+
+        let tok = tpl_1(loads1Q.first());
+        loads1Q.deq();
+
+        debugLog.record(fshow(tok.index) + $format(": DoLoads2: Ignore junk token"));
+
+        let load_info = LOADS_INFO {token: tok, memAddrs: ?, offset: ?, opType: ?};
+        loads2Q.enq(tuple2(load_info, False));
 
     endrule
 
@@ -269,10 +289,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     // Effect: If there was just one request, record the resut, kick back to timing model.
     //         Otherwise stall to get the second response.
 
-    rule doLoads3 (state.readyToContinue() &&& stateLoads3 matches tagged LOADS3_NORMAL);
+    rule doLoads3 (state.readyToContinue() &&&
+                   tpl_2(loads2Q.first()) &&&
+                   stateLoads3 matches tagged LOADS3_NORMAL);
 
         // Get the data from the previous stage.
-        let load_info = loads2Q.first();
+        let load_info = tpl_1(loads2Q.first());
         let tok = load_info.token;
 
         // Get resp from the Mem State.
@@ -333,7 +355,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     rule doLoads3Span (state.readyToContinue() &&& stateLoads3 matches tagged LOADS3_SPAN_RSP .v1);
     
         // Get the data from the previous stage.
-        LOADS_INFO load_info = loads2Q.first();
+        LOADS_INFO load_info = tpl_1(loads2Q.first());
         let tok = load_info.token;
         
         // Get resp from the Mem State.
@@ -371,4 +393,25 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         
     endrule
     
+
+    // doLoads3_dummy
+
+    // When:   After doLoads2 when passing a dynamically dead junk token
+    // Effect: Return to timing model.
+
+    rule doLoads3_dummy (state.readyToContinue() &&&
+                         ! tpl_2(loads2Q.first()) &&&
+                         stateLoads3 matches tagged LOADS3_NORMAL);
+
+        let load_info = tpl_1(loads2Q.first());
+        let tok = load_info.token;
+        loads2Q.deq();
+
+        debugLog.record(fshow(tok.index) + $format(": DoLoads3: Load Response junk token"));
+
+        // Respond to the timing model. End of macro-operation.
+        linkDoLoads.makeResp(initFuncpRspDoLoads(tok));
+
+    endrule
+
 endmodule

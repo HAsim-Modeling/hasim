@@ -33,7 +33,10 @@ import Vector::*;
 `include "asim/provides/funcp_interface.bsh"
   
 // Dictionary includes
+`include "asim/dict/PARAMS_FUNCP_REGSTATE_MANAGER.bsh"
 `include "asim/dict/STATS_REGMGR_GETRESULTS.bsh"
+`include "asim/dict/STREAMID_REGMGR.bsh"
+`include "asim/dict/STREAMS_REGMGR_GETRESULTS.bsh"
 
 // RRR includes
 `include "asim/provides/rrr.bsh"
@@ -41,7 +44,6 @@ import Vector::*;
 `include "asim/provides/isa_emulator.bsh"
 `include "asim/rrr/remote_client_stub_ISA_EMULATOR.bsh"
 `include "asim/rrr/remote_server_stub_ISA_EMULATOR.bsh"
-`include "asim/dict/PARAMS_FUNCP_REGSTATE_MANAGER.bsh"
 
 // ========================================================================
 //
@@ -199,6 +201,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // ====================================================================
 
     DEBUG_FILE debugLog <- mkDebugFile(`REGSTATE_LOGFILE_PREFIX + "_pipe_getResults.out");
+    STREAMS_CLIENT linkStreams <- mkStreamsClient_Debug(`STREAMID_REGMGR_GETRESULTS);
 
 
     // ====================================================================
@@ -411,6 +414,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": GetResults3: Sending to Datapath."));
+        linkStreams.send(`STREAMS_REGMGR_GETRESULTS_SEND_TO_DP,
+                         zeroExtend(tokContextId(tok)),
+                         zeroExtend(tokTokenId(tok)));
 
         // Send it to the datapath.
         linkToDatapath.makeReq(initISADatapathReq(tok, inst, addr, dsts.pr));
@@ -465,6 +471,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         // Return timing model. End of macro-operation (path 1).
         linkGetResults.makeResp(initFuncpRspGetResults(tok, addr, rsp.timepResult));
         debugLog.record(fshow(tok.index) + $format(": GetResults: End (path 1)."));
+        linkStreams.send(`STREAMS_REGMGR_GETRESULTS_RECV_FROM_DP,
+                         zeroExtend(tokContextId(tok)),
+                         zeroExtend(tokTokenId(tok)));
     endrule
 
     rule getResults4Bubble (res3Q.first() matches {.tok, .need_res, .addr} &&& !need_res &&& state.readyToContinue());
@@ -498,7 +507,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         if (tokScoreboard.isStore(tok.index) &&
            ! tokScoreboard.isStoreDataValid(tok.index))
         begin
-            // Stores write dest0 insto the token table instead of the PRF.
+            // Stores write dest0 into the token table instead of the PRF.
             tokStoreValue.write(tok.index, wb.value);
             tokScoreboard.setStoreDataValid(tok.index);
             debugLog.record(fshow(tok.index) + $format(": GetResultsWB: Writing STORE val 0x%x", wb.value));
@@ -508,6 +517,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             // Normal physical register update
             prf.write(pr, wb.value);
             debugLog.record(fshow(tok.index) + $format(": GetResultsWB: Writing (PR%0d <= 0x%x)", pr, wb.value));
+            Bit#(16) tok_ctx = zeroExtend(tokContextId(tok));
+            Bit#(16) tok_id = zeroExtend(tokTokenId(tok));
+            linkStreams.send(`STREAMS_REGMGR_GETRESULTS_PRF_WRITE,
+                             {tok_ctx, tok_id},
+                             zeroExtend(pr));
         end
 
         // All writebacks complete for token?
@@ -771,6 +785,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         
         //Log it.
         debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction3: Requesting Emulation of inst 0x%h from address 0x%h", inst, pc));
+        linkStreams.send(`STREAMS_REGMGR_GETRESULTS_EMUL_START,
+                         zeroExtend(tokContextId(emulatingToken)),
+                         zeroExtend(tokTokenId(emulatingToken)));
+
         stat_isa_emul.incr();
 
         //Go to receiving updates.
@@ -890,6 +908,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         //Log it
         debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction3: Emulation finished."));
+        linkStreams.send(`STREAMS_REGMGR_GETRESULTS_EMUL_DONE,
+                         zeroExtend(tokContextId(emulatingToken)),
+                         zeroExtend(tokTokenId(emulatingToken)));
   
         // Send the response to the timing model.
         // End of macro-operation.

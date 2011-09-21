@@ -25267,3 +25267,19 @@ Directory modules/hasim/util/modellib
 - Tweak the instruction emulation protocol to resolve a race.
 - Add debug log record methods for multiplexed clients that don't know the
   current model cycle.
+
+----------
+mcadler     Date: Tue Sep 20 23:39:16 EDT 2011  CSN: CSN-hasim-852
+                  Wed Sep 21 03:39:16 UTC 2011
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.dic          Locally Modified          851 
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          851 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          851 
+ regmgr-macro-pipe-rewind.bsv Locally Modified          851 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          851 
+
+- Bug fix in doLoads: junk tokens were returned out of sequence.
+
+- Add streams for debugging on FPGAs.

@@ -26,6 +26,9 @@
 
 `include "asim/provides/funcp_interface.bsh"
   
+`include "asim/dict/STREAMID_REGMGR.bsh"
+`include "asim/dict/STREAMS_REGMGR_REWIND.bsh"
+
 
 // ========================================================================
 //
@@ -65,7 +68,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
     // ====================================================================
 
     DEBUG_FILE debugLog <- mkDebugFile(`REGSTATE_LOGFILE_PREFIX + "_pipe_rewind.out");
-
+    STREAMS_CLIENT linkStreams <- mkStreamsClient_Debug(`STREAMID_REGMGR_REWIND);
 
     // ====================================================================
     //
@@ -135,6 +138,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
 
         // Log it.
         debugLog.record($format("Rewind: Preparing rewind to ") + fshow(req.token.index));
+        linkStreams.send(`STREAMS_REGMGR_REWIND_RECV_REQ,
+                         zeroExtend(tokContextId(req.token)),
+                         zeroExtend(tokTokenId(req.token)));
 
         state.setRewind(tokContextId(req.token));
         state_rew <= RSM_REW_DrainingForRewind;
@@ -296,6 +302,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
         if (done)
         begin
             debugLog.record($format("Rewind: Done."));  
+            linkStreams.send(`STREAMS_REGMGR_REWIND_SEND_RSP,
+                             zeroExtend(tokTokenId(rewindTok)), ?);
+
             tokScoreboard.rewindTo(rewindTok.index);
             // Return response
             linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok));

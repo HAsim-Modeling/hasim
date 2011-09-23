@@ -1,3 +1,20 @@
+//
+// Copyright (C) 2011 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
 
 // STAGE_CONTROLLER
 
@@ -27,9 +44,42 @@ module mkStageController
     provisos
         (Bits#(t_PIPE_STATE, t_PIPE_STATE_SZ));
 
-    //NumTypeParam#(TAdd#(t_NUM_INSTANCES, 1)) buffering = ?;
-    //FIFO#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE)) q <- mkSizedLUTRAMFIFO(buffering);
-    FIFO#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE)) q <- mkFIFO();
+    // Build a controller with a standard 2-entry FIFO
+    let sc <- mkSizedStageController(2);
+    return sc;
+
+endmodule
+
+module mkBufferedStageController 
+    // interface:
+        (STAGE_CONTROLLER#(t_NUM_INSTANCES, t_PIPE_STATE))
+    provisos
+        (Bits#(t_PIPE_STATE, t_PIPE_STATE_SZ));
+
+    // Build a buffered controller default buffer size.  The size should be
+    // chosen to cover the typical latency of functional partition and
+    // scratchpad memory pipelines.
+    let sc <- mkSizedStageController(`STAGE_CONTROLLER_BUFFERING);
+    return sc;
+
+endmodule
+
+module mkSizedStageController#(Integer size)
+    // interface:
+        (STAGE_CONTROLLER#(t_NUM_INSTANCES, t_PIPE_STATE))
+    provisos
+        (Bits#(t_PIPE_STATE, t_PIPE_STATE_SZ));
+
+    //
+    // Pick a FIFO implementation appropriate for the requested size.
+    //
+    FIFO#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE)) q;
+    if (size == 1)
+        q <- mkFIFO1();
+    else if (size == 2)
+        q <- mkFIFO();
+    else
+        q <- mkSizedFIFO(size);
 
     
     method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid, t_PIPE_STATE st);

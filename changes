@@ -25302,3 +25302,15 @@ mkStageController() that has a 2-entry FIFO:
   if the performance/area tradeoff makes sense.)
 
 - mkSizedStageController() takes a size parameter, similar to mkSizedFIFO().
+
+----------
+mcadler     Date: Sat Sep 24 11:04:03 EDT 2011  CSN: CSN-hasim-854
+                  Sat Sep 24 15:04:03 UTC 2011
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-misc-controllers.bsv Locally Modified          853 
+ commands-service.awb      Locally Modified          853 
+
+Make the default size of a buffered stage controller equal to the number of
+instances.

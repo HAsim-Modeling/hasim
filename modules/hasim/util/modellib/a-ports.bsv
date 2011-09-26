@@ -316,9 +316,10 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
         (Bits#(t_MSG, t_MSG_SZ),
          NumAlias#(TMul#(TMax#(t_NUM_INSTANCES, 1), PORT_MAX_LATENCY), n_SLOTS),
          Alias#(Bit#(TLog#(n_SLOTS)), t_SLOT_IDX),
-         Bits#(t_SLOT_IDX, t_SLOT_IDX_SZ));
+         Alias#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG)), t_BUFFERED_MSG),
+         Bits#(t_BUFFERED_MSG, t_BUFFERED_MSG_SZ));
 
-    Connection_Receive#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) con <- mkConnection_Receive(portname);
+    Connection_Receive#(t_BUFFERED_MSG) con <- mkConnection_Receive(portname);
 
     Integer rMax = (latency * valueof(t_NUM_INSTANCES)) + 1;
 
@@ -327,64 +328,104 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
         error("Latency exceeds current maximum. Port: " + portname);
     end
 
-     function Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG)) initfunc(t_SLOT_IDX idx);
-        INSTANCE_ID#(t_NUM_INSTANCES) iid = truncateNP(idx);
-        return tuple2(iid, tagged Invalid);
-    endfunction
-
-    LUTRAM#(t_SLOT_IDX, Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) rs <- mkLUTRAMWith(initfunc);
-
-    COUNTER#(t_SLOT_IDX_SZ) head <- mkLCounter(0);
-    COUNTER#(t_SLOT_IDX_SZ) tail <- mkLCounter((fromInteger(latency * valueof(t_NUM_INSTANCES))));
-
-    Bool fullQ  = tail.value() + 1 == head.value();
-    Bool emptyQ = head.value() == tail.value();
+    //
+    // The internal buffer is a FIFO.  Here we attempt to pick a reasonable
+    // FIFO implementation depending on the size of the buffer.  Large buffers
+    // are stored in block RAM.
+    //
+    // Requiring the number of slots to be 512 or greater would map optimally
+    // to block RAM.  We accept inefficiencies in block RAM usage and accept
+    // buffers with only 256 entries because it has been important
+    // for some of our models.  In addition to the number of entries, the
+    // total amount of buffered data must be close to the size of an 18Kb RAM.
+    //
+    FIFOF#(t_BUFFERED_MSG) rs;
+    Integer total_slots = max(1, latency) * max(1, valueOf(t_NUM_INSTANCES));
+    if ((total_slots >= 256) &&
+        (total_slots * valueOf(t_BUFFERED_MSG_SZ) > 14000))
+    begin
+        // Large buffer.  Use block RAM.
+        rs <- mkSizedBRAMFIFOF(total_slots);
+    end
+    else
+    begin
+        // Small buffer.  Use distributed memory.
+        rs <- mkSizedFIFOF(total_slots);
+    end
 
     Reg#(Bool) initialized <- mkReg(False);
+    Reg#(t_SLOT_IDX) initIdx <- mkReg(0);
+    Reg#(Maybe#(t_SLOT_IDX)) initMax <- mkReg(tagged Invalid);
+    
+    //
+    // doInit --
+    //   Fill the FIFO with no message corresponding to the initial buffering.
+    //
+    rule doInit (! initialized &&& initMax matches tagged Valid .max_idx);
+        INSTANCE_ID#(t_NUM_INSTANCES) iid = truncateNP(initIdx);
+        rs.enq(tuple2(iid, tagged Invalid));
 
-    rule shift (initialized && !fullQ && con.notEmpty());
+        initialized <= (initIdx == max_idx);
+        initIdx <= initIdx + 1;
+    endrule
 
+    //
+    // shift --
+    //   Pass received messages to the FIFO buffer.
+    //
+    rule shift (initialized && con.notEmpty());
         let d = con.receive();
         con.deq();
 
-        rs.upd(tail.value(), d);
-        tail.up();
-
+        rs.enq(d);
     endrule
-    
+
+
     interface INSTANCE_CONTROL_IN ctrl;
 
-
-        method Bool empty() = emptyQ;
+        method Bool empty() = ! rs.notEmpty();
         method Bool balanced() = True;
         method Bool light() = False;
         
         method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
-        
-            match {.iid, .m} = rs.sub(head.value());
-            return (emptyQ || !initialized) ? tagged Invalid : tagged Valid iid;
+
+            if (rs.notEmpty())
+            begin
+                match {.iid, .m} = rs.first();
+                return tagged Valid iid;
+            end
+            else
+            begin
+                return tagged Invalid;
+            end
         
         endmethod
         
         method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
         
             t_SLOT_IDX l = fromInteger(latency);
-            t_SLOT_IDX k = zeroExtendNP(iid)+ 1;
-            tail.setC(k * l);
-            initialized <= True;
+            t_SLOT_IDX k = zeroExtendNP(iid) + 1;
+
+            if (l == 0)
+            begin    
+                // 0-latency port has no initial fill.
+                initialized <= True;
+            end
+            else
+            begin    
+                // Write k * l no-messages to initialize the channel.
+                initMax <= tagged Valid (k * l - 1);
+            end
 
         endmethod
 
     endinterface
 
-    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) dummy) if (!emptyQ);
+    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) dummy);
 
-        // TEMPORARILY COMMENT OUT TO REMOVE READ OF tail. This introduced spurious conflicts.
-        //if (emptyQ)
-        //    $display("WARNING: Underflow on unguarded receive port %s! Junk data added!", portname);
+        match {.iid, .m} = rs.first();
+        rs.deq();
 
-        match {.iid, .m} = rs.sub(head.value());
-        head.up();
         return m;
 
     endmethod

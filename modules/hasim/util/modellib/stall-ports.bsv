@@ -313,12 +313,12 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
     PORT_RECV_MULTIPLEXED#(ni, a) enqFromProducer <- mkPortRecvBuffered_Multiplexed(s + "__portDataEnq", 0);
 
     // We use these like ports which are self-contained.
-    NumTypeParam#(TAdd#(ni, 1)) buffering = ?;
-    FIFOF#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) firstToConsumer <- mkSizedLUTRAMFIFOF(buffering);
-    FIFOF#(Bool) deqFromConsumer <- mkSizedLUTRAMFIFOF(buffering);
+    Integer buffering = valueOf(ni) + 1;
+    FIFOF#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) firstToConsumer <- mkSizedFIFOF(buffering);
+    FIFOF#(Bool) deqFromConsumer <- mkSizedFIFOF(buffering);
 
-    FIFO#(Tuple2#(INSTANCE_ID#(ni), FUNC_FIFO#(a, 2))) stage1Ctrl <- mkSizedLUTRAMFIFO(buffering);
-    FIFO#(FUNC_FIFO#(a, 2)) stage2Ctrl <- mkSizedLUTRAMFIFO(buffering);
+    FIFO#(Tuple2#(INSTANCE_ID#(ni), FUNC_FIFO#(a, 2))) stage1Ctrl <- mkSizedFIFO(buffering);
+    FIFO#(FUNC_FIFO#(a, 2)) stage2Ctrl <- mkSizedFIFO(buffering);
 
     Reg#(STALLP_STATE) state <- mkReg(STALLP_idle);
     Reg#(INSTANCE_ID#(ni)) maxRunningInstance <- mkRegU();

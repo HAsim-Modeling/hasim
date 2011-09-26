@@ -25314,3 +25314,29 @@ Directory modules/hasim/util/model-services/commands-service
 
 Make the default size of a buffered stage controller equal to the number of
 instances.
+
+----------
+mcadler     Date: Sun Sep 25 19:56:29 EDT 2011  CSN: CSN-hasim-855
+                  Sun Sep 25 23:56:29 UTC 2011
+
+
+Directory modules/hasim/util/modellib
+ stall-ports.bsv           Locally Modified          854 
+ a-ports.bsv               Locally Modified          854 
+
+Fix our horrible implementation of buffered A-ports.  The buffer is essentially
+a FIFO, but was hand implemented with a depth equal to that needed for maximum
+latency of all ports, in spite of knowing the true latency of a given port.
+
+Changes:
+
+- Switch to forwarding data through normal FIFOs.
+- Heuristically choose between FIFO in distributed memory (mkSizedFIFO) and
+  a BRAM storage (mkSizedBRAMFIFO).  Our BRAM FIFO has a bypass so the timing
+  of the two is identical.
+
+Now the only object sized by PORT_MAX_LATENCY is the index used during
+initialization.
+
+Before the change, 30% of distributed memory was allocated unnecessarily in
+the 64-way in-order mesh model, making it impossible to meet reasonable timing.

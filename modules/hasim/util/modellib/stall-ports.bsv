@@ -102,8 +102,8 @@ endinterface
 
 
 module [HASIM_MODULE] mkPortStallSend#(String s)
-                       (PORT_STALL_SEND#(a))
-            provisos (Bits#(a, sa));
+        (PORT_STALL_SEND#(a))
+    provisos (Bits#(a, sa));
 
     Connection_Receive#(Bool) creditFromQueue <- mkConnection_Receive(s + "__cred");
 
@@ -157,7 +157,7 @@ endmodule
 
 module [HASIM_MODULE] mkPortStallRecv#(String s)
         (PORT_STALL_RECV#(a))
-            provisos (Bits#(a, sa));
+    provisos (Bits#(a, sa));
 
     Connection_Send#(Bool) creditToProducer <- mkConnection_Send(s + "__cred");
 
@@ -260,8 +260,8 @@ endmodule
 
 
 module [HASIM_MODULE] mkPortStallSend_Multiplexed#(String s)
-                       (PORT_STALL_SEND_MULTIPLEXED#(ni, a))
-            provisos (Bits#(a, sa), Add#(TLog#(ni), t_TMP, 6));
+        (PORT_STALL_SEND_MULTIPLEXED#(ni, a))
+    provisos (Bits#(a, sa));
 
     PORT_RECV_MULTIPLEXED#(ni, VOID) creditFromQueue <- mkPortRecvBuffered_Multiplexed(s + "__cred", 0);
 
@@ -306,7 +306,7 @@ STALLP_STATE deriving (Eq, Bits);
 
 module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
         (PORT_STALL_RECV_MULTIPLEXED#(ni, a))
-            provisos (Bits#(a, sa), Add#(TLog#(ni), t_TMP, 6));
+    provisos (Bits#(a, sa));
 
     PORT_SEND_MULTIPLEXED#(ni, VOID) creditToProducer <- mkPortSend_Multiplexed(s + "__cred");
 

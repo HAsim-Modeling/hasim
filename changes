@@ -25340,3 +25340,22 @@ initialization.
 
 Before the change, 30% of distributed memory was allocated unnecessarily in
 the 64-way in-order mesh model, making it impossible to meet reasonable timing.
+
+----------
+mcadler     Date: Tue Oct  4 14:53:50 EDT 2011  CSN: CSN-hasim-856
+                  Tue Oct  4 18:53:50 UTC 2011
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-misc-controllers.bsv Locally Modified          855 
+
+Directory modules/hasim/util/modellib
+ stall-ports.bsv           Locally Modified          855 
+ a-ports.bsv               Locally Modified          855 
+
+- Remove spurious provisos that prevented configuration of 128 cores.
+
+- Limit buffered stage controller size to 16 entries.  At most we can support
+  buffer sizes equal to the scratchpad ROB size.  In practice, 16 seems
+  to be the limit due to deadlocks in the 64-way model.  Will leave the limit
+  at 16 until the deadlocks are understood.

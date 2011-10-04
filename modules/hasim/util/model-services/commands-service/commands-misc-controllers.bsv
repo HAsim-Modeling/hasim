@@ -60,7 +60,15 @@ module mkBufferedStageController
     // chosen to cover the typical latency of functional partition and
     // scratchpad memory pipelines.  For now, we use the number of instances
     // since that is typically the maximum parallelism.
-    let sc <- mkSizedStageController(valueOf(t_NUM_INSTANCES));
+    //
+    // A number of pipelines deadlock if they fill the memory request read
+    // slots without consuming the results, because subsequent writes wind
+    // up blocked.  Reducing buffering below the blocking threshold in
+    // scratchpads and packed memories eliminates this problem.
+    // For now, we limit buffers to 16, until deadlocks in the in-order
+    // 64 CPU model with larger buffers are explained.
+    //
+    let sc <- mkSizedStageController(valueOf(TMin#(t_NUM_INSTANCES, 16)));
     return sc;
 
 endmodule

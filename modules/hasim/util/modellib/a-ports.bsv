@@ -295,9 +295,8 @@ endmodule
 module [HASIM_MODULE] mkPortRecv_Multiplexed#(String portname, Integer latency)
     //interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
-        provisos
-                  (Bits#(t_MSG, t_MSG_SZ),
-                   Add#(TLog#(t_NUM_INSTANCES), t_TMP, 6));
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ));
 
     let p <- case (latency)
                //0: mkPortRecvL0_Multiplexed(portname);
@@ -320,8 +319,6 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
          Bits#(t_BUFFERED_MSG, t_BUFFERED_MSG_SZ));
 
     Connection_Receive#(t_BUFFERED_MSG) con <- mkConnection_Receive(portname);
-
-    Integer rMax = (latency * valueof(t_NUM_INSTANCES)) + 1;
 
     if (latency > valueOf(PORT_MAX_LATENCY))
     begin

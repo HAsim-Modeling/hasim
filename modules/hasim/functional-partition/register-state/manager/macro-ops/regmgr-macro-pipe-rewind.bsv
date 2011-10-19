@@ -298,6 +298,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
                 debugLog.record($format("Rewind: Lookup last ") + fshow(tok_idx));
         end
 
+        if (! done)
+        begin
+            tokScoreboard.deallocateForRewind(tok_idx);
+        end
+
         // Done with rewind?
         if (done)
         begin

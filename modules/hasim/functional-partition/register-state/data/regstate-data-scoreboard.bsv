@@ -111,6 +111,7 @@ interface FUNCP_SCOREBOARD;
   method Action setFault(TOKEN_INDEX t, FUNCP_FAULT fault_code);
   
   // Rollback the allocations younger than t.
+  method Action deallocateForRewind(TOKEN_INDEX t);
   method Action rewindTo(TOKEN_INDEX t);
   
   // Test if it is possible for a token to start a given state.
@@ -149,13 +150,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     // ***** Local State ***** //
 
-    // Rewind operates on sets of bits within a context, so organize the
-    // alloc vector by context ID.
-    Vector#(NUM_CONTEXTS, Reg#(Vector#(NUM_TOKENS_PER_CONTEXT, Bool))) alloc = newVector();
-    for (Integer c = 0; c < valueOf(NUM_CONTEXTS); c = c + 1)
-    begin
-        alloc[c] <- mkReg(replicate(False));
-    end
+    LUTRAM#(TOKEN_INDEX, Bool) alloc <- mkLUTRAM(False);
 
     // The actual scoreboards.
     TOKEN_SCOREBOARD finishedDEC   <- mkLiveTokenLUTRAMU();
@@ -290,7 +285,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // ***** Helper Functions ***** //
 
     function Bool tokIdxIsAllocated(TOKEN_INDEX tokIdx);
-        return alloc[tokIdx.context_id][tokIdx.token_id];
+        return alloc.sub(tokIdx);
     endfunction
 
     function Bool tokIdxAliasIsAllocated(TOKEN_INDEX tokIdx);
@@ -390,7 +385,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         oldestTok[ctx_id] <= nextTok.sub(t);
 
         // Update the allocated bit
-        alloc[t.context_id][t.token_id] <= False;
+        alloc.upd(t, False);
 
     endmethod
 
@@ -412,7 +407,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         assertEnoughTokens(canAllocate(ctx_id));
 
         // Update the allocated bit
-        alloc[new_tok.context_id][new_tok.token_id] <= True;
+        alloc.upd(new_tok, True);
         numInDEC[new_tok.context_id].up();
 
         // Reset all the scoreboards.
@@ -712,10 +707,26 @@ module [Connected_Module] mkFUNCP_Scoreboard
             
     endmethod
 
+
+    // deallocateForRewind
+    
+    // When:   Any time.
+    // Effect: Deactivate a token during rewind.  The oldest token pointer must
+    //         be managed during rewind by calling rewindTo() separately.
+
+    method Action deallocateForRewind(TOKEN_INDEX t);
+
+        alloc.upd(t, False);
+
+    endmethod
+
+
     // rewindTo
     
     // When:   Any time.
-    // Effect: Undo all allocations younger than parameter t.
+    // Effect: Undo meta-data associated with allocations following a rewind
+    //         to token t.  The actual alloc vector must be updated separately
+    //         by calling deallocateForRewind().
 
     method Action rewindTo(TOKEN_INDEX t);
 
@@ -741,20 +752,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
             // t is allocated. Mark what the token committed after t should be.
             nextTok.upd(t, nextFreeTok[ctx_id]);
         end
-
-        //
-        // Update the alloc vector.
-        //
-
-        Vector#(NUM_TOKENS_PER_CONTEXT, Bool) as = alloc[ctx_id];
-
-        for (Integer x = 0; x < valueof(NUM_TOKENS_PER_CONTEXT); x = x + 1)
-        begin
-            TOKEN_INDEX x_tok = tokenIndexFromIds(ctx_id, fromInteger(x));
-            as[x] = tokenIsOlderOrEq(x_tok.token_id, t.token_id) ? as[x] : False;
-        end
-
-        alloc[ctx_id] <= as;
 
     endmethod
 

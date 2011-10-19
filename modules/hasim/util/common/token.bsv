@@ -59,7 +59,7 @@ typedef struct
     TOKEN_ID   token_id;
 }
 TOKEN_INDEX
-    deriving (Eq, Bits);
+    deriving (Eq, Bits, Bounded);
 
 typedef SizeOf#(TOKEN_INDEX)    TOKEN_INDEX_SIZE;
 typedef TExp#(TOKEN_INDEX_SIZE) NUM_TOKENS;

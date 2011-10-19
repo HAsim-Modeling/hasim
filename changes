@@ -25359,3 +25359,32 @@ Directory modules/hasim/util/modellib
   buffer sizes equal to the scratchpad ROB size.  In practice, 16 seems
   to be the limit due to deadlocks in the 64-way model.  Will leave the limit
   at 16 until the deadlocks are understood.
+
+----------
+mcadler     Date: Wed Oct 19 17:15:35 EDT 2011  CSN: CSN-hasim-857
+                  Wed Oct 19 21:15:35 UTC 2011
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          856 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-rewind.bsv Locally Modified          856 
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          856 
+
+Discovered a tremendous waste of space.  Long ago, we switched to serialized
+rewind in which a single token at a time is backed out.  The scoreboard
+token "alloc" bit array was set up so all bits for a context could be updated
+in a single cycle.  This was to support the old way of rewinding in a single
+step.
+
+For a 64 core model, switching to a LUTRAM in which only one alloc bit may be
+written per cycle saves:
+  - 12% of logic LUTs an LX330
+  - About half the compile/synthesis time
+
+The Verilog file drops to under 1/3rd of the previous size, just by changing
+one array of bool.  A good example of the care needed in using high-level
+synthesis languages.

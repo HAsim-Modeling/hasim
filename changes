@@ -25388,3 +25388,19 @@ written per cycle saves:
 The Verilog file drops to under 1/3rd of the previous size, just by changing
 one array of bool.  A good example of the care needed in using high-level
 synthesis languages.
+
+----------
+mcadler     Date: Sun Oct 23 09:32:23 EDT 2011  CSN: CSN-hasim-858
+                  Sun Oct 23 13:32:23 UTC 2011
+
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          857 
+
+Add a pseudo-multi-write implementation of the multi-write LUTRAM.  The
+interface is identical and multiple potential writers may still execute in
+parallel.  Internally, writes are serialized as only one value may be written
+to the LUTRAM per cycle.
+
+For a large number of instances this implementation uses significantly fewer
+LUTs.

@@ -291,7 +291,7 @@ endinterface
 
 module [m] mkMultiplexedLUTRAMMultiWrite#(t_DATA initval) 
     // interface:
-        (MULTIPLEXED_LUTRAM_MULTI_WRITE#(t_NUM_INSTANCES, t_NUM_PORTS, t_ADDR, t_DATA))
+    (MULTIPLEXED_LUTRAM_MULTI_WRITE#(t_NUM_INSTANCES, t_NUM_PORTS, t_ADDR, t_DATA))
     provisos 
         (Bits#(t_DATA, t_DATA_SZ),
          Bits#(t_ADDR, t_ADDR_SZ),
@@ -374,6 +374,84 @@ module [m] mkMultiplexedLUTRAMMultiWrite#(t_DATA initval)
     endmethod
 
 endmodule
+
+
+//
+// mkMultiplexedLUTRAMPseudoMultiWrite --
+//     Same interface and function as mkMultiplexedLUTRAMMultiWrite but
+//     with a single actual write port for a more efficient implementation.
+//     Here we trade performance for space.  If multiple write requests arrive
+//     in a cycle new requests are blocked until all writes are completed.
+//
+module [m] mkMultiplexedLUTRAMPseudoMultiWrite#(t_DATA initval) 
+    // interface:
+    (MULTIPLEXED_LUTRAM_MULTI_WRITE#(t_NUM_INSTANCES, t_NUM_PORTS, t_ADDR, t_DATA))
+    provisos 
+        (Bits#(t_DATA, t_DATA_SZ),
+         Bits#(t_ADDR, t_ADDR_SZ),
+         Bounded#(t_ADDR),
+         IsModule#(m, a),
+         Alias#(Tuple3#(INSTANCE_ID#(t_NUM_INSTANCES), t_ADDR, t_DATA), t_WRITE_MSG));
+
+    // The storage
+    MULTIPLEXED_LUTRAM#(t_NUM_INSTANCES, t_ADDR, t_DATA) ram <- mkMultiplexedLUTRAM(initval);
+
+    // Incoming write requests
+    MERGE_FIFOF#(t_NUM_PORTS, Tuple3#(INSTANCE_ID#(t_NUM_INSTANCES),
+                                      t_ADDR,
+                                      t_DATA)) writeQ <- mkMergeBypassFIFOF();
+
+    // Block reads because writes are incomplete?  A BypassFIFO introduces a
+    // conbinatorial path on the notEmpty() line, so we must be clever and
+    // record whether any reads may potentially fire before the queued stores.
+    Reg#(Bool) blockReads <- mkReg(False);
+    PulseWire didWrite <- mkPulseWire();
+
+    //
+    // updateRAMs --
+    //     Consume write requests and commit to memory.
+    //
+    rule updateRAMs (True);
+        match {.iid, .addr, .data} = writeQ.first();
+        writeQ.deq();
+
+        ram.getRAM(iid).upd(addr, data);
+
+        // Any more writes in this group?  A bypass FIFO only has one storage
+        // slot, so this is equivalent to testing notEmpty.
+        blockReads <= ! writeQ.lastInGroup();
+        didWrite.send();
+    endrule
+
+    //
+    // noWrite --
+    //     Update the blockReads state when no write is serviced.  This should
+    //     not fire for typical LUTRAM implementations, since nothing should
+    //     block a write.
+    //
+    (* fire_when_enabled *)
+    (* no_implicit_conditions *)
+    rule noWrite (! didWrite);
+        blockReads <= writeQ.notEmpty();
+    endrule
+
+
+    method LUTRAM#(t_ADDR, t_DATA) getRAMWithWritePort(INSTANCE_ID#(t_NUM_INSTANCES) iid, Integer portnum);
+
+        return interface LUTRAM#(t_ADDR, t_DATA);
+                   method t_DATA sub(t_ADDR a) if (! blockReads);
+                       return ram.getRAM(iid).sub(a);
+                   endmethod
+
+                   method Action upd(t_ADDR a, t_DATA d);
+                       writeQ.ports[portnum].enq(tuple3(iid, a, d));
+                   endmethod
+               endinterface;
+
+    endmethod
+
+endmodule
+
 
 // Generalized state pool, implemented as a fifo. A cheaper alternative to the Multi-Write structures above
 

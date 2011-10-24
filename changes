@@ -25404,3 +25404,23 @@ to the LUTRAM per cycle.
 
 For a large number of instances this implementation uses significantly fewer
 LUTs.
+
+----------
+mcadler     Date: Mon Oct 24 10:36:10 EDT 2011  CSN: CSN-hasim-859
+                  Mon Oct 24 14:36:10 UTC 2011
+
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          858 
+
+- Queue in multiplexed state pool was twice the size necessary.  The buffer
+  size was set to 1 + num instances.  I can't figure out why and the simulator
+  appears to behave the same with num instances.  Since the number of instances
+  tends to be a power of 2, adding one often doubles the allocated buffer
+  size, which itself is typically forced to be a power of 2.
+
+  Even if this change is wrong and we need 1 + num instances, we should code
+  this with a second FIFO to add the extra slot.
+
+- Add a heuristic to choose between LUTRAM and BRAM for the pool.  The
+  heuristic may still need tuning.

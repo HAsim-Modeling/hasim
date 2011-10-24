@@ -469,8 +469,23 @@ module mkMultiplexedStatePool#(t_DATA initval)
     provisos
         (Bits#(t_DATA, t_DATA_SZ));
 
-    NumTypeParam#(TAdd#(t_NUM_INSTANCES, 1)) buffering = ?;
-    FIFOF#(t_DATA) q <- mkSizedLUTRAMFIFOF(buffering);
+    //
+    // Use a similar heuristic to the buffering in A-Ports.  Use block RAM for large buffers.
+    //
+    FIFOF#(t_DATA) q;
+    Integer buffering = max(1, valueOf(t_NUM_INSTANCES));
+    if ((buffering >= 256) &&
+        (buffering * valueOf(t_DATA_SZ) > 14000))
+    begin
+        // Large buffer.  Use block RAM.
+        q <- mkSizedBRAMFIFOF(buffering);
+    end
+    else
+    begin
+        // Small buffer.  Use distributed memory.
+        q <- mkSizedFIFOF(buffering);
+    end
+
     COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES)) curIID <- mkLCounter(0);
     Reg#(Bool) initialized <- mkReg(False);
     Reg#(Bool) initializing <- mkReg(False);

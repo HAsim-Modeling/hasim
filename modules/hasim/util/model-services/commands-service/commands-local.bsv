@@ -26,7 +26,8 @@
 
 import Vector::*;
 import FIFO::*;
-
+import FIFOF::*;
+import SpecialFIFOs::*;
 
 // Project imports
 
@@ -122,16 +123,14 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
     // We start at -1, so we assume at least one instance is active.
     COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES)) maxActiveInstance <- mkLCounter(~0);
     // Vector of running instances
-    Reg#(Vector#(t_NUM_INSTANCES, Bool)) instanceRunning <- mkReg(replicate(False));
-    // Track stepping state.
-    Reg#(Vector#(t_NUM_INSTANCES, Bool)) instanceStepped <- mkReg(replicate(False));
+    MULTIPLEXED_REG#(t_NUM_INSTANCES, Bool) instanceRunning <- mkMultiplexedReg(False);
 
     // Signalled DONE to the software?
     Reg#(Bool) signalDone <- mkReg(False);
 
-    Vector#(t_NUM_INSTANCES, PulseWire)    startCycleW <- replicateM(mkPulseWire());
-    Vector#(t_NUM_INSTANCES, PulseWire)      endCycleW <- replicateM(mkPulseWire());
-    Vector#(t_NUM_INSTANCES, Wire#(Bit#(8))) pathDoneW <- replicateM(mkWire());
+    FIFOF#(INSTANCE_ID#(t_NUM_INSTANCES)) startCycleQ <- mkBypassFIFOF();
+    FIFOF#(INSTANCE_ID#(t_NUM_INSTANCES)) endCycleQ <- mkBypassFIFOF();
+    Wire#(Bit#(8)) pathDoneW <- mkWire();
     
     
     // For now this local controller just goes round-robin over the instances.
@@ -142,10 +141,6 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
     COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES)) nextInstance <- mkLCounter(0);
     
     Connection_Chain#(CONTROLLER_MSG) link_controllers <- mkConnection_Chain(`RINGID_CONTROLLER_MESSAGES);
-
-    function Bool allTrue(Vector#(k, Bool) v);
-        return foldr(\&& , True, v);
-    endfunction
 
     // Can this module read from this Port?
     function Bool canReadFrom(INSTANCE_CONTROL_IN#(t_NUM_INSTANCES) ctrl_in);
@@ -182,42 +177,9 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
             canWrite = canWrite && canWriteTo(outctrls[x]);
 
         // An instance is ready to go only if it's been enabled.
-        return !instanceRunning[iid] && canRead && canWrite;
+        Reg#(Bool) running = instanceRunning.getReg(iid);
+        return !running && canRead && canWrite;
 
-    endfunction
-
-    function Action checkInstanceSanity();
-    action
-    
-        // Verify all of the input ports share the same instance, and 
-        // that it's the expected instance.
-        for (Integer x = 0; x < valueOf(t_NUM_INPORTS); x = x + 1)
-        begin
-        
-            if (inctrls[x].nextReadyInstance() matches tagged Valid .iid &&&
-                iid != nextInstance.value())
-            begin
-
-                $display("WARNING: Local controller expected instance id: %0d, found: %0d on port #%0d", nextInstance.value(), iid, fromInteger(x));
-
-            end
-
-        end
-
-    endaction
-    endfunction
-
-    function INSTANCE_ID#(t_NUM_INSTANCES) nextReadyInstance();
-        
-        INSTANCE_ID#(t_NUM_INSTANCES) res = 0;
-
-        for (Integer x = 0; x < valueof(t_NUM_INSTANCES); x = x + 1)
-        begin
-            res = instanceReady(fromInteger(x)) ? fromInteger(x) : res;
-        end
-        
-        return res;
-    
     endfunction
 
     function Bool someInstanceReady();
@@ -336,12 +298,6 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
             tagged COM_Step:
             begin
                 state <= LC_Stepping;
-                Vector#(t_NUM_INSTANCES, Bool) instance_stepped = newVector();
-                for (Integer x = 0; x < valueOf(t_NUM_INSTANCES); x = x + 1)
-                begin
-                   instance_stepped[x] = False;
-                end
-                instanceStepped <= instance_stepped;
             end
 
             tagged COM_Pause .send_response:
@@ -371,19 +327,16 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
 
     rule updateRunning (True);
     
-        Vector#(t_NUM_INSTANCES, Bool) new_running = instanceRunning;
-
-        for (Integer x = 0; x < valueOf(t_NUM_INSTANCES); x = x + 1)
+        if (startCycleQ.notEmpty())
         begin
-            if (instanceRunning[x])
-                new_running[x] =  !endCycleW[x];
-            else if (startCycleW[x])
-                new_running[x] = !endCycleW[x];
-            else
-                noAction;
+            instanceRunning.getReg(startCycleQ.first()) <= True;
+            startCycleQ.deq();
         end
-        
-        instanceRunning <= new_running;
+        else if (endCycleQ.notEmpty())
+        begin
+            instanceRunning.getReg(endCycleQ.first()) <= False;
+            endCycleQ.deq();
+        end
     
     endrule
 
@@ -392,12 +345,11 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
     //     State update associated with startModelCycle, encoded in a rule
     //     and controlled by a wire in order to set scheduling priority.
     //
-    Wire#(Maybe#(Bit#(INSTANCE_ID_BITS#(t_NUM_INSTANCES)))) newModelCycleStarted <- mkDWire(tagged Invalid);
+    Wire#(Maybe#(INSTANCE_ID#(t_NUM_INSTANCES))) newModelCycleStarted <- mkDWire(tagged Invalid);
 
     (* descending_urgency = "updateStateForStepping, nextCommand" *)
     rule updateStateForStepping (state == LC_Stepping &&&
                                  newModelCycleStarted matches tagged Valid .iid);
-        instanceStepped[iid] <= True;
         if (iid == maxActiveInstance.value())
             state <= LC_Idle;
     endrule
@@ -412,9 +364,7 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
             newModelCycleStarted <= tagged Valid next_iid;
         end
         
-        // checkInstanceSanity();
-        
-        startCycleW[next_iid].send();
+        startCycleQ.enq(next_iid);
         
         if (next_iid >= maxActiveInstance.value())
         begin
@@ -431,8 +381,8 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
 
     method Action endModelCycle(INSTANCE_ID#(t_NUM_INSTANCES) iid, Bit#(8) path);
     
-        endCycleW[iid].send();
-        pathDoneW[iid] <= path; // Put the path into the waveform.
+        endCycleQ.enq(iid);
+        pathDoneW <= path; // Put the path into the waveform.
     
     endmethod
 

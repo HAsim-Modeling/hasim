@@ -470,12 +470,13 @@ module mkMultiplexedStatePool#(t_DATA initval)
         (Bits#(t_DATA, t_DATA_SZ));
 
     //
-    // Use a similar heuristic to the buffering in A-Ports.  Use block RAM for large buffers.
+    // Use a similar heuristic to the buffering in A-Ports.  Use block RAM
+    // for large buffers.
     //
     FIFOF#(t_DATA) q;
     Integer buffering = max(1, valueOf(t_NUM_INSTANCES));
-    if ((buffering >= 256) &&
-        (buffering * valueOf(t_DATA_SZ) > 14000))
+    if (((buffering >= 128) && (buffering * valueOf(t_DATA_SZ) > 30000)) ||
+        ((buffering >= 512) && (buffering * valueOf(t_DATA_SZ) > 15000)))
     begin
         // Large buffer.  Use block RAM.
         q <- mkSizedBRAMFIFOF(buffering);

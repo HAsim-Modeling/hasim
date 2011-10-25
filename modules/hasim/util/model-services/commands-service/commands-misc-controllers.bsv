@@ -367,16 +367,14 @@ module [HASIM_MODULE] mkLocalControllerPlusN
     // We start at -1, so we assume at least one instance is active.
     COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES_PLUS_N)) maxActiveInstance <- mkLCounter(~0);
     // Vector of running instances
-    Reg#(Vector#(t_NUM_INSTANCES_PLUS_N, Bool)) instanceRunning <- mkReg(replicate(False));
-    // Track stepping state.
-    Reg#(Vector#(t_NUM_INSTANCES_PLUS_N, Bool)) instanceStepped <- mkReg(replicate(False));
+    MULTIPLEXED_REG#(t_NUM_INSTANCES_PLUS_N, Bool) instanceRunning <- mkMultiplexedReg(False);
 
     // Signalled DONE to the software?
     Reg#(Bool) signalDone <- mkReg(False);
 
-    Vector#(t_NUM_INSTANCES_PLUS_N, PulseWire)    startCycleW <- replicateM(mkPulseWire());
-    Vector#(t_NUM_INSTANCES_PLUS_N, PulseWire)      endCycleW <- replicateM(mkPulseWire());
-    Vector#(t_NUM_INSTANCES_PLUS_N, Wire#(Bit#(8))) pathDoneW <- replicateM(mkWire());
+    FIFOF#(INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N)) startCycleQ <- mkBypassFIFOF();
+    FIFOF#(INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N)) endCycleQ <- mkBypassFIFOF();
+    Wire#(Bit#(8)) pathDoneW <- mkWire();
     
     
     // For now this local controller just goes round-robin over the instances.
@@ -387,10 +385,6 @@ module [HASIM_MODULE] mkLocalControllerPlusN
     COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES_PLUS_N)) nextInstance <- mkLCounter(0);
     
     Connection_Chain#(CONTROLLER_MSG) link_controllers <- mkConnection_Chain(`RINGID_CONTROLLER_MESSAGES);
-
-    function Bool allTrue(Vector#(k, Bool) v);
-        return foldr(\&& , True, v);
-    endfunction
 
     // Can this module read from this Port? Purposely ignore the non plus-N ports
     function Bool canReadFromN(INSTANCE_CONTROL_IN#(t_NUM_INSTANCES_PLUS_N) ctrl_in);
@@ -414,36 +408,10 @@ module [HASIM_MODULE] mkLocalControllerPlusN
             canRead = canRead && canReadFromN(inctrlsN[x]);
 
         // An instance is ready to go only if it's been enabled.
-        return !instanceRunning[iid] && canRead;
+        Reg#(Bool) running = instanceRunning.getReg(iid);
+        return !running && canRead;
 
     endfunction
-
-    function INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N) nextReadyInstance();
-        
-        INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N) res = 0;
-
-        for (Integer x = 0; x < valueof(t_NUM_INSTANCES_PLUS_N); x = x + 1)
-        begin
-            res = instanceReady(fromInteger(x)) ? fromInteger(x) : res;
-        end
-        
-        return res;
-    
-    endfunction
-
-    function Bool someInstanceReady();
-        
-        Bool res = False;
-
-        for (Integer x = 0; x < valueof(t_NUM_INSTANCES_PLUS_N); x = x + 1)
-        begin
-            res = instanceReady(fromInteger(x)) || res;
-        end
-        
-        return res;
-    
-    endfunction
-
 
 
     function Bool balanced();
@@ -546,12 +514,6 @@ module [HASIM_MODULE] mkLocalControllerPlusN
             tagged COM_Step:
             begin
                 state <= LCN_Stepping;
-                Vector#(t_NUM_INSTANCES_PLUS_N, Bool) instance_stepped = newVector();
-                for (Integer x = 0; x < valueOf(t_NUM_INSTANCES_PLUS_N); x = x + 1)
-                begin
-                   instance_stepped[x] = False;
-                end
-                instanceStepped <= instance_stepped;
             end
 
             tagged COM_Pause .send_response:
@@ -581,19 +543,16 @@ module [HASIM_MODULE] mkLocalControllerPlusN
 
     rule updateRunning (True);
     
-        Vector#(t_NUM_INSTANCES_PLUS_N, Bool) new_running = instanceRunning;
-
-        for (Integer x = 0; x < valueOf(t_NUM_INSTANCES_PLUS_N); x = x + 1)
+        if (startCycleQ.notEmpty())
         begin
-            if (instanceRunning[x])
-                new_running[x] =  !endCycleW[x];
-            else if (startCycleW[x])
-                new_running[x] = !endCycleW[x];
-            else
-                noAction;
+            instanceRunning.getReg(startCycleQ.first()) <= True;
+            startCycleQ.deq();
         end
-        
-        instanceRunning <= new_running;
+        else if (endCycleQ.notEmpty())
+        begin
+            instanceRunning.getReg(endCycleQ.first()) <= False;
+            endCycleQ.deq();
+        end
     
     endrule
 
@@ -602,12 +561,11 @@ module [HASIM_MODULE] mkLocalControllerPlusN
     //     State update associated with startModelCycle, encoded in a rule
     //     and controlled by a wire in order to set scheduling priority.
     //
-    Wire#(Maybe#(Bit#(INSTANCE_ID_BITS#(t_NUM_INSTANCES_PLUS_N)))) newModelCycleStarted <- mkDWire(tagged Invalid);
+    Wire#(Maybe#(INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N))) newModelCycleStarted <- mkDWire(tagged Invalid);
 
     (* descending_urgency = "updateStateForStepping, nextCommand" *)
     rule updateStateForStepping (state == LCN_Stepping &&&
                                  newModelCycleStarted matches tagged Valid .iid);
-        instanceStepped[iid] <= True;
         if (iid == maxActiveInstance.value())
             state <= LCN_Idle;
     endrule
@@ -625,9 +583,7 @@ module [HASIM_MODULE] mkLocalControllerPlusN
             newModelCycleStarted <= tagged Valid next_iid;
         end
         
-        // checkInstanceSanity();
-        
-        startCycleW[next_iid].send();
+        startCycleQ.enq(next_iid);
         
         if (next_iid >= maxActiveInstance.value())
         begin
@@ -644,8 +600,8 @@ module [HASIM_MODULE] mkLocalControllerPlusN
 
     method Action endModelCycle(INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N) iid, Bit#(8) path);
     
-        endCycleW[iid].send();
-        pathDoneW[iid] <= path; // Put the path into the waveform.
+        endCycleQ.enq(iid);
+        pathDoneW <= path; // Put the path into the waveform.
     
     endmethod
 

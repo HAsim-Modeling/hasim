@@ -25424,3 +25424,22 @@ Directory modules/hasim/util/modellib
 
 - Add a heuristic to choose between LUTRAM and BRAM for the pool.  The
   heuristic may still need tuning.
+
+----------
+mcadler     Date: Tue Oct 25 11:37:41 EDT 2011  CSN: CSN-hasim-860
+                  Tue Oct 25 15:37:41 UTC 2011
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          859 
+ commands-misc-controllers.bsv Locally Modified          859 
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          859 
+
+- Local controllers had many structures left over from earlier controller
+  implementations.  Removed all code that grows logic with the number of
+  contexts.  As a side effect, it is now possible to begin and end only
+  one context per FPGA cycle.
+
+- Tweak the state pool BRAM vs. LUTRAM heuristic.

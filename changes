@@ -25443,3 +25443,19 @@ Directory modules/hasim/util/modellib
   one context per FPGA cycle.
 
 - Tweak the state pool BRAM vs. LUTRAM heuristic.
+
+----------
+mcadler     Date: Fri Oct 28 08:06:52 EDT 2011  CSN: CSN-hasim-861
+                  Fri Oct 28 12:06:52 UTC 2011
+
+
+Directory modules/hasim/util/modellib
+ multiplexed-memories.bsv  Locally Modified          860 
+ multiplexed.bsv           Locally Modified          860 
+
+- Move multiplexed LUTRAM code to multiplexed-memories.bsv
+
+- Add a mkLUTRAM_Multiplexed analog to mkMemory_Multiplexed.  It takes any
+  LUTRAM constructor and extends it to be multiplexed.  There is also a
+  mapMultiplexedLUTRAMInitFunc function provided to turn an initialization
+  function in a single instance's space into a function over all instances.

@@ -99,7 +99,7 @@ interface REGSTATE_PHYSICAL_REGS_RW_REGS;
     method Action write(FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
 endinterface
 
-interface REGSTATE_PHYSICAL_REGS#(numeric type numPrfReadPorts);
+interface REGSTATE_PHYSICAL_REGS;
     interface REGSTATE_PHYSICAL_REGS_INVAL_REGS getDependencies;
     interface REGSTATE_PHYSICAL_REGS_RW_REGS    getResults;
     interface REGSTATE_PHYSICAL_REGS_WRITE_REG  doLoads;
@@ -133,9 +133,7 @@ REGSTATE_PRF_READ_STATE
 //
 module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     // interface:
-    (REGSTATE_PHYSICAL_REGS#(numPrfReadPorts));
-
-    let v_numPrfReadPorts = valueOf(numPrfReadPorts);
+    (REGSTATE_PHYSICAL_REGS);
 
     // ====================================================================
     //
@@ -161,8 +159,15 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     //
     // ====================================================================
 
+    // PRF read port used by the non-vector read cases
+    let prf_side_port = valueOf(ISA_MAX_SRCS);
+
     // The physical register file
-    BRAM_MULTI_READ#(numPrfReadPorts, FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE) prf <- mkBRAMMultiRead();
+    NumTypeParam#(4) n_banks = ?;
+    BRAM_MULTI_READ#(TAdd#(ISA_MAX_SRCS, 1), FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE)
+        prf <- mkMultiReadBankedMemory(n_banks,
+                                       MEM_BANK_SELECTOR_BITS_LOW,
+                                       mkBRAMBufferedPseudoMultiRead());
     
     // Valid bits for PRF
     LUTRAM#(FUNCP_PHYSICAL_REG_INDEX, Bool) prfValids <- mkLUTRAMU();
@@ -170,40 +175,11 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     // Control access to PRF storage
     Reg#(REGSTATE_PRF_READ_STATE) readState <- mkReg(REGSTATE_PRF_READ_READY);
 
-    //
     // State for reading all inputs registers for an instruction
-    //
-    Reg#(ISA_INST_SRCS) vecRegReq <- mkRegU();
-    // Counters for outstanding register read requests and responses
-    Vector#(numPrfReadPorts, Reg#(ISA_SRC_COUNTER)) vecNumReqs  = newVector();
-    Vector#(numPrfReadPorts, Reg#(ISA_SRC_COUNTER)) vecNumResps = newVector();
-    // Counter used for triggering read requests.  vecReqIdx needs to be able to
-    // count one beyond ISA_MAX_SRCS due to the loop code.
-    Vector#(numPrfReadPorts, Reg#(ISA_SRC_COUNTER)) vecReqIdx = newVector();
-    // Queue for associating register reads with argument positions in the instruction
-    Vector#(numPrfReadPorts, FIFO#(ISA_SRC_COUNTER)) vecQ = newVector();
-    
-    for (Integer pipe = 0; pipe < v_numPrfReadPorts; pipe = pipe + 1)
-    begin
-        vecNumReqs[pipe]  <- mkRegU();
-        vecNumResps[pipe] <- mkRegU();
-        vecReqIdx[pipe]   <- mkRegU();
-        vecQ[pipe] <- mkFIFO();
-    end
-
-    // Holder for vector read response
-    Vector#(ISA_MAX_SRCS, Reg#(ISA_VALUE)) srcVals = newVector();
-    for (Integer x = 0; x < valueOf(ISA_MAX_SRCS); x = x + 1)
-    begin
-        srcVals[x] <- mkRegU();
-    end
+    FIFO#(ISA_INST_SRCS) vecRegReqQ <- mkFIFO();
 
     // Vector of work remaining from an invalidate vector
     Reg#(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) invalVec <- mkReg(replicate(tagged Invalid));
-
-    // A valid entry at the head of the queue indicates a quick PRF, pipelined,
-    // read path with no buffering required.
-    FIFO#(Maybe#(Vector#(numPrfReadPorts, Bool))) quickReadPrfQ <- mkFIFO();
 
     // Individual incoming queues for each pipeline
     FIFOF#(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) rqGetDepInval <- mkFIFOF();
@@ -264,6 +240,19 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     //   PRF access logic
     //
     // ====================================================================
+
+    //
+    // regReadyOrNoReq --
+    //     Return true if a source register slot is either not a request or is a request for
+    //     a data-ready register.
+    //
+    function Bool regReadyOrNoReq(Maybe#(FUNCP_PHYSICAL_REG_INDEX) src);        
+        if (src matches tagged Valid .r)
+            return prfValids.sub(r);
+        else
+            return True;
+    endfunction
+
 
     //
     // sendInvalResponseWhenDone --
@@ -395,8 +384,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
             rqCommitResRead.deq();
 
             readState <= REGSTATE_PRF_READ_COMMITRESULTS;
-            prf.readPorts[0].readReq(r);
-            quickReadPrfQ.enq(tagged Invalid);
+            prf.readPorts[prf_side_port].readReq(r);
             debugLog.record($format("PRF: Start Read (CR): Single reg %0d ready", r));
         end
 
@@ -409,219 +397,59 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
                 rqGetResRead.deq();
 
                 readState <= REGSTATE_PRF_READ_GETRESULTS_SINGLE;
-                prf.readPorts[0].readReq(r);
-                quickReadPrfQ.enq(tagged Invalid);
+                prf.readPorts[prf_side_port].readReq(r);
                 debugLog.record($format("PRF: Start Read (GR): Single reg %0d ready", r));
             end
         end
     endrule
-
 
     //
     // startReadPrfVec --
     //     Read a vector of registers.
     //
     (* descending_urgency = "startReadPrf, startReadPrfVec" *)
-    rule startReadPrfVec (initialized && readState == REGSTATE_PRF_READ_READY);
-        //
-        // Vector register read.  We use two read ports on the register file
-        // BRAM to reduce the time to complete the request.
-        //
-        // Calculate the number of requests for each read port and prepare
-        // to iterate over the requests.
-        //
-
+    rule startReadPrfVec (initialized &&
+                          readState == REGSTATE_PRF_READ_READY &&
+                          all(regReadyOrNoReq, rqGetResReadVec.first()));
         let rVec = rqGetResReadVec.first();
         rqGetResReadVec.deq();
         
-        // Track whether all requests for the vector have been satisfied
-        // and build up quick read path in case no buffering is needed.
-        Bool doneWithReqs = True;
-        Vector#(numPrfReadPorts, Bool) didRead = Vector::replicate(False);
-
-        for (Integer port = 0; port < v_numPrfReadPorts; port = port + 1)
+        //
+        // All register inputs are ready.  Reuqest their values.
+        //
+        for (Integer s = 0; s < valueOf(ISA_MAX_SRCS); s = s + 1)
         begin
-            ISA_SRC_COUNTER nReqs = 0;
-            let startIdx = port;
-
-            // Count number of requests to be serviced by this port
-            for (Integer x = startIdx; x < valueOf(ISA_MAX_SRCS); x = x + v_numPrfReadPorts)
+            if (rVec[s] matches tagged Valid .r)
             begin
-                if (rVec[x] matches tagged Valid .r)
-                    nReqs = nReqs + 1;
+                prf.readPorts[s].readReq(r);
+                debugLog.record($format("PRF: Vec Read reg %0d, slot %0d", r, s));
             end
-
-            debugLog.record($format("PRF: Start Vector Read Port %0d: %0d requests", port, nReqs));
-
-            //
-            // Try to get an early start on the first register
-            //
-            if (rVec[port] matches tagged Valid .r &&& prfValids.sub(r))
-            begin
-                // First register in the list is ready.  Start it now.
-                debugLog.record($format("PRF: Vec Read Port %0d: reg %0d, slot %0d ready at start", port, r, port));
-
-                prf.readPorts[port].readReq(r);
-                vecQ[port].enq(fromInteger(port));
-
-                // Update start position and remaining number of requests
-                startIdx = startIdx + v_numPrfReadPorts;
-                vecNumReqs[port] <= nReqs - 1;
-
-                didRead[port] = True;
-                doneWithReqs = doneWithReqs && (nReqs == 1);
-            end
-            else
-            begin
-                vecNumReqs[port] <= nReqs;
-                doneWithReqs = doneWithReqs && (nReqs == 0);
-            end
-
-            vecNumResps[port] <= nReqs;
-            vecReqIdx[port] <= fromInteger(startIdx);
         end
 
-        vecRegReq <= rVec;
-        
-        if (doneWithReqs)
-        begin
-            //
-            // All register reads have been requested.  Use the quick path
-            // and forward the data to the ISA data path as soon as the
-            // BRAM reads return.
-            //
-            quickReadPrfQ.enq(tagged Valid didRead);
-        end
-        else
-        begin
-            //
-            // Not all registers have been read.  Stall to generate all
-            // requests.
-            //
-            quickReadPrfQ.enq(tagged Invalid);
-            readState <= REGSTATE_PRF_READ_GETRESULTS_VEC;
-        end
+        vecRegReqQ.enq(rVec);
     endrule
-
-
-    //
-    // Quick path, taken only when all register reads for an entire vector were
-    // generated by startReadPrf.
-    //
-    rule quickReadReqVector (quickReadPrfQ.first() matches tagged Valid .didRead);
-        quickReadPrfQ.deq();
-
-        debugLog.record($format("PRF: Quick read path..."));
-
-        ISA_SOURCE_VALUES regVals = ?;
-        for (Integer port = 0; port < v_numPrfReadPorts; port = port + 1)
-        begin
-            if (didRead[port])
-            begin
-                let v <- prf.readPorts[port].readRsp();
-                regVals[port] = v;
-                debugLog.record($format("PRF:   Quick Read Port %0d: slot %0d <- 0x%x", port, port, v));
-
-                vecQ[port].deq();
-            end
-        end
-
-        linkToDatapathSrcVals.send(initISADatapathSrcVals(regVals));
-    endrule
-
-
-    //
-    // Slow path:  generate separate rules for each register file read port.
-    //
-    for (Integer port = 0; port < v_numPrfReadPorts; port = port + 1)
-    begin
-
-        //
-        // readReqVector --
-        //     Wait for each input register to become ready and then read it.
-        //
-        rule readReqVector (readState == REGSTATE_PRF_READ_GETRESULTS_VEC &&&
-                            vecNumReqs[port] != 0 &&&
-                            quickReadPrfQ.first() matches tagged Invalid);
-            let reqIdx = vecReqIdx[port];
-
-            if (vecRegReq[reqIdx] matches tagged Valid .r)
-            begin
-                if (prfValids.sub(r))
-                begin
-                    debugLog.record($format("PRF: Vec Read Port %0d: reg %0d, slot %0d ready", port, r, reqIdx));
-
-                    prf.readPorts[port].readReq(r);
-                    vecQ[port].enq(truncate(reqIdx));
-
-                    vecReqIdx[port] <= vecReqIdx[port] + fromInteger(v_numPrfReadPorts);
-                    vecNumReqs[port] <= vecNumReqs[port] - 1;
-                end
-            end
-            else
-            begin
-                debugLog.record($format("PRF: Vec Read Port %0d: slot %0d no request", port, reqIdx));
-                vecReqIdx[port] <= vecReqIdx[port] + fromInteger(v_numPrfReadPorts);
-            end
-        endrule
-
-        //
-        // readRespVector --
-        //     Receive responses to register file read requests.  Store the result
-        //     in the srcVals vector.
-        //
-        rule readRespVector (readState == REGSTATE_PRF_READ_GETRESULTS_VEC &&&
-                             vecNumResps[port] != 0 &&&
-                             quickReadPrfQ.first() matches tagged Invalid);
-            let rIdx = vecQ[port].first();
-            vecQ[port].deq();
-
-            let v <- prf.readPorts[port].readRsp();
-            srcVals[rIdx] <= v;
-
-            vecNumResps[port] <= vecNumResps[port] - 1;
-
-            debugLog.record($format("PRF: Vec Read Port %0d: slot %0d <- 0x%x", port, rIdx, v));
-        endrule
-
-    end
-
-
-    //
-    // allValuesReady --
-    //     Predicate for forwardSrcvals below.  True iff all registers have been
-    //     read.
-    //
-    function Bool allValuesReady();
-        Bool ready = True;
-        for (Integer x = 0; x < valueOf(numPrfReadPorts); x = x + 1)
-        begin
-            ready = ready && (vecNumResps[x] == 0);
-        end
-        return ready;
-    endfunction
 
 
     //
     // forwardSrcvals --
-    //     End of the slow path.  Send values to ISA data path after all
-    //     registers have been read.
+    //     Collect all input register values and forward them to the ISA data path.
     //
-    rule forwardSrcvals ((readState == REGSTATE_PRF_READ_GETRESULTS_VEC) &&&
-                         allValuesReady() &&&
-                         quickReadPrfQ.first() matches tagged Invalid);
-        debugLog.record($format("PRF: Forward register values to ISA datapath"));
-
-        // Pop an entry (must be invalid)
-        quickReadPrfQ.deq();
-
-        ISA_SOURCE_VALUES regVals = ?;
-        for (Integer x = 0; x < valueOf(ISA_MAX_SRCS); x = x + 1)
+    rule forwardSrcvals (True);
+        let rVec = vecRegReqQ.first();
+        vecRegReqQ.deq();
+        
+        //
+        // All register inputs are ready.  Reuqest their values.
+        //
+        ISA_SOURCE_VALUES regVals = newVector();
+        for (Integer s = 0; s < valueOf(ISA_MAX_SRCS); s = s + 1)
         begin
-            regVals[x] = srcVals[x];
+            if (rVec[s] matches tagged Valid .r)
+            begin
+                regVals[s] <- prf.readPorts[s].readRsp();
+                debugLog.record($format("PRF: FWD src reg %0d, slot %0d, val 0x%h", r, s, regVals[s]));
+            end
         end
-
-        readState <= REGSTATE_PRF_READ_READY;
 
         linkToDatapathSrcVals.send(initISADatapathSrcVals(regVals));
     endrule
@@ -655,11 +483,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
             debugLog.record($format("PRF: Single Read Req: %0d", r));
         endmethod
 
-        method ActionValue#(ISA_VALUE) readRsp() if (readState == REGSTATE_PRF_READ_GETRESULTS_SINGLE &&&
-                                                     quickReadPrfQ.first() matches tagged Invalid);
-            quickReadPrfQ.deq();
-
-            let v <- prf.readPorts[0].readRsp();
+        method ActionValue#(ISA_VALUE) readRsp() if (readState == REGSTATE_PRF_READ_GETRESULTS_SINGLE);
+            let v <- prf.readPorts[prf_side_port].readRsp();
             readState <= REGSTATE_PRF_READ_READY;
 
             debugLog.record($format("PRF: Single Read: 0x%x", v));
@@ -704,11 +529,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
             debugLog.record($format("PRF: Commit Results Read Req: %0d", r));
         endmethod
 
-        method ActionValue#(ISA_VALUE) readRsp() if (readState == REGSTATE_PRF_READ_COMMITRESULTS &&&
-                                                     quickReadPrfQ.first() matches tagged Invalid);
-            quickReadPrfQ.deq();
-
-            let v <- prf.readPorts[0].readRsp();
+        method ActionValue#(ISA_VALUE) readRsp() if (readState == REGSTATE_PRF_READ_COMMITRESULTS);
+            let v <- prf.readPorts[prf_side_port].readRsp();
             readState <= REGSTATE_PRF_READ_READY;
 
             debugLog.record($format("PRF: Commit Results Read: 0x%x", v));

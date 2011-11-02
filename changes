@@ -25459,3 +25459,20 @@ Directory modules/hasim/util/modellib
   LUTRAM constructor and extends it to be multiplexed.  There is also a
   mapMultiplexedLUTRAMInitFunc function provided to turn an initialization
   function in a single instance's space into a function over all instances.
+
+----------
+mcadler     Date: Wed Nov  2 15:22:02 EDT 2011  CSN: CSN-hasim-862
+                  Wed Nov  2 19:22:02 UTC 2011
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-physical-regs.bsv Locally Modified          861 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.bsv          Locally Modified          861 
+
+The functional register file was a complicated algorithm with 2 read ports
+to support reading both operands of an instruction in parallel.  The 2nd read
+port doubled the required BRAM, which becomes a problem as we add
+contexts.  Switch to a 4 banked memory, with one read port per bank.
+In addition to taking half the BRAM, the code is much simpler.

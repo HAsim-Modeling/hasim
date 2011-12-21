@@ -38,22 +38,31 @@ parser.add_option("--clock", action="store", type="string", default='2GHz')
 parser.add_option("--num-dirs", type="int", default=1)
 parser.add_option("--num-l2caches", type="int", default=1)
 parser.add_option("--num-l3caches", type="int", default=1)
-parser.add_option("--l1d_size", type="string", default="32kB")
+parser.add_option("--l1d_size", type="string", default="64kB")
 parser.add_option("--l1i_size", type="string", default="32kB")
 parser.add_option("--l2_size", type="string", default="2MB")
 parser.add_option("--l3_size", type="string", default="16MB")
 parser.add_option("--l1d_assoc", type="int", default=2)
 parser.add_option("--l1i_assoc", type="int", default=2)
-parser.add_option("--l2_assoc", type="int", default=16)
+parser.add_option("--l2_assoc", type="int", default=8)
 parser.add_option("--l3_assoc", type="int", default=16)
+parser.add_option("--cacheline_size", type="int", default=64)
 
 # Run duration options
 parser.add_option("-m", "--maxtick", type="int", default=m5.MaxTick,
                   metavar="T",
                   help="Stop after T ticks")
 parser.add_option("--maxtime", type="float")
-parser.add_option("--maxinsts", type="int")
-parser.add_option("--prog_intvl", type="int")
+parser.add_option("-I", "--maxinsts", action="store", type="int", default=None,
+                  help="Total number of instructions to simulate (default: run forever)")
+parser.add_option("--work-item-id", action="store", type="int",
+                  help="the specific work id for exit & checkpointing")
+parser.add_option("--work-begin-cpu-id-exit", action="store", type="int",
+                  help="exit when work starts on the specified cpu")
+parser.add_option("--work-end-exit-count", action="store", type="int",
+                  help="exit at specified work end count")
+parser.add_option("--work-begin-exit-count", action="store", type="int",
+                  help="exit at specified work begin count")
 
 
 # Checkpointing options
@@ -69,6 +78,12 @@ parser.add_option("-r", "--checkpoint-restore", action="store", type="int",
     help="restore from checkpoint <N>")
 parser.add_option("--checkpoint-at-end", action="store_true",
                   help="take a checkpoint at end of run")
+parser.add_option("--work-begin-checkpoint-count", action="store", type="int",
+                  help="checkpoint at specified work begin count")
+parser.add_option("--work-end-checkpoint-count", action="store", type="int",
+                  help="checkpoint at specified work end count")
+parser.add_option("--work-cpus-checkpoint-count", action="store", type="int",
+                  help="checkpoint and exit when active cpu count is reached")
 
 
 # CPU Switching - default switch model goes from a checkpoint
@@ -79,14 +94,12 @@ parser.add_option("-s", "--standard-switch", action="store_true",
 parser.add_option("-w", "--warmup", action="store", type="int",
     help="if -s, then this is the warmup period.  else, this is ignored",
     default=5000000000)
-parser.add_option("--profile", help="CPU profile interval")
+parser.add_option("-p", "--prog-interval", type="int", help="CPU Progress Interval")
 
 # Fastforwarding and simpoint related materials
 parser.add_option("-W", "--warmup-insts", action="store", type="int",
     default=None,
     help="Warmup period in total instructions (requires --standard-switch)")
-parser.add_option("-I", "--max-inst", action="store", type="int", default=None,
-    help="Total number of instructions to simulate (default: run forever)")
 parser.add_option("--bench", action="store", type="string", default=None,
     help="base names for --take-checkpoint and --checkpoint-restore")
 parser.add_option("-F", "--fast-forward", action="store", type="string",

@@ -14,6 +14,8 @@ from m5.util import addToPath, fatal
 
 addToPath('./common')
 import Simulation
+import CacheConfig
+from Caches import *
 
 # Get paths we might need.
 config_root = os.path.dirname(os.path.abspath(__file__))
@@ -83,9 +85,9 @@ system = System(cpu = [CPUClass(cpu_id=i) for i in xrange(np)],
 
 system.physmem.port = system.membus.port
 
-for i in xrange(np):
-    system.cpu[i].connectMemPorts(system.membus)
+CacheConfig.config_cache(options, system)
 
+for i in xrange(np):
     progdir = "program." + str(i) + "/";
 
     process = LiveProcess()

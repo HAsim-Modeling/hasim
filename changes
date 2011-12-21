@@ -25476,3 +25476,22 @@ to support reading both operands of an instruction in parallel.  The 2nd read
 port doubled the required BRAM, which becomes a problem as we add
 contexts.  Switch to a 4 banked memory, with one read port per bank.
 In addition to taking half the BRAM, the code is much simpler.
+
+----------
+mcadler     Date: Wed Dec 21 15:33:26 EST 2011  CSN: CSN-hasim-863
+                  Wed Dec 21 20:33:26 UTC 2011
+
+
+Directory tools/scripts/bmark/m5_configs
+ se_smt.py                 Locally Modified          862 
+
+Directory tools/scripts/bmark/m5_configs/common
+ CacheConfig.py            Locally Added               0 
+ Options.py                Locally Modified          862 
+ Simulation.py             Locally Modified          862 
+ Caches.py                 Locally Added               0 
+
+Directory tools/scripts/bmark/m5_configs
+ se.py                     Locally Modified          862 
+
+Update for latest m5 (now called gem5).

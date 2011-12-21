@@ -96,9 +96,9 @@ def run(options, root, testsys, cpu_class):
     max_checkpoints = options.max_checkpoints
     switch_cpus = None
 
-    if options.prog_intvl:
+    if options.prog_interval:
         for i in xrange(np):
-            testsys.cpu[i].progress_interval = options.prog_intvl
+            testsys.cpu[i].progress_interval = options.prog_interval
 
     if options.maxinsts:
         for i in xrange(np):
@@ -116,13 +116,18 @@ def run(options, root, testsys, cpu_class):
                 switch_cpus[i].workload = testsys.cpu[i].workload
             switch_cpus[i].clock = testsys.cpu[0].clock
             # simulation period
-            if options.max_inst:
-                switch_cpus[i].max_insts_any_thread = options.max_inst
+            if options.maxinsts:
+                switch_cpus[i].max_insts_any_thread = options.maxinsts
 
         testsys.switch_cpus = switch_cpus
         switch_cpu_list = [(testsys.cpu[i], switch_cpus[i]) for i in xrange(np)]
 
     if options.standard_switch:
+        if not options.caches:
+            # O3 CPU must have a cache to work.
+            print "O3 CPU must be used with caches"
+            sys.exit(1)
+
         switch_cpus = [TimingSimpleCPU(defer_registration=True, cpu_id=(np+i))
                        for i in xrange(np)]
         switch_cpus_1 = [DerivO3CPU(defer_registration=True, cpu_id=(2*np+i))
@@ -158,18 +163,13 @@ def run(options, root, testsys, cpu_class):
                 switch_cpus[i].max_insts_any_thread =  options.warmup_insts
 
             # simulation period
-            if options.max_inst:
-                switch_cpus_1[i].max_insts_any_thread = options.max_inst
+            if options.maxinsts:
+                switch_cpus_1[i].max_insts_any_thread = options.maxinsts
 
-            if not options.caches:
-                # O3 CPU must have a cache to work.
-                print "O3 CPU must be used with caches"
-                sys.exit(1)
-
-            testsys.switch_cpus = switch_cpus
-            testsys.switch_cpus_1 = switch_cpus_1
-            switch_cpu_list = [(testsys.cpu[i], switch_cpus[i]) for i in xrange(np)]
-            switch_cpu_list1 = [(switch_cpus[i], switch_cpus_1[i]) for i in xrange(np)]
+        testsys.switch_cpus = switch_cpus
+        testsys.switch_cpus_1 = switch_cpus_1
+        switch_cpu_list = [(testsys.cpu[i], switch_cpus[i]) for i in xrange(np)]
+        switch_cpu_list1 = [(switch_cpus[i], switch_cpus_1[i]) for i in xrange(np)]
 
     # set the checkpoint in the cpu before m5.instantiate is called
     if options.take_checkpoints != None and \
@@ -246,7 +246,7 @@ def run(options, root, testsys, cpu_class):
         else:
             print "Switch at curTick count:%s" % str(10000)
             exit_event = m5.simulate(10000)
-        print "Switched CPUS @ cycle = %s" % (m5.curTick())
+        print "Switched CPUS @ tick %s" % (m5.curTick())
 
         # when you change to Timing (or Atomic), you halt the system
         # given as argument.  When you are finished with the system
@@ -267,7 +267,7 @@ def run(options, root, testsys, cpu_class):
                 exit_event = m5.simulate()
             else:
                 exit_event = m5.simulate(options.warmup)
-            print "Switching CPUS @ cycle = %s" % (m5.curTick())
+            print "Switching CPUS @ tick %s" % (m5.curTick())
             print "Simulation ends instruction count:%d" % \
                     (testsys.switch_cpus_1[0].max_insts_any_thread)
             m5.drain(testsys)
@@ -374,7 +374,7 @@ def run(options, root, testsys, cpu_class):
 
     if exit_cause == '':
         exit_cause = exit_event.getCause()
-    print 'Exiting @ cycle %i because %s' % (m5.curTick(), exit_cause)
+    print 'Exiting @ tick %i because %s' % (m5.curTick(), exit_cause)
 
     if options.checkpoint_at_end:
         m5.checkpoint(joinpath(cptdir, "cpt.%d"))

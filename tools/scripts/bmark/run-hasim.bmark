@@ -261,6 +261,10 @@ if (! $config{isHybridModel} && ($mType == $MODEL_BLUESIM)) {
     link("program/$config{workload}.$config{ISA}.vmh", 'program.vmh');
 }
 
+# Define the global string database
+if (-f "$config{modelDir}/$config{model}.str") {
+    $cmd .= " --global-strings=\'$config{modelDir}/$config{model}.str\'";
+}
 
 #############################################################################
 #############################################################################

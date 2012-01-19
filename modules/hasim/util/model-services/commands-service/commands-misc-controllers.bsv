@@ -165,6 +165,20 @@ module [HASIM_MODULE] mkMultiplexController
     // interface:
         (MULTIPLEX_CONTROLLER#(t_NUM_INSTANCES));
 
+    let m <- mkNamedMultiplexController("[no name]", inctrls);
+    return m;
+
+endmodule
+
+module [HASIM_MODULE] mkNamedMultiplexController 
+    // parameters:
+    #(
+        String name,
+        Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls
+    )
+    // interface:
+        (MULTIPLEX_CONTROLLER#(t_NUM_INSTANCES));
+
     // Local-controller-like communication.
     Connection_Chain#(CONTROLLER_MSG) link_controllers <- mkConnection_Chain(`RINGID_CONTROLLER_MESSAGES);
 
@@ -361,7 +375,29 @@ module [HASIM_MODULE] mkLocalControllerPlusN
     provisos
         (Add#(t_N, t_NUM_INSTANCES, t_NUM_INSTANCES_PLUS_N));
 
+    let m <- mkNamedLocalControllerPlusN("[no name]", inctrls, inctrlsN, outctrlsN);
+
+endmodule
+
+module [HASIM_MODULE] mkNamedLocalControllerPlusN
+
+    // parameters:
+    #(
+    String name,
+    Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls, 
+    Vector#(t_NUM_INPORTS_N,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES_PLUS_N))  inctrlsN,
+    Vector#(t_NUM_OUTPORTS_N,  INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES_PLUS_N))  outctrlsN
+    )
+    // interface:
+        (LOCAL_CONTROLLER#(t_NUM_INSTANCES_PLUS_N))
+    provisos
+        (Add#(t_N, t_NUM_INSTANCES, t_NUM_INSTANCES_PLUS_N),
+         Alias#(CONTROLLER_SCAN_DATA#(t_NUM_INPORTS_N,
+                                      0,
+                                      t_NUM_OUTPORTS_N), t_SCAN_DATA));
+
     Reg#(LCN_STATE) state <- mkReg(LCN_Idle);
+    Reg#(Bool) scanning <- mkReg(False);
   
     // Counter of active instances. 
     // We start at -1, so we assume at least one instance is active.
@@ -376,6 +412,15 @@ module [HASIM_MODULE] mkLocalControllerPlusN
     FIFOF#(INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N)) endCycleQ <- mkBypassFIFOF();
     Wire#(Bit#(8)) pathDoneW <- mkWire();
     
+    // Encode the scan data size in the string to avoid having to store it
+    // in the hardware-generated data.
+    String encodedName = integerToString(valueOf(t_NUM_INPORTS_N)) + "," +
+                         "0," +
+                         integerToString(valueOf(t_NUM_OUTPORTS_N)) + "," +
+                         name;
+    GLOBAL_STRING_UID nameUID <- getGlobalStringUID(encodedName);
+    MARSHALLER#(COM_SCAN_DATA, t_SCAN_DATA) scanStream <- mkSimpleMarshaller();
+
     
     // For now this local controller just goes round-robin over the instances.
     // This is guaranteed to be correct accross multiple modules.
@@ -393,6 +438,15 @@ module [HASIM_MODULE] mkLocalControllerPlusN
                    LCN_Stepping:       return !ctrl_in.empty();
                    LCN_Synchronizing:  return !ctrl_in.light();
                    default:            return False;
+               endcase;
+    endfunction
+
+    function canWriteToN(INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES_PLUS_N) ctrl_out);
+        return case (state)
+                   LCN_Running:        return !ctrl_out.full();
+                   LCN_Stepping:       return !ctrl_out.full();
+                   LCN_Synchronizing:  return !ctrl_out.heavy();
+                   default:           return False;
                endcase;
     endfunction
 
@@ -438,12 +492,12 @@ module [HASIM_MODULE] mkLocalControllerPlusN
     FIFO#(Bool) checkBalanceQ <- mkFIFO();
     FIFO#(CONTROLLER_MSG) newCtrlMsgQ <- mkFIFO1();
     
-    rule checkBalance (True);
+    rule checkBalance (! scanning);
         checkBalanceQ.deq();
         link_controllers.sendToNext(tagged COM_SyncQuery balanced());
     endrule
 
-    rule newControlMsg (True);
+    rule newControlMsg (! scanning);
         let cmd = newCtrlMsgQ.first();
         newCtrlMsgQ.deq();
         
@@ -451,7 +505,7 @@ module [HASIM_MODULE] mkLocalControllerPlusN
     endrule
 
     (* descending_urgency = "checkBalance, newControlMsg, nextCommand" *)
-    rule nextCommand (state != LCN_Stepping);
+    rule nextCommand (! scanning && (state != LCN_Stepping));
         let newcmd <- link_controllers.recvFromPrev();
         Maybe#(CONTROLLER_MSG) outcmd = tagged Valid newcmd;
 
@@ -532,12 +586,43 @@ module [HASIM_MODULE] mkLocalControllerPlusN
             begin
                 maxActiveInstance.down();
             end
+
+            tagged COM_Scan:
+            begin
+                scanning <= True;
+                outcmd = tagged Invalid;
+
+                let scan_data = CONTROLLER_SCAN_DATA {
+                   outctrls: map(canWriteToN, outctrlsN),
+                   unctrls: ?,
+                   inctrls: map(canReadFromN, inctrlsN),
+                   name: nameUID };
+
+                scanStream.enq(scan_data);
+            end
         endcase
 
         // Forward command around the ring
         if (outcmd matches tagged Valid .cmd)
         begin
             link_controllers.sendToNext(cmd);
+        end
+    endrule
+
+    rule emitScan (scanning);
+        if (scanStream.notEmpty)
+        begin
+            if (! scanStream.isLast)
+                link_controllers.sendToNext(tagged LC_ScanData scanStream.first());
+            else
+                link_controllers.sendToNext(tagged LC_ScanDataLast scanStream.first());
+
+            scanStream.deq();
+        end
+        else
+        begin
+            link_controllers.sendToNext(tagged COM_Scan);
+            scanning <= False;
         end
     endrule
 

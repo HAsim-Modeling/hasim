@@ -12,11 +12,14 @@ service COMMANDS
 
         method EnableContext(in UINT32[32] ctxId);
         method DisableContext(in UINT32[32] ctxId);
+
+        // Scan state (for debugging)
+        method Scan(in UINT8[8] dummy, out UINT8[8] ack);
     };
 
     server sw (cpp, method) <- hw (bsv, connection)
     {
-        method EndSim    (in UINT8[8] success);
+        method EndSim(in UINT8[8] success);
 
         method ModelHeartbeat(in UINT32[32] ctxId,
                               in UINT64[64] fpga_cycles,
@@ -25,5 +28,11 @@ service COMMANDS
 
         // Ping from the hardware, used to detect deadlocks
         method FPGAHeartbeat(in UINT8[8] dummy);
+
+        // Data stream resulting from Scan() request
+        method ScanData(in UINT8[8] data, in UINT8[8] eom);
+
+        // Lowest priority methods, guaranteeing methods above have completed
+        method Done(in UINT8[8] dummy, out UINT8[8] ack);
     };
 };

@@ -25505,3 +25505,20 @@ Directory tools/scripts/bmark
  run-hasim.bmark           Locally Modified          863 
 
 Pass path to the global string database to the model.
+
+----------
+mcadler     Date: Thu Jan 19 08:02:06 EST 2012  CSN: CSN-hasim-865
+                  Thu Jan 19 13:02:06 UTC 2012
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          864 
+ commands-local.bsv        Locally Modified          864 
+ commands-service.rrr      Locally Modified          864 
+ commands-service.h        Locally Modified          864 
+ commands-misc-controllers.bsv Locally Modified          864 
+ commands-service.bsv      Locally Modified          864 
+
+- Add a scan chain to extract the states of all ports managed by controllers.
+- Trigger the scan chain when a deadlock is detected.
+- Add a name to the controller constructor that is printed during scanning.

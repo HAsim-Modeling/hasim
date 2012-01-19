@@ -166,12 +166,39 @@ module [HASIM_MODULE] mkCommandsService
                 state <= CON_Finished;
             end
 
+            tagged COM_Scan:
+            begin
+                // Sending "done" guarantees all scan data has reached host
+                clientStub.makeRequest_Done(?);
+            end
+
+            tagged LC_ScanData .sd:
+            begin
+                clientStub.makeRequest_ScanData(sd, 0);
+            end
+
+            tagged LC_ScanDataLast .sd:
+            begin
+                clientStub.makeRequest_ScanData(sd, 1);
+            end
+
             default:
             begin
                 // Sink most messages
                 noAction;
             end
         endcase
+    endrule
+
+
+    //
+    // completeScan --
+    //     The "done" request sent to the host at the end of a scan chain
+    //     returns from software, signalling all scan data has been
+    //     transmitted.  Then it is safe to signal completion of the scan.
+    rule completeScan (True);
+        let ack <- clientStub.getResponse_Done();
+        serverStub.sendResponse_Scan(?);
     endrule
 
 
@@ -204,6 +231,12 @@ module [HASIM_MODULE] mkCommandsService
     rule setEndModelCycle (True);
         let cycle <- serverStub.acceptRequest_SetEndModelCycle();
         endModelCycle <= tagged Valid cycle;
+    endrule
+
+
+    rule requestScan (True);
+        let dummy <- serverStub.acceptRequest_Scan();
+        link_controllers.sendToNext(tagged COM_Scan);
     endrule
 
 

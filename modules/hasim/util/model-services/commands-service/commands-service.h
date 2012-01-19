@@ -23,6 +23,7 @@
 
 #include "asim/syntax.h"
 #include "asim/trace.h"
+#include "asim/regexobj.h"
 
 #include "platforms-module.h"
 #include "asim/provides/rrr.h"
@@ -153,6 +154,15 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     struct timeval startTime;
     struct timeval endTime;
 
+    // Scan data buffering
+    UINT8 *scanBuf;
+    UINT32 scanBufLen;      // Current allocated Buffer length
+    UINT32 scanWriteIdx;    // Current write point in the buffer
+    UINT32 scanReadIdx;     // Current (bit) read point in the buffer
+    Regex scanParser;       // Parser for scan data size/name records
+
+    UINT64 GetScanData(UINT32 nBits);
+
     void EndSimulation(int exitVal);
 
     // Virtual function for STATS_EMITTER_CLASS
@@ -161,16 +171,17 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
   public:
     COMMANDS_SERVER_CLASS();
     ~COMMANDS_SERVER_CLASS();
-    
+
     // static methods
     static COMMANDS_SERVER GetInstance() { return &instance; }
 
     // Client methods
-     void Run();
-     void Pause();
-     void Sync();
+    void Run();
+    void Pause();
+    void Sync();
+    void Scan();
 
-     void SetNumHardwareThreads(UINT32 num);
+    void SetNumHardwareThreads(UINT32 num);
 
     // required RRR methods
     void Init(PLATFORMS_MODULE);
@@ -187,6 +198,10 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
 
 
     void FPGAHeartbeat(UINT8 dummy);
+
+    void ScanData(UINT8 data, UINT8 eom);
+
+    UINT8 Done(UINT8 dummy) { return dummy; }
 };
 
 // server stub

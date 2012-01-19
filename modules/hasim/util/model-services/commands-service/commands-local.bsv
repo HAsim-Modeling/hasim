@@ -34,6 +34,7 @@ import SpecialFIFOs::*;
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/hasim_modellib.bsh"
 `include "asim/provides/soft_connections.bsh"
+`include "asim/provides/soft_services_deps.bsh"
 `include "asim/provides/fpga_components.bsh"
 
 `include "asim/dict/RINGID.bsh"
@@ -42,22 +43,48 @@ import SpecialFIFOs::*;
 
 `include "asim/provides/hasim_common.bsh"
 
+//
+// Scan data (for debugging)
+//
 
+// CONTROLLER_SCAN_DATA is sent directly to software in response to a scan
+// request, in COM_SCAN_DATA sized chunks, starting with the low bits.
+typedef struct
+{
+    Vector#(t_NUM_OUTPORTS, Bool) outctrls;
+    Vector#(t_NUM_UNPORTS, Bool) unctrls;
+    Vector#(t_NUM_INPORTS, Bool) inctrls;
+    GLOBAL_STRING_UID name;
+}
+CONTROLLER_SCAN_DATA#(numeric type t_NUM_INPORTS,
+                      numeric type t_NUM_UNPORTS,
+                      numeric type t_NUM_OUTPORTS)
+    deriving (Eq, Bits);
+
+// Data types for scanning state out of local controllers
+typedef Bit#(8) COM_SCAN_DATA;
+
+// Inter-controller messages that travel on the controller ring
 typedef union tagged
 {
     // Commands from to local controllers
-    void         COM_RunProgram;     // Begin running, allowed to slip
-    void         COM_Synchronize;    // Start synchronizing the system
-    Bool         COM_SyncQuery;      // Is the system synchronized yet?
-                                     // System is synchronized if the message
-                                     // makes it around the ring remaining True.
-    void         COM_Step;           // Run exactly one model CC.
-    Bool         COM_Pause;          // Stop running (True -> send response to host)
-    CONTEXT_ID   COM_EnableContext;  // Enable context
-    CONTEXT_ID   COM_DisableContext; // Disable context
+    void          COM_RunProgram;     // Begin running, allowed to slip
+    void          COM_Synchronize;    // Start synchronizing the system
+    Bool          COM_SyncQuery;      // Is the system synchronized yet?
+                                      // System is synchronized if the message
+                                      // makes it around the ring remaining True.
+    void          COM_Step;           // Run exactly one model CC.
+    Bool          COM_Pause;          // Stop running (True -> send response to host)
+    CONTEXT_ID    COM_EnableContext;  // Enable context
+    CONTEXT_ID    COM_DisableContext; // Disable context
+
+    void          COM_Scan;           // Scan state for debugging
 
     // Messages from local controllers
-    Bool         LC_DoneRunning;     // Bool is run passed
+    Bool          LC_DoneRunning;     // Bool is run passed
+
+    COM_SCAN_DATA LC_ScanData;        // Response to COM_Scan request
+    COM_SCAN_DATA LC_ScanDataLast;    // Last chunk of COM_Scan response
 }
 CONTROLLER_MSG
     deriving (Eq, Bits);
@@ -97,14 +124,28 @@ module [HASIM_MODULE] mkLocalController
 
     Vector#(0, INSTANCE_CONTROL_IN#(t_NUM_INSTANCES)) empty_unctrls = newVector();
 
-    let m <- mkLocalControllerWithUncontrolled(inctrls, empty_unctrls, outctrls);    
+    let m <- mkLocalControllerWithUncontrolled(inctrls, empty_unctrls, outctrls);
     return m;
 
 endmodule
 
-// Actual Local Controller handles inports, outports, and "uncontrolled" in ports,
-// which are not used as the basis for deciding whether or not to simulate the
-// next model cycle. However, they ARE told how many instances are running.
+module [HASIM_MODULE] mkNamedLocalController
+
+    // parameters:
+    #(
+    String name,
+    Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls, 
+    Vector#(t_NUM_OUTPORTS, INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES)) outctrls
+    )
+    // interface:
+        (LOCAL_CONTROLLER#(t_NUM_INSTANCES));
+
+    Vector#(0, INSTANCE_CONTROL_IN#(t_NUM_INSTANCES)) empty_unctrls = newVector();
+
+    let m <- mkNamedLocalControllerWithUncontrolled(name, inctrls, empty_unctrls, outctrls);
+    return m;
+
+endmodule
 
 module [HASIM_MODULE] mkLocalControllerWithUncontrolled
 
@@ -117,7 +158,33 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
     // interface:
         (LOCAL_CONTROLLER#(t_NUM_INSTANCES));
 
+    let m <- mkNamedLocalControllerWithUncontrolled("[no name]", inctrls, uncontrolled_ctrls, outctrls);
+    return m;
+
+endmodule
+
+
+// Actual Local Controller handles inports, outports, and "uncontrolled" in ports,
+// which are not used as the basis for deciding whether or not to simulate the
+// next model cycle. However, they ARE told how many instances are running.
+
+module [HASIM_MODULE] mkNamedLocalControllerWithUncontrolled
+
+    // parameters:
+    #(
+    String name,
+    Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls, 
+    Vector#(t_NUM_UNPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  uncontrolled_ctrls,
+    Vector#(t_NUM_OUTPORTS, INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES)) outctrls
+    )
+    // interface:
+        (LOCAL_CONTROLLER#(t_NUM_INSTANCES))
+    provisos (Alias#(CONTROLLER_SCAN_DATA#(t_NUM_INPORTS,
+                                           t_NUM_UNPORTS,
+                                           t_NUM_OUTPORTS), t_SCAN_DATA));
+
     Reg#(LC_STATE) state <- mkReg(LC_Idle);
+    Reg#(Bool) scanning <- mkReg(False);
   
     // Counter of active instances. 
     // We start at -1, so we assume at least one instance is active.
@@ -132,6 +199,15 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
     FIFOF#(INSTANCE_ID#(t_NUM_INSTANCES)) endCycleQ <- mkBypassFIFOF();
     Wire#(Bit#(8)) pathDoneW <- mkWire();
     
+    // Encode the scan data size in the string to avoid having to store it
+    // in the hardware-generated data.
+    String encodedName = integerToString(valueOf(t_NUM_INPORTS)) + "," +
+                         integerToString(valueOf(t_NUM_UNPORTS)) + "," +
+                         integerToString(valueOf(t_NUM_OUTPORTS)) + "," +
+                         name;
+    GLOBAL_STRING_UID nameUID <- getGlobalStringUID(encodedName);
+    MARSHALLER#(COM_SCAN_DATA, t_SCAN_DATA) scanStream <- mkSimpleMarshaller();
+
     
     // For now this local controller just goes round-robin over the instances.
     // This is guaranteed to be correct accross multiple modules.
@@ -225,12 +301,12 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
     FIFO#(Bool) checkBalanceQ <- mkFIFO();
     FIFO#(CONTROLLER_MSG) newCtrlMsgQ <- mkFIFO1();
     
-    rule checkBalance (True);
+    rule checkBalance (! scanning);
         checkBalanceQ.deq();
         link_controllers.sendToNext(tagged COM_SyncQuery balanced());
     endrule
 
-    rule newControlMsg (True);
+    rule newControlMsg (! scanning);
         let cmd = newCtrlMsgQ.first();
         newCtrlMsgQ.deq();
         
@@ -238,7 +314,7 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
     endrule
 
     (* descending_urgency = "checkBalance, newControlMsg, nextCommand" *)
-    rule nextCommand (state != LC_Stepping);
+    rule nextCommand (! scanning && (state != LC_Stepping));
         let newcmd <- link_controllers.recvFromPrev();
         Maybe#(CONTROLLER_MSG) outcmd = tagged Valid newcmd;
 
@@ -248,23 +324,17 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
     
                 for (Integer x = 0; x < valueof(t_NUM_INPORTS); x = x + 1)
                 begin
-                
                     inctrls[x].setMaxRunningInstance(maxActiveInstance.value());
-
                 end
 
                 for (Integer x = 0; x < valueof(t_NUM_UNPORTS); x = x + 1)
                 begin
-                
                     uncontrolled_ctrls[x].setMaxRunningInstance(maxActiveInstance.value());
-
                 end
 
                 for (Integer x = 0; x < valueof(t_NUM_OUTPORTS); x = x + 1)
                 begin
-                
                     outctrls[x].setMaxRunningInstance(maxActiveInstance.value());
-
                 end
 
                 state <= LC_Running;
@@ -316,12 +386,43 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
             begin
                 maxActiveInstance.down();
             end
+
+            tagged COM_Scan:
+            begin
+                scanning <= True;
+                outcmd = tagged Invalid;
+
+                let scan_data = CONTROLLER_SCAN_DATA {
+                   outctrls: map(canWriteTo, outctrls),
+                   unctrls: map(canReadFrom, uncontrolled_ctrls),
+                   inctrls: map(canReadFrom, inctrls),
+                   name: nameUID };
+
+                scanStream.enq(scan_data);
+            end
         endcase
 
         // Forward command around the ring
         if (outcmd matches tagged Valid .cmd)
         begin
             link_controllers.sendToNext(cmd);
+        end
+    endrule
+
+    rule emitScan (scanning);
+        if (scanStream.notEmpty)
+        begin
+            if (! scanStream.isLast)
+                link_controllers.sendToNext(tagged LC_ScanData scanStream.first());
+            else
+                link_controllers.sendToNext(tagged LC_ScanDataLast scanStream.first());
+
+            scanStream.deq();
+        end
+        else
+        begin
+            link_controllers.sendToNext(tagged COM_Scan);
+            scanning <= False;
         end
     endrule
 

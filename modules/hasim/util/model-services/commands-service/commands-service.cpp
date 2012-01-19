@@ -29,6 +29,7 @@
 #include "asim/syntax.h"
 #include "asim/mesg.h"
 
+#include "asim/provides/soft_services_deps.h"
 #include "asim/provides/command_switches.h"
 #include "asim/provides/stats_device.h"
 #include "asim/provides/commands_service.h"
@@ -45,7 +46,10 @@ COMMANDS_SERVER_CLASS::COMMANDS_SERVER_CLASS() :
     messageIntervalSwitch(),
     lastStatsScanCycle(0),
     noChangeBeats(0),
-    running(false)
+    running(false),
+    scanWriteIdx(0),
+    scanReadIdx(0),
+    scanParser("([0-9]+),([0-9]+),([0-9]+),(.*)")
 {
     SetTraceableName("commands_server");
 
@@ -55,12 +59,15 @@ COMMANDS_SERVER_CLASS::COMMANDS_SERVER_CLASS() :
 
     hwThreadHeartbeat = NULL;
 
+    scanBufLen = 2;
+    scanBuf = new UINT8[scanBufLen];
 }
 
 // destructor
 COMMANDS_SERVER_CLASS::~COMMANDS_SERVER_CLASS()
 {
     Cleanup();
+    delete[] scanBuf;
 }
 
 // init
@@ -150,6 +157,15 @@ COMMANDS_SERVER_CLASS::Sync()
     clientStub->Sync(0);
 }
 
+// client: scan (for debugging)
+void
+COMMANDS_SERVER_CLASS::Scan()
+{
+    cout << "Commands service scan:" << endl;
+    clientStub->Scan(0);
+    cout << "Done" << endl;
+}
+
 
 
 //
@@ -193,6 +209,7 @@ COMMANDS_SERVER_CLASS::FPGAHeartbeat(UINT8 dummy)
         {
             cerr << "commands relay: model deadlock!" << endl;
 
+            Scan();
             DEBUG_SCAN_DEVICE_SERVER_CLASS::GetInstance()->Scan();
             EndSimulation(1);
         }
@@ -337,6 +354,106 @@ COMMANDS_SERVER_CLASS::EmitStats(ofstream &statsFile)
     statsFile << "SIM_WALL_TIME_SEC,\"Simulator: Wall time (sec.)\","
               << elapsed
               << endl;
+}
+
+void
+COMMANDS_SERVER_CLASS::ScanData(UINT8 data, UINT8 eom)
+{
+    if (scanWriteIdx >= scanBufLen)
+    {
+        // Buffer is too small.  Replace it with a larger one.
+        UINT8 *new_buf = new UINT8[scanBufLen + 512];
+        memcpy(new_buf, scanBuf, scanBufLen);
+
+        delete[] scanBuf;
+        scanBuf = new_buf;
+        scanBufLen += 512;
+    }
+
+    scanBuf[scanWriteIdx++] = data;
+
+    if (eom)
+    {
+        UINT64 uid = GetScanData(GLOBAL_STRING_PLATFORM_UID_SZ +
+                                 GLOBAL_STRING_SYNTH_UID_SZ +
+                                 GLOBAL_STRING_LOCAL_UID_SZ);
+        const string *tag = GLOBAL_STRINGS::Lookup(uid);
+
+        //
+        // The size and name of the command node are encoded in the string.
+        // The first 3 comma separated values are the number of input
+        // ports of each category.  The final field is the node name.
+        //
+
+        VERIFY(scanParser.matchSub(*tag),
+               "Illegally formatted command service sizes/name string (" << *tag << ")");
+
+        UINT32 num_inports = atoi(scanParser.getSubstring(1).c_str());
+        UINT32 num_unports = atoi(scanParser.getSubstring(2).c_str());
+        UINT32 num_outports = atoi(scanParser.getSubstring(3).c_str());
+
+        cout << "  " << scanParser.getSubstring(4)
+             << " (" << num_inports
+             << ", " << num_unports
+             << ", " << num_outports << "):" << endl;
+
+        cout << "    Ready input ports:";
+        for (UINT32 i = 0; i < num_inports; i++)
+        {
+            if (GetScanData(1)) cout << " " << i;
+        }
+        cout << endl;
+
+        if (num_unports)
+        {
+            cout << "    Ready uncontrolled ports:";
+            for (UINT32 i = 0; i < num_unports; i++)
+            {
+                if (GetScanData(1)) cout << " " << i;
+            }
+            cout << endl;
+        }
+
+        cout << "    Ready output ports:";
+        for (UINT32 i = 0; i < num_outports; i++)
+        {
+            if (GetScanData(1)) cout << " " << i;
+        }
+        cout << endl;
+
+        scanWriteIdx = 0;
+        scanReadIdx = 0;
+    }
+}
+
+//
+// GetScanData --
+//     Return the next nBits worth of the current scan data record.
+//
+UINT64
+COMMANDS_SERVER_CLASS::GetScanData(UINT32 nBits)
+{
+    UINT64 result = 0;
+
+    //
+    // This code is only triggered on an error, so it doesn't have to be fast.
+    //
+    for (UINT32 i = 0; i < nBits; i++)
+    {
+        ASSERTX(scanReadIdx >> 3 < scanWriteIdx);
+
+        // Get the next bit in slot 0 of b...
+        UINT64 b = scanBuf[scanReadIdx >> 3];   // Select correct byte
+        b >>= (scanReadIdx & 7);                // Shift desired bit to position 0
+        b &= 1;                                 // Select only bit 0
+        b <<= i;                                // Shift to desired position
+
+        result |= b;
+
+        scanReadIdx += 1;
+    }
+
+    return result;
 }
 
 

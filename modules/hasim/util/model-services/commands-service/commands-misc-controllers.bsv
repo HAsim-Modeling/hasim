@@ -174,7 +174,7 @@ module [HASIM_MODULE] mkNamedMultiplexController
     // parameters:
     #(
         String name,
-        Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls
+        Vector#(t_NUM_INPORTS, INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls
     )
     // interface:
         (MULTIPLEX_CONTROLLER#(t_NUM_INSTANCES));
@@ -352,351 +352,35 @@ module mkDependenceController
 endmodule
 
 
-typedef enum
-{
-    LCN_Idle,               // Waiting for a command
-    LCN_Running,            // Running, allowing slip
-    LCN_Synchronizing,      // Running, attempting to synchronize
-    LCN_Stepping            // Run one modelCC
-}
-LCN_STATE
-    deriving (Eq, Bits);
+//
+// The standard local controller permits an instance ID space to be larger
+// than the CPU ID space known to the function model in order to support extra
+// devices such as memory controllers.  This module maps control from a larger
+// space to a smaller one.
+//
+module mkConvertControllerInstances_IN#(INSTANCE_CONTROL_IN#(t_NUM_INSTANCES_SRC) inctrl)
+    // Interface:
+    (INSTANCE_CONTROL_IN#(t_NUM_INSTANCES_DST));
+     
+    method Bool empty = inctrl.empty;
+    method Bool balanced = inctrl.balanced;
+    method Bool light = inctrl.light;
 
-module [HASIM_MODULE] mkLocalControllerPlusN
-
-    // parameters:
-    #(
-    Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls, 
-    Vector#(t_NUM_INPORTS_N,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES_PLUS_N))  inctrlsN, 
-    Vector#(t_NUM_OUTPORTS_N,  INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES_PLUS_N))  outctrlsN
-    )
-    // interface:
-        (LOCAL_CONTROLLER#(t_NUM_INSTANCES_PLUS_N))
-    provisos
-        (Add#(t_N, t_NUM_INSTANCES, t_NUM_INSTANCES_PLUS_N));
-
-    let m <- mkNamedLocalControllerPlusN("[no name]", inctrls, inctrlsN, outctrlsN);
-
-endmodule
-
-module [HASIM_MODULE] mkNamedLocalControllerPlusN
-
-    // parameters:
-    #(
-    String name,
-    Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls, 
-    Vector#(t_NUM_INPORTS_N,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES_PLUS_N))  inctrlsN,
-    Vector#(t_NUM_OUTPORTS_N,  INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES_PLUS_N))  outctrlsN
-    )
-    // interface:
-        (LOCAL_CONTROLLER#(t_NUM_INSTANCES_PLUS_N))
-    provisos
-        (Add#(t_N, t_NUM_INSTANCES, t_NUM_INSTANCES_PLUS_N),
-         Alias#(CONTROLLER_SCAN_DATA#(t_NUM_INPORTS_N,
-                                      0,
-                                      t_NUM_OUTPORTS_N), t_SCAN_DATA));
-
-    Reg#(LCN_STATE) state <- mkReg(LCN_Idle);
-    Reg#(Bool) scanning <- mkReg(False);
-  
-    // Counter of active instances. 
-    // We start at -1, so we assume at least one instance is active.
-    COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES_PLUS_N)) maxActiveInstance <- mkLCounter(~0);
-    // Vector of running instances
-    MULTIPLEXED_REG#(t_NUM_INSTANCES_PLUS_N, Bool) instanceRunning <- mkMultiplexedReg(False);
-
-    // Signalled DONE to the software?
-    Reg#(Bool) signalDone <- mkReg(False);
-
-    FIFOF#(INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N)) startCycleQ <- mkBypassFIFOF();
-    FIFOF#(INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N)) endCycleQ <- mkBypassFIFOF();
-    Wire#(Bit#(8)) pathDoneW <- mkWire();
-    
-    // Encode the scan data size in the string to avoid having to store it
-    // in the hardware-generated data.
-    String encodedName = integerToString(valueOf(t_NUM_INPORTS_N)) + "," +
-                         "0," +
-                         integerToString(valueOf(t_NUM_OUTPORTS_N)) + "," +
-                         name;
-    GLOBAL_STRING_UID nameUID <- getGlobalStringUID(encodedName);
-    MARSHALLER#(COM_SCAN_DATA, t_SCAN_DATA) scanStream <- mkSimpleMarshaller();
-
-    
-    // For now this local controller just goes round-robin over the instances.
-    // This is guaranteed to be correct accross multiple modules.
-    // The performance of this could be improved, but the interaction with time-multiplexed
-    // ports needs to be worked out.
-    
-    COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES_PLUS_N)) nextInstance <- mkLCounter(0);
-    
-    Connection_Chain#(CONTROLLER_MSG) link_controllers <- mkConnection_Chain(`RINGID_CONTROLLER_MESSAGES);
-
-    // Can this module read from this Port? Purposely ignore the non plus-N ports
-    function Bool canReadFromN(INSTANCE_CONTROL_IN#(t_NUM_INSTANCES_PLUS_N) ctrl_in);
-        return case (state)
-                   LCN_Running:        return !ctrl_in.empty();
-                   LCN_Stepping:       return !ctrl_in.empty();
-                   LCN_Synchronizing:  return !ctrl_in.light();
-                   default:            return False;
-               endcase;
-    endfunction
-
-    function canWriteToN(INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES_PLUS_N) ctrl_out);
-        return case (state)
-                   LCN_Running:        return !ctrl_out.full();
-                   LCN_Stepping:       return !ctrl_out.full();
-                   LCN_Synchronizing:  return !ctrl_out.heavy();
-                   default:           return False;
-               endcase;
-    endfunction
-
-    // This function will determine the next instance in a non-round-robin manner when we're ready
-    // to go that route. Currently this is unused.
-
-    function Bool instanceReady(INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N) iid);
-        
-        Bool canRead  = True;
-
-        // Can we read/write all of the plus N ports? Disregard normal ports for this.
-        for (Integer x = 0; x < valueOf(t_NUM_INPORTS_N); x = x + 1)
-            canRead = canRead && canReadFromN(inctrlsN[x]);
-
-        // An instance is ready to go only if it's been enabled.
-        Reg#(Bool) running = instanceRunning.getReg(iid);
-        return !running && canRead;
-
-    endfunction
-
-
-    function Bool balanced();
-        Bool res = True;
-        
-        // Are the plus N ports all balanced? Disregard normal ports for this.
-        for (Integer x = 0; x < valueOf(t_NUM_INPORTS_N); x = x + 1)
-        begin
-            res = res && inctrlsN[x].balanced();
-        end
-
-        return res;
-
-    endfunction
-
-
-
-    // ====================================================================
-    //
-    // Process controller commands and send responses.
-    //
-    // ====================================================================
-
-    FIFO#(Bool) checkBalanceQ <- mkFIFO();
-    FIFO#(CONTROLLER_MSG) newCtrlMsgQ <- mkFIFO1();
-    
-    rule checkBalance (! scanning);
-        checkBalanceQ.deq();
-        link_controllers.sendToNext(tagged COM_SyncQuery balanced());
-    endrule
-
-    rule newControlMsg (! scanning);
-        let cmd = newCtrlMsgQ.first();
-        newCtrlMsgQ.deq();
-        
-        link_controllers.sendToNext(cmd);
-    endrule
-
-    (* descending_urgency = "checkBalance, newControlMsg, nextCommand" *)
-    rule nextCommand (! scanning && (state != LCN_Stepping));
-        let newcmd <- link_controllers.recvFromPrev();
-        Maybe#(CONTROLLER_MSG) outcmd = tagged Valid newcmd;
-
-        case (newcmd) matches
-            tagged COM_RunProgram:
-            begin
-    
-                for (Integer x = 0; x < valueof(t_NUM_INPORTS); x = x + 1)
-                begin
-                
-                    // We know this truncation is safe since the button has only been pushed k times, not k+N.
-                    inctrls[x].setMaxRunningInstance(truncateNP(maxActiveInstance.value()));
-
-                end
-
-                for (Integer x = 0; x < valueof(t_NUM_INPORTS_N); x = x + 1)
-                begin
-                
-                    inctrlsN[x].setMaxRunningInstance(maxActiveInstance.value() + fromInteger(valueof(t_N)));
-
-                end
-                
-                for (Integer x = 0; x < valueof(t_NUM_OUTPORTS_N); x = x + 1)
-                begin
-                
-                    outctrlsN[x].setMaxRunningInstance(maxActiveInstance.value() + fromInteger(valueof(t_N)));
-
-                end
-
-                maxActiveInstance.setC(maxActiveInstance.value() + fromInteger(valueof(t_N)));
-
-                state <= LCN_Running;
-
-            end
-
-            tagged COM_Synchronize:
-            begin
-                state <= LCN_Synchronizing;
-            end
-
-            tagged COM_SyncQuery .all_balanced:
-            begin
-                // The COM_SyncQuery state will remain True if all controllers
-                // are balanced.  If a previous controller is unbalanced then
-                // just forward the unbalanced state.  If we need to check
-                // the state of this controller then queue the request.
-                //
-                // The Bluespec scheduler throws an error about being unable
-                // to break a cycle if we attempt to check balance here
-                // because it can't break the connection between setting
-                // state, startModelCycle and changes to balance() while
-                // the model runs.
-                if (all_balanced)
-                begin
-                    outcmd = tagged Invalid;
-                    checkBalanceQ.enq(?);
-                end
-            end
-
-            tagged COM_Step:
-            begin
-                state <= LCN_Stepping;
-            end
-
-            tagged COM_Pause .send_response:
-            begin
-                state <= LCN_Idle;
-            end
-
-            // TODO: should this be COM_EnableInstance??
-            tagged COM_EnableContext .iid:
-            begin
-                maxActiveInstance.up();
-            end
-
-            // TODO: should this be COM_DisableInstance??
-            tagged COM_DisableContext .iid:
-            begin
-                maxActiveInstance.down();
-            end
-
-            tagged COM_Scan:
-            begin
-                scanning <= True;
-                outcmd = tagged Invalid;
-
-                let scan_data = CONTROLLER_SCAN_DATA {
-                   outctrls: map(canWriteToN, outctrlsN),
-                   unctrls: ?,
-                   inctrls: map(canReadFromN, inctrlsN),
-                   name: nameUID };
-
-                scanStream.enq(scan_data);
-            end
-        endcase
-
-        // Forward command around the ring
-        if (outcmd matches tagged Valid .cmd)
-        begin
-            link_controllers.sendToNext(cmd);
-        end
-    endrule
-
-    rule emitScan (scanning);
-        if (scanStream.notEmpty)
-        begin
-            if (! scanStream.isLast)
-                link_controllers.sendToNext(tagged LC_ScanData scanStream.first());
-            else
-                link_controllers.sendToNext(tagged LC_ScanDataLast scanStream.first());
-
-            scanStream.deq();
-        end
+    method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES_DST)) nextReadyInstance;
+        if (inctrl.nextReadyInstance matches tagged Valid .iid)
+            return tagged Valid zeroExtendNP(iid);
         else
-        begin
-            link_controllers.sendToNext(tagged COM_Scan);
-            scanning <= False;
-        end
-    endrule
-
-    rule updateRunning (True);
-    
-        if (startCycleQ.notEmpty())
-        begin
-            instanceRunning.getReg(startCycleQ.first()) <= True;
-            startCycleQ.deq();
-        end
-        else if (endCycleQ.notEmpty())
-        begin
-            instanceRunning.getReg(endCycleQ.first()) <= False;
-            endCycleQ.deq();
-        end
-    
-    endrule
-
-    //
-    // updateStateForStepping --
-    //     State update associated with startModelCycle, encoded in a rule
-    //     and controlled by a wire in order to set scheduling priority.
-    //
-    Wire#(Maybe#(INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N))) newModelCycleStarted <- mkDWire(tagged Invalid);
-
-    (* descending_urgency = "updateStateForStepping, nextCommand" *)
-    rule updateStateForStepping (state == LCN_Stepping &&&
-                                 newModelCycleStarted matches tagged Valid .iid);
-        if (iid == maxActiveInstance.value())
-            state <= LCN_Idle;
-    endrule
-
-    //
-    // ******** Methods *******
-
-
-    method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N)) startModelCycle() if ((state != LCN_Idle) && instanceReady(nextInstance.value()));
-
-        let next_iid = nextInstance.value();
-
-        if (state == LCN_Stepping)
-        begin
-            newModelCycleStarted <= tagged Valid next_iid;
-        end
-        
-        startCycleQ.enq(next_iid);
-        
-        if (next_iid >= maxActiveInstance.value())
-        begin
-            nextInstance.setC(0);
-        end
-        else
-        begin
-            nextInstance.up();
-        end
-
-        return next_iid;
-
+            return tagged Invalid;
     endmethod
 
-    method Action endModelCycle(INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N) iid, Bit#(8) path);
-    
-        endCycleQ.enq(iid);
-        pathDoneW <= path; // Put the path into the waveform.
-    
+    method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES_DST) iid);
+        // The number of active instances in the controller space is larger
+        // by a constant (the number of non-functional devices, assumed
+        // always active).  Remove the always-active devices from the outbound
+        // count.
+        iid = iid - fromInteger(valueOf(TSub#(t_NUM_INSTANCES_DST,
+                                              t_NUM_INSTANCES_SRC)));
+        inctrl.setMaxRunningInstance(truncateNP(iid));
     endmethod
 
-    method Action instanceDone(INSTANCE_ID#(t_NUM_INSTANCES_PLUS_N) iid, Bool pf);
-        // XXX this should be per-instance.  For now only allowed to fire once.
-        if (! signalDone)
-        begin
-            newCtrlMsgQ.enq(tagged LC_DoneRunning pf);
-            signalDone <= True;
-        end
-    endmethod
-    
 endmodule

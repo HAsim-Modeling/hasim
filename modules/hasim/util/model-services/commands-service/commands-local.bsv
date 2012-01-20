@@ -124,7 +124,7 @@ module [HASIM_MODULE] mkLocalController
 
     Vector#(0, INSTANCE_CONTROL_IN#(t_NUM_INSTANCES)) empty_unctrls = newVector();
 
-    let m <- mkLocalControllerWithUncontrolled(inctrls, empty_unctrls, outctrls);
+    let m <- mkNamedLocalControllerWithActive("[no name]", 0, inctrls, empty_unctrls, outctrls);
     return m;
 
 endmodule
@@ -142,7 +142,7 @@ module [HASIM_MODULE] mkNamedLocalController
 
     Vector#(0, INSTANCE_CONTROL_IN#(t_NUM_INSTANCES)) empty_unctrls = newVector();
 
-    let m <- mkNamedLocalControllerWithUncontrolled(name, inctrls, empty_unctrls, outctrls);
+    let m <- mkNamedLocalControllerWithActive(name, 0, inctrls, empty_unctrls, outctrls);
     return m;
 
 endmodule
@@ -158,21 +158,46 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
     // interface:
         (LOCAL_CONTROLLER#(t_NUM_INSTANCES));
 
-    let m <- mkNamedLocalControllerWithUncontrolled("[no name]", inctrls, uncontrolled_ctrls, outctrls);
+    let m <- mkNamedLocalControllerWithActive("[no name]", 0, inctrls, uncontrolled_ctrls, outctrls);
     return m;
 
 endmodule
 
-
-// Actual Local Controller handles inports, outports, and "uncontrolled" in ports,
-// which are not used as the basis for deciding whether or not to simulate the
-// next model cycle. However, they ARE told how many instances are running.
 
 module [HASIM_MODULE] mkNamedLocalControllerWithUncontrolled
 
     // parameters:
     #(
     String name,
+    Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls, 
+    Vector#(t_NUM_UNPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  uncontrolled_ctrls,
+    Vector#(t_NUM_OUTPORTS, INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES)) outctrls
+    )
+    // interface:
+        (LOCAL_CONTROLLER#(t_NUM_INSTANCES));
+
+    let m <- mkNamedLocalControllerWithActive(name, 0, inctrls, uncontrolled_ctrls, outctrls);
+    return m;
+
+endmodule
+
+
+//
+// Actual Local Controller handles inports, outports, and "uncontrolled" in ports,
+// which are not used as the basis for deciding whether or not to simulate the
+// next model cycle. However, they ARE told how many instances are running.
+//
+// The "startingActive" parameter defines the number of active instances
+// outside the usual space controlled by the functional model.  For example,
+// in some interconnect models the memory controller may be in the instance
+// space along with CPU ports and the memory would always be active.
+//
+module [HASIM_MODULE] mkNamedLocalControllerWithActive
+
+    // parameters:
+    #(
+    String name,
+    Integer startingActive,
     Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls, 
     Vector#(t_NUM_UNPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  uncontrolled_ctrls,
     Vector#(t_NUM_OUTPORTS, INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES)) outctrls
@@ -188,7 +213,9 @@ module [HASIM_MODULE] mkNamedLocalControllerWithUncontrolled
   
     // Counter of active instances. 
     // We start at -1, so we assume at least one instance is active.
-    COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES)) maxActiveInstance <- mkLCounter(~0);
+    COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES))
+        maxActiveInstance <- mkLCounter(~0 + fromInteger(startingActive));
+
     // Vector of running instances
     MULTIPLEXED_REG#(t_NUM_INSTANCES, Bool) instanceRunning <- mkMultiplexedReg(False);
 

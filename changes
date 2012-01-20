@@ -25522,3 +25522,19 @@ Directory modules/hasim/util/model-services/commands-service
 - Add a scan chain to extract the states of all ports managed by controllers.
 - Trigger the scan chain when a deadlock is detected.
 - Add a name to the controller constructor that is printed during scanning.
+
+----------
+mcadler     Date: Fri Jan 20 08:53:44 EST 2012  CSN: CSN-hasim-866
+                  Fri Jan 20 13:53:44 UTC 2012
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          865 
+ commands-misc-controllers.bsv Locally Modified          865 
+
+- Drop the special purpose controller that handles extra active instances.
+
+- Add support to the main local controller implementation to support active
+  instances for objects unknown to the functional model.  Also add a
+  shim (mkConvertControllerInstances_IN) for mapping controller interfaces.
+  See the mesh network model (icn-mesh.bsv in hasim-models) for an example.

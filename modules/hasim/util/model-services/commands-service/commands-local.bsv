@@ -54,11 +54,16 @@ typedef struct
     Vector#(t_NUM_OUTPORTS, Bool) outctrls;
     Vector#(t_NUM_UNPORTS, Bool) unctrls;
     Vector#(t_NUM_INPORTS, Bool) inctrls;
+    Bit#(4) cycle;                     // Small cycle counter to track relative
+                                       // positions of controllers
+    Bit#(t_NUM_IID_BITS) nextInstance;
+    Bool nextIsReady;
     GLOBAL_STRING_UID name;
 }
 CONTROLLER_SCAN_DATA#(numeric type t_NUM_INPORTS,
                       numeric type t_NUM_UNPORTS,
-                      numeric type t_NUM_OUTPORTS)
+                      numeric type t_NUM_OUTPORTS,
+                      numeric type t_NUM_IID_BITS)
     deriving (Eq, Bits);
 
 // Data types for scanning state out of local controllers
@@ -85,6 +90,10 @@ typedef union tagged
 
     COM_SCAN_DATA LC_ScanData;        // Response to COM_Scan request
     COM_SCAN_DATA LC_ScanDataLast;    // Last chunk of COM_Scan response
+
+    Bool          LC_ScanRunning;     // Serial scan of instanceRunning state
+                                      // (also triggered by COM_Scan request)
+    Bool          LC_ScanRunningLast; // Last instance of running state scan
 }
 CONTROLLER_MSG
     deriving (Eq, Bits);
@@ -206,11 +215,16 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
         (LOCAL_CONTROLLER#(t_NUM_INSTANCES))
     provisos (Alias#(CONTROLLER_SCAN_DATA#(t_NUM_INPORTS,
                                            t_NUM_UNPORTS,
-                                           t_NUM_OUTPORTS), t_SCAN_DATA));
+                                           t_NUM_OUTPORTS,
+                                           INSTANCE_ID_BITS#(t_NUM_INSTANCES)), t_SCAN_DATA));
 
     Reg#(LC_STATE) state <- mkReg(LC_Idle);
     Reg#(Bool) scanning <- mkReg(False);
   
+    // Small cycle counter counts wrapping of the IID and is useful when debugging
+    // to compare the relative cycles of local controllers.
+    Reg#(Bit#(4)) cycle <- mkReg(0);
+
     // Counter of active instances. 
     // We start at -1, so we assume at least one instance is active.
     COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES))
@@ -231,6 +245,7 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     String encodedName = integerToString(valueOf(t_NUM_INPORTS)) + "," +
                          integerToString(valueOf(t_NUM_UNPORTS)) + "," +
                          integerToString(valueOf(t_NUM_OUTPORTS)) + "," +
+                         integerToString(valueOf(INSTANCE_ID_BITS#(t_NUM_INSTANCES))) + "," +
                          name;
     GLOBAL_STRING_UID nameUID <- getGlobalStringUID(encodedName);
     MARSHALLER#(COM_SCAN_DATA, t_SCAN_DATA) scanStream <- mkSimpleMarshaller();
@@ -423,7 +438,20 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
                    outctrls: map(canWriteTo, outctrls),
                    unctrls: map(canReadFrom, uncontrolled_ctrls),
                    inctrls: map(canReadFrom, inctrls),
+                   cycle: cycle,
+                   nextInstance: nextInstance.value(),
+                   nextIsReady: instanceReady(nextInstance.value()),
                    name: nameUID };
+
+`ifdef ENABLE_FOR_TESTING
+                $display("Dump " + encodedName);
+                $display("  next instance: %0d", scan_data.nextInstance);
+                $display("  next is ready: %0d", pack(scan_data.nextIsReady));
+                $display("  cycle:         %0d", cycle);
+                $display("  inctrls:  0x%h", pack(scan_data.inctrls));
+                $display("  unctrls:  0x%h", pack(scan_data.unctrls));
+                $display("  outctrls: 0x%h", pack(scan_data.outctrls));
+`endif
 
                 scanStream.enq(scan_data);
             end
@@ -434,38 +462,6 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
         begin
             link_controllers.sendToNext(cmd);
         end
-    endrule
-
-    rule emitScan (scanning);
-        if (scanStream.notEmpty)
-        begin
-            if (! scanStream.isLast)
-                link_controllers.sendToNext(tagged LC_ScanData scanStream.first());
-            else
-                link_controllers.sendToNext(tagged LC_ScanDataLast scanStream.first());
-
-            scanStream.deq();
-        end
-        else
-        begin
-            link_controllers.sendToNext(tagged COM_Scan);
-            scanning <= False;
-        end
-    endrule
-
-    rule updateRunning (True);
-    
-        if (startCycleQ.notEmpty())
-        begin
-            instanceRunning.getReg(startCycleQ.first()) <= True;
-            startCycleQ.deq();
-        end
-        else if (endCycleQ.notEmpty())
-        begin
-            instanceRunning.getReg(endCycleQ.first()) <= False;
-            endCycleQ.deq();
-        end
-    
     endrule
 
     //
@@ -483,6 +479,92 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     endrule
 
 
+    rule updateRunning (True);
+    
+        if (startCycleQ.notEmpty())
+        begin
+            instanceRunning.getReg(startCycleQ.first()) <= True;
+            startCycleQ.deq();
+        end
+        else if (endCycleQ.notEmpty())
+        begin
+            instanceRunning.getReg(endCycleQ.first()) <= False;
+            endCycleQ.deq();
+        end
+    
+    endrule
+
+
+    // ====================================================================
+    //
+    //   Scan state for debugging.
+    //
+    // ====================================================================
+
+    Reg#(Maybe#(Bit#(TLog#(TAdd#(t_NUM_INSTANCES, 1))))) scanRunning <- mkReg(tagged Invalid);
+
+    //
+    // emitScan --
+    //     First stage of scan:  marshall the CONTROLLER_SCAN_DATA through
+    //     the channel.
+    //
+    rule emitScan (scanning && ! isValid(scanRunning));
+        if (scanStream.notEmpty)
+        begin
+            if (! scanStream.isLast)
+                link_controllers.sendToNext(tagged LC_ScanData scanStream.first());
+            else
+                link_controllers.sendToNext(tagged LC_ScanDataLast scanStream.first());
+
+            scanStream.deq();
+        end
+        else
+        begin
+            // Done with CONTROLLER_SCAN_DATA.  Now send a serialized vector
+            // of running contexts.  These are stored in LUTRAM, so must use
+            // only a single read port.
+            scanRunning <= tagged Valid 0;
+        end
+    endrule
+
+
+    //
+    // emitScanRunning --
+    //     Second stage of scan:  emit a serial stream of flags indicating which
+    //     instances are currently running.  The running flags are in LUTRAM
+    //     and can not be retrieved in parallel.
+    //
+    rule emitScanRunning (scanning &&& scanRunning matches tagged Valid .iid);
+        Reg#(Bool) is_running = instanceRunning.getReg(truncateNP(iid));
+
+        if (iid < fromInteger(valueOf(TSub#(t_NUM_INSTANCES, 1))))
+        begin
+            // Emit is_running for one instance
+            link_controllers.sendToNext(tagged LC_ScanRunning is_running);
+            scanRunning <= tagged Valid (iid + 1);
+        end
+        else if (iid == fromInteger(valueOf(TSub#(t_NUM_INSTANCES, 1))))
+        begin
+            // Highest instance ID
+            link_controllers.sendToNext(tagged LC_ScanRunningLast is_running);
+            scanRunning <= tagged Valid (iid + 1);
+        end
+        else
+        begin
+            // Scan done
+            link_controllers.sendToNext(tagged COM_Scan);
+            scanning <= False;
+            scanRunning <= tagged Invalid;
+        end
+    endrule
+
+
+    // ====================================================================
+    //
+    //   Methods
+    //
+    // ====================================================================
+
     method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES)) startModelCycle() if ((state != LC_Idle) && instanceReady(nextInstance.value()));
 
         let next_iid = nextInstance.value();
@@ -497,6 +579,7 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
         if (next_iid >= maxActiveInstance.value())
         begin
             nextInstance.setC(0);
+            cycle <= cycle + 1;
         end
         else
         begin

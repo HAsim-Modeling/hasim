@@ -30,7 +30,9 @@ service COMMANDS
         method FPGAHeartbeat(in UINT8[8] dummy);
 
         // Data stream resulting from Scan() request
-        method ScanData(in UINT8[8] data, in UINT8[8] eom);
+        //   flag bit 0: "end of message"
+        //   flag bit 1: "0: LC_ScanData / 1: LC_ScanRunning"
+        method ScanData(in UINT8[8] data, in UINT8[8] flags);
 
         // Lowest priority methods, guaranteeing methods above have completed
         method Done(in UINT8[8] dummy, out UINT8[8] ack);

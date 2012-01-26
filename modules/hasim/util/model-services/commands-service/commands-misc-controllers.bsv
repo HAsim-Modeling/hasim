@@ -65,10 +65,8 @@ module mkBufferedStageController
     // slots without consuming the results, because subsequent writes wind
     // up blocked.  Reducing buffering below the blocking threshold in
     // scratchpads and packed memories eliminates this problem.
-    // For now, we limit buffers to 16, until deadlocks in the in-order
-    // 64 CPU model with larger buffers are explained.
     //
-    let sc <- mkSizedStageController(valueOf(TMin#(t_NUM_INSTANCES, 16)));
+    let sc <- mkSizedStageController(valueOf(t_NUM_INSTANCES));
     return sc;
 
 endmodule

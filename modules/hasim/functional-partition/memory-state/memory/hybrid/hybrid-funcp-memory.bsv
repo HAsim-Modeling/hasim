@@ -34,7 +34,6 @@ import FIFOF::*;
 `include "asim/dict/VDEV_CACHE.bsh"
 `include "asim/dict/PARAMS_FUNCP_MEMORY.bsh"
 `include "asim/dict/STATS_FUNCP_MEMORY.bsh"
-`include "asim/dict/DEBUG_SCAN_FUNCP_MEMORY.bsh"
 
 
 // Can't include hasim_isa.bsh here or it causes a loop
@@ -161,25 +160,26 @@ module [HASIM_MODULE] mkFUNCP_Memory
     //
     // ====================================================================
 
+    COUNTER#(5) loadsInFlight <- mkLCounter(0);
+
     //
     // Debug state that can be scanned out:
     //
     //     Bit    6: invalQ.notEmpty
-    //     Bits 5-0: loadsInFlight counter
+    //     Bits 4-0: loadsInFlight counter
     //
-    Wire#(Bit#(6)) debugScanData <- mkBypassWire();
-    DEBUG_SCAN#(Bit#(6)) debugScan <- mkDebugScanNode(`DEBUG_SCAN_FUNCP_MEMORY_STATE, debugScanData);
-
-    COUNTER#(5) loadsInFlight <- mkLCounter(0);
-
-    (* no_implicit_conditions *)
-    rule updateDebugScanState (True);
+    function Bit#(6) debugScanData();
         Bit#(6) d = ?;
         d[5] = pack(invalQ.notEmpty());
         d[4:0] = loadsInFlight.value();
+        return d;
+    endfunction
 
-        debugScanData <= d;
-    endrule
+    String debugDesc = debugScanName("FUNCP Memory") +
+                       debugScanField("Loads in flight", 5) +
+                       debugScanField("invalQ not empty", 1);
+
+    let debugScan <- mkDebugScanNode(debugDesc, debugScanData);
 
 
     // ====================================================================

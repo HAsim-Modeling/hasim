@@ -30,6 +30,7 @@
 #include "asim/provides/command_switches.h"
 #include "asim/provides/hasim_common.h"
 #include "asim/provides/stats_device.h"
+#include "asim/provides/debug_scan_device.h"
 
 #include "asim/rrr/client_stub_COMMANDS.h"
 
@@ -155,13 +156,12 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     struct timeval endTime;
 
     // Scan data buffering
-    UINT8 *scanBuf;
-    UINT32 scanBufLen;      // Current allocated Buffer length
-    UINT32 scanWriteIdx;    // Current write point in the buffer
-    UINT32 scanReadIdx;     // Current (bit) read point in the buffer
+    DEBUG_SCAN_DATA_CLASS scanData;
     Regex scanParser;       // Parser for scan data size/name records
+    UINT32 scanRunningIdx;  // Instance ID of the current "running" scan message
 
-    UINT64 GetScanData(UINT32 nBits);
+    void ScanDataNormal(UINT8 data, bool eom);
+    void ScanDataRunning(UINT8 data, bool eom);
 
     void EndSimulation(int exitVal);
 
@@ -199,7 +199,7 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
 
     void FPGAHeartbeat(UINT8 dummy);
 
-    void ScanData(UINT8 data, UINT8 eom);
+    void ScanData(UINT8 data, UINT8 flags);
 
     UINT8 Done(UINT8 dummy) { return dummy; }
 };

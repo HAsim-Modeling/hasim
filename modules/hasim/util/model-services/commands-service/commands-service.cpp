@@ -33,7 +33,6 @@
 #include "asim/provides/command_switches.h"
 #include "asim/provides/stats_device.h"
 #include "asim/provides/commands_service.h"
-#include "asim/provides/debug_scan_device.h"
 
 using namespace std;
 
@@ -47,9 +46,8 @@ COMMANDS_SERVER_CLASS::COMMANDS_SERVER_CLASS() :
     lastStatsScanCycle(0),
     noChangeBeats(0),
     running(false),
-    scanWriteIdx(0),
-    scanReadIdx(0),
-    scanParser("([0-9]+),([0-9]+),([0-9]+),(.*)")
+    scanParser("([0-9]+),([0-9]+),([0-9]+),([0-9]+),(.*)"),
+    scanRunningIdx(0)
 {
     SetTraceableName("commands_server");
 
@@ -58,16 +56,12 @@ COMMANDS_SERVER_CLASS::COMMANDS_SERVER_CLASS() :
     serverStub = new COMMANDS_SERVER_STUB_CLASS(this);
 
     hwThreadHeartbeat = NULL;
-
-    scanBufLen = 2;
-    scanBuf = new UINT8[scanBufLen];
 }
 
 // destructor
 COMMANDS_SERVER_CLASS::~COMMANDS_SERVER_CLASS()
 {
     Cleanup();
-    delete[] scanBuf;
 }
 
 // init
@@ -209,8 +203,8 @@ COMMANDS_SERVER_CLASS::FPGAHeartbeat(UINT8 dummy)
         {
             cerr << "commands relay: model deadlock!" << endl;
 
-            Scan();
             DEBUG_SCAN_DEVICE_SERVER_CLASS::GetInstance()->Scan();
+            Scan();
             EndSimulation(1);
         }
     }
@@ -356,33 +350,49 @@ COMMANDS_SERVER_CLASS::EmitStats(ofstream &statsFile)
               << endl;
 }
 
+
+//
+// ScanData --
+//     All scanned out state from local controllers arrives via RRR through
+//     this method.
+//
 void
-COMMANDS_SERVER_CLASS::ScanData(UINT8 data, UINT8 eom)
+COMMANDS_SERVER_CLASS::ScanData(UINT8 data, UINT8 flags)
 {
-    if (scanWriteIdx >= scanBufLen)
+    bool eom = (flags & 1) != 0;
+
+    if ((flags & 2) == 0)
     {
-        // Buffer is too small.  Replace it with a larger one.
-        UINT8 *new_buf = new UINT8[scanBufLen + 512];
-        memcpy(new_buf, scanBuf, scanBufLen);
-
-        delete[] scanBuf;
-        scanBuf = new_buf;
-        scanBufLen += 512;
+        // Bit 1 of flags is 0, indicating normal scan data...
+        ScanDataNormal(data, eom);
     }
+    else
+    {
+        // Payload indicates whether a single instace is running...
+        ScanDataRunning(data, eom);
+    }
+}
 
-    scanBuf[scanWriteIdx++] = data;
+
+//
+// ScanDataNormal --
+//     Handle arrival of the standard local controller scan.
+//
+void
+COMMANDS_SERVER_CLASS::ScanDataNormal(UINT8 data, bool eom)
+{
+    scanData.Put(data);
 
     if (eom)
     {
-        UINT64 uid = GetScanData(GLOBAL_STRING_PLATFORM_UID_SZ +
-                                 GLOBAL_STRING_SYNTH_UID_SZ +
-                                 GLOBAL_STRING_LOCAL_UID_SZ);
+        GLOBAL_STRING_UID uid = scanData.Get(GLOBAL_STRING_UID_SZ);
         const string *tag = GLOBAL_STRINGS::Lookup(uid);
 
         //
         // The size and name of the command node are encoded in the string.
         // The first 3 comma separated values are the number of input
-        // ports of each category.  The final field is the node name.
+        // ports of each category.  The next field is the number of bits in
+        // an instance ID.  The final field is the node name.
         //
 
         VERIFY(scanParser.matchSub(*tag),
@@ -391,16 +401,23 @@ COMMANDS_SERVER_CLASS::ScanData(UINT8 data, UINT8 eom)
         UINT32 num_inports = atoi(scanParser.getSubstring(1).c_str());
         UINT32 num_unports = atoi(scanParser.getSubstring(2).c_str());
         UINT32 num_outports = atoi(scanParser.getSubstring(3).c_str());
+        UINT32 num_iid_bits = atoi(scanParser.getSubstring(4).c_str());
 
-        cout << "  " << scanParser.getSubstring(4)
+        cout << "  " << scanParser.getSubstring(5)
              << " (" << num_inports
              << ", " << num_unports
              << ", " << num_outports << "):" << endl;
 
+        bool next_is_ready = (scanData.Get(1) != 0);
+        cout << "    Next instance (" << scanData.Get(num_iid_bits) << ") is "
+             << (next_is_ready ? "READY" : "NOT ready") << endl;
+
+        cout << "    Cycle: " << scanData.Get(4) << endl;
+
         cout << "    Ready input ports:";
         for (UINT32 i = 0; i < num_inports; i++)
         {
-            if (GetScanData(1)) cout << " " << i;
+            if (scanData.Get(1)) cout << " " << i;
         }
         cout << endl;
 
@@ -409,7 +426,7 @@ COMMANDS_SERVER_CLASS::ScanData(UINT8 data, UINT8 eom)
             cout << "    Ready uncontrolled ports:";
             for (UINT32 i = 0; i < num_unports; i++)
             {
-                if (GetScanData(1)) cout << " " << i;
+                if (scanData.Get(1)) cout << " " << i;
             }
             cout << endl;
         }
@@ -417,43 +434,46 @@ COMMANDS_SERVER_CLASS::ScanData(UINT8 data, UINT8 eom)
         cout << "    Ready output ports:";
         for (UINT32 i = 0; i < num_outports; i++)
         {
-            if (GetScanData(1)) cout << " " << i;
+            if (scanData.Get(1)) cout << " " << i;
         }
         cout << endl;
 
-        scanWriteIdx = 0;
-        scanReadIdx = 0;
+        scanData.Reset();
     }
 }
 
+
 //
-// GetScanData --
-//     Return the next nBits worth of the current scan data record.
+// ScanDataRunning --
+//     Handle arrival of the "running" state of each instance managed by a
+//     local controller.  Instances are scanning out serially, with the
+//     running scan of a controller immediately following the normal scan
+//     of the controller.
 //
-UINT64
-COMMANDS_SERVER_CLASS::GetScanData(UINT32 nBits)
+void
+COMMANDS_SERVER_CLASS::ScanDataRunning(UINT8 data, bool eom)
 {
-    UINT64 result = 0;
-
-    //
-    // This code is only triggered on an error, so it doesn't have to be fast.
-    //
-    for (UINT32 i = 0; i < nBits; i++)
+    // First IID for this controller?
+    if (scanRunningIdx == 0)
     {
-        ASSERTX(scanReadIdx >> 3 < scanWriteIdx);
-
-        // Get the next bit in slot 0 of b...
-        UINT64 b = scanBuf[scanReadIdx >> 3];   // Select correct byte
-        b >>= (scanReadIdx & 7);                // Shift desired bit to position 0
-        b &= 1;                                 // Select only bit 0
-        b <<= i;                                // Shift to desired position
-
-        result |= b;
-
-        scanReadIdx += 1;
+        cout << "    Running instances:";
     }
 
-    return result;
+    // Is the instance running?
+    if ((data & 1) != 0)
+    {
+        cout << " " << scanRunningIdx;
+    }
+
+    if (eom)
+    {
+        cout << endl;
+        scanRunningIdx = 0;
+    }
+    else
+    {
+        scanRunningIdx += 1;
+    }
 }
 
 

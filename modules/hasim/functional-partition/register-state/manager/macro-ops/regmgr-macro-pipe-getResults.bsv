@@ -27,6 +27,7 @@ import Vector::*;
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/fpga_components.bsh"
+`include "asim/provides/debug_scan_service.bsh"
  
 // Functional Partition includes.
 
@@ -265,6 +266,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     Reg#(REGMGR_RES_STATE_ENUM) state_res <- mkReg(RSM_RES_Running);
 
     STAT stat_isa_emul <- mkStatCounter(`STATS_REGMGR_GETRESULTS_EMULATED_INSTRS);
+
+    String debugDesc = debugScanName("FUNCP REGMGR getResults") +
+                       debugScanField("State", valueOf(SizeOf#(REGMGR_RES_STATE_ENUM)));
+    let debugScan <- mkDebugScanNode(debugDesc, state_res);
+
 
     // ====================================================================
     //

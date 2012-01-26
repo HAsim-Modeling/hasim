@@ -25,6 +25,15 @@
 // rewind handling.
 //
 
+`include "awb/provides/soft_connections.bsh"
+`include "awb/provides/soft_services_lib.bsh"
+`include "awb/provides/soft_services.bsh"
+`include "awb/provides/soft_services_deps.bsh"
+
+`include "awb/provides/physical_platform.bsh"
+`include "awb/provides/debug_scan_service.bsh"
+
+
 // REGMGR_STATE
 
 // A type to indicating what we're doing on a high level.
@@ -58,7 +67,17 @@ interface REGMGR_STATE;
 endinterface: REGMGR_STATE
 
 
-module mkRegmanagerState#(REGMGR_STATE_ENUM init)
+typedef struct
+{
+    Maybe#(CONTEXT_ID) emulateCtxId;
+    Maybe#(CONTEXT_ID) rewindCtxId;
+    REGMGR_STATE_ENUM state;
+}
+REGMGR_STATE_DEBUG_SCAN
+    deriving (Eq, Bits);
+
+
+module [HASIM_MODULE] mkRegmanagerState#(REGMGR_STATE_ENUM init)
     // interface:
         (REGMGR_STATE);
 
@@ -67,6 +86,23 @@ module mkRegmanagerState#(REGMGR_STATE_ENUM init)
 
     Reg#(Maybe#(CONTEXT_ID)) emulateCtxId <- mkReg(tagged Invalid);
     Reg#(Maybe#(CONTEXT_ID)) rewindCtxId <- mkReg(tagged Invalid);
+
+
+    function REGMGR_STATE_DEBUG_SCAN dbgScanData();
+        return REGMGR_STATE_DEBUG_SCAN {
+            emulateCtxId: emulateCtxId,
+            rewindCtxId: rewindCtxId,
+            state: state
+            };
+    endfunction
+
+    String debugDesc =
+        debugScanName("FUNCP REGMGR STATE") +
+        debugScanField("State", valueOf(SizeOf#(REGMGR_STATE_ENUM))) +
+        debugScanMaybeField("Rewind context ID", valueOf(SizeOf#(CONTEXT_ID))) +
+        debugScanMaybeField("Emulate context ID", valueOf(SizeOf#(CONTEXT_ID)));
+
+    let debugScan <- mkDebugScanNode(debugDesc, dbgScanData);
 
 
     method REGMGR_STATE_ENUM getState();

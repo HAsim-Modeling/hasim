@@ -21,7 +21,8 @@
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/fpga_components.bsh"
- 
+`include "awb/provides/debug_scan_service.bsh"
+
 // Functional Partition includes.
 
 `include "asim/provides/funcp_interface.bsh"
@@ -105,6 +106,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
     Reg#(TOKEN_INDEX) rewindCur <- mkRegU();
 
     Reg#(REGMGR_EXC_STATE_ENUM) state_rew <- mkReg(RSM_REW_Running);
+
+    String debugDesc = debugScanName("FUNCP REGMGR rewind") +
+                       debugScanField("State", valueOf(SizeOf#(REGMGR_EXC_STATE_ENUM)));
+    let debugScan <- mkDebugScanNode(debugDesc, state_rew);
 
 
     // ====================================================================

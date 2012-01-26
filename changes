@@ -25538,3 +25538,32 @@ Directory modules/hasim/util/model-services/commands-service
   instances for objects unknown to the functional model.  Also add a
   shim (mkConvertControllerInstances_IN) for mapping controller interfaces.
   See the mesh network model (icn-mesh.bsv in hasim-models) for an example.
+
+----------
+mcadler     Date: Thu Jan 26 11:35:14 EST 2012  CSN: CSN-hasim-867
+                  Thu Jan 26 16:35:14 UTC 2012
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-state.bsv    Locally Modified          866 
+ regmgr-macro-pipe-rewind.bsv Locally Modified          866 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          866 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          866 
+ hybrid-funcp-memory.dic   Locally Modified          866 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          866 
+ commands-local.bsv        Locally Modified          866 
+ commands-service.rrr      Locally Modified          866 
+ commands-service.h        Locally Modified          866 
+ commands-misc-controllers.bsv Locally Modified          866 
+ commands-service.bsv      Locally Modified          866 
+
+- Scan full state of which instances are running in each local controller.
+
+- Use the DEBUG_SCAN_DATA_CLASS for managing the software-side scan controller
+  scan buffer instead of separate code.
+
+- Add some scan state in the functional model.

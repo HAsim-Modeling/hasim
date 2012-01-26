@@ -182,6 +182,16 @@ module [HASIM_MODULE] mkCommandsService
                 clientStub.makeRequest_ScanData(sd, 1);
             end
 
+            tagged LC_ScanRunning .sr:
+            begin
+                clientStub.makeRequest_ScanData(zeroExtend(pack(sr)), 'b10);
+            end
+
+            tagged LC_ScanRunningLast .sr:
+            begin
+                clientStub.makeRequest_ScanData(zeroExtend(pack(sr)), 'b11);
+            end
+
             default:
             begin
                 // Sink most messages

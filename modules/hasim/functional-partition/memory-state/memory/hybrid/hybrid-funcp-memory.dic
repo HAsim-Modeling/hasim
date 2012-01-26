@@ -21,8 +21,6 @@ def VDEV.CACHE.FUNCP_MEMORY     "Functional memory central cache port";
 def STATS.FUNCP_MEMORY.PVT_CACHE_LOAD_HIT   "FUNCP Mem: Private cache load hits";
 def STATS.FUNCP_MEMORY.PVT_CACHE_LOAD_MISS  "FUNCP Mem: Private cache load misses";
 
-def DEBUG_SCAN.FUNCP_MEMORY.STATE           "(Def. in hybrid-funcp-memory.bsv)";
-
 def STREAMID.FUNCP_MEMORY                   "FUNCP Mem";
 def STREAMS.FUNCP_MEMORY.LD_REQ             "FUNCP Mem: LD REQ  0x%08x%08x\n";
 def STREAMS.FUNCP_MEMORY.LD_RSP             "FUNCP Mem: LD RSP  0x%08x%08x\n";

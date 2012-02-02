@@ -211,7 +211,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     RWire#(Tuple2#(ISA_INST_SRCS,
                    Vector#(ISA_MAX_SRCS, Bool))) readReqVecDbgData <- mkRWire();
 
-    Reg#(Vector#(ISA_MAX_SRCS, Bool)) rvecValidsDbg <- mkRegU();
+    Vector#(ISA_MAX_SRCS, Reg#(Bool)) rvecValidsDbg <- replicateM(mkRegU());
     Reg#(Bit#(TLog#(ISA_MAX_SRCS))) rvecValidsDbgIdx <- mkReg(0);
 
     rule readReqVecDbg (True);
@@ -220,23 +220,21 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
         // Not enough read ports to read valid state of all registers.
         // Cycle through them.  Since we care about deadlocks the state is
         // stable.
-        let vt = rvecValidsDbg;
-        if (req[rvecValidsDbgIdx] matches tagged Valid .r)
-        begin
-            vt[rvecValidsDbgIdx] = prfValids.sub(r);
-        end
-        else
-        begin
-            vt[rvecValidsDbgIdx] = False;
-        end
-        rvecValidsDbg <= vt;
+        let r = req[rvecValidsDbgIdx];
+        rvecValidsDbg[rvecValidsDbgIdx] <= isValid(r) && prfValids.sub(validValue(r));
 
         if (rvecValidsDbgIdx == fromInteger(valueOf(TSub#(ISA_MAX_SRCS, 1))))
             rvecValidsDbgIdx <= 0;
         else
             rvecValidsDbgIdx <= rvecValidsDbgIdx + 1;
 
-        readReqVecDbgData.wset(tuple2(req, rvecValidsDbg));
+        Vector#(ISA_MAX_SRCS, Bool) tv = newVector();
+        for (Integer i = 0; i <= valueOf(TSub#(ISA_MAX_SRCS, 1)); i = i + 1)
+        begin
+            tv[i] = rvecValidsDbg[i];
+        end
+
+        readReqVecDbgData.wset(tuple2(req, tv));
     endrule
 
     DEBUG_SCAN_FIELD_LIST dbg_list = List::nil;

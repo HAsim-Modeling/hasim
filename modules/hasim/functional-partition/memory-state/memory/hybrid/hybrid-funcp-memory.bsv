@@ -163,23 +163,13 @@ module [HASIM_MODULE] mkFUNCP_Memory
     COUNTER#(5) loadsInFlight <- mkLCounter(0);
 
     //
-    // Debug state that can be scanned out:
+    // Debug state that can be scanned out.
     //
-    //     Bit    6: invalQ.notEmpty
-    //     Bits 4-0: loadsInFlight counter
-    //
-    function Bit#(6) debugScanData();
-        Bit#(6) d = ?;
-        d[5] = pack(invalQ.notEmpty());
-        d[4:0] = loadsInFlight.value();
-        return d;
-    endfunction
+    DEBUG_SCAN_FIELD_LIST dbg_list = List::nil;
+    dbg_list <- addDebugScanField(dbg_list, "Loads in flight", loadsInFlight.value());
+    dbg_list <- addDebugScanField(dbg_list, "invalQ not empty", invalQ.notEmpty);
 
-    String debugDesc = debugScanName("FUNCP Memory") +
-                       debugScanField("Loads in flight", 5) +
-                       debugScanField("invalQ not empty", 1);
-
-    let debugScan <- mkDebugScanNode(debugDesc, debugScanData);
+    let dbgNode <- mkDebugScanNode("FUNCP Memory", dbg_list);
 
 
     // ====================================================================

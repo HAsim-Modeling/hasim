@@ -53,7 +53,7 @@ COMMIT_STATE
 typedef union tagged
 {
     Tuple2#(TOKEN, Maybe#(STORE_TOKEN)) COMMIT2_commitRsp;
-    Bool COMMIT2_faultRsp;
+    Tuple2#(TOKEN, Bool) COMMIT2_faultRsp;
 }
 COMMIT2_PATH deriving (Eq, Bits);
 
@@ -115,6 +115,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     Reg#(t_REG_IDX) faultRegIdx <- mkRegU();
     Reg#(REGMGR_DST_REGS) faultDstMap <- mkRegU();
     Reg#(REGSTATE_REWIND_INFO) faultRewindInfo <- mkRegU();
+    Reg#(TOKEN) faultRewindTok <- mkRegU();
     
 
     // ====================================================================
@@ -179,14 +180,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
                 let m_req = MEMSTATE_REQ_REWIND {rewind_to: tok.index - 1, rewind_from: tok.index};
                 linkToMem.makeReq(tagged REQ_REWIND m_req);
 
-                commQ.enq(tagged COMMIT2_faultRsp True);
+                commQ.enq(tagged COMMIT2_faultRsp tuple2(tok, True));
         
             end
             else
             begin
 
                 // Make sure no responses pass this response.
-                commQ.enq(tagged COMMIT2_faultRsp False);
+                commQ.enq(tagged COMMIT2_faultRsp tuple2(tok, False));
 
             end
 
@@ -274,7 +275,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     //     table would be updated incorrectly.
     //
     rule commitFaultStart (commitState == COMMIT_STATE_FAULT_START &&&
-                           commQ.first() matches tagged COMMIT2_faultRsp .is_store);
+                           commQ.first() matches tagged COMMIT2_faultRsp {.tok, .is_store});
         commQ.deq();
     
         if (is_store)
@@ -285,6 +286,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         // Retrieve the registers to be freed.
         let rewind_info <- regMapping.readRewindRsp();
         faultRewindInfo <= validValue(rewind_info);
+        faultRewindTok <= tok;
         
         // Get the current mapping.
         let dsts <- tokDsts.readRsp();
@@ -321,7 +323,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
             faultRewindInfo.regsToFree[faultRegIdx] matches tagged Valid .pr_prev)
         begin
             // Read the old value
-            prf.readReq(pr_prev);
+            prf.readReq(faultRewindTok, pr_prev);
             debugLog.record($format("CommitResults: FAULT read old PR%0d", pr_prev));
 
             fixFaultRegsQ.enq(tuple2(faultRegIdx, tagged Valid pr));
@@ -349,7 +351,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         if (fix_pr matches tagged Valid .pr)
         begin
             let old_val <- prf.readRsp();
-            prf.write(pr, old_val);
+            prf.write(faultRewindTok, pr, old_val);
 
             debugLog.record($format("CommitResults: FAULT write PR%0d <- 0x%0x", pr, old_val)); 
         end

@@ -280,7 +280,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         if (tok_active)
         begin
             // Reset new physical registers
-            prf.invalReq(phy_dsts);
+            prf.invalReq(tok, phy_dsts);
 
             // Log it
             for (Integer x = 0; x < valueOf(ISA_MAX_DSTS); x = x + 1)

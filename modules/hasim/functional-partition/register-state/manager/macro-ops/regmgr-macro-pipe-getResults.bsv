@@ -32,7 +32,7 @@ import Vector::*;
 // Functional Partition includes.
 
 `include "asim/provides/funcp_interface.bsh"
-  
+
 // Dictionary includes
 `include "asim/dict/PARAMS_FUNCP_REGSTATE_MANAGER.bsh"
 `include "asim/dict/STATS_REGMGR_GETRESULTS.bsh"
@@ -175,7 +175,6 @@ module mkEmulationRegMap
 endmodule: mkEmulationRegMap
 
 
-
 // ========================================================================
 //
 //   Primary execute stage pipeline.
@@ -249,12 +248,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     Param#(32) paramSleepInterval <- mkDynamicParameter(`PARAMS_FUNCP_REGSTATE_MANAGER_SLEEP_INTERVAL, paramNode);
 
     // Intermediate state between pipeline stages. Bool indicates if there's a bubble.
-    FIFO#(Tuple2#(TOKEN, Bool)) res1Q <- mkFIFO();
-    FIFO#(Tuple2#(TOKEN, Bool)) res2Q <- mkFIFO();
-    FIFO#(Tuple3#(TOKEN, Bool, ISA_ADDRESS)) res3Q   <- mkFIFO();
-    FIFO#(ISA_REG_INDEX) syncPRFReqQ <- mkFIFO();
-    FIFO#(Tuple2#(Bool, ISA_REG_INDEX)) syncQ <- mkFIFO();
-    FIFO#(Tuple2#(ISA_REG_INDEX, ISA_VALUE)) updateRegQ <- mkFIFO();
+    FIFOF#(Tuple2#(TOKEN, Bool)) res1Q <- mkFIFOF();
+    FIFOF#(Tuple2#(TOKEN, Bool)) res2Q <- mkFIFOF();
+    FIFOF#(Tuple3#(TOKEN, Bool, ISA_ADDRESS)) res3Q   <- mkFIFOF();
+    FIFOF#(ISA_REG_INDEX) syncPRFReqQ <- mkFIFOF();
+    FIFOF#(Tuple2#(Bool, ISA_REG_INDEX)) syncQ <- mkFIFOF();
+    FIFOF#(Tuple2#(ISA_REG_INDEX, ISA_VALUE)) updateRegQ <- mkFIFOF();
 
     // Which token's instruction are we emulating?
     Reg#(TOKEN) emulatingToken <- mkRegU();
@@ -267,9 +266,48 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
     STAT stat_isa_emul <- mkStatCounter(`STATS_REGMGR_GETRESULTS_EMULATED_INSTRS);
 
-    String debugDesc = debugScanName("FUNCP REGMGR getResults") +
-                       debugScanField("State", valueOf(SizeOf#(REGMGR_RES_STATE_ENUM)));
-    let debugScan <- mkDebugScanNode(debugDesc, state_res);
+    RWire#(Tuple2#(Bool, Bool)) getResults1DbgData <- mkRWire();
+    rule getResults1Dbg (True);
+        let tok = linkGetResults.getReq().token;
+        getResults1DbgData.wset(tuple2(state.readyToBegin(tokContextId(tok)),
+                                       tokScoreboard.canStartExe(tok.index)));
+    endrule
+
+    RWire#(Tuple2#(TOKEN_INDEX, Bool)) res3QDbgData <- mkRWire();
+    rule getRes3QDbg (True);
+        match {.tok, .need_rsp, .addr} = res3Q.first();
+        res3QDbgData.wset(tuple2(tok.index, need_rsp));
+    endrule
+
+    let res1_dbg_data = getResults1DbgData.wget();
+
+    let res3_dbg_data = res3QDbgData.wget();
+    Maybe#(TOKEN_INDEX) res_3Q_dbg_tokidx = (isValid(res3_dbg_data) ?
+                                             tagged Valid tpl_1(validValue(res3_dbg_data)) :
+                                             tagged Invalid);
+    Bool res_3Q_dbg_need_rsp = isValid(res3_dbg_data) && tpl_2(validValue(res3_dbg_data));
+
+    DEBUG_SCAN_FIELD_LIST dbg_list = List::nil;
+    dbg_list <- addDebugScanField(dbg_list, "State", state_res);
+    dbg_list <- addDebugScanField(dbg_list, "stage1ReadyToBegin", isValid(res1_dbg_data) && tpl_1(validValue(res1_dbg_data)));
+    dbg_list <- addDebugScanField(dbg_list, "stage1CanStartExe", isValid(res1_dbg_data) && tpl_2(validValue(res1_dbg_data)));
+    dbg_list <- addDebugScanField(dbg_list, "stage1HaveToken", isValid(res1_dbg_data));
+    dbg_list <- addDebugScanField(dbg_list, "res1QnotFull", res1Q.notFull);
+    dbg_list <- addDebugScanField(dbg_list, "res1QnotEmpty", res1Q.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "res2QnotFull", res2Q.notFull);
+    dbg_list <- addDebugScanField(dbg_list, "res2QnotEmpty", res2Q.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "res3QneedRsp", res_3Q_dbg_need_rsp);
+    dbg_list <- addDebugScanMaybeField(dbg_list, "res3QtokIdx", res_3Q_dbg_tokidx);
+    dbg_list <- addDebugScanField(dbg_list, "res3QnotFull", res3Q.notFull);
+    dbg_list <- addDebugScanField(dbg_list, "res3QnotEmpty", res3Q.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "syncPRFReqQnotFull", syncPRFReqQ.notFull);
+    dbg_list <- addDebugScanField(dbg_list, "syncPRFReqQnotEmpty", syncPRFReqQ.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "syncQnotFull", syncQ.notFull);
+    dbg_list <- addDebugScanField(dbg_list, "syncQnotEmpty", syncQ.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "updateRegQnotFull", updateRegQ.notFull);
+    dbg_list <- addDebugScanField(dbg_list, "updateRegQnotEmpty", updateRegQ.notEmpty);
+
+    let dbgNode <- mkDebugScanNode("FUNCP REGMGR getResults", dbg_list);
 
 
     // ====================================================================
@@ -379,13 +417,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             // No values are needed for junk
             debugLog.record(fshow(tok.index) + $format(": GetResults2: Letting Junk Proceed!"));
 
-            prf.readRegVecReq(Vector::replicate(tagged Invalid));
+            prf.readRegVecReq(tok, Vector::replicate(tagged Invalid));
         end
         else
         begin
             debugLog.record(fshow(tok.index) + $format(": GetResults2: Requesting srcs"));
 
-            prf.readRegVecReq(ws);
+            prf.readRegVecReq(tok, ws);
         end
 
         tokAddr.readReq(tok.index);
@@ -521,7 +559,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         else if (wb.physDst matches tagged Valid .pr)
         begin
             // Normal physical register update
-            prf.write(pr, wb.value);
+            prf.write(tok, pr, wb.value);
             debugLog.record(fshow(tok.index) + $format(": GetResultsWB: Writing (PR%0d <= 0x%x)", pr, wb.value));
             Bit#(16) tok_ctx = zeroExtend(tokContextId(tok));
             Bit#(16) tok_id = zeroExtend(tokTokenId(tok));
@@ -734,7 +772,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             pr = map_pr;
     
         // Make the request to the regfile.
-        prf.readReq(pr);
+        prf.readReq(emulatingToken, pr);
 
         //Log it.
         debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction2: Reading Register R%0d (PR%0d).", ar, pr));
@@ -848,7 +886,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             pr = map_pr;
 
         // Update the regfile.
-        prf.write(pr, v);
+        prf.write(emulatingToken, pr, v);
 
         // Assert that we're in the state we expected to be in.
         assertion.regUpdateAtExpectedTime(state_res == RSM_RES_UpdatingRegisters);

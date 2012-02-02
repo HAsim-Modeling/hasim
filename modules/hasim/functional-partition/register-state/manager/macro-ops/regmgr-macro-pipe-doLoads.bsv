@@ -322,7 +322,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
                 debugLog.record(fshow(tok.index) + $format(": DoLoads3: Load Response Writing (PR%0d <= 0x%h)", dst_pr, val));
 
                 // Update the physical register file.
-                prf.write(dst_pr, val);
+                prf.write(tok, dst_pr, val);
 
                 // Update the scoreboard.
                 tokScoreboard.loadFinish(tok.index);
@@ -379,7 +379,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         debugLog.record(fshow(tok.index) + $format(": DoLoads3: Load Response Writing (PR%0d <= 0x%h)", dst_pr, val));
 
         // Update the physical register file.
-        prf.write(dst_pr, val);
+        prf.write(tok, dst_pr, val);
 
         // Unstall this stage.
         loads2Q.deq();

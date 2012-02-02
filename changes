@@ -25567,3 +25567,29 @@ Directory modules/hasim/util/model-services/commands-service
   scan buffer instead of separate code.
 
 - Add some scan state in the functional model.
+
+----------
+mcadler     Date: Thu Feb  2 08:13:31 EST 2012  CSN: CSN-hasim-868
+                  Thu Feb  2 13:13:31 UTC 2012
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-physical-regs.bsv Locally Modified          867 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          867 
+ regmgr-macro-state.bsv    Locally Modified          867 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          867 
+ regmgr-macro-pipe-rewind.bsv Locally Modified          867 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          867 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          867 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          867 
+
+- Add tokens to the physical register interface for debugging, allowing
+  correlation of requests with contexts.  The debugging code is on for now,
+  though I'll probably disable it by default later.
+
+- Update to new debug scan interface.
+

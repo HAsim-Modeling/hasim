@@ -35,6 +35,7 @@ import Vector::*;
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/fpga_components.bsh"
+`include "asim/provides/debug_scan_service.bsh"
 
 // Functional Partition includes.
 
@@ -47,6 +48,11 @@ import Vector::*;
  
 
 //
+// Tokens in the in interfaces below are passed in solely for debugging.
+//
+
+
+//
 // REGSTATE_PHYSICAL_REGS_INVAL_REGS --
 //   Interface that allows invalidation of one register per cycle.
 //
@@ -55,7 +61,8 @@ interface REGSTATE_PHYSICAL_REGS_INVAL_REGS;
     // Invalidate uses a request/response interface so the caller can know when
     // the physical register has been marked invalid.
     //
-    method Action invalReq(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) regs);
+    method Action invalReq(TOKEN tok,
+                           Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) regs);
     method Action invalRsp();
 endinterface
 
@@ -64,7 +71,7 @@ endinterface
 //   Interface that allows writing to one register per cycle.
 //
 interface REGSTATE_PHYSICAL_REGS_WRITE_REG;
-    method Action write(FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
+    method Action write(TOKEN tok, FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
 endinterface
 
 //
@@ -73,11 +80,11 @@ endinterface
 //
 interface REGSTATE_PHYSICAL_REGS_RW_REG;
     // Single register read interface
-    method Action readReq(FUNCP_PHYSICAL_REG_INDEX r);
+    method Action readReq(TOKEN tok, FUNCP_PHYSICAL_REG_INDEX r);
     method ActionValue#(ISA_VALUE) readRsp();
 
     // Write a single register
-    method Action write(FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
+    method Action write(TOKEN tok, FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
 endinterface
 
 //
@@ -89,14 +96,14 @@ interface REGSTATE_PHYSICAL_REGS_RW_REGS;
     // is no corresponding response to this request because the register
     // values are forwarded directly to the ISA data path through the
     // "isa_datapath_srcvals" soft connection.
-    method Action readRegVecReq(ISA_INST_SRCS rVec);
+    method Action readRegVecReq(TOKEN tok, ISA_INST_SRCS rVec);
 
     // Single register read interface (used by emulation)
-    method Action readReq(FUNCP_PHYSICAL_REG_INDEX r);
+    method Action readReq(TOKEN tok, FUNCP_PHYSICAL_REG_INDEX r);
     method ActionValue#(ISA_VALUE) readRsp();
 
     // Write a single register
-    method Action write(FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
+    method Action write(TOKEN tok, FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
 endinterface
 
 interface REGSTATE_PHYSICAL_REGS;
@@ -186,13 +193,88 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     FIFO#(Bool) rqGetDepInvalDone <- mkFIFO();
 
     FIFOF#(FUNCP_PHYSICAL_REG_INDEX)                     rqGetResRead    <- mkFIFOF();
-    FIFO#(ISA_INST_SRCS)                                 rqGetResReadVec <- mkFIFO();
+    FIFOF#(ISA_INST_SRCS)                                rqGetResReadVec <- mkFIFOF();
     FIFOF#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE)) rqGetResWrite   <- mkFIFOF();
 
     FIFOF#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE)) rqDoLoadsWrite  <- mkFIFOF();
 
     FIFOF#(FUNCP_PHYSICAL_REG_INDEX)                     rqCommitResRead  <- mkFIFOF();
     FIFOF#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE)) rqCommitResWrite <- mkFIFOF();
+
+
+    // ====================================================================
+    //
+    //   Debug scan
+    //
+    // ====================================================================
+
+    RWire#(Tuple2#(ISA_INST_SRCS,
+                   Vector#(ISA_MAX_SRCS, Bool))) readReqVecDbgData <- mkRWire();
+
+    Reg#(Vector#(ISA_MAX_SRCS, Bool)) rvecValidsDbg <- mkRegU();
+    Reg#(Bit#(TLog#(ISA_MAX_SRCS))) rvecValidsDbgIdx <- mkReg(0);
+
+    rule readReqVecDbg (True);
+        let req = rqGetResReadVec.first();
+
+        // Not enough read ports to read valid state of all registers.
+        // Cycle through them.  Since we care about deadlocks the state is
+        // stable.
+        let vt = rvecValidsDbg;
+        if (req[rvecValidsDbgIdx] matches tagged Valid .r)
+        begin
+            vt[rvecValidsDbgIdx] = prfValids.sub(r);
+        end
+        else
+        begin
+            vt[rvecValidsDbgIdx] = False;
+        end
+        rvecValidsDbg <= vt;
+
+        if (rvecValidsDbgIdx == fromInteger(valueOf(TSub#(ISA_MAX_SRCS, 1))))
+            rvecValidsDbgIdx <= 0;
+        else
+            rvecValidsDbgIdx <= rvecValidsDbgIdx + 1;
+
+        readReqVecDbgData.wset(tuple2(req, rvecValidsDbg));
+    endrule
+
+    DEBUG_SCAN_FIELD_LIST dbg_list = List::nil;
+    dbg_list <- addDebugScanField(dbg_list, "Read state", readState);
+    dbg_list <- addDebugScanField(dbg_list, "rqGetResReadVecNotEmpty", rqGetResReadVec.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "rqGetResReadVecNotFull", rqGetResReadVec.notFull);
+    dbg_list <- addDebugScanField(dbg_list, "rqGetResReadNotEmpty", rqGetResRead.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "rqGetResReadNotFull", rqGetResRead.notFull);
+    dbg_list <- addDebugScanField(dbg_list, "rqCommitResReadNotEmpty", rqCommitResRead.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "rqCommitResReadNotFull", rqCommitResRead.notFull);
+
+    function Bool dbgPrfIsReady(Integer idx);
+        let dbg_valid = isValid(readReqVecDbgData.wget());
+        match {.rvec, .rvec_valids} = validValue(readReqVecDbgData.wget());
+
+        return rvec_valids[idx] && dbg_valid;
+    endfunction
+
+    function Maybe#(FUNCP_PHYSICAL_REG_INDEX) dbgPrf(Integer idx);
+        let dbg_valid = isValid(readReqVecDbgData.wget());
+        match {.rvec, .rvec_valids} = validValue(readReqVecDbgData.wget());
+
+        return (dbg_valid ? rvec[idx] : tagged Invalid);
+    endfunction
+
+    dbg_list <- addDebugScanMaybeField(dbg_list, "rVecSrc0_PR", dbgPrf(0));
+    dbg_list <- addDebugScanField(dbg_list, "rVecSrc0_Ready", dbgPrfIsReady(0));
+    dbg_list <- addDebugScanMaybeField(dbg_list, "rVecSrc1_PR", dbgPrf(1));
+    dbg_list <- addDebugScanField(dbg_list, "rVecSrc1_Ready", dbgPrfIsReady(1));
+    if (valueOf(ISA_MAX_SRCS) > 2)
+    begin
+        dbg_list <- addDebugScanMaybeField(dbg_list, "rVecSrc2_PR", dbgPrf(2));
+        dbg_list <- addDebugScanField(dbg_list, "rVecSrc2_Ready", dbgPrfIsReady(2));
+    end
+
+    dbg_list <- addDebugScanField(dbg_list, "linkToDatapathSrcValsNotFull", linkToDatapathSrcVals.notFull);
+
+    let dbgNode <- mkDebugScanNode("FUNCP REGSTATE Physical Regs", dbg_list);
 
 
     // ====================================================================
@@ -463,7 +545,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
 
     interface REGSTATE_PHYSICAL_REGS_INVAL_REGS getDependencies;
 
-        method Action invalReq(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) regs);
+        method Action invalReq(TOKEN tok,
+                               Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) regs);
             rqGetDepInval.enq(regs);
         endmethod
 
@@ -478,7 +561,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
         //
         // Single register read interface
         //
-        method Action readReq(FUNCP_PHYSICAL_REG_INDEX r);
+        method Action readReq(TOKEN tok, FUNCP_PHYSICAL_REG_INDEX r);
             rqGetResRead.enq(r);
             debugLog.record($format("PRF: Single Read Req: %0d", r));
         endmethod
@@ -496,7 +579,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
         //
         // Read all registers for an instruction
         //
-        method Action readRegVecReq(ISA_INST_SRCS rVec);
+        method Action readRegVecReq(TOKEN tok, ISA_INST_SRCS rVec);
             rqGetResReadVec.enq(rVec);
             debugLog.record($format("PRF: Vector Read Req"));
         endmethod
@@ -505,7 +588,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
         //
         // Write to target register
         //
-        method Action write(FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
+        method Action write(TOKEN tok, FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
             rqGetResWrite.enq(tuple2(r, v));
         endmethod
 
@@ -513,7 +596,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
 
     interface REGSTATE_PHYSICAL_REGS_WRITE_REG doLoads;
 
-        method Action write(FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
+        method Action write(TOKEN tok, FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
             rqDoLoadsWrite.enq(tuple2(r, v));
         endmethod
 
@@ -524,7 +607,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
         //
         // Single register read interface
         //
-        method Action readReq(FUNCP_PHYSICAL_REG_INDEX r);
+        method Action readReq(TOKEN tok, FUNCP_PHYSICAL_REG_INDEX r);
             rqCommitResRead.enq(r);
             debugLog.record($format("PRF: Commit Results Read Req: %0d", r));
         endmethod
@@ -539,7 +622,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
         endmethod
 
 
-        method Action write(FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
+        method Action write(TOKEN tok, FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
             rqCommitResWrite.enq(tuple2(r, v));
         endmethod
 

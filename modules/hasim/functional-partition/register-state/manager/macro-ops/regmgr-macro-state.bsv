@@ -67,16 +67,6 @@ interface REGMGR_STATE;
 endinterface: REGMGR_STATE
 
 
-typedef struct
-{
-    Maybe#(CONTEXT_ID) emulateCtxId;
-    Maybe#(CONTEXT_ID) rewindCtxId;
-    REGMGR_STATE_ENUM state;
-}
-REGMGR_STATE_DEBUG_SCAN
-    deriving (Eq, Bits);
-
-
 module [HASIM_MODULE] mkRegmanagerState#(REGMGR_STATE_ENUM init)
     // interface:
         (REGMGR_STATE);
@@ -88,21 +78,12 @@ module [HASIM_MODULE] mkRegmanagerState#(REGMGR_STATE_ENUM init)
     Reg#(Maybe#(CONTEXT_ID)) rewindCtxId <- mkReg(tagged Invalid);
 
 
-    function REGMGR_STATE_DEBUG_SCAN dbgScanData();
-        return REGMGR_STATE_DEBUG_SCAN {
-            emulateCtxId: emulateCtxId,
-            rewindCtxId: rewindCtxId,
-            state: state
-            };
-    endfunction
+    DEBUG_SCAN_FIELD_LIST dbg_list = List::nil;
+    dbg_list <- addDebugScanField(dbg_list, "State", state);
+    dbg_list <- addDebugScanMaybeField(dbg_list, "Rewind context ID", rewindCtxId);
+    dbg_list <- addDebugScanMaybeField(dbg_list, "Emulate context ID", emulateCtxId);
 
-    String debugDesc =
-        debugScanName("FUNCP REGMGR STATE") +
-        debugScanField("State", valueOf(SizeOf#(REGMGR_STATE_ENUM))) +
-        debugScanMaybeField("Rewind context ID", valueOf(SizeOf#(CONTEXT_ID))) +
-        debugScanMaybeField("Emulate context ID", valueOf(SizeOf#(CONTEXT_ID)));
-
-    let debugScan <- mkDebugScanNode(debugDesc, dbgScanData);
+    let dbgNode <- mkDebugScanNode("FUNCP REGMGR State", dbg_list);
 
 
     method REGMGR_STATE_ENUM getState();

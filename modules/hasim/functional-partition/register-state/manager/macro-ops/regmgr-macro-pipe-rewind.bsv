@@ -107,9 +107,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
 
     Reg#(REGMGR_EXC_STATE_ENUM) state_rew <- mkReg(RSM_REW_Running);
 
-    String debugDesc = debugScanName("FUNCP REGMGR rewind") +
-                       debugScanField("State", valueOf(SizeOf#(REGMGR_EXC_STATE_ENUM)));
-    let debugScan <- mkDebugScanNode(debugDesc, state_rew);
+    DEBUG_SCAN_FIELD_LIST dbg_list = List::nil;
+    dbg_list <- addDebugScanField(dbg_list, "State", state_rew);
+
+    let dbgNode <- mkDebugScanNode("FUNCP REGMGR rewind", dbg_list);
 
 
     // ====================================================================

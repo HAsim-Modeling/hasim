@@ -25603,3 +25603,14 @@ Directory modules/hasim/functional-partition/register-state/data
  regstate-data-physical-regs.bsv Locally Modified          868 
 
 Slightly more efficient.
+
+----------
+mcadler     Date: Fri Feb  3 13:58:00 EST 2012  CSN: CSN-hasim-870
+                  Fri Feb  3 18:58:00 UTC 2012
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          869 
+ commands-service.h        Locally Modified          869 
+
+Debug scan server moved.

@@ -30,7 +30,7 @@
 #include "asim/provides/command_switches.h"
 #include "asim/provides/hasim_common.h"
 #include "asim/provides/stats_device.h"
-#include "asim/provides/debug_scan_device.h"
+#include "asim/provides/debug_scan_service.h"
 
 #include "asim/rrr/client_stub_COMMANDS.h"
 

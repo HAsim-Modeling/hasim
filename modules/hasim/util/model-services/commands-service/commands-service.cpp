@@ -203,7 +203,7 @@ COMMANDS_SERVER_CLASS::FPGAHeartbeat(UINT8 dummy)
         {
             cerr << "commands relay: model deadlock!" << endl;
 
-            DEBUG_SCAN_DEVICE_SERVER_CLASS::GetInstance()->Scan();
+            DEBUG_SCAN_SERVER_CLASS::GetInstance()->Scan();
             Scan();
             EndSimulation(1);
         }

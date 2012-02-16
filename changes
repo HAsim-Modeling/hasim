@@ -25614,3 +25614,15 @@ Directory modules/hasim/util/model-services/commands-service
  commands-service.h        Locally Modified          869 
 
 Debug scan server moved.
+
+----------
+mcadler     Date: Thu Feb 16 17:00:29 EST 2012  CSN: CSN-hasim-871
+                  Thu Feb 16 22:00:29 UTC 2012
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-misc-controllers.bsv Locally Modified          870 
+
+Remove the comment about reduced size of mkBufferedStageController due to
+bugs.  I'd already accidentally checked in the full-buffer version, having
+fixed the bug in the mesh network.

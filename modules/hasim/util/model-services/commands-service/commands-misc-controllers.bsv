@@ -56,15 +56,11 @@ module mkBufferedStageController
     provisos
         (Bits#(t_PIPE_STATE, t_PIPE_STATE_SZ));
 
+    //
     // Build a buffered controller default buffer size.  The size should be
     // chosen to cover the typical latency of functional partition and
     // scratchpad memory pipelines.  For now, we use the number of instances
     // since that is typically the maximum parallelism.
-    //
-    // A number of pipelines deadlock if they fill the memory request read
-    // slots without consuming the results, because subsequent writes wind
-    // up blocked.  Reducing buffering below the blocking threshold in
-    // scratchpads and packed memories eliminates this problem.
     //
     let sc <- mkSizedStageController(valueOf(t_NUM_INSTANCES));
     return sc;

@@ -24,14 +24,16 @@ import FIFO::*;
 //HASim library imports
 
 `include "asim/provides/soft_connections.bsh"
+`include "asim/provides/soft_services.bsh"
+`include "asim/provides/soft_services_lib.bsh"
+`include "asim/provides/soft_services_deps.bsh"
 `include "asim/provides/common_services.bsh"
 
 `include "asim/rrr/remote_client_stub_COMMANDS.bsh"
 `include "asim/rrr/remote_server_stub_COMMANDS.bsh"
 
 `include "asim/dict/RINGID.bsh"
-`include "asim/dict/STREAMS.bsh"
-`include "asim/dict/STREAMID.bsh"
+
 
 typedef CONTEXT_ID                             CONTROL_MODEL_CYCLE_MSG;
 typedef Tuple2#(CONTEXT_ID, MODEL_NUM_COMMITS) CONTROL_MODEL_COMMIT_MSG;
@@ -90,8 +92,6 @@ module [HASIM_MODULE] mkCommandsService
     // Our way of communicating with the local controllers
     Connection_Chain#(CONTROLLER_MSG) link_controllers <- mkConnection_Chain(`RINGID_CONTROLLER_MESSAGES);
 
-    STREAMS_CLIENT link_streams <- mkStreamsClient(`STREAMID_MESSAGE);
-
     // The timing model must tell us the current model cycle.  By convention,
     // it is the token request stage at the head of the pipeline.
     Connection_Receive#(CONTROL_MODEL_CYCLE_MSG)  link_model_cycle <- mkConnection_Receive("model_cycle");
@@ -103,6 +103,12 @@ module [HASIM_MODULE] mkCommandsService
     // Committed instructions since last heartbeat message sent to software.
     // If Bit#(32) isn't big enough the heartbeat isn't being sent often enough.
     LUTRAM#(CONTEXT_ID, Bit#(32)) instrCommits <- mkLUTRAM(0);
+
+    STDIO#(Bit#(32)) stdio <- mkStdIO();
+    let msgStart <- getGlobalStringUID("[%13u]: commands relay: program started.\n");
+    let msgDone <- getGlobalStringUID("[%13u]: commands relay: test program finished successfully.\n");
+    let msgErr <- getGlobalStringUID("[%13u]: commands relay: test program finished, one or more failures occurred.\n");
+
 
     // *********** Rules ***********
 
@@ -155,12 +161,12 @@ module [HASIM_MODULE] mkCommandsService
             begin
                 if (pf)  // It passed
                 begin
-                    link_streams.send(`STREAMS_MESSAGE_SUCCESS, truncate(curTick), ?);
+                    stdio.printf(msgDone, list1(truncate(curTick)));
                     passed <= True;
                 end
                 else  // It failed
                 begin
-                    link_streams.send(`STREAMS_MESSAGE_FAILURE, truncate(curTick), ?);
+                    stdio.printf(msgErr, list1(truncate(curTick)));
                 end
                 // Either way we are done
                 state <= CON_Finished;
@@ -259,7 +265,7 @@ module [HASIM_MODULE] mkCommandsService
         state <= CON_Running;
 
         // Program Started
-        link_streams.send(`STREAMS_MESSAGE_START, truncate(curTick), ?);
+        stdio.printf(msgStart, list1(truncate(curTick)));
     endrule
 
 
@@ -304,7 +310,7 @@ module [HASIM_MODULE] mkCommandsService
         link_controllers.sendToNext(tagged COM_Pause False);
 
         // Tell software we're done
-        link_streams.send(`STREAMS_MESSAGE_SUCCESS, truncate(curTick), ?);
+        stdio.printf(msgDone, list1(truncate(curTick)));
         passed <= True;
         state <= CON_Finished;
     endrule

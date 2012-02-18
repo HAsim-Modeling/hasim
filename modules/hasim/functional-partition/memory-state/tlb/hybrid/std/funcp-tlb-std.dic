@@ -21,9 +21,3 @@ def VDEV.CACHE.FUNCP_TLB                "Functional TLB central cache port";
 def STATS.FUNCP_TLB.PVT_CACHE_HIT       "FUNCP TLB: Private cache hits";
 def STATS.FUNCP_TLB.PVT_CACHE_MISS      "FUNCP TLB: Private cache misses";
 def STATS.FUNCP_TLB.CENTRAL_CACHE_MISS  "FUNCP TLB: Central cache misses";
-
-def STREAMID.FUNCP_TLB                  "FUNCP TLB";
-def STREAMS.FUNCP_TLB.I_REQ             "FUNCP TLB: ITranslate REQ VA 0x%08x%08x\n";
-def STREAMS.FUNCP_TLB.I_RSP             "FUNCP TLB: ITranslate RSP PA 0x%08x%08x\n";
-def STREAMS.FUNCP_TLB.D_REQ             "FUNCP TLB: DTranslate REQ VA 0x%08x%08x\n";
-def STREAMS.FUNCP_TLB.D_RSP             "FUNCP TLB: DTranslate RSP PA 0x%08x%08x\n";

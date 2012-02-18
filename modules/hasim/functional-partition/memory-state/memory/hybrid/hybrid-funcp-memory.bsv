@@ -21,6 +21,9 @@ import FIFOF::*;
 
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
+`include "asim/provides/soft_services.bsh"
+`include "asim/provides/soft_services_lib.bsh"
+`include "asim/provides/soft_services_deps.bsh"
 `include "asim/provides/common_services.bsh"
 `include "asim/provides/mem_services.bsh"
 `include "asim/provides/rrr.bsh"
@@ -29,8 +32,6 @@ import FIFOF::*;
 `include "asim/rrr/remote_client_stub_FUNCP_MEMORY.bsh"
 `include "asim/rrr/remote_server_stub_FUNCP_MEMORY.bsh"
 
-`include "asim/dict/STREAMID.bsh"
-`include "asim/dict/STREAMS_FUNCP_MEMORY.bsh"
 `include "asim/dict/VDEV_CACHE.bsh"
 `include "asim/dict/PARAMS_FUNCP_MEMORY.bsh"
 `include "asim/dict/STATS_FUNCP_MEMORY.bsh"
@@ -114,7 +115,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
     // Debugging output stream, useful for getting a stream of status messages
     // when running on an FPGA.
-    STREAMS_CLIENT link_streams <- mkStreamsClient_Debug(`STREAMID_FUNCP_MEMORY);
+    STDIO#(Bit#(64)) stdio <- mkStdIO_Debug();
 
     // Links that we expose to the outside world
     Connection_Server#(MEM_REQUEST, MEMSTATE_RESP) linkMemory <- mkConnection_Server("funcp_memory");
@@ -139,6 +140,11 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
     // Invalidate requests
     FIFOF#(Tuple3#(CONTEXT_ID, FUNCP_MEM_WORD_PADDR, Bool)) invalQ <- mkFIFOF();
+
+    // Debug messages
+    let msgLD_Req <- getGlobalStringUID("FUNCP Mem: LD REQ  ctx=%d, tok=%d, PA=0x%016llx, w_addr=0x%016llx\n");
+    let msgLD_Rsp <- getGlobalStringUID("FUNCP Mem: LD RSP  tok=%d, val=0x%016llx\n");
+    let msgST     <- getGlobalStringUID("FUNCP Mem: ST PA   ctx=%d, PA=0x%016llx, w_addr=0x%016llx, val=0x%016llx\n");
 
 
     // ====================================================================
@@ -197,11 +203,10 @@ module [HASIM_MODULE] mkFUNCP_Memory
                 loadsInFlight.up();
                 debugLog.record($format("cache readReq: ctx=%0d, addr=0x%x, w_addr=0x%x", ldinfo.contextId, ldinfo.addr, w_addr));
 
-                // Pack state into 64 bits as best we can
-                Bit#(8) dbg_ctx = zeroExtend(ldinfo.contextId);
-                Bit#(8) dbg_tok = zeroExtend(pack(ldinfo.memRefToken));
-                Bit#(48) dbg_pa = resize(ldinfo.addr);
-                link_streams.send(`STREAMS_FUNCP_MEMORY_LD_REQ, {dbg_ctx, dbg_tok, dbg_pa[47:32]}, dbg_pa[31:0]);
+                stdio.printf(msgLD_Req, list4(zeroExtend(ldinfo.contextId),
+                                              zeroExtend(pack(ldinfo.memRefToken)),
+                                              zeroExtend(ldinfo.addr),
+                                              zeroExtend(w_addr)));
             end
             
             tagged MEM_STORE .stinfo:
@@ -212,10 +217,10 @@ module [HASIM_MODULE] mkFUNCP_Memory
                 cache.write(w_addr, stinfo.val, ref_info);
                 debugLog.record($format("cache write: ctx=%0d, addr=0x%x, w_addr=0x%x, val=0x%x", stinfo.contextId, stinfo.addr, w_addr, stinfo.val));
 
-                // Pack state into 64 bits as best we can
-                Bit#(8) dbg_ctx = zeroExtend(stinfo.contextId);
-                Bit#(56) dbg_pa = resize(stinfo.addr);
-                link_streams.send(`STREAMS_FUNCP_MEMORY_ST_ADDR, {dbg_ctx, dbg_pa[55:32]}, dbg_pa[31:0]);
+                stdio.printf(msgST, list4(zeroExtend(stinfo.contextId),
+                                          zeroExtend(stinfo.addr),
+                                          zeroExtend(w_addr),
+                                          zeroExtend(stinfo.val)));
             end
         endcase
 
@@ -231,11 +236,8 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
         loadsInFlight.down();
         debugLog.record($format("cache readResp: val=0x%x", r.val));
-
-        // Pack state into 64 bits as best we can
-        Bit#(8) dbg_tok = zeroExtend(pack(r.refInfo.memRefToken));
-        Bit#(56) dbg_val = resize(r.val);
-        link_streams.send(`STREAMS_FUNCP_MEMORY_LD_RSP, {dbg_tok, dbg_val[55:32]}, dbg_val[31:0]);
+        stdio.printf(msgLD_Rsp, list2(zeroExtend(pack(r.refInfo.memRefToken)),
+                                      resize(r.val)));
     endrule
 
 

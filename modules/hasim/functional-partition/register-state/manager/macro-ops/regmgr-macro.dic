@@ -19,28 +19,3 @@ def ASSERTIONS.REGMGR.STORE_ON_NONSTORE        "FUNCP: Regstate: Told to do stor
 //
 
 def STATS.REGMGR.GETRESULTS.EMULATED_INSTRS    "FUNCP: Emulated Instructions";
-
-
-//
-// Streams-based debugging
-//
-
-def STREAMID.REGMGR.GETDEP "funcp_getResults";
-
-def STREAMS.REGMGR.GETDEP.REG_SRCS    "FUNCP GETDEP: read PR (%d, %d, %d) token %d\n";
-def STREAMS.REGMGR.GETDEP.REG_DSTS    "FUNCP GETDEP: write PR (%d, %d) TOKEN (%d, %d)\n";
-
-
-def STREAMID.REGMGR.GETRESULTS "funcp_getResults";
-
-def STREAMS.REGMGR.GETRESULTS.SEND_TO_DP   "FUNCP GETRESULTS: send to dp TOKEN (%d, %d)\n";
-def STREAMS.REGMGR.GETRESULTS.RECV_FROM_DP "FUNCP GETRESULTS: recv from dp TOKEN (%d, %d)\n";
-def STREAMS.REGMGR.GETRESULTS.PRF_WRITE    "FUNCP GETRESULTS: prf write TOKEN (%d, %d) prf %d\n";
-def STREAMS.REGMGR.GETRESULTS.EMUL_START   "FUNCP GETRESULTS: emulate start TOKEN (%d, %d)\n";
-def STREAMS.REGMGR.GETRESULTS.EMUL_DONE    "FUNCP GETRESULTS: emulate done TOKEN (%d, %d)\n";
-
-
-def STREAMID.REGMGR.REWIND "funcp_rewind";
-
-def STREAMS.REGMGR.REWIND.RECV_REQ    "FUNCP REWIND: start TOKEN (%d, %d)\n";
-def STREAMS.REGMGR.REWIND.SEND_RSP    "FUNCP REWIND: done TOKEN %d\n";

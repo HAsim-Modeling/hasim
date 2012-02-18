@@ -25626,3 +25626,28 @@ Directory modules/hasim/util/model-services/commands-service
 Remove the comment about reduced size of mkBufferedStageController due to
 bugs.  I'd already accidentally checked in the full-buffer version, having
 fixed the bug in the mesh network.
+
+----------
+mcadler     Date: Fri Feb 17 19:29:32 EST 2012  CSN: CSN-hasim-872
+                  Sat Feb 18 00:29:32 UTC 2012
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.dic          Locally Modified          871 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          871 
+ regmgr-macro-pipe-rewind.bsv Locally Modified          871 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          871 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.dic         Locally Modified          871 
+ funcp-tlb-std.bsv         Locally Modified          871 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          871 
+ hybrid-funcp-memory.dic   Locally Modified          871 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.bsv      Locally Modified          871 
+ commands-service.dic      Locally Modified          871 
+
+Use STDIO instead of STREAMS.

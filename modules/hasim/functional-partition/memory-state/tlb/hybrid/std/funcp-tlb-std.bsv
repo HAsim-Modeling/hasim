@@ -31,6 +31,9 @@ import FShow::*;
 
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
+`include "asim/provides/soft_services.bsh"
+`include "asim/provides/soft_services_lib.bsh"
+`include "asim/provides/soft_services_deps.bsh"
 `include "asim/provides/common_services.bsh"
 `include "asim/provides/mem_services.bsh"
 `include "asim/provides/central_cache.bsh"
@@ -41,8 +44,6 @@ import FShow::*;
 `include "asim/provides/funcp_memstate_base_types.bsh"
 `include "asim/provides/funcp_memory.bsh"
 
-`include "asim/dict/STREAMID.bsh"
-`include "asim/dict/STREAMS_FUNCP_TLB.bsh"
 `include "asim/dict/VDEV_CACHE.bsh"
 `include "asim/dict/PARAMS_FUNCP_MEMSTATE_TLB.bsh"
 `include "asim/dict/STATS_FUNCP_TLB.bsh"
@@ -170,7 +171,11 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
 
     // Debugging output stream, useful for getting a stream of status messages
     // when running on an FPGA.
-    STREAMS_CLIENT link_streams <- mkStreamsClient_Debug(`STREAMID_FUNCP_TLB);
+    STDIO#(Bit#(64)) stdio <- mkStdIO_Debug();
+    let msgIReq <- getGlobalStringUID("FUNCP TLB: ITranslate REQ ctx=%d, va=0x%016llx\n");
+    let msgIRsp <- getGlobalStringUID("FUNCP TLB: ITranslate RSP pa=0x%016llx, io=%d, fault=%d\n");
+    let msgDReq <- getGlobalStringUID("FUNCP TLB: DTranslate REQ ctx=%d, va=0x%016llx\n");
+    let msgDRsp <- getGlobalStringUID("FUNCP TLB: DTranslate RSP pa=0x%016llx, io=%d, fault=%d\n");
 
     // Connections to functional register state manager translation pipelines
     Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_itlb_trans <- mkConnection_Server("funcp_itlb_translate");
@@ -272,9 +277,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
 
         debugLog.record($format("I Req: ctx=%0d, va=0x%x", r.contextId, r.va));
         // Pack state into 64 bits as best we can
-        Bit#(8) dbg_ctx = zeroExtend(r.contextId);
-        Bit#(56) dbg_va = resize(r.va);
-        link_streams.send(`STREAMS_FUNCP_TLB_I_REQ, {dbg_ctx, dbg_va[55:32]}, dbg_va[31:0]);
+        stdio.printf(msgIReq, list2(zeroExtend(r.contextId), resize(r.va)));
 
         let vp = pageFromVA(r.va);
 
@@ -307,8 +310,9 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         resp.pa = paFromPage(v.page, offset);
 
         debugLog.record($format("I Resp: pa=0x%x, io=%0d, fault=%0d", resp.pa, resp.ioSpace, resp.pageFault));
-        Bit#(64) dbg_va = zeroExtend(resp.pa);
-        link_streams.send(`STREAMS_FUNCP_TLB_I_RSP, dbg_va[63:32], dbg_va[31:0]);
+        stdio.printf(msgIRsp, list3(zeroExtend(resp.pa),
+                                    zeroExtend(pack(resp.ioSpace)),
+                                    zeroExtend(pack(resp.pageFault))));
 
         link_funcp_itlb_trans.makeResp(resp);
     endrule
@@ -358,10 +362,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         link_funcp_dtlb_trans.deq();
 
         debugLog.record($format("D Req: ctx=%0d, va=0x%x", r.contextId, r.va));
-        // Pack state into 64 bits as best we can
-        Bit#(8) dbg_ctx = zeroExtend(r.contextId);
-        Bit#(56) dbg_va = resize(r.va);
-        link_streams.send(`STREAMS_FUNCP_TLB_D_REQ, {dbg_ctx, dbg_va[55:32]}, dbg_va[31:0]);
+        stdio.printf(msgDReq, list2(zeroExtend(r.contextId), resize(r.va)));
 
         let vp = pageFromVA(r.va);
 
@@ -394,8 +395,9 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         resp.pa = paFromPage(v.page, offset);
 
         debugLog.record($format("D Resp: pa=0x%x, io=%0d, fault=%0d", resp.pa, resp.ioSpace, resp.pageFault));
-        Bit#(64) dbg_va = zeroExtend(resp.pa);
-        link_streams.send(`STREAMS_FUNCP_TLB_D_RSP, dbg_va[63:32], dbg_va[31:0]);
+        stdio.printf(msgIRsp, list3(zeroExtend(resp.pa),
+                                    zeroExtend(pack(resp.ioSpace)),
+                                    zeroExtend(pack(resp.pageFault))));
 
         link_funcp_dtlb_trans.makeResp(resp);
     endrule

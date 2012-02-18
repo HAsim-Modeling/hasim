@@ -20,15 +20,15 @@
 
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
+`include "asim/provides/soft_services.bsh"
+`include "asim/provides/soft_services_lib.bsh"
+`include "asim/provides/soft_services_deps.bsh"
 `include "asim/provides/fpga_components.bsh"
 `include "awb/provides/debug_scan_service.bsh"
 
 // Functional Partition includes.
 
 `include "asim/provides/funcp_interface.bsh"
-  
-`include "asim/dict/STREAMID_REGMGR.bsh"
-`include "asim/dict/STREAMS_REGMGR_REWIND.bsh"
 
 
 // ========================================================================
@@ -69,7 +69,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
     // ====================================================================
 
     DEBUG_FILE debugLog <- mkDebugFile(`REGSTATE_LOGFILE_PREFIX + "_pipe_rewind.out");
-    STREAMS_CLIENT linkStreams <- mkStreamsClient_Debug(`STREAMID_REGMGR_REWIND);
+    STDIO#(Bit#(32)) stdio <- mkStdIO_Debug();
+    let msgRecvReq <- getGlobalStringUID("FUNCP REWIND: start TOKEN (%d, %d)\n");
+    let msgSendRsp <- getGlobalStringUID("FUNCP REWIND: done TOKEN %d\n");
+
 
     // ====================================================================
     //
@@ -144,9 +147,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
 
         // Log it.
         debugLog.record($format("Rewind: Preparing rewind to ") + fshow(req.token.index));
-        linkStreams.send(`STREAMS_REGMGR_REWIND_RECV_REQ,
-                         zeroExtend(tokContextId(req.token)),
-                         zeroExtend(tokTokenId(req.token)));
+        stdio.printf(msgRecvReq, list2(zeroExtend(tokContextId(req.token)),
+                                       zeroExtend(tokTokenId(req.token))));
 
         state.setRewind(tokContextId(req.token));
         state_rew <= RSM_REW_DrainingForRewind;
@@ -313,8 +315,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
         if (done)
         begin
             debugLog.record($format("Rewind: Done."));  
-            linkStreams.send(`STREAMS_REGMGR_REWIND_SEND_RSP,
-                             zeroExtend(tokTokenId(rewindTok)), ?);
+            stdio.printf(msgSendRsp, list2(zeroExtend(tokContextId(rewindTok)),
+                                           zeroExtend(tokTokenId(rewindTok))));
 
             tokScoreboard.rewindTo(rewindTok.index);
             // Return response

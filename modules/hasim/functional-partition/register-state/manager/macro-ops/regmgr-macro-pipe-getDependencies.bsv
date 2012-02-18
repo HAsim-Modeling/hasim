@@ -20,12 +20,11 @@
 
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
+`include "asim/provides/soft_services.bsh"
+`include "asim/provides/soft_services_lib.bsh"
+`include "asim/provides/soft_services_deps.bsh"
 `include "asim/provides/fpga_components.bsh"
   
-// Dictionary includes
-`include "asim/dict/STREAMID_REGMGR.bsh"
-`include "asim/dict/STREAMS_REGMGR_GETDEP.bsh"
-
 // Functional Partition includes.
 
 `include "asim/provides/funcp_interface.bsh"
@@ -50,7 +49,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     // ====================================================================
 
     DEBUG_FILE debugLog <- mkDebugFile(`REGSTATE_LOGFILE_PREFIX + "_pipe_getDependencies.out");
-    STREAMS_CLIENT linkStreams <- mkStreamsClient_Debug(`STREAMID_REGMGR_GETDEP);
+
+    STDIO#(Bit#(32)) stdio <- mkStdIO_Debug();
+    let msgRegSrcs <- getGlobalStringUID("FUNCP GETDEP: read PR (%d, %d, %d) TOKEN (%d, %d)\n");
+    let msgRegDsts <- getGlobalStringUID("FUNCP GETDEP: write PR (%d, %d) TOKEN (%d, %d)\n");
 
 
     // ====================================================================
@@ -334,7 +336,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
 
 
         // Generate a debug message with up to 2 destinations.
-        Vector#(4, Bit#(16)) reg_msg = replicate('hffff);
+        Vector#(4, Bit#(32)) reg_msg = replicate('hffffffff);
         for (Integer x = 0; x < min(2, valueOf(ISA_MAX_DSTS)); x = x + 1)
         begin
             if (tok_active &&& map_dsts[x] matches tagged Valid {.ar, .pr})
@@ -342,9 +344,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         end
         reg_msg[2] = resize(tokContextId(tok));
         reg_msg[3] = resize(tokTokenId(tok));
-        linkStreams.send(`STREAMS_REGMGR_GETDEP_REG_DSTS,
-                         { reg_msg[0], reg_msg[1] },
-                         { reg_msg[2], reg_msg[3] });
+        stdio.printf(msgRegDsts, toList(reg_msg));
 
         deps3Q.enq(tuple3(tok, ar_srcs, map_dsts));
 
@@ -403,16 +403,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         debugLog.record(fshow(tok.index) + $format(": GetDeps: End"));
 
         // Generate a debug message with up to 3 sources.
-        Vector#(4, Bit#(16)) reg_msg = replicate('hffff);
+        Vector#(5, Bit#(32)) reg_msg = replicate('hffffffff);
         for (Integer x = 0; x < min(3, valueOf(ISA_MAX_SRCS)); x = x + 1)
         begin
             if (map_srcs[x] matches tagged Valid {.ar, .pr})
                 reg_msg[x] = resize(pr);
         end
-        reg_msg[3] = resize(tokTokenId(tok));
-        linkStreams.send(`STREAMS_REGMGR_GETDEP_REG_SRCS,
-                         { reg_msg[0], reg_msg[1] },
-                         { reg_msg[2], reg_msg[3] });
+        reg_msg[3] = resize(tokContextId(tok));
+        reg_msg[4] = resize(tokTokenId(tok));
+
+        stdio.printf(msgRegSrcs, toList(reg_msg));
 
     endrule
     

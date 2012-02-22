@@ -25651,3 +25651,14 @@ Directory modules/hasim/util/model-services/commands-service
  commands-service.dic      Locally Modified          871 
 
 Use STDIO instead of STREAMS.
+
+----------
+mcadler     Date: Wed Feb 22 10:49:31 EST 2012  CSN: CSN-hasim-873
+                  Wed Feb 22 15:49:31 UTC 2012
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-rewind.bsv Locally Modified          872 
+
+Break the final rewind rule into one for the "done" case and the rest since
+the two paths were almost completely disjoint.

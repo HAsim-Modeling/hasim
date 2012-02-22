@@ -100,7 +100,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
     //
     // ====================================================================
 
-    FIFO#(Tuple3#(TOKEN_INDEX, Bool, Bool)) rewindQ <- mkFIFO();
+    FIFOF#(Tuple3#(TOKEN_INDEX, Bool, Bool)) rewindQ <- mkFIFOF();
 
     // Rewind state
     Reg#(FUNCP_REQ_REWIND_TO_TOKEN) rewindReq <- mkRegU();
@@ -112,6 +112,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
 
     DEBUG_SCAN_FIELD_LIST dbg_list = List::nil;
     dbg_list <- addDebugScanField(dbg_list, "State", state_rew);
+    dbg_list <- addDebugScanField(dbg_list, "rewindQ notFull", rewindQ.notFull);
+    dbg_list <- addDebugScanField(dbg_list, "rewindQ notEmpty", rewindQ.notEmpty);
+
+    function Bool dbgRewindQIsDone();
+        if (! rewindQ.notEmpty)
+            return False;
+        else
+            return tpl_3(rewindQ.first());
+    endfunction
+    dbg_list <- addDebugScanField(dbg_list, "rewindQ tagged done", dbgRewindQIsDone);
 
     let dbgNode <- mkDebugScanNode("FUNCP REGMGR rewind", dbg_list);
 
@@ -209,7 +219,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
     //   Walk the tokens in age order and reconstruct the maptable
     //
     (* conservative_implicit_conditions *)
-    rule rewindToToken3 (state_rew == RSM_REW_Rewinding);
+    rule rewindToToken3 ((state_rew == RSM_REW_Rewinding) &&
+                         ! tokScoreboard.destWritesInFlight(rewindCur));
     
         // Look up the token properties
         regMapping.readRewindReq(rewindCur);
@@ -244,9 +255,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
     // register updates are still in progress.
     //
     (* conservative_implicit_conditions *)
-    rule rewindToToken4 (((state_rew == RSM_REW_Rewinding) ||
-                          (state_rew == RSM_REW_RewindingWaitForSlowRemap)) &&
-                         ! tokScoreboard.destWritesInFlight(tpl_1(rewindQ.first())));
+    rule rewindToToken4 (! tpl_3(rewindQ.first()));
 
         match { .tok_idx, .tok_active, .done } = rewindQ.first();
         rewindQ.deq();
@@ -265,7 +274,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
             //
             // Rewind register mappings if not at the target state
             //
-            if (!done && tok_active)
+            if (tok_active)
             begin
                 REGSTATE_NEW_MAPPINGS new_map = ?;
                 new_map.context_id = ctx_id;
@@ -301,29 +310,37 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
                 regMapping.updateMap(new_map);
                 freelist.freeRegs(dead_pregs);
             end
-
-            if (done)
-                debugLog.record($format("Rewind: Lookup last ") + fshow(tok_idx));
         end
 
-        if (! done)
+        tokScoreboard.deallocateForRewind(tok_idx);
+
+    endrule
+
+
+    (* conservative_implicit_conditions *)
+    rule rewindToToken5 ((state_rew == RSM_REW_RewindingWaitForSlowRemap) &&
+                         tpl_3(rewindQ.first()));
+
+        match { .tok_idx, .tok_active, .done } = rewindQ.first();
+        rewindQ.deq();
+
+        let rewind_info <- regMapping.readRewindRsp();
+        let dsts <- tokDsts.readRsp();
+
+        if (isValid(rewind_info))
         begin
-            tokScoreboard.deallocateForRewind(tok_idx);
+            debugLog.record($format("Rewind: Lookup last ") + fshow(tok_idx));
         end
 
-        // Done with rewind?
-        if (done)
-        begin
-            debugLog.record($format("Rewind: Done."));  
-            stdio.printf(msgSendRsp, list2(zeroExtend(tokContextId(rewindTok)),
-                                           zeroExtend(tokTokenId(rewindTok))));
+        debugLog.record($format("Rewind: Done."));  
+        stdio.printf(msgSendRsp, list2(zeroExtend(tokContextId(rewindTok)),
+                                       zeroExtend(tokTokenId(rewindTok))));
 
-            tokScoreboard.rewindTo(rewindTok.index);
-            // Return response
-            linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok));
-            state.clearRewind();
-            state_rew <= RSM_REW_Running;
-        end
+        tokScoreboard.rewindTo(rewindTok.index);
+        // Return response
+        linkRewindToToken.makeResp(initFuncpRspRewindToToken(rewindTok));
+        state.clearRewind();
+        state_rew <= RSM_REW_Running;
 
     endrule
 

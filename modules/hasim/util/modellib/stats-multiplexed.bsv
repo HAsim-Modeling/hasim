@@ -49,7 +49,7 @@ module [Connected_Module] mkStatCounter_Multiplexed#(STATS_DICT_TYPE myID)
     MULTIPLEXED_REG#(n_STATS, STAT_VALUE) statPool <- mkMultiplexedReg(0);
 
     Reg#(STAT_STATE) state <- mkReg(RECORDING);
-    Reg#(Bool) enabled <- mkReg(True);
+    Reg#(Bool) enabled <- mkReg(False);
 
     Reg#(INSTANCE_ID#(n_STATS)) curIdx <- mkRegU();
     

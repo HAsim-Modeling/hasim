@@ -25662,3 +25662,14 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 
 Break the final rewind rule into one for the "done" case and the rest since
 the two paths were almost completely disjoint.
+
+----------
+mcadler     Date: Tue Feb 28 16:34:41 EST 2012  CSN: CSN-hasim-874
+                  Tue Feb 28 21:34:41 UTC 2012
+
+
+Directory modules/hasim/util/modellib
+ stats-multiplexed.bsv     Locally Modified          873 
+
+Statistics start "off" by default and are enabled by software once the system
+is initialized.

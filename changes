@@ -25693,3 +25693,14 @@ Directory modules/hasim/util/modellib
   unchanged relative to using the full number of contexts and it saves space.
 
   
+
+----------
+mcadler     Date: Wed Feb 29 16:04:32 EST 2012  CSN: CSN-hasim-876
+                  Wed Feb 29 21:04:32 UTC 2012
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          875 
+ commands-service.h        Locally Modified          875 
+
+STATS_DEVICE is now STATS_SERVER.

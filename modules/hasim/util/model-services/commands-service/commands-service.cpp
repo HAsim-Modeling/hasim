@@ -31,7 +31,7 @@
 
 #include "asim/provides/soft_services_deps.h"
 #include "asim/provides/command_switches.h"
-#include "asim/provides/stats_device.h"
+#include "asim/provides/stats_service.h"
 #include "asim/provides/commands_service.h"
 
 using namespace std;
@@ -118,7 +118,7 @@ COMMANDS_SERVER_CLASS::Run()
 
     // Tell the stats device to setup itself. We wait until this
     // point to do it to ensure that the RRR stack is up.
-    STATS_DEVICE_CLASS::GetInstance()->SetupStats();
+    STATS_SERVER_CLASS::GetInstance()->SetupStats();
 
     // Tell model which hardware threads are enabled.  Clearly this will need to change.
     for (int c = 0; c < numThreads; c++)
@@ -324,8 +324,8 @@ COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
 
 
     cout << "        starting stats dump... ";
-    STATS_DEVICE_SERVER_CLASS::GetInstance()->DumpStats();
-    STATS_DEVICE_SERVER_CLASS::GetInstance()->EmitFile();
+    STATS_SERVER_CLASS::GetInstance()->DumpStats();
+    STATS_SERVER_CLASS::GetInstance()->EmitFile();
     cout << "done." << endl;
 
     CallbackExit(exitValue);

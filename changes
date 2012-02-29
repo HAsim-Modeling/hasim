@@ -25673,3 +25673,23 @@ Directory modules/hasim/util/modellib
 
 Statistics start "off" by default and are enabled by software once the system
 is initialized.
+
+----------
+mcadler     Date: Wed Feb 29 09:55:33 EST 2012  CSN: CSN-hasim-875
+                  Wed Feb 29 14:55:33 UTC 2012
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-misc-controllers.bsv Locally Modified          874 
+
+Directory modules/hasim/util/modellib
+ a-ports.bsv               Locally Modified          874 
+
+- Double the A-Ports buffer size to 2x the number of contexts.  This causes a
+  huge performance boost for multi-FPGA models when the number of running contexts
+  is close to the maximum.
+
+- Limit the buffering in stage controllers to 32.  The performance is basically
+  unchanged relative to using the full number of contexts and it saves space.
+
+  

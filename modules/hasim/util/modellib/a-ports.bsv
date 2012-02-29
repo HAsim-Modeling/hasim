@@ -336,8 +336,14 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
     // for some of our models.  In addition to the number of entries, the
     // total amount of buffered data must be close to the size of an 18Kb RAM.
     //
+    // The size of the FIFO (doubling the number of slots relative to the
+    // minimimum requirement of one slot per instance) allows extra buffering
+    // for greater cycle variation among pipeline stages.  This flexibility
+    // results in significant simulator performance gains, especially for
+    // multi-FPGA designs.
+    //
     FIFOF#(t_BUFFERED_MSG) rs;
-    Integer total_slots = max(1, latency) * max(1, valueOf(t_NUM_INSTANCES));
+    Integer total_slots = max(1, latency) * max(1, valueOf(TMul#(2, t_NUM_INSTANCES)));
     if ((total_slots >= 256) &&
         (total_slots * valueOf(t_BUFFERED_MSG_SZ) > 14000))
     begin

@@ -115,13 +115,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
     dbg_list <- addDebugScanField(dbg_list, "rewindQ notFull", rewindQ.notFull);
     dbg_list <- addDebugScanField(dbg_list, "rewindQ notEmpty", rewindQ.notEmpty);
 
-    function Bool dbgRewindQIsDone();
-        if (! rewindQ.notEmpty)
-            return False;
-        else
-            return tpl_3(rewindQ.first());
-    endfunction
-    dbg_list <- addDebugScanField(dbg_list, "rewindQ tagged done", dbgRewindQIsDone);
+    RWire#(Bool) dbgRewindQIsDone <- mkRWire();
+    rule checkRewindQ (True);
+        dbgRewindQIsDone.wset(tpl_3(rewindQ.first()));
+    endrule
+
+    dbg_list <- addDebugScanMaybeField(dbg_list, "rewindQ tagged done", dbgRewindQIsDone.wget);
 
     let dbgNode <- mkDebugScanNode("FUNCP REGMGR rewind", dbg_list);
 

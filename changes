@@ -25704,3 +25704,13 @@ Directory modules/hasim/util/model-services/commands-service
  commands-service.h        Locally Modified          875 
 
 STATS_DEVICE is now STATS_SERVER.
+
+----------
+mcadler     Date: Thu Mar  8 20:06:19 EST 2012  CSN: CSN-hasim-877
+                  Fri Mar  9 01:06:19 UTC 2012
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-rewind.bsv Locally Modified          876 
+
+Change the debug function to eliminate a FIFO data dependence.

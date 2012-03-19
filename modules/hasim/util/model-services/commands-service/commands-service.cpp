@@ -116,10 +116,6 @@ COMMANDS_SERVER_CLASS::Run()
         clientStub->SetEndModelCycle(stopCycleSwitch.StopCycle());
     }
 
-    // Tell the stats device to setup itself. We wait until this
-    // point to do it to ensure that the RRR stack is up.
-    STATS_SERVER_CLASS::GetInstance()->SetupStats();
-
     // Tell model which hardware threads are enabled.  Clearly this will need to change.
     for (int c = 0; c < numThreads; c++)
     {

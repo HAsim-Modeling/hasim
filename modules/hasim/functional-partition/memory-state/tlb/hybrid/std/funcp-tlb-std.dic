@@ -17,7 +17,3 @@
 //
 
 def VDEV.CACHE.FUNCP_TLB                "Functional TLB central cache port";
-
-def STATS.FUNCP_TLB.PVT_CACHE_HIT       "FUNCP TLB: Private cache hits";
-def STATS.FUNCP_TLB.PVT_CACHE_MISS      "FUNCP TLB: Private cache misses";
-def STATS.FUNCP_TLB.CENTRAL_CACHE_MISS  "FUNCP TLB: Central cache misses";

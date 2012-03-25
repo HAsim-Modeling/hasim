@@ -51,7 +51,6 @@ import FShow::*;
 
 `include "asim/dict/PARAMS_FUNCP_MEMSTATE_CACHE.bsh"
 `include "asim/dict/ASSERTIONS_FUNCP_MEMSTATE_CACHE.bsh"
-`include "asim/dict/STATS_FUNCP_MEMSTATE_CACHE.bsh"
 
 
 typedef TExp#(`FUNCP_MEMCACHE_SET_INDEX_BITS) FUNCP_MEMCACHE_SETS;
@@ -173,46 +172,52 @@ endmodule
 module [HASIM_MODULE] mkFuncpMemoryCacheStats
     // interface:
         (RL_SA_CACHE_STATS);
-    
-    Stat statLoadHit   <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_LOAD_HIT);
-    Stat statLoadMiss  <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_LOAD_MISS);
 
-    Stat statStoreHit  <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_STORE_HIT);
-    Stat statStoreMiss <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_STORE_MISS);
+    STAT_ID statIDs[7] = {
+        statName("FUNCP_MEMSTATE_CACHE_LOAD_HIT",
+                 "FUNCP Cache: Load hits"),
+        statName("FUNCP_MEMSTATE_CACHE_LOAD_MISS",
+                 "FUNCP Cache: Load misses"),
+        statName("FUNCP_MEMSTATE_CACHE_STORE_HIT",
+                 "FUNCP Cache: Store hits"),
+        statName("FUNCP_MEMSTATE_CACHE_STORE_MISS",
+                 "FUNCP Cache: Store misses"),
+        statName("FUNCP_MEMSTATE_CACHE_INVAL_LINE",
+                 "FUNCP Cache: Lines invalidated due to capacity");
+        statName("FUNCP_MEMSTATE_CACHE_DIRTY_LINE_FLUSH",
+                 "FUNCP Cache: Dirty lines flushed to memory"),
+        statName("FUNCP_MEMSTATE_CACHE_FORCE_INVAL_LINE",
+                 "FUNCP Cache: Lines forcibly invalidated (not due to capacity)")
+    };
 
-    Stat statInvalLine
-                       <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_INVAL_LINE);
-    Stat statDirtyLineFlush
-                       <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_DIRTY_LINE_FLUSH);
-    Stat statForceInvalLine
-                       <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_FORCE_INVAL_LINE);
+    STAT_VECTOR#(7) sv <- mkStatCounter_Vector(statIDs);
 
     method Action readHit();
-        statLoadHit.incr();
+        sv.incr(0);
     endmethod
 
     method Action readMiss();
-        statLoadMiss.incr();
+        sv.incr(1);
     endmethod
 
     method Action writeHit();
-        statStoreHit.incr();
+        sv.incr(2);
     endmethod
 
     method Action writeMiss();
-        statStoreMiss.incr();
+        sv.incr(3);
     endmethod
 
     method Action invalLine();
-        statInvalLine.incr();
+        sv.incr(4);
     endmethod
 
     method Action dirtyLineFlush();
-        statDirtyLineFlush.incr();
+        sv.incr(5);
     endmethod
 
     method Action forceInvalLine();
-        statForceInvalLine.incr();
+        sv.incr(6);
     endmethod
 
 endmodule
@@ -327,8 +332,16 @@ module [HASIM_MODULE] mkFUNCP_Cache
 
 
     // ***** Statistics *****
-    Stat statLoadL1DHit <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_LOAD_HIT_D_L1);
-    Stat statLoadL1IHit <- mkStatCounter(`STATS_FUNCP_MEMSTATE_CACHE_LOAD_HIT_I_L1);
+
+    STAT_ID statIDs[2] = {
+        statName("FUNCP_MEMSTATE_CACHE_LOAD_HIT_D_L1",
+                 "FUNCP Cache: L1 Data load hits"),
+        statName("FUNCP_MEMSTATE_CACHE_LOAD_HIT_I_L1",
+                 "FUNCP Cache: L1 Instruction load hits")
+    };
+
+    STAT_VECTOR#(2) stats <- mkStatCounter_Vector(statIDs);
+
 
     // Interfaces required by the base cache module
     FUNCP_MEM_INTERFACE funcpMemIfc <- mkFuncpMemInterface();
@@ -436,7 +449,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
         begin
             // L1 D cache hit
             debugLog.record($format("  LOAD: addr=0x%x, L1 D Hit", ld.addr));
-            statLoadL1DHit.incr();
+            stats.incr(0);
 
             loadFromL1CacheQ.enq(tuple2(ld, v));
         end
@@ -444,7 +457,7 @@ module [HASIM_MODULE] mkFUNCP_Cache
         begin
             // L1 I cache hit
             debugLog.record($format("  LOAD: addr=0x%x, L1 I Hit", ld.addr));
-            statLoadL1IHit.incr();
+            stats.incr(1);
 
             loadFromL1CacheQ.enq(tuple2(ld, v));
         end

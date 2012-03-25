@@ -25724,3 +25724,31 @@ Directory modules/hasim/util/model-services/commands-service
  commands-service.cpp      Locally Modified          877 
 
 Statistics initialization now handled automatically by platform services.
+
+----------
+mcadler     Date: Sun Mar 25 17:03:22 EDT 2012  CSN: CSN-hasim-879
+                  Sun Mar 25 21:03:22 UTC 2012
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro.dic          Locally Modified          878 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          878 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.dic         Locally Modified          878 
+ funcp-tlb-std.bsv         Locally Modified          878 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          878 
+ memstate-cache-set-assoc.dic Locally Modified          878 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          878 
+ hybrid-funcp-memory.dic   Locally Modified          878 
+
+Directory modules/hasim/util/modellib
+ stats-multiplexed.bsv     Locally Modified          878 
+
+- Statistics IDs are now global strings instead of dictionary entries.
+- Move the multiplexed statistics implementation to LEAP as a generalized RAM
+  vector.  The wrapper remains here.

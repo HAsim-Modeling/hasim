@@ -34,7 +34,6 @@ import FIFOF::*;
 
 `include "asim/dict/VDEV_CACHE.bsh"
 `include "asim/dict/PARAMS_FUNCP_MEMORY.bsh"
-`include "asim/dict/STATS_FUNCP_MEMORY.bsh"
 
 
 // Can't include hasim_isa.bsh here or it causes a loop
@@ -462,16 +461,21 @@ module [HASIM_MODULE] mkFuncpMemPvtCacheStats#(RL_CACHE_STATS stats)
     // interface:
     ();
     
+    STAT_ID statIDs[2] = {
+        statName("FUNCP_MEMORY_PVT_CACHE_LOAD_HIT",
+                 "FUNCP Mem: Private cache load hits"),
+        statName("FUNCP_MEMORY_PVT_CACHE_LOAD_MISS",
+                 "FUNCP Mem: Private cache load misses")
+    };
 
-    STAT statLoadHit <- mkStatCounter(`STATS_FUNCP_MEMORY_PVT_CACHE_LOAD_HIT);
-    STAT statLoadMiss <- mkStatCounter(`STATS_FUNCP_MEMORY_PVT_CACHE_LOAD_MISS);
+    STAT_VECTOR#(2) sv <- mkStatCounter_Vector(statIDs);
 
     rule readHit (stats.readHit());
-        statLoadHit.incr();
+        sv.incr(0);
     endrule
 
     rule readMiss (stats.readMiss());
-        statLoadMiss.incr();
+        sv.incr(1);
     endrule
 
 endmodule

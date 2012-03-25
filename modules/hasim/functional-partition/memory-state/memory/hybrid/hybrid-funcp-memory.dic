@@ -17,6 +17,3 @@
 //
 
 def VDEV.CACHE.FUNCP_MEMORY     "Functional memory central cache port";
-
-def STATS.FUNCP_MEMORY.PVT_CACHE_LOAD_HIT   "FUNCP Mem: Private cache load hits";
-def STATS.FUNCP_MEMORY.PVT_CACHE_LOAD_MISS  "FUNCP Mem: Private cache load misses";

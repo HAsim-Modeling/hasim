@@ -46,7 +46,6 @@ import FShow::*;
 
 `include "asim/dict/VDEV_CACHE.bsh"
 `include "asim/dict/PARAMS_FUNCP_MEMSTATE_TLB.bsh"
-`include "asim/dict/STATS_FUNCP_TLB.bsh"
 `include "asim/rrr/remote_client_stub_FUNCP_TLB.bsh"
 
 
@@ -459,7 +458,9 @@ module [HASIM_MODULE] mkVtoPInterface#(DEBUG_FILE debugLog)
     // Connection to memory address translation service
     ClientStub_FUNCP_TLB clientTranslationStub <- mkClientStub_FUNCP_TLB();
 
-    STAT statTLBCentralMiss <- mkStatCounter(`STATS_FUNCP_TLB_CENTRAL_CACHE_MISS);
+    STAT statTLBCentralMiss <-
+        mkStatCounter(statName("FUNCP_TLB_CENTRAL_CACHE_MISS",
+                               "FUNCP TLB: Central cache misses"));
 
     Reg#(CENTRAL_CACHE_WORD_IDX) rdWordIdx <- mkReg(0);
     FIFO#(Bool) writeAck <- mkFIFO();
@@ -556,15 +557,21 @@ module [HASIM_MODULE] mkTLBCacheStats#(RL_CACHE_STATS stats)
     
     // ***** Statistics *****
 
-    STAT statTLBHit  <- mkStatCounter(`STATS_FUNCP_TLB_PVT_CACHE_HIT);
-    STAT statTLBMiss <- mkStatCounter(`STATS_FUNCP_TLB_PVT_CACHE_MISS);
+    STAT_ID statIDs[2] = {
+        statName("FUNCP_TLB_PVT_CACHE_HIT",
+                 "FUNCP TLB: Private cache hits"),
+        statName("FUNCP_TLB_PVT_CACHE_MISS",
+                 "FUNCP TLB: Private cache misses")
+    };
+
+    STAT_VECTOR#(2) sv <- mkStatCounter_Vector(statIDs);
 
     rule readHit (stats.readHit());
-        statTLBHit.incr();
+        sv.incr(0);
     endrule
 
     rule readMiss (stats.readMiss());
-        statTLBMiss.incr();
+        sv.incr(1);
     endrule
 
 endmodule

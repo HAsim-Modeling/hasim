@@ -38,7 +38,6 @@ import Vector::*;
 
 // Dictionary includes
 `include "asim/dict/PARAMS_FUNCP_REGSTATE_MANAGER.bsh"
-`include "asim/dict/STATS_REGMGR_GETRESULTS.bsh"
 
 // RRR includes
 `include "asim/provides/rrr.bsh"
@@ -270,7 +269,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
     Reg#(REGMGR_RES_STATE_ENUM) state_res <- mkReg(RSM_RES_Running);
 
-    STAT stat_isa_emul <- mkStatCounter(`STATS_REGMGR_GETRESULTS_EMULATED_INSTRS);
+    STAT stat_isa_emul <- mkStatCounter(statName("REGMGR_GETRESULTS_EMULATED_INSTRS",
+                                                 "FUNCP: Emulated Instructions"));
 
     RWire#(Tuple2#(Bool, Bool)) getResults1DbgData <- mkRWire();
     rule getResults1Dbg (True);

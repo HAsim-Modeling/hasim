@@ -26,7 +26,9 @@
 module [CONNECTED_MODULE] mkStatCounter_Multiplexed#(STAT_ID statID)
     // interface:
     (STAT_VECTOR#(n_STATS))
-    provisos (Add#(TLog#(n_STATS), k, STAT_VECTOR_INDEX_SZ));
+    provisos
+        (NumAlias#(TMax#(TLog#(n_STATS), 1), t_STAT_IDX_SZ),
+         Add#(t_STAT_IDX_SZ, k, STAT_VECTOR_INDEX_SZ));
 
     let m <- mkStatCounter_RAM(statID);
     return m;

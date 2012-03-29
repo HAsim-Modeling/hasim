@@ -25752,3 +25752,13 @@ Directory modules/hasim/util/modellib
 - Statistics IDs are now global strings instead of dictionary entries.
 - Move the multiplexed statistics implementation to LEAP as a generalized RAM
   vector.  The wrapper remains here.
+
+----------
+mcadler     Date: Thu Mar 29 07:57:20 EDT 2012  CSN: CSN-hasim-880
+                  Thu Mar 29 11:57:20 UTC 2012
+
+
+Directory modules/hasim/util/modellib
+ stats-multiplexed.bsv     Locally Modified          879 
+
+Proviso change for updated statistics code.

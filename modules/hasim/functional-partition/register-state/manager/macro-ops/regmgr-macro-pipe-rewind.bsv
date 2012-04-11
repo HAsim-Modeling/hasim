@@ -121,6 +121,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
     endrule
 
     dbg_list <- addDebugScanMaybeField(dbg_list, "rewindQ tagged done", dbgRewindQIsDone.wget);
+    dbg_list <- addDebugScanField(dbg_list, "rewindCur", rewindCur);
+    dbg_list <- addDebugScanField(dbg_list, "rewindTok", rewindTok.index);
+    // These aren't left on all the time since they need extra read ports
+    //dbg_list <- addDebugScanField(dbg_list, "destWritesInFlight", tokScoreboard.destWritesInFlight(rewindCur));
+    //dbg_list <- addDebugScanField(dbg_list, "Current Token is LOAD", tokScoreboard.isLoad(rewindCur));
+    //dbg_list <- addDebugScanField(dbg_list, "Current Token is POISONED", isValid(tokScoreboard.getFault(rewindCur)));
 
     let dbgNode <- mkDebugScanNode("FUNCP REGMGR rewind", dbg_list);
 
@@ -215,11 +221,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
 
     //
     // rewindToToken3 --
-    //   Walk the tokens in age order and reconstruct the maptable
+    //   Walk the tokens in age order and reconstruct the maptable.  Wait if
+    //   the token has begun execution and the destination registers are not
+    //   yet written.  The writes could be in flight even though the execute
+    //   stage is no longer busy (e.g. Alpha emulated FP instructions).
+    //   The only exception for waiting is loads that have completed execute
+    //   but may not have updated their target registers.  In that case, the
+    //   future register write is supressed because the token will be dead.
     //
     (* conservative_implicit_conditions *)
     rule rewindToToken3 ((state_rew == RSM_REW_Rewinding) &&
-                         ! tokScoreboard.destWritesInFlight(rewindCur));
+                         (! tokScoreboard.destWritesInFlight(rewindCur) ||
+                          tokScoreboard.isLoad(rewindCur)));
     
         // Look up the token properties
         regMapping.readRewindReq(rewindCur);

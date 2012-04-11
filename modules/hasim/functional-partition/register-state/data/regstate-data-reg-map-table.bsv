@@ -37,6 +37,7 @@ import SpecialFIFOs::*;
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/fpga_components.bsh"
+`include "asim/provides/debug_scan_service.bsh"
  
 // Functional Partition includes.
 
@@ -305,19 +306,19 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     BRAM_MULTI_READ#(3, TOKEN_INDEX, Maybe#(REGSTATE_REWIND_INFO)) rewindInfo <- mkBRAMBufferedPseudoMultiRead();
 
     // Internal decode queues
-    FIFO#(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) newPhyDstsInQ <- mkBypassFIFO();
-    FIFO#(Tuple3#(TOKEN,
+    FIFOF#(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) newPhyDstsInQ <- mkBypassFIFOF();
+    FIFOF#(Tuple3#(TOKEN,
                   Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
-                  Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)))) decodeReadCurQ <- mkFIFO();
-    FIFO#(Tuple3#(TOKEN,
+                  Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)))) decodeReadCurQ <- mkFIFOF();
+    FIFOF#(Tuple3#(TOKEN,
                   Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)),
-                  Bool)) decodeUpdateQ <- mkFIFO();
+                  Bool)) decodeUpdateQ <- mkFIFOF();
     // Merge FIFO collapses multiple write port requests into a series of write
     // requests -- one per cycle.
     MERGE_FIFOF#(ISA_MAX_DSTS, Tuple2#(ISA_REG_INDEX, FUNCP_PHYSICAL_REG_INDEX)) decodeUpdateDstQ <- mkMergeFIFOF();
 
     // Internal read mapping request queue.
-    FIFO#(Tuple2#(CONTEXT_ID, ISA_REG_INDEX)) getResultsReqInQ <- mkFIFO();
+    FIFOF#(Tuple2#(CONTEXT_ID, ISA_REG_INDEX)) getResultsReqInQ <- mkFIFOF();
     FIFO#(FUNCP_PHYSICAL_REG_INDEX) readMapRspQ <- mkBypassFIFO();
 
     // Rewind register updates.  Map table has only one write port so multiple
@@ -332,6 +333,24 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
     // Outgoing queues
     FIFO#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) mapDecodeOutQ <- mkFIFO();
+
+
+    // ====================================================================
+    //
+    //   Debug scan
+    //
+    // ====================================================================
+
+    DEBUG_SCAN_FIELD_LIST dbg_list = List::nil;
+    dbg_list <- addDebugScanField(dbg_list, "newPhyDstsInQ notEmpty", newPhyDstsInQ.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "decodeReadCurQ notEmpty", decodeReadCurQ.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "decodeUpdateQ notEmpty", decodeUpdateQ.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "getResultsReqInQ notEmpty", getResultsReqInQ.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "rewGetResultsReadInQ notEmpty", rewGetResultsReadInQ.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "rewCommitReadInQ notEmpty", rewCommitReadInQ.notEmpty);
+    dbg_list <- addDebugScanField(dbg_list, "rewReadInQ notEmpty", rewReadInQ.notEmpty);
+
+    let dbgNode <- mkDebugScanNode("FUNCP REGSTATE Reg Map Table", dbg_list);
 
 
     // ====================================================================

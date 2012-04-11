@@ -25762,3 +25762,21 @@ Directory modules/hasim/util/modellib
  stats-multiplexed.bsv     Locally Modified          879 
 
 Proviso change for updated statistics code.
+
+----------
+mcadler     Date: Wed Apr 11 09:47:14 EDT 2012  CSN: CSN-hasim-881
+                  Wed Apr 11 13:47:14 UTC 2012
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-reg-map-table.bsv Locally Modified          880 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-rewind.bsv Locally Modified          880 
+
+For instructions already reaching the execute stage, rewind blocked until all
+of a token's destination registers were written.  For loads, where the write
+is delayed until after execute, this may cause a deadlock if the load hasn't
+been triggered yet.  Change the policy to drop loads whether or not the
+destination register has been written.  The functional load pipeline will
+ignore dead tokens and skip their register writes.

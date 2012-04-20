@@ -192,7 +192,15 @@ my $cmd;
 
 if ($m5run == 0) {
     # Normal run
-    $cmd = "$config{modelDir}/$config{model} --modeldir=$config{modelDir} --workload=$config{workload} ${showfp} --funcp=\"${feedFlags}\" $config{genFlags} ${ctxFlag}";
+
+    # Model might be a link to a binary.  Some binaries expect to find libraries
+    # based on their command line name (e.g. Bluesim).
+    $cmd = "$config{modelDir}/$config{model}";
+    if (-l $cmd) {
+        $cmd = "$config{modelDir}/" . readlink($cmd);
+    }
+
+    $cmd .= " --modeldir=$config{modelDir} --workload=$config{workload} ${showfp} --funcp=\"${feedFlags}\" $config{genFlags} ${ctxFlag}";
     foreach my $c (@ARGV) {
         $cmd .= " $c";
     }
@@ -257,12 +265,14 @@ if (! $config{isHybridModel} && ($mType == $MODEL_BLUESIM)) {
     $cmd =~ s/\s--/ +--/g;
 
     # Bluesim may expect to load a program from a well known file
-    unlink('program.vmh');
-    link("program/$config{workload}.$config{ISA}.vmh", 'program.vmh');
+    if (exists($config{workload}) && exists($config{ISA})) {
+        unlink('program.vmh');
+        link("program/$config{workload}.$config{ISA}.vmh", 'program.vmh');
+    }
 }
 
 # Define the global string database
-if (-f "$config{modelDir}/$config{model}.str") {
+if (-f "$config{modelDir}/$config{model}.str" && $config{isHybridModel}) {
     $cmd .= " --global-strings=\'$config{modelDir}/$config{model}.str\'";
 }
 

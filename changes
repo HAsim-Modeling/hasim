@@ -25780,3 +25780,13 @@ is delayed until after execute, this may cause a deadlock if the load hasn't
 been triggered yet.  Change the policy to drop loads whether or not the
 destination register has been written.  The functional load pipeline will
 ignore dead tokens and skip their register writes.
+
+----------
+mcadler     Date: Fri Apr 20 16:57:29 EDT 2012  CSN: CSN-hasim-882
+                  Fri Apr 20 20:57:29 UTC 2012
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          881 
+
+Fix running of Bluesim-only models (no hybrid software component).

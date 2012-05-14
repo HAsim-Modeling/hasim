@@ -25790,3 +25790,13 @@ Directory tools/scripts/bmark
  run-hasim.bmark           Locally Modified          881 
 
 Fix running of Bluesim-only models (no hybrid software component).
+
+----------
+mcadler     Date: Mon May 14 09:09:13 EDT 2012  CSN: CSN-hasim-883
+                  Mon May 14 13:09:13 UTC 2012
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          882 
+
+Don't pass --global-strings when --m5 is set.

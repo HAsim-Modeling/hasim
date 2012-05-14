@@ -272,7 +272,8 @@ if (! $config{isHybridModel} && ($mType == $MODEL_BLUESIM)) {
 }
 
 # Define the global string database
-if (-f "$config{modelDir}/$config{model}.str" && $config{isHybridModel}) {
+if (-f "$config{modelDir}/$config{model}.str" &&
+    $config{isHybridModel} && $m5run == 0) {
     $cmd .= " --global-strings=\'$config{modelDir}/$config{model}.str\'";
 }
 

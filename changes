@@ -25800,3 +25800,13 @@ Directory tools/scripts/bmark
  run-hasim.bmark           Locally Modified          882 
 
 Don't pass --global-strings when --m5 is set.
+
+----------
+mcadler     Date: Wed May 16 11:09:55 EDT 2012  CSN: CSN-hasim-884
+                  Wed May 16 15:09:55 UTC 2012
+
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          883 
+
+Add an uninitialized multiplexed register:  mkMultiplexedRegU.

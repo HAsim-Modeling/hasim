@@ -106,6 +106,29 @@ module [m] mkMultiplexedReg#(t_DATA initval)
 
 endmodule
 
+//
+// Same as mkMultiplexedReg, but the storage is uninitialized.
+//
+module [m] mkMultiplexedRegU
+    // interface:
+        (MULTIPLEXED_REG#(t_NUM_INSTANCES, t_DATA))
+    provisos 
+        (Bits#(t_DATA, t_DATA_SZ),
+         IsModule#(m, a));
+
+    LUTRAM#(INSTANCE_ID#(t_NUM_INSTANCES), t_DATA) regram <- mkLUTRAMU();
+    
+    method Reg#(t_DATA) getReg(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+    
+        return interface Reg#(t_DATA);
+                   method t_DATA _read() = regram.sub(iid);
+                   method Action _write(t_DATA d) = regram.upd(iid, d);
+               endinterface;
+
+    endmethod
+
+endmodule
+
 // MULTIPLEXED_REG_MULTI_WRITE
 
 // An abstraction of multiple write ports. More expensive than above, but fewer conflicts.

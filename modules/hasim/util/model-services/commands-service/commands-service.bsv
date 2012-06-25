@@ -23,6 +23,9 @@ import FIFO::*;
 
 //HASim library imports
 
+`include "asim/provides/fpga_components.bsh"
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/hasim_modellib.bsh"
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/soft_services.bsh"
 `include "asim/provides/soft_services_lib.bsh"
@@ -33,14 +36,6 @@ import FIFO::*;
 `include "asim/rrr/remote_server_stub_COMMANDS.bsh"
 
 `include "asim/dict/RINGID.bsh"
-
-
-typedef CONTEXT_ID                             CONTROL_MODEL_CYCLE_MSG;
-typedef Tuple2#(CONTEXT_ID, MODEL_NUM_COMMITS) CONTROL_MODEL_COMMIT_MSG;
-
-// Instructions committed this cycle.  The width here must be large enough for
-// the commit bandwidth of the largest model.
-typedef Bit#(4) MODEL_NUM_COMMITS;
 
 
 typedef Bit#(TAdd#(`HEARTBEAT_TRIGGER_BIT, 1)) HEARTBEAT_MODEL_CYCLES;

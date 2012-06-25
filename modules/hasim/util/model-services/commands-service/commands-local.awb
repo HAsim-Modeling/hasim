@@ -1,0 +1,8 @@
+%name Local Commands Service
+%desc Relays global controller messages to local controllers
+%provides commands_local
+
+%attributes hasim hybrid
+
+%sources -t BSV -v PUBLIC  commands-local.bsv
+%sources -t BSV -v PUBLIC  commands-misc-controllers.bsv

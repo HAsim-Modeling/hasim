@@ -39,9 +39,18 @@ import SpecialFIFOs::*;
 
 `include "asim/dict/RINGID.bsh"
 
-// Project imports
 
-`include "asim/provides/hasim_common.bsh"
+//
+// Global types, passed to global controller.
+//
+
+// Instructions committed this cycle.  The width here must be large enough for
+// the commit bandwidth of the largest model.
+typedef Bit#(4) MODEL_NUM_COMMITS;
+
+typedef CONTEXT_ID                             CONTROL_MODEL_CYCLE_MSG;
+typedef Tuple2#(CONTEXT_ID, MODEL_NUM_COMMITS) CONTROL_MODEL_COMMIT_MSG;
+
 
 //
 // Scan data (for debugging)

@@ -1,16 +1,18 @@
 %name RRR-based Commands Service
 %desc Relays SW commands to HW modules.
 %provides commands_service
+%requires commands_local
 
 %attributes hasim hybrid
 
-%sources -t BSV -v PUBLIC  commands-local.bsv
-%sources -t BSV -v PUBLIC  commands-misc-controllers.bsv
 %sources -t BSV -v PUBLIC  commands-service.bsv
+%sources -t BSH -v PUBLIC  commands-service.bsh
 %sources -t H   -v PUBLIC  commands-service.h
 %sources -t CPP -v PRIVATE commands-service.cpp
 %sources -t RRR -v PUBLIC  commands-service.rrr
 %sources -t DICT -v PUBLIC commands-service.dic
+
+%param SYNTH_BOUNDARY mkCommandsService  "Name of synthesis boundary"
 
 %param MODEL_COOLDOWN 2 "Number of FPGA cycles to run after simulation has finished to facilitate IO draining."
 

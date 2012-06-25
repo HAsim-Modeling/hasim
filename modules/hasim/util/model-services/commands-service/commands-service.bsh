@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2008 Intel Corporation
+// Copyright (C) 2012 Intel Corporation
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -16,10 +16,4 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
-///////////////////////////////////////////////////////////////////////////////
-//                                                                           //
-// Commands.bsv                                                              //
-//                                                                           //
-// Non-ISA-specific datatypes required by Controller model                   //
-//                                                                           //
-///////////////////////////////////////////////////////////////////////////////
+`include "awb/provides/commands_local.bsh"

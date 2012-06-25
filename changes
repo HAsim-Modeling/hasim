@@ -25810,3 +25810,23 @@ Directory modules/hasim/util/modellib
  multiplexed.bsv           Locally Modified          883 
 
 Add an uninitialized multiplexed register:  mkMultiplexedRegU.
+
+----------
+mcadler     Date: Mon Jun 25 16:27:48 EDT 2012  CSN: CSN-hasim-885
+                  Mon Jun 25 20:27:48 UTC 2012
+
+
+Directory config/pm/hasim/submodels/common
+ hasim-model-services.apm  Locally Modified          884 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.awb        Locally Added               0 
+ commands-local.bsv        Locally Modified          884 
+ commands-service.awb      Locally Modified          884 
+ commands-service.bsv      Locally Modified          884 
+ commands.bsv              Locally Removed           884 
+ controller-standard.bsv   Locally Removed           884 
+ commands-service.bsh      Locally Added               0 
+
+Move global controller to its own synthesis boundary so it can be placed with
+the timing model in multi-FPGA configurations.

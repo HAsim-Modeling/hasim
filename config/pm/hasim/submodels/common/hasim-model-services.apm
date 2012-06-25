@@ -31,3 +31,10 @@ commands_service=RRR-based Commands Service
 [RRR-based Commands Service]
 File=modules/hasim/util/model-services/commands-service/commands-service.awb
 Packagehint=hasim
+
+[Local Commands Service]
+File=modules/hasim/util/model-services/commands-service/commands-local.awb
+Packagehint=hasim
+
+[RRR-based Commands Service/Requires]
+commands_local=Local Commands Service

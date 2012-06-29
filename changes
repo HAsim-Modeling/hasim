@@ -25830,3 +25830,13 @@ Directory modules/hasim/util/model-services/commands-service
 
 Move global controller to its own synthesis boundary so it can be placed with
 the timing model in multi-FPGA configurations.
+
+----------
+mcadler     Date: Fri Jun 29 16:04:51 EDT 2012  CSN: CSN-hasim-886
+                  Fri Jun 29 20:04:51 UTC 2012
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          885 
+
+Run script now passes the device-id to the bitfile download script.

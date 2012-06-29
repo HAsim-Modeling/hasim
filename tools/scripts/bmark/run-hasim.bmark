@@ -341,7 +341,7 @@ if ($mType == $MODEL_FPGA) {
             Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --program", "Failed to enter FPGA programming mode");
             my $dir = `pwd`;
             chomp($dir);
-            Exec("(cd $config{modelDir}; ./config/$config{model}.download ${dir}/FPGA_programming.log)", "Failed to program FPGA");
+            Exec("(cd $config{modelDir}; ./config/$config{model}.download --device-id=${fpga_dev_id} ${dir}/FPGA_programming.log)", "Failed to program FPGA");
             if (exists($config{signature})) {
                 Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --setsignature=$config{signature}", "Failed to set FPGA bit image signature");
             }

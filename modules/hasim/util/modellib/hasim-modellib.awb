@@ -13,3 +13,10 @@
 
 %param --global PORT_MAX_LATENCY        4   "Maximum latency, used for computing buffer sizes"
 %param MULTIPLEXED_MEM_USE_SCRATCHPAD   1   "0: use BRAM, otherwise use a scratchpad"
+
+//
+// Temporary parameters for early experiments with multi-FPGA compressed
+// A-Ports.  Delete these when done.
+//
+%param APORT_COMPRESS_ENABLE            0   "Enable A-Port compression"
+%param --dynamic APORT_COMPRESS_TIMEOUT 31  "Maximum cycles to wait between messages when merging A-Port NoMessages"

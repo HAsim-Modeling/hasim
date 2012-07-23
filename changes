@@ -25840,3 +25840,31 @@ Directory tools/scripts/bmark
  run-hasim.bmark           Locally Modified          885 
 
 Run script now passes the device-id to the bitfile download script.
+
+----------
+mcadler     Date: Mon Jul 23 08:00:41 EDT 2012  CSN: CSN-hasim-887
+                  Mon Jul 23 12:00:41 UTC 2012
+
+
+Directory modules/hasim/util/modellib
+ permutation-ports.bsv     Locally Modified          886 
+ a-ports.bsv               Locally Modified          886 
+ hasim-modellib.awb        Locally Modified          886 
+
+Add experimental soft connection compression instances for A-Ports that cross
+multi-FPGA boundaries.  The code currently special cases names of connections
+from the in-order mesh model when inorder_pipeline_front_end and decode_stage
+are moved to ACP0 (normally on ACP1).
+
+Two compressors are implemented:  one simply eliminates the t_MSG from
+Maybe#(t_MSG) when the predicate is false.  The other adds detection of
+back-to-back no-messages (where Maybe#(t_MSG) is false) and merges the
+no-messages.
+
+Two parameters control the compression:  APORT_COMPRESS_ENABLE is a static
+parameter that controls whether any compression is performed.  Default is off.
+APORT_COMPRESS_TIMEOUT is a dynamic parameter controlling the number of
+FPGA cycles to wait for another no-message to merge after seeing a no-message.
+When the default value of APORT_COMPRESS_TIMEOUT is 0 the compression mode
+is statically set to Maybe#(t_MSG) compression only, with no option for
+merging no-messages.

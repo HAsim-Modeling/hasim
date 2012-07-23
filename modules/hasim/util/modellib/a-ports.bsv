@@ -19,14 +19,19 @@
 // partitions. The token type includes an index for token tables, epochs,
 // and scratchpads which partitions can use as they see fit.             
 
-`include "asim/provides/hasim_common.bsh"
-`include "asim/provides/soft_connections.bsh"
-`include "asim/provides/fpga_components.bsh"
-`include "asim/provides/hasim_modellib.bsh"
+`include "awb/provides/hasim_common.bsh"
+`include "awb/provides/soft_connections.bsh"
+`include "awb/provides/fpga_components.bsh"
+`include "awb/provides/common_services.bsh"
+`include "awb/provides/hasim_modellib.bsh"
 
+`include "awb/dict/PARAMS_HASIM_MODELLIB.bsh"
+
+import ConfigReg::*;
 import FIFOF::*;
+import SpecialFIFOs::*;
 import Vector::*;
-import ModuleCollect::*;
+import HList::*;
 
 typedef `PORT_MAX_LATENCY PORT_MAX_LATENCY;
 
@@ -92,7 +97,7 @@ module [HASIM_MODULE] mkPortSend#(String portname)
     provisos
         (Bits#(t_MSG, t_MSG_SZ));
         
-    Connection_Send#(Maybe#(t_MSG)) con <- mkConnection_Send(portname);
+    CONNECTION_SEND#(Maybe#(t_MSG)) con <- mkConnectionSend(portname);
 
     //A temporary set of control info
     interface INSTANCE_CONTROL_OUT ctrl;
@@ -134,7 +139,7 @@ module [HASIM_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Int
       provisos
                 (Bits#(t_MSG, t_MSG_SZ));
 
-  Connection_Receive#(Maybe#(t_MSG)) con <- mkConnection_Receive(portname);
+  CONNECTION_RECV#(Maybe#(t_MSG)) con <- mkConnectionRecv(portname);
    
   Integer rMax = latency + extra_buffering + 1;
   
@@ -201,7 +206,7 @@ module [HASIM_MODULE] mkPortRecv_L0#(String portname)
       provisos
                 (Bits#(t_MSG, t_MSG_SZ));
 
-  Connection_Receive#(Maybe#(t_MSG)) con <- mkConnection_Receive(portname);
+  CONNECTION_RECV#(Maybe#(t_MSG)) con <- mkConnectionRecv(portname);
      
   //A temporary set of control info
   interface INSTANCE_CONTROL_IN ctrl;
@@ -233,7 +238,7 @@ module [HASIM_MODULE] mkPortRecv_L1#(String portname, Maybe#(t_MSG) init_value)
       provisos
                 (Bits#(t_MSG, t_MSG_SZ));
 
-  Connection_Receive#(Maybe#(t_MSG)) con <- mkConnection_Receive(portname);
+  CONNECTION_RECV#(Maybe#(t_MSG)) con <- mkConnectionRecv(portname);
   Reg#(Bool) initializing <- mkReg(True);
      
 
@@ -266,6 +271,26 @@ module [HASIM_MODULE] mkPortRecv_L1#(String portname, Maybe#(t_MSG) init_value)
 endmodule
 
 
+module [Connected_Module] mkPortRecvDependent#(String portname)
+    // interface:
+                (PORT_RECV#(t_MSG))
+      provisos
+                (Bits#(t_MSG, t_MSG_SZ));
+    
+    let m <- mkPortRecv_L0(portname);
+    return m;
+    
+endmodule
+
+
+// ========================================================================
+//
+//   Multiplexed ports
+//
+// ========================================================================
+
+typedef Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))
+    PORT_MULTIPLEXED_MSG#(numeric type t_NUM_INSTANCES, type t_MSG);
 
 module [HASIM_MODULE] mkPortSend_Multiplexed#(String portname)
     //interface:
@@ -273,24 +298,26 @@ module [HASIM_MODULE] mkPortSend_Multiplexed#(String portname)
     provisos
         (Bits#(t_MSG, t_MSG_SZ));
 
-    Connection_Send#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) con <- mkConnection_Send(portname);
+    CONNECTION_SEND#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)) con <-
+        mkPortSend_MaybeCompressed(portname);
 
     interface INSTANCE_CONTROL_OUT ctrl;
 
         method Bool full() = !con.notFull();
         method Bool balanced() = True;
         method Bool heavy() = False;
-        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction; // Handled on the receive side only.
+
+        // Handled on the receive side only.
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction;
 
     endinterface
 
     method Action send(INSTANCE_ID#(t_NUM_INSTANCES) iid, Maybe#(t_MSG) m);
-
         con.send(tuple2(iid, m));
-
     endmethod
 
 endmodule
+
 
 module [HASIM_MODULE] mkPortRecv_Multiplexed#(String portname, Integer latency)
     //interface:
@@ -308,17 +335,58 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed#(String portname, Integer latency)
 
 endmodule
 
+
 module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer latency)
     //interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
-        (Bits#(t_MSG, t_MSG_SZ),
-         NumAlias#(TMul#(TMax#(t_NUM_INSTANCES, 1), PORT_MAX_LATENCY), n_SLOTS),
-         Alias#(Bit#(TLog#(n_SLOTS)), t_SLOT_IDX),
-         Alias#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG)), t_BUFFERED_MSG),
-         Bits#(t_BUFFERED_MSG, t_BUFFERED_MSG_SZ));
+        (Bits#(t_MSG, t_MSG_SZ));
 
-    Connection_Receive#(t_BUFFERED_MSG) con <- mkConnection_Receive(portname);
+    let p <- mkPortRecv_Multiplexed_Impl(portname, latency, True);
+    return p;
+endmodule
+
+
+module [HASIM_MODULE] mkPortRecvL0_Multiplexed#(String portname)
+    // interface:
+        (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ));
+
+    let p <- mkPortRecv_Multiplexed_Impl(portname, 0, False);
+    return p;
+endmodule
+
+
+module [HASIM_MODULE] mkPortRecvDependent_Multiplexed#(String portname)
+    // interface:
+        (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ));
+    
+    let m <- mkPortRecvL0_Multiplexed(portname);
+    return m;
+endmodule
+
+
+//
+// Internal implementation of a multiplexed receive port.  Latency has meaning
+// only when buffering is enabled.  When disabled, latency must be 0.
+//
+module [HASIM_MODULE] mkPortRecv_Multiplexed_Impl#(String portname,
+                                                   Integer latency,
+                                                   Bool buffered)
+    //interface:
+        (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_BUFFERED_MSG),
+         Bits#(t_BUFFERED_MSG, t_BUFFERED_MSG_SZ),
+         NumAlias#(TMul#(TMax#(t_NUM_INSTANCES, 1), PORT_MAX_LATENCY), n_SLOTS),
+         Alias#(Bit#(TLog#(n_SLOTS)), t_SLOT_IDX));
+
+    CONNECTION_RECV#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)) con <-
+        mkPortRecv_MaybeCompressed(portname);
 
     if (latency > valueOf(PORT_MAX_LATENCY))
     begin
@@ -344,7 +412,11 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
     //
     FIFOF#(t_BUFFERED_MSG) rs;
     Integer total_slots = max(1, latency) * max(1, valueOf(TMul#(2, t_NUM_INSTANCES)));
-    if ((total_slots >= 256) &&
+    if (! buffered)
+    begin
+        rs <- mkBypassFIFOF();
+    end
+    else if ((total_slots >= 256) &&
         (total_slots * valueOf(t_BUFFERED_MSG_SZ) > 14000))
     begin
         // Large buffer.  Use block RAM.
@@ -356,7 +428,7 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
         rs <- mkSizedFIFOF(total_slots);
     end
 
-    Reg#(Bool) initialized <- mkReg(False);
+    Reg#(Bool) initialized <- mkReg(! buffered);
     Reg#(t_SLOT_IDX) initIdx <- mkReg(0);
     Reg#(Maybe#(t_SLOT_IDX)) initMax <- mkReg(tagged Invalid);
     
@@ -377,10 +449,8 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
     //   Pass received messages to the FIFO buffer.
     //
     rule shift (initialized && con.notEmpty());
-        let d = con.receive();
+        rs.enq(con.receive());
         con.deq();
-
-        rs.enq(d);
     endrule
 
 
@@ -406,18 +476,21 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
         
         method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
         
-            t_SLOT_IDX l = fromInteger(latency);
-            t_SLOT_IDX k = zeroExtendNP(iid) + 1;
+            if (buffered)
+            begin
+                t_SLOT_IDX l = fromInteger(latency);
+                t_SLOT_IDX k = zeroExtendNP(iid) + 1;
 
-            if (l == 0)
-            begin    
-                // 0-latency port has no initial fill.
-                initialized <= True;
-            end
-            else
-            begin    
-                // Write k * l no-messages to initialize the channel.
-                initMax <= tagged Valid (k * l - 1);
+                if (l == 0)
+                begin    
+                    // 0-latency port has no initial fill.
+                    initialized <= True;
+                end
+                else
+                begin    
+                    // Write k * l no-messages to initialize the channel.
+                    initMax <= tagged Valid (k * l - 1);
+                end
             end
 
         endmethod
@@ -435,67 +508,463 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
 
 endmodule
 
-module [HASIM_MODULE] mkPortRecvL0_Multiplexed#(String portname)
-    //interface:
-                (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
-      provisos
-                (Bits#(t_MSG, t_MSG_SZ));
 
-    Connection_Receive#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) con <- mkConnection_Receive(portname);
-     
-    interface INSTANCE_CONTROL_IN ctrl;
+// ========================================================================
+//
+//   Compressor for multiplexed A-Ports
+//
+// ========================================================================
 
-        method Bool empty() = !con.notEmpty();
-        method Bool balanced() = True;
-        method Bool light() = False;
+//
+// portIsCompressed --
+//    Compressing an intra-FPGA connection is of no value since the link
+//    is on direct, dedicated wires that can be written every cycle.
+//    For now we use a hack and just enumerate all the inter-FPGA connections
+//    that should be compressed.
+//
 
-        method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
-        
-            match {.iid, .m} = con.receive();
-            return (con.notEmpty) ? tagged Valid iid : tagged Invalid;
-        
+//
+// Found cross-FPGA links with:
+//   grep -h '//.*via_idx:' ACP*_bitfile/pm/hw/model/multifpga_routing.bsh | sed -e 'sx// xx' -e 's/ via_idx:.*//' -e 's/_chunk_[0-9]*//' | grep -v OldSchoolChain | grep -v ^rrr_ | grep -v ^funcp_ | grep -v ^ScratchpadGlobal | grep -v ^DebugScanRing | grep -v ^stdio_ | grep -v ^Stats | sort
+//
+List#(String) multiFPGAconnections = list(
+    "CPU_to_ICache_load",
+    "CPU_to_ICache_load",
+    "CPU_to_ITLB_req",
+    "CPU_to_ITLB_req",
+    "Com_to_Dec_fault",
+    "Com_to_Dec_writeback",
+    "Com_to_Fet_fault",
+    "DMem_to_Dec_hit_writeback",
+    "DMem_to_Dec_miss_writeback",
+    "Dec_to_SB_alloc",
+    "Exe_to_BP_training",
+    "Exe_to_BP_training",
+    "Exe_to_Dec_mispredict",
+    "Exe_to_Dec_writeback",
+    "Exe_to_Fet_rewind",
+    "ICache_to_CPU_load_delayed",
+    "ICache_to_CPU_load_immediate",
+    "ICache_to_CPU_load_immediate",
+    "ITLB_to_CPU_rsp",
+    "ITLB_to_CPU_rsp",
+    "IssueQ__cred",
+    "IssueQ__portDataEnq",
+    "IssueQ__portDataEnq",
+    "IssueQ__portDataEnq",
+    "SB_to_Dec_credit",
+    "model_cycle");
+
+function Bool portIsCompressed(String portname, Integer msgSize);
+    function Bool portNameMatches(String n) = (n == portname);
+
+    return (`APORT_COMPRESS_ENABLE != 0) &&
+`ifdef APORT_COMPRESS_TIMEOUT_DYNDEFAULT_Z
+           (msgSize > 63) &&
+`endif
+           List::any(portNameMatches, multiFPGAconnections);
+endfunction
+
+
+//
+// mkPortSend_MaybeCompressed --
+//     Instantiate a soft connection for a multiplexed A-Port.  The connection
+//     may be compressed, if requested by portIsCompressed() above.
+//
+module [HASIM_MODULE] mkPortSend_MaybeCompressed#(String portname)
+    // Interface:
+    (CONNECTION_SEND#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_MUX_MSG),
+         Bits#(t_MUX_MSG, t_MUX_MSG_SZ));
+
+    CONNECTION_SEND#(t_MUX_MSG) con;
+
+    if (portIsCompressed(portname, valueOf(t_MUX_MSG_SZ)))
+    begin
+        con <- mkCompressedConnectionSend(portname);
+    end
+    else
+    begin
+        // Uncompressed, basic connection
+        con <- mkConnectionSend(portname);
+    end
+
+    return con;
+endmodule
+    
+
+//
+// mkPortRecv_MaybeCompressed --
+//     Instantiate a soft connection for a multiplexed A-Port.  The connection
+//     may be compressed, if requested by portIsCompressed() above.
+//
+module [HASIM_MODULE] mkPortRecv_MaybeCompressed#(String portname)
+    // Interface:
+    (CONNECTION_RECV#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_MUX_MSG),
+         Bits#(t_MUX_MSG, t_MUX_MSG_SZ));
+
+    CONNECTION_RECV#(t_MUX_MSG) con;
+
+    if (portIsCompressed(portname, valueOf(t_MUX_MSG_SZ)))
+    begin
+        con <- mkCompressedConnectionRecv(portname);
+    end
+    else
+    begin
+        // Uncompressed, basic connection
+        con <- mkConnectionRecv(portname);
+    end
+
+    return con;
+endmodule
+
+
+// ========================================================================
+//
+//   Two compression schemes are implemented below for testing.  One
+//   merely takes advantage of the Maybe#() no-message.  The other
+//   merges contiguous no-messages to reduce traffic.
+//
+// ========================================================================
+
+`ifdef APORT_COMPRESS_TIMEOUT_DYNDEFAULT_Z
+
+//
+// Compress the multiplexed port internal message by taking advantage
+// of the Maybe#() in the no-message case, sending only one bit.
+//
+
+typedef struct
+{
+    t_MSG msg;
+    INSTANCE_ID#(t_NUM_INSTANCES) iid;
+    Bool maybe;
+}
+PORT_MULTIPLEXED_COMPRESSED_MSG#(numeric type t_NUM_INSTANCES, type t_MSG)
+    deriving (Eq, Bits);
+
+instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
+                     Bit#(t_ENC_SZ),
+                     Bit#(1),
+                     HList2#(Bit#(t_MSG_SZ), Bit#(TAdd#(t_IID_SZ, 1))),
+                     CONNECTED_MODULE)
+    provisos (Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_DATA),
+              Bits#(t_DATA, t_DATA_SZ),
+              Bits#(t_MSG, t_MSG_SZ),
+              NumAlias#(INSTANCE_ID_BITS#(t_NUM_INSTANCES), t_IID_SZ),
+              Bits#(PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG), t_ENC_SZ));
+
+    module [CONNECTED_MODULE] mkCompressorMC (COMPRESSION_ENCODER#(t_DATA, Bit#(t_ENC_SZ)));
+        FIFOF#(t_DATA) inQ <- mkBypassFIFOF();
+
+        method enq(t_DATA val) = inQ.enq(val);
+        method notFull() = inQ.notFull();
+
+        method first();
+            let val = inQ.first();
+
+            // Extract the tag (high bit) and data (the remainder)
+            PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG) cmp;
+            cmp.msg = validValue(tpl_2(val));
+            cmp.iid = tpl_1(val);
+            cmp.maybe = isValid(tpl_2(val));
+
+            // Compute the compressed message length (in bits).  Add 1 for the
+            // tag bit.
+            Integer data_len = 1 + valueOf(t_IID_SZ) +
+                               (isValid(tpl_2(val)) ? valueOf(t_MSG_SZ) : 0);
+
+            // The message is compressed by moving the tag to the low bit so it
+            // will be next to the useful data.  The 2nd element in the returned
+            // tuple is the compressed length.
+            return tuple2(pack(cmp), data_len);
         endmethod
-        
-        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
 
-            noAction;
+        method deq() = inQ.deq();
+        method notEmpty() = inQ.notEmpty();
+    endmodule
 
+    module [CONNECTED_MODULE] mkDecompressorMC (COMPRESSION_DECODER#(t_DATA, Bit#(t_ENC_SZ), Bit#(1)));
+        FIFOF#(Bit#(t_ENC_SZ)) inQ <- mkBypassFIFOF();
+
+        method Action enq(cval) = inQ.enq(cval);
+        method Bool notFull() = inQ.notFull();
+
+        method t_DATA first();
+            let cval = inQ.first();
+
+            PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG) cmp = unpack(cval);
+            if (cmp.maybe)
+                return tuple2(cmp.iid, tagged Valid cmp.msg);
+            else
+                return tuple2(cmp.iid, tagged Invalid);
         endmethod
 
-    endinterface
+        method Action deq() = inQ.deq();
+        method Bool notEmpty() = inQ.notEmpty();
 
-    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) dummy);
+        method Integer numInBits(partialVal);
+            return (partialVal == 1) ? valueOf(t_DATA_SZ) : 1 + valueOf(t_IID_SZ);
+        endmethod
+    endmodule
+endinstance
 
-        if (!con.notEmpty)
-            $display("WARNING: Underflow on unguarded receive port %s! Junk data added!", portname);
+`else
 
-        con.deq();
-        match {.iid, .m} = con.receive();
-        return m;
+//
+// Compress the multiplexed port internal message by merging contiguous
+// no-messages and also taking advantage of the Maybe#() in the no-message
+// case.
+//
+
+// Size of the merged no-message counter
+typedef 6 NOMSG_CNT_SZ;
+
+typedef struct
+{
+    // "payload" is either the message, when "maybe" is true or a
+    // NOMSG_CNT_SZ bit no-message count when "maybe" is false.
+    Bit#(TMax#(t_MSG_SZ, NOMSG_CNT_SZ)) payload;
+    INSTANCE_ID#(t_NUM_INSTANCES) iid;
+    Bool maybe;
+}
+PORT_MULTIPLEXED_COMPRESSED_MSG#(numeric type t_NUM_INSTANCES,
+                                 numeric type t_MSG_SZ)
+    deriving (Eq, Bits);
+
+instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
+                     Bit#(t_ENC_SZ),
+                     Bit#(1),
+                     // We don't know which is larger: the message or the
+                     // no-message count.  The low portion of the two connections
+                     // is the maybe bit, the iid and the smaller of the
+                     // message and the no-message count.  The high portion
+                     // is the remainder of either the message or the no-message
+                     // count, depending on which is larger.
+                     HList2#(Bit#(TSub#(t_LARGER_PAYLOAD_SZ, t_SMALLER_PAYLOAD_SZ)),
+                             Bit#(TAdd#(t_SMALLER_PAYLOAD_SZ, TAdd#(t_IID_SZ, 1)))),
+                     CONNECTED_MODULE)
+    provisos (Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_DATA),
+              Bits#(t_DATA, t_DATA_SZ),
+              Bits#(t_MSG, t_MSG_SZ),
+              NumAlias#(INSTANCE_ID_BITS#(t_NUM_INSTANCES), t_IID_SZ),
+              Alias#(PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG_SZ), t_ENC),
+              Bits#(t_ENC, t_ENC_SZ),
+              // Compute larger & smaller of message and no-message counter
+              Max#(t_MSG_SZ, NOMSG_CNT_SZ, t_LARGER_PAYLOAD_SZ),
+              Min#(t_MSG_SZ, NOMSG_CNT_SZ, t_SMALLER_PAYLOAD_SZ));
+
+    module [CONNECTED_MODULE] mkCompressorMC (COMPRESSION_ENCODER#(t_DATA, Bit#(t_ENC_SZ)));
+        FIFOF#(t_DATA) inQ <- mkBypassFIFOF();
+        FIFOF#(t_ENC) outQ <- mkFIFOF();
+
+        // Compressor state
+        Reg#(Maybe#(INSTANCE_ID#(t_NUM_INSTANCES))) compStartIID <- mkReg(tagged Invalid);
+        Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) compLastIID <- mkRegU();
+        Reg#(UInt#(NOMSG_CNT_SZ)) compNoMsgCount <- mkRegU();
+
+        // Permit run-time limit on timeout so we can determine optimum value
+        PARAMETER_NODE paramNode <- mkDynamicParameterNode();
+        Param#(10) paramMaxWaitCycles <-
+            mkDynamicParameter(`PARAMS_HASIM_MODELLIB_APORT_COMPRESS_TIMEOUT, paramNode);
+        Reg#(Bit#(10)) compTimeOut <- mkConfigReg(0);
 
 
-    endmethod
-  
-endmodule
+        function t_ENC encodeNoMessages(INSTANCE_ID#(t_NUM_INSTANCES) iid,
+                                        UInt#(NOMSG_CNT_SZ) cnt);
+            PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG_SZ) cmp;
+            cmp.payload = zeroExtendNP(pack(cnt));
+            cmp.iid = iid;
+            cmp.maybe = False;
 
-module [Connected_Module] mkPortRecvDependent#(String portname)
-    // interface:
-                (PORT_RECV#(t_MSG))
-      provisos
-                (Bits#(t_MSG, t_MSG_SZ));
-    
-    let m <- mkPortRecv_L0(portname);
-    return m;
-    
-endmodule
+            return cmp;
+        endfunction
 
-module [Connected_Module] mkPortRecvDependent_Multiplexed#(String portname)
-    // interface:
-                (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
-      provisos
-                (Bits#(t_MSG, t_MSG_SZ));
-    
-    let m <- mkPortRecvL0_Multiplexed(portname);
-    return m;
-    
-endmodule
+        function t_ENC encodeMessage(INSTANCE_ID#(t_NUM_INSTANCES) iid,
+                                     t_MSG msg);
+            PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG_SZ) cmp;
+            cmp.payload = zeroExtendNP(pack(msg));
+            cmp.iid = iid;
+            cmp.maybe = True;
+
+            return cmp;
+        endfunction
+
+
+        //
+        // Timeout logic:
+        //     Increment saturating compTimeOut counter.  When saturated a decision
+        //     is forced in timeOut below to flush the current compressed NoMessage
+        //     state.
+        //
+        let noMsgCompressorTimeout = (compTimeOut == paramMaxWaitCycles);
+
+        (* fire_when_enabled *)
+        rule timeOutIncr (compTimeOut != paramMaxWaitCycles);
+            compTimeOut <= compTimeOut + 1;
+        endrule
+
+        rule timeOut (outQ.notFull && noMsgCompressorTimeout);
+            compTimeOut <= 0;
+
+            if (compStartIID matches tagged Valid .nomsg_iid)
+            begin
+                outQ.enq(encodeNoMessages(nomsg_iid, compNoMsgCount));
+                compStartIID <= tagged Invalid;
+            end
+        endrule
+
+        //
+        // compressInQ --
+        //     Convert the incoming message stream into a compressed stream by
+        //     merging groups of no-message.
+        //
+        (* conservative_implicit_conditions *)
+        rule compressInQ (outQ.notFull && ! noMsgCompressorTimeout);
+            match {.iid, .m} = inQ.first();
+
+            if (m matches tagged Valid .msg)
+            begin
+                // Incoming message is valid.  Are there buffered no-messages?
+                if (compStartIID matches tagged Valid .nomsg_iid)
+                begin
+                    // Yes.  First send the buffered set.
+                    outQ.enq(encodeNoMessages(nomsg_iid, compNoMsgCount));
+                    compStartIID <= tagged Invalid;
+                end
+                else
+                begin
+                    // No.  Send the incoming message.
+                    outQ.enq(encodeMessage(iid, msg));
+                    inQ.deq();
+                end
+            end
+            else
+            begin
+                // Incoming no-message.  Try to compress it.
+
+                // Will definitely consume inQ this cycle
+                inQ.deq();
+
+                // Are there already buffered no-messages?
+                if (compStartIID matches tagged Valid .nomsg_iid)
+                begin
+                    // To be merged, IIDs must be contiguous and the count can't
+                    // overflow.
+                    if ((compNoMsgCount != maxBound) && (iid == compLastIID + 1))
+                    begin
+                        compNoMsgCount <= compNoMsgCount + 1;
+                        compLastIID <= iid;
+                    end
+                    else
+                    begin
+                        // Can't merge.  Send the previous compressor state and
+                        // start a new region.
+                        outQ.enq(encodeNoMessages(nomsg_iid, compNoMsgCount));
+
+                        compStartIID <= tagged Valid iid;
+                        compLastIID <= iid;
+                        compNoMsgCount <= 0;
+                    end
+                end
+                else
+                begin
+                    // This is the first no-message.
+                    compStartIID <= tagged Valid iid;
+                    compLastIID <= iid;
+                    compNoMsgCount <= 0;
+                end
+            end
+        endrule
+
+
+        method enq(t_DATA val) = inQ.enq(val);
+        method notFull() = inQ.notFull();
+
+        method first();
+            let val = outQ.first();
+
+            // Compute the compressed message length (in bits).  Add 1 for the
+            // tag bit.
+            Integer data_len = 1 + valueOf(t_IID_SZ) +
+                               (val.maybe ? valueOf(t_MSG_SZ) :
+                                            valueOf(NOMSG_CNT_SZ));
+
+            return tuple2(pack(val), data_len);
+        endmethod
+
+        method deq() = outQ.deq();
+        method notEmpty() = outQ.notEmpty();
+    endmodule
+
+
+    module [CONNECTED_MODULE] mkDecompressorMC (COMPRESSION_DECODER#(t_DATA, Bit#(t_ENC_SZ), Bit#(1)));
+        FIFOF#(t_ENC) inQ <- mkBypassFIFOF();
+        FIFOF#(t_DATA) outQ <- mkBypassFIFOF();
+
+        Reg#(Maybe#(INSTANCE_ID#(t_NUM_INSTANCES))) compIID <- mkReg(tagged Invalid);
+        Reg#(UInt#(NOMSG_CNT_SZ)) compNoMsgCount <- mkRegU();
+
+        //
+        // decompress --
+        //   Decompress runs of no-message.
+        //
+        rule decompress (compIID matches tagged Valid .iid);
+            outQ.enq(tuple2(iid, tagged Invalid));
+
+            let cnt = compNoMsgCount - 1;
+            compNoMsgCount <= cnt;
+
+            // Done if cnt is 0, otherwise prepare for next instance.
+            compIID <= (cnt == 0) ? tagged Invalid : tagged Valid (iid + 1);
+        endrule
+
+        //
+        // shift --
+        //   Pass received messages to the FIFO buffer.
+        //
+        rule shift (inQ.notEmpty() && ! isValid(compIID));
+            let val = inQ.first();
+            inQ.deq();
+
+            if (val.maybe)
+            begin
+                outQ.enq(tuple2(val.iid,
+                                tagged Valid unpack(truncateNP(val.payload))));
+            end
+            else
+            begin
+                // One more more no-messages
+                outQ.enq(tuple2(val.iid, tagged Invalid));
+
+                // Counter is 0-based
+                UInt#(NOMSG_CNT_SZ) cnt = unpack(truncateNP(val.payload));
+                if (cnt != 0)
+                begin
+                    compIID <= tagged Valid (val.iid + 1);
+                    compNoMsgCount <= cnt;
+                end
+            end
+        endrule
+
+
+        method Action enq(cval) = inQ.enq(unpack(cval));
+        method Bool notFull() = inQ.notFull();
+
+        method t_DATA first() = outQ.first();
+        method Action deq() = outQ.deq();
+        method Bool notEmpty() = outQ.notEmpty();
+
+        method Integer numInBits(partialVal);
+            return 1 + valueOf(t_IID_SZ) +
+                   (partialVal == 1 ? valueOf(t_MSG_SZ) : valueOf(NOMSG_CNT_SZ));
+        endmethod
+    endmodule
+endinstance
+
+`endif

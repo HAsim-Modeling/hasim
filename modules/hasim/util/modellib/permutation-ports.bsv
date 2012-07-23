@@ -42,8 +42,8 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
          Alias#(Bit#(TLog#(n_SLOTS)), t_SLOT_IDX),
          Bits#(t_SLOT_IDX, t_SLOT_IDX_SZ));
 
-    Connection_Receive#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) con <- mkConnection_Receive(portname);
-    
+    CONNECTION_RECV#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)) con <- mkPortRecv_MaybeCompressed(portname);
+
     Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) maxInstance <- mkReg(fromInteger(valueof(t_NUM_INSTANCES) - 1));
 
     Integer rMax = (latency * valueof(t_NUM_INSTANCES)) + 1;
@@ -53,13 +53,13 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
         error("Latency exceeds current maximum. Port: " + portname);
     end
 
-    function Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG)) initfunc(t_SLOT_IDX idx);
+    function PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG) initfunc(t_SLOT_IDX idx);
         INSTANCE_ID#(t_NUM_INSTANCES) iid = truncateNP(idx);
         return tuple2(iid, tagged Invalid);
     endfunction
 
-    LUTRAM#(t_SLOT_IDX, Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) rs <- mkLUTRAMWith(initfunc);
-    LUTRAM#(t_SLOT_IDX, Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))) sideBuffer <- mkLUTRAMWith(initfunc);
+    LUTRAM#(t_SLOT_IDX, PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)) rs <- mkLUTRAMWith(initfunc);
+    LUTRAM#(t_SLOT_IDX, PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)) sideBuffer <- mkLUTRAMWith(initfunc);
 
     COUNTER#(t_SLOT_IDX_SZ) head <- mkLCounter(0);
     COUNTER#(t_SLOT_IDX_SZ) tail <- mkLCounter((fromInteger(latency * (valueof(t_NUM_INSTANCES) - 1))));

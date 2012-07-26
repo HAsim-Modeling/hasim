@@ -639,27 +639,23 @@ endmodule
 // of the Maybe#() in the no-message case, sending only one bit.
 //
 
-typedef struct
-{
-    t_MSG msg;
-    INSTANCE_ID#(t_NUM_INSTANCES) iid;
-    Bool maybe;
-}
-PORT_MULTIPLEXED_COMPRESSED_MSG#(numeric type t_NUM_INSTANCES, type t_MSG)
-    deriving (Eq, Bits);
-
 instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
-                     Bit#(t_ENC_SZ),
-                     Bit#(1),
-                     HList2#(Bit#(t_MSG_SZ), Bit#(TAdd#(t_IID_SZ, 1))),
+                     // The encoded message (just moves fields around)
+                     HList2#(t_MSG, Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Bool)),
+                     // The "decoder" needed to figure out the message size
+                     Bool,
                      CONNECTED_MODULE)
     provisos (Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_DATA),
               Bits#(t_DATA, t_DATA_SZ),
               Bits#(t_MSG, t_MSG_SZ),
               NumAlias#(INSTANCE_ID_BITS#(t_NUM_INSTANCES), t_IID_SZ),
-              Bits#(PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG), t_ENC_SZ));
+              Alias#(t_ENC_DATA, HList2#(t_MSG, Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Bool))),
+              Bits#(t_ENC_DATA, t_ENC_DATA_SZ));
 
-    module [CONNECTED_MODULE] mkCompressorMC (COMPRESSION_ENCODER#(t_DATA, Bit#(t_ENC_SZ)));
+    module [CONNECTED_MODULE] mkCompressorMC
+        // Interface:
+        (COMPRESSION_ENCODER#(t_DATA, t_ENC_DATA));
+
         FIFOF#(t_DATA) inQ <- mkBypassFIFOF();
 
         method enq(t_DATA val) = inQ.enq(val);
@@ -668,29 +664,30 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         method first();
             let val = inQ.first();
 
-            // Extract the tag (high bit) and data (the remainder)
-            PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG) cmp;
-            cmp.msg = validValue(tpl_2(val));
-            cmp.iid = tpl_1(val);
-            cmp.maybe = isValid(tpl_2(val));
+            // Extract fields
+            match {.iid, .msg} = val;
 
             // Compute the compressed message length (in bits).  Add 1 for the
             // tag bit.
             Integer data_len = 1 + valueOf(t_IID_SZ) +
-                               (isValid(tpl_2(val)) ? valueOf(t_MSG_SZ) : 0);
+                               (isValid(msg) ? valueOf(t_MSG_SZ) : 0);
 
             // The message is compressed by moving the tag to the low bit so it
             // will be next to the useful data.  The 2nd element in the returned
             // tuple is the compressed length.
-            return tuple2(pack(cmp), data_len);
+            return tuple2(hList2(validValue(msg), tuple2(iid, isValid(msg))),
+                          data_len);
         endmethod
 
         method deq() = inQ.deq();
         method notEmpty() = inQ.notEmpty();
     endmodule
 
-    module [CONNECTED_MODULE] mkDecompressorMC (COMPRESSION_DECODER#(t_DATA, Bit#(t_ENC_SZ), Bit#(1)));
-        FIFOF#(Bit#(t_ENC_SZ)) inQ <- mkBypassFIFOF();
+    module [CONNECTED_MODULE] mkDecompressorMC
+        // Interface:
+        (COMPRESSION_DECODER#(t_DATA, t_ENC_DATA, Bool));
+
+        FIFOF#(t_ENC_DATA) inQ <- mkBypassFIFOF();
 
         method Action enq(cval) = inQ.enq(cval);
         method Bool notFull() = inQ.notFull();
@@ -698,18 +695,21 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         method t_DATA first();
             let cval = inQ.first();
 
-            PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG) cmp = unpack(cval);
-            if (cmp.maybe)
-                return tuple2(cmp.iid, tagged Valid cmp.msg);
+            let msg_data = hHead(cval);
+            let iid = tpl_1(hLast(cval));
+            let maybe = tpl_2(hLast(cval));
+
+            if (maybe)
+                return tuple2(iid, tagged Valid msg_data);
             else
-                return tuple2(cmp.iid, tagged Invalid);
+                return tuple2(iid, tagged Invalid);
         endmethod
 
         method Action deq() = inQ.deq();
         method Bool notEmpty() = inQ.notEmpty();
 
-        method Integer numInBits(partialVal);
-            return (partialVal == 1) ? valueOf(t_DATA_SZ) : 1 + valueOf(t_IID_SZ);
+        method Integer numInBits(maybe);
+            return (maybe) ? valueOf(t_ENC_DATA_SZ) : 1 + valueOf(t_IID_SZ);
         endmethod
     endmodule
 endinstance
@@ -738,8 +738,7 @@ PORT_MULTIPLEXED_COMPRESSED_MSG#(numeric type t_NUM_INSTANCES,
     deriving (Eq, Bits);
 
 instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
-                     Bit#(t_ENC_SZ),
-                     Bit#(1),
+                     // The encoded message:
                      // We don't know which is larger: the message or the
                      // no-message count.  The low portion of the two connections
                      // is the maybe bit, the iid and the smaller of the
@@ -747,21 +746,38 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
                      // is the remainder of either the message or the no-message
                      // count, depending on which is larger.
                      HList2#(Bit#(TSub#(t_LARGER_PAYLOAD_SZ, t_SMALLER_PAYLOAD_SZ)),
-                             Bit#(TAdd#(t_SMALLER_PAYLOAD_SZ, TAdd#(t_IID_SZ, 1)))),
+                             Tuple3#(Bit#(t_SMALLER_PAYLOAD_SZ),
+                                     INSTANCE_ID#(t_NUM_INSTANCES),
+                                     Bool)),
+                     // The "decoder" needed to figure out the message size
+                     Bool,
                      CONNECTED_MODULE)
     provisos (Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_DATA),
               Bits#(t_DATA, t_DATA_SZ),
               Bits#(t_MSG, t_MSG_SZ),
               NumAlias#(INSTANCE_ID_BITS#(t_NUM_INSTANCES), t_IID_SZ),
+              Alias#(t_ENC_DATA,
+                     HList2#(Bit#(TSub#(t_LARGER_PAYLOAD_SZ, t_SMALLER_PAYLOAD_SZ)),
+                             Tuple3#(Bit#(t_SMALLER_PAYLOAD_SZ),
+                                     INSTANCE_ID#(t_NUM_INSTANCES),
+                                     Bool))),
+              Bits#(t_ENC_DATA, t_ENC_DATA_SZ),
+              // A more convenient internal representation of the compressed
+              // type.  It can be converted to the HList using pack/unpack.
               Alias#(PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG_SZ), t_ENC),
-              Bits#(t_ENC, t_ENC_SZ),
+              // Assert that the internal type is the same size as the exported
+              // compressed type.
+              Bits#(t_ENC, t_ENC_DATA_SZ),
               // Compute larger & smaller of message and no-message counter
               Max#(t_MSG_SZ, NOMSG_CNT_SZ, t_LARGER_PAYLOAD_SZ),
               Min#(t_MSG_SZ, NOMSG_CNT_SZ, t_SMALLER_PAYLOAD_SZ));
 
-    module [CONNECTED_MODULE] mkCompressorMC (COMPRESSION_ENCODER#(t_DATA, Bit#(t_ENC_SZ)));
+    module [CONNECTED_MODULE] mkCompressorMC
+        // Interface:
+        (COMPRESSION_ENCODER#(t_DATA, t_ENC_DATA));
+
         FIFOF#(t_DATA) inQ <- mkBypassFIFOF();
-        FIFOF#(t_ENC) outQ <- mkFIFOF();
+        FIFOF#(t_ENC_DATA) outQ <- mkFIFOF();
 
         // Compressor state
         Reg#(Maybe#(INSTANCE_ID#(t_NUM_INSTANCES))) compStartIID <- mkReg(tagged Invalid);
@@ -775,24 +791,24 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         Reg#(Bit#(10)) compTimeOut <- mkConfigReg(0);
 
 
-        function t_ENC encodeNoMessages(INSTANCE_ID#(t_NUM_INSTANCES) iid,
-                                        UInt#(NOMSG_CNT_SZ) cnt);
+        function t_ENC_DATA encodeNoMessages(INSTANCE_ID#(t_NUM_INSTANCES) iid,
+                                             UInt#(NOMSG_CNT_SZ) cnt);
             PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG_SZ) cmp;
             cmp.payload = zeroExtendNP(pack(cnt));
             cmp.iid = iid;
             cmp.maybe = False;
 
-            return cmp;
+            return unpack(pack(cmp));
         endfunction
 
-        function t_ENC encodeMessage(INSTANCE_ID#(t_NUM_INSTANCES) iid,
-                                     t_MSG msg);
+        function t_ENC_DATA encodeMessage(INSTANCE_ID#(t_NUM_INSTANCES) iid,
+                                          t_MSG msg);
             PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG_SZ) cmp;
             cmp.payload = zeroExtendNP(pack(msg));
             cmp.iid = iid;
             cmp.maybe = True;
 
-            return cmp;
+            return unpack(pack(cmp));
         endfunction
 
 
@@ -888,14 +904,15 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
 
         method first();
             let val = outQ.first();
+            Bool maybe = tpl_3(hLast(val));
 
             // Compute the compressed message length (in bits).  Add 1 for the
             // tag bit.
             Integer data_len = 1 + valueOf(t_IID_SZ) +
-                               (val.maybe ? valueOf(t_MSG_SZ) :
-                                            valueOf(NOMSG_CNT_SZ));
+                               (maybe ? valueOf(t_MSG_SZ) :
+                                        valueOf(NOMSG_CNT_SZ));
 
-            return tuple2(pack(val), data_len);
+            return tuple2(val, data_len);
         endmethod
 
         method deq() = outQ.deq();
@@ -903,8 +920,11 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
     endmodule
 
 
-    module [CONNECTED_MODULE] mkDecompressorMC (COMPRESSION_DECODER#(t_DATA, Bit#(t_ENC_SZ), Bit#(1)));
-        FIFOF#(t_ENC) inQ <- mkBypassFIFOF();
+    module [CONNECTED_MODULE] mkDecompressorMC
+        // Interface:
+        (COMPRESSION_DECODER#(t_DATA, t_ENC_DATA, Bool));
+
+        FIFOF#(t_ENC_DATA) inQ <- mkBypassFIFOF();
         FIFOF#(t_DATA) outQ <- mkBypassFIFOF();
 
         Reg#(Maybe#(INSTANCE_ID#(t_NUM_INSTANCES))) compIID <- mkReg(tagged Invalid);
@@ -929,7 +949,7 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         //   Pass received messages to the FIFO buffer.
         //
         rule shift (inQ.notEmpty() && ! isValid(compIID));
-            let val = inQ.first();
+            t_ENC val = unpack(pack(inQ.first()));
             inQ.deq();
 
             if (val.maybe)
@@ -953,16 +973,16 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         endrule
 
 
-        method Action enq(cval) = inQ.enq(unpack(cval));
+        method Action enq(cval) = inQ.enq(cval);
         method Bool notFull() = inQ.notFull();
 
         method t_DATA first() = outQ.first();
         method Action deq() = outQ.deq();
         method Bool notEmpty() = outQ.notEmpty();
 
-        method Integer numInBits(partialVal);
+        method Integer numInBits(maybe);
             return 1 + valueOf(t_IID_SZ) +
-                   (partialVal == 1 ? valueOf(t_MSG_SZ) : valueOf(NOMSG_CNT_SZ));
+                   (maybe ? valueOf(t_MSG_SZ) : valueOf(NOMSG_CNT_SZ));
         endmethod
     endmodule
 endinstance

@@ -25868,3 +25868,14 @@ FPGA cycles to wait for another no-message to merge after seeing a no-message.
 When the default value of APORT_COMPRESS_TIMEOUT is 0 the compression mode
 is statically set to Maybe#(t_MSG) compression only, with no option for
 merging no-messages.
+
+----------
+mcadler     Date: Thu Jul 26 08:21:37 EDT 2012  CSN: CSN-hasim-888
+                  Thu Jul 26 12:21:37 UTC 2012
+
+
+Directory modules/hasim/util/modellib
+ a-ports.bsv               Locally Modified          887 
+
+Update compressors for new typeclass parameters.  The encoded type now describes
+the mapping to chunks instead of requiring a separate mapping parameter.

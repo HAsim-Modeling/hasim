@@ -271,7 +271,7 @@ module [HASIM_MODULE] mkPortRecv_L1#(String portname, Maybe#(t_MSG) init_value)
 endmodule
 
 
-module [Connected_Module] mkPortRecvDependent#(String portname)
+module [CONNECTED_MODULE] mkPortRecvDependent#(String portname)
     // interface:
                 (PORT_RECV#(t_MSG))
       provisos
@@ -577,7 +577,8 @@ module [HASIM_MODULE] mkPortSend_MaybeCompressed#(String portname)
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
          Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_MUX_MSG),
-         Bits#(t_MUX_MSG, t_MUX_MSG_SZ));
+         Bits#(t_MUX_MSG, t_MUX_MSG_SZ),
+         Compress#(t_MUX_MSG, t_ENC_DATA));
 
     CONNECTION_SEND#(t_MUX_MSG) con;
 
@@ -606,7 +607,8 @@ module [HASIM_MODULE] mkPortRecv_MaybeCompressed#(String portname)
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
          Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_MUX_MSG),
-         Bits#(t_MUX_MSG, t_MUX_MSG_SZ));
+         Bits#(t_MUX_MSG, t_MUX_MSG_SZ),
+         Compress#(t_MUX_MSG, t_ENC_DATA));
 
     CONNECTION_RECV#(t_MUX_MSG) con;
 
@@ -632,6 +634,71 @@ endmodule
 //
 // ========================================================================
 
+
+// Messages will be compressed to this tagged union.  The multi-FPGA compiler
+// is capable of mapping tagged unions to multiple channels and sending
+// only the data required.  A CompressionChunks instance is provided below
+// for accomplishing the same, using multiple soft connections, within
+// Bluespec.
+typedef union tagged
+{
+    PORT_MULTIPLEXED_CMP_NOMSG#(t_NUM_INSTANCES) NoMSG;
+    PORT_MULTIPLEXED_CMP_MSG#(t_NUM_INSTANCES, t_MSG) MSG;
+}
+PORT_MULTIPLEXED_MSG_COMPRESSED#(numeric type t_NUM_INSTANCES, type t_MSG)
+    deriving (Eq);
+
+
+//
+// The compiler fails to derive Bits for PORT_MULTIPLEXED_MSG_COMPRESSED
+// because of the complexity of an instance ID.  Give the poor compiler some
+// help.
+//
+instance Bits#(PORT_MULTIPLEXED_MSG_COMPRESSED#(t_NUM_INSTANCES, t_MSG), t_SZ)
+    provisos (// The packed size is the tag size plus the max field size
+              Add#(t_TAG_SZ, t_MAX_FIELD_SZ, t_SZ),
+              NumAlias#(t_TAG_SZ, 1),
+              // Sizes of the fields
+              Bits#(PORT_MULTIPLEXED_CMP_NOMSG#(t_NUM_INSTANCES), t_NOMSG_SZ),
+              Bits#(PORT_MULTIPLEXED_CMP_MSG#(t_NUM_INSTANCES, t_MSG), t_MSG_SZ),
+              Max#(t_NOMSG_SZ, t_MSG_SZ, t_MAX_FIELD_SZ));
+
+   function pack(data);
+       case (data) matches
+           tagged NoMSG .d:
+           begin
+               Bit#(TAdd#(t_NOMSG_SZ, t_MAX_FIELD_SZ)) b = ?;
+               b[valueOf(t_NOMSG_SZ)-1:0] = pack(d);
+               return { 1'b0, truncate(b) };
+           end
+
+           tagged MSG .d:
+           begin
+               Bit#(TAdd#(t_MSG_SZ, t_MAX_FIELD_SZ)) b = ?;
+               b[valueOf(t_MSG_SZ)-1:0] = pack(d);
+               return { 1'b1, truncate(b) };
+           end
+       endcase
+    endfunction
+
+    function unpack(b);
+        if (msb(b) == 0)
+            return tagged NoMSG unpack(b[valueOf(t_NOMSG_SZ)-1:0]);
+        else
+            return tagged MSG unpack(b[valueOf(t_MSG_SZ)-1:0]);
+    endfunction
+endinstance
+
+// Payload sent for actual messages.
+typedef struct
+{
+    t_MSG msg;
+    INSTANCE_ID#(t_NUM_INSTANCES) iid;
+}
+PORT_MULTIPLEXED_CMP_MSG#(numeric type t_NUM_INSTANCES, type t_MSG)
+    deriving (Eq, Bits);
+
+
 `ifdef APORT_COMPRESS_TIMEOUT_DYNDEFAULT_Z
 
 //
@@ -639,20 +706,26 @@ endmodule
 // of the Maybe#() in the no-message case, sending only one bit.
 //
 
-instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
-                     // The encoded message (just moves fields around)
-                     HList2#(t_MSG, Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Bool)),
-                     // The "decoder" needed to figure out the message size
-                     Bool,
-                     CONNECTED_MODULE)
-    provisos (Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_DATA),
-              Bits#(t_DATA, t_DATA_SZ),
-              Bits#(t_MSG, t_MSG_SZ),
-              NumAlias#(INSTANCE_ID_BITS#(t_NUM_INSTANCES), t_IID_SZ),
-              Alias#(t_ENC_DATA, HList2#(t_MSG, Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Bool))),
-              Bits#(t_ENC_DATA, t_ENC_DATA_SZ));
+// Payload sent for no-message.
+typedef struct
+{
+    INSTANCE_ID#(t_NUM_INSTANCES) iid;
+}
+PORT_MULTIPLEXED_CMP_NOMSG#(numeric type t_NUM_INSTANCES)
+    deriving (Eq, Bits);
 
-    module [CONNECTED_MODULE] mkCompressorMC
+
+instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
+                   // The encoded message (just moves fields around)
+                   PORT_MULTIPLEXED_MSG_COMPRESSED#(t_NUM_INSTANCES, t_MSG))
+    provisos (Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_DATA),
+              Alias#(PORT_MULTIPLEXED_MSG_COMPRESSED#(t_NUM_INSTANCES, t_MSG), t_ENC_DATA),
+              Bits#(t_DATA, t_DATA_SZ),
+              Bits#(t_ENC_DATA, t_ENC_DATA_SZ),
+              Bits#(t_MSG, t_MSG_SZ),
+              NumAlias#(INSTANCE_ID_BITS#(t_NUM_INSTANCES), t_IID_SZ));
+
+    module mkCompressor
         // Interface:
         (COMPRESSION_ENCODER#(t_DATA, t_ENC_DATA));
 
@@ -667,25 +740,20 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
             // Extract fields
             match {.iid, .msg} = val;
 
-            // Compute the compressed message length (in bits).  Add 1 for the
-            // tag bit.
-            Integer data_len = 1 + valueOf(t_IID_SZ) +
-                               (isValid(msg) ? valueOf(t_MSG_SZ) : 0);
+            let cmp_msg = isValid(msg) ?
+                    tagged MSG PORT_MULTIPLEXED_CMP_MSG { msg: validValue(msg), iid: iid } :
+                    tagged NoMSG PORT_MULTIPLEXED_CMP_NOMSG { iid: iid };
 
-            // The message is compressed by moving the tag to the low bit so it
-            // will be next to the useful data.  The 2nd element in the returned
-            // tuple is the compressed length.
-            return tuple2(hList2(validValue(msg), tuple2(iid, isValid(msg))),
-                          data_len);
+            return cmp_msg;
         endmethod
 
         method deq() = inQ.deq();
         method notEmpty() = inQ.notEmpty();
     endmodule
 
-    module [CONNECTED_MODULE] mkDecompressorMC
+    module mkDecompressor
         // Interface:
-        (COMPRESSION_DECODER#(t_DATA, t_ENC_DATA, Bool));
+        (COMPRESSION_DECODER#(t_DATA, t_ENC_DATA));
 
         FIFOF#(t_ENC_DATA) inQ <- mkBypassFIFOF();
 
@@ -695,22 +763,16 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         method t_DATA first();
             let cval = inQ.first();
 
-            let msg_data = hHead(cval);
-            let iid = tpl_1(hLast(cval));
-            let maybe = tpl_2(hLast(cval));
+            let val =  case (cval) matches
+                           tagged NoMSG .d: tuple2(d.iid, tagged Invalid);
+                           tagged MSG .d: tuple2(d.iid, tagged Valid d.msg);
+                       endcase;
 
-            if (maybe)
-                return tuple2(iid, tagged Valid msg_data);
-            else
-                return tuple2(iid, tagged Invalid);
+            return val;
         endmethod
 
         method Action deq() = inQ.deq();
         method Bool notEmpty() = inQ.notEmpty();
-
-        method Integer numInBits(maybe);
-            return (maybe) ? valueOf(t_ENC_DATA_SZ) : 1 + valueOf(t_IID_SZ);
-        endmethod
     endmodule
 endinstance
 
@@ -725,54 +787,29 @@ endinstance
 // Size of the merged no-message counter
 typedef 6 NOMSG_CNT_SZ;
 
+// No-message details, including the count of contiguous no-messages.
+// Instance IDs are assumed to be monotonically incrementing on the receive
+// side.  (That this is true is checked on the send side.)
 typedef struct
 {
-    // "payload" is either the message, when "maybe" is true or a
-    // NOMSG_CNT_SZ bit no-message count when "maybe" is false.
-    Bit#(TMax#(t_MSG_SZ, NOMSG_CNT_SZ)) payload;
+    UInt#(NOMSG_CNT_SZ) noMsgCnt;
     INSTANCE_ID#(t_NUM_INSTANCES) iid;
-    Bool maybe;
 }
-PORT_MULTIPLEXED_COMPRESSED_MSG#(numeric type t_NUM_INSTANCES,
-                                 numeric type t_MSG_SZ)
+PORT_MULTIPLEXED_CMP_NOMSG#(numeric type t_NUM_INSTANCES)
     deriving (Eq, Bits);
 
-instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
-                     // The encoded message:
-                     // We don't know which is larger: the message or the
-                     // no-message count.  The low portion of the two connections
-                     // is the maybe bit, the iid and the smaller of the
-                     // message and the no-message count.  The high portion
-                     // is the remainder of either the message or the no-message
-                     // count, depending on which is larger.
-                     HList2#(Bit#(TSub#(t_LARGER_PAYLOAD_SZ, t_SMALLER_PAYLOAD_SZ)),
-                             Tuple3#(Bit#(t_SMALLER_PAYLOAD_SZ),
-                                     INSTANCE_ID#(t_NUM_INSTANCES),
-                                     Bool)),
-                     // The "decoder" needed to figure out the message size
-                     Bool,
-                     CONNECTED_MODULE)
-    provisos (Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_DATA),
-              Bits#(t_DATA, t_DATA_SZ),
-              Bits#(t_MSG, t_MSG_SZ),
-              NumAlias#(INSTANCE_ID_BITS#(t_NUM_INSTANCES), t_IID_SZ),
-              Alias#(t_ENC_DATA,
-                     HList2#(Bit#(TSub#(t_LARGER_PAYLOAD_SZ, t_SMALLER_PAYLOAD_SZ)),
-                             Tuple3#(Bit#(t_SMALLER_PAYLOAD_SZ),
-                                     INSTANCE_ID#(t_NUM_INSTANCES),
-                                     Bool))),
-              Bits#(t_ENC_DATA, t_ENC_DATA_SZ),
-              // A more convenient internal representation of the compressed
-              // type.  It can be converted to the HList using pack/unpack.
-              Alias#(PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG_SZ), t_ENC),
-              // Assert that the internal type is the same size as the exported
-              // compressed type.
-              Bits#(t_ENC, t_ENC_DATA_SZ),
-              // Compute larger & smaller of message and no-message counter
-              Max#(t_MSG_SZ, NOMSG_CNT_SZ, t_LARGER_PAYLOAD_SZ),
-              Min#(t_MSG_SZ, NOMSG_CNT_SZ, t_SMALLER_PAYLOAD_SZ));
 
-    module [CONNECTED_MODULE] mkCompressorMC
+instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
+                   // The encoded message (just moves fields around)
+                   PORT_MULTIPLEXED_MSG_COMPRESSED#(t_NUM_INSTANCES, t_MSG))
+    provisos (Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_DATA),
+              Alias#(PORT_MULTIPLEXED_MSG_COMPRESSED#(t_NUM_INSTANCES, t_MSG), t_ENC_DATA),
+              Bits#(t_DATA, t_DATA_SZ),
+              Bits#(t_ENC_DATA, t_ENC_DATA_SZ),
+              Bits#(t_MSG, t_MSG_SZ),
+              NumAlias#(INSTANCE_ID_BITS#(t_NUM_INSTANCES), t_IID_SZ));
+
+    module mkCompressor
         // Interface:
         (COMPRESSION_ENCODER#(t_DATA, t_ENC_DATA));
 
@@ -785,30 +822,23 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         Reg#(UInt#(NOMSG_CNT_SZ)) compNoMsgCount <- mkRegU();
 
         // Permit run-time limit on timeout so we can determine optimum value
-        PARAMETER_NODE paramNode <- mkDynamicParameterNode();
-        Param#(10) paramMaxWaitCycles <-
-            mkDynamicParameter(`PARAMS_HASIM_MODELLIB_APORT_COMPRESS_TIMEOUT, paramNode);
+//        PARAMETER_NODE paramNode <- mkDynamicParameterNode();
+//        Param#(10) paramMaxWaitCycles <-
+//            mkDynamicParameter(`PARAMS_HASIM_MODELLIB_APORT_COMPRESS_TIMEOUT, paramNode);
+        let paramMaxWaitCycles = 31;
         Reg#(Bit#(10)) compTimeOut <- mkConfigReg(0);
 
 
         function t_ENC_DATA encodeNoMessages(INSTANCE_ID#(t_NUM_INSTANCES) iid,
                                              UInt#(NOMSG_CNT_SZ) cnt);
-            PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG_SZ) cmp;
-            cmp.payload = zeroExtendNP(pack(cnt));
-            cmp.iid = iid;
-            cmp.maybe = False;
-
-            return unpack(pack(cmp));
+            return tagged NoMSG PORT_MULTIPLEXED_CMP_NOMSG { noMsgCnt: cnt,
+                                                             iid: iid };
         endfunction
 
         function t_ENC_DATA encodeMessage(INSTANCE_ID#(t_NUM_INSTANCES) iid,
                                           t_MSG msg);
-            PORT_MULTIPLEXED_COMPRESSED_MSG#(t_NUM_INSTANCES, t_MSG_SZ) cmp;
-            cmp.payload = zeroExtendNP(pack(msg));
-            cmp.iid = iid;
-            cmp.maybe = True;
-
-            return unpack(pack(cmp));
+            return tagged MSG PORT_MULTIPLEXED_CMP_MSG { msg: msg,
+                                                         iid: iid };
         endfunction
 
 
@@ -904,15 +934,7 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
 
         method first();
             let val = outQ.first();
-            Bool maybe = tpl_3(hLast(val));
-
-            // Compute the compressed message length (in bits).  Add 1 for the
-            // tag bit.
-            Integer data_len = 1 + valueOf(t_IID_SZ) +
-                               (maybe ? valueOf(t_MSG_SZ) :
-                                        valueOf(NOMSG_CNT_SZ));
-
-            return tuple2(val, data_len);
+            return val;
         endmethod
 
         method deq() = outQ.deq();
@@ -920,9 +942,9 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
     endmodule
 
 
-    module [CONNECTED_MODULE] mkDecompressorMC
+    module mkDecompressor
         // Interface:
-        (COMPRESSION_DECODER#(t_DATA, t_ENC_DATA, Bool));
+        (COMPRESSION_DECODER#(t_DATA, t_ENC_DATA));
 
         FIFOF#(t_ENC_DATA) inQ <- mkBypassFIFOF();
         FIFOF#(t_DATA) outQ <- mkBypassFIFOF();
@@ -948,28 +970,30 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         // shift --
         //   Pass received messages to the FIFO buffer.
         //
-        rule shift (inQ.notEmpty() && ! isValid(compIID));
-            t_ENC val = unpack(pack(inQ.first()));
+        rule shift (! isValid(compIID));
+            let enc = inQ.first();
             inQ.deq();
 
-            if (val.maybe)
-            begin
-                outQ.enq(tuple2(val.iid,
-                                tagged Valid unpack(truncateNP(val.payload))));
-            end
-            else
-            begin
-                // One more more no-messages
-                outQ.enq(tuple2(val.iid, tagged Invalid));
-
-                // Counter is 0-based
-                UInt#(NOMSG_CNT_SZ) cnt = unpack(truncateNP(val.payload));
-                if (cnt != 0)
+            case (enc) matches
+                tagged MSG .d:
                 begin
-                    compIID <= tagged Valid (val.iid + 1);
-                    compNoMsgCount <= cnt;
+                    outQ.enq(tuple2(d.iid,
+                                    tagged Valid d.msg));
                 end
-            end
+
+                tagged NoMSG .d:
+                begin
+                    // One more more no-messages
+                    outQ.enq(tuple2(d.iid, tagged Invalid));
+
+                    // Counter is 0-based
+                    if (d.noMsgCnt != 0)
+                    begin
+                        compIID <= tagged Valid (d.iid + 1);
+                        compNoMsgCount <= d.noMsgCnt;
+                    end
+                end
+            endcase
         endrule
 
 
@@ -979,12 +1003,87 @@ instance CompressMC#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         method t_DATA first() = outQ.first();
         method Action deq() = outQ.deq();
         method Bool notEmpty() = outQ.notEmpty();
-
-        method Integer numInBits(maybe);
-            return 1 + valueOf(t_IID_SZ) +
-                   (maybe ? valueOf(t_MSG_SZ) : valueOf(NOMSG_CNT_SZ));
-        endmethod
     endmodule
 endinstance
 
 `endif
+
+
+//
+// Map compressed port to chunks so they can be sent on multiple soft
+// connections.  The multi-FPGA router can do this automatically.  This
+// class exists to enable the chunk mapping within Bluespec without
+// the aid of an external program.  It is not needed for the multi-FPGA
+// router's compression.
+//
+instance CompressionChunks#(PORT_MULTIPLEXED_MSG_COMPRESSED#(t_NUM_INSTANCES, t_MSG),
+                            // The chunked message:
+                            // We don't know which is larger: the message or the
+                            // no-message payload.  The low portion of the two
+                            // chunks is the maybe bit, the iid and the smaller
+                            // of the message and the no-message payloads.
+                            // Both NoMSG and MSG payloads must have the IID
+                            // in their least significant bits!  The high portion
+                            // is the remainder of whichever type is larger.
+                            HList2#(Bit#(TSub#(t_LARGER_PAYLOAD_SZ, t_SMALLER_PAYLOAD_SZ)),
+                                    Tuple3#(Bit#(t_SMALLER_PAYLOAD_SZ),
+                                            INSTANCE_ID#(t_NUM_INSTANCES),
+                                            Bool)))
+    provisos (Bits#(t_MSG, t_MSG_SZ),
+              Alias#(t_ENC_DATA, PORT_MULTIPLEXED_MSG_COMPRESSED#(t_NUM_INSTANCES, t_MSG)),
+              Bits#(t_ENC_DATA, t_ENC_DATA_SZ),
+              Alias#(t_ENC_CHUNKS, HList2#(Bit#(TSub#(t_LARGER_PAYLOAD_SZ, t_SMALLER_PAYLOAD_SZ)),
+                                           Tuple3#(Bit#(t_SMALLER_PAYLOAD_SZ),
+                                                   INSTANCE_ID#(t_NUM_INSTANCES),
+                                                   Bool))),
+              HList#(t_ENC_CHUNKS),
+              Bits#(t_ENC_CHUNKS, t_ENC_CHUNKS_SZ),
+              Add#(a__, 1, t_ENC_CHUNKS_SZ),
+              Bits#(PORT_MULTIPLEXED_CMP_NOMSG#(t_NUM_INSTANCES), t_PORT_NOMSG_SZ),
+              Bits#(PORT_MULTIPLEXED_CMP_MSG#(t_NUM_INSTANCES, t_MSG), t_PORT_MSG_SZ),
+              NumAlias#(INSTANCE_ID_BITS#(t_NUM_INSTANCES), t_IID_SZ),
+              // "Payload" is the size without the IID
+              Add#(t_PORT_NOMSG_PAYLOAD_SZ, t_IID_SZ, t_PORT_NOMSG_SZ),
+              Add#(t_PORT_MSG_PAYLOAD_SZ, t_IID_SZ, t_PORT_MSG_SZ),
+              // Compute larger & smaller of message and no-message payloads
+              Max#(t_PORT_NOMSG_PAYLOAD_SZ, t_PORT_MSG_PAYLOAD_SZ, t_LARGER_PAYLOAD_SZ),
+              Min#(t_PORT_NOMSG_PAYLOAD_SZ, t_PORT_MSG_PAYLOAD_SZ, t_SMALLER_PAYLOAD_SZ));
+
+    function encDataToChunks(data);
+        // Encoding assumes that both the MSG and NoMSG payloads have an IID
+        // in their lowest bit positions.  Given that, the mapping to the chunks
+        // is a simple rotation of the tag bit from the MSB to the LSB.
+        Bit#(t_ENC_CHUNKS_SZ) p = sameSizeNP(pack(data));
+        return unpack({ p[valueOf(t_ENC_CHUNKS_SZ)-2:0], msb(p) });
+    endfunction
+
+    // Which chunks are valid in an encoded message?
+    function encDataToChunksMask(data);
+        Bool msgIsSmaller = valueOf(t_PORT_MSG_SZ) < valueOf(t_PORT_NOMSG_SZ);
+        Bool isMsg = case (data) matches
+                         tagged NoMSG .d: False;
+                         tagged MSG .d: True;
+                     endcase;
+
+        return list(unpack(pack(isMsg) ^ pack(msgIsSmaller)), True);
+    endfunction
+
+
+    // Map chunks to encoded data.  See encDataToChunks for description.
+    function chunksToEncData(chunks);
+        Bit#(t_ENC_DATA_SZ) b = sameSizeNP(pack(chunks));
+        return unpack({ lsb(b), b[valueOf(t_ENC_DATA_SZ)-1:1] });
+    endfunction
+
+    // The tag chunk must be read to decode a chunk.
+    function decodeRequiredChunksMask() = list(False, True);
+
+    // Which chunks are valid?  The Bool chunk is always valid and the overflow
+    // chunk is valid when the message is large.
+    function chunksToEncDataMask(key);
+        Bool msgIsSmaller = valueOf(t_PORT_MSG_SZ) < valueOf(t_PORT_NOMSG_SZ);
+        Bool isMsg = tpl_3(hLast(key));
+
+        return list(unpack(pack(isMsg) ^ pack(msgIsSmaller)), True);
+    endfunction
+endinstance

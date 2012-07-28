@@ -25890,3 +25890,15 @@ Directory modules/hasim/util/modellib
 
 Update for the new Compress typeclass usage, where the compressed output
 type is expected to be a tagged union.
+
+----------
+mcadler     Date: Fri Jul 27 21:24:11 EDT 2012  CSN: CSN-hasim-890
+                  Sat Jul 28 01:24:11 UTC 2012
+
+
+Directory modules/hasim/util/modellib
+ a-ports.bsv               Locally Modified          889 
+
+Compress typeclass now permits module context, allowing soft connections
+inside compressors.  Use a dynamic param to control the wait time in the
+no-message merging code.

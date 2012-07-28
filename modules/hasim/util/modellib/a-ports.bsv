@@ -91,7 +91,7 @@ interface PORT_RECV_MULTIPLEXED#(type t_NUM_INSTANCES, type t_MSG);
 
 endinterface
 
-module [HASIM_MODULE] mkPortSend#(String portname)
+module [CONNECTED_MODULE] mkPortSend#(String portname)
     //interface:
         (PORT_SEND#(t_MSG))
     provisos
@@ -117,7 +117,7 @@ module [HASIM_MODULE] mkPortSend#(String portname)
   
 endmodule
 
-module [HASIM_MODULE] mkPortRecv#(String portname, Integer latency)
+module [CONNECTED_MODULE] mkPortRecv#(String portname, Integer latency)
   //interface:
               (PORT_RECV#(t_MSG))
       provisos
@@ -133,7 +133,7 @@ module [HASIM_MODULE] mkPortRecv#(String portname, Integer latency)
 
 endmodule
 
-module [HASIM_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Integer extra_buffering, Maybe#(t_MSG) init_value)
+module [CONNECTED_MODULE] mkPortRecv_Buffered#(String portname, Integer latency, Integer extra_buffering, Maybe#(t_MSG) init_value)
     //interface:
                 (PORT_RECV#(t_MSG))
       provisos
@@ -200,7 +200,7 @@ endmodule
 
 //Port optimized for latency 0
 
-module [HASIM_MODULE] mkPortRecv_L0#(String portname)
+module [CONNECTED_MODULE] mkPortRecv_L0#(String portname)
     //interface:
                 (PORT_RECV#(t_MSG))
       provisos
@@ -232,7 +232,7 @@ endmodule
 
 //Port optimized for latency 1
 
-module [HASIM_MODULE] mkPortRecv_L1#(String portname, Maybe#(t_MSG) init_value)
+module [CONNECTED_MODULE] mkPortRecv_L1#(String portname, Maybe#(t_MSG) init_value)
     //interface:
                 (PORT_RECV#(t_MSG))
       provisos
@@ -292,7 +292,7 @@ endmodule
 typedef Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))
     PORT_MULTIPLEXED_MSG#(numeric type t_NUM_INSTANCES, type t_MSG);
 
-module [HASIM_MODULE] mkPortSend_Multiplexed#(String portname)
+module [CONNECTED_MODULE] mkPortSend_Multiplexed#(String portname)
     //interface:
         (PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -319,7 +319,7 @@ module [HASIM_MODULE] mkPortSend_Multiplexed#(String portname)
 endmodule
 
 
-module [HASIM_MODULE] mkPortRecv_Multiplexed#(String portname, Integer latency)
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed#(String portname, Integer latency)
     //interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -336,7 +336,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed#(String portname, Integer latency)
 endmodule
 
 
-module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer latency)
+module [CONNECTED_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer latency)
     //interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -347,7 +347,7 @@ module [HASIM_MODULE] mkPortRecvBuffered_Multiplexed#(String portname, Integer l
 endmodule
 
 
-module [HASIM_MODULE] mkPortRecvL0_Multiplexed#(String portname)
+module [CONNECTED_MODULE] mkPortRecvL0_Multiplexed#(String portname)
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -358,7 +358,7 @@ module [HASIM_MODULE] mkPortRecvL0_Multiplexed#(String portname)
 endmodule
 
 
-module [HASIM_MODULE] mkPortRecvDependent_Multiplexed#(String portname)
+module [CONNECTED_MODULE] mkPortRecvDependent_Multiplexed#(String portname)
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -373,9 +373,9 @@ endmodule
 // Internal implementation of a multiplexed receive port.  Latency has meaning
 // only when buffering is enabled.  When disabled, latency must be 0.
 //
-module [HASIM_MODULE] mkPortRecv_Multiplexed_Impl#(String portname,
-                                                   Integer latency,
-                                                   Bool buffered)
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Impl#(String portname,
+                                                       Integer latency,
+                                                       Bool buffered)
     //interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -571,14 +571,14 @@ endfunction
 //     Instantiate a soft connection for a multiplexed A-Port.  The connection
 //     may be compressed, if requested by portIsCompressed() above.
 //
-module [HASIM_MODULE] mkPortSend_MaybeCompressed#(String portname)
+module [CONNECTED_MODULE] mkPortSend_MaybeCompressed#(String portname)
     // Interface:
     (CONNECTION_SEND#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
          Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_MUX_MSG),
          Bits#(t_MUX_MSG, t_MUX_MSG_SZ),
-         Compress#(t_MUX_MSG, t_ENC_DATA));
+         Compress#(t_MUX_MSG, t_ENC_DATA, CONNECTED_MODULE));
 
     CONNECTION_SEND#(t_MUX_MSG) con;
 
@@ -601,14 +601,14 @@ endmodule
 //     Instantiate a soft connection for a multiplexed A-Port.  The connection
 //     may be compressed, if requested by portIsCompressed() above.
 //
-module [HASIM_MODULE] mkPortRecv_MaybeCompressed#(String portname)
+module [CONNECTED_MODULE] mkPortRecv_MaybeCompressed#(String portname)
     // Interface:
     (CONNECTION_RECV#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
          Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_MUX_MSG),
          Bits#(t_MUX_MSG, t_MUX_MSG_SZ),
-         Compress#(t_MUX_MSG, t_ENC_DATA));
+         Compress#(t_MUX_MSG, t_ENC_DATA, CONNECTED_MODULE));
 
     CONNECTION_RECV#(t_MUX_MSG) con;
 
@@ -717,15 +717,17 @@ PORT_MULTIPLEXED_CMP_NOMSG#(numeric type t_NUM_INSTANCES)
 
 instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
                    // The encoded message (just moves fields around)
-                   PORT_MULTIPLEXED_MSG_COMPRESSED#(t_NUM_INSTANCES, t_MSG))
+                   PORT_MULTIPLEXED_MSG_COMPRESSED#(t_NUM_INSTANCES, t_MSG),
+                   t_MODULE)
     provisos (Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_DATA),
               Alias#(PORT_MULTIPLEXED_MSG_COMPRESSED#(t_NUM_INSTANCES, t_MSG), t_ENC_DATA),
               Bits#(t_DATA, t_DATA_SZ),
               Bits#(t_ENC_DATA, t_ENC_DATA_SZ),
               Bits#(t_MSG, t_MSG_SZ),
-              NumAlias#(INSTANCE_ID_BITS#(t_NUM_INSTANCES), t_IID_SZ));
+              NumAlias#(INSTANCE_ID_BITS#(t_NUM_INSTANCES), t_IID_SZ),
+              IsModule#(t_MODULE, m__));
 
-    module mkCompressor
+    module [t_MODULE] mkCompressor
         // Interface:
         (COMPRESSION_ENCODER#(t_DATA, t_ENC_DATA));
 
@@ -751,7 +753,7 @@ instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         method notEmpty() = inQ.notEmpty();
     endmodule
 
-    module mkDecompressor
+    module [t_MODULE] mkDecompressor
         // Interface:
         (COMPRESSION_DECODER#(t_DATA, t_ENC_DATA));
 
@@ -801,7 +803,8 @@ PORT_MULTIPLEXED_CMP_NOMSG#(numeric type t_NUM_INSTANCES)
 
 instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
                    // The encoded message (just moves fields around)
-                   PORT_MULTIPLEXED_MSG_COMPRESSED#(t_NUM_INSTANCES, t_MSG))
+                   PORT_MULTIPLEXED_MSG_COMPRESSED#(t_NUM_INSTANCES, t_MSG),
+                   CONNECTED_MODULE)
     provisos (Alias#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG), t_DATA),
               Alias#(PORT_MULTIPLEXED_MSG_COMPRESSED#(t_NUM_INSTANCES, t_MSG), t_ENC_DATA),
               Bits#(t_DATA, t_DATA_SZ),
@@ -809,7 +812,7 @@ instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
               Bits#(t_MSG, t_MSG_SZ),
               NumAlias#(INSTANCE_ID_BITS#(t_NUM_INSTANCES), t_IID_SZ));
 
-    module mkCompressor
+    module [CONNECTED_MODULE] mkCompressor
         // Interface:
         (COMPRESSION_ENCODER#(t_DATA, t_ENC_DATA));
 
@@ -822,10 +825,9 @@ instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         Reg#(UInt#(NOMSG_CNT_SZ)) compNoMsgCount <- mkRegU();
 
         // Permit run-time limit on timeout so we can determine optimum value
-//        PARAMETER_NODE paramNode <- mkDynamicParameterNode();
-//        Param#(10) paramMaxWaitCycles <-
-//            mkDynamicParameter(`PARAMS_HASIM_MODELLIB_APORT_COMPRESS_TIMEOUT, paramNode);
-        let paramMaxWaitCycles = 31;
+        PARAMETER_NODE paramNode <- mkDynamicParameterNode();
+        Param#(10) paramMaxWaitCycles <-
+            mkDynamicParameter(`PARAMS_HASIM_MODELLIB_APORT_COMPRESS_TIMEOUT, paramNode);
         Reg#(Bit#(10)) compTimeOut <- mkConfigReg(0);
 
 
@@ -942,7 +944,7 @@ instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
     endmodule
 
 
-    module mkDecompressor
+    module [CONNECTED_MODULE] mkDecompressor
         // Interface:
         (COMPRESSION_DECODER#(t_DATA, t_ENC_DATA));
 

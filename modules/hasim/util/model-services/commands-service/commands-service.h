@@ -49,7 +49,7 @@ class STOP_CYCLE_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
     ~STOP_CYCLE_SWITCH_CLASS();
     
     void ProcessSwitchInt(int arg);
-    bool ShowSwitch(char *buff);
+    void ShowSwitch(std::ostream& ostr, const string& prefix);
     
     int StopCycle() { return stopCycle; }
 };
@@ -64,7 +64,7 @@ class MESSAGE_INTERVAL_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
     ~MESSAGE_INTERVAL_SWITCH_CLASS();
     
     void ProcessSwitchInt(int arg);
-    bool ShowSwitch(char *buff);
+    void ShowSwitch(std::ostream& ostr, const string& prefix);
     
     int ProgressMsgInterval() { return messageInterval; }
 };

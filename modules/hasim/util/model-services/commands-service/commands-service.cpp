@@ -607,10 +607,10 @@ STOP_CYCLE_SWITCH_CLASS::ProcessSwitchInt(int arg)
     stopCycle = arg;
 }
 
-bool
-STOP_CYCLE_SWITCH_CLASS::ShowSwitch(char* buff)
+void
+STOP_CYCLE_SWITCH_CLASS::ShowSwitch(std::ostream& ostr, const string& prefix)
 {
-    strcpy(buff, "[--cycles=<n>]          Stop simulation after n cycles");
+    ostr << prefix << "[--cycles=<n>]          Stop simulation after n cycles" << endl;
 }
 
 // Switch for reading the progress message interval
@@ -630,8 +630,8 @@ MESSAGE_INTERVAL_SWITCH_CLASS::ProcessSwitchInt(int arg)
     messageInterval = arg;
 }
 
-bool
-MESSAGE_INTERVAL_SWITCH_CLASS::ShowSwitch(char* buff)
+void
+MESSAGE_INTERVAL_SWITCH_CLASS::ShowSwitch(std::ostream& ostr, const string& prefix)
 {
-    strcpy(buff, "[--pc=<interval>]       Progress message (heartbeat) interval.");
+    ostr << prefix << "[--pc=<interval>]       Progress message (heartbeat) interval." << endl;
 }

@@ -25902,3 +25902,17 @@ Directory modules/hasim/util/modellib
 Compress typeclass now permits module context, allowing soft connections
 inside compressors.  Use a dynamic param to control the wait time in the
 no-message merging code.
+
+----------
+mcadler     Date: Sun Jul 29 14:26:21 EDT 2012  CSN: CSN-hasim-891
+                  Sun Jul 29 18:26:21 UTC 2012
+
+
+Directory modules/hasim/model
+ hasim-model.h             Locally Modified          890 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          890 
+ commands-service.h        Locally Modified          890 
+
+Update for new --help argument interface.

@@ -17,10 +17,9 @@ class CONTEXTS_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
         UINT32 NumContexts() { return numContexts; }
         
         void ProcessSwitchInt(int arg) { numContexts = arg; }
-        bool ShowSwitch(char* buff)
+        void ShowSwitch(std::ostream& ostr, const string& prefix)
         {
-            strcpy(buff, "[--workload-contexts=<n>]        Number of contexts for this benchmark.");
-            return true;
+            ostr << prefix << "[--workload-contexts=<n>]        Number of contexts for this benchmark." << endl;
         }
 };
 

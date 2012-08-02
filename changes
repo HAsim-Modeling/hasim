@@ -25916,3 +25916,16 @@ Directory modules/hasim/util/model-services/commands-service
  commands-service.h        Locally Modified          890 
 
 Update for new --help argument interface.
+
+----------
+mcadler     Date: Thu Aug  2 17:28:41 EDT 2012  CSN: CSN-hasim-892
+                  Thu Aug  2 21:28:41 UTC 2012
+
+
+Directory modules/hasim/util/modellib
+ permutation-ports.bsv     Locally Modified          891 
+ a-ports.bsv               Locally Modified          891 
+
+Make PORT_MULTIPLEXED_MSG a named type (struct) instead of a type alias (tuple).
+This makes Elliott's type unification code that finds matches to Compress
+instances work in spite of the complex INSTANCE_ID type.

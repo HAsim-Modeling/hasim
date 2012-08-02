@@ -289,8 +289,13 @@ endmodule
 //
 // ========================================================================
 
-typedef Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Maybe#(t_MSG))
-    PORT_MULTIPLEXED_MSG#(numeric type t_NUM_INSTANCES, type t_MSG);
+typedef struct
+{
+    INSTANCE_ID#(t_NUM_INSTANCES) iid;
+    Maybe#(t_MSG) msg;
+}
+PORT_MULTIPLEXED_MSG#(numeric type t_NUM_INSTANCES, type t_MSG)
+    deriving (Eq, Bits);
 
 module [CONNECTED_MODULE] mkPortSend_Multiplexed#(String portname)
     //interface:
@@ -313,7 +318,7 @@ module [CONNECTED_MODULE] mkPortSend_Multiplexed#(String portname)
     endinterface
 
     method Action send(INSTANCE_ID#(t_NUM_INSTANCES) iid, Maybe#(t_MSG) m);
-        con.send(tuple2(iid, m));
+        con.send(PORT_MULTIPLEXED_MSG { iid: iid, msg: m });
     endmethod
 
 endmodule
@@ -438,7 +443,7 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Impl#(String portname,
     //
     rule doInit (! initialized &&& initMax matches tagged Valid .max_idx);
         INSTANCE_ID#(t_NUM_INSTANCES) iid = truncateNP(initIdx);
-        rs.enq(tuple2(iid, tagged Invalid));
+        rs.enq(PORT_MULTIPLEXED_MSG { iid: iid, msg: tagged Invalid });
 
         initialized <= (initIdx == max_idx);
         initIdx <= initIdx + 1;
@@ -464,8 +469,8 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Impl#(String portname,
 
             if (rs.notEmpty())
             begin
-                match {.iid, .m} = rs.first();
-                return tagged Valid iid;
+                let m = rs.first();
+                return tagged Valid m.iid;
             end
             else
             begin
@@ -499,10 +504,10 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Impl#(String portname,
 
     method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) dummy);
 
-        match {.iid, .m} = rs.first();
+        let m = rs.first();
         rs.deq();
 
-        return m;
+        return m.msg;
 
     endmethod
 
@@ -737,14 +742,11 @@ instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         method notFull() = inQ.notFull();
 
         method first();
-            let val = inQ.first();
+            let m = inQ.first();
 
-            // Extract fields
-            match {.iid, .msg} = val;
-
-            let cmp_msg = isValid(msg) ?
-                    tagged MSG PORT_MULTIPLEXED_CMP_MSG { msg: validValue(msg), iid: iid } :
-                    tagged NoMSG PORT_MULTIPLEXED_CMP_NOMSG { iid: iid };
+            let cmp_msg = isValid(m.msg) ?
+                    tagged MSG PORT_MULTIPLEXED_CMP_MSG { msg: validValue(m.msg), iid: m.iid } :
+                    tagged NoMSG PORT_MULTIPLEXED_CMP_NOMSG { iid: m.iid };
 
             return cmp_msg;
         endmethod
@@ -766,8 +768,8 @@ instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
             let cval = inQ.first();
 
             let val =  case (cval) matches
-                           tagged NoMSG .d: tuple2(d.iid, tagged Invalid);
-                           tagged MSG .d: tuple2(d.iid, tagged Valid d.msg);
+                           tagged NoMSG .d: PORT_MULTIPLEXED_MSG { iid: d.iid, msg: tagged Invalid };
+                           tagged MSG .d: PORT_MULTIPLEXED_MSG { iid: d.iid, msg: tagged Valid d.msg };
                        endcase;
 
             return val;
@@ -874,9 +876,9 @@ instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         //
         (* conservative_implicit_conditions *)
         rule compressInQ (outQ.notFull && ! noMsgCompressorTimeout);
-            match {.iid, .m} = inQ.first();
+            let m = inQ.first();
 
-            if (m matches tagged Valid .msg)
+            if (m.msg matches tagged Valid .msg)
             begin
                 // Incoming message is valid.  Are there buffered no-messages?
                 if (compStartIID matches tagged Valid .nomsg_iid)
@@ -888,7 +890,7 @@ instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
                 else
                 begin
                     // No.  Send the incoming message.
-                    outQ.enq(encodeMessage(iid, msg));
+                    outQ.enq(encodeMessage(m.iid, msg));
                     inQ.deq();
                 end
             end
@@ -904,10 +906,10 @@ instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
                 begin
                     // To be merged, IIDs must be contiguous and the count can't
                     // overflow.
-                    if ((compNoMsgCount != maxBound) && (iid == compLastIID + 1))
+                    if ((compNoMsgCount != maxBound) && (m.iid == compLastIID + 1))
                     begin
                         compNoMsgCount <= compNoMsgCount + 1;
-                        compLastIID <= iid;
+                        compLastIID <= m.iid;
                     end
                     else
                     begin
@@ -915,16 +917,16 @@ instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
                         // start a new region.
                         outQ.enq(encodeNoMessages(nomsg_iid, compNoMsgCount));
 
-                        compStartIID <= tagged Valid iid;
-                        compLastIID <= iid;
+                        compStartIID <= tagged Valid m.iid;
+                        compLastIID <= m.iid;
                         compNoMsgCount <= 0;
                     end
                 end
                 else
                 begin
                     // This is the first no-message.
-                    compStartIID <= tagged Valid iid;
-                    compLastIID <= iid;
+                    compStartIID <= tagged Valid m.iid;
+                    compLastIID <= m.iid;
                     compNoMsgCount <= 0;
                 end
             end
@@ -959,7 +961,7 @@ instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
         //   Decompress runs of no-message.
         //
         rule decompress (compIID matches tagged Valid .iid);
-            outQ.enq(tuple2(iid, tagged Invalid));
+            outQ.enq(PORT_MULTIPLEXED_MSG { iid: iid, msg: tagged Invalid });
 
             let cnt = compNoMsgCount - 1;
             compNoMsgCount <= cnt;
@@ -979,14 +981,14 @@ instance Compress#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG),
             case (enc) matches
                 tagged MSG .d:
                 begin
-                    outQ.enq(tuple2(d.iid,
-                                    tagged Valid d.msg));
+                    outQ.enq(PORT_MULTIPLEXED_MSG { iid: d.iid,
+                                                    msg: tagged Valid d.msg });
                 end
 
                 tagged NoMSG .d:
                 begin
                     // One more more no-messages
-                    outQ.enq(tuple2(d.iid, tagged Invalid));
+                    outQ.enq(PORT_MULTIPLEXED_MSG { iid: d.iid, msg: tagged Invalid });
 
                     // Counter is 0-based
                     if (d.noMsgCnt != 0)

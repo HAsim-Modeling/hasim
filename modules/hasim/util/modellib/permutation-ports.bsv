@@ -55,7 +55,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
 
     function PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG) initfunc(t_SLOT_IDX idx);
         INSTANCE_ID#(t_NUM_INSTANCES) iid = truncateNP(idx);
-        return tuple2(iid, tagged Invalid);
+        return PORT_MULTIPLEXED_MSG { iid: iid, msg: tagged Invalid };
     endfunction
 
     LUTRAM#(t_SLOT_IDX, PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)) rs <- mkLUTRAMWith(initfunc);
@@ -79,20 +79,20 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
 
     rule shift (initialized && canEnq && con.notEmpty());
 
-        match {.iid, .msg} = con.receive();
+        let m = con.receive();
         con.deq();
 
         if (enqToSide(curEnq, maxInstance))
         begin
             
-            sideBuffer.upd(sideTail.value(), tuple2(iid, msg));
+            sideBuffer.upd(sideTail.value(), m);
             sideTail.up();
         
         end
         else
         begin
         
-            rs.upd(tail.value(), tuple2(iid, msg));
+            rs.upd(tail.value(), m);
             tail.up();
         
         end
@@ -121,8 +121,8 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
         
         method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
         
-            match {.iid, .m} = deqFromSide(curDeq, maxInstance) ? sideBuffer.sub(sideHead.value()) : rs.sub(head.value());
-            return (!canDeq || !initialized) ? tagged Invalid : tagged Valid iid;
+            let m = deqFromSide(curDeq, maxInstance) ? sideBuffer.sub(sideHead.value()) : rs.sub(head.value());
+            return (!canDeq || !initialized) ? tagged Invalid : tagged Valid m.iid;
         endmethod
         
         method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
@@ -147,8 +147,8 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
         begin
         
             // Return the side buffer.
-            match {.iid, .m} = sideBuffer.sub(sideHead.value());
-            res = m;
+            let m = sideBuffer.sub(sideHead.value());
+            res = m.msg;
             sideHead.up();
         
         end
@@ -156,8 +156,8 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
         begin
         
             // Return the main buffer.
-            match {.iid, .m} = rs.sub(head.value());
-            res = m;
+            let m = rs.sub(head.value());
+            res = m.msg;
             head.up();
         
         end

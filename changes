@@ -25929,3 +25929,21 @@ Directory modules/hasim/util/modellib
 Make PORT_MULTIPLEXED_MSG a named type (struct) instead of a type alias (tuple).
 This makes Elliott's type unification code that finds matches to Compress
 instances work in spite of the complex INSTANCE_ID type.
+
+----------
+hsinjung    Date: Tue Aug  7 11:54:57 EDT 2012  CSN: CSN-hasim-893
+                  Tue Aug  7 15:54:57 UTC 2012
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.awb         Locally Modified          892 
+ funcp-tlb-std.bsv         Locally Modified          892 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.awb   Locally Modified          892 
+ hybrid-funcp-memory.bsv   Locally Modified          892 
+
+ Prefetchers are instantiated in both functional memory and functional tlb. 
+ To turn on the prefetcher in functional memory/tlb, 
+ change FUNCP_PVT_CACHE_PREFETCH_ENABLE/FUNCP_TLB_PVT_PREFETCH_ENABLE to 1,
+ and change the bit 2 of dynamic parameter FUNCP_MEM_PVT_CACHE_MODE/FUNCP_TLB_PVT_CACHE_MODE to 1.

@@ -12,6 +12,11 @@
 %public   hybrid-funcp-memory.dic
 
 %param FUNCP_CACHELINE_BITS     256 "Cache line size in bits"
-%param --global  FUNCP_PVT_CACHE_ENTRIES 4096 "Number of entries in functional private cache"
+%param --global  FUNCP_PVT_CACHE_ENTRIES              4096 "Number of entries in functional private cache"
+%param --global  FUNCP_PVT_CACHE_PREFETCH_LEARNER_NUM   64 "Number of prefetch learners in functional private cache (must be a power of 2)" 
+%param --global  FUNCP_PVT_CACHE_PREFETCH_ENABLE         0 "Enable functional private cache prefetcher"
 
-%param --dynamic FUNCP_MEM_PVT_CACHE_MODE  0  "0: write-back, 1: write-through, 2: write-no-allocate, 3: disabled"
+%param --dynamic FUNCP_MEM_PVT_CACHE_MODE        0  "Bit 2: 0 disabled, 1 enabled prefetcher / Bits 1-0: 0 write-back, 1 write-through, 2 write-no-allocate, 3 disabled"
+%param --dynamic FUNCP_MEM_PREFETCHER_PRIO       1  "0: low-priority, 1: high-priority, 2: non-blocking"
+%param --dynamic FUNCP_MEM_PREFETCHER_MECHANISM  65  "Bits 6-5: 0 basic-tagged, 1 stride-learn-on-miss, 2 stride-learn-on-both, 3 stride-learn-on-request / Bits 4-3: # prefetch reqs - 1 (0 for sigle prefetch request) / Bits 2-0: look ahead prefetch (prefetch next nth stride)"
+%param --dynamic FUNCP_MEM_PREFETCHER_LEARNER_SIZE_LOG  6  "0-6: # prefetch learners (in log)"

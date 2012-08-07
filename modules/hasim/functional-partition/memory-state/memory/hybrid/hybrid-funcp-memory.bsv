@@ -122,11 +122,18 @@ module [HASIM_MODULE] mkFUNCP_Memory
     // Connection between the central cache and remote functional memory
     FUNCP_MEM_HOST_IFC remoteFuncpMem <- mkRemoteFuncpMem(debugLog);
 
-    // Local functional memory cache
+    // Local functional memory cache and cache prefetcher
     NumTypeParam#(`FUNCP_PVT_CACHE_ENTRIES) num_pvt_entries = ?;
+    NumTypeParam#(`FUNCP_PVT_CACHE_PREFETCH_LEARNER_NUM) num_prefetch_learners = ?;
+    
+    let prefetcher <- (`FUNCP_PVT_CACHE_PREFETCH_ENABLE == 1)?
+                      mkCachePrefetcher(num_prefetch_learners, debugLog):
+                      mkNullCachePrefetcher(num_prefetch_learners, debugLog);
+    
     CENTRAL_CACHE_CLIENT#(FUNCP_MEM_WORD_PADDR, MEM_VALUE, FUNCP_CACHE_REF_INFO) cache <-
         mkCentralCacheClient(`VDEV_CACHE_FUNCP_MEMORY,
                              num_pvt_entries,
+                             prefetcher,
                              True,
                              remoteFuncpMem.cacheBacking);
 
@@ -135,7 +142,10 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
     // Dynamic parameters
     PARAMETER_NODE paramNode <- mkDynamicParameterNode();
-    Param#(2) cacheMode <- mkDynamicParameter(`PARAMS_FUNCP_MEMORY_FUNCP_MEM_PVT_CACHE_MODE, paramNode);
+    Param#(3) cacheMode <- mkDynamicParameter(`PARAMS_FUNCP_MEMORY_FUNCP_MEM_PVT_CACHE_MODE, paramNode);
+    Param#(2) prefetchPrio  <- mkDynamicParameter(`PARAMS_FUNCP_MEMORY_FUNCP_MEM_PREFETCHER_PRIO, paramNode);
+    Param#(7) prefetchMechanism <- mkDynamicParameter(`PARAMS_FUNCP_MEMORY_FUNCP_MEM_PREFETCHER_MECHANISM, paramNode);
+    Param#(3) prefetchLearnerSizeLog <- mkDynamicParameter(`PARAMS_FUNCP_MEMORY_FUNCP_MEM_PREFETCHER_LEARNER_SIZE_LOG, paramNode);
 
     // Invalidate requests
     FIFOF#(Tuple3#(CONTEXT_ID, FUNCP_MEM_WORD_PADDR, Bool)) invalQ <- mkFIFOF();
@@ -154,7 +164,9 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
     Reg#(Bool) initialized <- mkReg(False);
     rule doInit (! initialized);
-        cache.setCacheMode(unpack(cacheMode));
+        cache.setCacheMode(unpack(cacheMode[1:0]));
+        cache.setPrefetchMode(unpack(cacheMode[2]));
+        prefetcher.setPrefetchMode(unpack(prefetchPrio),unpack(prefetchMechanism),unpack(prefetchLearnerSizeLog));
         initialized <= True;
     endrule
 

@@ -25947,3 +25947,18 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
  To turn on the prefetcher in functional memory/tlb, 
  change FUNCP_PVT_CACHE_PREFETCH_ENABLE/FUNCP_TLB_PVT_PREFETCH_ENABLE to 1,
  and change the bit 2 of dynamic parameter FUNCP_MEM_PVT_CACHE_MODE/FUNCP_TLB_PVT_CACHE_MODE to 1.
+
+----------
+hsinjung    Date: Fri Aug 31 15:49:13 EDT 2012  CSN: CSN-hasim-894
+                  Fri Aug 31 19:49:13 UTC 2012
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.awb         Locally Modified          893 
+ funcp-tlb-std.bsv         Locally Modified          893 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.awb   Locally Modified          893 
+ hybrid-funcp-memory.bsv   Locally Modified          893 
+
+Add prefetch stats to functional memory and tlb. 

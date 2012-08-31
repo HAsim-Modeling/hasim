@@ -203,8 +203,8 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     NumTypeParam#(`FUNCP_TLB_PVT_CACHE_PREFETCH_LEARNER_NUM) num_prefetch_learners = ?;
     
     let prefetcher <- (`FUNCP_TLB_PVT_PREFETCH_ENABLE == 1)?
-                      mkCachePrefetcher(num_prefetch_learners, debugLog):
-                      mkNullCachePrefetcher(num_prefetch_learners, debugLog);
+                      mkCachePrefetcher(num_prefetch_learners, True, debugLog):
+                      mkNullCachePrefetcher();
 
     CENTRAL_CACHE_CLIENT#(FUNCP_TLB_IDX,      // Cache address type
                           FUNCP_TLB_ENTRY,    // Cache word
@@ -216,15 +216,15 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
                                       vtopIfc);
 
     let statIfc <- mkTLBCacheStats(cache.stats);
+    let prefetchStatIfc <- (`FUNCP_TLB_PVT_PREFETCH_ENABLE == 1)?
+                           mkTLBPrefetchStats(num_prefetch_learners, prefetcher.stats):
+                           mkNullTLBPrefetchStats(num_prefetch_learners, prefetcher.stats);
 
     // Dynamic parameters
-    PARAMETER_NODE paramNode <- mkDynamicParameterNode();
-    Param#(3) cacheMode <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PVT_CACHE_MODE, paramNode);
-    
-    Param#(2) prefetchPrio           <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PREFETCHER_PRIO, paramNode);
-    Param#(7) prefetchMechanism      <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PREFETCHER_MECHANISM, paramNode);
+    PARAMETER_NODE paramNode         <- mkDynamicParameterNode();
+    Param#(3) cacheMode              <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PVT_CACHE_MODE, paramNode);
+    Param#(5) prefetchMechanism      <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PREFETCHER_MECHANISM, paramNode);
     Param#(3) prefetchLearnerSizeLog <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PREFETCHER_LEARNER_SIZE_LOG, paramNode);
-
 
     // ====================================================================
     //
@@ -234,12 +234,10 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
 
     Reg#(Bool) initialized <- mkReg(False);
     rule doInit (! initialized);
-        cache.setCacheMode(unpack(cacheMode[1:0]));
-        cache.setPrefetchMode(unpack(cacheMode[2]));
-        prefetcher.setPrefetchMode(unpack(prefetchPrio),unpack(prefetchMechanism),unpack(prefetchLearnerSizeLog));
+        cache.setCacheMode(unpack(cacheMode[1:0]), unpack(cacheMode[2]));
+        prefetcher.setPrefetchMode(unpack(prefetchMechanism),unpack(prefetchLearnerSizeLog));
         initialized <= True;
     endrule
-
 
     //
     // itlbFaultReq --
@@ -587,4 +585,87 @@ module [HASIM_MODULE] mkTLBCacheStats#(RL_CACHE_STATS stats)
         sv.incr(1);
     endrule
 
+endmodule
+
+
+//
+// mkTLBPrefetchStats --
+//   Statistics for the main, shared, translation cache's prefetcher.
+//
+module [HASIM_MODULE] mkTLBPrefetchStats#(NumTypeParam#(n_LEARNERS) dummy, RL_PREFETCH_STATS stats)
+    // interface:
+    ()
+    provisos( NumAlias#(TMul#(n_LEARNERS, 4), n_STATS),
+              Add#(TMax#(TLog#(n_STATS),1), extraBits, TLog#(`STATS_MAX_VECTOR_LEN)));
+	
+	STAT_ID prefetchStatIDs[6];
+	STAT_ID learnerStatIDs[ valueOf(n_STATS) ];
+
+	prefetchStatIDs[0] = statName("FUNCP_TLB_PVT_PREFETCH_HIT", 
+                                  "FUNCP TLB: Prefetch hits");
+	prefetchStatIDs[1] = statName("FUNCP_TLB_PVT_PREFETCH_DROP_BUSY", 
+                                  "FUNCP TLB: Prefetch reqs dropped by busy");
+	prefetchStatIDs[2] = statName("FUNCP_TLB_PVT_PREFETCH_DROP_HIT", 
+                                  "FUNCP TLB: Prefetch reqs dropped by hit");
+	prefetchStatIDs[3] = statName("FUNCP_TLB_PVT_PREFETCH_LATE", 
+                                  "FUNCP TLB: Late prefetch reqs");
+	prefetchStatIDs[4] = statName("FUNCP_TLB_PVT_PREFETCH_USELESS", 
+                                  "FUNCP TLB: Uesless prefetch reqs");
+	prefetchStatIDs[5] = statName("FUNCP_TLB_PVT_PREFETCH_ISSUE", 
+                                  "FUNCP TLB: Prefetch reqs issued");
+	
+	for (Integer i = 0; i < valueOf(n_LEARNERS); i = i+1)
+	begin
+	    learnerStatIDs[0+4*i] = statName("FUNCP_TLB_PVT_PREFETCH_L"+integerToString(i)+"_HIT",
+                                         "FUNCP TLB: Prefetch learner "+integerToString(i)+" hits");
+	    learnerStatIDs[1+4*i] = statName("FUNCP_TLB_PVT_PREFETCH_L"+integerToString(i)+"_ISSUE", 
+                                         "FUNCP TLB: Prefetch reqs from learner "+integerToString(i));
+	    learnerStatIDs[2+4*i] = statName("FUNCP_TLB_PVT_PREFETCH_L"+integerToString(i)+"_STRIDE", 
+                                         "FUNCP TLB: Prefetch stride from learner "+integerToString(i));
+	    learnerStatIDs[3+4*i] = statName("FUNCP_TLB_PVT_PREFETCH_L"+integerToString(i)+"_LA_DIST", 
+                                         "FUNCP TLB: Prefetch lookahead dist from learner "+integerToString(i));
+	end
+    
+    STAT_VECTOR#(6)       prefetchSv <- mkStatCounter_Vector(prefetchStatIDs);
+    STAT_VECTOR#(n_STATS) learnerSv  <- mkStatCounter_Vector(learnerStatIDs);
+    
+    rule prefetchHit (stats.prefetchHit());
+        prefetchSv.incr(0);
+    endrule
+
+    rule prefetchDroppedByBusy (stats.prefetchDroppedByBusy());
+        prefetchSv.incr(1);
+    endrule
+
+    rule prefetchDroppedByHit (stats.prefetchDroppedByHit());
+        prefetchSv.incr(2);
+    endrule
+
+    rule prefetchLate (stats.prefetchLate());
+        prefetchSv.incr(3);
+    endrule
+
+    rule prefetchUseless (stats.prefetchUseless());
+        prefetchSv.incr(4);
+    endrule
+    
+    rule prefetchIssued (stats.prefetchIssued());
+        prefetchSv.incr(5);
+    endrule
+	
+	rule hitLearnerUpdate (stats.hitLearnerInfo() matches tagged Valid .s);
+        learnerSv.incr(0+resize(s.idx)*4); //hitLeanerIdx
+        if (s.isActive)                    //the learner is issuing prefetch request
+        begin
+            learnerSv.incr(1+resize(s.idx)*4);                         //activeLearnerIdx
+            learnerSv.incrBy(2+resize(s.idx)*4, signExtend(s.stride)); //activeLearnerStride
+            learnerSv.incrBy(3+resize(s.idx)*4, zeroExtend(s.laDist)); //activeLearnerLaDist
+        end
+	endrule
+	
+endmodule
+
+module [HASIM_MODULE] mkNullTLBPrefetchStats#(NumTypeParam#(n_LEARNERS) dummy, RL_PREFETCH_STATS stats)
+    // interface:
+    ();
 endmodule

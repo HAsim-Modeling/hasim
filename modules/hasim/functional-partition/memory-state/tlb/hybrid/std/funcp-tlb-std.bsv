@@ -143,8 +143,6 @@ typedef struct
 FUNCP_TLB_REFINFO
     deriving (Eq, Bits);
 
-typedef CENTRAL_CACHE_CLIENT_BACKING#(FUNCP_TLB_IDX, FUNCP_TLB_ENTRY, FUNCP_TLB_REFINFO) FUNCP_TLB_SOURCE_DATA;
-
 
 // ===================================================================
 //
@@ -185,7 +183,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     Connection_Receive#(FUNCP_TLB_FAULT) link_funcp_dtlb_fault <- mkConnection_Receive("funcp_dtlb_pagefault");
 
     // Connection between central cache and translation RRR service
-    FUNCP_TLB_SOURCE_DATA vtopIfc <- mkVtoPInterface(debugLog);
+    let vtopIfc <- mkVtoPInterface(debugLog);
 
     // Reorder buffer for cache responses.  Cache doesn't guarantee ordered return.
     SCOREBOARD_FIFOF#(FUNCP_TLB_REFS, FUNCP_TLB_ENTRY) itlbTransRespQ <- mkScoreboardFIFOF();
@@ -264,7 +262,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         begin
             // First pass --
             //   Drop current TLB entry since the failed translation is cached.
-            cache.invalReq(idx, True, ref_info);
+            cache.invalReq(idx, True);
         end
         else
         begin
@@ -349,7 +347,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         begin
             // First pass --
             //   Drop current TLB entry since the failed translation is cached.
-            cache.invalReq(idx, True, ref_info);
+            cache.invalReq(idx, True);
         end
         else
         begin
@@ -425,15 +423,15 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         // If allocOnFault is set the request came from the allocation path.
         // There is no response for allocation.  All other requests get
         // a response.
-        if (! cache_resp.refInfo.allocOnFault)
+        if (! cache_resp.readMeta.allocOnFault)
         begin
-            if (cache_resp.refInfo.isInstrReq)
+            if (cache_resp.readMeta.isInstrReq)
             begin
-                itlbTransRespQ.setValue(cache_resp.refInfo.refIdx, cache_resp.val);
+                itlbTransRespQ.setValue(cache_resp.readMeta.refIdx, cache_resp.val);
             end
             else
             begin
-                dtlbTransRespQ.setValue(cache_resp.refInfo.refIdx, cache_resp.val);
+                dtlbTransRespQ.setValue(cache_resp.readMeta.refIdx, cache_resp.val);
             end
         end
 
@@ -464,7 +462,8 @@ endmodule
 //
 module [HASIM_MODULE] mkVtoPInterface#(DEBUG_FILE debugLog)
     // interface:
-    (FUNCP_TLB_SOURCE_DATA);
+    (CENTRAL_CACHE_CLIENT_BACKING#(FUNCP_TLB_IDX, FUNCP_TLB_ENTRY, t_READ_META))
+    provisos (Bits#(t_READ_META, t_READ_META_SZ));
 
     // Connection to memory address translation service
     ClientStub_FUNCP_TLB clientTranslationStub <- mkClientStub_FUNCP_TLB();
@@ -477,7 +476,8 @@ module [HASIM_MODULE] mkVtoPInterface#(DEBUG_FILE debugLog)
     FIFO#(Bool) writeAck <- mkFIFO();
 
 
-    method Action readLineReq(FUNCP_TLB_IDX idx, FUNCP_TLB_REFINFO refInfo);
+    method Action readLineReq(FUNCP_TLB_IDX idx, t_READ_META readMeta);
+        FUNCP_TLB_REFINFO refInfo = unpack(truncateNP(pack(readMeta)));
         ISA_ADDRESS va = vaFromPage(idx.vp, 0);
 
         // RRR doesn't support single bit arguments and we know the low bit of
@@ -535,7 +535,6 @@ module [HASIM_MODULE] mkVtoPInterface#(DEBUG_FILE debugLog)
 
     method Action writeLineReq(FUNCP_TLB_IDX idx,
                                Vector#(CENTRAL_CACHE_WORDS_PER_LINE, Bool) wordValidMask,
-                               FUNCP_TLB_REFINFO refInfo,
                                Bool sendAck);
         if (sendAck)
             writeAck.enq(?);

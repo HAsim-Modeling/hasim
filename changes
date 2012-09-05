@@ -25962,3 +25962,22 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
  hybrid-funcp-memory.bsv   Locally Modified          893 
 
 Add prefetch stats to functional memory and tlb. 
+
+----------
+mcadler     Date: Wed Sep  5 17:20:21 EDT 2012  CSN: CSN-hasim-895
+                  Wed Sep  5 21:20:21 UTC 2012
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          894 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          894 
+
+- Cache interface no longer takes metadata for writes.
+
+- The host connection for functional memory still needs to be cleaned up since
+  the old code used the context ID from requests for spills.  This never made
+  much sense since the context needing a fill wasn't necessarily the context
+  for the spill.  It turns out m5 doesn't need a context anyway, so this will
+  be easy.

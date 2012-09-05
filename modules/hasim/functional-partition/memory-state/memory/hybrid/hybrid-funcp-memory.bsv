@@ -45,13 +45,13 @@ typedef MEM_VALUE ISA_ADDRESS;
 typedef Bit#(64) FUNCP_PADDR_RRR;
 
 //
-// REF_INFO passed through the cache.
+// READ_META passed through the cache.
 typedef struct
 {
     CONTEXT_ID contextId;
     FUNCP_MEMREF_TOKEN memRefToken;
 }
-FUNCP_CACHE_REF_INFO
+FUNCP_CACHE_READ_META
     deriving (Eq, Bits);
 
 
@@ -59,7 +59,9 @@ FUNCP_CACHE_REF_INFO
 // Define the interface for the module that communicates with the host.
 //
 
-typedef CENTRAL_CACHE_CLIENT_BACKING#(FUNCP_MEM_WORD_PADDR, MEM_VALUE, FUNCP_CACHE_REF_INFO) FUNCP_CENTRAL_CACHE_BACKING;
+typedef CENTRAL_CACHE_CLIENT_BACKING#(FUNCP_MEM_WORD_PADDR,
+                                      MEM_VALUE,
+                                      t_READ_META) FUNCP_CENTRAL_CACHE_BACKING#(type t_READ_META);
 
 //
 // One sub-interface is used for passing invalidation requests to the top level
@@ -73,9 +75,9 @@ endinterface: FUNCP_MEM_INVAL_IFC
 //
 // Full host communication interface.
 //
-interface FUNCP_MEM_HOST_IFC;
+interface FUNCP_MEM_HOST_IFC#(type t_READ_META);
     // Cache backing storage interface
-    interface FUNCP_CENTRAL_CACHE_BACKING cacheBacking;
+    interface FUNCP_CENTRAL_CACHE_BACKING#(t_READ_META) cacheBacking;
 
     // Invalidation / flush request interface
     interface FUNCP_MEM_INVAL_IFC inval;
@@ -120,7 +122,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
     Connection_Server#(MEM_REQUEST, MEMSTATE_RESP) linkMemory <- mkConnection_Server("funcp_memory");
 
     // Connection between the central cache and remote functional memory
-    FUNCP_MEM_HOST_IFC remoteFuncpMem <- mkRemoteFuncpMem(debugLog);
+    let remoteFuncpMem <- mkRemoteFuncpMem(debugLog);
 
     // Local functional memory cache and cache prefetcher
     NumTypeParam#(`FUNCP_PVT_CACHE_ENTRIES) num_pvt_entries = ?;
@@ -130,7 +132,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
                       mkCachePrefetcher(num_prefetch_learners, True, debugLog):
                       mkNullCachePrefetcher();
     
-    CENTRAL_CACHE_CLIENT#(FUNCP_MEM_WORD_PADDR, MEM_VALUE, FUNCP_CACHE_REF_INFO) cache <-
+    CENTRAL_CACHE_CLIENT#(FUNCP_MEM_WORD_PADDR, MEM_VALUE, FUNCP_CACHE_READ_META) cache <-
         mkCentralCacheClient(`VDEV_CACHE_FUNCP_MEMORY,
                              num_pvt_entries,
                              prefetcher,
@@ -207,10 +209,10 @@ module [HASIM_MODULE] mkFUNCP_Memory
         case (req) matches
             tagged MEM_LOAD .ldinfo:
             begin
-                let ref_info = FUNCP_CACHE_REF_INFO { contextId: ldinfo.contextId,
+                let read_meta = FUNCP_CACHE_READ_META { contextId: ldinfo.contextId,
                                                       memRefToken: ldinfo.memRefToken };
                 let w_addr = wordAddrFromByteAddr(ldinfo.addr);
-                cache.readReq(w_addr, ref_info);
+                cache.readReq(w_addr, read_meta);
 
                 loadsInFlight.up();
                 debugLog.record($format("cache readReq: ctx=%0d, addr=0x%x, w_addr=0x%x", ldinfo.contextId, ldinfo.addr, w_addr));
@@ -223,10 +225,8 @@ module [HASIM_MODULE] mkFUNCP_Memory
             
             tagged MEM_STORE .stinfo:
             begin
-                let ref_info = FUNCP_CACHE_REF_INFO { contextId: stinfo.contextId,
-                                                      memRefToken: ? };
                 let w_addr = wordAddrFromByteAddr(stinfo.addr);
-                cache.write(w_addr, stinfo.val, ref_info);
+                cache.write(w_addr, stinfo.val);
                 debugLog.record($format("cache write: ctx=%0d, addr=0x%x, w_addr=0x%x, val=0x%x", stinfo.contextId, stinfo.addr, w_addr, stinfo.val));
 
                 stdio.printf(msgST, list4(zeroExtend(stinfo.contextId),
@@ -244,11 +244,11 @@ module [HASIM_MODULE] mkFUNCP_Memory
     //
     rule getMemResp (True);
         let r <- cache.readResp();
-        linkMemory.makeResp(memStateResp(r.refInfo.memRefToken, r.val));
+        linkMemory.makeResp(memStateResp(r.readMeta.memRefToken, r.val));
 
         loadsInFlight.down();
         debugLog.record($format("cache readResp: val=0x%x", r.val));
-        stdio.printf(msgLD_Rsp, list2(zeroExtend(pack(r.refInfo.memRefToken)),
+        stdio.printf(msgLD_Rsp, list2(zeroExtend(pack(r.readMeta.memRefToken)),
                                       resize(r.val)));
     endrule
 
@@ -287,16 +287,14 @@ module [HASIM_MODULE] mkFUNCP_Memory
         FUNCP_MEM_WORD_PADDR w_addr = addr | zeroExtend(invalWordIdx);
         invalWordIdx <= invalWordIdx + 1;
 
-        let ref_info = FUNCP_CACHE_REF_INFO { contextId: ctx_id, memRefToken: ? };
-
         if (only_flush)
         begin
-            cache.flushReq(w_addr, lastWordInLine, ref_info);
+            cache.flushReq(w_addr, lastWordInLine);
             debugLog.record($format("cache flush: ctx=%0d, w_addr=0x%x", ctx_id, w_addr));
         end
         else
         begin
-            cache.invalReq(w_addr, lastWordInLine, ref_info);
+            cache.invalReq(w_addr, lastWordInLine);
             debugLog.record($format("cache inval: ctx=%0d, w_addr=0x%x", ctx_id, w_addr));
         end
     endrule
@@ -321,7 +319,8 @@ endmodule
 //
 module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
     // interface:
-    (FUNCP_MEM_HOST_IFC);
+    (FUNCP_MEM_HOST_IFC#(t_READ_META))
+    provisos (Bits#(t_READ_META, t_READ_META_SZ));
     
     // Stubs for host functional memory communication.
     ServerStub_FUNCP_MEMORY serverStub <- mkServerStub_FUNCP_MEMORY();
@@ -355,10 +354,11 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
         // readLineReq --
         //     Request a full line of data.
         //
-        method Action readLineReq(FUNCP_MEM_WORD_PADDR wAddr, FUNCP_CACHE_REF_INFO refInfo);
+        method Action readLineReq(FUNCP_MEM_WORD_PADDR wAddr, t_READ_META readMeta);
+            FUNCP_CACHE_READ_META read_meta = unpack(truncateNP(pack(readMeta)));
             let addr = byteAddrFromWordAddr(wAddr);
-            debugLog.record($format("back readReq: ctx=%0d, addr=0x%x", refInfo.contextId, addr));
-            clientStub.makeRequest_LoadLine(contextIdToRRR(refInfo.contextId),
+            debugLog.record($format("back readReq: ctx=%0d, addr=0x%x", read_meta.contextId, addr));
+            clientStub.makeRequest_LoadLine(contextIdToRRR(read_meta.contextId),
                                             zeroExtend(addr));
         endmethod
 
@@ -399,12 +399,12 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
         //
         method Action writeLineReq(FUNCP_MEM_WORD_PADDR wAddr,
                                    FUNCP_MEM_CACHELINE_WORD_VALID_MASK wordValidMask,
-                                   FUNCP_CACHE_REF_INFO refInfo,
                                    Bool sendAck) if (stWordIdx == 0);
             let addr = byteAddrFromWordAddr(wAddr);
-            debugLog.record($format("back writeCtrl: ctx=%0d, addr=0x%x, valid=0x%x, ack=%d", refInfo.contextId, addr, pack(wordValidMask), pack(sendAck)));
+//XXX            debugLog.record($format("back writeCtrl: ctx=%0d, addr=0x%x, valid=0x%x, ack=%d", readMeta.contextId, addr, pack(wordValidMask), pack(sendAck)));
 
-            stCtrlQ.enq(tuple4(refInfo.contextId, wordValidMask, sendAck, wAddr));
+//XXX            stCtrlQ.enq(tuple4(readMeta.contextId, wordValidMask, sendAck, wAddr));
+            stCtrlQ.enq(tuple4(?, wordValidMask, sendAck, wAddr));
         endmethod
 
         //

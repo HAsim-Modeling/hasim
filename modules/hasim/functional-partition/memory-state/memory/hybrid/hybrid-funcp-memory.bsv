@@ -68,7 +68,7 @@ typedef CENTRAL_CACHE_CLIENT_BACKING#(FUNCP_MEM_WORD_PADDR,
 // of the local functional memory cache.
 //
 interface FUNCP_MEM_INVAL_IFC;
-    method ActionValue#(Tuple3#(CONTEXT_ID, MEM_ADDRESS, Bool)) getReq();
+    method ActionValue#(Tuple2#(MEM_ADDRESS, Bool)) getReq();
     method Action sendResp();
 endinterface: FUNCP_MEM_INVAL_IFC
 
@@ -128,9 +128,10 @@ module [HASIM_MODULE] mkFUNCP_Memory
     NumTypeParam#(`FUNCP_PVT_CACHE_ENTRIES) num_pvt_entries = ?;
     NumTypeParam#(`FUNCP_PVT_CACHE_PREFETCH_LEARNER_NUM) num_prefetch_learners = ?;
     
-    let prefetcher <- (`FUNCP_PVT_CACHE_PREFETCH_ENABLE == 1)?
-                      mkCachePrefetcher(num_prefetch_learners, True, debugLog):
-                      mkNullCachePrefetcher();
+//    let prefetcher <- (`FUNCP_PVT_CACHE_PREFETCH_ENABLE == 1)?
+//                      mkCachePrefetcher(num_prefetch_learners, True, debugLog):
+//                      mkNullCachePrefetcher();
+    let prefetcher <- mkCachePrefetcher(num_prefetch_learners, True, debugLog);
     
     CENTRAL_CACHE_CLIENT#(FUNCP_MEM_WORD_PADDR, MEM_VALUE, FUNCP_CACHE_READ_META) cache <-
         mkCentralCacheClient(`VDEV_CACHE_FUNCP_MEMORY,
@@ -152,7 +153,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
     Param#(3) prefetchLearnerSizeLog <- mkDynamicParameter(`PARAMS_FUNCP_MEMORY_FUNCP_MEM_PREFETCHER_LEARNER_SIZE_LOG, paramNode);
 
     // Invalidate requests
-    FIFOF#(Tuple3#(CONTEXT_ID, FUNCP_MEM_WORD_PADDR, Bool)) invalQ <- mkFIFOF();
+    FIFOF#(Tuple2#(FUNCP_MEM_WORD_PADDR, Bool)) invalQ <- mkFIFOF();
 
     // Debug messages
     let msgLD_Req <- getGlobalStringUID("FUNCP Mem: LD REQ  ctx=%d, tok=%d, PA=0x%016llx, w_addr=0x%016llx\n");
@@ -210,7 +211,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
             tagged MEM_LOAD .ldinfo:
             begin
                 let read_meta = FUNCP_CACHE_READ_META { contextId: ldinfo.contextId,
-                                                      memRefToken: ldinfo.memRefToken };
+                                                        memRefToken: ldinfo.memRefToken };
                 let w_addr = wordAddrFromByteAddr(ldinfo.addr);
                 cache.readReq(w_addr, read_meta);
 
@@ -260,12 +261,12 @@ module [HASIM_MODULE] mkFUNCP_Memory
     //
     rule getInvalidateReq (initialized);
         let r <- remoteFuncpMem.inval.getReq();
-        match {.ctx_id, .addr, .only_flush} = r;
+        match {.addr, .only_flush} = r;
 
         let w_addr = wordAddrFromByteAddr(addr);
         
-        invalQ.enq(tuple3(ctx_id, w_addr, only_flush));
-        debugLog.record($format("cache flush/inval req: ctx=%0d, addr=0x%x, w_addr=0x%x", ctx_id, addr, w_addr));
+        invalQ.enq(tuple2(w_addr, only_flush));
+        debugLog.record($format("cache flush/inval req: addr=0x%x, w_addr=0x%x", addr, w_addr));
     endrule
 
     //
@@ -276,7 +277,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
     (* descending_urgency = "processInvalidateReq, handleMemReq" *)
     rule processInvalidateReq (True);
-        match {.ctx_id, .addr, .only_flush} = invalQ.first();
+        match {.addr, .only_flush} = invalQ.first();
 
         Bool lastWordInLine = (invalWordIdx == maxBound);
         if (lastWordInLine)
@@ -290,12 +291,12 @@ module [HASIM_MODULE] mkFUNCP_Memory
         if (only_flush)
         begin
             cache.flushReq(w_addr, lastWordInLine);
-            debugLog.record($format("cache flush: ctx=%0d, w_addr=0x%x", ctx_id, w_addr));
+            debugLog.record($format("cache flush: w_addr=0x%x", w_addr));
         end
         else
         begin
             cache.invalReq(w_addr, lastWordInLine);
-            debugLog.record($format("cache inval: ctx=%0d, w_addr=0x%x", ctx_id, w_addr));
+            debugLog.record($format("cache inval: w_addr=0x%x", w_addr));
         end
     endrule
 
@@ -320,7 +321,7 @@ endmodule
 module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
     // interface:
     (FUNCP_MEM_HOST_IFC#(t_READ_META))
-    provisos (Bits#(t_READ_META, t_READ_META_SZ));
+    provisos (Alias#(t_READ_META, RL_DM_CACHE_READ_META#(FUNCP_CACHE_READ_META)));
     
     // Stubs for host functional memory communication.
     ServerStub_FUNCP_MEMORY serverStub <- mkServerStub_FUNCP_MEMORY();
@@ -330,8 +331,7 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
     // Buffered store state to merge control and data messages into a single
     // RRR message.
     //
-    FIFO#(Tuple4#(CONTEXT_ID,
-                  FUNCP_MEM_CACHELINE_WORD_VALID_MASK,
+    FIFO#(Tuple3#(FUNCP_MEM_CACHELINE_WORD_VALID_MASK,
                   Bool,
                   FUNCP_MEM_WORD_PADDR)) stCtrlQ <- mkFIFO();
 
@@ -355,18 +355,18 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
         //     Request a full line of data.
         //
         method Action readLineReq(FUNCP_MEM_WORD_PADDR wAddr, t_READ_META readMeta);
-            FUNCP_CACHE_READ_META read_meta = unpack(truncateNP(pack(readMeta)));
+            let client_meta = readMeta.clientReadMeta;
             let addr = byteAddrFromWordAddr(wAddr);
-            debugLog.record($format("back readReq: ctx=%0d, addr=0x%x", read_meta.contextId, addr));
-            clientStub.makeRequest_LoadLine(contextIdToRRR(read_meta.contextId),
-                                            zeroExtend(addr));
+            debugLog.record($format("back readReq: ctx=%0d, pref=%b, addr=0x%x", client_meta.contextId, readMeta.isPrefetch, addr));
+            clientStub.makeRequest_LoadLine(zeroExtend(addr),
+                                            zeroExtend(pack(readMeta.isPrefetch)));
         endmethod
 
         //
         // readResp --
         //     Pick the next word from the line-sized response.
         //
-        method ActionValue#(MEM_VALUE) readResp();
+        method ActionValue#(Tuple2#(MEM_VALUE, Bool)) readResp();
             // Pick a word from the current incoming value.  Pop the entry if on
             // the last word.
             OUT_TYPE_LoadLine r;
@@ -381,11 +381,13 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
             line[2] = r.data2;
             line[3] = r.data3;
 
+            Bool is_cacheable = unpack(r.isCacheable[0]);
+
             let val = line[rdWordIdx];
             rdWordIdx <= rdWordIdx + 1;
 
-            debugLog.record($format("back readResp: idx=%0d, val=0x%x", rdWordIdx, val));
-            return val;
+            debugLog.record($format("back readResp: idx=%0d, cache=%b, val=0x%x", rdWordIdx, is_cacheable, val));
+            return tuple2(val, is_cacheable);
         endmethod
 
         //
@@ -401,10 +403,9 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
                                    FUNCP_MEM_CACHELINE_WORD_VALID_MASK wordValidMask,
                                    Bool sendAck) if (stWordIdx == 0);
             let addr = byteAddrFromWordAddr(wAddr);
-//XXX            debugLog.record($format("back writeCtrl: ctx=%0d, addr=0x%x, valid=0x%x, ack=%d", readMeta.contextId, addr, pack(wordValidMask), pack(sendAck)));
+            debugLog.record($format("back writeCtrl: addr=0x%x, valid=0x%x, ack=%d", addr, pack(wordValidMask), pack(sendAck)));
 
-//XXX            stCtrlQ.enq(tuple4(readMeta.contextId, wordValidMask, sendAck, wAddr));
-            stCtrlQ.enq(tuple4(?, wordValidMask, sendAck, wAddr));
+            stCtrlQ.enq(tuple3(wordValidMask, sendAck, wAddr));
         endmethod
 
         //
@@ -422,11 +423,10 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
             else
             begin
                 // Send the store
-                match {.ctx_id, .word_valid_mask, .send_ack, .w_addr} = stCtrlQ.first();
+                match {.word_valid_mask, .send_ack, .w_addr} = stCtrlQ.first();
                 stCtrlQ.deq();
 
-                clientStub.makeRequest_StoreLine(contextIdToRRR(ctx_id),
-                                                 zeroExtend(pack(word_valid_mask)),
+                clientStub.makeRequest_StoreLine(zeroExtend(pack(word_valid_mask)),
                                                  zeroExtend(pack(send_ack)),
                                                  zeroExtend(byteAddrFromWordAddr(w_addr)),
                                                  stData[0],
@@ -451,10 +451,9 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
     //
     interface FUNCP_MEM_INVAL_IFC inval;
         // Incoming line invalidation request
-        method ActionValue#(Tuple3#(CONTEXT_ID, MEM_ADDRESS, Bool)) getReq();
+        method ActionValue#(Tuple2#(MEM_ADDRESS, Bool)) getReq();
             let r <- serverStub.acceptRequest_Invalidate();
-            return tuple3(contextIdFromRRR(r.ctxId),
-                          truncate(r.addr),
+            return tuple2(truncate(r.addr),
                           unpack(truncate(r.onlyFlush)));
         endmethod
 

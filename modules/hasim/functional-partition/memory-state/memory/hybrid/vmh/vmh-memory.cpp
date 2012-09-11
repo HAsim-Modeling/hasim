@@ -54,18 +54,19 @@ FUNCP_SIMULATED_MEMORY_CLASS::~FUNCP_SIMULATED_MEMORY_CLASS()
 }
 
 
-void
+bool
 FUNCP_SIMULATED_MEMORY_CLASS::Read(
-    CONTEXT_ID ctx_id,
     UINT64 addr,
     UINT64 size,
+    bool isSpeculative,
     void *dest)
 {
     if (addr + size > MEM_SIZE)
     {
         // Might be bad path or speculative
         bzero(dest, size);
-        return;
+        ASSERT(isSpeculative, "VMF-MEMORY: Reference to illegal address");
+        return false;
     }
 
     switch (size)
@@ -86,12 +87,13 @@ FUNCP_SIMULATED_MEMORY_CLASS::Read(
         memcpy(dest, &memory[addr], size);
         break;
     }
+
+    return true;
 }
 
 
 void
 FUNCP_SIMULATED_MEMORY_CLASS::Write(
-    CONTEXT_ID ctx_id,
     UINT64 addr,
     UINT64 size,
     void *src)

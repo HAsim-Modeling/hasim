@@ -25992,3 +25992,24 @@ Directory tools/scripts/bmark
 
 
 run.bmark now supports multi-threaded simulation.
+
+----------
+mcadler     Date: Mon Sep 10 21:42:03 EDT 2012  CSN: CSN-hasim-897
+                  Tue Sep 11 01:42:03 UTC 2012
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          896 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          896 
+ hybrid-funcp-memory.rrr   Locally Modified          896 
+ hybrid-funcp-memory.h     Locally Modified          896 
+ hybrid-funcp-memory.bsv   Locally Modified          896 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
+ vmh-memory.cpp            Locally Modified          896 
+ vmh-memory.h              Locally Modified          896 
+
+- Context no longer passed for memory read/write.
+- Note speculative reads and return error status.

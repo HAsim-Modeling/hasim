@@ -17,34 +17,34 @@ service FUNCP_MEMORY
         //
         // Request from host to invalidate a line cached in hardware.
         //
-        method Invalidate(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                          in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
+        method Invalidate(in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
                           in UINT8[8] onlyFlush,
                           out UINT8[8] ack);
     };
 
     server sw (cpp, method) <- hw (bsv, connection)
     {
-        // Load a single word
-        method Load (in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                     in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
-                     out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
+        // Load a single word.
+        method Load (in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
+                     in UINT8[8] isSpeculative,
+                     out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data,
+                     out UINT8[8] isCacheable);
 
         //
         // Load Line --
         //     Assumes 4 words per line until RRR types are more genreal.
         //
-        method LoadLine (in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                         in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
+        method LoadLine (in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
+                         in UINT8[8] isSpeculative,
                          out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data0,
                          out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data1,
                          out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data2,
-                         out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data3);
+                         out MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data3,
+                         out UINT8[8] isCacheable);
 
 
         // Store a single word
-        method Store(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                     in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
+        method Store(in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
                      in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data);
 
         //
@@ -56,8 +56,7 @@ service FUNCP_MEMORY
         //     When sendAck is set, the host sends on ACK to StoreACK in the
         //     hardware server.
         //
-        method StoreLine(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
-                         in UINT8[8] wordValid,
+        method StoreLine(in UINT8[8] wordValid,
                          in UINT8[8] sendAck,
                          in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
                          in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] data0,

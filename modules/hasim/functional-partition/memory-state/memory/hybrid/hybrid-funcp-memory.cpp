@@ -95,16 +95,19 @@ FUNCP_MEMORY_SERVER_CLASS::Cleanup()
 // Load --
 //     Load one word from memory.
 //
-MEM_VALUE
-FUNCP_MEMORY_SERVER_CLASS::Load(CONTEXT_ID ctxId, FUNCP_PADDR addr)
+OUT_TYPE_Load
+FUNCP_MEMORY_SERVER_CLASS::Load(FUNCP_PADDR addr, UINT8 isSpeculative)
 {
     ASSERTX(memory != NULL);
 
     MEM_VALUE data;
-    memory->Read(ctxId, addr, sizeof(MEM_VALUE), &data);
-    T1("\tfuncp_memory: LD CTX " << UINT64(ctxId) << " (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] -> " << fmt_data(data));
+    bool valid = memory->Read(addr, sizeof(MEM_VALUE), isSpeculative, &data);
+    T1("\tfuncp_memory: LD (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] -> " << fmt_data(data));
 
-    return data;
+    OUT_TYPE_Load v;
+    v.data = data;
+    v.isCacheable = (valid ? 1 : 0);
+    return v;
 }
 
 //
@@ -113,14 +116,13 @@ FUNCP_MEMORY_SERVER_CLASS::Load(CONTEXT_ID ctxId, FUNCP_PADDR addr)
 //
 void
 FUNCP_MEMORY_SERVER_CLASS::Store(
-    CONTEXT_ID ctxId,
     FUNCP_PADDR addr,
     MEM_VALUE val)
 {
     ASSERTX(memory != NULL);
 
-    T1("\tfuncp_memory: ST CTX " << UINT64(ctxId) << " (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] <- " << fmt_data(val));
-    memory->Write(ctxId, addr, sizeof(MEM_VALUE), &val);
+    T1("\tfuncp_memory: ST (" << sizeof(MEM_VALUE) << ") [" << fmt_addr(addr) << "] <- " << fmt_data(val));
+    memory->Write(addr, sizeof(MEM_VALUE), &val);
 }
 
 //
@@ -128,7 +130,7 @@ FUNCP_MEMORY_SERVER_CLASS::Store(
 //     Request one line from memory.
 //
 OUT_TYPE_LoadLine
-FUNCP_MEMORY_SERVER_CLASS::LoadLine(CONTEXT_ID ctxId, FUNCP_PADDR addr)
+FUNCP_MEMORY_SERVER_CLASS::LoadLine(FUNCP_PADDR addr, UINT8 isSpeculative)
 {
     ASSERTX(memory != NULL);
 
@@ -136,10 +138,14 @@ FUNCP_MEMORY_SERVER_CLASS::LoadLine(CONTEXT_ID ctxId, FUNCP_PADDR addr)
     // Read line in simulator
     //
     MEM_CACHELINE line;
-    memory->Read(ctxId, addr, sizeof(MEM_CACHELINE), &line);
+    bool valid = memory->Read(addr, sizeof(MEM_CACHELINE), isSpeculative, &line);
     if (TRACING(1))
     {
-        T1("\tfuncp_memory: LDline CTX " << UINT64(ctxId) << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
+        T1("\tfuncp_memory: LDline (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
+        if (! valid)
+        {
+            T1("\t\t[ INVALID ADDRESS ]");
+        }
         for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
             T1("\t\t" << fmt_data(line.w[i]));
         }
@@ -150,6 +156,7 @@ FUNCP_MEMORY_SERVER_CLASS::LoadLine(CONTEXT_ID ctxId, FUNCP_PADDR addr)
     v.data1 = line.w[1];
     v.data2 = line.w[2];
     v.data3 = line.w[3];
+    v.isCacheable = (valid ? 1 : 0);
     return v;
 }
 
@@ -161,7 +168,6 @@ FUNCP_MEMORY_SERVER_CLASS::LoadLine(CONTEXT_ID ctxId, FUNCP_PADDR addr)
 //
 void
 FUNCP_MEMORY_SERVER_CLASS::StoreLine(
-    CONTEXT_ID ctxId,
     UINT8 wordValid,
     UINT8 sendAck,
     FUNCP_PADDR addr,
@@ -180,7 +186,7 @@ FUNCP_MEMORY_SERVER_CLASS::StoreLine(
     {
         MEM_CACHELINE_WORD_VALID_MASK mask_pos = 1;
 
-        T1("\tfuncp_memory: STline CTX " << UINT64(ctxId) << (sendAck ? " SYNC" : "") << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
+        T1("\tfuncp_memory: STline" << (sendAck ? " SYNC" : "") << " (" << sizeof(MEM_CACHELINE) << ") [" << fmt_addr(addr) << "] -> line:");
         for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
             if ((wordValid & mask_pos) != 0)
             {
@@ -198,7 +204,7 @@ FUNCP_MEMORY_SERVER_CLASS::StoreLine(
     if (wordValid == ((1 << sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE)) - 1))
     {
         // Entire line is valid.  Write in a single chunk.
-        memory->Write(ctxId, addr, sizeof(MEM_CACHELINE), &stData);
+        memory->Write(addr, sizeof(MEM_CACHELINE), &stData);
     }
     else
     {
@@ -209,7 +215,7 @@ FUNCP_MEMORY_SERVER_CLASS::StoreLine(
         for (int i = 0; i < sizeof(MEM_CACHELINE) / sizeof(MEM_VALUE); i++) {
             if ((wordValid & mask_pos) != 0)
             {
-                memory->Write(ctxId, w_addr, sizeof(MEM_VALUE), &stData.w[i]);
+                memory->Write(w_addr, sizeof(MEM_VALUE), &stData.w[i]);
             }
             w_addr += sizeof(MEM_VALUE);
             mask_pos <<= 1;
@@ -234,18 +240,18 @@ FUNCP_MEMORY_SERVER_CLASS::StoreLine(
 void
 FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryRead(CONTEXT_ID ctxId, FUNCP_PADDR addr, FUNCP_PADDR size)
 {
-    instance.SystemMemoryRef(ctxId, addr, size, false);
+    instance.SystemMemoryRef(addr, size, false);
 }
 
 void
 FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryWrite(CONTEXT_ID ctxId, FUNCP_PADDR addr, FUNCP_PADDR size)
 {
 //    NoteSystemMemoryWriteUnknownAddr();
-    instance.SystemMemoryRef(ctxId, addr, size, true);
+    instance.SystemMemoryRef(addr, size, true);
 }
 
 void
-FUNCP_MEMORY_SERVER_CLASS::SystemMemoryRef(CONTEXT_ID ctxId, FUNCP_PADDR addr, UINT64 size, bool isWrite)
+FUNCP_MEMORY_SERVER_CLASS::SystemMemoryRef(FUNCP_PADDR addr, UINT64 size, bool isWrite)
 {
     T1("\tfuncp_memory: Note system memory " << (isWrite ? "WRITE" : "READ") << " (Addr=" << fmt_addr(addr) << " bytes=" << fmt_addr(size) << ")");
 
@@ -270,7 +276,7 @@ FUNCP_MEMORY_SERVER_CLASS::SystemMemoryRef(CONTEXT_ID ctxId, FUNCP_PADDR addr, U
             T1("\tfuncp_memory: FLUSH Addr=" << fmt_addr(addr));
         }
 
-        clientStub->Invalidate(ctxId, addr, isWrite ? 0 : 0xff);
+        clientStub->Invalidate(addr, isWrite ? 0 : 0xff);
 
         addr += sizeof(MEM_CACHELINE);
         nLines -= 1;

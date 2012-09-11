@@ -46,8 +46,8 @@ class FUNCP_SIMULATED_MEMORY_CLASS
     FUNCP_SIMULATED_MEMORY_CLASS();
     ~FUNCP_SIMULATED_MEMORY_CLASS();
 
-    void Read(CONTEXT_ID ctx_id, UINT64 addr, UINT64 size, void *dest);
-    void Write(CONTEXT_ID ctx_id, UINT64 addr, UINT64 size, void *src);
+    bool Read(UINT64 addr, UINT64 size, bool isSpeculative, void *dest);
+    void Write(UINT64 addr, UINT64 size, void *src);
 
     FUNCP_MEM_VTOP_RESP VtoP(CONTEXT_ID ctx_id, UINT64 va, bool allocOnFault)
     {

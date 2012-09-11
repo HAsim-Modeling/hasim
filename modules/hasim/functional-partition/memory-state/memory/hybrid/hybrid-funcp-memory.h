@@ -78,13 +78,12 @@ class FUNCP_MEMORY_SERVER_CLASS: public RRR_SERVER_CLASS,
     //
     // RRR Service Methods
     //
-    MEM_VALUE Load(CONTEXT_ID ctxId, FUNCP_PADDR addr);
-    void Store(CONTEXT_ID ctxId, FUNCP_PADDR addr, MEM_VALUE val);
+    OUT_TYPE_Load Load(FUNCP_PADDR addr, UINT8 isSpeculative);
+    void Store(FUNCP_PADDR addr, MEM_VALUE val);
 
-    OUT_TYPE_LoadLine LoadLine(CONTEXT_ID ctxId, FUNCP_PADDR addr);
+    OUT_TYPE_LoadLine LoadLine(FUNCP_PADDR addr, UINT8 isSpeculative);
 
-    void StoreLine(CONTEXT_ID ctxId,
-                   UINT8 wordValid,
+    void StoreLine(UINT8 wordValid,
                    UINT8 sendAck,
                    FUNCP_PADDR addr,
                    MEM_VALUE word0, MEM_VALUE word1, MEM_VALUE word2, MEM_VALUE word3);
@@ -96,7 +95,7 @@ class FUNCP_MEMORY_SERVER_CLASS: public RRR_SERVER_CLASS,
     static void NoteSystemMemoryRead(CONTEXT_ID ctxId, FUNCP_PADDR addr, FUNCP_PADDR size);
     static void NoteSystemMemoryWrite(CONTEXT_ID ctxId, FUNCP_PADDR addr, FUNCP_PADDR size);
 
-    void SystemMemoryRef(CONTEXT_ID ctxId, FUNCP_PADDR addr, UINT64 size, bool isWrite);
+    void SystemMemoryRef(FUNCP_PADDR addr, UINT64 size, bool isWrite);
 
     // Other code may need to talk to simulated memory.  We should fix this hack
     // and have simulated memory allocated by a parent of all the classes that

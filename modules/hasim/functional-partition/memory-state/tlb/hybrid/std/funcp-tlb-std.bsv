@@ -493,7 +493,7 @@ module [HASIM_MODULE] mkVtoPInterface#(DEBUG_FILE debugLog)
                                                zeroExtend(refInfo.allocWordIdx));
     endmethod
 
-    method ActionValue#(FUNCP_TLB_ENTRY) readResp();
+    method ActionValue#(Tuple2#(FUNCP_TLB_ENTRY, Bool)) readResp();
         // Pick a word from the current incoming value.  Pop the entry if on
         // the last word.
         OUT_TYPE_VtoP r;
@@ -525,7 +525,7 @@ module [HASIM_MODULE] mkVtoPInterface#(DEBUG_FILE debugLog)
         debugLog.record($format("RRR Resp: pa=0x%x, fault=%0d, io=%0d",
                                 paFromPage(entry.page, 0), entry.pageFault, entry.ioSpace));
 
-        return entry;
+        return tuple2(entry, True);
     endmethod
 
 

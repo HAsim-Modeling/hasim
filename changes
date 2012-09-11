@@ -26013,3 +26013,14 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
 
 - Context no longer passed for memory read/write.
 - Note speculative reads and return error status.
+
+----------
+mcadler     Date: Tue Sep 11 11:16:29 EDT 2012  CSN: CSN-hasim-898
+                  Tue Sep 11 15:16:29 UTC 2012
+
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          897 
+
+Accidentally checked in functional memory model with prefetching always
+enabled.

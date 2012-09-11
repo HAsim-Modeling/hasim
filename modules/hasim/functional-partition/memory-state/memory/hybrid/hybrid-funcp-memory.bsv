@@ -128,10 +128,9 @@ module [HASIM_MODULE] mkFUNCP_Memory
     NumTypeParam#(`FUNCP_PVT_CACHE_ENTRIES) num_pvt_entries = ?;
     NumTypeParam#(`FUNCP_PVT_CACHE_PREFETCH_LEARNER_NUM) num_prefetch_learners = ?;
     
-//    let prefetcher <- (`FUNCP_PVT_CACHE_PREFETCH_ENABLE == 1)?
-//                      mkCachePrefetcher(num_prefetch_learners, True, debugLog):
-//                      mkNullCachePrefetcher();
-    let prefetcher <- mkCachePrefetcher(num_prefetch_learners, True, debugLog);
+    let prefetcher <- (`FUNCP_PVT_CACHE_PREFETCH_ENABLE == 1)?
+                      mkCachePrefetcher(num_prefetch_learners, True, debugLog):
+                      mkNullCachePrefetcher();
     
     CENTRAL_CACHE_CLIENT#(FUNCP_MEM_WORD_PADDR, MEM_VALUE, FUNCP_CACHE_READ_META) cache <-
         mkCentralCacheClient(`VDEV_CACHE_FUNCP_MEMORY,

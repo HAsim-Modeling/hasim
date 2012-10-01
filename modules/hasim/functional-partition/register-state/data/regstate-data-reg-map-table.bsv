@@ -89,14 +89,13 @@ REGSTATE_REWIND_INFO
 //   updating mappings for destinations.
 //
 interface REGSTATE_REG_MAPPING_GETDEPENDENCIES;
-    method Action decodeStage1(TOKEN tok,
-                               Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)) ar_srcs,
-                               Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)) ar_dsts);
+    method Action decodeReq(TOKEN tok,
+                            Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)) ar_srcs,
+                            Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)) ar_dsts,
+                            Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_dsts);
 
-    method Action decodeStage2(TOKEN tok,
-                               Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_dsts);
-
-    method ActionValue#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) decodeRsp();
+    method ActionValue#(Vector#(ISA_MAX_SRCS,
+                                Maybe#(FUNCP_PHYSICAL_REG_INDEX))) decodeRsp();
 endinterface
 
 //
@@ -291,9 +290,10 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     //
     // Incoming request queues for decode, read and rewind queues.
     //
-    FIFO#(Tuple3#(TOKEN,
+    FIFO#(Tuple4#(TOKEN,
                   Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
-                  Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)))) newMapTableReqQ_DEC <- mkBypassFIFO();
+                  Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)),
+                  Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)))) newMapTableReqQ_DEC <- mkBypassFIFO();
     FIFO#(Tuple2#(CONTEXT_ID, ISA_REG_INDEX)) newMapTableReqQ_READ <- mkBypassFIFO();
     FIFO#(REGSTATE_NEW_MAPPINGS) newMapTableReqQ_EXC <- mkBypassFIFO();
 
@@ -303,23 +303,23 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     //
     // Rewind information
     //
-    BRAM_MULTI_READ#(3, TOKEN_INDEX, Maybe#(REGSTATE_REWIND_INFO)) rewindInfo <- mkBRAMBufferedPseudoMultiRead();
+    BRAM_MULTI_READ#(3, TOKEN_INDEX, Maybe#(REGSTATE_REWIND_INFO)) rewindInfo <- mkBRAMBufferedPseudoMultiRead(False);
 
     // Internal decode queues
-    FIFOF#(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) newPhyDstsInQ <- mkBypassFIFOF();
+    FIFOF#(Tuple4#(TOKEN,
+                   Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
+                   Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)),
+                   Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)))) decodeReadCurQ <- mkFIFOF();
     FIFOF#(Tuple3#(TOKEN,
-                  Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
-                  Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)))) decodeReadCurQ <- mkFIFOF();
-    FIFOF#(Tuple3#(TOKEN,
-                  Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)),
-                  Bool)) decodeUpdateQ <- mkFIFOF();
+                   Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)),
+                   Bool)) decodeUpdateQ <- mkFIFOF();
     // Merge FIFO collapses multiple write port requests into a series of write
     // requests -- one per cycle.
     MERGE_FIFOF#(ISA_MAX_DSTS, Tuple2#(ISA_REG_INDEX, FUNCP_PHYSICAL_REG_INDEX)) decodeUpdateDstQ <- mkMergeFIFOF();
 
     // Internal read mapping request queue.
     FIFOF#(Tuple2#(CONTEXT_ID, ISA_REG_INDEX)) getResultsReqInQ <- mkFIFOF();
-    FIFO#(FUNCP_PHYSICAL_REG_INDEX) readMapRspQ <- mkBypassFIFO();
+    FIFOF#(FUNCP_PHYSICAL_REG_INDEX) readMapRspQ <- mkSizedBypassFIFOF(8);
 
     // Rewind register updates.  Map table has only one write port so multiple
     // register updates go into a merge FIFO and are handled one at a time.
@@ -332,7 +332,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     FIFOF#(TOKEN_INDEX) rewReadInQ <- mkFIFOF();
 
     // Outgoing queues
-    FIFO#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) mapDecodeOutQ <- mkFIFO();
+    FIFOF#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) mapDecodeOutQ <- mkSizedFIFOF(8);
+    COUNTER#(4) mapDecodeOutNumInFlight <- mkLCounter(0);
 
 
     // ====================================================================
@@ -342,7 +343,6 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     // ====================================================================
 
     DEBUG_SCAN_FIELD_LIST dbg_list = List::nil;
-    dbg_list <- addDebugScanField(dbg_list, "newPhyDstsInQ notEmpty", newPhyDstsInQ.notEmpty);
     dbg_list <- addDebugScanField(dbg_list, "decodeReadCurQ notEmpty", decodeReadCurQ.notEmpty);
     dbg_list <- addDebugScanField(dbg_list, "decodeUpdateQ notEmpty", decodeUpdateQ.notEmpty);
     dbg_list <- addDebugScanField(dbg_list, "getResultsReqInQ notEmpty", getResultsReqInQ.notEmpty);
@@ -375,7 +375,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     //
     (* conservative_implicit_conditions *)
     rule newMapTableReq_DEC (mapTableBusy.notBusy(tokContextId(tpl_1(newMapTableReqQ_DEC.first()))));
-        match {.tok, .ar_srcs, .ar_dsts} = newMapTableReqQ_DEC.first();
+        match {.tok, .ar_srcs, .ar_dsts, .phy_dsts} = newMapTableReqQ_DEC.first();
         newMapTableReqQ_DEC.deq();
 
         // Lock map table for this context
@@ -408,7 +408,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
         debugLog.record($format("MAP: Table read context %0d, consumer DECODE", ctx_id));
 
         // Forward request to next decode rule
-        decodeReadCurQ.enq(tuple3(tok, ar_srcs, ar_dsts));
+        decodeReadCurQ.enq(tuple4(tok, ar_srcs, ar_dsts, phy_dsts));
     endrule
 
 
@@ -484,11 +484,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
     rule doMapDecodeReadCur (mapTableConsumerQ.first() == REGSTATE_MAPT_DECODE);
         mapTableConsumerQ.deq();
 
-        match {.tok, .ar_srcs, .ar_dsts} = decodeReadCurQ.first();
+        match {.tok, .ar_srcs, .ar_dsts, .phy_dsts} = decodeReadCurQ.first();
         decodeReadCurQ.deq();
-
-        let phy_dsts = newPhyDstsInQ.first();
-        newPhyDstsInQ.deq();
 
         //
         // Compute source mappings.
@@ -735,30 +732,21 @@ module [HASIM_MODULE] mkFUNCP_Regstate_RegMapping
 
     interface REGSTATE_REG_MAPPING_GETDEPENDENCIES getDependencies;
 
-        //
-        // Decode request arrives in two stages because the new destination
-        // physical registers take longer to compute.  We can start working
-        // on the source mapping while waiting.
-        //
-        method Action decodeStage1(TOKEN tok,
-                                   Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)) ar_srcs,
-                                   Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)) ar_dsts);
-
-            newMapTableReqQ_DEC.enq(tuple3(tok, ar_srcs, ar_dsts));
-            debugLog.record($format("MAP: ") + fshow(tok.index) + $format(":decodeStage1"));
-        endmethod
-
-        method Action decodeStage2(TOKEN tok,
-                                   Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_dsts);
-
-            newPhyDstsInQ.enq(phy_dsts);
-            debugLog.record($format("MAP: ") + fshow(tok.index) + $format(":decodeStage2"));
+        method Action decodeReq(TOKEN tok,
+                                Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)) ar_srcs,
+                                Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)) ar_dsts,
+                                Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) phy_dsts)
+                                    if (msb(mapDecodeOutNumInFlight.value) == 0);
+            mapDecodeOutNumInFlight.up();
+            newMapTableReqQ_DEC.enq(tuple4(tok, ar_srcs, ar_dsts, phy_dsts));
+            debugLog.record($format("MAP: ") + fshow(tok.index) + $format(": decodeReq"));
         endmethod
 
         // Decode response describes source register mappings.
         method ActionValue#(Vector#(ISA_MAX_SRCS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) decodeRsp();
             let r = mapDecodeOutQ.first();
             mapDecodeOutQ.deq();
+            mapDecodeOutNumInFlight.down();
             return r;
         endmethod
 

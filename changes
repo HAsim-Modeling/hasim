@@ -26024,3 +26024,26 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
 
 Accidentally checked in functional memory model with prefetching always
 enabled.
+
+----------
+mcadler     Date: Mon Oct  1 18:46:18 EDT 2012  CSN: CSN-hasim-899
+                  Mon Oct  1 22:46:18 UTC 2012
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-physical-regs.bsv Locally Modified          898 
+ regstate-data-reg-map-table.bsv Locally Modified          898 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          898 
+ regmgr-macro-pipe-doITranslate.bsv Locally Modified          898 
+
+Directory modules/hasim/util/modellib
+ multiplexed-memories.bsv  Locally Modified          898 
+
+- Improve buffering on some functional model paths that were limiting pipeline
+  throughput.  Also relax read/write order of some physical register backing
+  storage to relax constraints.  Order isn't important since registers are
+  protected by separate valid bits.
+
+- Interface change to pseudo-buffered multi-read BRAM.

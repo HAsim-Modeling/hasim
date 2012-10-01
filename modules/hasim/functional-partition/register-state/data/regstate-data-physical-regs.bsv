@@ -174,7 +174,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     BRAM_MULTI_READ#(TAdd#(ISA_MAX_SRCS, 1), FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE)
         prf <- mkMultiReadBankedMemory(n_banks,
                                        MEM_BANK_SELECTOR_BITS_LOW,
-                                       mkBRAMBufferedPseudoMultiRead());
+                                       mkBRAMBufferedPseudoMultiRead(False));
     
     // Valid bits for PRF
     LUTRAM#(FUNCP_PHYSICAL_REG_INDEX, Bool) prfValids <- mkLUTRAMU();
@@ -190,7 +190,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
 
     // Individual incoming queues for each pipeline
     FIFOF#(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) rqGetDepInval <- mkFIFOF();
-    FIFO#(Bool) rqGetDepInvalDone <- mkFIFO();
+    FIFOF#(Bool) rqGetDepInvalDone <- mkSizedFIFOF(8);
 
     FIFOF#(FUNCP_PHYSICAL_REG_INDEX)                     rqGetResRead    <- mkFIFOF();
     FIFOF#(ISA_INST_SRCS)                                rqGetResReadVec <- mkFIFOF();
@@ -339,7 +339,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     //   Function to check pending vector of invalidations for a single request.
     //   Send a message when all invalidations are complete.
     //
-    function Action sendInvalResponseWhenDone(Vector#(ISA_MAX_DSTS, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) rVec);
+    function Action sendInvalResponseWhenDone(Vector#(ISA_MAX_DSTS,
+                                                      Maybe#(FUNCP_PHYSICAL_REG_INDEX)) rVec);
     action
         if (! any(isValid, rVec))
         begin
@@ -379,7 +380,9 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
             // Done?
             sendInvalResponseWhenDone(rVec);
         end
-        else if (rqGetDepInval.notEmpty())
+        // Request for updating mapping from getDeps.  Only start the multi-cycle
+        // operation if there is room to hold the response.
+        else if (rqGetDepInval.notEmpty && rqGetDepInvalDone.notFull)
         begin
             //
             // New invalidate request vector...
@@ -495,7 +498,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
         rqGetResReadVec.deq();
         
         //
-        // All register inputs are ready.  Reuqest their values.
+        // All register inputs are ready.  Request their values.
         //
         for (Integer s = 0; s < valueOf(ISA_MAX_SRCS); s = s + 1)
         begin

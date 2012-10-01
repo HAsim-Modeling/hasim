@@ -88,11 +88,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
 
     FIFO#(Tuple3#(TOKEN, 
                   Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
-                  Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)))) deps2Q <- mkFIFO();
+                  Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)))) deps2Q <- mkSizedFIFO(8);
 
     FIFO#(Tuple3#(TOKEN,
                   Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
-                  ISA_DST_MAPPING)) deps3Q <- mkFIFO();
+                  ISA_DST_MAPPING)) deps3Q <- mkSizedFIFO(8);
 
 
     // ====================================================================
@@ -248,9 +248,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         //     corresponding to the registers written by the instruction.
         //
         
-        // Send architectural register details to the register mapper.
-        regMapping.decodeStage1(tok, ar_srcs, ar_dsts);
-
         // Request registers from the free list
         freelist.allocateRegs(dst_reg_reqs);
         debugLog.record(fshow(tok.index) + $format(": GetDeps2: Freelist request mask is %0b", pack(dst_reg_reqs)));
@@ -299,9 +296,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
             freelist.freeRegs(phy_dsts);
         end
 
-        // Register mapper is waiting for new physical registers to go with
-        // the request started in the previous stage.
-        regMapping.decodeStage2(tok, phy_dsts);
+        // Update register mapping
+        regMapping.decodeReq(tok, ar_srcs, ar_dsts, phy_dsts);
 
         //
         // Associate allocated physical registers with architectural regs

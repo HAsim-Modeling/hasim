@@ -119,7 +119,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     //
     // ====================================================================
 
-    FIFO#(ITRANS_INFO) iTransQ <- mkFIFO();
+    FIFO#(ITRANS_INFO) iTransQ <- mkSizedFIFO(8);
     Reg#(STATE_ITRANS1) stateITrans1 <- mkReg(ITRANS1_NORMAL);
     Reg#(STATE_ITRANS2) stateITrans2 <- mkReg(ITRANS2_NORMAL);
 

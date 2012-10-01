@@ -197,7 +197,7 @@ module [HASIM_MODULE] mkMultiReadScratchpad_Multiplexed#(Integer scratchpadID, S
     // Instantiate either a scratchpad or BRAM with the extended address range,
     // depending on whether AWB parameter allows scratchpads.
 `ifdef MULTIPLEXED_MEM_USE_SCRATCHPAD_Z
-    let m <- mkMemoryMultiRead_Multiplexed(mkBRAMBufferedPseudoMultiReadInitialized(unpack(0)));
+    let m <- mkMemoryMultiRead_Multiplexed(mkBRAMBufferedPseudoMultiReadInitialized(True, unpack(0)));
 `else
     let m <- mkMemoryMultiRead_Multiplexed(mkMultiReadScratchpad(scratchpadID, cached));
 `endif

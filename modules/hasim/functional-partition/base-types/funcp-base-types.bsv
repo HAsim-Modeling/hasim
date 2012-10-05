@@ -44,3 +44,28 @@ typedef Bit#(TSub#(`FUNCP_ISA_V_ADDR_SIZE, `FUNCP_ISA_PAGE_SHIFT)) FUNCP_V_PAGE;
 typedef Bit#(TSub#(`FUNCP_ISA_P_ADDR_SIZE, `FUNCP_ISA_PAGE_SHIFT)) FUNCP_P_PAGE;
 typedef Bit#(`FUNCP_ISA_PAGE_SHIFT) FUNCP_PAGE_OFFSET;
 
+//
+// Break the PC into bits with interesting values and bits that must be 0.
+//
+typedef Bit#(`FUNCP_ISA_PC_MIN_ALIGN) FUNCP_PC_ALIGN_PART;
+typedef Bit#(TSub#(`FUNCP_ISA_V_ADDR_SIZE, `FUNCP_ISA_PC_MIN_ALIGN)) FUNCP_PC_IDX_PART;
+
+//
+// pcAddrWithoutAlignmentBits --
+//   Remove the low alignment bits in the PC that are either always 0 or aren't
+//   used to point to an instruction.
+//
+function FUNCP_PC_IDX_PART pcAddrWithoutAlignmentBits(FUNCP_VADDR va);
+    Tuple2#(FUNCP_PC_IDX_PART, FUNCP_PC_ALIGN_PART) p = unpack(va);
+    return tpl_1(p);
+endfunction
+
+//
+// pcAddAlignmentBits --
+//   Restore a shorted PC returned by pcAddrWithoutAlignmentBits() to a full
+//   virtual address.
+//
+function FUNCP_VADDR pcAddAlignmentBits(FUNCP_PC_IDX_PART idx);
+    FUNCP_PC_ALIGN_PART a = 0;
+    return { idx, a };
+endfunction

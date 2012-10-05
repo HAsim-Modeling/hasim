@@ -26047,3 +26047,16 @@ Directory modules/hasim/util/modellib
   protected by separate valid bits.
 
 - Interface change to pseudo-buffered multi-read BRAM.
+
+----------
+mcadler     Date: Thu Oct  4 21:46:25 EDT 2012  CSN: CSN-hasim-900
+                  Fri Oct  5 01:46:25 UTC 2012
+
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.awb      Locally Modified          899 
+ funcp-base-types.bsv      Locally Modified          899 
+
+Add some functions to manage details of PCs, most importantly whether there are
+some low bits that are always 0.  BTBs and branch predictors take advantage of
+this knowledge to reduce table sizes and improve indexing.

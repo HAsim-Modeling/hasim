@@ -44,6 +44,17 @@ ReadConfig("$config{modelDir}/$config{master}/config/env.sh", 0);
 ReadConfig("$config{modelDir}/$config{master}/config/fpga.sh", 0);
 ReadConfig("$config{modelDir}/$config{master}/config/signature.sh", 0);
 
+
+## For legacy codes fill in the expected parameters
+## This can be removed on switch to build pipline 
+if(! exists $config{SOFT_RESET}) {
+  $config{SOFT_RESET} = 1;
+}
+
+if(! exists $config{FPGA_PLATFORM}) {
+  $config{FPGA_PLATFORM} = "DEFAULT";
+}
+
 ##
 ## Pseudo-enumeration of possible model types
 ##
@@ -335,7 +346,7 @@ if ($mType == $MODEL_FPGA) {
         my $needProgram = (-f "$config{modelDir}/$config{master}/config/$config{model}.download");
 
         # Is the FPGA already programmed with the correct bit file?
-        if (exists($config{signature})) {
+        if (exists($config{signature}) && $config{SOFT_RESET}) {
             my $curSignature = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getsignature",
                                         "Failed to read code signature");
             if ($curSignature eq $config{signature}) {

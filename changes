@@ -26060,3 +26060,15 @@ Directory modules/hasim/functional-partition/base-types
 Add some functions to manage details of PCs, most importantly whether there are
 some low bits that are always 0.  BTBs and branch predictors take advantage of
 this knowledge to reduce table sizes and improve indexing.
+
+----------
+kfleming    Date: Sat Oct  6 19:11:48 EDT 2012  CSN: CSN-hasim-901
+                  Sat Oct  6 23:11:48 UTC 2012
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          900 
+
+
+Added support for optional soft reset.  Yet another reason why run
+scripts should have been unified long ago.

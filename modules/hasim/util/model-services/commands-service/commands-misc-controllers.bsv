@@ -113,20 +113,34 @@ module mkStageControllerVoid
     STAGE_CONTROLLER#(t_NUM_INSTANCES, Bit#(0)) m <- mkStageController();
 
     method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid);
-    
         m.ready(iid, (?));
-    
     endmethod
     
     method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
-    
         match {.iid, .*} <- m.nextReadyInstance();
-        
         return iid;
-    
     endmethod
 
 endmodule
+
+
+module mkBufferedStageControllerVoid
+    // interface:
+        (STAGE_CONTROLLER_VOID#(t_NUM_INSTANCES));
+
+    STAGE_CONTROLLER#(t_NUM_INSTANCES, Bit#(0)) m <- mkBufferedStageController();
+
+    method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+        m.ready(iid, (?));
+    endmethod
+    
+    method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
+        match {.iid, .*} <- m.nextReadyInstance();
+        return iid;
+    endmethod
+
+endmodule
+
 
 // MULTIPLEX_CONTROLLER
 

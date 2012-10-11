@@ -26072,3 +26072,14 @@ Directory tools/scripts/bmark
 
 Added support for optional soft reset.  Yet another reason why run
 scripts should have been unified long ago.
+
+----------
+mcadler     Date: Thu Oct 11 08:09:59 EDT 2012  CSN: CSN-hasim-902
+                  Thu Oct 11 12:09:59 UTC 2012
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-misc-controllers.bsv Locally Modified          901 
+
+Add a buffered version of the void stage controller, allowing multiple
+controller requests to be queued.

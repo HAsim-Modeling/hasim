@@ -123,6 +123,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
 
     FIFO#(Tuple2#(TOKEN, ISA_MEMOP_TYPE)) dTrans1Q <- mkFIFO();
     FIFO#(DTRANS_INFO) dTrans2Q <- mkFIFO();
+    FIFO#(Tuple2#(TOKEN, UP_TO_TWO#(MEM_ADDRESS))) dTransSaveTransQ <- mkLFIFO();
 
     Reg#(STATE_DTRANS2) stateDTrans2 <- mkReg(DTRANS2_NORMAL);
     Reg#(STATE_DTRANS3) stateDTrans3 <- mkReg(DTRANS3_NORMAL);
@@ -292,7 +293,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
                 end
 
                 // Record the physical addr.
-                tokPhysicalMemAddrs.write(tok.index, tagged ONE mem_addr);
+                dTransSaveTransQ.enq(tuple2(tok, tagged ONE mem_addr));
 
                 // Update the scoreboard.
                 tokScoreboard.dTransFinish(tok.index);
@@ -358,7 +359,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
         debugLog.record(fshow(tok.index) + $format(": DoDTranslate3: DTLB Span Rsp 2 (PA2: 0x%h)", mem_addr2));
 
         // Record the physical addresses.
-        tokPhysicalMemAddrs.write(tok.index, tagged TWO tuple2(trans1.firstPA, mem_addr2));
+        dTransSaveTransQ.enq(tuple2(tok, tagged TWO tuple2(trans1.firstPA, mem_addr2)));
 
         // Unstall the pipeline.
         dTrans2Q.deq();
@@ -371,6 +372,21 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoDTranslate#(
         linkDoDTranslate.makeResp(initFuncpRspDoDTranslate_part2(tok, mem_addr2, page_fault));
         debugLog.record(fshow(tok.index) + $format(": DoDTranslate: End (path 2)."));
     
+    endrule
+
+
+    //
+    // doDTranslateSaveTrans --
+    //     Delay the BRAM write to tokPhysicalMemAddrs to this cycle, with a short path
+    //     through a FIFO, to relax timing from the translation arriving from the VA
+    //     to PA service.  The BRAM write only takes a cycle and will complete before
+    //     a client can access it.
+    //
+    rule doDTranslateSaveTrans (True);
+        match {.tok, .trans} = dTransSaveTransQ.first();
+        dTransSaveTransQ.deq();
+
+        tokPhysicalMemAddrs.write(tok.index, trans);
     endrule
 
 endmodule

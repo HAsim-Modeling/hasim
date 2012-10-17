@@ -21,6 +21,8 @@
 import FIFO::*;
 import FIFOF::*;
 import Vector::*;
+import GetPut::*;
+import Connectable::*;
 
 // Project foundation includes.
 
@@ -222,6 +224,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
                        FUNCP_ISA_DATAPATH_RSP) linkToDatapath <- mkConnection_Client("isa_datapath");
 
     Connection_Receive#(FUNCP_ISA_WRITEBACK) linkISAWritebacks <- mkConnection_Receive("isa_datapath_writeback");
+
+    // Send linkISAWritebacks through a local FIFO to relax timing
+    FIFO#(FUNCP_ISA_WRITEBACK) writebacks <- mkFIFO();
+    mkConnection(toGet(linkISAWritebacks), toPut(writebacks));
 
     // Emulation RRR Stubs
     ClientStub_ISA_EMULATOR emul_client_stub <- mkClientStub_ISA_EMULATOR();
@@ -545,8 +551,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     //     when the tokDone bit is sent in the writebacks message.
     //
     rule getResultsWritebacks (True);
-        let wb = linkISAWritebacks.receive();
-        linkISAWritebacks.deq();
+        let wb = writebacks.first();
+        writebacks.deq();
 
         let tok = wb.token;
 

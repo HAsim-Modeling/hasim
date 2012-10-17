@@ -26083,3 +26083,20 @@ Directory modules/hasim/util/model-services/commands-service
 
 Add a buffered version of the void stage controller, allowing multiple
 controller requests to be queued.
+
+----------
+mcadler     Date: Wed Oct 17 08:01:25 EDT 2012  CSN: CSN-hasim-903
+                  Wed Oct 17 12:01:25 UTC 2012
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-doDTranslate.bsv Locally Modified          902 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          902 
+ regmgr-macro-pipe-doStores.bsv Locally Modified          902 
+ regmgr-macro.bsv          Locally Modified          902 
+
+- Relax tight timing paths in doDTranslate and getResults.
+
+- Change to doStores started as a timing optimization, eliminating a MUX
+  on the linkDoStores response.  The old code couldn't have been right
+  since it allowed OOO responses.

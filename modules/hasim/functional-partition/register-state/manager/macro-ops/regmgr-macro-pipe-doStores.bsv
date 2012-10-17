@@ -113,8 +113,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // ====================================================================
 
     FIFO#(FUNCP_REQ_DO_STORES) storesSQ <- mkFIFO();
-    FIFO#(Tuple2#(TOKEN, ISA_MEMOP_TYPE)) stores1Q <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
-    FIFO#(TOKEN) stores3Q <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
+    FIFO#(Tuple2#(TOKEN, Maybe#(ISA_MEMOP_TYPE))) stores2Q <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
+    FIFO#(Tuple2#(TOKEN, Bool)) stores3Q <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
     FIFO#(PATH_STORE) pathQ <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
 
     Reg#(STATE_STORES2) stateStores2 <- mkReg(STORES2_NORMAL);
@@ -198,8 +198,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
             storesSQ.deq();
 
-            // Respond to the timing model. End of macro-operation.
-            linkDoStores.makeResp(initFuncpRspDoStores(tok));
+            // Pass to the next stage.
+            stores2Q.enq(tuple2(tok, tagged Invalid));
         end
         else if (! tokScoreboard.isStoreDataValid(tok.index))
         begin
@@ -227,22 +227,48 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
             let st_type = tokScoreboard.getStoreType(tok.index);
 
             // Pass to the next stage.
-            stores1Q.enq(tuple2(tok, st_type));
+            stores2Q.enq(tuple2(tok, tagged Valid st_type));
         end
 
     endrule
     
+
+    // doStores2Bypass
+
+    // When:   Handling a dynamically dead store.
+    // Effect: Forward token to next stage and do nothing else.
+
+    rule doStores2Bypass (state.readyToContinue() &&&
+                    ! isValid(tpl_2(stores2Q.first())) &&&
+                    xstFirstTimeBugFix &&&
+                    stateStores2 matches tagged STORES2_NORMAL);
+
+        // Read the parameters from the previous stage.
+        match {.tok, .m_st_type} = stores2Q.first();
+        let st_type = validValue(m_st_type);
+
+        debugLog.record(fshow(tok.index) + $format(": DoStores2Bypass")); 
+
+        stores2Q.deq(); 
+        stores3Q.enq(tuple2(tok, False));
+        pathQ.enq(PATH_FINISH);
+
+    endrule
+
+
     // doStores2
 
     // When:   After we get a response from the address RAM.
     // Effect: Read the physical register file and the effective address. 
 
     rule doStores2 (state.readyToContinue() &&&
+                    isValid(tpl_2(stores2Q.first())) &&&
                     xstFirstTimeBugFix &&&
                     stateStores2 matches tagged STORES2_NORMAL);
 
         // Read the parameters from the previous stage.
-        match {.tok, .st_type} = stores1Q.first();
+        match {.tok, .m_st_type} = stores2Q.first();
+        let st_type = validValue(m_st_type);
 
         // Get the offset.
         let offset = tokScoreboard.getMemOpOffset(tok.index);
@@ -286,7 +312,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                 begin
 
                     // It's a normal store. We're not stalled.
-                    stores1Q.deq(); 
+                    stores2Q.deq(); 
 
                     // Convert the store.
                     let mem_store_value = isaStoreValueToMemValue(store_val, st_type);
@@ -301,7 +327,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                     debugLog.record(fshow(tok.index) + $format(": DoStores2: Sending Store to Memory (PA: 0x%h, V: 0x%h).", p_addr, mem_store_value)); 
 
                     // Wait for response from memory
-                    stores3Q.enq(tok);
+                    stores3Q.enq(tuple2(tok, True));
                 end
 
             end
@@ -346,7 +372,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                        pathQ.first() == PATH_RMW_LOAD);
     
         // Get the info from the previous stage.
-        match {.tok, .st_type} = stores1Q.first();
+        match {.tok, .m_st_type} = stores2Q.first();
+        let st_type = validValue(m_st_type);
         
         // Get the load from memory.
         MEM_VALUE existing_val = linkToMem.getResp();
@@ -371,10 +398,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
         // Unstall this stage.
         stateStores2 <= tagged STORES2_NORMAL;
-        stores1Q.deq();
+        stores2Q.deq();
 
         // Wait for response from memory
-        stores3Q.enq(tok);
+        stores3Q.enq(tuple2(tok, True));
     
     endrule
     
@@ -388,7 +415,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                            stateStores2 matches tagged STORES2_SPAN_REQ .store_info);
     
         // Get the data from the previous stage.
-        match {.tok, .st_type} = stores1Q.first();
+        match {.tok, .m_st_type} = stores2Q.first();
+        let st_type = validValue(m_st_type);
     
         // Make the second load request.
         let p_addr2 = getSecondOfTwo(store_info.memAddrs);
@@ -415,7 +443,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                             pathQ.first() == PATH_SPAN_LOAD1);
     
         // Get the value from the previous stage.
-        match {.tok, .st_type} = stores1Q.first();
+        match {.tok, .m_st_type} = stores2Q.first();
+        let st_type = validValue(m_st_type);
     
         // Get the first value from memory.
         MEM_VALUE existing_val1 = linkToMem.getResp();
@@ -441,7 +470,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                             pathQ.first() == PATH_SPAN_LOAD2);
     
         // Get the value from the previous stage.
-        match {.tok, .st_type} = stores1Q.first();
+        match {.tok, .m_st_type} = stores2Q.first();
+        let st_type = validValue(m_st_type);
 
         // Get the second value from memory.
         MEM_VALUE existing_val2 = linkToMem.getResp();
@@ -495,11 +525,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         debugLog.record(fshow(tok.index) + $format(": DoStores2: Spanning Store Req 2 (PA2: V2: 0x%h).", p_addr2, new_val2));
         
         // Unstall this stage.
-        stores1Q.deq();
+        stores2Q.deq();
         stateStores2 <= tagged STORES2_NORMAL;
         
         // Wait for response from memory
-        stores3Q.enq(tok);
+        stores3Q.enq(tuple2(tok, True));
 
     endrule
     
@@ -512,15 +542,18 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
     rule doStores3 (state.readyToContinue() &&& pathQ.first() == PATH_FINISH);
         
-        let tok = stores3Q.first();
+        match {.tok, .active} = stores3Q.first();
         stores3Q.deq();
-
-        // Wait for memory
-        linkToMem.deq();
         pathQ.deq();
 
-        // Update the scoreboard.
-        tokScoreboard.storeFinish(tok.index);
+        if (active)
+        begin
+            // Wait for memory
+            linkToMem.deq();
+
+            // Update the scoreboard.
+            tokScoreboard.storeFinish(tok.index);
+        end
 
         // Return to the timing partition. End of macro-operation (path 1).
         linkDoStores.makeResp(initFuncpRspDoStores(tok));

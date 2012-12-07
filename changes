@@ -26100,3 +26100,13 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
 - Change to doStores started as a timing optimization, eliminating a MUX
   on the linkDoStores response.  The old code couldn't have been right
   since it allowed OOO responses.
+
+----------
+mcadler     Date: Fri Dec  7 16:17:16 EST 2012  CSN: CSN-hasim-904
+                  Fri Dec  7 21:17:16 UTC 2012
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          903 
+
+Use single quotes in funcp argument to simplify scripting.

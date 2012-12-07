@@ -218,7 +218,7 @@ if ($m5run == 0) {
         $cmd = "$config{modelDir}/$config{master}/" . readlink($cmd);
     }
 
-    $cmd .= " --modeldir=$config{modelDir}/$config{master}/ --workload=$config{workload} ${showfp} --funcp=\"${feedFlags}\" $config{genFlags} ${ctxFlag}";
+    $cmd .= " --modeldir=$config{modelDir}/$config{master}/ --workload=$config{workload} ${showfp} --funcp=\'${feedFlags}\' $config{genFlags} ${ctxFlag}";
     foreach my $c (@ARGV) {
         $cmd .= " $c";
     }

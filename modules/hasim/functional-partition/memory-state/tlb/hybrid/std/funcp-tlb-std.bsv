@@ -201,7 +201,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     NumTypeParam#(`FUNCP_TLB_PVT_CACHE_PREFETCH_LEARNER_NUM) num_prefetch_learners = ?;
     
     let prefetcher <- (`FUNCP_TLB_PVT_PREFETCH_ENABLE == 1)?
-                      mkCachePrefetcher(num_prefetch_learners, True, debugLog):
+                      mkCachePrefetcher(num_prefetch_learners, False, True, debugLog):
                       mkNullCachePrefetcher();
 
     CENTRAL_CACHE_CLIENT#(FUNCP_TLB_IDX,      // Cache address type
@@ -221,8 +221,8 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     // Dynamic parameters
     PARAMETER_NODE paramNode         <- mkDynamicParameterNode();
     Param#(3) cacheMode              <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PVT_CACHE_MODE, paramNode);
-    Param#(5) prefetchMechanism      <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PREFETCHER_MECHANISM, paramNode);
-    Param#(3) prefetchLearnerSizeLog <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PREFETCHER_LEARNER_SIZE_LOG, paramNode);
+    Param#(6) prefetchMechanism      <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PREFETCHER_MECHANISM, paramNode);
+    Param#(4) prefetchLearnerSizeLog <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PREFETCHER_LEARNER_SIZE_LOG, paramNode);
 
     // ====================================================================
     //
@@ -596,72 +596,114 @@ module [HASIM_MODULE] mkTLBPrefetchStats#(NumTypeParam#(n_LEARNERS) dummy, RL_PR
     ()
     provisos( NumAlias#(TMul#(n_LEARNERS, 4), n_STATS),
               Add#(TMax#(TLog#(n_STATS),1), extraBits, TLog#(`STATS_MAX_VECTOR_LEN)));
-	
-	STAT_ID prefetchStatIDs[6];
-	STAT_ID learnerStatIDs[ valueOf(n_STATS) ];
+    
+    STAT_ID prefetchStatIDs[9];
+//    STAT_ID learnerStatIDs[ valueOf(n_STATS) ];
 
-	prefetchStatIDs[0] = statName("FUNCP_TLB_PVT_PREFETCH_HIT", 
+    prefetchStatIDs[0] = statName("FUNCP_TLB_PVT_PREFETCH_HIT", 
                                   "FUNCP TLB: Prefetch hits");
-	prefetchStatIDs[1] = statName("FUNCP_TLB_PVT_PREFETCH_DROP_BUSY", 
+    prefetchStatIDs[1] = statName("FUNCP_TLB_PVT_PREFETCH_DROP_BUSY", 
                                   "FUNCP TLB: Prefetch reqs dropped by busy");
-	prefetchStatIDs[2] = statName("FUNCP_TLB_PVT_PREFETCH_DROP_HIT", 
+    prefetchStatIDs[2] = statName("FUNCP_TLB_PVT_PREFETCH_DROP_HIT", 
                                   "FUNCP TLB: Prefetch reqs dropped by hit");
-	prefetchStatIDs[3] = statName("FUNCP_TLB_PVT_PREFETCH_LATE", 
+    prefetchStatIDs[3] = statName("FUNCP_TLB_PVT_PREFETCH_LATE", 
                                   "FUNCP TLB: Late prefetch reqs");
-	prefetchStatIDs[4] = statName("FUNCP_TLB_PVT_PREFETCH_USELESS", 
+    prefetchStatIDs[4] = statName("FUNCP_TLB_PVT_PREFETCH_USELESS", 
                                   "FUNCP TLB: Uesless prefetch reqs");
-	prefetchStatIDs[5] = statName("FUNCP_TLB_PVT_PREFETCH_ISSUE", 
+    prefetchStatIDs[5] = statName("FUNCP_TLB_PVT_PREFETCH_ISSUE", 
                                   "FUNCP TLB: Prefetch reqs issued");
-	
-	for (Integer i = 0; i < valueOf(n_LEARNERS); i = i+1)
-	begin
-	    learnerStatIDs[0+4*i] = statName("FUNCP_TLB_PVT_PREFETCH_L"+integerToString(i)+"_HIT",
-                                         "FUNCP TLB: Prefetch learner "+integerToString(i)+" hits");
-	    learnerStatIDs[1+4*i] = statName("FUNCP_TLB_PVT_PREFETCH_L"+integerToString(i)+"_ISSUE", 
-                                         "FUNCP TLB: Prefetch reqs from learner "+integerToString(i));
-	    learnerStatIDs[2+4*i] = statName("FUNCP_TLB_PVT_PREFETCH_L"+integerToString(i)+"_STRIDE", 
-                                         "FUNCP TLB: Prefetch stride from learner "+integerToString(i));
-	    learnerStatIDs[3+4*i] = statName("FUNCP_TLB_PVT_PREFETCH_L"+integerToString(i)+"_LA_DIST", 
-                                         "FUNCP TLB: Prefetch lookahead dist from learner "+integerToString(i));
-	end
+	prefetchStatIDs[6] = statName("FUNCP_TLB_PVT_PREFETCH_LEARN", 
+                                  "FUNCP TLB: Prefetcher learns");
+	prefetchStatIDs[7] = statName("FUNCP_TLB_PVT_PREFETCH_CONFLICT", 
+                                  "FUNCP TLB: Prefetch learner conflicts");
+	prefetchStatIDs[8] = statName("FUNCP_TLB_PVT_PREFETCH_ILLEGAL", 
+                                  "FUNCP TLB: Uncacheable prefetch reqs");
     
-    STAT_VECTOR#(6)       prefetchSv <- mkStatCounter_Vector(prefetchStatIDs);
-    STAT_VECTOR#(n_STATS) learnerSv  <- mkStatCounter_Vector(learnerStatIDs);
+//    for (Integer i = 0; i < valueOf(n_LEARNERS); i = i+1)
+//    begin
+//        learnerStatIDs[0+4*i] = statName("FUNCP_TLB_PVT_PREFETCH_L"+integerToString(i)+"_HIT",
+//                                         "FUNCP TLB: Prefetch learner "+integerToString(i)+" hits");
+//        learnerStatIDs[1+4*i] = statName("FUNCP_TLB_PVT_PREFETCH_L"+integerToString(i)+"_ISSUE", 
+//                                         "FUNCP TLB: Prefetch reqs from learner "+integerToString(i));
+//        learnerStatIDs[2+4*i] = statName("FUNCP_TLB_PVT_PREFETCH_L"+integerToString(i)+"_STRIDE", 
+//                                         "FUNCP TLB: Prefetch stride from learner "+integerToString(i));
+//        learnerStatIDs[3+4*i] = statName("FUNCP_TLB_PVT_PREFETCH_L"+integerToString(i)+"_LA_DIST", 
+//                                         "FUNCP TLB: Prefetch lookahead dist from learner "+integerToString(i));
+//    end
     
-    rule prefetchHit (stats.prefetchHit());
+    STAT_VECTOR#(9)       prefetchSv <- mkStatCounter_Vector(prefetchStatIDs);
+//    STAT_VECTOR#(n_STATS) learnerSv  <- mkStatCounter_Vector(learnerStatIDs);
+
+    Reg#(Bool) prefetchHitR              <- mkReg(False);
+    Reg#(Bool) prefetchDroppedByBusyR    <- mkReg(False);
+    Reg#(Bool) prefetchDroppedByHitR     <- mkReg(False);
+    Reg#(Bool) prefetchLateR             <- mkReg(False);
+    Reg#(Bool) prefetchUselessR          <- mkReg(False);
+    Reg#(Bool) prefetchIssuedR           <- mkReg(False);
+    Reg#(Bool) prefetchLearnR            <- mkReg(False);
+    Reg#(Bool) prefetchLearnerConflictR  <- mkReg(False);
+    Reg#(Bool) prefetchIllegalReqR       <- mkReg(False);
+//    Reg#(Maybe#(PREFETCH_LEARNER_STATS)) hitLearnerInfoR <- mkReg(tagged Invalid);
+    
+    rule addPipeline (True);
+        prefetchHitR             <= stats.prefetchHit();
+        prefetchDroppedByHitR    <= stats.prefetchDroppedByHit();
+        prefetchDroppedByBusyR   <= stats.prefetchDroppedByBusy();
+        prefetchLateR            <= stats.prefetchLate();
+        prefetchUselessR         <= stats.prefetchUseless();
+        prefetchIssuedR          <= stats.prefetchIssued();
+        prefetchLearnR           <= stats.prefetchLearn();
+        prefetchLearnerConflictR <= stats.prefetchLearnerConflict();
+        prefetchIllegalReqR      <= stats.prefetchIllegalReq();
+//        hitLearnerInfoR        <= stats.hitLearnerInfo;
+    endrule
+
+    rule prefetchHit (prefetchHitR);
         prefetchSv.incr(0);
     endrule
 
-    rule prefetchDroppedByBusy (stats.prefetchDroppedByBusy());
+    rule prefetchDroppedByBusy (prefetchDroppedByBusyR);
         prefetchSv.incr(1);
     endrule
 
-    rule prefetchDroppedByHit (stats.prefetchDroppedByHit());
+    rule prefetchDroppedByHit (prefetchDroppedByHitR);
         prefetchSv.incr(2);
     endrule
 
-    rule prefetchLate (stats.prefetchLate());
+    rule prefetchLate (prefetchLateR);
         prefetchSv.incr(3);
     endrule
 
-    rule prefetchUseless (stats.prefetchUseless());
+    rule prefetchUseless (prefetchUselessR);
         prefetchSv.incr(4);
     endrule
     
-    rule prefetchIssued (stats.prefetchIssued());
+    rule prefetchIssued (prefetchIssuedR);
         prefetchSv.incr(5);
     endrule
-	
-	rule hitLearnerUpdate (stats.hitLearnerInfo() matches tagged Valid .s);
-        learnerSv.incr(0+resize(s.idx)*4); //hitLeanerIdx
-        if (s.isActive)                    //the learner is issuing prefetch request
-        begin
-            learnerSv.incr(1+resize(s.idx)*4);                         //activeLearnerIdx
-            learnerSv.incrBy(2+resize(s.idx)*4, signExtend(s.stride)); //activeLearnerStride
-            learnerSv.incrBy(3+resize(s.idx)*4, zeroExtend(s.laDist)); //activeLearnerLaDist
-        end
-	endrule
-	
+    
+    rule prefetchLearn (prefetchLearnR);
+        prefetchSv.incr(6);
+    endrule
+    
+    rule prefetchLearnerConflict (prefetchLearnerConflictR);
+        prefetchSv.incr(7);
+    endrule
+
+    rule prefetchIllegalReq (prefetchIllegalReqR);
+        prefetchSv.incr(8);
+    endrule
+
+//    rule hitLearnerUpdate (hitLearnerInfoR matches tagged Valid .s);
+//        learnerSv.incr(0+resize(s.idx)*4); //hitLeanerIdx
+//        if (s.isActive)                    //the learner is issuing prefetch request
+//        begin
+//            learnerSv.incr(1+resize(s.idx)*4);                         //activeLearnerIdx
+//            learnerSv.incrBy(2+resize(s.idx)*4, signExtend(s.stride)); //activeLearnerStride
+//            learnerSv.incrBy(3+resize(s.idx)*4, zeroExtend(s.laDist)); //activeLearnerLaDist
+//        end
+//    endrule
+
 endmodule
 
 module [HASIM_MODULE] mkNullTLBPrefetchStats#(NumTypeParam#(n_LEARNERS) dummy, RL_PREFETCH_STATS stats)

@@ -26110,3 +26110,18 @@ Directory tools/scripts/bmark
  run-hasim.bmark           Locally Modified          903 
 
 Use single quotes in funcp argument to simplify scripting.
+
+----------
+hjyang      Date: Mon Dec 10 21:56:54 EST 2012  CSN: CSN-hasim-905
+                  Tue Dec 11 02:56:54 UTC 2012
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.awb         Locally Modified          904 
+ funcp-tlb-std.bsv         Locally Modified          904 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.awb   Locally Modified          904 
+ hybrid-funcp-memory.bsv   Locally Modified          904 
+
+Changes made for the updated prefetching scheme (using BRAM for learners).

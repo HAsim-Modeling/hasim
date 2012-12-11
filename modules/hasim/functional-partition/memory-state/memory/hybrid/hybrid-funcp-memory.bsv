@@ -502,7 +502,7 @@ module [HASIM_MODULE] mkFuncpMemPvtPrefetchStats#(NumTypeParam#(n_LEARNERS) dumm
               Add#(TMax#(TLog#(n_STATS),1), extraBits, TLog#(`STATS_MAX_VECTOR_LEN)));
     
     STAT_ID prefetchStatIDs[9];
-//    STAT_ID learnerStatIDs[ valueOf(n_STATS) ];
+//  STAT_ID learnerStatIDs[ valueOf(n_STATS) ];
 
     prefetchStatIDs[0] = statName("FUNCP_MEMORY_PVT_PREFETCH_HIT", 
                                   "FUNCP Mem: Prefetch hits");
@@ -513,30 +513,30 @@ module [HASIM_MODULE] mkFuncpMemPvtPrefetchStats#(NumTypeParam#(n_LEARNERS) dumm
     prefetchStatIDs[3] = statName("FUNCP_MEMORY_PVT_PREFETCH_LATE", 
                                   "FUNCP Mem: Late prefetch reqs");
     prefetchStatIDs[4] = statName("FUNCP_MEMORY_PVT_PREFETCH_USELESS", 
-                                  "FUNCP Mem: Uesless prefetch reqs");
+                                  "FUNCP Mem: Useless prefetch reqs");
     prefetchStatIDs[5] = statName("FUNCP_MEMORY_PVT_PREFETCH_ISSUE", 
                                   "FUNCP Mem: Prefetch reqs issued");
-	prefetchStatIDs[6] = statName("FUNCP_MEMORY_PVT_PREFETCH_LEARN", 
+    prefetchStatIDs[6] = statName("FUNCP_MEMORY_PVT_PREFETCH_LEARN", 
                                   "FUNCP Mem: Prefetcher learns");
-	prefetchStatIDs[7] = statName("FUNCP_MEMORY_PVT_PREFETCH_CONFLICT", 
+    prefetchStatIDs[7] = statName("FUNCP_MEMORY_PVT_PREFETCH_CONFLICT", 
                                   "FUNCP Mem: Prefetch learner conflicts");
-	prefetchStatIDs[8] = statName("FUNCP_MEMORY_PVT_PREFETCH_ILLEGAL", 
+    prefetchStatIDs[8] = statName("FUNCP_MEMORY_PVT_PREFETCH_ILLEGAL", 
                                   "FUNCP Mem: Uncacheable prefetch reqs");
     
-//    for (Integer i = 0; i < valueOf(n_LEARNERS); i = i+1)
-//    begin
-//        learnerStatIDs[0+4*i] = statName("FUNCP_MEMORY_PVT_PREFETCH_L"+integerToString(i)+"_HIT",
-//                                         "FUNCP Mem: Prefetch learner "+integerToString(i)+" hits");
-//        learnerStatIDs[1+4*i] = statName("FUNCP_MEMORY_PVT_PREFETCH_L"+integerToString(i)+"_ISSUE", 
-//                                         "FUNCP Mem: Prefetch reqs from learner "+integerToString(i));
-//        learnerStatIDs[2+4*i] = statName("FUNCP_MEMORY_PVT_PREFETCH_L"+integerToString(i)+"_STRIDE", 
-//                                         "FUNCP Mem: Prefetch stride from learner "+integerToString(i));
-//        learnerStatIDs[3+4*i] = statName("FUNCP_MEMORY_PVT_PREFETCH_L"+integerToString(i)+"_LA_DIST", 
-//                                         "FUNCP Mem: Prefetch lookahead dist from learner "+integerToString(i));
-//    end
+//  for (Integer i = 0; i < valueOf(n_LEARNERS); i = i+1)
+//  begin
+//      learnerStatIDs[0+4*i] = statName("FUNCP_MEMORY_PVT_PREFETCH_L"+integerToString(i)+"_HIT",
+//                                       "FUNCP Mem: Prefetch learner "+integerToString(i)+" hits");
+//      learnerStatIDs[1+4*i] = statName("FUNCP_MEMORY_PVT_PREFETCH_L"+integerToString(i)+"_ISSUE", 
+//                                       "FUNCP Mem: Prefetch reqs from learner "+integerToString(i));
+//      learnerStatIDs[2+4*i] = statName("FUNCP_MEMORY_PVT_PREFETCH_L"+integerToString(i)+"_STRIDE", 
+//                                       "FUNCP Mem: Prefetch stride from learner "+integerToString(i));
+//      learnerStatIDs[3+4*i] = statName("FUNCP_MEMORY_PVT_PREFETCH_L"+integerToString(i)+"_LA_DIST", 
+//                                       "FUNCP Mem: Prefetch lookahead dist from learner "+integerToString(i));
+//  end
 
     STAT_VECTOR#(9)       prefetchSv <- mkStatCounter_Vector(prefetchStatIDs);
-//    STAT_VECTOR#(n_STATS) learnerSv  <- mkStatCounter_Vector(learnerStatIDs);
+//  STAT_VECTOR#(n_STATS) learnerSv  <- mkStatCounter_Vector(learnerStatIDs);
     
     Reg#(Bool) prefetchHitR              <- mkReg(False);
     Reg#(Bool) prefetchDroppedByBusyR    <- mkReg(False);
@@ -547,7 +547,7 @@ module [HASIM_MODULE] mkFuncpMemPvtPrefetchStats#(NumTypeParam#(n_LEARNERS) dumm
     Reg#(Bool) prefetchLearnR            <- mkReg(False);
     Reg#(Bool) prefetchLearnerConflictR  <- mkReg(False);
     Reg#(Bool) prefetchIllegalReqR       <- mkReg(False);
-//    Reg#(Maybe#(PREFETCH_LEARNER_STATS)) hitLearnerInfoR <- mkReg(tagged Invalid);
+//  Reg#(Maybe#(PREFETCH_LEARNER_STATS)) hitLearnerInfoR <- mkReg(tagged Invalid);
     
     rule addPipeline (True);
         prefetchHitR             <= stats.prefetchHit;
@@ -559,7 +559,7 @@ module [HASIM_MODULE] mkFuncpMemPvtPrefetchStats#(NumTypeParam#(n_LEARNERS) dumm
         prefetchLearnR           <= stats.prefetchLearn();
         prefetchLearnerConflictR <= stats.prefetchLearnerConflict();
         prefetchIllegalReqR      <= stats.prefetchIllegalReq();
-//        hitLearnerInfoR        <= stats.hitLearnerInfo;
+//      hitLearnerInfoR        <= stats.hitLearnerInfo;
     endrule
 
     rule prefetchHit (prefetchHitR);
@@ -598,15 +598,15 @@ module [HASIM_MODULE] mkFuncpMemPvtPrefetchStats#(NumTypeParam#(n_LEARNERS) dumm
         prefetchSv.incr(8);
     endrule
 
-//    rule hitLearnerUpdate (hitLearnerInfoR matches tagged Valid .s);
-//        learnerSv.incr(0+resize(s.idx)*4); //hitLeanerIdx
-//        if (s.isActive)                    //the learner is issuing prefetch request
-//        begin
-//            learnerSv.incr(1+resize(s.idx)*4);                         //activeLearnerIdx
-//            learnerSv.incrBy(2+resize(s.idx)*4, signExtend(s.stride)); //activeLearnerStride
-//            learnerSv.incrBy(3+resize(s.idx)*4, zeroExtend(s.laDist)); //activeLearnerLaDist
-//        end
-//    endrule
+//  rule hitLearnerUpdate (hitLearnerInfoR matches tagged Valid .s);
+//      learnerSv.incr(0+resize(s.idx)*4); //hitLeanerIdx
+//      if (s.isActive)                    //the learner is issuing prefetch request
+//      begin
+//          learnerSv.incr(1+resize(s.idx)*4);                         //activeLearnerIdx
+//          learnerSv.incrBy(2+resize(s.idx)*4, signExtend(s.stride)); //activeLearnerStride
+//          learnerSv.incrBy(3+resize(s.idx)*4, zeroExtend(s.laDist)); //activeLearnerLaDist
+//      end
+//  endrule
 
 endmodule
 

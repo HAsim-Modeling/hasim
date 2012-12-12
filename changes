@@ -26138,3 +26138,38 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
  hybrid-funcp-memory.bsv   Locally Modified          905 
 
 Remove tabs. 
+
+----------
+mgambhir    Date: Wed Dec 12 13:53:18 EST 2012  CSN: CSN-hasim-907
+                  Wed Dec 12 18:53:18 UTC 2012
+
+
+Directory .
+ aclocal.m4                Locally Modified          906 
+ configure                 Locally Modified          906 
+ Makefile.in               Locally Modified          906 
+ configure.in              Locally Modified          906 
+
+Directory libperl
+ Makefile.in               Locally Modified          906 
+
+Directory tools/hasim
+ Makefile.am               Locally Modified          906 
+ Makefile.in               Locally Modified          906 
+ hasim-front-panel/        Locally Removed           906 
+
+Directory tools/hasim/hasim-front-panel
+ Makefile.am               Locally Removed           906 
+ hasim_front_panel.ui.h    Locally Removed           906 
+ hasim_front_panel_header.pl Locally Removed           906 
+ Makefile.in               Locally Removed           906 
+ hasim_front_panel.ui      Locally Removed           906 
+
+Directory tools
+ Makefile.in               Locally Modified          906 
+
+Directory tools/scripts
+ Makefile.in               Locally Modified          906 
+
+- Deprecated hasim-front-panel gui tool. It can be found in leap package as leap-front-panel which 
+has both perlqt3 and perlqt4 versions available

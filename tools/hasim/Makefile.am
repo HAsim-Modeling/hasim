@@ -1,1 +1,1 @@
-SUBDIRS=hasim-front-panel
+SUBDIRS=

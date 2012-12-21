@@ -18,6 +18,7 @@
 
 import FIFO::*;
 import FIFOF::*;
+import DefaultValue::*;
 
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
@@ -212,7 +213,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
                 let read_meta = FUNCP_CACHE_READ_META { contextId: ldinfo.contextId,
                                                         memRefToken: ldinfo.memRefToken };
                 let w_addr = wordAddrFromByteAddr(ldinfo.addr);
-                cache.readReq(w_addr, read_meta);
+                cache.readReq(w_addr, read_meta, defaultValue());
 
                 loadsInFlight.up();
                 debugLog.record($format("cache readReq: ctx=%0d, addr=0x%x, w_addr=0x%x", ldinfo.contextId, ldinfo.addr, w_addr));
@@ -353,12 +354,14 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
         // readLineReq --
         //     Request a full line of data.
         //
-        method Action readLineReq(FUNCP_MEM_WORD_PADDR wAddr, t_READ_META readMeta);
+        method Action readLineReq(FUNCP_MEM_WORD_PADDR wAddr,
+                                  t_READ_META readMeta,
+                                  RL_CACHE_GLOBAL_READ_META globalReadMeta);
             let client_meta = readMeta.clientReadMeta;
             let addr = byteAddrFromWordAddr(wAddr);
-            debugLog.record($format("back readReq: ctx=%0d, pref=%b, addr=0x%x", client_meta.contextId, readMeta.isPrefetch, addr));
+            debugLog.record($format("back readReq: ctx=%0d, pref=%b, addr=0x%x", client_meta.contextId, globalReadMeta.isPrefetch, addr));
             clientStub.makeRequest_LoadLine(zeroExtend(addr),
-                                            zeroExtend(pack(readMeta.isPrefetch)));
+                                            zeroExtend(pack(globalReadMeta.isPrefetch)));
         endmethod
 
         //

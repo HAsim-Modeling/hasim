@@ -26,6 +26,7 @@
 import FIFO::*;
 import Vector::*;
 import FShow::*;
+import DefaultValue::*;
 
 // Project foundation includes.
 
@@ -268,7 +269,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         begin
             debugLog.record($format("I Alloc: ctx=%0d, va=0x%x", r.contextId, r.va));
 
-            cache.readReq(idx, ref_info);
+            cache.readReq(idx, ref_info, defaultValue());
             link_funcp_itlb_fault.deq();
         end
 
@@ -294,7 +295,8 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
                       FUNCP_TLB_REFINFO { isInstrReq: True,
                                           allocOnFault: False,
                                           allocWordIdx: truncate(vp),
-                                          refIdx: idx });
+                                         refIdx: idx },
+                      defaultValue());
 
         itlbReqInfoQ.enq(pageOffsetFromVA(r.va));
     endrule
@@ -353,7 +355,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         begin
             debugLog.record($format("D Alloc: ctx=%0d, va=0x%x", r.contextId, r.va));
 
-            cache.readReq(idx, ref_info);
+            cache.readReq(idx, ref_info, defaultValue());
             link_funcp_dtlb_fault.deq();
         end
 
@@ -379,7 +381,8 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
                       FUNCP_TLB_REFINFO { isInstrReq: False,
                                           allocOnFault: False,
                                           allocWordIdx: truncate(vp),
-                                          refIdx: idx });
+                                          refIdx: idx },
+                      defaultValue());
 
         dtlbReqInfoQ.enq(pageOffsetFromVA(r.va));
     endrule
@@ -476,7 +479,9 @@ module [HASIM_MODULE] mkVtoPInterface#(DEBUG_FILE debugLog)
     FIFO#(Bool) writeAck <- mkFIFO();
 
 
-    method Action readLineReq(FUNCP_TLB_IDX idx, t_READ_META readMeta);
+    method Action readLineReq(FUNCP_TLB_IDX idx,
+                              t_READ_META readMeta,
+                              RL_CACHE_GLOBAL_READ_META globalReadMeta);
         FUNCP_TLB_REFINFO refInfo = unpack(truncateNP(pack(readMeta)));
         ISA_ADDRESS va = vaFromPage(idx.vp, 0);
 

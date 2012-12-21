@@ -26173,3 +26173,21 @@ Directory tools/scripts
 
 - Deprecated hasim-front-panel gui tool. It can be found in leap package as leap-front-panel which 
 has both perlqt3 and perlqt4 versions available
+
+----------
+mcadler     Date: Fri Dec 21 18:26:43 EST 2012  CSN: CSN-hasim-908
+                  Fri Dec 21 23:26:43 UTC 2012
+
+
+Directory .
+ configure                 Locally Modified          907 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          907 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          907 
+
+Changes for new LEAP memory system interface with global metadata for read
+requests.  This will eventually allow us to detect prefetch requests
+injected anywhere in the memory hierarchy.

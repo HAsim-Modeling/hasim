@@ -43,6 +43,7 @@ COMMANDS_SERVER_CLASS COMMANDS_SERVER_CLASS::instance;
 COMMANDS_SERVER_CLASS::COMMANDS_SERVER_CLASS() :
     stopCycleSwitch(),
     messageIntervalSwitch(),
+    tpTestSwitch(),
     lastStatsScanCycle(0),
     noChangeBeats(0),
     running(false),
@@ -110,6 +111,15 @@ COMMANDS_SERVER_CLASS::SetNumHardwareThreads(UINT32 num)
 void
 COMMANDS_SERVER_CLASS::Run()
 {
+    if (localControllerNames.empty())
+    {
+        // Collect the names of all the local controllers in scan/throughput test
+        // order.  This will be useful if names are needed later in the run.
+        onlyCollectNames = true;
+        Scan();
+        onlyCollectNames = false;
+    }
+
     // Set simulation end cycle
     if (stopCycleSwitch.StopCycle() != 0)
     {
@@ -151,9 +161,45 @@ COMMANDS_SERVER_CLASS::Sync()
 void
 COMMANDS_SERVER_CLASS::Scan()
 {
-    cout << "Commands service scan:" << endl;
-    clientStub->Scan(0);
-    cout << "Done" << endl;
+    static bool scanning = false;
+    if (! scanning)
+    {
+        scanning = true;
+        if (! onlyCollectNames)
+        {
+            cout << "Commands service scan:" << endl;
+        }
+
+        clientStub->Scan(0);
+
+        if (! onlyCollectNames)
+        {
+            cout << "Done" << endl;
+        }
+        scanning = false;
+    }
+}
+
+//
+// Throughput test (for debugging).  The throughput test isolates each local
+// controller and tests throughput through the controlled simulator
+// pipeline.  The goal is to find the modules with the slowest throughput.
+// Without isolation, all stages in a pipeline with cycles appear to have
+// the throughput of the slowest stage.
+//
+void
+COMMANDS_SERVER_CLASS::TestThroughput()
+{
+    static bool testing = false;
+    if (! testing)
+    {
+        testing = true;
+        tpControllerName = localControllerNames.cbegin();
+        cout << "Commands service throughput test:" << endl;
+        clientStub->TestThroughput(0);
+        cout << "Done" << endl;
+        testing = false;
+    }
 }
 
 
@@ -218,10 +264,10 @@ COMMANDS_SERVER_CLASS::ModelHeartbeat(
     UINT32 instr_commits)
 {
     hwThreadHeartbeat[hwThreadId].Heartbeat(hwThreadId, fpga_cycles, model_cycles, instr_commits);
-    
+
     // Reset the deadlock counter.
     noChangeBeats = 0;
-    
+
     //
     // Done?  Perhaps context 0 missed the command to stop.
     //
@@ -231,6 +277,17 @@ COMMANDS_SERVER_CLASS::ModelHeartbeat(
         cout << "commands relay: simulation reached stop cycle." << endl;
         EndSimulation(0);
     }
+
+    // Time to test throughput through each controller?
+    if (hwThreadId == 0)
+    {
+        static UINT32 cnt = 0;
+        if (++cnt == tpTestSwitch.Trigger())
+        {
+            TestThroughput();
+        }
+    }
+
 }
 
 //
@@ -399,40 +456,47 @@ COMMANDS_SERVER_CLASS::ScanDataNormal(UINT8 data, bool eom)
         UINT32 num_outports = atoi(scanParser.getSubstring(3).c_str());
         UINT32 num_iid_bits = atoi(scanParser.getSubstring(4).c_str());
 
-        cout << "  " << scanParser.getSubstring(5)
-             << " (" << num_inports
-             << ", " << num_unports
-             << ", " << num_outports << "):" << endl;
-
-        bool next_is_ready = (scanData.Get(1) != 0);
-        cout << "    Next instance (" << scanData.Get(num_iid_bits) << ") is "
-             << (next_is_ready ? "READY" : "NOT ready") << endl;
-
-        cout << "    Cycle: " << scanData.Get(4) << endl;
-
-        cout << "    Ready input ports:";
-        for (UINT32 i = 0; i < num_inports; i++)
+        if (onlyCollectNames)
         {
-            if (scanData.Get(1)) cout << " " << i;
+            localControllerNames.push_back(scanParser.getSubstring(5));
         }
-        cout << endl;
-
-        if (num_unports)
+        else
         {
-            cout << "    Ready uncontrolled ports:";
-            for (UINT32 i = 0; i < num_unports; i++)
+            cout << "  " << scanParser.getSubstring(5)
+                 << " (" << num_inports
+                 << ", " << num_unports
+                 << ", " << num_outports << "):" << endl;
+
+            bool next_is_ready = (scanData.Get(1) != 0);
+            cout << "    Next instance (" << scanData.Get(num_iid_bits) << ") is "
+                 << (next_is_ready ? "READY" : "NOT ready") << endl;
+
+            cout << "    Cycle: " << scanData.Get(4) << endl;
+
+            cout << "    Ready input ports:";
+            for (UINT32 i = 0; i < num_inports; i++)
+            {
+                if (scanData.Get(1)) cout << " " << i;
+            }
+            cout << endl;
+
+            if (num_unports)
+            {
+                cout << "    Ready uncontrolled ports:";
+                for (UINT32 i = 0; i < num_unports; i++)
+                {
+                    if (scanData.Get(1)) cout << " " << i;
+                }
+                cout << endl;
+            }
+
+            cout << "    Ready output ports:";
+            for (UINT32 i = 0; i < num_outports; i++)
             {
                 if (scanData.Get(1)) cout << " " << i;
             }
             cout << endl;
         }
-
-        cout << "    Ready output ports:";
-        for (UINT32 i = 0; i < num_outports; i++)
-        {
-            if (scanData.Get(1)) cout << " " << i;
-        }
-        cout << endl;
 
         scanData.Reset();
     }
@@ -449,6 +513,8 @@ COMMANDS_SERVER_CLASS::ScanDataNormal(UINT8 data, bool eom)
 void
 COMMANDS_SERVER_CLASS::ScanDataRunning(UINT8 data, bool eom)
 {
+    if (onlyCollectNames) return;
+
     // First IID for this controller?
     if (scanRunningIdx == 0)
     {
@@ -469,6 +535,37 @@ COMMANDS_SERVER_CLASS::ScanDataRunning(UINT8 data, bool eom)
     else
     {
         scanRunningIdx += 1;
+    }
+}
+
+
+
+//
+// ThroughputData --
+//     All throughput samples arrive here.
+//
+void
+COMMANDS_SERVER_CLASS::ThroughputData(UINT16 data, UINT8 flags)
+{
+    static bool first = true;
+
+    if (first)
+    {
+        cout << "  " << *tpControllerName << ":" << endl << "  ";
+        tpControllerName++;
+        first = false;
+    }
+
+    bool eom = (flags & 1) != 0;
+
+    if (eom)
+    {
+        cout << endl;
+        first = true;
+    }
+    else
+    {
+        cout << "  " << data;
     }
 }
 
@@ -597,16 +694,6 @@ STOP_CYCLE_SWITCH_CLASS::STOP_CYCLE_SWITCH_CLASS() :
     stopCycle = 0;
 }
 
-STOP_CYCLE_SWITCH_CLASS::~STOP_CYCLE_SWITCH_CLASS()
-{
-}
-
-void
-STOP_CYCLE_SWITCH_CLASS::ProcessSwitchInt(int arg)
-{
-    stopCycle = arg;
-}
-
 void
 STOP_CYCLE_SWITCH_CLASS::ShowSwitch(std::ostream& ostr, const string& prefix)
 {
@@ -620,18 +707,21 @@ MESSAGE_INTERVAL_SWITCH_CLASS::MESSAGE_INTERVAL_SWITCH_CLASS() :
 {
 }
 
-MESSAGE_INTERVAL_SWITCH_CLASS::~MESSAGE_INTERVAL_SWITCH_CLASS()
-{
-}
-
-void
-MESSAGE_INTERVAL_SWITCH_CLASS::ProcessSwitchInt(int arg)
-{
-    messageInterval = arg;
-}
-
 void
 MESSAGE_INTERVAL_SWITCH_CLASS::ShowSwitch(std::ostream& ostr, const string& prefix)
 {
     ostr << prefix << "[--pc=<interval>]       Progress message (heartbeat) interval." << endl;
+}
+
+// Switch for triggering throughput test
+COMMANDS_TP_TEST_SWITCH_CLASS::COMMANDS_TP_TEST_SWITCH_CLASS() :
+    COMMAND_SWITCH_INT_CLASS("test-throughput"),
+    trigger(0)
+{
+}
+
+void
+COMMANDS_TP_TEST_SWITCH_CLASS::ShowSwitch(std::ostream& ostr, const string& prefix)
+{
+    ostr << prefix << "[--test-throughput=<n>] Trigger local controller throughput testing after n heartbeats." << endl;
 }

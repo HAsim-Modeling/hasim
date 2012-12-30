@@ -169,8 +169,8 @@ module [HASIM_MODULE] mkCommandsService
 
             tagged COM_Scan:
             begin
-                // Sending "done" guarantees all scan data has reached host
-                clientStub.makeRequest_Done(?);
+                // Sending "done" guarantees all scan data have reached host
+                clientStub.makeRequest_Done(0);
             end
 
             tagged LC_ScanData .sd:
@@ -193,6 +193,22 @@ module [HASIM_MODULE] mkCommandsService
                 clientStub.makeRequest_ScanData(zeroExtend(pack(sr)), 'b11);
             end
 
+            tagged COM_TestThroughput:
+            begin
+                // Sending "done" guarantees all data have reached host
+                clientStub.makeRequest_Done(1);
+            end
+
+            tagged LC_ThroughputData .cycles:
+            begin
+                clientStub.makeRequest_ThroughputData(cycles, 0);
+            end
+
+            tagged LC_ThroughputLast:
+            begin
+                clientStub.makeRequest_ThroughputData(?, 1);
+            end
+
             default:
             begin
                 // Sink most messages
@@ -207,9 +223,16 @@ module [HASIM_MODULE] mkCommandsService
     //     The "done" request sent to the host at the end of a scan chain
     //     returns from software, signalling all scan data has been
     //     transmitted.  Then it is safe to signal completion of the scan.
+    //
     rule completeScan (True);
+        // Both scan and throughput tests use the done mechanism to guarantee
+        // delivery.  They send different values through done.  PIck the
+        // proper response.
         let ack <- clientStub.getResponse_Done();
-        serverStub.sendResponse_Scan(?);
+        if (ack == 0)
+            serverStub.sendResponse_Scan(?);
+        else
+            serverStub.sendResponse_TestThroughput(?);
     endrule
 
 
@@ -248,6 +271,12 @@ module [HASIM_MODULE] mkCommandsService
     rule requestScan (True);
         let dummy <- serverStub.acceptRequest_Scan();
         link_controllers.sendToNext(tagged COM_Scan);
+    endrule
+
+
+    rule requestTestThroughput (True);
+        let dummy <- serverStub.acceptRequest_TestThroughput();
+        link_controllers.sendToNext(tagged COM_TestThroughput);
     endrule
 
 
@@ -297,7 +326,7 @@ module [HASIM_MODULE] mkCommandsService
     // Initializing to 1 makes the end model cycle comparison easier.
     Reg#(Bit#(64)) ctx0ModelCycles <- mkReg(0);
 
-    (* descending_urgency = "getMessage, checkSimEnd, sync, isSynced, pause, setEndModelCycle, disableContext, enableContext, run" *)
+    (* descending_urgency = "getMessage, checkSimEnd, sync, isSynced, pause, setEndModelCycle, disableContext, enableContext, requestScan, completeScan, requestTestThroughput, run" *)
     rule checkSimEnd (state == CON_Running &&&
                       endModelCycle matches tagged Valid .end_cycle &&&
                       ctx0ModelCycles >= end_cycle);
@@ -311,7 +340,7 @@ module [HASIM_MODULE] mkCommandsService
     endrule
 
 
-    (* descending_urgency = "finishRun, fpgaHeartbeat, modelTick" *)
+    (* descending_urgency = "finishRun, fpgaHeartbeat, modelTick, getMessage" *)
     rule modelTick (True);
         CONTEXT_ID ctx_id = link_model_cycle.receive();
         link_model_cycle.deq();

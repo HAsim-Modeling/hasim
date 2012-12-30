@@ -20,6 +20,8 @@
 #define _COMMANDS_CONTROLLER_
 
 #include <stdio.h>
+#include <string>
+#include <list>
 
 #include "asim/syntax.h"
 #include "asim/trace.h"
@@ -34,6 +36,8 @@
 
 #include "asim/rrr/client_stub_COMMANDS.h"
 
+using namespace std;
+
 // Relay commands to HW.
 
 typedef class COMMANDS_SERVER_CLASS* COMMANDS_SERVER;
@@ -46,9 +50,9 @@ class STOP_CYCLE_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
 
   public:
     STOP_CYCLE_SWITCH_CLASS();
-    ~STOP_CYCLE_SWITCH_CLASS();
+    ~STOP_CYCLE_SWITCH_CLASS() {};
     
-    void ProcessSwitchInt(int arg);
+    void ProcessSwitchInt(int arg) { stopCycle = arg; };
     void ShowSwitch(std::ostream& ostr, const string& prefix);
     
     int StopCycle() { return stopCycle; }
@@ -61,12 +65,27 @@ class MESSAGE_INTERVAL_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
 
   public:
     MESSAGE_INTERVAL_SWITCH_CLASS();
-    ~MESSAGE_INTERVAL_SWITCH_CLASS();
+    ~MESSAGE_INTERVAL_SWITCH_CLASS() {};
     
-    void ProcessSwitchInt(int arg);
+    void ProcessSwitchInt(int arg) { messageInterval = arg; };
     void ShowSwitch(std::ostream& ostr, const string& prefix);
     
     int ProgressMsgInterval() { return messageInterval; }
+};
+
+class COMMANDS_TP_TEST_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
+{
+  private:
+    int trigger;
+
+  public:
+    COMMANDS_TP_TEST_SWITCH_CLASS();
+    ~COMMANDS_TP_TEST_SWITCH_CLASS() {};
+    
+    void ProcessSwitchInt(int arg) { trigger = arg; };
+    void ShowSwitch(std::ostream& ostr, const string& prefix);
+    
+    int Trigger() { return trigger; }
 };
 
 typedef class HW_THREAD_HEARTBEAT_CLASS* HW_THREAD_HEARTBEAT;
@@ -137,6 +156,9 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     // Command switch for message interval
     MESSAGE_INTERVAL_SWITCH_CLASS messageIntervalSwitch;
 
+    // Throughput test trigger
+    COMMANDS_TP_TEST_SWITCH_CLASS tpTestSwitch;
+
     HW_THREAD_HEARTBEAT_CLASS* hwThreadHeartbeat; // Dynamic arrays of heartbeats
     
     // Number of active HW threads.
@@ -155,10 +177,17 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     struct timeval startTime;
     struct timeval endTime;
 
+    // Names of local command service nodes in the connected ring's order
+    list<string> localControllerNames;
+
     // Scan data buffering
     DEBUG_SCAN_DATA_CLASS scanData;
     Regex scanParser;       // Parser for scan data size/name records
     UINT32 scanRunningIdx;  // Instance ID of the current "running" scan message
+    bool onlyCollectNames;
+
+    // Throughput testing state
+    list<string>::const_iterator tpControllerName;
 
     void ScanDataNormal(UINT8 data, bool eom);
     void ScanDataRunning(UINT8 data, bool eom);
@@ -180,6 +209,7 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     void Pause();
     void Sync();
     void Scan();
+    void TestThroughput();
 
     void SetNumHardwareThreads(UINT32 num);
 
@@ -201,7 +231,9 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
 
     void ScanData(UINT8 data, UINT8 flags);
 
-    UINT8 Done(UINT8 dummy) { return dummy; }
+    void ThroughputData(UINT16 data, UINT8 flags);
+
+    UINT8 Done(UINT8 tagIn) { return tagIn; }
 };
 
 // server stub

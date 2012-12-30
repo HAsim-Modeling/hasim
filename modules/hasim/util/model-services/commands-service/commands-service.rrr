@@ -15,6 +15,9 @@ service COMMANDS
 
         // Scan state (for debugging)
         method Scan(in UINT8[8] dummy, out UINT8[8] ack);
+
+        // Test throughput of each model stage, individually.
+        method TestThroughput(in UINT8[8] dummy, out UINT8[8] ack);
     };
 
     server sw (cpp, method) <- hw (bsv, connection)
@@ -34,7 +37,11 @@ service COMMANDS
         //   flag bit 1: "0: LC_ScanData / 1: LC_ScanRunning"
         method ScanData(in UINT8[8] data, in UINT8[8] flags);
 
+        // Data stram from TestThroughput() request
+        //   flag bit 0: "end of message"
+        method ThroughputData(in UINT16[16] data, in UINT8[8] flags);
+
         // Lowest priority methods, guaranteeing methods above have completed
-        method Done(in UINT8[8] dummy, out UINT8[8] ack);
+        method Done(in UINT8[8] tagIn, out UINT8[8] tagOut);
     };
 };

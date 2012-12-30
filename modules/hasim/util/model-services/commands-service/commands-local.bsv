@@ -93,6 +93,7 @@ typedef union tagged
     CONTEXT_ID    COM_DisableContext; // Disable context
 
     void          COM_Scan;           // Scan state for debugging
+    void          COM_TestThroughput; // Stage-by-stage throughput testing
 
     // Messages from local controllers
     Bool          LC_DoneRunning;     // Bool is run passed
@@ -103,6 +104,9 @@ typedef union tagged
     Bool          LC_ScanRunning;     // Serial scan of instanceRunning state
                                       // (also triggered by COM_Scan request)
     Bool          LC_ScanRunningLast; // Last instance of running state scan
+
+    Bit#(16)      LC_ThroughputData;  // Cycles for one context
+    void          LC_ThroughputLast;  // Last instance of throughput test data
 }
 CONTROLLER_MSG
     deriving (Eq, Bits);
@@ -127,6 +131,20 @@ typedef enum
 }
 LC_STATE
     deriving (Eq, Bits);
+
+// Throughput tester state.
+typedef enum
+{
+    CTRL_TP_Idle,          // Waiting for a command
+    CTRL_TP_Warmup0,       // Prepare to test this controller
+    CTRL_TP_Warmup1,       // Hold this controller idle while others run
+    CTRL_TP_Sample,
+    CTRL_TP_Finish0,
+    CTRL_TP_Finish1
+}
+CTRL_TP_STATE
+    deriving (Eq, Bits);
+
 
 // Wrapper around the real local controller, with no uncontrolled ports.
 
@@ -222,7 +240,10 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     )
     // interface:
         (LOCAL_CONTROLLER#(t_NUM_INSTANCES))
-    provisos (Alias#(CONTROLLER_SCAN_DATA#(t_NUM_INPORTS,
+    provisos (Alias#(t_IID, INSTANCE_ID#(t_NUM_INSTANCES)),
+              // Counter is large enough for 256 cycle quiesce per context.
+              Alias#(t_TP_COUNTER, Bit#(TAdd#(8, TLog#(t_NUM_INSTANCES)))),
+              Alias#(CONTROLLER_SCAN_DATA#(t_NUM_INPORTS,
                                            t_NUM_UNPORTS,
                                            t_NUM_OUTPORTS,
                                            INSTANCE_ID_BITS#(t_NUM_INSTANCES)), t_SCAN_DATA));
@@ -239,14 +260,16 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES))
         maxActiveInstance <- mkLCounter(~0 + fromInteger(startingActive));
 
-    // Vector of running instances
-    MULTIPLEXED_REG#(t_NUM_INSTANCES, Bool) instanceRunning <- mkMultiplexedReg(False);
+    // Vector of running instances.  In order to provide two write ports
+    // (one for start one for end) the vector is broken into an "S" and an
+    // "E" vector.  A running instance has different values in the two
+    // vectors -- namely the start and end are out of balance.
+    MULTIPLEXED_REG#(t_NUM_INSTANCES, Bit#(1)) instanceRunningS <- mkMultiplexedReg(0);
+    MULTIPLEXED_REG#(t_NUM_INSTANCES, Bit#(1)) instanceRunningE <- mkMultiplexedReg(0);
 
     // Signalled DONE to the software?
     Reg#(Bool) signalDone <- mkReg(False);
 
-    FIFOF#(INSTANCE_ID#(t_NUM_INSTANCES)) startCycleQ <- mkBypassFIFOF();
-    FIFOF#(INSTANCE_ID#(t_NUM_INSTANCES)) endCycleQ <- mkBypassFIFOF();
     Wire#(Bit#(8)) pathDoneW <- mkWire();
     
     // Encode the scan data size in the string to avoid having to store it
@@ -259,7 +282,17 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     GLOBAL_STRING_UID nameUID <- getGlobalStringUID(encodedName);
     MARSHALLER#(COM_SCAN_DATA, t_SCAN_DATA) scanStream <- mkSimpleMarshaller();
 
-    
+
+    //
+    // State for managing throughput tests.
+    //
+    Reg#(CTRL_TP_STATE) tpState <- mkReg(CTRL_TP_Idle);
+    FIFOF#(t_TP_COUNTER) tpSampleQ <- mkSizedFIFOF(valueOf(TMin#(NUM_CONTEXTS, 64)));
+    PulseWire tpCounterResetW <- mkPulseWireOR();
+    PulseWire tpInstance0W <- mkPulseWire();
+    Reg#(t_TP_COUNTER) tpCounter <- mkRegU();
+
+
     // For now this local controller just goes round-robin over the instances.
     // This is guaranteed to be correct accross multiple modules.
     // The performance of this could be improved, but the interaction with time-multiplexed
@@ -288,10 +321,23 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
                endcase;
     endfunction
 
+    //
+    // isRunning --
+    //     Convert split instanceRunning vector into a single isRunning state.
+    //     The "S" vector is updated by starting a cyle.  The "E" by ending
+    //     a cycle.  A cycle is running if the two are different.
+    //
+    function Bool isRunning(t_IID iid);
+        Reg#(Bit#(1)) runningS = instanceRunningS.getReg(iid);
+        Reg#(Bit#(1)) runningE = instanceRunningE.getReg(iid);
+
+        return runningS != runningE;
+    endfunction
+
     // This function will determine the next instance in a non-round-robin manner when we're ready
     // to go that route. Currently this is unused.
 
-    function Bool instanceReady(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+    function Bool instanceReady(t_IID iid);
         
         Bool canRead  = True;
         Bool canWrite = True;
@@ -303,9 +349,10 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
         for (Integer x = 0; x < valueOf(t_NUM_OUTPORTS); x = x + 1)
             canWrite = canWrite && canWriteTo(outctrls[x]);
 
-        // An instance is ready to go only if it's been enabled.
-        Reg#(Bool) running = instanceRunning.getReg(iid);
-        return !running && canRead && canWrite;
+        let holdForThroughputTest = (tpState == CTRL_TP_Warmup1) ||
+                                    (tpState == CTRL_TP_Finish0);
+
+        return ! isRunning(iid) && canRead && canWrite && ! holdForThroughputTest;
 
     endfunction
 
@@ -342,7 +389,6 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     endfunction
 
 
-
     // ====================================================================
     //
     // Process controller commands and send responses.
@@ -364,8 +410,9 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
         link_controllers.sendToNext(cmd);
     endrule
 
-    (* descending_urgency = "checkBalance, newControlMsg, nextCommand" *)
-    rule nextCommand (! scanning && (state != LC_Stepping));
+    rule nextCommand (! scanning &&
+                      (state != LC_Stepping) &&
+                      (tpState == CTRL_TP_Idle));
         let newcmd <- link_controllers.recvFromPrev();
         Maybe#(CONTROLLER_MSG) outcmd = tagged Valid newcmd;
 
@@ -464,6 +511,14 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
 
                 scanStream.enq(scan_data);
             end
+
+            tagged COM_TestThroughput:
+            begin
+                // Begin a throughput test.
+                tpState <= CTRL_TP_Warmup0;
+                tpCounterResetW.send();
+                outcmd = tagged Invalid;
+            end
         endcase
 
         // Forward command around the ring
@@ -478,29 +533,13 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     //     State update associated with startModelCycle, encoded in a rule
     //     and controlled by a wire in order to set scheduling priority.
     //
-    Wire#(Maybe#(INSTANCE_ID#(t_NUM_INSTANCES))) newModelCycleStarted <- mkDWire(tagged Invalid);
+    RWire#(t_IID) newModelCycleStartedW <- mkRWire();
 
     (* descending_urgency = "updateStateForStepping, nextCommand" *)
     rule updateStateForStepping (state == LC_Stepping &&&
-                                 newModelCycleStarted matches tagged Valid .iid);
+                                 newModelCycleStartedW.wget() matches tagged Valid .iid);
         if (iid == maxActiveInstance.value())
             state <= LC_Idle;
-    endrule
-
-
-    rule updateRunning (True);
-    
-        if (startCycleQ.notEmpty())
-        begin
-            instanceRunning.getReg(startCycleQ.first()) <= True;
-            startCycleQ.deq();
-        end
-        else if (endCycleQ.notEmpty())
-        begin
-            instanceRunning.getReg(endCycleQ.first()) <= False;
-            endCycleQ.deq();
-        end
-    
     endrule
 
 
@@ -544,7 +583,7 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     //     and can not be retrieved in parallel.
     //
     rule emitScanRunning (scanning &&& scanRunning matches tagged Valid .iid);
-        Reg#(Bool) is_running = instanceRunning.getReg(truncateNP(iid));
+        let is_running = isRunning(truncateNP(iid));
 
         if (iid < fromInteger(valueOf(TSub#(t_NUM_INSTANCES, 1))))
         begin
@@ -570,43 +609,166 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
 
     // ====================================================================
     //
+    //   Throughput testing
+    //
+    // ====================================================================
+
+    (* no_implicit_conditions, fire_when_enabled *)
+    rule tpCounterUpdate (True);
+        if (tpCounterResetW)
+            tpCounter <= 1;
+        else
+            tpCounter <= tpCounter + 1;
+    endrule
+
+    //
+    // tpFwdSamples --
+    //     Send samples to host.
+    //
+    rule tpFwdSamples (! scanning);
+        let smpl = tpSampleQ.first();
+        tpSampleQ.deq();
+        
+        link_controllers.sendToNext(tagged LC_ThroughputData resize(smpl));
+    endrule
+
+    //
+    // tpBeginWarmup --
+    //     Warmup0 lasts only until the instance ID wraps to 0.
+    //     Enter Warmup1, holding this controller idle while other
+    //     controllers run.  The goal is to fill up this controller's
+    //     input ports and drain the output ports.
+    //
+    (* no_implicit_conditions, fire_when_enabled *)
+    rule tpStateWarmup ((tpState == CTRL_TP_Warmup0) && tpInstance0W && (tpCounter != 0));
+        tpState <= CTRL_TP_Warmup1;
+        tpCounterResetW.send();
+    endrule
+
+    //
+    // tpAbort --
+    //     A controller may be inactive and never fire.  Give up.
+    //
+    (* fire_when_enabled *)
+    rule tpAbort ((tpState == CTRL_TP_Warmup0) && (tpCounter == 0) && ! scanning);
+        tpState <= CTRL_TP_Finish1;
+        link_controllers.sendToNext(tagged LC_ThroughputLast);
+    endrule
+
+    //
+    // tpStartSampling --
+    //     A state machine transition that doesn't fit the predicate for most
+    //     transitions.  The switch from warmup to sampling begins when the
+    //     tpCounter wraps.
+    //
+    (* no_implicit_conditions, fire_when_enabled *)
+    rule tpStartSampling ((tpState == CTRL_TP_Warmup1) && (tpCounter == 0));
+        tpState <= CTRL_TP_Sample;
+    endrule
+
+    //
+    // tpEndSampling --
+    //     Finish sampling after one complete iteration through all
+    //     active contexts.
+    //
+    (* no_implicit_conditions, fire_when_enabled *)
+    rule tpEndSampling ((tpState == CTRL_TP_Sample) && tpInstance0W);
+        tpState <= CTRL_TP_Finish0;
+    endrule
+
+    //
+    // tpLastSample --
+    //     Send a final sample to the host indicating the end of testing
+    //     for this controller.
+    //
+    rule tpLastSample ((tpState == CTRL_TP_Finish0) && ! scanning &&
+                       ! tpSampleQ.notEmpty);
+        tpState <= CTRL_TP_Finish1;
+        link_controllers.sendToNext(tagged LC_ThroughputLast);
+    endrule
+
+    //
+    // tpNextControll --
+    //     This controller has finished sampling.  Forward the request to the
+    //     next controller.
+    //
+    rule tpNextController ((tpState == CTRL_TP_Finish1) && ! scanning);
+        tpState <= CTRL_TP_Idle;
+        link_controllers.sendToNext(tagged COM_TestThroughput);
+    endrule
+
+
+    // ====================================================================
+    //
+    //   Next instance management.  Implemented in rules instead of
+    //   startModelCycle() method for better scheduling control.
+    //
+    // ====================================================================
+
+    RWire#(Tuple4#(t_IID, LC_STATE, CTRL_TP_STATE, t_IID)) startW <- mkRWire();
+
+    (* descending_urgency = "tpAbort, tpFwdSamples, tpNextController, tpLastSample, checkBalance, newControlMsg, nextCommand, nextStart" *)
+    rule nextStart ((state != LC_Idle) &&
+                    instanceReady(nextInstance.value()));
+
+        let next_iid = nextInstance.value();
+        // Most of the state is passed here to allow scheduling of read/write
+        // order wrt startModelCycle().  Reading the state in the method
+        // triggers a large set of scheduling order warnings.
+        startW.wset(tuple4(next_iid, state, tpState, maxActiveInstance.value()));
+
+    endrule
+
+
+    // ====================================================================
+    //
     //   Methods
     //
     // ====================================================================
 
-    method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES)) startModelCycle() if ((state != LC_Idle) && instanceReady(nextInstance.value()));
+    method ActionValue#(t_IID) startModelCycle() if (startW.wget() matches tagged Valid {.next_iid, .w_state, .w_tpState, .max_iid});
 
-        let next_iid = nextInstance.value();
-
-        if (state == LC_Stepping)
+        if (w_state == LC_Stepping)
         begin
-            newModelCycleStarted <= tagged Valid next_iid;
+            newModelCycleStartedW.wset(next_iid);
         end
         
-        startCycleQ.enq(next_iid);
+        Reg#(Bit#(1)) running_s = instanceRunningS.getReg(next_iid);
+        running_s <= running_s ^ 1;
         
-        if (next_iid >= maxActiveInstance.value())
+        if (next_iid >= max_iid)
         begin
             nextInstance.setC(0);
             cycle <= cycle + 1;
+            tpInstance0W.send();
         end
         else
         begin
             nextInstance.up();
         end
 
+        // Throughput sampling
+        tpCounterResetW.send();
+        if (w_tpState == CTRL_TP_Sample)
+        begin
+            tpSampleQ.enq(tpCounter);
+        end
+
         return next_iid;
 
     endmethod
 
-    method Action endModelCycle(INSTANCE_ID#(t_NUM_INSTANCES) iid, Bit#(8) path);
+    method Action endModelCycle(t_IID iid, Bit#(8) path);
     
-        endCycleQ.enq(iid);
-        pathDoneW <= path; // Put the path into the waveform.
+        Reg#(Bit#(1)) running_e = instanceRunningE.getReg(iid);
+        running_e <= running_e ^ 1;
+
+        // Put the path into the waveform (for debugging).
+        pathDoneW <= path;
     
     endmethod
 
-    method Action instanceDone(INSTANCE_ID#(t_NUM_INSTANCES) iid, Bool pf);
+    method Action instanceDone(t_IID iid, Bool pf);
         // XXX this should be per-instance.  For now only allowed to fire once.
         if (! signalDone)
         begin

@@ -27,6 +27,7 @@ import DefaultValue::*;
 `include "asim/provides/soft_services_deps.bsh"
 `include "asim/provides/common_services.bsh"
 `include "asim/provides/mem_services.bsh"
+`include "asim/provides/funcp_regstate_base_types.bsh"
 `include "asim/provides/rrr.bsh"
 `include "asim/provides/channelio.bsh"
 
@@ -347,6 +348,13 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
     Reg#(Bit#(TLog#(FUNCP_MEM_CACHELINE_WORDS))) ldWordIdx <- mkReg(0);
 
     //
+    // Track requests that are just prefetches.  These will be squashed
+    // by returning "uncacheable" instead of sending them to the host.
+    //
+    FIFO#(RL_CACHE_GLOBAL_READ_META) reqMeta <-
+        mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
+
+    //
     // Interface between host functional memory and the central cache.
     //
     interface FUNCP_CENTRAL_CACHE_BACKING cacheBacking;
@@ -360,8 +368,13 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
             let client_meta = readMeta.clientReadMeta;
             let addr = byteAddrFromWordAddr(wAddr);
             debugLog.record($format("back readReq: ctx=%0d, pref=%b, addr=0x%x", client_meta.contextId, globalReadMeta.isPrefetch, addr));
-            clientStub.makeRequest_LoadLine(zeroExtend(addr),
-                                            zeroExtend(pack(globalReadMeta.isPrefetch)));
+
+            reqMeta.enq(globalReadMeta);
+            if (! globalReadMeta.isPrefetch)
+            begin
+                clientStub.makeRequest_LoadLine(zeroExtend(addr),
+                                                zeroExtend(pack(globalReadMeta.isPrefetch)));
+            end
         endmethod
 
         //
@@ -372,10 +385,29 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
             // Pick a word from the current incoming value.  Pop the entry if on
             // the last word.
             OUT_TYPE_LoadLine r;
-            if (rdWordIdx == maxBound)
-                r <- clientStub.getResponse_LoadLine();
+
+            if (! reqMeta.first().isPrefetch)
+            begin
+                // Normal path.  Get the result from the host.
+                if (rdWordIdx == maxBound)
+                    r <- clientStub.getResponse_LoadLine();
+                else
+                    r = clientStub.peekResponse_LoadLine();
+            end
             else
-                r = clientStub.peekResponse_LoadLine();
+            begin
+                // Prefetch requests never went to the host.
+                r.data0 = ?;
+                r.data1 = ?;
+                r.data2 = ?;
+                r.data3 = ?;
+                r.isCacheable = 0;
+            end
+
+            if (rdWordIdx == maxBound)
+            begin
+                reqMeta.deq();
+            end
 
             FUNCP_MEM_CACHELINE line;
             line[0] = r.data0;

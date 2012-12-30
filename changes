@@ -26191,3 +26191,43 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
 Changes for new LEAP memory system interface with global metadata for read
 requests.  This will eventually allow us to detect prefetch requests
 injected anywhere in the memory hierarchy.
+
+----------
+mcadler     Date: Sun Dec 30 09:37:20 EST 2012  CSN: CSN-hasim-909
+                  Sun Dec 30 14:37:20 UTC 2012
+
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          908 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          908 
+ commands-local.bsv        Locally Modified          908 
+ commands-service.rrr      Locally Modified          908 
+ commands-service.h        Locally Modified          908 
+ commands-service.bsv      Locally Modified          908 
+
+- Functional memory prefetches now dropped on central cache fill requests.
+  Prefetching functional memory from the private (L1) cache  still doesn't
+  improve simulator throughput.  Perhaps better tuning would help.
+
+- Add tools for finding slow pipeline stages.  In a cyclic pipeline it is hard
+  to find the slowest stage since all stages take on the behavior of the
+  slowest stage.  Elliott proposed breaking each stage apart and feeding
+  recorded inputs to a stage to test performance of a single stage.  This
+  is tedious and difficult, since there are many sources of inputs.  I
+  built a compromise.  A message goes around the command ring that causes
+  each local controller to be profiled in sequence.  When profiled, a
+  controller pauses for a while while other controllers keep running so that
+  the input buffers to the paused controller fill up as much as possible.
+  The tested controller then starts and emits the number of cycles per
+  multiplexed instance for a single iteration through active instances.
+
+  This is triggered by --test-throughput=<n> at run time.  "n" is the number
+  of model heartbeats to wait before testing.
+
+- First result of throughput testing:  timing modules with only a single
+  rule where the rule both starts and ends a model cycle were limited to
+  firing at most every other FPGA cycle because starting and ending
+  execution of a context each required a write to the same local controller
+  structure.  Only one write port was available.

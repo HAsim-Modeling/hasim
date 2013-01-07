@@ -240,7 +240,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
 
         // Pass it to the next stage who will free it.
         let done = (rewindCur == rewindTok.index);
-        let tok_active = tokScoreboard.isAllocated(rewindCur);
+        let tok_active = tokScoreboard.isAllocated(rewindCur, ALLOC_RP_REWIND);
         rewindQ.enq(tuple3(rewindCur, tok_active, done));
 
         rewindCur <= rewindCur - 1;

@@ -155,7 +155,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
 
         // Emulated loads were taken care of previously.  Also ignore killed tokens.
         if (tokScoreboard.emulateInstruction(tok.index) ||
-            ! tokScoreboard.isAllocated(tok.index))
+            ! tokScoreboard.isAllocated(tok.index, ALLOC_RP_DOLOADS))
         begin
             // Log it.
             debugLog.record(fshow(tok.index) + $format(": DoLoads1: Ignoring junk token or emulated instruction."));

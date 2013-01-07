@@ -26231,3 +26231,37 @@ Directory modules/hasim/util/model-services/commands-service
   firing at most every other FPGA cycle because starting and ending
   execution of a context each required a write to the same local controller
   structure.  Only one write port was available.
+
+----------
+mcadler     Date: Mon Jan  7 14:01:47 EST 2013  CSN: CSN-hasim-910
+                  Mon Jan  7 19:01:47 UTC 2013
+
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          909 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          909 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          909 
+ regmgr-macro-pipe-rewind.bsv Locally Modified          909 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          909 
+ regmgr-macro-pipe-doStores.bsv Locally Modified          909 
+ regmgr-macro.bsv          Locally Modified          909 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          909 
+
+- Pass some next IID info through wires in local controllers so the state is
+  visible in waveform viewers.
+
+- Token state vectors cause conflicts between the rule that allocates and
+  initializes them (in getDependencies) and the later rules that update
+  states.  Changed most vectors to have dual write ports (one for reset).
+  The alloc vector that tracks whether a token is allocated remains a conflict.
+  It could easily be made conflict-free by changing alloc to a
+  LUTRAM_DUAL_WRITE_MULTI_READ and the resets to alloc.updB(), but there
+  is currently no performance benefit and the cost is large.
+
+- New scheduling freedom caused too many readers on the alloc LUTRAM.  Had
+  to switch to explicit read ports.  RegFile limit of 5 read ports is rather
+  arbitrary.  Sigh.

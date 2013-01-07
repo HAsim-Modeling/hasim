@@ -191,7 +191,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         let tok = req.token;
 
         if (tokScoreboard.emulateInstruction(tok.index) ||
-            ! tokScoreboard.isAllocated(tok.index))
+            ! tokScoreboard.isAllocated(tok.index, ALLOC_RP_DOSTORES))
         begin
             // Log it.
             debugLog.record(fshow(tok.index) + $format(": DoStores: Ignoring junk token or emulated instruction."));

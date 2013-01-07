@@ -652,7 +652,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         // Pass it to the next stage that will generate the map table
         let done = (emulateMapCurTok == emulatingToken.index);
-        let tok_active = tokScoreboard.isAllocated(emulateMapCurTok);
+        let tok_active = tokScoreboard.isAllocated(emulateMapCurTok, ALLOC_RP_GETRES);
         emulateRegMapQ.enq(tuple3(emulateMapCurTok, tok_active, done));
 
         emulateMapCurTok <= emulateMapCurTok - 1;

@@ -334,42 +334,6 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
         return runningS != runningE;
     endfunction
 
-    // This function will determine the next instance in a non-round-robin manner when we're ready
-    // to go that route. Currently this is unused.
-
-    function Bool instanceReady(t_IID iid);
-        
-        Bool canRead  = True;
-        Bool canWrite = True;
-
-        // Can we read/write all of the ports?
-        for (Integer x = 0; x < valueOf(t_NUM_INPORTS); x = x + 1)
-            canRead = canRead && canReadFrom(inctrls[x]);
-
-        for (Integer x = 0; x < valueOf(t_NUM_OUTPORTS); x = x + 1)
-            canWrite = canWrite && canWriteTo(outctrls[x]);
-
-        let holdForThroughputTest = (tpState == CTRL_TP_Warmup1) ||
-                                    (tpState == CTRL_TP_Finish0);
-
-        return ! isRunning(iid) && canRead && canWrite && ! holdForThroughputTest;
-
-    endfunction
-
-    function Bool someInstanceReady();
-        
-        Bool res = False;
-
-        for (Integer x = 0; x < valueof(t_NUM_INSTANCES); x = x + 1)
-        begin
-            res = instanceReady(fromInteger(x)) || res;
-        end
-        
-        return res;
-    
-    endfunction
-
-
 
     function Bool balanced();
         Bool res = True;
@@ -387,6 +351,41 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
 
         return res;
     endfunction
+
+
+    //
+    // instanceReady --
+    //     Determine the next instance in a non-round-robin manner when
+    //     we're ready to go that route.
+    //
+    PulseWire instanceReadyW <- mkPulseWire();
+    // Wires with no consumers -- useful for waveform debugging
+    RWire#(Vector#(t_NUM_INPORTS, Bool)) dbgInctrls <- mkRWire();
+    RWire#(Vector#(t_NUM_OUTPORTS, Bool)) dbgOutctrls <- mkRWire();
+
+    (* fire_when_enabled *)
+    rule instanceReady (True);
+
+        let iid = nextInstance.value();
+
+        Bool can_read = Vector::all(canReadFrom, inctrls);
+        Bool can_write = Vector::all(canWriteTo, outctrls);
+
+        // Write input/output port state to wires for waveform debugging.
+        // Without this it is necessary to find the name and signals of each
+        // port individually.
+        dbgInctrls.wset(map(canReadFrom, inctrls));
+        dbgOutctrls.wset(map(canWriteTo, outctrls));
+
+        let holdForThroughputTest = (tpState == CTRL_TP_Warmup1) ||
+                                    (tpState == CTRL_TP_Finish0);
+
+        if (! isRunning(iid) && can_read && can_write && ! holdForThroughputTest)
+        begin
+            instanceReadyW.send();
+        end
+
+    endrule
 
 
     // ====================================================================
@@ -496,7 +495,7 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
                    inctrls: map(canReadFrom, inctrls),
                    cycle: cycle,
                    nextInstance: nextInstance.value(),
-                   nextIsReady: instanceReady(nextInstance.value()),
+                   nextIsReady: instanceReadyW,
                    name: nameUID };
 
 `ifdef ENABLE_FOR_TESTING
@@ -708,8 +707,7 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     RWire#(Tuple4#(t_IID, LC_STATE, CTRL_TP_STATE, t_IID)) startW <- mkRWire();
 
     (* descending_urgency = "tpAbort, tpFwdSamples, tpNextController, tpLastSample, checkBalance, newControlMsg, nextCommand, nextStart" *)
-    rule nextStart ((state != LC_Idle) &&
-                    instanceReady(nextInstance.value()));
+    rule nextStart ((state != LC_Idle) && instanceReadyW);
 
         let next_iid = nextInstance.value();
         // Most of the state is passed here to allow scheduling of read/write

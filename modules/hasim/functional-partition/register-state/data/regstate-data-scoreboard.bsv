@@ -57,13 +57,53 @@ typedef enum
 FUNCP_FAULT
     deriving (Eq, Bits);
 
+//
+// FUNCP_ALLOC_RP
+//    The isAllocated test has so many consumers that read ports must be managed
+//    explicitly.
+typedef enum
+{
+    ALLOC_RP_ALLOC0,
+    ALLOC_RP_ALLOC1,
+    ALLOC_RP_GETRES,
+    ALLOC_RP_DOLOADS,
+    ALLOC_RP_DOSTORES,
+    ALLOC_RP_REWIND,
+    // Must be last and may not be used as a read port
+    ALLOC_RP_LAST_SLOT
+}
+FUNCP_ALLOC_RP
+    deriving (Eq, Bits);
+
+typedef 6 ALLOC_NUM_READ_PORTS;
+
 
 // TOKEN_SCOREBOARD
 
-// Because the whole system is made of reg files of Bools, we use
-// this typdef as a convenience.
+//
+// Scoreboard accomplishes two things:
+//   1.  It provies two write ports (reset and upd)
+//   2.  It takes advantage of the fact that only half the token space
+//       is valid at any given time, mapping the TOKEN_INDEX to a smaller
+//       LIVE_TOKEN_INDEX.
+//
+interface TOKEN_SCOREBOARD;
+    method Action upd(TOKEN_INDEX addr, Bool d);
+    method Action reset(TOKEN_INDEX addr);
+    method Bool sub(TOKEN_INDEX addr);
+endinterface
 
-typedef LUTRAM#(TOKEN_INDEX, Bool) TOKEN_SCOREBOARD;
+module mkLiveTokenScoreboardU
+    // Interface:
+    (TOKEN_SCOREBOARD);
+
+    LUTRAM_DUAL_WRITE#(LIVE_TOKEN_INDEX, Bool) mem <- mkDualWriteLUTRAM(mkLUTRAMU);
+
+    method Action upd(TOKEN_INDEX addr, Bool d) = mem.upd(liveTokenIdx(addr), d);
+    method Action reset(TOKEN_INDEX addr) = mem.updB(liveTokenIdx(addr), False);
+    method Bool sub(TOKEN_INDEX addr)= mem.sub(liveTokenIdx(addr));
+endmodule
+
 
 // FUNCP_SCOREBOARD
 
@@ -97,8 +137,8 @@ interface FUNCP_SCOREBOARD;
   method Action setMemOpOffset(TOKEN_INDEX t, MEM_OFFSET o);
   
   // Set the memory type that we use for accessing memory.
-  method Action setLoadType(TOKEN_INDEX t,  ISA_MEMOP_TYPE mt);
-  method Action setStoreType(TOKEN_INDEX t, ISA_MEMOP_TYPE mt);
+  method Action setLoadType(TOKEN_INDEX t, Maybe#(ISA_MEMOP_TYPE) mt);
+  method Action setStoreType(TOKEN_INDEX t, Maybe#(ISA_MEMOP_TYPE) mt);
   method Action setStoreDataValid(TOKEN_INDEX t);
   
   // Set when all destinations have been written.
@@ -123,7 +163,7 @@ interface FUNCP_SCOREBOARD;
   method Bool canStartCommit(TOKEN_INDEX t);
   
   // Accessor methods.
-  method Bool isAllocated(TOKEN_INDEX t);
+  method Bool isAllocated(TOKEN_INDEX t, FUNCP_ALLOC_RP readPort);
   method Bool isLoad(TOKEN_INDEX t);
   method Bool isStore(TOKEN_INDEX t);
   method Bool isStoreDataValid(TOKEN_INDEX t);
@@ -150,25 +190,38 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     // ***** Local State ***** //
 
-    LUTRAM#(TOKEN_INDEX, Bool) alloc <- mkLUTRAM(False);
+    LUTRAM_MULTI_READ#(ALLOC_NUM_READ_PORTS, TOKEN_INDEX, Bool) alloc <-
+        mkMultiReadLUTRAM(False);
 
-    // The actual scoreboards.
-    TOKEN_SCOREBOARD finishedDEC   <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD tokIsLoad     <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD tokIsStore    <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD startedEXE    <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD finishedEXE   <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD startedDTR    <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD finishedDTR   <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD startedLOA    <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD finishedLOA   <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD startedSTO    <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD finishedSTO   <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD startedCOM    <- mkLiveTokenLUTRAMU();
+    if (ALLOC_RP_LAST_SLOT != unpack(fromInteger(valueOf(ALLOC_NUM_READ_PORTS))))
+    begin
+        error("ALLOC_RP_LAST_SLOT != valueOf(FUNCP_ALLOC_RP))");
+    end
 
-    TOKEN_SCOREBOARD tokStoreDataValid <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD tokAllDestsValid <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD tokIsEmulated <- mkLiveTokenLUTRAMU();
+
+    //
+    // The actual scoreboards.  Scoreboards in the decode pipeline are
+    // less expensive mkLiveTokenLUTRAMU because they are written only
+    // once as part of reset/initialization.  All other tokens are both
+    // reset during allocation in the decode pipeline and then set
+    // in their main pipelines.
+    //
+    LUTRAM#(TOKEN_INDEX, Bool) finishedDEC <- mkLiveTokenLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, Bool) tokIsLoad   <- mkLiveTokenLUTRAMU();
+    LUTRAM#(TOKEN_INDEX, Bool) tokIsStore  <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD startedEXE    <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD finishedEXE   <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD startedDTR    <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD finishedDTR   <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD startedLOA    <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD finishedLOA   <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD startedSTO    <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD finishedSTO   <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD startedCOM    <- mkLiveTokenScoreboardU();
+
+    TOKEN_SCOREBOARD tokStoreDataValid <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD tokAllDestsValid <- mkLiveTokenScoreboardU();
+    LUTRAM#(TOKEN_INDEX, Bool) tokIsEmulated <- mkLiveTokenLUTRAMU();
 
     LUTRAM#(TOKEN_INDEX, MEM_OFFSET)          memopOffset <- mkLiveTokenLUTRAMU();
     LUTRAM#(TOKEN_INDEX, ISA_MEMOP_TYPE)      loadType    <- mkLiveTokenLUTRAMU();
@@ -178,11 +231,11 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // Fault is stored as separate arrays for each fault type to avoid
     // causing cross-dependence between functional partition rules that
     // raise faults.
-    TOKEN_SCOREBOARD faultIllegalInstr  <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD faultITrans        <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD faultITrans2       <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD faultDTrans        <- mkLiveTokenLUTRAMU();
-    TOKEN_SCOREBOARD faultDTrans2       <- mkLiveTokenLUTRAMU();
+    TOKEN_SCOREBOARD faultIllegalInstr  <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD faultITrans        <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD faultITrans2       <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD faultDTrans        <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD faultDTrans2       <- mkLiveTokenScoreboardU();
 
     // A pointer to the next token to be allocated.
     Reg#(Vector#(NUM_CONTEXTS, TOKEN_ID)) nextFreeTok <- mkReg(replicate(0));
@@ -284,11 +337,11 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     // ***** Helper Functions ***** //
 
-    function Bool tokIdxIsAllocated(TOKEN_INDEX tokIdx);
-        return alloc.sub(tokIdx);
+    function Bool tokIdxIsAllocated(TOKEN_INDEX tokIdx, FUNCP_ALLOC_RP readPort);
+        return alloc.readPorts[pack(readPort)].sub(tokIdx);
     endfunction
 
-    function Bool tokIdxAliasIsAllocated(TOKEN_INDEX tokIdx);
+    function Bool tokIdxAliasIsAllocated(TOKEN_INDEX tokIdx, FUNCP_ALLOC_RP readPort);
         //
         // We allocate only half the tokens at once in order to enable relative
         // age comparison of tokens.  The alias of a token shares all bits of
@@ -299,11 +352,11 @@ module [Connected_Module] mkFUNCP_Scoreboard
         let alias_idx = tokIdx;
         alias_idx.token_id[high_bit_num] = alias_idx.token_id[high_bit_num] ^ 1;
     
-        return tokIdxIsAllocated(alias_idx);
+        return tokIdxIsAllocated(alias_idx, readPort);
     endfunction
 
 
-    function Bool canAllocate(CONTEXT_ID ctx_id);
+    function Bool canAllocate(CONTEXT_ID ctx_id, FUNCP_ALLOC_RP readPort);
         //
         // To allocate, we check two things:
         //
@@ -316,29 +369,10 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
         let high_bit_num = valueOf(TOKEN_ID_SIZE) - 1;
 
-        return (num_in_flight[high_bit_num] == 0 && ! tokIdxAliasIsAllocated(next_tok_idx));
+        return (num_in_flight[high_bit_num] == 0 &&
+                ! tokIdxAliasIsAllocated(next_tok_idx, readPort));
     endfunction
 
-
-    // isBusy
-
-    // A token is said to be "busy" if it has started a macro-operation but not finished it yet.
-    
-    function Bool isBusy(TOKEN_INDEX t);
-
-        // Has this token started a macro operation but not finished it?
-        let dec_busy =     !finishedDEC.sub(t);
-        let exe_busy =     startedEXE.sub(t) && !finishedEXE.sub(t);
-        let dtr_busy =     startedDTR.sub(t) && !finishedDTR.sub(t);
-        let load_busy =    startedLOA.sub(t) && !finishedLOA.sub(t);
-        let store_busy =   startedSTO.sub(t) && !finishedSTO.sub(t);
-        // It's not done committing if it's still allocated.  alloc tested later.
-        let commit_busy = startedCOM.sub(t);
-
-        // If it is in any macro operation it is busy.
-        return tokIdxIsAllocated(t) && (dec_busy || exe_busy || dtr_busy || load_busy || store_busy || commit_busy);
-
-    endfunction
 
     //
     // checkFaults --
@@ -371,7 +405,6 @@ module [Connected_Module] mkFUNCP_Scoreboard
         return startedEXE.sub(t) && ! tokAllDestsValid.sub(t);
     endfunction
 
-
     // deallocate
 
     // When:   Any time.
@@ -401,38 +434,44 @@ module [Connected_Module] mkFUNCP_Scoreboard
         let new_tok = tokenIndexFromIds(ctx_id, nextFreeTok[ctx_id]);
 
         // Assert the the token wasn't already allocated.
-        assert_token_is_not_allocated(! tokIdxIsAllocated(new_tok));
+        assert_token_is_not_allocated(! tokIdxIsAllocated(new_tok, ALLOC_RP_ALLOC0));
 
         // Assert that we haven't run out of tokens.
-        assertEnoughTokens(canAllocate(ctx_id));
+        assertEnoughTokens(canAllocate(ctx_id, ALLOC_RP_ALLOC1));
 
         // Update the allocated bit
         alloc.upd(new_tok, True);
         numInDEC[new_tok.context_id].up();
 
-        // Reset all the scoreboards.
-        finishedDEC.upd(new_tok, False);
-        tokIsLoad.upd(new_tok, False);
-        tokIsStore.upd(new_tok, False);
-        startedEXE.upd(new_tok, False);
-        finishedEXE.upd(new_tok, False);
-        startedDTR.upd(new_tok, False);
-        finishedDTR.upd(new_tok, False);
-        startedLOA.upd(new_tok, False);
-        finishedLOA.upd(new_tok, False);
-        startedSTO.upd(new_tok, False);
-        finishedSTO.upd(new_tok, False);
-        startedCOM.upd(new_tok, False);
+        //
+        // Reset all the scoreboards.  A few are not set in order to avoid
+        // hazards in the getDependencies pipeline where tokens are allocated.
+        // They will be initialized before the token is passed to the timing
+        // model.
+        //
+        finishedDEC.upd(new_tok, True);   // Set speculatively to true to avoid
+                                          // getDepencies pipeline hazard
+        // tokIsLoad.upd(new_tok, False);       *** Set in getDependencies
+        // tokIsStore.upd(new_tok, False);      *** Set in getDependencies
+        startedEXE.reset(new_tok);
+        finishedEXE.reset(new_tok);
+        startedDTR.reset(new_tok);
+        finishedDTR.reset(new_tok);
+        startedLOA.reset(new_tok);
+        finishedLOA.reset(new_tok);
+        startedSTO.reset(new_tok);
+        finishedSTO.reset(new_tok);
+        startedCOM.reset(new_tok);
 
-        tokStoreDataValid.upd(new_tok, False);
-        tokAllDestsValid.upd(new_tok, False);
-        tokIsEmulated.upd(new_tok, False);
+        tokStoreDataValid.reset(new_tok);
+        tokAllDestsValid.reset(new_tok);
+        // tokIsEmulated.upd(new_tok, False);   *** Set in getDependencies
 
-        faultIllegalInstr.upd(new_tok, False);
-        faultITrans.upd(new_tok, False);
-        faultITrans2.upd(new_tok, False);
-        faultDTrans.upd(new_tok, False);
-        faultDTrans2.upd(new_tok, False);
+        faultIllegalInstr.reset(new_tok);
+        faultITrans.reset(new_tok);
+        faultITrans2.reset(new_tok);
+        faultDTrans.reset(new_tok);
+        faultDTrans2.reset(new_tok);
 
         // Update the free pointer.
         let next_token_idx = new_tok + 1;
@@ -475,12 +514,10 @@ module [Connected_Module] mkFUNCP_Scoreboard
 
     method Action decFinish(TOKEN_INDEX t);
 
-        // FIXME --
-        // For some reason adding the following test adds a scheduling conflict
-        // that I can't figure out.  Everything works fine without it.
-        //assertTokenCanFinishDEC(startedDEC.sub(t));
+        // finishedDEC was already set, speculatively, to avoid a pipeline
+        // hazard in getDependencies.
+        // finishedDEC.upd(t, True);
 
-        finishedDEC.upd(t, True);
         numInDEC[t.context_id].down();
 
     endmethod
@@ -626,11 +663,10 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // When:   Any time.
     // Effect: Record the store type and mark the token as a store.
 
-    method Action setLoadType(TOKEN_INDEX t, ISA_MEMOP_TYPE mtype);
+    method Action setLoadType(TOKEN_INDEX t, Maybe#(ISA_MEMOP_TYPE) mtype);
     
-        tokIsLoad.upd(t, True);
-        
-        loadType.upd(t, mtype);
+        tokIsLoad.upd(t, isValid(mtype));
+        loadType.upd(t, validValue(mtype));
     
     endmethod
 
@@ -639,11 +675,10 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // When:   Any time.
     // Effect: Record the store type and mark the token as a store.
 
-    method Action setStoreType(TOKEN_INDEX t, ISA_MEMOP_TYPE mtype);
+    method Action setStoreType(TOKEN_INDEX t, Maybe#(ISA_MEMOP_TYPE) mtype);
     
-        tokIsStore.upd(t, True);
-        
-        storeType.upd(t, mtype);
+        tokIsStore.upd(t, isValid(mtype));
+        storeType.upd(t, validValue(mtype));
     
     endmethod
 
@@ -740,7 +775,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         // after the rewind there will be no tokens in flight. In the case we can jump 
         // oldestTok up to nextFreeTok (so num_in_flight will be zero). Thus we can
         // reclaim tokens slightly more aggressively.
-        if (!tokIdxIsAllocated(t))
+        if (!tokIdxIsAllocated(t, ALLOC_RP_REWIND))
         begin
         
             // t is not allocated, and there's no one older, so there are no tokens in flight.
@@ -760,9 +795,9 @@ module [Connected_Module] mkFUNCP_Scoreboard
     // When:   Any time.
     // Effect: Accessor method.
 
-    method Bool isAllocated(TOKEN_INDEX t);
+    method Bool isAllocated(TOKEN_INDEX t, FUNCP_ALLOC_RP readPort);
 
-      return tokIdxIsAllocated(t);
+      return tokIdxIsAllocated(t, readPort);
 
     endmethod
 

@@ -161,19 +161,29 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         // Token active or is it a dummy?
         let tok_active = !tokIsDummy(tok);
 
-        // Use the scoreboard to record other instruction properties
+        //
+        // Use the scoreboard to record other instruction properties.
+        //
+        // The states for load type, store type and emulation MUST be set here
+        // as they are uninitialized during token allocation in order to
+        // avoid a hazard with this rule.
+        //
+        Maybe#(ISA_MEMOP_TYPE) ld_type = tagged Invalid;
         if (isaIsLoad(inst))
         begin
-            tokScoreboard.setLoadType(tok.index, isaLoadType(inst));
+            ld_type = tagged Valid isaLoadType(inst);
             debugLog.record(fshow(tok.index) + $format(": GetDeps2: Load type %0d", isaLoadType(inst)));
         end
+        tokScoreboard.setLoadType(tok.index, ld_type);
 
+        Maybe#(ISA_MEMOP_TYPE) st_type = tagged Invalid;
         if (isaIsStore(inst) && tok_active)
         begin
-            tokScoreboard.setStoreType(tok.index, isaStoreType(inst));
+            st_type = tagged Valid isaStoreType(inst);
             storeBufferAllocate.send(tok.index);
             debugLog.record(fshow(tok.index) + $format(": GetDeps2: Store type %0d", isaStoreType(inst)));
         end
+        tokScoreboard.setStoreType(tok.index, st_type);
 
         let is_emulated = isaEmulateInstruction(inst);
         tokScoreboard.setEmulation(tok.index, is_emulated);

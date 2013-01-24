@@ -26265,3 +26265,13 @@ Directory modules/hasim/util/model-services/commands-service
 - New scheduling freedom caused too many readers on the alloc LUTRAM.  Had
   to switch to explicit read ports.  RegFile limit of 5 read ports is rather
   arbitrary.  Sigh.
+
+----------
+mcadler     Date: Thu Jan 24 07:29:54 EST 2013  CSN: CSN-hasim-911
+                  Thu Jan 24 12:29:54 UTC 2013
+
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          910 
+
+Marshal central cache backing storage I/O with shifts instead of muxes.

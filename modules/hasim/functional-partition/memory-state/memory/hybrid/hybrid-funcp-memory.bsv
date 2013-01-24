@@ -337,15 +337,13 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
                   FUNCP_MEM_WORD_PADDR)) stCtrlQ <- mkFIFO();
 
     Reg#(Bit#(TLog#(FUNCP_MEM_CACHELINE_WORDS))) rdWordIdx <- mkReg(0);
+    FIFO#(Bool) rdIsCacheableQ <- mkFIFO();
+    MARSHALLER#(MEM_VALUE,
+                Vector#(FUNCP_MEM_CACHELINE_WORDS, MEM_VALUE)) rdRespMar <-
+       mkSimpleMarshaller();
 
     Reg#(Bit#(TLog#(FUNCP_MEM_CACHELINE_WORDS))) stWordIdx <- mkReg(0);
     Reg#(FUNCP_MEM_CACHELINE) stData <- mkRegU();
-
-    //
-    // Buffered load state to convert a full line RRR response to word-sized
-    // messages to the cache.
-    //
-    Reg#(Bit#(TLog#(FUNCP_MEM_CACHELINE_WORDS))) ldWordIdx <- mkReg(0);
 
     //
     // Track requests that are just prefetches.  These will be squashed
@@ -353,6 +351,35 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
     //
     FIFO#(RL_CACHE_GLOBAL_READ_META) reqMeta <-
         mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
+
+    //
+    // Marshall incoming read responses
+    //
+    rule compressReadRsp (True);
+        let meta = reqMeta.first();
+        reqMeta.deq();
+
+        OUT_TYPE_LoadLine r;
+
+        if (! meta.isPrefetch)
+        begin
+            // Normal path.  Get the result from the host.
+            r <- clientStub.getResponse_LoadLine();
+        end
+        else
+        begin
+            // Prefetch requests never went to the host.
+            r.data0 = ?;
+            r.data1 = ?;
+            r.data2 = ?;
+            r.data3 = ?;
+            r.isCacheable = 0;
+        end
+
+        rdIsCacheableQ.enq(unpack(r.isCacheable[0]));
+        rdRespMar.enq(unpack({ r.data3, r.data2, r.data1, r.data0 }));
+    endrule
+
 
     //
     // Interface between host functional memory and the central cache.
@@ -382,42 +409,14 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
         //     Pick the next word from the line-sized response.
         //
         method ActionValue#(Tuple2#(MEM_VALUE, Bool)) readResp();
-            // Pick a word from the current incoming value.  Pop the entry if on
-            // the last word.
-            OUT_TYPE_LoadLine r;
+            let val = rdRespMar.first();
+            rdRespMar.deq();
 
-            if (! reqMeta.first().isPrefetch)
-            begin
-                // Normal path.  Get the result from the host.
-                if (rdWordIdx == maxBound)
-                    r <- clientStub.getResponse_LoadLine();
-                else
-                    r = clientStub.peekResponse_LoadLine();
-            end
-            else
-            begin
-                // Prefetch requests never went to the host.
-                r.data0 = ?;
-                r.data1 = ?;
-                r.data2 = ?;
-                r.data3 = ?;
-                r.isCacheable = 0;
-            end
-
+            let is_cacheable = rdIsCacheableQ.first();
             if (rdWordIdx == maxBound)
             begin
-                reqMeta.deq();
+                rdIsCacheableQ.deq();
             end
-
-            FUNCP_MEM_CACHELINE line;
-            line[0] = r.data0;
-            line[1] = r.data1;
-            line[2] = r.data2;
-            line[3] = r.data3;
-
-            Bool is_cacheable = unpack(r.isCacheable[0]);
-
-            let val = line[rdWordIdx];
             rdWordIdx <= rdWordIdx + 1;
 
             debugLog.record($format("back readResp: idx=%0d, cache=%b, val=0x%x", rdWordIdx, is_cacheable, val));
@@ -449,12 +448,10 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
         method Action writeData(MEM_VALUE val);
             debugLog.record($format("back writeData: idx=%0d, val=0x%x", stWordIdx, val));
 
-            if (stWordIdx != maxBound)
-            begin
-                // Still collecting data
-                stData[stWordIdx] <= val;
-            end
-            else
+            let sd = shiftInAtN(stData, val);
+            stData <= sd;
+
+            if (stWordIdx == maxBound)
             begin
                 // Send the store
                 match {.word_valid_mask, .send_ack, .w_addr} = stCtrlQ.first();
@@ -463,10 +460,10 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
                 clientStub.makeRequest_StoreLine(zeroExtend(pack(word_valid_mask)),
                                                  zeroExtend(pack(send_ack)),
                                                  zeroExtend(byteAddrFromWordAddr(w_addr)),
-                                                 stData[0],
-                                                 stData[1],
-                                                 stData[2],
-                                                 val);
+                                                 sd[0],
+                                                 sd[1],
+                                                 sd[2],
+                                                 sd[3]);
             end
 
             stWordIdx <= stWordIdx + 1;

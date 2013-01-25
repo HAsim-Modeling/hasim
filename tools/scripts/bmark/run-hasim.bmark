@@ -238,7 +238,7 @@ else {
         $m5cmd = $ENV{M5BIN};
     }
     else {
-        my $m5bin = "platform/m5/build/ALPHA_SE/m5." . ($gdb ? "debug" : "opt");
+        my $m5bin = "platform/m5/build/ALPHA/m5." . ($gdb ? "debug" : "opt");
         $m5cmd = `awb-resolver ${m5bin}`;
         chomp($m5cmd);
         die("Failed to find $m5bin") if ($m5cmd eq '');

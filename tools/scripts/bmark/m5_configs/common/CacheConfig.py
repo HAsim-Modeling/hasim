@@ -32,28 +32,45 @@
 import m5
 from m5.objects import *
 from Caches import *
+from O3_ARM_v7a import *
 
 def config_cache(options, system):
     if options.l2cache:
-        system.l2 = L2Cache(size = options.l2_size, assoc = options.l2_assoc,
-                            block_size=options.cacheline_size)
-        system.tol2bus = Bus()
-        system.l2.cpu_side = system.tol2bus.port
-        system.l2.mem_side = system.membus.port
-        system.l2.num_cpus = options.num_cpus
+        if options.cpu_type == "arm_detailed":
+            system.l2 = O3_ARM_v7aL2(size = options.l2_size, assoc = options.l2_assoc,
+                                block_size=options.cacheline_size)
+        else:
+            system.l2 = L2Cache(size = options.l2_size, assoc = options.l2_assoc,
+                                block_size=options.cacheline_size)
+
+        system.tol2bus = CoherentBus()
+        system.l2.cpu_side = system.tol2bus.master
+        system.l2.mem_side = system.membus.slave
 
     for i in xrange(options.num_cpus):
         if options.caches:
-            icache = L1Cache(size = options.l1i_size, assoc = options.l1i_assoc,
-                             block_size=options.cacheline_size)
-            dcache = L1Cache(size = options.l1d_size, assoc = options.l1d_assoc,
-                             block_size=options.cacheline_size)
+            if options.cpu_type == "arm_detailed":
+                icache = O3_ARM_v7a_ICache(size = options.l1i_size,
+                                     assoc = options.l1i_assoc,
+                                     block_size=options.cacheline_size)
+                dcache = O3_ARM_v7a_DCache(size = options.l1d_size,
+                                     assoc = options.l1d_assoc,
+                                     block_size=options.cacheline_size)
+            else:
+                icache = L1Cache(size = options.l1i_size,
+                                 assoc = options.l1i_assoc,
+                                 block_size=options.cacheline_size)
+                dcache = L1Cache(size = options.l1d_size,
+                                 assoc = options.l1d_assoc,
+                                 block_size=options.cacheline_size)
+
             if buildEnv['TARGET_ISA'] == 'x86':
                 system.cpu[i].addPrivateSplitL1Caches(icache, dcache,
                                                       PageTableWalkerCache(),
                                                       PageTableWalkerCache())
             else:
                 system.cpu[i].addPrivateSplitL1Caches(icache, dcache)
+        system.cpu[i].createInterruptController()
         if options.l2cache:
             system.cpu[i].connectAllPorts(system.tol2bus, system.membus)
         else:

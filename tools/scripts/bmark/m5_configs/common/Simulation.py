@@ -34,20 +34,24 @@ import m5
 from m5.defines import buildEnv
 from m5.objects import *
 from m5.util import *
+from O3_ARM_v7a import *
 
 addToPath('../common')
 
 def setCPUClass(options):
 
     atomic = False
-    if options.timing:
+    if options.cpu_type == "timing":
         class TmpClass(TimingSimpleCPU): pass
-    elif options.detailed:
-        if not options.caches:
+    elif options.cpu_type == "detailed" or options.cpu_type == "arm_detailed":
+        if not options.caches and not options.ruby:
             print "O3 CPU must be used with caches"
             sys.exit(1)
-        class TmpClass(DerivO3CPU): pass
-    elif options.inorder:
+        if options.cpu_type == "arm_detailed":
+            class TmpClass(O3_ARM_v7a_3): pass
+        else:
+            class TmpClass(DerivO3CPU): pass
+    elif options.cpu_type == "inorder":
         if not options.caches:
             print "InOrder CPU must be used with caches"
             sys.exit(1)
@@ -60,7 +64,15 @@ def setCPUClass(options):
     test_mem_mode = 'atomic'
 
     if not atomic:
-        if options.checkpoint_restore != None or options.fast_forward:
+        if options.checkpoint_restore != None:
+            if options.restore_with_cpu != options.cpu_type:
+                CPUClass = TmpClass
+                class TmpClass(AtomicSimpleCPU): pass
+            else:
+                if options.restore_with_cpu != "atomic":
+                    test_mem_mode = 'timing'
+
+        elif options.fast_forward:
             CPUClass = TmpClass
             class TmpClass(AtomicSimpleCPU): pass
         else:
@@ -68,6 +80,21 @@ def setCPUClass(options):
 
     return (TmpClass, test_mem_mode, CPUClass)
 
+def setWorkCountOptions(system, options):
+    if options.work_item_id != None:
+        system.work_item_id = options.work_item_id
+    if options.work_begin_cpu_id_exit != None:
+        system.work_begin_cpu_id_exit = options.work_begin_cpu_id_exit
+    if options.work_end_exit_count != None:
+        system.work_end_exit_count = options.work_end_exit_count
+    if options.work_end_checkpoint_count != None:
+        system.work_end_ckpt_count = options.work_end_checkpoint_count
+    if options.work_begin_exit_count != None:
+        system.work_begin_exit_count = options.work_begin_exit_count
+    if options.work_begin_checkpoint_count != None:
+        system.work_begin_ckpt_count = options.work_begin_checkpoint_count
+    if options.work_cpus_checkpoint_count != None:
+        system.work_cpus_ckpt_count = options.work_cpus_checkpoint_count
 
 def run(options, root, testsys, cpu_class):
     if options.maxtick:
@@ -112,12 +139,14 @@ def run(options, root, testsys, cpu_class):
             if options.fast_forward:
                 testsys.cpu[i].max_insts_any_thread = int(options.fast_forward)
             switch_cpus[i].system =  testsys
-            if not buildEnv['FULL_SYSTEM']:
-                switch_cpus[i].workload = testsys.cpu[i].workload
+            switch_cpus[i].workload = testsys.cpu[i].workload
             switch_cpus[i].clock = testsys.cpu[0].clock
             # simulation period
             if options.maxinsts:
                 switch_cpus[i].max_insts_any_thread = options.maxinsts
+            # Add checker cpu if selected
+            if options.checker:
+                switch_cpus[i].addCheckerCpu()
 
         testsys.switch_cpus = switch_cpus
         switch_cpu_list = [(testsys.cpu[i], switch_cpus[i]) for i in xrange(np)]
@@ -136,9 +165,8 @@ def run(options, root, testsys, cpu_class):
         for i in xrange(np):
             switch_cpus[i].system =  testsys
             switch_cpus_1[i].system =  testsys
-            if not buildEnv['FULL_SYSTEM']:
-                switch_cpus[i].workload = testsys.cpu[i].workload
-                switch_cpus_1[i].workload = testsys.cpu[i].workload
+            switch_cpus[i].workload = testsys.cpu[i].workload
+            switch_cpus_1[i].workload = testsys.cpu[i].workload
             switch_cpus[i].clock = testsys.cpu[0].clock
             switch_cpus_1[i].clock = testsys.cpu[0].clock
 
@@ -165,6 +193,11 @@ def run(options, root, testsys, cpu_class):
             # simulation period
             if options.maxinsts:
                 switch_cpus_1[i].max_insts_any_thread = options.maxinsts
+
+            # attach the checker cpu if selected
+            if options.checker:
+                switch_cpus[i].addCheckerCpu()
+                switch_cpus_1[i].addCheckerCpu()
 
         testsys.switch_cpus = switch_cpus
         testsys.switch_cpus_1 = switch_cpus_1
@@ -350,9 +383,7 @@ def run(options, root, testsys, cpu_class):
                 exit_cause = exit_event.getCause();
 
     elif options.hasim_sim:
-#       Is startup() needed?
         testsys.startup()
-
         print "m5 returning control to HAsim"
         return
 

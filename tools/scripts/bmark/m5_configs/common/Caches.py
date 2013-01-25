@@ -33,7 +33,8 @@ class L1Cache(BaseCache):
     block_size = 64
     latency = '1ns'
     mshrs = 10
-    tgts_per_mshr = 5
+    tgts_per_mshr = 20
+    is_top_level = True
 
 class L2Cache(BaseCache):
     assoc = 8
@@ -41,6 +42,15 @@ class L2Cache(BaseCache):
     latency = '10ns'
     mshrs = 20
     tgts_per_mshr = 12
+
+class PageTableWalkerCache(BaseCache):
+    assoc = 2
+    block_size = 64
+    latency = '1ns'
+    mshrs = 10
+    size = '1kB'
+    tgts_per_mshr = 12
+    is_top_level = True
 
 class IOCache(BaseCache):
     assoc = 8
@@ -50,3 +60,4 @@ class IOCache(BaseCache):
     size = '1kB'
     tgts_per_mshr = 12
     forward_snoops = False
+    is_top_level = True

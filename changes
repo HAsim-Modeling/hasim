@@ -26275,3 +26275,26 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
  hybrid-funcp-memory.bsv   Locally Modified          910 
 
 Marshal central cache backing storage I/O with shifts instead of muxes.
+
+----------
+mcadler     Date: Thu Jan 24 20:57:28 EST 2013  CSN: CSN-hasim-912
+                  Fri Jan 25 01:57:28 UTC 2013
+
+
+Directory tools/scripts/bmark/m5_configs
+ se_smt.py                 Locally Removed           911 
+
+Directory tools/scripts/bmark/m5_configs/common
+ CacheConfig.py            Locally Modified          911 
+ Options.py                Locally Modified          911 
+ O3_ARM_v7a.py             Locally Added               0 
+ Simulation.py             Locally Modified          911 
+ Caches.py                 Locally Modified          911 
+
+Directory tools/scripts/bmark/m5_configs
+ se.py                     Locally Modified          911 
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          911 
+
+Update gem5 run scripts to latest stable version.

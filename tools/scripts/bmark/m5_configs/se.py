@@ -13,6 +13,8 @@ from m5.objects import *
 from m5.util import addToPath, fatal
 
 addToPath('./common')
+
+import Options
 import Simulation
 import CacheConfig
 from Caches import *
@@ -21,56 +23,18 @@ from Caches import *
 config_root = os.path.dirname(os.path.abspath(__file__))
 
 parser = optparse.OptionParser()
+Options.addCommonOptions(parser)
+Options.addSEOptions(parser)
 
 # Benchmark options
 parser.add_option("--hasim-sim", action="store_true")
 parser.add_option("--physmem", default="512MB", help="Physical memory")
-parser.add_option("-c", "--cmd",
-                  default="",
-                  help="The binary to run in syscall emulation mode.")
-parser.add_option("-o", "--options", default="",
-                  help='The options to pass to the binary, use " " around the entire string')
-parser.add_option("-i", "--input", default="", help="Read stdin from a file.")
-parser.add_option("--output", default="", help="Redirect stdout to a file.")
-parser.add_option("--errout", default="", help="Redirect stderr to a file.")
-
-execfile(os.path.join(config_root, "common", "Options.py"))
 
 (options, args) = parser.parse_args()
 
 if args:
     print "Error: script doesn't take any positional arguments"
     sys.exit(1)
-
-if options.detailed or options.inorder:
-    #check for SMT workload
-    workloads = options.cmd.split(';')
-    if len(workloads) > 1:
-        process = []
-        smt_idx = 0
-        inputs = []
-        outputs = []
-        errouts = []
-
-        if options.input != "":
-            inputs = options.input.split(';')
-        if options.output != "":
-            outputs = options.output.split(';')
-        if options.errout != "":
-            errouts = options.errout.split(';')
-
-        for wrkld in workloads:
-            smt_process = LiveProcess()
-            smt_process.executable = wrkld
-            smt_process.cmd = wrkld + " " + options.options
-            if inputs and inputs[smt_idx]:
-                smt_process.input = inputs[smt_idx]
-            if outputs and outputs[smt_idx]:
-                smt_process.output = outputs[smt_idx]
-            if errouts and errouts[smt_idx]:
-                smt_process.errout = errouts[smt_idx]
-            process += [smt_process, ]
-            smt_idx += 1
 
 (CPUClass, test_mem_mode, FutureClass) = Simulation.setCPUClass(options)
 
@@ -80,11 +44,11 @@ CPUClass.clock = '2GHz'
 CPUClass.numThreads = np
 
 system = System(cpu = [CPUClass(cpu_id=i) for i in xrange(np)],
-                physmem = PhysicalMemory(range=AddrRange(options.physmem)),
-                membus = Bus(), mem_mode = test_mem_mode)
+                physmem = SimpleMemory(range=AddrRange(options.physmem)),
+                membus = CoherentBus(), mem_mode = test_mem_mode)
 
-system.physmem.port = system.membus.port
-
+system.system_port = system.membus.slave
+system.physmem.port = system.membus.master
 CacheConfig.config_cache(options, system)
 
 for i in xrange(np):
@@ -104,8 +68,7 @@ for i in xrange(np):
     system.cpu[i].workload = process
 
     if options.fastmem:
-        system.cpu[0].physmem_port = system.physmem.port
+        system.cpu[i].fastmem = True
 
-root = Root(system = system)
-
+root = Root(full_system = False, system = system)
 Simulation.run(options, root, system, FutureClass)

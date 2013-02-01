@@ -116,6 +116,16 @@ module [HASIM_MODULE] mkFUNCP_Memory
     
     DEBUG_FILE debugLog <- mkDebugFile("hasim_funcp_memory.out");
 
+    // Dynamic parameters
+    PARAMETER_NODE paramNode <- mkDynamicParameterNode();
+    Param#(3) cacheMode <- mkDynamicParameter(`PARAMS_FUNCP_MEMORY_FUNCP_MEM_PVT_CACHE_MODE, paramNode);
+    Param#(3) prefetchConfig <- mkDynamicParameter(`PARAMS_FUNCP_MEMORY_FUNCP_MEM_PVT_PREFETCH_MODE, paramNode);
+
+    function Bool prefetchEnableFillFromHost() = unpack(~prefetchConfig[2]);
+    function Bool prefetchAllRefTypes() = unpack(prefetchConfig[1]);
+    function RL_DM_CACHE_PREFETCH_MODE prefetchMode() =
+        ((prefetchConfig[0] == 0) ? RL_DM_PREFETCH_DISABLE : RL_DM_PREFETCH_ENABLE);
+
     // Debugging output stream, useful for getting a stream of status messages
     // when running on an FPGA.
     STDIO#(Bit#(64)) stdio <- mkStdIO_Debug();
@@ -124,15 +134,12 @@ module [HASIM_MODULE] mkFUNCP_Memory
     Connection_Server#(MEM_REQUEST, MEMSTATE_RESP) linkMemory <- mkConnection_Server("funcp_memory");
 
     // Connection between the central cache and remote functional memory
-    let remoteFuncpMem <- mkRemoteFuncpMem(debugLog);
+    let remoteFuncpMem <- mkRemoteFuncpMem(prefetchEnableFillFromHost, debugLog);
 
     // Local functional memory cache and cache prefetcher
     NumTypeParam#(`FUNCP_PVT_CACHE_ENTRIES) num_pvt_entries = ?;
-    NumTypeParam#(`FUNCP_PVT_CACHE_PREFETCH_LEARNER_NUM) num_prefetch_learners = ?;
     
-    let prefetcher <- (`FUNCP_PVT_CACHE_PREFETCH_ENABLE == 1)?
-                      mkCachePrefetcher(num_prefetch_learners, True, True, debugLog):
-                      mkNullCachePrefetcher();
+    let prefetcher <- mkFuncpCachePrefetcher(prefetchAllRefTypes, debugLog);
     
     CENTRAL_CACHE_CLIENT#(FUNCP_MEM_WORD_PADDR, MEM_VALUE, FUNCP_CACHE_READ_META) cache <-
         mkCentralCacheClient(`VDEV_CACHE_FUNCP_MEMORY,
@@ -143,15 +150,6 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
     // Private cache and prefetch statistics
     let stats <- mkFuncpMemPvtCacheStats(cache.stats);
-    let prefetchStats <- (`FUNCP_PVT_CACHE_PREFETCH_ENABLE == 1)?
-                         mkFuncpMemPvtPrefetchStats(num_prefetch_learners, prefetcher.stats):
-                         mkNullFuncpMemPvtPrefetchStats(num_prefetch_learners, prefetcher.stats);
-
-    // Dynamic parameters
-    PARAMETER_NODE paramNode <- mkDynamicParameterNode();
-    Param#(3) cacheMode <- mkDynamicParameter(`PARAMS_FUNCP_MEMORY_FUNCP_MEM_PVT_CACHE_MODE, paramNode);
-    Param#(6) prefetchMechanism <- mkDynamicParameter(`PARAMS_FUNCP_MEMORY_FUNCP_MEM_PREFETCHER_MECHANISM, paramNode);
-    Param#(4) prefetchLearnerSizeLog <- mkDynamicParameter(`PARAMS_FUNCP_MEMORY_FUNCP_MEM_PREFETCHER_LEARNER_SIZE_LOG, paramNode);
 
     // Invalidate requests
     FIFOF#(Tuple2#(FUNCP_MEM_WORD_PADDR, Bool)) invalQ <- mkFIFOF();
@@ -170,8 +168,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
     Reg#(Bool) initialized <- mkReg(False);
     rule doInit (! initialized);
-        cache.setCacheMode(unpack(cacheMode[1:0]), unpack(cacheMode[2]));
-        prefetcher.setPrefetchMode(unpack(prefetchMechanism),unpack(prefetchLearnerSizeLog));
+        cache.setCacheMode(unpack(cacheMode[1:0]), prefetchMode);
         initialized <= True;
     endrule
 
@@ -219,10 +216,10 @@ module [HASIM_MODULE] mkFUNCP_Memory
                 loadsInFlight.up();
                 debugLog.record($format("cache readReq: ctx=%0d, addr=0x%x, w_addr=0x%x", ldinfo.contextId, ldinfo.addr, w_addr));
 
-                stdio.printf(msgLD_Req, list4(zeroExtend(ldinfo.contextId),
-                                              zeroExtend(pack(ldinfo.memRefToken)),
-                                              zeroExtend(ldinfo.addr),
-                                              zeroExtend(w_addr)));
+                stdio.printf(msgLD_Req, list(zeroExtend(ldinfo.contextId),
+                                             zeroExtend(pack(ldinfo.memRefToken)),
+                                             zeroExtend(ldinfo.addr),
+                                             zeroExtend(w_addr)));
             end
             
             tagged MEM_STORE .stinfo:
@@ -231,10 +228,10 @@ module [HASIM_MODULE] mkFUNCP_Memory
                 cache.write(w_addr, stinfo.val);
                 debugLog.record($format("cache write: ctx=%0d, addr=0x%x, w_addr=0x%x, val=0x%x", stinfo.contextId, stinfo.addr, w_addr, stinfo.val));
 
-                stdio.printf(msgST, list4(zeroExtend(stinfo.contextId),
-                                          zeroExtend(stinfo.addr),
-                                          zeroExtend(w_addr),
-                                          zeroExtend(stinfo.val)));
+                stdio.printf(msgST, list(zeroExtend(stinfo.contextId),
+                                         zeroExtend(stinfo.addr),
+                                         zeroExtend(w_addr),
+                                         zeroExtend(stinfo.val)));
             end
         endcase
 
@@ -250,8 +247,8 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
         loadsInFlight.down();
         debugLog.record($format("cache readResp: val=0x%x", r.val));
-        stdio.printf(msgLD_Rsp, list2(zeroExtend(pack(r.readMeta.memRefToken)),
-                                      resize(r.val)));
+        stdio.printf(msgLD_Rsp, list(zeroExtend(pack(r.readMeta.memRefToken)),
+                                     resize(r.val)));
     endrule
 
 
@@ -319,7 +316,8 @@ endmodule
 //     Connection between the central cache and the remote functional memory
 //     service.
 //
-module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
+module [HASIM_MODULE] mkRemoteFuncpMem#(Bool prefetchEnableFillFromHost,
+                                        DEBUG_FILE debugLog)
     // interface:
     (FUNCP_MEM_HOST_IFC#(t_READ_META))
     provisos (Alias#(t_READ_META, RL_DM_CACHE_READ_META#(FUNCP_CACHE_READ_META)));
@@ -361,7 +359,7 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
 
         OUT_TYPE_LoadLine r;
 
-        if (! meta.isPrefetch)
+        if (prefetchEnableFillFromHost || ! meta.isPrefetch)
         begin
             // Normal path.  Get the result from the host.
             r <- clientStub.getResponse_LoadLine();
@@ -397,7 +395,7 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(DEBUG_FILE debugLog)
             debugLog.record($format("back readReq: ctx=%0d, pref=%b, addr=0x%x", client_meta.contextId, globalReadMeta.isPrefetch, addr));
 
             reqMeta.enq(globalReadMeta);
-            if (! globalReadMeta.isPrefetch)
+            if (prefetchEnableFillFromHost || ! globalReadMeta.isPrefetch)
             begin
                 clientStub.makeRequest_LoadLine(zeroExtend(addr),
                                                 zeroExtend(pack(globalReadMeta.isPrefetch)));
@@ -523,126 +521,143 @@ module [HASIM_MODULE] mkFuncpMemPvtCacheStats#(RL_CACHE_STATS stats)
 
 endmodule
 
+
+
 //
-// mkFuncpMemPvtPrefetchStats --
-//     Statistics callbacks from private cache's prefetcher in front of the central cache.
+// mkFuncpCachePrefetcher --
+//     The learning prefetcher in libRL is not successful for functional memory.
+//     We use a very simple prefetcher.
 //
-module [HASIM_MODULE] mkFuncpMemPvtPrefetchStats#(NumTypeParam#(n_LEARNERS) dummy, RL_PREFETCH_STATS stats)
+//     The L1 private cache holds words.  The central cache holds lines.
+//     This prefetcher loads the remainder of a line into the L1 cache as fill
+//     responses arrive from the central cache.  The central cache is optimized
+//     for repeated references to the same line, making the prefetches
+//     relatively inexpensive.
+//
+module mkFuncpCachePrefetcher#(Bool prefetchAllRefTypes, DEBUG_FILE debugLog)
     // interface:
-    ()
-    provisos( NumAlias#(TMul#(n_LEARNERS, 4), n_STATS),
-              Add#(TMax#(TLog#(n_STATS),1), extraBits, TLog#(`STATS_MAX_VECTOR_LEN)));
+    (CACHE_PREFETCHER#(t_CACHE_IDX, FUNCP_MEM_WORD_PADDR, FUNCP_CACHE_READ_META))
+    provisos (Bits#(t_CACHE_IDX, t_CACHE_IDX_SZ),
+              Alias#(t_CACHE_ADDR, FUNCP_MEM_WORD_PADDR),
+              Alias#(t_CACHE_READ_META, FUNCP_CACHE_READ_META),
+
+              Bits#(MEM_VALUE, t_WORD_SZ),
+              Bits#(t_CACHE_ADDR, t_CACHE_ADDR_SZ),
+
+              // Word index within a cache line
+              NumAlias#(t_WORD_IDX_SZ, TLog#(FUNCP_MEM_CACHELINE_WORDS)),
+              Alias#(t_WORD_IDX, Bit#(t_WORD_IDX_SZ)),
+
+              // Line index within a 4KB page (excluding word index)
+              NumAlias#(t_LINE_IDX_SZ, TSub#(TLog#(TDiv#(TMul#(4096, 8), t_WORD_SZ)),
+                                             t_WORD_IDX_SZ)),
+              Alias#(t_LINE_IDX, Bit#(t_LINE_IDX_SZ)),
+
+              // Page index within physical memory space, excluding word and
+              // line indices.
+              NumAlias#(t_PAGE_IDX_SZ, TSub#(t_CACHE_ADDR_SZ,
+                                             TAdd#(t_LINE_IDX_SZ, t_WORD_IDX_SZ))),
+              Alias#(t_PAGE_IDX, Bit#(t_PAGE_IDX_SZ)));
     
-    STAT_ID prefetchStatIDs[9];
-//  STAT_ID learnerStatIDs[ valueOf(n_STATS) ];
+    //
+    // Address manipulation functions.
+    //
+    function Tuple3#(t_PAGE_IDX,
+                     t_LINE_IDX,
+                     t_WORD_IDX) burstAddr(FUNCP_MEM_WORD_PADDR addr) =
+        unpack(addr);
 
-    prefetchStatIDs[0] = statName("FUNCP_MEMORY_PVT_PREFETCH_HIT", 
-                                  "FUNCP Mem: Prefetch hits");
-    prefetchStatIDs[1] = statName("FUNCP_MEMORY_PVT_PREFETCH_DROP_BUSY", 
-                                  "FUNCP Mem: Prefetch reqs dropped by busy");
-    prefetchStatIDs[2] = statName("FUNCP_MEMORY_PVT_PREFETCH_DROP_HIT", 
-                                  "FUNCP Mem: Prefetch reqs dropped by hit");
-    prefetchStatIDs[3] = statName("FUNCP_MEMORY_PVT_PREFETCH_LATE", 
-                                  "FUNCP Mem: Late prefetch reqs");
-    prefetchStatIDs[4] = statName("FUNCP_MEMORY_PVT_PREFETCH_USELESS", 
-                                  "FUNCP Mem: Useless prefetch reqs");
-    prefetchStatIDs[5] = statName("FUNCP_MEMORY_PVT_PREFETCH_ISSUE", 
-                                  "FUNCP Mem: Prefetch reqs issued");
-    prefetchStatIDs[6] = statName("FUNCP_MEMORY_PVT_PREFETCH_LEARN", 
-                                  "FUNCP Mem: Prefetcher learns");
-    prefetchStatIDs[7] = statName("FUNCP_MEMORY_PVT_PREFETCH_CONFLICT", 
-                                  "FUNCP Mem: Prefetch learner conflicts");
-    prefetchStatIDs[8] = statName("FUNCP_MEMORY_PVT_PREFETCH_ILLEGAL", 
-                                  "FUNCP Mem: Uncacheable prefetch reqs");
-    
-//  for (Integer i = 0; i < valueOf(n_LEARNERS); i = i+1)
-//  begin
-//      learnerStatIDs[0+4*i] = statName("FUNCP_MEMORY_PVT_PREFETCH_L"+integerToString(i)+"_HIT",
-//                                       "FUNCP Mem: Prefetch learner "+integerToString(i)+" hits");
-//      learnerStatIDs[1+4*i] = statName("FUNCP_MEMORY_PVT_PREFETCH_L"+integerToString(i)+"_ISSUE", 
-//                                       "FUNCP Mem: Prefetch reqs from learner "+integerToString(i));
-//      learnerStatIDs[2+4*i] = statName("FUNCP_MEMORY_PVT_PREFETCH_L"+integerToString(i)+"_STRIDE", 
-//                                       "FUNCP Mem: Prefetch stride from learner "+integerToString(i));
-//      learnerStatIDs[3+4*i] = statName("FUNCP_MEMORY_PVT_PREFETCH_L"+integerToString(i)+"_LA_DIST", 
-//                                       "FUNCP Mem: Prefetch lookahead dist from learner "+integerToString(i));
-//  end
+    function FUNCP_MEM_WORD_PADDR packAddr(t_PAGE_IDX pageIdx,
+                                           t_LINE_IDX lineIdx,
+                                           t_WORD_IDX wordIdx) =
+        { pageIdx, lineIdx, wordIdx };
 
-    STAT_VECTOR#(9)       prefetchSv <- mkStatCounter_Vector(prefetchStatIDs);
-//  STAT_VECTOR#(n_STATS) learnerSv  <- mkStatCounter_Vector(learnerStatIDs);
-    
-    Reg#(Bool) prefetchHitR              <- mkReg(False);
-    Reg#(Bool) prefetchDroppedByBusyR    <- mkReg(False);
-    Reg#(Bool) prefetchDroppedByHitR     <- mkReg(False);
-    Reg#(Bool) prefetchLateR             <- mkReg(False);
-    Reg#(Bool) prefetchUselessR          <- mkReg(False);
-    Reg#(Bool) prefetchIssuedR           <- mkReg(False);
-    Reg#(Bool) prefetchLearnR            <- mkReg(False);
-    Reg#(Bool) prefetchLearnerConflictR  <- mkReg(False);
-    Reg#(Bool) prefetchIllegalReqR       <- mkReg(False);
-//  Reg#(Maybe#(PREFETCH_LEARNER_STATS)) hitLearnerInfoR <- mkReg(tagged Invalid);
-    
-    rule addPipeline (True);
-        prefetchHitR             <= stats.prefetchHit;
-        prefetchDroppedByHitR    <= stats.prefetchDroppedByHit;
-        prefetchDroppedByBusyR   <= stats.prefetchDroppedByBusy;
-        prefetchLateR            <= stats.prefetchLate;
-        prefetchUselessR         <= stats.prefetchUseless;
-        prefetchIssuedR          <= stats.prefetchIssued;
-        prefetchLearnR           <= stats.prefetchLearn();
-        prefetchLearnerConflictR <= stats.prefetchLearnerConflict();
-        prefetchIllegalReqR      <= stats.prefetchIllegalReq();
-//      hitLearnerInfoR        <= stats.hitLearnerInfo;
+
+
+    Wire#(FUNCP_MEM_WORD_PADDR) newReq <- mkWire();
+    FIFOF#(FUNCP_MEM_WORD_PADDR) prefReqQ <- mkSizedFIFOF(4);
+
+    (* fire_when_enabled *)
+    rule fwdReq (True);
+        prefReqQ.enq(newReq);
+        debugLog.record($format(" prefetch enq: addr=0x%x", newReq));
     endrule
 
-    rule prefetchHit (prefetchHitR);
-        prefetchSv.incr(0);
-    endrule
+    function PREFETCH_REQ#(t_CACHE_ADDR, t_CACHE_READ_META) genReq();
+        return PREFETCH_REQ { addr: prefReqQ.first(),
+                              readMeta: ?,
+                              prio: PREFETCH_PRIO_LOW };
+    endfunction
 
-    rule prefetchDroppedByBusy (prefetchDroppedByBusyR);
-        prefetchSv.incr(1);
-    endrule
+    method Action setPrefetchMode(Tuple2#(PREFETCH_MODE, PREFETCH_DIST_PARAM) mode,
+                                  PREFETCH_LEARNER_SIZE_LOG size);
+        noAction;
+    endmethod
 
-    rule prefetchDroppedByHit (prefetchDroppedByHitR);
-        prefetchSv.incr(2);
-    endrule
+    method Bool hasReq() = prefReqQ.notEmpty;
 
-    rule prefetchLate (prefetchLateR);
-        prefetchSv.incr(3);
-    endrule
+    method ActionValue#(PREFETCH_REQ#(t_CACHE_ADDR, t_CACHE_READ_META)) getReq();
+        prefReqQ.deq();    
+        return genReq();
+    endmethod
 
-    rule prefetchUseless (prefetchUselessR);
-        prefetchSv.incr(4);
-    endrule
-    
-    rule prefetchIssued (prefetchIssuedR);
-        prefetchSv.incr(5);
-    endrule
-    
-    rule prefetchLearn (prefetchLearnR);
-        prefetchSv.incr(6);
-    endrule
-    
-    rule prefetchLearnerConflict (prefetchLearnerConflictR);
-        prefetchSv.incr(7);
-    endrule
+    method PREFETCH_REQ#(t_CACHE_ADDR, t_CACHE_READ_META) peekReq();
+        return genReq();
+    endmethod
 
-    rule prefetchIllegalReq (prefetchIllegalReqR);
-        prefetchSv.incr(8);
-    endrule
+    method Action readHit(t_CACHE_IDX idx, t_CACHE_ADDR addr);
+        noAction;
+    endmethod
 
-//  rule hitLearnerUpdate (hitLearnerInfoR matches tagged Valid .s);
-//      learnerSv.incr(0+resize(s.idx)*4); //hitLeanerIdx
-//      if (s.isActive)                    //the learner is issuing prefetch request
-//      begin
-//          learnerSv.incr(1+resize(s.idx)*4);                         //activeLearnerIdx
-//          learnerSv.incrBy(2+resize(s.idx)*4, signExtend(s.stride)); //activeLearnerStride
-//          learnerSv.incrBy(3+resize(s.idx)*4, zeroExtend(s.laDist)); //activeLearnerLaDist
-//      end
-//  endrule
+    method Action readMiss(t_CACHE_IDX idx,
+                           t_CACHE_ADDR addr,
+                           Bool isPrefetch,
+                           t_CACHE_READ_META readMeta);
+        noAction;
+    endmethod
 
-endmodule
+    method Action prefetchInval(t_CACHE_IDX idx);
+        noAction;
+    endmethod
 
-module [HASIM_MODULE] mkNullFuncpMemPvtPrefetchStats#(NumTypeParam#(n_LEARNERS) dummy, RL_PREFETCH_STATS stats)
-    // interface:
-    ();
+    method Action shuntNewCacheReq(t_CACHE_IDX idx, t_CACHE_ADDR addr);
+        noAction;
+    endmethod
+
+    method Action fillResp(t_CACHE_IDX idx,
+                           t_CACHE_ADDR addr,
+                           Bool isPrefetch,
+                           t_CACHE_READ_META readMeta);
+
+        match {.p_idx, .l_idx, .w_idx} = burstAddr(addr);
+
+        // Is the fill response an instruction reference (or prefetching all
+        // request types)?  Is the address not the last entry in a cache line?
+        if ((prefetchAllRefTypes || (readMeta.memRefToken.memPath == FUNCP_REGSTATE_MEMPATH_GETINST)) &&
+            (w_idx != maxBound))
+        begin
+            // Prefetch the next word in the line.  The first level cache
+            // elements are just words.  The central cache holds lines.
+            // A recently read cache in the central cache reduces access
+            // time for multiple references to the same line.
+            let pref_addr = packAddr(p_idx, l_idx, w_idx + 1);
+            newReq <= pref_addr;
+            debugLog.record($format(" prefetch try: addr=0x%x (fill=0x%x)", pref_addr, addr));
+        end
+    endmethod
+
+    method Action prefetchDroppedByBusy(t_CACHE_ADDR addr);
+        noAction;
+    endmethod
+
+    method Action prefetchDroppedByHit();
+        noAction;
+    endmethod
+
+    method Action prefetchIllegalReq();
+        noAction;
+    endmethod
+
+    interface RL_PREFETCH_STATS stats = error("Not implemented");
+
 endmodule

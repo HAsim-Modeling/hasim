@@ -26298,3 +26298,35 @@ Directory tools/scripts/bmark
  run-hasim.bmark           Locally Modified          911 
 
 Update gem5 run scripts to latest stable version.
+
+----------
+mcadler     Date: Fri Feb  1 15:38:13 EST 2013  CSN: CSN-hasim-913
+                  Fri Feb  1 20:38:13 UTC 2013
+
+
+Directory tools/scripts/bmark/m5_configs/common
+ Simulation.py             Locally Modified          912 
+
+Directory tools/scripts/bmark/m5_configs
+ se.py                     Locally Modified          912 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          912 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          912 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          912 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.awb   Locally Modified          912 
+ hybrid-funcp-memory.bsv   Locally Modified          912 
+
+- Add support for shared-memory user-space workloads in m5 control scripts.
+
+- Dump more detail in STDIO-based functional model debugging.
+
+- Change the prefetcher for functional memory to fetch the remainder of
+  a line when a fill comes in.  The L1 cache is word-sized, the central
+  cache lines hold four words.  A recent-line cache in the central cache
+  makes fetching the remainder of the line inexpensive.  The result:
+  a significant drop in L1 miss rates with no change in run length.
+  We presume that pipelining hides the extra latency.  The prefetcher
+  is currently off by default (dynamically).

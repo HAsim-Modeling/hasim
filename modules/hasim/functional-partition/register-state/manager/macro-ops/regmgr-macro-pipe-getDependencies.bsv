@@ -51,8 +51,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     DEBUG_FILE debugLog <- mkDebugFile(`REGSTATE_LOGFILE_PREFIX + "_pipe_getDependencies.out");
 
     STDIO#(Bit#(32)) stdio <- mkStdIO_Debug();
+    let msgMapInst <- getGlobalStringUID("FUNCP GETDEP: alloc TOKEN (%d, %d): VA 0x%08lx%08lx inst 0x%08lx\n");
     let msgRegSrcs <- getGlobalStringUID("FUNCP GETDEP: read PR (%d, %d, %d) TOKEN (%d, %d)\n");
-    let msgRegDsts <- getGlobalStringUID("FUNCP GETDEP: write PR (%d, %d) TOKEN (%d, %d)\n");
+    let msgRegDsts <- getGlobalStringUID("FUNCP GETDEP: write PR (%d, %d, %d) TOKEN (%d, %d)\n");
 
 
     // ====================================================================
@@ -136,10 +137,20 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         
         // Record the address. (For relative branches, etc.)
         tokAddr.write(idx, req.virtualAddress);
-        
+
         // Record the instruction.
         tokInst.write(idx, req.instruction);
-        
+
+        // Debug message
+        Vector#(5, Bit#(32)) dbg_args = newVector();
+        dbg_args[0] = resize(tokContextId(newtok));
+        dbg_args[1] = resize(tokTokenId(newtok));
+        Bit#(64) dbg_va = resize(req.virtualAddress);
+        dbg_args[2] = dbg_va[63:32];
+        dbg_args[3] = dbg_va[31:0];
+        dbg_args[4] = resize(req.instruction);
+        stdio.printf(msgMapInst, toList(dbg_args));
+
         // Pass on to stage 2.
         deps1Q.enq(tuple2(newtok, req.instruction));
 
@@ -342,14 +353,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
 
 
         // Generate a debug message with up to 2 destinations.
-        Vector#(4, Bit#(32)) reg_msg = replicate('hffffffff);
-        for (Integer x = 0; x < min(2, valueOf(ISA_MAX_DSTS)); x = x + 1)
+        Vector#(5, Bit#(32)) reg_msg = replicate('hffffffff);
+        for (Integer x = 0; x < min(3, valueOf(ISA_MAX_DSTS)); x = x + 1)
         begin
             if (tok_active &&& map_dsts[x] matches tagged Valid {.ar, .pr})
                 reg_msg[x] = resize(pr);
         end
-        reg_msg[2] = resize(tokContextId(tok));
-        reg_msg[3] = resize(tokTokenId(tok));
+        reg_msg[3] = resize(tokContextId(tok));
+        reg_msg[4] = resize(tokTokenId(tok));
         stdio.printf(msgRegDsts, toList(reg_msg));
 
         deps3Q.enq(tuple3(tok, ar_srcs, map_dsts));

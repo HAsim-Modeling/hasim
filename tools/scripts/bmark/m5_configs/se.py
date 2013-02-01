@@ -29,6 +29,7 @@ Options.addSEOptions(parser)
 # Benchmark options
 parser.add_option("--hasim-sim", action="store_true")
 parser.add_option("--physmem", default="512MB", help="Physical memory")
+parser.add_option("--shared-mem", action="store_true")
 
 (options, args) = parser.parse_args()
 
@@ -51,8 +52,13 @@ system.system_port = system.membus.slave
 system.physmem.port = system.membus.master
 CacheConfig.config_cache(options, system)
 
-for i in xrange(np):
-    progdir = "program." + str(i) + "/";
+##
+## Shared memory programs (e.g. Splash) use the clone emulated syscall to
+## map memory shared.  They use a single process instance mapped everywhere.
+## Normal (non-shared) programs use separate LiveProcess() instances.
+##
+if options.shared_mem:
+    progdir = "program.0/"
 
     process = LiveProcess()
     process.executable = progdir + options.cmd
@@ -65,10 +71,30 @@ for i in xrange(np):
     if options.errout != "":
         process.errout = progdir + options.errout
 
-    system.cpu[i].workload = process
+    for i in xrange(np):
+        system.cpu[i].workload = process
 
+else:
+    for i in xrange(np):
+        progdir = "program." + str(i) + "/"
+
+        process = LiveProcess()
+        process.executable = progdir + options.cmd
+        process.cwd = progdir
+        process.cmd = [progdir + options.cmd] + options.options.split()
+        if options.input != "":
+            process.input = progdir + options.input
+        if options.output != "":
+            process.output = progdir + options.output
+        if options.errout != "":
+            process.errout = progdir + options.errout
+
+        system.cpu[i].workload = process
+
+for i in xrange(np):
     if options.fastmem:
         system.cpu[i].fastmem = True
+
 
 root = Root(full_system = False, system = system)
 Simulation.run(options, root, system, FutureClass)

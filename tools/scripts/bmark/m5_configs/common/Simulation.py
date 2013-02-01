@@ -265,6 +265,12 @@ def run(options, root, testsys, cpu_class):
             maxtick = maxtick - int(cpts[cpt_num - 1])
             checkpoint_dir = joinpath(cptdir, "cpt.%s" % cpts[cpt_num - 1])
 
+    # HAsim shared memory programs start with a single thread and instantiate
+    # threads with shared memory.  Wait for the last thread to start before
+    # giving control to HAsim.
+    if options.shared_mem:
+        testsys.cpu[np-1].max_insts_any_thread = 10
+
     m5.instantiate(checkpoint_dir)
 
     if options.standard_switch or cpu_class:
@@ -309,6 +315,12 @@ def run(options, root, testsys, cpu_class):
 
     num_checkpoints = 0
     exit_cause = ''
+
+    # Wait for all threads.  See previous comment near options.shared_mem.
+    if options.shared_mem:
+        print "Waiting for application to start all threads..."
+        exit_event = m5.simulate()
+        print "All threads running..."
 
     # If we're taking and restoring checkpoints, use checkpoint_dir
     # option only for finding the checkpoints to restore from.  This

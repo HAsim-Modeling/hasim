@@ -81,6 +81,24 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
 
     DEBUG_FILE debugLog <- mkDebugFile(`REGSTATE_LOGFILE_PREFIX + "_pipe_doLoads.out");
 
+    STDIO#(Bit#(32)) stdio <- mkStdIO_Debug();
+    let msgWriteReg <- getGlobalStringUID("FUNCP DOLOADS: TOKEN (%d, %d) write PR %d <- 0x%08lx%08lx\n");
+
+    function Action dbgWriteReg(TOKEN tok,
+                                FUNCP_PHYSICAL_REG_INDEX pr,
+                                ISA_VALUE val);
+    action
+        Vector#(5, Bit#(32)) dbg_args = newVector();
+        dbg_args[0] = resize(tokContextId(tok));
+        dbg_args[1] = resize(tokTokenId(tok));
+        dbg_args[2] = resize(pr);
+        Bit#(64) v = resize(val);
+        dbg_args[3] = v[63:32];
+        dbg_args[4] = v[31:0];
+        stdio.printf(msgWriteReg, toList(dbg_args));
+    endaction
+    endfunction
+
 
     // ====================================================================
     //
@@ -323,6 +341,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
 
                 // Update the physical register file.
                 prf.write(tok, dst_pr, val);
+                dbgWriteReg(tok, dst_pr, val);
 
                 // Update the scoreboard.
                 tokScoreboard.loadFinish(tok.index);
@@ -380,6 +399,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
 
         // Update the physical register file.
         prf.write(tok, dst_pr, val);
+        dbgWriteReg(tok, dst_pr, val);
 
         // Unstall this stage.
         loads2Q.deq();

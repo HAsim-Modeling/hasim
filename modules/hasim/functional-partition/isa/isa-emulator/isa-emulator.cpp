@@ -135,14 +135,6 @@ ISA_EMULATOR_SERVER_CLASS::Request(UMF_MESSAGE req)
             {
                 T2("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " FPControlReg:  " << fmt_regval(rVal.intReg));
             }
-            else if (rName.IsLockReg())
-            {
-                T2("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " LockReg:     " << fmt_regval(rVal.intReg));
-            }
-            else if (rName.IsLockAddrReg())
-            {
-                T2("\tisa_emulator: Sync CTX " << UINT64(ctx_id) << " LockAddrReg: " << fmt_regval(rVal.intReg));
-            }
             else
             {
                 ASIMERROR("Unknown register type");
@@ -235,14 +227,6 @@ ISA_EMULATOR_SERVER_CLASS::UpdateRegister(
         else if (rName.IsFPControlReg())
         {
             T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " FPControlReg: " << fmt_regval(rVal.intReg));
-        }
-        else if (rName.IsLockReg())
-        {
-            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " LockReg: " << fmt_regval(rVal.intReg));
-        }
-        else if (rName.IsLockAddrReg())
-        {
-            T1("\tisa_emulator: Updating CTX " << UINT64(ctxId) << " LockAddrReg: " << fmt_regval(rVal.intReg));
         }
         else
         {

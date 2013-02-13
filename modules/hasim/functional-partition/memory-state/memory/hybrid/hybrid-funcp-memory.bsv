@@ -243,7 +243,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
     //
     rule getMemResp (True);
         let r <- cache.readResp();
-        linkMemory.makeResp(memStateResp(r.readMeta.memRefToken, r.val));
+        linkMemory.makeResp(memStateRespLoad(r.readMeta.memRefToken, r.val));
 
         loadsInFlight.down();
         debugLog.record($format("cache readResp: val=0x%x", r.val));

@@ -77,6 +77,14 @@ interface MEMSTATE_SBUFFER;
     method ActionValue#(MEMSTATE_SBUFFER_RSP_LOOKUP) lookupResp();
     
     //
+    // TEST FOR EXCLUSIVE:  Is the context associated with the token the
+    //         only context with entries for the address in the store
+    //         buffer?  (No entires at all is fine, too.)
+    //
+    method Action testForExclusiveReq(TOKEN_INDEX tokIdx, MEM_ADDRESS addr);
+    method ActionValue#(Bool) testForExclusiveResp();
+
+    //
     // STORE:  Add a value to the store buffer.
     //
     method Action insertReq(TOKEN_INDEX tokIdx, MEM_ADDRESS addr, MEM_VALUE value);
@@ -85,6 +93,9 @@ interface MEMSTATE_SBUFFER;
     // COMMIT: Move store from TOKEN_INDEX space to STORE_TOKEN_INDEX space.
     //         The store remains in the store buffer until WRITE BACK.
     method Action commitReq(TOKEN_INDEX tokIdx, STORE_TOKEN_INDEX storeTokIdx);
+    // Respond with stream of addresses committed.  Bool is True for last
+    // address associated with token.
+    method ActionValue#(Tuple2#(MEM_ADDRESS, Bool)) commitResp();
 
     //
     // WRITE BACK:
@@ -171,6 +182,8 @@ typedef enum
     SBUFFER_STATE_READY,            // Ready for command
     SBUFFER_STATE_LOOKUP,           // Lookup (load) result ready
     SBUFFER_STATE_LOOKUP_SEARCH,    // Searching for address in buffer
+    SBUFFER_STATE_TEST_EXCL,        // Test for exclusive result ready
+    SBUFFER_STATE_TEST_EXCL_SEARCH, // Searching for address in buffer
     SBUFFER_STATE_INSERT,           // Add new entry to buffer
     SBUFFER_STATE_COMMIT,           // Convert TOKEN to STORE_TOKEN
     SBUFFER_STATE_WRITEBACK,        // Write back store (return result & remove entry)
@@ -236,6 +249,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
     // Commit pipeline
     FIFO#(Tuple2#(TOKEN_INDEX, STORE_TOKEN_INDEX)) commitQ <- mkFIFO();
+    FIFO#(Tuple2#(MEM_ADDRESS, Bool)) commitRespQ <- mkFIFO();
 
     // Number of stores in the store buffer.  There can be at most two stores
     // for every token.  Since the number of tokens in flight can be at most
@@ -273,6 +287,8 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     // Write back response pipeline
     FIFOF#(MEMSTATE_SBUFFER_RSP_WRITEBACK) writeBackRespPipe <- mkFIFOF();
 
+    FIFOF#(Bool) exclusiveTestRespQ <- mkFIFOF();
+
     // Current request details
     Reg#(TOKEN_INDEX) reqToken <- mkRegU();
     Reg#(MEM_ADDRESS) reqAddr  <- mkRegU();
@@ -281,6 +297,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
     // Response details
     Reg#(Maybe#(MEM_VALUE)) respValue <- mkRegU();
+    Reg#(Bool)              respIsExclusive <- mkRegU();
     Reg#(TOKEN_INDEX)       respClosestReqToken <- mkRegU();
 
     //
@@ -356,31 +373,46 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     //     The lookupReq method determined that a hash chain exists for the
     //     address.  Start a walk of the chain too see whether there is a match.
     //
-    FIFOF#(Tuple3#(TOKEN_INDEX,
+    //     This entry to the store buffer handles both normal lookups and
+    //     tests for exclusive access.
+    //
+    FIFOF#(Tuple4#(Bool,
+                   TOKEN_INDEX,
                    MEM_ADDRESS,
                    MEMSTATE_SBUFFER_ADDR_HASH_IDX)) lookupQ <- mkBypassFIFOF();
 
     (* conservative_implicit_conditions *)
     rule startLookupReq (state == SBUFFER_STATE_READY);
-        match {.tok_idx, .addr, .hash} = lookupQ.first();
+        match {.is_lookup, .tok_idx, .addr, .hash} = lookupQ.first();
         lookupQ.deq();
 
         // Read the head of the address hash chain again in case it
         // has changed since lookupReq().
         if (addrHash.sub(hash) matches tagged Valid .node_idx)
         begin
-            // Read the first node in the hash chain
-            debugLog.record($format("  SB Lookup: ") + fshow(tok_idx) + $format(", addr=0x%x, hash=%0d, head node=%0d", addr, hash, node_idx));
-
             sBufferMeta.readReq(node_idx);
             sBufferData.readReq(node_idx);
-            state <= SBUFFER_STATE_LOOKUP_SEARCH;
+
+            if (is_lookup)
+            begin
+                // Read the first node in the hash chain
+                debugLog.record($format("  SB Lookup: ") + fshow(tok_idx) + $format(", addr=0x%x, hash=%0d, head node=%0d", addr, hash, node_idx));
+
+                state <= SBUFFER_STATE_LOOKUP_SEARCH;
+            end
+            else
+            begin
+                // Read the first node in the hash chain
+                debugLog.record($format("  SB TestExcl: ") + fshow(tok_idx) + $format(", addr=0x%x, hash=%0d, head node=%0d", addr, hash, node_idx));
+
+                state <= SBUFFER_STATE_TEST_EXCL_SEARCH;
+            end
         end
         else
         begin
-            // Hash chain now empty.  Return nothing.
+            // Hash chain empty.  Return nothing.
             debugLog.record($format("  SB hash now empty: ") + fshow(tok_idx) + $format(", addr=0x%x, hash=%0d", addr, hash));
-            state <= SBUFFER_STATE_LOOKUP;
+            state <= (is_lookup ? SBUFFER_STATE_LOOKUP : SBUFFER_STATE_TEST_EXCL);
         end
 
         // Initialize global request state
@@ -389,6 +421,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     
         // Initialize response
         respValue <= tagged Invalid;
+        respIsExclusive <= True;
     endrule
 
 
@@ -498,6 +531,76 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
                 state <= SBUFFER_STATE_LOOKUP;
             end
         end
+    endrule
+
+
+    //
+    // testExclSearchNode --
+    //     Similar to lookupSearchNode, but walks the list to determine
+    //     whether the requesting context is the only context with
+    //     entries for the address.  No entries for any context is also
+    //     success.
+    //
+    (* conservative_implicit_conditions *)
+    rule testExclSearchNode (state == SBUFFER_STATE_TEST_EXCL_SEARCH);
+        let node_meta <- sBufferMeta.readRsp();
+        let node_data <- sBufferData.readRsp();
+        
+        if (node_data.addr == reqAddr)
+        begin
+            if (node_data.tokIdx.context_id == reqToken.context_id)
+            begin
+                // Context matches.  Still looking good.
+                debugLog.record($format("    SB Addr Match (same ctx): ") + fshow(reqToken) + $format(", node_token=") + fshow(node_data.tokIdx) + $format(", node_addr=0x%x, value=0x%x", node_data.addr, node_data.value));
+
+                // Is there more to search?
+                if (node_meta.next matches tagged Valid .n_idx)
+                begin
+                    // Yes -- search next entry
+                    sBufferMeta.readReq(n_idx);
+                    sBufferData.readReq(n_idx);
+                end
+                else
+                begin
+                    // No -- done
+                    state <= SBUFFER_STATE_TEST_EXCL;
+                end
+            end
+            else
+            begin
+                // Failure!  Some other context has an entry.
+                debugLog.record($format("    SB Addr Match (wrong ctx): ") + fshow(reqToken) + $format(", node_token=") + fshow(node_data.tokIdx) + $format(", node_addr=0x%x, value=0x%x", node_data.addr, node_data.value));
+
+                respIsExclusive <= False;
+                state <= SBUFFER_STATE_TEST_EXCL;
+            end
+        end
+        else
+        begin
+            //
+            // Address mismatch.  Is there another entry in the chain?
+            //
+            if (node_meta.next matches tagged Valid .n_idx)
+            begin
+                // Yes -- search next entry
+                debugLog.record($format("    SB mismatch: ") + fshow(reqToken) + $format(", node_token=") + fshow(node_data.tokIdx) + $format(", node_addr=0x%x, node_next=%0d", node_data.addr, n_idx));
+
+                sBufferMeta.readReq(n_idx);
+                sBufferData.readReq(n_idx);
+            end
+            else
+            begin
+                // No -- give up
+                debugLog.record($format("    SB mismatch: ") + fshow(reqToken) + $format(", node_token=") + fshow(node_data.tokIdx) + $format(", node_addr=0x%x, end of chain", node_data.addr));
+
+                state <= SBUFFER_STATE_TEST_EXCL;
+            end
+        end
+    endrule
+
+    rule testExclResp (state == SBUFFER_STATE_TEST_EXCL);
+        exclusiveTestRespQ.enq(respIsExclusive);
+        state <= SBUFFER_STATE_READY;
     endrule
 
     
@@ -680,6 +783,8 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         let node <- sBufferData.readRsp();
         node.committed = True;
         sBufferData.write(node_idx, node);
+
+        commitRespQ.enq(tuple2(node.addr, done));
 
         if (done)
         begin
@@ -980,9 +1085,10 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     //   the request is forwarded to startLookupReq, which waits until the
     //   store buffer is ready for a new request.
     //
-    method ActionValue#(Bool) lookupReq(TOKEN_INDEX tokIdx, MEM_ADDRESS addr) if ((state != SBUFFER_STATE_INIT) &&
-                                                                                  (state != SBUFFER_STATE_INSERT) &&
-                                                                                  ! writeBackRespPipe.notEmpty());
+    method ActionValue#(Bool) lookupReq(TOKEN_INDEX tokIdx,
+                                        MEM_ADDRESS addr) if ((state != SBUFFER_STATE_INIT) &&
+                                                              (state != SBUFFER_STATE_INSERT) &&
+                                                              ! writeBackRespPipe.notEmpty());
         Bool resp;
 
         // Read the head of the address hash chain
@@ -994,7 +1100,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             // this method.
             debugLog.record($format("  SB hash not empty: ") + fshow(tokIdx) + $format(", addr=0x%x, hash=%0d, head node=%0d", addr, hash, node_idx));
 
-            lookupQ.enq(tuple3(tokIdx, addr, hash));
+            lookupQ.enq(tuple4(True, tokIdx, addr, hash));
             resp = True;
         end
         else
@@ -1014,7 +1120,28 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         return MEMSTATE_SBUFFER_RSP_LOOKUP { addr: reqAddr, mvalue: respValue };
     endmethod: lookupResp
 
-    
+
+    //
+    // TEST FOR EXCLUSIVE:  Is the requesting context the only entry?
+    //     Similar to lookup, but scans the chain looking for entries at
+    //     the address from contexts other than the requester.
+    //
+    method Action testForExclusiveReq(TOKEN_INDEX tokIdx,
+                                      MEM_ADDRESS addr) if ((state != SBUFFER_STATE_INIT) &&
+                                                            (state != SBUFFER_STATE_INSERT) &&
+                                                            ! writeBackRespPipe.notEmpty());
+        let hash = sbAddrHash(addr);
+        lookupQ.enq(tuple4(False, tokIdx, addr, hash));
+    endmethod: testForExclusiveReq
+
+    method ActionValue#(Bool) testForExclusiveResp();
+        let rsp = exclusiveTestRespQ.first();
+        exclusiveTestRespQ.deq();
+
+        return rsp;
+    endmethod: testForExclusiveResp
+
+
     //
     // STORE:  Add a value to the store buffer.
     //     Store is only allowed to fire when the allocate pipe is empty.  This
@@ -1063,6 +1190,12 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         state <= SBUFFER_STATE_COMMIT;
     endmethod: commitReq
 
+    method ActionValue#(Tuple2#(MEM_ADDRESS, Bool)) commitResp();
+        let rsp = commitRespQ.first();
+        commitRespQ.deq();
+
+        return rsp;
+    endmethod: commitResp
 
     //
     // WRITE BACK:

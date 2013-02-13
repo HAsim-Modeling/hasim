@@ -26330,3 +26330,63 @@ Directory modules/hasim/functional-partition/memory-state/memory/hybrid
   a significant drop in L1 miss rates with no change in run length.
   We presume that pipelining hides the extra latency.  The prefetcher
   is currently off by default (dynamically).
+
+----------
+mcadler     Date: Wed Feb 13 09:33:21 EST 2013  CSN: CSN-hasim-914
+                  Wed Feb 13 14:33:21 UTC 2013
+
+
+Directory modules/hasim/functional-partition/interface
+ funcp-timing-interface.bsv Locally Modified          913 
+ funcp-rsp-constructors.bsv Locally Modified          913 
+
+Directory modules/hasim/functional-partition/register-state/connections
+ regstate-connect-memory.bsv Locally Modified          913 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          913 
+ regstate-data-physical-regs.bsv Locally Modified          913 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getInstruction.bsv Locally Modified          913 
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          913 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          913 
+ regmgr-macro-pipe-doStores.bsv Locally Modified          913 
+ regmgr-macro.bsv          Locally Modified          913 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          913 
+
+Directory modules/hasim/functional-partition/register-state/base-types
+ regstate-base-types.bsv   Locally Modified          913 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          913 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          913 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          913 
+
+Directory modules/hasim/functional-partition/memory-state/base-types
+ memstate-base-types.bsv   Locally Modified          913 
+
+Directory modules/hasim/functional-partition/isa/isa-emulator
+ isa-emulator.cpp          Locally Modified          913 
+
+- Delay determination of store conditional success to the store stage.
+
+- Maintain the load locked / store conditional state in the memory subsystem.
+  The current implementation is quite simple:  up to 8 address/context pairs
+  are monitored at once as a result of load locked instructions.  In order
+  for a store conditional to succeed, the monitor must detect no stores
+  to the address and the address may not be present in any store buffer.
+  The store buffer requirement is a little strong, but we have no way
+  to replay a store once committed.  For typical programs this will be
+  fine, since a proper timing model will have similar requirements.
+
+- The current monitor algorithm works in Splash-2 for up to 32
+  threads.  With more there appears to be a harmonic in which most threads
+  never win a lock race.  Will work on that next.
+
+- The speculative store code now deals with the possibility that a conditional
+  store may be squashed.

@@ -46,6 +46,7 @@ interface REGSTATE_MEMORY_QUEUE;
     method Action makeReq(MEMSTATE_REQ req);
 
     method MEM_VALUE getResp();
+    method Bool getRespSuccess();
     method Action deq();
 endinterface
 
@@ -107,7 +108,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
     // makes sense for them to use a good fraction of an 18kb BRAM slice.
     SCOREBOARD_FIFOF#(MAX_FUNCP_INFLIGHT_MEMREFS, MEM_VALUE) respInstruction <- mkBRAMScoreboardFIFOF();
     SCOREBOARD_FIFOF#(MAX_FUNCP_INFLIGHT_MEMREFS, MEM_VALUE) respDoLoads <- mkBRAMScoreboardFIFOF();
-    SCOREBOARD_FIFOF#(MAX_FUNCP_INFLIGHT_MEMREFS, MEM_VALUE) respDoStores <- mkBRAMScoreboardFIFOF();
+    SCOREBOARD_FIFOF#(MAX_FUNCP_INFLIGHT_MEMREFS,
+                      Tuple2#(MEM_VALUE, Bool)) respDoStores <- mkBRAMScoreboardFIFOF();
 
     
     function Action decorateAndQueueLoad(MEMSTATE_REQ req,
@@ -174,20 +176,32 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
             // Allocate a slot in the store response FIFO and decorate the
             // request with the details.
             let resp_id <- respDoStores.enq();
-            decorateAndQueueLoad(req, FUNCP_REGSTATE_MEMPATH_DOSTORES_LOAD, resp_id);
+            decorateAndQueueLoad(req, FUNCP_REGSTATE_MEMPATH_DOSTORES, resp_id);
             debugLog.record($format("Do Stores LOAD REQ, id=%0d", resp_id));
         end
-        else
+        else if (req matches tagged REQ_STORE .st)
         begin
-            // Store has no response from memory subsystem.  That it was queued
-            // is sufficient to respond to the store pipeline.
-            linkToMem.makeReq(req);
-
             let resp_id <- respDoStores.enq();
-            debugLog.record($format("Do Stores STORE REQ, id=%0d", resp_id));
 
-            // Can't update the output store FIFO this cycle.  Queue request.
-            releaseStoresQ.enq(resp_id);
+            if (! st.reqExclusive)
+            begin
+                // Normal stores have no response from the memory subsystem.
+                // Signal that the response is ready.
+                releaseStoresQ.enq(resp_id);
+                linkToMem.makeReq(req);
+
+                debugLog.record($format("Do Stores STORE REQ, id=%0d", resp_id));
+            end
+            else
+            begin
+                // Stores requesting exclusive access to a line wait for a
+                // memory subsystem response.
+                let tagged_st = st;
+                tagged_st.memRefToken = memRefToken(FUNCP_REGSTATE_MEMPATH_DOSTORES, resp_id);
+                linkToMem.makeReq(tagged REQ_STORE tagged_st);
+
+                debugLog.record($format("Do Stores STORE (exclusive) REQ, id=%0d", resp_id));
+            end
         end
     endrule
 
@@ -234,21 +248,21 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
         debugLog.record($format("Do Loads RESP, id=%0d", v.memRefToken.entryId));
     endrule
 
-    rule handleRespDoStores_Load (linkToMem.getResp().memRefToken.memPath == FUNCP_REGSTATE_MEMPATH_DOSTORES_LOAD);
+    rule handleRespDoStores (linkToMem.getResp().memRefToken.memPath == FUNCP_REGSTATE_MEMPATH_DOSTORES);
         let v = linkToMem.getResp();
         linkToMem.deq();
 
-        respDoStores.setValue(v.memRefToken.entryId, v.value);
-        debugLog.record($format("Do Stores LOAD RESP, id=%0d", v.memRefToken.entryId));
+        respDoStores.setValue(v.memRefToken.entryId, tuple2(v.value, v.success));
+        debugLog.record($format("Do Stores mem RESP, id=%0d", v.memRefToken.entryId));
     endrule
 
-    (* descending_urgency = "handleRespDoStores_Load, handleReleaseStores" *)
+    (* descending_urgency = "handleRespDoStores, handleReleaseStores" *)
     rule handleReleaseStores (True);
         let id = releaseStoresQ.first();
         releaseStoresQ.deq();
 
-        respDoStores.setValue(id, ?);
-        debugLog.record($format("Do Stores STORE RESP, id=%0d", id));
+        respDoStores.setValue(id, tuple2(?, True));
+        debugLog.record($format("Do Stores imm RESP, id=%0d", id));
     endrule
 
     
@@ -266,6 +280,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
             return respInstruction.first();
         endmethod
 
+        method Bool getRespSuccess() = True;
+
         method Action deq();
             respInstruction.deq();
             debugLog.record($format("Instruction DEQ, id=%0d", respInstruction.deqEntryId()));
@@ -280,6 +296,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
         method MEM_VALUE getResp();
             return respDoLoads.first();
         endmethod
+
+        method Bool getRespSuccess() = True;
 
         method Action deq();
             respDoLoads.deq();
@@ -298,7 +316,11 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
         endmethod
 
         method MEM_VALUE getResp();
-            return respDoStores.first();
+            return tpl_1(respDoStores.first());
+        endmethod
+
+        method Bool getRespSuccess();
+            return tpl_2(respDoStores.first());
         endmethod
 
         method Action deq();
@@ -323,6 +345,10 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
             return ?;
         endmethod
 
+        method Bool getRespSuccess() if (respCommitResults.notEmpty());
+            return True;
+        endmethod
+
         method Action deq();
             respCommitResults.deq();
             debugLog.record($format("Commit Results DEQ"));
@@ -338,6 +364,10 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
             return ?;
         endmethod
 
+        method Bool getRespSuccess() if (respCommitStores.notEmpty());
+            return True;
+        endmethod
+
         method Action deq();
             respCommitStores.deq();
             debugLog.record($format("Commit Store DEQ"));
@@ -351,6 +381,10 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
 
         method MEM_VALUE getResp() if (respRewind.notEmpty());
             return ?;
+        endmethod
+
+        method Bool getRespSuccess() if (respRewind.notEmpty());
+            return True;
         endmethod
 
         method Action deq();

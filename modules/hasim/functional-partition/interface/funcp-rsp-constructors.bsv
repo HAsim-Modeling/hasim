@@ -160,11 +160,12 @@ endfunction
 
 // initFuncpRspDoStores
 
-function FUNCP_RSP_DO_STORES initFuncpRspDoStores(TOKEN tok);
+function FUNCP_RSP_DO_STORES initFuncpRspDoStores(TOKEN tok, Bool didStore);
 
     return FUNCP_RSP_DO_STORES
             {
-                token: tok
+                token: tok,
+                didStore: didStore
             };
 
 endfunction

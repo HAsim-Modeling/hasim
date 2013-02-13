@@ -216,6 +216,7 @@ typedef struct
 typedef struct
 {
     TOKEN token;
+    Bool didStore;
 }
     FUNCP_RSP_DO_STORES
         deriving (Eq, Bits);

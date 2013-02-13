@@ -140,6 +140,7 @@ interface FUNCP_SCOREBOARD;
   method Action setLoadType(TOKEN_INDEX t, Maybe#(ISA_MEMOP_TYPE) mt);
   method Action setStoreType(TOKEN_INDEX t, Maybe#(ISA_MEMOP_TYPE) mt);
   method Action setStoreDataValid(TOKEN_INDEX t);
+  method Action setStoreSquashed(TOKEN_INDEX t);
   
   // Set when all destinations have been written.
   method Action setAllDestsValid(TOKEN_INDEX t);
@@ -167,6 +168,7 @@ interface FUNCP_SCOREBOARD;
   method Bool isLoad(TOKEN_INDEX t);
   method Bool isStore(TOKEN_INDEX t);
   method Bool isStoreDataValid(TOKEN_INDEX t);
+  method Bool isStoreSquashed(TOKEN_INDEX t);
   method Bool allDestsValid(TOKEN_INDEX t);
   method Bool destWritesInFlight(TOKEN_INDEX t);
   method Bool emulateInstruction(TOKEN_INDEX t);
@@ -220,6 +222,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
     TOKEN_SCOREBOARD startedCOM    <- mkLiveTokenScoreboardU();
 
     TOKEN_SCOREBOARD tokStoreDataValid <- mkLiveTokenScoreboardU();
+    TOKEN_SCOREBOARD tokStoreSquashed <- mkLiveTokenScoreboardU();
+
     TOKEN_SCOREBOARD tokAllDestsValid <- mkLiveTokenScoreboardU();
     LUTRAM#(TOKEN_INDEX, Bool) tokIsEmulated <- mkLiveTokenLUTRAMU();
 
@@ -464,6 +468,7 @@ module [Connected_Module] mkFUNCP_Scoreboard
         startedCOM.reset(new_tok);
 
         tokStoreDataValid.reset(new_tok);
+        tokStoreSquashed.reset(new_tok);
         tokAllDestsValid.reset(new_tok);
         // tokIsEmulated.upd(new_tok, False);   *** Set in getDependencies
 
@@ -695,6 +700,18 @@ module [Connected_Module] mkFUNCP_Scoreboard
     
     endmethod
 
+    // setStoreSquashed
+
+    // When:   Any time.
+    // Effect: Flag token's store as disabled.  (E.g. Alpha store conditional
+    //         failure.)
+
+    method Action setStoreSquashed(TOKEN_INDEX t);
+    
+        tokStoreSquashed.upd(t, True);
+    
+    endmethod
+
     // setAllDestsValid
 
     // When:   Any time.
@@ -889,6 +906,17 @@ module [Connected_Module] mkFUNCP_Scoreboard
     
     endmethod
 
+    // isStoreSquashed
+    
+    // When:   Any time.
+    // Effect: Accessor method
+
+    method Bool isStoreSquashed(TOKEN_INDEX t);
+    
+        return tokStoreSquashed.sub(t);
+    
+    endmethod
+
     // allDestsValid
     
     // When:   Any time.
@@ -968,7 +996,8 @@ module [Connected_Module] mkFUNCP_Scoreboard
     endmethod
 
     method Bool canStartCommit(TOKEN_INDEX t);
-        let bad_mem_op = faultDTrans.sub(t) || faultDTrans2.sub(t);
+        let bad_mem_op = faultDTrans.sub(t) || faultDTrans2.sub(t) ||
+                         tokStoreSquashed.sub(t);
 
         if (checkDestWritesInFlight(t))
         begin

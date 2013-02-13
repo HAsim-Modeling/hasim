@@ -38,7 +38,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     BRAM_MULTI_READ#(n_tokAddr, TOKEN_INDEX, ISA_ADDRESS) tokAddr,
     BRAM_MULTI_READ#(n_tokInst, TOKEN_INDEX, ISA_INSTRUCTION) tokInst,
     BRAM#(TOKEN_INDEX, ISA_INST_SRCS) tokWriters,
-    BRAM_MULTI_READ#(n_tokDsts, TOKEN_INDEX, REGMGR_DST_REGS) tokDsts)
+    BRAM_MULTI_READ#(n_tokDsts, TOKEN_INDEX, REGMGR_DST_REGS) tokDsts,
+    BRAM#(TOKEN_INDEX, Bool) tokIsLoadLocked,
+    BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokIsStoreCond)
     //interface:
                 ();
 
@@ -87,7 +89,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
 
     FIFO#(Tuple2#(TOKEN, ISA_INSTRUCTION)) deps1Q <- mkFIFO();
 
-    FIFO#(Tuple3#(TOKEN, 
+    FIFO#(Tuple4#(TOKEN,
+                  ISA_INSTRUCTION,
                   Vector#(ISA_MAX_SRCS, Maybe#(ISA_REG_INDEX)),
                   Vector#(ISA_MAX_DSTS, Maybe#(ISA_REG_INDEX)))) deps2Q <- mkSizedFIFO(8);
 
@@ -203,6 +206,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
             debugLog.record(fshow(tok.index) + $format(": GetDeps2: Instruction is emulated"));
         end
 
+        // Load locked?  This will be needed in doLoads.
+        tokIsLoadLocked.write(tok.index, isaIsLoadLocked(inst));
 
         //
         // COMPUTE SOURCE MAPPINGS
@@ -273,7 +278,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         freelist.allocateRegs(dst_reg_reqs);
         debugLog.record(fshow(tok.index) + $format(": GetDeps2: Freelist request mask is %0b", pack(dst_reg_reqs)));
 
-        deps2Q.enq(tuple3(tok, ar_srcs, ar_dsts));
+        deps2Q.enq(tuple4(tok, inst, ar_srcs, ar_dsts));
 
     endrule
 
@@ -288,7 +293,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     (* conservative_implicit_conditions *)
     rule getDependencies3 (state.readyToContinue());
 
-        match {.tok, .ar_srcs, .ar_dsts} = deps2Q.first();
+        match {.tok, .inst, .ar_srcs, .ar_dsts} = deps2Q.first();
         deps2Q.deq();
 
         // Only update the maptable for live tokens.
@@ -337,6 +342,21 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         let dst_regs = REGMGR_DST_REGS { ar: ar_dsts, pr: phy_dsts };
         tokDsts.write(tok.index, dst_regs);
 
+        // Store conditional (e.g. Alpha)?  Register will be written in doStores
+        // once it is known whether the address lock survived.
+        if (isaIsStoreCond(inst) matches tagged Valid .dst_idx)
+        begin
+            tokIsStoreCond.write(tok.index, phy_dsts[dst_idx]);
+            if (phy_dsts[dst_idx] matches tagged Valid .pr)
+                debugLog.record(fshow(tok.index) + $format(": GetDeps3: Note ST_C dst PR%0d", pr));
+            else
+                debugLog.record(fshow(tok.index) + $format(": GetDeps3: Note ST_C dst ERROR (no dst pr)"));
+        end
+        else
+        begin
+            tokIsStoreCond.write(tok.index, tagged Invalid);
+        end
+
         //
         // Log mapping details
         //
@@ -350,7 +370,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
                     debugLog.record(fshow(tok.index) + $format(": GetDeps3: Destination #%0d writes unmapped PR%0d", x, pr));
             end
         end
-
 
         // Generate a debug message with up to 2 destinations.
         Vector#(5, Bit#(32)) reg_msg = replicate('hffffffff);

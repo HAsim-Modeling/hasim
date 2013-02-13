@@ -110,6 +110,7 @@ interface REGSTATE_PHYSICAL_REGS;
     interface REGSTATE_PHYSICAL_REGS_INVAL_REGS getDependencies;
     interface REGSTATE_PHYSICAL_REGS_RW_REGS    getResults;
     interface REGSTATE_PHYSICAL_REGS_WRITE_REG  doLoads;
+    interface REGSTATE_PHYSICAL_REGS_WRITE_REG  doStores;
     interface REGSTATE_PHYSICAL_REGS_RW_REG     commitResults;
 endinterface
 
@@ -197,6 +198,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     FIFOF#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE)) rqGetResWrite   <- mkFIFOF();
 
     FIFOF#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE)) rqDoLoadsWrite  <- mkFIFOF();
+    FIFOF#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE)) rqDoStoresWrite <- mkFIFOF();
 
     FIFOF#(FUNCP_PHYSICAL_REG_INDEX)                     rqCommitResRead  <- mkFIFOF();
     FIFOF#(Tuple2#(FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE)) rqCommitResWrite <- mkFIFOF();
@@ -405,6 +407,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
             sendInvalResponseWhenDone(rVec);
         end
         else if (rqCommitResWrite.notEmpty() ||
+                 rqDoStoresWrite.notEmpty() ||
                  rqDoLoadsWrite.notEmpty() ||
                  rqGetResWrite.notEmpty())
         begin
@@ -417,6 +420,11 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
             begin
                 rq = rqCommitResWrite.first();
                 rqCommitResWrite.deq();
+            end
+            else if (rqDoStoresWrite.notEmpty())
+            begin
+                rq = rqDoStoresWrite.first();
+                rqDoStoresWrite.deq();
             end
             else if (rqDoLoadsWrite.notEmpty())
             begin
@@ -599,6 +607,14 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
 
         method Action write(TOKEN tok, FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
             rqDoLoadsWrite.enq(tuple2(r, v));
+        endmethod
+
+    endinterface
+
+    interface REGSTATE_PHYSICAL_REGS_WRITE_REG doStores;
+
+        method Action write(TOKEN tok, FUNCP_PHYSICAL_REG_INDEX r, ISA_VALUE v);
+            rqDoStoresWrite.enq(tuple2(r, v));
         endmethod
 
     endinterface

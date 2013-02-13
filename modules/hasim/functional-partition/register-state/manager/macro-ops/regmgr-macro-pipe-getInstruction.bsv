@@ -163,7 +163,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
                                     poison: False,
                                     dummy: True,
                                     timep_info: TOKEN_TIMEP_INFO { scratchpad: 0 } };
-            let m_req = memStateReqLoad(dummy_tok, req.physicalAddress, True);
+            let m_req = memStateReqInstr(dummy_tok, req.physicalAddress);
             linkToMem.makeReq(tagged REQ_LOAD m_req);
             
             // Pass it to the next stage.
@@ -182,7 +182,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
                                     poison: False,
                                     dummy: True,
                                     timep_info: TOKEN_TIMEP_INFO { scratchpad: 0 } };
-            let m_req = memStateReqLoad(dummy_tok, req.physicalAddress, True);
+            let m_req = memStateReqInstr(dummy_tok, req.physicalAddress);
             linkToMem.makeReq(tagged REQ_LOAD m_req);
 
             // Stall to make the second request.
@@ -211,7 +211,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
                                 dummy: True,
                                 timep_info: TOKEN_TIMEP_INFO { scratchpad: 0 } };
         
-        let m_req = memStateReqLoad(dummy_tok, p_addr2, True);
+        let m_req = memStateReqInstr(dummy_tok, p_addr2);
         linkToMem.makeReq(tagged REQ_LOAD m_req);
 
         // Log it.

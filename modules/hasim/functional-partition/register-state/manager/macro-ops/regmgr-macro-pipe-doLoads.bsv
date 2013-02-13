@@ -69,7 +69,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     REGSTATE_MEMORY_QUEUE linkToMem,
     REGSTATE_PHYSICAL_REGS_WRITE_REG prf,
     BROM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs,
-    BROM#(TOKEN_INDEX, REGMGR_DST_REGS) tokDsts)
+    BROM#(TOKEN_INDEX, REGMGR_DST_REGS) tokDsts,
+    BRAM#(TOKEN_INDEX, Bool) tokIsLoadLocked)
     //interface:
                 ();
 
@@ -191,6 +192,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
             // Read the effective address.
             tokPhysicalMemAddrs.readReq(tok.index);
 
+            // Is the load requesting a lock on the line (e.g. Alpha ldq_l)?
+            tokIsLoadLocked.readReq(tok.index);
+
             // Pass to the next stage.
             loads1Q.enq(tuple2(tok, True));
         end
@@ -211,7 +215,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
 
         // Get the address(es).
         let p_addrs <- tokPhysicalMemAddrs.readRsp();
-        
+
+        // Lock address?
+        let l_locked <- tokIsLoadLocked.readRsp();
+
         // Get the offset.
         let offset = tokScoreboard.getMemOpOffset(tok.index);
         
@@ -229,14 +236,17 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
                 debugLog.record(fshow(tok.index) + $format(": DoLoads2: Requesting Load (PA: 0x%h)", p_addr));
 
                 // Make the request to the DMem.
-                let m_req = memStateReqLoad(tok, p_addr, False);
+                let m_req = memStateReqLoad(tok, p_addr, l_locked);
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Read the destination so we can writeback the correct register.
                 tokDsts.readReq(tok.index);
 
                 // Pass it on to the final stage.
-                let load_info = LOADS_INFO {token: tok, memAddrs: p_addrs, offset: offset, opType: l_type};
+                let load_info = LOADS_INFO { token: tok,
+                                             memAddrs: p_addrs,
+                                             offset: offset,
+                                             opType: l_type };
                 loads2Q.enq(tuple2(load_info, True));
 
             end
@@ -247,11 +257,14 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
                 debugLog.record(fshow(tok.index) + $format(": DoLoads2: Starting Spanning Load (PA1: 0x%h)", p_addr1));
 
                 // Make the request to the DMem.
-                let m_req = memStateReqLoad(tok, p_addr1, False);
+                let m_req = memStateReqLoad(tok, p_addr1, l_locked);
                 linkToMem.makeReq(tagged REQ_LOAD m_req);
 
                 // Stall this stage for the second req.
-                let load_info = LOADS_INFO {token: tok, memAddrs: p_addrs, offset: offset, opType: l_type};
+                let load_info = LOADS_INFO { token: tok,
+                                             memAddrs: p_addrs,
+                                             offset: offset,
+                                             opType: l_type };
                 stateLoads2 <= tagged LOADS2_SPAN_REQ load_info;
 
             end

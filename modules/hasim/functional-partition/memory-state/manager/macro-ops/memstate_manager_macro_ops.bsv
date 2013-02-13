@@ -35,10 +35,24 @@ import FShow::*;
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/funcp_memory.bsh"
 
+`include "asim/provides/funcp_regstate_base_types.bsh"
+
 // Memstate imports
 
 `include "asim/provides/funcp_memstate_base_types.bsh"
 `include "asim/provides/funcp_memstate_storebuffer.bsh"
+
+//
+// Store pipeline state machine.
+//
+typedef enum
+{
+    FUNCP_MEMSTATE_STORE_READY,
+    FUNCP_MEMSTATE_STORE_TRYLOCK_REQ,
+    FUNCP_MEMSTATE_STORE_TRYLOCK_RSP
+}
+FUNCP_MEMSTATE_STORE_STATE
+    deriving (Eq, Bits);
 
 
 // mkFUNCP_MemStateManager
@@ -67,7 +81,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
     FIFOF#(Bool) writeBackQ <- mkFIFOF();
     FIFO#(MEM_LOAD_INFO) sbLookupQ <- mkFIFO();
-
+    MEMSTATE_LOCK_LINE_MGR lockMgr <- mkFUNCPMemStateLockMgr(debugLog);
 
     // ***** Rules ***** //
 
@@ -80,17 +94,76 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // Parameters: MEMSTATE_REQ (MEMSTATE_REQ_STORE)
     // Returns:    None.
     
+    Reg#(FUNCP_MEMSTATE_STORE_STATE) storeState <- mkReg(FUNCP_MEMSTATE_STORE_READY);
 
-    rule memStore (linkRegState.getReq() matches tagged REQ_STORE .stInfo);
+    rule memStore (linkRegState.getReq() matches tagged REQ_STORE .stInfo &&&
+                   storeState == FUNCP_MEMSTATE_STORE_READY);
+
+        if (! stInfo.reqExclusive)
+        begin
+            // Normal path: place the value in store buffer.
+            stBuffer.insertReq(stInfo.tok.index, stInfo.addr, stInfo.value);
+
+            // Pop the request from the register state.
+            linkRegState.deq();
+
+            debugLog.record($format("STORE: ") + fshow(stInfo.tok.index) + $format(", addr=0x%x, value=0x%x", stInfo.addr, stInfo.value));
+        end
+        else
+        begin
+            storeState <= FUNCP_MEMSTATE_STORE_TRYLOCK_REQ;
+
+            debugLog.record($format("STORE wants EXCLUSIVE: ") + fshow(stInfo.tok.index) + $format(", addr=0x%x, value=0x%x", stInfo.addr, stInfo.value));
+        end
+    endrule
+
+    //
+    // memStoreTryLockReq --
+    //   Look in store buffer to see whether a store may lock may obtain
+    //   exlusive access to a line.
+    //
+    rule memStoreTryLockReq (linkRegState.getReq() matches tagged REQ_STORE .stInfo &&&
+                             storeState == FUNCP_MEMSTATE_STORE_TRYLOCK_REQ);
+
+        // We only permit the lock if no other context has a pending store
+        // to the location.  This requirement is stronger than necessary,
+        // but easier to implement.  Under the assumption that all stores to
+        // the address of a lock will be conditional stores, the only
+        // stores present in the store buffer should be successful conditional
+        // stores already holding a lock.
+        stBuffer.testForExclusiveReq(stInfo.tok.index, stInfo.addr);
+        storeState <= FUNCP_MEMSTATE_STORE_TRYLOCK_RSP;
+    endrule
+
+    //
+    // memStoreTryLockRsp --
+    //   Determine whether a conditional store gets the requested lock.
+    //
+    rule memStoreTryLockRsp (linkRegState.getReq() matches tagged REQ_STORE .stInfo &&&
+                             storeState == FUNCP_MEMSTATE_STORE_TRYLOCK_RSP);
 
         // Pop the request from the register state.
         linkRegState.deq();
-        
-        debugLog.record($format("STORE: ") + fshow(stInfo.tok.index) + $format(", addr=0x%x, value=0x%x", stInfo.addr, stInfo.value));
 
-        // Place the value in store buffer, but don't actually change memory.
-        stBuffer.insertReq(stInfo.tok.index, stInfo.addr, stInfo.value);
+        storeState <= FUNCP_MEMSTATE_STORE_READY;
 
+        Bool got_lock = False;
+        let not_in_sb <- stBuffer.testForExclusiveResp();
+        if (not_in_sb)
+        begin
+            got_lock <- lockMgr.tryLock(tokContextId(stInfo.tok), stInfo.addr);
+        end
+
+        // Store permitted only if the lock was acquired
+        if (got_lock)
+        begin
+            stBuffer.insertReq(stInfo.tok.index, stInfo.addr, stInfo.value);
+        end
+
+        // Respond with result
+        linkRegState.makeResp(memStateRespStatus(stInfo.memRefToken, got_lock));
+
+        debugLog.record($format("  STORE EXCLUSIVE: not in SB %0d, got lock %0d, ", not_in_sb, got_lock) + fshow(stInfo.memRefToken));
     endrule
 
     // memLoad
@@ -120,9 +193,15 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
         debugLog.record($format("LOAD: ") + fshow(ldInfo.tok.index) + $format(" / ") + fshow(ldInfo.memRefToken) + $format(", addr=0x%x", ldInfo.addr));
 
-        // Send it on to the store buffer and memory in parallel.
-        // Since most loads miss in the store buffer there isn't much point
-        // in waiting for the response.
+        // Load requesting a monitor for possible condititional store?
+        if (ldInfo.reqLock)
+        begin
+            lockMgr.monStart(tokContextId(ldInfo.tok), ldInfo.addr);
+        end
+
+        // Check the store buffer.  The store buffer may either return an
+        // immediate answer that the address is not present or may take
+        // multiple cycles to respond.
         let check_sb <- stBuffer.lookupReq(ldInfo.tok.index, ldInfo.addr);
 
         let load_req = MEM_LOAD_INFO { contextId: tokContextId(ldInfo.tok),
@@ -171,7 +250,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
           tagged Valid .sb_val:
           begin
               // A hit in the store buffer.  No need to look in memory.
-              linkRegState.makeResp(memStateResp(load_req.memRefToken, sb_val));
+              linkRegState.makeResp(memStateRespLoad(load_req.memRefToken, sb_val));
               debugLog.record($format("  LOAD SB hit: value=0x%x, ", sb_val) + fshow(load_req.memRefToken));
           end
         endcase
@@ -200,6 +279,12 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
         stBuffer.commitReq(req.tok.index, req.storeTok.index);
         debugLog.record($format("COMMIT: ") + fshow(req.tok.index) + $format(" is now ") + fshow(req.storeTok.index));
+    endrule
+
+    rule commitResultsResp (True);
+        match {.addr, .done} <- stBuffer.commitResp();
+        
+        debugLog.record($format("  COMMIT addr=0x%x, done=%0d ", addr, done));
     endrule
 
 
@@ -234,7 +319,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // When:   Some time after writeBack1
     // Effect: Send the store on to update memory.
 
-    (* descending_urgency = "writeBack2, memLoadMemory, memLoadSB, memLoad" *)
+    (* descending_urgency = "writeBack2, commitResultsResp, memLoadMemory, memLoadSB, memLoad, memStoreTryLockRsp, memStore" *)
     rule writeBack2 (True);
         // Get the response from the store buffer.
         let rsp <- stBuffer.writeBackResp();
@@ -246,6 +331,8 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
         // Send the actual store to memory.
         linkMemory.makeReq(funcpMemStoreReq(rsp.tokIdx.context_id, rsp.addr, rsp.value));
+
+        lockMgr.noteWriteback(rsp.tokIdx.context_id, rsp.addr);
     endrule
 
     // rewind
@@ -268,4 +355,94 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
     endrule
 
+endmodule
+
+
+// ========================================================================
+//
+//  Memory lock manager for enforcing exclusive access to a line for
+//  load locked, store conditional.
+//
+// ========================================================================
+
+interface MEMSTATE_LOCK_LINE_MGR;
+    // Request monitoring of an address
+    method Action monStart(CONTEXT_ID ctx, MEM_ADDRESS addr);
+
+    // Note a write-back (movement from local store buffer to global memory)
+    method Action noteWriteback(CONTEXT_ID ctx, MEM_ADDRESS addr);
+
+    // Request exclusive access
+    method ActionValue#(Bool) tryLock(CONTEXT_ID ctx, MEM_ADDRESS addr);
+endinterface
+
+
+module mkFUNCPMemStateLockMgr#(DEBUG_FILE debugLog)
+    // Interface:
+    (MEMSTATE_LOCK_LINE_MGR);
+
+    // Track up to 8 monitor requests at a time
+    Reg#(Vector#(8, Bool)) monValid <- mkReg(replicate(False));
+    Reg#(Vector#(8, Tuple2#(CONTEXT_ID, MEM_ADDRESS))) monAddrs <- mkRegU();
+
+    //
+    // Start watching a memory location.  Only a relatively small number of
+    // locations can be monitored at a time.  We seek here to monitor at least
+    // as many locations as a reasonable timing model might expect.
+    // New requests push out old (even valid) ones.
+    //
+    method Action monStart(CONTEXT_ID ctx, MEM_ADDRESS addr);
+        monValid <= shiftInAtN(monValid, True);
+        monAddrs <= shiftInAtN(monAddrs, tuple2(ctx, addr));
+
+        debugLog.record($format("    Lock Mgr:  Monitor CTX %0d, Addr 0x%x", ctx, addr));
+    endmethod
+
+    method Action noteWriteback(CONTEXT_ID ctx, MEM_ADDRESS addr);
+        //
+        // Clear a monitor if it was valid and the written address matches
+        // in a context other than the monitor's context.
+        //
+        function Bool clearConflicts(Bool isValid,
+                                     Tuple2#(CONTEXT_ID, MEM_ADDRESS) monitor);
+            match {.mon_ctx, .mon_addr} = monitor;
+            return isValid && ((mon_ctx == ctx) || (mon_addr != addr));
+        endfunction
+
+        // Update all monitor valid bits
+        let upd = zipWith(clearConflicts, monValid, monAddrs);
+        monValid <= upd;
+
+        // Debugging message loop
+        for (Integer i = 0; i < 8; i = i + 1)
+        begin
+            if (monValid[i] && ! upd[i])
+            begin
+                debugLog.record($format("    Lock Mgr:  WB invalidates monitor CTX %0d, Addr 0x%x", tpl_1(monAddrs[i]), tpl_2(monAddrs[i])));
+            end
+        end
+    endmethod
+
+    method ActionValue#(Bool) tryLock(CONTEXT_ID ctx, MEM_ADDRESS addr);
+        //
+        // Lock is valid if some monitor matches the context and address.
+        //
+        function Bool validLock(Tuple2#(Bool, Tuple2#(CONTEXT_ID, MEM_ADDRESS)) arg);
+            let isValid = tpl_1(arg);
+            Tuple2#(CONTEXT_ID, MEM_ADDRESS) arg2 = tpl_2(arg);
+            match {.mon_ctx, .mon_addr} = arg2;
+
+            return isValid && (mon_ctx == ctx) && (mon_addr == addr);
+        endfunction
+
+        if (any(validLock, zip(monValid, monAddrs)))
+        begin
+            debugLog.record($format("    Lock Mgr:  Got lock CTX %0d, Addr 0x%x", ctx, addr));
+            return True;
+        end
+        else
+        begin
+            return False;
+        end
+    endmethod
 endmodule

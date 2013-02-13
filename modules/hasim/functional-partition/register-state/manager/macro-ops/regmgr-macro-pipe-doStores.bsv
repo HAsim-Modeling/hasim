@@ -72,8 +72,10 @@ PATH_STORE deriving (Eq, Bits);
 module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     REGMGR_GLOBAL_DATA glob,
     REGSTATE_MEMORY_QUEUE linkToMem,
+    REGSTATE_PHYSICAL_REGS_WRITE_REG prf,
     BROM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs,
-    BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue)
+    BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue,
+    BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokIsStoreCond)
     //interface:
                 ();
 
@@ -114,7 +116,10 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
     FIFO#(FUNCP_REQ_DO_STORES) storesSQ <- mkFIFO();
     FIFO#(Tuple2#(TOKEN, Maybe#(ISA_MEMOP_TYPE))) stores2Q <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
-    FIFO#(Tuple2#(TOKEN, Bool)) stores3Q <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
+    FIFO#(Tuple4#(TOKEN,
+                  Bool,
+                  Maybe#(FUNCP_PHYSICAL_REG_INDEX),
+                  Bool)) stores3Q <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
     FIFO#(PATH_STORE) pathQ <- mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
 
     Reg#(STATE_STORES2) stateStores2 <- mkReg(STORES2_NORMAL);
@@ -175,7 +180,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         end
 
         storesSQ.enq(req);
-
     endrule
 
     // doStores1
@@ -225,6 +229,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
             // Get the store type.
             let st_type = tokScoreboard.getStoreType(tok.index);
+            tokIsStoreCond.readReq(tok.index);
 
             // Pass to the next stage.
             stores2Q.enq(tuple2(tok, tagged Valid st_type));
@@ -250,7 +255,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         debugLog.record(fshow(tok.index) + $format(": DoStores2Bypass")); 
 
         stores2Q.deq(); 
-        stores3Q.enq(tuple2(tok, False));
+        stores3Q.enq(tuple4(tok, False, tagged Invalid, False));
         pathQ.enq(PATH_FINISH);
 
     endrule
@@ -318,8 +323,12 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                     let mem_store_value = isaStoreValueToMemValue(store_val, st_type);
                     debugLog.record(fshow(tok.index) + $format(": DoStores2: ISA Store (V: 0x%h, T: %0d, O: %b) = 0x%h", store_val,  pack(st_type), offset, mem_store_value)); 
 
+                    // Store conditional?
+                    let m_store_cond_dst_pr <- tokIsStoreCond.readRsp();
+                    let is_store_cond = isValid(m_store_cond_dst_pr);
+
                     // Make the request to the memory state.
-                    let m_req = memStateReqStore(tok, p_addr, mem_store_value);
+                    let m_req = memStateReqStore(tok, p_addr, mem_store_value, is_store_cond);
                     linkToMem.makeReq(tagged REQ_STORE m_req);
                     pathQ.enq(PATH_FINISH);
 
@@ -327,7 +336,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
                     debugLog.record(fshow(tok.index) + $format(": DoStores2: Sending Store to Memory (PA: 0x%h, V: 0x%h).", p_addr, mem_store_value)); 
 
                     // Wait for response from memory
-                    stores3Q.enq(tuple2(tok, True));
+                    stores3Q.enq(tuple4(tok, True, m_store_cond_dst_pr, True));
                 end
 
             end
@@ -387,9 +396,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         let new_mem_val = isaStoreValueToMemValueRMW(existing_val, store_info.storeValue, store_info.offset, store_info.opType);
         debugLog.record(fshow(tok.index) + $format(": doStores2: ISA StoreRMW (EV: 0x%h, V: 0x%h, T: %0d, O: %b) = 0x%h", existing_val, store_info.storeValue,  pack(store_info.opType), store_info.offset, new_mem_val)); 
 
+        // Store conditional?
+        let m_store_cond_dst_pr <- tokIsStoreCond.readRsp();
+        let is_store_cond = isValid(m_store_cond_dst_pr);
+
         // Write the store to memory.
         let mem_addr = getFirst(store_info.memAddrs);
-        let m_req = memStateReqStore(tok, mem_addr, new_mem_val);
+        let m_req = memStateReqStore(tok, mem_addr, new_mem_val, is_store_cond);
         linkToMem.makeReq(tagged REQ_STORE m_req);
         pathQ.enq(PATH_FINISH);
 
@@ -401,7 +414,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         stores2Q.deq();
 
         // Wait for response from memory
-        stores3Q.enq(tuple2(tok, True));
+        stores3Q.enq(tuple4(tok, True, m_store_cond_dst_pr, True));
     
     endrule
     
@@ -485,9 +498,16 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         match {.new_val1, .new_val2} = isaStoreValueToSpanningMemValues(existing_val1, existing_val2, store_info.storeValue, store_info.offset, store_info.opType);
         debugLog.record(fshow(tok.index) + $format(": DoStores2: ISA StoreSpan (EV1: 0x%h, EV2, 0x%h, V: 0x%h, T: %0d, O: %b) = 0x%h, 0x%h", existing_val1, existing_val2, store_info.storeValue,  pack(store_info.opType), store_info.offset, new_val1, new_val2));
 
+        // Store conditional?
+        let m_store_cond_dst_pr = tokIsStoreCond.peek();
+        // The store might be conditional, but this model refuses to honor
+        // unaligned conditional stores.  The clean-up from failure is too
+        // complicated.
+        let is_store_cond = False;
+
         // Make the first store request.
         MEM_ADDRESS p_addr1 = getFirst(store_info.memAddrs);
-        let m_req = memStateReqStore(tok, p_addr1, new_val1);
+        let m_req = memStateReqStore(tok, p_addr1, new_val1, is_store_cond);
         linkToMem.makeReq(tagged REQ_STORE m_req);
         pathQ.enq(PATH_SPAN_STORE1);
 
@@ -506,18 +526,27 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
     rule doStores2SpanEnd (state.readyToContinue() &&&
                            xstFirstTimeBugFix &&&
-                           stateStores2 matches tagged STORES2_SPAN_END {.store_info, .new_val2} &&&
+                           stateStores2 matches tagged STORES2_SPAN_END { .store_info,
+                                                                          .new_val2 } &&&
                            pathQ.first() == PATH_SPAN_STORE1);
     
         let tok = store_info.token;
     
-        // First store queued?
+        // First store queued?  Success response has meaning only for conditional
+        // stores.
+        let success = linkToMem.getRespSuccess();
         linkToMem.deq();
         pathQ.deq();
 
+        // Store conditional?
+        let m_store_cond_dst_pr <- tokIsStoreCond.readRsp();
+        // See comment in doStores2SpanRsp2.  We do not permit unaligned
+        // conditional stores.
+        let is_store_cond = False;
+
         // Make the second store.
         let p_addr2 = getSecondOfTwo(store_info.memAddrs);
-        let m_req = memStateReqStore(tok, p_addr2, new_val2);
+        let m_req = memStateReqStore(tok, p_addr2, new_val2, is_store_cond);
         linkToMem.makeReq(tagged REQ_STORE m_req);
         pathQ.enq(PATH_FINISH);
         
@@ -529,7 +558,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         stateStores2 <= tagged STORES2_NORMAL;
         
         // Wait for response from memory
-        stores3Q.enq(tuple2(tok, True));
+        stores3Q.enq(tuple4(tok, True, m_store_cond_dst_pr, success));
 
     endrule
     
@@ -542,13 +571,31 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
 
     rule doStores3 (state.readyToContinue() &&& pathQ.first() == PATH_FINISH);
         
-        match {.tok, .active} = stores3Q.first();
+        match {.tok, .active, .m_store_cond_dst_pr, .got_cond_locks} = stores3Q.first();
         stores3Q.deq();
         pathQ.deq();
 
+        Bool success = active;
+
         if (active)
         begin
-            // Wait for memory
+            // Is the instruction a store conditional?
+            if (m_store_cond_dst_pr matches tagged Valid .dst_pr)
+            begin
+                // Did the memory system grant the lock for all stores associated
+                // with the token?
+                Bool have_lock = (got_cond_locks && linkToMem.getRespSuccess());
+                success = have_lock;
+
+                if (! have_lock)
+                begin
+                    tokScoreboard.setStoreSquashed(tok.index);
+                end
+
+                prf.write(tok, dst_pr, zeroExtend(pack(have_lock)));
+                debugLog.record(fshow(tok.index) + $format(": DoStores: ST_C Writing (PR%0d <= %0d)", dst_pr, pack(have_lock)));
+            end
+
             linkToMem.deq();
 
             // Update the scoreboard.
@@ -556,7 +603,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
         end
 
         // Return to the timing partition. End of macro-operation (path 1).
-        linkDoStores.makeResp(initFuncpRspDoStores(tok));
+        linkDoStores.makeResp(initFuncpRspDoStores(tok, success));
         debugLog.record(fshow(tok.index) + $format(": DoStores: End."));
 
     endrule

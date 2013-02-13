@@ -52,10 +52,10 @@ COMMIT_STATE
 
 typedef union tagged
 {
-    Tuple2#(TOKEN, Maybe#(STORE_TOKEN)) COMMIT2_commitRsp;
-    Tuple2#(TOKEN, Bool) COMMIT2_faultRsp;
+    Tuple2#(TOKEN, Maybe#(STORE_TOKEN)) COMMIT_COMMIT_RSP;
+    Tuple2#(TOKEN, Bool) COMMIT_FAULT_RSP;
 }
-COMMIT2_PATH deriving (Eq, Bits);
+COMMIT_PATH deriving (Eq, Bits);
 
 
 
@@ -110,7 +110,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     // ====================================================================
 
     Reg#(COMMIT_STATE) commitState <- mkReg(COMMIT_STATE_READY);
-    FIFO#(COMMIT2_PATH) commQ <- mkFIFO();
+    FIFO#(Tuple4#(TOKEN, Bool, Bool, STORE_TOKEN)) comm2Q <- mkSizedFIFO(8);
+    FIFO#(COMMIT_PATH) comm3Q <- mkFIFO();
     FIFO#(Tuple2#(t_REG_IDX, Maybe#(FUNCP_PHYSICAL_REG_INDEX))) fixFaultRegsQ <- mkFIFO();
     Reg#(t_REG_IDX) faultRegIdx <- mkRegU();
     Reg#(REGMGR_DST_REGS) faultDstMap <- mkRegU();
@@ -139,7 +140,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     // commitResults1
 
     // When:   When the timing model starts a commitResults().
-    // Effect: Lookup the destinations of this token, and the registers to free.
+    // Effect: Make request to memory (stores only)
 
     rule commitResults1 (commitState == COMMIT_STATE_READY &&&
                          linkCommitResults.getReq().token matches .tok &&&
@@ -156,14 +157,65 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
         // Confirm timing model propagated poison bit correctly
         assertion.poisonBit(tokIsPoisoned(tok) == isValid(tokScoreboard.getFault(tok.index)));
 
+        Bool is_active_store = (tokScoreboard.isStore(tok.index) &&
+                                ! tokScoreboard.isStoreSquashed(tok.index));
+
         if (tokScoreboard.getFault(tok.index) matches tagged Valid .fault)
         begin
+            // Drop any stores associated with this token.
+            if (is_active_store)
+            begin
+                // Tell the store buffer to drop any stores associated with this token.
+                let m_req = MEMSTATE_REQ_REWIND { rewind_to: tok.index - 1,
+                                                  rewind_from: tok.index};
+                linkToMem.makeReq(tagged REQ_REWIND m_req);
+            end
 
+            // Pass to the next stage.
+            comm2Q.enq(tuple4(tok, True, is_active_store, ?));
+        end
+        else
+        begin
+            // Convert the token to a store token
+            STORE_TOKEN store_token = ?;
+
+            if (is_active_store)
+            begin
+                let store_tok_idx <- tokScoreboard.allocateStore(tok.index);
+                store_token = STORE_TOKEN { index: store_tok_idx };
+
+                debugLog.record(fshow(tok.index) + $format(": commitResults1:  Allocate ") + fshow(store_token));
+
+                linkToMem.makeReq(tagged REQ_COMMIT memStateReqCommit(tok, store_token));
+            end
+
+            // Pass to the next stage.
+            comm2Q.enq(tuple4(tok, False, is_active_store, store_token));
+        end
+    endrule
+
+
+    // commitResults2
+
+    // When:   When the timing model starts a commitResults().
+    // Effect: Lookup the destinations of this token, and the registers to free.
+
+    rule commitResults2 ((commitState == COMMIT_STATE_READY) && state.readyToContinue());
+        match {.tok, .is_fault, .is_active_store, .store_token} = comm2Q.first();
+        comm2Q.deq();
+
+        if (is_active_store)
+        begin
+            linkToMem.deq();
+        end
+
+        if (is_fault)
+        begin
             // Timing model tried to commit an instruction with an exception.
             // Instead we'll handle the fault and pass back the new PC.
             // Instead of committing the token we'll undo its effects.
             // The timing model may also do a rewindToToken to undo the effect of following instructions.
-            debugLog.record(fshow(tok.index) + $format(": CommitResults: Faulting instruction, redirecting to handleFault."));
+            debugLog.record(fshow(tok.index) + $format(": CommitResults2: Faulting instruction, redirecting to handleFault."));
             linkHandleFault.makeReq(initFuncpReqHandleFault(tok));
 
             // Request the registers to be freed.
@@ -171,57 +223,25 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
             tokDsts.readReq(tok.index);
 
             commitState <= COMMIT_STATE_FAULT_START;
-
-            // Drop any stores associated with this token.
-            if (tokScoreboard.isStore(tok.index))
-            begin
-            
-                // Tell the store buffer to drop any stores associated with this token.
-                let m_req = MEMSTATE_REQ_REWIND {rewind_to: tok.index - 1, rewind_from: tok.index};
-                linkToMem.makeReq(tagged REQ_REWIND m_req);
-
-                commQ.enq(tagged COMMIT2_faultRsp tuple2(tok, True));
-        
-            end
-            else
-            begin
-
-                // Make sure no responses pass this response.
-                commQ.enq(tagged COMMIT2_faultRsp tuple2(tok, False));
-
-            end
-
+            comm3Q.enq(tagged COMMIT_FAULT_RSP tuple2(tok, is_active_store));
         end
         else
         begin
-
             // Update the scoreboard.
             tokScoreboard.commitStart(tok.index);
-
-            // Convert the token to a store token
-            Maybe#(STORE_TOKEN) store_token = tagged Invalid;
-            if (tokScoreboard.isStore(tok.index))
-            begin
-                let store_tok_idx <- tokScoreboard.allocateStore(tok.index);
-                let store_tok = STORE_TOKEN { index: store_tok_idx };
-
-                debugLog.record(fshow(tok.index) + $format(": commitResults1:  Allocate ") + fshow(store_tok));
-
-                linkToMem.makeReq(tagged REQ_COMMIT MEMSTATE_REQ_COMMIT {tok: tok, storeTok: store_tok});
-                store_token = tagged Valid store_tok;
-            end
 
             // Request the registers to be freed.
             regMapping.readRewindReq(tok);
 
             // Pass to the next stage.
-            commQ.enq(tagged COMMIT2_commitRsp tuple2(tok, store_token));
-        
+            Maybe#(STORE_TOKEN) m_store_token = is_active_store ? tagged Valid store_token :
+                                                                  tagged Invalid;
+            comm3Q.enq(tagged COMMIT_COMMIT_RSP tuple2(tok, m_store_token));
         end
-
     endrule
 
-    // commitResults2
+
+    // commitResults3
     
     // When:   After a commitResults1 AND commitResultsAdditional is not occuring.
     // Effect: Free the appropriate physical register and respond to the timing model.
@@ -229,20 +249,15 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     //         Note that it is safe to "short path" the response because the committing of more
     //         results has higher priority than starting the commit of a new token.
 
-    rule commitResults2 (commQ.first() matches tagged COMMIT2_commitRsp {.tok, .store_token} &&& state.readyToContinue());
+    rule commitResults3 (comm3Q.first() matches tagged COMMIT_COMMIT_RSP {.tok, .store_token} &&& state.readyToContinue());
 
         // Get the input from the previous stage.
-        commQ.deq();
+        comm3Q.deq();
 
         let ctx_id = tokContextId(tok);
         assertion.expectedOldestTok(tok.index == tokScoreboard.oldest(ctx_id));
         if (tok.index != tokScoreboard.oldest(ctx_id))
             debugLog.record(fshow(tok.index) + $format(": commitResults1:  Token is not oldest!  Oldest: ") + fshow(tokScoreboard.oldest(ctx_id)));
-
-        if (store_token matches tagged Valid .s_tok)
-        begin
-            linkToMem.deq();
-        end
 
         // Retrieve the registers to be freed.
         let rewind_info <- regMapping.readRewindRsp();
@@ -275,14 +290,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     //     table would be updated incorrectly.
     //
     rule commitFaultStart (commitState == COMMIT_STATE_FAULT_START &&&
-                           commQ.first() matches tagged COMMIT2_faultRsp {.tok, .is_store});
-        commQ.deq();
+                           comm3Q.first() matches tagged COMMIT_FAULT_RSP {.tok, .is_store});
+        comm3Q.deq();
     
-        if (is_store)
-        begin
-            linkToMem.deq();
-        end
-
         // Retrieve the registers to be freed.
         let rewind_info <- regMapping.readRewindRsp();
         faultRewindInfo <= validValue(rewind_info);

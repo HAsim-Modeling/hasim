@@ -83,6 +83,10 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // The value a store will write to memory
     BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue <- mkLiveTokenBRAM();
 
+    // Load locked / store conditional decode info
+    BRAM#(TOKEN_INDEX, Bool) tokIsLoadLocked <- mkLiveTokenBRAM();
+    BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokIsStoreCond <- mkLiveTokenBRAM();
+
     // The physical memaddress(es) for the instruction.
     BRAM_MULTI_READ#(2, TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs <- mkLiveTokenBRAMMultiRead(True);
 
@@ -137,7 +141,9 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                             tokAddr,
                             tokInst,
                             tokWriters,
-                            tokDsts);
+                            tokDsts,
+                            tokIsLoadLocked,
+                            tokIsStoreCond);
 
     let getResults <- mkFUNCP_RegMgrMacro_Pipe_GetResults(
                             globData,
@@ -161,13 +167,16 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                             linkToMem.doLoadsQueue,
                             prf.doLoads,
                             tokPhysicalMemAddrs.readPorts[0],
-                            tokDsts.readPorts[1]);
+                            tokDsts.readPorts[1],
+                            tokIsLoadLocked);
 
     let doStores <- mkFUNCP_RegMgrMacro_Pipe_DoStores(
                             globData,
                             linkToMem.doStoresQueue,
+                            prf.doStores,
                             tokPhysicalMemAddrs.readPorts[1],
-                            tokStoreValue);
+                            tokStoreValue,
+                            tokIsStoreCond);
 
     let commitResults <- mkFUNCP_RegMgrMacro_Pipe_CommitResults(
                             globData,
@@ -241,7 +250,7 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // a good reason.
     //
     (* descending_urgency=
-        "rewind.rewindToToken5, rewind.rewindToToken4, rewind.rewindToToken3, rewind.rewindToToken2, rewind.rewindToToken1, rewind.rewindToTokenS, exception.handleFault2, exception.handleFault1, getDependencies.getDependencies1, commitStores.commitStores1, commitResults.commitFaultEnd, commitResults.commitFaultWriteNewRegs, commitResults.commitResults2, commitResults.commitResults1, doStores.doStores3, doStores.doStores2SpanEnd, doStores.doStores2SpanRsp2, doStores.doStores2SpanRsp1, doStores.doStores2SpanReq, doStores.doStores2RMW, doStores.doStores2, doStores.doStores1, doStores.doStoresS, doLoads.doLoads3Span, doLoads.doLoads3, doLoads.doLoads2Span, doLoads.doLoads2, doLoads.doLoads1, doDTranslate.doDTranslateSaveTrans, doDTranslate.doDTranslate3Span, doDTranslate.doDTranslate3, doDTranslate.doDTranslate2Span, doDTranslate.doDTranslate2, doDTranslate.doDTranslate1, getResults.emulateInstruction4, getResults.emulateInstruction3_UpdateRegWrite, getResults.emulateInstruction3_UpdateReg, getResults.emulateInstruction3, getResults.emulateInstruction2_Rsp, getResults.emulateInstruction2_Req, getResults.emulateInstruction2_PRFReq, getResults.emulateInstruction1_GenRegMapResp, getResults.emulateInstruction1_GenRegMapReq, getResults.emulateInstruction1, getResults.getResultsWritebacks, getResults.getResults4Bubble, getResults.getResults4, getResults.getResults3Bubble, getResults.getResults3, getResults.getResults2Bubble, getResults.getResults2, getResults.getResults1, getDependencies.getDependencies4, getDependencies.getDependencies3, getDependencies.getDependencies2, getInstruction.getInstruction2Span, getInstruction.getInstruction2, getInstruction.getInstruction1Span, getInstruction.getInstruction1, doITranslate.doITranslate2Span, doITranslate.doITranslate2, doITranslate.doITranslate1Span, doITranslate.doITranslate1, initializeRegmgrTok" *)
+        "rewind.rewindToToken5, rewind.rewindToToken4, rewind.rewindToToken3, rewind.rewindToToken2, rewind.rewindToToken1, rewind.rewindToTokenS, exception.handleFault2, exception.handleFault1, getDependencies.getDependencies1, commitStores.commitStores1, commitResults.commitFaultEnd, commitResults.commitFaultWriteNewRegs, commitResults.commitResults3, commitResults.commitResults2, commitResults.commitResults1, doStores.doStores3, doStores.doStores2SpanEnd, doStores.doStores2SpanRsp2, doStores.doStores2SpanRsp1, doStores.doStores2SpanReq, doStores.doStores2RMW, doStores.doStores2, doStores.doStores1, doStores.doStoresS, doLoads.doLoads3Span, doLoads.doLoads3, doLoads.doLoads2Span, doLoads.doLoads2, doLoads.doLoads1, doDTranslate.doDTranslateSaveTrans, doDTranslate.doDTranslate3Span, doDTranslate.doDTranslate3, doDTranslate.doDTranslate2Span, doDTranslate.doDTranslate2, doDTranslate.doDTranslate1, getResults.emulateInstruction4, getResults.emulateInstruction3_UpdateRegWrite, getResults.emulateInstruction3_UpdateReg, getResults.emulateInstruction3, getResults.emulateInstruction2_Rsp, getResults.emulateInstruction2_Req, getResults.emulateInstruction2_PRFReq, getResults.emulateInstruction1_GenRegMapResp, getResults.emulateInstruction1_GenRegMapReq, getResults.emulateInstruction1, getResults.getResultsWritebacks, getResults.getResults4Bubble, getResults.getResults4, getResults.getResults3Bubble, getResults.getResults3, getResults.getResults2Bubble, getResults.getResults2, getResults.getResults1, getDependencies.getDependencies4, getDependencies.getDependencies3, getDependencies.getDependencies2, getInstruction.getInstruction2Span, getInstruction.getInstruction2, getInstruction.getInstruction1Span, getInstruction.getInstruction1, doITranslate.doITranslate2Span, doITranslate.doITranslate2, doITranslate.doITranslate1Span, doITranslate.doITranslate1, initializeRegmgrTok" *)
 
     rule initializeRegmgrTok ((initState == 0) &&
                               (globData.state.getState() == RSM_Initializing));

@@ -64,12 +64,24 @@ typedef struct
     TOKEN tok;
     MEM_ADDRESS addr;
     MEM_VALUE value;
+    FUNCP_MEMREF_TOKEN memRefToken;
+    // Request exclusive access to the location until the token is committed to
+    // global memory.
+    Bool reqExclusive;
 }
 MEMSTATE_REQ_STORE
     deriving (Eq, Bits);
 
-function MEMSTATE_REQ_STORE memStateReqStore(TOKEN tok, MEM_ADDRESS addr, MEM_VALUE value);
-    return MEMSTATE_REQ_STORE { tok: tok, addr: addr, value: value };
+function MEMSTATE_REQ_STORE memStateReqStore(TOKEN tok,
+                                             MEM_ADDRESS addr,
+                                             MEM_VALUE value,
+                                             Bool reqExclusive);
+    // The memory reference token is typically set late, so it is left undefined here.
+    return MEMSTATE_REQ_STORE { tok: tok,
+                                addr: addr,
+                                value: value,
+                                memRefToken: ?,
+                                reqExclusive: reqExclusive };
 endfunction
 
 
@@ -79,13 +91,27 @@ typedef struct
     MEM_ADDRESS addr;
     Bool iStream;        // True iff load is fetching an instruction
     FUNCP_MEMREF_TOKEN memRefToken;
+    Bool reqLock;        // Request a lock on the address region (e.g. Alpha ldq_l)
 }
 MEMSTATE_REQ_LOAD
     deriving (Eq, Bits);
 
-function MEMSTATE_REQ_LOAD memStateReqLoad(TOKEN tok, MEM_ADDRESS addr, Bool iStream);
+function MEMSTATE_REQ_LOAD memStateReqInstr(TOKEN tok, MEM_ADDRESS addr);
     // The memory reference token is typically set late, so it is left undefined here.
-    return MEMSTATE_REQ_LOAD { tok: tok, addr: addr, iStream: iStream, memRefToken: ? };
+    return MEMSTATE_REQ_LOAD { tok: tok,
+                               addr: addr,
+                               iStream: True,
+                               memRefToken: ?,
+                               reqLock: False };
+endfunction
+
+function MEMSTATE_REQ_LOAD memStateReqLoad(TOKEN tok, MEM_ADDRESS addr, Bool reqLock);
+    // The memory reference token is typically set late, so it is left undefined here.
+    return MEMSTATE_REQ_LOAD { tok: tok,
+                               addr: addr,
+                               iStream: False,
+                               memRefToken: ?,
+                               reqLock: reqLock };
 endfunction
 
 
@@ -102,6 +128,11 @@ typedef struct
 }
 MEMSTATE_REQ_COMMIT
     deriving (Eq, Bits);
+
+function MEMSTATE_REQ_COMMIT memStateReqCommit(TOKEN tok, STORE_TOKEN storeTok);
+    return MEMSTATE_REQ_COMMIT { tok: tok,
+                                 storeTok: storeTok };
+endfunction
 
 
 //
@@ -147,14 +178,24 @@ MEMSTATE_REQ
 typedef struct
 {
      FUNCP_MEMREF_TOKEN memRefToken;
+     // Value has meaning only for loads
      MEM_VALUE value;
+     // Operation succeeded.  Not used by loads, but is used by almost everything
+     // else.  (E.g. store conditional and commit doesn't violate a memory lock.)
+     Bool success;
 }
 MEMSTATE_RESP
     deriving (Eq, Bits);
 
 
-function MEMSTATE_RESP memStateResp(FUNCP_MEMREF_TOKEN memRefTok, MEM_VALUE value);
-    return MEMSTATE_RESP { memRefToken: memRefTok, value: value };
+function MEMSTATE_RESP memStateRespLoad(FUNCP_MEMREF_TOKEN memRefTok,
+                                        MEM_VALUE value);
+    return MEMSTATE_RESP { memRefToken: memRefTok, value: value, success: True };
+endfunction
+
+function MEMSTATE_RESP memStateRespStatus(FUNCP_MEMREF_TOKEN memRefTok,
+                                          Bool success);
+    return MEMSTATE_RESP { memRefToken: memRefTok, value: ?, success: success };
 endfunction
 
 

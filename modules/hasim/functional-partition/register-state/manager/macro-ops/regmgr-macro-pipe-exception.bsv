@@ -52,7 +52,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Exception#(
     // ====================================================================
 
     Connection_Server#(FUNCP_REQ_HANDLE_FAULT,
-                       FUNCP_RSP_HANDLE_FAULT)    linkHandleFault   <- mkConnection_Server("funcp_handleFault");
+                       FUNCP_RSP_HANDLE_FAULT) linkHandleFault <-
+        mkFUNCPInterfaceServer("funcp_handleFault");
 
     // ====================================================================
     //

@@ -26390,3 +26390,34 @@ Directory modules/hasim/functional-partition/isa/isa-emulator
 
 - The speculative store code now deals with the possibility that a conditional
   store may be squashed.
+
+----------
+mcadler     Date: Thu Feb 14 22:32:06 EST 2013  CSN: CSN-hasim-915
+                  Fri Feb 15 03:32:06 UTC 2013
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getInstruction.bsv Locally Modified          914 
+ regmgr-macro-pipe-doDTranslate.bsv Locally Modified          914 
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          914 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          914 
+ regmgr-macro-pipe-commitStores.bsv Locally Modified          914 
+ regmgr-macro-pipe-rewind.bsv Locally Modified          914 
+ regmgr-macro-pipe-doITranslate.bsv Locally Modified          914 
+ regmgr-macro-pipe-exception.bsv Locally Modified          914 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          914 
+ regmgr-macro-pipe-doStores.bsv Locally Modified          914 
+ regmgr-macro-datatypes.bsv Locally Modified          914 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          914 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          914 
+
+Directory modules/hasim/util/modellib
+ multiplexed-memories.bsv  Locally Modified          914 
+
+- Improve the store conditional logic to track all contexts monitoring an address.
+
+- Wrap functional model interface services in a module that makes it easy to
+  monitor the interface.  Add a counter to track the number of requests in
+  flight for each service.

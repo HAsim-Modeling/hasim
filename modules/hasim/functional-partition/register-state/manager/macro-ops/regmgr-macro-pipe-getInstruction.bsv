@@ -99,7 +99,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetInstruction#(
     // ====================================================================
 
     Connection_Server#(FUNCP_REQ_GET_INSTRUCTION,
-                       FUNCP_RSP_GET_INSTRUCTION) linkGetInst <- mkConnection_Server("funcp_getInstruction");
+                       FUNCP_RSP_GET_INSTRUCTION) linkGetInst <-
+        mkFUNCPInterfaceServer("funcp_getInstruction");
 
 
     // ====================================================================

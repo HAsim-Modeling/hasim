@@ -101,7 +101,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     // ====================================================================
 
     Connection_Server#(FUNCP_REQ_DO_ITRANSLATE,
-                       FUNCP_RSP_DO_ITRANSLATE) linkDoITranslate <- mkConnection_Server("funcp_doITranslate");
+                       FUNCP_RSP_DO_ITRANSLATE) linkDoITranslate <-
+        mkFUNCPInterfaceServer("funcp_doITranslate");
 
 
     // ====================================================================

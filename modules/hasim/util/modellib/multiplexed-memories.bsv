@@ -280,6 +280,7 @@ module [m] mkLUTRAM_Multiplexed#(function m#(LUTRAM#(t_MERGED_IDX, t_DATA)) memI
         return interface LUTRAM#(t_INDEX, t_DATA);
                     method t_DATA sub(t_INDEX a) = memory.sub(tuple2(iid, a));
                     method Action upd(t_INDEX a, t_DATA d)  = memory.upd(tuple2(iid, a), d);
+                    method Action reset() = memory.reset();
                endinterface;
     endmethod
 endmodule
@@ -315,6 +316,7 @@ module [m] mkMultiReadLUTRAM_Multiplexed#(function m#(LUTRAM_MULTI_READ#(n_READE
         return interface LUTRAM#(t_INDEX, t_DATA);
                     method t_DATA sub(t_INDEX a) = memory.readPorts[readPort].sub(tuple2(iid, a));
                     method Action upd(t_INDEX a, t_DATA d)  = memory.upd(tuple2(iid, a), d);
+                    method Action reset() = memory.reset();
                endinterface;
     endmethod
 endmodule
@@ -466,6 +468,8 @@ module [m] mkMultiplexedLUTRAMMultiWrite#(t_DATA initval)
                    method Action upd(t_ADDR a, t_DATA d) if (initialized_m);
                        writeWires[portnum].wset(tuple3(iid, a, d));
                    endmethod
+
+                    method Action reset() = error("mkMultiplexedLUTRAMMultiWrite reset() not implemented");
                endinterface;
 
     endmethod
@@ -543,6 +547,8 @@ module [m] mkMultiplexedLUTRAMPseudoMultiWrite#(t_DATA initval)
                    method Action upd(t_ADDR a, t_DATA d);
                        writeQ.ports[portnum].enq(tuple3(iid, a, d));
                    endmethod
+
+                   method Action reset() = error("mkMultiplexedLUTRAMPseudoMultiWrite reset() not implemented");
                endinterface;
 
     endmethod

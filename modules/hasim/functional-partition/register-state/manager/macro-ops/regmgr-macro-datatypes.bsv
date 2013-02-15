@@ -16,6 +16,68 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
+import FIFO::*;
+import GetPut::*;
+import Connectable::*;
+
+// Project imports
+
+`include "asim/provides/hasim_common.bsh"
+`include "asim/provides/soft_connections.bsh"
+`include "asim/provides/common_services.bsh"
+
+
+// ========================================================================
+//
+//  Interface idioms
+//  
+// ========================================================================
+
+//
+// All functional interface connections have output buffering sufficient
+// for avoiding deadlocks in standard multiplexed models.  The standard
+// multiplexed controller allows at most one cycle to be active for each
+// context.  One slot is thus sufficient for a machine that is single
+// issue.
+//
+
+module [CONNECTED_MODULE] mkFUNCPInterfaceServer#(String connectionName)
+    // Interface:
+    (Connection_Server#(t_REQ, t_RSP))
+    provisos (Bits#(t_REQ, t_REQ_SZ),
+              Bits#(t_RSP, t_RSP_SZ));
+     
+    CONNECTION_SERVER#(t_REQ, t_RSP) con <- mkConnectionServer(connectionName);
+
+    //
+    // Debugging:  track the number of requests to a server that are in
+    //             flight.  This is often a good way to debug deadlocks.
+    //
+    COUNTER#(8) nInFlight <- mkLCounter(0);
+
+    DEBUG_SCAN_FIELD_LIST dbg_list = List::nil;
+    dbg_list <- addDebugScanField(dbg_list, "Requests in flight", nInFlight.value);
+    let dbgNode <- mkDebugScanNode("FUNCP REGMGR Service: " + connectionName, dbg_list);
+
+
+    method Bool   reqNotEmpty() = con.reqNotEmpty();
+    method t_REQ  getReq() = con.getReq();
+
+    method Action deq();
+        con.deq();
+        nInFlight.up();
+    endmethod
+
+
+    method Action makeResp(t_RSP data);
+        con.makeRsp(data);
+        nInFlight.down();
+    endmethod
+
+    method Bool   respNotFull() = con.rspNotFull();
+endmodule
+
+
 // ========================================================================
 //
 //  Global types

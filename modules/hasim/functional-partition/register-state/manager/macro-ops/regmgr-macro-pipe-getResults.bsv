@@ -219,7 +219,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // ====================================================================
 
     Connection_Server#(FUNCP_REQ_GET_RESULTS, 
-                       FUNCP_RSP_GET_RESULTS) linkGetResults <- mkConnection_Server("funcp_getResults");
+                       FUNCP_RSP_GET_RESULTS) linkGetResults <-
+        mkFUNCPInterfaceServer("funcp_getResults");
 
     Connection_Client#(FUNCP_ISA_DATAPATH_REQ,
                        FUNCP_ISA_DATAPATH_RSP) linkToDatapath <- mkConnection_Client("isa_datapath");

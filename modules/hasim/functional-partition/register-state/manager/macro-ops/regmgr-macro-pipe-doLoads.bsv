@@ -108,7 +108,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     // ====================================================================
 
     Connection_Server#(FUNCP_REQ_DO_LOADS, 
-                       FUNCP_RSP_DO_LOADS) linkDoLoads <- mkConnection_Server("funcp_doLoads");
+                       FUNCP_RSP_DO_LOADS) linkDoLoads <-
+        mkFUNCPInterfaceServer("funcp_doLoads");
 
 
     // ====================================================================

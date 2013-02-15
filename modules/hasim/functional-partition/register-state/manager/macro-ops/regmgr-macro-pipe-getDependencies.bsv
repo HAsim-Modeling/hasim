@@ -65,7 +65,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     // ====================================================================
 
     Connection_Server#(FUNCP_REQ_GET_DEPENDENCIES, 
-                       FUNCP_RSP_GET_DEPENDENCIES) linkGetDeps <- mkConnection_Server("funcp_getDependencies");
+                       FUNCP_RSP_GET_DEPENDENCIES) linkGetDeps <-
+        mkFUNCPInterfaceServer("funcp_getDependencies");
 
     Connection_Send#(TOKEN_INDEX) storeBufferAllocate <- mkConnection_Send("storeBufferAllocate");
 

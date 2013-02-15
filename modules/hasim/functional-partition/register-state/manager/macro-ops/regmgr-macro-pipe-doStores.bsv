@@ -95,7 +95,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoStores#(
     // ====================================================================
 
     Connection_Server#(FUNCP_REQ_DO_STORES, 
-                       FUNCP_RSP_DO_STORES) linkDoStores <- mkConnection_Server("funcp_doSpeculativeStores");
+                       FUNCP_RSP_DO_STORES) linkDoStores <-
+        mkFUNCPInterfaceServer("funcp_doSpeculativeStores");
+
 
     // ====================================================================
     //

@@ -81,7 +81,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
     // ====================================================================
 
     Connection_Server#(FUNCP_REQ_REWIND_TO_TOKEN,
-                       FUNCP_RSP_REWIND_TO_TOKEN) linkRewindToToken <- mkConnection_Server("funcp_rewindToToken");
+                       FUNCP_RSP_REWIND_TO_TOKEN) linkRewindToToken <-
+        mkFUNCPInterfaceServer("funcp_rewindToToken");
 
     // ====================================================================
     //

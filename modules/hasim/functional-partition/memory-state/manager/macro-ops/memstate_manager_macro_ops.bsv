@@ -27,20 +27,26 @@ import FIFO::*;
 import FIFOF::*;
 import Vector::*;
 import FShow::*;
+import Clocks::*;
 
 // Project Foundation Imports
 
-`include "asim/provides/hasim_common.bsh"
-`include "asim/provides/fpga_components.bsh"
-`include "asim/provides/soft_connections.bsh"
-`include "asim/provides/funcp_memory.bsh"
+`include "awb/provides/hasim_common.bsh"
+`include "awb/provides/fpga_components.bsh"
+`include "awb/provides/soft_connections.bsh"
+`include "awb/provides/soft_services.bsh"
+`include "awb/provides/soft_services_lib.bsh"
+`include "awb/provides/soft_services_deps.bsh"
+`include "awb/provides/common_services.bsh"
+`include "awb/provides/librl_bsv.bsh"
 
-`include "asim/provides/funcp_regstate_base_types.bsh"
+`include "awb/provides/funcp_memory.bsh"
+`include "awb/provides/funcp_regstate_base_types.bsh"
 
 // Memstate imports
 
-`include "asim/provides/funcp_memstate_base_types.bsh"
-`include "asim/provides/funcp_memstate_storebuffer.bsh"
+`include "awb/provides/funcp_memstate_base_types.bsh"
+`include "awb/provides/funcp_memstate_storebuffer.bsh"
 
 //
 // Store pipeline state machine.
@@ -63,6 +69,9 @@ FUNCP_MEMSTATE_STORE_STATE
 module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
     DEBUG_FILE debugLog <- mkDebugFile(`FUNCP_MEMSTATE_LOGFILE_NAME);
+    STDIO#(Bit#(64)) stdio <- mkStdIO_Debug();
+
+    let msgFailedInSB <- getGlobalStringUID("MEMSTATE LockMgr: Failed (already in SB) CTX %d, Addr 0x%llx\n");
 
     // ***** Submodules ***** //
 
@@ -81,7 +90,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
     FIFOF#(Bool) writeBackQ <- mkFIFOF();
     FIFO#(MEM_LOAD_INFO) sbLookupQ <- mkFIFO();
-    MEMSTATE_LOCK_LINE_MGR lockMgr <- mkFUNCPMemStateLockMgr(debugLog);
+    MEMSTATE_LOCK_LINE_MGR lockMgr <- mkFUNCPMemStateLockMgr(debugLog, stdio);
 
     // ***** Rules ***** //
 
@@ -152,6 +161,10 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         if (not_in_sb)
         begin
             got_lock <- lockMgr.tryLock(tokContextId(stInfo.tok), stInfo.addr);
+        end
+        else
+        begin
+            stdio.printf(msgFailedInSB, list(zeroExtend(tokContextId(stInfo.tok)), zeroExtend(stInfo.addr)));
         end
 
         // Store permitted only if the lock was acquired
@@ -377,13 +390,27 @@ interface MEMSTATE_LOCK_LINE_MGR;
 endinterface
 
 
-module mkFUNCPMemStateLockMgr#(DEBUG_FILE debugLog)
+typedef 4 MEMSTATE_NUM_LOCK_MONITORS;
+
+module [HASIM_MODULE] mkFUNCPMemStateLockMgr#(DEBUG_FILE debugLog, STDIO#(Bit#(64)) stdio)
     // Interface:
     (MEMSTATE_LOCK_LINE_MGR);
 
-    // Track up to 8 monitor requests at a time
-    Reg#(Vector#(8, Bool)) monValid <- mkReg(replicate(False));
-    Reg#(Vector#(8, Tuple2#(CONTEXT_ID, MEM_ADDRESS))) monAddrs <- mkRegU();
+    // Monitored addresses
+    Reg#(Vector#(MEMSTATE_NUM_LOCK_MONITORS, MEM_ADDRESS)) monAddrs <- mkRegU();
+
+    // Mask of contexts monitoring an address
+    Vector#(MEMSTATE_NUM_LOCK_MONITORS, LUTRAM#(CONTEXT_ID, Bool)) monContexts <-
+        replicateM(mkLUTRAM(False));
+
+    // Next monitor to use (round robin)
+    Reg#(UInt#(TLog#(MEMSTATE_NUM_LOCK_MONITORS))) nextMon <- mkReg(0);
+
+    // Debugging strings
+    let msgMonExisting <- getGlobalStringUID("MEMSTATE LockMgr: Lock Mgr:  Monitor CTX %d, Addr 0x%llx (existing slot %d)\n");
+    let msgMonNew <- getGlobalStringUID("MEMSTATE LockMgr: Lock Mgr:  Monitor CTX %d, Addr 0x%llx (new slot %d)\n");
+    let msgWBInval <- getGlobalStringUID("MEMSTATE LockMgr: WB invalidates monitor idx %d, Addr 0x%llx\n");
+    let msgGotLock <- getGlobalStringUID("MEMSTATE LockMgr: Got lock idx %d, CTX %d, Addr 0x%llx\n");
 
     //
     // Start watching a memory location.  Only a relatively small number of
@@ -392,34 +419,50 @@ module mkFUNCPMemStateLockMgr#(DEBUG_FILE debugLog)
     // New requests push out old (even valid) ones.
     //
     method Action monStart(CONTEXT_ID ctx, MEM_ADDRESS addr);
-        monValid <= shiftInAtN(monValid, True);
-        monAddrs <= shiftInAtN(monAddrs, tuple2(ctx, addr));
+        if (findElem(addr, monAddrs) matches tagged Valid .idx &&&
+            idx != nextMon)
+        begin
+            // Address already monitored.  Activate the monitor for this context.
+            monContexts[idx].upd(ctx, True);
 
-        debugLog.record($format("    Lock Mgr:  Monitor CTX %0d, Addr 0x%x", ctx, addr));
+            debugLog.record($format("    Lock Mgr:  Monitor CTX %0d, Addr 0x%x (existing slot %0d)", ctx, addr, idx));
+            stdio.printf(msgMonExisting, list(zeroExtend(ctx), zeroExtend(addr), zeroExtend(pack(idx))));
+        end
+        else
+        begin
+            // Use the next monitor (round robin).  The context mask for the
+            // nextMon is guaranteed to be completely clear.
+            monAddrs[nextMon] <= addr;
+            monContexts[nextMon].upd(ctx, True);
+
+            debugLog.record($format("    Lock Mgr:  Monitor CTX %0d, Addr 0x%x (new slot %0d)", ctx, addr, nextMon));
+            stdio.printf(msgMonNew, list(zeroExtend(ctx), zeroExtend(addr), zeroExtend(pack(nextMon))));
+
+            // Prepare the next slot for when it is needed
+            let last_idx = fromInteger(valueOf(TSub#(MEMSTATE_NUM_LOCK_MONITORS, 1)));
+            let n_idx = (nextMon == last_idx) ? 0 : nextMon + 1;
+
+            nextMon <= n_idx;
+            monContexts[n_idx].reset();
+        end
     endmethod
 
     method Action noteWriteback(CONTEXT_ID ctx, MEM_ADDRESS addr);
         //
-        // Clear a monitor if it was valid and the written address matches
-        // in a context other than the monitor's context.
+        // Clear a monitor if the written address matches
         //
-        function Bool clearConflicts(Bool isValid,
-                                     Tuple2#(CONTEXT_ID, MEM_ADDRESS) monitor);
-            match {.mon_ctx, .mon_addr} = monitor;
-            return isValid && ((mon_ctx == ctx) || (mon_addr != addr));
-        endfunction
-
-        // Update all monitor valid bits
-        let upd = zipWith(clearConflicts, monValid, monAddrs);
-        monValid <= upd;
-
-        // Debugging message loop
-        for (Integer i = 0; i < 8; i = i + 1)
+        if (findElem(addr, monAddrs) matches tagged Valid .idx)
         begin
-            if (monValid[i] && ! upd[i])
-            begin
-                debugLog.record($format("    Lock Mgr:  WB invalidates monitor CTX %0d, Addr 0x%x", tpl_1(monAddrs[i]), tpl_2(monAddrs[i])));
-            end
+            monContexts[idx].reset();
+
+            // Technically we don't have to clear the address, too.  However,
+            // the reset() may take a while if it is iterating through the
+            // context pool.  Clearing the address will force the next attempt
+            // to use a different slot that is already initialized.
+            monAddrs[idx] <= 0;
+
+            debugLog.record($format("    Lock Mgr:  WB invalidates monitor idx %0d, Addr 0x%x", idx, addr));
+            stdio.printf(msgWBInval, list(zeroExtend(pack(idx)), zeroExtend(addr)));
         end
     endmethod
 
@@ -427,17 +470,15 @@ module mkFUNCPMemStateLockMgr#(DEBUG_FILE debugLog)
         //
         // Lock is valid if some monitor matches the context and address.
         //
-        function Bool validLock(Tuple2#(Bool, Tuple2#(CONTEXT_ID, MEM_ADDRESS)) arg);
-            let isValid = tpl_1(arg);
-            Tuple2#(CONTEXT_ID, MEM_ADDRESS) arg2 = tpl_2(arg);
-            match {.mon_ctx, .mon_addr} = arg2;
-
-            return isValid && (mon_ctx == ctx) && (mon_addr == addr);
-        endfunction
-
-        if (any(validLock, zip(monValid, monAddrs)))
+        if (findElem(addr, monAddrs) matches tagged Valid .idx &&&
+            monContexts[idx].sub(ctx))
         begin
-            debugLog.record($format("    Lock Mgr:  Got lock CTX %0d, Addr 0x%x", ctx, addr));
+            debugLog.record($format("    Lock Mgr:  Got lock idx %0d, CTX %0d, Addr 0x%x", idx, ctx, addr));
+            stdio.printf(msgGotLock, list(zeroExtend(pack(idx)), zeroExtend(ctx), zeroExtend(addr)));
+
+            // Picked a winner.  All other contexts lose.
+            monContexts[idx].reset();
+
             return True;
         end
         else

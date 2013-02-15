@@ -86,11 +86,13 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitResults#(
     // ====================================================================
 
     Connection_Server#(FUNCP_REQ_COMMIT_RESULTS,
-                       FUNCP_RSP_COMMIT_RESULTS) linkCommitResults <- mkConnection_Server("funcp_commitResults");
+                       FUNCP_RSP_COMMIT_RESULTS) linkCommitResults <-
+        mkFUNCPInterfaceServer("funcp_commitResults");
 
     // Committing a faulting token can implicitly trigger a fault.
     Connection_Client#(FUNCP_REQ_HANDLE_FAULT,
-                       FUNCP_RSP_HANDLE_FAULT) linkHandleFault <- mkConnection_Client("funcp_handleFault");
+                       FUNCP_RSP_HANDLE_FAULT) linkHandleFault <-
+        mkConnection_Client("funcp_handleFault");
 
     // ====================================================================
     //

@@ -56,7 +56,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitStores#(
     // ====================================================================
 
     Connection_Server#(FUNCP_REQ_COMMIT_STORES,
-                       FUNCP_RSP_COMMIT_STORES) linkCommitStores <- mkConnection_Server("funcp_commitStores");  
+                       FUNCP_RSP_COMMIT_STORES) linkCommitStores <-
+        mkFUNCPInterfaceServer("funcp_commitStores");
 
 
     // ====================================================================

@@ -248,6 +248,16 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
                                            t_NUM_OUTPORTS,
                                            INSTANCE_ID_BITS#(t_NUM_INSTANCES)), t_SCAN_DATA));
 
+    // Emit file with data for generating a connection graph
+    emitPortGraphFile(name, inctrls, uncontrolled_ctrls, outctrls);
+
+
+    // ====================================================================
+    //
+    //   Controller state.
+    //
+    // ====================================================================
+
     Reg#(LC_STATE) state <- mkReg(LC_Idle);
     Reg#(Bool) scanning <- mkReg(False);
   
@@ -775,4 +785,59 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
         end
     endmethod
     
+endmodule
+
+
+// ========================================================================
+//
+//   Emit details of the controller and ports to a file that can be
+//   used to generate a dot graph of the system.
+//
+// ========================================================================
+
+module [HASIM_MODULE] emitPortGraphFile#(
+    String name,
+    Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls, 
+    Vector#(t_NUM_UNPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  uncontrolled_ctrls,
+    Vector#(t_NUM_OUTPORTS, INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES)) outctrls)
+    // Interface:
+    ()
+    provisos (Add#(t_NUM_INPORTS, t_NUM_UNPORTS, n_ALL_INPORTS));
+
+    Handle hdl <- openFile(".bsc/" + name + ".ctrl", WriteMode);
+    hPutStrLn(hdl, "#");
+    hPutStrLn(hdl, "# Controller " + name + ": " +
+                   integerToString(valueOf(t_NUM_INPORTS)) + " in, " +
+                   integerToString(valueOf(t_NUM_UNPORTS)) + " uncontrolled, " +
+                   integerToString(valueOf(t_NUM_OUTPORTS)) + " out.");
+    hPutStrLn(hdl, "#");
+
+    Vector#(n_ALL_INPORTS, INSTANCE_CONTROL_IN#(t_NUM_INSTANCES)) all_inports =
+        Vector::append(inctrls, uncontrolled_ctrls);
+    if (valueOf(n_ALL_INPORTS) != 0)
+    begin
+        hPutStrLn(hdl, "");
+        for (Integer i = 0; i < valueOf(n_ALL_INPORTS); i = i + 1)
+        begin
+            if (all_inports[i].portName != "")
+            begin
+                hPutStrLn(hdl, "I," + name + "," + all_inports[i].portName + "," +
+                          integerToString(all_inports[i].portLatency));
+            end
+        end
+    end
+
+    if (valueOf(t_NUM_OUTPORTS) != 0)
+    begin
+        hPutStrLn(hdl, "");
+        for (Integer i = 0; i < valueOf(t_NUM_OUTPORTS); i = i + 1)
+        begin
+            if (outctrls[i].portName != "")
+            begin
+                hPutStrLn(hdl, "O," + name + "," + outctrls[i].portName);
+            end
+        end
+    end
+
+    hClose(hdl);
 endmodule

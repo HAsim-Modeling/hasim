@@ -113,20 +113,16 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
     endrule
     
     interface INSTANCE_CONTROL_IN ctrl;
-
-
         method Bool empty() = !canDeq;
         method Bool balanced() = True;
         method Bool light() = False;
         
         method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
-        
             let m = deqFromSide(curDeq, maxInstance) ? sideBuffer.sub(sideHead.value()) : rs.sub(head.value());
             return (!canDeq || !initialized) ? tagged Invalid : tagged Valid m.iid;
         endmethod
         
         method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
-        
             t_SLOT_IDX l = fromInteger(latency);
             t_SLOT_IDX k = zeroExtendNP(iid) + 1;
             t_SLOT_IDX n = zeroExtendNP(period);
@@ -134,9 +130,10 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
             sideTail.setC(n * l);
             maxInstance <= iid;
             initialized <= True;
-        
         endmethod
         
+        method String portName() = portname;
+        method Integer portLatency() = latency;
     endinterface
 
     method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) dummy) if (canDeq);
@@ -362,16 +359,12 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_Join#(
     Bool canDeq = (cur.value() == insertion_point) ? !p2.ctrl.empty() : !p1.ctrl.empty();
     
     interface INSTANCE_CONTROL_IN ctrl;
-
-
         method Bool empty() = !canDeq;
         method Bool balanced() = True;
         method Bool light() = False;
         
         method Maybe#(t_JOIN_ID) nextReadyInstance();
-        
             return (!canDeq || !initialized) ? tagged Invalid : tagged Valid cur.value();
-        
         endmethod
         
         method Action setMaxRunningInstance(t_JOIN_ID iid);
@@ -379,6 +372,9 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_Join#(
             initialized <= True;
         endmethod
         
+        method String portName() = "Join " + p1.ctrl.portName + " and " + p2.ctrl.portName;
+        // Not clear what latency should be...
+        method Integer portLatency() = max(p1.ctrl.portLatency, p2.ctrl.portLatency);
     endinterface
 
     method ActionValue#(Maybe#(t_MSG)) receive(t_JOIN_ID dummy) if (canDeq);
@@ -426,7 +422,6 @@ module [HASIM_MODULE] mkPortSend_Multiplexed_Split#(
     Bool canEnq = (cur.value() == split_point) ? !p2.ctrl.full() : !p1.ctrl.full();
     
     interface INSTANCE_CONTROL_OUT ctrl;
-
         method Bool full() = !canEnq;
         method Bool balanced() = True;
         method Bool heavy() = False;
@@ -435,6 +430,7 @@ module [HASIM_MODULE] mkPortSend_Multiplexed_Split#(
             initialized <= True;
         endmethod
 
+        method String portName() = "Split " + p1.ctrl.portName + " and " + p2.ctrl.portName;
     endinterface
 
     method Action send(t_SPLIT_ID dummy, Maybe#(t_MSG) msg) if (initialized && canEnq);

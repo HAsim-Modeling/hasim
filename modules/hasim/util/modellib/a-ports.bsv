@@ -36,16 +36,15 @@ import HList::*;
 typedef `PORT_MAX_LATENCY PORT_MAX_LATENCY;
 
 interface INSTANCE_CONTROL_OUT#(numeric type t_NUM_INSTANCES);
+    method Bool full();
+    method Bool balanced();
+    method Bool heavy();
+    method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
 
-  method Bool full();
-  method Bool balanced();
-  method Bool heavy();
-  method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
-
+    method String portName();
 endinterface
 
 interface INSTANCE_CONTROL_IN#(numeric type t_NUM_INSTANCES);
-
     method Bool empty();
     method Bool balanced();
     method Bool light();
@@ -53,6 +52,8 @@ interface INSTANCE_CONTROL_IN#(numeric type t_NUM_INSTANCES);
     method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance;
     method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
 
+    method String portName();
+    method Integer portLatency();
 endinterface
 
 interface INSTANCE_CONTROL_IN_OUT#(numeric type t_NUM_INSTANCES);
@@ -101,12 +102,12 @@ module [CONNECTED_MODULE] mkPortSend#(String portname)
 
     //A temporary set of control info
     interface INSTANCE_CONTROL_OUT ctrl;
-
         method Bool full() = !con.notFull;
         method Bool balanced() = True;
         method Bool heavy() = False;
         method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction;
 
+        method String portName() = portname;
     endinterface
 
     method Action send(Maybe#(t_MSG) m);
@@ -177,7 +178,6 @@ module [CONNECTED_MODULE] mkPortRecv_Buffered#(String portname, Integer latency,
   
   //A temporary set of control info
   interface INSTANCE_CONTROL_IN ctrl;
-
         method Bool empty() = emptyQ;
         method Bool balanced() = True;
         method Bool light() = False;
@@ -186,6 +186,8 @@ module [CONNECTED_MODULE] mkPortRecv_Buffered#(String portname, Integer latency,
             noAction;
         endmethod
 
+        method String portName() = portname;
+        method Integer portLatency() = latency;
   endinterface
 
   method ActionValue#(Maybe#(t_MSG)) receive() if (!emptyQ);
@@ -219,6 +221,8 @@ module [CONNECTED_MODULE] mkPortRecv_L0#(String portname)
         noAction;
     endmethod
 
+    method String portName() = portname;
+    method Integer portLatency() = 0;
   endinterface
 
   method ActionValue#(Maybe#(t_MSG)) receive();
@@ -251,6 +255,8 @@ module [CONNECTED_MODULE] mkPortRecv_L1#(String portname, Maybe#(t_MSG) init_val
     method Maybe#(INSTANCE_ID#(1)) nextReadyInstance = tagged Valid 0;
     method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction;
 
+    method String portName() = portname;
+    method Integer portLatency() = 1;
   endinterface
 
   
@@ -307,7 +313,6 @@ module [CONNECTED_MODULE] mkPortSend_Multiplexed#(String portname)
         mkPortSend_MaybeCompressed(portname);
 
     interface INSTANCE_CONTROL_OUT ctrl;
-
         method Bool full() = !con.notFull();
         method Bool balanced() = True;
         method Bool heavy() = False;
@@ -315,6 +320,7 @@ module [CONNECTED_MODULE] mkPortSend_Multiplexed#(String portname)
         // Handled on the receive side only.
         method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction;
 
+        method String portName() = portname;
     endinterface
 
     method Action send(INSTANCE_ID#(t_NUM_INSTANCES) iid, Maybe#(t_MSG) m);
@@ -500,6 +506,8 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Impl#(String portname,
 
         endmethod
 
+        method String portName() = portname;
+        method Integer portLatency() = latency;
     endinterface
 
     method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) dummy);

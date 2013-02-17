@@ -359,7 +359,6 @@ module mkMultiplexedStatePool#(t_DATA initval)
     endmethod
 
     interface INSTANCE_CONTROL_IN ctrl;
-
         method Bool empty() = initialized ? !q.notEmpty : True;
         method Bool balanced() = True;
         method Bool light() = False;
@@ -372,7 +371,9 @@ module mkMultiplexedStatePool#(t_DATA initval)
             initializing <= True;
             maxRunningInstance <= iid;
         endmethod
-    
+
+        method String portName() = "";
+        method Integer portLatency() = 0;
     endinterface
 
 

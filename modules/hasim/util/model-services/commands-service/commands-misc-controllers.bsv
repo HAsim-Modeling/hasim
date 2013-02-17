@@ -173,12 +173,14 @@ endinterface
 module [HASIM_MODULE] mkMultiplexController 
     // parameters:
     #(
-        Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls
+        Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES)) inctrls,
+        Vector#(t_NUM_UNPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES)) uncontrolled_ctrls,
+        Vector#(t_NUM_OUTPORTS, INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES)) outctrls
     )
     // interface:
         (MULTIPLEX_CONTROLLER#(t_NUM_INSTANCES));
 
-    let m <- mkNamedMultiplexController("[no name]", inctrls);
+    let m <- mkNamedMultiplexController("[no name]", inctrls, uncontrolled_ctrls, outctrls);
     return m;
 
 endmodule
@@ -187,10 +189,15 @@ module [HASIM_MODULE] mkNamedMultiplexController
     // parameters:
     #(
         String name,
-        Vector#(t_NUM_INPORTS, INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls
+        Vector#(t_NUM_INPORTS, INSTANCE_CONTROL_IN#(t_NUM_INSTANCES)) inctrls,
+        Vector#(t_NUM_UNPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES)) uncontrolled_ctrls,
+        Vector#(t_NUM_OUTPORTS, INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES)) outctrls
     )
     // interface:
         (MULTIPLEX_CONTROLLER#(t_NUM_INSTANCES));
+
+    // Emit file with data for generating a connection graph
+    emitPortGraphFile(name, inctrls, uncontrolled_ctrls, outctrls);
 
     // Local-controller-like communication.
     Connection_Chain#(CONTROLLER_MSG) link_controllers <- mkConnection_Chain(`RINGID_CONTROLLER_MESSAGES);
@@ -220,12 +227,19 @@ module [HASIM_MODULE] mkNamedMultiplexController
         case (newcmd) matches
             tagged COM_RunProgram:
             begin
-
                 for (Integer x = 0; x < valueof(t_NUM_INPORTS); x = x + 1)
                 begin
-                
                     inctrls[x].setMaxRunningInstance(activeInstances);
+                end
 
+                for (Integer x = 0; x < valueof(t_NUM_UNPORTS); x = x + 1)
+                begin
+                    uncontrolled_ctrls[x].setMaxRunningInstance(activeInstances);
+                end
+
+                for (Integer x = 0; x < valueof(t_NUM_OUTPORTS); x = x + 1)
+                begin
+                    outctrls[x].setMaxRunningInstance(activeInstances);
                 end
 
                 state <= MC_running;
@@ -345,7 +359,6 @@ module mkDependenceController
     method Action consumerDone()     = producerCredits.up();
 
     interface INSTANCE_CONTROL_IN ctrl;
-
         method Bool empty() = producerCredits.value() == 0;
         method Bool balanced() = False;
         method Bool light() = False;
@@ -359,7 +372,9 @@ module mkDependenceController
             Bit#(TLog#(TAdd#(1, t_NUM_INSTANCES))) tmp = zeroExtendNP(iid) + 1;
             producerCredits.setC(tmp);
         endmethod
-    
+
+        method String portName() = "";
+        method Integer portLatency() = 0;
     endinterface
 
 endmodule
@@ -396,4 +411,31 @@ module mkConvertControllerInstances_IN#(INSTANCE_CONTROL_IN#(t_NUM_INSTANCES_SRC
         inctrl.setMaxRunningInstance(truncateNP(iid));
     endmethod
 
+    method String portName() = inctrl.portName;
+    method Integer portLatency() = inctrl.portLatency;
+endmodule
+
+
+//
+// mkConvertControllerAlwaysReady_OUT --
+//   Some connected controllers are always ready because of the way they are
+//   used.  (E.g. a multiplexed mesh network in which a model pipeline pass
+//   both reads and writes all ports.)  For those, there is no point in
+//   wasting area controlling them.  However, there is value in connecting
+//   them so the name is reported connected to the controller.
+//
+//   This module eliminates the control structures but maintains the naming.
+//
+module mkConvertControllerAlwaysReady_OUT#(INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES) outctrl)
+    // Interface:
+    (INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES));
+     
+    method Bool full = False;
+    method Bool balanced = True;
+    method Bool heavy = False;
+
+    method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) =
+        outctrl.setMaxRunningInstance(iid);
+
+    method String portName() = outctrl.portName;
 endmodule

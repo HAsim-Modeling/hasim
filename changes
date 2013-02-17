@@ -26421,3 +26421,27 @@ Directory modules/hasim/util/modellib
 - Wrap functional model interface services in a module that makes it easy to
   monitor the interface.  Add a counter to track the number of requests in
   flight for each service.
+
+----------
+mcadler     Date: Sat Feb 16 19:56:30 EST 2013  CSN: CSN-hasim-916
+                  Sun Feb 17 00:56:30 UTC 2013
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          915 
+ commands-misc-controllers.bsv Locally Modified          915 
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          915 
+ permutation-ports.bsv     Locally Modified          915 
+ stall-ports.bsv           Locally Modified          915 
+ a-ports.bsv               Locally Modified          915 
+
+- Add methods to A-Ports controller interfaces to query the name of the port
+  and its latency.
+
+- Walk all ports connected to local controllers and use the new Bluespec
+  compile-time file I/O module to emit enough information to generate a
+  graph of the connections.  Files are currently written to
+  .bsc/<controller name>.ctrl since Bluespec doesn't yet have a way to
+  ask the package name and target directory.

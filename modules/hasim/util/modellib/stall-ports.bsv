@@ -132,7 +132,6 @@ module [HASIM_MODULE] mkPortStallSend#(String s)
     interface INSTANCE_CONTROL_IN_OUT ctrl;
 
         interface INSTANCE_CONTROL_IN in;
-        
             method Bool empty() = !creditFromQueue.notEmpty(); // This is that we have a credit token.
             method Bool balanced() = True;
             method Bool light() = False;
@@ -140,15 +139,17 @@ module [HASIM_MODULE] mkPortStallSend#(String s)
             method Maybe#(INSTANCE_ID#(1)) nextReadyInstance() = tagged Valid (?);
             method Action setMaxRunningInstance(INSTANCE_ID#(1) iid) = noAction;
         
+            method String portName() = s + "__cred";
+            method Integer portLatency() = 0;
         endinterface
         
         interface INSTANCE_CONTROL_OUT out;
-            
             method Bool full() = enqToQueue.ctrl.full(); // This is if the output port is full.
             method Bool balanced() = True;
             method Bool heavy() = False;
             method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction;
-        
+
+            method String portName() = s + "__portDataEnq";
         endinterface
 
     endinterface
@@ -235,7 +236,6 @@ module [HASIM_MODULE] mkPortStallRecv#(String s)
     interface INSTANCE_CONTROL_IN_OUT ctrl;
 
         interface INSTANCE_CONTROL_IN in;
-
             method Bool empty() = !firstToConsumer.notEmpty();
             method Bool balanced() = True;
             method Bool light() = False;
@@ -243,15 +243,17 @@ module [HASIM_MODULE] mkPortStallRecv#(String s)
             method Maybe#(INSTANCE_ID#(ni)) nextReadyInstance() = tagged Valid (?);
             method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid) = noAction;
         
+            method String portName() = s + "__portDataEnq";
+            method Integer portLatency() = 0;
         endinterface
     
         interface INSTANCE_CONTROL_OUT out;
-    
             method Bool full() = !deqFromConsumer.notFull();
             method Bool balanced() = True;
             method Bool heavy() = False;
             method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid) = noAction;
-        
+
+            method String portName() = s + "__cred";
         endinterface
 
     endinterface
@@ -423,7 +425,6 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
             method Bool balanced() = True;
             method Bool light() = False;
             method Maybe#(INSTANCE_ID#(ni)) nextReadyInstance();
-            
                 if (firstToConsumer.notEmpty())
                 begin
                     match {.iid, .*} = firstToConsumer.first();
@@ -433,26 +434,25 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
                 begin
                     return tagged Invalid;
                 end
-            
             endmethod
             
             method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid);
-            
                 // The Bluespec scheduler was having problems with spurious warnings.
                 // So we use a wire in order to save it the confusion.
                 instanceW <= iid;
-
             endmethod
-        
+
+            method String portName() = s + "__portDataEnq";
+            method Integer portLatency() = 0;
         endinterface
     
         interface INSTANCE_CONTROL_OUT out;
-    
             method Bool full() = !deqFromConsumer.notFull();
             method Bool balanced() = True;
             method Bool heavy() = False;
             method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction; // Handled by the inctrl, above.
-        
+
+            method String portName() = s + "__cred";
         endinterface
 
     endinterface

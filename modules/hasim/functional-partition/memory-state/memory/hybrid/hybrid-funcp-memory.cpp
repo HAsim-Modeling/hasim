@@ -246,7 +246,6 @@ FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryRead(CONTEXT_ID ctxId, FUNCP_PADDR ad
 void
 FUNCP_MEMORY_SERVER_CLASS::NoteSystemMemoryWrite(CONTEXT_ID ctxId, FUNCP_PADDR addr, FUNCP_PADDR size)
 {
-//    NoteSystemMemoryWriteUnknownAddr();
     instance.SystemMemoryRef(addr, size, true);
 }
 
@@ -281,6 +280,8 @@ FUNCP_MEMORY_SERVER_CLASS::SystemMemoryRef(FUNCP_PADDR addr, UINT64 size, bool i
         addr += sizeof(MEM_CACHELINE);
         nLines -= 1;
     }
+
+    clientStub->Sync(0);
 }
 
 

@@ -351,6 +351,13 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(Bool prefetchEnableFillFromHost,
         mkSizedFIFO(valueOf(MAX_FUNCP_INFLIGHT_MEMREFS));
 
     //
+    // Track invalidation requests in flight so it is known when to signal
+    // that all requests have been processed.
+    //
+    COUNTER_Z#(6) numInvalActive <- mkLCounter_Z(0);
+
+
+    //
     // Marshall incoming read responses
     //
     rule compressReadRsp (True);
@@ -376,6 +383,23 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(Bool prefetchEnableFillFromHost,
 
         rdIsCacheableQ.enq(unpack(r.isCacheable[0]));
         rdRespMar.enq(unpack({ r.data3, r.data2, r.data1, r.data0 }));
+    endrule
+
+
+    //
+    // Respond to Sync() request only when all invalidate requests have been
+    // processed.
+    //
+    Reg#(Bool) needSync <- mkReg(False);
+
+    rule handleSyncReq (! needSync);
+        let dummy <- serverStub.acceptRequest_Sync();
+        needSync <= True;
+    endrule
+
+    rule handleSyncRsp (needSync && numInvalActive.isZero);
+        serverStub.sendResponse_Sync(?);
+        needSync <= False;
     endrule
 
 
@@ -479,16 +503,22 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(Bool prefetchEnableFillFromHost,
     // cache.
     //
     interface FUNCP_MEM_INVAL_IFC inval;
+
         // Incoming line invalidation request
-        method ActionValue#(Tuple2#(MEM_ADDRESS, Bool)) getReq();
+        method ActionValue#(Tuple2#(MEM_ADDRESS, Bool)) getReq() if (numInvalActive.value != maxBound);
+            numInvalActive.up();
             let r <- serverStub.acceptRequest_Invalidate();
+
+            debugLog.record($format("Inval for %s, 0x%x (cnt=%0d)", ((r.onlyFlush[0] == 1) ? "READ" : "WRITE"), r.addr, numInvalActive.value + 1));
+
             return tuple2(truncate(r.addr),
                           unpack(truncate(r.onlyFlush)));
         endmethod
 
         // ACK that flush is complete
         method Action sendResp();
-            serverStub.sendResponse_Invalidate(?);
+            numInvalActive.down();
+            debugLog.record($format("Inval done (cnt=%0d)", numInvalActive.value - 1));
         endmethod
     endinterface
 endmodule

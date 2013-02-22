@@ -18,8 +18,10 @@ service FUNCP_MEMORY
         // Request from host to invalidate a line cached in hardware.
         //
         method Invalidate(in FUNCP_PADDR_RRR[FUNCP_ISA_P_ADDR_SIZE_RRR] addr,
-                          in UINT8[8] onlyFlush,
-                          out UINT8[8] ack);
+                          in UINT8[8] onlyFlush);
+
+        // Guarantee all invalidates have been received and processed
+        method Sync(in UINT8[8] dummy, out UINT8[8] ack);
     };
 
     server sw (cpp, method) <- hw (bsv, connection)

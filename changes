@@ -26445,3 +26445,18 @@ Directory modules/hasim/util/modellib
   graph of the connections.  Files are currently written to
   .bsc/<controller name>.ctrl since Bluespec doesn't yet have a way to
   ask the package name and target directory.
+
+----------
+mcadler     Date: Fri Feb 22 15:57:37 EST 2013  CSN: CSN-hasim-917
+                  Fri Feb 22 20:57:37 UTC 2013
+
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          916 
+ hybrid-funcp-memory.rrr   Locally Modified          916 
+ hybrid-funcp-memory.bsv   Locally Modified          916 
+
+Change the FPGA-side cache invalidation protocol during emulation so requests
+can be pipelined.  The old code assumed performance doesn't matter.  The slowdown
+was becoming a problem for large regions (e.g. emulation of read to a large
+buffer).

@@ -61,7 +61,7 @@ FUNCP_CACHE_READ_META
 // Define the interface for the module that communicates with the host.
 //
 
-typedef CENTRAL_CACHE_CLIENT_BACKING#(FUNCP_MEM_WORD_PADDR,
+typedef CENTRAL_CACHE_CLIENT_BACKING#(MEM_WORD_ADDRESS,
                                       MEM_VALUE,
                                       t_READ_META) FUNCP_CENTRAL_CACHE_BACKING#(type t_READ_META);
 
@@ -84,24 +84,6 @@ interface FUNCP_MEM_HOST_IFC#(type t_READ_META);
     // Invalidation / flush request interface
     interface FUNCP_MEM_INVAL_IFC inval;
 endinterface: FUNCP_MEM_HOST_IFC
-
-
-// Low address bits indexing base ISA data size.  Addresses come in from the
-// model pointing to a byte.  The cache points to a word.
-typedef TLog#(TDiv#(`FUNCP_ISA_INT_REG_SIZE, 8)) FUNCP_MEM_ISA_WORD_OFFSET_BITS;
-typedef Bit#(FUNCP_MEM_ISA_WORD_OFFSET_BITS)     FUNCP_MEM_ISA_WORD_OFFSET;
-
-typedef Bit#(TSub#(`FUNCP_ISA_P_ADDR_SIZE, FUNCP_MEM_ISA_WORD_OFFSET_BITS)) FUNCP_MEM_WORD_PADDR;
-
-function FUNCP_MEM_WORD_PADDR wordAddrFromByteAddr(MEM_ADDRESS addr);
-    Tuple2#(FUNCP_MEM_WORD_PADDR, FUNCP_MEM_ISA_WORD_OFFSET) a = unpack(addr);
-    return tpl_1(a);
-endfunction
-
-function MEM_ADDRESS byteAddrFromWordAddr(FUNCP_MEM_WORD_PADDR addr);
-    FUNCP_MEM_ISA_WORD_OFFSET w = 0;
-    return { addr, w };
-endfunction
 
 
 // ***** Modules *****
@@ -141,7 +123,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
     
     let prefetcher <- mkFuncpCachePrefetcher(prefetchAllRefTypes, debugLog);
     
-    CENTRAL_CACHE_CLIENT#(FUNCP_MEM_WORD_PADDR, MEM_VALUE, FUNCP_CACHE_READ_META) cache <-
+    CENTRAL_CACHE_CLIENT#(MEM_WORD_ADDRESS, MEM_VALUE, FUNCP_CACHE_READ_META) cache <-
         mkCentralCacheClient(`VDEV_CACHE_FUNCP_MEMORY,
                              num_pvt_entries,
                              prefetcher,
@@ -152,7 +134,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
     let stats <- mkFuncpMemPvtCacheStats(cache.stats);
 
     // Invalidate requests
-    FIFOF#(Tuple2#(FUNCP_MEM_WORD_PADDR, Bool)) invalQ <- mkFIFOF();
+    FIFOF#(Tuple2#(MEM_WORD_ADDRESS, Bool)) invalQ <- mkFIFOF();
 
     // Debug messages
     let msgLD_Req <- getGlobalStringUID("FUNCP Mem: LD REQ  ctx=%d, tok=%d, PA=0x%016llx, w_addr=0x%016llx\n");
@@ -283,7 +265,7 @@ module [HASIM_MODULE] mkFUNCP_Memory
 
         // Invalidate the next word in the line.  The software side guarantees
         // the address is line-aligned, so the OR operation works.
-        FUNCP_MEM_WORD_PADDR w_addr = addr | zeroExtend(invalWordIdx);
+        MEM_WORD_ADDRESS w_addr = addr | zeroExtend(invalWordIdx);
         invalWordIdx <= invalWordIdx + 1;
 
         if (only_flush)
@@ -332,7 +314,7 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(Bool prefetchEnableFillFromHost,
     //
     FIFO#(Tuple3#(FUNCP_MEM_CACHELINE_WORD_VALID_MASK,
                   Bool,
-                  FUNCP_MEM_WORD_PADDR)) stCtrlQ <- mkFIFO();
+                  MEM_WORD_ADDRESS)) stCtrlQ <- mkFIFO();
 
     Reg#(Bit#(TLog#(FUNCP_MEM_CACHELINE_WORDS))) rdWordIdx <- mkReg(0);
     FIFO#(Bool) rdIsCacheableQ <- mkFIFO();
@@ -411,7 +393,7 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(Bool prefetchEnableFillFromHost,
         // readLineReq --
         //     Request a full line of data.
         //
-        method Action readLineReq(FUNCP_MEM_WORD_PADDR wAddr,
+        method Action readLineReq(MEM_WORD_ADDRESS wAddr,
                                   t_READ_META readMeta,
                                   RL_CACHE_GLOBAL_READ_META globalReadMeta);
             let client_meta = readMeta.clientReadMeta;
@@ -454,7 +436,7 @@ module [HASIM_MODULE] mkRemoteFuncpMem#(Bool prefetchEnableFillFromHost,
         //            doesn't match the configuration of the central cache.
         //            The central cache currently requires 4 words per line.
         //
-        method Action writeLineReq(FUNCP_MEM_WORD_PADDR wAddr,
+        method Action writeLineReq(MEM_WORD_ADDRESS wAddr,
                                    FUNCP_MEM_CACHELINE_WORD_VALID_MASK wordValidMask,
                                    Bool sendAck) if (stWordIdx == 0);
             let addr = byteAddrFromWordAddr(wAddr);
@@ -566,9 +548,9 @@ endmodule
 //
 module mkFuncpCachePrefetcher#(Bool prefetchAllRefTypes, DEBUG_FILE debugLog)
     // interface:
-    (CACHE_PREFETCHER#(t_CACHE_IDX, FUNCP_MEM_WORD_PADDR, FUNCP_CACHE_READ_META))
+    (CACHE_PREFETCHER#(t_CACHE_IDX, MEM_WORD_ADDRESS, FUNCP_CACHE_READ_META))
     provisos (Bits#(t_CACHE_IDX, t_CACHE_IDX_SZ),
-              Alias#(t_CACHE_ADDR, FUNCP_MEM_WORD_PADDR),
+              Alias#(t_CACHE_ADDR, MEM_WORD_ADDRESS),
               Alias#(t_CACHE_READ_META, FUNCP_CACHE_READ_META),
 
               Bits#(MEM_VALUE, t_WORD_SZ),
@@ -594,18 +576,18 @@ module mkFuncpCachePrefetcher#(Bool prefetchAllRefTypes, DEBUG_FILE debugLog)
     //
     function Tuple3#(t_PAGE_IDX,
                      t_LINE_IDX,
-                     t_WORD_IDX) burstAddr(FUNCP_MEM_WORD_PADDR addr) =
+                     t_WORD_IDX) burstAddr(MEM_WORD_ADDRESS addr) =
         unpack(addr);
 
-    function FUNCP_MEM_WORD_PADDR packAddr(t_PAGE_IDX pageIdx,
-                                           t_LINE_IDX lineIdx,
-                                           t_WORD_IDX wordIdx) =
+    function MEM_WORD_ADDRESS packAddr(t_PAGE_IDX pageIdx,
+                                       t_LINE_IDX lineIdx,
+                                       t_WORD_IDX wordIdx) =
         { pageIdx, lineIdx, wordIdx };
 
 
 
-    Wire#(FUNCP_MEM_WORD_PADDR) newReq <- mkWire();
-    FIFOF#(FUNCP_MEM_WORD_PADDR) prefReqQ <- mkSizedFIFOF(4);
+    Wire#(MEM_WORD_ADDRESS) newReq <- mkWire();
+    FIFOF#(MEM_WORD_ADDRESS) prefReqQ <- mkSizedFIFOF(4);
 
     (* fire_when_enabled *)
     rule fwdReq (True);

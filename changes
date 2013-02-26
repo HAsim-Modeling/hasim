@@ -26460,3 +26460,26 @@ Change the FPGA-side cache invalidation protocol during emulation so requests
 can be pipelined.  The old code assumed performance doesn't matter.  The slowdown
 was becoming a problem for large regions (e.g. emulation of read to a large
 buffer).
+
+----------
+mcadler     Date: Tue Feb 26 07:30:01 EST 2013  CSN: CSN-hasim-918
+                  Tue Feb 26 12:30:01 UTC 2013
+
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          917 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          917 
+
+Directory modules/hasim/functional-partition/memory-state/base-types
+ memstate-base-types.bsv   Locally Modified          917 
+
+Stopped trying to invent a simpler load locked / store conditional manager
+after finding programs with a lot of uncontended locks that all failed
+because the functional pipeline lock manager couldn't track them all.
+Built a hash table instead, which is relatively easy since the number of
+elements managed is bounded.  (Each processor may have only one active
+lock.)  In the typical case the manager can handle a store every other
+cycle.  The slowest operation is removing a lock from the table, since
+it is a doubly linked list.

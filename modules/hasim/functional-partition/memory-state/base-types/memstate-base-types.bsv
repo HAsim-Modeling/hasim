@@ -50,6 +50,27 @@ typedef FUNCP_INT_REG MEM_VALUE;
 typedef Bit#(3) MEM_OFFSET;
 
 
+// ===================================================================
+//
+// Memory types and functions for indexing by words instead of bytes.
+//
+// ===================================================================
+
+typedef TLog#(TDiv#(`FUNCP_ISA_INT_REG_SIZE, 8)) FUNCP_MEM_ISA_WORD_OFFSET_BITS;
+typedef Bit#(FUNCP_MEM_ISA_WORD_OFFSET_BITS)     FUNCP_MEM_ISA_WORD_OFFSET;
+
+typedef Bit#(TSub#(`FUNCP_ISA_P_ADDR_SIZE, FUNCP_MEM_ISA_WORD_OFFSET_BITS)) MEM_WORD_ADDRESS;
+
+function MEM_WORD_ADDRESS wordAddrFromByteAddr(MEM_ADDRESS addr);
+    Tuple2#(MEM_WORD_ADDRESS, FUNCP_MEM_ISA_WORD_OFFSET) a = unpack(addr);
+    return tpl_1(a);
+endfunction
+
+function MEM_ADDRESS byteAddrFromWordAddr(MEM_WORD_ADDRESS addr);
+    FUNCP_MEM_ISA_WORD_OFFSET w = 0;
+    return { addr, w };
+endfunction
+
 
 // ===================================================================
 //

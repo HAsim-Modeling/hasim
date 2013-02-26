@@ -71,7 +71,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     DEBUG_FILE debugLog <- mkDebugFile(`FUNCP_MEMSTATE_LOGFILE_NAME);
     STDIO#(Bit#(64)) stdio <- mkStdIO_Debug();
 
-    let msgFailedInSB <- getGlobalStringUID("MEMSTATE LockMgr: Failed (already in SB) CTX %d, Addr 0x%llx\n");
+    let msgLockResult <- getGlobalStringUID("MEMSTATE STORE EXCLUSIVE: CTX %d, Addr 0x%llx, not in SB %d, Lock Mgr %d, can store %d\n");
 
     // ***** Submodules ***** //
 
@@ -141,6 +141,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         // stores present in the store buffer should be successful conditional
         // stores already holding a lock.
         stBuffer.testForExclusiveReq(stInfo.tok.index, stInfo.addr);
+        lockMgr.tryLockReq(tokContextId(stInfo.tok), stInfo.addr);
         storeState <= FUNCP_MEMSTATE_STORE_TRYLOCK_RSP;
     endrule
 
@@ -156,27 +157,22 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
         storeState <= FUNCP_MEMSTATE_STORE_READY;
 
-        Bool got_lock = False;
         let not_in_sb <- stBuffer.testForExclusiveResp();
-        if (not_in_sb)
-        begin
-            got_lock <- lockMgr.tryLock(tokContextId(stInfo.tok), stInfo.addr);
-        end
-        else
-        begin
-            stdio.printf(msgFailedInSB, list(zeroExtend(tokContextId(stInfo.tok)), zeroExtend(stInfo.addr)));
-        end
+        let got_lock <- lockMgr.tryLockResp();
 
-        // Store permitted only if the lock was acquired
-        if (got_lock)
+        let can_store = not_in_sb && got_lock;
+
+        if (can_store)
         begin
+            // Success
             stBuffer.insertReq(stInfo.tok.index, stInfo.addr, stInfo.value);
         end
 
         // Respond with result
-        linkRegState.makeResp(memStateRespStatus(stInfo.memRefToken, got_lock));
+        linkRegState.makeResp(memStateRespStatus(stInfo.memRefToken, can_store));
 
-        debugLog.record($format("  STORE EXCLUSIVE: not in SB %0d, got lock %0d, ", not_in_sb, got_lock) + fshow(stInfo.memRefToken));
+        debugLog.record($format("  STORE EXCLUSIVE: not in SB %0d, Lock Mgr %0d, can store %0d, ", not_in_sb, got_lock, can_store) + fshow(stInfo.memRefToken));
+        stdio.printf(msgLockResult, list(zeroExtend(tokContextId(stInfo.tok)), zeroExtend(stInfo.addr), zeroExtend(pack(not_in_sb)), zeroExtend(pack(got_lock)), zeroExtend(pack(can_store))));
     endrule
 
     // memLoad
@@ -386,31 +382,397 @@ interface MEMSTATE_LOCK_LINE_MGR;
     method Action noteWriteback(CONTEXT_ID ctx, MEM_ADDRESS addr);
 
     // Request exclusive access
-    method ActionValue#(Bool) tryLock(CONTEXT_ID ctx, MEM_ADDRESS addr);
+    method Action tryLockReq(CONTEXT_ID ctx, MEM_ADDRESS addr);
+    method ActionValue#(Bool) tryLockResp();
 endinterface
 
 
-typedef 4 MEMSTATE_NUM_LOCK_MONITORS;
+//
+// Each context may hold one lock on an address.
+//
+typedef struct
+{
+    // Unique tag associated with an address.  Called a "tag" instead of address
+    // because addresses may be hashed.
+    MEM_WORD_ADDRESS tag;
+
+    // Chain of contexts within a hash table chain.
+    Maybe#(CONTEXT_ID) prev;
+    Maybe#(CONTEXT_ID) next;
+}
+FUNCP_MEMSTATE_CTX_LOCK
+    deriving (Eq, Bits);
+
+typedef enum
+{
+    FUNCP_MEMSTATE_LOCK_READY,
+    FUNCP_MEMSTATE_LOCK_NEW_REQ,
+    FUNCP_MEMSTATE_LOCK_UPD_PREV,
+    FUNCP_MEMSTATE_LOCK_NOTE_WRITE,
+    FUNCP_MEMSTATE_LOCK_CLEAR_MON
+}
+FUNCP_MEMSTATE_LOCK_STATE
+    deriving (Eq, Bits);
+
+//
+// Incoming requests
+//
+typedef enum
+{
+    FUNCP_MEMSTATE_LOCK_REQ_MON_START,
+    FUNCP_MEMSTATE_LOCK_REQ_NOTE_WRITE,
+    FUNCP_MEMSTATE_LOCK_REQ_TRY_LOCK
+}
+FUNCP_MEMSTATE_LOCK_REQ
+    deriving (Eq, Bits);
+
 
 module [HASIM_MODULE] mkFUNCPMemStateLockMgr#(DEBUG_FILE debugLog, STDIO#(Bit#(64)) stdio)
     // Interface:
-    (MEMSTATE_LOCK_LINE_MGR);
+    (MEMSTATE_LOCK_LINE_MGR)
+    provisos (NumAlias#(n_HASH_BUCKETS, TAdd#(2, CONTEXT_ID_SIZE)),
+              Alias#(t_HASH_IDX, Bit#(n_HASH_BUCKETS)));
 
-    // Monitored addresses
-    Reg#(Vector#(MEMSTATE_NUM_LOCK_MONITORS, MEM_ADDRESS)) monAddrs <- mkRegU();
+    Reg#(FUNCP_MEMSTATE_LOCK_STATE) state <- mkReg(FUNCP_MEMSTATE_LOCK_READY);
 
-    // Mask of contexts monitoring an address
-    Vector#(MEMSTATE_NUM_LOCK_MONITORS, LUTRAM#(CONTEXT_ID, Bool)) monContexts <-
-        replicateM(mkLUTRAM(False));
+    // Hash table
+    MEMORY_IFC#(t_HASH_IDX, Maybe#(CONTEXT_ID)) hashTable <-
+        mkBRAMInitialized(tagged Invalid);
 
-    // Next monitor to use (round robin)
-    Reg#(UInt#(TLog#(MEMSTATE_NUM_LOCK_MONITORS))) nextMon <- mkReg(0);
+    // Each context may monitor a single address.  When active, a context's
+    // monitor is stored in the hash table.
+    MEMORY_IFC#(CONTEXT_ID, Maybe#(FUNCP_MEMSTATE_CTX_LOCK)) monitors <-
+        mkBRAMInitialized(tagged Invalid);
+
+    Reg#(FUNCP_MEMSTATE_CTX_LOCK) curMon <- mkRegU();
+    Reg#(Maybe#(CONTEXT_ID)) clearMonResumeMonIdx <- mkRegU();
+    Reg#(FUNCP_MEMSTATE_LOCK_STATE) clearMonResumeState <- mkRegU();
+
+
+    FIFO#(Tuple3#(FUNCP_MEMSTATE_LOCK_REQ, CONTEXT_ID, MEM_ADDRESS)) newReqQ <-
+        mkFIFO();
+
+    FIFO#(Tuple3#(FUNCP_MEMSTATE_LOCK_REQ, CONTEXT_ID, MEM_WORD_ADDRESS)) curQ <-
+        mkFIFO();
+
+    FIFO#(Bool) tryLockRspQ <- mkFIFO();
 
     // Debugging strings
-    let msgMonExisting <- getGlobalStringUID("MEMSTATE LockMgr: Lock Mgr:  Monitor CTX %d, Addr 0x%llx (existing slot %d)\n");
-    let msgMonNew <- getGlobalStringUID("MEMSTATE LockMgr: Lock Mgr:  Monitor CTX %d, Addr 0x%llx (new slot %d)\n");
-    let msgWBInval <- getGlobalStringUID("MEMSTATE LockMgr: WB invalidates monitor idx %d, Addr 0x%llx\n");
-    let msgGotLock <- getGlobalStringUID("MEMSTATE LockMgr: Got lock idx %d, CTX %d, Addr 0x%llx\n");
+    let msgMonNew <- getGlobalStringUID("MEMSTATE LockMgr: Lock Mgr:  Monitor CTX %d, tag 0x%llx\n");
+    let msgWBInval <- getGlobalStringUID("MEMSTATE LockMgr: WB invalidates monitor idx %d, tag 0x%llx\n");
+    let msgGotLock <- getGlobalStringUID("MEMSTATE LockMgr: Got lock CTX %d, tag 0x%llx\n");
+    let msgFailedLock <- getGlobalStringUID("MEMSTATE LockMgr: Failed lock CTX %d, tag 0x%llx\n");
+
+    //
+    // startReq --
+    //   All new requests begin here.  Compute the hash table entry and load
+    //   the relevant current state.
+    //
+    rule startReq (state == FUNCP_MEMSTATE_LOCK_READY);
+        match {.req, .ctx, .addr} = newReqQ.first();
+        newReqQ.deq();
+
+        // Monitor words, not bytes
+        let word_addr = wordAddrFromByteAddr(addr);
+        // Hash the address to generate a tag.  The hash function is reversible,
+        // so there is a 1:1 mapping of input to output values.
+        let tag = hashBits(word_addr);
+
+        hashTable.readReq(truncate(tag));
+        monitors.readReq(ctx);
+
+        curQ.enq(tuple3(req, ctx, tag));
+        state <= FUNCP_MEMSTATE_LOCK_NEW_REQ;
+
+        debugLog.record($format("    Lock Mgr:  New req %0d, CTX %0d, Addr 0x%x, Tag 0x%x", req, ctx, addr, tag));
+    endrule
+
+
+    //
+    // handleMonStart --
+    //   Start monitoring an address for a specific context.
+    //
+    rule handleMonStart0 (state == FUNCP_MEMSTATE_LOCK_NEW_REQ &&
+                          tpl_1(curQ.first) == FUNCP_MEMSTATE_LOCK_REQ_MON_START);
+        match {.req, .ctx, .tag} = curQ.first();
+        let cur_head <- hashTable.readRsp();
+        let ctx_mon <- monitors.readRsp();
+
+        if (ctx_mon matches tagged Valid .mon)
+        begin
+            // Context already has a monitor.  Start by clearing the old
+            // monitor.  This rule will fire again once the monitor is cleared.
+            state <= FUNCP_MEMSTATE_LOCK_CLEAR_MON;
+            monitors.write(ctx, tagged Invalid);
+            curMon <= mon;
+            clearMonResumeMonIdx <= tagged Valid ctx;
+            clearMonResumeState <= state;
+        end
+        else
+        begin
+            // Add context's monitor to the head of the tag's hash chain
+            let new_mon = FUNCP_MEMSTATE_CTX_LOCK { tag: tag,
+                                                    prev: tagged Invalid,
+                                                    next: cur_head };
+            monitors.write(ctx, tagged Valid new_mon);
+            hashTable.write(truncate(tag), tagged Valid ctx);
+
+            debugLog.record($format("    Lock Mgr:  Monitor CTX %0d, Tag 0x%x", ctx, tag));
+            stdio.printf(msgMonNew, list(zeroExtend(ctx), zeroExtend(tag)));
+
+            curMon <= new_mon;
+
+            if (cur_head matches tagged Valid .old_head)
+            begin
+                monitors.readReq(old_head);
+                state <= FUNCP_MEMSTATE_LOCK_UPD_PREV;
+            end
+            else
+            begin
+                curQ.deq();
+                state <= FUNCP_MEMSTATE_LOCK_READY;
+            end
+        end
+    endrule
+
+    rule handleMonStart1 (state == FUNCP_MEMSTATE_LOCK_UPD_PREV);
+        match {.req, .ctx, .tag} = curQ.first();
+        let m_next_mon <- monitors.readRsp();
+        let next_mon = validValue(m_next_mon);
+        curQ.deq();
+
+        // Update the next entry in the list to point back to the newly added
+        // monitor.
+        next_mon.prev = tagged Valid ctx;
+        monitors.write(validValue(curMon.next), tagged Valid next_mon);
+
+        state <= FUNCP_MEMSTATE_LOCK_READY;
+    endrule
+
+
+    //
+    // handleNoteWrite0 --
+    //   Watch all stores and kill any conflicting locks.
+    //
+    Reg#(CONTEXT_ID) monCtx <- mkRegU();
+
+    rule handleNoteWrite0 (state == FUNCP_MEMSTATE_LOCK_NEW_REQ &&
+                           tpl_1(curQ.first) == FUNCP_MEMSTATE_LOCK_REQ_NOTE_WRITE);
+        match {.req, .ctx, .tag} = curQ.first();
+        let cur_head <- hashTable.readRsp();
+        let ctx_mon <- monitors.readRsp();
+
+        if (! isValid(cur_head))
+        begin
+            // Nothing at the hash table entry.  Address is not present.
+            curQ.deq();
+            state <= FUNCP_MEMSTATE_LOCK_READY;
+        end
+        else
+        begin
+            // Start walking the entries, looking for possible matches.
+            monitors.readReq(validValue(cur_head));
+            state <= FUNCP_MEMSTATE_LOCK_NOTE_WRITE;
+            monCtx <= validValue(cur_head);
+        end
+    endrule
+
+    rule handleNoteWrite1 (state == FUNCP_MEMSTATE_LOCK_NOTE_WRITE);
+        match {.req, .ctx, .tag} = curQ.first();
+        let m_mon <- monitors.readRsp();
+        // Must be valid since it was on a list
+        let mon = validValue(m_mon);
+
+        // Remove current entry if tag matches
+        if (mon.tag == tag)
+        begin
+            debugLog.record($format("    Lock Mgr:  WB invalidates monitor CTX %0d, tag 0x%x", monCtx, tag));
+            stdio.printf(msgWBInval, list(zeroExtend(monCtx), zeroExtend(tag)));
+
+            state <= FUNCP_MEMSTATE_LOCK_CLEAR_MON;
+            monitors.write(monCtx, tagged Invalid);
+            curMon <= mon;
+
+            clearMonResumeMonIdx <= mon.next;
+            if (mon.next matches tagged Valid .next)
+            begin
+                // Chain continues.  Come back here.
+                clearMonResumeState <= state;
+                monCtx <= next;
+            end
+            else
+            begin
+                // End of chain.
+                clearMonResumeState <= FUNCP_MEMSTATE_LOCK_READY;
+            end
+        end
+        else if (mon.next matches tagged Valid .next)
+        begin
+            // List continues.  Check the next entry.
+            monitors.readReq(next);
+            monCtx <= next;
+        end
+        else
+        begin
+            // End of chain.  Done.
+            curQ.deq();
+            state <= FUNCP_MEMSTATE_LOCK_READY;
+        end
+    endrule
+
+
+    //
+    // handleTryLock --
+    //   Store lock request has arrived.  Is the monitor still valid?
+    //
+    rule handleTryLock (state == FUNCP_MEMSTATE_LOCK_NEW_REQ &&
+                        tpl_1(curQ.first) == FUNCP_MEMSTATE_LOCK_REQ_TRY_LOCK);
+        match {.req, .ctx, .tag} = curQ.first();
+        let cur_head <- hashTable.readRsp();
+        let ctx_mon <- monitors.readRsp();
+
+        Bool mon_valid = False;
+        if (ctx_mon matches tagged Valid .mon)
+        begin
+            // Success if tag matches
+            mon_valid = (mon.tag == tag);
+
+            tryLockRspQ.enq(mon_valid);
+
+            // Remove the monitor.  We could choose to remove all other monitors
+            // for the address at the same time, but that would add logic and
+            // it is not necessary, since the caller will also check the store
+            // buffer for matches before returning a successful lock.  Thus,
+            // this lock manager code may hand out more than one winner but
+            // the store buffer will permit only one true winner.
+            state <= FUNCP_MEMSTATE_LOCK_CLEAR_MON;
+            monitors.write(ctx, tagged Invalid);
+            curMon <= mon;
+            clearMonResumeMonIdx <= tagged Invalid;
+            clearMonResumeState <= FUNCP_MEMSTATE_LOCK_READY;
+        end
+        else
+        begin
+            // Failure: context no longer has a monitor.
+            curQ.deq();
+            tryLockRspQ.enq(False);
+            state <= FUNCP_MEMSTATE_LOCK_READY;
+        end
+
+        if (mon_valid)
+        begin
+            debugLog.record($format("    Lock Mgr:  Got lock CTX %0d, tag 0x%x", ctx, tag));
+            stdio.printf(msgGotLock, list(zeroExtend(ctx), zeroExtend(tag)));
+        end
+        else
+        begin
+            debugLog.record($format("    Lock Mgr:  Failed lock CTX %0d, tag 0x%x", ctx, tag));
+            stdio.printf(msgFailedLock, list(zeroExtend(ctx), zeroExtend(tag)));
+        end
+    endrule
+
+
+    //
+    // removeMonitor --
+    //   State machine for removing a monitor from a hash chain.
+    //
+    //   The monitor to remove is stored in curMon.  The state to set
+    //   once done is stored in clearMonResumeState.
+    //
+    //   This rule assumes that the caller has already invalidated the
+    //   monitor.
+    //
+    Reg#(Bit#(3)) removeState <- mkReg(0);
+
+    rule removeMonitor (state == FUNCP_MEMSTATE_LOCK_CLEAR_MON);
+        case (removeState)
+            // Requests enter here.
+            0:
+            begin
+                if (curMon.prev matches tagged Valid .prev)
+                begin
+                    // Entry is part of a chain.  Get the previous entry.
+                    monitors.readReq(prev);
+                    removeState <= 1;
+                end
+                else
+                begin
+                    // Monitor to remove was the head of the chain.  Make
+                    // next entry the new head.
+                    hashTable.write(truncate(curMon.tag), curMon.next);
+                    removeState <= 2;
+                end
+            end
+
+            // Previous entry is another monitor.  Update it to point around
+            // the monitor being removed.
+            1:
+            begin
+                let m_prev_mon <- monitors.readRsp();
+                let prev_mon = validValue(m_prev_mon);
+
+                prev_mon.next = curMon.next;
+                monitors.write(validValue(curMon.prev), tagged Valid prev_mon);
+
+                removeState <= 2;
+            end
+
+            // Is the next entry valid?  If so, the next monitor in the chain
+            // has to be updated.
+            2:
+            begin
+                if (curMon.next matches tagged Valid .next)
+                begin
+                    // Read the next monitor in the chain to update its prev
+                    // pointer.
+                    monitors.readReq(next);
+                    removeState <= 3;
+                end
+                else
+                begin
+                    removeState <= 4;
+                end
+            end
+
+            // Make next monitor point to prev of the one being removed.
+            3:
+            begin
+                let m_next_mon <- monitors.readRsp();
+                let next_mon = validValue(m_next_mon);
+
+                next_mon.prev = curMon.prev;
+                monitors.write(validValue(curMon.next), tagged Valid next_mon);
+
+                removeState <= 4;
+            end
+
+            // Done
+            4:
+            begin
+                match {.req, .ctx, .tag} = curQ.first();
+
+                // Resume to ready state implies done with processing.
+                if (clearMonResumeState == FUNCP_MEMSTATE_LOCK_READY)
+                begin
+                    curQ.deq();
+                end
+
+                // Re-read some state, as needed, and resume the original flow.
+                if (clearMonResumeState == FUNCP_MEMSTATE_LOCK_NEW_REQ)
+                begin
+                    hashTable.readReq(truncate(tag));
+                end
+                if (clearMonResumeMonIdx matches tagged Valid .idx)
+                begin
+                    monitors.readReq(idx);
+                end
+
+                state <= clearMonResumeState;
+                removeState <= 0;
+            end
+        endcase
+    endrule
+
 
     //
     // Start watching a memory location.  Only a relatively small number of
@@ -419,71 +781,21 @@ module [HASIM_MODULE] mkFUNCPMemStateLockMgr#(DEBUG_FILE debugLog, STDIO#(Bit#(6
     // New requests push out old (even valid) ones.
     //
     method Action monStart(CONTEXT_ID ctx, MEM_ADDRESS addr);
-        if (findElem(addr, monAddrs) matches tagged Valid .idx &&&
-            idx != nextMon)
-        begin
-            // Address already monitored.  Activate the monitor for this context.
-            monContexts[idx].upd(ctx, True);
-
-            debugLog.record($format("    Lock Mgr:  Monitor CTX %0d, Addr 0x%x (existing slot %0d)", ctx, addr, idx));
-            stdio.printf(msgMonExisting, list(zeroExtend(ctx), zeroExtend(addr), zeroExtend(pack(idx))));
-        end
-        else
-        begin
-            // Use the next monitor (round robin).  The context mask for the
-            // nextMon is guaranteed to be completely clear.
-            monAddrs[nextMon] <= addr;
-            monContexts[nextMon].upd(ctx, True);
-
-            debugLog.record($format("    Lock Mgr:  Monitor CTX %0d, Addr 0x%x (new slot %0d)", ctx, addr, nextMon));
-            stdio.printf(msgMonNew, list(zeroExtend(ctx), zeroExtend(addr), zeroExtend(pack(nextMon))));
-
-            // Prepare the next slot for when it is needed
-            let last_idx = fromInteger(valueOf(TSub#(MEMSTATE_NUM_LOCK_MONITORS, 1)));
-            let n_idx = (nextMon == last_idx) ? 0 : nextMon + 1;
-
-            nextMon <= n_idx;
-            monContexts[n_idx].reset();
-        end
+        newReqQ.enq(tuple3(FUNCP_MEMSTATE_LOCK_REQ_MON_START, ctx, addr));
     endmethod
 
     method Action noteWriteback(CONTEXT_ID ctx, MEM_ADDRESS addr);
-        //
-        // Clear a monitor if the written address matches
-        //
-        if (findElem(addr, monAddrs) matches tagged Valid .idx)
-        begin
-            monContexts[idx].reset();
-
-            // Technically we don't have to clear the address, too.  However,
-            // the reset() may take a while if it is iterating through the
-            // context pool.  Clearing the address will force the next attempt
-            // to use a different slot that is already initialized.
-            monAddrs[idx] <= 0;
-
-            debugLog.record($format("    Lock Mgr:  WB invalidates monitor idx %0d, Addr 0x%x", idx, addr));
-            stdio.printf(msgWBInval, list(zeroExtend(pack(idx)), zeroExtend(addr)));
-        end
+        newReqQ.enq(tuple3(FUNCP_MEMSTATE_LOCK_REQ_NOTE_WRITE, ctx, addr));
     endmethod
 
-    method ActionValue#(Bool) tryLock(CONTEXT_ID ctx, MEM_ADDRESS addr);
-        //
-        // Lock is valid if some monitor matches the context and address.
-        //
-        if (findElem(addr, monAddrs) matches tagged Valid .idx &&&
-            monContexts[idx].sub(ctx))
-        begin
-            debugLog.record($format("    Lock Mgr:  Got lock idx %0d, CTX %0d, Addr 0x%x", idx, ctx, addr));
-            stdio.printf(msgGotLock, list(zeroExtend(pack(idx)), zeroExtend(ctx), zeroExtend(addr)));
+    method Action tryLockReq(CONTEXT_ID ctx, MEM_ADDRESS addr);
+        newReqQ.enq(tuple3(FUNCP_MEMSTATE_LOCK_REQ_TRY_LOCK, ctx, addr));
+    endmethod
 
-            // Picked a winner.  All other contexts lose.
-            monContexts[idx].reset();
+    method ActionValue#(Bool) tryLockResp();
+        let r = tryLockRspQ.first();
+        tryLockRspQ.deq();
 
-            return True;
-        end
-        else
-        begin
-            return False;
-        end
+        return r;
     endmethod
 endmodule

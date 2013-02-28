@@ -26483,3 +26483,24 @@ elements managed is bounded.  (Each processor may have only one active
 lock.)  In the typical case the manager can handle a store every other
 cycle.  The slowest operation is removing a lock from the table, since
 it is a doubly linked list.
+
+----------
+mcadler     Date: Wed Feb 27 20:54:25 EST 2013  CSN: CSN-hasim-919
+                  Thu Feb 28 01:54:25 UTC 2013
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          918 
+ commands-misc-controllers.bsv Locally Modified          918 
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          918 
+ permutation-ports.bsv     Locally Modified          918 
+ stall-ports.bsv           Locally Modified          918 
+ a-ports.bsv               Locally Modified          918 
+
+Represent port names and latencies as lists instead of single values, allowing
+complex ports such as those used in the mesh network to describe all connections.
+
+This affects only the generated .ctrl files useful for building graphs of a
+target's topology.  There is no effect on running models.

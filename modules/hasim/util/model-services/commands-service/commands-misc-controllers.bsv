@@ -373,8 +373,7 @@ module mkDependenceController
             producerCredits.setC(tmp);
         endmethod
 
-        method String portName() = "";
-        method Integer portLatency() = 0;
+        method List#(PORT_INFO) portInfo() = List::nil;
     endinterface
 
 endmodule
@@ -411,8 +410,7 @@ module mkConvertControllerInstances_IN#(INSTANCE_CONTROL_IN#(t_NUM_INSTANCES_SRC
         inctrl.setMaxRunningInstance(truncateNP(iid));
     endmethod
 
-    method String portName() = inctrl.portName;
-    method Integer portLatency() = inctrl.portLatency;
+    method List#(PORT_INFO) portInfo() = inctrl.portInfo();
 endmodule
 
 
@@ -437,5 +435,5 @@ module mkConvertControllerAlwaysReady_OUT#(INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES
     method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) =
         outctrl.setMaxRunningInstance(iid);
 
-    method String portName() = outctrl.portName;
+    method List#(String) portName() = outctrl.portName;
 endmodule

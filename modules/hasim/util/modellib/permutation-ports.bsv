@@ -132,8 +132,8 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
             initialized <= True;
         endmethod
         
-        method String portName() = portname;
-        method Integer portLatency() = latency;
+        method List#(PORT_INFO) portInfo() =
+            list(PORT_INFO {name: portname, latency: latency});
     endinterface
 
     method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) dummy) if (canDeq);
@@ -372,9 +372,8 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_Join#(
             initialized <= True;
         endmethod
         
-        method String portName() = "Join " + p1.ctrl.portName + " and " + p2.ctrl.portName;
-        // Not clear what latency should be...
-        method Integer portLatency() = max(p1.ctrl.portLatency, p2.ctrl.portLatency);
+        method List#(PORT_INFO) portInfo() =
+            List::append(p1.ctrl.portInfo, p2.ctrl.portInfo);
     endinterface
 
     method ActionValue#(Maybe#(t_MSG)) receive(t_JOIN_ID dummy) if (canDeq);
@@ -430,7 +429,8 @@ module [HASIM_MODULE] mkPortSend_Multiplexed_Split#(
             initialized <= True;
         endmethod
 
-        method String portName() = "Split " + p1.ctrl.portName + " and " + p2.ctrl.portName;
+        method List#(String) portName() =
+            List::append(p1.ctrl.portName, p2.ctrl.portName);
     endinterface
 
     method Action send(t_SPLIT_ID dummy, Maybe#(t_MSG) msg) if (initialized && canEnq);

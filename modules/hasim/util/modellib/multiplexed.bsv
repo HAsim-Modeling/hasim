@@ -372,10 +372,7 @@ module mkMultiplexedStatePool#(t_DATA initval)
             maxRunningInstance <= iid;
         endmethod
 
-        method String portName() = "";
-        method Integer portLatency() = 0;
+        method List#(PORT_INFO) portInfo() = List::nil;
     endinterface
 
-
 endmodule
-

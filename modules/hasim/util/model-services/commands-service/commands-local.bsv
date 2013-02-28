@@ -25,6 +25,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 import Vector::*;
+import List::*;
 import FIFO::*;
 import FIFOF::*;
 import SpecialFIFOs::*;
@@ -819,10 +820,18 @@ module [HASIM_MODULE] emitPortGraphFile#(
         hPutStrLn(hdl, "");
         for (Integer i = 0; i < valueOf(n_ALL_INPORTS); i = i + 1)
         begin
-            if (all_inports[i].portName != "")
+            List#(PORT_INFO) port_info = all_inports[i].portInfo();
+            while (port_info != List::nil)
             begin
-                hPutStrLn(hdl, "I," + name + "," + all_inports[i].portName + "," +
-                          integerToString(all_inports[i].portLatency));
+                let p = List::head(port_info);
+
+                if (p.name != "")
+                begin
+                    hPutStrLn(hdl, "I," + name + "," + p.name + "," +
+                              integerToString(p.latency));
+                end
+
+                port_info = List::tail(port_info);
             end
         end
     end
@@ -832,9 +841,17 @@ module [HASIM_MODULE] emitPortGraphFile#(
         hPutStrLn(hdl, "");
         for (Integer i = 0; i < valueOf(t_NUM_OUTPORTS); i = i + 1)
         begin
-            if (outctrls[i].portName != "")
+            List#(String) names = outctrls[i].portName();
+            while (names != List::nil)
             begin
-                hPutStrLn(hdl, "O," + name + "," + outctrls[i].portName);
+                let p = List::head(names);
+
+                if (p != "")
+                begin
+                    hPutStrLn(hdl, "O," + name + "," + p);
+                end
+
+                names = List::tail(names);
             end
         end
     end

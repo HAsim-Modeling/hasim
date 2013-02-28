@@ -139,8 +139,8 @@ module [HASIM_MODULE] mkPortStallSend#(String s)
             method Maybe#(INSTANCE_ID#(1)) nextReadyInstance() = tagged Valid (?);
             method Action setMaxRunningInstance(INSTANCE_ID#(1) iid) = noAction;
         
-            method String portName() = s + "__cred";
-            method Integer portLatency() = 0;
+            method List#(PORT_INFO) portInfo() =
+                list(PORT_INFO {name: s + "__cred", latency: 1});
         endinterface
         
         interface INSTANCE_CONTROL_OUT out;
@@ -149,7 +149,7 @@ module [HASIM_MODULE] mkPortStallSend#(String s)
             method Bool heavy() = False;
             method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction;
 
-            method String portName() = s + "__portDataEnq";
+            method List#(String) portName() = list(s + "__portDataEnq");
         endinterface
 
     endinterface
@@ -243,8 +243,8 @@ module [HASIM_MODULE] mkPortStallRecv#(String s)
             method Maybe#(INSTANCE_ID#(ni)) nextReadyInstance() = tagged Valid (?);
             method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid) = noAction;
         
-            method String portName() = s + "__portDataEnq";
-            method Integer portLatency() = 0;
+            method List#(PORT_INFO) portInfo() =
+                list(PORT_INFO {name: s + "__portDataEnq", latency: 1});
         endinterface
     
         interface INSTANCE_CONTROL_OUT out;
@@ -253,7 +253,7 @@ module [HASIM_MODULE] mkPortStallRecv#(String s)
             method Bool heavy() = False;
             method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid) = noAction;
 
-            method String portName() = s + "__cred";
+            method List#(String) portName() = list(s + "__cred");
         endinterface
 
     endinterface
@@ -290,8 +290,20 @@ module [HASIM_MODULE] mkPortStallSend_Multiplexed#(String s)
 
     interface INSTANCE_CONTROL_IN_OUT ctrl;
 
-        interface INSTANCE_CONTROL_IN in = creditFromQueue.ctrl;
-
+        interface INSTANCE_CONTROL_IN in;
+            method Bool empty() = creditFromQueue.ctrl.empty();
+            method Bool balanced() = creditFromQueue.ctrl.balanced();
+            method Bool light() = creditFromQueue.ctrl.light();
+            
+            method Maybe#(INSTANCE_ID#(ni)) nextReadyInstance() = creditFromQueue.ctrl.nextReadyInstance();
+            method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid) = creditFromQueue.ctrl.setMaxRunningInstance(iid);
+        
+            // Effective latency of the port is 1.  (The internal latency 0 port
+            // is just used for buffering.)
+            method List#(PORT_INFO) portInfo() =
+                list(PORT_INFO {name: s + "__cred", latency: 1});
+        endinterface
+    
         interface INSTANCE_CONTROL_OUT out = enqToQueue.ctrl;
 
     endinterface
@@ -442,8 +454,8 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
                 instanceW <= iid;
             endmethod
 
-            method String portName() = s + "__portDataEnq";
-            method Integer portLatency() = 0;
+            method List#(PORT_INFO) portInfo() =
+                list(PORT_INFO {name: s + "__portDataEnq", latency: 1});
         endinterface
     
         interface INSTANCE_CONTROL_OUT out;
@@ -452,7 +464,7 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
             method Bool heavy() = False;
             method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction; // Handled by the inctrl, above.
 
-            method String portName() = s + "__cred";
+            method List#(String) portName() = list(s + "__cred");
         endinterface
 
     endinterface

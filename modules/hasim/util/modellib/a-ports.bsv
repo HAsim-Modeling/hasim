@@ -536,6 +536,119 @@ endmodule
 
 // ========================================================================
 //
+//   Null ports provide the usual interfaces but are single sided.
+//   Use these as stubs for ports that are unconnected.
+//
+// ========================================================================
+
+//
+// mkPortSend_NULL --
+//     Unconnected port (source).  Always ready to send a message.
+//
+module mkPortSend_NULL
+    //interface:
+        (PORT_SEND#(t_MSG))
+    provisos (Bits#(t_MSG, t_MSG_SZ));
+        
+    interface INSTANCE_CONTROL_OUT ctrl;
+        method Bool full() = False;
+        method Bool balanced() = True;
+        method Bool heavy() = False;
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction;
+
+        method List#(String) portName() = List::nil;
+    endinterface
+
+    method Action send(Maybe#(t_MSG) m);
+        noAction;    
+    endmethod
+endmodule
+
+
+//
+// mkPortRecv_NULL --
+//     Unconnected port (drain).  Always ready to receive a message.
+//
+module mkPortRecv_NULL
+    //interface:
+        (PORT_RECV#(t_MSG))
+    provisos (Bits#(t_MSG, t_MSG_SZ));
+
+    interface INSTANCE_CONTROL_IN ctrl;
+        method Bool empty() = False;
+        method Bool balanced() = True;
+        method Bool light() = False;
+        method Maybe#(INSTANCE_ID#(1)) nextReadyInstance() = tagged Valid 0;
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+            noAction;
+        endmethod
+
+        method List#(PORT_INFO) portInfo() = List::nil;
+    endinterface
+
+    method ActionValue#(Maybe#(t_MSG)) receive();
+        return tagged Invalid;
+    endmethod
+endmodule
+
+
+module mkPortSend_Multiplexed_NULL
+    //interface:
+        (PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    provisos (Bits#(t_MSG, t_MSG_SZ));
+
+    interface INSTANCE_CONTROL_OUT ctrl;
+        method Bool full() = False;
+        method Bool balanced() = True;
+        method Bool heavy() = False;
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid) = noAction;
+
+        method List#(String) portName() = List::nil;
+    endinterface
+
+    method Action send(INSTANCE_ID#(t_NUM_INSTANCES) iid, Maybe#(t_MSG) m);
+        noAction;
+    endmethod
+endmodule
+
+
+module mkPortRecv_Multiplexed_NULL
+    //interface:
+        (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    provisos
+    (Bits#(t_MSG, t_MSG_SZ),
+     NumAlias#(t_SAFE_NUM_INSTANCES, TMax#(1, t_NUM_INSTANCES)));
+
+    Reg#(Bool) initialized <- mkReg(False);
+    Reg#(INSTANCE_ID#(t_SAFE_NUM_INSTANCES)) maxInstance <- mkRegU();
+    Reg#(INSTANCE_ID#(t_SAFE_NUM_INSTANCES)) nextInstance <- mkReg(0);
+
+    interface INSTANCE_CONTROL_IN ctrl;
+        method Bool empty() = False;
+        method Bool balanced() = True;
+        method Bool light() = False;
+        
+        method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
+            return tagged Valid truncateNP(nextInstance);
+        endmethod
+        
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+            maxInstance <= zeroExtendNP(iid);
+            initialized <= True;
+        endmethod
+
+        method List#(PORT_INFO) portInfo() = List::nil;
+    endinterface
+
+    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) dummy) if (initialized);
+        nextInstance <= (nextInstance == maxInstance) ? 0 : nextInstance + 1;
+        return tagged Invalid;
+    endmethod
+endmodule
+
+
+// ========================================================================
+//
 //   Compressor for multiplexed A-Ports
 //
 // ========================================================================

@@ -26504,3 +26504,31 @@ complex ports such as those used in the mesh network to describe all connections
 
 This affects only the generated .ctrl files useful for building graphs of a
 target's topology.  There is no effect on running models.
+
+----------
+mcadler     Date: Sun Mar  3 18:39:53 EST 2013  CSN: CSN-hasim-920
+                  Sun Mar  3 23:39:53 UTC 2013
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          919 
+
+Directory modules/hasim/util/modellib
+ permutation-ports.bsv     Locally Modified          919 
+ a-ports.bsv               Locally Modified          919 
+
+- Added new methods for joining/splitting between 2 and 4 multiplexed
+  A-Ports into a single logical port.  The client must provide a map from
+  the merged instance ID to the underlying ports.  This replaces old
+  join/split code that worked only with one multiplexed port combined
+  with one simple port.
+
+- Add new NULL implementations of both simple and multiplexed A-ports.
+  NULL senders provide a "no-message" every cycle and NULL receivers are
+  sinks.  These make it easy to have unconnected ports, e.g. a mesh
+  network node used purely for routing that has no local connection.
+
+- mkNamedLocalControllerWithActive now takes an extra boolean parameter
+  indicating whether it is managing any dynamically allocated objects
+  (most likely contexts.)  If false, context enable/disable messages
+  are ignored.

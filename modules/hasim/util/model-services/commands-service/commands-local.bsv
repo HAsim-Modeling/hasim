@@ -161,7 +161,7 @@ module [HASIM_MODULE] mkLocalController
 
     Vector#(0, INSTANCE_CONTROL_IN#(t_NUM_INSTANCES)) empty_unctrls = newVector();
 
-    let m <- mkNamedLocalControllerWithActive("[no name]", 0, inctrls, empty_unctrls, outctrls);
+    let m <- mkNamedLocalControllerWithActive("[no name]", 0, True, inctrls, empty_unctrls, outctrls);
     return m;
 
 endmodule
@@ -179,7 +179,7 @@ module [HASIM_MODULE] mkNamedLocalController
 
     Vector#(0, INSTANCE_CONTROL_IN#(t_NUM_INSTANCES)) empty_unctrls = newVector();
 
-    let m <- mkNamedLocalControllerWithActive(name, 0, inctrls, empty_unctrls, outctrls);
+    let m <- mkNamedLocalControllerWithActive(name, 0, True, inctrls, empty_unctrls, outctrls);
     return m;
 
 endmodule
@@ -195,7 +195,7 @@ module [HASIM_MODULE] mkLocalControllerWithUncontrolled
     // interface:
         (LOCAL_CONTROLLER#(t_NUM_INSTANCES));
 
-    let m <- mkNamedLocalControllerWithActive("[no name]", 0, inctrls, uncontrolled_ctrls, outctrls);
+    let m <- mkNamedLocalControllerWithActive("[no name]", 0, True, inctrls, uncontrolled_ctrls, outctrls);
     return m;
 
 endmodule
@@ -213,7 +213,7 @@ module [HASIM_MODULE] mkNamedLocalControllerWithUncontrolled
     // interface:
         (LOCAL_CONTROLLER#(t_NUM_INSTANCES));
 
-    let m <- mkNamedLocalControllerWithActive(name, 0, inctrls, uncontrolled_ctrls, outctrls);
+    let m <- mkNamedLocalControllerWithActive(name, 0, True, inctrls, uncontrolled_ctrls, outctrls);
     return m;
 
 endmodule
@@ -229,12 +229,19 @@ endmodule
 // in some interconnect models the memory controller may be in the instance
 // space along with CPU ports and the memory would always be active.
 //
+// The "dynamicActive" parameter determines whether the usual functional
+// model contexts are managed by this controller.  When true (the usual
+// case) contexts becoming active update the count of instances managed
+// by each port.  When false, the number of active contexts is fixed to
+// the value of startingActive.  This might be used by a memory controller.
+//
 module [HASIM_MODULE] mkNamedLocalControllerWithActive
 
     // parameters:
     #(
     String name,
-    Integer startingActive,
+    function Integer startingActive(),
+    Bool dynamicActive,
     Vector#(t_NUM_INPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  inctrls, 
     Vector#(t_NUM_UNPORTS,  INSTANCE_CONTROL_IN#(t_NUM_INSTANCES))  uncontrolled_ctrls,
     Vector#(t_NUM_OUTPORTS, INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES)) outctrls
@@ -486,13 +493,19 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
             // TODO: should this be COM_EnableInstance??
             tagged COM_EnableContext .iid:
             begin
-                maxActiveInstance.up();
+                if (dynamicActive)
+                begin
+                    maxActiveInstance.up();
+                end
             end
 
             // TODO: should this be COM_DisableInstance??
             tagged COM_DisableContext .iid:
             begin
-                maxActiveInstance.down();
+                if (dynamicActive)
+                begin
+                    maxActiveInstance.down();
+                end
             end
 
             tagged COM_Scan:

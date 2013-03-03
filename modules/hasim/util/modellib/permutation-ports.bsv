@@ -24,7 +24,7 @@
 `include "asim/provides/fpga_components.bsh"
 `include "asim/provides/hasim_modellib.bsh"
 
-module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
     #(
         String portname, 
         Integer latency, 
@@ -174,7 +174,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
 
 endmodule
 
-module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLast#(String portname, Integer latency)
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLast#(String portname, Integer latency)
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -202,7 +202,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLast#(String portname
 endmodule
 
 
-module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirst#(String portname, Integer latency)
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirst#(String portname, Integer latency)
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -229,7 +229,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirst#(String portname
 
 endmodule
 
-module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLastEveryN#(String portname, Integer latency, INSTANCE_ID#(t_NUM_INSTANCES) period)
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLastEveryN#(String portname, Integer latency, INSTANCE_ID#(t_NUM_INSTANCES) period)
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -257,7 +257,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLastEveryN#(String po
 endmodule
 
 
-module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirstEveryN#(String portname, Integer latency, INSTANCE_ID#(t_NUM_INSTANCES) period)
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirstEveryN#(String portname, Integer latency, INSTANCE_ID#(t_NUM_INSTANCES) period)
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -285,7 +285,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirstEveryN#(String po
 endmodule
 
 
-module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderFirstNToLastN#(String portname, Integer latency, INSTANCE_ID#(t_NUM_INSTANCES) period)
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderFirstNToLastN#(String portname, Integer latency, INSTANCE_ID#(t_NUM_INSTANCES) period)
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -313,7 +313,7 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderFirstNToLastN#(String portna
 endmodule
 
 
-module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderLastNToFirstN#(String portname, Integer latency, INSTANCE_ID#(t_NUM_INSTANCES) period)
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderLastNToFirstN#(String portname, Integer latency, INSTANCE_ID#(t_NUM_INSTANCES) period)
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -341,10 +341,356 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_ReorderLastNToFirstN#(String portna
 endmodule
 
 
-module [HASIM_MODULE] mkPortRecv_Multiplexed_Join#(
-        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG) p1,
-        PORT_RECV#(t_MSG) p2,
-        t_JOIN_ID insertion_point)
+// ========================================================================
+//
+//   Split/join -- combine multiple named ports into what appears to be
+//   a single logical port.
+//
+// ========================================================================
+
+//
+// mkPortRecv_Multiplexed_Join2 --
+//     Join a pair of receive ports into a single logical receive port.
+//     The portMap parameter indicates the true source port, indexed
+//     by instance ID.
+//
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Join2#(
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES0, t_MSG) p0,
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES1, t_MSG) p1,
+        LUTRAM#(t_JOIN_ID, Bit#(1)) sourceMap)
+    // interface:
+    (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         NumAlias#(t_NUM_INSTANCES, TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1)),
+         NumAlias#(n_JOIN_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
+         Alias#(t_JOIN_ID, INSTANCE_ID#(t_NUM_INSTANCES)),
+         // Tautology to keep Bluespec happy
+         Max#(TLog#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), 0)), 1,
+              TMax#(TLog#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1)), 1)));
+
+    PORT_RECV_MULTIPLEXED#(0, t_MSG) dummy <- mkPortRecv_Multiplexed_NULL();
+
+    let s <- mkPortRecv_Multiplexed_Join4_Impl(p0, p1, dummy, dummy, sourceMap);
+    return s;
+endmodule
+
+
+//
+// mkPortRecv_Multiplexed_Join3 --
+//     Same as mkPortRecv_Multiplexed_Join2 but with 3 input ports.
+//
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Join3#(
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES0, t_MSG) p0,
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES1, t_MSG) p1,
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES2, t_MSG) p2,
+        LUTRAM#(t_JOIN_ID, Bit#(2)) sourceMap)
+    // interface:
+    (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         NumAlias#(t_NUM_INSTANCES, TAdd#(TAdd#(t_NUM_INSTANCES0,
+                                                t_NUM_INSTANCES1),
+                                          t_NUM_INSTANCES2)),
+         NumAlias#(n_JOIN_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
+         Alias#(t_JOIN_ID, INSTANCE_ID#(t_NUM_INSTANCES)),
+         // Tautology to keep Bluespec happy
+         Max#(TLog#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), TAdd#(t_NUM_INSTANCES2, 0))), 1,
+              TMax#(TLog#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), t_NUM_INSTANCES2)), 1)));
+
+    PORT_RECV_MULTIPLEXED#(0, t_MSG) dummy <- mkPortRecv_Multiplexed_NULL();
+
+    let s <- mkPortRecv_Multiplexed_Join4_Impl(p0, p1, p2, dummy, sourceMap);
+    return s;
+endmodule
+
+
+//
+// mkPortRecv_Multiplexed_Join4 --
+//     Same as mkPortRecv_Multiplexed_Join2 but with 4 input ports.
+//
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Join4#(
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES0, t_MSG) p0,
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES1, t_MSG) p1,
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES2, t_MSG) p2,
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES3, t_MSG) p3,
+        LUTRAM#(t_JOIN_ID, Bit#(2)) sourceMap)
+    // interface:
+    (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         NumAlias#(t_NUM_INSTANCES, TAdd#(TAdd#(t_NUM_INSTANCES0,
+                                                t_NUM_INSTANCES1),
+                                          TAdd#(t_NUM_INSTANCES2,
+                                                t_NUM_INSTANCES3))),
+         NumAlias#(n_JOIN_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
+         Alias#(t_JOIN_ID, INSTANCE_ID#(t_NUM_INSTANCES)));
+
+    let s <- mkPortRecv_Multiplexed_Join4_Impl(p0, p1, p2, p3, sourceMap);
+    return s;
+endmodule
+
+
+//
+// mkPortRecv_Multiplexed_Join4_Impl --
+//     Base implementation of multiplexed joiner.
+//
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Join4_Impl#(
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES0, t_MSG) p0,
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES1, t_MSG) p1,
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES2, t_MSG) p2,
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES3, t_MSG) p3,
+        LUTRAM#(t_JOIN_ID, Bit#(t_MAP_IDX_SZ)) sourceMap)
+    // interface:
+    (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         NumAlias#(t_NUM_INSTANCES, TAdd#(TAdd#(t_NUM_INSTANCES0,
+                                                t_NUM_INSTANCES1),
+                                          TAdd#(t_NUM_INSTANCES2,
+                                                t_NUM_INSTANCES3))),
+         // Map index may be smaller for joins with dummy ports.
+         Add#(t_MAP_IDX_SZ, t_MAP_IDX_UNUSED, 2),
+         NumAlias#(n_JOIN_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
+         Alias#(t_JOIN_ID, INSTANCE_ID#(t_NUM_INSTANCES)));
+
+    COUNTER#(n_JOIN_ID_BITS) cur <- mkLCounter(0);
+    Reg#(t_JOIN_ID) maxRunningInstance <- mkReg(0);
+    Reg#(Bool) initialized <- mkReg(False);
+    
+
+    //
+    // If the next source has data send the source port ID on deqFrom.
+    //
+    Wire#(Maybe#(Bit#(2))) deqFrom <- mkDWire(tagged Invalid);
+
+    rule computeDeqSrc (initialized);
+        Bit#(2) cur_port = zeroExtend(sourceMap.sub(cur.value));
+        Bool empty = case (cur_port)
+                         0: p0.ctrl.empty;
+                         1: p1.ctrl.empty;
+                         2: p2.ctrl.empty;
+                         3: p3.ctrl.empty;
+                     endcase;
+
+        deqFrom <= (empty ? tagged Invalid : tagged Valid cur_port);
+    endrule
+
+
+    interface INSTANCE_CONTROL_IN ctrl;
+        method Bool empty() = ! isValid(deqFrom);
+        method Bool balanced() = p0.ctrl.balanced && p1.ctrl.balanced;
+        method Bool light() = p0.ctrl.light || p1.ctrl.light;
+        
+        method Maybe#(t_JOIN_ID) nextReadyInstance();
+            return (isValid(deqFrom)) ? tagged Invalid :
+                                        tagged Valid cur.value();
+        endmethod
+        
+        method Action setMaxRunningInstance(t_JOIN_ID iid);
+            maxRunningInstance <= iid;
+            initialized <= True;
+        endmethod
+        
+        method List#(PORT_INFO) portInfo() =
+            List::append(p0.ctrl.portInfo, p1.ctrl.portInfo);
+    endinterface
+
+    method ActionValue#(Maybe#(t_MSG)) receive(t_JOIN_ID dummy) if (deqFrom matches tagged Valid .cur_port);
+        Maybe#(t_MSG) msg = tagged Invalid;    
+
+        case (cur_port)
+            0: msg <- p0.receive(?);
+            1: msg <- p1.receive(?);
+            2: msg <- p2.receive(?);
+            3: msg <- p3.receive(?);
+        endcase
+
+        if (cur.value() == maxRunningInstance)
+        begin
+            cur.setC(0);
+        end
+        else
+        begin
+            cur.up();
+        end
+
+        return msg;
+    endmethod
+endmodule
+
+
+//
+// mkPortSend_Multiplexed_Split2 --
+//     The opposite of join:  split a logically linear multiplexed send into
+//     a pair of multiplexed ports.
+//
+module [CONNECTED_MODULE] mkPortSend_Multiplexed_Split2#(
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES0, t_MSG) p0,
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES1, t_MSG) p1,
+        LUTRAM#(t_SPLIT_ID, Bit#(1)) destMap)
+    // interface:
+    (PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         NumAlias#(t_NUM_INSTANCES, TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1)),
+         NumAlias#(n_SPLIT_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
+         Alias#(t_SPLIT_ID, INSTANCE_ID#(t_NUM_INSTANCES)),
+         // Tautology to keep Bluespec happy
+         Max#(TLog#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), 0)), 1,
+              TMax#(TLog#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1)), 1)));
+
+    PORT_SEND_MULTIPLEXED#(0, t_MSG) dummy <- mkPortSend_Multiplexed_NULL();
+
+    let s <- mkPortSend_Multiplexed_Split4_Impl(p0, p1, dummy, dummy, destMap);
+    return s;
+endmodule
+
+//
+// mkPortSend_Multiplexed_Split3 --
+//     Same as mkPortSend_Multiplexed_Split2 but with three output ports.
+//
+module [CONNECTED_MODULE] mkPortSend_Multiplexed_Split3#(
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES0, t_MSG) p0,
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES1, t_MSG) p1,
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES2, t_MSG) p2,
+        LUTRAM#(t_SPLIT_ID, Bit#(2)) destMap)
+    // interface:
+    (PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         NumAlias#(t_NUM_INSTANCES, TAdd#(TAdd#(t_NUM_INSTANCES0,
+                                                t_NUM_INSTANCES1),
+                                          t_NUM_INSTANCES2)),
+         NumAlias#(n_SPLIT_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
+         Alias#(t_SPLIT_ID, INSTANCE_ID#(t_NUM_INSTANCES)),
+         // Tautology to keep Bluespec happy
+         Max#(TLog#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), TAdd#(t_NUM_INSTANCES2, 0))), 1,
+              TMax#(TLog#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), t_NUM_INSTANCES2)), 1)));
+
+    PORT_SEND_MULTIPLEXED#(0, t_MSG) dummy <- mkPortSend_Multiplexed_NULL();
+
+    let s <- mkPortSend_Multiplexed_Split4_Impl(p0, p1, p2, dummy, destMap);
+    return s;
+endmodule
+
+//
+// mkPortSend_Multiplexed_Split4 --
+//     Same as mkPortSend_Multiplexed_Split2 but with four output ports.
+//
+module [CONNECTED_MODULE] mkPortSend_Multiplexed_Split4#(
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES0, t_MSG) p0,
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES1, t_MSG) p1,
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES2, t_MSG) p2,
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES3, t_MSG) p3,
+        LUTRAM#(t_SPLIT_ID, Bit#(2)) destMap)
+    // interface:
+    (PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         NumAlias#(t_NUM_INSTANCES, TAdd#(TAdd#(t_NUM_INSTANCES0,
+                                                t_NUM_INSTANCES1),
+                                          TAdd#(t_NUM_INSTANCES2,
+                                                t_NUM_INSTANCES3))),
+         NumAlias#(n_SPLIT_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
+         Alias#(t_SPLIT_ID, INSTANCE_ID#(t_NUM_INSTANCES)));
+
+    let s <- mkPortSend_Multiplexed_Split4_Impl(p0, p1, p2, p3, destMap);
+    return s;
+endmodule
+
+
+//
+// mkPortSend_Multiplexed_Split4_Impl --
+//     Base implementation of multiplexed splitter.
+//
+module [CONNECTED_MODULE] mkPortSend_Multiplexed_Split4_Impl#(
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES0, t_MSG) p0,
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES1, t_MSG) p1,
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES2, t_MSG) p2,
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES3, t_MSG) p3,
+        LUTRAM#(t_SPLIT_ID, Bit#(t_MAP_IDX_SZ)) destMap)
+    // interface:
+    (PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         NumAlias#(t_NUM_INSTANCES, TAdd#(TAdd#(t_NUM_INSTANCES0,
+                                                t_NUM_INSTANCES1),
+                                          TAdd#(t_NUM_INSTANCES2,
+                                                t_NUM_INSTANCES3))),
+         // Map index may be smaller for joins with dummy ports.
+         Add#(t_MAP_IDX_SZ, t_MAP_IDX_UNUSED, 2),
+         NumAlias#(n_SPLIT_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
+         Alias#(t_SPLIT_ID, INSTANCE_ID#(t_NUM_INSTANCES)));
+
+    COUNTER#(n_SPLIT_ID_BITS) cur <- mkLCounter(0);
+    Reg#(t_SPLIT_ID) maxRunningInstance <- mkReg(0);
+    Reg#(Bool) initialized <- mkReg(False);
+    
+
+    //
+    // If the next destination is not full send the dest port ID on enqTo.
+    //
+    Wire#(Maybe#(Bit#(2))) enqTo <- mkDWire(tagged Invalid);
+
+    rule computeEnqDst (initialized);
+        Bit#(2) cur_port = zeroExtend(destMap.sub(cur.value));
+        Bool full = case (cur_port)
+                         0: p0.ctrl.full;
+                         1: p1.ctrl.full;
+                         2: p2.ctrl.full;
+                         3: p3.ctrl.full;
+                     endcase;
+
+        enqTo <= (full ? tagged Invalid : tagged Valid cur_port);
+    endrule
+
+    
+    interface INSTANCE_CONTROL_OUT ctrl;
+        method Bool full() = ! isValid(enqTo);
+        method Bool balanced() = p0.ctrl.balanced && p1.ctrl.balanced;
+        method Bool heavy() = p0.ctrl.heavy || p1.ctrl.heavy;
+
+        method Action setMaxRunningInstance(t_SPLIT_ID iid);
+            maxRunningInstance <= iid;
+            initialized <= True;
+        endmethod
+
+        method List#(String) portName() =
+            List::append(p0.ctrl.portName, p1.ctrl.portName);
+    endinterface
+
+    method Action send(t_SPLIT_ID dummy, Maybe#(t_MSG) msg) if (enqTo matches tagged Valid .cur_port);
+        case (cur_port)
+            0: p0.send(?, msg);
+            1: p1.send(?, msg);
+            2: p2.send(?, msg);
+            3: p3.send(?, msg);
+        endcase
+
+        if (cur.value() == maxRunningInstance)
+        begin
+            cur.setC(0);
+        end
+        else
+        begin
+            cur.up();
+        end
+    endmethod
+endmodule
+
+
+
+//
+// mkPortRecv_Multiplexed_Join --
+//     Similar to mkPortRecv_Multiplexed_Join2 above, but merges a multiplexed
+//     port with a singleton port.  The insertionPoint indicates the position
+//     at which to insert the singleton port.
+//
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Join#(
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG) p0,
+        PORT_RECV#(t_MSG) p1,
+        t_JOIN_ID insertionPoint)
     // interface:
     (PORT_RECV_MULTIPLEXED#(TAdd#(t_NUM_INSTANCES, 1), t_MSG))
     provisos
@@ -353,10 +699,11 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_Join#(
          Alias#(INSTANCE_ID#(TAdd#(t_NUM_INSTANCES, 1)), t_JOIN_ID));
 
     COUNTER#(n_JOIN_ID_BITS) cur <- mkLCounter(0);
-    Reg#(t_JOIN_ID) maxInstance <- mkReg(0);
+    Reg#(t_JOIN_ID) maxRunningInstance <- mkReg(0);
     Reg#(Bool) initialized <- mkReg(False);
     
-    Bool canDeq = (cur.value() == insertion_point) ? !p2.ctrl.empty() : !p1.ctrl.empty();
+    Bool canDeq = (cur.value() == insertionPoint) ? ! p1.ctrl.empty() :
+                                                    ! p0.ctrl.empty();
     
     interface INSTANCE_CONTROL_IN ctrl;
         method Bool empty() = !canDeq;
@@ -364,21 +711,22 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_Join#(
         method Bool light() = False;
         
         method Maybe#(t_JOIN_ID) nextReadyInstance();
-            return (!canDeq || !initialized) ? tagged Invalid : tagged Valid cur.value();
+            return (!canDeq || !initialized) ? tagged Invalid :
+                                               tagged Valid cur.value();
         endmethod
         
         method Action setMaxRunningInstance(t_JOIN_ID iid);
-            maxInstance <= iid; // Local Controller has already added 1 to this number.
+            // Local Controller has already added 1 to this number.
+            maxRunningInstance <= iid;
             initialized <= True;
         endmethod
         
         method List#(PORT_INFO) portInfo() =
-            List::append(p1.ctrl.portInfo, p2.ctrl.portInfo);
+            List::append(p0.ctrl.portInfo, p1.ctrl.portInfo);
     endinterface
 
     method ActionValue#(Maybe#(t_MSG)) receive(t_JOIN_ID dummy) if (canDeq);
-        
-        if (cur.value() == maxInstance)
+        if (cur.value() == maxRunningInstance)
         begin
             cur.setC(0);
         end
@@ -387,25 +735,30 @@ module [HASIM_MODULE] mkPortRecv_Multiplexed_Join#(
             cur.up();
         end
         
-        if (cur.value() == insertion_point)
+        if (cur.value() == insertionPoint)
         begin
-            let msg <- p2.receive();
+            let msg <- p1.receive();
             return msg;
         end
         else
         begin
-            let msg <- p1.receive(truncateNP(dummy));
+            let msg <- p0.receive(truncateNP(dummy));
             return msg;
         end
-        
     endmethod
-
 endmodule
 
-module [HASIM_MODULE] mkPortSend_Multiplexed_Split#(
-        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG) p1,
-        PORT_SEND#(t_MSG) p2,
-        t_SPLIT_ID split_point)
+
+//
+// mkPortSend_Multiplexed_Split --
+//     The opposite of join:  split a logically linear multiplexed send into
+//     a multiplexed port and a singleton port, with the singleton port slotted
+//     at splitPoint.
+//
+module [CONNECTED_MODULE] mkPortSend_Multiplexed_Split#(
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG) p0,
+        PORT_SEND#(t_MSG) p1,
+        t_SPLIT_ID splitPoint)
     // interface:
         (PORT_SEND_MULTIPLEXED#(TAdd#(t_NUM_INSTANCES, 1), t_MSG))
     provisos
@@ -418,23 +771,24 @@ module [HASIM_MODULE] mkPortSend_Multiplexed_Split#(
     Reg#(t_SPLIT_ID) maxRunningInstance <- mkReg(0);
     Reg#(Bool) initialized <- mkReg(False);
     
-    Bool canEnq = (cur.value() == split_point) ? !p2.ctrl.full() : !p1.ctrl.full();
+    Bool canEnq = (cur.value() == splitPoint) ? ! p1.ctrl.full() :
+                                                ! p0.ctrl.full();
     
     interface INSTANCE_CONTROL_OUT ctrl;
         method Bool full() = !canEnq;
         method Bool balanced() = True;
         method Bool heavy() = False;
         method Action setMaxRunningInstance(t_SPLIT_ID iid);
-            maxRunningInstance <= iid; // Local controller has already added one to this number
+            // Local controller has already added one to this number
+            maxRunningInstance <= iid;
             initialized <= True;
         endmethod
 
         method List#(String) portName() =
-            List::append(p1.ctrl.portName, p2.ctrl.portName);
+            List::append(p0.ctrl.portName, p1.ctrl.portName);
     endinterface
 
     method Action send(t_SPLIT_ID dummy, Maybe#(t_MSG) msg) if (initialized && canEnq);
-        
         if (cur.value() == maxRunningInstance)
         begin
             cur.setC(0);
@@ -444,17 +798,13 @@ module [HASIM_MODULE] mkPortSend_Multiplexed_Split#(
             cur.up();
         end
         
-        if (cur.value() == split_point)
+        if (cur.value() == splitPoint)
         begin
-            p2.send(msg);
+            p1.send(msg);
         end
         else
         begin
-            p1.send(truncateNP(dummy), msg);
+            p0.send(truncateNP(dummy), msg);
         end
-        
     endmethod
-
 endmodule
-
-

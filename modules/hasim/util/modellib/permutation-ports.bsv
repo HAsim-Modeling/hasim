@@ -19,16 +19,39 @@
 // partitions. The token type includes an index for token tables, epochs,
 // and scratchpads which partitions can use as they see fit.             
 
+import Vector::*;
+import ConfigReg::*;
+
+
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/fpga_components.bsh"
 `include "asim/provides/hasim_modellib.bsh"
 
+//
+// mkPortRecv_Multiplexed_ReorderSideBuffer --
+//     Rotate the multiplexing of ports to be offset by the parameters.
+//     This makes it possible for a network model to be implemented with
+//     a single multiplexed instance.  The permutation here allows a
+//     multiplexed, ordered traversal of network stations while reordering
+//     messages so that they are delivered to the proper instances.
+//
+//     The period parameter for a 2D torus/mesh is the width of the mesh.
+//     (Assuming multiplexed nodes are ordered width then height.)
+//
+//     numPeriods is typically the size of the dimension opposite the
+//     one traversed.  (I.e. numPeriods is height for width-wise networks
+//     and numPeriods is width for hight-wise traversals.)  In practice,
+//     numPeriods could be computed as (run-time IIDs / period).
+//     FPGAs aren't good at division by arbitrary numbers, so we pass
+//     in numPeriods instead.
+//
 module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
     #(
         String portname, 
         Integer latency, 
         INSTANCE_ID#(t_NUM_INSTANCES) period,
+        INSTANCE_ID#(t_NUM_INSTANCES) numPeriods,
         function Bool enqToSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid),
         function Bool resetEnq(INSTANCE_ID#(t_NUM_INSTANCES) cur_enq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid),
         function Bool deqFromSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_deq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid),
@@ -84,30 +107,22 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
 
         if (enqToSide(curEnq, maxInstance))
         begin
-            
             sideBuffer.upd(sideTail.value(), m);
             sideTail.up();
-        
         end
         else
         begin
-        
             rs.upd(tail.value(), m);
             tail.up();
-        
         end
         
         if (resetEnq(curEnq, maxInstance))
         begin
-        
             curEnq <= 0;
-        
         end
         else
         begin
-
             curEnq <= curEnq + 1;
-
         end
 
     endrule
@@ -125,9 +140,10 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
         method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
             t_SLOT_IDX l = fromInteger(latency);
             t_SLOT_IDX k = zeroExtendNP(iid) + 1;
-            t_SLOT_IDX n = zeroExtendNP(period);
-            tail.setC((k-n) * l);
-            sideTail.setC(n * l);
+            t_SLOT_IDX p = zeroExtendNP(period);
+            t_SLOT_IDX np = zeroExtendNP(numPeriods);
+            tail.setC((k - np) * l);
+            sideTail.setC(p * l);
             maxInstance <= iid;
             initialized <= True;
         endmethod
@@ -142,21 +158,17 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
 
         if (deqFromSide(curDeq, maxInstance))
         begin
-        
             // Return the side buffer.
             let m = sideBuffer.sub(sideHead.value());
             res = m.msg;
             sideHead.up();
-        
         end
         else
         begin
-        
             // Return the main buffer.
             let m = rs.sub(head.value());
             res = m.msg;
             head.up();
-        
         end
 
         if (resetDeq(curDeq, maxInstance))
@@ -196,7 +208,7 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLast#(String port
         return cur_deq == max_iid;
     endfunction
     
-    let p <- mkPortRecv_Multiplexed_ReorderSideBuffer(portname, latency, 1, enqToSide, resetEnq, deqFromSide, resetDeq);
+    let p <- mkPortRecv_Multiplexed_ReorderSideBuffer(portname, latency, 1, 1, enqToSide, resetEnq, deqFromSide, resetDeq);
     return p;
 
 endmodule
@@ -224,12 +236,16 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirst#(String port
         return cur_deq == max_iid;
     endfunction
     
-    let p <- mkPortRecv_Multiplexed_ReorderSideBuffer(portname, latency, 1, enqToSide, resetEnq, deqFromSide, resetDeq);
+    let p <- mkPortRecv_Multiplexed_ReorderSideBuffer(portname, latency, 1, 1, enqToSide, resetEnq, deqFromSide, resetDeq);
     return p;
 
 endmodule
 
-module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLastEveryN#(String portname, Integer latency, INSTANCE_ID#(t_NUM_INSTANCES) period)
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLastEveryN#(
+    String portname,
+    Integer latency,
+    INSTANCE_ID#(t_NUM_INSTANCES) period,
+    INSTANCE_ID#(t_NUM_INSTANCES) numPeriods)
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -251,13 +267,17 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLastEveryN#(Strin
         return cur_deq == (period - 1);
     endfunction
     
-    let p <- mkPortRecv_Multiplexed_ReorderSideBuffer(portname, latency, period, enqToSide, resetEnq, deqFromSide, resetDeq);
+    let p <- mkPortRecv_Multiplexed_ReorderSideBuffer(portname, latency, period, numPeriods, enqToSide, resetEnq, deqFromSide, resetDeq);
     return p;
 
 endmodule
 
 
-module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirstEveryN#(String portname, Integer latency, INSTANCE_ID#(t_NUM_INSTANCES) period)
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirstEveryN#(
+    String portname,
+    Integer latency,
+    INSTANCE_ID#(t_NUM_INSTANCES) period,
+    INSTANCE_ID#(t_NUM_INSTANCES) numPeriods)
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -279,13 +299,16 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderLastToFirstEveryN#(Strin
         return cur_deq == (period - 1);
     endfunction
     
-    let p <- mkPortRecv_Multiplexed_ReorderSideBuffer(portname, latency, period, enqToSide, resetEnq, deqFromSide, resetDeq);
+    let p <- mkPortRecv_Multiplexed_ReorderSideBuffer(portname, latency, period, numPeriods, enqToSide, resetEnq, deqFromSide, resetDeq);
     return p;
 
 endmodule
 
 
-module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderFirstNToLastN#(String portname, Integer latency, INSTANCE_ID#(t_NUM_INSTANCES) period)
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderFirstNToLastN#(
+    String portname,
+    Integer latency,
+    INSTANCE_ID#(t_NUM_INSTANCES) period)
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -307,13 +330,16 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderFirstNToLastN#(String po
         return cur_deq == max_iid;
     endfunction
     
-    let p <- mkPortRecv_Multiplexed_ReorderSideBuffer(portname, latency, period, enqToSide, resetEnq, deqFromSide, resetDeq);
+    let p <- mkPortRecv_Multiplexed_ReorderSideBuffer(portname, latency, period, period, enqToSide, resetEnq, deqFromSide, resetDeq);
     return p;
 
 endmodule
 
 
-module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderLastNToFirstN#(String portname, Integer latency, INSTANCE_ID#(t_NUM_INSTANCES) period)
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderLastNToFirstN#(
+    String portname,
+    Integer latency,
+    INSTANCE_ID#(t_NUM_INSTANCES) period)
     // interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
@@ -335,7 +361,7 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderLastNToFirstN#(String po
         return cur_deq == max_iid;
     endfunction
     
-    let p <- mkPortRecv_Multiplexed_ReorderSideBuffer(portname, latency, period, enqToSide, resetEnq, deqFromSide, resetDeq);
+    let p <- mkPortRecv_Multiplexed_ReorderSideBuffer(portname, latency, period, period, enqToSide, resetEnq, deqFromSide, resetDeq);
     return p;
 
 endmodule
@@ -343,10 +369,78 @@ endmodule
 
 // ========================================================================
 //
-//   Split/join -- combine multiple named ports into what appears to be
-//   a single logical port.
+//   Mapping functions to convert one or more port interfaces into another.
 //
 // ========================================================================
+
+//
+// mkPortRecv_Multiplexed_Substr --
+//     Export a region of an existing multiplexed receive port as an
+//     interface with a smaller number of multiplexed ports.  Any
+//     unaddressable instances are assumed to be unused.
+//
+module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Substr#(
+        PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES_IN, t_MSG) p)
+    // interface:
+    (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES_OUT, t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         Add#(t_NUM_INSTANCES_OUT, t_NUM_UNUSED, t_NUM_INSTANCES_IN));
+
+    interface INSTANCE_CONTROL_IN ctrl;
+        method Bool empty() = p.ctrl.empty;
+        method Bool balanced() = p.ctrl.balanced;
+        method Bool light() = p.ctrl.light;
+        
+        method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES_OUT)) nextReadyInstance();
+            if (p.ctrl.nextReadyInstance() matches tagged Valid .iid)
+                return tagged Valid truncateNP(iid);
+            else
+                return tagged Invalid;
+        endmethod
+        
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES_OUT) iid) =
+            p.ctrl.setMaxRunningInstance(zeroExtendNP(iid));
+        
+        method List#(PORT_INFO) portInfo() = p.ctrl.portInfo;
+    endinterface
+
+    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES_OUT) dummy) =
+        p.receive(zeroExtendNP(dummy));
+endmodule
+
+
+//
+// mkPortSend_Multiplexed_Substr --
+//     Export a region of an existing multiplexed receive port as an
+//     interface with a smaller number of multiplexed ports.  Any
+//     unaddressable instances are assumed to be unused.
+//
+module [CONNECTED_MODULE] mkPortSend_Multiplexed_Substr#(
+        PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES_IN, t_MSG) p)
+    // interface:
+    (PORT_SEND_MULTIPLEXED#(t_NUM_INSTANCES_OUT, t_MSG))
+    provisos
+        (Bits#(t_MSG, t_MSG_SZ),
+         Add#(t_NUM_INSTANCES_OUT, t_NUM_UNUSED, t_NUM_INSTANCES_IN));
+    
+    interface INSTANCE_CONTROL_OUT ctrl;
+        method Bool full() = p.ctrl.full;
+        method Bool balanced() = p.ctrl.balanced;
+        method Bool heavy() = p.ctrl.heavy;
+
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES_OUT) iid) =
+            p.ctrl.setMaxRunningInstance(zeroExtendNP(iid));
+        
+        method List#(String) portName() = p.ctrl.portName;
+    endinterface
+
+    method Action send(INSTANCE_ID#(t_NUM_INSTANCES_OUT) dummy,
+                       Maybe#(t_MSG) msg) =
+        p.send(zeroExtendNP(dummy), msg);
+endmodule
+
+
 
 //
 // mkPortRecv_Multiplexed_Join2 --
@@ -366,12 +460,13 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Join2#(
          NumAlias#(n_JOIN_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
          Alias#(t_JOIN_ID, INSTANCE_ID#(t_NUM_INSTANCES)),
          // Tautology to keep Bluespec happy
-         Max#(TLog#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), 0)), 1,
-              TMax#(TLog#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1)), 1)));
+         Log#(TMax#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), 0), 2),
+              TLog#(TMax#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), 2))));
 
-    PORT_RECV_MULTIPLEXED#(0, t_MSG) dummy <- mkPortRecv_Multiplexed_NULL();
+    PORT_RECV_MULTIPLEXED#(0, t_MSG) dummy2 <- mkPortRecv_Multiplexed_NULL();
+    PORT_RECV_MULTIPLEXED#(0, t_MSG) dummy3 <- mkPortRecv_Multiplexed_NULL();
 
-    let s <- mkPortRecv_Multiplexed_Join4_Impl(p0, p1, dummy, dummy, sourceMap);
+    let s <- mkPortRecv_Multiplexed_Join4_Impl(p0, p1, dummy2, dummy3, sourceMap);
     return s;
 endmodule
 
@@ -395,12 +490,14 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Join3#(
          NumAlias#(n_JOIN_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
          Alias#(t_JOIN_ID, INSTANCE_ID#(t_NUM_INSTANCES)),
          // Tautology to keep Bluespec happy
-         Max#(TLog#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), TAdd#(t_NUM_INSTANCES2, 0))), 1,
-              TMax#(TLog#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), t_NUM_INSTANCES2)), 1)));
+         Log#(TMax#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1),
+                          TAdd#(t_NUM_INSTANCES2, 0)), 2),
+              TLog#(TMax#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1),
+                                t_NUM_INSTANCES2), 2))));
 
-    PORT_RECV_MULTIPLEXED#(0, t_MSG) dummy <- mkPortRecv_Multiplexed_NULL();
+    PORT_RECV_MULTIPLEXED#(0, t_MSG) dummy3 <- mkPortRecv_Multiplexed_NULL();
 
-    let s <- mkPortRecv_Multiplexed_Join4_Impl(p0, p1, p2, dummy, sourceMap);
+    let s <- mkPortRecv_Multiplexed_Join4_Impl(p0, p1, p2, dummy3, sourceMap);
     return s;
 endmodule
 
@@ -451,13 +548,54 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Join4_Impl#(
                                                 t_NUM_INSTANCES3))),
          // Map index may be smaller for joins with dummy ports.
          Add#(t_MAP_IDX_SZ, t_MAP_IDX_UNUSED, 2),
-         NumAlias#(n_JOIN_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
          Alias#(t_JOIN_ID, INSTANCE_ID#(t_NUM_INSTANCES)));
 
-    COUNTER#(n_JOIN_ID_BITS) cur <- mkLCounter(0);
+    Reg#(t_JOIN_ID) curIdx <- mkConfigReg(0);
     Reg#(t_JOIN_ID) maxRunningInstance <- mkReg(0);
+
     Reg#(Bool) initialized <- mkReg(False);
-    
+
+
+    //
+    // At initialization count the number in use of each port and pass
+    // that number down to each setMaxRunningInstance.
+    //
+    Reg#(Bool) doInit <- mkReg(False);
+    Reg#(t_JOIN_ID) initIdx <- mkReg(0);
+    // All counters start at -1 since the value passed in is the max. ID
+    Reg#(Vector#(4, t_JOIN_ID)) nRunningPerPort <- mkReg(replicate(~0));
+
+    rule initRunningPerPort (doInit && ! initialized);
+        // Update count based on port used by initIdx
+        let n_running = nRunningPerPort;
+        Bit#(2) p = zeroExtend(sourceMap.sub(initIdx));
+        n_running[p] = n_running[p] + 1;
+
+        // Done with all indices in use?
+        if (initIdx == maxRunningInstance)
+        begin
+            // Yes.  Initialize all subordinate ports.
+            p0.ctrl.setMaxRunningInstance(truncateNP(n_running[0]));
+            p1.ctrl.setMaxRunningInstance(truncateNP(n_running[1]));
+            p2.ctrl.setMaxRunningInstance(truncateNP(n_running[2]));
+            p3.ctrl.setMaxRunningInstance(truncateNP(n_running[3]));
+
+            // In case initialization triggered again.
+            nRunningPerPort <= replicate(~0);
+            initIdx <= 0;
+
+            // Ready to go.
+            doInit <= False;
+            initialized <= True;
+        end
+        else
+        begin
+            // No
+            nRunningPerPort <= n_running;
+            initIdx <= initIdx + 1;
+        end
+    endrule
+
 
     //
     // If the next source has data send the source port ID on deqFrom.
@@ -465,7 +603,7 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Join4_Impl#(
     Wire#(Maybe#(Bit#(2))) deqFrom <- mkDWire(tagged Invalid);
 
     rule computeDeqSrc (initialized);
-        Bit#(2) cur_port = zeroExtend(sourceMap.sub(cur.value));
+        Bit#(2) cur_port = zeroExtend(sourceMap.sub(curIdx));
         Bool empty = case (cur_port)
                          0: p0.ctrl.empty;
                          1: p1.ctrl.empty;
@@ -484,12 +622,12 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Join4_Impl#(
         
         method Maybe#(t_JOIN_ID) nextReadyInstance();
             return (isValid(deqFrom)) ? tagged Invalid :
-                                        tagged Valid cur.value();
+                                        tagged Valid curIdx;
         endmethod
         
-        method Action setMaxRunningInstance(t_JOIN_ID iid);
+        method Action setMaxRunningInstance(t_JOIN_ID iid) if (! doInit);
             maxRunningInstance <= iid;
-            initialized <= True;
+            doInit <= True;
         endmethod
         
         method List#(PORT_INFO) portInfo() =
@@ -506,14 +644,7 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Join4_Impl#(
             3: msg <- p3.receive(?);
         endcase
 
-        if (cur.value() == maxRunningInstance)
-        begin
-            cur.setC(0);
-        end
-        else
-        begin
-            cur.up();
-        end
+        curIdx <= (curIdx == maxRunningInstance) ? 0 : curIdx + 1;
 
         return msg;
     endmethod
@@ -537,12 +668,13 @@ module [CONNECTED_MODULE] mkPortSend_Multiplexed_Split2#(
          NumAlias#(n_SPLIT_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
          Alias#(t_SPLIT_ID, INSTANCE_ID#(t_NUM_INSTANCES)),
          // Tautology to keep Bluespec happy
-         Max#(TLog#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), 0)), 1,
-              TMax#(TLog#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1)), 1)));
+         Log#(TMax#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), 0), 2),
+              TLog#(TMax#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), 2))));
 
-    PORT_SEND_MULTIPLEXED#(0, t_MSG) dummy <- mkPortSend_Multiplexed_NULL();
+    PORT_SEND_MULTIPLEXED#(0, t_MSG) dummy2 <- mkPortSend_Multiplexed_NULL();
+    PORT_SEND_MULTIPLEXED#(0, t_MSG) dummy3 <- mkPortSend_Multiplexed_NULL();
 
-    let s <- mkPortSend_Multiplexed_Split4_Impl(p0, p1, dummy, dummy, destMap);
+    let s <- mkPortSend_Multiplexed_Split4_Impl(p0, p1, dummy2, dummy3, destMap);
     return s;
 endmodule
 
@@ -565,12 +697,14 @@ module [CONNECTED_MODULE] mkPortSend_Multiplexed_Split3#(
          NumAlias#(n_SPLIT_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
          Alias#(t_SPLIT_ID, INSTANCE_ID#(t_NUM_INSTANCES)),
          // Tautology to keep Bluespec happy
-         Max#(TLog#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), TAdd#(t_NUM_INSTANCES2, 0))), 1,
-              TMax#(TLog#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1), t_NUM_INSTANCES2)), 1)));
+         Log#(TMax#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1),
+                          TAdd#(t_NUM_INSTANCES2, 0)), 2),
+              TLog#(TMax#(TAdd#(TAdd#(t_NUM_INSTANCES0, t_NUM_INSTANCES1),
+                                t_NUM_INSTANCES2), 2))));
 
-    PORT_SEND_MULTIPLEXED#(0, t_MSG) dummy <- mkPortSend_Multiplexed_NULL();
+    PORT_SEND_MULTIPLEXED#(0, t_MSG) dummy3 <- mkPortSend_Multiplexed_NULL();
 
-    let s <- mkPortSend_Multiplexed_Split4_Impl(p0, p1, p2, dummy, destMap);
+    let s <- mkPortSend_Multiplexed_Split4_Impl(p0, p1, p2, dummy3, destMap);
     return s;
 endmodule
 
@@ -620,13 +754,55 @@ module [CONNECTED_MODULE] mkPortSend_Multiplexed_Split4_Impl#(
                                                 t_NUM_INSTANCES3))),
          // Map index may be smaller for joins with dummy ports.
          Add#(t_MAP_IDX_SZ, t_MAP_IDX_UNUSED, 2),
-         NumAlias#(n_SPLIT_ID_BITS, INSTANCE_ID_BITS#(t_NUM_INSTANCES)),
          Alias#(t_SPLIT_ID, INSTANCE_ID#(t_NUM_INSTANCES)));
 
-    COUNTER#(n_SPLIT_ID_BITS) cur <- mkLCounter(0);
+    Reg#(t_SPLIT_ID) curIdx <- mkConfigReg(0);
     Reg#(t_SPLIT_ID) maxRunningInstance <- mkReg(0);
+
     Reg#(Bool) initialized <- mkReg(False);
     
+    //
+    // At initialization count the number in use of each port and pass
+    // that number down to each setMaxRunningInstance.
+    //
+    Reg#(Bool) doInit <- mkReg(False);
+    Reg#(t_SPLIT_ID) initIdx <- mkReg(0);
+    // All counters start at -1 since the value passed in is the max. ID
+    Reg#(Vector#(4, t_SPLIT_ID)) nRunningPerPort <- mkReg(replicate(~0));
+
+`ifdef FOOBAR
+    rule initRunningPerPort (doInit && ! initialized);
+        // Update count based on port used by initIdx
+        let n_running = nRunningPerPort;
+        Bit#(2) p = zeroExtend(destMap.sub(initIdx));
+        n_running[p] = n_running[p] + 1;
+
+        // Done with all indices in use?
+        if (initIdx == maxRunningInstance)
+        begin
+            // Yes.  Initialize all subordinate ports.
+            p0.ctrl.setMaxRunningInstance(truncateNP(n_running[0]));
+            p1.ctrl.setMaxRunningInstance(truncateNP(n_running[1]));
+            p2.ctrl.setMaxRunningInstance(truncateNP(n_running[2]));
+            p3.ctrl.setMaxRunningInstance(truncateNP(n_running[3]));
+
+            // In case initialization triggered again.
+            nRunningPerPort <= replicate(~0);
+            initIdx <= 0;
+
+            // Ready to go.
+            doInit <= False;
+            initialized <= True;
+        end
+        else
+        begin
+            // No
+            nRunningPerPort <= n_running;
+            initIdx <= initIdx + 1;
+        end
+    endrule
+`endif
+
 
     //
     // If the next destination is not full send the dest port ID on enqTo.
@@ -634,7 +810,7 @@ module [CONNECTED_MODULE] mkPortSend_Multiplexed_Split4_Impl#(
     Wire#(Maybe#(Bit#(2))) enqTo <- mkDWire(tagged Invalid);
 
     rule computeEnqDst (initialized);
-        Bit#(2) cur_port = zeroExtend(destMap.sub(cur.value));
+        Bit#(2) cur_port = zeroExtend(destMap.sub(curIdx));
         Bool full = case (cur_port)
                          0: p0.ctrl.full;
                          1: p1.ctrl.full;
@@ -651,9 +827,10 @@ module [CONNECTED_MODULE] mkPortSend_Multiplexed_Split4_Impl#(
         method Bool balanced() = p0.ctrl.balanced && p1.ctrl.balanced;
         method Bool heavy() = p0.ctrl.heavy || p1.ctrl.heavy;
 
-        method Action setMaxRunningInstance(t_SPLIT_ID iid);
+        method Action setMaxRunningInstance(t_SPLIT_ID iid) if (! doInit);
             maxRunningInstance <= iid;
             initialized <= True;
+//            doInit <= True;
         endmethod
 
         method List#(String) portName() =
@@ -668,14 +845,7 @@ module [CONNECTED_MODULE] mkPortSend_Multiplexed_Split4_Impl#(
             3: p3.send(?, msg);
         endcase
 
-        if (cur.value() == maxRunningInstance)
-        begin
-            cur.setC(0);
-        end
-        else
-        begin
-            cur.up();
-        end
+        curIdx <= (curIdx == maxRunningInstance) ? 0 : curIdx + 1;
     endmethod
 endmodule
 

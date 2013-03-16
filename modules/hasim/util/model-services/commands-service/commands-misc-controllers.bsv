@@ -380,41 +380,6 @@ endmodule
 
 
 //
-// The standard local controller permits an instance ID space to be larger
-// than the CPU ID space known to the function model in order to support extra
-// devices such as memory controllers.  This module maps control from a larger
-// space to a smaller one.
-//
-module mkConvertControllerInstances_IN#(INSTANCE_CONTROL_IN#(t_NUM_INSTANCES_SRC) inctrl)
-    // Interface:
-    (INSTANCE_CONTROL_IN#(t_NUM_INSTANCES_DST));
-     
-    method Bool empty = inctrl.empty;
-    method Bool balanced = inctrl.balanced;
-    method Bool light = inctrl.light;
-
-    method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES_DST)) nextReadyInstance;
-        if (inctrl.nextReadyInstance matches tagged Valid .iid)
-            return tagged Valid zeroExtendNP(iid);
-        else
-            return tagged Invalid;
-    endmethod
-
-    method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES_DST) iid);
-        // The number of active instances in the controller space is larger
-        // by a constant (the number of non-functional devices, assumed
-        // always active).  Remove the always-active devices from the outbound
-        // count.
-        iid = iid - fromInteger(valueOf(TSub#(t_NUM_INSTANCES_DST,
-                                              t_NUM_INSTANCES_SRC)));
-        inctrl.setMaxRunningInstance(truncateNP(iid));
-    endmethod
-
-    method List#(PORT_INFO) portInfo() = inctrl.portInfo();
-endmodule
-
-
-//
 // mkConvertControllerAlwaysReady_OUT --
 //   Some connected controllers are always ready because of the way they are
 //   used.  (E.g. a multiplexed mesh network in which a model pipeline pass

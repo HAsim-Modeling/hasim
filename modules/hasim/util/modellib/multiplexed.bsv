@@ -44,8 +44,8 @@
 
 // INSTANCE_ID#(ni) is an instance ID to distinguish between ni different
 // instances.
-// TODO: is it okay to have n not be a power of 2?
-typedef TMax#(TLog#(ni), 1) INSTANCE_ID_BITS#(type ni);
+// Force ID to be at least 1 bit.
+typedef TLog#(TMax#(ni, 2)) INSTANCE_ID_BITS#(type ni);
 typedef Bit#(INSTANCE_ID_BITS#(ni)) INSTANCE_ID#(type ni);
 
 typedef Vector#(ni, t) MULTIPLEXED#(type ni, parameter type t);

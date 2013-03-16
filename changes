@@ -26532,3 +26532,29 @@ Directory modules/hasim/util/modellib
   indicating whether it is managing any dynamically allocated objects
   (most likely contexts.)  If false, context enable/disable messages
   are ignored.
+
+----------
+mcadler     Date: Sat Mar 16 11:25:57 EDT 2013  CSN: CSN-hasim-921
+                  Sat Mar 16 15:25:57 UTC 2013
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          920 
+ commands-misc-controllers.bsv Locally Modified          920 
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          920 
+ permutation-ports.bsv     Locally Modified          920 
+ a-ports.bsv               Locally Modified          920 
+
+- Controllers now have methods to change the number of active instances,
+  allowing models controlling something other than CPUs to update the
+  max IID count dynamically.
+
+- Fix multiplexed, reordered, ports to support mesh networks that aren't square.
+
+- Add substr() methods on multiplexed ports to access a subset of
+  the multiplexed space.
+
+- Join/split ports now pass down the max IID in use for each
+  managed port based on the state of the LUT.

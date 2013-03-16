@@ -120,6 +120,9 @@ interface LOCAL_CONTROLLER#(type t_NUM_INSTANCES);
     method Action endModelCycle(INSTANCE_ID#(t_NUM_INSTANCES) iid, Bit#(8) path);
     method Action instanceDone(INSTANCE_ID#(t_NUM_INSTANCES) iid, Bool passfail);
 
+    method INSTANCE_ID#(t_NUM_INSTANCES) getMaxActiveInstance();
+    method Action setMaxActiveInstance(INSTANCE_ID#(t_NUM_INSTANCES) maxIID);
+
 endinterface
 
 
@@ -799,6 +802,14 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
         end
     endmethod
     
+    method INSTANCE_ID#(t_NUM_INSTANCES) getMaxActiveInstance();
+        return maxActiveInstance.value();
+    endmethod
+
+    method Action setMaxActiveInstance(INSTANCE_ID#(t_NUM_INSTANCES) maxIID);
+        maxActiveInstance.setC(maxIID);
+    endmethod
+
 endmodule
 
 

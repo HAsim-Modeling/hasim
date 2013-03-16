@@ -616,12 +616,11 @@ module mkPortRecv_Multiplexed_NULL
     //interface:
         (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
-    (Bits#(t_MSG, t_MSG_SZ),
-     NumAlias#(t_SAFE_NUM_INSTANCES, TMax#(1, t_NUM_INSTANCES)));
+        (Bits#(t_MSG, t_MSG_SZ));
 
     Reg#(Bool) initialized <- mkReg(False);
-    Reg#(INSTANCE_ID#(t_SAFE_NUM_INSTANCES)) maxInstance <- mkRegU();
-    Reg#(INSTANCE_ID#(t_SAFE_NUM_INSTANCES)) nextInstance <- mkReg(0);
+    Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) maxInstance <- mkRegU();
+    Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) nextInstance <- mkReg(0);
 
     interface INSTANCE_CONTROL_IN ctrl;
         method Bool empty() = False;

@@ -280,13 +280,16 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     // itlbTransReq --
     //     Standard instruction page translation request.
     //
+
+    let stdioIReq <- mkStdIO_CondPrintf(ioMask_FUNCP_MEMSTATE, stdio);
+
     rule itlbTransReq (! itlbReadyForAlloc && ! dtlbReadyForAlloc);
         let r = link_funcp_itlb_trans.getReq();
         link_funcp_itlb_trans.deq();
 
         debugLog.record($format("I Req: ctx=%0d, va=0x%x", r.contextId, r.va));
         // Pack state into 64 bits as best we can
-        stdio.printf(msgIReq, list2(zeroExtend(r.contextId), resize(r.va)));
+        stdioIReq.printf(msgIReq, list2(zeroExtend(r.contextId), resize(r.va)));
 
         let vp = pageFromVA(r.va);
 
@@ -305,6 +308,9 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     // itlbResp --
     //     Response for instruction page translation.
     //
+
+    let stdioIResp <- mkStdIO_CondPrintf(ioMask_FUNCP_MEMSTATE, stdio);
+
     rule itlbResp (True);
         // Translation cache response
         let v = itlbTransRespQ.first();
@@ -320,9 +326,9 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         resp.pa = paFromPage(v.page, offset);
 
         debugLog.record($format("I Resp: pa=0x%x, io=%0d, fault=%0d", resp.pa, resp.ioSpace, resp.pageFault));
-        stdio.printf(msgIRsp, list3(zeroExtend(resp.pa),
-                                    zeroExtend(pack(resp.ioSpace)),
-                                    zeroExtend(pack(resp.pageFault))));
+        stdioIResp.printf(msgIRsp, list3(zeroExtend(resp.pa),
+                                         zeroExtend(pack(resp.ioSpace)),
+                                         zeroExtend(pack(resp.pageFault))));
 
         link_funcp_itlb_trans.makeResp(resp);
     endrule
@@ -366,13 +372,16 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     // dtlbTransReq --
     //     Standard data page translation request.
     //
+
+    let stdioDReq <- mkStdIO_CondPrintf(ioMask_FUNCP_MEMSTATE, stdio);
+
     (* descending_urgency = "itlbFaultReq, itlbTransReq, dtlbFaultReq, dtlbTransReq" *)
     rule dtlbTransReq (! itlbReadyForAlloc && ! dtlbReadyForAlloc);
         let r = link_funcp_dtlb_trans.getReq();
         link_funcp_dtlb_trans.deq();
 
         debugLog.record($format("D Req: ctx=%0d, va=0x%x", r.contextId, r.va));
-        stdio.printf(msgDReq, list2(zeroExtend(r.contextId), resize(r.va)));
+        stdioDReq.printf(msgDReq, list2(zeroExtend(r.contextId), resize(r.va)));
 
         let vp = pageFromVA(r.va);
 
@@ -391,6 +400,9 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     // dtlbResp --
     //     Response for data page translation.
     //
+
+    let stdioDResp <- mkStdIO_CondPrintf(ioMask_FUNCP_MEMSTATE, stdio);
+
     rule dtlbResp (True);
         // Translation cache response
         let v = dtlbTransRespQ.first();
@@ -406,9 +418,9 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         resp.pa = paFromPage(v.page, offset);
 
         debugLog.record($format("D Resp: pa=0x%x, io=%0d, fault=%0d", resp.pa, resp.ioSpace, resp.pageFault));
-        stdio.printf(msgIRsp, list3(zeroExtend(resp.pa),
-                                    zeroExtend(pack(resp.ioSpace)),
-                                    zeroExtend(pack(resp.pageFault))));
+        stdioDResp.printf(msgIRsp, list3(zeroExtend(resp.pa),
+                                         zeroExtend(pack(resp.ioSpace)),
+                                         zeroExtend(pack(resp.pageFault))));
 
         link_funcp_dtlb_trans.makeResp(resp);
     endrule

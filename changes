@@ -26558,3 +26558,32 @@ Directory modules/hasim/util/modellib
 
 - Join/split ports now pass down the max IID in use for each
   managed port based on the state of the LUT.
+
+----------
+mcadler     Date: Mon Apr  1 13:44:49 EDT 2013  CSN: CSN-hasim-922
+                  Mon Apr  1 17:44:49 UTC 2013
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          921 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          921 
+ regmgr-macro-pipe-rewind.bsv Locally Modified          921 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          921 
+ regmgr-macro.bsv          Locally Modified          921 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.bsv         Locally Modified          921 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.bsv   Locally Modified          921 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          921 
+
+Directory modules/hasim/util/common
+ hasim-debug-file.bsv      Locally Modified          921 
+
+Use the new masked (conditional) stdio wrapper for STDIO-based debugging.
+debugging is now compiled in by default, though printing is off by default.
+
+Share STDIO nodes in the regstate manager to save space.

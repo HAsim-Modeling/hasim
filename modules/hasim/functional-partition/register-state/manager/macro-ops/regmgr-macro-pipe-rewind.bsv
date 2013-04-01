@@ -58,7 +58,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
     REGSTATE_MEMORY_QUEUE linkToMem,
     REGSTATE_REG_MAPPING_REWIND regMapping,
     BROM#(TOKEN_INDEX, REGMGR_DST_REGS) tokDsts,
-    FUNCP_FREELIST freelist)
+    FUNCP_FREELIST freelist,
+    STDIO#(Bit#(32)) stdio)
     //interface:
     ();
 
@@ -69,10 +70,11 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
     // ====================================================================
 
     DEBUG_FILE debugLog <- mkDebugFile(`REGSTATE_LOGFILE_PREFIX + "_pipe_rewind.out");
-    STDIO#(Bit#(32)) stdio <- mkStdIO_Debug();
+
     let msgRecvReq <- getGlobalStringUID("FUNCP REWIND: start TOKEN (%d, %d)\n");
     let msgSendRsp <- getGlobalStringUID("FUNCP REWIND: done TOKEN %d\n");
 
+    let stdioRW <- mkStdIO_CondPrintf(ioMask_FUNCP_REGMGR, stdio);
 
     // ====================================================================
     //
@@ -163,8 +165,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
 
         // Log it.
         debugLog.record($format("Rewind: Preparing rewind to ") + fshow(req.token.index));
-        stdio.printf(msgRecvReq, list2(zeroExtend(tokContextId(req.token)),
-                                       zeroExtend(tokTokenId(req.token))));
+        stdioRW.printf(msgRecvReq, list2(zeroExtend(tokContextId(req.token)),
+                                         zeroExtend(tokTokenId(req.token))));
 
         state.setRewind(tokContextId(req.token));
         state_rew <= RSM_REW_DrainingForRewind;
@@ -346,8 +348,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_Rewind#(
         end
 
         debugLog.record($format("Rewind: Done."));  
-        stdio.printf(msgSendRsp, list2(zeroExtend(tokContextId(rewindTok)),
-                                       zeroExtend(tokTokenId(rewindTok))));
+        stdioRW.printf(msgSendRsp, list2(zeroExtend(tokContextId(rewindTok)),
+                                         zeroExtend(tokTokenId(rewindTok))));
 
         tokScoreboard.rewindTo(rewindTok.index);
         // Return response

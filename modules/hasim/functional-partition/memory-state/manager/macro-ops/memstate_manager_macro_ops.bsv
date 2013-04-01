@@ -71,6 +71,8 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     DEBUG_FILE debugLog <- mkDebugFile(`FUNCP_MEMSTATE_LOGFILE_NAME);
     STDIO#(Bit#(64)) stdio <- mkStdIO_Debug();
 
+    let stdioLM <- mkStdIO_CondPrintf(ioMask_FUNCP_MEMSTATE, stdio);
+
     let msgLockResult <- getGlobalStringUID("MEMSTATE STORE EXCLUSIVE: CTX %d, Addr 0x%llx, not in SB %d, Lock Mgr %d, can store %d\n");
 
     // ***** Submodules ***** //
@@ -90,7 +92,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
 
     FIFOF#(Bool) writeBackQ <- mkFIFOF();
     FIFO#(MEM_LOAD_INFO) sbLookupQ <- mkFIFO();
-    MEMSTATE_LOCK_LINE_MGR lockMgr <- mkFUNCPMemStateLockMgr(debugLog, stdio);
+    MEMSTATE_LOCK_LINE_MGR lockMgr <- mkFUNCPMemStateLockMgr(debugLog, stdioLM);
 
     // ***** Rules ***** //
 
@@ -172,7 +174,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         linkRegState.makeResp(memStateRespStatus(stInfo.memRefToken, can_store));
 
         debugLog.record($format("  STORE EXCLUSIVE: not in SB %0d, Lock Mgr %0d, can store %0d, ", not_in_sb, got_lock, can_store) + fshow(stInfo.memRefToken));
-        stdio.printf(msgLockResult, list(zeroExtend(tokContextId(stInfo.tok)), zeroExtend(stInfo.addr), zeroExtend(pack(not_in_sb)), zeroExtend(pack(got_lock)), zeroExtend(pack(can_store))));
+        stdioLM.printf(msgLockResult, list(zeroExtend(tokContextId(stInfo.tok)), zeroExtend(stInfo.addr), zeroExtend(pack(not_in_sb)), zeroExtend(pack(got_lock)), zeroExtend(pack(can_store))));
     endrule
 
     // memLoad
@@ -427,7 +429,8 @@ FUNCP_MEMSTATE_LOCK_REQ
     deriving (Eq, Bits);
 
 
-module [HASIM_MODULE] mkFUNCPMemStateLockMgr#(DEBUG_FILE debugLog, STDIO#(Bit#(64)) stdio)
+module [HASIM_MODULE] mkFUNCPMemStateLockMgr#(DEBUG_FILE debugLog,
+                                              STDIO_COND_PRINTF#(Bit#(64)) stdio)
     // Interface:
     (MEMSTATE_LOCK_LINE_MGR)
     provisos (NumAlias#(n_HASH_BUCKETS, TAdd#(2, CONTEXT_ID_SIZE)),

@@ -192,7 +192,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     BROM#(TOKEN_INDEX, REGMGR_DST_REGS) tokDsts,
     BROM#(TOKEN_INDEX, ISA_INSTRUCTION) tokInst,
     BRAM_MULTI_READ#(2, TOKEN_INDEX, ISA_ADDRESS) tokMemAddr,
-    BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue)
+    BRAM#(TOKEN_INDEX, ISA_VALUE) tokStoreValue,
+    STDIO#(Bit#(32)) stdio)
     //interface:
                 ();
 
@@ -203,7 +204,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // ====================================================================
 
     DEBUG_FILE debugLog <- mkDebugFile(`REGSTATE_LOGFILE_PREFIX + "_pipe_getResults.out");
-    STDIO#(Bit#(32)) stdio <- mkStdIO_Debug();
+
     let msgSendToDP <- getGlobalStringUID("FUNCP GETRESULTS: send to dp TOKEN (%d, %d)\n");
     let msgRecvFromDP <- getGlobalStringUID("FUNCP GETRESULTS: recv from dp TOKEN (%d, %d)\n");
     let msgPRFWrite <- getGlobalStringUID("FUNCP GETRESULTS: prf write TOKEN (%d, %d) prf %d\n");
@@ -460,6 +461,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     // When:    After getResults2 or alternatively getResults2StallEnd
     // Effect:  Send all the data to the datapath.
 
+    let stdio3 <- mkStdIO_CondPrintf(ioMask_FUNCP_REGMGR, stdio);
+
     rule getResults3 (res2Q.first() matches {.tok, .need_rsp} &&& need_rsp &&& state.readyToContinue());
 
         // Get input from the previous stage.
@@ -472,8 +475,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         // Log it.
         debugLog.record(fshow(tok.index) + $format(": GetResults3: Sending to Datapath."));
-        stdio.printf(msgSendToDP, list(zeroExtend(tokContextId(tok)),
-                                       zeroExtend(tokTokenId(tok))));
+        stdio3.printf(msgSendToDP, list(zeroExtend(tokContextId(tok)),
+                                        zeroExtend(tokTokenId(tok))));
 
         // Send it to the datapath.
         linkToDatapath.makeReq(initISADatapathReq(tok, inst, addr, dsts.pr));
@@ -502,6 +505,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     //         that depenend on the register values will block until a
     //         register's valid bit is set in getResultsWritebacks.
     //
+    let stdio4 <- mkStdIO_CondPrintf(ioMask_FUNCP_REGMGR, stdio);
+
     rule getResults4 (res3Q.first() matches {.tok, .need_rsp, .addr} &&& need_rsp &&& state.readyToContinue());
 
         // Get the token from the previous stage.
@@ -528,8 +533,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         // Return timing model. End of macro-operation (path 1).
         linkGetResults.makeResp(initFuncpRspGetResults(tok, addr, rsp.timepResult));
         debugLog.record(fshow(tok.index) + $format(": GetResults: End (path 1)."));
-        stdio.printf(msgRecvFromDP, list(zeroExtend(tokContextId(tok)),
-                                         zeroExtend(tokTokenId(tok))));
+        stdio4.printf(msgRecvFromDP, list(zeroExtend(tokContextId(tok)),
+                                          zeroExtend(tokTokenId(tok))));
     endrule
 
     rule getResults4Bubble (res3Q.first() matches {.tok, .need_res, .addr} &&& !need_res &&& state.readyToContinue());
@@ -552,6 +557,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     //     a store is assumed to be the store value.  A token is marked complete
     //     when the tokDone bit is sent in the writebacks message.
     //
+    let stdioWB <- mkStdIO_CondPrintf(ioMask_FUNCP_REGMGR, stdio);
+
     rule getResultsWritebacks (True);
         let wb = writebacks.first();
         writebacks.deq();
@@ -567,17 +574,17 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
             tokStoreValue.write(tok.index, wb.value);
             tokScoreboard.setStoreDataValid(tok.index);
             debugLog.record(fshow(tok.index) + $format(": GetResultsWB: Writing STORE val 0x%x", wb.value));
-            stdio.printf(msgSDWrite, list(zeroExtend(tokContextId(tok)),
-                                          zeroExtend(tokTokenId(tok))));
+            stdioWB.printf(msgSDWrite, list(zeroExtend(tokContextId(tok)),
+                                            zeroExtend(tokTokenId(tok))));
         end
         else if (wb.physDst matches tagged Valid .pr)
         begin
             // Normal physical register update
             prf.write(tok, pr, wb.value);
             debugLog.record(fshow(tok.index) + $format(": GetResultsWB: Writing (PR%0d <= 0x%x)", pr, wb.value));
-            stdio.printf(msgPRFWrite, list(zeroExtend(tokContextId(tok)),
-                                           zeroExtend(tokTokenId(tok)),
-                                           zeroExtend(pr)));
+            stdioWB.printf(msgPRFWrite, list(zeroExtend(tokContextId(tok)),
+                                             zeroExtend(tokTokenId(tok)),
+                                             zeroExtend(pr)));
         end
 
         // All writebacks complete for token?
@@ -622,6 +629,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
     //
     // When:   After getResults operation puts us in the emulation state.
     // Effect: Stall until all younger operations have completed. Then we can proceed.
+
+    let stdioEM <- mkStdIO_CondPrintf(ioMask_FUNCP_REGMGR, stdio);
 
     rule emulateInstruction1 ((state_res == RSM_RES_DrainingForEmulate) && tokScoreboard.canEmulate(emulatingToken.index));
         // Did the timing model do drain before correctly?
@@ -841,8 +850,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
         
         //Log it.
         debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction3: Requesting Emulation of inst 0x%h from address 0x%h", inst, pc));
-        stdio.printf(msgEmulStart, list(zeroExtend(tokContextId(emulatingToken)),
-                                        zeroExtend(tokTokenId(emulatingToken))));
+        stdioEM.printf(msgEmulStart, list(zeroExtend(tokContextId(emulatingToken)),
+                                          zeroExtend(tokTokenId(emulatingToken))));
 
         stat_isa_emul.incr();
 
@@ -963,8 +972,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
         //Log it
         debugLog.record(fshow(emulatingToken.index) + $format(": EmulateInstruction3: Emulation finished."));
-        stdio.printf(msgEmulDone, list(zeroExtend(tokContextId(emulatingToken)),
-                                       zeroExtend(tokTokenId(emulatingToken))));
+        stdioEM.printf(msgEmulDone, list(zeroExtend(tokContextId(emulatingToken)),
+                                         zeroExtend(tokTokenId(emulatingToken))));
   
         // Send the response to the timing model.
         // End of macro-operation.

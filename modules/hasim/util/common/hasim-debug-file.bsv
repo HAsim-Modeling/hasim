@@ -20,6 +20,17 @@
 
 import Vector::*;
 
+//
+// STDIO conditional printf bit mask allocation.  (See mkStdIO_CondPrintf)
+//
+Integer ioMask_FUNCP_REGMGR = 0;
+Integer ioMask_FUNCP_MEMSTATE = 1;
+
+// First position available to the timing partition.  Leave it to the timing
+// partition to expand the space.
+Integer ioMask_TIMEP_START = 2;
+
+
 // All debug output files go in a subdirectory
 function String debugPath(String fname) = `DEBUG_LOG_DIR + "/" + fname;
 

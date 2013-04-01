@@ -70,7 +70,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
     REGSTATE_PHYSICAL_REGS_WRITE_REG prf,
     BROM#(TOKEN_INDEX, UP_TO_TWO#(MEM_ADDRESS)) tokPhysicalMemAddrs,
     BROM#(TOKEN_INDEX, REGMGR_DST_REGS) tokDsts,
-    BRAM#(TOKEN_INDEX, Bool) tokIsLoadLocked)
+    BRAM#(TOKEN_INDEX, Bool) tokIsLoadLocked,
+    STDIO#(Bit#(32)) stdio)
     //interface:
                 ();
 
@@ -82,8 +83,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
 
     DEBUG_FILE debugLog <- mkDebugFile(`REGSTATE_LOGFILE_PREFIX + "_pipe_doLoads.out");
 
-    STDIO#(Bit#(32)) stdio <- mkStdIO_Debug();
     let msgWriteReg <- getGlobalStringUID("FUNCP DOLOADS: TOKEN (%d, %d) write PR %d <- 0x%08lx%08lx\n");
+
+    let stdioWR <- mkStdIO_CondPrintf(ioMask_FUNCP_REGMGR, stdio);
 
     function Action dbgWriteReg(TOKEN tok,
                                 FUNCP_PHYSICAL_REG_INDEX pr,
@@ -96,7 +98,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
         Bit#(64) v = resize(val);
         dbg_args[3] = v[63:32];
         dbg_args[4] = v[31:0];
-        stdio.printf(msgWriteReg, toList(dbg_args));
+        stdioWR.printf(msgWriteReg, toList(dbg_args));
     endaction
     endfunction
 

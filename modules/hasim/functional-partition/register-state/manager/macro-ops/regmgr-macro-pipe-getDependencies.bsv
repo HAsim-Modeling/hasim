@@ -40,7 +40,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     BRAM#(TOKEN_INDEX, ISA_INST_SRCS) tokWriters,
     BRAM_MULTI_READ#(n_tokDsts, TOKEN_INDEX, REGMGR_DST_REGS) tokDsts,
     BRAM#(TOKEN_INDEX, Bool) tokIsLoadLocked,
-    BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokIsStoreCond)
+    BRAM#(TOKEN_INDEX, Maybe#(FUNCP_PHYSICAL_REG_INDEX)) tokIsStoreCond,
+    STDIO#(Bit#(32)) stdio)
     //interface:
                 ();
 
@@ -52,7 +53,6 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
 
     DEBUG_FILE debugLog <- mkDebugFile(`REGSTATE_LOGFILE_PREFIX + "_pipe_getDependencies.out");
 
-    STDIO#(Bit#(32)) stdio <- mkStdIO_Debug();
     let msgMapInst <- getGlobalStringUID("FUNCP GETDEP: alloc TOKEN (%d, %d): VA 0x%08lx%08lx inst 0x%08lx\n");
     let msgRegSrcs <- getGlobalStringUID("FUNCP GETDEP: read PR (%d, %d, %d) TOKEN (%d, %d)\n");
     let msgRegDsts <- getGlobalStringUID("FUNCP GETDEP: write PR (%d, %d, %d) TOKEN (%d, %d)\n");
@@ -120,6 +120,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     // getDependencies1 --
     //   Get a token for this instruction. 
     //
+    let stdio1 <- mkStdIO_CondPrintf(ioMask_FUNCP_REGMGR, stdio);
+
     (* conservative_implicit_conditions *)
     rule getDependencies1 (state.readyToBegin(linkGetDeps.getReq().contextId));
 
@@ -153,7 +155,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         dbg_args[2] = dbg_va[63:32];
         dbg_args[3] = dbg_va[31:0];
         dbg_args[4] = resize(req.instruction);
-        stdio.printf(msgMapInst, toList(dbg_args));
+        stdio1.printf(msgMapInst, toList(dbg_args));
 
         // Pass on to stage 2.
         deps1Q.enq(tuple2(newtok, req.instruction));
@@ -291,6 +293,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     //   mapper, which will be waiting for them.  The new registers will
     //   rendezvous with the mapping request from stage 2.
     //
+    let stdio3 <- mkStdIO_CondPrintf(ioMask_FUNCP_REGMGR, stdio);
+
     (* conservative_implicit_conditions *)
     rule getDependencies3 (state.readyToContinue());
 
@@ -381,7 +385,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         end
         reg_msg[3] = resize(tokContextId(tok));
         reg_msg[4] = resize(tokTokenId(tok));
-        stdio.printf(msgRegDsts, toList(reg_msg));
+        stdio3.printf(msgRegDsts, toList(reg_msg));
 
         deps3Q.enq(tuple3(tok, ar_srcs, map_dsts));
 
@@ -393,6 +397,8 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
     //   Mapping is complete.  Receive the input physical registers from the
     //   mapper and construct a response to the timing model.
     //
+    let stdio4 <- mkStdIO_CondPrintf(ioMask_FUNCP_REGMGR, stdio);
+
     rule getDependencies4 (state.readyToContinue());
 
         match {.tok, .ar_srcs, .map_dsts} = deps3Q.first();
@@ -449,7 +455,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetDependencies#(
         reg_msg[3] = resize(tokContextId(tok));
         reg_msg[4] = resize(tokTokenId(tok));
 
-        stdio.printf(msgRegSrcs, toList(reg_msg));
+        stdio4.printf(msgRegSrcs, toList(reg_msg));
 
     endrule
     

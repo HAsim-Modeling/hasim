@@ -183,6 +183,9 @@ module [HASIM_MODULE] mkFUNCP_Memory
     // handleMemReq --
     //     Service memory requests from the model.
     //
+
+    let stdioMReq <- mkStdIO_CondPrintf(ioMask_FUNCP_MEMSTATE, stdio);
+
     rule handleMemReq (initialized);
         let req = linkMemory.getReq();
         linkMemory.deq();
@@ -198,10 +201,10 @@ module [HASIM_MODULE] mkFUNCP_Memory
                 loadsInFlight.up();
                 debugLog.record($format("cache readReq: ctx=%0d, addr=0x%x, w_addr=0x%x", ldinfo.contextId, ldinfo.addr, w_addr));
 
-                stdio.printf(msgLD_Req, list(zeroExtend(ldinfo.contextId),
-                                             zeroExtend(pack(ldinfo.memRefToken)),
-                                             zeroExtend(ldinfo.addr),
-                                             zeroExtend(w_addr)));
+                stdioMReq.printf(msgLD_Req, list(zeroExtend(ldinfo.contextId),
+                                                 zeroExtend(pack(ldinfo.memRefToken)),
+                                                 zeroExtend(ldinfo.addr),
+                                                 zeroExtend(w_addr)));
             end
             
             tagged MEM_STORE .stinfo:
@@ -210,10 +213,10 @@ module [HASIM_MODULE] mkFUNCP_Memory
                 cache.write(w_addr, stinfo.val);
                 debugLog.record($format("cache write: ctx=%0d, addr=0x%x, w_addr=0x%x, val=0x%x", stinfo.contextId, stinfo.addr, w_addr, stinfo.val));
 
-                stdio.printf(msgST, list(zeroExtend(stinfo.contextId),
-                                         zeroExtend(stinfo.addr),
-                                         zeroExtend(w_addr),
-                                         zeroExtend(stinfo.val)));
+                stdioMReq.printf(msgST, list(zeroExtend(stinfo.contextId),
+                                             zeroExtend(stinfo.addr),
+                                             zeroExtend(w_addr),
+                                             zeroExtend(stinfo.val)));
             end
         endcase
 
@@ -223,14 +226,17 @@ module [HASIM_MODULE] mkFUNCP_Memory
     // getMemResp --
     //     Return load response from the cache to the model.
     //
+
+    let stdioMResp <- mkStdIO_CondPrintf(ioMask_FUNCP_MEMSTATE, stdio);
+
     rule getMemResp (True);
         let r <- cache.readResp();
         linkMemory.makeResp(memStateRespLoad(r.readMeta.memRefToken, r.val));
 
         loadsInFlight.down();
         debugLog.record($format("cache readResp: val=0x%x", r.val));
-        stdio.printf(msgLD_Rsp, list(zeroExtend(pack(r.readMeta.memRefToken)),
-                                     resize(r.val)));
+        stdioMResp.printf(msgLD_Rsp, list(zeroExtend(pack(r.readMeta.memRefToken)),
+                                          resize(r.val)));
     endrule
 
 

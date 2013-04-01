@@ -118,7 +118,11 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
     // The Map Table
     REGSTATE_REG_MAPPING regMapping <- mkFUNCP_Regstate_RegMapping();
 
-    
+    // StdIO connection used for debugging.  Allocate one node to reduce
+    // area.
+    STDIO#(Bit#(32)) stdio <- mkStdIO_Debug();
+
+
     // ====================================================================
     //
     //   Pipeline submodules (connections to timing module)
@@ -143,7 +147,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                             tokWriters,
                             tokDsts,
                             tokIsLoadLocked,
-                            tokIsStoreCond);
+                            tokIsStoreCond,
+                            stdio);
 
     let getResults <- mkFUNCP_RegMgrMacro_Pipe_GetResults(
                             globData,
@@ -154,7 +159,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                             tokDsts.readPorts[0],
                             tokInst.readPorts[1],
                             tokMemAddr,
-                            tokStoreValue);
+                            tokStoreValue,
+                            stdio);
 
     let doDTranslate <- mkFUNCP_RegMgrMacro_Pipe_DoDTranslate(
                             globData,
@@ -168,7 +174,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                             prf.doLoads,
                             tokPhysicalMemAddrs.readPorts[0],
                             tokDsts.readPorts[1],
-                            tokIsLoadLocked);
+                            tokIsLoadLocked,
+                            stdio);
 
     let doStores <- mkFUNCP_RegMgrMacro_Pipe_DoStores(
                             globData,
@@ -202,7 +209,8 @@ module [HASIM_MODULE] mkFUNCP_RegStateManager
                             linkToMem.rewindQueue,
                             regMapping.rewindQueue,
                             tokDsts.readPorts[3],
-                            freelist);
+                            freelist,
+                            stdio);
 
 
     // ====================================================================

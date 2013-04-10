@@ -225,9 +225,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     let tokDataPort_REMOVE = 3;
 
     // Store-buffer data for a store token
-    BRAM_MULTI_READ#(2, STORE_TOKEN_INDEX, MEMSTATE_SBUFFER_TOKEN) storeTokData <- mkBRAMPseudoMultiReadInitialized(tokInit);
-    let storeTokDataPort_COMMIT = 0;
-    let storeTokDataPort_WRITEBACK = 1;
+    BRAM#(STORE_TOKEN_INDEX, MEMSTATE_SBUFFER_TOKEN) storeTokData <- mkBRAMInitialized(tokInit);
 
     // Storage for store buffer entries
     BRAM#(MEMSTATE_SBUFFER_INDEX, MEMSTATE_SBUFFER_METADATA_NODE) sBufferMeta <- mkBRAM();
@@ -731,7 +729,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         match {.tok_idx, .store_tok_idx} = commitQ.first();
 
         let tok_data = tokData.readPorts[tokDataPort_COMMIT].peek();
-        let old_store_tok = storeTokData.readPorts[storeTokDataPort_COMMIT].peek();
+        let old_store_tok = storeTokData.peek();
 
         // Has previous use of the store token been written back?
         assertStoreTokNotBusy(old_store_tok.nStores == 0);
@@ -751,7 +749,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
 
             // Pop the read data
             let dummy0 <- tokData.readPorts[tokDataPort_COMMIT].readRsp();
-            let dummy1 <- storeTokData.readPorts[storeTokDataPort_COMMIT].readRsp();
+            let dummy1 <- storeTokData.readRsp();
 
             // Move the record to the store token's data
             tokData.write(tok_idx, tokInit);
@@ -819,7 +817,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
             if (operTokenStoreIdx + 1 == tok_data.nStores)
             begin
                 // Done with all stores for the token.  Clear it.
-                debugLog.record($format("    SB REMOVE WRITE TOK DATA. IDX: %0d, NUM STORES: %0d", tok_idx, tokInit.nStores));
+                debugLog.record($format("    SB REMOVE WRITE TOK DATA. IDX: %0d, NUM STORES: %0d", tok_idx, tok_data.nStores));
                 tokData.write(tok_idx, tokInit);
 
                 // Pop the read result
@@ -875,7 +873,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     rule writeBackStores (state == SBUFFER_STATE_WRITEBACK);
         let store_tok_idx = writeBackQ.first();
 
-        let tok_data = storeTokData.readPorts[storeTokDataPort_WRITEBACK].peek();
+        let tok_data = storeTokData.peek();
         let next_state = SBUFFER_STATE_READY;
 
         // Token must have stores to write back!
@@ -892,9 +890,9 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         begin
             // Done with all stores for the token.  Pop the read response
             // and clear the token.
-            debugLog.record($format("    SB REMOVE WRITE TOK DATA. IDX: %0d, NUM STORES: %0d", store_tok_idx, tokInit.nStores));
+            debugLog.record($format("    SB REMOVE WRITE TOK DATA. IDX: %0d, NUM STORES: %0d", store_tok_idx, tok_data.nStores));
 
-            let dummy <- storeTokData.readPorts[storeTokDataPort_WRITEBACK].readRsp();
+            let dummy <- storeTokData.readRsp();
             writeBackQ.deq();
 
             storeTokData.write(store_tok_idx, tokInit);
@@ -1183,7 +1181,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
         // Read the current mapping.  The reads will be consumed by
         // moveToStoreToken.
         tokData.readPorts[tokDataPort_COMMIT].readReq(tokIdx);
-        storeTokData.readPorts[storeTokDataPort_COMMIT].readReq(storeTokIdx);
+        storeTokData.readReq(storeTokIdx);
 
         operTokenStoreIdx <= 0;
         commitQ.enq(tuple2(tokIdx, storeTokIdx));
@@ -1205,7 +1203,7 @@ module [HASIM_MODULE] mkFUNCP_StoreBuffer#(DEBUG_FILE debugLog)
     method Action writeBackReq(STORE_TOKEN_INDEX storeTokIdx) if (state == SBUFFER_STATE_READY &&
                                                                   ! lookupQ.notEmpty());
         // Read existing store info for the token
-        storeTokData.readPorts[storeTokDataPort_WRITEBACK].readReq(storeTokIdx);
+        storeTokData.readReq(storeTokIdx);
 
         operTokenStoreIdx <= 0;
         writeBackQ.enq(storeTokIdx);

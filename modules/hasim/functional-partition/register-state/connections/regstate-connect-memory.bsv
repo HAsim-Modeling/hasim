@@ -79,7 +79,8 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
     //
     // ====================================================================
 
-    Connection_Client#(MEMSTATE_REQ, MEMSTATE_RESP) linkToMem <- mkConnection_Client("funcp_memstate");
+    CONNECTION_CLIENT#(MEMSTATE_REQ, MEMSTATE_RESP) linkToMem <- mkConnectionClient("funcp_memstate");
+    CONNECTION_RECV#(Bool) linkRegStateCommitStRsp <- mkConnectionRecv("funcp_memstate_commit_store_rsp");
 
 
     // ====================================================================
@@ -147,7 +148,7 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
     rule handleReqCommitStores (True);
         linkToMem.makeReq(mqCommitStores.first());
         mqCommitStores.deq();
-        respCommitStores.enq(?);
+
         debugLog.record($format("Commit Store REQ"));
     endrule
     
@@ -232,24 +233,24 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
     // the values automatically enables the preallocated FIFO entries.
     //
 
-    rule handleRespInstruction (linkToMem.getResp().memRefToken.memPath == FUNCP_REGSTATE_MEMPATH_GETINST);
-        let v = linkToMem.getResp();
+    rule handleRespInstruction (linkToMem.getRsp().memRefToken.memPath == FUNCP_REGSTATE_MEMPATH_GETINST);
+        let v = linkToMem.getRsp();
         linkToMem.deq();
 
         respInstruction.setValue(v.memRefToken.entryId, v.value);
         debugLog.record($format("Instruction RESP, id=%0d", v.memRefToken.entryId));
     endrule
 
-    rule handleRespDoLoads (linkToMem.getResp().memRefToken.memPath == FUNCP_REGSTATE_MEMPATH_DOLOADS);
-        let v = linkToMem.getResp();
+    rule handleRespDoLoads (linkToMem.getRsp().memRefToken.memPath == FUNCP_REGSTATE_MEMPATH_DOLOADS);
+        let v = linkToMem.getRsp();
         linkToMem.deq();
 
         respDoLoads.setValue(v.memRefToken.entryId, v.value);
         debugLog.record($format("Do Loads RESP, id=%0d", v.memRefToken.entryId));
     endrule
 
-    rule handleRespDoStores (linkToMem.getResp().memRefToken.memPath == FUNCP_REGSTATE_MEMPATH_DOSTORES);
-        let v = linkToMem.getResp();
+    rule handleRespDoStores (linkToMem.getRsp().memRefToken.memPath == FUNCP_REGSTATE_MEMPATH_DOSTORES);
+        let v = linkToMem.getRsp();
         linkToMem.deq();
 
         respDoStores.setValue(v.memRefToken.entryId, tuple2(v.value, v.success));
@@ -263,6 +264,12 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_Memory
 
         respDoStores.setValue(id, tuple2(?, True));
         debugLog.record($format("Do Stores imm RESP, id=%0d", id));
+    endrule
+
+    rule handleRespCommitStores (True);
+        linkRegStateCommitStRsp.deq();
+        respCommitStores.enq(?);
+        debugLog.record($format("Commit stores RESP"));
     endrule
 
     

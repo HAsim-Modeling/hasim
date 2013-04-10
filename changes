@@ -26587,3 +26587,23 @@ Use the new masked (conditional) stdio wrapper for STDIO-based debugging.
 debugging is now compiled in by default, though printing is off by default.
 
 Share STDIO nodes in the regstate manager to save space.
+
+----------
+mcadler     Date: Wed Apr 10 13:13:46 EDT 2013  CSN: CSN-hasim-923
+                  Wed Apr 10 17:13:46 UTC 2013
+
+
+Directory modules/hasim/functional-partition/register-state/connections
+ regstate-connect-memory.bsv Locally Modified          922 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-commitStores.bsv Locally Modified          922 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          922 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          922 
+
+Delay responding to a functional request to globally commit a store until the
+store has moved from the functional store buffer to global memory.

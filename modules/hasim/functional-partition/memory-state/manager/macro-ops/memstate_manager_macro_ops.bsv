@@ -83,10 +83,11 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // ***** Soft Connections ***** //
 
     // Links to the functional partition register state.
-    Connection_Server#(MEMSTATE_REQ, MEMSTATE_RESP) linkRegState <- mkConnection_Server("funcp_memstate");
+    CONNECTION_SERVER#(MEMSTATE_REQ, MEMSTATE_RESP) linkRegState <- mkConnectionServer("funcp_memstate");
+    CONNECTION_SEND#(Bool) linkRegStateCommitStRsp <- mkConnectionSend("funcp_memstate_commit_store_rsp");
 
     // Link to memory
-    Connection_Client#(MEM_REQUEST, MEMSTATE_RESP) linkMemory <- mkConnection_Client("funcp_memory");
+    CONNECTION_CLIENT#(MEM_REQUEST, MEMSTATE_RESP) linkMemory <- mkConnectionClient("funcp_memory");
 
     // ***** Local data ***** //
 
@@ -133,8 +134,13 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     //   Look in store buffer to see whether a store may lock may obtain
     //   exlusive access to a line.
     //
+    //   Must wait for the writeback queue to be empty as there is a small
+    //   window in which older stores might be on their way out of the store
+    //   buffer and not yet noted in the lock manager.
+    //
     rule memStoreTryLockReq (linkRegState.getReq() matches tagged REQ_STORE .stInfo &&&
-                             storeState == FUNCP_MEMSTATE_STORE_TRYLOCK_REQ);
+                             storeState == FUNCP_MEMSTATE_STORE_TRYLOCK_REQ &&&
+                             ! writeBackQ.notEmpty());
 
         // We only permit the lock if no other context has a pending store
         // to the location.  This requirement is stronger than necessary,
@@ -171,7 +177,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         end
 
         // Respond with result
-        linkRegState.makeResp(memStateRespStatus(stInfo.memRefToken, can_store));
+        linkRegState.makeRsp(memStateRespStatus(stInfo.memRefToken, can_store));
 
         debugLog.record($format("  STORE EXCLUSIVE: not in SB %0d, Lock Mgr %0d, can store %0d, ", not_in_sb, got_lock, can_store) + fshow(stInfo.memRefToken));
         stdioLM.printf(msgLockResult, list(zeroExtend(tokContextId(stInfo.tok)), zeroExtend(stInfo.addr), zeroExtend(pack(not_in_sb)), zeroExtend(pack(got_lock)), zeroExtend(pack(can_store))));
@@ -261,7 +267,7 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
           tagged Valid .sb_val:
           begin
               // A hit in the store buffer.  No need to look in memory.
-              linkRegState.makeResp(memStateRespLoad(load_req.memRefToken, sb_val));
+              linkRegState.makeRsp(memStateRespLoad(load_req.memRefToken, sb_val));
               debugLog.record($format("  LOAD SB hit: value=0x%x, ", sb_val) + fshow(load_req.memRefToken));
           end
         endcase
@@ -273,10 +279,10 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     //   Forward load response from memory back to the register state manager.
     //
     rule memLoadMemory (True);
-        let mem_resp = linkMemory.getResp();
+        let mem_resp = linkMemory.getRsp();
         linkMemory.deq();
 
-        linkRegState.makeResp(mem_resp);
+        linkRegState.makeRsp(mem_resp);
         debugLog.record($format("  LOAD from mem: value=0x%x, ", mem_resp.value) + fshow(mem_resp.memRefToken));
     endrule
 
@@ -336,7 +342,10 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
         let rsp <- stBuffer.writeBackResp();
 
         if (!rsp.hasMore)
+        begin
             writeBackQ.deq();
+            linkRegStateCommitStRsp.send(?);
+        end
 
         debugLog.record($format("  WRITEBACK resp: addr=0x%x, value=0x%x, more=%d", rsp.addr, rsp.value, rsp.hasMore));
 
@@ -356,14 +365,12 @@ module [HASIM_MODULE] mkFUNCP_MemStateManager ();
     // Returns:    N/A
 
     rule rewind (linkRegState.getReq() matches tagged REQ_REWIND .rew);
-      
         linkRegState.deq();
 
         debugLog.record($format("REWIND: rewind_to ") + fshow(rew.rewind_to) + $format(", rewind_from ") + fshow(rew.rewind_from));
 
         // Pass the request on to the store buffer.
         stBuffer.rewindReq(rew.rewind_to, rew.rewind_from);
-
     endrule
 
 endmodule

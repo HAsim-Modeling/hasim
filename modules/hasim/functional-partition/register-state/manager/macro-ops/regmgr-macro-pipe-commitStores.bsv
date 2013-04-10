@@ -77,7 +77,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_CommitStores#(
     //
     // ====================================================================
 
-    FIFO#(STORE_TOKEN) commitQ <- mkFIFO();
+    FIFO#(STORE_TOKEN) commitQ <- mkSizedFIFO(16);
 
 
     // ====================================================================

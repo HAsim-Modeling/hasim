@@ -834,10 +834,11 @@ module [HASIM_MODULE] emitPortGraphFile#(
     // one.  The first time this module is invoked during a comilation it
     // should write.  Define a global string to flag the mode.
     //
-    Bool not_first_call <- isGlobalStringDefined("__emitPortGraphFile_called__");
+    String tag = "__emitPortGraphFile_" + genPackageName + "__";
+    Bool not_first_call <- isGlobalStringDefined(tag);
     if (! not_first_call)
     begin
-        let dummy <- getGlobalStringUID("__emitPortGraphFile_called__");
+        let dummy <- getGlobalStringUID(tag);
     end
 
     Handle hdl <- openFile(genPackageName + ".ctrl",

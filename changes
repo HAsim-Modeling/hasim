@@ -26618,3 +26618,13 @@ Directory modules/hasim/util/model-services/commands-service
 
 Use updated Bluespec file I/O functions to write all controller connections in a package
 to the same file.
+
+----------
+mcadler     Date: Fri Apr 12 12:07:06 EDT 2013  CSN: CSN-hasim-925
+                  Fri Apr 12 16:07:06 UTC 2013
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          924 
+
+Better support for multiple packages in a compilation.

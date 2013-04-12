@@ -829,7 +829,19 @@ module [HASIM_MODULE] emitPortGraphFile#(
     ()
     provisos (Add#(t_NUM_INPORTS, t_NUM_UNPORTS, n_ALL_INPORTS));
 
-    Handle hdl <- openFile(".bsc/" + name + ".ctrl", WriteMode);
+    //
+    // Need to decide whether to write a new file or append to an existing
+    // one.  The first time this module is invoked during a comilation it
+    // should write.  Define a global string to flag the mode.
+    //
+    Bool not_first_call <- isGlobalStringDefined("__emitPortGraphFile_called__");
+    if (! not_first_call)
+    begin
+        let dummy <- getGlobalStringUID("__emitPortGraphFile_called__");
+    end
+
+    Handle hdl <- openFile(genPackageName + ".ctrl",
+                           not_first_call ? AppendMode : WriteMode);
     hPutStrLn(hdl, "#");
     hPutStrLn(hdl, "# Controller " + name + ": " +
                    integerToString(valueOf(t_NUM_INPORTS)) + " in, " +
@@ -880,5 +892,6 @@ module [HASIM_MODULE] emitPortGraphFile#(
         end
     end
 
+    hPutStrLn(hdl, "");
     hClose(hdl);
 endmodule

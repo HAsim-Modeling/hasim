@@ -26607,3 +26607,14 @@ Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
 
 Delay responding to a functional request to globally commit a store until the
 store has moved from the functional store buffer to global memory.
+
+----------
+mcadler     Date: Fri Apr 12 11:18:32 EDT 2013  CSN: CSN-hasim-924
+                  Fri Apr 12 15:18:32 UTC 2013
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          923 
+
+Use updated Bluespec file I/O functions to write all controller connections in a package
+to the same file.

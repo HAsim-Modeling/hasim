@@ -19,6 +19,7 @@
 #include "asim/syntax.h"
 #include "asim/mesg.h"
 
+#include "awb/provides/model.h"
 #include "asim/rrr/service_ids.h"
 #include "asim/provides/isa_emulator.h"
 
@@ -419,7 +420,7 @@ ISA_DP_DEBUG_SERVER_CLASS::Init(
 {
     parent = p;
 
-    logFile.open("leap_debug/hasim_isa_dp_rrr.out", ios::out | ios::trunc);
+    logFile.open(LEAP_DEBUG_PATH "/hasim_isa_dp_rrr.out", ios::out | ios::trunc);
 }
 
 // uninit: override

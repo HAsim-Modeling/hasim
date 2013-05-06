@@ -20,6 +20,9 @@
 
 import Vector::*;
 
+`include "awb/provides/model_params.bsh"
+
+
 //
 // STDIO conditional printf bit mask allocation.  (See mkStdIO_CondPrintf)
 //
@@ -32,7 +35,7 @@ Integer ioMask_TIMEP_START = 2;
 
 
 // All debug output files go in a subdirectory
-function String debugPath(String fname) = `DEBUG_LOG_DIR + "/" + fname;
+function String debugPath(String fname) = `LEAP_DEBUG_PATH + "/" + fname;
 
 
 // ========================================================================

@@ -26641,3 +26641,13 @@ Directory modules/hasim/util/common
  hasim-debug-file.bsv      Locally Modified          925 
 
 Standardize on LEAP_DEBUG_PATH.
+
+----------
+mcadler     Date: Wed May 15 18:48:44 EDT 2013  CSN: CSN-hasim-927
+                  Wed May 15 22:48:44 UTC 2013
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          926 
+
+isGlobalStringDefined() replaced by lookupGlobalString() returning a Maybe.

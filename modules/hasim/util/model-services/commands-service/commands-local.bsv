@@ -831,18 +831,19 @@ module [HASIM_MODULE] emitPortGraphFile#(
 
     //
     // Need to decide whether to write a new file or append to an existing
-    // one.  The first time this module is invoked during a comilation it
+    // one.  The first time this module is invoked during a compilation it
     // should write.  Define a global string to flag the mode.
     //
     String tag = "__emitPortGraphFile_" + genPackageName + "__";
-    Bool not_first_call <- isGlobalStringDefined(tag);
-    if (! not_first_call)
+    let tag_uid <- lookupGlobalString(tag);
+    Bool first_call = ! isValid(tag_uid);
+    if (first_call)
     begin
         let dummy <- getGlobalStringUID(tag);
     end
 
     Handle hdl <- openFile(genPackageName + ".ctrl",
-                           not_first_call ? AppendMode : WriteMode);
+                           first_call ? WriteMode : AppendMode);
     hPutStrLn(hdl, "#");
     hPutStrLn(hdl, "# Controller " + name + ": " +
                    integerToString(valueOf(t_NUM_INPORTS)) + " in, " +

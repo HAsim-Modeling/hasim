@@ -1,8 +1,9 @@
 [Global]
 Description=Hardware Asim Base Library
-CSN=CSN-hasim-927
+CSN=CSN-hasim-928
 Name=hasim
 Tag=HEAD
 Lock=asim-hasim
 Buildorder=4
 Dependencies=simcore/HEAD asimcore/HEAD leap/HEAD
+Sourceurl=http://asim.csail.mit.edu/redmine/projects/hasim/repository/entry/trunk/

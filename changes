@@ -26664,3 +26664,17 @@ Directory admin/packages
  hasim                     Locally Modified          927 
 
 - added Sourceurl in admin/packages/hasim for doxygen documentation
+
+----------
+mcadler     Date: Mon Jul 29 07:56:15 EDT 2013  CSN: CSN-hasim-929
+                  Mon Jul 29 11:56:15 UTC 2013
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          928 
+ commands-service.h        Locally Modified          928 
+
+Directory modules/hasim/util/modellib
+ hasim-modellib.awb        Locally Modified          928 
+
+Some parameters need to be 64 bits (e.g. max cycles).

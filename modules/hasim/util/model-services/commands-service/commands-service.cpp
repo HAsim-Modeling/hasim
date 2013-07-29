@@ -689,7 +689,7 @@ HW_THREAD_HEARTBEAT_CLASS::GetModelIPS() const
 
 // Switch for reading the stop cycle.
 STOP_CYCLE_SWITCH_CLASS::STOP_CYCLE_SWITCH_CLASS() :
-    COMMAND_SWITCH_INT_CLASS("cycles")
+    COMMAND_SWITCH_UINT64_CLASS("cycles")
 {
     stopCycle = 0;
 }
@@ -702,7 +702,7 @@ STOP_CYCLE_SWITCH_CLASS::ShowSwitch(std::ostream& ostr, const string& prefix)
 
 // Switch for reading the progress message interval
 MESSAGE_INTERVAL_SWITCH_CLASS::MESSAGE_INTERVAL_SWITCH_CLASS() :
-    COMMAND_SWITCH_INT_CLASS("pc"),
+    COMMAND_SWITCH_UINT64_CLASS("pc"),
     messageInterval(1)
 {
 }
@@ -715,7 +715,7 @@ MESSAGE_INTERVAL_SWITCH_CLASS::ShowSwitch(std::ostream& ostr, const string& pref
 
 // Switch for triggering throughput test
 COMMANDS_TP_TEST_SWITCH_CLASS::COMMANDS_TP_TEST_SWITCH_CLASS() :
-    COMMAND_SWITCH_INT_CLASS("test-throughput"),
+    COMMAND_SWITCH_UINT64_CLASS("test-throughput"),
     trigger(0)
 {
 }

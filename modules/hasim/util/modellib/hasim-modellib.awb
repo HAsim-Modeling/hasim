@@ -6,7 +6,11 @@
 
 %attributes hasim
 
-%public a-ports.bsv stall-ports.bsv credit-ports.bsv permutation-ports.bsv
+%public a-ports.bsv
+%public stall-ports.bsv
+%public credit-ports.bsv
+%public permutation-ports.bsv
+%public sparse-delay-ports.bsv
 %public multiplexed.bsv multiplexed-memories.bsv
 %public stats-multiplexed.bsh stats-multiplexed.bsv
 %public debug-file-multiplexed.bsv

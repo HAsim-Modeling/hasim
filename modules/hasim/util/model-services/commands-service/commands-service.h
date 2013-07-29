@@ -43,49 +43,49 @@ using namespace std;
 typedef class COMMANDS_SERVER_CLASS* COMMANDS_SERVER;
 
 
-class STOP_CYCLE_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
+class STOP_CYCLE_SWITCH_CLASS : public COMMAND_SWITCH_UINT64_CLASS
 {
   private:
-    int stopCycle;
+    UINT64 stopCycle;
 
   public:
     STOP_CYCLE_SWITCH_CLASS();
     ~STOP_CYCLE_SWITCH_CLASS() {};
     
-    void ProcessSwitchInt(int arg) { stopCycle = arg; };
+    void ProcessSwitchInt(UINT64 arg) { stopCycle = arg; };
     void ShowSwitch(std::ostream& ostr, const string& prefix);
     
-    int StopCycle() { return stopCycle; }
+    UINT64 StopCycle() { return stopCycle; }
 };
 
-class MESSAGE_INTERVAL_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
+class MESSAGE_INTERVAL_SWITCH_CLASS : public COMMAND_SWITCH_UINT64_CLASS
 {
   private:
-    int messageInterval;
+    UINT64 messageInterval;
 
   public:
     MESSAGE_INTERVAL_SWITCH_CLASS();
     ~MESSAGE_INTERVAL_SWITCH_CLASS() {};
     
-    void ProcessSwitchInt(int arg) { messageInterval = arg; };
+    void ProcessSwitchInt(UINT64 arg) { messageInterval = arg; };
     void ShowSwitch(std::ostream& ostr, const string& prefix);
     
-    int ProgressMsgInterval() { return messageInterval; }
+    UINT64 ProgressMsgInterval() { return messageInterval; }
 };
 
-class COMMANDS_TP_TEST_SWITCH_CLASS : public COMMAND_SWITCH_INT_CLASS
+class COMMANDS_TP_TEST_SWITCH_CLASS : public COMMAND_SWITCH_UINT64_CLASS
 {
   private:
-    int trigger;
+    UINT64 trigger;
 
   public:
     COMMANDS_TP_TEST_SWITCH_CLASS();
     ~COMMANDS_TP_TEST_SWITCH_CLASS() {};
     
-    void ProcessSwitchInt(int arg) { trigger = arg; };
+    void ProcessSwitchInt(UINT64 arg) { trigger = arg; };
     void ShowSwitch(std::ostream& ostr, const string& prefix);
     
-    int Trigger() { return trigger; }
+    UINT64 Trigger() { return trigger; }
 };
 
 typedef class HW_THREAD_HEARTBEAT_CLASS* HW_THREAD_HEARTBEAT;

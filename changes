@@ -26688,3 +26688,20 @@ Directory modules/hasim/util/modellib
  sparse-delay-ports.bsv    Locally Added               0 
 
 Check in the stub code because the AWB file loads it.  Not yet working.
+
+----------
+keflemin    Date: Thu Aug  1 22:41:13 EDT 2013  CSN: CSN-hasim-931
+                  Fri Aug  2 02:41:13 UTC 2013
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          930 
+
+
+Moved soft reset functionality to run script, using the
+script-provided activate/deactivate API.  This is necessary for
+multiple fpga builds as the software doesn't necessarily have the
+ability to see all of the FPGAs in a multiple FPGA system. 
+
+Philosophically, user code should not have loader-like
+functionalities anyway.

@@ -20,6 +20,10 @@ sub Exec($$);
 sub ExecRead($$);
 sub CompareOutput();
 sub ReadConfig($$);
+sub ReserveFPGA($);
+sub ProgramFPGA($$$);
+sub ActivateFPGA($);
+sub DeactivateFPGA($);
 
 
 #############################################################################
@@ -313,86 +317,82 @@ if (-f "$config{workload}.stats") {
 my $fpga_dev_id = undef;
 my $fpga_dev = undef;
 
+# There are three distinct phases of programming the FPGA:
+# 1) Program
+# 2) Deactivate (used as a synchronization barrier in multiFPGA
+# 3) Activate
+# After this we can run programs
+
+my @FPGAs = ();
+
 if ($mType == $MODEL_FPGA) {
-    if (! defined($printCycle)) {
-        # User didn't specify a cycle printing interval.  Pick one more reasonable
-        # for HW.
-        if ($config{workload} ne "null") {
-            ## FIXME:  Not all models support --pc.
-            $cmd .= " --pc=10000000";
-        }
-    }
-
     # Load FPGA
-    $ENV{FPGA_BIT_FILE} = "$config{modelDir}/$config{master}/.xilinx/$config{model}_par.bit";
-
     if (! $noProgram) {
-        if (! $forceLoad && -s "$config{modelDir}/$config{master}/$config{model}_hw.errinfo") {
-            print STDERR "FPGA bit file has errors:\n\n";
-            system("cat $config{modelDir}/$config{master}/$config{model}_hw.errinfo > /dev/stderr");
-            print STDERR "\nUse --force-load to ignore the error.\n";
-            exit(1);
-        }
-
+        
         if (! $noReserve) {
-            my $res = "--reserve";
-            if (exists($config{FPGA}) && ($config{FPGA} ne "DEFAULT")) {
-                $res .= "=$config{FPGA}";
-            }
-            $fpga_dev_id = ExecRead("leap-fpga-ctrl ${res}", "Failed to reserve FPGA");
-        }
+            $fpga_dev_id = ReserveFPGA($config{FPGA});
+	}
 
-        # Does a download script exist to program the FPGA?
-        my $needProgram = (-f "$config{modelDir}/$config{master}/config/$config{model}.download");
-
-        # Is the FPGA already programmed with the correct bit file?
-        if (exists($config{signature}) && $config{SOFT_RESET}) {
-            my $curSignature = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getsignature",
-                                        "Failed to read code signature");
-            if ($curSignature eq $config{signature}) {
-                print "FPGA is already programmed (signature match)...\n";
-                $needProgram = 0;
-            }
-        }
-
-        if ($needProgram) {
-            Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --program", "Failed to enter FPGA programming mode");
-            my $dir = `pwd`;
-            chomp($dir);
-            Exec("(cd $config{modelDir}/$config{master}; ./config/$config{model}.download --device-id=${fpga_dev_id} ${dir}/FPGA_programming.log)", "Failed to program FPGA");
-            if (exists($config{signature})) {
-                Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --setsignature=$config{signature}", "Failed to set FPGA bit image signature");
-            }
-        }
-
-        # Activate the FPGA.
-        Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --activate", "Failed to activate FPGA or driver");
-
-        # Get the name of the device allocated by leap-fpga-ctrl and pass it
-        # to the model.
+        ProgramFPGA("$config{modelDir}/$config{master}",$config{model},$fpga_dev_id);
+      
+        # Deactivate the FPGA, so that others may program.
+        DeactivateFPGA($fpga_dev_id);
+        
+        push(@FPGAs,$fpga_dev_id);
+        # Get the name of the device allocated by leap-fpga-ctrl and pass it                                                        
+        # to the model.                                                           
+        # eventually we'll do this for all FPGAs, not just the master. 
         $fpga_dev = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getconfig=dev", "Failed to query FPGA device configuration");
         $cmd .= " --param FPGA_DEV_PATH=\"${fpga_dev}\"";
     }
 }
 
-# Fork off any non-master models. 
+# Examine subordinte builds.
+# really we should do this for all builds.  
 my @pidlist = ();
 if(exists $config{"slaves"}) {
     my $slave_ref = $config{"slaves"};
     for my $slave (keys %$slave_ref) {
+        my $slave_path = $slave_ref->{$slave};
+        `mkdir -p "$config{modelDir}/$slave_path/leap_debug"`;
         if($mType == $MODEL_BLUESIM) {
             my $pid = fork();
             if($pid == 0) {
-                setpgrp;
-                my $slave_path = $slave_ref->{$slave};
-                `mkdir -p "$config{modelDir}/$slave_path/leap_debug"`;
+                setpgrp;     
                 exec("$config{modelDir}/$slave_path/${slave}_hw.exe 2>&1 > ${slave}.log");
                 exit(0); # in case we get here    
             }
             push(@pidlist, $pid);
-        }    
+        }
+
+
+        # need to program, but not activate slave devices  
+        if($mType == $MODEL_FPGA) {    
+            # reading the slave configuration stomps the master config.
+            # we'll have to restore it later.
+	    ReadConfig("$config{modelDir}/$slave_path/config/fpga.sh", 0);
+            my $fpga_type = "DEFAULT";
+            if (exists($config{FPGA})) {
+                $fpga_type = $config{FPGA};
+	    }
+
+            my $slave_fpga_dev_id = ReserveFPGA($fpga_type);
+            ProgramFPGA("$config{modelDir}/$slave_path",$slave,$slave_fpga_dev_id);
+            # Deactivate the FPGA, so that others may program.
+            DeactivateFPGA($slave_fpga_dev_id);
+        
+            push(@FPGAs,$slave_fpga_dev_id);
+        }
     }
 }
+
+# Let's activate all of the FPGAs.
+for my $device_id (@FPGAs) {
+    ActivateFPGA($device_id);
+}
+
+#restore original configuration
+ReadConfig("$config{modelDir}/$config{master}/config/fpga.sh", 0);
 
 
 # Run the software side or a hardware simulator
@@ -420,7 +420,9 @@ if (-f "$config{workload}.stats") {
 }
 
 if (($mType == $MODEL_FPGA) && ! $noProgram && ! $noReserve) {
-    Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --drop-reservation", "Failed to drop FPGA reservation");
+    for my $device_id (@FPGAs) {
+        Exec("leap-fpga-ctrl --device-id=${device_id} --drop-reservation", "Failed to drop FPGA reservation");
+    }
 }
 
 if ($run_status != 0) {
@@ -637,3 +639,67 @@ sub ReadConfig($$) {
     }
 }
 
+sub ProgramFPGA($$$) {
+    # Need to know which bitfile on which to operate
+    my $path = shift; 
+    my $model = shift; 
+    my $fpga_dev_id = shift;
+    $ENV{FPGA_BIT_FILE} = "$path/.xilinx/${model}_par.bit";
+
+        if (! $forceLoad && -s "$path/${model}_hw.errinfo") {
+            print STDERR "FPGA bit file has errors:\n\n";
+            system("cat $path/${model}_hw.errinfo > /dev/stderr");
+            print STDERR "\nUse --force-load to ignore the error.\n";
+            exit(1);
+        }
+
+        # Does a download script exist to program the FPGA?
+        my $needProgram = (-f "$path/config/${model}.download");
+
+        # Is the FPGA already programmed with the correct bit file and does it support soft reset?
+        if (exists($config{signature}) && $config{SOFT_RESET}) {
+            my $curSignature = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getsignature",
+                                        "Failed to read code signature");
+            if ($curSignature eq $config{signature}) {
+                print "FPGA is already programmed (signature match)...\n";
+                $needProgram = 0;
+            }
+        }
+
+        if ($needProgram) {
+	    $SIG{'INT'} = 'IGNORE'; # Ctrl-c during a program wrecks the Xilinx programming cable.
+            Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --program", "Failed to enter FPGA programming mode");
+            my $dir = `pwd`;
+            chomp($dir);
+            Exec("(cd $path; ./config/${model}.download --device-id=${fpga_dev_id} ${dir}/FPGA_programming.log)", "Failed to program FPGA");
+            if (exists($config{signature})) {
+                Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --setsignature=$config{signature}", "Failed to set FPGA bit image signature");
+            }
+	    $SIG{'INT'} = 'DEFAULT'; # Ctrl-c during a program wrecks the Xilinx programming cable.
+        }
+
+
+}
+
+sub ReserveFPGA($) {
+    my $fpga_type = shift;
+    my $fpga_dev_id = -1; # Error case
+        
+    my $res = "--reserve";
+    if ($fpga_type ne "DEFAULT") {
+        $res .= "=$fpga_type";
+    }
+    print "Reserving $fpga_type\n";
+    $fpga_dev_id = ExecRead("leap-fpga-ctrl ${res}", "Failed to reserve FPGA");
+    return $fpga_dev_id;
+}
+
+sub ActivateFPGA($) {
+    my $fpga_dev_id = shift;
+    Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --activate", "Failed to activate FPGA or driver");
+}
+
+sub DeactivateFPGA($) {
+    my $fpga_dev_id = shift;
+    Exec("leap-fpga-ctrl --device-id=${fpga_dev_id} --deactivate", "Failed to activate FPGA or driver");
+}

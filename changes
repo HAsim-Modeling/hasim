@@ -26705,3 +26705,15 @@ ability to see all of the FPGAs in a multiple FPGA system.
 
 Philosophically, user code should not have loader-like
 functionalities anyway.
+
+----------
+mcadler     Date: Fri Aug  9 13:35:35 EDT 2013  CSN: CSN-hasim-932
+                  Fri Aug  9 17:35:35 UTC 2013
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          931 
+
+Changes needed due to a side-effect of changes in leap for statistics.  It
+became illegal to request a dump of statistics from the server thread.
+The call is now made from a helper thread.

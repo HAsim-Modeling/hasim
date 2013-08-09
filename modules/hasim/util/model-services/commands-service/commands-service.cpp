@@ -33,6 +33,7 @@
 #include "asim/provides/command_switches.h"
 #include "asim/provides/stats_service.h"
 #include "asim/provides/commands_service.h"
+#include "asim/provides/starter_device.h"
 
 using namespace std;
 
@@ -70,7 +71,7 @@ void
 COMMANDS_SERVER_CLASS::Init(
     PLATFORMS_MODULE p)
 {
-    parent = p;
+    PLATFORMS_MODULE_CLASS::Init(p);
 }
 
 // uninit: override
@@ -294,6 +295,36 @@ COMMANDS_SERVER_CLASS::ModelHeartbeat(
 // Local methods
 //
 
+
+//
+// EndSimulationThread is a hack to allow calling DumpStats() as a side-effect
+// of ending the simulation.  RRR doesn't deal well with a software service
+// (EndSimulation) that calls a hardware service (DumpStats) when the caller
+// (DumpStats) blocks until some other software service is called (internal
+// to DumpStats).  When we replace RRR with threads this pthreads hack may
+// become unnecessary.
+//
+
+struct END_SIMULATION_STATE_CLASS
+{
+    COMMANDS_SERVER cmdServer;
+    int exitValue;
+};
+
+typedef END_SIMULATION_STATE_CLASS* END_SIMULATION_STATE;
+
+void *EndSimulationThread(void *arg)
+{
+    END_SIMULATION_STATE state = END_SIMULATION_STATE(arg);
+
+    cout << "        starting stats dump... ";
+    STATS_SERVER_CLASS::GetInstance()->DumpStats();
+    STATS_SERVER_CLASS::GetInstance()->EmitFile();
+    cout << "done." << endl;
+
+    STARTER_DEVICE_SERVER_CLASS::GetInstance()->End(state->exitValue);
+}
+
 void
 COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
 {
@@ -375,14 +406,20 @@ COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
     }
     cout << endl;
 
+    //
+    // Ideally we would just call STATS_SERVER_CLASS DumpStats() and EmitFile()
+    // here.  RRR doesn't correctly call statistics services when invoked
+    // from this routine, which is itself an RRR software service.  We solve
+    // the problem by spawning a new thread to trigger the exit.
+    //
+    END_SIMULATION_STATE state = new END_SIMULATION_STATE_CLASS;
+    state->cmdServer = this;
+    state->exitValue = exitValue;
 
-    cout << "        starting stats dump... ";
-    STATS_SERVER_CLASS::GetInstance()->DumpStats();
-    STATS_SERVER_CLASS::GetInstance()->EmitFile();
-    cout << "done." << endl;
-
-    CallbackExit(exitValue);
+    pthread_t tid;
+    VERIFYX(! pthread_create(&tid, NULL, &EndSimulationThread, state));
 }
+
 
 //
 // Called as a side-effect of calling the stats device EmitFile...

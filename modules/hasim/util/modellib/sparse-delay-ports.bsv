@@ -21,9 +21,6 @@
 // capacity of the port.  These may be used to simulate long delays where
 // the number of messages in flight is less than the delay.
 //
-// Only receivers are declared here, since latency is always imposed by
-// the receiver.
-//
 
 `include "awb/provides/librl_bsv_base.bsh"
 `include "awb/provides/fpga_components.bsh"
@@ -90,14 +87,18 @@ module [CONNECTED_MODULE] mkPortSparseDelay_Multiplexed#(
         mkLUTRAM(funcFIFO_IDX_Init());
 
     // Port (FIFO) contents
-    MEMORY_IFC#(t_SHARED_FIFO_IDX, t_FIFO_DATA) fifoData <- mkBRAM();
+    LUTRAM#(t_SHARED_FIFO_IDX, t_FIFO_DATA) fifoData <- mkLUTRAMU();
 
     LUTRAM#(INSTANCE_ID#(t_NUM_INSTANCES),
-            Tuple2#(Bool, Bit#(TLog#(t_MAX_LATENCY)))) portEnqState <-
-        mkLUTRAM(tuple2(True, 0));
+            Tuple2#(Bool, t_LATENCY)) portEnqState <-
+        mkLUTRAM(tuple2(True, latency));
+
+    LUTRAM#(INSTANCE_ID#(t_NUM_INSTANCES), t_LATENCY) portDeqState <- mkLUTRAM(0);
 
 
     method Bool canEnq(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+        // Use a cached copy of the notFull state to avoid adding another
+        // read port to fifoMeta.
         return tpl_1(portEnqState.sub(iid));
     endmethod
 
@@ -113,7 +114,15 @@ module [CONNECTED_MODULE] mkPortSparseDelay_Multiplexed#(
 
         // Update the FIFO with the new message.
         match {.fifo_meta_new, .idx} = funcFIFO_IDX_UGenq(fifo_meta);
-        fifoData.write(tuple2(iid, idx), tuple2(cycles_since_last_msg, msg));
+
+        //
+        // Impose a latency.  If there are other messages in flight then
+        // the latency is a pipelined latency:  the number of cycles since
+        // the older message was queued.
+        //
+        let delay = cycles_since_last_msg;
+
+        fifoData.upd(tuple2(iid, idx), tuple2(delay, msg));
     
         // Write back the metadata associated with the port's FIFO
         fifoMeta.upd(iid, fifo_meta_new);
@@ -122,23 +131,61 @@ module [CONNECTED_MODULE] mkPortSparseDelay_Multiplexed#(
 
     method Action noEnq(INSTANCE_ID#(t_NUM_INSTANCES) iid);
         match {.can_enq, .cycles_since_last_msg} = portEnqState.sub(iid);
+        let fifo_meta = fifoMeta.sub(iid);
 
         if (cycles_since_last_msg < latency)
         begin
             cycles_since_last_msg = cycles_since_last_msg + 1;
         end
 
-        portEnqState.upd(iid, tuple2(can_enq, cycles_since_last_msg));
+        portEnqState.upd(iid, tuple2(funcFIFO_IDX_notFull(fifo_meta),
+                                     cycles_since_last_msg));
     endmethod
 
 
     method Action doDeq(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+        let fifo_meta = fifoMeta.sub(iid);
+        fifoMeta.upd(iid, funcFIFO_IDX_UGdeq(fifo_meta));
+        portDeqState.upd(iid, 0);
     endmethod
 
     method Action noDeq(INSTANCE_ID#(t_NUM_INSTANCES) iid);
+        let fifo_meta = fifoMeta.sub(iid);
+
+        // If there is a message waiting then update the latency counter to
+        // simulate delay.
+        let idle_cycles = portDeqState.sub(iid);
+        if (funcFIFO_IDX_notEmpty(fifo_meta))
+        begin
+            if (idle_cycles < latency)
+            begin
+                idle_cycles = idle_cycles + 1;
+            end
+        end
+        else
+        begin
+            // No message in flight.
+            idle_cycles = 0;
+        end
+
+        portDeqState.upd(iid, idle_cycles);
     endmethod
 
     method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) iid);
-        return ?;
+        let fifo_meta = fifoMeta.sub(iid);
+        let idx = funcFIFO_IDX_UGfirst(fifo_meta);
+        match {.delay, .msg} = fifoData.sub(tuple2(iid, idx));
+
+        let idle_cycles = portDeqState.sub(iid);
+
+        if (funcFIFO_IDX_notEmpty(fifo_meta) &&
+            (idle_cycles >= delay))
+        begin
+            return tagged Valid msg;
+        end
+        else
+        begin
+            return tagged Invalid;
+        end
     endmethod
 endmodule

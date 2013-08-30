@@ -26717,3 +26717,14 @@ Directory modules/hasim/util/model-services/commands-service
 Changes needed due to a side-effect of changes in leap for statistics.  It
 became illegal to request a dump of statistics from the server thread.
 The call is now made from a helper thread.
+
+----------
+mcadler     Date: Thu Aug 29 21:02:54 EDT 2013  CSN: CSN-hasim-933
+                  Fri Aug 30 01:02:54 UTC 2013
+
+
+Directory modules/hasim/util/modellib
+ sparse-delay-ports.bsv    Locally Modified          932 
+
+- Use BRAM for the primary FIFO buffers.
+- Bug fixes.

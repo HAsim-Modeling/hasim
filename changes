@@ -26728,3 +26728,20 @@ Directory modules/hasim/util/modellib
 
 - Use BRAM for the primary FIFO buffers.
 - Bug fixes.
+
+----------
+mcadler     Date: Sat Aug 31 13:54:43 EDT 2013  CSN: CSN-hasim-934
+                  Sat Aug 31 17:54:43 UTC 2013
+
+
+Directory modules/hasim/util/modellib
+ debug-file-multiplexed.bsv Locally Modified          933 
+
+Directory modules/hasim/util/common
+ hasim-debug-file.bsv      Locally Modified          933 
+
+Use the new updateValue() method in counters to get rid of the need to use
+a different method for emitting the cycle number in debug output in the
+rule that updates the model cycle number.
+
+The record() and record_next_cycle() methods are now identical.  Finally!

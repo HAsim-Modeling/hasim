@@ -53,10 +53,13 @@ interface TIMEP_DEBUG_FILE;
     // Normal message
     method Action record(Fmt fmt);
 
-    // Hack for printing message with model cycle number + 1.  This can be useful
-    // when it is most convent to increment the model cycle at the head of a rule
-    // and have debug log messages in the same rule that logically belong with
-    // the next incremented cycle number.
+    // Use record() instead!
+    //
+    // This method used to add 1 to the model cycle before printing and was
+    // used in the same cycle that nextModelCycle() was called.  The
+    // implementations are now more clever and this method is no longer
+    // necessary.  The rule remains for compatibility, but is identical
+    // to record().
     method Action record_next_cycle(Fmt fmt);
 
     method Action nextModelCycle();
@@ -89,11 +92,13 @@ module mkTIMEPDebugFile#(String fname)
 
 `ifndef SYNTH
 
-    COUNTER#(32) fpga_cycle  <- mkLCounter(0);
-    COUNTER#(32) model_cycle <- mkLCounter(~0);
+    COUNTER#(32) fpgaCycle  <- mkLCounter(0);
+    COUNTER#(32) modelCycle <- mkLCounter(~0);
 
     Reg#(File) debugLog <- mkReg(InvalidFile);
     Reg#(Bool) initialized <- mkReg(False);
+
+    function getModelCycle() = modelCycle.updatedValue();
 
     rule open (initialized == False);
         let fd <- $fopen(debugPath(fname), "w");
@@ -108,19 +113,20 @@ module mkTIMEPDebugFile#(String fname)
     endrule
 
     rule inc (True);
-        fpga_cycle.up();
+        fpgaCycle.up();
     endrule
 
     method Action record(Fmt fmt) if (initialized);
-        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpga_cycle.value(), model_cycle.value()) + fmt);
+        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpgaCycle.value(), getModelCycle()) + fmt);
     endmethod
 
+    // Now equivalent to record().  See interface for details.
     method Action record_next_cycle(Fmt fmt) if (initialized);
-        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpga_cycle.value(), model_cycle.value() + 1) + fmt);
+        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpgaCycle.value(), getModelCycle()) + fmt);
     endmethod
 
     method Action nextModelCycle() if (initialized);
-        model_cycle.up();
+        modelCycle.up();
     endmethod
     
 `else

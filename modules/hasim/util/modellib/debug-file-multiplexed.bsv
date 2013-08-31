@@ -35,10 +35,13 @@ interface TIMEP_DEBUG_FILE_MULTIPLEXED#(type ni);
     // Normal message
     method Action record(INSTANCE_ID#(ni) iid, Fmt fmt);
 
-    // Hack for printing message with model cycle number + 1.  This can be useful
-    // when it is most convent to increment the model cycle at the head of a rule
-    // and have debug log messages in the same rule that logically belong with
-    // the next incremented cycle number.
+    // Use record() instead!
+    //
+    // This method used to add 1 to the model cycle before printing and was
+    // used in the same cycle that nextModelCycle() was called.  The
+    // implementations are now more clever and this method is no longer
+    // necessary.  The rule remains for compatibility, but is identical
+    // to record().
     method Action record_next_cycle(INSTANCE_ID#(ni) iid, Fmt fmt);
 
     // Simple message (no context or model cycle)
@@ -64,10 +67,13 @@ interface TIMEP_DEBUG_FILE_SHARED_CYCLE_MULTIPLEXED#(type ni);
     // Normal message
     method Action record(INSTANCE_ID#(ni) iid, Fmt fmt);
 
-    // Hack for printing message with model cycle number + 1.  This can be useful
-    // when it is most convent to increment the model cycle at the head of a rule
-    // and have debug log messages in the same rule that logically belong with
-    // the next incremented cycle number.
+    // Use record() instead!
+    //
+    // This method used to add 1 to the model cycle before printing and was
+    // used in the same cycle that nextModelCycle() was called.  The
+    // implementations are now more clever and this method is no longer
+    // necessary.  The rule remains for compatibility, but is identical
+    // to record().
     method Action record_next_cycle(INSTANCE_ID#(ni) iid, Fmt fmt);
 
     // Simple message (no context or model cycle)
@@ -118,16 +124,18 @@ module mkTIMEPDebugFile_Multiplexed#(String fname)
 
 `ifndef SYNTH
 
-    COUNTER#(32) fpga_cycle  <- mkLCounter(0);
+    COUNTER#(32) fpgaCycle  <- mkLCounter(0);
 
-    Vector#(ni, COUNTER#(32)) model_cycle = newVector();
-    for (Integer c = 0; c < valueOf(ni); c = c + 1)
+    Vector#(ni, COUNTER#(32)) modelCycle = newVector();
+    for (Integer iid = 0; iid < valueOf(ni); iid = iid + 1)
     begin
-        model_cycle[c] <- mkLCounter(~0);
+        modelCycle[iid] <- mkLCounter(~0);
     end
 
     Reg#(File) debugLog <- mkReg(InvalidFile);
     Reg#(Bool) initialized <- mkReg(False);
+
+    function getModelCycle(INSTANCE_ID#(ni) iid) = modelCycle[iid].updatedValue();
 
     rule open (initialized == False);
         let fd <- $fopen(debugPath(fname), "w");
@@ -142,35 +150,36 @@ module mkTIMEPDebugFile_Multiplexed#(String fname)
     endrule
 
     rule inc (True);
-        fpga_cycle.up();
+        fpgaCycle.up();
     endrule
 
     method Action record(INSTANCE_ID#(ni) iid, Fmt fmt) if (initialized);
-        $fdisplay(debugLog, $format("[%d]: <%d / %d>: ", fpga_cycle.value(), iid, model_cycle[iid].value()) + fmt);
+        $fdisplay(debugLog, $format("[%d]: <%d / %d>: ", fpgaCycle.value(), iid, getModelCycle(iid)) + fmt);
     endmethod
 
+    // Now equivalent to record().  See interface for details.
     method Action record_next_cycle(INSTANCE_ID#(ni) iid, Fmt fmt) if (initialized);
-        $fdisplay(debugLog, $format("[%d]: <%d / %d>: ", fpga_cycle.value(), iid, model_cycle[iid].value() + 1) + fmt);
+        $fdisplay(debugLog, $format("[%d]: <%d / %d>: ", fpgaCycle.value(), iid, getModelCycle(iid)) + fmt);
     endmethod
 
     method Action record_simple(Fmt fmt);
-        $fdisplay(debugLog, $format("[%d]: ", fpga_cycle.value()) + fmt);
+        $fdisplay(debugLog, $format("[%d]: ", fpgaCycle.value()) + fmt);
     endmethod
 
     method Action record_simple_ctx(INSTANCE_ID#(ni) iid, Fmt fmt);
-        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpga_cycle.value(), iid) + fmt);
+        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpgaCycle.value(), iid) + fmt);
     endmethod
 
     method Action record_all(Fmt fmt);
         for (Integer c = 0; c < valueOf(ni); c = c + 1)
         begin
             INSTANCE_ID#(ni) iid = fromInteger(c);
-            $fdisplay(debugLog, $format("[%d]: <%d / %d>: ", fpga_cycle.value(), iid, model_cycle[iid].value()) + fmt);
+            $fdisplay(debugLog, $format("[%d]: <%d / %d>: ", fpgaCycle.value(), iid, getModelCycle(iid)) + fmt);
         end
     endmethod
 
     method Action nextModelCycle(INSTANCE_ID#(ni) iid) if (initialized);
-        model_cycle[iid].up();
+        modelCycle[iid].up();
     endmethod
 
 `else
@@ -243,11 +252,13 @@ module mkTIMEPDebugFile_SharedCycle_Multiplexed#(String fname)
 
 `ifndef SYNTH
 
-    COUNTER#(32) fpga_cycle  <- mkLCounter(0);
-    COUNTER#(32) model_cycle <- mkLCounter(~0);
+    COUNTER#(32) fpgaCycle  <- mkLCounter(0);
+    COUNTER#(32) modelCycle <- mkLCounter(~0);
 
     Reg#(File) debugLog <- mkReg(InvalidFile);
     Reg#(Bool) initialized <- mkReg(False);
+
+    function getModelCycle() = modelCycle.updatedValue();
 
     rule open (initialized == False);
         let fd <- $fopen(debugPath(fname), "w");
@@ -262,35 +273,37 @@ module mkTIMEPDebugFile_SharedCycle_Multiplexed#(String fname)
     endrule
 
     rule inc (True);
-        fpga_cycle.up();
+        fpgaCycle.up();
     endrule
 
     method Action record(INSTANCE_ID#(ni) iid, Fmt fmt) if (initialized);
-        $fdisplay(debugLog, $format("[%d]: <%d / %d>: ", fpga_cycle.value(), iid, model_cycle.value()) + fmt);
+        $fdisplay(debugLog, $format("[%d]: <%d / %d>: ", fpgaCycle.value(), iid, getModelCycle()) + fmt);
     endmethod
 
+    // Identical to record().  See interface for details.
     method Action record_next_cycle(INSTANCE_ID#(ni) iid, Fmt fmt) if (initialized);
-        $fdisplay(debugLog, $format("[%d]: <%d / %d>: ", fpga_cycle.value(), iid, model_cycle.value() + 1) + fmt);
+        $fdisplay(debugLog, $format("[%d]: <%d / %d>: ", fpgaCycle.value(), iid, getModelCycle()) + fmt);
     endmethod
 
     method Action record_simple(Fmt fmt);
-        $fdisplay(debugLog, $format("[%d]: ", fpga_cycle.value()) + fmt);
+        $fdisplay(debugLog, $format("[%d]: ", fpgaCycle.value()) + fmt);
     endmethod
 
     method Action record_simple_ctx(INSTANCE_ID#(ni) iid, Fmt fmt);
-        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpga_cycle.value(), iid) + fmt);
+        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpgaCycle.value(), iid) + fmt);
     endmethod
 
     method Action record_all(Fmt fmt);
-        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpga_cycle.value(), model_cycle.value()) + fmt);
+        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpgaCycle.value(), getModelCycle()) + fmt);
     endmethod
 
+    // Identical to record_all().  See interface for details.
     method Action record_all_next_cycle(Fmt fmt);
-        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpga_cycle.value(), model_cycle.value() + 1) + fmt);
+        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpgaCycle.value(), getModelCycle()) + fmt);
     endmethod
 
     method Action nextModelCycle() if (initialized);
-        model_cycle.up();
+        modelCycle.up();
     endmethod
 
 `else

@@ -26745,3 +26745,19 @@ a different method for emitting the cycle number in debug output in the
 rule that updates the model cycle number.
 
 The record() and record_next_cycle() methods are now identical.  Finally!
+
+----------
+mcadler     Date: Wed Sep 11 15:48:13 EDT 2013  CSN: CSN-hasim-935
+                  Wed Sep 11 19:48:13 UTC 2013
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          934 
+
+Directory modules/hasim/util/modellib
+ multiplexed-memories.bsv  Locally Modified          934 
+
+- Consider a model deadlocked if no CPU commits an instruction during the
+  heartbeat interval.
+
+- New scratchpad parameters.

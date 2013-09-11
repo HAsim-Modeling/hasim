@@ -16,7 +16,8 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
-`include "asim/provides/mem_services.bsh"
+`include "awb/provides/mem_services.bsh"
+`include "awb/provides/scratchpad_memory_common.bsh"
 
 //
 // Instantiate multiplexed memories in which the instances appear to be separate
@@ -106,7 +107,8 @@ endmodule
 // mkScratchpad_Multiplexed --
 //    Convenience module that implements a multiplexed scratchpad memory.
 //
-module [HASIM_MODULE] mkScratchpad_Multiplexed#(Integer scratchpadID, SCRATCHPAD_CACHE_MODE cached)
+module [HASIM_MODULE] mkScratchpad_Multiplexed#(Integer scratchpadID,
+                                                SCRATCHPAD_CONFIG conf)
     // interface:
     (MEMORY_IFC_MULTIPLEXED#(t_NUM_INSTANCES, t_ADDR, t_DATA))
     provisos
@@ -120,7 +122,7 @@ module [HASIM_MODULE] mkScratchpad_Multiplexed#(Integer scratchpadID, SCRATCHPAD
 `ifdef MULTIPLEXED_MEM_USE_SCRATCHPAD_Z
     let m <- mkMemory_Multiplexed(mkBRAMInitialized(unpack(0)));
 `else
-    let m <- mkMemory_Multiplexed(mkScratchpad(scratchpadID, cached));
+    let m <- mkMemory_Multiplexed(mkScratchpad(scratchpadID, conf));
 `endif
 
     return m;
@@ -185,7 +187,8 @@ endmodule
 //    Convenience module that implements a multiplexed scratchpad memory with
 //    multiple read ports.
 //
-module [HASIM_MODULE] mkMultiReadScratchpad_Multiplexed#(Integer scratchpadID, SCRATCHPAD_CACHE_MODE cached)
+module [HASIM_MODULE] mkMultiReadScratchpad_Multiplexed#(Integer scratchpadID,
+                                                         SCRATCHPAD_CONFIG conf)
     // interface:
     (MEMORY_MULTI_READ_IFC_MULTIPLEXED#(t_NUM_INSTANCES, t_NUM_READERS, t_ADDR, t_DATA))
     provisos
@@ -199,7 +202,7 @@ module [HASIM_MODULE] mkMultiReadScratchpad_Multiplexed#(Integer scratchpadID, S
 `ifdef MULTIPLEXED_MEM_USE_SCRATCHPAD_Z
     let m <- mkMemoryMultiRead_Multiplexed(mkBRAMBufferedPseudoMultiReadInitialized(True, unpack(0)));
 `else
-    let m <- mkMemoryMultiRead_Multiplexed(mkMultiReadScratchpad(scratchpadID, cached));
+    let m <- mkMemoryMultiRead_Multiplexed(mkMultiReadScratchpad(scratchpadID, conf));
 `endif
 
     return m;

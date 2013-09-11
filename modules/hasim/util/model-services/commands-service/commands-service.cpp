@@ -672,12 +672,20 @@ HW_THREAD_HEARTBEAT_CLASS::Heartbeat(
     }
     
     //
-    // Is model broken?
+    // Is model broken?  Consider a model broken if no CPU commits any
+    // instructions in a heartbeat interval.
     //
-    if (hwThreadId == 0 && instr_commits == 0 && instrCommits > 0)
+    static UINT64 totalIntervalCommits = 1;
+    totalIntervalCommits += instr_commits;
+    if (hwThreadId == 0)
     {
-        ASIMERROR("No instructions committed for entire heartbeat interval (" <<
-                  model_cycles << " cycles)");
+        if (totalIntervalCommits == 0)
+        {
+            ASIMERROR("No instructions committed for entire heartbeat interval (" <<
+                      model_cycles << " cycles)");
+        }
+
+        totalIntervalCommits = 0;
     }
 }
 

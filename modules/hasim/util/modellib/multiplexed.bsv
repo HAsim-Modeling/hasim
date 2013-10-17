@@ -64,16 +64,26 @@ module [m] mkMultiplexed#(function m#(t) f)
 
 endmodule
 
-// MULTIPLEXED_REG
-
-// An efficient implementation for a multiplexed register. Max 5 read ports, 1 write port.
-
+//
+// MULTIPLEXED_REG --
+//   An efficient implementation for a multiplexed register. Max 5 read
+//   ports, 1 write port.
+//
 interface MULTIPLEXED_REG#(numeric type t_NUM_INSTANCES, type t_DATA);
-
     method Reg#(t_DATA) getReg(INSTANCE_ID#(t_NUM_INSTANCES) iid);
-
 endinterface
-                                                               
+
+//
+// getMultiplexedReg --
+//   A convenience function for returning the multiplexed register for
+//   a given instance.
+//
+function Reg#(t_DATA)
+    getMultiplexedReg(INSTANCE_ID#(t_NUM_INSTANCES) iid,
+                      MULTIPLEXED_REG#(t_NUM_INSTANCES,
+                                       t_DATA) mr) = mr.getReg(iid);
+
+
 // A multiplexed register, implemented as a LUTRAM. We use some bluespec magic to make it
 // look like a reg can be extracted, but really we're just accessing the RAM.
 
@@ -103,7 +113,6 @@ module [m] mkMultiplexedReg#(t_DATA initval)
                endinterface;
 
     endmethod
-
 endmodule
 
 //
@@ -126,18 +135,30 @@ module [m] mkMultiplexedRegU
                endinterface;
 
     endmethod
-
 endmodule
 
-// MULTIPLEXED_REG_MULTI_WRITE
-
-// An abstraction of multiple write ports. More expensive than above, but fewer conflicts.
-
+//
+// MULTIPLEXED_REG_MULTI_WRITE --
+//   An abstraction of multiple write ports. More expensive than above,
+//   but fewer conflicts.
+//
 interface MULTIPLEXED_REG_MULTI_WRITE#(numeric type t_NUM_INSTANCES, numeric type t_NUM_PORTS, type t_DATA);
-
     method Reg#(t_DATA) getRegWithWritePort(INSTANCE_ID#(t_NUM_INSTANCES) iid, Integer portnum);
-
 endinterface
+
+//
+// getMultiplexedRegMultiWrite --
+//   A convenience function for returning the multiplexed register for
+//   a given instance.
+//
+function Reg#(t_DATA)
+    getMultiplexedRegMultiWrite(INSTANCE_ID#(t_NUM_INSTANCES) iid,
+                                Integer portnum,
+                                MULTIPLEXED_REG_MULTI_WRITE#(t_NUM_INSTANCES,
+                                                             t_NUM_PORTS,
+                                                             t_DATA) mr) =
+        mr.getRegWithWritePort(iid, portnum);
+
 
 // A multiplexed register, implemented as a vector. This version has unlimited
 // read/write ports. We use some magic to ensure that writes are conflict-free

@@ -26761,3 +26761,15 @@ Directory modules/hasim/util/modellib
   heartbeat interval.
 
 - New scratchpad parameters.
+
+----------
+mcadler     Date: Wed Oct 16 20:22:39 EDT 2013  CSN: CSN-hasim-936
+                  Thu Oct 17 00:22:39 UTC 2013
+
+
+Directory modules/hasim/util/modellib
+ multiplexed.bsv           Locally Modified          935 
+
+Add functions for calling the method to get the proper instance of a
+multiplexed register.  The functions are mainly useful for operations
+on vectors of multiplexed registers.

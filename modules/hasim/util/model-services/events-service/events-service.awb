@@ -5,6 +5,7 @@
 %attributes hasim hybrid
 
 %sources -t RRR  -v PUBLIC  events-service.rrr
+%sources -t LOG  -v PUBLIC  events-service.log
 %sources -t BSV  -v PUBLIC  events-local.bsv
 %sources -t BSV  -v PUBLIC  events-service.bsv
 %sources -t H    -v PUBLIC  events-service.h

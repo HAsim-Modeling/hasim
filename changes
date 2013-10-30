@@ -26773,3 +26773,39 @@ Directory modules/hasim/util/modellib
 Add functions for calling the method to get the proper instance of a
 multiplexed register.  The functions are mainly useful for operations
 on vectors of multiplexed registers.
+
+----------
+keflemin    Date: Wed Oct 30 19:39:28 EDT 2013  CSN: CSN-hasim-937
+                  Wed Oct 30 23:39:28 UTC 2013
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          936 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.log         Locally Added               0 
+ funcp-tlb-std.awb         Locally Modified          936 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.log   Locally Added               0 
+ hybrid-funcp-memory.awb   Locally Modified          936 
+
+Directory modules/hasim/functional-partition/isa/isa-emulator
+ isa-emulator.log          Locally Added               0 
+ isa-emulator.awb          Locally Modified          936 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.log      Locally Added               0 
+ commands-service.awb      Locally Modified          936 
+
+Directory modules/hasim/util/model-services/events-service
+ events-service.log        Locally Added               0 
+ events-service.awb        Locally Modified          936 
+
+
+1) Fixed hasim runscript to use the new synthesized run
+environment. The new environment permits a richer set of platforms
+when compiling with the latency-insensitive module compiler. 
+
+2) Added rrr log files.  These are presently used by the LIM compiler
+to discover li channels in legacy compilation flows.

@@ -42,33 +42,10 @@ $config{master} = "";
 ReadConfig("config/env.sh", 1);
 ReadConfig("$config{modelDir}/config/env.sh", 1);
 ReadConfig("$config{modelDir}/config/platform_env.sh", 0);
-#now we have the "master" platform.  Do what it says. 
-#for singletons, this will be what we have just read.
-ReadConfig("$config{modelDir}/$config{master}/config/env.sh", 0);
-ReadConfig("$config{modelDir}/$config{master}/config/fpga.sh", 0);
-ReadConfig("$config{modelDir}/$config{master}/config/signature.sh", 0);
 
-
-## For legacy codes fill in the expected parameters
-## This can be removed on switch to build pipline 
-if(! exists $config{SOFT_RESET}) {
-  $config{SOFT_RESET} = 1;
-}
-
-if(! exists $config{FPGA_PLATFORM}) {
-  $config{FPGA_PLATFORM} = "DEFAULT";
-}
-
-##
-## Pseudo-enumeration of possible model types
-##
-my $MODEL_NONE = 0;
-my $MODEL_FPGA = 1;                     # Model runs on FPGA hardware
-my $MODEL_BLUESIM = 2;                  # Bluesim
-my $MODEL_VSIM = 3;                     # Verilog simulator
-
-my $mType = $MODEL_NONE;
-
+# we should now have visibility into the types of platforms that we
+# are dealing with. Let's set up some data structures.
+my $platforms_ref = $config{"platforms"};
 
 #############################################################################
 #############################################################################
@@ -125,20 +102,26 @@ if ($onlyCompare != 0) {
     exit(CompareOutput());
 }
 
+my $existsFPGA = 0;
+my $existsBLUESIM = 0;
+
+# The run script allows have multiple types for the same apm and multiple, hence each here.
+# This accomodate legacy builds.  If multiple types are assigned to the same APM, 
+# then their directory and master (soon to be deprecated) will go away. 
+for my $platform (@$platforms_ref) {
+
+    if($platform->{"type"} eq "FPGA") {
+        $existsFPGA = 1;
+    }
+
+    if($platform->{"type"} eq "BLUESIM") {
+        $existsFPGA = 1;
+    }
+}
+
+# We should check that M5 has been supplied.
 if ($m5run != 0) {
-    $mType = $MODEL_NONE;
-}
-elsif (-f "$config{modelDir}/$config{master}/$config{model}_hw.errinfo") {
-    $mType = $MODEL_FPGA;
-}
-elsif (-f "$config{modelDir}/$config{master}/$config{model}_hw.exe") {
-    $mType = $MODEL_BLUESIM;
-}
-elsif (-f "$config{modelDir}/$config{master}/$config{model}_hw.vexe") {
-    $mType = $MODEL_VSIM;
-}
-else {
-    die("Can't determine model type");
+    $existsFPGA = 0;
 }
 
 if ($help || ! $status) {
@@ -154,18 +137,22 @@ if ($help || ! $status) {
     print STDERR "   [--nocompare]           Skip comparison of output files\n";
     print STDERR "   [--m5]                  Run workload in m5 without HAsim\n";
 
-    if ($mType == $MODEL_FPGA) {
+    if ($existsFPGA) {
         print STDERR "   [--force-load]          Load a bitfile to the FPGA even if it has errors\n";
     }
 
-    if ($mType == $MODEL_BLUESIM) {
+    if ($existsBLUESIM) {
         print STDERR "   [--vcdstart=<cycle>]    Generate VCD dump for wave viewer (e.g. gtkwave)\n";
         print STDERR "   [--vcdcycles=<cycles>]  VCD dump length (default = 20000)\n";
     }
 
-    if ($config{isHybridModel}) {
-        my $cmd = "$config{modelDir}/$config{master}/$config{model} --help-run-append";
-        system($cmd);
+    for my $platform (@$platforms_ref) {
+        if($platform->{"type"} eq "CPU") {
+	    my $platformDirectory = $platform->{"directory"};
+   	    my $platformName = $platform->{"name"};
+            my $cmd = "$config{modelDir}/${platformDirectory}/${platformName} --help-run-append";
+            system($cmd);
+	}
     }
 
     exit(1);
@@ -210,54 +197,6 @@ if (defined($config{workloadContexts})) {
     $ctxFlag = "--workload-contexts=$config{workloadContexts}";
 }
 
-my $cmd;
-
-if ($m5run == 0) {
-    # Normal run
-
-    # Model might be a link to a binary.  Some binaries expect to find libraries
-    # based on their command line name (e.g. Bluesim).
-    $cmd = "$config{modelDir}/$config{master}/$config{model}";
-    if (-l $cmd) {
-        $cmd = "$config{modelDir}/$config{master}/" . readlink($cmd);
-    }
-
-    $cmd .= " --modeldir=$config{modelDir}/$config{master}/ --workload=$config{workload} ${showfp} --funcp=\'${feedFlags}\' $config{genFlags} ${ctxFlag}";
-    foreach my $c (@ARGV) {
-        $cmd .= " $c";
-    }
-
-    if (defined($printCycle)) {
-        $cmd .= " --pc=${printCycle}";
-    }
-}
-else {
-    if ($config{feeder} ne 'm5') {
-        die("This workload does not use m5");
-    }
-
-    # Running inside m5 without HAsim
-    my $m5cmd;
-    if (exists($ENV{M5BIN})) {
-        $m5cmd = $ENV{M5BIN};
-    }
-    else {
-        my $m5bin = "platform/m5/build/ALPHA/m5." . ($gdb ? "debug" : "opt");
-        $m5cmd = `awb-resolver ${m5bin}`;
-        chomp($m5cmd);
-        die("Failed to find $m5bin") if ($m5cmd eq '');
-    }
-
-    $cmd = "${m5cmd} ${feedFlags}";
-
-    # Drop --hasim-sim
-    $cmd =~ s/--hasim-sim //;
-    # Drop escaping of quotes
-    $cmd =~ s/\\"/"/g;
-
-    $noProgram = 1;
-}
-
 #
 # Bluesim arguments
 #
@@ -278,26 +217,19 @@ if (defined($vcdStart)) {
     $bluesimCmd .= "-c \"$vcdCmd\"";
 }
 
-if (defined($bluesimCmd)) {
-    $cmd .= " --bluesim=\'$bluesimCmd\'";
-}
 
 # Adjust the arguments for Bluesim if it is being invoked directly
-if (! $config{isHybridModel} && ($mType == $MODEL_BLUESIM)) {
-    $cmd =~ s/\s--/ +--/g;
+#if (! $config{isHybridModel} && ($mType == $MODEL_BLUESIM)) {
+#    $cmd =~ s/\s--/ +--/g;
 
     # Bluesim may expect to load a program from a well known file
-    if (exists($config{workload}) && exists($config{ISA})) {
-        unlink('program.vmh');
-        link("program/$config{workload}.$config{ISA}.vmh", 'program.vmh');
-    }
-}
+#    if (exists($config{workload}) && exists($config{ISA})) {
+#        unlink('program.vmh');
+#        link("program/$config{workload}.$config{ISA}.vmh", 'program.vmh');
+#    }
+#}
 
-# Define the global string database
-if (-f "$config{modelDir}/$config{master}/$config{model}.str" &&
-    $config{isHybridModel} && $m5run == 0) {
-    $cmd .= " --global-strings=\'$config{modelDir}/$config{master}/$config{model}.str\'";
-}
+
 
 #############################################################################
 #############################################################################
@@ -325,65 +257,67 @@ my $fpga_dev = undef;
 
 my @FPGAs = ();
 
-if ($mType == $MODEL_FPGA) {
-    # Load FPGA
-    if (! $noProgram) {
-        
-        if (! $noReserve) {
-            $fpga_dev_id = ReserveFPGA($config{FPGA});
-	}
-
-        ProgramFPGA("$config{modelDir}/$config{master}",$config{model},$fpga_dev_id);
-      
-        # Deactivate the FPGA, so that others may program.
-        DeactivateFPGA($fpga_dev_id);
-        
-        push(@FPGAs,$fpga_dev_id);
-        # Get the name of the device allocated by leap-fpga-ctrl and pass it                                                        
-        # to the model.                                                           
-        # eventually we'll do this for all FPGAs, not just the master. 
-        $fpga_dev = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getconfig=dev", "Failed to query FPGA device configuration");
-        $cmd .= " --param FPGA_DEV_PATH=\"${fpga_dev}\"";
-    }
-}
-
 # Examine subordinte builds.
 # really we should do this for all builds.  
 my @pidlist = ();
-if(exists $config{"slaves"}) {
-    my $slave_ref = $config{"slaves"};
-    for my $slave (keys %$slave_ref) {
-        my $slave_path = $slave_ref->{$slave};
-        `mkdir -p "$config{modelDir}/$slave_path/leap_debug"`;
-        if($mType == $MODEL_BLUESIM) {
-            my $pid = fork();
-            if($pid == 0) {
-                setpgrp;     
-                exec("$config{modelDir}/$slave_path/${slave}_hw.exe 2>&1 > ${slave}.log");
-                exit(0); # in case we get here    
+
+my $cpuPlatform = undef;
+my $fpgaDev = undef;
+
+for my $platform (@$platforms_ref) {
+    my $platformType = $platform->{"type"};
+    my $platformName = $platform->{"name"};
+    my $directory = $platform->{"directory"};
+    my $master = $platform->{"master"} eq "True";
+    
+    `mkdir -p "$config{modelDir}/${directory}/leap_debug"`;
+    if($platformType eq "BLUESIM") {
+        my $pid = fork();
+        if($pid == 0) { 
+            setpgrp;
+     
+            if (! defined($bluesimCmd)) {
+                $bluesimCmd = "";
             }
-            push(@pidlist, $pid);
+
+            exec("$config{modelDir}/${directory}/${platformName}_hw.exe $bluesimCmd 2>&1 > ${platformName}.log");
+            exit(0); # in case we get here    
         }
-
-
-        # need to program, but not activate slave devices  
-        if($mType == $MODEL_FPGA) {    
-            # reading the slave configuration stomps the master config.
-            # we'll have to restore it later.
-	    ReadConfig("$config{modelDir}/$slave_path/config/fpga.sh", 0);
-            my $fpga_type = "DEFAULT";
-            if (exists($config{FPGA})) {
-                $fpga_type = $config{FPGA};
-	    }
-
-            my $slave_fpga_dev_id = ReserveFPGA($fpga_type);
-            ProgramFPGA("$config{modelDir}/$slave_path",$slave,$slave_fpga_dev_id);
-            # Deactivate the FPGA, so that others may program.
-            DeactivateFPGA($slave_fpga_dev_id);
-        
-            push(@FPGAs,$slave_fpga_dev_id);
-        }
+        push(@pidlist, $pid);
     }
+
+    # need to program, but not activate slave devices  
+    if($platformType eq "FPGA") {    
+        # reading the slave configuration stomps the master config.
+        # we'll have to restore it later.
+        ReadConfig("$config{modelDir}/${directory}/config/fpga.sh", 0);
+        my $fpga_type = "DEFAULT";
+        if (exists($config{FPGA})) {
+            $fpga_type = $config{FPGA};
+        }
+
+        my $fpga_dev_id = ReserveFPGA($fpga_type);
+        ProgramFPGA("$config{modelDir}/${directory}",$platformName,$fpga_dev_id);
+        # Deactivate the FPGA, so that others may program.
+        DeactivateFPGA($fpga_dev_id);
+
+        #this is a massive hack.
+        if($master) {
+            $fpga_dev = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getconfig=dev", "Failed to query FPGA device configuration");
+            $fpgaDev .= " --param FPGA_DEV_PATH=\"${fpga_dev}\"";
+        }
+
+        push(@FPGAs,$fpga_dev_id);
+    }
+
+    if($platformType eq "CPU") {
+	if (defined($cpuPlatform)) {
+            print "We currently support only one CPU platform\n";
+            exit(0);
+	}
+        $cpuPlatform = $platform;
+    }
+
 }
 
 # Let's activate all of the FPGAs.
@@ -391,15 +325,84 @@ for my $device_id (@FPGAs) {
     ActivateFPGA($device_id);
 }
 
-#restore original configuration
-ReadConfig("$config{modelDir}/$config{master}/config/fpga.sh", 0);
-
-
 # Run the software side or a hardware simulator
 my $run_status = 0;
-if ($config{isHybridModel} || ($mType != $MODEL_FPGA)) {
+if (defined($cpuPlatform)) {
+    my $platformName = $cpuPlatform->{"name"};
+    my $directory = $cpuPlatform->{"directory"};
+
+    # build up a commandline for the main model executable.
+    my $cmd;
+
+    # Model might be a link to a binary.  Some binaries expect to find libraries
+    # based on their command line name (e.g. Bluesim).
+
+    $cmd = "$config{modelDir}/${directory}/sw/obj/${platformName}_sw.exe";
+    if (-l $cmd) {
+        $cmd = "$config{modelDir}/${directory}/" . readlink($cmd);
+    }
+
+    $cmd .= " --modeldir=$config{modelDir}/${directory} --workload=$config{workload} ${showfp} $config{genFlags}";
+
+
+    if ($m5run == 0) {
+        # Normal run
+
+        # Model might be a link to a binary.  Some binaries expect to find libraries
+        # based on their command line name (e.g. Bluesim).
+        $cmd = "$config{modelDir}/$config{master}/$config{model}";
+        if (-l $cmd) {
+            $cmd = "$config{modelDir}/$config{master}/" . readlink($cmd);
+        }
+        print "feedflags is $feedFlags\n";
+        $cmd .= " --modeldir=$config{modelDir}/$config{master}/ --workload=$config{workload} ${showfp} --funcp=\'${feedFlags}\' $config{genFlags} ${ctxFlag}";
+        foreach my $c (@ARGV) {
+            $cmd .= " $c";
+        }
+
+        if (defined($printCycle)) {
+            $cmd .= " --pc=${printCycle}";
+        }
+    }
+    else {
+        if ($config{feeder} ne 'm5') {
+            die("This workload does not use m5");
+        }
+
+        # Running inside m5 without HAsim
+        my $m5cmd;
+        if (exists($ENV{M5BIN})) {
+            $m5cmd = $ENV{M5BIN};
+        }
+        else {
+            my $m5bin = "platform/m5/build/ALPHA/m5." . ($gdb ? "debug" : "opt");
+            $m5cmd = `awb-resolver ${m5bin}`;
+            chomp($m5cmd);
+            die("Failed to find $m5bin") if ($m5cmd eq '');
+        }
+
+        $cmd = "${m5cmd} ${feedFlags}";
+
+        # Drop --hasim-sim
+        $cmd =~ s/--hasim-sim //;
+        # Drop escaping of quotes
+        $cmd =~ s/\\"/"/g;
+
+        $noProgram = 1;
+    }
+
+    if(defined($fpgaDev)) {
+	$cmd .= $fpgaDev;
+    }
+
+    # Define the global string database. This has been collected at the top-level build directory.    
+    if (-f "$config{modelDir}/$config{model}.str") {
+        $cmd .= " --global-strings=\'$config{modelDir}/$config{model}.str\'";
+    }
+
     $run_status = ExecModel($cmd);
 }
+
 
 # and now that we are done we will tear down the subordinate modules
 for my $pid (@pidlist) {
@@ -419,7 +422,7 @@ if (-f "$config{workload}.stats") {
     system("sort $config{workload}.stats -o $config{workload}.stats.$$; mv -f $config{workload}.stats.$$ $config{workload}.stats");
 }
 
-if (($mType == $MODEL_FPGA) && ! $noProgram && ! $noReserve) {
+if (($existsFPGA) && ! $noProgram && ! $noReserve) {
     for my $device_id (@FPGAs) {
         Exec("leap-fpga-ctrl --device-id=${device_id} --drop-reservation", "Failed to drop FPGA reservation");
     }
@@ -432,19 +435,19 @@ else {
     exit(CompareOutput());
 }
 
-
 sub ErrorExit($) {
     my $msg = shift;
 
     print STDERR "${msg}\n";
 
-    if (($mType == $MODEL_FPGA) && ! $noProgram && ! $noReserve && defined($fpga_dev_id)) {
-        system("leap-fpga-ctrl --device-id=${fpga_dev_id} --drop-reservation");
+    if ($existsFPGA && ! $noProgram && ! $noReserve && defined($fpga_dev_id)) {
+        for my $device_id (@FPGAs) {
+            system("leap-fpga-ctrl --device-id=${fpga_dev_id} --drop-reservation");
+	}
     }
 
     exit(1);
 }
-
 
 ##
 ## ExecModel --

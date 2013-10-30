@@ -10,6 +10,7 @@
 %public   hybrid-funcp-memory.h
 %private  hybrid-funcp-memory.rrr
 %public   hybrid-funcp-memory.dic
+%sources -t LOG -v PUBLIC hybrid-funcp-memory.log 
 
 %param FUNCP_CACHELINE_BITS     256 "Cache line size in bits"
 %param --global  FUNCP_PVT_CACHE_ENTRIES          4096 "Number of entries in functional private cache"

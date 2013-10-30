@@ -8,4 +8,5 @@
 %sources -v PUBLIC  isa-emulator.h
 %sources -v PRIVATE isa-emulator.cpp
 %sources -v PUBLIC  isa-emulator.rrr
+%sources -t LOG -v PUBLIC isa-emulator.log 
 %sources -v PUBLIC  isa-emulator-datatypes.bsv

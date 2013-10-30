@@ -5,6 +5,7 @@
 
 %attributes hasim funcp memstate
 
+%sources -t LOG -v PUBLIC funcp-tlb-std.log 
 %public  funcp-tlb-std.bsv
 %public  funcp-tlb-std.dic
 %private funcp-tlb-std.rrr

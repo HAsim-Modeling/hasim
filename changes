@@ -26809,3 +26809,14 @@ when compiling with the latency-insensitive module compiler.
 
 2) Added rrr log files.  These are presently used by the LIM compiler
 to discover li channels in legacy compilation flows.
+
+----------
+keflemin    Date: Fri Nov  1 17:17:16 EDT 2013  CSN: CSN-hasim-938
+                  Fri Nov  1 21:17:16 UTC 2013
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          937 
+
+
+Run script now needs to set LD_LIBRARY_PATH to point to shared library. 

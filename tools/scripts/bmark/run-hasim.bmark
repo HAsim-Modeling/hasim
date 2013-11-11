@@ -353,12 +353,12 @@ if (defined($cpuPlatform)) {
 
         # Model might be a link to a binary.  Some binaries expect to find libraries
         # based on their command line name (e.g. Bluesim).
-        $cmd = "$config{modelDir}/$config{master}/$config{model}";
+        $cmd = "$config{modelDir}/${directory}/sw/obj/${platformName}_sw.exe";
         if (-l $cmd) {
-            $cmd = "$config{modelDir}/$config{master}/" . readlink($cmd);
+            $cmd = "$config{modelDir}/${directory}/" . readlink($cmd);
         }
 
-        $cmd .= " --modeldir=$config{modelDir}/$config{master}/ --workload=$config{workload} ${showfp} --funcp=\'${feedFlags}\' $config{genFlags} ${ctxFlag}";
+        $cmd .= " --modeldir=$config{modelDir}/${directory}/ --workload=$config{workload} ${showfp} --funcp=\'${feedFlags}\' $config{genFlags} ${ctxFlag}";
 
         foreach my $c (@ARGV) {
             $cmd .= " $c";

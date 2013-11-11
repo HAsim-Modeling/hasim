@@ -26820,3 +26820,26 @@ Directory tools/scripts/bmark
 
 
 Run script now needs to set LD_LIBRARY_PATH to point to shared library. 
+
+----------
+keflemin    Date: Mon Nov 11 11:08:21 EST 2013  CSN: CSN-hasim-939
+                  Mon Nov 11 16:08:21 UTC 2013
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          938 
+
+Directory modules/hasim/functional-partition/isa/isa-emulator
+ isa-emulator.cpp          Locally Modified          938 
+ isa-emulator-datatypes.h  Locally Added               0 
+ isa-emulator.h            Locally Modified          938 
+ isa-emulator.awb          Locally Modified          938 
+
+
+1) Updated ISA emulator to use correct RRR syntax.  It was using some
+sort of early RRR syntax which was breaking abstraction layers.  I
+also cleaned up the include hierarchy to avoid circular dependence on
+isa-emulator-impl.
+
+2) Fixed residual bug in hasim run script.  Commands for FPGA runs
+were not using the correct path to the software executable.

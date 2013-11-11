@@ -10,3 +10,4 @@
 %sources -v PUBLIC  isa-emulator.rrr
 %sources -t LOG -v PUBLIC isa-emulator.log 
 %sources -v PUBLIC  isa-emulator-datatypes.bsv
+%sources -v PUBLIC  isa-emulator-datatypes.h

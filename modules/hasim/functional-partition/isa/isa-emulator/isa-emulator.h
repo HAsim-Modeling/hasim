@@ -23,6 +23,17 @@
 #include "asim/provides/rrr.h"
 #include "asim/provides/funcp_base_types.h"
 #include "asim/provides/hasim_isa.h"
+// We need some pre-processor defintions to make \
+// RRR happy
+#include "isa-emulator-datatypes.h"
+
+#define TYPES_ONLY
+#include "asim/rrr/server_stub_ISA_EMULATOR.h"
+#include "asim/rrr/server_stub_ISA_REGOP_EMULATOR.h"
+#include "asim/rrr/server_stub_ISA_DP_DEBUG.h"
+#include "awb/rrr/client_stub_ISA_EMULATOR.h"
+#undef TYPES_ONLY
+
 
 
 //
@@ -52,11 +63,20 @@ typedef enum
 }
 ISA_EMULATOR_RESULT;
 
-// Early declaration since of the circular dependence
-typedef class ISA_EMULATOR_IMPL_CLASS* ISA_EMULATOR_IMPL;
+// Forward declare impl class
+class ISA_EMULATOR_IMPL_CLASS;
+class ISA_REGOP_EMULATOR_IMPL_CLASS;
 
+// Convenience names for our pointers.
+typedef class ISA_EMULATOR_IMPL_CLASS* ISA_EMULATOR_IMPL;
 typedef class ISA_EMULATOR_SERVER_CLASS* ISA_EMULATOR_SERVER;
 typedef class ISA_EMULATOR_SERVER_CLASS* ISA_EMULATOR;
+typedef class ISA_REGOP_EMULATOR_IMPL_CLASS* ISA_REGOP_EMULATOR_IMPL;
+typedef class ISA_REGOP_EMULATOR_SERVER_CLASS* ISA_REGOP_EMULATOR_SERVER;
+typedef class ISA_REGOP_EMULATOR_SERVER_CLASS* ISA_REGOP_EMULATOR;
+typedef class ISA_DP_DEBUG_SERVER_CLASS* ISA_DP_DEBUG_SERVER;
+
+
 
 class ISA_EMULATOR_SERVER_CLASS: public RRR_SERVER_CLASS,
                                  public PLATFORMS_MODULE_CLASS,
@@ -68,6 +88,7 @@ class ISA_EMULATOR_SERVER_CLASS: public RRR_SERVER_CLASS,
 
     // stubs
     RRR_SERVER_STUB serverStub;
+    ISA_EMULATOR_CLIENT_STUB clientStub;
 
     ISA_EMULATOR_IMPL emulator;
 
@@ -87,10 +108,9 @@ class ISA_EMULATOR_SERVER_CLASS: public RRR_SERVER_CLASS,
     void Uninit();
     void Cleanup();
 
-    //
-    // RRR Service Methods
-    //
-    UMF_MESSAGE Request(UMF_MESSAGE req);    
+    // server methods
+    void sync(CONTEXT_ID_RRR ctxIdRaw, REG_NAME_RRR rNameRaw, ISA_VALUE rValueRaw);
+    ISA_ADDRESS emulate(CONTEXT_ID_RRR ctxIdRaw, INSTRUCTION_RRR instRaw, ISA_ADDRESS pcRaw);
 
     // client methods
     void UpdateRegister(CONTEXT_ID ctxId, ISA_REG_INDEX_CLASS rName, FUNCP_REG rVal);
@@ -104,12 +124,6 @@ class ISA_EMULATOR_SERVER_CLASS: public RRR_SERVER_CLASS,
 // continues simulation and the timing model is unaware of this emulation.
 //
 // ========================================================================
-
-// Early declaration since of the circular dependence
-typedef class ISA_REGOP_EMULATOR_IMPL_CLASS* ISA_REGOP_EMULATOR_IMPL;
-
-typedef class ISA_REGOP_EMULATOR_SERVER_CLASS* ISA_REGOP_EMULATOR_SERVER;
-typedef class ISA_REGOP_EMULATOR_SERVER_CLASS* ISA_REGOP_EMULATOR;
 
 class ISA_REGOP_EMULATOR_SERVER_CLASS: public RRR_SERVER_CLASS,
                                        public PLATFORMS_MODULE_CLASS,
@@ -135,18 +149,22 @@ class ISA_REGOP_EMULATOR_SERVER_CLASS: public RRR_SERVER_CLASS,
     // static methods
     static ISA_REGOP_EMULATOR GetInstance() { return &instance; }
 
+    // server methods
+    ISA_VALUE emulateRegOp(
+        CONTEXT_ID_RRR ctxIdRaw,
+        ISA_INSTRUCTION instrRaw,
+        ISA_ADDRESS pcRaw,
+        ISA_VALUE srcVal0Raw,
+        ISA_VALUE srcVal1Raw,
+        REG_NAME_RRR rNameSrc0Raw, 
+        REG_NAME_RRR rNameSrc1Raw,
+        REG_NAME_RRR rNameDstRaw);
+
     // required RRR methods
     void Init(PLATFORMS_MODULE);
     void Uninit();
     void Cleanup();
 
-    //
-    // RRR Service Methods
-    //
-    UMF_MESSAGE Request(UMF_MESSAGE req);    
-
-    // client methods
-    void UpdateRegister(CONTEXT_ID ctxId, ISA_REG_INDEX_CLASS rName, FUNCP_REG rVal);
 };
 
 
@@ -181,26 +199,22 @@ class ISA_DP_DEBUG_SERVER_CLASS: public RRR_SERVER_CLASS,
     void Uninit();
     void Cleanup();
 
-    //
-    // RRR Service Methods
-    //
-    UMF_MESSAGE Request(UMF_MESSAGE req);    
+    // server methods
+    void noteInstr( CONTEXT_ID_RRR  ctxIdRaw,
+                    INSTRUCTION_RRR instrRaw,
+                    ISA_ADDRESS pcRaw,
+                    ISA_VALUE srcVal0Raw,
+                    ISA_VALUE srcVal1Raw);
+
 };
 
-typedef ISA_DP_DEBUG_SERVER_CLASS* ISA_DP_DEBUG_SERVER;
 
 
-// server stub
-#define BYPASS_SERVER_STUB
+
 #include "asim/rrr/server_stub_ISA_EMULATOR.h"
 #include "asim/rrr/server_stub_ISA_REGOP_EMULATOR.h"
 #include "asim/rrr/server_stub_ISA_DP_DEBUG.h"
-#undef  BYPASS_SERVER_STUB
+#include "awb/rrr/client_stub_ISA_EMULATOR.h"
 
-//
-// Include of the implementation must be delayed to here so that
-// ISA_EMULATOR_RESULT and a pointer to ISA_EMULATOR_SERVER_CLASS are defined.
-//
-#include "asim/provides/isa_emulator_impl.h"
 
 #endif

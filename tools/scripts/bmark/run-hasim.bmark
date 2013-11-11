@@ -280,7 +280,7 @@ for my $platform (@$platforms_ref) {
                 $bluesimCmd = "";
             }
 
-            exec("$config{modelDir}/${directory}/${platformName}_hw.exe $bluesimCmd 2>&1 > ${platformName}.log");
+            exec("$config{modelDir}/${directory}/${platformName}_hw.exe $bluesimCmd 2>&1 | tee ${platformName}.log");
             exit(0); # in case we get here    
         }
         push(@pidlist, $pid);

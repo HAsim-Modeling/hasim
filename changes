@@ -26843,3 +26843,13 @@ isa-emulator-impl.
 
 2) Fixed residual bug in hasim run script.  Commands for FPGA runs
 were not using the correct path to the software executable.
+
+----------
+mcadler     Date: Mon Nov 11 18:17:26 EST 2013  CSN: CSN-hasim-940
+                  Mon Nov 11 23:17:26 UTC 2013
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          939 
+
+Write Bluesim simulator output both to stdout and to a log file.

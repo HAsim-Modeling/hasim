@@ -26853,3 +26853,14 @@ Directory tools/scripts/bmark
  run-hasim.bmark           Locally Modified          939 
 
 Write Bluesim simulator output both to stdout and to a log file.
+
+----------
+mcadler     Date: Wed Nov 20 14:50:50 EST 2013  CSN: CSN-hasim-941
+                  Wed Nov 20 19:50:50 UTC 2013
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          940 
+
+- Restore use of bitfile signatures to avoid reprogramming.
+- Clean up some formatting.

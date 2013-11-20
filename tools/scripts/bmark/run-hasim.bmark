@@ -110,11 +110,11 @@ my $existsBLUESIM = 0;
 # then their directory and master (soon to be deprecated) will go away. 
 for my $platform (@$platforms_ref) {
 
-    if($platform->{"type"} eq "FPGA") {
+    if ($platform->{"type"} eq "FPGA") {
         $existsFPGA = 1;
     }
 
-    if($platform->{"type"} eq "BLUESIM") {
+    if ($platform->{"type"} eq "BLUESIM") {
         $existsFPGA = 1;
     }
 }
@@ -147,7 +147,7 @@ if ($help || ! $status) {
     }
 
     for my $platform (@$platforms_ref) {
-        if($platform->{"type"} eq "CPU") {
+        if ($platform->{"type"} eq "CPU") {
 	    my $platformDirectory = $platform->{"directory"};
    	    my $platformName = $platform->{"name"};
             my $cmd = "$config{modelDir}/${platformDirectory}/${platformName} --help-run-append";
@@ -271,9 +271,9 @@ for my $platform (@$platforms_ref) {
     my $master = $platform->{"master"} eq "True";
     
     `mkdir -p "$config{modelDir}/${directory}/leap_debug"`;
-    if($platformType eq "BLUESIM") {
+    if ($platformType eq "BLUESIM") {
         my $pid = fork();
-        if($pid == 0) { 
+        if ($pid == 0) { 
             setpgrp;
      
             if (! defined($bluesimCmd)) {
@@ -287,10 +287,11 @@ for my $platform (@$platforms_ref) {
     }
 
     # need to program, but not activate slave devices  
-    if($platformType eq "FPGA") {    
+    if ($platformType eq "FPGA") {    
         # reading the slave configuration stomps the master config.
         # we'll have to restore it later.
         ReadConfig("$config{modelDir}/${directory}/config/fpga.sh", 0);
+        ReadConfig("$config{modelDir}/${directory}/config/signature.sh", 0);
         my $fpga_type = "DEFAULT";
         if (exists($config{FPGA})) {
             $fpga_type = $config{FPGA};
@@ -301,8 +302,9 @@ for my $platform (@$platforms_ref) {
         # Deactivate the FPGA, so that others may program.
         DeactivateFPGA($fpga_dev_id);
 
-        #this is a massive hack.
-        if($master) {
+        # FPGA device file path is currently passed as an environment variable.
+        # Figure out the path of the assigned FPGA.
+        if ($master) {
             $fpga_dev = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getconfig=dev", "Failed to query FPGA device configuration");
             $fpgaDev .= " --param FPGA_DEV_PATH=\"${fpga_dev}\"";
         }
@@ -310,7 +312,7 @@ for my $platform (@$platforms_ref) {
         push(@FPGAs,$fpga_dev_id);
     }
 
-    if($platformType eq "CPU") {
+    if ($platformType eq "CPU") {
 	if (defined($cpuPlatform)) {
             print "We currently support only one CPU platform\n";
             exit(0);
@@ -395,7 +397,7 @@ if (defined($cpuPlatform)) {
         $noProgram = 1;
     }
 
-    if(defined($fpgaDev)) {
+    if (defined($fpgaDev)) {
 	$cmd .= $fpgaDev;
     }
 

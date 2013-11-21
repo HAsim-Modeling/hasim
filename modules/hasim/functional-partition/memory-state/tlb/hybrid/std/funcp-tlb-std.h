@@ -47,6 +47,12 @@ class FUNCP_TLB_SERVER_CLASS: public RRR_SERVER_CLASS,
     Format fmt_addr;
     Format fmt_data;
 
+    FUNCP_SIMULATED_MEMORY memory;
+
+    UINT32 maxContexts;
+    MEM_VALUE *dActivateAddrs;
+    MEM_VALUE *iActivateAddrs;
+
   public:
     FUNCP_TLB_SERVER_CLASS();
     ~FUNCP_TLB_SERVER_CLASS();
@@ -58,6 +64,7 @@ class FUNCP_TLB_SERVER_CLASS: public RRR_SERVER_CLASS,
 
     // RRR request methods
     OUT_TYPE_VtoP VtoP(CONTEXT_ID ctxId, MEM_VALUE va, UINT8 reqWordIdx);
+    void ActivateVAddr(CONTEXT_ID ctxId, MEM_VALUE va, UINT8 isITranslate);
 };
 
 // Now that the server class is defined the RRR wrapper can be loaded.

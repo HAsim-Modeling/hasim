@@ -26864,3 +26864,18 @@ Directory tools/scripts/bmark
 
 - Restore use of bitfile signatures to avoid reprogramming.
 - Clean up some formatting.
+
+----------
+mcadler     Date: Thu Nov 21 14:16:58 EST 2013  CSN: CSN-hasim-942
+                  Thu Nov 21 19:16:58 UTC 2013
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.cpp         Locally Modified          941 
+ funcp-tlb-std.rrr         Locally Modified          941 
+ funcp-tlb-std.h           Locally Modified          941 
+ funcp-tlb-std.bsv         Locally Modified          941 
+
+Reduce run-to-run variation by moving fault handling for failed virtual
+to physical mappings to the normal translation stage.
+

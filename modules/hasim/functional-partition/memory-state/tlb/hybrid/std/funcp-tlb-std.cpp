@@ -41,7 +41,11 @@
 FUNCP_TLB_SERVER_CLASS FUNCP_TLB_SERVER_CLASS::instance;
 
 // constructor
-FUNCP_TLB_SERVER_CLASS::FUNCP_TLB_SERVER_CLASS()
+FUNCP_TLB_SERVER_CLASS::FUNCP_TLB_SERVER_CLASS() :
+    memory(NULL),
+    maxContexts(0),
+    dActivateAddrs(NULL),
+    iActivateAddrs(NULL)
 {
     SetTraceableName("funcp_tlb");
 
@@ -70,6 +74,16 @@ FUNCP_TLB_SERVER_CLASS::Init(
 {
     // set parent pointer
     parent = p;
+
+    // Get a pointer to simulated memory from the memory server.  This
+    // should be fixed to have a common parent allocate the memory.
+    memory = FUNCP_MEMORY_SERVER_CLASS::GetMemoryHandle();
+    ASSERTX(memory != NULL);
+
+    // Buckets for storing activation requests
+    maxContexts = memory->NumCPUs();
+    dActivateAddrs = new MEM_VALUE[maxContexts];
+    iActivateAddrs = new MEM_VALUE[maxContexts];
 }
 
 // uninit: override
@@ -87,6 +101,9 @@ FUNCP_TLB_SERVER_CLASS::Uninit()
 void
 FUNCP_TLB_SERVER_CLASS::Cleanup()
 {
+    maxContexts = 0;
+    delete[] dActivateAddrs;
+    delete[] iActivateAddrs;
 }
 
 
@@ -98,11 +115,6 @@ FUNCP_TLB_SERVER_CLASS::Cleanup()
 OUT_TYPE_VtoP
 FUNCP_TLB_SERVER_CLASS::VtoP(CONTEXT_ID ctxId, MEM_VALUE va, UINT8 reqWordIdx)
 {
-    // Get a pointer to simulated memory from the memory server.  This
-    // should be fixed to have a common parent allocate the memory.
-    FUNCP_SIMULATED_MEMORY memory = FUNCP_MEMORY_SERVER_CLASS::GetMemoryHandle();
-    ASSERTX(memory != NULL);
-
     //
     // The allocate on fault bit is stored in the low bit of the request
     // to save space.
@@ -128,6 +140,14 @@ FUNCP_TLB_SERVER_CLASS::VtoP(CONTEXT_ID ctxId, MEM_VALUE va, UINT8 reqWordIdx)
         //
         bool do_alloc = alloc_on_fault && (reqWordIdx == i);
         MEM_VALUE xlate_va = va + (1 << FUNCP_ISA_PAGE_SHIFT) * i;
+
+        // Has the model forced delayed translation of this address by calling
+        // ActivateVAddr?
+        if ((xlate_va == iActivateAddrs[ctxId]) ||
+            (xlate_va == dActivateAddrs[ctxId]))
+        {
+            do_alloc = true;
+        }
 
         if (do_alloc)
         {
@@ -159,4 +179,41 @@ FUNCP_TLB_SERVER_CLASS::VtoP(CONTEXT_ID ctxId, MEM_VALUE va, UINT8 reqWordIdx)
     resp.pa2 = xlate[2];
     resp.pa3 = xlate[3];
     return resp;
+}
+
+
+void
+FUNCP_TLB_SERVER_CLASS::ActivateVAddr(
+    CONTEXT_ID ctxId,
+    MEM_VALUE va,
+    UINT8 isITranslate)
+{
+    //
+    // A request to activate a virtual address for which translation failed.
+    // This path typically is reached after a VA->PA fault is raised and
+    // handled during commit.
+    //
+    // Simulation becomes non-deterministic if the memory is allocated during
+    // fault handling since there is no order guarantee in the simulator
+    // between the fault handler of one context and the translation phase
+    // of another context.  Delay allocation until this context requests the
+    // translation again.
+    //
+
+    const char *i_or_d = isITranslate ? "I" : "D";
+    T1("\tfuncp_memory: ActivateAddr " << i_or_d << " CTX " << UINT64(ctxId) << " VA " << fmt_data(va));
+
+    //
+    // Each context gets a bucket for instruction and another for data
+    // translation.
+    //
+    VERIFYX(ctxId < maxContexts);
+    if (isITranslate)
+    {
+        iActivateAddrs[ctxId] = va;
+    }
+    else
+    {
+        dActivateAddrs[ctxId] = va;
+    }
 }

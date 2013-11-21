@@ -8,6 +8,15 @@ service FUNCP_TLB
 {
     server sw (cpp, method) <- hw (bsv, connection)
     {
+        // Used in response to a fault.  Trigger activation of a virtual
+        // address for which no translation exists.
+        //
+        // *** Method must be first to get highest RRR static priority. ***
+        //
+        method ActivateVAddr(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
+                             in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] va,
+                             in UINT8[8] isITranslate);
+
         method VtoP(in CONTEXT_ID_RRR[CONTEXT_ID_BITS_RRR] ctxId,
                     in MEM_VALUE[FUNCP_ISA_INT_REG_SIZE] va,
                     in UINT8[8] reqWordIdx,

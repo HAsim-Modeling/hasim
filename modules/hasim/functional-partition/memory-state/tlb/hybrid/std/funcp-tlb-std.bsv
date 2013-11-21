@@ -184,7 +184,8 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     Connection_Receive#(FUNCP_TLB_FAULT) link_funcp_dtlb_fault <- mkConnection_Receive("funcp_dtlb_pagefault");
 
     // Connection between central cache and translation RRR service
-    let vtopIfc <- mkVtoPInterface(debugLog);
+    ClientStub_FUNCP_TLB clientTranslationStub <- mkClientStub_FUNCP_TLB();
+    let vtopIfc <- mkVtoPInterface(clientTranslationStub, debugLog);
 
     // Reorder buffer for cache responses.  Cache doesn't guarantee ordered return.
     SCOREBOARD_FIFOF#(FUNCP_TLB_REFS, FUNCP_TLB_ENTRY) itlbTransRespQ <- mkScoreboardFIFOF();
@@ -193,9 +194,6 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     // Page offset used in final step for returning true PA
     FIFO#(FUNCP_PAGE_OFFSET) itlbReqInfoQ <- mkSizedFIFO(valueOf(FUNCP_TLB_REFS));
     FIFO#(FUNCP_PAGE_OFFSET) dtlbReqInfoQ <- mkSizedFIFO(valueOf(FUNCP_TLB_REFS));
-
-    Reg#(Bool) itlbReadyForAlloc <- mkReg(False);
-    Reg#(Bool) dtlbReadyForAlloc <- mkReg(False);
 
     // Translation cache and cache prefetcher
     NumTypeParam#(`FUNCP_TLB_PVT_ENTRIES) num_pvt_entries = ?;
@@ -251,29 +249,20 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     (* conservative_implicit_conditions *)
     rule itlbFaultReq (True);
         let r = link_funcp_itlb_fault.receive();
+        link_funcp_itlb_fault.deq();
 
         let vp = pageFromVA(r.va);
         let idx = tlbCacheIdx(r.contextId, vp);
-        let ref_info = FUNCP_TLB_REFINFO { isInstrReq: True,
-                                           allocOnFault: True,
-                                           allocWordIdx: truncate(vp),
-                                           refIdx: ? };
 
-        if (! itlbReadyForAlloc)
-        begin
-            // First pass --
-            //   Drop current TLB entry since the failed translation is cached.
-            cache.invalReq(idx, True);
-        end
-        else
-        begin
-            debugLog.record($format("I Alloc: ctx=%0d, va=0x%x", r.contextId, r.va));
+        // Drop current TLB entry since the failed translation is cached.
+        cache.invalReq(idx, True);
 
-            cache.readReq(idx, ref_info, defaultValue());
-            link_funcp_itlb_fault.deq();
-        end
+        // Force allocation
+        clientTranslationStub.makeRequest_ActivateVAddr(contextIdToRRR(r.contextId),
+                                                        vaFromPage(vp, 0),
+                                                        1);
 
-        itlbReadyForAlloc <= ! itlbReadyForAlloc;
+        debugLog.record($format("I Alloc: ctx=%0d, va=0x%x, vp=0x%x", r.contextId, r.va, vp));
     endrule
 
     //
@@ -283,7 +272,8 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
 
     let stdioIReq <- mkStdIO_CondPrintf(ioMask_FUNCP_MEMSTATE, stdio);
 
-    rule itlbTransReq (! itlbReadyForAlloc && ! dtlbReadyForAlloc);
+    rule itlbTransReq (! link_funcp_itlb_fault.notEmpty &&
+                       ! link_funcp_dtlb_fault.notEmpty);
         let r = link_funcp_itlb_trans.getReq();
         link_funcp_itlb_trans.deq();
 
@@ -343,29 +333,20 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     (* conservative_implicit_conditions *)
     rule dtlbFaultReq (True);
         let r = link_funcp_dtlb_fault.receive();
+        link_funcp_dtlb_fault.deq();
 
         let vp = pageFromVA(r.va);
         let idx = tlbCacheIdx(r.contextId, vp);
-        let ref_info = FUNCP_TLB_REFINFO { isInstrReq: False,
-                                           allocOnFault: True,
-                                           allocWordIdx: truncate(vp),
-                                           refIdx: ? };
 
-        if (! dtlbReadyForAlloc)
-        begin
-            // First pass --
-            //   Drop current TLB entry since the failed translation is cached.
-            cache.invalReq(idx, True);
-        end
-        else
-        begin
-            debugLog.record($format("D Alloc: ctx=%0d, va=0x%x", r.contextId, r.va));
+        // Drop current TLB entry since the failed translation is cached.
+        cache.invalReq(idx, True);
 
-            cache.readReq(idx, ref_info, defaultValue());
-            link_funcp_dtlb_fault.deq();
-        end
+        // Force allocation
+        clientTranslationStub.makeRequest_ActivateVAddr(contextIdToRRR(r.contextId),
+                                                        vaFromPage(vp, 0),
+                                                        0);
 
-        dtlbReadyForAlloc <= ! dtlbReadyForAlloc;
+        debugLog.record($format("D Alloc: ctx=%0d, va=0x%x, vp=0x%x", r.contextId, r.va, vp));
     endrule
 
     //
@@ -376,7 +357,8 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     let stdioDReq <- mkStdIO_CondPrintf(ioMask_FUNCP_MEMSTATE, stdio);
 
     (* descending_urgency = "itlbFaultReq, itlbTransReq, dtlbFaultReq, dtlbTransReq" *)
-    rule dtlbTransReq (! itlbReadyForAlloc && ! dtlbReadyForAlloc);
+    rule dtlbTransReq (! link_funcp_itlb_fault.notEmpty &&
+                       ! link_funcp_dtlb_fault.notEmpty);
         let r = link_funcp_dtlb_trans.getReq();
         link_funcp_dtlb_trans.deq();
 
@@ -475,13 +457,11 @@ endmodule
 //   The interface between the main shared translation cache and the hybrid
 //   memory service.
 //
-module [HASIM_MODULE] mkVtoPInterface#(DEBUG_FILE debugLog)
+module [HASIM_MODULE] mkVtoPInterface#(ClientStub_FUNCP_TLB clientTranslationStub,
+                                       DEBUG_FILE debugLog)
     // interface:
     (CENTRAL_CACHE_CLIENT_BACKING#(FUNCP_TLB_IDX, FUNCP_TLB_ENTRY, t_READ_META))
     provisos (Bits#(t_READ_META, t_READ_META_SZ));
-
-    // Connection to memory address translation service
-    ClientStub_FUNCP_TLB clientTranslationStub <- mkClientStub_FUNCP_TLB();
 
     STAT statTLBCentralMiss <-
         mkStatCounter(statName("FUNCP_TLB_CENTRAL_CACHE_MISS",

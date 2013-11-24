@@ -235,6 +235,10 @@ typedef struct
 {
     FUNCP_VADDR va;
     CONTEXT_ID contextId;
+
+    // Set when querying multiple pages to satisfy a single model request.
+    // E.g. Address range spans a page boundary.
+    Bool notLastQuery;
 }
 FUNCP_TLB_QUERY
     deriving (Eq, Bits);
@@ -245,11 +249,11 @@ typedef FUNCP_TLB_QUERY FUNCP_TLB_FAULT;
 // Helper functions for constructing FUNCP_TLB_QUERY
 //
 function FUNCP_TLB_QUERY normalTLBQuery(CONTEXT_ID ctx, FUNCP_VADDR va);
-    return FUNCP_TLB_QUERY { va: va, contextId: ctx };
+    return FUNCP_TLB_QUERY { va: va, contextId: ctx, notLastQuery: False };
 endfunction
 
 function FUNCP_TLB_FAULT handleTLBPageFault(CONTEXT_ID ctx, FUNCP_VADDR va);
-    return FUNCP_TLB_FAULT { va: va, contextId: ctx };
+    return FUNCP_TLB_FAULT { va: va, contextId: ctx, notLastQuery: False };
 endfunction
 
 

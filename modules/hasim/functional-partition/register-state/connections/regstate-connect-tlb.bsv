@@ -42,6 +42,7 @@
 // Translation interface
 //
 interface REGSTATE_TLB_TRANSLATE;
+    method Action noReq();
     method Action makeReq(FUNCP_TLB_QUERY query);
 
     method FUNCP_TLB_RESP getResp();
@@ -73,16 +74,19 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_TLB#(FUNCP_TLB_TYPE tlbType)
     (REGSTATE_TLB_CONNECTION);
     
     String connect_translate_name = (tlbType == FUNCP_ITLB) ? "funcp_itlb_translate" : "funcp_dtlb_translate";
-    Connection_Client#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_tlb_trans <- mkConnection_Client(connect_translate_name);
+    Connection_Client#(Maybe#(FUNCP_TLB_QUERY), FUNCP_TLB_RESP) link_funcp_tlb_trans <- mkConnection_Client(connect_translate_name);
 
     String connect_pagefault_name = (tlbType == FUNCP_ITLB) ? "funcp_itlb_pagefault" : "funcp_dtlb_pagefault";
     Connection_Send#(FUNCP_TLB_FAULT) link_funcp_tlb_fault <- mkConnection_Send(connect_pagefault_name);
 
 
     interface REGSTATE_TLB_TRANSLATE translate;
+        method Action noReq();
+            link_funcp_tlb_trans.makeReq(tagged Invalid);
+        endmethod
 
         method Action makeReq(FUNCP_TLB_QUERY query);
-            link_funcp_tlb_trans.makeReq(query);
+            link_funcp_tlb_trans.makeReq(tagged Valid query);
         endmethod
 
         method FUNCP_TLB_RESP getResp();
@@ -96,7 +100,6 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Connect_TLB#(FUNCP_TLB_TYPE tlbType)
 
 
     interface REGSTATE_TLB_FAULT fault;
-    
         method Action pageFault(FUNCP_TLB_FAULT fault);
             link_funcp_tlb_fault.send(fault);
         endmethod

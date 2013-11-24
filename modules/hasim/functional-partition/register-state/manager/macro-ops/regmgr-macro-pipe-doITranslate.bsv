@@ -100,7 +100,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     //
     // ====================================================================
 
-    Connection_Server#(FUNCP_REQ_DO_ITRANSLATE,
+    Connection_Server#(Maybe#(FUNCP_REQ_DO_ITRANSLATE),
                        FUNCP_RSP_DO_ITRANSLATE) linkDoITranslate <-
         mkFUNCPInterfaceServer("funcp_doITranslate");
 
@@ -141,15 +141,29 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     // Soft Returns: One or Two MEM_ADDRESS, depending on the alignment.
 
 
+    // doITranslateNoMsg --
+    //
+    // The timing model is required to notify the functional model at the point
+    // of address translation even if no translation is requested.  This is
+    // used to maintain order in the functional model.  Failure to do this
+    // introduces run-to-run variation in some models.
+    rule doITranslateNoMsg (! isValid(linkDoITranslate.getReq));
+        linkDoITranslate.deq();
+
+        // Tell the TLB
+        link_itlb_trans.noReq();
+
+        // There is no response.  Done.
+    endrule
+
+
     // doITranslate1
-    
+    //
     // When:   The timing model makes a new ITranslate req.
     // Effect: Record the virtual address, make the req to the TLB.
+    //
+    rule doITranslate1 (linkDoITranslate.getReq() matches tagged Valid .req);
 
-    rule doITranslate1 (True);
-
-        // Get the input from the timing model. Begin macro operation.
-        let req = linkDoITranslate.getReq();
         let vaddr = req.virtualAddress;
 
         // Align the address.
@@ -178,7 +192,9 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
             debugLog.record($format("DoITranslate1: Spanning ITLB Req 1 (VA: 0x%h, AA1: 0x%h)", vaddr, aligned_addr));
   
             // A spanning ITranslate. Make the first request to the TLB.
-            link_itlb_trans.makeReq(normalTLBQuery(req.contextId, aligned_addr));
+            let tlb_req = normalTLBQuery(req.contextId, aligned_addr);
+            tlb_req.notLastQuery = True;
+            link_itlb_trans.makeReq(tlb_req);
   
             // Stall to make the second request.
             stateITrans1 <= tagged ITRANS1_SPAN_REQ tuple2(aligned_addr, offset_addr);
@@ -195,7 +211,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoITranslate#(
     rule doITranslate1Span (stateITrans1 matches tagged ITRANS1_SPAN_REQ {.aligned_addr1, .offset});
          
         // Get the data from the previous stage.
-        let req = linkDoITranslate.getReq();
+        let req = validValue(linkDoITranslate.getReq());
         let ctx_id = req.contextId;
     
         // Calculate the second virtual address.

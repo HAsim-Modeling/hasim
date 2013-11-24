@@ -38,8 +38,8 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         ();
 
     // Connections to functional register state manager
-    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_itlb <- mkConnection_Server("funcp_itlb_translate");
-    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_dtlb <- mkConnection_Server("funcp_dtlb_translate");
+    Connection_Server#(Maybe#(FUNCP_TLB_QUERY), FUNCP_TLB_RESP) link_funcp_itlb <- mkConnection_Server("funcp_itlb_translate");
+    Connection_Server#(Maybe#(FUNCP_TLB_QUERY), FUNCP_TLB_RESP) link_funcp_dtlb <- mkConnection_Server("funcp_dtlb_translate");
 
     Connection_Receive#(FUNCP_TLB_FAULT) link_funcp_itlb_fault <- mkConnection_Receive("funcp_itlb_pagefault");
     Connection_Receive#(FUNCP_TLB_FAULT) link_funcp_dtlb_fault <- mkConnection_Receive("funcp_dtlb_pagefault");
@@ -47,15 +47,21 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     // ***** Rules for communcation with functional register state manager *****
     
     rule itlb_req (True);
-        let req = link_funcp_itlb.getReq();
+        let m_req = link_funcp_itlb.getReq();
         link_funcp_itlb.deq();
-        link_funcp_itlb.makeResp(FUNCP_TLB_RESP { pa : truncate(req.va), pageFault: False, ioSpace: False });
+        if (m_req matches tagged Valid .req)
+        begin
+            link_funcp_itlb.makeResp(FUNCP_TLB_RESP { pa : truncate(req.va), pageFault: False, ioSpace: False });
+        end
     endrule
 
     rule dtlb_req (True);
-        let req = link_funcp_dtlb.getReq();
+        let m_req = link_funcp_dtlb.getReq();
         link_funcp_dtlb.deq();
-        link_funcp_dtlb.makeResp(FUNCP_TLB_RESP { pa : truncate(req.va), pageFault: False, ioSpace: False });
+        if (m_req matches tagged Valid .req)
+        begin
+            link_funcp_dtlb.makeResp(FUNCP_TLB_RESP { pa : truncate(req.va), pageFault: False, ioSpace: False });
+        end
     endrule
 
     // ***** No page faults needed

@@ -145,6 +145,18 @@ FUNCP_TLB_REFINFO
     deriving (Eq, Bits);
 
 
+//
+// State machine for ordering requests.
+//
+typedef enum
+{
+    FUNCP_TLB_STATE_ITRANS,
+    FUNCP_TLB_STATE_DTRANS
+}
+FUNCP_TLB_STATE
+    deriving (Eq, Bits);
+
+
 // ===================================================================
 //
 // Main module.  Connection to register state manager and TLB.
@@ -176,12 +188,21 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     let msgDRsp <- getGlobalStringUID("FUNCP TLB: DTranslate RSP pa=0x%016llx, io=%d, fault=%d\n");
 
     // Connections to functional register state manager translation pipelines
-    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_itlb_trans <- mkConnection_Server("funcp_itlb_translate");
-    Connection_Server#(FUNCP_TLB_QUERY, FUNCP_TLB_RESP) link_funcp_dtlb_trans <- mkConnection_Server("funcp_dtlb_translate");
+    Connection_Server#(Maybe#(FUNCP_TLB_QUERY), FUNCP_TLB_RESP) link_funcp_itlb_trans <- mkConnection_Server("funcp_itlb_translate");
+    Connection_Server#(Maybe#(FUNCP_TLB_QUERY), FUNCP_TLB_RESP) link_funcp_dtlb_trans <- mkConnection_Server("funcp_dtlb_translate");
 
     // Connections to functional fault handler
     Connection_Receive#(FUNCP_TLB_FAULT) link_funcp_itlb_fault <- mkConnection_Receive("funcp_itlb_pagefault");
     Connection_Receive#(FUNCP_TLB_FAULT) link_funcp_dtlb_fault <- mkConnection_Receive("funcp_dtlb_pagefault");
+
+    // State enforces order of I and D translation.  Side effects of translation
+    // requests to the host may cause run-to-run mapping changes, which are
+    // hard to debug.  We treat TLB queries like A-Ports.  The model must request
+    // a translation or send no-message once for instructions and then once
+    // for data.  The next context's instruction translation will not fire until
+    // the data translation request is received for the current context.
+    // This is why requests are protected by Maybe#(), to allow for no-message.
+    Reg#(FUNCP_TLB_STATE) state <- mkReg(FUNCP_TLB_STATE_ITRANS);
 
     // Connection between central cache and translation RRR service
     ClientStub_FUNCP_TLB clientTranslationStub <- mkClientStub_FUNCP_TLB();
@@ -212,6 +233,12 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
                                       True,
                                       vtopIfc);
 
+    // Cache read metadata that forces requests to the host to be ordered.
+    // Calling the host for a translation may have memory allocation side
+    // effects.  Order prevents run to run variation.
+    RL_CACHE_GLOBAL_READ_META orderedReqs = defaultValue();
+    orderedReqs.orderedSourceDataReqs = True;
+
     let statIfc <- mkTLBCacheStats(cache.stats);
     let prefetchStatIfc <- (`FUNCP_TLB_PVT_PREFETCH_ENABLE == 1)?
                            mkTLBPrefetchStats(num_prefetch_learners, prefetcher.stats):
@@ -222,6 +249,18 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     Param#(3) cacheMode              <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PVT_CACHE_MODE, paramNode);
     Param#(6) prefetchMechanism      <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PREFETCHER_MECHANISM, paramNode);
     Param#(4) prefetchLearnerSizeLog <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PREFETCHER_LEARNER_SIZE_LOG, paramNode);
+
+    //
+    // Function to enforce order of instruction vs. data translations.
+    // Order may be important for virtual to physical translation in
+    // models that map pages at run time, since changes in order
+    // lead to different run-to-run mappings.
+    //
+    function Bool orderIsValid(FUNCP_TLB_STATE expectedState);
+        return ((`FUNCP_TLB_ENFORCE_ORDER == 0) ||
+                (state == expectedState));
+    endfunction
+
 
     // ====================================================================
     //
@@ -272,10 +311,17 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
 
     let stdioIReq <- mkStdIO_CondPrintf(ioMask_FUNCP_MEMSTATE, stdio);
 
-    rule itlbTransReq (! link_funcp_itlb_fault.notEmpty &&
+    rule itlbTransReq (link_funcp_itlb_trans.getReq() matches tagged Valid .r &&&
+                       orderIsValid(FUNCP_TLB_STATE_ITRANS) &&&
+                       ! link_funcp_itlb_fault.notEmpty &&&
                        ! link_funcp_dtlb_fault.notEmpty);
-        let r = link_funcp_itlb_trans.getReq();
         link_funcp_itlb_trans.deq();
+
+        // Enforce order of queries
+        if (! r.notLastQuery)
+        begin
+            state <= FUNCP_TLB_STATE_DTRANS;
+        end
 
         debugLog.record($format("I Req: ctx=%0d, va=0x%x", r.contextId, r.va));
         // Pack state into 64 bits as best we can
@@ -289,9 +335,15 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
                                           allocOnFault: False,
                                           allocWordIdx: truncate(vp),
                                          refIdx: idx },
-                      defaultValue());
+                      orderedReqs);
 
         itlbReqInfoQ.enq(pageOffsetFromVA(r.va));
+    endrule
+
+    rule itlbTransReqNoMsg (! isValid(link_funcp_itlb_trans.getReq) &&
+                            orderIsValid(FUNCP_TLB_STATE_ITRANS));
+        link_funcp_itlb_trans.deq();
+        state <= FUNCP_TLB_STATE_DTRANS;
     endrule
 
     //
@@ -357,10 +409,17 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     let stdioDReq <- mkStdIO_CondPrintf(ioMask_FUNCP_MEMSTATE, stdio);
 
     (* descending_urgency = "itlbFaultReq, itlbTransReq, dtlbFaultReq, dtlbTransReq" *)
-    rule dtlbTransReq (! link_funcp_itlb_fault.notEmpty &&
+    rule dtlbTransReq (link_funcp_dtlb_trans.getReq() matches tagged Valid .r &&&
+                       orderIsValid(FUNCP_TLB_STATE_DTRANS) &&&
+                       ! link_funcp_itlb_fault.notEmpty &&&
                        ! link_funcp_dtlb_fault.notEmpty);
-        let r = link_funcp_dtlb_trans.getReq();
         link_funcp_dtlb_trans.deq();
+
+        // Enforce order of queries
+        if (! r.notLastQuery)
+        begin
+            state <= FUNCP_TLB_STATE_ITRANS;
+        end
 
         debugLog.record($format("D Req: ctx=%0d, va=0x%x", r.contextId, r.va));
         stdioDReq.printf(msgDReq, list2(zeroExtend(r.contextId), resize(r.va)));
@@ -373,9 +432,15 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
                                           allocOnFault: False,
                                           allocWordIdx: truncate(vp),
                                           refIdx: idx },
-                      defaultValue());
+                      orderedReqs);
 
         dtlbReqInfoQ.enq(pageOffsetFromVA(r.va));
+    endrule
+
+    rule dtlbTransReqNoMsg (! isValid(link_funcp_dtlb_trans.getReq) &&
+                            orderIsValid(FUNCP_TLB_STATE_DTRANS));
+        link_funcp_dtlb_trans.deq();
+        state <= FUNCP_TLB_STATE_ITRANS;
     endrule
 
     //
@@ -407,6 +472,23 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
         link_funcp_dtlb_trans.makeResp(resp);
     endrule
 
+
+    //
+    // optTransReqNoMsg --
+    //     An optimization for the case that both an ITLB and a DTLB no-message
+    //     request are available.  In this case the state doesn't change.
+    //     Just drop both.
+    //
+    //     This rule should be given higher static priority than
+    //     itlbTransReqNoMsg and dtlbTransReqNoMsg.
+    //
+    (* descending_urgency = "optTransReqNoMsg, itlbTransReqNoMsg" *)
+    (* descending_urgency = "optTransReqNoMsg, dtlbTransReqNoMsg" *)
+    rule optTransReqNoMsg (! isValid(link_funcp_itlb_trans.getReq) &&
+                           ! isValid(link_funcp_dtlb_trans.getReq));
+        link_funcp_itlb_trans.deq();
+        link_funcp_dtlb_trans.deq();
+    endrule
 
 
     //

@@ -26879,3 +26879,33 @@ Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
 Reduce run-to-run variation by moving fault handling for failed virtual
 to physical mappings to the normal translation stage.
 
+
+----------
+mcadler     Date: Sun Nov 24 09:27:12 EST 2013  CSN: CSN-hasim-943
+                  Sun Nov 24 14:27:12 UTC 2013
+
+
+Directory modules/hasim/functional-partition/register-state/connections
+ regstate-connect-tlb.bsv  Locally Modified          942 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-doDTranslate.bsv Locally Modified          942 
+ regmgr-macro-pipe-doITranslate.bsv Locally Modified          942 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/null
+ funcp-tlb-null.bsv        Locally Modified          942 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.awb         Locally Modified          942 
+ funcp-tlb-std.bsv         Locally Modified          942 
+
+Directory modules/hasim/functional-partition/memory-state/base-types
+ memstate-base-types.bsv   Locally Modified          942 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          942 
+
+The functional virtual to physical address translation request interface is
+now like A-Ports.  A message must be sent every model cycle in order to force
+translations to be requested in the same order.  This eliminates run-to-run
+variations in Gem5 address mapping.

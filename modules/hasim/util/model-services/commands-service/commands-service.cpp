@@ -676,7 +676,6 @@ HW_THREAD_HEARTBEAT_CLASS::Heartbeat(
     // instructions in a heartbeat interval.
     //
     static UINT64 totalIntervalCommits = 1;
-    totalIntervalCommits += instr_commits;
     if (hwThreadId == 0)
     {
         if (totalIntervalCommits == 0)
@@ -687,6 +686,7 @@ HW_THREAD_HEARTBEAT_CLASS::Heartbeat(
 
         totalIntervalCommits = 0;
     }
+    totalIntervalCommits += instr_commits;
 }
 
 void

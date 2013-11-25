@@ -170,7 +170,7 @@ module [HASIM_MODULE] mkCommandsService
             tagged COM_Scan:
             begin
                 // Sending "done" guarantees all scan data have reached host
-                clientStub.makeRequest_Done(0);
+                clientStub.makeRequest_ScanDone(0);
             end
 
             tagged LC_ScanData .sd:
@@ -196,7 +196,7 @@ module [HASIM_MODULE] mkCommandsService
             tagged COM_TestThroughput:
             begin
                 // Sending "done" guarantees all data have reached host
-                clientStub.makeRequest_Done(1);
+                clientStub.makeRequest_ScanDone(1);
             end
 
             tagged LC_ThroughputData .cycles:
@@ -215,24 +215,6 @@ module [HASIM_MODULE] mkCommandsService
                 noAction;
             end
         endcase
-    endrule
-
-
-    //
-    // completeScan --
-    //     The "done" request sent to the host at the end of a scan chain
-    //     returns from software, signalling all scan data has been
-    //     transmitted.  Then it is safe to signal completion of the scan.
-    //
-    rule completeScan (True);
-        // Both scan and throughput tests use the done mechanism to guarantee
-        // delivery.  They send different values through done.  PIck the
-        // proper response.
-        let ack <- clientStub.getResponse_Done();
-        if (ack == 0)
-            serverStub.sendResponse_Scan(?);
-        else
-            serverStub.sendResponse_TestThroughput(?);
     endrule
 
 
@@ -326,7 +308,7 @@ module [HASIM_MODULE] mkCommandsService
     // Initializing to 1 makes the end model cycle comparison easier.
     Reg#(Bit#(64)) ctx0ModelCycles <- mkReg(0);
 
-    (* descending_urgency = "getMessage, checkSimEnd, sync, isSynced, pause, setEndModelCycle, disableContext, enableContext, requestScan, completeScan, requestTestThroughput, run" *)
+    (* descending_urgency = "getMessage, checkSimEnd, sync, isSynced, pause, setEndModelCycle, disableContext, enableContext, requestScan, requestTestThroughput, run" *)
     rule checkSimEnd (state == CON_Running &&&
                       endModelCycle matches tagged Valid .end_cycle &&&
                       ctx0ModelCycles >= end_cycle);

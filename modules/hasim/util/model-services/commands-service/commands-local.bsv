@@ -642,8 +642,8 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     (* no_implicit_conditions, fire_when_enabled *)
     rule tpCounterUpdate (True);
         if (tpCounterResetW)
-            tpCounter <= 1;
-        else
+            tpCounter <= 0;
+        else if (tpCounter != maxBound)
             tpCounter <= tpCounter + 1;
     endrule
 
@@ -666,7 +666,8 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     //     input ports and drain the output ports.
     //
     (* no_implicit_conditions, fire_when_enabled *)
-    rule tpStateWarmup ((tpState == CTRL_TP_Warmup0) && tpInstance0W && (tpCounter != 0));
+    rule tpStateWarmup ((tpState == CTRL_TP_Warmup0) && tpInstance0W &&
+                        (tpCounter != maxBound));
         tpState <= CTRL_TP_Warmup1;
         tpCounterResetW.send();
     endrule
@@ -676,7 +677,8 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     //     A controller may be inactive and never fire.  Give up.
     //
     (* fire_when_enabled *)
-    rule tpAbort ((tpState == CTRL_TP_Warmup0) && (tpCounter == 0) && ! scanning);
+    rule tpAbort ((tpState == CTRL_TP_Warmup0) && (tpCounter == maxBound)
+                  && ! scanning);
         tpState <= CTRL_TP_Finish1;
         link_controllers.sendToNext(tagged LC_ThroughputLast);
     endrule
@@ -685,11 +687,12 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     // tpStartSampling --
     //     A state machine transition that doesn't fit the predicate for most
     //     transitions.  The switch from warmup to sampling begins when the
-    //     tpCounter wraps.
+    //     tpCounter saturates.
     //
     (* no_implicit_conditions, fire_when_enabled *)
-    rule tpStartSampling ((tpState == CTRL_TP_Warmup1) && (tpCounter == 0));
+    rule tpStartSampling ((tpState == CTRL_TP_Warmup1) && (tpCounter == maxBound));
         tpState <= CTRL_TP_Sample;
+        tpCounterResetW.send();
     endrule
 
     //

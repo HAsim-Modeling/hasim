@@ -40,6 +40,27 @@ using namespace std;
 // ===== service instantiation =====
 COMMANDS_SERVER_CLASS COMMANDS_SERVER_CLASS::instance;
 
+volatile bool COMMANDS_SERVER_CLASS::scanning = false;
+std::mutex COMMANDS_SERVER_CLASS::scanDoneMutex;
+std::condition_variable COMMANDS_SERVER_CLASS::scanDoneCond;
+bool COMMANDS_SERVER_CLASS::scanDoneReceived;
+
+
+struct END_SIMULATION_STATE_CLASS
+{
+    COMMANDS_SERVER cmdServer;
+    int exitValue;
+};
+
+typedef END_SIMULATION_STATE_CLASS* END_SIMULATION_STATE;
+
+
+static void *EndSimulationThread(void *arg);
+static void *DebugScanExitThread(void *arg);
+static void *TestThroughputThread(void *arg);
+
+
+
 // constructor
 COMMANDS_SERVER_CLASS::COMMANDS_SERVER_CLASS() :
     stopCycleSwitch(),
@@ -48,8 +69,10 @@ COMMANDS_SERVER_CLASS::COMMANDS_SERVER_CLASS() :
     lastStatsScanCycle(0),
     noChangeBeats(0),
     running(false),
+    healthy(true),
     scanParser("([0-9]+),([0-9]+),([0-9]+),([0-9]+),(.*)"),
-    scanRunningIdx(0)
+    scanRunningIdx(0),
+    scanStream(&cout)
 {
     SetTraceableName("commands_server");
 
@@ -160,22 +183,29 @@ COMMANDS_SERVER_CLASS::Sync()
 
 // client: scan (for debugging)
 void
-COMMANDS_SERVER_CLASS::Scan()
+COMMANDS_SERVER_CLASS::Scan(std::ostream& ofile)
 {
-    static bool scanning = false;
     if (! scanning)
     {
         scanning = true;
+        scanDoneReceived = false;
+
+        scanStream = &ofile;
+
         if (! onlyCollectNames)
         {
-            cout << "Commands service scan:" << endl;
+            *scanStream << "Commands service scan:" << endl;
         }
 
         clientStub->Scan(0);
 
+        // Block until scan is done.
+        std::unique_lock<std::mutex> scanDoneLock(scanDoneMutex);
+        scanDoneCond.wait(scanDoneLock, []{ return scanDoneReceived; });
+
         if (! onlyCollectNames)
         {
-            cout << "Done" << endl;
+            *scanStream << "Done" << endl;
         }
         scanning = false;
     }
@@ -191,15 +221,22 @@ COMMANDS_SERVER_CLASS::Scan()
 void
 COMMANDS_SERVER_CLASS::TestThroughput()
 {
-    static bool testing = false;
-    if (! testing)
+    if (! scanning)
     {
-        testing = true;
+        scanning = true;
+        scanDoneReceived = false;
+
         tpControllerName = localControllerNames.cbegin();
         cout << "Commands service throughput test:" << endl;
+
         clientStub->TestThroughput(0);
+
+        // Block until scan is done.
+        std::unique_lock<std::mutex> scanDoneLock(scanDoneMutex);
+        scanDoneCond.wait(scanDoneLock, []{ return scanDoneReceived; });
+
         cout << "Done" << endl;
-        testing = false;
+        scanning = false;
     }
 }
 
@@ -242,13 +279,16 @@ COMMANDS_SERVER_CLASS::FPGAHeartbeat(UINT8 dummy)
         // Standard heartbeat is set to trigger about once a second.  Call
         // deadlock after a minute of no model activity.
         //
-        if (noChangeBeats == 60)
+        if (healthy && (noChangeBeats == 60))
         {
+            healthy = false;
             cerr << "commands relay: model deadlock!" << endl;
 
-            DEBUG_SCAN_SERVER_CLASS::GetInstance()->Scan();
-            Scan();
-            EndSimulation(1);
+            pthread_t tid;
+            END_SIMULATION_STATE state = new END_SIMULATION_STATE_CLASS;
+            state->cmdServer = this;
+            state->exitValue = 1;
+            VERIFYX(! pthread_create(&tid, NULL, &DebugScanExitThread, state));
         }
     }
 }
@@ -264,7 +304,10 @@ COMMANDS_SERVER_CLASS::ModelHeartbeat(
     UINT32 model_cycles,
     UINT32 instr_commits)
 {
-    hwThreadHeartbeat[hwThreadId].Heartbeat(hwThreadId, fpga_cycles, model_cycles, instr_commits);
+    if (! healthy) return;
+
+    hwThreadHeartbeat[hwThreadId].Heartbeat(hwThreadId, fpga_cycles,
+                                            model_cycles, instr_commits);
 
     // Reset the deadlock counter.
     noChangeBeats = 0;
@@ -285,7 +328,8 @@ COMMANDS_SERVER_CLASS::ModelHeartbeat(
         static UINT32 cnt = 0;
         if (++cnt == tpTestSwitch.Trigger())
         {
-            TestThroughput();
+            pthread_t tid;
+            VERIFYX(! pthread_create(&tid, NULL, &TestThroughputThread, this));
         }
     }
 
@@ -294,36 +338,6 @@ COMMANDS_SERVER_CLASS::ModelHeartbeat(
 //
 // Local methods
 //
-
-
-//
-// EndSimulationThread is a hack to allow calling DumpStats() as a side-effect
-// of ending the simulation.  RRR doesn't deal well with a software service
-// (EndSimulation) that calls a hardware service (DumpStats) when the caller
-// (DumpStats) blocks until some other software service is called (internal
-// to DumpStats).  When we replace RRR with threads this pthreads hack may
-// become unnecessary.
-//
-
-struct END_SIMULATION_STATE_CLASS
-{
-    COMMANDS_SERVER cmdServer;
-    int exitValue;
-};
-
-typedef END_SIMULATION_STATE_CLASS* END_SIMULATION_STATE;
-
-void *EndSimulationThread(void *arg)
-{
-    END_SIMULATION_STATE state = END_SIMULATION_STATE(arg);
-
-    cout << "        starting stats dump... ";
-    STATS_SERVER_CLASS::GetInstance()->DumpStats();
-    STATS_SERVER_CLASS::GetInstance()->EmitFile();
-    cout << "done." << endl;
-
-    STARTER_DEVICE_SERVER_CLASS::GetInstance()->End(state->exitValue);
-}
 
 void
 COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
@@ -499,40 +513,40 @@ COMMANDS_SERVER_CLASS::ScanDataNormal(UINT8 data, bool eom)
         }
         else
         {
-            cout << "  " << scanParser.getSubstring(5)
-                 << " (" << num_inports
-                 << ", " << num_unports
-                 << ", " << num_outports << "):" << endl;
+            *scanStream << "  " << scanParser.getSubstring(5)
+                        << " (" << num_inports
+                        << ", " << num_unports
+                        << ", " << num_outports << "):" << endl;
 
             bool next_is_ready = (scanData.Get(1) != 0);
-            cout << "    Next instance (" << scanData.Get(num_iid_bits) << ") is "
-                 << (next_is_ready ? "READY" : "NOT ready") << endl;
+            *scanStream << "    Next instance (" << scanData.Get(num_iid_bits) << ") is "
+                        << (next_is_ready ? "READY" : "NOT ready") << endl;
 
-            cout << "    Cycle: " << scanData.Get(4) << endl;
+            *scanStream << "    Cycle: " << scanData.Get(4) << endl;
 
-            cout << "    Ready input ports:";
+            *scanStream << "    Ready input ports:";
             for (UINT32 i = 0; i < num_inports; i++)
             {
-                if (scanData.Get(1)) cout << " " << i;
+                if (scanData.Get(1)) *scanStream << " " << i;
             }
-            cout << endl;
+            *scanStream << endl;
 
             if (num_unports)
             {
-                cout << "    Ready uncontrolled ports:";
+                *scanStream << "    Ready uncontrolled ports:";
                 for (UINT32 i = 0; i < num_unports; i++)
                 {
-                    if (scanData.Get(1)) cout << " " << i;
+                    if (scanData.Get(1)) *scanStream << " " << i;
                 }
-                cout << endl;
+                *scanStream << endl;
             }
 
-            cout << "    Ready output ports:";
+            *scanStream << "    Ready output ports:";
             for (UINT32 i = 0; i < num_outports; i++)
             {
-                if (scanData.Get(1)) cout << " " << i;
+                if (scanData.Get(1)) *scanStream << " " << i;
             }
-            cout << endl;
+            *scanStream << endl;
         }
 
         scanData.Reset();
@@ -555,18 +569,18 @@ COMMANDS_SERVER_CLASS::ScanDataRunning(UINT8 data, bool eom)
     // First IID for this controller?
     if (scanRunningIdx == 0)
     {
-        cout << "    Running instances:";
+        *scanStream << "    Running instances:";
     }
 
     // Is the instance running?
     if ((data & 1) != 0)
     {
-        cout << " " << scanRunningIdx;
+        *scanStream << " " << scanRunningIdx;
     }
 
     if (eom)
     {
-        cout << endl;
+        *scanStream << endl;
         scanRunningIdx = 0;
     }
     else
@@ -575,6 +589,18 @@ COMMANDS_SERVER_CLASS::ScanDataRunning(UINT8 data, bool eom)
     }
 }
 
+
+//
+// Done --
+//     All packets received.
+//
+void
+COMMANDS_SERVER_CLASS::ScanDone(UINT8 test)
+{
+    std::unique_lock<std::mutex> scanDoneLock(scanDoneMutex);
+    scanDoneReceived = true;
+    scanDoneCond.notify_one();
+}
 
 
 //
@@ -602,7 +628,7 @@ COMMANDS_SERVER_CLASS::ThroughputData(UINT16 data, UINT8 flags)
     }
     else
     {
-        cout << "  " << data;
+        cout << "  " << (data + 1);
     }
 }
 
@@ -769,4 +795,54 @@ void
 COMMANDS_TP_TEST_SWITCH_CLASS::ShowSwitch(std::ostream& ostr, const string& prefix)
 {
     ostr << prefix << "[--test-throughput=<n>] Trigger local controller throughput testing after n heartbeats." << endl;
+}
+
+
+
+// ========================================================================
+//
+//   Fault handlers
+//
+// ========================================================================
+
+//
+// EndSimulationThread is a hack to allow calling DumpStats() as a side-effect
+// of ending the simulation.  RRR doesn't deal well with a software service
+// (EndSimulation) that calls a hardware service (DumpStats) when the caller
+// (DumpStats) blocks until some other software service is called (internal
+// to DumpStats).  When we replace RRR with threads this pthreads hack may
+// become unnecessary.
+//
+
+static void *EndSimulationThread(void *arg)
+{
+    END_SIMULATION_STATE state = END_SIMULATION_STATE(arg);
+
+    cout << "        starting stats dump... ";
+    STATS_SERVER_CLASS::GetInstance()->DumpStats();
+    STATS_SERVER_CLASS::GetInstance()->EmitFile();
+    cout << "done." << endl;
+
+    STARTER_DEVICE_SERVER_CLASS::GetInstance()->End(state->exitValue);
+}
+
+
+static void *DebugScanExitThread(void *arg)
+{
+    END_SIMULATION_STATE state = END_SIMULATION_STATE(arg);
+
+    cerr << "commands relay: scanning due to model deadlock..." << endl;
+
+    DEBUG_SCAN_SERVER_CLASS::GetInstance()->Scan(stderr);
+    cerr << endl;
+    state->cmdServer->Scan(cerr);
+
+    STARTER_DEVICE_SERVER_CLASS::GetInstance()->End(state->exitValue);
+}
+
+
+static void *TestThroughputThread(void *arg)
+{
+    COMMANDS_SERVER cmdServer = COMMANDS_SERVER(arg);
+    cmdServer->TestThroughput();
 }

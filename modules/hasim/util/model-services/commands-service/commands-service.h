@@ -22,6 +22,9 @@
 #include <stdio.h>
 #include <string>
 #include <list>
+#include <iostream>
+#include <mutex>
+#include <condition_variable>
 
 #include "asim/syntax.h"
 #include "asim/trace.h"
@@ -172,6 +175,7 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     // Deadlock detection
     UINT32 noChangeBeats;
     bool running;
+    volatile bool healthy;
     
     // wall-clock time tracking
     struct timeval startTime;
@@ -185,6 +189,7 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     Regex scanParser;       // Parser for scan data size/name records
     UINT32 scanRunningIdx;  // Instance ID of the current "running" scan message
     bool onlyCollectNames;
+    std::ostream* scanStream;
 
     // Throughput testing state
     list<string>::const_iterator tpControllerName;
@@ -197,7 +202,12 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     // Virtual function for STATS_EMITTER_CLASS
     void EmitStats(ofstream &statsFile);
 
-  public:
+    static volatile bool scanning;
+    static std::mutex scanDoneMutex;
+    static std::condition_variable scanDoneCond;
+    static bool scanDoneReceived;
+
+public:
     COMMANDS_SERVER_CLASS();
     ~COMMANDS_SERVER_CLASS();
 
@@ -208,7 +218,7 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     void Run();
     void Pause();
     void Sync();
-    void Scan();
+    void Scan(std::ostream& ofile = cout);
     void TestThroughput();
 
     void SetNumHardwareThreads(UINT32 num);
@@ -230,10 +240,8 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     void FPGAHeartbeat(UINT8 dummy);
 
     void ScanData(UINT8 data, UINT8 flags);
-
     void ThroughputData(UINT16 data, UINT8 flags);
-
-    UINT8 Done(UINT8 tagIn) { return tagIn; }
+    void ScanDone(UINT8 test);
 };
 
 // server stub

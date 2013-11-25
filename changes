@@ -26909,3 +26909,17 @@ The functional virtual to physical address translation request interface is
 now like A-Ports.  A message must be sent every model cycle in order to force
 translations to be requested in the same order.  This eliminates run-to-run
 variations in Gem5 address mapping.
+
+----------
+mcadler     Date: Mon Nov 25 13:53:54 EST 2013  CSN: CSN-hasim-944
+                  Mon Nov 25 18:53:54 UTC 2013
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          943 
+ commands-local.bsv        Locally Modified          943 
+ commands-service.rrr      Locally Modified          943 
+ commands-service.h        Locally Modified          943 
+ commands-service.bsv      Locally Modified          943 
+
+Improve the scan and deadlock detection protocols.

@@ -14,10 +14,10 @@ service COMMANDS
         method DisableContext(in UINT32[32] ctxId);
 
         // Scan state (for debugging)
-        method Scan(in UINT8[8] dummy, out UINT8[8] ack);
+        method Scan(in UINT8[8] dummy);
 
         // Test throughput of each model stage, individually.
-        method TestThroughput(in UINT8[8] dummy, out UINT8[8] ack);
+        method TestThroughput(in UINT8[8] dummy);
     };
 
     server sw (cpp, method) <- hw (bsv, connection)
@@ -41,7 +41,9 @@ service COMMANDS
         //   flag bit 0: "end of message"
         method ThroughputData(in UINT16[16] data, in UINT8[8] flags);
 
-        // Lowest priority methods, guaranteeing methods above have completed
-        method Done(in UINT8[8] tagIn, out UINT8[8] tagOut);
+        // Sent after either scan or throughput test is done.  Must be
+        // last method declared since the last slot has lowest priority.
+        // This guarantees all data arrive before the done message.
+        method ScanDone(in UINT8[8] test);
     };
 };

@@ -26933,3 +26933,13 @@ Directory tools/scripts/bmark
  run-hasim.bmark           Locally Modified          944 
 
 Fix --m5 switch.
+
+----------
+mcadler     Date: Sat Nov 30 23:27:45 EST 2013  CSN: CSN-hasim-946
+                  Sun Dec  1 04:27:45 UTC 2013
+
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-pipe-getResults.bsv Locally Modified          945 
+
+FUNCP_ prefix on all functional partition statistics.

@@ -278,7 +278,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_GetResults#(
 
     Reg#(REGMGR_RES_STATE_ENUM) state_res <- mkReg(RSM_RES_Running);
 
-    STAT stat_isa_emul <- mkStatCounter(statName("REGMGR_GETRESULTS_EMULATED_INSTRS",
+    STAT stat_isa_emul <- mkStatCounter(statName("FUNCP_REGMGR_GETRESULTS_EMULATED_INSTRS",
                                                  "FUNCP: Emulated Instructions"));
 
     RWire#(Tuple2#(Bool, Bool)) getResults1DbgData <- mkRWire();

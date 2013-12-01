@@ -270,6 +270,12 @@ for my $platform (@$platforms_ref) {
     my $directory = $platform->{"directory"};
     my $master = $platform->{"master"} eq "True";
     
+    # Only the CPU platform is used when --m5 switch is set (running in
+    # Gem5 only.)
+    if ($m5run != 0 && ($platformType ne "CPU")) {
+        $platformType = "NULL";
+    }
+
     `mkdir -p "$config{modelDir}/${directory}/leap_debug"`;
     if ($platformType eq "BLUESIM") {
         my $pid = fork();
@@ -402,7 +408,7 @@ if (defined($cpuPlatform)) {
     }
 
     # Define the global string database. This has been collected at the top-level build directory.    
-    if (-f "$config{modelDir}/$config{model}.str") {
+    if (-f "$config{modelDir}/$config{model}.str" && ($m5run == 0)) {
         $cmd .= " --global-strings=\'$config{modelDir}/$config{model}.str\'";
     }
 

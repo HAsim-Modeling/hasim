@@ -26923,3 +26923,13 @@ Directory modules/hasim/util/model-services/commands-service
  commands-service.bsv      Locally Modified          943 
 
 Improve the scan and deadlock detection protocols.
+
+----------
+mcadler     Date: Sat Nov 30 21:05:28 EST 2013  CSN: CSN-hasim-945
+                  Sun Dec  1 02:05:28 UTC 2013
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          944 
+
+Fix --m5 switch.

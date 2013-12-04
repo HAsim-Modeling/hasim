@@ -222,7 +222,8 @@ typedef struct
     // Will not change during or after funcp_commitResults.
     Bool poison;
 
-    // Set to indicate that the token is a dummy which does not actually alter any state.
+    // Set to indicate that the token is a dummy which does not actually alter
+    // any state.
     Bool dummy;
 
     // Initialized by the functional partition when a token is created.
@@ -260,7 +261,7 @@ instance FShow#(TOKEN);
     function Fmt fshow(TOKEN tok);
         Fmt s = fshow(tok.index);
         if (tokIsDummy(tok))
-            s = s + fshow(" DUMMY ");
+            s = s + fshow(" DUMMY");
         if (tokIsPoisoned(tok))
             s = s + fshow(" POISON");
 

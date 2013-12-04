@@ -26943,3 +26943,14 @@ Directory modules/hasim/functional-partition/register-state/manager/macro-ops
  regmgr-macro-pipe-getResults.bsv Locally Modified          945 
 
 FUNCP_ prefix on all functional partition statistics.
+
+----------
+mcadler     Date: Tue Dec  3 23:13:05 EST 2013  CSN: CSN-hasim-947
+                  Wed Dec  4 04:13:05 UTC 2013
+
+
+Directory modules/hasim/util/common
+ token.bsv                 Locally Modified          946 
+ hasim-debug-file.bsv      Locally Modified          946 
+
+Reserve a few more STDIO debugging mask bits for the functional model.

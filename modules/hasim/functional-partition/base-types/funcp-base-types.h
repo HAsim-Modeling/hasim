@@ -79,25 +79,25 @@ typedef FUNCP_INT_REG MEM_VALUE;
 // a horrible hack but works with the current version of RRR.  This will
 // eventually go away.
 //
-#if (CONTEXT_ID_BITS_RRR == 8)
+#if (CONTEXT_ID_BITS_RRR <= 8)
 
 typedef UINT8 CONTEXT_ID_RRR;
 #define AppendCONTEXT_ID_RRR AppendUINT8
 #define ExtractCONTEXT_ID_RRR ExtractUINT8
 
-#elif (CONTEXT_ID_BITS_RRR == 16)
+#elif (CONTEXT_ID_BITS_RRR <= 16)
 
 typedef UINT16 CONTEXT_ID_RRR;
 #define AppendCONTEXT_ID_RRR AppendUINT16
 #define ExtractCONTEXT_ID_RRR ExtractUINT16
 
-#elif (CONTEXT_ID_BITS_RRR == 32)
+#elif (CONTEXT_ID_BITS_RRR <= 32)
 
 typedef UINT32 CONTEXT_ID_RRR;
 #define AppendCONTEXT_ID_RRR AppendUINT32
 #define ExtractCONTEXT_ID_RRR ExtractUINT32
 
-#elif (CONTEXT_ID_BITS_RRR == 64)
+#elif (CONTEXT_ID_BITS_RRR <= 64)
 
 typedef UINT64 CONTEXT_ID_RRR;
 #define AppendCONTEXT_ID_RRR AppendUINT64

@@ -26954,3 +26954,15 @@ Directory modules/hasim/util/common
  hasim-debug-file.bsv      Locally Modified          946 
 
 Reserve a few more STDIO debugging mask bits for the functional model.
+
+----------
+keflemin    Date: Wed Dec 18 12:20:07 EST 2013  CSN: CSN-hasim-948
+                  Wed Dec 18 17:20:07 UTC 2013
+
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.h        Locally Modified          947 
+
+
+Fixed small bug in which CONTEXT_ID was undefined if more than 256
+cores were used.

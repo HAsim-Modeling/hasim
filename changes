@@ -26966,3 +26966,14 @@ Directory modules/hasim/functional-partition/base-types
 
 Fixed small bug in which CONTEXT_ID was undefined if more than 256
 cores were used.
+
+----------
+mcadler     Date: Mon Dec 23 08:45:32 EST 2013  CSN: CSN-hasim-949
+                  Mon Dec 23 13:45:32 UTC 2013
+
+
+Directory modules/hasim/util/model-services/events-service
+ events-local.bsv          Locally Modified          948 
+ events-service.rrr        Locally Modified          948 
+
+16-bit event id to support larger models.

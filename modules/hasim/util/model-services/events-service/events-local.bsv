@@ -53,7 +53,7 @@ typedef Bit#(`HASIM_EVENTS_SIZE) EVENT_PARAM;
 typedef Bit#(8) EVENT_CYCLE_COUNTER;
 
 // Internal instance ID bucket
-typedef Bit#(8) EVENT_INSTANCE_ID;
+typedef Bit#(16) EVENT_INSTANCE_ID;
 
 typedef union tagged
 {

@@ -9,16 +9,16 @@ service EVENTS
     server sw (cpp, method) <- hw (bsv, connection)
     {
         method LogInit(in UINT16[16] event_id,
-                       in UINT8[8] max_event_iid);
+                       in UINT16[16] max_event_iid);
 
         method LogEvent(in UINT16[16] event_id,
-                        in UINT8[8] event_iid,
+                        in UINT16[16] event_iid,
                         in UINT32[32] event_data,
                         in UINT8[8] model_cc_delta);
 
         // Note cycles passing with no event
         method LogCycles(in UINT16[16] event_id,
-                         in UINT8[8] event_iid,
+                         in UINT16[16] event_iid,
                          in UINT8[8] model_cc_delta);
     };
 };

@@ -19,6 +19,7 @@
 // partitions. The token type includes an index for token tables, epochs,
 // and scratchpads which partitions can use as they see fit.             
 
+import FIFOF::*;
 import Vector::*;
 import ConfigReg::*;
 
@@ -57,63 +58,139 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
         function Bool deqFromSide(INSTANCE_ID#(t_NUM_INSTANCES) cur_deq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid),
         function Bool resetDeq(INSTANCE_ID#(t_NUM_INSTANCES) cur_deq, INSTANCE_ID#(t_NUM_INSTANCES) max_iid)
     )
-    // interface:
-        (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
+    // Interface:
+    (PORT_RECV_MULTIPLEXED#(t_NUM_INSTANCES, t_MSG))
     provisos
         (Bits#(t_MSG, t_MSG_SZ),
          NumAlias#(TMul#(t_NUM_INSTANCES, PORT_MAX_LATENCY), n_SLOTS),
          Alias#(Bit#(TLog#(n_SLOTS)), t_SLOT_IDX),
-         Bits#(t_SLOT_IDX, t_SLOT_IDX_SZ));
+         Bits#(t_SLOT_IDX, t_SLOT_IDX_SZ),
+         Alias#(t_ENTRY, PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)),
+         Bits#(t_ENTRY, t_ENTRY_SZ));
 
-    CONNECTION_RECV#(PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)) con <- mkPortRecv_MaybeCompressed(portname);
+    CONNECTION_RECV#(t_ENTRY) con <- mkPortRecv_MaybeCompressed(portname);
 
     Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) maxInstance <- mkReg(fromInteger(valueof(t_NUM_INSTANCES) - 1));
-
-    Integer rMax = (latency * valueof(t_NUM_INSTANCES)) + 1;
 
     if (latency > valueOf(PORT_MAX_LATENCY))
     begin
         error("Latency exceeds current maximum. Port: " + portname);
     end
 
-    function PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG) initfunc(t_SLOT_IDX idx);
-        INSTANCE_ID#(t_NUM_INSTANCES) iid = truncateNP(idx);
-        return PORT_MULTIPLEXED_MSG { iid: iid, msg: tagged Invalid };
-    endfunction
+    //
+    // FIFOs hold main and side buffers.  Like A-Ports, we pick either distributed
+    // memory or block RAM depending on the sizes.
+    //
+    FIFOF#(t_ENTRY) mainQ;
+    FIFOF#(t_ENTRY) sideQ;
 
-    LUTRAM#(t_SLOT_IDX, PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)) rs <- mkLUTRAMWith(initfunc);
-    LUTRAM#(t_SLOT_IDX, PORT_MULTIPLEXED_MSG#(t_NUM_INSTANCES, t_MSG)) sideBuffer <- mkLUTRAMWith(initfunc);
+    if ((valueOf(n_SLOTS) >= 256) &&
+        (valueOf(n_SLOTS) * valueOf(t_ENTRY_SZ) > 14000))
+    begin
+        mainQ <- mkSizedBRAMFIFOF(valueOf(n_SLOTS));
+        sideQ <- mkSizedBRAMFIFOF(valueOf(n_SLOTS));
+    end
+    else
+    begin
+        mainQ <- mkSizedFIFOF(valueOf(n_SLOTS));
+        sideQ <- mkSizedFIFOF(valueOf(n_SLOTS));
+    end
 
-    COUNTER#(t_SLOT_IDX_SZ) head <- mkLCounter(0);
-    COUNTER#(t_SLOT_IDX_SZ) tail <- mkLCounter((fromInteger(latency * (valueof(t_NUM_INSTANCES) - 1))));
-    COUNTER#(t_SLOT_IDX_SZ) sideHead <- mkLCounter(0);
-    COUNTER#(t_SLOT_IDX_SZ) sideTail <- mkLCounter((fromInteger(latency)));
     Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) curEnq <- mkReg(0);
     Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) curDeq <- mkReg(0);
 
-    Bool fullQ  = tail.value() + 1 == head.value();
-    Bool emptyQ = head.value() == tail.value();
-    Bool sideFull  = sideTail.value() + 1 == sideHead.value();
-    Bool sideEmpty = sideHead.value() == sideTail.value();
-    Bool canDeq = deqFromSide(curDeq, maxInstance) ? !sideEmpty : !emptyQ;
-    Bool canEnq = enqToSide(curEnq, maxInstance)   ? !sideFull  : !fullQ;
+    Bool canEnq = enqToSide(curEnq, maxInstance) ? sideQ.notFull  : mainQ.notFull;
 
-    Reg#(Bool) initialized <- mkReg(False);
 
+    //
+    // Initialization -- the FIFOs must be filled with no messages for the first
+    // simulated cycle.
+    //
+
+    Reg#(Bool) mainInitDone <- mkReg(False);
+    Reg#(t_SLOT_IDX) mainInitIdx <- mkRegU();
+    Reg#(Maybe#(t_SLOT_IDX)) mainInitMax <- mkReg(tagged Invalid);
+
+    Reg#(Bool) sideInitDone <- mkReg(False);
+    Reg#(t_SLOT_IDX) sideInitIdx <- mkRegU();
+    Reg#(Maybe#(t_SLOT_IDX)) sideInitMax <- mkReg(tagged Invalid);
+
+    function Bool initialized = (mainInitDone && sideInitDone);
+
+    rule initMain (mainInitMax matches tagged Valid .init_max);
+        INSTANCE_ID#(t_NUM_INSTANCES) iid = truncateNP(mainInitIdx);
+        mainQ.enq(PORT_MULTIPLEXED_MSG { iid: iid, msg: tagged Invalid });
+
+        // Done?
+        if (mainInitIdx == init_max)
+        begin
+            mainInitMax <= tagged Invalid;
+            mainInitDone <= True;
+        end
+
+        mainInitIdx <= mainInitIdx + 1;
+    endrule
+
+    rule initSide (sideInitMax matches tagged Valid .init_max);
+        INSTANCE_ID#(t_NUM_INSTANCES) iid = truncateNP(sideInitIdx);
+        sideQ.enq(PORT_MULTIPLEXED_MSG { iid: iid, msg: tagged Invalid });
+
+        // Done?
+        if (sideInitIdx == init_max)
+        begin
+            sideInitMax <= tagged Invalid;
+            sideInitDone <= True;
+        end
+
+        sideInitIdx <= sideInitIdx + 1;
+    endrule
+
+
+    FIFO#(INSTANCE_ID#(t_NUM_INSTANCES)) triggerInitQ <- mkFIFO1();
+
+    (* descending_urgency = "triggerInit, initMain" *)
+    (* descending_urgency = "triggerInit, initSide" *)
+    rule triggerInit (True);
+        let max_iid = triggerInitQ.first();
+        triggerInitQ.deq();
+
+        t_SLOT_IDX lat = fromInteger(latency);
+        t_SLOT_IDX k = zeroExtendNP(max_iid) + 1;
+        t_SLOT_IDX p = zeroExtendNP(period);
+        t_SLOT_IDX np = zeroExtendNP(numPeriods);
+
+        mainQ.clear();
+        sideQ.clear();
+
+        // Initialize incoming ports with no-messages to fill the latency.
+        mainInitIdx <= 0;
+        mainInitMax <= tagged Valid ((k - np) * lat - 1);
+        mainInitDone <= False;
+
+        sideInitIdx <= 0;
+        sideInitMax <= tagged Valid (p * lat - 1);
+        sideInitDone <= False;
+
+        maxInstance <= max_iid;
+    endrule
+
+
+
+    //
+    // shift --
+    //   Forward data from incoming ports into local buffers.
+    //
     rule shift (initialized && canEnq && con.notEmpty());
-
         let m = con.receive();
         con.deq();
 
         if (enqToSide(curEnq, maxInstance))
         begin
-            sideBuffer.upd(sideTail.value(), m);
-            sideTail.up();
+            sideQ.enq(m);
         end
         else
         begin
-            rs.upd(tail.value(), m);
-            tail.up();
+            mainQ.enq(m);
         end
         
         if (resetEnq(curEnq, maxInstance))
@@ -124,51 +201,29 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
         begin
             curEnq <= curEnq + 1;
         end
-
     endrule
+
     
-    interface INSTANCE_CONTROL_IN ctrl;
-        method Bool empty() = !canDeq;
-        method Bool balanced() = True;
-        method Bool light() = False;
-        
-        method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
-            let m = deqFromSide(curDeq, maxInstance) ? sideBuffer.sub(sideHead.value()) : rs.sub(head.value());
-            return (!canDeq || !initialized) ? tagged Invalid : tagged Valid m.iid;
-        endmethod
-        
-        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) iid);
-            t_SLOT_IDX l = fromInteger(latency);
-            t_SLOT_IDX k = zeroExtendNP(iid) + 1;
-            t_SLOT_IDX p = zeroExtendNP(period);
-            t_SLOT_IDX np = zeroExtendNP(numPeriods);
-            tail.setC((k - np) * l);
-            sideTail.setC(p * l);
-            maxInstance <= iid;
-            initialized <= True;
-        endmethod
-        
-        method List#(PORT_INFO) portInfo() =
-            list(PORT_INFO {name: portname, latency: latency});
-    endinterface
+    //
+    // fetchNext --
+    //   Pick the next entry to fetch and forward to output queue.
+    //
+    FIFOF#(t_ENTRY) outputQ <- mkFIFOF();
 
-    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) dummy) if (canDeq);
-
-        Maybe#(t_MSG) res = tagged Invalid;
+    rule fetchNext (initialized);
+        t_ENTRY m;
 
         if (deqFromSide(curDeq, maxInstance))
         begin
             // Return the side buffer.
-            let m = sideBuffer.sub(sideHead.value());
-            res = m.msg;
-            sideHead.up();
+            m = sideQ.first();
+            sideQ.deq();
         end
         else
         begin
             // Return the main buffer.
-            let m = rs.sub(head.value());
-            res = m.msg;
-            head.up();
+            m = mainQ.first();
+            mainQ.deq();
         end
 
         if (resetDeq(curDeq, maxInstance))
@@ -180,11 +235,36 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
             curDeq <= curDeq + 1;
         end
 
-        return res;
+        outputQ.enq(m);
+    endrule
 
+
+    interface INSTANCE_CONTROL_IN ctrl;
+        method Bool empty() = ! outputQ.notEmpty;
+        method Bool balanced() = True;
+        method Bool light() = False;
+        
+        method Maybe#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
+            return (outputQ.notEmpty ? tagged Valid outputQ.first().iid :
+                                       tagged Invalid);
+        endmethod
+        
+        method Action setMaxRunningInstance(INSTANCE_ID#(t_NUM_INSTANCES) maxIID);
+            triggerInitQ.enq(maxIID);
+        endmethod
+        
+        method List#(PORT_INFO) portInfo() =
+            list(PORT_INFO {name: portname, latency: latency});
+    endinterface
+
+    method ActionValue#(Maybe#(t_MSG)) receive(INSTANCE_ID#(t_NUM_INSTANCES) dummy);
+        let m = outputQ.first();
+        outputQ.deq();
+
+        return m.msg;
     endmethod
-
 endmodule
+
 
 module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderFirstToLast#(String portname, Integer latency)
     // interface:

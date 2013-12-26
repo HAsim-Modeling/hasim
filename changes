@@ -26977,3 +26977,24 @@ Directory modules/hasim/util/model-services/events-service
  events-service.rrr        Locally Modified          948 
 
 16-bit event id to support larger models.
+
+----------
+mcadler     Date: Thu Dec 26 13:01:00 EST 2013  CSN: CSN-hasim-950
+                  Thu Dec 26 18:01:00 UTC 2013
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          949 
+ commands-service.h        Locally Modified          949 
+
+Directory modules/hasim/util/modellib
+ permutation-ports.bsv     Locally Modified          949 
+
+- Permutation ports were using too much LUT memory because the buffers were
+  always LUTRAM, even for large models.  As Michael P. happened to point out
+  last week, the buffers are just being used as FIFOs.  I switched to a
+  FIFO primitive and then used the standard A-Ports algorithm for picking
+  either FIFO in LUTs or BRAM, depending on size.
+
+- Commands service class now belongs to the new DEBUG_SCANNER_CLASS,
+  causing local controller dumps to be included in all debug scans.

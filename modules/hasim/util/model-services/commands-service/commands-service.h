@@ -143,7 +143,8 @@ class HW_THREAD_HEARTBEAT_CLASS
 class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
                              public PLATFORMS_MODULE_CLASS,
                              public TRACEABLE_CLASS,
-                             public STATS_EMITTER_CLASS
+                             public STATS_EMITTER_CLASS,
+                             public DEBUG_SCANNER_CLASS
 {
   private:
     // self-instantiation
@@ -218,7 +219,7 @@ public:
     void Run();
     void Pause();
     void Sync();
-    void Scan(std::ostream& ofile = cout);
+    void DebugScan(std::ostream& ofile = cout);
     void TestThroughput();
 
     void SetNumHardwareThreads(UINT32 num);

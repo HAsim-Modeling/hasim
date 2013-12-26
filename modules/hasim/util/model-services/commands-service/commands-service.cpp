@@ -95,6 +95,7 @@ COMMANDS_SERVER_CLASS::Init(
     PLATFORMS_MODULE p)
 {
     PLATFORMS_MODULE_CLASS::Init(p);
+    RegisterDebugScanner();
 }
 
 // uninit: override
@@ -140,7 +141,7 @@ COMMANDS_SERVER_CLASS::Run()
         // Collect the names of all the local controllers in scan/throughput test
         // order.  This will be useful if names are needed later in the run.
         onlyCollectNames = true;
-        Scan();
+        DebugScan();
         onlyCollectNames = false;
     }
 
@@ -183,7 +184,7 @@ COMMANDS_SERVER_CLASS::Sync()
 
 // client: scan (for debugging)
 void
-COMMANDS_SERVER_CLASS::Scan(std::ostream& ofile)
+COMMANDS_SERVER_CLASS::DebugScan(std::ostream& ofile)
 {
     if (! scanning)
     {
@@ -833,10 +834,7 @@ static void *DebugScanExitThread(void *arg)
 
     cerr << "commands relay: scanning due to model deadlock..." << endl;
 
-    DEBUG_SCAN_SERVER_CLASS::GetInstance()->Scan(stderr);
-    cerr << endl;
-    state->cmdServer->Scan(cerr);
-
+    DEBUG_SCAN_SERVER_CLASS::GetInstance()->Scan(cerr);
     STARTER_DEVICE_SERVER_CLASS::GetInstance()->End(state->exitValue);
 }
 

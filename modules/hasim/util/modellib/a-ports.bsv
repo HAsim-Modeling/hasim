@@ -33,6 +33,7 @@ import SpecialFIFOs::*;
 import Vector::*;
 import List::*;
 import HList::*;
+import DefaultValue::*;
 
 typedef `PORT_MAX_LATENCY PORT_MAX_LATENCY;
 
@@ -439,16 +440,10 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_Impl#(String portname,
     begin
         rs <- mkBypassFIFOF();
     end
-    else if ((total_slots >= 256) &&
-        (total_slots * valueOf(t_BUFFERED_MSG_SZ) > 14000))
-    begin
-        // Large buffer.  Use block RAM.
-        rs <- mkSizedBRAMFIFOF(total_slots);
-    end
     else
     begin
-        // Small buffer.  Use distributed memory.
-        rs <- mkSizedFIFOF(total_slots);
+        // Pick either BRAM or distributed memory, depending on FIFO size.
+        rs <- mkSizedAutoMemFIFOF(total_slots, defaultValue);
     end
 
     Reg#(Bool) initialized <- mkReg(! buffered);

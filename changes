@@ -26998,3 +26998,20 @@ Directory modules/hasim/util/modellib
 
 - Commands service class now belongs to the new DEBUG_SCANNER_CLASS,
   causing local controller dumps to be included in all debug scans.
+
+----------
+mcadler     Date: Mon Dec 30 14:33:52 EST 2013  CSN: CSN-hasim-951
+                  Mon Dec 30 19:33:52 UTC 2013
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-misc-controllers.bsv Locally Modified          950 
+
+Directory modules/hasim/util/modellib
+ permutation-ports.bsv     Locally Modified          950 
+ stall-ports.bsv           Locally Modified          950 
+ a-ports.bsv               Locally Modified          950 
+
+- Stall ports now pick either BRAM or LUTRAM for FIFOs depending on size.
+
+- Use the new memory FIFO primitive for picking storage type.

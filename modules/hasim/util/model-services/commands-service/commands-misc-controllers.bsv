@@ -16,6 +16,9 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
+import DefaultValue::*;
+
+
 // STAGE_CONTROLLER
 
 // A controller for an intermediate stage in a straight-line pipeline.
@@ -79,30 +82,29 @@ module mkSizedStageController#(Integer size)
     //
     FIFO#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE)) q;
     if (size == 1)
+    begin
         q <- mkFIFO1();
+    end
     else if (size == 2)
+    begin
         q <- mkFIFO();
-    else if ((size >= 128) &&
-             (size * valueOf(t_PIPE_STATE_SZ) > 14000))
-        // Large buffer.  Use block RAM.
-        q <- mkSizedBRAMFIFO(size);
+    end
     else
-        q <- mkSizedFIFO(size);
+    begin
+        let heur = defaultValue;
+        heur.minEntriesForBRAM = 128;
+        q <- mkSizedAutoMemFIFO(size, heur);
+    end
 
     
     method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid, t_PIPE_STATE st);
-    
         q.enq(tuple2(iid, st));
-    
     endmethod
     
     method ActionValue#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE)) nextReadyInstance();
-
         q.deq();
         return q.first();
-
     endmethod
-
 endmodule
 
 

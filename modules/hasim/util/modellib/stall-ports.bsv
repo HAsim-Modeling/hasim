@@ -1,7 +1,26 @@
-import FIFO::*;
+//
+// Copyright (C) 2013 Intel Corporation
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
 
-import hasim_common::*;
-import soft_connections::*;
+import FIFO::*;
+import DefaultValue::*;
+
+`include "awb/provides/hasim_common.bsh"
+`include "awb/provides/soft_connections.bsh"
 
 /* -------------------------------------------------------------------------- */
 // The StallPorts model a ping-pong buffer/double buffer.
@@ -328,11 +347,13 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
 
     // We use these like ports which are self-contained.
     Integer buffering = valueOf(ni) + 1;
-    FIFOF#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) firstToConsumer <- mkSizedFIFOF(buffering);
+    FIFOF#(Tuple2#(INSTANCE_ID#(ni), Maybe#(a))) firstToConsumer <-
+        mkSizedAutoMemFIFOF(buffering, defaultValue);
     FIFOF#(Bool) deqFromConsumer <- mkSizedFIFOF(buffering);
 
-    FIFO#(Tuple2#(INSTANCE_ID#(ni), FUNC_FIFO#(a, 2))) stage1Ctrl <- mkSizedFIFO(buffering);
-    FIFO#(FUNC_FIFO#(a, 2)) stage2Ctrl <- mkSizedFIFO(buffering);
+    FIFO#(Tuple2#(INSTANCE_ID#(ni), FUNC_FIFO#(a, 2))) stage1Ctrl <-
+        mkSizedAutoMemFIFO(buffering, defaultValue);
+    FIFO#(FUNC_FIFO#(a, 2)) stage2Ctrl <- mkSizedAutoMemFIFO(buffering, defaultValue);
 
     Reg#(STALLP_STATE) state <- mkReg(STALLP_idle);
     Reg#(INSTANCE_ID#(ni)) maxRunningInstance <- mkRegU();

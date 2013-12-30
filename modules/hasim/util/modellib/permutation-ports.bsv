@@ -22,7 +22,7 @@
 import FIFOF::*;
 import Vector::*;
 import ConfigReg::*;
-
+import DefaultValue::*;
 
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/soft_connections.bsh"
@@ -81,20 +81,8 @@ module [CONNECTED_MODULE] mkPortRecv_Multiplexed_ReorderSideBuffer
     // FIFOs hold main and side buffers.  Like A-Ports, we pick either distributed
     // memory or block RAM depending on the sizes.
     //
-    FIFOF#(t_ENTRY) mainQ;
-    FIFOF#(t_ENTRY) sideQ;
-
-    if ((valueOf(n_SLOTS) >= 256) &&
-        (valueOf(n_SLOTS) * valueOf(t_ENTRY_SZ) > 14000))
-    begin
-        mainQ <- mkSizedBRAMFIFOF(valueOf(n_SLOTS));
-        sideQ <- mkSizedBRAMFIFOF(valueOf(n_SLOTS));
-    end
-    else
-    begin
-        mainQ <- mkSizedFIFOF(valueOf(n_SLOTS));
-        sideQ <- mkSizedFIFOF(valueOf(n_SLOTS));
-    end
+    FIFOF#(t_ENTRY) mainQ <- mkSizedAutoMemFIFOF(valueOf(n_SLOTS), defaultValue);
+    FIFOF#(t_ENTRY) sideQ <- mkSizedAutoMemFIFOF(valueOf(n_SLOTS), defaultValue);
 
     Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) curEnq <- mkReg(0);
     Reg#(INSTANCE_ID#(t_NUM_INSTANCES)) curDeq <- mkReg(0);

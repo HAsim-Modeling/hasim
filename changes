@@ -27015,3 +27015,14 @@ Directory modules/hasim/util/modellib
 - Stall ports now pick either BRAM or LUTRAM for FIFOs depending on size.
 
 - Use the new memory FIFO primitive for picking storage type.
+
+----------
+keflemin    Date: Tue Dec 31 14:41:09 EST 2013  CSN: CSN-hasim-952
+                  Tue Dec 31 19:41:09 UTC 2013
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          951 
+
+
+Updated the hasim runscript to support new platform configurations.

@@ -264,9 +264,18 @@ my @pidlist = ();
 my $cpuPlatform = undef;
 my $fpgaDev = undef;
 
+# Need to check for existance of master for handling legacy builds.
+# If we have a master, we should not pass in platform arguments for 
+# other FPGAs.
+my $masterExists = 0;
+for my $platform (@$platforms_ref) {
+    $masterExists = $masterExists || ($platform->{"master"} eq "True");
+} 
+
 for my $platform (@$platforms_ref) {
     my $platformType = $platform->{"type"};
     my $platformName = $platform->{"name"};
+    my $platformLogicalName = $platform->{"logicalName"};
     my $directory = $platform->{"directory"};
     my $master = $platform->{"master"} eq "True";
     
@@ -278,6 +287,12 @@ for my $platform (@$platforms_ref) {
 
     `mkdir -p "$config{modelDir}/${directory}/leap_debug"`;
     if ($platformType eq "BLUESIM") {
+
+        if(!$masterExists) 
+        {
+            $fpgaDev .= " --$platformLogicalName=\"$platformLogicalName\"";
+	}
+
         my $pid = fork();
         if ($pid == 0) { 
             setpgrp;
@@ -304,6 +319,7 @@ for my $platform (@$platforms_ref) {
         }
 
         my $fpga_dev_id = ReserveFPGA($fpga_type);
+        push(@FPGAs,$fpga_dev_id);
         ProgramFPGA("$config{modelDir}/${directory}",$platformName,$fpga_dev_id);
         # Deactivate the FPGA, so that others may program.
         DeactivateFPGA($fpga_dev_id);
@@ -314,8 +330,16 @@ for my $platform (@$platforms_ref) {
             $fpga_dev = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getconfig=dev", "Failed to query FPGA device configuration");
             $fpgaDev .= " --param FPGA_DEV_PATH=\"${fpga_dev}\"";
         }
+        elsif(!$masterExists) 
+        {
+            $fpga_dev = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getconfig=dev", "Failed to query FPGA device configuration");
+            $fpgaDev .= " --$platformLogicalName \"${fpga_dev}\"";
+	}
+        else
+        {
+            $fpga_dev = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getconfig=dev", "Failed to query FPGA device configuration");
+	}
 
-        push(@FPGAs,$fpga_dev_id);
     }
 
     if ($platformType eq "CPU") {
@@ -451,10 +475,9 @@ sub ErrorExit($) {
     my $msg = shift;
 
     print STDERR "${msg}\n";
-
-    if ($existsFPGA && ! $noProgram && ! $noReserve && defined($fpga_dev_id)) {
+    if ($existsFPGA && ! $noProgram && ! $noReserve) {
         for my $device_id (@FPGAs) {
-            system("leap-fpga-ctrl --device-id=${fpga_dev_id} --drop-reservation");
+            system("leap-fpga-ctrl --device-id=${device_id} --drop-reservation");
 	}
     }
 
@@ -664,7 +687,7 @@ sub ProgramFPGA($$$) {
         if (! $forceLoad && -s "$path/${model}_hw.errinfo") {
             print STDERR "FPGA bit file has errors:\n\n";
             system("cat $path/${model}_hw.errinfo > /dev/stderr");
-            print STDERR "\nUse --force-load to ignore the error.\n";
+            ErrorExit("\nUse --force-load to ignore the error.\n");
             exit(1);
         }
 

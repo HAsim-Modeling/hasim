@@ -64,7 +64,7 @@ typedef struct
     Vector#(t_NUM_OUTPORTS, Bool) outctrls;
     Vector#(t_NUM_UNPORTS, Bool) unctrls;
     Vector#(t_NUM_INPORTS, Bool) inctrls;
-    Bit#(4) cycle;                     // Small cycle counter to track relative
+    Bit#(16) cycle;                    // Cycle counter to track relative
                                        // positions of controllers
     Bit#(t_NUM_IID_BITS) nextInstance;
     Bool nextIsReady;
@@ -274,7 +274,7 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
   
     // Small cycle counter counts wrapping of the IID and is useful when debugging
     // to compare the relative cycles of local controllers.
-    Reg#(Bit#(4)) cycle <- mkReg(0);
+    Reg#(Bit#(16)) cycle <- mkReg(0);
 
     // Counter of active instances. 
     // We start at -1, so we assume at least one instance is active.

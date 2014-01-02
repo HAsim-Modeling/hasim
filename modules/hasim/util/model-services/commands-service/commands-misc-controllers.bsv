@@ -91,9 +91,7 @@ module mkSizedStageController#(Integer size)
     end
     else
     begin
-        let heur = defaultValue;
-        heur.minEntriesForBRAM = 128;
-        q <- mkSizedAutoMemFIFO(size, heur);
+        q <- mkSizedAutoMemFIFO(size, defaultValue);
     end
 
     

@@ -27026,3 +27026,19 @@ Directory tools/scripts/bmark
 
 
 Updated the hasim runscript to support new platform configurations.
+
+----------
+mcadler     Date: Wed Jan  1 21:30:47 EST 2014  CSN: CSN-hasim-953
+                  Thu Jan  2 02:30:47 UTC 2014
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          952 
+ commands-local.bsv        Locally Modified          952 
+ commands-misc-controllers.bsv Locally Modified          952 
+
+- Use default LUTRAM vs. BRAM FIFO configuration in buffered stage controllers.
+
+- Increase the controller's debugging cycle counter to 16 bits from 4
+  to simplify debugging.  As our models grow the extra few bits don't
+  matter.

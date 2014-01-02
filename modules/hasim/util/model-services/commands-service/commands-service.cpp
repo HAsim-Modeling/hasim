@@ -523,7 +523,7 @@ COMMANDS_SERVER_CLASS::ScanDataNormal(UINT8 data, bool eom)
             *scanStream << "    Next instance (" << scanData.Get(num_iid_bits) << ") is "
                         << (next_is_ready ? "READY" : "NOT ready") << endl;
 
-            *scanStream << "    Cycle: " << scanData.Get(4) << endl;
+            *scanStream << "    Cycle: " << scanData.Get(16) << endl;
 
             *scanStream << "    Ready input ports:";
             for (UINT32 i = 0; i < num_inports; i++)

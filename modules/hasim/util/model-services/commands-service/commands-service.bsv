@@ -145,6 +145,14 @@ module [HASIM_MODULE] mkCommandsService
                 end
             end
 
+            tagged COM_Resume .send_resp:
+            begin
+                if (send_resp)
+                begin
+                    serverStub.sendResponse_Resume(?);
+                end
+            end
+
             tagged COM_Synchronize: serverStub.sendResponse_Sync(?);
 
             tagged COM_SyncQuery .all_balanced:
@@ -283,6 +291,14 @@ module [HASIM_MODULE] mkCommandsService
     endrule
 
 
+    // resume: resume simulation
+    rule resume (True);
+        let dummy <- serverStub.acceptRequest_Resume();
+        // To Do: Sync and quiesce.  For now just sends a resume request.
+        link_controllers.sendToNext(tagged COM_Resume True);
+    endrule
+
+
     // sync: sync ports and events
     rule sync (True);
         let dummy <- serverStub.acceptRequest_Sync();
@@ -308,7 +324,7 @@ module [HASIM_MODULE] mkCommandsService
     // Initializing to 1 makes the end model cycle comparison easier.
     Reg#(Bit#(64)) ctx0ModelCycles <- mkReg(0);
 
-    (* descending_urgency = "getMessage, checkSimEnd, sync, isSynced, pause, setEndModelCycle, disableContext, enableContext, requestScan, requestTestThroughput, run" *)
+    (* descending_urgency = "getMessage, checkSimEnd, sync, isSynced, pause, resume, setEndModelCycle, disableContext, enableContext, requestScan, requestTestThroughput, run" *)
     rule checkSimEnd (state == CON_Running &&&
                       endModelCycle matches tagged Valid .end_cycle &&&
                       ctx0ModelCycles >= end_cycle);

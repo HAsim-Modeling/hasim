@@ -4,6 +4,7 @@ service COMMANDS
     {
         method Run(in UINT8[8] dummy, out UINT8[8] ack);
         method Pause(in UINT8[8] dummy, out UINT8[8] ack);
+        method Resume(in UINT8[8] dummy, out UINT8[8] ack);
 
         method Sync(in UINT8[8] dummy, out UINT8[8] ack);
         method IsSynced(in UINT8[8] dummy, out UINT8[8] isSynced);

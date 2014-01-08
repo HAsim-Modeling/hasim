@@ -90,6 +90,7 @@ typedef union tagged
                                       // makes it around the ring remaining True.
     void          COM_Step;           // Run exactly one model CC.
     Bool          COM_Pause;          // Stop running (True -> send response to host)
+    Bool          COM_Resume;         // Resume running (True -> send response to host)
     CONTEXT_ID    COM_EnableContext;  // Enable context
     CONTEXT_ID    COM_DisableContext; // Disable context
 
@@ -491,6 +492,11 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
             tagged COM_Pause .send_response:
             begin
                 state <= LC_Idle;
+            end
+
+            tagged COM_Resume .send_response:
+            begin
+                state <= LC_Running;
             end
 
             // TODO: should this be COM_EnableInstance??

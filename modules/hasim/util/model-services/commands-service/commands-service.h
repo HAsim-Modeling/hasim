@@ -97,16 +97,15 @@ typedef class HW_THREAD_HEARTBEAT_CLASS* HW_THREAD_HEARTBEAT;
 // HW_THREAD_HEARTBEAT_CLASS --
 //    Maintain heartbeat information for a single hardware thread.
 //
-class HW_THREAD_HEARTBEAT_CLASS
+class HW_THREAD_HEARTBEAT_CLASS : public STATS_EMITTER_CLASS
 {
   public:
     HW_THREAD_HEARTBEAT_CLASS();
     ~HW_THREAD_HEARTBEAT_CLASS() {};
 
-    void Init(MESSAGE_INTERVAL_SWITCH_CLASS* mis);
+    void Init(UINT32 id, MESSAGE_INTERVAL_SWITCH_CLASS* mis);
 
-    void Heartbeat(UINT32 hwThreadId,
-                   UINT64 fpga_cycles,
+    void Heartbeat(UINT64 fpga_cycles,
                    UINT32 model_cycles,
                    UINT32 instr_commits);
 
@@ -118,7 +117,13 @@ class HW_THREAD_HEARTBEAT_CLASS
     UINT64 GetFPGACycles() const { return fpgaLastCycle - fpgaStartCycle; };
     double GetModelIPS() const;
 
+    // Virtual function for STATS_EMITTER_CLASS
+    void EmitStats(ofstream &statsFile);
+    void ResetStats();
+
   private:
+    UINT32 hwThreadId;
+
     // These let us compute FMR starting after the first heartbeat is received.
     // We can thus eliminate model start-up cycles from FMR.
     UINT64 fpgaStartCycle;
@@ -137,6 +142,8 @@ class HW_THREAD_HEARTBEAT_CLASS
     UINT64 modelCycles;
 
     UINT64 nextProgressMsgCycle;
+
+    std::mutex statsMutex;
 };
 
 
@@ -180,7 +187,6 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     
     // wall-clock time tracking
     struct timeval startTime;
-    struct timeval endTime;
 
     // Names of local command service nodes in the connected ring's order
     list<string> localControllerNames;
@@ -202,6 +208,7 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
 
     // Virtual function for STATS_EMITTER_CLASS
     void EmitStats(ofstream &statsFile);
+    void ResetStats();
 
     static volatile bool scanning;
     static std::mutex scanDoneMutex;
@@ -218,6 +225,7 @@ public:
     // Client methods
     void Run();
     void Pause();
+    void Resume();
     void Sync();
     void DebugScan(std::ostream& ofile = cout);
     void TestThroughput();

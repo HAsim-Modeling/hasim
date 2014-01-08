@@ -27042,3 +27042,19 @@ Directory modules/hasim/util/model-services/commands-service
 - Increase the controller's debugging cycle counter to 16 bits from 4
   to simplify debugging.  As our models grow the extra few bits don't
   matter.
+
+----------
+mcadler     Date: Wed Jan  8 11:17:02 EST 2014  CSN: CSN-hasim-954
+                  Wed Jan  8 16:17:02 UTC 2014
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          953 
+ commands-local.bsv        Locally Modified          953 
+ commands-service.rrr      Locally Modified          953 
+ commands-service.h        Locally Modified          953 
+ commands-service.bsv      Locally Modified          953 
+
+- Add a resume command to the controller.
+
+- Emit some simulator performance statistics.

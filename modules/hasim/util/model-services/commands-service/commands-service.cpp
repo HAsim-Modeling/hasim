@@ -29,11 +29,12 @@
 #include "asim/syntax.h"
 #include "asim/mesg.h"
 
-#include "asim/provides/soft_services_deps.h"
-#include "asim/provides/command_switches.h"
-#include "asim/provides/stats_service.h"
-#include "asim/provides/commands_service.h"
-#include "asim/provides/starter_device.h"
+#include "awb/provides/soft_services_deps.h"
+#include "awb/provides/command_switches.h"
+#include "awb/provides/stats_service.h"
+#include "awb/provides/commands_service.h"
+#include "awb/provides/starter_device.h"
+#include "awb/provides/clocks_device.h"
 
 using namespace std;
 
@@ -126,9 +127,9 @@ COMMANDS_SERVER_CLASS::SetNumHardwareThreads(UINT32 num)
 {
     numThreads = num;
     hwThreadHeartbeat = new HW_THREAD_HEARTBEAT_CLASS[numThreads];
-    for (int c = 0; c < numThreads; c++)
+    for (UINT32 c = 0; c < numThreads; c++)
     {
-        hwThreadHeartbeat[c].Init(&messageIntervalSwitch);
+        hwThreadHeartbeat[c].Init(c, &messageIntervalSwitch);
     }
 }
 
@@ -173,6 +174,14 @@ COMMANDS_SERVER_CLASS::Pause()
 {
     running = false;
     clientStub->Pause(0);
+}
+
+// client: resume
+void
+COMMANDS_SERVER_CLASS::Resume()
+{
+    clientStub->Resume(0);
+    running = true;
 }
 
 // client: sync
@@ -307,8 +316,9 @@ COMMANDS_SERVER_CLASS::ModelHeartbeat(
 {
     if (! healthy) return;
 
-    hwThreadHeartbeat[hwThreadId].Heartbeat(hwThreadId, fpga_cycles,
-                                            model_cycles, instr_commits);
+    hwThreadHeartbeat[hwThreadId].Heartbeat(fpga_cycles,
+                                            model_cycles,
+                                            instr_commits);
 
     // Reset the deadlock counter.
     noChangeBeats = 0;
@@ -370,8 +380,6 @@ COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
 
     // Stop running
     Pause();
-
-    gettimeofday(&endTime, NULL);
 
     UINT64 allModelCycles = 0;
     UINT64 allInstrCommits = 0;
@@ -442,17 +450,52 @@ COMMANDS_SERVER_CLASS::EndSimulation(int exitValue)
 void
 COMMANDS_SERVER_CLASS::EmitStats(ofstream &statsFile)
 {
-    double sec;
-    double usec;
-    double elapsed;
+    struct timeval cur_time;
+    gettimeofday(&cur_time, NULL);
 
-    sec = double(endTime.tv_sec) - double(startTime.tv_sec);
-    usec = double(endTime.tv_usec) - double(startTime.tv_usec);
-    elapsed = sec + usec/1000000;
+    double sec = double(cur_time.tv_sec) - double(startTime.tv_sec);
+    double usec = double(cur_time.tv_usec) - double(startTime.tv_usec);
+    double elapsed = sec + usec / 1000000.0;
 
     statsFile << "SIM_WALL_TIME_SEC,\"Simulator: Wall time (sec.)\","
               << elapsed
               << endl;
+
+    // Compute total number of committed instructions.
+    UINT64 all_commits = 0;
+    for (int c = 0; c < numThreads; c++)
+    {
+        all_commits += (hwThreadHeartbeat[c].GetInstrCommits() -
+                        hwThreadHeartbeat[c].GetInstrStartCommits());
+    }
+
+    statsFile << "SIM_IPS,\"Simulator: Instructions per second\","
+              << all_commits / elapsed
+              << endl;
+
+    UINT64 fpga_cycles = hwThreadHeartbeat[0].GetFPGACycles();
+    UINT64 model_cycles = hwThreadHeartbeat[0].GetModelCycles() -
+                          hwThreadHeartbeat[0].GetModelStartCycle();
+    double fmr = double(fpga_cycles) / double(model_cycles);
+
+    statsFile << "SIM_FPGA_CYCLES,\"Simulator: FPGA cycles\","
+              << fpga_cycles
+              << endl;
+    statsFile << "SIM_MODEL_CYCLES,\"Simulator: Model cycles\","
+              << model_cycles
+              << endl;
+    statsFile << "SIM_FMR,\"Simulator: FPGA frequency to model frequency ratio (FMR)\","
+              << fmr
+              << endl;
+    statsFile << "SIM_MODEL_SPEED,\"Simulator: Model speed (kHz)\","
+              << double(model_cycles) / (elapsed * 1000.0)
+              << endl;
+}
+
+void
+COMMANDS_SERVER_CLASS::ResetStats()
+{
+    gettimeofday(&startTime, NULL);
 }
 
 
@@ -641,6 +684,7 @@ COMMANDS_SERVER_CLASS::ThroughputData(UINT16 data, UINT8 flags)
 // ========================================================================
 
 HW_THREAD_HEARTBEAT_CLASS::HW_THREAD_HEARTBEAT_CLASS() :
+    hwThreadId(0),
     fpgaStartCycle(0),
     fpgaLastCycle(0),
     modelStartCycle(0),
@@ -653,19 +697,21 @@ HW_THREAD_HEARTBEAT_CLASS::HW_THREAD_HEARTBEAT_CLASS() :
 
 
 void
-HW_THREAD_HEARTBEAT_CLASS::Init(MESSAGE_INTERVAL_SWITCH_CLASS* mis)
+HW_THREAD_HEARTBEAT_CLASS::Init(UINT32 id, MESSAGE_INTERVAL_SWITCH_CLASS* mis)
 {
+    hwThreadId = id;
     messageIntervalSwitch = mis;
     nextProgressMsgCycle = mis->ProgressMsgInterval();
 }
 
 void
 HW_THREAD_HEARTBEAT_CLASS::Heartbeat(
-    UINT32 hwThreadId,
     UINT64 fpga_cycles,
     UINT32 model_cycles,
     UINT32 instr_commits)
 {
+    std::unique_lock<std::mutex> statsLock(statsMutex);
+
     modelCycles  += model_cycles;
     instrCommits += instr_commits;
 
@@ -756,6 +802,20 @@ HW_THREAD_HEARTBEAT_CLASS::GetModelIPS() const
     {
         return 0;
     }
+}
+
+
+void
+HW_THREAD_HEARTBEAT_CLASS::EmitStats(ofstream &statsFile)
+{
+}
+
+void
+HW_THREAD_HEARTBEAT_CLASS::ResetStats()
+{
+    std::unique_lock<std::mutex> statsLock(statsMutex);
+
+    fpgaStartCycle = 0;
 }
 
 

@@ -6,3 +6,5 @@
 
 %sources -t BSV -v PUBLIC  commands-local.bsv
 %sources -t BSV -v PUBLIC  commands-misc-controllers.bsv
+
+%param --global STAGE_CONTROLLER_BUF_MAX 32  "Maximum entries in a buffered stage controller"

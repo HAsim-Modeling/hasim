@@ -27058,3 +27058,17 @@ Directory modules/hasim/util/model-services/commands-service
 - Add a resume command to the controller.
 
 - Emit some simulator performance statistics.
+
+----------
+mcadler     Date: Mon Jan 13 17:11:24 EST 2014  CSN: CSN-hasim-955
+                  Mon Jan 13 22:11:24 UTC 2014
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.awb         Locally Modified          954 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.awb        Locally Modified          954 
+ commands-misc-controllers.bsv Locally Modified          954 
+
+Add a parameter for picking the maximum timing model inter-stage FIFO size.

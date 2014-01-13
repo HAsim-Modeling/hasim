@@ -53,20 +53,20 @@ module mkStageController
 
 endmodule
 
-module mkBufferedStageController 
+module mkBufferedStageController
     // interface:
         (STAGE_CONTROLLER#(t_NUM_INSTANCES, t_PIPE_STATE))
     provisos
         (Bits#(t_PIPE_STATE, t_PIPE_STATE_SZ));
 
     //
-    // Build a buffered controller default buffer size.  The size should be
-    // chosen to cover the typical latency of functional partition and
-    // scratchpad memory pipelines.  For now, we use the number of instances
-    // up to a maximum of 32 since that is typically the maximum parallelism
-    // and a compromise for conserving space.
+    // Build a buffered controller with default buffer size.  The size should
+    // be chosen to cover the typical latency of functional partition and
+    // scratchpad memory pipelines, without being so large that it wastes
+    // space.
     //
-    let sc <- mkSizedStageController(min(32, valueOf(t_NUM_INSTANCES)));
+    let sc <- mkSizedStageController(min(`STAGE_CONTROLLER_BUF_MAX,
+                                         valueOf(t_NUM_INSTANCES)));
     return sc;
 
 endmodule

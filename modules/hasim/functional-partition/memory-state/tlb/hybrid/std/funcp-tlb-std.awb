@@ -14,7 +14,7 @@
 
 %param FUNCP_TLB_LOGFILE_NAME "hasim_funcp_tlb.out" "Name of logfile for functional TLB cache"
 %param --global FUNCP_TLB_ENFORCE_ORDER                     1 "Enforce global order of ITLB/DTLB requests if non-zero"
-%param --global FUNCP_TLB_PVT_ENTRIES                    1024 "Number of entries in functional private TLB cache"
+%param --global FUNCP_TLB_PVT_ENTRIES                    4096 "Number of entries in functional private TLB cache"
 %param --global FUNCP_TLB_PVT_CACHE_PREFETCH_LEARNER_NUM    8 "Number of prefetch learners in TLB cache (must be a power of 2)"
 %param --global FUNCP_TLB_PVT_PREFETCH_ENABLE               0 "Enable functional private TLB cache prefetcher"
 

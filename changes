@@ -27072,3 +27072,13 @@ Directory modules/hasim/util/model-services/commands-service
  commands-misc-controllers.bsv Locally Modified          954 
 
 Add a parameter for picking the maximum timing model inter-stage FIFO size.
+
+----------
+mcadler     Date: Fri Jan 17 16:40:20 EST 2014  CSN: CSN-hasim-956
+                  Fri Jan 17 21:40:20 UTC 2014
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          955 
+
+Fix --help

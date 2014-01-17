@@ -148,9 +148,10 @@ if ($help || ! $status) {
 
     for my $platform (@$platforms_ref) {
         if ($platform->{"type"} eq "CPU") {
-	    my $platformDirectory = $platform->{"directory"};
+	    my $directory = $platform->{"directory"};
    	    my $platformName = $platform->{"name"};
-            my $cmd = "$config{modelDir}/${platformDirectory}/${platformName} --help-run-append";
+            my $cmd = "$config{modelDir}/${directory}/sw/obj/${platformName}_sw.exe --help-run-append";
+            $ENV{LD_LIBRARY_PATH} = "$ENV{LD_LIBRARY_PATH}:$config{modelDir}/${directory}/sw/obj/"; 
             system($cmd);
 	}
     }

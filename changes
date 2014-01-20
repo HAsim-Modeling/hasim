@@ -27082,3 +27082,13 @@ Directory tools/scripts/bmark
  run-hasim.bmark           Locally Modified          955 
 
 Fix --help
+
+----------
+mcadler     Date: Mon Jan 20 11:04:59 EST 2014  CSN: CSN-hasim-957
+                  Mon Jan 20 16:04:59 UTC 2014
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          956 
+
+Fix Bluesim interleaving of stdout and stderr.

@@ -27092,3 +27092,13 @@ Directory tools/scripts/bmark
  run-hasim.bmark           Locally Modified          956 
 
 Fix Bluesim interleaving of stdout and stderr.
+
+----------
+mcadler     Date: Tue Jan 21 10:54:18 EST 2014  CSN: CSN-hasim-958
+                  Tue Jan 21 15:54:18 UTC 2014
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          957 
+
+Use global string files from each platform instead of expecting a single file.

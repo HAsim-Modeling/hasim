@@ -27102,3 +27102,22 @@ Directory tools/scripts/bmark
  run-hasim.bmark           Locally Modified          957 
 
 Use global string files from each platform instead of expecting a single file.
+
+----------
+mcadler     Date: Wed Jan 22 19:51:45 EST 2014  CSN: CSN-hasim-959
+                  Thu Jan 23 00:51:45 UTC 2014
+
+
+Directory tools/scripts/bmark/m5_configs/common
+ CacheConfig.py            Locally Modified          958 
+ Options.py                Locally Modified          958 
+ O3_ARM_v7a.py             Locally Removed           958 
+ CpuConfig.py              Locally Added               0 
+ Simulation.py             Locally Modified          958 
+ MemConfig.py              Locally Added               0 
+ Caches.py                 Locally Modified          958 
+
+Directory tools/scripts/bmark/m5_configs
+ se.py                     Locally Modified          958 
+
+Update gem5 control scripts for latest version.

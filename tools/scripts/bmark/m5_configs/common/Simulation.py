@@ -1,3 +1,15 @@
+# Copyright (c) 2012-2013 ARM Limited
+# All rights reserved
+# 
+# The license below extends only to copyright in the software and shall
+# not be construed as granting a license to any other intellectual
+# property including but not limited to intellectual property relating
+# to a hardware implementation of the functionality of the software
+# licensed hereunder.  You may use the software subject to the license
+# terms below provided that you ensure that this notice is replicated
+# unmodified and in its entirety in all distributions of the software,
+# modified or unmodified, in source code or in binary form.
+#
 # Copyright (c) 2006-2008 The Regents of The University of Michigan
 # Copyright (c) 2010 Advanced Micro Devices, Inc.
 # All rights reserved.
@@ -27,58 +39,56 @@
 #
 # Authors: Lisa Hsu
 
+import sys
 from os import getcwd
 from os.path import join as joinpath
+
+import CpuConfig
+import MemConfig
 
 import m5
 from m5.defines import buildEnv
 from m5.objects import *
 from m5.util import *
-from O3_ARM_v7a import *
 
 addToPath('../common')
 
+def getCPUClass(cpu_type):
+    """Returns the required cpu class and the mode of operation."""
+    cls = CpuConfig.get(cpu_type)
+    return cls, cls.memory_mode()
+
 def setCPUClass(options):
+    """Returns two cpu classes and the initial mode of operation.
 
-    atomic = False
-    if options.cpu_type == "timing":
-        class TmpClass(TimingSimpleCPU): pass
-    elif options.cpu_type == "detailed" or options.cpu_type == "arm_detailed":
-        if not options.caches and not options.ruby:
-            print "O3 CPU must be used with caches"
-            sys.exit(1)
-        if options.cpu_type == "arm_detailed":
-            class TmpClass(O3_ARM_v7a_3): pass
-        else:
-            class TmpClass(DerivO3CPU): pass
-    elif options.cpu_type == "inorder":
-        if not options.caches:
-            print "InOrder CPU must be used with caches"
-            sys.exit(1)
-        class TmpClass(InOrderCPU): pass
-    else:
-        class TmpClass(AtomicSimpleCPU): pass
-        atomic = True
+       Restoring from a checkpoint or fast forwarding through a benchmark
+       can be done using one type of cpu, and then the actual
+       simulation can be carried out using another type. This function
+       returns these two types of cpus and the initial mode of operation
+       depending on the options provided.
+    """
 
+    TmpClass, test_mem_mode = getCPUClass(options.cpu_type)
     CPUClass = None
-    test_mem_mode = 'atomic'
+    if TmpClass.require_caches() and \
+            not options.caches and not options.ruby:
+        fatal("%s must be used with caches" % options.cpu_type)
 
-    if not atomic:
-        if options.checkpoint_restore != None:
-            if options.restore_with_cpu != options.cpu_type:
-                CPUClass = TmpClass
-                class TmpClass(AtomicSimpleCPU): pass
-            else:
-                if options.restore_with_cpu != "atomic":
-                    test_mem_mode = 'timing'
-
-        elif options.fast_forward:
+    if options.checkpoint_restore != None:
+        if options.restore_with_cpu != options.cpu_type:
             CPUClass = TmpClass
-            class TmpClass(AtomicSimpleCPU): pass
-        else:
-            test_mem_mode = 'timing'
+            TmpClass, test_mem_mode = getCPUClass(options.restore_with_cpu)
+    elif options.fast_forward:
+        CPUClass = TmpClass
+        TmpClass = AtomicSimpleCPU
+        test_mem_mode = 'atomic'
 
     return (TmpClass, test_mem_mode, CPUClass)
+
+def setMemClass(options):
+    """Returns a memory controller class."""
+
+    return MemConfig.get(options.mem_type)
 
 def setWorkCountOptions(system, options):
     if options.work_item_id != None:
@@ -96,16 +106,158 @@ def setWorkCountOptions(system, options):
     if options.work_cpus_checkpoint_count != None:
         system.work_cpus_ckpt_count = options.work_cpus_checkpoint_count
 
-def run(options, root, testsys, cpu_class):
-    if options.maxtick:
-        maxtick = options.maxtick
-    elif options.maxtime:
-        simtime = m5.ticks.seconds(simtime)
-        print "simulating for: ", simtime
-        maxtick = simtime
-    else:
-        maxtick = m5.MaxTick
+def findCptDir(options, cptdir, testsys):
+    """Figures out the directory from which the checkpointed state is read.
 
+    There are two different ways in which the directories holding checkpoints
+    can be named --
+    1. cpt.<benchmark name>.<instruction count when the checkpoint was taken>
+    2. cpt.<some number, usually the tick value when the checkpoint was taken>
+
+    This function parses through the options to figure out which one of the
+    above should be used for selecting the checkpoint, and then figures out
+    the appropriate directory.
+    """
+
+    from os.path import isdir, exists
+    from os import listdir
+    import re
+
+    if not isdir(cptdir):
+        fatal("checkpoint dir %s does not exist!", cptdir)
+
+    cpt_starttick = 0
+    if options.at_instruction or options.simpoint:
+        inst = options.checkpoint_restore
+        if options.simpoint:
+            # assume workload 0 has the simpoint
+            if testsys.cpu[0].workload[0].simpoint == 0:
+                fatal('Unable to find simpoint')
+            inst += int(testsys.cpu[0].workload[0].simpoint)
+
+        checkpoint_dir = joinpath(cptdir, "cpt.%s.%s" % (options.bench, inst))
+        if not exists(checkpoint_dir):
+            fatal("Unable to find checkpoint directory %s", checkpoint_dir)
+    else:
+        dirs = listdir(cptdir)
+        expr = re.compile('cpt\.([0-9]*)')
+        cpts = []
+        for dir in dirs:
+            match = expr.match(dir)
+            if match:
+                cpts.append(match.group(1))
+
+        cpts.sort(lambda a,b: cmp(long(a), long(b)))
+
+        cpt_num = options.checkpoint_restore
+        if cpt_num > len(cpts):
+            fatal('Checkpoint %d not found', cpt_num)
+
+        cpt_starttick = int(cpts[cpt_num - 1])
+        checkpoint_dir = joinpath(cptdir, "cpt.%s" % cpts[cpt_num - 1])
+
+    return cpt_starttick, checkpoint_dir
+
+def scriptCheckpoints(options, maxtick, cptdir):
+    if options.at_instruction or options.simpoint:
+        checkpoint_inst = int(options.take_checkpoints)
+
+        # maintain correct offset if we restored from some instruction
+        if options.checkpoint_restore != None:
+            checkpoint_inst += options.checkpoint_restore
+
+        print "Creating checkpoint at inst:%d" % (checkpoint_inst)
+        exit_event = m5.simulate()
+        exit_cause = exit_event.getCause()
+        print "exit cause = %s" % exit_cause
+
+        # skip checkpoint instructions should they exist
+        while exit_cause == "checkpoint":
+            exit_event = m5.simulate()
+            exit_cause = exit_event.getCause()
+
+        if exit_cause == "a thread reached the max instruction count":
+            m5.checkpoint(joinpath(cptdir, "cpt.%s.%d" % \
+                    (options.bench, checkpoint_inst)))
+            print "Checkpoint written."
+
+    else:
+        when, period = options.take_checkpoints.split(",", 1)
+        when = int(when)
+        period = int(period)
+        num_checkpoints = 0
+
+        exit_event = m5.simulate(when - m5.curTick())
+        exit_cause = exit_event.getCause()
+        while exit_cause == "checkpoint":
+            exit_event = m5.simulate(when - m5.curTick())
+            exit_cause = exit_event.getCause()
+
+        if exit_cause == "simulate() limit reached":
+            m5.checkpoint(joinpath(cptdir, "cpt.%d"))
+            num_checkpoints += 1
+
+        sim_ticks = when
+        max_checkpoints = options.max_checkpoints
+
+        while num_checkpoints < max_checkpoints and \
+                exit_cause == "simulate() limit reached":
+            if (sim_ticks + period) > maxtick:
+                exit_event = m5.simulate(maxtick - sim_ticks)
+                exit_cause = exit_event.getCause()
+                break
+            else:
+                exit_event = m5.simulate(period)
+                exit_cause = exit_event.getCause()
+                sim_ticks += period
+                while exit_event.getCause() == "checkpoint":
+                    exit_event = m5.simulate(sim_ticks - m5.curTick())
+                if exit_event.getCause() == "simulate() limit reached":
+                    m5.checkpoint(joinpath(cptdir, "cpt.%d"))
+                    num_checkpoints += 1
+
+    return exit_event
+
+def benchCheckpoints(options, maxtick, cptdir):
+    exit_event = m5.simulate(maxtick - m5.curTick())
+    exit_cause = exit_event.getCause()
+
+    num_checkpoints = 0
+    max_checkpoints = options.max_checkpoints
+
+    while exit_cause == "checkpoint":
+        m5.checkpoint(joinpath(cptdir, "cpt.%d"))
+        num_checkpoints += 1
+        if num_checkpoints == max_checkpoints:
+            exit_cause = "maximum %d checkpoints dropped" % max_checkpoints
+            break
+
+        exit_event = m5.simulate(maxtick - m5.curTick())
+        exit_cause = exit_event.getCause()
+
+    return exit_event
+
+def repeatSwitch(testsys, repeat_switch_cpu_list, maxtick, switch_freq):
+    print "starting switch loop"
+    while True:
+        exit_event = m5.simulate(switch_freq)
+        exit_cause = exit_event.getCause()
+
+        if exit_cause != "simulate() limit reached":
+            return exit_event
+
+        m5.switchCpus(testsys, repeat_switch_cpu_list)
+
+        tmp_cpu_list = []
+        for old_cpu, new_cpu in repeat_switch_cpu_list:
+            tmp_cpu_list.append((new_cpu, old_cpu))
+        repeat_switch_cpu_list = tmp_cpu_list
+
+        if (maxtick - m5.curTick()) <= switch_freq:
+            exit_event = m5.simulate(maxtick - m5.curTick())
+            return exit_event
+
+def run(options, root, testsys, cpu_class):
     if options.checkpoint_dir:
         cptdir = options.checkpoint_dir
     elif m5.options.outdir:
@@ -119,8 +271,13 @@ def run(options, root, testsys, cpu_class):
     if options.standard_switch and not options.caches:
         fatal("Must specify --caches when using --standard-switch")
 
+    if options.standard_switch and options.repeat_switch:
+        fatal("Can't specify both --standard-switch and --repeat-switch")
+
+    if options.repeat_switch and options.take_checkpoints:
+        fatal("Can't specify both --repeat-switch and --take-checkpoints")
+
     np = options.num_cpus
-    max_checkpoints = options.max_checkpoints
     switch_cpus = None
 
     if options.prog_interval:
@@ -132,7 +289,7 @@ def run(options, root, testsys, cpu_class):
             testsys.cpu[i].max_insts_any_thread = options.maxinsts
 
     if cpu_class:
-        switch_cpus = [cpu_class(defer_registration=True, cpu_id=(np+i))
+        switch_cpus = [cpu_class(switched_out=True, cpu_id=(i))
                        for i in xrange(np)]
 
         for i in xrange(np):
@@ -140,7 +297,7 @@ def run(options, root, testsys, cpu_class):
                 testsys.cpu[i].max_insts_any_thread = int(options.fast_forward)
             switch_cpus[i].system =  testsys
             switch_cpus[i].workload = testsys.cpu[i].workload
-            switch_cpus[i].clock = testsys.cpu[0].clock
+            switch_cpus[i].clk_domain = testsys.cpu[i].clk_domain
             # simulation period
             if options.maxinsts:
                 switch_cpus[i].max_insts_any_thread = options.maxinsts
@@ -151,15 +308,43 @@ def run(options, root, testsys, cpu_class):
         testsys.switch_cpus = switch_cpus
         switch_cpu_list = [(testsys.cpu[i], switch_cpus[i]) for i in xrange(np)]
 
-    if options.standard_switch:
-        if not options.caches:
-            # O3 CPU must have a cache to work.
-            print "O3 CPU must be used with caches"
+    if options.repeat_switch:
+        switch_class = getCPUClass(options.cpu_type)[0]
+        if switch_class.require_caches() and \
+                not options.caches:
+            print "%s: Must be used with caches" % str(switch_class)
+            sys.exit(1)
+        if not switch_class.support_take_over():
+            print "%s: CPU switching not supported" % str(switch_class)
             sys.exit(1)
 
-        switch_cpus = [TimingSimpleCPU(defer_registration=True, cpu_id=(np+i))
+        repeat_switch_cpus = [switch_class(switched_out=True, \
+                                               cpu_id=(i)) for i in xrange(np)]
+
+        for i in xrange(np):
+            repeat_switch_cpus[i].system = testsys
+            repeat_switch_cpus[i].workload = testsys.cpu[i].workload
+            repeat_switch_cpus[i].clk_domain = testsys.cpu[i].clk_domain
+
+            if options.maxinsts:
+                repeat_switch_cpus[i].max_insts_any_thread = options.maxinsts
+
+            if options.checker:
+                repeat_switch_cpus[i].addCheckerCpu()
+
+        testsys.repeat_switch_cpus = repeat_switch_cpus
+
+        if cpu_class:
+            repeat_switch_cpu_list = [(switch_cpus[i], repeat_switch_cpus[i])
+                                      for i in xrange(np)]
+        else:
+            repeat_switch_cpu_list = [(testsys.cpu[i], repeat_switch_cpus[i])
+                                      for i in xrange(np)]
+
+    if options.standard_switch:
+        switch_cpus = [TimingSimpleCPU(switched_out=True, cpu_id=(i))
                        for i in xrange(np)]
-        switch_cpus_1 = [DerivO3CPU(defer_registration=True, cpu_id=(2*np+i))
+        switch_cpus_1 = [DerivO3CPU(switched_out=True, cpu_id=(i))
                         for i in xrange(np)]
 
         for i in xrange(np):
@@ -167,8 +352,8 @@ def run(options, root, testsys, cpu_class):
             switch_cpus_1[i].system =  testsys
             switch_cpus[i].workload = testsys.cpu[i].workload
             switch_cpus_1[i].workload = testsys.cpu[i].workload
-            switch_cpus[i].clock = testsys.cpu[0].clock
-            switch_cpus_1[i].clock = testsys.cpu[0].clock
+            switch_cpus[i].clk_domain = testsys.cpu[i].clk_domain
+            switch_cpus_1[i].clk_domain = testsys.cpu[i].clk_domain
 
             # if restoring, make atomic cpu simulate only a few instructions
             if options.checkpoint_restore != None:
@@ -224,54 +409,51 @@ def run(options, root, testsys, cpu_class):
             for i in xrange(np):
                 testsys.cpu[i].max_insts_any_thread = offset
 
-    checkpoint_dir = None
-    if options.checkpoint_restore != None:
-        from os.path import isdir, exists
-        from os import listdir
-        import re
-
-        if not isdir(cptdir):
-            fatal("checkpoint dir %s does not exist!", cptdir)
-
-        if options.at_instruction or options.simpoint:
-            inst = options.checkpoint_restore
-            if options.simpoint:
-                # assume workload 0 has the simpoint
-                if testsys.cpu[0].workload[0].simpoint == 0:
-                    fatal('Unable to find simpoint')
-                inst += int(testsys.cpu[0].workload[0].simpoint)
-
-            checkpoint_dir = joinpath(cptdir,
-                                      "cpt.%s.%s" % (options.bench, inst))
-            if not exists(checkpoint_dir):
-                fatal("Unable to find checkpoint directory %s", checkpoint_dir)
-        else:
-            dirs = listdir(cptdir)
-            expr = re.compile('cpt\.([0-9]*)')
-            cpts = []
-            for dir in dirs:
-                match = expr.match(dir)
-                if match:
-                    cpts.append(match.group(1))
-
-            cpts.sort(lambda a,b: cmp(long(a), long(b)))
-
-            cpt_num = options.checkpoint_restore
-
-            if cpt_num > len(cpts):
-                fatal('Checkpoint %d not found', cpt_num)
-
-            ## Adjust max tick based on our starting tick
-            maxtick = maxtick - int(cpts[cpt_num - 1])
-            checkpoint_dir = joinpath(cptdir, "cpt.%s" % cpts[cpt_num - 1])
-
     # HAsim shared memory programs start with a single thread and instantiate
     # threads with shared memory.  Wait for the last thread to start before
     # giving control to HAsim.
     if options.shared_mem:
         testsys.cpu[np-1].max_insts_any_thread = 10
 
+    checkpoint_dir = None
+    if options.checkpoint_restore:
+        cpt_starttick, checkpoint_dir = findCptDir(options, cptdir, testsys)
     m5.instantiate(checkpoint_dir)
+
+    # Handle the max tick settings now that tick frequency was resolved
+    # during system instantiation
+    # NOTE: the maxtick variable here is in absolute ticks, so it must
+    # include any simulated ticks before a checkpoint
+    explicit_maxticks = 0
+    maxtick_from_abs = m5.MaxTick
+    maxtick_from_rel = m5.MaxTick
+    maxtick_from_maxtime = m5.MaxTick
+    if options.abs_max_tick:
+        maxtick_from_abs = options.abs_max_tick
+        explicit_maxticks += 1
+    if options.rel_max_tick:
+        maxtick_from_rel = options.rel_max_tick
+        if options.checkpoint_restore:
+            # NOTE: this may need to be updated if checkpoints ever store
+            # the ticks per simulated second
+            maxtick_from_rel += cpt_starttick
+            if options.at_instruction or options.simpoint:
+                warn("Relative max tick specified with --at-instruction or" \
+                     " --simpoint\n      These options don't specify the " \
+                     "checkpoint start tick, so assuming\n      you mean " \
+                     "absolute max tick")
+        explicit_maxticks += 1
+    if options.maxtime:
+        maxtick_from_maxtime = m5.ticks.fromSeconds(options.maxtime)
+        explicit_maxticks += 1
+    if explicit_maxticks > 1:
+        warn("Specified multiple of --abs-max-tick, --rel-max-tick, --maxtime."\
+             " Using least")
+    maxtick = min([maxtick_from_abs, maxtick_from_rel, maxtick_from_maxtime])
+
+    if options.checkpoint_restore != None and maxtick < cpt_starttick:
+        fatal("Bad maxtick (%d) specified: " \
+              "Checkpoint starts starts from tick: %d", maxtick, cpt_starttick)
 
     if options.standard_switch or cpu_class:
         if options.standard_switch:
@@ -287,15 +469,7 @@ def run(options, root, testsys, cpu_class):
             exit_event = m5.simulate(10000)
         print "Switched CPUS @ tick %s" % (m5.curTick())
 
-        # when you change to Timing (or Atomic), you halt the system
-        # given as argument.  When you are finished with the system
-        # changes (including switchCpus), you must resume the system
-        # manually.  You DON'T need to resume after just switching
-        # CPUs if you haven't changed anything on the system level.
-
-        m5.changeToTiming(testsys)
-        m5.switchCpus(switch_cpu_list)
-        m5.resume(testsys)
+        m5.switchCpus(testsys, switch_cpu_list)
 
         if options.standard_switch:
             print "Switch at instruction count:%d" % \
@@ -305,16 +479,11 @@ def run(options, root, testsys, cpu_class):
             if options.warmup_insts:
                 exit_event = m5.simulate()
             else:
-                exit_event = m5.simulate(options.warmup)
+                exit_event = m5.simulate(options.standard_switch)
             print "Switching CPUS @ tick %s" % (m5.curTick())
             print "Simulation ends instruction count:%d" % \
                     (testsys.switch_cpus_1[0].max_insts_any_thread)
-            m5.drain(testsys)
-            m5.switchCpus(switch_cpu_list1)
-            m5.resume(testsys)
-
-    num_checkpoints = 0
-    exit_cause = ''
+            m5.switchCpus(testsys, switch_cpu_list1)
 
     # Wait for all threads.  See previous comment near options.shared_mem.
     if options.shared_mem:
@@ -332,93 +501,32 @@ def run(options, root, testsys, cpu_class):
         else:
             cptdir = getcwd()
 
-    # Checkpoints being taken via the command line at <when> and at
-    # subsequent periods of <period>.  Checkpoint instructions
-    # received from the benchmark running are ignored and skipped in
-    # favor of command line checkpoint instructions.
     if options.take_checkpoints != None :
-        if options.at_instruction or options.simpoint:
-            checkpoint_inst = int(options.take_checkpoints)
-
-            # maintain correct offset if we restored from some instruction
-            if options.checkpoint_restore != None:
-                checkpoint_inst += options.checkpoint_restore
-
-            print "Creating checkpoint at inst:%d" % (checkpoint_inst)
-            exit_event = m5.simulate()
-            print "exit cause = %s" % (exit_event.getCause())
-
-            # skip checkpoint instructions should they exist
-            while exit_event.getCause() == "checkpoint":
-                exit_event = m5.simulate()
-
-            if exit_event.getCause() == \
-                   "a thread reached the max instruction count":
-                m5.checkpoint(joinpath(cptdir, "cpt.%s.%d" % \
-                        (options.bench, checkpoint_inst)))
-                print "Checkpoint written."
-                num_checkpoints += 1
-
-            if exit_event.getCause() == "user interrupt received":
-                exit_cause = exit_event.getCause();
-        else:
-            when, period = options.take_checkpoints.split(",", 1)
-            when = int(when)
-            period = int(period)
-
-            exit_event = m5.simulate(when)
-            while exit_event.getCause() == "checkpoint":
-                exit_event = m5.simulate(when - m5.curTick())
-
-            if exit_event.getCause() == "simulate() limit reached":
-                m5.checkpoint(joinpath(cptdir, "cpt.%d"))
-                num_checkpoints += 1
-
-            sim_ticks = when
-            exit_cause = "maximum %d checkpoints dropped" % max_checkpoints
-            while num_checkpoints < max_checkpoints and \
-                    exit_event.getCause() == "simulate() limit reached":
-                if (sim_ticks + period) > maxtick:
-                    exit_event = m5.simulate(maxtick - sim_ticks)
-                    exit_cause = exit_event.getCause()
-                    break
-                else:
-                    exit_event = m5.simulate(period)
-                    sim_ticks += period
-                    while exit_event.getCause() == "checkpoint":
-                        exit_event = m5.simulate(sim_ticks - m5.curTick())
-                    if exit_event.getCause() == "simulate() limit reached":
-                        m5.checkpoint(joinpath(cptdir, "cpt.%d"))
-                        num_checkpoints += 1
-
-            if exit_event.getCause() != "simulate() limit reached":
-                exit_cause = exit_event.getCause();
-
+        # Checkpoints being taken via the command line at <when> and at
+        # subsequent periods of <period>.  Checkpoint instructions
+        # received from the benchmark running are ignored and skipped in
+        # favor of command line checkpoint instructions.
+        exit_event = scriptCheckpoints(options, maxtick, cptdir)
     elif options.hasim_sim:
         testsys.startup()
         print "m5 returning control to HAsim"
         return
-
-    else: # no checkpoints being taken via this script
+    else:
         if options.fast_forward:
             m5.stats.reset()
         print "**** REAL SIMULATION ****"
-        exit_event = m5.simulate(maxtick)
 
-        while exit_event.getCause() == "checkpoint":
-            m5.checkpoint(joinpath(cptdir, "cpt.%d"))
-            num_checkpoints += 1
-            if num_checkpoints == max_checkpoints:
-                exit_cause = "maximum %d checkpoints dropped" % max_checkpoints
-                break
+        # If checkpoints are being taken, then the checkpoint instruction
+        # will occur in the benchmark code it self.
+        if options.repeat_switch and maxtick > options.repeat_switch:
+            exit_event = repeatSwitch(testsys, repeat_switch_cpu_list,
+                                      maxtick, options.repeat_switch)
+        else:
+            exit_event = benchCheckpoints(options, maxtick, cptdir)
 
-            exit_event = m5.simulate(maxtick - m5.curTick())
-            exit_cause = exit_event.getCause()
-
-    if exit_cause == '':
-        exit_cause = exit_event.getCause()
-    print 'Exiting @ tick %i because %s' % (m5.curTick(), exit_cause)
-
+    print 'Exiting @ tick %i because %s' % (m5.curTick(), exit_event.getCause())
     if options.checkpoint_at_end:
         m5.checkpoint(joinpath(cptdir, "cpt.%d"))
 
+    if not m5.options.interactive:
+        sys.exit(exit_event.getCode())

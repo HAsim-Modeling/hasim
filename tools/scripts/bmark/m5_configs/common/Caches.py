@@ -1,3 +1,15 @@
+# Copyright (c) 2012 ARM Limited
+# All rights reserved.
+#
+# The license below extends only to copyright in the software and shall
+# not be construed as granting a license to any other intellectual
+# property including but not limited to intellectual property relating
+# to a hardware implementation of the functionality of the software
+# licensed hereunder.  You may use the software subject to the license
+# terms below provided that you ensure that this notice is replicated
+# unmodified and in its entirety in all distributions of the software,
+# modified or unmodified, in source code or in binary form.
+#
 # Copyright (c) 2006-2007 The Regents of The University of Michigan
 # All rights reserved.
 #
@@ -28,36 +40,43 @@
 
 from m5.objects import *
 
+# Base implementations of L1, L2, IO and TLB-walker caches. There are
+# used in the regressions and also as base components in the
+# system-configuration scripts. The values are meant to serve as a
+# starting point, and specific parameters can be overridden in the
+# specific instantiations.
+
 class L1Cache(BaseCache):
     assoc = 2
-    block_size = 64
-    latency = '1ns'
-    mshrs = 10
+    hit_latency = 2
+    response_latency = 2
+    mshrs = 4
     tgts_per_mshr = 20
     is_top_level = True
 
 class L2Cache(BaseCache):
     assoc = 8
-    block_size = 64
-    latency = '10ns'
+    hit_latency = 20
+    response_latency = 20
     mshrs = 20
     tgts_per_mshr = 12
-
-class PageTableWalkerCache(BaseCache):
-    assoc = 2
-    block_size = 64
-    latency = '1ns'
-    mshrs = 10
-    size = '1kB'
-    tgts_per_mshr = 12
-    is_top_level = True
+    write_buffers = 8
 
 class IOCache(BaseCache):
     assoc = 8
-    block_size = 64
-    latency = '10ns'
+    hit_latency = 50
+    response_latency = 50
     mshrs = 20
     size = '1kB'
     tgts_per_mshr = 12
     forward_snoops = False
+    is_top_level = True
+
+class PageTableWalkerCache(BaseCache):
+    assoc = 2
+    hit_latency = 2
+    response_latency = 2
+    mshrs = 10
+    size = '1kB'
+    tgts_per_mshr = 12
     is_top_level = True

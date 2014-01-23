@@ -2,10 +2,9 @@
 #
 # "m5 test.py"
 
-import os
 import optparse
 import sys
-from os.path import join as joinpath
+import os
 
 import m5
 from m5.defines import buildEnv
@@ -17,6 +16,7 @@ addToPath('./common')
 import Options
 import Simulation
 import CacheConfig
+import MemConfig
 from Caches import *
 
 # Get paths we might need.
@@ -28,7 +28,6 @@ Options.addSEOptions(parser)
 
 # Benchmark options
 parser.add_option("--hasim-sim", action="store_true")
-parser.add_option("--physmem", default="512MB", help="Physical memory")
 parser.add_option("--shared-mem", action="store_true")
 
 (options, args) = parser.parse_args()
@@ -41,16 +40,38 @@ if args:
 
 np = options.num_cpus
 
-CPUClass.clock = '2GHz'
 CPUClass.numThreads = np
 
 system = System(cpu = [CPUClass(cpu_id=i) for i in xrange(np)],
-                physmem = SimpleMemory(range=AddrRange(options.physmem)),
-                membus = CoherentBus(), mem_mode = test_mem_mode)
+                mem_mode = test_mem_mode,
+                mem_ranges = [AddrRange(options.mem_size)],
+                cache_line_size = options.cacheline_size)
 
+
+# Create a top-level voltage domain
+system.voltage_domain = VoltageDomain(voltage = options.sys_voltage)
+
+# Create a source clock for the system and set the clock period
+system.clk_domain = SrcClockDomain(clock =  options.sys_clock,
+                                   voltage_domain = system.voltage_domain)
+
+# Create a CPU voltage domain
+system.cpu_voltage_domain = VoltageDomain()
+
+# Create a separate clock domain for the CPUs
+system.cpu_clk_domain = SrcClockDomain(clock = options.cpu_clock,
+                                       voltage_domain =
+                                       system.cpu_voltage_domain)
+
+# All cpus belong to a common cpu_clk_domain, therefore running at a common
+# frequency.
+for cpu in system.cpu:
+    cpu.clk_domain = system.cpu_clk_domain
+
+system.membus = CoherentBus()
 system.system_port = system.membus.slave
-system.physmem.port = system.membus.master
 CacheConfig.config_cache(options, system)
+MemConfig.config_mem(options, system)
 
 ##
 ## Shared memory programs (e.g. Splash) use the clone emulated syscall to

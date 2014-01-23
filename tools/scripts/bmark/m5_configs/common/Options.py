@@ -1,3 +1,15 @@
+# Copyright (c) 2013 ARM Limited
+# All rights reserved.
+#
+# The license below extends only to copyright in the software and shall
+# not be construed as granting a license to any other intellectual
+# property including but not limited to intellectual property relating
+# to a hardware implementation of the functionality of the software
+# licensed hereunder.  You may use the software subject to the license
+# terms below provided that you ensure that this notice is replicated
+# unmodified and in its entirety in all distributions of the software,
+# modified or unmodified, in source code or in binary form.
+#
 # Copyright (c) 2006-2008 The Regents of The University of Michigan
 # All rights reserved.
 #
@@ -31,18 +43,61 @@ from m5.defines import buildEnv
 from m5.objects import *
 #from Benchmarks import *
 
+import CpuConfig
+import MemConfig
+
+def _listCpuTypes(option, opt, value, parser):
+    CpuConfig.print_cpu_list()
+    sys.exit(0)
+
+def _listMemTypes(option, opt, value, parser):
+    MemConfig.print_mem_list()
+    sys.exit(0)
+
 def addCommonOptions(parser):
     # system options
+    parser.add_option("--list-cpu-types",
+                      action="callback", callback=_listCpuTypes,
+                      help="List available CPU types")
     parser.add_option("--cpu-type", type="choice", default="atomic",
-                      choices = ["atomic", "timing", "detailed", "inorder",
-                                 "arm_detailed"],
+                      choices=CpuConfig.cpu_names(),
                       help = "type of cpu to run with")
     parser.add_option("--checker", action="store_true");
     parser.add_option("-n", "--num-cpus", type="int", default=1)
+    parser.add_option("--sys-voltage", action="store", type="string",
+                      default='1.0V',
+                      help = """Top-level voltage for blocks running at system
+                      power supply""")
+    parser.add_option("--sys-clock", action="store", type="string",
+                      default='1GHz',
+                      help = """Top-level clock for blocks running at system
+                      speed""")
+    parser.add_option("--cpu-clock", action="store", type="string",
+                      default='2GHz',
+                      help="Clock for blocks running at CPU speed")
+    parser.add_option("--smt", action="store_true", default=False,
+                      help = """
+                      Only used if multiple programs are specified. If true,
+                      then the number of threads per cpu is same as the
+                      number of programs.""")
+
+    # Memory Options
+    parser.add_option("--list-mem-types",
+                      action="callback", callback=_listMemTypes,
+                      help="List available memory types")
+    parser.add_option("--mem-type", type="choice", default="simple_mem",
+                      choices=MemConfig.mem_names(),
+                      help = "type of memory to use")
+    parser.add_option("--mem-channels", type="int", default=1,
+                      help = "number of memory channels")
+    parser.add_option("--mem-size", action="store", type="string",
+                      default="512MB",
+                      help="Specify the physical memory size (single memory)")
+
+    # Cache Options
     parser.add_option("--caches", action="store_true")
     parser.add_option("--l2cache", action="store_true")
     parser.add_option("--fastmem", action="store_true")
-    parser.add_option("--clock", action="store", type="string", default='2GHz')
     parser.add_option("--num-dirs", type="int", default=1)
     parser.add_option("--num-l2caches", type="int", default=1)
     parser.add_option("--num-l3caches", type="int", default=1)
@@ -55,12 +110,21 @@ def addCommonOptions(parser):
     parser.add_option("--l2_assoc", type="int", default=8)
     parser.add_option("--l3_assoc", type="int", default=16)
     parser.add_option("--cacheline_size", type="int", default=64)
+
+    # Enable Ruby
     parser.add_option("--ruby", action="store_true")
 
     # Run duration options
-    parser.add_option("-m", "--maxtick", type="int", default=m5.MaxTick,
-                      metavar="T", help="Stop after T ticks")
-    parser.add_option("--maxtime", type="float")
+    parser.add_option("-m", "--abs-max-tick", type="int", default=m5.MaxTick,
+                      metavar="TICKS", help="Run to absolute simulated tick " \
+                      "specified including ticks from a restored checkpoint")
+    parser.add_option("--rel-max-tick", type="int", default=None,
+                      metavar="TICKS", help="Simulate for specified number of" \
+                      " ticks relative to the simulation start tick (e.g. if " \
+                      "restoring a checkpoint)")
+    parser.add_option("--maxtime", type="float", default=None,
+                      help="Run to the specified absolute simulated time in " \
+                      "seconds")
     parser.add_option("-I", "--maxinsts", action="store", type="int",
                       default=None, help="""Total number of instructions to
                                             simulate (default: run forever)""")
@@ -76,11 +140,17 @@ def addCommonOptions(parser):
                       help="""Parameter available in simulation with m5
                               initparam""")
 
+    # Simpoint options
+    parser.add_option("--simpoint-profile", action="store_true",
+                      help="Enable basic block profiling for SimPoints")
+    parser.add_option("--simpoint-interval", type="int", default=10000000,
+                      help="SimPoint interval in num of instructions")
+
     # Checkpointing options
     ###Note that performing checkpointing via python script files will override
     ###checkpoint instructions built into binaries.
     parser.add_option("--take-checkpoints", action="store", type="string",
-        help="<M,N> will take checkpoint at cycle M and every N cycles thereafter")
+        help="<M,N> take checkpoints at tick M and every N ticks thereafter")
     parser.add_option("--max-checkpoints", action="store", type="int",
         help="the maximum number of checkpoints to drop", default=5)
     parser.add_option("--checkpoint-dir", action="store", type="string",
@@ -96,20 +166,20 @@ def addCommonOptions(parser):
     parser.add_option("--work-cpus-checkpoint-count", action="store", type="int",
                       help="checkpoint and exit when active cpu count is reached")
     parser.add_option("--restore-with-cpu", action="store", type="choice",
-                      default="atomic", choices = ["atomic", "timing",
-                                                   "detailed", "inorder"],
+                      default="atomic", choices=CpuConfig.cpu_names(),
                       help = "cpu type for restoring from a checkpoint")
 
 
     # CPU Switching - default switch model goes from a checkpoint
     # to a timing simple CPU with caches to warm up, then to detailed CPU for
     # data measurement
-    parser.add_option("-s", "--standard-switch", action="store_true",
-        help="switch from timing CPU to Detailed CPU")
-    parser.add_option("-w", "--warmup", action="store", type="int",
-        help="if -s, then this is the warmup period.  else, this is ignored",
-        default=5000000000)
-    parser.add_option("-p", "--prog-interval", type="int",
+    parser.add_option("--repeat-switch", action="store", type="int",
+        default=None,
+        help="switch back and forth between CPUs with period <N>")
+    parser.add_option("-s", "--standard-switch", action="store", type="int",
+        default=None,
+        help="switch from timing to Detailed CPU after warmup period of <N>")
+    parser.add_option("-p", "--prog-interval", type="str",
         help="CPU Progress Interval")
 
     # Fastforwarding and simpoint related materials
@@ -159,6 +229,13 @@ def addFSOptions(parser):
                    help="Provide the raw system without the linux specific bits")
         parser.add_option("--machine-type", action="store", type="choice",
                 choices=ArmMachineType.map.keys(), default="RealView_PBX")
+        parser.add_option("--dtb-filename", action="store", type="string",
+              help="Specifies device tree blob file to use with device-tree-"\
+              "enabled kernels")
+        parser.add_option("--enable-context-switch-stats-dump", \
+                action="store_true", help="Enable stats dump at context "\
+                "switches and dump tasks file (required for Streamline)")
+
     # Benchmark options
     parser.add_option("--dual", action="store_true",
                       help="Simulate two systems attached with an ethernet link")
@@ -175,7 +252,3 @@ def addFSOptions(parser):
     # Disk Image Options
     parser.add_option("--disk-image", action="store", type="string", default=None,
                       help="Path to the disk image to use.")
-
-    # Memory Size Options
-    parser.add_option("--mem-size", action="store", type="string", default=None,
-                      help="Specify the physical memory size (single memory)")

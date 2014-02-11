@@ -27121,3 +27121,13 @@ Directory tools/scripts/bmark/m5_configs
  se.py                     Locally Modified          958 
 
 Update gem5 control scripts for latest version.
+
+----------
+mcadler     Date: Tue Feb 11 08:11:44 EST 2014  CSN: CSN-hasim-960
+                  Tue Feb 11 13:11:44 UTC 2014
+
+
+Directory modules/hasim/util/modellib
+ stall-ports.bsv           Locally Modified          959 
+
+Add NULL instances of multiplexed stall ports.

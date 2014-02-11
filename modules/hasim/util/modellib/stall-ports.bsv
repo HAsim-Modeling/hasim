@@ -491,3 +491,109 @@ module [HASIM_MODULE] mkPortStallRecv_Multiplexed#(String s)
     endinterface
 
 endmodule
+
+
+// ========================================================================
+//
+//   NULL instances.
+//
+// ========================================================================
+
+module [HASIM_MODULE] mkPortStallSend_Multiplexed_NULL
+        (PORT_STALL_SEND_MULTIPLEXED#(ni, a))
+    provisos (Bits#(a, sa));
+
+    Reg#(Bool) initialized <- mkReg(False);
+    Reg#(INSTANCE_ID#(ni)) maxInstance <- mkRegU();
+    Reg#(INSTANCE_ID#(ni)) nextInstance <- mkReg(0);
+
+    method Action doEnq (INSTANCE_ID#(ni) iid, a x);
+        nextInstance <= (nextInstance == maxInstance) ? 0 : nextInstance + 1;
+    endmethod
+
+    method Action noEnq(INSTANCE_ID#(ni) iid);
+        nextInstance <= (nextInstance == maxInstance) ? 0 : nextInstance + 1;
+    endmethod
+
+    method ActionValue#(Bool) canEnq(INSTANCE_ID#(ni) iid);
+        return True;
+    endmethod
+
+    interface INSTANCE_CONTROL_IN_OUT ctrl;
+        interface INSTANCE_CONTROL_IN in;
+            method Bool empty() = False;
+            method Bool balanced() = True;
+            method Bool light() = False;
+
+            method Maybe#(INSTANCE_ID#(ni)) nextReadyInstance() if (initialized);
+                return tagged Valid truncateNP(nextInstance);
+            endmethod
+            
+            method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid);
+                maxInstance <= zeroExtendNP(iid);
+                initialized <= True;
+            endmethod
+
+            method List#(PORT_INFO) portInfo() = List::nil;
+        endinterface
+    
+        interface INSTANCE_CONTROL_OUT out;
+            method Bool full() = False;
+            method Bool balanced() = True;
+            method Bool heavy() = False;
+            method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid) = noAction; // Handled by the inctrl, above.
+
+            method List#(String) portName() = List::nil;
+        endinterface
+    endinterface
+endmodule
+
+
+module [HASIM_MODULE] mkPortStallRecv_Multiplexed_NULL
+        (PORT_STALL_RECV_MULTIPLEXED#(ni, a))
+    provisos (Bits#(a, sa));
+
+    Reg#(Bool) initialized <- mkReg(False);
+    Reg#(INSTANCE_ID#(ni)) maxInstance <- mkRegU();
+    Reg#(INSTANCE_ID#(ni)) nextInstance <- mkReg(0);
+
+    method Action doDeq(INSTANCE_ID#(ni) iid);
+        nextInstance <= (nextInstance == maxInstance) ? 0 : nextInstance + 1;
+    endmethod
+
+    method ActionValue#(Maybe#(a)) receive(INSTANCE_ID#(ni) iid);
+        return tagged Invalid;
+    endmethod
+
+    method Action noDeq(INSTANCE_ID#(ni) iid);
+        nextInstance <= (nextInstance == maxInstance) ? 0 : nextInstance + 1;
+    endmethod
+
+    interface INSTANCE_CONTROL_IN_OUT ctrl;
+        interface INSTANCE_CONTROL_IN in;
+            method Bool empty() = False;
+            method Bool balanced() = True;
+            method Bool light() = False;
+
+            method Maybe#(INSTANCE_ID#(ni)) nextReadyInstance() if (initialized);
+                return tagged Valid truncateNP(nextInstance);
+            endmethod
+            
+            method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid);
+                maxInstance <= zeroExtendNP(iid);
+                initialized <= True;
+            endmethod
+
+            method List#(PORT_INFO) portInfo() = List::nil;
+        endinterface
+    
+        interface INSTANCE_CONTROL_OUT out;
+            method Bool full() = False;
+            method Bool balanced() = True;
+            method Bool heavy() = False;
+            method Action setMaxRunningInstance(INSTANCE_ID#(ni) iid) = noAction; // Handled by the inctrl, above.
+
+            method List#(String) portName() = List::nil;
+        endinterface
+    endinterface
+endmodule

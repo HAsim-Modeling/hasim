@@ -27131,3 +27131,112 @@ Directory modules/hasim/util/modellib
  stall-ports.bsv           Locally Modified          959 
 
 Add NULL instances of multiplexed stall ports.
+
+----------
+mcadler     Date: Thu Feb 13 17:58:42 EST 2014  CSN: CSN-hasim-961
+                  Thu Feb 13 22:58:42 UTC 2014
+
+
+Directory modules/hasim/model
+ hasim-model.bsv           Locally Modified          960 
+
+Directory modules/hasim/functional-partition/interface
+ funcp-isa-datapath-types.bsv Locally Modified          960 
+ funcp-timing-interface.bsv Locally Modified          960 
+
+Directory modules/hasim/functional-partition/register-state/connections
+ regstate-connect-memory.bsv Locally Modified          960 
+ regstate-connect-tlb.bsv  Locally Modified          960 
+
+Directory modules/hasim/functional-partition/register-state/data
+ regstate-data-scoreboard.bsv Locally Modified          960 
+ regstate-data-free-physical-regs.bsv Locally Modified          960 
+ regstate-data-physical-regs.bsv Locally Modified          960 
+ regstate-data-reg-map-table.bsv Locally Modified          960 
+
+Directory modules/hasim/functional-partition/register-state/manager/macro-ops
+ regmgr-macro-global-data.bsv Locally Modified          960 
+ regmgr-macro-pipe-getInstruction.bsv Locally Modified          960 
+ regmgr-macro-pipe-doDTranslate.bsv Locally Modified          960 
+ regmgr-macro-state.bsv    Locally Modified          960 
+ regmgr-macro-pipe-doLoads.bsv Locally Modified          960 
+ regmgr-macro-pipe-getDependencies.bsv Locally Modified          960 
+ regmgr-macro-pipe-rewind.bsv Locally Modified          960 
+ regmgr-macro-pipe-commitStores.bsv Locally Modified          960 
+ regmgr-macro-pipe-doITranslate.bsv Locally Modified          960 
+ regmgr-macro-pipe-exception.bsv Locally Modified          960 
+ regmgr-macro-pipe-getResults.bsv Locally Modified          960 
+ regmgr-macro-pipe-doStores.bsv Locally Modified          960 
+ regmgr-macro-datatypes.bsv Locally Modified          960 
+ regmgr-macro.bsv          Locally Modified          960 
+ regmgr-macro-pipe-commitResults.bsv Locally Modified          960 
+
+Directory modules/hasim/functional-partition/register-state/base-types
+ regstate-base-types.bsv   Locally Modified          960 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/null
+ funcp-tlb-null.bsv        Locally Modified          960 
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.cpp         Locally Modified          960 
+ funcp-tlb-std.h           Locally Modified          960 
+ funcp-tlb-std.bsv         Locally Modified          960 
+
+Directory modules/hasim/functional-partition/memory-state/cache/set-associative
+ memstate-cache-set-assoc.bsv Locally Modified          960 
+
+Directory modules/hasim/functional-partition/memory-state/store-buffer/fast-hashed
+ memstate-hashed-store-buffer.bsv Locally Modified          960 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory-datatypes.bsv Locally Modified          960 
+ hybrid-funcp-memory.h     Locally Modified          960 
+ hybrid-funcp-memory.bsv   Locally Modified          960 
+
+Directory modules/hasim/functional-partition/memory-state/manager/macro-ops
+ memstate_manager_macro_ops.bsv Locally Modified          960 
+
+Directory modules/hasim/functional-partition/memory-state/base-types
+ memstate-base-types.bsv   Locally Modified          960 
+
+Directory modules/hasim/functional-partition/base-types
+ funcp-base-types.h        Locally Modified          960 
+ funcp-base-types.bsv      Locally Modified          960 
+
+Directory modules/hasim/functional-partition/isa/isa-emulator
+ isa-emulator-datatypes.h  Locally Modified          960 
+ isa-emulator-datatypes.bsv Locally Modified          960 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          960 
+ commands-local.bsv        Locally Modified          960 
+ commands-service.h        Locally Modified          960 
+ commands-misc-controllers.bsv Locally Modified          960 
+ commands-service.bsv      Locally Modified          960 
+ commands-service.bsh      Locally Modified          960 
+
+Directory modules/hasim/util/model-services/events-service
+ events-service.cpp        Locally Modified          960 
+ events-local.bsv          Locally Modified          960 
+ events-service.h          Locally Modified          960 
+
+Directory modules/hasim/util/model-services
+ model-services-standard.bsv Locally Modified          960 
+
+Directory modules/hasim/util/modellib
+ stats-multiplexed.bsv     Locally Modified          960 
+ multiplexed-memories.bsv  Locally Modified          960 
+ multiplexed.bsv           Locally Modified          960 
+ permutation-ports.bsv     Locally Modified          960 
+ debug-file-multiplexed.bsv Locally Modified          960 
+ sparse-delay-ports.bsv    Locally Modified          960 
+ stall-ports.bsv           Locally Modified          960 
+ a-ports.bsv               Locally Modified          960 
+
+Directory modules/hasim/util/common
+ hasim-common.bsh          Locally Modified          960 
+ token.bsv                 Locally Modified          960 
+ utils.bsv                 Locally Modified          960 
+ hasim-debug-file.bsv      Locally Modified          960 
+
+Switch to BSD license.

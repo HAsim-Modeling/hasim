@@ -27240,3 +27240,14 @@ Directory modules/hasim/util/common
  hasim-debug-file.bsv      Locally Modified          960 
 
 Switch to BSD license.
+
+----------
+keflemin    Date: Sat Feb 15 18:06:31 EST 2014  CSN: CSN-hasim-962
+                  Sat Feb 15 23:06:31 UTC 2014
+
+
+Directory tools/scripts/bmark
+ run-hasim.bmark           Locally Modified          961 
+
+
+Modified hasim's run.bmark to support platform sandboxing.

@@ -50,6 +50,18 @@ my $platforms_ref = $config{"platforms"};
 #############################################################################
 #############################################################################
 ##
+## Setup environment variables that can be used by subordinate targets
+##
+#############################################################################
+#############################################################################
+
+my $executionDirectory = `pwd`;
+chomp($executionDirectory);
+$ENV{LEAP_EXECUTION_DIRECTORY} = $executionDirectory;
+
+#############################################################################
+#############################################################################
+##
 ## Process command line arguments
 ##
 #############################################################################
@@ -286,7 +298,6 @@ for my $platform (@$platforms_ref) {
         $platformType = "NULL";
     }
 
-    `mkdir -p "$config{modelDir}/${directory}/leap_debug"`;
     if ($platformType eq "BLUESIM") {
 
         if(!$masterExists) 
@@ -302,7 +313,11 @@ for my $platform (@$platforms_ref) {
                 $bluesimCmd = "";
             }
 
-            exec("unbuffer $config{modelDir}/${directory}/${platformName}_hw.exe $bluesimCmd 2>&1 | tee ${platformName}.log");
+            # To sandbox our executables, we put them in platform-specific directories
+            `mkdir -p ${platformName}/leap_debug`;
+            $ENV{PLATFORM_DIRECTORY} = "../$config{modelDir}/${directory}/";
+            exec("cd ${platformName}; unbuffer ../$config{modelDir}/${directory}/${platformName}_hw.exe $bluesimCmd 2>&1 | tee ${platformName}.log");    
+
             exit(0); # in case we get here    
         }
         push(@pidlist, $pid);

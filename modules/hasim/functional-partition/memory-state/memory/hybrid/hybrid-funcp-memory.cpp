@@ -34,9 +34,12 @@ FUNCP_MEMORY_SERVER_CLASS FUNCP_MEMORY_SERVER_CLASS::instance;
 
 // constructor
 FUNCP_MEMORY_SERVER_CLASS::FUNCP_MEMORY_SERVER_CLASS() :
-    memory(NULL)
+    memory(NULL),
+    uninitialized()
 {
     SetTraceableName("funcp_memory");
+
+    uninitialized = 0;
 
     // instantiate stubs
     serverStub = new FUNCP_MEMORY_SERVER_STUB_CLASS(this);
@@ -54,7 +57,9 @@ FUNCP_MEMORY_SERVER_CLASS::FUNCP_MEMORY_SERVER_CLASS() :
 // destructor
 FUNCP_MEMORY_SERVER_CLASS::~FUNCP_MEMORY_SERVER_CLASS()
 {
-    Cleanup();
+    // deallocate stubs
+    delete serverStub;
+    delete clientStub;
 }
 
 // init
@@ -72,23 +77,12 @@ FUNCP_MEMORY_SERVER_CLASS::Init(
 void
 FUNCP_MEMORY_SERVER_CLASS::Uninit()
 {
-    // cleanup
-    Cleanup();
-    
-    // chain
-    PLATFORMS_MODULE_CLASS::Uninit();
+    if (!uninitialized.fetch_and_store(1))
+    {
+        delete memory;
+    }
 }
 
-// cleanup
-void
-FUNCP_MEMORY_SERVER_CLASS::Cleanup()
-{
-    delete memory;
-
-    // deallocate stubs
-    delete serverStub;
-    delete clientStub;
-}
 
 
 //

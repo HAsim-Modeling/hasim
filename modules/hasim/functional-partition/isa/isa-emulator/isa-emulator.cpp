@@ -59,7 +59,8 @@ ISA_EMULATOR_SERVER_CLASS::ISA_EMULATOR_SERVER_CLASS() :
 // destructor
 ISA_EMULATOR_SERVER_CLASS::~ISA_EMULATOR_SERVER_CLASS()
 {
-    Cleanup();
+    // deallocate stubs
+    delete serverStub;
 }
 
 // init
@@ -76,22 +77,9 @@ ISA_EMULATOR_SERVER_CLASS::Init(
 void
 ISA_EMULATOR_SERVER_CLASS::Uninit()
 {
-    // cleanup
-    Cleanup();
-    
-    // chain
-    PLATFORMS_MODULE_CLASS::Uninit();
+    delete emulator;    
 }
 
-// cleanup
-void
-ISA_EMULATOR_SERVER_CLASS::Cleanup()
-{
-    delete emulator;
-
-    // deallocate stubs
-    delete serverStub;
-}
 
 typedef UINT32 ISA_INSTRUCTION;
 
@@ -275,7 +263,8 @@ ISA_REGOP_EMULATOR_SERVER_CLASS::ISA_REGOP_EMULATOR_SERVER_CLASS() : emulator(NU
 // destructor
 ISA_REGOP_EMULATOR_SERVER_CLASS::~ISA_REGOP_EMULATOR_SERVER_CLASS()
 {
-    Cleanup();
+    // deallocate stubs
+    delete serverStub;
 }
 
 // init
@@ -292,21 +281,7 @@ ISA_REGOP_EMULATOR_SERVER_CLASS::Init(
 void
 ISA_REGOP_EMULATOR_SERVER_CLASS::Uninit()
 {
-    // cleanup
-    Cleanup();
-    
-    // chain
-    PLATFORMS_MODULE_CLASS::Uninit();
-}
-
-// cleanup
-void
-ISA_REGOP_EMULATOR_SERVER_CLASS::Cleanup()
-{
     delete emulator;
-
-    // deallocate stubs
-    delete serverStub;
 }
 
 typedef UINT32 ISA_INSTRUCTION;
@@ -389,7 +364,8 @@ ISA_DP_DEBUG_SERVER_CLASS::ISA_DP_DEBUG_SERVER_CLASS()
 // destructor
 ISA_DP_DEBUG_SERVER_CLASS::~ISA_DP_DEBUG_SERVER_CLASS()
 {
-    Cleanup();
+    // deallocate stubs
+    delete serverStub;
 }
 
 // init
@@ -407,20 +383,6 @@ void
 ISA_DP_DEBUG_SERVER_CLASS::Uninit()
 {
     logFile.close();
-
-    // cleanup
-    Cleanup();
-    
-    // chain
-    PLATFORMS_MODULE_CLASS::Uninit();
-}
-
-// cleanup
-void
-ISA_DP_DEBUG_SERVER_CLASS::Cleanup()
-{
-    // deallocate stubs
-    delete serverStub;
 }
 
 void

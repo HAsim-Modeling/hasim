@@ -38,6 +38,7 @@
 #include <iostream>
 #include <mutex>
 #include <condition_variable>
+#include "tbb/atomic.h"
 
 #include "asim/syntax.h"
 #include "asim/trace.h"
@@ -228,6 +229,12 @@ class COMMANDS_SERVER_CLASS: public RRR_SERVER_CLASS,
     static std::condition_variable scanDoneCond;
     static bool scanDoneReceived;
 
+    // We use this variable to guard against multiple calls to Uninit();
+    // It is possible that we should make this variable static, since
+    // there is only on class instance.
+
+    class tbb::atomic<bool> uninitialized;
+
 public:
     COMMANDS_SERVER_CLASS();
     ~COMMANDS_SERVER_CLASS();
@@ -248,7 +255,6 @@ public:
     // required RRR methods
     void Init(PLATFORMS_MODULE);
     void Uninit();
-    void Cleanup();
 
     // RRR service methods
     void EndSim(UINT8 success);

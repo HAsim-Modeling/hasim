@@ -106,7 +106,6 @@ class ISA_EMULATOR_SERVER_CLASS: public RRR_SERVER_CLASS,
     // required RRR methods
     void Init(PLATFORMS_MODULE);
     void Uninit();
-    void Cleanup();
 
     // server methods
     void sync(CONTEXT_ID_RRR ctxIdRaw, REG_NAME_RRR rNameRaw, ISA_VALUE rValueRaw);
@@ -163,7 +162,6 @@ class ISA_REGOP_EMULATOR_SERVER_CLASS: public RRR_SERVER_CLASS,
     // required RRR methods
     void Init(PLATFORMS_MODULE);
     void Uninit();
-    void Cleanup();
 
 };
 
@@ -197,7 +195,6 @@ class ISA_DP_DEBUG_SERVER_CLASS: public RRR_SERVER_CLASS,
     // required RRR methods
     void Init(PLATFORMS_MODULE);
     void Uninit();
-    void Cleanup();
 
     // server methods
     void noteInstr( CONTEXT_ID_RRR  ctxIdRaw,

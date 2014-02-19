@@ -37,7 +37,7 @@ FUNCP_SIMULATED_MEMORY_CLASS::FUNCP_SIMULATED_MEMORY_CLASS()
     bzero(memory, MEM_SIZE);
 
     // Load image
-    char *benchmark = "program.vmh";
+    char *benchmark = (char*) "program.vmh";
     if (globalArgs->FuncPlatformArgc() > 0)
     {
         benchmark = globalArgs->FuncPlatformArgv()[0];
@@ -50,7 +50,7 @@ FUNCP_SIMULATED_MEMORY_CLASS::FUNCP_SIMULATED_MEMORY_CLASS()
 
 FUNCP_SIMULATED_MEMORY_CLASS::~FUNCP_SIMULATED_MEMORY_CLASS()
 {
-    delete memory;
+    delete [] memory;
 }
 
 

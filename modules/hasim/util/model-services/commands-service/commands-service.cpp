@@ -86,7 +86,8 @@ COMMANDS_SERVER_CLASS::COMMANDS_SERVER_CLASS() :
     healthy(true),
     scanParser("([0-9]+),([0-9]+),([0-9]+),([0-9]+),(.*)"),
     scanRunningIdx(0),
-    scanStream(&cout)
+    scanStream(&cout), 
+    uninitialized()
 {
     SetTraceableName("commands_server");
 
@@ -95,12 +96,15 @@ COMMANDS_SERVER_CLASS::COMMANDS_SERVER_CLASS() :
     serverStub = new COMMANDS_SERVER_STUB_CLASS(this);
 
     hwThreadHeartbeat = NULL;
+    uninitialized = 0;
 }
 
 // destructor
 COMMANDS_SERVER_CLASS::~COMMANDS_SERVER_CLASS()
 {
-    Cleanup();
+    // deallocate stubs
+    delete clientStub;
+    delete serverStub;
 }
 
 // init
@@ -116,23 +120,12 @@ COMMANDS_SERVER_CLASS::Init(
 void
 COMMANDS_SERVER_CLASS::Uninit()
 {
-    // cleanup
-    Cleanup();
-    
-    // chain
-    PLATFORMS_MODULE_CLASS::Uninit();
+    if(!uninitialized.fetch_and_store(1))
+    {
+        delete [] hwThreadHeartbeat;
+    }    
 }
 
-// cleanup
-void
-COMMANDS_SERVER_CLASS::Cleanup()
-{
-    delete [] hwThreadHeartbeat;
-
-    // deallocate stubs
-    delete clientStub;
-    delete serverStub;
-}
 
 // init
 void

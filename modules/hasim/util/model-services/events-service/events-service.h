@@ -33,6 +33,8 @@
 #define _EVENTS_CONTROLLER_
 
 #include <iostream>
+#include "tbb/atomic.h"
+
 
 #include "platforms-module.h"
 #include "asim/provides/rrr.h"
@@ -58,6 +60,12 @@ class EVENTS_SERVER_CLASS: public RRR_SERVER_CLASS,
     ofstream eventFile;
     
     UINT64 **cycles;
+
+    // We use this variable to guard against multiple calls to Uninit();
+    // It is possible that we should make this variable static, since
+    // there is only on class instance.
+
+    class tbb::atomic<bool> uninitialized;
 
   public:
     EVENTS_SERVER_CLASS();
@@ -86,7 +94,6 @@ class EVENTS_SERVER_CLASS: public RRR_SERVER_CLASS,
     // required RRR methods
     void Init(PLATFORMS_MODULE);
     void Uninit();
-    void Cleanup();
 
     // RRR service methods
     void LogInit(UINT32 event_id, UINT32 max_event_iid);

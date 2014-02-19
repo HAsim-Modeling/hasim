@@ -32,6 +32,8 @@
 #ifndef __FUNCP_MEMORY__
 #define __FUNCP_MEMORY__
 
+#include "tbb/atomic.h"
+
 #include "asim/syntax.h"
 #include "asim/mesg.h"
 #include "asim/trace.h"
@@ -80,13 +82,18 @@ class FUNCP_MEMORY_SERVER_CLASS: public RRR_SERVER_CLASS,
     Format fmt_addr;
     Format fmt_data;
 
+    // We use this variable to guard against multiple calls to Uninit();
+    // It is possible that we should make this variable static, since
+    // there is only on class instance.
+
+    class tbb::atomic<bool> uninitialized;
+
   public:
     FUNCP_MEMORY_SERVER_CLASS();
     ~FUNCP_MEMORY_SERVER_CLASS();
 
     void    Init(PLATFORMS_MODULE);
     void    Uninit();
-    void    Cleanup();
 
     //
     // RRR Service Methods

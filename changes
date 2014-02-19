@@ -27240,3 +27240,32 @@ Directory modules/hasim/util/common
  hasim-debug-file.bsv      Locally Modified          960 
 
 Switch to BSD license.
+
+----------
+keflemin    Date: Wed Feb 19 12:31:42 EST 2014  CSN: CSN-hasim-964
+                  Wed Feb 19 17:31:42 UTC 2014
+
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.cpp   Locally Modified          963 
+ hybrid-funcp-memory.h     Locally Modified          963 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid/vmh
+ vmh-memory.cpp            Locally Modified          963 
+
+Directory modules/hasim/functional-partition/isa/isa-emulator
+ isa-emulator.cpp          Locally Modified          963 
+ isa-emulator.h            Locally Modified          963 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.cpp      Locally Modified          963 
+ commands-service.h        Locally Modified          963 
+
+Directory modules/hasim/util/model-services/events-service
+ events-service.cpp        Locally Modified          963 
+ events-service.h          Locally Modified          963 
+
+
+Repaired teardown errors in all hasim services.  Services had bug in
+which RRR server and client stubs were likely to be deallocated
+multiple times.

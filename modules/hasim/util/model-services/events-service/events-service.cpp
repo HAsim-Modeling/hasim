@@ -54,14 +54,18 @@ EVENTS_SERVER_CLASS EVENTS_SERVER_CLASS::instance;
 // ===== methods =====
 
 // constructor
-EVENTS_SERVER_CLASS::EVENTS_SERVER_CLASS()
+EVENTS_SERVER_CLASS::EVENTS_SERVER_CLASS():
+    uninitialized()
 #ifdef HASIM_EVENTS_ENABLED
-    : eventFile("hasim_events.out")
+    ,
+    eventFile("hasim_events.out")
 #endif
 {
+
     // instantiate stubs
     serverStub = new EVENTS_SERVER_STUB_CLASS(this);
     clientStub = new EVENTS_CLIENT_STUB_CLASS(this);
+    uninitialized = 0;
 
 #ifdef HASIM_EVENTS_ENABLED
     eventFile.fill('0');
@@ -71,7 +75,8 @@ EVENTS_SERVER_CLASS::EVENTS_SERVER_CLASS()
 // destructor
 EVENTS_SERVER_CLASS::~EVENTS_SERVER_CLASS()
 {
-    Cleanup();
+    delete serverStub;
+    delete clientStub;
 }
 
 // init
@@ -125,27 +130,21 @@ EVENTS_SERVER_CLASS::Init(
 void
 EVENTS_SERVER_CLASS::Uninit()
 {
-    Cleanup();
-
-    for (int i = 0; i < EVENTS_DICT_ENTRIES; i++)
+    if(!uninitialized.fetch_and_store(1))
     {
-        if (cycles[i] != NULL)
+
+        for (int i = 0; i < EVENTS_DICT_ENTRIES; i++)
         {
-            delete[] cycles[i];
+            if (cycles[i] != NULL)
+            {
+                delete[] cycles[i];
+            }
         }
+        delete[] cycles;
+
+        // chain
+        PLATFORMS_MODULE_CLASS::Uninit();
     }
-    delete[] cycles;
-
-    // chain
-    PLATFORMS_MODULE_CLASS::Uninit();
-}
-
-// cleanup
-void
-EVENTS_SERVER_CLASS::Cleanup()
-{
-    // kill stubs
-    delete serverStub;
 }
 
 // EnableEvents

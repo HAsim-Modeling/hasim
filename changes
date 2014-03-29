@@ -27269,21 +27269,3 @@ Directory modules/hasim/util/model-services/events-service
 Repaired teardown errors in all hasim services.  Services had bug in
 which RRR server and client stubs were likely to be deallocated
 multiple times.
-
-----------
-keflemin    Date: Sat Mar 29 16:30:39 EDT 2014  CSN: CSN-hasim-965
-                  Sat Mar 29 20:30:39 UTC 2014
-
-
-Directory modules/hasim/util/model-services/commands-service
- commands-local.bsv        Locally Modified          964 
- commands-service.bsv      Locally Modified          964 
-
-Directory modules/hasim/util/model-services/events-service
- events-local.bsv          Locally Modified          964 
- events-service.bsv        Locally Modified          964 
-
-
-Updated hasim services to use string-based chains.  They were still
-using the old integer-based chains, and this made debugging the new
-LIM compiler organization more opaque than it needed to be.

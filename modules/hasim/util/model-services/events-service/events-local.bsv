@@ -119,7 +119,7 @@ module [CONNECTED_MODULE] mkEventRecorder_Enabled#(EVENTS_DICT_TYPE eventID)
     //interface:
     (EVENT_RECORDER);
 
-    Connection_Chain#(EVENT_DATA) chain <- mkConnection_Chain(`RINGID_EVENTS);
+    CONNECTION_CHAIN#(EVENT_DATA) chain <- mkConnectionChain("EVENTS");
   
     Reg#(EVENT_CYCLE_COUNTER) cycles <- mkReg(0);
     Reg#(Bool) enabled <- mkReg(False);

@@ -335,7 +335,7 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
     
     COUNTER#(INSTANCE_ID_BITS#(t_NUM_INSTANCES)) nextInstance <- mkLCounter(0);
     
-    Connection_Chain#(CONTROLLER_MSG) link_controllers <- mkConnection_Chain(`RINGID_CONTROLLER_MESSAGES);
+    CONNECTION_CHAIN#(CONTROLLER_MSG) link_controllers <- mkConnectionChain("CONTROLLER_MESSAGES");
 
     // Can this module read from this Port?
     function Bool canReadFrom(INSTANCE_CONTROL_IN#(t_NUM_INSTANCES) ctrl_in);

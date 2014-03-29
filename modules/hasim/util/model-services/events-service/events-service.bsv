@@ -30,7 +30,7 @@ module [CONNECTED_MODULE] mkEventsService
     // ***** State Elements *****  
     
     // Communication link to the rest of the Events
-    Connection_Chain#(EVENT_DATA) chain <- mkConnection_Chain(`RINGID_EVENTS);
+    CONNECTION_CHAIN#(EVENT_DATA) chain <- mkConnectionChain("EVENTS");
     
     // instantiate stubs
     ClientStub_EVENTS clientStub <- mkClientStub_EVENTS();

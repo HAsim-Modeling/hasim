@@ -98,7 +98,7 @@ module [HASIM_MODULE] mkCommandsService
     let serverStub <- mkServerStub_COMMANDS();
   
     // Our way of communicating with the local controllers
-    Connection_Chain#(CONTROLLER_MSG) link_controllers <- mkConnection_Chain(`RINGID_CONTROLLER_MESSAGES);
+    CONNECTION_CHAIN#(CONTROLLER_MSG) link_controllers <- mkConnectionChain("CONTROLLER_MESSAGES");
 
     // The timing model must tell us the current model cycle.  By convention,
     // it is the token request stage at the head of the pipeline.

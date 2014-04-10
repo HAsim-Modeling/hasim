@@ -29,7 +29,8 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //
 
-`include "asim/provides/hasim_common.bsh"
+`include "awb/provides/hasim_common.bsh"
+`include "awb/provides/librl_bsv_base.bsh"
 
 // ========================================================================
 //
@@ -135,7 +136,7 @@ module mkTIMEPDebugFile_Multiplexed#(String fname)
     // interface:
     (TIMEP_DEBUG_FILE_MULTIPLEXED#(ni));
 
-`ifndef SYNTH
+`ifdef SYNTH_Z
 
     COUNTER#(32) fpgaCycle  <- mkLCounter(0);
 
@@ -263,7 +264,7 @@ module mkTIMEPDebugFile_SharedCycle_Multiplexed#(String fname)
     // interface:
     (TIMEP_DEBUG_FILE_SHARED_CYCLE_MULTIPLEXED#(ni));
 
-`ifndef SYNTH
+`ifdef SYNTH_Z
 
     COUNTER#(32) fpgaCycle  <- mkLCounter(0);
     COUNTER#(32) modelCycle <- mkLCounter(~0);

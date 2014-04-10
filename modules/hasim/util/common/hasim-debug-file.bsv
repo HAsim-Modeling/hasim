@@ -34,6 +34,7 @@
 import Vector::*;
 
 `include "awb/provides/model_params.bsh"
+`include "awb/provides/librl_bsv_base.bsh"
 
 
 //
@@ -103,7 +104,7 @@ module mkTIMEPDebugFile#(String fname)
     // interface:
     (TIMEP_DEBUG_FILE);
 
-`ifndef SYNTH
+`ifdef SYNTH_Z
 
     COUNTER#(32) fpgaCycle  <- mkLCounter(0);
     COUNTER#(32) modelCycle <- mkLCounter(~0);

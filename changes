@@ -27271,14 +27271,16 @@ which RRR server and client stubs were likely to be deallocated
 multiple times.
 
 ----------
-mcadler     Date: Wed Apr  9 22:59:03 EDT 2014  CSN: CSN-hasim-967
-                  Thu Apr 10 02:59:03 UTC 2014
+mcadler     Date: Thu Apr 10 09:03:36 EDT 2014  CSN: CSN-hasim-968
+                  Thu Apr 10 13:03:36 UTC 2014
 
 
-Directory modules/hasim/util/modellib
- debug-file-multiplexed.bsv Locally Modified          966 
+Directory admin
+ mytags                    Locally Modified          967 
 
-Directory modules/hasim/util/common
- hasim-debug-file.bsv      Locally Modified          966 
+Directory admin/packages
+ hasim                     Locally Modified          967 
 
-Fix debug log file generation.  It was always off following the change to SYNTH.
+Directory .
+ changes                   Locally Modified          967 
+

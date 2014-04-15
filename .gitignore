@@ -1,0 +1,35 @@
+
+# /
+/Makefile
+/autom4te.cache
+/config.log
+/config.status
+
+# /docs/docbook/build/
+/docs/docbook/build/html
+/docs/docbook/build/pdf
+
+# /include/
+/include/config.h
+/include/stamp-h1
+
+# /libperl/
+/libperl/Makefile
+
+# /libperl/HAsim/
+/libperl/HAsim/Makefile
+/libperl/HAsim/blib
+/libperl/HAsim/pm_to_blib
+
+# /scripts/
+/scripts/IGNORES
+
+# /tools/
+/tools/Makefile
+
+# /tools/hasim/
+/tools/hasim/Makefile
+
+# /tools/scripts/
+/tools/scripts/Makefile.in
+/tools/scripts/Makefile

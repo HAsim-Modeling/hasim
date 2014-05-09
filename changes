@@ -27284,3 +27284,13 @@ Directory admin/packages
 Directory .
  changes                   Locally Modified          967 
 
+
+----------
+mcadler     Date: Thu May  8 22:34:02 EDT 2014  CSN: CSN-hasim-969
+                  Fri May  9 02:34:02 UTC 2014
+
+
+Directory modules/hasim/util/common
+ hasim-debug-file.bsv      Locally Modified          968 
+
+Read the SYNTH_Z parameter correctly.

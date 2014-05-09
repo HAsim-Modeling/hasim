@@ -35,6 +35,7 @@ import Vector::*;
 
 `include "awb/provides/model_params.bsh"
 `include "awb/provides/librl_bsv_base.bsh"
+`include "awb/provides/fpga_components_params.bsh"
 
 
 //

@@ -27294,3 +27294,28 @@ Directory modules/hasim/util/common
  hasim-debug-file.bsv      Locally Modified          968 
 
 Read the SYNTH_Z parameter correctly.
+
+----------
+keflemin    Date: Thu May 22 17:02:35 EDT 2014  CSN: CSN-hasim-970
+                  Thu May 22 21:02:35 UTC 2014
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.log         Locally Modified          969 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.log   Locally Modified          969 
+
+Directory modules/hasim/functional-partition/isa/isa-emulator
+ isa-emulator.log          Locally Modified          969 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.log      Locally Modified          969 
+ commands-service.cpp      Locally Modified          969 
+
+Directory modules/hasim/util/model-services/events-service
+ events-service.log        Locally Modified          969 
+
+
+1) Adjusted cpp log files to reflect new LI channel metadata format.
+2) Starter device is now starter service. 

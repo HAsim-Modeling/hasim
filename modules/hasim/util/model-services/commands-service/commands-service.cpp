@@ -46,7 +46,7 @@
 #include "awb/provides/command_switches.h"
 #include "awb/provides/stats_service.h"
 #include "awb/provides/commands_service.h"
-#include "awb/provides/starter_device.h"
+#include "awb/provides/starter_service.h"
 #include "awb/provides/clocks_device.h"
 
 using namespace std;
@@ -890,7 +890,7 @@ static void *EndSimulationThread(void *arg)
     STATS_SERVER_CLASS::GetInstance()->EmitFile();
     cout << "done." << endl;
 
-    STARTER_DEVICE_SERVER_CLASS::GetInstance()->End(state->exitValue);
+    STARTER_SERVICE_SERVER_CLASS::GetInstance()->End(state->exitValue);
 }
 
 
@@ -901,7 +901,7 @@ static void *DebugScanExitThread(void *arg)
     cerr << "commands relay: scanning due to model deadlock..." << endl;
 
     DEBUG_SCAN_SERVER_CLASS::GetInstance()->Scan(cerr);
-    STARTER_DEVICE_SERVER_CLASS::GetInstance()->End(state->exitValue);
+    STARTER_SERVICE_SERVER_CLASS::GetInstance()->End(state->exitValue);
 }
 
 

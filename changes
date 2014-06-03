@@ -27319,3 +27319,13 @@ Directory modules/hasim/util/model-services/events-service
 
 1) Adjusted cpp log files to reflect new LI channel metadata format.
 2) Starter device is now starter service. 
+
+----------
+mcadler     Date: Tue Jun  3 16:15:15 EDT 2014  CSN: CSN-hasim-971
+                  Tue Jun  3 20:15:15 UTC 2014
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.bsv      Locally Modified          970 
+
+Remove PrimArray import.  Fails with latest compiler.

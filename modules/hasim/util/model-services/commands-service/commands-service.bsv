@@ -30,7 +30,6 @@
 //
 
 //BSV library imports
-import PrimArray::*;
 import Connectable::*;
 import FIFO::*;
 

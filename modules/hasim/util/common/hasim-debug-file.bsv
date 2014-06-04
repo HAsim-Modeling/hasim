@@ -68,15 +68,6 @@ interface TIMEP_DEBUG_FILE;
     // Normal message
     method Action record(Fmt fmt);
 
-    // Use record() instead!
-    //
-    // This method used to add 1 to the model cycle before printing and was
-    // used in the same cycle that nextModelCycle() was called.  The
-    // implementations are now more clever and this method is no longer
-    // necessary.  The rule remains for compatibility, but is identical
-    // to record().
-    method Action record_next_cycle(Fmt fmt);
-
     method Action nextModelCycle();
 
 endinterface
@@ -91,7 +82,6 @@ module mkTIMEPDebugFileNull#(String fname)
     (TIMEP_DEBUG_FILE);
 
     method record = ?;
-    method record_next_cycle = ?;
     method nextModelCycle = ?;
 endmodule
 
@@ -108,12 +98,12 @@ module mkTIMEPDebugFile#(String fname)
 `ifdef SYNTH_Z
 
     COUNTER#(32) fpgaCycle  <- mkLCounter(0);
-    COUNTER#(32) modelCycle <- mkLCounter(~0);
+    COUNTER#(32) modelCycle <- mkLCounter(0);
 
     Reg#(File) debugLog <- mkReg(InvalidFile);
     Reg#(Bool) initialized <- mkReg(False);
 
-    function getModelCycle() = modelCycle.updatedValue();
+    function getModelCycle() = modelCycle.value();
 
     rule open (initialized == False);
         let fd <- $fopen(debugPath(fname), "w");
@@ -132,11 +122,6 @@ module mkTIMEPDebugFile#(String fname)
     endrule
 
     method Action record(Fmt fmt) if (initialized);
-        $fdisplay(debugLog, $format("[%d]: <%d>: ", fpgaCycle.value(), getModelCycle()) + fmt);
-    endmethod
-
-    // Now equivalent to record().  See interface for details.
-    method Action record_next_cycle(Fmt fmt) if (initialized);
         $fdisplay(debugLog, $format("[%d]: <%d>: ", fpgaCycle.value(), getModelCycle()) + fmt);
     endmethod
 

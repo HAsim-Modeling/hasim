@@ -11,7 +11,6 @@ import Vector::*;
 `include "asim/rrr/remote_client_stub_EVENTS.bsh"
 `include "asim/rrr/remote_server_stub_EVENTS.bsh"
 
-`include "asim/dict/RINGID.bsh"
 `include "asim/dict/EVENTS.bsh"
 
 // EVENTS_SERVICE

@@ -11,7 +11,6 @@
 %sources -t CPP -v PRIVATE commands-service.cpp
 %sources -t RRR -v PUBLIC  commands-service.rrr
 %sources -t LOG -v PUBLIC  commands-service.log
-%sources -t DICT -v PUBLIC commands-service.dic
 
 %param SYNTH_BOUNDARY mkCommandsService  "Name of synthesis boundary"
 

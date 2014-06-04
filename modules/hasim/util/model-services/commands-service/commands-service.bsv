@@ -47,8 +47,6 @@ import FIFO::*;
 `include "asim/rrr/remote_client_stub_COMMANDS.bsh"
 `include "asim/rrr/remote_server_stub_COMMANDS.bsh"
 
-`include "asim/dict/RINGID.bsh"
-
 
 typedef Bit#(TAdd#(`HEARTBEAT_TRIGGER_BIT, 1)) HEARTBEAT_MODEL_CYCLES;
 

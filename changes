@@ -27284,3 +27284,79 @@ Directory admin/packages
 Directory .
  changes                   Locally Modified          967 
 
+
+----------
+mcadler     Date: Thu May  8 22:34:02 EDT 2014  CSN: CSN-hasim-969
+                  Fri May  9 02:34:02 UTC 2014
+
+
+Directory modules/hasim/util/common
+ hasim-debug-file.bsv      Locally Modified          968 
+
+Read the SYNTH_Z parameter correctly.
+
+----------
+keflemin    Date: Thu May 22 17:02:35 EDT 2014  CSN: CSN-hasim-970
+                  Thu May 22 21:02:35 UTC 2014
+
+
+Directory modules/hasim/functional-partition/memory-state/tlb/hybrid/std
+ funcp-tlb-std.log         Locally Modified          969 
+
+Directory modules/hasim/functional-partition/memory-state/memory/hybrid
+ hybrid-funcp-memory.log   Locally Modified          969 
+
+Directory modules/hasim/functional-partition/isa/isa-emulator
+ isa-emulator.log          Locally Modified          969 
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.log      Locally Modified          969 
+ commands-service.cpp      Locally Modified          969 
+
+Directory modules/hasim/util/model-services/events-service
+ events-service.log        Locally Modified          969 
+
+
+1) Adjusted cpp log files to reflect new LI channel metadata format.
+2) Starter device is now starter service. 
+
+----------
+mcadler     Date: Tue Jun  3 16:15:15 EDT 2014  CSN: CSN-hasim-971
+                  Tue Jun  3 20:15:15 UTC 2014
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-service.bsv      Locally Modified          970 
+
+Remove PrimArray import.  Fails with latest compiler.
+
+----------
+mcadler     Date: Tue Jun  3 23:37:22 EDT 2014  CSN: CSN-hasim-972
+                  Wed Jun  4 03:37:22 UTC 2014
+
+
+Directory modules/hasim/util/modellib
+ multiplexed-memories.bsv  Locally Modified          971 
+ multiplexed.bsv           Locally Modified          971 
+
+Switch to a new method of ordering reads and writes because of new semantics
+and scheduling rules for notFull/notEmpty on BypassFIFOF.
+
+----------
+mcadler     Date: Wed Jun  4 09:06:18 EDT 2014  CSN: CSN-hasim-973
+                  Wed Jun  4 13:06:18 UTC 2014
+
+
+Directory admin/packages
+ hasim                     Locally Modified          972 
+
+Directory modules/hasim/util/modellib
+ debug-file-multiplexed.bsv Locally Modified          972 
+
+Directory modules/hasim/util/common
+ hasim-debug-file.bsv      Locally Modified          972 
+
+
+Clients now update the debug log model cycle in the last pipeline stage instead of the
+first.  This eliminates the need for complex inter-rule scheduling of the cycle counter
+that was needed to use the updated counter in the same rule as the update.

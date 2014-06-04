@@ -521,8 +521,7 @@ module [m] mkMultiplexedLUTRAMPseudoMultiWrite#(t_DATA initval)
     // Block reads because writes are incomplete?  A BypassFIFO introduces a
     // conbinatorial path on the notEmpty() line, so we must be clever and
     // record whether any reads may potentially fire before the queued stores.
-    Reg#(Bool) blockReads <- mkReg(False);
-    PulseWire didWrite <- mkPulseWire();
+    Reg#(Bool) blockReads[2] <- mkCReg(2, False);
 
     //
     // updateRAMs --
@@ -536,27 +535,26 @@ module [m] mkMultiplexedLUTRAMPseudoMultiWrite#(t_DATA initval)
 
         // Any more writes in this group?  A bypass FIFO only has one storage
         // slot, so this is equivalent to testing notEmpty.
-        blockReads <= ! writeQ.lastInGroup();
-        didWrite.send();
+        blockReads[1] <= ! writeQ.lastInGroup();
     endrule
 
     //
     // noWrite --
-    //     Update the blockReads state when no write is serviced.  This should
-    //     not fire for typical LUTRAM implementations, since nothing should
-    //     block a write.
+    //     Update the blockReads state when no write is serviced.  This test
+    //     has lower priority than updateRAMs since the CReg will takes its
+    //     value from updateRAMs if it fires.
     //
     (* fire_when_enabled *)
     (* no_implicit_conditions *)
-    rule noWrite (! didWrite);
-        blockReads <= writeQ.notEmpty();
+    rule noWrite (True);
+        blockReads[0] <= writeQ.notEmpty();
     endrule
 
 
     method LUTRAM#(t_ADDR, t_DATA) getRAMWithWritePort(INSTANCE_ID#(t_NUM_INSTANCES) iid, Integer portnum);
 
         return interface LUTRAM#(t_ADDR, t_DATA);
-                   method t_DATA sub(t_ADDR a) if (! blockReads);
+                   method t_DATA sub(t_ADDR a) if (! blockReads[0]);
                        return ram.getRAM(iid).sub(a);
                    endmethod
 

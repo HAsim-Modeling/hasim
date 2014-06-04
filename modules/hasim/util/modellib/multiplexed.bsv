@@ -269,9 +269,7 @@ module [m] mkMultiplexedRegPseudoMultiWrite#(t_DATA initval)
     // Block reads because writes are incomplete?  A BypassFIFO introduces a
     // conbinatorial path on the notEmpty() line, so we must be clever and
     // record whether any reads may potentially fire before the queued stores.
-    Reg#(Bool) blockReads <- mkReg(False);
-    PulseWire didWrite <- mkPulseWire();
-
+    Reg#(Bool) blockReads[2] <- mkCReg(2, False);
 
     //
     // updateRegs --
@@ -286,21 +284,19 @@ module [m] mkMultiplexedRegPseudoMultiWrite#(t_DATA initval)
 
         // Any more writes in this group?  A bypass FIFO only has one storage
         // slot, so this is equivalent to testing notEmpty.
-        blockReads <= ! writeQ.lastInGroup();
-        didWrite.send();
+        blockReads[1] <= ! writeQ.lastInGroup();
     endrule
-
 
     //
     // noWrite --
-    //     Update the blockReads state when no write is serviced.  This should
-    //     not fire for typical implementations, since nothing should
-    //     block a write.
+    //     Update the blockReads state when no write is serviced.  This test
+    //     has lower priority than updateRAMs since the CReg will takes its
+    //     value from updateRegs if it fires.
     //
     (* fire_when_enabled *)
     (* no_implicit_conditions *)
-    rule noWrite (! didWrite);
-        blockReads <= writeQ.notEmpty();
+    rule noWrite (True);
+        blockReads[0] <= writeQ.notEmpty();
     endrule
 
 
@@ -311,7 +307,7 @@ module [m] mkMultiplexedRegPseudoMultiWrite#(t_DATA initval)
         // indices, then the scheduler will not make them conflict.
         
         return interface Reg#(t_DATA);
-                   method t_DATA _read() if (! blockReads);
+                   method t_DATA _read() if (! blockReads[0]);
                        Reg#(t_DATA) r = regvec.getReg(iid);
                        return r;
                    endmethod

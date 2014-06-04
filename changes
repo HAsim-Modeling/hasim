@@ -27329,3 +27329,15 @@ Directory modules/hasim/util/model-services/commands-service
  commands-service.bsv      Locally Modified          970 
 
 Remove PrimArray import.  Fails with latest compiler.
+
+----------
+mcadler     Date: Tue Jun  3 23:37:22 EDT 2014  CSN: CSN-hasim-972
+                  Wed Jun  4 03:37:22 UTC 2014
+
+
+Directory modules/hasim/util/modellib
+ multiplexed-memories.bsv  Locally Modified          971 
+ multiplexed.bsv           Locally Modified          971 
+
+Switch to a new method of ordering reads and writes because of new semantics
+and scheduling rules for notFull/notEmpty on BypassFIFOF.

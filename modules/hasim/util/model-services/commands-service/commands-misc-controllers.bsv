@@ -213,7 +213,8 @@ module [HASIM_MODULE] mkNamedMultiplexController
     emitPortGraphFile(name, inctrls, uncontrolled_ctrls, outctrls);
 
     // Local-controller-like communication.
-    Connection_Chain#(CONTROLLER_MSG) link_controllers <- mkConnection_Chain(`RINGID_CONTROLLER_MESSAGES);
+    CONNECTION_CHAIN#(CONTROLLER_MSG) link_controllers <-
+        mkConnectionChain("CONTROLLER_MESSAGES");
 
     Reg#(MC_STATE) state <- mkReg(MC_idle);
 

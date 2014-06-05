@@ -27360,3 +27360,23 @@ Directory modules/hasim/util/common
 Clients now update the debug log model cycle in the last pipeline stage instead of the
 first.  This eliminates the need for complex inter-rule scheduling of the cycle counter
 that was needed to use the updated counter in the same rule as the update.
+
+----------
+mcadler     Date: Wed Jun  4 18:17:46 EDT 2014  CSN: CSN-hasim-974
+                  Wed Jun  4 22:17:46 UTC 2014
+
+
+Directory modules/hasim/util/model-services/commands-service
+ commands-local.bsv        Locally Modified          973 
+ commands-misc-controllers.bsv Locally Modified          973 
+ commands-service.awb      Locally Modified          973 
+ commands-service.bsv      Locally Modified          973 
+ commands-service.dic      Locally Removed           973 
+
+Directory modules/hasim/util/model-services/events-service
+ events-service.dic        Locally Modified          973 
+ events-local.bsv          Locally Modified          973 
+ events-service.bsv        Locally Modified          973 
+
+Replace old style (deprecated) rings using dictionary IDs with the new string ID
+version.

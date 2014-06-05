@@ -42,7 +42,6 @@ import SpecialFIFOs::*;
 `include "asim/provides/soft_connections.bsh"
 `include "asim/provides/hasim_common.bsh"
 `include "asim/provides/hasim_modellib.bsh"
-`include "asim/dict/RINGID.bsh"
 `include "asim/dict/EVENTS.bsh"
 
 
@@ -238,7 +237,7 @@ module [CONNECTED_MODULE] mkEventRecorder_Multiplexed_Enabled#(EVENTS_DICT_TYPE 
         error("EVENT_INSTANCE_ID too small for " + integerToString(valueOf(ni)) + " instances");
     end
 
-    Connection_Chain#(EVENT_DATA) chain <- mkConnection_Chain(`RINGID_EVENTS);
+    CONNECTION_CHAIN#(EVENT_DATA) chain <- mkConnectionChain("EVENTS");
   
     MULTIPLEXED_REG#(ni, EVENT_CYCLE_COUNTER) cyclesPool <- mkMultiplexedReg(0);
     Reg#(Bool) enabled <- mkReg(False);

@@ -51,8 +51,6 @@ import SpecialFIFOs::*;
 `include "asim/provides/soft_services_deps.bsh"
 `include "asim/provides/fpga_components.bsh"
 
-`include "asim/dict/RINGID.bsh"
-
 
 //
 // Global types, passed to global controller.

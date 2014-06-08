@@ -1,3 +1,11 @@
+# Editor and OS temporary files
+*~
+!\#*#
+*.DS_Store
+
+# Generated files
+*.pyc
+
 
 # /
 /Makefile
@@ -17,6 +25,7 @@
 /libperl/Makefile
 
 # /libperl/HAsim/
+/libperl/HAsim/MYMETA.yml
 /libperl/HAsim/Makefile
 /libperl/HAsim/blib
 /libperl/HAsim/pm_to_blib

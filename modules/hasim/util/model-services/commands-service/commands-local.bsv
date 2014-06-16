@@ -345,7 +345,7 @@ module [HASIM_MODULE] mkNamedLocalControllerWithActive
                endcase;
     endfunction
 
-    function canWriteTo(INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES) ctrl_out);
+    function Bool canWriteTo(INSTANCE_CONTROL_OUT#(t_NUM_INSTANCES) ctrl_out);
         return case (state)
                    LC_Running:        return !ctrl_out.full();
                    LC_Stepping:       return !ctrl_out.full();

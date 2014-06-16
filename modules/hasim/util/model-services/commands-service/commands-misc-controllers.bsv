@@ -43,6 +43,7 @@ interface STAGE_CONTROLLER#(numeric type t_NUM_INSTANCES, type t_PIPE_STATE);
     method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid, t_PIPE_STATE st);
     
     method ActionValue#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE)) nextReadyInstance();
+    method Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE) peekReadyInstance();
 
 endinterface
 
@@ -51,6 +52,7 @@ interface STAGE_CONTROLLER_VOID#(numeric type t_NUM_INSTANCES);
     method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid);
     
     method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
+    method INSTANCE_ID#(t_NUM_INSTANCES) peekReadyInstance();
 
 endinterface
 
@@ -116,6 +118,10 @@ module mkSizedStageController#(Integer size)
         q.deq();
         return q.first();
     endmethod
+    
+    method Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), t_PIPE_STATE) peekReadyInstance();
+        return q.first();
+    endmethod
 endmodule
 
 
@@ -123,17 +129,21 @@ module mkStageControllerVoid
     // interface:
         (STAGE_CONTROLLER_VOID#(t_NUM_INSTANCES));
 
-    STAGE_CONTROLLER#(t_NUM_INSTANCES, Bit#(0)) m <- mkStageController();
+    STAGE_CONTROLLER#(t_NUM_INSTANCES, Bit#(0)) _m <- mkStageController();
 
     method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid);
-        m.ready(iid, (?));
+        _m.ready(iid, (?));
     endmethod
     
     method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
-        match {.iid, .*} <- m.nextReadyInstance();
+        match {.iid, .*} <- _m.nextReadyInstance();
         return iid;
     endmethod
-
+    
+    method INSTANCE_ID#(t_NUM_INSTANCES) peekReadyInstance();
+        match {.iid, .*} = _m.peekReadyInstance();
+        return iid;
+    endmethod
 endmodule
 
 
@@ -141,17 +151,21 @@ module mkBufferedStageControllerVoid
     // interface:
         (STAGE_CONTROLLER_VOID#(t_NUM_INSTANCES));
 
-    STAGE_CONTROLLER#(t_NUM_INSTANCES, Bit#(0)) m <- mkBufferedStageController();
+    STAGE_CONTROLLER#(t_NUM_INSTANCES, Bit#(0)) _m <- mkBufferedStageController();
 
     method Action ready(INSTANCE_ID#(t_NUM_INSTANCES) iid);
-        m.ready(iid, (?));
+        _m.ready(iid, (?));
     endmethod
     
     method ActionValue#(INSTANCE_ID#(t_NUM_INSTANCES)) nextReadyInstance();
-        match {.iid, .*} <- m.nextReadyInstance();
+        match {.iid, .*} <- _m.nextReadyInstance();
         return iid;
     endmethod
 
+    method INSTANCE_ID#(t_NUM_INSTANCES) peekReadyInstance();
+        match {.iid, .*} = _m.peekReadyInstance();
+        return iid;
+    endmethod
 endmodule
 
 
@@ -176,11 +190,11 @@ MC_STATE deriving (Eq, Bits);
 interface MULTIPLEX_CONTROLLER#(numeric type t_NUM_INSTANCES);
     
     method ActionValue#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Bool)) nextReadyInstance();
+    method Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Bool) peekReadyInstance();
     
     method INSTANCE_ID#(t_NUM_INSTANCES) getActiveInstances();
     
     method Bool running();
-
 endinterface
 
 module [HASIM_MODULE] mkMultiplexController 
@@ -314,24 +328,22 @@ module [HASIM_MODULE] mkNamedMultiplexController
     
     // Return the next instance in a round-robin fashion.
     // Boolean indicates if we have simulated every possible context.
-    
     method ActionValue#(Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Bool)) nextReadyInstance() if (state != MC_idle);
-
         let done = curInstance == activeInstances;
-        
         curInstance <= (done) ? 0 : curInstance + 1;
-        
+
         if (state == MC_stepping && done)
         begin
-
             state <= MC_idle;
-
         end
         
         return tuple2(curInstance, done);
-
     endmethod
 
+    method Tuple2#(INSTANCE_ID#(t_NUM_INSTANCES), Bool) peekReadyInstance() if (state != MC_idle);
+        let done = curInstance == activeInstances;
+        return tuple2(curInstance, done);
+    endmethod
 endmodule
 
 

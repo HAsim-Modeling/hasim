@@ -275,7 +275,8 @@ my @FPGAs = ();
 my @pidlist = ();
 
 my $cpuPlatform = undef;
-my $fpgaDev = undef;
+my $fpgaDevLegacy = undef; # keep this around as a legacy support 
+my %fpgaDevs = ();
 
 # Need to check for existance of master for handling legacy builds.
 # If we have a master, we should not pass in platform arguments for 
@@ -302,7 +303,7 @@ for my $platform (@$platforms_ref) {
 
         if(!$masterExists) 
         {
-            $fpgaDev .= " --$platformLogicalName=\"$platformLogicalName\"";
+            $fpgaDevs{$platformLogicalName} = $platformLogicalName;
 	}
 
         my $pid = fork();
@@ -344,12 +345,12 @@ for my $platform (@$platforms_ref) {
         # Figure out the path of the assigned FPGA.
         if ($master) {
             $fpga_dev = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getconfig=dev", "Failed to query FPGA device configuration");
-            $fpgaDev .= " --param FPGA_DEV_PATH=\"${fpga_dev}\"";
+            $fpgaDevLegacy .= " --param FPGA_DEV_PATH=\"${fpga_dev}\"";
         }
         elsif(!$masterExists) 
         {
             $fpga_dev = ExecRead("leap-fpga-ctrl --device-id=${fpga_dev_id} --getconfig=dev", "Failed to query FPGA device configuration");
-            $fpgaDev .= " --$platformLogicalName \"${fpga_dev}\"";
+            $fpgaDevs{$platformLogicalName} = $fpga_dev;
 	}
         else
         {
@@ -443,8 +444,19 @@ if (defined($cpuPlatform)) {
         $noProgram = 1;
     }
 
-    if (defined($fpgaDev)) {
-	$cmd .= $fpgaDev;
+    if (defined($fpgaDevLegacy)) {
+	$cmd .= $fpgaDevLegacy;
+    }
+
+    # add in FPGA dev manifest
+    if(keys(%fpgaDevs)) {
+        my $deviceDictionary = "";
+
+        for my $device ( keys(%fpgaDevs)) {
+            $deviceDictionary .= "$device:\\\"$fpgaDevs{$device}\\\",";
+        }
+
+        $cmd .= " --DEVICE_DICTIONARY=$deviceDictionary ";
     }
 
     # Define the global string database. These are collected with each build.

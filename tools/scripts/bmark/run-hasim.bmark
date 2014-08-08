@@ -76,10 +76,9 @@ my $noProgram = 0;
 my $noReserve = 0;
 my $funcpPrefix = "";
 my $funcpSuffix = "";
-my $noshowfp = 0;
 my $printCycle = undef;
-my $showfp = undef;
 my $bluesimCmd = undef;
+my $timeout = undef;
 my $vcdStart = undef;
 my $vcdCycles = 20000;
 my $m5run = 0;
@@ -91,11 +90,10 @@ my $status = GetOptions("help!" => \$help,
                         "force-load!" => \$forceLoad,
                         "funcp-prefix=s" => \$funcpPrefix,
                         "funcp-suffix=s" => \$funcpSuffix,
-                        "noshowfp!" => \$noshowfp,
+                        "timeout=i" => \$timeout,
                         "onlycompare!" => \$onlyCompare,
                         "nocompare!" => \$noCompare,
                         "pc=s" => \$printCycle,
-                        "showfp:s" => \$showfp,
                         "bluesim=s" => \$bluesimCmd,
                         "vcdstart=i" => \$vcdStart,
                         "vcdcycles=i" => \$vcdCycles,
@@ -112,6 +110,36 @@ foreach my $i ( 0 .. $#ARGV ) {
 
 if ($onlyCompare != 0) {
     exit(CompareOutput());
+}
+
+# Examine subordinte builds.
+# really we should do this for all builds.  
+my @pidlist = ();
+
+# Handle timeout (useful in detecting deadlocked code)
+# Fork a timer process, which will send a signal to the main 
+# program process on timeout. The signal handler will then 
+# teardown the program as needed.
+if(defined($timeout)) {
+    my $timeoutPID = fork();
+
+    if ($timeoutPID != 0) { 
+        sleep($timeout);
+        kill(10,$timeoutPID);
+        # Wait for child to die.
+        waitpid($timeoutPID, 0);
+        sleep(1);
+        exit(0);
+    }
+
+    $SIG{'USR1'} = sub {
+        for my $pid (@pidlist) {
+            #Terminate with extreme prejudice
+            kill(-9,getpgrp($pid));
+        }
+        exit(0);
+    };
+
 }
 
 my $existsFPGA = 0;
@@ -179,23 +207,6 @@ if ($help || ! $status) {
 #############################################################################
 #############################################################################
 
-# Show front panel?
-if ($noshowfp) {
-    $showfp = '';
-}
-elsif (defined($showfp)) {
-    # Specified on the run command line
-    $showfp = '--showfp=gui' if ($showfp eq '');
-}
-elsif ($config{feeder} eq 'none') {
-    # For null feeder default to showing LEDs on stdout
-    $showfp = '';
-}
-else {
-    # Other models have heartbeats
-    $showfp = '';
-}
-
 my $feedFlags = "${funcpPrefix} $config{feedFlags} ${funcpSuffix}";
 
 if ($config{feeder} eq 'm5') {
@@ -230,20 +241,6 @@ if (defined($vcdStart)) {
     $bluesimCmd .= "-c \"$vcdCmd\"";
 }
 
-
-# Adjust the arguments for Bluesim if it is being invoked directly
-#if (! $config{isHybridModel} && ($mType == $MODEL_BLUESIM)) {
-#    $cmd =~ s/\s--/ +--/g;
-
-    # Bluesim may expect to load a program from a well known file
-#    if (exists($config{workload}) && exists($config{ISA})) {
-#        unlink('program.vmh');
-#        link("program/$config{workload}.$config{ISA}.vmh", 'program.vmh');
-#    }
-#}
-
-
-
 #############################################################################
 #############################################################################
 ##
@@ -269,10 +266,6 @@ my $fpga_dev = undef;
 # After this we can run programs
 
 my @FPGAs = ();
-
-# Examine subordinte builds.
-# really we should do this for all builds.  
-my @pidlist = ();
 
 my $cpuPlatform = undef;
 my $fpgaDevLegacy = undef; # keep this around as a legacy support 
@@ -394,7 +387,7 @@ if (defined($cpuPlatform)) {
         $cmd = "$config{modelDir}/${directory}/" . readlink($cmd);
     }
 
-    $cmd .= " --modeldir=$config{modelDir}/${directory} --workload=$config{workload} ${showfp} $config{genFlags}";
+    $cmd .= " --modeldir=$config{modelDir}/${directory} --workload=$config{workload} $config{genFlags}";
 
 
     if ($m5run == 0) {
@@ -407,7 +400,7 @@ if (defined($cpuPlatform)) {
             $cmd = "$config{modelDir}/${directory}/" . readlink($cmd);
         }
 
-        $cmd .= " --modeldir=$config{modelDir}/${directory}/ --workload=$config{workload} ${showfp} --funcp=\'${feedFlags}\' $config{genFlags} ${ctxFlag}";
+        $cmd .= " --modeldir=$config{modelDir}/${directory}/ --workload=$config{workload} --funcp=\'${feedFlags}\' $config{genFlags} ${ctxFlag}";
 
         foreach my $c (@ARGV) {
             $cmd .= " $c";

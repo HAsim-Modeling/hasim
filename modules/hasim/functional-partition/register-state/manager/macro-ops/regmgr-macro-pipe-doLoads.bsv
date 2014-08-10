@@ -186,7 +186,7 @@ module [HASIM_MODULE] mkFUNCP_RegMgrMacro_Pipe_DoLoads#(
 
         // If it's not actually a load, it's an exception.
         let isLoad = tokScoreboard.isLoad(tok.index);
-        assertion.instructionIsActuallyALoad(isLoad);
+        assertion.instructionIsActuallyALoad(isLoad, $format("regmgr-macro-pip-doLoads.bsv: ") + fshow(tok.index) + $format(" not a LOAD!"));
 
         // Emulated loads were taken care of previously.  Also ignore killed tokens.
         if (tokScoreboard.emulateInstruction(tok.index) ||

@@ -121,26 +121,40 @@ my @pidlist = ();
 # program process on timeout. The signal handler will then 
 # teardown the program as needed.
 if(defined($timeout)) {
-    my $timeoutPID = fork();
+    my $timeoutPID = undef;
 
-    if ($timeoutPID != 0) { 
-        sleep($timeout);
-        kill(10,$timeoutPID);
-        # Wait for child to die.
+    my $sigOriginal = $SIG{'CHLD'};
+
+    # By trapping the child pid, we allow early termination of the
+    # parent process in case the child finishes before the parent.
+    $SIG{'CHLD'} = sub {
         waitpid($timeoutPID, 0);
-        sleep(1);
         exit(0);
+    };
+
+    $timeoutPID = fork();
+
+    if ($timeoutPID != 0) {
+        sleep($timeout);
+        # Send USR1 to child, informing it of the timeout.
+        kill(10,$timeoutPID);
+        # Wait to die by SIGCHLD.                    
+        while(1) {
+            sleep(10);
+        }
     }
 
+    # Remove the CHLD handler. It is intended for the parent only.                                                                                                
+    $SIG{'CHLD'} = $sigOriginal;
     $SIG{'USR1'} = sub {
         for my $pid (@pidlist) {
-            #Terminate with extreme prejudice
+            #Terminate children with extreme prejudice                                                                                         
             kill(-9,getpgrp($pid));
         }
         exit(0);
     };
-
 }
+
 
 my $existsFPGA = 0;
 my $existsBLUESIM = 0;

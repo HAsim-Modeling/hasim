@@ -186,9 +186,9 @@ module [HASIM_MODULE] mkFUNCP_Regstate_Physical_Regs
     // The physical register file
     NumTypeParam#(4) n_banks = ?;
     BRAM_MULTI_READ#(TAdd#(ISA_MAX_SRCS, 1), FUNCP_PHYSICAL_REG_INDEX, ISA_VALUE)
-        prf <- mkMultiReadBankedMemory(n_banks,
-                                       MEM_BANK_SELECTOR_BITS_LOW,
-                                       mkBRAMBufferedPseudoMultiRead(False));
+        prf <- mkMultiReadBankedMemoryM(n_banks,
+                                        MEM_BANK_SELECTOR_BITS_LOW,
+                                        mkBRAMBufferedPseudoMultiRead(False));
     
     // Valid bits for PRF
     LUTRAM#(FUNCP_PHYSICAL_REG_INDEX, Bool) prfValids <- mkLUTRAMU();

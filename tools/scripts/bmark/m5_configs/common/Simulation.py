@@ -486,9 +486,12 @@ def run(options, root, testsys, cpu_class):
             m5.switchCpus(testsys, switch_cpu_list1)
 
     # Wait for all threads.  See previous comment near options.shared_mem.
-    if options.shared_mem:
+    if options.shared_mem and not options.checkpoint_restore:
         print "Waiting for application to start all threads..."
         exit_event = m5.simulate()
+        if options.take_checkpoints != None:
+            m5.checkpoint(joinpath(cptdir, "cpt.0"))
+            options.take_checkpoints = None
         print "All threads running..."
 
     # If we're taking and restoring checkpoints, use checkpoint_dir

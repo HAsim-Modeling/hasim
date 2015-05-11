@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use Getopt::Long qw(:config no_auto_abbrev no_ignore_case pass_through);
 use IO::Pty;
+use File::Copy;
 
 #
 # Turn on warnings
@@ -164,13 +165,24 @@ my $existsBLUESIM = 0;
 # then their directory and master (soon to be deprecated) will go away. 
 for my $platform (@$platforms_ref) {
 
+    my $isSimulator = 0;
+
     if ($platform->{"type"} eq "FPGA") {
         $existsFPGA = 1;
     }
 
     if ($platform->{"type"} eq "BLUESIM") {
         $existsFPGA = 1;
+        $existsBLUESIM = 1;
+        $isSimulator = 1;
     }
+
+    if ($platform->{"type"} eq "ASE") {
+        $existsFPGA = 1;
+        $isSimulator = 1;
+    }
+
+    $platform->{"isSimulator"} = $isSimulator;
 }
 
 # We should check that M5 has been supplied.
@@ -295,6 +307,7 @@ for my $platform (@$platforms_ref) {
 
 for my $platform (@$platforms_ref) {
     my $platformType = $platform->{"type"};
+    my $isSimulator = $platform->{"isSimulator"};
     my $platformName = $platform->{"name"};
     my $platformLogicalName = $platform->{"logicalName"};
     my $directory = $platform->{"directory"};
@@ -306,12 +319,25 @@ for my $platform (@$platforms_ref) {
         $platformType = "NULL";
     }
 
-    if ($platformType eq "BLUESIM") {
-
+    if ($isSimulator) {
         if(!$masterExists) 
         {
             $fpgaDevs{$platformLogicalName} = $platformLogicalName;
 	}
+
+        if ($platform->{"type"} eq "ASE") {
+            # AFU/QPI simulator must start first in order to manage shared memory.
+            # Remove a file that will indicate it has started.
+            unlink(${platformName} . "/.ase_ready");
+
+            # ASE needs an environment variable and a config file
+            `mkdir -p ${platformName}/leap_debug`;
+            $ENV{ASE_WORKDIR} = ${platformName};
+            if (! -f "${platformName}/ase.cfg") {
+                copy("$ENV{AAL_QPI}/share/ase.cfg", "${platformName}/ase.cfg") or
+                    die("Failed to copy ase.cfg");
+            }
+        }
 
         my $pid = fork();
         if ($pid == 0) { 
@@ -329,6 +355,11 @@ for my $platform (@$platforms_ref) {
             exit(0); # in case we get here    
         }
         push(@pidlist, $pid);
+
+        if ($platform->{"type"} eq "ASE") {
+            # Wait for ASE
+            while (! -f ${platformName} . "/.ase_ready") { sleep(1); }
+        }
     }
 
     # need to program, but not activate slave devices  

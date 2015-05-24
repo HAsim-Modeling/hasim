@@ -334,7 +334,7 @@ for my $platform (@$platforms_ref) {
             `mkdir -p ${platformName}/leap_debug`;
             $ENV{ASE_WORKDIR} = ${platformName};
             if (! -f "${platformName}/ase.cfg") {
-                copy("$ENV{AAL_QPI}/share/ase.cfg", "${platformName}/ase.cfg") or
+                copy("$ENV{AAL_QA}/share/ase.cfg", "${platformName}/ase.cfg") or
                     die("Failed to copy ase.cfg");
             }
         }

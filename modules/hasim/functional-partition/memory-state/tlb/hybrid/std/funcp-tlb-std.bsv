@@ -262,7 +262,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     Param#(3) cacheMode              <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PVT_CACHE_MODE, paramNode);
     Param#(6) prefetchMechanism      <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PREFETCHER_MECHANISM, paramNode);
     Param#(4) prefetchLearnerSizeLog <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PREFETCHER_LEARNER_SIZE_LOG, paramNode);
-
+    Param#(2) prefetchPrioritySpec   <- mkDynamicParameter(`PARAMS_FUNCP_MEMSTATE_TLB_FUNCP_TLB_PREFETCHER_PRIORITY_SPEC, paramNode);
     //
     // Function to enforce order of instruction vs. data translations.
     // Order may be important for virtual to physical translation in
@@ -284,7 +284,7 @@ module [HASIM_MODULE] mkFUNCP_CPU_TLBS
     Reg#(Bool) initialized <- mkReg(False);
     rule doInit (! initialized);
         cache.setCacheMode(unpack(cacheMode[1:0]), unpack(cacheMode[2]));
-        prefetcher.setPrefetchMode(unpack(prefetchMechanism),unpack(prefetchLearnerSizeLog));
+        prefetcher.setPrefetchMode(unpack(prefetchMechanism), unpack(prefetchLearnerSizeLog), unpack(prefetchPrioritySpec));
         initialized <= True;
     endrule
 

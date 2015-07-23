@@ -31,6 +31,7 @@
 
 import FIFO::*;
 import FIFOF::*;
+import FIFOLevel::*;
 import DefaultValue::*;
 
 `include "asim/provides/hasim_common.bsh"
@@ -606,7 +607,7 @@ module mkFuncpCachePrefetcher#(Bool prefetchAllRefTypes, DEBUG_FILE debugLog)
 
 
     Wire#(MEM_WORD_ADDRESS) newReq <- mkWire();
-    FIFOF#(MEM_WORD_ADDRESS) prefReqQ <- mkSizedFIFOF(4);
+    FIFOCountIfc#(MEM_WORD_ADDRESS, PREFETCH_BUF_SIZE) prefReqQ <- mkFIFOCount();
 
     (* fire_when_enabled *)
     rule fwdReq (True);
@@ -621,11 +622,14 @@ module mkFuncpCachePrefetcher#(Bool prefetchAllRefTypes, DEBUG_FILE debugLog)
     endfunction
 
     method Action setPrefetchMode(Tuple2#(PREFETCH_MODE, PREFETCH_DIST_PARAM) mode,
-                                  PREFETCH_LEARNER_SIZE_LOG size);
+                                  PREFETCH_LEARNER_SIZE_LOG size, 
+                                  PREFETCH_PRIO_SPEC prioSpec);
         noAction;
     endmethod
 
     method Bool hasReq() = prefReqQ.notEmpty;
+
+    method Bool prefetcherNearlyFull() = prefReqQ.count() > fromInteger(valueof(PREFETCH_BUF_SIZE) - valueof(PREFETCH_BUF_NEARLY_FULL));
 
     method ActionValue#(PREFETCH_REQ#(t_CACHE_ADDR, t_CACHE_READ_META)) getReq();
         prefReqQ.deq();    

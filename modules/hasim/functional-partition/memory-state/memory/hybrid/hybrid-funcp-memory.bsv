@@ -530,7 +530,7 @@ endmodule
 // mkFuncpMemPvtCacheStats --
 //     Statistics callbacks from private cache in front of the central cache.
 //
-module [HASIM_MODULE] mkFuncpMemPvtCacheStats#(RL_CACHE_STATS stats)
+module [HASIM_MODULE] mkFuncpMemPvtCacheStats#(RL_CACHE_STATS#(t_READ_META) stats)
     // interface:
     ();
     
@@ -543,11 +543,11 @@ module [HASIM_MODULE] mkFuncpMemPvtCacheStats#(RL_CACHE_STATS stats)
 
     STAT_VECTOR#(2) sv <- mkStatCounter_Vector(statIDs);
 
-    rule readHit (stats.readHit());
+    rule readHit (stats.readHit() matches tagged Valid .readMeta);
         sv.incr(0);
     endrule
 
-    rule readMiss (stats.readMiss());
+    rule readMiss (stats.readMiss() matches tagged Valid .readMeta);
         sv.incr(1);
     endrule
 
